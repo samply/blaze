@@ -35,7 +35,7 @@
 (defn- bundle [structure-definitions {:keys [type result]}]
   (case (:type type)
     "ListTypeSpecifier"
-    #_(let [[_ type-name] (elm-util/parse-qualified-name (:name (:elementType type)))
+    (let [[_ type-name] (elm-util/parse-qualified-name (:name (:elementType type)))
           pattern (pull-pattern structure-definitions type-name)]
       {:result
        (json/generate-string
@@ -52,7 +52,6 @@
          {:key-fn name
           :pretty true})
        :resultType "Bundle"})
-    nil
     "NamedTypeSpecifier"
     {:result result
      :resultType (second (elm-util/parse-qualified-name (:name type)))}))
