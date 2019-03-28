@@ -1,0 +1,13 @@
+{elm/boolean life-fhir-store.elm.literals/boolean
+ elm/decimal life-fhir-store.elm.literals/decimal
+ elm/integer life-fhir-store.elm.literals/integer
+ elm/quantity life-fhir-store.elm.literals/quantity
+ elm/equal life-fhir-store.elm.literals/equal
+ elm/greater life-fhir-store.elm.literals/greater
+ elm/greater-or-equal life-fhir-store.elm.literals/greater-or-equal
+ elm/less life-fhir-store.elm.literals/less
+ elm/less-or-equal life-fhir-store.elm.literals/less-or-equal
+ elm/not-equal life-fhir-store.elm.literals/not-equal
+ elm/list life-fhir-store.elm.literals/list
+ elm/date life-fhir-store.elm.literals/date
+ elm/date-time life-fhir-store.elm.literals/date-time}

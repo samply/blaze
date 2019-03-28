@@ -1,0 +1,6 @@
+/target
+/.lein-*
+/.nrepl-port
+/kube-deployment.yml
+/queries
+/load-test.sh

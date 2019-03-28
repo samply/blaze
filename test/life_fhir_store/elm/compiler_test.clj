@@ -1,0 +1,887 @@
+(ns life-fhir-store.elm.compiler-test
+  "Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
+  (:require
+    [clojure.spec.alpha :as s]
+    [clojure.spec.test.alpha :as st]
+    [clojure.test :refer :all]
+    [clojure.test.check]
+    [life-fhir-store.datomic.cql :as cql]
+    [life-fhir-store.datomic.time :as time]
+    [life-fhir-store.datomic.quantity :as quantity]
+    [life-fhir-store.elm.compiler
+     :refer [compile compile-with-equiv-clause -eval -hash]]
+    [life-fhir-store.elm.literals])
+  (:import
+    [java.time LocalDate OffsetDateTime Year YearMonth])
+  (:refer-clojure :exclude [compile]))
+
+
+(defn fixture [f]
+  (st/instrument
+    `compile
+    {:spec
+     {`compile
+      (s/fspec
+        :args (s/cat :context any? :expression :elm/expression))}})
+  (f)
+  (st/unstrument))
+
+
+(use-fixtures :each fixture)
+
+
+(def now (OffsetDateTime/now))
+
+
+(def ^:private literal-null
+  {:type "Null"})
+
+
+
+;; 1. Simple Values
+
+;; 1.1 Literal
+(deftest compile-literal-test
+  (testing "Boolean Literal"
+    (are [elm boolean] (= boolean (compile {} elm))
+      #elm/boolean true true
+      #elm/boolean false false))
+
+  (testing "Decimal Literal"
+    (are [elm decimal] (= decimal (compile {} elm))
+      #elm/decimal -1 -1.0
+      #elm/decimal -0.1 -0.1
+      #elm/decimal 0 0.0
+      #elm/decimal 0.1 0.1
+      #elm/decimal 1 1.0))
+
+  (testing "Integer Literal"
+    (are [elm int] (= int (compile {} elm))
+      #elm/integer -1 -1
+      #elm/integer 0 0
+      #elm/integer 1 1)))
+
+
+
+;; 2. Structured Values
+
+;; 2.3. Property
+(deftest compile-property-test
+  (testing "with entity supplied over query context"
+    (are [elm entity result]
+      (= result (-eval (compile {:eval-context "Population"} elm)
+                       nil {"O" entity}))
+      {:path "value"
+       :scope "O"
+       :type "Property"
+       :life/source-type "{http://hl7.org/fhir}Observation"}
+      {:Observation/value 1}
+      1))
+
+  (testing "with entity supplied directly"
+    (are [elm entity result]
+      (= result (-eval (compile {:eval-context "Population"
+                                 :life/single-query-scope "O"}
+                                elm)
+                       nil entity))
+      {:path "value"
+       :scope "O"
+       :type "Property"
+       :life/source-type "{http://hl7.org/fhir}Observation"}
+      {:Observation/value 1}
+      1))
+
+  (testing "with source"
+    (are [elm source result]
+      (= result (-eval (compile {:eval-context "Population"} elm)
+                       {:library-context {"Patient" source}} nil))
+      {:path "gender"
+       :source {:name "Patient" :type "ExpressionRef"}
+       :type "Property"
+       :life/source-type "{http://hl7.org/fhir}Patient"}
+      {:Patient/gender "male"}
+      "male")))
+
+
+
+;; 3. Clinical Values
+
+;; 3.3. CodeRef
+(deftest compile-code-ref-test
+  (st/instrument
+    `cql/find-coding
+    {:spec
+     {`cql/find-coding
+      (s/fspec
+        :args (s/cat :db #{::db} :system #{"life"} :code #{"0"})
+        :ret #{::coding})}
+     :stub #{`cql/find-coding}})
+
+  (let [context
+        {:library
+         {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
+          :codes
+          {:def
+           [{:name "lens_0"
+             :id "0"
+             :accessLevel "Public"
+             :codeSystem {:name "life"}}]}}}]
+    (are [elm result] (= result (-eval (compile context elm) {:db ::db} nil))
+      {:name "lens_0" :type "CodeRef"}
+      ::coding)))
+
+
+;; 9. Reusing Logic
+
+;; 9.2. ExpressionRef
+(deftest compile-expression-ref-test
+  (are [elm result]
+    (= result (-eval (compile {} elm) {:library-context {"foo" ::result}} nil))
+    {:type "ExpressionRef" :name "foo"}
+    ::result))
+
+
+
+;; 10. Queries
+
+;; 10.1. Query
+(deftest compile-query-test
+  (st/instrument
+    `cql/list-resource
+    {:spec
+     {`cql/list-resource
+      (s/fspec
+        :args (s/cat :db #{::db} :data-type-name #{"Patient"})
+        :ret #{[::patient]})}
+     :stub #{`cql/list-resource}})
+
+  (let [retrieve {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
+        where {:type "Equal"
+               :operand
+               [{:path "value"
+                 :scope "P"
+                 :type "Property"
+                 :life/source-type "{http://hl7.org/fhir}Patient"}
+                #elm/integer 2]}
+        return {:path "value"
+                :scope "P"
+                :type "Property"
+                :life/source-type "{http://hl7.org/fhir}Patient"}]
+    (are [elm res] (= res (-eval (compile {} elm) {:db ::db} nil))
+      {:type "Query"
+       :source
+       [{:alias "P"
+         :expression retrieve}]}
+      #{::patient}
+
+      {:type "Query"
+       :source
+       [{:alias "P"
+         :expression retrieve}]
+       :where where}
+      #{}
+
+      {:type "Query"
+       :source
+       [{:alias "P"
+         :expression retrieve}]
+       :where #elm/boolean false}
+      #{}
+
+      {:type "Query"
+       :source
+       [{:alias "P"
+         :expression retrieve}]
+       :return {:expression return}}
+      #{nil}
+
+      {:type "Query"
+       :source
+       [{:alias "P"
+         :expression retrieve}]
+       :where where
+       :return {:expression return}}
+      #{})))
+
+
+;; 10.3. AliasRef
+(deftest compile-alias-ref-test
+  (are [elm code] (= code (-eval (compile {} elm) {} {"foo" ::result}))
+    {:type "AliasRef" :name "foo"}
+    ::result))
+
+
+;; 10.12. With
+(deftest compile-with-clause-test
+  (st/instrument
+    `cql/list-resource
+    {:spec
+     {`cql/list-resource
+      (s/fspec
+        :args (s/cat :db #{::db} :data-type-name #{"Observation"})
+        :ret #{[{:Observation/subject ::subject}]})}
+     :stub #{`cql/list-resource}})
+
+  (are [elm entity res] (= res (((compile-with-equiv-clause {:life/single-query-scope "O0"} elm)
+                                  {:db ::db}) {:db ::db} entity))
+    {:alias "O1"
+     :type "WithEquiv"
+     :expression {:dataType "{http://hl7.org/fhir}Observation"
+                  :codeProperty "code"
+                  :type "Retrieve"}
+     :equivOperand
+     [{:path "subject"
+       :scope "O0"
+       :type "Property"
+       :life/scopes #{"O0"}
+       :life/return-type {:type "NamedTypeSpecifier"
+                          :name "{http://hl7.org/fhir}Patient"}
+       :life/source-type "{http://hl7.org/fhir}Observation"}
+      {:path "subject"
+       :scope "O1"
+       :type "Property"
+       :life/scopes #{"O1"}
+       :life/return-type {:type "NamedTypeSpecifier"
+                          :name "{http://hl7.org/fhir}Patient"}
+       :life/source-type "{http://hl7.org/fhir}Observation"}]
+     :suchThat nil
+     :life/deps #{}}
+    {:Observation/subject ::subject}
+    true))
+
+
+;; 11. External Data
+
+;; 11.1. Retrieve
+(deftest compile-retrieve-test
+  (st/instrument
+    `cql/find-coding
+    {:spec
+     {`cql/find-coding
+      (s/fspec
+        :args (s/cat :db #{::db} :system #{"life"} :code #{"0"})
+        :ret #{::coding})}
+     :stub #{`cql/find-coding}})
+
+  (st/instrument
+    `cql/list-resource
+    {:spec
+     {`cql/list-resource
+      (s/fspec
+        :args (s/cat :db #{::db} :data-type-name #{"Patient"})
+        :ret #{[::patient]})}
+     :stub #{`cql/list-resource}})
+
+  (let [context
+        {:library
+         {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
+          :codes
+          {:def
+           [{:name "lens_0"
+             :id "0"
+             :accessLevel "Public"
+             :codeSystem {:name "life"}}]}}}]
+
+    (testing "in Patient eval context"
+
+      (testing "while retrieving patients"
+        (let [elm {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}]
+          (testing "a singleton list of the current patient is returned"
+            (is (= [::patient]
+                   (-eval (compile (assoc context :eval-context "Patient") elm)
+                          {:patient ::patient} nil))))))
+
+      (testing "while retrieving observations"
+        (let [elm {:dataType "{http://hl7.org/fhir}Observation" :type "Retrieve"}]
+          (testing "the observations of the current patient are returned"
+            (is (= [::observation]
+                   (-eval (compile (assoc context :eval-context "Patient") elm)
+                          {:patient {:Observation/_subject [::observation]}} nil))))))
+
+      (testing "while retrieving observations with one specific code"
+        (st/instrument
+          `cql/list-patient-resource-by-code
+          {:spec
+           {`cql/list-patient-resource-by-code
+            (s/fspec
+              :args (s/cat :patient #{::patient}
+                           :data-type-name #{"Observation"}
+                           :code-property-name #{"code"}
+                           :codings #{[::coding]})
+              :ret #{[::observation]})}
+           :stub #{`cql/list-patient-resource-by-code}})
+
+        (let [elm {:dataType "{http://hl7.org/fhir}Observation"
+                   :codeProperty "code"
+                   :type "Retrieve"
+                   :codes {:type "ToList"
+                           :operand {:name "lens_0" :type "CodeRef"}}}]
+          (testing "the observations with that code of the current patient are returned"
+            (is (= [::observation]
+                   (-eval (compile (assoc context :eval-context "Patient") elm)
+                          {:db ::db :patient ::patient} nil)))))))
+
+    (testing "Population Eval Context"
+      (testing "retrieving all patients"
+        (st/instrument
+          `cql/list-resource
+          {:spec
+           {`cql/list-resource
+            (s/fspec
+              :args (s/cat :db #{::db} :data-type-name #{"Patient"})
+              :ret #{[::patient]})}
+           :stub #{`cql/list-resource}})
+
+        (are [elm res]
+          (= res (-eval (compile (assoc context :eval-context "Population") elm)
+                        {:db ::db} nil))
+
+          {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
+          [::patient]))
+
+      (testing "retrieving all observations with a certain code"
+        (st/instrument
+          `cql/list-resource-by-code
+          {:spec
+           {`cql/list-resource-by-code
+            (s/fspec
+              :args (s/cat :db #{::db}
+                           :data-type-name #{"Observation"}
+                           :code-property-name #{"code"}
+                           :codings #{[::coding]})
+              :ret #{[::observation]})}
+           :stub #{`cql/list-resource-by-code}})
+
+        (are [elm res]
+          (= res (-eval (compile (assoc context :eval-context "Population") elm)
+                        {:db ::db} nil))
+
+          {:dataType "{http://hl7.org/fhir}Observation"
+           :codeProperty "code"
+           :type "Retrieve"
+           :codes {:type "ToList"
+                   :operand {:name "lens_0" :type "CodeRef"}}}
+          [::observation])))))
+
+
+
+;; 12. Comparison Operators
+
+;; 12.1. Equal
+(deftest compile-equal-test
+  (testing "Decimal"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/equal [#elm/decimal 1 #elm/decimal 1] true
+      #elm/equal [#elm/decimal 1 #elm/decimal 2] false
+      #elm/equal [{:type "Null"} #elm/decimal 1] nil
+      #elm/equal [#elm/decimal 1 {:type "Null"}] nil))
+
+  (testing "Integer"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/equal [#elm/integer 1 #elm/integer 1] true
+      #elm/equal [#elm/integer 1 #elm/integer 2] false
+      #elm/equal [{:type "Null"} #elm/integer 1] nil
+      #elm/equal [#elm/integer 1 {:type "Null"}] nil))
+
+  (testing "Quantity"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/equal [#elm/quantity [1] #elm/quantity [1]] true
+      #elm/equal [#elm/quantity [1] #elm/quantity [2]] false
+      #elm/equal [{:type "Null"} #elm/quantity [1]] nil
+      #elm/equal [#elm/quantity [1] {:type "Null"}] nil))
+
+  (testing "Date"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/equal [#elm/date [2012] #elm/date [2012]] true
+      #elm/equal [#elm/date [2012] #elm/date [2013]] false
+      #elm/equal [{:type "Null"} #elm/date [2012]] nil
+      #elm/equal [#elm/date [2012] {:type "Null"}] nil)))
+
+
+;; 12.3. Greater
+(deftest compile-greater-test
+  (testing "Decimal"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/greater [#elm/decimal 1 #elm/decimal 1] false
+      #elm/greater [#elm/decimal 2 #elm/decimal 1] true
+      #elm/greater [{:type "Null"} #elm/decimal 1] nil
+      #elm/greater [#elm/decimal 1 {:type "Null"}] nil))
+
+  (testing "Integer"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/greater [#elm/integer 1 #elm/integer 1] false
+      #elm/greater [#elm/integer 2 #elm/integer 1] true
+      #elm/greater [{:type "Null"} #elm/integer 1] nil
+      #elm/greater [#elm/integer 1 {:type "Null"}] nil))
+
+  (testing "Quantity"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/greater [#elm/quantity [1] #elm/quantity [1]] false
+      #elm/greater [#elm/quantity [2] #elm/quantity [1]] true
+      #elm/greater [{:type "Null"} #elm/quantity [1]] nil
+      #elm/greater [#elm/quantity [2] {:type "Null"}] nil))
+
+  (testing "Date"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/greater [#elm/date [2014] #elm/date [2013]] true
+      #elm/greater [#elm/date [2014] #elm/date [2015]] false
+      #elm/greater [#elm/date [2014] #elm/date [2014]] false
+      #elm/greater [#elm/date [2014 1] #elm/date [2014]] nil
+      #elm/greater [#elm/date [2014] #elm/date [2014 1]] nil
+      #elm/greater [{:type "Null"} #elm/date [2014]] nil
+      #elm/greater [#elm/date [2014] {:type "Null"}] nil)))
+
+
+;; 12.4. GreaterOrEqual
+(deftest compile-greater-or-equal-test
+  (testing "Decimal"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/greater-or-equal [#elm/decimal 2 #elm/decimal 1] true
+      #elm/greater-or-equal [{:type "Null"} #elm/decimal 1] nil
+      #elm/greater-or-equal [#elm/decimal 1 {:type "Null"}] nil))
+
+  (testing "Integer"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/greater-or-equal [#elm/integer 1 #elm/integer 1] true
+      #elm/greater-or-equal [#elm/integer 2 #elm/integer 1] true
+      #elm/greater-or-equal [{:type "Null"} #elm/integer 1] nil
+      #elm/greater-or-equal [#elm/integer 1 {:type "Null"}] nil))
+
+  (testing "Quantity"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/greater-or-equal [#elm/quantity [2] #elm/quantity [1]] true
+      #elm/greater-or-equal [{:type "Null"} #elm/quantity [1]] nil
+      #elm/greater-or-equal [#elm/quantity [1] {:type "Null"}] nil))
+
+  (testing "Date"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/greater-or-equal [#elm/date [2014] #elm/date [2013]] true
+      #elm/greater-or-equal [#elm/date [2014] #elm/date [2015]] false
+      #elm/greater-or-equal [#elm/date [2014] #elm/date [2014]] true
+      #elm/greater-or-equal [#elm/date [2014 1] #elm/date [2014]] nil
+      #elm/greater-or-equal [#elm/date [2014] #elm/date [2014 1]] nil
+      #elm/greater-or-equal [{:type "Null"} #elm/date [2014]] nil
+      #elm/greater-or-equal [#elm/date [2014] {:type "Null"}] nil)))
+
+
+;; 12.5. Less
+(deftest compile-less-test
+  (testing "Decimal"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/less [#elm/decimal 1 #elm/decimal 1] false
+      #elm/less [#elm/decimal 1 #elm/decimal 2] true
+      #elm/less [{:type "Null"} #elm/decimal 2] nil
+      #elm/less [#elm/decimal 1 {:type "Null"}] nil))
+
+  (testing "Integer"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/less [#elm/integer 1 #elm/integer 1] false
+      #elm/less [#elm/integer 1 #elm/integer 2] true))
+
+  (testing "Quantity"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/less [#elm/quantity [1] #elm/quantity [1]] false
+      #elm/less [#elm/quantity [1] #elm/quantity [2]] true))
+
+  (testing "Date"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/less [#elm/date [2013 6 14] #elm/date [2013 6 15]] true
+      #elm/less [#elm/date [2013 6 16] #elm/date [2013 6 15]] false
+      #elm/less [#elm/date [2013 6 15] #elm/date [2013 6 15]] false
+      #elm/less [#elm/date [2013 6 15] #elm/date-time [2013 6 15 0]] nil
+      #elm/less [#elm/date-time [2013 6 15 0] #elm/date [2013 6 15]] nil))
+
+  (testing "DateTime"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/less [#elm/date-time [2013 6 15 11] #elm/date-time [2013 6 15 12]] true
+      #elm/less [#elm/date-time [2013 6 15 13] #elm/date-time [2013 6 15 12]] false
+      #elm/less [#elm/date-time [2013 6 15 12] #elm/date-time [2013 6 15 12]] false
+
+      #elm/less [#elm/date-time [2013 6 15 12 0 0 0 0] #elm/date [2013 7]] true)))
+
+
+;; 12.6. LessOrEqual
+(deftest compile-less-or-equal-test
+  (testing "Decimal"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/less-or-equal [#elm/decimal 1 #elm/decimal 2] true
+      #elm/less-or-equal [{:type "Null"} #elm/decimal 2] nil
+      #elm/less-or-equal [#elm/decimal 1 {:type "Null"}] nil))
+
+  (testing "Integer"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/less-or-equal [#elm/integer 1 #elm/integer 1] true
+      #elm/less-or-equal [#elm/integer 1 #elm/integer 2] true
+      #elm/less-or-equal [{:type "Null"} #elm/integer 2] nil
+      #elm/less-or-equal [#elm/integer 1 {:type "Null"}] nil))
+
+  (testing "Quantity"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/less-or-equal [#elm/quantity [1] #elm/quantity [2]] true
+      #elm/less-or-equal [{:type "Null"} #elm/quantity [2]] nil
+      #elm/less-or-equal [#elm/quantity [1] {:type "Null"}] nil))
+
+  (testing "Date"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/less-or-equal [#elm/date [2013 6 14] #elm/date [2013 6 15]] true
+      #elm/less-or-equal [#elm/date [2013 6 16] #elm/date [2013 6 15]] false
+      #elm/less-or-equal [#elm/date [2013 6 15] #elm/date [2013 6 15]] true
+      #elm/less-or-equal [#elm/date [2013 6 15] #elm/date-time [2013 6 15 0]] nil
+      #elm/less-or-equal [#elm/date-time [2013 6 15 0] #elm/date [2013 6 15]] nil)))
+
+
+
+;; 13. Logical Operators
+
+;; 13.1. And
+(deftest compile-and-test
+  (are [a b c] (= c (-eval (compile {} {:type "And" :operand [a b]}) {} nil))
+    #elm/boolean true #elm/boolean true true
+    #elm/boolean true #elm/boolean false false
+    #elm/boolean true literal-null nil
+
+    #elm/boolean false #elm/boolean true false
+    #elm/boolean false #elm/boolean false false
+    #elm/boolean false literal-null false
+
+    literal-null #elm/boolean true nil
+    literal-null #elm/boolean false false
+    literal-null literal-null nil))
+
+
+;; 13.2. Implies
+(deftest compile-implies-test
+  (is (thrown? Exception (compile {} {:type "Implies"}))))
+
+
+;; 13.3. Not
+(deftest compile-not-test
+  (are [a b] (= b (-eval (compile {} {:type "Not" :operand a}) {} nil))
+    #elm/boolean true false
+    #elm/boolean false true
+    literal-null nil))
+
+
+;; 13.4. Or
+(deftest compile-or-test
+  (are [a b c] (= c (-eval (compile {} {:type "Or" :operand [a b]}) {} nil))
+    #elm/boolean true #elm/boolean true true
+    #elm/boolean true #elm/boolean false true
+    #elm/boolean true literal-null true
+
+    #elm/boolean false #elm/boolean true true
+    #elm/boolean false #elm/boolean false false
+    #elm/boolean false literal-null nil
+
+    literal-null #elm/boolean true true
+    literal-null #elm/boolean false nil
+    literal-null literal-null nil))
+
+
+;; 13.5. Xor
+(deftest compile-xor-test
+  (is (thrown? Exception (compile {} {:type "Xor"}))))
+
+
+
+;; 14. Nullological Operators
+
+;; 14.1. Null
+(deftest compile-null-test
+  (is (nil? (compile {} literal-null))))
+
+
+;; 14.2. Coalesce
+;;
+;; The Coalesce operator returns the first non-null result in a list of
+;; arguments. If all arguments evaluate to null the result is null.
+(deftest compile-coalesce-test
+  (are [elm res] (= res (-eval (compile {} {:type "Coalesce" :operand elm}) {} nil))
+    [] nil
+    [{:type "Null"}] nil
+    [#elm/boolean false #elm/boolean true] false
+    [{:type "Null"} #elm/integer 1 #elm/integer 2] 1
+    [#elm/integer 2] 2))
+
+
+;; 14.3. IsFalse
+(deftest compile-is-false-test
+  (are [elm res] (= res (-eval (compile {} {:type "IsFalse" :operand elm}) {} nil))
+    #elm/boolean true false
+    #elm/boolean false true
+    literal-null false))
+
+
+;; 14.4. IsNull
+(deftest compile-is-null-test
+  (are [elm res] (= res (-eval (compile {} {:type "IsNull" :operand elm}) {} nil))
+    #elm/boolean true false
+    #elm/boolean false false
+    literal-null true))
+
+
+;; 14.5. IsTrue
+(deftest compile-is-true-test
+  (are [elm res] (= res (-eval (compile {} {:type "IsTrue" :operand elm}) {} nil))
+    #elm/boolean true true
+    #elm/boolean false false
+    literal-null false))
+
+
+
+;; 16. Arithmetic Operators
+
+;; 16.1. Abs
+(deftest compile-abs-test
+  (are [elm res] (= res (-eval (compile {} {:type "Abs" :operand elm}) {} nil))
+    #elm/integer -1 1
+    #elm/integer 0 0
+    #elm/integer 1 1
+
+    #elm/decimal -1 1.0
+    #elm/decimal 0 0.0
+    #elm/decimal 1 1.0
+
+    #elm/quantity [-1] 1
+    #elm/quantity [0] 0
+    #elm/quantity [1] 1))
+
+
+
+;; 18. Date and Time Operators
+
+;; 18.6. Date
+(deftest compile-date-test
+  (testing "year"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date [2019]
+      (Year/of 2019)))
+
+  (testing "year-month"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date [2019 3]
+      (YearMonth/of 2019 3)))
+
+  (testing "date"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date [2019 3 23]
+      (LocalDate/of 2019 3 23))))
+
+
+;; 18.11. DurationBetween
+(deftest compile-duration-between-test
+  (testing "Year"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      {:type "DurationBetween" :operand [#elm/date [2018] #elm/date [2019]]
+       :precision "Year"}
+      1
+      {:type "DurationBetween" :operand [#elm/date [2018] #elm/date [2017]]
+       :precision "Year"}
+      -1
+      {:type "DurationBetween" :operand [#elm/date [2018] #elm/date [2018]]
+       :precision "Year"}
+      0
+
+      {:type "DurationBetween" :operand [#elm/date [2018] #elm/date [2018]]
+       :precision "Month"}
+      nil))
+
+  (testing "Month"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      {:type "DurationBetween" :operand [#elm/date [2018 1] #elm/date [2018 2]]
+       :precision "Month"}
+      1
+      {:type "DurationBetween" :operand [#elm/date [2018 1] #elm/date [2017 12]]
+       :precision "Month"}
+      -1
+      {:type "DurationBetween" :operand [#elm/date [2018 1] #elm/date [2018 1]]
+       :precision "Month"}
+      0
+
+      {:type "DurationBetween" :operand [#elm/date [2018 1] #elm/date [2018 1]]
+       :precision "Day"}
+      nil))
+
+  (testing "Day"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      {:type "DurationBetween" :operand [#elm/date [2018 1 1] #elm/date [2018 1 2]]
+       :precision "Day"}
+      1
+      {:type "DurationBetween" :operand [#elm/date [2018 1 1] #elm/date [2017 12 31]]
+       :precision "Day"}
+      -1
+      {:type "DurationBetween" :operand [#elm/date [2018 1 1] #elm/date [2018 1 1]]
+       :precision "Day"}
+      0
+
+      {:type "DurationBetween" :operand [#elm/date [2018 1 1] #elm/date [2018 1 1]]
+       :precision "Hour"}
+      nil))
+
+  (testing "Hour"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      {:type "DurationBetween" :operand [#elm/date-time [2018 1 1 0] #elm/date-time [2018 1 1 1]]
+       :precision "Hour"}
+      1
+      {:type "DurationBetween" :operand [#elm/date-time [2018 1 1 0] #elm/date-time [2017 12 31 23]]
+       :precision "Hour"}
+      -1
+      {:type "DurationBetween" :operand [#elm/date-time [2018 1 1 0] #elm/date-time [2018 1 1 0]]
+       :precision "Hour"}
+      0
+
+      ;; TODO: this is not right according the spec. We don't have the hour and minute precision
+      {:type "DurationBetween" :operand [#elm/date-time [2018 1 1 0] #elm/date-time [2018 1 1 0]]
+       :precision "Minute"}
+      0)))
+
+
+;; 18.13. Now
+(deftest compile-now-test
+  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+    {:type "Now"}
+    now))
+
+
+
+;; 19. Interval Operators
+
+;; 19.15. Intersect
+(deftest compile-intersect-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    {:type "Intersect"
+     :operand [#elm/list [#elm/integer 1]]}
+    #{1}
+
+    {:type "Intersect"
+     :operand
+     [#elm/list [#elm/integer 1]
+      #elm/list [#elm/integer 1 #elm/integer 2]]}
+    #{1}))
+
+
+;; 19.30. Union
+(deftest compile-union-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    {:type "Union"
+     :operand [#elm/list [#elm/integer 1]]}
+    #{1}
+
+    {:type "Union"
+     :operand
+     [#elm/list [#elm/integer 1]
+      #elm/list [#elm/integer 2]]}
+    #{1 2}
+
+    {:type "Union"
+     :operand
+     [#elm/list [#elm/integer 1]
+      #elm/list [#elm/integer 1 #elm/integer 2]]}
+    #{1 2}))
+
+
+
+;; 20. List Operators
+
+;; 20.1. List
+(deftest compile-list-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    #elm/list [#elm/integer 1]
+    [1]
+
+    #elm/list [#elm/integer 1 #elm/integer 2]
+    [1 2]))
+
+
+;; 20.25. SingletonFrom
+(deftest compile-singleton-from-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    {:type "SingletonFrom"
+     :operand #elm/list [#elm/integer 1]}
+    1)
+
+  (st/instrument
+    `cql/list-resource
+    {:spec
+     {`cql/list-resource
+      (s/fspec
+        :args (s/cat :db #{::db} :data-type-name #{"Patient"})
+        :ret #{[::patient]})}
+     :stub #{`cql/list-resource}})
+
+  (let [retrieve {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}]
+    (are [elm res] (= res (-eval (compile {} elm) {:db ::db} nil))
+      {:type "SingletonFrom"
+       :operand retrieve}
+      ::patient)))
+
+
+
+;; 21. Aggregate Operators
+
+;; 21.4. Count
+(deftest compile-count-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    {:type "Count"
+     :source #elm/list [{:type "Null"}]}
+    0
+
+    {:type "Count"
+     :source #elm/list []}
+    0
+
+    {:type "Count"
+     :source #elm/list [#elm/integer 1]}
+    1
+
+    {:type "Count"
+     :source #elm/list [#elm/integer 1 #elm/integer 1]}
+    2))
+
+
+
+;; 22. Type Operators
+
+;; 22.1. As
+;;
+;; The As operator allows the result of an expression to be cast as a given
+;; target type.
+(deftest compile-as-test
+  (are [elm input res] (= res (-eval (compile {} elm) {} {"I" input}))
+    {:asType "{http://hl7.org/fhir}Quantity"
+     :type "As"
+     :operand
+     {:path "value"
+      :scope "I"
+      :type "Property"
+      :life/source-type "{http://hl7.org/fhir}Observation"}}
+    {:Observation/valueQuantity (quantity/write 1.0)}
+    1.0
+
+    {:asType "{http://hl7.org/fhir}dateTime"
+     :type "As"
+     :operand
+     {:path "effective"
+      :scope "I"
+      :type "Property"
+      :life/source-type "{http://hl7.org/fhir}Observation"}}
+    {:Observation/effectiveDateTime (time/write (Year/of 2012))}
+    (Year/of 2012)))
+
+
+;; 22.20. ToDateTime
+(deftest compile-to-date-time-test
+  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+    {:type "ToDateTime" :operand #elm/date [2019]}
+    (Year/of 2019)))
+
+
+;; 22.23. ToList
+(deftest compile-to-list-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    {:type "ToList" :operand literal-null}
+    nil
+
+    {:type "ToList" :operand #elm/integer 1}
+    [1]))
