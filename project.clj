@@ -16,7 +16,7 @@
    [danlentz/clj-uuid "0.1.7"]
    [info.cqframework/cql-to-elm "1.3.10"]
    [integrant "0.7.0"]
-   [org.clojars.akiel/datomic-spec "0.4-SNAPSHOT"]
+   [org.clojars.akiel/datomic-spec "0.4"]
    [org.clojars.akiel/datomic-tools "0.4"]
    [org.clojars.akiel/env-tools "0.2"]
    [org.clojars.akiel/spec-coerce "0.3"]
