@@ -16,7 +16,8 @@
     [life-fhir-store.handler.health :as health-handler]
     [life-fhir-store.server :as server]
     [life-fhir-store.util :as u]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log]
+    [clojure.string :as str]))
 
 
 
@@ -85,10 +86,16 @@
 
 (defmethod ig/init-key :database-conn
   [_ {:database/keys [uri] :keys [structure-definitions]}]
+  (if (d/create-database uri)
+    (log/info "Created database at:" uri)
+    (log/info "Use existing database at:" uri))
+
   (log/info "Connect with database:" uri)
-  (d/create-database uri)
-  (let [conn (d/connect uri)]
-    @(d/transact conn (schema/all-schema (vals structure-definitions)))
+
+  (let [conn (d/connect uri)
+        {:keys [tx-data]} @(d/transact conn (schema/all-schema (vals structure-definitions)))]
+    tx-data
+    (log/info "Upsert schema in database:" uri "creating" (count tx-data) "new facts")
     conn))
 
 
@@ -99,8 +106,10 @@
 
 (defmethod ig/init-key :structure-definitions
   [_ {:structure-definitions/keys [path]}]
-  (log/info "Read structure definitions from:" path)
-  (u/read-structure-definitions path))
+  (let [structure-definitions (u/read-structure-definitions path)]
+    (log/info "Read structure definitions from:" path "resulting in:"
+              (str/join ", " (keys structure-definitions)))
+    structure-definitions))
 
 
 (defmethod ig/init-key :health-handler
