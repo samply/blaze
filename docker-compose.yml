@@ -7,7 +7,7 @@ services:
     volumes:
     - "db-data:/data"
   store:
-    image: "f471ce7b017d"
+    image: "liferesearch/life-fhir-store:latest"
     environment:
       DATABASE_URI: "datomic:free://db:4334/dev"
       STRUCTURE_DEFINITIONS_PATH: "/app/fhir/r4"
