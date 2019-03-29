@@ -55,7 +55,7 @@ It should return `OK`.
 Before you can issue CQL queries against the LIFE FHIR Store, you have to upload some FHIR resources. If you have none, you can generate them y using the [FHIR Test Data Generator][1].
 
 ```bash
-life-fhir-store -n1 > bundle.json
+life-fhir-gen -n1 > bundle.json
 ```
 
 Next you need to upload that `bundle.json` to the LIFE FHIR Store:
