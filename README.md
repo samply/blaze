@@ -1,6 +1,6 @@
 # LIFE FHIR Store
 
-A FHIR Store including a CQL Engine based on Datomic.
+A FHIR Store including a CQL Engine.
 
 ## Usage
 

@@ -1,5 +1,5 @@
 (defproject life-fhir-store "0.1-SNAPSHOT"
-  :description "A FHIR Store including a CQL Engine based on Datomic"
+  :description "A FHIR Store including a CQL Engine"
   :url "http://example.com/FIXME"
 
   :license {:name "Eclipse Public License"
