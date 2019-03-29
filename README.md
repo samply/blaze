@@ -1,5 +1,8 @@
 # LIFE FHIR Store
 
+[![Build Status](https://travis-ci.org/life-research/life-fhir-store.svg?branch=master)](https://travis-ci.org/life-research/life-fhir-store)
+[![Dependencies Status](https://versions.deps.co/life-research/life-fhir-store/status.svg)](https://versions.deps.co/life-research/life-fhir-store)
+
 A FHIR Store including a CQL Engine.
 
 ## Usage
@@ -44,7 +47,7 @@ It should return `OK`.
 before you can issue CQL queries against the LIFE FHIR Store, you have to upload some FHIR resources. If you have none, you can generate them y using the [FHIR Test Data Generator][1].
 
 ```bash
-life-fhir-gen -n1 > bundle.json
+life-fhir-store -n1 > bundle.json
 ```
 
 Next you need to upload that `bundle.json` to the LIFE FHIR Store:
@@ -78,5 +81,5 @@ Copyright © 2019 LIFE Research Center (Alexander Kiel)
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
 
-[1]: <https://github.com/life-research/life-fhir-gen>
+[1]: <https://github.com/life-research/life-fhir-store>
 [2]: <http://cql-runner.dataphoria.org/>
