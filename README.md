@@ -3,7 +3,15 @@
 [![Build Status](https://travis-ci.org/life-research/life-fhir-store.svg?branch=master)](https://travis-ci.org/life-research/life-fhir-store)
 [![Dependencies Status](https://versions.deps.co/life-research/life-fhir-store/status.svg)](https://versions.deps.co/life-research/life-fhir-store)
 
-A FHIR Store including a CQL Engine.
+A FHIR Store with internal, fast CQL Evaluation Engine
+
+## Goal
+
+The goal of this project is to provide a FHIR Store with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries.
+
+## State
+
+The project is currently in very early stages. Both the FHIR Store and the CQL Query Engine implementations are incomplete and potentially incorrect. The provided Docker image and Docker Compose file are both not production ready and should only be used for evaluation proposes.
 
 ## Usage
 
@@ -44,7 +52,7 @@ It should return `OK`.
 
 ### Upload FHIR Resources
 
-before you can issue CQL queries against the LIFE FHIR Store, you have to upload some FHIR resources. If you have none, you can generate them y using the [FHIR Test Data Generator][1].
+Before you can issue CQL queries against the LIFE FHIR Store, you have to upload some FHIR resources. If you have none, you can generate them y using the [FHIR Test Data Generator][1].
 
 ```bash
 life-fhir-store -n1 > bundle.json
@@ -61,6 +69,8 @@ The result should be:
 ```
 {"message":"OK","t":<some number>}
 ```
+
+If you like to upload your own resources, it's important, that the LIFE FHIR Store is currently configured to use a subset of FHIR R4. The available Resources can be seen at startup in the `Read structure definitions` output.
 
 ### Issuing a CQL Query
 

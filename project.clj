@@ -1,5 +1,5 @@
 (defproject life-fhir-store "0.1-SNAPSHOT"
-  :description "A FHIR Store including a CQL Engine"
+  :description "A FHIR Store with internal, fast CQL Evaluation Engine"
   :url "https://github.com/life-research/life-fhir-store"
 
   :license {:name "Eclipse Public License"
