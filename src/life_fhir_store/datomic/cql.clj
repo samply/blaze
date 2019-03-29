@@ -50,12 +50,9 @@
       db codings)))
 
 
+;; TODO: make cache controllable upstream
 (def list-resource-by-code-cache (atom (cache/lru-cache-factory {})))
 
-(comment
-
-  (keys @list-resource-by-code-cache)
-  )
 
 (s/fdef list-resource-by-code
   :args (s/cat :db ::ds/db
@@ -65,7 +62,7 @@
 
 (defn list-resource-by-code
   [db data-type-name code-property-name codings]
-  (let [key [data-type-name code-property-name codings]]
+  (let [key [(d/basis-t db) data-type-name code-property-name codings]]
     (get (swap! list-resource-by-code-cache cache/through-cache
                 key
                 (fn [_]
