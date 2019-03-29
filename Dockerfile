@@ -1,7 +1,14 @@
+FROM clojure:lein-2.8.1 as build
+
+COPY . /build/
+
+WORKDIR /build
+RUN lein uberjar
+
 FROM openjdk:8u191-jre-alpine3.9
 
-COPY target/life-fhir-store-0.1-SNAPSHOT-standalone.jar /app/
-COPY fhir /app/
+COPY --from=build /build/target/life-fhir-store-0.1-SNAPSHOT-standalone.jar /app/
+COPY fhir /app/fhir/
 
 WORKDIR /app
 

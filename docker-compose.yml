@@ -1,0 +1,20 @@
+version: '3.2'
+services:
+  db:
+    image: "akiel/datomic-free:0.9.5656"
+    environment:
+      ALT_HOST: db
+    volumes:
+    - "db-data:/data"
+  store:
+    image: "f471ce7b017d"
+    environment:
+      DATABASE_URI: "datomic:free://db:4334/dev"
+      STRUCTURE_DEFINITIONS_PATH: "/app/fhir/r4"
+      JVM_OPTS: "-server -Xms2g -Xmx2g -XX:+UseG1GC"
+    ports:
+    - "8080:8080"
+    depends_on:
+    - db
+volumes:
+  db-data:
