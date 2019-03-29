@@ -5,6 +5,9 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
+  :min-lein-version "2.0.0"
+  :pedantic? :abort
+
   :dependencies
   [[aleph "0.4.6"]
    [bidi "2.1.5"]
@@ -13,7 +16,8 @@
    [com.cognitect/anomalies "0.1.12"]
    [com.datomic/datomic-free "0.9.5697"]
    [com.taoensso/timbre "4.10.0"]
-   [danlentz/clj-uuid "0.1.7"]
+   [danlentz/clj-uuid "0.1.7"
+    :exclusions [primitive-math]]
    [info.cqframework/cql-to-elm "1.3.10"]
    [integrant "0.7.0"]
    [org.clojars.akiel/datomic-spec "0.4"]
