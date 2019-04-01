@@ -25,12 +25,6 @@
   {:type "Null"})
 
 
-(defn- integer-literal [value]
-  {:valueType "{urn:hl7-org:elm-types:r1}Integer"
-   :value (str value)
-   :type "Literal"})
-
-
 ;; 2. Structured Values
 
 ;; 2.3. Property
@@ -116,37 +110,37 @@
 (deftest infer-types-comparison-operator-test
   (given-infer-types
     {:type "Equal"
-     :operand [(integer-literal 1) (integer-literal 1)]}
+     :operand [#elm/integer 1 #elm/integer 1]}
     :life/return-type := (elm-type-specifier "Boolean"))
 
   (given-infer-types
     {:type "Equivalent"
-     :operand [(integer-literal 1) (integer-literal 1)]}
+     :operand [#elm/integer 1 #elm/integer 1]}
     :life/return-type := (elm-type-specifier "Boolean"))
 
   (given-infer-types
     {:type "Greater"
-     :operand [(integer-literal 1) (integer-literal 1)]}
+     :operand [#elm/integer 1 #elm/integer 1]}
     :life/return-type := (elm-type-specifier "Boolean"))
 
   (given-infer-types
     {:type "GreaterOrEqual"
-     :operand [(integer-literal 1) (integer-literal 1)]}
+     :operand [#elm/integer 1 #elm/integer 1]}
     :life/return-type := (elm-type-specifier "Boolean"))
 
   (given-infer-types
     {:type "Less"
-     :operand [(integer-literal 1) (integer-literal 1)]}
+     :operand [#elm/integer 1 #elm/integer 1]}
     :life/return-type := (elm-type-specifier "Boolean"))
 
   (given-infer-types
     {:type "LessOrEqual"
-     :operand [(integer-literal 1) (integer-literal 1)]}
+     :operand [#elm/integer 1 #elm/integer 1]}
     :life/return-type := (elm-type-specifier "Boolean"))
 
   (given-infer-types
     {:type "NotEqual"
-     :operand [(integer-literal 1) (integer-literal 1)]}
+     :operand [#elm/integer 1 #elm/integer 1]}
     :life/return-type := (elm-type-specifier "Boolean")))
 
 
@@ -184,5 +178,5 @@
 (deftest infer-types-count-test
   (given-infer-types
     {:type "Count"
-     :source {:type "List" :element [(integer-literal 1)]}}
+     :source {:type "List" :element [#elm/integer 1]}}
     :life/return-type := (elm-type-specifier "Integer")))
