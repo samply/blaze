@@ -81,7 +81,7 @@
   (fn [{:keys [body]}]
     (if-let [code (:code body)]
       (-> (md/let-flow'
-            [elm (to-error (md/future (cql/translate code)))
+            [elm (to-error (md/future (cql/translate code :locators? true)))
              expression-defs (to-error (md/future (compiler/compile-library elm {})))
              results (evaluator/evaluate (d/db conn) (OffsetDateTime/now) expression-defs)]
             (ring/response

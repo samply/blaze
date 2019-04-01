@@ -1,8 +1,9 @@
 (ns life-fhir-store.elm.literals
   (:require
     [clojure.spec.alpha :as s]
-    [life-fhir-store.elm.spec])
-  (:refer-clojure :exclude [boolean list]))
+    [life-fhir-store.elm.spec]
+    [clojure.string :as str])
+  (:refer-clojure :exclude [boolean dec int list time]))
 
 
 (s/fdef boolean
@@ -16,22 +17,22 @@
    :value s})
 
 
-(s/fdef decimal
+(s/fdef dec
   :args (s/cat :s string?)
   :ret :elm/expression)
 
-(defn decimal [s]
+(defn dec [s]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Decimal"
    :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
    :value s})
 
 
-(s/fdef integer
+(s/fdef int
   :args (s/cat :s string?)
   :ret :elm/expression)
 
-(defn integer [s]
+(defn int [s]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Integer"
    :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
@@ -67,6 +68,15 @@
 
 (defn equal [ops]
   {:type "Equal"
+   :operand ops})
+
+
+(s/fdef equivalent
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn equivalent [ops]
+  {:type "Equivalent"
    :operand ops})
 
 
@@ -124,38 +134,166 @@
    :element elements})
 
 
-(s/fdef if
+(s/fdef if-expr
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression :elm/expression))
   :ret :elm/expression)
 
-(defn if [[condition then else]]
+(defn if-expr [[condition then else]]
   {:type "If" :condition condition :then then :else else})
 
 
-(s/fdef date
-  :args (s/cat :args (s/coll-of int?))
+(s/fdef add
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
-(defn date [[year month day]]
+(defn add [ops]
+  {:type "Add"
+   :operand ops})
+
+
+(s/fdef divide
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn divide [ops]
+  {:type "Divide"
+   :operand ops})
+
+
+(s/fdef multiply
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn multiply [ops]
+  {:type "Multiply"
+   :operand ops})
+
+
+(s/fdef negate
+  :args (s/cat :op :elm/expression)
+  :ret :elm/expression)
+
+(defn negate [op]
+  {:type "Negate"
+   :operand op})
+
+
+(s/fdef power
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn power [ops]
+  {:type "Power"
+   :operand ops})
+
+
+(s/fdef predecessor
+  :args (s/cat :op :elm/expression)
+  :ret :elm/expression)
+
+(defn predecessor [op]
+  {:type "Predecessor"
+   :operand op})
+
+
+(s/fdef round
+  :args (s/cat :arg (s/coll-of :elm/expression))
+  :ret :elm/expression)
+
+(defn round [[operand precision]]
   (cond->
-    {:type "Date"
-     :year (integer (str year))}
-    month (assoc :month (integer (str month)))
-    day (assoc :day (integer (str day)))))
+    {:type "Round"
+     :operand operand}
+    precision
+    (assoc :precision precision)))
+
+
+(s/fdef subtract
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn subtract [ops]
+  {:type "Subtract"
+   :operand ops})
+
+
+(s/fdef successor
+  :args (s/cat :op :elm/expression)
+  :ret :elm/expression)
+
+(defn successor [op]
+  {:type "Successor"
+   :operand op})
+
+
+(s/fdef truncate
+  :args (s/cat :op :elm/expression)
+  :ret :elm/expression)
+
+(defn truncate [op]
+  {:type "Truncate"
+   :operand op})
+
+
+(s/fdef truncated-divide
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn truncated-divide [ops]
+  {:type "TruncatedDivide"
+   :operand ops})
+
+
+(s/fdef date
+  :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
+  :ret :elm/expression)
+
+(defn date [arg]
+  (if (string? arg)
+    (date (map int (str/split arg #"-")))
+    (let [[year month day] arg]
+      (cond->
+        {:type "Date"
+         :year year}
+        month (assoc :month month)
+        day (assoc :day day)))))
 
 
 (s/fdef date-time
-  :args (s/cat :args (s/coll-of number?))
+  :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
   :ret :elm/expression)
 
-(defn date-time [[year month day hour minute second millisecond timezone-offset]]
-  (cond->
-    {:type "DateTime"
-     :year (integer (str year))}
-    month (assoc :month (integer (str month)))
-    day (assoc :day (integer (str day)))
-    hour (assoc :hour (integer (str hour)))
-    minute (assoc :minute (integer (str minute)))
-    second (assoc :second (integer (str second)))
-    millisecond (assoc :millisecond (integer (str millisecond)))
-    timezone-offset (assoc :timezone-offset (decimal (str timezone-offset)))))
+(defn date-time [arg]
+  (if (string? arg)
+    (date-time (map int (str/split arg #"[-T:.]")))
+    (let [[year month day hour minute second millisecond timezone-offset] arg]
+      (cond->
+        {:type "DateTime"
+         :year year}
+        month (assoc :month month)
+        day (assoc :day day)
+        hour (assoc :hour hour)
+        minute (assoc :minute minute)
+        second (assoc :second second)
+        millisecond (assoc :millisecond millisecond)
+        timezone-offset (assoc :timezone-offset timezone-offset)))))
+
+
+(s/fdef time
+  :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
+  :ret :elm/expression)
+
+(defn time [arg]
+  (if (string? arg)
+    (time (map int (str/split arg #"[:.]")))
+    (let [[hour minute second millisecond] arg]
+      (cond->
+        {:type "Time"
+         :hour hour}
+        minute (assoc :minute minute)
+        second (assoc :second second)
+        millisecond (assoc :millisecond millisecond)))))
+
+
+(defn duration-between [[a b precision]]
+  {:type "DurationBetween" :operand [a b] :precision precision})

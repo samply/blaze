@@ -220,6 +220,74 @@
 (derive :elm/abs :elm/unary-expression)
 
 
+;; 16.2. Add
+(derive :elm/add :elm/multiary-expression)
+
+
+;; 16.3. Ceiling
+(derive :elm/ceiling :elm/multiary-expression)
+
+
+;; 16.4. Divide
+(derive :elm/divide :elm/multiary-expression)
+
+
+;; 16.5. Exp
+(derive :elm/exp :elm/unary-expression)
+
+
+;; 16.6. Floor
+(derive :elm/floor :elm/unary-expression)
+
+
+;; 16.7. Log
+(derive :elm/log :elm/multiary-expression)
+
+
+;; 16.8. Ln
+(derive :elm/ln :elm/unary-expression)
+
+
+;; 16.11. Modulo
+(derive :elm/modulo :elm/multiary-expression)
+
+
+;; 16.12. Multiply
+(derive :elm/multiply :elm/multiary-expression)
+
+
+;; 16.13. Negate
+(derive :elm/negate :elm/unary-expression)
+
+
+;; 16.14. Power
+(derive :elm/power :elm/multiary-expression)
+
+
+;; 16.15. Predecessor
+(derive :elm/predecessor :elm/unary-expression)
+
+
+;; 16.16. Round
+(derive :elm/round :elm/unary-expression)
+
+
+;; 16.17. Subtract
+(derive :elm/subtract :elm/multiary-expression)
+
+
+;; 16.18. Successor
+(derive :elm/successor :elm/unary-expression)
+
+
+;; 16.19. Truncate
+(derive :elm/truncate :elm/unary-expression)
+
+
+;; 16.20. TruncatedDivide
+(derive :elm/truncated-divide :elm/multiary-expression)
+
+
 
 ;; 18. Date and Time Operators
 

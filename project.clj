@@ -20,6 +20,7 @@
     :exclusions [primitive-math]]
    [info.cqframework/cql-to-elm "1.3.10"]
    [integrant "0.7.0"]
+   [javax.measure/unit-api "1.0"]
    [org.clojars.akiel/datomic-spec "0.4"]
    [org.clojars.akiel/datomic-tools "0.4"]
    [org.clojars.akiel/env-tools "0.2.1"]
@@ -32,7 +33,9 @@
    [prom-metrics "0.5-alpha2"]
    [ring/ring-core "1.7.1"
     :exclusions [clj-time commons-codec commons-fileupload
-                 commons-io crypto-equality crypto-random]]]
+                 commons-io crypto-equality crypto-random]]
+   [systems.uom/systems-ucum-java8 "0.9"]
+   [systems.uom/systems-quantity "0.9"]]
 
   :profiles
   {:dev
@@ -40,6 +43,7 @@
     :dependencies
     [[criterium "0.4.4"]
      [org.clojars.akiel/iota "0.1"]
+     [org.clojure/data.xml "0.0.8"]
      [org.clojure/test.check "0.9.0"]
      [org.clojure/tools.namespace "0.2.11"]]}
    :jdk-11

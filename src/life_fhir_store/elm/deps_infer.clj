@@ -219,6 +219,74 @@
 (derive :elm.deps.type/abs :elm.deps.type/unary-expression)
 
 
+;; 16.2. Add
+(derive :elm.deps.type/add :elm.deps.type/multiary-expression)
+
+
+;; 16.3. Ceiling
+(derive :elm.deps.type/ceiling :elm.deps.type/unary-expression)
+
+
+;; 16.4. Divide
+(derive :elm.deps.type/divide :elm.deps.type/multiary-expression)
+
+
+;; 16.5. Exp
+(derive :elm.deps.type/exp :elm.deps.type/unary-expression)
+
+
+;; 16.6. Floor
+(derive :elm.deps.type/floor :elm.deps.type/unary-expression)
+
+
+;; 16.7. Log
+(derive :elm.deps.type/log :elm.deps.type/multiary-expression)
+
+
+;; 16.8. Ln
+(derive :elm.deps.type/ln :elm.deps.type/unary-expression)
+
+
+;; 16.11. Modulo
+(derive :elm.deps.type/modulo :elm.deps.type/multiary-expression)
+
+
+;; 16.12. Multiply
+(derive :elm.deps.type/multiply :elm.deps.type/multiary-expression)
+
+
+;; 16.13. Negate
+(derive :elm.deps.type/negate :elm.deps.type/unary-expression)
+
+
+;; 16.14. Power
+(derive :elm.deps.type/power :elm.deps.type/multiary-expression)
+
+
+;; 16.15. Predecessor
+(derive :elm.deps.type/predecessor :elm.deps.type/unary-expression)
+
+
+;; 16.16. Round
+(derive :elm.deps.type/round :elm.deps.type/unary-expression)
+
+
+;; 16.17. Subtract
+(derive :elm.deps.type/subtract :elm.deps.type/multiary-expression)
+
+
+;; 16.18. Successor
+(derive :elm.deps.type/successor :elm.deps.type/unary-expression)
+
+
+;; 16.19. Truncate
+(derive :elm.deps.type/truncate :elm.deps.type/unary-expression)
+
+
+;; 16.20. TruncatedDivide
+(derive :elm.deps.type/truncated-divide :elm.deps.type/multiary-expression)
+
+
 
 ;; 18. Date and Time Operators
 

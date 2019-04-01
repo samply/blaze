@@ -1,6 +1,7 @@
 (ns life-fhir-store.integration-test
   (:require
     [cheshire.core :as json]
+    [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
     [life-fhir-store.cql-translator :as cql]
@@ -8,6 +9,7 @@
     [life-fhir-store.datomic.schema :as schema]
     [life-fhir-store.datomic.transaction :as tx]
     [life-fhir-store.elm.compiler :as compiler]
+    [life-fhir-store.elm.date-time :as date-time]
     [life-fhir-store.elm.deps-infer :refer [infer-library-deps]]
     [life-fhir-store.elm.equiv-relationships :refer [find-equiv-rels-library]]
     [life-fhir-store.elm.normalizer :refer [normalize-library]]
@@ -18,7 +20,10 @@
     [clojure.core.cache :as cache]
     [juxt.iota :refer [given]])
   (:import
-    [java.time OffsetDateTime]))
+    [java.time OffsetDateTime Year]))
+
+
+(st/instrument)
 
 
 (def structure-definitions (read-structure-definitions "fhir/r4"))
@@ -67,3 +72,17 @@
     "query-5" 3
     "query-6" 1
     "query-7" 2))
+
+(deftest arithmetic-test
+  (given (evaluate (db-with []) (read-query "arithmetic"))
+    ["OnePlusOne" :result] := 2
+    ["OnePointOnePlusOnePointOne" :result] := 2.2M
+    ["Year2019PlusOneYear" :result] := (Year/of 2020)
+    ["OneYearPlusOneYear" :result] := (date-time/period 2 0 0)
+    ["OneYearPlusOneMonth" :result] := (date-time/period 1 1 0)
+    ["OneSecondPlusOneSecond" :result] := (date-time/period 0 0 2)))
+
+(comment
+  (cql/translate (read-query "arithmetic"))
+  (clojure.repl/pst)
+  )

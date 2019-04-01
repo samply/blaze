@@ -13,57 +13,36 @@
     [camel-snake-kebab.core :refer [->kebab-case-string]]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [life-fhir-store.datomic.cql :as cql]
     [life-fhir-store.datomic.time :as time]
     [life-fhir-store.datomic.quantity :as quantity]
+    [life-fhir-store.elm.date-time :as date-time]
+    [life-fhir-store.elm.decimal :as decimal]
     [life-fhir-store.elm.deps-infer :refer [infer-library-deps]]
     [life-fhir-store.elm.equiv-relationships :refer [find-equiv-rels-library]]
+    [life-fhir-store.elm.integer]
+    [life-fhir-store.elm.nil]
     [life-fhir-store.elm.normalizer :refer [normalize-library]]
+    [life-fhir-store.elm.protocols :as p]
+    [life-fhir-store.elm.quantity :refer [parse-quantity]]
     [life-fhir-store.elm.spec]
     [life-fhir-store.elm.type-infer :refer [infer-library-types]]
     [life-fhir-store.elm.util :as elm-util]
     [life-fhir-store.util :as u])
   (:import
-    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
-    [java.time.temporal ChronoField ChronoUnit TemporalAccessor])
+    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
+               ZoneOffset]
+    [java.time.temporal ChronoUnit]
+    [java.math RoundingMode])
   (:refer-clojure :exclude [compile]))
 
 
 (defprotocol Expression
   (-eval [this context scope])
   (-hash [this]))
-
-
-(defprotocol Equal
-  (equal [this other]))
-
-
-(defprotocol Greater
-  (greater [this other]))
-
-
-(defprotocol GreaterOrEqual
-  (greater-or-equal [this other]))
-
-
-(defprotocol Less
-  (less [this other]))
-
-
-(defprotocol LessOrEqual
-  (less-or-equal [this other]))
-
-
-(defprotocol NotEqual
-  (not-equal [this other]))
-
-
-(defprotocol Abs
-  (abs [this]))
 
 
 (extend-protocol Expression
@@ -73,394 +52,54 @@
   (-hash [this]
     this)
 
-  Boolean
-  (-eval [this _ _]
-    this)
-  (-hash [this]
-    this)
-
-  Double
-  (-eval [this _ _]
-    this)
-  (-hash [this]
-    this)
-
-  Long
-  (-eval [this _ _]
-    this)
-  (-hash [this]
-    this)
-
-  String
-  (-eval [this _ _]
-    this)
-  (-hash [this]
-    this)
-
-  Year
-  (-eval [this _ _]
-    this)
-  (-hash [this]
-    this)
-
-  YearMonth
-  (-eval [this _ _]
-    this)
-  (-hash [this]
-    this)
-
-  LocalDateTime
-  (-eval [this _ _]
-    this)
-  (-hash [this]
-    this)
-
-  OffsetDateTime
+  Object
   (-eval [this _ _]
     this)
   (-hash [this]
     this))
 
 
-(extend-protocol Equal
-  nil
-  (equal [_ _])
-
+(extend-protocol p/Equal
   Object
-  (equal [a b]
-    (some->> b (= a))))
+  (equal [x y]
+    (some->> y (= x))))
 
 
-(extend-protocol Greater
-  nil
-  (greater [_ _])
-
-  Number
-  (greater [a b]
-    (some->> b (> a))))
-
-
-(extend-protocol GreaterOrEqual
-  nil
-  (greater-or-equal [_ _])
-
-  Number
-  (greater-or-equal [a b]
-    (some->> b (>= a))))
-
-
-(extend-protocol Less
-  nil
-  (less [_ _])
-
-  Number
-  (less [a b]
-    (some->> b (< a))))
-
-
-(extend-protocol LessOrEqual
-  nil
-  (less-or-equal [_ _])
-
-  Number
-  (less-or-equal [a b]
-    (some->> b (<= a))))
-
-
-(extend-protocol NotEqual
-  nil
-  (not-equal [_ _])
-
+(extend-protocol p/Equivalent
   Object
-  (not-equal [a b]
-    (some->> b (not= a))))
+  (equivalent [x y]
+    (some->> y (= x))))
 
 
-(extend-protocol Abs
-  Double
-  (abs [this]
-    (Math/abs ^double this))
+(extend-protocol p/Greater
+  Comparable
+  (greater [x y]
+    (some->> y (.compareTo x) (< 0))))
 
-  Long
-  (abs [this]
-    (Math/abs ^long this)))
 
+(extend-protocol p/GreaterOrEqual
+  Comparable
+  (greater-or-equal [x y]
+    (some->> y (.compareTo x) (<= 0))))
 
 
-;; --- DateTime ---------------------------------------------------------------
+(extend-protocol p/Less
+  Comparable
+  (less [x y]
+    (some->> y (.compareTo x) (> 0))))
 
-(defprotocol DurationBetween
-  "Returns the duration in `chrono-unit` between `this` and `other` if the
-  precisions are sufficient."
-  (duration-between [this other chrono-unit]))
 
+(extend-protocol p/LessOrEqual
+  Comparable
+  (less-or-equal [x y]
+    (some->> y (.compareTo x) (>= 0))))
 
-(defprotocol Precision
-  "Returns the precision of a date-time instance."
-  (precision [this]))
 
+(extend-protocol p/NotEqual
+  Object
+  (not-equal [x y]
+    (some->> y (p/equal x) not)))
 
-(defprotocol ToDate
-  "Converts an object into something usable as Date relative to `now`.
-
-  Converts OffsetDateTime and Instant to LocalDate so that we can compare
-  temporal fields directly."
-  (to-date [this now]))
-
-(defprotocol ToDateTime
-  "Converts an object into something usable as DateTime relative to `now`.
-
-  Converts OffsetDateTime and Instant to LocalDateTime so that we can compare
-  temporal fields directly."
-  (to-date-time [this now]))
-
-
-(defn- get-chrono-field [^TemporalAccessor ta ^long precision]
-  (.getLong ta (case precision
-                 0 ChronoField/YEAR
-                 1 ChronoField/MONTH_OF_YEAR
-                 2 ChronoField/DAY_OF_MONTH
-                 3 ChronoField/HOUR_OF_DAY
-                 4 ChronoField/MINUTE_OF_HOUR
-                 5 ChronoField/SECOND_OF_MINUTE)))
-
-
-(defn- compare-to-precision
-  "Compares two date time values up to the minimum of the specified precisions.
-
-  Returns nil (unknown) if the fields up to the smaller precision are equal but
-  one of the precisions is higher."
-  [dt-1 dt-2 p-1 p-2]
-  (let [min-precision (min p-1 p-2)]
-    (loop [precision 0]
-      (let [cmp (- (get-chrono-field dt-1 precision)
-                   (get-chrono-field dt-2 precision))]
-        (if (zero? cmp)
-          (if (< precision min-precision)
-            (recur (inc precision))
-            (when (= p-1 p-2) 0))
-          cmp)))))
-
-
-(def ^:private chrono-unit->precision
-  {ChronoUnit/YEARS 0
-   ChronoUnit/MONTHS 1
-   ChronoUnit/WEEKS 2
-   ChronoUnit/DAYS 2
-   ChronoUnit/HOURS 3
-   ChronoUnit/MINUTES 4
-   ChronoUnit/SECONDS 5})
-
-
-(extend-protocol Precision
-  Year
-  (precision [_] 0)
-  YearMonth
-  (precision [_] 1)
-  LocalDate
-  (precision [_] 2)
-  LocalDateTime
-  (precision [_] 5))
-
-
-(extend-protocol DurationBetween
-  nil
-  (duration-between [_ _ _])
-
-  Year
-  (duration-between [this other chrono-unit]
-    (when other
-      (when (<= (chrono-unit->precision chrono-unit) (min 0 (precision other)))
-        (.until this other chrono-unit))))
-
-  YearMonth
-  (duration-between [this other chrono-unit]
-    (when other
-      (when (<= (chrono-unit->precision chrono-unit) (min 1 (precision other)))
-        (.until this other chrono-unit))))
-
-  LocalDate
-  (duration-between [this other chrono-unit]
-    (when other
-      (when (<= (chrono-unit->precision chrono-unit) (min 2 (precision other)))
-        (.until this other chrono-unit))))
-
-  LocalDateTime
-  (duration-between [this other chrono-unit]
-    (when other
-      (when (<= (chrono-unit->precision chrono-unit) (min 5 (precision other)))
-        (.until this other chrono-unit)))))
-
-
-(extend-protocol Greater
-  Year
-  (greater [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision other))]
-        (> cmp 0))))
-
-  YearMonth
-  (greater [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision other))]
-        (> cmp 0))))
-
-  LocalDate
-  (greater [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision other))]
-        (> cmp 0))))
-
-  LocalDateTime
-  (greater [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 5 (precision other))]
-        (> cmp 0)))))
-
-
-(extend-protocol GreaterOrEqual
-  Year
-  (greater-or-equal [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision other))]
-        (>= cmp 0))))
-
-  YearMonth
-  (greater-or-equal [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision other))]
-        (>= cmp 0))))
-
-  LocalDate
-  (greater-or-equal [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision other))]
-        (>= cmp 0))))
-
-  LocalDateTime
-  (greater-or-equal [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 5 (precision other))]
-        (>= cmp 0)))))
-
-
-(extend-protocol Less
-  Year
-  (less [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision other))]
-        (< cmp 0))))
-
-  YearMonth
-  (less [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision other))]
-        (< cmp 0))))
-
-  LocalDate
-  (less [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision other))]
-        (< cmp 0))))
-
-  LocalDateTime
-  (less [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 5 (precision other))]
-        (< cmp 0)))))
-
-
-(extend-protocol LessOrEqual
-  Year
-  (less-or-equal [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 0 (precision other))]
-        (<= cmp 0))))
-
-  YearMonth
-  (less-or-equal [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 1 (precision other))]
-        (<= cmp 0))))
-
-  LocalDate
-  (less-or-equal [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 2 (precision other))]
-        (<= cmp 0))))
-
-  LocalDateTime
-  (less-or-equal [this other]
-    (when other
-      (when-let [cmp (compare-to-precision this other 5 (precision other))]
-        (<= cmp 0)))))
-
-
-(extend-protocol ToDate
-  nil
-  (to-date [_ _])
-
-  String
-  (to-date [this _]
-    (case (.length this)
-      4
-      (try (Year/parse this) (catch Exception _))
-      7
-      (try (YearMonth/parse this) (catch Exception _))
-      10
-      (try (LocalDate/parse this) (catch Exception _))
-      nil))
-
-  Year
-  (to-date [this _]
-    this)
-
-  YearMonth
-  (to-date [this _]
-    this)
-
-  LocalDate
-  (to-date [this _]
-    this)
-
-  LocalDateTime
-  (to-date [this _]
-    (.toLocalDate this))
-
-  OffsetDateTime
-  (to-date [this now]
-    (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDate))))
-
-
-(extend-protocol ToDateTime
-  nil
-  (to-date-time [_ _])
-
-  Year
-  (to-date-time [this _]
-    this)
-
-  YearMonth
-  (to-date-time [this _]
-    this)
-
-  LocalDate
-  (to-date-time [this _]
-    this)
-
-  LocalDateTime
-  (to-date-time [this _]
-    this)
-
-  OffsetDateTime
-  (to-date-time [this now]
-    (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDateTime))))
-
-
-
-;; ---- Compiler --------------------------------------------------------------
 
 (defmulti compile*
   "Compiles `expression`."
@@ -541,6 +180,36 @@
     (mapv #(compile-expression-def context %) (-> library :statements :def))))
 
 
+(defmacro defunary-operator
+  ([name]
+   `(defunary-operator ~name ~(symbol "life-fhir-store.elm.protocols" name)))
+  ([name op]
+   `(defmethod compile* ~(keyword "elm.compiler.type" name)
+      [context# {operand# :operand}]
+      (let [operand# (compile context# operand#)]
+        (reify Expression
+          (-eval [_ context# scope#]
+            (~op (-eval operand# context# scope#)))
+          (-hash [_]
+            {:type ~(keyword name)
+             :operand (-hash operand#)}))))))
+
+
+(defmacro defbinary-operator [name]
+  `(defmethod compile* ~(keyword "elm.compiler.type" name)
+     [context# {[operand-1# operand-2#] :operand}]
+     (let [operand-1# (compile context# operand-1#)
+           operand-2# (compile context# operand-2#)]
+       (reify Expression
+         (-eval [_ context# scope#]
+           (~(symbol "life-fhir-store.elm.protocols" name)
+             (-eval operand-1# context# scope#)
+             (-eval operand-2# context# scope#)))
+         (-hash [_]
+           {:type ~(keyword name)
+            :operands [(-hash operand-1#) (-hash operand-2#)]})))))
+
+
 
 ;; 1. Simple Values
 
@@ -557,7 +226,7 @@
         (case value-type-name
           "Boolean" (Boolean/valueOf ^String value)
           "Integer" (Long/parseLong value)
-          "Decimal" (Double/parseDouble value)
+          "Decimal" (.setScale (BigDecimal. ^String value) 8 RoundingMode/HALF_UP)
           "String" value
           (throw (Exception. (str value-type-name " literals are not supported"))))))))
 
@@ -813,9 +482,19 @@
 ;; 3.9. Quantity
 (defmethod compile* :elm.compiler.type/quantity
   [_ {:keys [value unit]}]
-  (when unit
-    (throw (Exception. "Units are not supported yet.")))
-  value)
+  (if unit
+    (case unit
+      ("year" "years") (date-time/period value 0 0)
+      ("month" "months") (date-time/period 0 value 0)
+      ("week" "weeks") (date-time/period 0 0 (* value 7 24 3600))
+      ("day" "days") (date-time/period 0 0 (* value 24 3600))
+      ("hour" "hours") (date-time/period 0 0 (* value 3600))
+      ("minute" "minutes") (date-time/period 0 0 (* value 60))
+      ("second" "seconds") (date-time/period 0 0 value)
+      ;; TODO: wrong
+      ("millisecond" "milliseconds") (date-time/period 0 0 value)
+      (parse-quantity value unit))
+    value))
 
 
 
@@ -872,7 +551,7 @@
       (let [operand (first operands)]
         (reify Expression
           (-eval [_ {:keys [now] :as context} scope]
-            (to-date (-eval operand context scope) now))
+            (p/to-date (-eval operand context scope) now))
           (-hash [_]
             {:type :function-ref
              :name name
@@ -882,7 +561,7 @@
       (let [operand (first operands)]
         (reify Expression
           (-eval [_ {:keys [now] :as context} scope]
-            (to-date-time (-eval operand context scope) now))
+            (p/to-date-time (-eval operand context scope) now))
           (-hash [_]
             {:type :function-ref
              :name name
@@ -940,18 +619,18 @@
           with-xforms (map with-xform with-equiv-clauses)
           where-xform (some->> where (compile context) where-xform)
           return-xform (some->> return (compile context) return-xform)
-          xform (xform with-xforms where-xform return-xform)]
-      (let [source (compile context expression)]
-        (reify Expression
-          (-eval [_ context _]
-            (into #{} (xform context) (-eval source context nil)))
-          (-hash [_]
-            (cond->
-              {:type :query
-               :source (-hash source)}
-              (some? where) (assoc :where (-hash where))
-              (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-              (some? return) (assoc :return (-hash return)))))))
+          xform (xform with-xforms where-xform return-xform)
+          source (compile context expression)]
+      (reify Expression
+        (-eval [_ context _]
+          (into #{} (xform context) (-eval source context nil)))
+        (-hash [_]
+          (cond->
+            {:type :query
+             :source (-hash source)}
+            (some? where) (assoc :where (-hash where))
+            (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+            (some? return) (assoc :return (-hash return))))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
 
@@ -1101,84 +780,31 @@
 ;; 12. Comparison Operators
 
 ;; 12.1. Equal
-(defmethod compile* :elm.compiler.type/equal
-  [context {[operand-1 operand-2] :operand}]
-  (let [operand-1 (compile context operand-1)
-        operand-2 (compile context operand-2)]
-    (reify Expression
-      (-eval [_ context scope]
-        (equal (-eval operand-1 context scope) (-eval operand-2 context scope)))
-      (-hash [_]
-        {:type :equal
-         :operands [(-hash operand-1) (-hash operand-2)]}))))
+(defbinary-operator "equal")
 
 
-;; TODO 12.2. Equivalent
+;; 12.2. Equivalent
+(defbinary-operator "equivalent")
 
 
 ;; 12.3. Greater
-(defmethod compile* :elm.compiler.type/greater
-  [context {[operand-1 operand-2] :operand}]
-  (let [operand-1 (compile context operand-1)
-        operand-2 (compile context operand-2)]
-    (reify Expression
-      (-eval [_ context scope]
-        (greater (-eval operand-1 context scope) (-eval operand-2 context scope)))
-      (-hash [_]
-        {:type :greater
-         :operands [(-hash operand-1) (-hash operand-2)]}))))
+(defbinary-operator "greater")
 
 
 ;; 12.4. GreaterOrEqual
-(defmethod compile* :elm.compiler.type/greater-or-equal
-  [context {[operand-1 operand-2] :operand}]
-  (let [operand-1 (compile context operand-1)
-        operand-2 (compile context operand-2)]
-    (reify Expression
-      (-eval [_ context scope]
-        (greater-or-equal (-eval operand-1 context scope) (-eval operand-2 context scope)))
-      (-hash [_]
-        {:type :greater-or-equal
-         :operands [(-hash operand-1) (-hash operand-2)]}))))
+(defbinary-operator "greater-or-equal")
 
 
 ;; 12.5. Less
-(defmethod compile* :elm.compiler.type/less
-  [context {[operand-1 operand-2] :operand}]
-  (let [operand-1 (compile context operand-1)
-        operand-2 (compile context operand-2)]
-    (reify Expression
-      (-eval [_ context scope]
-        (less (-eval operand-1 context scope) (-eval operand-2 context scope)))
-      (-hash [_]
-        {:type :less
-         :operands [(-hash operand-1) (-hash operand-2)]}))))
+(defbinary-operator "less")
 
 
 ;; 12.6. LessOrEqual
-(defmethod compile* :elm.compiler.type/less-or-equal
-  [context {[operand-1 operand-2] :operand}]
-  (let [operand-1 (compile context operand-1)
-        operand-2 (compile context operand-2)]
-    (reify Expression
-      (-eval [_ context scope]
-        (less-or-equal (-eval operand-1 context scope) (-eval operand-2 context scope)))
-      (-hash [_]
-        {:type :less-or-equal
-         :operands [(-hash operand-1) (-hash operand-2)]}))))
+(defbinary-operator "less-or-equal")
 
 
 ;; 12.7. NotEqual
-(defmethod compile* :elm.compiler.type/not-equal
-  [context {[operand-1 operand-2] :operand}]
-  (let [operand-1 (compile context operand-1)
-        operand-2 (compile context operand-2)]
-    (reify Expression
-      (-eval [_ context scope]
-        (not-equal (-eval operand-1 context scope) (-eval operand-2 context scope)))
-      (-hash [_]
-        {:type :not-equal
-         :operands [(-hash operand-1) (-hash operand-2)]}))))
+(defbinary-operator "not-equal")
 
 
 
@@ -1197,7 +823,10 @@
             (let [operand-2 (-eval operand-2 context scope)]
               (cond
                 (false? operand-2) false
-                (and (true? operand-1) (true? operand-2)) true))))))))
+                (and (true? operand-1) (true? operand-2)) true)))))
+      (-hash [_]
+        {:type :and
+         :operands [(-hash operand-1) (-hash operand-2)]}))))
 
 
 ;; 13.2 Implies
@@ -1215,7 +844,10 @@
         (let [operand (-eval operand context scope)]
           (cond
             (true? operand) false
-            (false? operand) true))))))
+            (false? operand) true)))
+      (-hash [_]
+        {:type :not
+         :operand (-hash operand)}))))
 
 
 ;; 13.4. Or
@@ -1231,7 +863,10 @@
             (let [operand-2 (-eval operand-2 context scope)]
               (cond
                 (true? operand-2) true
-                (and (false? operand-1) (false? operand-2)) false))))))))
+                (and (false? operand-1) (false? operand-2)) false)))))
+      (-hash [_]
+        {:type :and
+         :operands [(-hash operand-1) (-hash operand-2)]}))))
 
 
 ;; 13.5 Xor
@@ -1262,38 +897,22 @@
             (when (some? (-eval x context scope))
               (reduced x)))
           nil
-          operands)))))
+          operands))
+      (-hash [_]
+        {:type :and
+         :operands (mapv -hash operands)}))))
 
 
 ;; 14.3. IsFalse
-(defmethod compile* :elm.compiler.type/is-false
-  [context {:keys [operand]}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ context scope]
-        (false? (-eval operand context scope))))))
+(defunary-operator "is-false" false?)
 
 
 ;; 14.4. IsNull
-(defmethod compile* :elm.compiler.type/is-null
-  [context {:keys [operand]}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ context scope]
-        (nil? (-eval operand context scope))))))
+(defunary-operator "is-null" nil?)
 
 
 ;; 14.5. IsTrue
-;;
-;; The IsTrue operator determines whether or not its argument evaluates to true.
-;; If the argument evaluates to true, the result is true; if the argument
-;; evaluates to false or null, the result is false.
-(defmethod compile* :elm.compiler.type/is-true
-  [context {:keys [operand]}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ context scope]
-        (true? (-eval operand context scope))))))
+(defunary-operator "is-true" true?)
 
 
 
@@ -1321,23 +940,145 @@
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs
-(defmethod compile* :elm.compiler.type/abs
-  [context {:keys [operand]}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ context scope]
-        (abs (-eval operand context scope)))
-      (-hash [_]
-        {:type :abs
-         :operand (-hash operand)}))))
+(defunary-operator "abs")
+
+
+;; 16.2. Add
+(defbinary-operator "add")
+
+
+;; 16.3. Ceiling
+(defunary-operator "ceiling")
+
+
+;; 16.4. Divide
+(defbinary-operator "divide")
+
+
+;; 16.5. Exp
+(defunary-operator "exp")
+
+
+;; 16.6. Floor
+(defunary-operator "floor")
+
+
+;; 16.7. Log
+(defbinary-operator "log")
+
+
+;; 16.8. Ln
+(defunary-operator "ln")
+
+
+;; 16.9. MaxValue
+(defmethod compile* :elm.compiler.type/max-value
+  [_ {type :valueType}]
+  (let [[ns name] (elm-util/parse-qualified-name type)]
+    (case ns
+      "urn:hl7-org:elm-types:r1"
+      (case name
+        "Integer" Integer/MAX_VALUE
+        "Decimal" decimal/max
+        "Date" date-time/max-date
+        "DateTime" date-time/max-date-time
+        "Time" date-time/max-time
+        (throw (ex-info (str "Unsupported type `" name "` for MaxValue.")
+                        {:type type})))
+      (throw (ex-info (str "Unknown type namespace `" ns "`.")
+                      {:type type})))))
+
+
+;; 16.10. MinValue
+(defmethod compile* :elm.compiler.type/min-value
+  [_ {type :valueType}]
+  (let [[ns name] (elm-util/parse-qualified-name type)]
+    (case ns
+      "urn:hl7-org:elm-types:r1"
+      (case name
+        "Integer" Integer/MIN_VALUE
+        "Decimal" decimal/min
+        "Date" date-time/min-date
+        "DateTime" date-time/min-date-time
+        "Time" LocalTime/MIN
+        (throw (ex-info (str "Unsupported type `" name "` for MinValue.")
+                        {:type type})))
+      (throw (ex-info (str "Unknown type namespace `" ns "`.")
+                      {:type type})))))
+
+
+;; 16.11. Modulo
+(defbinary-operator "modulo")
+
+
+;; 16.12. Multiply
+(defbinary-operator "multiply")
+
+
+;; 16.13. Negate
+(defunary-operator "negate")
+
+
+;; 16.14. Power
+(defbinary-operator "power")
+
+
+;; 16.15. Predecessor
+(defunary-operator "predecessor")
+
+
+;; 16.16. Round
+(defmethod compile* :elm.compiler.type/round
+  [context {:keys [operand precision]}]
+  (let [operand (compile context operand)
+        precision (some->> precision (compile context))]
+    (cond
+      (or (nil? precision) (and (number? precision) (zero? precision)))
+      (reify Expression
+        (-eval [_ context scope]
+          (p/round (-eval operand context scope) 0))
+        (-hash [_]
+          {:type :if
+           :operand (-hash operand)}))
+
+      (number? precision)
+      (reify Expression
+        (-eval [_ context scope]
+          (p/round (-eval operand context scope) precision))
+        (-hash [_]
+          {:type :if
+           :operand (-hash operand)
+           :precision (-hash precision)}))
+
+      :else
+      (reify Expression
+        (-eval [_ context scope]
+          (p/round (-eval operand context scope)
+                   (-eval precision context scope)))
+        (-hash [_]
+          {:type :if
+           :operand (-hash operand)
+           :precision (-hash precision)})))))
+
+
+;; 16.17. Subtract
+(defbinary-operator "subtract")
+
+
+;; 16.18. Successor
+(defunary-operator "successor")
+
+
+;; 16.19. Truncate
+(defunary-operator "truncate")
+
+
+;; 16.20. TruncatedDivide
+(defbinary-operator "truncated-divide")
 
 
 
 ;; 18. Date and Time Operators
-
-(defn- to-year [year]
-  (Year/of ^long year))
-
 
 (defn- to-month [year month]
   (YearMonth/of ^long year ^long month))
@@ -1347,26 +1088,19 @@
   (LocalDate/of ^long year ^long month ^long day))
 
 
-(defn- to-hour [year month day hour]
-  (LocalDateTime/of ^long year ^long month ^long day ^long hour 0 0 0))
-
-
-(defn- to-minute [year month day hour minute]
+(defn- to-local-date-time
+  [year month day hour minute second millisecond]
   (LocalDateTime/of ^long year ^long month ^long day
-                    ^long hour ^long minute 0 0))
+                    ^long hour ^long minute ^long second
+                    ^long (* 1000000 millisecond)))
 
 
-(defn- to-second [year month day hour minute second]
-  (LocalDateTime/of ^long year ^long month ^long day
-                    ^long hour ^long minute ^long second 0))
-
-
-(defn- to-timezone-offset
+(defn- to-local-date-time-with-offset
   "Creates a DateTime with a local date time adjusted for the offset of the
   evaluation request."
-  [now year month day hour minute second timezone-offset]
+  [now year month day hour minute second millisecond timezone-offset]
   (-> (OffsetDateTime/of ^long year ^long month ^long day ^long hour
-                         ^long minute ^long second 0
+                         ^long minute ^long second (* 1000000 millisecond)
                          (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
       (.withOffsetSameInstant (.getOffset ^OffsetDateTime now))
       (.toLocalDateTime)))
@@ -1385,32 +1119,44 @@
         month (some->> month (compile context))
         day (some->> day (compile context))]
     (cond
-      day
-      (reify Expression
-        (-eval [_ _ _]
-          (to-day year month day))
-        (-hash [_]
-          {:type :date
-           :year year
-           :month month
-           :day day}))
+      (and (int? day) (int? month) (int? year))
+      (to-day year month day)
 
-      month
+      (some? day)
       (reify Expression
-        (-eval [_ _ _]
-          (to-month year month))
+        (-eval [_ context scope]
+          (to-day (-eval year context scope)
+                  (-eval month context scope)
+                  (-eval day context scope)))
         (-hash [_]
           {:type :date
-           :year year
-           :month month}))
+           :year (-hash year)
+           :month (-hash month)
+           :day (-hash day)}))
 
-      year
+      (and (int? month) (int? year))
+      (to-month year month)
+
+      (some? month)
       (reify Expression
-        (-eval [_ _ _]
-          (to-year year))
+        (-eval [_ context scope]
+          (to-month (-eval year context scope)
+                    (-eval month context scope)))
         (-hash [_]
           {:type :date
-           :year year})))))
+           :year (-hash year)
+           :month (-hash month)}))
+
+      (int? year)
+      (Year/of year)
+
+      :else
+      (reify Expression
+        (-eval [_ context scope]
+          (Year/of (-eval year context scope)))
+        (-hash [_]
+          {:type :date
+           :year (-hash year)})))))
 
 
 ;; 18.8. DateTime
@@ -1425,91 +1171,158 @@
 ;; If timezoneOffset is not specified, it is defaulted to the timezone offset
 ;; of the evaluation request.
 (defmethod compile* :elm.compiler.type/date-time
-  [context {:keys [year month day hour minute second timezone-offset]}]
+  [context {:keys [year month day hour minute second millisecond timezone-offset]
+            :as expression}]
   (let [year (some->> year (compile context))
         month (some->> month (compile context))
         day (some->> day (compile context))
         hour (some->> hour (compile context))
-        minute (some->> minute (compile context))
-        second (some->> second (compile context))
+        minute (or (some->> minute (compile context)) 0)
+        second (or (some->> second (compile context)) 0)
+        millisecond (or (some->> millisecond (compile context)) 0)
         timezone-offset (some->> timezone-offset (compile context))]
     (cond
-      timezone-offset
-      (reify Expression
-        (-eval [_ {:keys [now]} _]
-          (to-timezone-offset now year month day hour minute second timezone-offset))
-        (-hash [_]
-          {:type :date-time
-           :year year
-           :month month
-           :day day
-           :hour hour
-           :minute minute
-           :second second
-           :timezone-offset timezone-offset}))
+      (number? timezone-offset)
+      (cond
+        (and (int? millisecond) (int? second) (int? minute) (int? hour)
+             (int? day) (int? month) (int? year))
+        (reify Expression
+          (-eval [_ {:keys [now]} _]
+            (to-local-date-time-with-offset
+              now year month day hour minute second millisecond timezone-offset))
+          (-hash [_]
+            {:type :date-time
+             :year (-hash year)
+             :month (-hash month)
+             :day (-hash day)
+             :hour (-hash hour)
+             :minute (-hash minute)
+             :second (-hash second)
+             :millisecond (-hash millisecond)
+             :timezone-offset (-hash timezone-offset)}))
 
-      second
-      (reify Expression
-        (-eval [_ _ _]
-          (to-second year month day hour minute second))
-        (-hash [_]
-          {:type :date-time
-           :year year
-           :month month
-           :day day
-           :hour hour
-           :minute minute
-           :second second}))
+        (some? hour)
+        (reify Expression
+          (-eval [_ {:keys [now] :as context} scope]
+            (to-local-date-time-with-offset
+              now
+              (-eval year context scope)
+              (-eval month context scope)
+              (-eval day context scope)
+              (-eval hour context scope)
+              (or (-eval minute context scope) 0)
+              (or (-eval second context scope) 0)
+              (or (-eval millisecond context scope) 0)
+              timezone-offset))
+          (-hash [_]
+            {:type :date-time
+             :year (-hash year)
+             :month (-hash month)
+             :day (-hash day)
+             :hour (-hash hour)
+             :minute (-hash minute)
+             :second (-hash second)
+             :millisecond (-hash millisecond)
+             :timezone-offset (-hash timezone-offset)}))
 
-      minute
-      (reify Expression
-        (-eval [_ _ _]
-          (to-minute year month day hour minute))
-        (-hash [_]
-          {:type :date-time
-           :year year
-           :month month
-           :day day
-           :hour hour
-           :minute minute}))
+        :else
+        (throw (ex-info "Need at least an hour if timezone offset is given."
+                        {:expression expression})))
 
-      hour
-      (reify Expression
-        (-eval [_ _ _]
-          (to-hour year month day hour))
-        (-hash [_]
-          {:type :date-time
-           :year year
-           :month month
-           :day day
-           :hour hour}))
+      (some? timezone-offset)
+      (cond
+        (some? hour)
+        (reify Expression
+          (-eval [_ {:keys [now] :as context} scope]
+            (to-local-date-time-with-offset
+              now
+              (-eval year context scope)
+              (-eval month context scope)
+              (-eval day context scope)
+              (-eval hour context scope)
+              (or (-eval minute context scope) 0)
+              (or (-eval second context scope) 0)
+              (or (-eval millisecond context scope) 0)
+              (-eval timezone-offset context scope)))
+          (-hash [_]
+            {:type :date-time
+             :year (-hash year)
+             :month (-hash month)
+             :day (-hash day)
+             :hour (-hash hour)
+             :minute (-hash minute)
+             :second (-hash second)
+             :timezone-offset (-hash timezone-offset)}))
 
-      day
-      (reify Expression
-        (-eval [_ _ _]
-          (to-day year month day))
-        (-hash [_]
-          {:type :date-time
-           :year year
-           :month month
-           :day day}))
+        :else
+        (throw (ex-info "Need at least an hour if timezone offset is given."
+                        {:expression expression})))
 
-      month
-      (reify Expression
-        (-eval [_ _ _]
-          (to-month year month))
-        (-hash [_]
-          {:type :date-time
-           :year year
-           :month month}))
+      :else
+      (cond
+        (and (int? millisecond) (int? second) (int? minute) (int? hour)
+             (int? day) (int? month) (int? year))
+        (to-local-date-time year month day hour minute second millisecond)
 
-      year
-      (reify Expression
-        (-eval [_ _ _]
-          (to-year year))
-        (-hash [_]
-          {:type :date-time
-           :year year})))))
+        (some? hour)
+        (reify Expression
+          (-eval [_ context scope]
+            (to-local-date-time
+              (-eval year context scope)
+              (-eval month context scope)
+              (-eval day context scope)
+              (-eval hour context scope)
+              (or (-eval minute context scope) 0)
+              (or (-eval second context scope) 0)
+              (or (-eval millisecond context scope) 0)))
+          (-hash [_]
+            {:type :date-time
+             :year (-hash year)
+             :month (-hash month)
+             :day (-hash day)
+             :hour (-hash hour)
+             :minute (-hash minute)
+             :second (-hash second)
+             :millisecond (-hash millisecond)}))
+
+        (and (int? day) (int? month) (int? year))
+        (to-day year month day)
+
+        (some? day)
+        (reify Expression
+          (-eval [_ context scope]
+            (to-day (-eval year context scope)
+                    (-eval month context scope)
+                    (-eval day context scope)))
+          (-hash [_]
+            {:type :date
+             :year (-hash year)
+             :month (-hash month)
+             :day (-hash day)}))
+
+        (and (int? month) (int? year))
+        (to-month year month)
+
+        (some? month)
+        (reify Expression
+          (-eval [_ context scope]
+            (to-month (-eval year context scope)
+                      (-eval month context scope)))
+          (-hash [_]
+            {:type :date
+             :year (-hash year)
+             :month (-hash month)}))
+
+        (int? year)
+        (Year/of year)
+
+        :else
+        (reify Expression
+          (-eval [_ context scope]
+            (Year/of (-eval year context scope)))
+          (-hash [_]
+            {:type :date
+             :year (-hash year)}))))))
 
 
 ;; 18.11. DurationBetween
@@ -1544,17 +1357,18 @@
 
 (defmethod compile* :elm.compiler.type/duration-between
   [context {operands :operand :keys [precision]}]
-  (let [[operand-1 operand-2] (mapv #(compile context %) operands)
+  (let [[operand-1 operand-2 :as operands] (mapv #(compile context %) operands)
         chrono-unit (to-chrono-unit precision)]
     (reify Expression
       (-eval [_ context scope]
-        (duration-between
+        (p/duration-between
           (-eval operand-1 context scope)
           (-eval operand-2 context scope)
           chrono-unit))
       (-hash [_]
         {:type :duration-between
          :operands (mapv -hash operands)}))))
+
 
 ;; 18.13. Now
 ;;
@@ -1575,6 +1389,71 @@
       now)
     (-hash [_]
       {:type :now})))
+
+
+;; 18.18. Time
+(defmethod compile* :elm.compiler.type/time
+  [context {:keys [hour minute second millisecond]}]
+  (let [hour (some->> hour (compile context))
+        minute (some->> minute (compile context))
+        second (some->> second (compile context))
+        millisecond (some->> millisecond (compile context))]
+    (cond
+      (and (int? millisecond) (int? second) (int? minute) (int? hour))
+      (LocalTime/of hour minute second (* 1000 1000 millisecond))
+
+      (some? millisecond)
+      (reify Expression
+        (-eval [_ context scope]
+          (LocalTime/of (-eval hour context scope)
+                        (-eval minute context scope)
+                        (-eval second context scope)
+                        (* 1000 1000 (-eval millisecond context scope))))
+        (-hash [_]
+          {:type :time
+           :hour (-hash hour)
+           :minute (-hash minute)
+           :second (-hash second)
+           :millisecond (-hash millisecond)}))
+
+      (and (int? second) (int? minute) (int? hour))
+      (LocalTime/of hour minute second 0)
+
+      (some? second)
+      (reify Expression
+        (-eval [_ context scope]
+          (LocalTime/of (-eval hour context scope)
+                        (-eval minute context scope)
+                        (-eval second context scope)))
+        (-hash [_]
+          {:type :time
+           :hour (-hash hour)
+           :minute (-hash minute)
+           :second (-hash second)}))
+
+      (and (int? minute) (int? hour))
+      (LocalTime/of hour minute 0 0)
+
+      (some? minute)
+      (reify Expression
+        (-eval [_ context scope]
+          (LocalTime/of (-eval hour context scope)
+                        (-eval minute context scope)))
+        (-hash [_]
+          {:type :time
+           :hour (-hash hour)
+           :minute (-hash minute)}))
+
+      (int? hour)
+      (LocalTime/of hour 0 0 0)
+
+      :else
+      (reify Expression
+        (-eval [_ context scope]
+          (LocalTime/of (-eval hour context scope) 0))
+        (-hash [_]
+          {:type :time
+           :hour (-hash hour)})))))
 
 
 ;; 18.22. Today
@@ -1775,7 +1654,7 @@
   (let [operand (compile context operand)]
     (reify Expression
       (-eval [_ {:keys [now] :as context} scope]
-        (to-date (-eval operand context scope) now))
+        (p/to-date (-eval operand context scope) now))
       (-hash [_]
         {:type :to-date
          :operand (-hash operand)}))))
@@ -1787,10 +1666,14 @@
   (let [operand (compile context operand)]
     (reify Expression
       (-eval [_ {:keys [now] :as context} scope]
-        (to-date-time (-eval operand context scope) now))
+        (p/to-date-time (-eval operand context scope) now))
       (-hash [_]
         {:type :to-date-time
          :operand (-hash operand)}))))
+
+
+;; 22.21. ToDecimal
+(defunary-operator "to-decimal")
 
 
 ;; 22.23. ToList
@@ -1847,11 +1730,11 @@
 ;; have elapsed between the first date/time and the second.
 (defmethod compile* :elm.compiler.type/calculate-age-at
   [context {operands :operand :keys [precision]}]
-  (let [[operand-1 operand-2] (mapv #(compile context %) operands)
+  (let [[operand-1 operand-2 :as operands] (mapv #(compile context %) operands)
         chrono-unit (to-chrono-unit precision)]
     (reify Expression
       (-eval [_ context scope]
-        (duration-between
+        (p/duration-between
           (-eval operand-1 context scope)
           (-eval operand-2 context scope)
           chrono-unit))
