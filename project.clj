@@ -1,4 +1,4 @@
-(defproject life-fhir-store "0.1-SNAPSHOT"
+(defproject life-fhir-store "0.1"
   :description "A FHIR Store with internal, fast CQL Evaluation Engine"
   :url "https://github.com/life-research/life-fhir-store"
 
