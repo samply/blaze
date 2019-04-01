@@ -211,6 +211,18 @@
 
 ;; 18. Date and Time Operators
 
+;; 18.6. Date
+(defmethod infer-types* :elm/date
+  [context {:keys [year month day] :as expression}]
+  (cond-> expression
+    year
+    (assoc :year (infer-types context year))
+    month
+    (assoc :month (infer-types context month))
+    day
+    (assoc :day (infer-types context day))))
+
+
 ;; 18.11. DurationBetween
 (derive :elm/duration-between :elm/multiary-expression)
 
