@@ -1423,6 +1423,12 @@
 ;;
 ;; The List selector returns a value of type List, whose elements are the result
 ;; of evaluating the arguments to the List selector, in order.
+;;
+;; If a typeSpecifier element is provided, the list is of that type. Otherwise,
+;; the static type of the first argument determines the type of the resulting
+;; list, and each subsequent argument must be of that same type.
+;;
+;; If any argument is null, the resulting list will have null for that element.
 (defmethod compile* :elm.compiler.type/list
   [context {elements :element}]
   (let [elements (mapv #(compile context %) elements)]

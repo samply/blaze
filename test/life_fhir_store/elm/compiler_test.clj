@@ -873,8 +873,17 @@
 ;; 20.1. List
 (deftest compile-list-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    #elm/list []
+    []
+
+    #elm/list [{:type "Null"}]
+    [nil]
+
     #elm/list [#elm/integer 1]
     [1]
+
+    #elm/list [#elm/integer 1 {:type "Null"}]
+    [1 nil]
 
     #elm/list [#elm/integer 1 #elm/integer 2]
     [1 2]))
