@@ -813,6 +813,18 @@
 (deftest compile-intersect-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
     {:type "Intersect"
+     :operand [{:type "Null"}]}
+    nil
+
+    {:type "Intersect"
+     :operand [{:type "Null"} {:type "Null"}]}
+    nil
+
+    {:type "Intersect"
+     :operand [#elm/list [{:type "Null"}]]}
+    #{nil}
+
+    {:type "Intersect"
      :operand [#elm/list [#elm/integer 1]]}
     #{1}
 
@@ -826,6 +838,18 @@
 ;; 19.30. Union
 (deftest compile-union-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    {:type "Union"
+     :operand [{:type "Null"}]}
+    nil
+
+    {:type "Union"
+     :operand [{:type "Null"} {:type "Null"}]}
+    nil
+
+    {:type "Union"
+     :operand [#elm/list [{:type "Null"}]]}
+    #{nil}
+
     {:type "Union"
      :operand [#elm/list [#elm/integer 1]]}
     #{1}

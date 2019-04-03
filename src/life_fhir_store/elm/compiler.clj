@@ -1358,13 +1358,29 @@
 ;;
 ;; The Intersect operator returns the intersection of its arguments.
 ;;
+;; This operator has two overloads: List Interval
+;;
+;; For the list overload, this operator returns a list with the elements that
+;; appear in both lists, using equality semantics. The operator is defined with
+;; set semantics, meaning that each element will appear in the result at most
+;; once, and that there is no expectation that the order of the inputs will be
+;; preserved in the results.
+;;
+;; For the interval overload, this operator returns the interval that defines
+;; the overlapping portion of both arguments. If the arguments do not overlap,
+;; this operator returns null.
+;;
+;; If either argument is null, the result is null.
+;;
 ;; TODO: Interval Implementation
 (defmethod compile* :elm.compiler.type/intersect
   [context {operands :operand}]
   (let [operands (mapv #(compile context %) operands)]
     (reify Expression
       (-eval [_ context scope]
-        (apply set/intersection (map set (map #(-eval % context scope) operands))))
+        (let [operands (remove nil? (map #(-eval % context scope) operands))]
+          (when-not (empty? operands)
+            (apply set/intersection (map set operands)))))
       (-hash [_]
         {:type :intersect
          :operands (mapv -hash operands)}))))
@@ -1374,13 +1390,27 @@
 ;;
 ;; The Union operator returns the union of its arguments.
 ;;
+;; This operator has two overloads: List Interval
+;;
+;; For the list overload, this operator returns a list with all unique elements
+;; from both arguments.
+;;
+;; For the interval overload, this operator returns the interval that starts at
+;; the earliest starting point in either argument, and ends at the latest
+;; starting point in either argument. If the arguments do not overlap or meet,
+;; this operator returns null.
+;;
+;; If either argument is null, the result is null.
+;;
 ;; TODO: Interval Implementation
 (defmethod compile* :elm.compiler.type/union
   [context {operands :operand}]
   (let [operands (mapv #(compile context %) operands)]
     (reify Expression
       (-eval [_ context scope]
-        (apply set/union (map set (map #(-eval % context scope) operands))))
+        (let [operands (remove nil? (map #(-eval % context scope) operands))]
+          (when-not (empty? operands)
+            (apply set/union (map set operands)))))
       (-hash [_]
         {:type :union
          :operands (mapv -hash operands)}))))
