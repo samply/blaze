@@ -967,7 +967,11 @@
 ;; 22.1. As
 ;;
 ;; The As operator allows the result of an expression to be cast as a given
-;; target type.
+;; target type. This allows expressions to be written that are statically typed
+;; against the expected run-time type of the argument. If the argument is not of
+;; the specified type, and the strict attribute is false (the default), the
+;; result is null. If the argument is not of the specified type and the strict
+;; attribute is true, an exception is thrown.
 (deftest compile-as-test
   (are [elm input res] (= res (-eval (compile {} elm) {} {"I" input}))
     {:asType "{http://hl7.org/fhir}Quantity"

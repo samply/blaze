@@ -1494,7 +1494,13 @@
 ;; 22.1. As
 ;;
 ;; The As operator allows the result of an expression to be cast as a given
-;; target type.
+;; target type. This allows expressions to be written that are statically typed
+;; against the expected run-time type of the argument. If the argument is not of
+;; the specified type, and the strict attribute is false (the default), the
+;; result is null. If the argument is not of the specified type and the strict
+;; attribute is true, an exception is thrown.
+;;
+;; TODO: This operator is used to actively convert types. That's wrong!
 (defn title-case [s]
   (let [[first & rest] s]
     (apply str (str/upper-case (str first)) rest)))
