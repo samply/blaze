@@ -8,7 +8,41 @@ The goal of this project is to provide a FHIR Store with an internal CQL Evaluat
 
 == Architecture
 
-TODO
+.Process-Level Architecture
+[ditaa]
+----
+           +---------+  +---------+     +---------+
+Logic Tier | Store 1 |  | Store 2 | ... | Store n |
+           +------+--+  +------+--+     +---+-----+
+                  ^            ^            ^
+                  |            |            |
+                  v            v            v
+              +---+------------+------------+---+
+Data Tier     | Datomic Transactor Free Version |
+              |   with integrated H2 storage    |
+              +---------------------------------+
+----
+
+.Store Architecture
+[ditaa]
+----
++-------------------------------+
+| +-------------+ +-----------+ |
+| |  FHIR API   | |  CQL API  | |
+| +------+------+ +-----+-----+ |
+|        |              ^       |
+|        v              |       |
+| +------+------+ +-----+-----+ |
+| | Transaction | | CQL Query | |
+| | Processor   | | Engine    | |
+| +------+------+ +-----+-----+ |
+|        |              ^       |
+|        v              |       |
+| +------+--------------+-----+ |
+| |   Datomic Peer Library    | |
+| +---------------------------+ |
++-------------------------------+
+----
 
 == API
 
