@@ -1,6 +1,7 @@
 {elm/boolean life-fhir-store.elm.literals/boolean
  elm/decimal life-fhir-store.elm.literals/decimal
  elm/integer life-fhir-store.elm.literals/integer
+ elm/string life-fhir-store.elm.literals/string
  elm/quantity life-fhir-store.elm.literals/quantity
  elm/equal life-fhir-store.elm.literals/equal
  elm/greater life-fhir-store.elm.literals/greater

@@ -27,6 +27,12 @@
    :value (str i)})
 
 
+(defn string [s]
+  {:type "Literal"
+   :valueType "{urn:hl7-org:elm-types:r1}String"
+   :value s})
+
+
 (s/fdef quantity
   :args (s/cat :args (s/spec (s/cat :value number? :unit (s/? string?))))
   :ret :elm/expression)

@@ -166,6 +166,15 @@
     (some->> b (<= a))))
 
 
+(extend-protocol NotEqual
+  nil
+  (not-equal [_ _])
+
+  Object
+  (not-equal [a b]
+    (some->> b (not= a))))
+
+
 (extend-protocol Abs
   Double
   (abs [this]

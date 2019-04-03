@@ -385,14 +385,7 @@
       #elm/equal [#elm/quantity [1] #elm/quantity [1]] true
       #elm/equal [#elm/quantity [1] #elm/quantity [2]] false
       #elm/equal [{:type "Null"} #elm/quantity [1]] nil
-      #elm/equal [#elm/quantity [1] {:type "Null"}] nil))
-
-  (testing "Date"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/equal [#elm/date [2012] #elm/date [2012]] true
-      #elm/equal [#elm/date [2012] #elm/date [2013]] false
-      #elm/equal [{:type "Null"} #elm/date [2012]] nil
-      #elm/equal [#elm/date [2012] {:type "Null"}] nil)))
+      #elm/equal [#elm/quantity [1] {:type "Null"}] nil)))
 
 
 ;; 12.3. Greater
@@ -527,6 +520,30 @@
       #elm/less-or-equal [#elm/date-time [2013 6 15 0] #elm/date [2013 6 15]] nil)))
 
 
+;; 12.7. NotEqual
+(deftest compile-not-equal-test
+  (testing "Decimal"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/not-equal [#elm/decimal 1 #elm/decimal 2] true
+      #elm/not-equal [#elm/decimal 1 #elm/decimal 1] false
+      #elm/not-equal [{:type "Null"} #elm/decimal 1] nil
+      #elm/not-equal [#elm/decimal 1 {:type "Null"}] nil))
+
+  (testing "Integer"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/not-equal [#elm/integer 1 #elm/integer 2] true
+      #elm/not-equal [#elm/integer 1 #elm/integer 1] false
+      #elm/not-equal [{:type "Null"} #elm/integer 1] nil
+      #elm/not-equal [#elm/integer 1 {:type "Null"}] nil))
+
+  (testing "Quantity"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/not-equal [#elm/quantity [1] #elm/quantity [2]] true
+      #elm/not-equal [#elm/quantity [1] #elm/quantity [1]] false
+      #elm/not-equal [{:type "Null"} #elm/quantity [1]] nil
+      #elm/not-equal [#elm/quantity [1] {:type "Null"}] nil)))
+
+
 
 ;; 13. Logical Operators
 
@@ -626,6 +643,27 @@
 
 
 
+;; 17. String Operators
+
+;; 17.4. Equal
+(deftest compile-equal-string-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    #elm/equal [#elm/string "1" #elm/string "1"] true
+    #elm/equal [#elm/string "1" #elm/string "2"] false
+    #elm/equal [{:type "Null"} #elm/string "1"] nil
+    #elm/equal [#elm/string "1" {:type "Null"}] nil))
+
+
+;; 17.11. Not Equal
+(deftest compile-not-equal-string-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    #elm/not-equal [#elm/string "1" #elm/string "2"] true
+    #elm/not-equal [#elm/string "1" #elm/string "1"] false
+    #elm/not-equal [{:type "Null"} #elm/string "1"] nil
+    #elm/not-equal [#elm/string "1" {:type "Null"}] nil))
+
+
+
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs
@@ -646,6 +684,16 @@
 
 
 ;; 18. Date and Time Operators
+
+;; 18.4. Equal
+(deftest compile-equal-date-time-test
+  (testing "date"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/equal [#elm/date [2012] #elm/date [2012]] true
+      #elm/equal [#elm/date [2012] #elm/date [2013]] false
+      #elm/equal [{:type "Null"} #elm/date [2012]] nil
+      #elm/equal [#elm/date [2012] {:type "Null"}] nil)))
+
 
 ;; 18.6. Date
 (deftest compile-date-test
@@ -788,6 +836,16 @@
       0)))
 
 
+;; 18.12. Not Equal
+(deftest compile-not-equal-date-time-test
+  (testing "date"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/not-equal [#elm/date [2012] #elm/date [2013]] true
+      #elm/not-equal [#elm/date [2012] #elm/date [2012]] false
+      #elm/not-equal [{:type "Null"} #elm/date [2012]] nil
+      #elm/not-equal [#elm/date [2012] {:type "Null"}] nil)))
+
+
 ;; 18.13. Now
 (deftest compile-now-test
   (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
@@ -883,6 +941,26 @@
 
     #elm/list [#elm/integer 1 #elm/integer 2]
     [1 2]))
+
+
+;; 20.5. Equal
+(deftest compile-equal-list-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    #elm/equal [#elm/list [#elm/integer 1] #elm/list [#elm/integer 1]] true
+    #elm/equal [#elm/list [#elm/integer 1] #elm/list []] false
+    #elm/equal [#elm/list [#elm/integer 1] #elm/list [#elm/integer 2]] false
+    #elm/equal [{:type "Null"} #elm/list [#elm/integer 1]] nil
+    #elm/equal [#elm/list [#elm/integer 1] {:type "Null"}] nil))
+
+
+;; 20.19. Not Equal
+(deftest compile-not-equal-list-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    #elm/not-equal [#elm/list [#elm/integer 1] #elm/list []] true
+    #elm/not-equal [#elm/list [#elm/integer 1] #elm/list [#elm/integer 2]] true
+    #elm/not-equal [#elm/list [#elm/integer 1] #elm/list [#elm/integer 1]] false
+    #elm/not-equal [{:type "Null"} #elm/list [#elm/integer 1]] nil
+    #elm/not-equal [#elm/list [#elm/integer 1] {:type "Null"}] nil))
 
 
 ;; 20.25. SingletonFrom
