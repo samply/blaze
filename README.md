@@ -11,7 +11,7 @@ The goal of this project is to provide a FHIR Store with an internal CQL Evaluat
 
 ## State
 
-The project is currently in very early stages. Both the FHIR Store and the CQL Query Engine implementations are incomplete and potentially incorrect. The provided Docker image and Docker Compose file are both not production ready and should only be used for evaluation proposes.
+The project is currently under active development. Please report any issues you encounter during evaluation.
 
 ## Usage
 
