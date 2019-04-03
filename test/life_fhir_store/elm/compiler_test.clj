@@ -929,10 +929,23 @@
 ;; 21. Aggregate Operators
 
 ;; 21.4. Count
+;;
+;; The Count operator returns the number of non-null elements in the source.
+;;
+;; If a path is specified, the count returns the number of elements that have a
+;; value for the property specified by the path.
+;;
+;; If the list is empty, the result is 0.
+;;
+;; If the list is null, the result is 0.
 (deftest compile-count-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
     {:type "Count"
      :source #elm/list [{:type "Null"}]}
+    0
+
+    {:type "Count"
+     :source {:type "Null"}}
     0
 
     {:type "Count"

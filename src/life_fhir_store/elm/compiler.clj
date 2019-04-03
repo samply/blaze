@@ -1468,6 +1468,13 @@
 ;; 21.4. Count
 ;;
 ;; The Count operator returns the number of non-null elements in the source.
+;;
+;; If a path is specified, the count returns the number of elements that have a
+;; value for the property specified by the path.
+;;
+;; If the list is empty, the result is 0.
+;;
+;; If the list is null, the result is 0.
 (defmethod compile* :elm.compiler.type/count
   [context {:keys [source]}]
   ;; TODO: path
