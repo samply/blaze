@@ -13,7 +13,7 @@
      :refer [compile compile-with-equiv-clause -eval -hash]]
     [life-fhir-store.elm.literals])
   (:import
-    [java.time LocalDate OffsetDateTime Year YearMonth])
+    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset])
   (:refer-clojure :exclude [compile]))
 
 
@@ -31,7 +31,7 @@
 (use-fixtures :each fixture)
 
 
-(def now (OffsetDateTime/now))
+(def now (OffsetDateTime/now (ZoneOffset/ofHours 0)))
 
 
 (def ^:private literal-null
@@ -667,6 +667,61 @@
     (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
       #elm/date [2019 3 23]
       (LocalDate/of 2019 3 23))))
+
+
+;; 18.8. DateTime
+(deftest compile-date-time-test
+  (testing "year"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date-time [2019]
+      (Year/of 2019)))
+
+  (testing "year-month"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date-time [2019 3]
+      (YearMonth/of 2019 3)))
+
+  (testing "date"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date-time [2019 3 23]
+      (LocalDate/of 2019 3 23)))
+
+  (testing "hour"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date-time [2019 3 23 12]
+      (LocalDateTime/of 2019 3 23 12 0 0)))
+
+  (testing "minute"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date-time [2019 3 23 12 13]
+      (LocalDateTime/of 2019 3 23 12 13 0)))
+
+  (testing "second"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date-time [2019 3 23 12 13 14]
+      (LocalDateTime/of 2019 3 23 12 13 14)))
+
+  (testing "with offset"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date-time [2019 3 23 12 13 14 0 -2]
+      (LocalDateTime/of 2019 3 23 14 13 14)
+
+      #elm/date-time [2019 3 23 12 13 14 0 -1]
+      (LocalDateTime/of 2019 3 23 13 13 14)
+
+      #elm/date-time [2019 3 23 12 13 14 0 0]
+      (LocalDateTime/of 2019 3 23 12 13 14)
+
+      #elm/date-time [2019 3 23 12 13 14 0 1]
+      (LocalDateTime/of 2019 3 23 11 13 14)
+
+      #elm/date-time [2019 3 23 12 13 14 0 2]
+      (LocalDateTime/of 2019 3 23 10 13 14)))
+
+  (testing "with decimal offset"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      #elm/date-time [2019 3 23 12 13 14 0 1.5]
+      (LocalDateTime/of 2019 3 23 10 43 14))))
 
 
 ;; 18.11. DurationBetween

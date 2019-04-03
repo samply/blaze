@@ -1126,7 +1126,7 @@
   [now year month day hour minute second timezone-offset]
   (-> (OffsetDateTime/of ^long year ^long month ^long day ^long hour
                          ^long minute ^long second 0
-                         (ZoneOffset/ofHours timezone-offset))
+                         (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
       (.withOffsetSameInstant (.getOffset ^OffsetDateTime now))
       (.toLocalDateTime)))
 

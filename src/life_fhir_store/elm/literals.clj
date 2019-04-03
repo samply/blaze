@@ -115,7 +115,7 @@
 
 
 (s/fdef date-time
-  :args (s/cat :args (s/coll-of int?))
+  :args (s/cat :args (s/coll-of number?))
   :ret :elm/expression)
 
 (defn date-time [[year month day hour minute second millisecond timezone-offset]]
@@ -128,4 +128,4 @@
     minute (assoc :minute (integer minute))
     second (assoc :second (integer second))
     millisecond (assoc :millisecond (integer millisecond))
-    timezone-offset (assoc :timezone-offset (integer timezone-offset))))
+    timezone-offset (assoc :timezone-offset (decimal timezone-offset))))
