@@ -34,10 +34,6 @@
 (def now (OffsetDateTime/now (ZoneOffset/ofHours 0)))
 
 
-(def ^:private literal-null
-  {:type "Null"})
-
-
 
 ;; 1. Simple Values
 
@@ -539,15 +535,15 @@
   (are [a b c] (= c (-eval (compile {} {:type "And" :operand [a b]}) {} nil))
     #elm/boolean true #elm/boolean true true
     #elm/boolean true #elm/boolean false false
-    #elm/boolean true literal-null nil
+    #elm/boolean true {:type "Null"} nil
 
     #elm/boolean false #elm/boolean true false
     #elm/boolean false #elm/boolean false false
-    #elm/boolean false literal-null false
+    #elm/boolean false {:type "Null"} false
 
-    literal-null #elm/boolean true nil
-    literal-null #elm/boolean false false
-    literal-null literal-null nil))
+    {:type "Null"} #elm/boolean true nil
+    {:type "Null"} #elm/boolean false false
+    {:type "Null"} {:type "Null"} nil))
 
 
 ;; 13.2. Implies
@@ -560,7 +556,7 @@
   (are [a b] (= b (-eval (compile {} {:type "Not" :operand a}) {} nil))
     #elm/boolean true false
     #elm/boolean false true
-    literal-null nil))
+    {:type "Null"} nil))
 
 
 ;; 13.4. Or
@@ -568,15 +564,15 @@
   (are [a b c] (= c (-eval (compile {} {:type "Or" :operand [a b]}) {} nil))
     #elm/boolean true #elm/boolean true true
     #elm/boolean true #elm/boolean false true
-    #elm/boolean true literal-null true
+    #elm/boolean true {:type "Null"} true
 
     #elm/boolean false #elm/boolean true true
     #elm/boolean false #elm/boolean false false
-    #elm/boolean false literal-null nil
+    #elm/boolean false {:type "Null"} nil
 
-    literal-null #elm/boolean true true
-    literal-null #elm/boolean false nil
-    literal-null literal-null nil))
+    {:type "Null"} #elm/boolean true true
+    {:type "Null"} #elm/boolean false nil
+    {:type "Null"} {:type "Null"} nil))
 
 
 ;; 13.5. Xor
@@ -589,7 +585,7 @@
 
 ;; 14.1. Null
 (deftest compile-null-test
-  (is (nil? (compile {} literal-null))))
+  (is (nil? (compile {} {:type "Null"}))))
 
 
 ;; 14.2. Coalesce
@@ -610,7 +606,7 @@
   (are [elm res] (= res (-eval (compile {} {:type "IsFalse" :operand elm}) {} nil))
     #elm/boolean true false
     #elm/boolean false true
-    literal-null false))
+    {:type "Null"} false))
 
 
 ;; 14.4. IsNull
@@ -618,7 +614,7 @@
   (are [elm res] (= res (-eval (compile {} {:type "IsNull" :operand elm}) {} nil))
     #elm/boolean true false
     #elm/boolean false false
-    literal-null true))
+    {:type "Null"} true))
 
 
 ;; 14.5. IsTrue
@@ -626,7 +622,7 @@
   (are [elm res] (= res (-eval (compile {} {:type "IsTrue" :operand elm}) {} nil))
     #elm/boolean true true
     #elm/boolean false false
-    literal-null false))
+    {:type "Null"} false))
 
 
 
@@ -1003,10 +999,24 @@
 
 
 ;; 22.23. ToList
+;;
+;; The ToList operator returns its argument as a List value. The operator
+;; accepts a singleton value of any type and returns a list with the value as
+;; the single element.
+;;
+;; If the argument is null, the operator returns an empty list.
+;;
+;; The operator is effectively shorthand for "if operand is null then { } else
+;; { operand }".
+;;
+;; The operator is used to implement list promotion efficiently.
 (deftest compile-to-list-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
-    {:type "ToList" :operand literal-null}
-    nil
+    {:type "ToList" :operand {:type "Null"}}
+    []
+
+    {:type "ToList" :operand #elm/boolean false}
+    [false]
 
     {:type "ToList" :operand #elm/integer 1}
     [1]))

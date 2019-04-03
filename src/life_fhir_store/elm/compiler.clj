@@ -1540,12 +1540,20 @@
 ;; The ToList operator returns its argument as a List value. The operator
 ;; accepts a singleton value of any type and returns a list with the value as
 ;; the single element.
+;;
+;; If the argument is null, the operator returns an empty list.
+;;
+;; The operator is effectively shorthand for "if operand is null then { } else
+;; { operand }".
+;;
+;; The operator is used to implement list promotion efficiently.
 (defmethod compile* :elm.compiler.type/to-list
   [context {:keys [operand]}]
   (let [operand (compile context operand)]
     (reify Expression
       (-eval [_ context scope]
-        (some-> (-eval operand context scope) vector))
+        (let [value (-eval operand context scope)]
+          (if (nil? value) [] [value])))
       (-hash [_]
         {:type :to-list
          :operand (-hash operand)}))))
