@@ -91,5 +91,5 @@ Copyright © 2019 LIFE Research Center (Alexander Kiel)
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
 
-[1]: <https://github.com/life-research/life-fhir-store>
+[1]: <https://github.com/life-research/life-fhir-gen>
 [2]: <http://cql-runner.dataphoria.org/>
