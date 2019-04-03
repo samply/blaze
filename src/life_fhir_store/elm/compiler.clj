@@ -1346,7 +1346,7 @@
   [_ _]
   (reify Expression
     (-eval [_ {:keys [now]} _]
-      now)
+      (.toLocalDate ^OffsetDateTime now))
     (-hash [_]
       {:type :today})))
 

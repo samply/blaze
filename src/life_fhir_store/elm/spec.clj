@@ -468,6 +468,10 @@
           :opt-un [:elm.date/precision]))
 
 
+;; 18.22. Today
+(derive :elm.spec.type/today :elm.spec.type/operator-expression)
+
+
 
 ;; 19. Interval Operators
 

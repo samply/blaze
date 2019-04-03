@@ -744,6 +744,13 @@
     now))
 
 
+;; 18.22. Today
+(deftest compile-today-test
+  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+    {:type "Today"}
+    (.toLocalDate now)))
+
+
 
 ;; 19. Interval Operators
 
