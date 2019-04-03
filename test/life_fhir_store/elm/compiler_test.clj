@@ -893,8 +893,21 @@
 (deftest compile-singleton-from-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
     {:type "SingletonFrom"
+     :operand {:type "Null"}}
+    nil
+
+    {:type "SingletonFrom"
+     :operand #elm/list []}
+    nil
+
+    {:type "SingletonFrom"
      :operand #elm/list [#elm/integer 1]}
     1)
+
+  (let [elm {:type "SingletonFrom"
+             :operand #elm/list [#elm/integer 1 #elm/integer 1]}
+        expr (compile {} elm)]
+    (is (thrown? Exception (-eval expr {} nil))))
 
   (st/instrument
     `cql/list-resource
