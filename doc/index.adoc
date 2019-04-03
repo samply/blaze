@@ -19,28 +19,28 @@ TODO
 The following table gives an overview of the current state of implementation of Expression Logical Model (ELM) expressions.
 
 .ELM Implementation State
-[cols="2,3,1,4", options="header"]
+[cols="2,3,1,4", options="header,footer"]
 |===
 | Group | Expression | State | Notes
 
 1.1+<| 1. Simple Values
-| 1.1. Literal | | only `Boolean`, `Integer`, `Decimal`, `String`
+| 1.1. Literal | ! | only `Boolean`, `Integer`, `Decimal`, `String`
 
 1.3+<|2. Structured Values
 | 2.1. Tuple | ✗ |
 | 2.2. Instance | ✗ |
-| 2.3. Property | | no full FHIRPath
+| 2.3. Property | ! | no full FHIRPath
 
 1.12+<|3. Clinical Values
 | 3.1. Code | ✗ |
 | 3.2. CodeDef | ✗ |
-| 3.3. CodeRef | | only inside same library
+| 3.3. CodeRef | ! | only inside same library
 | 3.4. CodeSystemDef | ✗ |
-| 3.5. CodeSystemRef | | only inside same library
+| 3.5. CodeSystemRef | ! | only inside same library
 | 3.6. Concept | ✗ |
 | 3.7. ConceptDef | ✗ |
 | 3.8. ConceptRef | ✗ |
-| 3.9. Quantity | | no unit
+| 3.9. Quantity | ! | no unit
 | 3.10. Ratio | ✗ |
 | 3.11. ValueSetDef | ✗ |
 | 3.12. ValueSetRef | ✗ |
@@ -76,13 +76,13 @@ The following table gives an overview of the current state of implementation of 
 
 1.4+<|9. Reusing Logic
 | 9.1. ExpressionDef | ✗ |
-| 9.2. ExpressionRef | | only inside same library
+| 9.2. ExpressionRef | ! | only inside same library
 | 9.3. FunctionDef | ✗ |
-| 9.4. FunctionRef | | hard coded implementation of `ToQuantity` and `ToDateTime`
+| 9.4. FunctionRef | ! | hard coded implementation of `ToQuantity` and `ToDateTime`
 
 1.13+<|10. Queries
 | 10.1. Query | ✓ |
-| 10.2. AliasedQuerySource | | only single source
+| 10.2. AliasedQuerySource | ! | only single source
 | 10.3. AliasRef | ✓ |
 | 10.4. ByColumn | ✗ |
 | 10.5. ByDirection | ✗ |
@@ -90,13 +90,13 @@ The following table gives an overview of the current state of implementation of 
 | 10.7. LetClause | ✗ |
 | 10.8. QueryLetRef | ✗ |
 | 10.9. RelationshipClause | ✓ |
-| 10.10. ReturnClause | | always distinct
+| 10.10. ReturnClause | ! | always distinct
 | 10.11. SortClause | ✗ |
-| 10.12. With | | only equiv version
+| 10.12. With | ! | only equiv version
 | 10.13. Without | ✗ |
 
 1.1+<|11. External Data
-| 11.1. Retrieve | | no date ranges
+| 11.1. Retrieve | ! | no date ranges
 
 1.7+<|12. Comparison Operators
 | 12.1. Equal | ✓ |
@@ -259,7 +259,7 @@ The following table gives an overview of the current state of implementation of 
 | 21.1. AllTrue | ✗ |
 | 21.2. AnyTrue | ✗ |
 | 21.3. Avg | ✗ |
-| 21.4. Count | | no path
+| 21.4. Count | ! | no path
 | 21.5. GeometricMean | ✗ |
 | 21.6. Product | ✗ |
 | 21.7. Max | ✗ |
@@ -273,7 +273,7 @@ The following table gives an overview of the current state of implementation of 
 | 21.15. Variance | ✗ |
 
 1.27+<|22. Type Operators
-| 22.1. As | | no strictness
+| 22.1. As | ! | no strictness
 | 22.2. CanConvert | ✗ |
 | 22.3. Children | ✗ |
 | 22.4. Convert | ✗ |
@@ -316,6 +316,8 @@ The following table gives an overview of the current state of implementation of 
 
 1.1+<|24. Errors and Messages
 | 24.1. Message | ✗ |
+
+| | 2+<| ✓ = 46, ! = 13, ✗ = 187, 20 % finished
 |===
 
 == Implementation
