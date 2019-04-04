@@ -45,6 +45,18 @@ Data Tier     | Datomic Transactor Free Version |
 +-------------------------------+
 ----
 
+.CQL Query Engine
+[ditaa]
+----
++-----------------------+
+| CQL to ELM Translator |
++-----------------------+
+| ELM to Expr Compiler  |
++-----------------------+
+| Expr Evaluator        |
++-----------------------+
+----
+
 == API
 
 TODO
