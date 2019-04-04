@@ -52,9 +52,9 @@
   (s/coll-of :elm/type-specifier))
 
 
-(defn expression-dispatch [{:keys [type] :as expression}]
-  (assert type (str "Missing type in expression `" (prn-str expression) "`."))
-  (keyword "elm.spec.type" (->kebab-case-string type)))
+(defn expression-dispatch [{:keys [type]}]
+  (when type
+    (keyword "elm.spec.type" (->kebab-case-string type))))
 
 
 (defmulti expression expression-dispatch)
