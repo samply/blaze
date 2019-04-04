@@ -46,7 +46,7 @@
             (-> (ring/response {:message "OK" :t (d/basis-t db-after)})
                 (ring/status 200))))
         (md/catch
-          (fn [e]
+          (fn [^Throwable e]
             (log/error (.getMessage e) e)
             (-> (ring/response {:error (.getMessage e)})
                 (ring/status 500)))))))
