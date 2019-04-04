@@ -134,6 +134,12 @@
       :life/deps deps)))
 
 
+;; 10.3. AliasRef
+(defmethod infer-deps :elm.deps.type/alias-ref
+  [{:keys [name] :as expression}]
+  (assoc expression :life/scopes #{name}))
+
+
 
 ;; 12. Comparison Operators
 

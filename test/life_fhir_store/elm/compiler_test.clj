@@ -211,6 +211,13 @@
 ;; 10.12. With
 (deftest compile-with-clause-test
   (st/instrument
+    `compile-with-equiv-clause
+    {:spec
+     {`compile-with-equiv-clause
+      (s/fspec
+        :args (s/cat :context any? :with-equiv-clause :elm.query.life/with-equiv))}})
+
+  (st/instrument
     `cql/list-resource
     {:spec
      {`cql/list-resource
@@ -223,7 +230,6 @@
     (let [elm {:alias "O1"
                :type "WithEquiv"
                :expression {:dataType "{http://hl7.org/fhir}Observation"
-                            :codeProperty "code"
                             :type "Retrieve"}
                :equivOperand
                [{:path "subject"
@@ -239,14 +245,32 @@
                  :life/scopes #{"O1"}
                  :life/return-type {:type "NamedTypeSpecifier"
                                     :name "{http://hl7.org/fhir}Patient"}
-                 :life/source-type "{http://hl7.org/fhir}Observation"}]
-               :suchThat nil
-               :life/deps #{}}
+                 :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context {:life/single-query-scope "O0"}
           create-clause (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
           eval-clause (create-clause eval-context)
           lhs-entity {:Observation/subject ::subject}]
+      (is (true? (eval-clause eval-context lhs-entity)))))
+
+  (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
+    (let [elm {:alias "O"
+               :type "WithEquiv"
+               :expression {:dataType "{http://hl7.org/fhir}Observation"
+                            :type "Retrieve"}
+               :equivOperand [{:name "P" :type "AliasRef" :life/scopes #{"P"}}
+                              {:path "subject"
+                               :scope "O"
+                               :type "Property"
+                               :life/scopes #{"O"}
+                               :life/return-type {:type "NamedTypeSpecifier"
+                                                  :name "{http://hl7.org/fhir}Patient"}
+                               :life/source-type "{http://hl7.org/fhir}Observation"}]}
+          compile-context {:life/single-query-scope "P"}
+          create-clause (compile-with-equiv-clause compile-context elm)
+          eval-context {:db ::db}
+          eval-clause (create-clause eval-context)
+          lhs-entity ::subject]
       (is (true? (eval-clause eval-context lhs-entity))))))
 
 
@@ -1009,12 +1033,12 @@
 ;;
 ;; The Count operator returns the number of non-null elements in the source.
 ;;
-;; If a path is specified, the count returns the number of elements that have a
+;; If a path is specified the count returns the number of elements that have a
 ;; value for the property specified by the path.
 ;;
-;; If the list is empty, the result is 0.
+;; If the list is empty the result is 0.
 ;;
-;; If the list is null, the result is 0.
+;; If the list is null the result is 0.
 (deftest compile-count-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
     {:type "Count"
@@ -1046,9 +1070,9 @@
 ;; The As operator allows the result of an expression to be cast as a given
 ;; target type. This allows expressions to be written that are statically typed
 ;; against the expected run-time type of the argument. If the argument is not of
-;; the specified type, and the strict attribute is false (the default), the
+;; the specified type and the strict attribute is false (the default) the
 ;; result is null. If the argument is not of the specified type and the strict
-;; attribute is true, an exception is thrown.
+;; attribute is true an exception is thrown.
 (deftest compile-as-test
   (are [elm input res] (= res (-eval (compile {} elm) {} {"I" input}))
     {:asType "{http://hl7.org/fhir}Quantity"
@@ -1085,7 +1109,7 @@
 ;; accepts a singleton value of any type and returns a list with the value as
 ;; the single element.
 ;;
-;; If the argument is null, the operator returns an empty list.
+;; If the argument is null the operator returns an empty list.
 ;;
 ;; The operator is effectively shorthand for "if operand is null then { } else
 ;; { operand }".
