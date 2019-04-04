@@ -219,32 +219,35 @@
         :ret #{[{:Observation/subject ::subject}]})}
      :stub #{`cql/list-resource}})
 
-  (are [elm entity res] (= res (((compile-with-equiv-clause {:life/single-query-scope "O0"} elm)
-                                  {:db ::db}) {:db ::db} entity))
-    {:alias "O1"
-     :type "WithEquiv"
-     :expression {:dataType "{http://hl7.org/fhir}Observation"
-                  :codeProperty "code"
-                  :type "Retrieve"}
-     :equivOperand
-     [{:path "subject"
-       :scope "O0"
-       :type "Property"
-       :life/scopes #{"O0"}
-       :life/return-type {:type "NamedTypeSpecifier"
-                          :name "{http://hl7.org/fhir}Patient"}
-       :life/source-type "{http://hl7.org/fhir}Observation"}
-      {:path "subject"
-       :scope "O1"
-       :type "Property"
-       :life/scopes #{"O1"}
-       :life/return-type {:type "NamedTypeSpecifier"
-                          :name "{http://hl7.org/fhir}Patient"}
-       :life/source-type "{http://hl7.org/fhir}Observation"}]
-     :suchThat nil
-     :life/deps #{}}
-    {:Observation/subject ::subject}
-    true))
+  (testing "Equiv With with two Observations comparing there subjects."
+    (let [elm {:alias "O1"
+               :type "WithEquiv"
+               :expression {:dataType "{http://hl7.org/fhir}Observation"
+                            :codeProperty "code"
+                            :type "Retrieve"}
+               :equivOperand
+               [{:path "subject"
+                 :scope "O0"
+                 :type "Property"
+                 :life/scopes #{"O0"}
+                 :life/return-type {:type "NamedTypeSpecifier"
+                                    :name "{http://hl7.org/fhir}Patient"}
+                 :life/source-type "{http://hl7.org/fhir}Observation"}
+                {:path "subject"
+                 :scope "O1"
+                 :type "Property"
+                 :life/scopes #{"O1"}
+                 :life/return-type {:type "NamedTypeSpecifier"
+                                    :name "{http://hl7.org/fhir}Patient"}
+                 :life/source-type "{http://hl7.org/fhir}Observation"}]
+               :suchThat nil
+               :life/deps #{}}
+          compile-context {:life/single-query-scope "O0"}
+          create-clause (compile-with-equiv-clause compile-context elm)
+          eval-context {:db ::db}
+          eval-clause (create-clause eval-context)
+          lhs-entity {:Observation/subject ::subject}]
+      (is (true? (eval-clause eval-context lhs-entity))))))
 
 
 ;; 11. External Data
