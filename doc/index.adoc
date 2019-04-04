@@ -50,7 +50,7 @@ TODO
 
 == Current Implementation State of ELM Expressions
 
-The following table gives an overview of the current state of implementation of Expression Logical Model (ELM) expressions.
+The following table gives an overview of the current state of implementation of Expression Logical Model (ELM) expressions. In the state column, ✓ mean fully implemented, ! partly implemented (see notes) and ✗ not implemented jet.
 
 .ELM Implementation State
 [cols="2,3,1,4", options="header,footer"]
