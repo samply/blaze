@@ -135,12 +135,14 @@
 (s/fdef evaluate
   :args (s/cat :db ::ds/db :now #(instance? OffsetDateTime %)
                :expression-defs (s/coll-of :life/compiled-expression-def))
-  :ret (s/or :results md/deferred? :anomaly ::anom/anomaly))
+  :ret md/deferred?)
 
-(defn evaluate [db now expression-defs]
+(defn evaluate
+  "Returns an error-deferred with an anomaly on evaluation errors."
+  [db now expression-defs]
   (let [results (results db now expression-defs)]
     (if (::anom/category results)
-      results
+      (md/error-deferred results)
       (let [keys (vec (keys results))]
         (md/chain'
           (apply md/zip' (map results keys))
