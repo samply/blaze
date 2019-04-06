@@ -14,8 +14,8 @@ define Patients:
   from [Patient] P
     with [Condition: "Brustkrebs"] C
       such that P = C.subject
-    with [Specimen: "tissue frozen"] C
-      such that P = C.subject
+    with [Specimen: "tissue frozen"] S
+      such that P = S.subject
 
 define NumberOfPatients:
   Count(Patients)
