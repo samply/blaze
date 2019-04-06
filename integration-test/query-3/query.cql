@@ -5,6 +5,7 @@ include FHIRHelpers version '3.0.0'
 codesystem "ICD-10-GM:2019": 'http://fhir.de/CodeSystem/dimdi/icd-10-gm' version '2019'
 code "Seronegative chronische Polyarthritis": 'M06.9' from "ICD-10-GM:2019"
 
+context Patient
 context Population
 
 define Patients:
