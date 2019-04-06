@@ -1,0 +1,166 @@
+[
+  {
+    "resourceType": "Patient",
+    "id": "0"
+  },
+  {
+    "resourceType": "Patient",
+    "id": "1"
+  },
+  {
+    "resourceType": "Patient",
+    "id": "2"
+  },
+  {
+    "resourceType": "Condition",
+    "id": "0",
+    "code": {
+      "coding": [
+        {
+          "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
+          "version": "2019",
+          "code": "K50.9"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/0"
+    }
+  },
+  {
+    "resourceType": "Condition",
+    "id": "1",
+    "code": {
+      "coding": [
+        {
+          "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
+          "version": "2019",
+          "code": "K51.9"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/1"
+    }
+  },
+  {
+    "resourceType": "Specimen",
+    "id": "0",
+    "type": {
+      "coding": [
+        {
+          "system": "urn:mdr16:dataelement:20:1",
+          "code": "tumor_tissue"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/0"
+    }
+  },
+  {
+    "resourceType": "Specimen",
+    "id": "1",
+    "type": {
+      "coding": [
+        {
+          "system": "urn:mdr16:dataelement:20:1",
+          "code": "healthy_tissue"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/0"
+    }
+  },
+  {
+    "resourceType": "Specimen",
+    "id": "2",
+    "type": {
+      "coding": [
+        {
+          "system": "urn:mdr16:dataelement:16:1",
+          "code": "serum"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/0"
+    }
+  },
+  {
+    "resourceType": "Specimen",
+    "id": "3",
+    "type": {
+      "coding": [
+        {
+          "system": "urn:mdr16:dataelement:20:1",
+          "code": "tumor_tissue"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/1"
+    }
+  },
+  {
+    "resourceType": "Specimen",
+    "id": "4",
+    "type": {
+      "coding": [
+        {
+          "system": "urn:mdr16:dataelement:20:1",
+          "code": "healthy_tissue"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/1"
+    }
+  },
+  {
+    "resourceType": "Specimen",
+    "id": "5",
+    "type": {
+      "coding": [
+        {
+          "system": "urn:mdr16:dataelement:16:1",
+          "code": "whole_blood-EDTA"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/1"
+    }
+  },
+  {
+    "resourceType": "Specimen",
+    "id": "6",
+    "type": {
+      "coding": [
+        {
+          "system": "urn:mdr16:dataelement:20:1",
+          "code": "healthy_tissue"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/2"
+    }
+  },
+  {
+    "resourceType": "Specimen",
+    "id": "7",
+    "type": {
+      "coding": [
+        {
+          "system": "urn:mdr16:dataelement:16:1",
+          "code": "whole_blood-EDTA"
+        }
+      ]
+    },
+    "subject": {
+      "reference": "Patient/2"
+    }
+  }
+]

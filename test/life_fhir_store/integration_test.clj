@@ -65,4 +65,5 @@
 
     "query-3" 1
     "query-5" 3
-    "query-6" 1))
+    "query-6" 1
+    "query-7" 2))
