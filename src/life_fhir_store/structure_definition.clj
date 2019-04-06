@@ -1,16 +1,15 @@
 (ns life-fhir-store.structure-definition
   (:require
+    [cheshire.core :as json]
+    [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [life-fhir-store.spec]))
+    [life-fhir-store.spec]
+    [life-fhir-store.util :as u]))
 
 
 (def ^:private has-type
   (filter :type))
-
-
-(defn- title-case [code]
-  (str (str/upper-case (subs code 0 1)) (subs code 1)))
 
 
 (defn- resolveDataTypeChoices
@@ -21,7 +20,7 @@
   (if (next types)
     (for [{:keys [code] :as type} types]
       (-> element
-          (update :path str/replace "[x]" (title-case code))
+          (update :path str/replace "[x]" (u/title-case code))
           (assoc :type [type])))
     [element]))
 
@@ -86,3 +85,17 @@
 (defn cardinality-many?
   [{:life.element-definition/keys [max]}]
   (or (= :* max) (< 1 max)))
+
+
+(defn- read-structure-definition [file]
+  (structure-definition (json/parse-string (slurp file) keyword)))
+
+
+(defn read-structure-definitions [path]
+  (reduce
+    (fn [ret file]
+      (let [{:life.structure-definition/keys [id] :as def}
+            (read-structure-definition file)]
+        (assoc ret id def)))
+    {}
+    (rest (file-seq (io/file path)))))

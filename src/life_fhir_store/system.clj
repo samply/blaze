@@ -15,7 +15,7 @@
     [life-fhir-store.handler.fhir.transaction :as fhir-transaction-handler]
     [life-fhir-store.handler.health :as health-handler]
     [life-fhir-store.server :as server]
-    [life-fhir-store.util :as u]
+    [life-fhir-store.structure-definition :refer [read-structure-definitions]]
     [taoensso.timbre :as log]
     [clojure.string :as str]))
 
@@ -106,7 +106,7 @@
 
 (defmethod ig/init-key :structure-definitions
   [_ {:structure-definitions/keys [path]}]
-  (let [structure-definitions (u/read-structure-definitions path)]
+  (let [structure-definitions (read-structure-definitions path)]
     (log/info "Read structure definitions from:" path "resulting in:"
               (str/join ", " (keys structure-definitions)))
     structure-definitions))

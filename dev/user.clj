@@ -27,7 +27,7 @@
     [life-fhir-store.elm.literals]
     [life-fhir-store.fhir-client :as client]
     [life-fhir-store.spec]
-    [life-fhir-store.structure-definition :refer [structure-definition]]
+    [life-fhir-store.structure-definition :refer [read-structure-definitions]]
     [life-fhir-store.system :as system]
     [life-fhir-store.util :as util]
     [manifold.stream :as stream]
@@ -81,7 +81,7 @@
   (def conn (d/connect "datomic:mem://dev"))
 
 
-  @(d/transact conn (schema/all-schema (vals (util/read-structure-definitions "fhir/r4"))))
+  @(d/transact conn (schema/all-schema (vals (read-structure-definitions "fhir/r4"))))
 
 
   (count-resources (d/db conn) "Coding")

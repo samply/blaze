@@ -8,7 +8,7 @@
     [life-fhir-store.datomic.schema :as schema]
     [life-fhir-store.datomic.time :as time]
     [life-fhir-store.datomic.transaction :refer [update-tx-data coerce-value]]
-    [life-fhir-store.util :as u])
+    [life-fhir-store.structure-definition :refer [read-structure-definitions]])
   (:import
     [java.time Year YearMonth LocalDate LocalDateTime OffsetDateTime ZoneOffset]))
 
@@ -18,7 +18,7 @@
 (d/create-database "datomic:mem://test")
 
 (def conn (d/connect "datomic:mem://test"))
-(def structure-definitions (u/read-structure-definitions "fhir/r4"))
+(def structure-definitions (read-structure-definitions "fhir/r4"))
 
 @(d/transact conn (schema/all-schema (vals structure-definitions)))
 
