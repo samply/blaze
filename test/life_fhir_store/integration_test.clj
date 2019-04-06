@@ -64,4 +64,5 @@
                    ["NumberOfPatients" :result]))
 
     "query-3" 1
-    "query-5" 3))
+    "query-5" 3
+    "query-6" 1))
