@@ -1665,7 +1665,7 @@
 ;; element, a run-time error is thrown. If the source list is null, the result
 ;; is null.
 (defmethod compile* :elm.compiler.type/singleton-from
-  [context {:keys [operand]}]
+  [context {{:keys [locator] :as operand} :operand}]
   (let [operand (compile context operand)]
     (reify Expression
       (-eval [_ context scope]
@@ -1673,7 +1673,7 @@
           (cond
             (empty? operand) nil
             (nil? (next operand)) (first operand)
-            :else (throw (Exception. "more than one element in SingletonFrom")))))
+            :else (throw (Exception. (str "More than one element in expression `SingletonFrom` at " locator "."))))))
       (-hash [_]
         {:type :singleton-from
          :opernad (-hash operand)}))))
