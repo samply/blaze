@@ -11,7 +11,8 @@ context Population
 define Patients:
   from [Patient] P
     with [Condition: "Seronegative chronische Polyarthritis"] C
-      such that P = C.subject and CalculateAgeInYearsAt(P.birthDate, ToDate(C.onset as dateTime)) >= 18
+      such that P = C.subject
+        and CalculateAgeInYearsAt(P.birthDate, ToDate(C.onset as dateTime)) >= 18
 
 define NumberOfPatients:
   Count(Patients)
