@@ -25,7 +25,8 @@
     [life-fhir-store.elm.normalizer :refer [normalize-library]]
     [life-fhir-store.elm.spec]
     [life-fhir-store.elm.type-infer :refer [infer-library-types]]
-    [life-fhir-store.elm.util :as elm-util])
+    [life-fhir-store.elm.util :as elm-util]
+    [life-fhir-store.util :as u])
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoField ChronoUnit TemporalAccessor])
@@ -198,6 +199,13 @@
   "Returns the precision of a date-time instance."
   (precision [this]))
 
+
+(defprotocol ToDate
+  "Converts an object into something usable as Date relative to `now`.
+
+  Converts OffsetDateTime and Instant to LocalDate so that we can compare
+  temporal fields directly."
+  (to-date [this now]))
 
 (defprotocol ToDateTime
   "Converts an object into something usable as DateTime relative to `now`.
@@ -388,6 +396,43 @@
         (<= cmp 0)))))
 
 
+(extend-protocol ToDate
+  nil
+  (to-date [_ _])
+
+  String
+  (to-date [this _]
+    (case (.length this)
+      4
+      (try (Year/parse this) (catch Exception _))
+      7
+      (try (YearMonth/parse this) (catch Exception _))
+      10
+      (try (LocalDate/parse this) (catch Exception _))
+      nil))
+
+  Year
+  (to-date [this _]
+    this)
+
+  YearMonth
+  (to-date [this _]
+    this)
+
+  LocalDate
+  (to-date [this _]
+    this)
+
+  LocalDateTime
+  (to-date [this _]
+    (.toLocalDate this))
+
+  OffsetDateTime
+  (to-date [this now]
+    (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
+        (.toLocalDate))))
+
+
 (extend-protocol ToDateTime
   nil
   (to-date-time [_ _])
@@ -529,42 +574,195 @@
 ;; If a scope is specified, the name is used to resolve the scope in which the
 ;; path will be resolved. Scopes can be named by operators such as Filter and
 ;; ForEach.
+
+(defn- source-property-expression
+  "Creates an Expression which returns the property of `attr-kw` from `source`."
+  [attr-kw source]
+  (reify Expression
+    (-eval [_ context scope]
+      (attr-kw (-eval source context scope)))
+    (-hash [_]
+      {:type :property
+       :attr-kw attr-kw
+       :source (-hash source)})))
+
+
+(defn- time-source-property-expression
+  "Creates an Expression which returns the property of `attr-kw` of type date,
+  dateTime or time from `source`. Such properties have to be deserialized from
+  byte array."
+  [attr-kw source]
+  (reify Expression
+    (-eval [_ context scope]
+      (time/read (attr-kw (-eval source context scope))))
+    (-hash [_]
+      {:type :property
+       :attr-kw attr-kw
+       :source (-hash source)})))
+
+
+(defn- quantity-source-property-expression
+  "Creates an Expression which returns the property of `attr-kw` of type
+  Quantity from `source`. Such properties have to be deserialized from byte
+  array."
+  [attr-kw source]
+  (reify Expression
+    (-eval [_ context scope]
+      (quantity/read (attr-kw (-eval source context scope))))
+    (-hash [_]
+      {:type :property
+       :attr-kw attr-kw
+       :source (-hash source)})))
+
+
+(defn- scope-property-expression
+  "Creates an Expression which returns the property of `attr-kw` from either
+  a direct supplied entity or an entity from query context by `scope`."
+  ([attr-kw]
+   (reify Expression
+     (-eval [_ _ entity]
+       (attr-kw entity))
+     (-hash [_]
+       {:type :property
+        :attr-kw attr-kw})))
+  ([attr-kw scope]
+   (reify Expression
+     (-eval [_ _ query-context]
+       (attr-kw (get query-context scope)))
+     (-hash [_]
+       {:type :property
+        :attr-kw attr-kw
+        :scope scope}))))
+
+
+(defn- time-scope-property-expression
+  "Creates an Expression which returns a property of `attr-kw` of type date,
+  dateTime or time from either a direct supplied entity or an entity from query
+  context by `scope`. Such properties have to be deserialized from byte array."
+  ([attr-kw]
+   (reify Expression
+     (-eval [_ _ entity]
+       (time/read (attr-kw entity)))
+     (-hash [_]
+       {:type :property
+        :attr-kw attr-kw})))
+  ([attr-kw scope]
+   (reify Expression
+     (-eval [_ _ query-context]
+       (time/read (attr-kw (get query-context scope))))
+     (-hash [_]
+       {:type :property
+        :attr-kw attr-kw
+        :scope scope}))))
+
+
+(defn- quantity-scope-property-expression
+  "Creates an Expression which returns a property of `attr-kw` of type Quantity
+  from either a direct supplied entity or an entity from query context by
+  `scope`. Such properties have to be deserialized from byte array."
+  ([attr-kw]
+   (reify Expression
+     (-eval [_ _ entity]
+       (quantity/read (attr-kw entity)))
+     (-hash [_]
+       {:type :property
+        :attr-kw attr-kw})))
+  ([attr-kw scope]
+   (reify Expression
+     (-eval [_ _ query-context]
+       (quantity/read (attr-kw (get query-context scope))))
+     (-hash [_]
+       {:type :property
+        :attr-kw attr-kw
+        :scope scope}))))
+
+
+(defn- choice-type-specifier?
+  {:arglists '([type-specifier])}
+  [{:keys [type]}]
+  (sequential? type))
+
+
+(defn contains-choice-type?
+  {:arglists '([choice-type-specifier type-name])}
+  [{:keys [type]} type-name]
+  (when type-name
+    (some (fn [{:keys [name]}] (= type-name name)) type)))
+
+
+(defn- extract-local-fhir-name [type-name]
+  (let [[ns name] (elm-util/parse-qualified-name type-name)]
+    (if (= "http://hl7.org/fhir" ns)
+      name
+      (throw (Exception. (str "Unsupported type namespace `"
+                              ns "` in `Property` expression."))))))
+
+
+(defn- attr-kw
+  {:arglists '([property-expression])}
+  [{:life/keys [source-type as-type-name] :keys [path]
+    result-type-specifier :resultTypeSpecifier}]
+  (let [[source-type-ns source-type-name] (elm-util/parse-qualified-name source-type)]
+    (if (= "http://hl7.org/fhir" source-type-ns)
+      (if (choice-type-specifier? result-type-specifier)
+        (if (contains-choice-type? result-type-specifier as-type-name)
+          (keyword source-type-name (str path (u/title-case (extract-local-fhir-name as-type-name))))
+          (throw (Exception. (str "Ambiguous choice type on property `"
+                                  source-type-name "/" path "`."))))
+        (keyword source-type-name path))
+      (throw (Exception. (str "Unsupported source type namespace `"
+                              source-type-ns "` in property expression."))))))
+
+
+(defn- local-fhir-result-type
+  {:arglists '([property-expression])}
+  [{result-type-name :resultTypeName
+    result-type-specifier :resultTypeSpecifier
+    :life/keys [as-type-name]}]
+  (cond
+    result-type-name
+    (extract-local-fhir-name result-type-name)
+
+    (choice-type-specifier? result-type-specifier)
+    (if (contains-choice-type? result-type-specifier as-type-name)
+      (extract-local-fhir-name as-type-name)
+      (throw (Exception. "Ambiguous choice type on property.")))
+
+    :else
+    (throw (Exception. "Undetermined result type on property."))))
+
+
 (defmethod compile* :elm.compiler.type/property
   [{:life/keys [single-query-scope] :as context}
-   {:keys [source scope path data-type] :life/keys [source-type]}]
+   {:keys [source scope path] :life/keys [source-type] :as expression}]
   (assert source-type (str "Missing :life/source-type annotation on Property expression with source `" source "`, scope `" scope "` and path `" path "`."))
-  (let [[source-type-ns source-type-name] (elm-util/parse-qualified-name source-type)
-        path (str path data-type)
-        attr-kw (keyword source-type-name path)
+  (let [attr-kw (attr-kw expression)
+        result-type (local-fhir-result-type expression)
         source (some->> source (compile context))]
-    (assert (= "http://hl7.org/fhir" source-type-ns))
     (cond
       ;; We evaluate the `source` to retrieve the entity.
       source
-      (reify Expression
-        (-eval [_ context scope]
-          (attr-kw (-eval source context scope)))
-        (-hash [_]
-          {:type :property
-           :attr-kw attr-kw
-           :source (-hash source)}))
+      (let [property-expression-fn
+            (case result-type
+              ("date" "dateTime" "time")
+              time-source-property-expression
+              "Quantity"
+              quantity-source-property-expression
+              source-property-expression)]
+        (property-expression-fn attr-kw source))
 
       ;; We use the `scope` to retrieve the entity from `query-context`.
       scope
-      (if (= single-query-scope scope)
-        (reify Expression
-          (-eval [_ _ entity]
-            (attr-kw entity))
-          (-hash [_]
-            {:type :property
-             :attr-kw attr-kw}))
-        (reify Expression
-          (-eval [_ _ query-context]
-            (attr-kw (get query-context scope)))
-          (-hash [_]
-            {:type :property
-             :attr-kw attr-kw
-             :scope scope}))))))
+      (let [property-expression-fn
+            (case result-type
+              ("date" "dateTime" "time")
+              time-scope-property-expression
+              "Quantity"
+              quantity-scope-property-expression
+              scope-property-expression)]
+        (if (= single-query-scope scope)
+          (property-expression-fn attr-kw)
+          (property-expression-fn attr-kw scope))))))
 
 
 
@@ -665,6 +863,16 @@
         (reify Expression
           (-eval [_ context scope]
             (-eval operand context scope))
+          (-hash [_]
+            {:type :function-ref
+             :name name
+             :operand (-hash operand)})))
+
+      "ToDate"
+      (let [operand (first operands)]
+        (reify Expression
+          (-eval [_ {:keys [now] :as context} scope]
+            (to-date (-eval operand context scope) now))
           (-hash [_]
             {:type :function-ref
              :name name
@@ -1508,40 +1716,57 @@
 ;; the specified type, and the strict attribute is false (the default), the
 ;; result is null. If the argument is not of the specified type and the strict
 ;; attribute is true, an exception is thrown.
-;;
-;; TODO: This operator is used to actively convert types. That's wrong!
-(defn title-case [s]
-  (let [[first & rest] s]
-    (apply str (str/upper-case (str first)) rest)))
-
 (defmethod compile* :elm.compiler.type/as
   [context {:keys [operand] as-type :asType as-type-specifier :asTypeSpecifier}]
   (let [as-type (or as-type (:name as-type-specifier))]
     (cond
       as-type
-      (when-let [[type-ns type-name] (elm-util/parse-qualified-name as-type)]
-        (case type-ns
-          "http://hl7.org/fhir"
-          (let [operand (compile context (assoc operand :data-type (title-case type-name)))]
-            (case type-name
-              "Quantity"
-              (reify Expression
-                (-eval [_ context scope]
-                  (some-> (-eval operand context scope) quantity/read)))
-              ("date" "time" "dateTime")
-              (reify Expression
-                (-eval [_ context scope]
-                  (some-> (-eval operand context scope) time/read)))
-              operand))
-          (throw (Exception. (str "Unsupported type namespace `" type-ns "` in `As` expression.")))))
+      (compile context (assoc operand :life/as-type-name as-type))
       :else
       (throw (Exception. "Unsupported `As` expression.")))))
+
+
+;; 22.19. ToDate
+;;
+;; The ToDate operator converts the value of its argument to a Date value.
+;;
+;; For String values, The operator expects the string to be formatted using the
+;; ISO-8601 date representation:
+;;
+;; YYYY-MM-DD
+;;
+;; In addition, the string must be interpretable as a valid date value.
+;;
+;; If the input string is not formatted correctly, or does not represent a valid
+;; date value, the result is null.
+;;
+;; As with date literals, date values may be specified to any precision.
+;;
+;; For DateTime values, the result is equivalent to extracting the Date
+;; component of the DateTime value.
+;;
+;; If the argument is null, the result is null.
+(defmethod compile* :elm.compiler.type/to-date
+  [context {:keys [operand]}]
+  (let [operand (compile context operand)]
+    (reify Expression
+      (-eval [_ {:keys [now] :as context} scope]
+        (to-date (-eval operand context scope) now))
+      (-hash [_]
+        {:type :to-date
+         :operand (-hash operand)}))))
 
 
 ;; 22.20. ToDateTime
 (defmethod compile* :elm.compiler.type/to-date-time
   [context {:keys [operand]}]
-  (compile context operand))
+  (let [operand (compile context operand)]
+    (reify Expression
+      (-eval [_ {:keys [now] :as context} scope]
+        (to-date-time (-eval operand context scope) now))
+      (-hash [_]
+        {:type :to-date-time
+         :operand (-hash operand)}))))
 
 
 ;; 22.23. ToList
@@ -1580,3 +1805,32 @@
     (if (number? result)
       result
       (throw (Exception. (str "Unsupported quantity `" result "`."))))))
+
+
+
+;; 23. Clinical Operators
+
+;; 23.4. CalculateAgeAt
+;;
+;; Calculates the age in the specified precision of a person born on the first
+;; Date or DateTime as of the second Date or DateTime.
+;;
+;; The CalculateAgeAt operator has two signatures: Date, Date DateTime, DateTime
+;;
+;; For the Date overload, precision must be one of year, month, week, or day.
+;;
+;; The result of the calculation is the number of whole calendar periods that
+;; have elapsed between the first date/time and the second.
+(defmethod compile* :elm.compiler.type/calculate-age-at
+  [context {operands :operand :keys [precision]}]
+  (let [[operand-1 operand-2] (mapv #(compile context %) operands)
+        chrono-unit (to-chrono-unit precision)]
+    (reify Expression
+      (-eval [_ context scope]
+        (duration-between
+          (-eval operand-1 context scope)
+          (-eval operand-2 context scope)
+          chrono-unit))
+      (-hash [_]
+        {:type :calculate-age-at
+         :operands (mapv -hash operands)}))))

@@ -581,8 +581,32 @@
 (derive :elm.spec.type/convert :elm.spec.type/unary-expression)
 
 
+;; 22.16. ToBoolean
+(derive :elm.spec.type/to-boolean :elm.spec.type/unary-expression)
+
+
+;; 22.17. ToChars
+(derive :elm.spec.type/to-chars :elm.spec.type/unary-expression)
+
+
+;; 22.18. ToConcept
+(derive :elm.spec.type/to-concept :elm.spec.type/unary-expression)
+
+
+;; 22.19. ToDate
+(derive :elm.spec.type/to-date :elm.spec.type/unary-expression)
+
+
 ;; 22.20. ToDateTime
 (derive :elm.spec.type/to-date-time :elm.spec.type/unary-expression)
+
+
+;; 22.21. ToDecimal
+(derive :elm.spec.type/to-decimal :elm.spec.type/unary-expression)
+
+
+;; 22.21. ToInteger
+(derive :elm.spec.type/to-integer :elm.spec.type/unary-expression)
 
 
 ;; 22.23. ToList
@@ -603,3 +627,12 @@
 
 ;; 22.27. ToTime
 (derive :elm.spec.type/to-time :elm.spec.type/unary-expression)
+
+
+
+;; 23. Clinical Operators
+
+;; 23.4. CalculateAgeAt
+(defmethod expression :elm.spec.type/calculate-age-at [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))

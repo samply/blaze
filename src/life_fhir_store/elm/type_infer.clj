@@ -2,13 +2,11 @@
   (:require
     [camel-snake-kebab.core :refer [->kebab-case-string]]
     [clojure.spec.alpha :as s]
-    [life-fhir-store.elm.spec]
-    [life-fhir-store.elm.util :as u]))
+    [life-fhir-store.elm.spec]))
 
 
 (defmulti infer-types*
-  "Infers types for `expression`s and uses TypeSpecifiers in
-  `:life/return-type` to annotate them."
+  "Infers :life/source-type for expressions."
   {:arglists '([context expression])}
   (fn [_ {:keys [type]}]
     (keyword "elm" (->kebab-case-string type))))
@@ -73,42 +71,20 @@
   (list-type-specifier (named-type-specifier name)))
 
 
+
 ;; 2. Structured Values
 
 ;; 2.3. Property
-(defn- infer-path-type [type path]
-  (let [[ns name] (u/parse-qualified-name type)]
-    (case ns
-      "http://hl7.org/fhir"
-      (case name
-        "Observation"
-        (case path
-          "subject"
-          "{http://hl7.org/fhir}Patient"
-          "effective"
-          "{http://hl7.org/fhir}dateTime"                   ;; TODO: HACK
-          nil)
-        nil)
-      nil)))
-
-(defn- infer-property-return-type [expression name path]
-  (let [type (infer-path-type name path)]
-    (cond-> expression
-      type
-      (assoc :life/return-type (named-type-specifier type)))))
-
 (defmethod infer-types* :elm/property
-  [context {:keys [source scope path] :as expression}]
-  (let [{source-type :life/return-type :as source}
+  [context {:keys [source scope] :as expression}]
+  (let [{source-type-name :resultTypeName :as source}
         (some->> source (infer-types context))
         scope-type (get-in context [:life/scope-types scope])]
     (cond-> expression
       source
       (assoc :source source)
-      scope-type
-      (infer-property-return-type scope-type path)
-      source-type
-      (assoc :life/source-type (:name source-type))
+      source-type-name
+      (assoc :life/source-type source-type-name)
       scope-type
       (assoc :life/source-type scope-type))))
 
@@ -120,42 +96,20 @@
 (defn- find-by-name [name coll]
   (first (filter #(= name (:name %)) coll)))
 
-(defn- resolve-expression-def-return-type
-  {:arglists '([context expression-def])}
-  [{:keys [eval-context]}
-   {{:life/keys [return-type]} :expression def-eval-context :context}]
-  (when return-type
-    (if (and (= "Population" eval-context) (= "Patient" def-eval-context))
-      (list-type-specifier return-type)
-      return-type)))
-
 (defmethod infer-types* :elm/expression-ref
-  [{{{expression-defs :def} :statements} :library :as context}
+  [{{{expression-defs :def} :statements} :library}
    {:keys [name] :as expression}]
   ;; TODO: look into other libraries (:libraryName)
-  (let [{eval-context :context :as expression-def} (find-by-name name expression-defs)
-        return-type (resolve-expression-def-return-type context expression-def)]
+  (let [{eval-context :context} (find-by-name name expression-defs)]
     (cond-> expression
-      return-type
-      (assoc :life/return-type return-type)
       eval-context
       (assoc :life/eval-context eval-context))))
 
 
 ;; 9.4. FunctionRef
-(defn- infer-function-ref-return-type
-  [{:keys [name] :as expression}]
-  ;; TODO: look into other libraries (:libraryName)
-  (case name
-    "ToQuantity"
-    (assoc expression :life/return-type (elm-type-specifier "Quantity"))
-    expression))
-
 (defmethod infer-types* :elm/function-ref
   [context expression]
-  (-> expression
-      (update :operand #(mapv (partial infer-types context) %))
-      (infer-function-ref-return-type)))
+  (update expression :operand #(mapv (partial infer-types context) %)))
 
 
 
@@ -166,7 +120,7 @@
   "Infers the types on query sources and assocs them into the context under
   [:life/scope-types `alias`]."
   [context {:keys [alias expression]}]
-  (let [{{scope-type :elementType} :life/return-type} (infer-types context expression)]
+  (let [{{scope-type :elementType} :resultTypeSpecifier} (infer-types context expression)]
     (cond-> context
       scope-type
       (assoc-in [:life/scope-types alias] (:name scope-type)))))
@@ -200,14 +154,10 @@
     [{first-source :expression}] :source
     :as expression}]
   (if return
-    (let [{:life/keys [return-type] :as return} (infer-types context return)]
-      (cond-> (assoc-in expression [:return :expression] return)
-        return-type
-        (assoc :life/return-type (list-type-specifier return-type))))
-    (let [{:life/keys [return-type] :as first-source} (infer-types context first-source)]
-      (cond-> (assoc-in expression [:source 0 :expression] first-source)
-        return-type
-        (assoc :life/return-type return-type)))))
+    (let [return (infer-types context return)]
+      (assoc-in expression [:return :expression] return))
+    (let [first-source (infer-types context first-source)]
+      (assoc-in expression [:source 0 :expression] first-source))))
 
 
 (defmethod infer-types* :elm/query
@@ -219,109 +169,88 @@
          (infer-query-return-type context))))
 
 
+(defmethod infer-types* :elm/unary-expression
+  [context expression]
+  (update expression :operand #(infer-types context %)))
 
-;; 11. External Data
 
-;; 11.1. Retrieve
-(defmethod infer-types* :elm/retrieve
-  [_ {data-type :dataType :as expression}]
-  (assoc expression :life/return-type (named-list-type-specifier data-type)))
+(defmethod infer-types* :elm/multiary-expression
+  [context expression]
+  (update expression :operand #(mapv (partial infer-types context) %)))
 
 
 
 ;; 12. Comparison Operators
 
-(derive :elm/equal :elm/comparison-operator)
-(derive :elm/equivalent :elm/comparison-operator)
-(derive :elm/greater :elm/comparison-operator)
-(derive :elm/greater-or-equal :elm/comparison-operator)
-(derive :elm/less :elm/comparison-operator)
-(derive :elm/less-or-equal :elm/comparison-operator)
-(derive :elm/not-equal :elm/comparison-operator)
+(derive :elm/equal :elm/multiary-expression)
+(derive :elm/equivalent :elm/multiary-expression)
+(derive :elm/greater :elm/multiary-expression)
+(derive :elm/greater-or-equal :elm/multiary-expression)
+(derive :elm/less :elm/multiary-expression)
+(derive :elm/less-or-equal :elm/multiary-expression)
+(derive :elm/not-equal :elm/multiary-expression)
 
-(defmethod infer-types* :elm/comparison-operator
-  [context expression]
-  (-> expression
-      (update :operand #(mapv (partial infer-types context) %))
-      (assoc :life/return-type (named-type-specifier "{urn:hl7-org:elm-types:r1}Boolean"))))
 
 
 ;; 13. Logical Operators
 
-(derive :elm/and :elm/binary-logical-operator)
-(derive :elm/implies :elm/binary-logical-operator)
-(derive :elm/or :elm/binary-logical-operator)
-(derive :elm/xor :elm/binary-logical-operator)
-
-(defmethod infer-types* :elm/binary-logical-operator
-  [context expression]
-  (-> expression
-      (update :operand #(mapv (partial infer-types context) %))
-      (assoc :life/return-type (named-type-specifier "{urn:hl7-org:elm-types:r1}Boolean"))))
-
-(defmethod infer-types* :elm/not
-  [context expression]
-  (-> expression
-      (update :operand #(infer-types context %))
-      (assoc :life/return-type (named-type-specifier "{urn:hl7-org:elm-types:r1}Boolean"))))
+(derive :elm/and :elm/multiary-expression)
+(derive :elm/implies :elm/multiary-expression)
+(derive :elm/or :elm/multiary-expression)
+(derive :elm/xor :elm/multiary-expression)
+(derive :elm/not :elm/unary-expression)
 
 
 
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs
-(defmethod infer-types* :elm/abs
-  [context {:keys [operand] :as expression}]
-  (let [{:life/keys [return-type] :as operand} (infer-types context operand)]
-    (assoc expression :operand operand :life/return-type return-type)))
+(derive :elm/abs :elm/unary-expression)
 
 
 
 ;; 18. Date and Time Operators
 
 ;; 18.11. DurationBetween
-(defmethod infer-types* :elm/duration-between
-  [context expression]
-  (-> expression
-      (update :operand #(mapv (partial infer-types context) %))
-      (assoc :life/return-type (named-type-specifier "{urn:hl7-org:elm-types:r1}Integer"))))
+(derive :elm/duration-between :elm/multiary-expression)
 
 
 
 ;; 20. List Operators
 
 ;; 20.25. SingletonFrom
-(defmethod infer-types* :elm/singleton-from
-  [context {:keys [operand] :as expression}]
-  (let [{{element-type :elementType} :life/return-type :as operand}
-        (infer-types context operand)]
-    (cond-> (assoc expression :operand operand)
-      element-type
-      (assoc :life/return-type element-type))))
+(derive :elm/singleton-from :elm/unary-expression)
+
 
 
 ;; 21. Aggregate Operators
 
 ;; 21.4. Count
 (defmethod infer-types* :elm/count
-  [context {:keys [source] :as expression}]
-  (assoc expression
-    :source (infer-types context source)
-    :life/return-type (elm-type-specifier "Integer")))
+  [context expression]
+  (update expression :source #(infer-types context %)))
 
 
 ;; 22. Type Operators
 
 ;; 22.1. As
-(defmethod infer-types* :elm/as
-  [context {as-type :asType as-type-specifier :asTypeSpecifier :as expression}]
-  (cond-> (update expression :operand #(infer-types context %))
-    as-type
-    (assoc :life/return-type (named-type-specifier as-type))
-    as-type-specifier
-    (assoc :life/return-type as-type-specifier)))
+(derive :elm/as :elm/unary-expression)
+
+
+;; 22.19. ToDate
+(derive :elm/to-date :elm/unary-expression)
+
+
+;; 22.20. ToDateTime
+(derive :elm/to-date-time :elm/unary-expression)
+
 
 ;; 22.24. ToQuantity
-(defmethod infer-types* :elm/to-quantity
-  [_ expression]
-  (assoc expression :life/return-type (elm-type-specifier "Quantity")))
+(derive :elm/to-quantity :elm/unary-expression)
+
+
+
+;; 23. Clinical Operators
+
+;; 23.4. CalculateAgeAt
+(derive :elm/calculate-age-at :elm/multiary-expression)

@@ -7,7 +7,7 @@
                                  FhirLibrarySourceProvider LibraryManager ModelManager]))
 
 (def ^:private options
-  (into-array CqlTranslator$Options []))
+  (into-array CqlTranslator$Options [CqlTranslator$Options/EnableResultTypes]))
 
 (defn translate [cql]
   (let [model-manager (ModelManager.)

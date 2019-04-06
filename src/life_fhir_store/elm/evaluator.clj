@@ -86,15 +86,23 @@
     expression-defs))
 
 
-(defn- types [expression-defs]
+(defn- types
+  "Returns a map of expression-def name to result-type."
+  [expression-defs]
   (reduce
     (fn [types
          {::anom/keys [category]
           :keys [name]
-          {:life/keys [return-type]} :expression}]
+          {:keys [resultTypeName resultTypeSpecifier]} :expression}]
       (if category
         types
-        (assoc types name return-type)))
+        (cond
+          resultTypeName
+          (assoc types name {:type "NamedTypeSpecifier" :name resultTypeName})
+          resultTypeSpecifier
+          (assoc types name resultTypeSpecifier)
+          :else
+          types)))
     {}
     expression-defs))
 

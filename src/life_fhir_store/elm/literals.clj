@@ -12,24 +12,28 @@
 (defn boolean [b]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Boolean"
+   :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"
    :value (str b)})
 
 
 (defn decimal [d]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Decimal"
+   :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
    :value (str d)})
 
 
 (defn integer [i]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Integer"
+   :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
    :value (str i)})
 
 
 (defn string [s]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}String"
+   :resultTypeName "{urn:hl7-org:elm-types:r1}String"
    :value s})
 
 

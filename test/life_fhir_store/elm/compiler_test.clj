@@ -67,26 +67,28 @@
   (testing "with entity supplied over query context"
     (are [elm entity result]
       (= result (-eval (compile {:eval-context "Population"} elm)
-                       nil {"O" entity}))
-      {:path "value"
-       :scope "O"
+                       nil {"P" entity}))
+      {:path "gender"
+       :scope "P"
        :type "Property"
-       :life/source-type "{http://hl7.org/fhir}Observation"}
-      {:Observation/value 1}
-      1))
+       :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
+       :life/source-type "{http://hl7.org/fhir}Patient"}
+      {:Patient/gender "male"}
+      "male"))
 
   (testing "with entity supplied directly"
     (are [elm entity result]
       (= result (-eval (compile {:eval-context "Population"
-                                 :life/single-query-scope "O"}
+                                 :life/single-query-scope "P"}
                                 elm)
                        nil entity))
-      {:path "value"
-       :scope "O"
+      {:path "gender"
+       :scope "P"
        :type "Property"
-       :life/source-type "{http://hl7.org/fhir}Observation"}
-      {:Observation/value 1}
-      1))
+       :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
+       :life/source-type "{http://hl7.org/fhir}Patient"}
+      {:Patient/gender "male"}
+      "male"))
 
   (testing "with source"
     (are [elm source result]
@@ -95,6 +97,7 @@
       {:path "gender"
        :source {:name "Patient" :type "ExpressionRef"}
        :type "Property"
+       :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
        :life/source-type "{http://hl7.org/fhir}Patient"}
       {:Patient/gender "male"}
       "male")))
@@ -158,11 +161,13 @@
                [{:path "value"
                  :scope "P"
                  :type "Property"
+                 :resultTypeName "{http://hl7.org/fhir}string"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 #elm/integer 2]}
         return {:path "value"
                 :scope "P"
                 :type "Property"
+                :resultTypeName "{http://hl7.org/fhir}string"
                 :life/source-type "{http://hl7.org/fhir}Patient"}]
     (are [elm res] (= res (-eval (compile {} elm) {:db ::db} nil))
       {:type "Query"
@@ -235,16 +240,14 @@
                [{:path "subject"
                  :scope "O0"
                  :type "Property"
+                 :resultTypeName "{http://hl7.org/fhir}Reference"
                  :life/scopes #{"O0"}
-                 :life/return-type {:type "NamedTypeSpecifier"
-                                    :name "{http://hl7.org/fhir}Patient"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}
                 {:path "subject"
                  :scope "O1"
                  :type "Property"
+                 :resultTypeName "{http://hl7.org/fhir}Reference"
                  :life/scopes #{"O1"}
-                 :life/return-type {:type "NamedTypeSpecifier"
-                                    :name "{http://hl7.org/fhir}Patient"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context {:life/single-query-scope "O0"}
           create-clause (compile-with-equiv-clause compile-context elm)
@@ -262,9 +265,8 @@
                               {:path "subject"
                                :scope "O"
                                :type "Property"
+                               :resultTypeName "{http://hl7.org/fhir}Reference"
                                :life/scopes #{"O"}
-                               :life/return-type {:type "NamedTypeSpecifier"
-                                                  :name "{http://hl7.org/fhir}Patient"}
                                :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context {:life/single-query-scope "P"}
           create-clause (compile-with-equiv-clause compile-context elm)
@@ -1081,6 +1083,29 @@
      {:path "value"
       :scope "I"
       :type "Property"
+      :resultTypeSpecifier
+      {:type [{:name "{http://hl7.org/fhir}Quantity",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}CodeableConcept",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}string",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}boolean",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}Range",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}Ratio",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}SampledData",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}Attachment",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}time",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}dateTime",
+               :type "NamedTypeSpecifier"}
+              {:name "{http://hl7.org/fhir}Period",
+               :type "NamedTypeSpecifier"}]}
       :life/source-type "{http://hl7.org/fhir}Observation"}}
     {:Observation/valueQuantity (quantity/write 1.0)}
     1.0
@@ -1091,9 +1116,69 @@
      {:path "effective"
       :scope "I"
       :type "Property"
+      :resultTypeSpecifier
+      {:type
+       [{:name "{http://hl7.org/fhir}dateTime",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}Period",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}Timing",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}instant",
+         :type "NamedTypeSpecifier"}]}
       :life/source-type "{http://hl7.org/fhir}Observation"}}
     {:Observation/effectiveDateTime (time/write (Year/of 2012))}
     (Year/of 2012)))
+
+
+;; 22.19. ToDate
+;;
+;; The ToDate operator converts the value of its argument to a Date value.
+;;
+;; For String values, The operator expects the string to be formatted using the
+;; ISO-8601 date representation:
+;;
+;; YYYY-MM-DD
+;;
+;; In addition, the string must be interpretable as a valid date value.
+;;
+;; If the input string is not formatted correctly, or does not represent a valid
+;; date value, the result is null.
+;;
+;; As with date literals, date values may be specified to any precision.
+;;
+;; For DateTime values, the result is equivalent to extracting the Date
+;; component of the DateTime value.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-to-date-test
+  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+    {:type "ToDate" :operand {:type "Null"}}
+    nil
+
+    {:type "ToDate" :operand #elm/string "2019"}
+    (Year/of 2019)
+
+    {:type "ToDate" :operand #elm/string "2019-01"}
+    (YearMonth/of 2019 1)
+
+    {:type "ToDate" :operand #elm/string "2019-01-01"}
+    (LocalDate/of 2019 1 1)
+
+    {:type "ToDate" :operand #elm/string "aaaa"}
+    nil
+
+    {:type "ToDate" :operand #elm/string "2019-13"}
+    nil
+
+    {:type "ToDate" :operand #elm/string "2019-02-29"}
+    nil
+
+    {:type "ToDate" :operand #elm/date [2019]}
+    (Year/of 2019)
+
+    {:type "ToDate" :operand #elm/date-time [2019 1 1 12 13 14]}
+    (LocalDate/of 2019 1 1)))
 
 
 ;; 22.20. ToDateTime
@@ -1125,3 +1210,41 @@
 
     {:type "ToList" :operand #elm/integer 1}
     [1]))
+
+
+
+;; 23. Clinical Operators
+
+;; 23.4.
+;;;
+;;; Calculates the age in the specified precision of a person born on the first
+;;; Date or DateTime as of the second Date or DateTime.
+;;;
+;;; The CalculateAgeAt operator has two signatures: Date, Date DateTime, DateTime
+;;;
+;;; For the Date overload, precision must be one of year, month, week, or day.
+;;;
+;;; The result of the calculation is the number of whole calendar periods that
+;;; have elapsed between the first date/time and the second.
+(deftest compile-calculate-age-at-test
+  (testing "Null"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      {:type "CalculateAgeAt" :operand [#elm/date [2018] {:type "Null"}]
+       :precision "Year"}
+      nil
+      {:type "CalculateAgeAt" :operand [{:type "Null"} #elm/date [2018]]
+       :precision "Year"}
+      nil))
+
+  (testing "Year"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+      {:type "CalculateAgeAt" :operand [#elm/date [2018] #elm/date [2019]]
+       :precision "Year"}
+      1
+      {:type "CalculateAgeAt" :operand [#elm/date [2018] #elm/date [2018]]
+       :precision "Year"}
+      0
+
+      {:type "CalculateAgeAt" :operand [#elm/date [2018] #elm/date [2018]]
+       :precision "Month"}
+      nil)))
