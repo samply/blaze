@@ -27,9 +27,8 @@
                :type-name string?))
 
 (defn- pull-pattern [structure-definitions type-name]
-  (if-let [structure-definition (structure-definitions type-name)]
-    (pull/pull-pattern structure-definitions structure-definition)
-    [(keyword type-name "id")]))
+  (when-let [structure-definition (structure-definitions type-name)]
+    (pull/pull-pattern structure-definitions structure-definition)))
 
 
 (defn- bundle [structure-definitions {:keys [type result]}]
@@ -37,21 +36,24 @@
     "ListTypeSpecifier"
     (let [[_ type-name] (elm-util/parse-qualified-name (:name (:elementType type)))
           pattern (pull-pattern structure-definitions type-name)]
-      {:result
-       (json/generate-string
-         (into
-           []
-           (comp
-             (take 2)
-             (map
-               (fn [entity]
-                 (let [db (d/entity-db entity)]
-                   (d/pull db pattern (:db/id entity)))))
-             (map #(assoc % :resourceType type-name)))
-           result)
-         {:key-fn name
-          :pretty true})
-       :resultType "Bundle"})
+      (if pattern
+        {:result
+         (json/generate-string
+           (into
+             []
+             (comp
+               (take 2)
+               (map
+                 (fn [entity]
+                   (let [db (d/entity-db entity)]
+                     (d/pull db pattern (:db/id entity)))))
+               (map #(assoc % :resourceType type-name)))
+             result)
+           {:key-fn name
+            :pretty true})
+         :resultType "Bundle"}
+        {:result (pr-str (into [] result))
+         :resultType type-name}))
     "NamedTypeSpecifier"
     {:result result
      :resultType (second (elm-util/parse-qualified-name (:name type)))}))
@@ -78,7 +80,7 @@
                 (fn [[name result]]
                   (if (instance? Exception result)
                     [{:name name
-                     :error (.getMessage ^Exception result)
+                      :error (.getMessage ^Exception result)
                       :location "[?:?]"}]
                     (if-let [bundle (bundle structure-definitions result)]
                       [(assoc bundle
