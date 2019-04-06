@@ -107,12 +107,28 @@
     expression-defs))
 
 
-(defn- assoc-types [results types]
+(defn- locators
+  "Returns a map of expression-def name to locator."
+  [expression-defs]
+  (reduce
+    (fn [locators
+         {::anom/keys [category]
+          :keys [name locator]}]
+      (if category
+        locators
+        (assoc locators name locator)))
+    {}
+    expression-defs))
+
+
+(defn- assoc-types-and-locators [results types locators]
   (into
     {}
     (map
       (fn [[name result]]
-        [name {:result result :type (get types name)}]))
+        [name {:result result
+               :type (get types name)
+               :locator (get locators name)}]))
     results))
 
 
@@ -129,4 +145,6 @@
         (md/chain'
           (apply md/zip' (map results keys))
           (fn [results]
-            (assoc-types (zipmap keys results) (types expression-defs))))))))
+            (assoc-types-and-locators (zipmap keys results)
+                                      (types expression-defs)
+                                      (locators expression-defs))))))))

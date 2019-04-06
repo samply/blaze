@@ -17,7 +17,8 @@
     [life-fhir-store.middleware.exception :refer [wrap-exception]]
     [life-fhir-store.middleware.json :refer [wrap-json]]
     [manifold.deferred :as md]
-    [ring.util.response :as ring])
+    [ring.util.response :as ring]
+    [clojure.string :as str])
   (:import
     [java.time OffsetDateTime]))
 
@@ -31,7 +32,12 @@
     (pull/pull-pattern structure-definitions structure-definition)))
 
 
-(defn- bundle [structure-definitions {:keys [type result]}]
+(defn location [locator]
+  (if-let [l (first (str/split locator #"-"))]
+    (str "[" l "]")
+    "[?:?]"))
+
+(defn- bundle [structure-definitions {:keys [result type locator]}]
   (case (:type type)
     "ListTypeSpecifier"
     (let [[_ type-name] (elm-util/parse-qualified-name (:name (:elementType type)))
@@ -51,11 +57,14 @@
              result)
            {:key-fn name
             :pretty true})
+         :location (location locator)
          :resultType "Bundle"}
         {:result (pr-str (into [] result))
+         :location (location locator)
          :resultType type-name}))
     "NamedTypeSpecifier"
     {:result result
+     :location (location locator)
      :resultType (second (elm-util/parse-qualified-name (:name type)))}))
 
 
@@ -83,9 +92,7 @@
                       :error (.getMessage ^Exception result)
                       :location "[?:?]"}]
                     (if-let [bundle (bundle structure-definitions result)]
-                      [(assoc bundle
-                         :name name
-                         :location "[?:?]")]
+                      [(assoc bundle :name name)]
                       [])))
                 results)))
           (md/catch'
