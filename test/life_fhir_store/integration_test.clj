@@ -58,7 +58,10 @@
   (slurp (str "integration-test/" query-name "/query.cql")))
 
 (deftest query-test
-  (are [query-name] (= 1 (get-in (evaluate (db-with (read-data query-name))
-                                           (read-query query-name))
-                                 ["NumberOfPatients" :result]))
-    "query-3"))
+  (are [query-name num]
+    (= num (get-in (evaluate (db-with (read-data query-name))
+                             (read-query query-name))
+                   ["NumberOfPatients" :result]))
+
+    "query-3" 1
+    "query-5" 3))
