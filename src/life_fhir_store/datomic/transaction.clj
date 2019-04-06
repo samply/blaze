@@ -22,31 +22,38 @@
   (-> element :life.element-definition/type :life.element-definition.type/code))
 
 
-(defn- coerce-date-time [value]
+(defn- coerce-date-time [^String value]
   (time/write
-    (try
-      (OffsetDateTime/parse value)
-      (catch Exception _
-        (LocalDateTime/parse value)))))
-
-
-(defn- coerce-date [value]
-  (time/write
-    (try
+    (case (.length value)
+      4
+      (Year/parse value)
+      7
+      (YearMonth/parse value)
+      10
       (LocalDate/parse value)
-      (catch Exception _
-        (try
-          (YearMonth/parse value)
-          (catch Exception _
-            (Year/parse value)))))))
+      (try
+        (OffsetDateTime/parse value)
+        (catch Exception _
+          (LocalDateTime/parse value))))))
+
+
+(defn- coerce-date [^String value]
+  (time/write
+    (case (.length value)
+      4
+      (Year/parse value)
+      7
+      (YearMonth/parse value)
+      10
+      (LocalDate/parse value))))
 
 
 (s/fdef coerce-value
-  :args (s/cat :element :life/element-definition :value some?))
+  :args (s/cat :type-code string? :value some?))
 
 (defn coerce-value
-  [element value]
-  (case (type-code element)
+  [type-code value]
+  (case type-code
     ("string" "code" "id" "markdown" "uri" "xhtml") value
     "instant" (Date/from (Instant/from (.parse DateTimeFormatter/ISO_DATE_TIME value)))
     "decimal" (double value)
@@ -67,7 +74,7 @@
   (d/tempid (partition-indent element)))
 
 (s/fdef update-tx-data
-  :args (s/cat :structure-definitions some?
+  :args (s/cat :structure-definitions map?
                :old (s/nilable map?) :new (s/nilable map?))
   :ret ::ds/tx-data)
 
@@ -94,10 +101,10 @@
                       []
                       (map
                         (fn [val]
-                          (when-let [val (coerce-value element val)]
+                          (when-let [val (coerce-value (type-code element) val)]
                             [:db/add db-id typed-key val])))
                       val)
-                    (when-let [val (coerce-value element val)]
+                    (when-let [val (coerce-value (type-code element) val)]
                       [[:db/add db-id typed-key val]]))
 
                   (= "Reference" (type-code element))

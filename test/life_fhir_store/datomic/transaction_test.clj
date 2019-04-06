@@ -6,11 +6,15 @@
     [juxt.iota :refer [given]]
     [life-fhir-store.datomic.coding :as coding]
     [life-fhir-store.datomic.schema :as schema]
-    [life-fhir-store.datomic.transaction :refer [update-tx-data]]
-    [life-fhir-store.util :as u]))
+    [life-fhir-store.datomic.time :as time]
+    [life-fhir-store.datomic.transaction :refer [update-tx-data coerce-value]]
+    [life-fhir-store.util :as u])
+  (:import
+    [java.time Year YearMonth LocalDate LocalDateTime OffsetDateTime ZoneOffset]))
 
 (st/instrument)
 
+(d/delete-database "datomic:mem://test")
 (d/create-database "datomic:mem://test")
 
 (def conn (d/connect "datomic:mem://test"))
@@ -118,3 +122,29 @@
              structure-definitions
              {:db/id 1}
              {:resourceType "Observation" :valueQuantity {:value 1.0}}))))))
+
+(deftest coerce-value-test
+  (testing "date with year precision"
+    (is (= (Year/of 2019) (time/read (coerce-value "date" "2019")))))
+
+  (testing "date with year-month precision"
+    (is (= (YearMonth/of 2019 1) (time/read (coerce-value "date" "2019-01")))))
+
+  (testing "date"
+    (is (= (LocalDate/of 2019 2 3) (time/read (coerce-value "date" "2019-02-03")))))
+
+  (testing "dateTime with year precision"
+    (is (= (Year/of 2019) (time/read (coerce-value "dateTime" "2019")))))
+
+  (testing "dateTime with year-month precision"
+    (is (= (YearMonth/of 2019 1) (time/read (coerce-value "dateTime" "2019-01")))))
+
+  (testing "dateTime with date precision"
+    (is (= (LocalDate/of 2019 2 3) (time/read (coerce-value "dateTime" "2019-02-03")))))
+
+  (testing "dateTime without timezone"
+    (is (= (LocalDateTime/of 2019 2 3 12 13 14) (time/read (coerce-value "dateTime" "2019-02-03T12:13:14")))))
+
+  (testing "dateTime with timezone"
+    (is (= (OffsetDateTime/of 2019 2 3 12 13 14 0 (ZoneOffset/ofHours 1))
+           (time/read (coerce-value "dateTime" "2019-02-03T12:13:14+01:00"))))))
