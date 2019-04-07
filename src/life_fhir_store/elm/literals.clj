@@ -6,29 +6,41 @@
 
 
 (s/fdef boolean
-  :args (s/cat :b boolean?)
+  :args (s/cat :s string?)
   :ret :elm/expression)
 
-(defn boolean [b]
+(defn boolean [s]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Boolean"
    :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"
-   :value (str b)})
+   :value s})
 
 
-(defn decimal [d]
+(s/fdef decimal
+  :args (s/cat :s string?)
+  :ret :elm/expression)
+
+(defn decimal [s]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Decimal"
    :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
-   :value (str d)})
+   :value s})
 
 
-(defn integer [i]
+(s/fdef integer
+  :args (s/cat :s string?)
+  :ret :elm/expression)
+
+(defn integer [s]
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Integer"
    :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
-   :value (str i)})
+   :value s})
 
+
+(s/fdef string
+  :args (s/cat :s string?)
+  :ret :elm/expression)
 
 (defn string [s]
   {:type "Literal"
@@ -119,9 +131,9 @@
 (defn date [[year month day]]
   (cond->
     {:type "Date"
-     :year (integer year)}
-    month (assoc :month (integer month))
-    day (assoc :day (integer day))))
+     :year (integer (str year))}
+    month (assoc :month (integer (str month)))
+    day (assoc :day (integer (str day)))))
 
 
 (s/fdef date-time
@@ -131,11 +143,11 @@
 (defn date-time [[year month day hour minute second millisecond timezone-offset]]
   (cond->
     {:type "DateTime"
-     :year (integer year)}
-    month (assoc :month (integer month))
-    day (assoc :day (integer day))
-    hour (assoc :hour (integer hour))
-    minute (assoc :minute (integer minute))
-    second (assoc :second (integer second))
-    millisecond (assoc :millisecond (integer millisecond))
-    timezone-offset (assoc :timezone-offset (decimal timezone-offset))))
+     :year (integer (str year))}
+    month (assoc :month (integer (str month)))
+    day (assoc :day (integer (str day)))
+    hour (assoc :hour (integer (str hour)))
+    minute (assoc :minute (integer (str minute)))
+    second (assoc :second (integer (str second)))
+    millisecond (assoc :millisecond (integer (str millisecond)))
+    timezone-offset (assoc :timezone-offset (decimal (str timezone-offset)))))

@@ -40,25 +40,23 @@
 ;; 1.1 Literal
 (deftest compile-literal-test
   (testing "Boolean Literal"
-    (are [elm boolean] (= boolean (compile {} elm))
-      #elm/boolean true true
-      #elm/boolean false false))
+    (are [elm res] (= res (compile {} elm))
+      #elm/boolean "true" true
+      #elm/boolean "false" false))
 
   (testing "Decimal Literal"
-    (are [elm decimal] (= decimal (compile {} elm))
-      #elm/decimal -1 -1.0
-      #elm/decimal -0.1 -0.1
-      #elm/decimal 0 0.0
-      #elm/decimal 0.1 0.1
-      #elm/decimal 1 1.0))
+    (are [elm res] (= res (compile {} elm))
+      #elm/decimal "-1" -1.0
+      #elm/decimal "-0.1" -0.1
+      #elm/decimal "0" 0.0
+      #elm/decimal "0.1" 0.1
+      #elm/decimal "1" 1.0))
 
   (testing "Integer Literal"
-    (are [elm int] (= int (compile {} elm))
-      #elm/integer -1 -1
-      #elm/integer 0 0
-      #elm/integer 1 1)))
-
-
+    (are [elm res] (= res (compile {} elm))
+      #elm/integer "-1" -1
+      #elm/integer "0" 0
+      #elm/integer "1" 1)))
 
 ;; 2. Structured Values
 
@@ -131,12 +129,13 @@
       ::coding)))
 
 
+
 ;; 9. Reusing Logic
 
 ;; 9.2. ExpressionRef
 (deftest compile-expression-ref-test
-  (are [elm result]
-    (= result (-eval (compile {} elm) {:library-context {"foo" ::result}} nil))
+  (are [elm res]
+    (= res (-eval (compile {} elm) {:library-context {"foo" ::result}} nil))
     {:type "ExpressionRef" :name "foo"}
     ::result))
 
@@ -163,7 +162,7 @@
                  :type "Property"
                  :resultTypeName "{http://hl7.org/fhir}string"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
-                #elm/integer 2]}
+                #elm/integer "2"]}
         return {:path "value"
                 :scope "P"
                 :type "Property"
@@ -187,7 +186,7 @@
        :source
        [{:alias "P"
          :expression retrieve}]
-       :where #elm/boolean false}
+       :where #elm/boolean "false"}
       #{}
 
       {:type "Query"
@@ -208,7 +207,7 @@
 
 ;; 10.3. AliasRef
 (deftest compile-alias-ref-test
-  (are [elm code] (= code (-eval (compile {} elm) {} {"foo" ::result}))
+  (are [elm res] (= res (-eval (compile {} elm) {} {"foo" ::result}))
     {:type "AliasRef" :name "foo"}
     ::result))
 
@@ -397,17 +396,17 @@
 (deftest compile-equal-test
   (testing "Decimal"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/equal [#elm/decimal 1 #elm/decimal 1] true
-      #elm/equal [#elm/decimal 1 #elm/decimal 2] false
-      #elm/equal [{:type "Null"} #elm/decimal 1] nil
-      #elm/equal [#elm/decimal 1 {:type "Null"}] nil))
+      #elm/equal [#elm/decimal "1" #elm/decimal "1"] true
+      #elm/equal [#elm/decimal "1" #elm/decimal "2"] false
+      #elm/equal [{:type "Null"} #elm/decimal "1"] nil
+      #elm/equal [#elm/decimal "1" {:type "Null"}] nil))
 
   (testing "Integer"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/equal [#elm/integer 1 #elm/integer 1] true
-      #elm/equal [#elm/integer 1 #elm/integer 2] false
-      #elm/equal [{:type "Null"} #elm/integer 1] nil
-      #elm/equal [#elm/integer 1 {:type "Null"}] nil))
+      #elm/equal [#elm/integer "1" #elm/integer "1"] true
+      #elm/equal [#elm/integer "1" #elm/integer "2"] false
+      #elm/equal [{:type "Null"} #elm/integer "1"] nil
+      #elm/equal [#elm/integer "1" {:type "Null"}] nil))
 
   (testing "Quantity"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
@@ -421,17 +420,17 @@
 (deftest compile-greater-test
   (testing "Decimal"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/greater [#elm/decimal 1 #elm/decimal 1] false
-      #elm/greater [#elm/decimal 2 #elm/decimal 1] true
-      #elm/greater [{:type "Null"} #elm/decimal 1] nil
-      #elm/greater [#elm/decimal 1 {:type "Null"}] nil))
+      #elm/greater [#elm/decimal "1" #elm/decimal "1"] false
+      #elm/greater [#elm/decimal "2" #elm/decimal "1"] true
+      #elm/greater [{:type "Null"} #elm/decimal "1"] nil
+      #elm/greater [#elm/decimal "1" {:type "Null"}] nil))
 
   (testing "Integer"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/greater [#elm/integer 1 #elm/integer 1] false
-      #elm/greater [#elm/integer 2 #elm/integer 1] true
-      #elm/greater [{:type "Null"} #elm/integer 1] nil
-      #elm/greater [#elm/integer 1 {:type "Null"}] nil))
+      #elm/greater [#elm/integer "1" #elm/integer "1"] false
+      #elm/greater [#elm/integer "2" #elm/integer "1"] true
+      #elm/greater [{:type "Null"} #elm/integer "1"] nil
+      #elm/greater [#elm/integer "1" {:type "Null"}] nil))
 
   (testing "Quantity"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
@@ -455,16 +454,16 @@
 (deftest compile-greater-or-equal-test
   (testing "Decimal"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/greater-or-equal [#elm/decimal 2 #elm/decimal 1] true
-      #elm/greater-or-equal [{:type "Null"} #elm/decimal 1] nil
-      #elm/greater-or-equal [#elm/decimal 1 {:type "Null"}] nil))
+      #elm/greater-or-equal [#elm/decimal "2" #elm/decimal "1"] true
+      #elm/greater-or-equal [{:type "Null"} #elm/decimal "1"] nil
+      #elm/greater-or-equal [#elm/decimal "1" {:type "Null"}] nil))
 
   (testing "Integer"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/greater-or-equal [#elm/integer 1 #elm/integer 1] true
-      #elm/greater-or-equal [#elm/integer 2 #elm/integer 1] true
-      #elm/greater-or-equal [{:type "Null"} #elm/integer 1] nil
-      #elm/greater-or-equal [#elm/integer 1 {:type "Null"}] nil))
+      #elm/greater-or-equal [#elm/integer "1" #elm/integer "1"] true
+      #elm/greater-or-equal [#elm/integer "2" #elm/integer "1"] true
+      #elm/greater-or-equal [{:type "Null"} #elm/integer "1"] nil
+      #elm/greater-or-equal [#elm/integer "1" {:type "Null"}] nil))
 
   (testing "Quantity"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
@@ -487,15 +486,15 @@
 (deftest compile-less-test
   (testing "Decimal"
     (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
-      #elm/less [#elm/decimal 1 #elm/decimal 1] false
-      #elm/less [#elm/decimal 1 #elm/decimal 2] true
-      #elm/less [{:type "Null"} #elm/decimal 2] nil
-      #elm/less [#elm/decimal 1 {:type "Null"}] nil))
+      #elm/less [#elm/decimal "1" #elm/decimal "1"] false
+      #elm/less [#elm/decimal "1" #elm/decimal "2"] true
+      #elm/less [{:type "Null"} #elm/decimal "2"] nil
+      #elm/less [#elm/decimal "1" {:type "Null"}] nil))
 
   (testing "Integer"
     (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
-      #elm/less [#elm/integer 1 #elm/integer 1] false
-      #elm/less [#elm/integer 1 #elm/integer 2] true))
+      #elm/less [#elm/integer "1" #elm/integer "1"] false
+      #elm/less [#elm/integer "1" #elm/integer "2"] true))
 
   (testing "Quantity"
     (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
@@ -523,16 +522,16 @@
 (deftest compile-less-or-equal-test
   (testing "Decimal"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/less-or-equal [#elm/decimal 1 #elm/decimal 2] true
-      #elm/less-or-equal [{:type "Null"} #elm/decimal 2] nil
-      #elm/less-or-equal [#elm/decimal 1 {:type "Null"}] nil))
+      #elm/less-or-equal [#elm/decimal "1" #elm/decimal "2"] true
+      #elm/less-or-equal [{:type "Null"} #elm/decimal "2"] nil
+      #elm/less-or-equal [#elm/decimal "1" {:type "Null"}] nil))
 
   (testing "Integer"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/less-or-equal [#elm/integer 1 #elm/integer 1] true
-      #elm/less-or-equal [#elm/integer 1 #elm/integer 2] true
-      #elm/less-or-equal [{:type "Null"} #elm/integer 2] nil
-      #elm/less-or-equal [#elm/integer 1 {:type "Null"}] nil))
+      #elm/less-or-equal [#elm/integer "1" #elm/integer "1"] true
+      #elm/less-or-equal [#elm/integer "1" #elm/integer "2"] true
+      #elm/less-or-equal [{:type "Null"} #elm/integer "2"] nil
+      #elm/less-or-equal [#elm/integer "1" {:type "Null"}] nil))
 
   (testing "Quantity"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
@@ -553,17 +552,17 @@
 (deftest compile-not-equal-test
   (testing "Decimal"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/not-equal [#elm/decimal 1 #elm/decimal 2] true
-      #elm/not-equal [#elm/decimal 1 #elm/decimal 1] false
-      #elm/not-equal [{:type "Null"} #elm/decimal 1] nil
-      #elm/not-equal [#elm/decimal 1 {:type "Null"}] nil))
+      #elm/not-equal [#elm/decimal "1" #elm/decimal "2"] true
+      #elm/not-equal [#elm/decimal "1" #elm/decimal "1"] false
+      #elm/not-equal [{:type "Null"} #elm/decimal "1"] nil
+      #elm/not-equal [#elm/decimal "1" {:type "Null"}] nil))
 
   (testing "Integer"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
-      #elm/not-equal [#elm/integer 1 #elm/integer 2] true
-      #elm/not-equal [#elm/integer 1 #elm/integer 1] false
-      #elm/not-equal [{:type "Null"} #elm/integer 1] nil
-      #elm/not-equal [#elm/integer 1 {:type "Null"}] nil))
+      #elm/not-equal [#elm/integer "1" #elm/integer "2"] true
+      #elm/not-equal [#elm/integer "1" #elm/integer "1"] false
+      #elm/not-equal [{:type "Null"} #elm/integer "1"] nil
+      #elm/not-equal [#elm/integer "1" {:type "Null"}] nil))
 
   (testing "Quantity"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
@@ -579,16 +578,16 @@
 ;; 13.1. And
 (deftest compile-and-test
   (are [a b c] (= c (-eval (compile {} {:type "And" :operand [a b]}) {} nil))
-    #elm/boolean true #elm/boolean true true
-    #elm/boolean true #elm/boolean false false
-    #elm/boolean true {:type "Null"} nil
+    #elm/boolean "true" #elm/boolean "true" true
+    #elm/boolean "true" #elm/boolean "false" false
+    #elm/boolean "true" {:type "Null"} nil
 
-    #elm/boolean false #elm/boolean true false
-    #elm/boolean false #elm/boolean false false
-    #elm/boolean false {:type "Null"} false
+    #elm/boolean "false" #elm/boolean "true" false
+    #elm/boolean "false" #elm/boolean "false" false
+    #elm/boolean "false" {:type "Null"} false
 
-    {:type "Null"} #elm/boolean true nil
-    {:type "Null"} #elm/boolean false false
+    {:type "Null"} #elm/boolean "true" nil
+    {:type "Null"} #elm/boolean "false" false
     {:type "Null"} {:type "Null"} nil))
 
 
@@ -600,24 +599,24 @@
 ;; 13.3. Not
 (deftest compile-not-test
   (are [a b] (= b (-eval (compile {} {:type "Not" :operand a}) {} nil))
-    #elm/boolean true false
-    #elm/boolean false true
+    #elm/boolean "true" false
+    #elm/boolean "false" true
     {:type "Null"} nil))
 
 
 ;; 13.4. Or
 (deftest compile-or-test
   (are [a b c] (= c (-eval (compile {} {:type "Or" :operand [a b]}) {} nil))
-    #elm/boolean true #elm/boolean true true
-    #elm/boolean true #elm/boolean false true
-    #elm/boolean true {:type "Null"} true
+    #elm/boolean "true" #elm/boolean "true" true
+    #elm/boolean "true" #elm/boolean "false" true
+    #elm/boolean "true" {:type "Null"} true
 
-    #elm/boolean false #elm/boolean true true
-    #elm/boolean false #elm/boolean false false
-    #elm/boolean false {:type "Null"} nil
+    #elm/boolean "false" #elm/boolean "true" true
+    #elm/boolean "false" #elm/boolean "false" false
+    #elm/boolean "false" {:type "Null"} nil
 
-    {:type "Null"} #elm/boolean true true
-    {:type "Null"} #elm/boolean false nil
+    {:type "Null"} #elm/boolean "true" true
+    {:type "Null"} #elm/boolean "false" nil
     {:type "Null"} {:type "Null"} nil))
 
 
@@ -642,33 +641,52 @@
   (are [elm res] (= res (-eval (compile {} {:type "Coalesce" :operand elm}) {} nil))
     [] nil
     [{:type "Null"}] nil
-    [#elm/boolean false #elm/boolean true] false
-    [{:type "Null"} #elm/integer 1 #elm/integer 2] 1
-    [#elm/integer 2] 2))
+    [#elm/boolean "false" #elm/boolean "true"] false
+    [{:type "Null"} #elm/integer "1" #elm/integer "2"] 1
+    [#elm/integer "2"] 2))
 
 
 ;; 14.3. IsFalse
 (deftest compile-is-false-test
   (are [elm res] (= res (-eval (compile {} {:type "IsFalse" :operand elm}) {} nil))
-    #elm/boolean true false
-    #elm/boolean false true
+    #elm/boolean "true" false
+    #elm/boolean "false" true
     {:type "Null"} false))
 
 
 ;; 14.4. IsNull
 (deftest compile-is-null-test
   (are [elm res] (= res (-eval (compile {} {:type "IsNull" :operand elm}) {} nil))
-    #elm/boolean true false
-    #elm/boolean false false
+    #elm/boolean "true" false
+    #elm/boolean "false" false
     {:type "Null"} true))
 
 
 ;; 14.5. IsTrue
 (deftest compile-is-true-test
   (are [elm res] (= res (-eval (compile {} {:type "IsTrue" :operand elm}) {} nil))
-    #elm/boolean true true
-    #elm/boolean false false
+    #elm/boolean "true" true
+    #elm/boolean "false" false
     {:type "Null"} false))
+
+
+
+;; 16. Arithmetic Operators
+
+;; 16.1. Abs
+(deftest compile-abs-test
+  (are [elm res] (= res (-eval (compile {} {:type "Abs" :operand elm}) {} nil))
+    #elm/integer "-1" 1
+    #elm/integer "0" 0
+    #elm/integer "1" 1
+
+    #elm/decimal "-1" 1.0
+    #elm/decimal "0" 0.0
+    #elm/decimal "1" 1.0
+
+    #elm/quantity [-1] 1
+    #elm/quantity [0] 0
+    #elm/quantity [1] 1))
 
 
 
@@ -690,25 +708,6 @@
     #elm/not-equal [#elm/string "1" #elm/string "1"] false
     #elm/not-equal [{:type "Null"} #elm/string "1"] nil
     #elm/not-equal [#elm/string "1" {:type "Null"}] nil))
-
-
-
-;; 16. Arithmetic Operators
-
-;; 16.1. Abs
-(deftest compile-abs-test
-  (are [elm res] (= res (-eval (compile {} {:type "Abs" :operand elm}) {} nil))
-    #elm/integer -1 1
-    #elm/integer 0 0
-    #elm/integer 1 1
-
-    #elm/decimal -1 1.0
-    #elm/decimal 0 0.0
-    #elm/decimal 1 1.0
-
-    #elm/quantity [-1] 1
-    #elm/quantity [0] 0
-    #elm/quantity [1] 1))
 
 
 
@@ -908,13 +907,13 @@
     #{nil}
 
     {:type "Intersect"
-     :operand [#elm/list [#elm/integer 1]]}
+     :operand [#elm/list [#elm/integer "1"]]}
     #{1}
 
     {:type "Intersect"
      :operand
-     [#elm/list [#elm/integer 1]
-      #elm/list [#elm/integer 1 #elm/integer 2]]}
+     [#elm/list [#elm/integer "1"]
+      #elm/list [#elm/integer "1" #elm/integer "2"]]}
     #{1}))
 
 
@@ -934,19 +933,19 @@
     #{nil}
 
     {:type "Union"
-     :operand [#elm/list [#elm/integer 1]]}
+     :operand [#elm/list [#elm/integer "1"]]}
     #{1}
 
     {:type "Union"
      :operand
-     [#elm/list [#elm/integer 1]
-      #elm/list [#elm/integer 2]]}
+     [#elm/list [#elm/integer "1"]
+      #elm/list [#elm/integer "2"]]}
     #{1 2}
 
     {:type "Union"
      :operand
-     [#elm/list [#elm/integer 1]
-      #elm/list [#elm/integer 1 #elm/integer 2]]}
+     [#elm/list [#elm/integer "1"]
+      #elm/list [#elm/integer "1" #elm/integer "2"]]}
     #{1 2}))
 
 
@@ -962,34 +961,34 @@
     #elm/list [{:type "Null"}]
     [nil]
 
-    #elm/list [#elm/integer 1]
+    #elm/list [#elm/integer "1"]
     [1]
 
-    #elm/list [#elm/integer 1 {:type "Null"}]
+    #elm/list [#elm/integer "1" {:type "Null"}]
     [1 nil]
 
-    #elm/list [#elm/integer 1 #elm/integer 2]
+    #elm/list [#elm/integer "1" #elm/integer "2"]
     [1 2]))
 
 
 ;; 20.5. Equal
 (deftest compile-equal-list-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
-    #elm/equal [#elm/list [#elm/integer 1] #elm/list [#elm/integer 1]] true
-    #elm/equal [#elm/list [#elm/integer 1] #elm/list []] false
-    #elm/equal [#elm/list [#elm/integer 1] #elm/list [#elm/integer 2]] false
-    #elm/equal [{:type "Null"} #elm/list [#elm/integer 1]] nil
-    #elm/equal [#elm/list [#elm/integer 1] {:type "Null"}] nil))
+    #elm/equal [#elm/list [#elm/integer "1"] #elm/list [#elm/integer "1"]] true
+    #elm/equal [#elm/list [#elm/integer "1"] #elm/list []] false
+    #elm/equal [#elm/list [#elm/integer "1"] #elm/list [#elm/integer "2"]] false
+    #elm/equal [{:type "Null"} #elm/list [#elm/integer "1"]] nil
+    #elm/equal [#elm/list [#elm/integer "1"] {:type "Null"}] nil))
 
 
 ;; 20.19. Not Equal
 (deftest compile-not-equal-list-test
   (are [elm res] (= res (-eval (compile {} elm) {} nil))
-    #elm/not-equal [#elm/list [#elm/integer 1] #elm/list []] true
-    #elm/not-equal [#elm/list [#elm/integer 1] #elm/list [#elm/integer 2]] true
-    #elm/not-equal [#elm/list [#elm/integer 1] #elm/list [#elm/integer 1]] false
-    #elm/not-equal [{:type "Null"} #elm/list [#elm/integer 1]] nil
-    #elm/not-equal [#elm/list [#elm/integer 1] {:type "Null"}] nil))
+    #elm/not-equal [#elm/list [#elm/integer "1"] #elm/list []] true
+    #elm/not-equal [#elm/list [#elm/integer "1"] #elm/list [#elm/integer "2"]] true
+    #elm/not-equal [#elm/list [#elm/integer "1"] #elm/list [#elm/integer "1"]] false
+    #elm/not-equal [{:type "Null"} #elm/list [#elm/integer "1"]] nil
+    #elm/not-equal [#elm/list [#elm/integer "1"] {:type "Null"}] nil))
 
 
 ;; 20.25. SingletonFrom
@@ -1004,11 +1003,11 @@
     nil
 
     {:type "SingletonFrom"
-     :operand #elm/list [#elm/integer 1]}
+     :operand #elm/list [#elm/integer "1"]}
     1)
 
   (let [elm {:type "SingletonFrom"
-             :operand #elm/list [#elm/integer 1 #elm/integer 1]}
+             :operand #elm/list [#elm/integer "1" #elm/integer "1"]}
         expr (compile {} elm)]
     (is (thrown? Exception (-eval expr {} nil))))
 
@@ -1056,11 +1055,11 @@
     0
 
     {:type "Count"
-     :source #elm/list [#elm/integer 1]}
+     :source #elm/list [#elm/integer "1"]}
     1
 
     {:type "Count"
-     :source #elm/list [#elm/integer 1 #elm/integer 1]}
+     :source #elm/list [#elm/integer "1" #elm/integer "1"]}
     2))
 
 
@@ -1205,10 +1204,10 @@
     {:type "ToList" :operand {:type "Null"}}
     []
 
-    {:type "ToList" :operand #elm/boolean false}
+    {:type "ToList" :operand #elm/boolean "false"}
     [false]
 
-    {:type "ToList" :operand #elm/integer 1}
+    {:type "ToList" :operand #elm/integer "1"}
     [1]))
 
 
