@@ -1305,7 +1305,10 @@
   (let [operand (compile context operand)]
     (reify Expression
       (-eval [_ context scope]
-        (abs (-eval operand context scope))))))
+        (abs (-eval operand context scope)))
+      (-hash [_]
+        {:type :abs
+         :operand (-hash operand)}))))
 
 
 
