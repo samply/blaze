@@ -10,5 +10,6 @@
  elm/less-or-equal life-fhir-store.elm.literals/less-or-equal
  elm/not-equal life-fhir-store.elm.literals/not-equal
  elm/list life-fhir-store.elm.literals/list
+ elm/if life-fhir-store.elm.literals/if
  elm/date life-fhir-store.elm.literals/date
  elm/date-time life-fhir-store.elm.literals/date-time}

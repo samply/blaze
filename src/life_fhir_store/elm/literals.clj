@@ -124,6 +124,14 @@
    :element elements})
 
 
+(s/fdef if
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn if [[condition then else]]
+  {:type "If" :condition condition :then then :else else})
+
+
 (s/fdef date
   :args (s/cat :args (s/coll-of int?))
   :ret :elm/expression)

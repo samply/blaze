@@ -671,6 +671,23 @@
 
 
 
+;; 15. Conditional Operators
+
+;; 15.2. If
+;;
+;; The If operator evaluates a condition, and returns the then argument if the
+;; condition evaluates to true; if the condition evaluates to false or null, the
+;; result of the else argument is returned. The static type of the then argument
+;; determines the result type of the conditional, and the else argument must be
+;; of that same type.
+(deftest compile-if-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    #elm/if [#elm/boolean "true" #elm/integer "1" #elm/integer "2"] 1
+    #elm/if [#elm/boolean "false" #elm/integer "1" #elm/integer "2"] 2
+    #elm/if [{:type "Null"} #elm/integer "1" #elm/integer "2"] 2))
+
+
+
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs

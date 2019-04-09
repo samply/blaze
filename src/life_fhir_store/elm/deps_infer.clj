@@ -195,6 +195,24 @@
 
 
 
+;; 15. Conditional Operators
+
+;; 15.2. If
+(defmethod infer-deps :elm.deps.type/if
+  [{:keys [condition then else] :as expression}]
+  (let [condition (infer-deps condition)
+        then (infer-deps then)
+        else (infer-deps else)
+        all [condition then else]]
+    (assoc expression
+      :condition condition
+      :then then
+      :else else
+      :life/deps (transduce (map :life/deps) set/union all)
+      :life/scopes (transduce (map :life/scopes) set/union all))))
+
+
+
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs

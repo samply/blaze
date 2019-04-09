@@ -202,6 +202,18 @@
 
 
 
+;; 15. Conditional Operators
+
+;; 15.2. If
+(defmethod infer-types* :elm/if
+  [context expression]
+  (-> expression
+      (update :condition #(infer-types context %))
+      (update :then #(infer-types context %))
+      (update :else #(infer-types context %))))
+
+
+
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs

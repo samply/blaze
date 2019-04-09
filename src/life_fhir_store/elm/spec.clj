@@ -373,6 +373,26 @@
 
 
 
+;; 15. Conditional Operators
+
+;; 15.2. If
+(s/def :elm.if/condition
+  :elm/expression)
+
+
+(s/def :elm.if/then
+  :elm/expression)
+
+
+(s/def :elm.if/else
+  :elm/expression)
+
+
+(defmethod expression :elm.spec.type/if [_]
+  (s/keys :opt-un [:elm.if/condition :elm.if/then :elm.if/else]))
+
+
+
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs

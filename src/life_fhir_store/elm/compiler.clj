@@ -1297,6 +1297,27 @@
 
 
 
+;; 15. Conditional Operators
+
+;; 15.2. If
+(defmethod compile* :elm.compiler.type/if
+  [context {:keys [condition then else]}]
+  (let [condition (compile context condition)
+        then (compile context then)
+        else (compile context else)]
+    (reify Expression
+      (-eval [_ context scope]
+        (if (-eval condition context scope)
+          (-eval then context scope)
+          (-eval else context scope)))
+      (-hash [_]
+        {:type :if
+         :condition (-hash condition)
+         :then (-hash then)
+         :else (-hash else)}))))
+
+
+
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs
