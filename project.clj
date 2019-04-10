@@ -25,6 +25,8 @@
    [org.clojars.akiel/env-tools "0.2.1"]
    [org.clojars.akiel/spec-coerce "0.3.1"]
    [org.clojure/clojure "1.10.0"]
+   [org.clojure/tools.reader "1.3.2"]
+   [org.clojure/tools.cli "0.4.2"]
    [org.clojure/core.cache "0.7.2"]
    [phrase "0.3-alpha3"]
    [prom-metrics "0.5-alpha2"]
@@ -45,8 +47,13 @@
     [[javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]
      [com.sun.xml.bind/jaxb-core "2.3.0.1"]
      [com.sun.xml.bind/jaxb-impl "2.3.2"]]}
+   :kaocha
+   {:dependencies
+    [[lambdaisland/kaocha "0.0-413"]]}
 
    :uberjar
    {:aot [life-fhir-store.core]}}
 
-  :main ^:skip-aot life-fhir-store.core)
+  :main ^:skip-aot life-fhir-store.core
+
+  :aliases {"kaocha" ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"]})
