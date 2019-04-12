@@ -4,6 +4,8 @@ services:
     image: "akiel/datomic-free:0.9.5656"
     environment:
       ALT_HOST: db
+      XMS: "-Xms1g"
+      XMX: "-Xmx1g"
     volumes:
     - "db-data:/data"
   store:
