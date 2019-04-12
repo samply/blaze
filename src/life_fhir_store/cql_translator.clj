@@ -1,4 +1,4 @@
-(ns life-fhir-store.cql
+(ns life-fhir-store.cql-translator
   (:require
     [cheshire.core :as json]
     [cognitect.anomalies :as anom])

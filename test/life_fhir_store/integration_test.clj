@@ -3,7 +3,7 @@
     [cheshire.core :as json]
     [clojure.test :refer :all]
     [datomic.api :as d]
-    [life-fhir-store.cql :as cql]
+    [life-fhir-store.cql-translator :as cql]
     [life-fhir-store.datomic.cql :refer [list-resource-by-code-cache]]
     [life-fhir-store.datomic.schema :as schema]
     [life-fhir-store.datomic.transaction :as tx]

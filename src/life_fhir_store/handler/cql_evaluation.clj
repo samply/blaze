@@ -8,7 +8,7 @@
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [life-fhir-store.cql :as cql]
+    [life-fhir-store.cql-translator :as cql]
     [life-fhir-store.datomic.pull :as pull]
     [life-fhir-store.elm.compiler :as compiler]
     [life-fhir-store.elm.evaluator :as evaluator]

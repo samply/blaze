@@ -1,8 +1,8 @@
-(ns life-fhir-store.cql-test
+(ns life-fhir-store.cql-translator-test
   (:require
     [clojure.test :refer :all]
     [juxt.iota :refer [given]]
-    [life-fhir-store.cql :refer [translate]]))
+    [life-fhir-store.cql-translator :refer [translate]]))
 
 
 (defmacro given-translation [cql & body]
