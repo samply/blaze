@@ -74,6 +74,14 @@
 
 ;; 2. Structured Values
 
+;; 2.1. Tuple
+(defmethod infer-types* :elm/tuple
+  [context expression]
+  (let [infer-types #(infer-types* context %)
+        infer-types #(update % :value infer-types)]
+    (update expression :element infer-types)))
+
+
 ;; 2.3. Property
 (defmethod infer-types* :elm/property
   [context {:keys [source scope] :as expression}]

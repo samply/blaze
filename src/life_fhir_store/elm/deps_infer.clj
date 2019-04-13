@@ -34,6 +34,16 @@
 
 ;; 2. Structured Values
 
+;; 2.1. Tuple
+(defmethod infer-deps :elm.deps.type/tuple
+  [{elements :element :as expression}]
+  (let [elements (mapv #(update % :value infer-deps) elements)]
+    (assoc expression
+      :element elements
+      :life/deps (transduce (comp (map :value) (map :life/deps)) set/union elements)
+      :life/scopes (transduce (comp (map :value) (map :life/scopes)) set/union elements))))
+
+
 ;; 2.3. Property
 (defmethod infer-deps :elm.deps.type/property
   [{:keys [source scope] :as expression}]

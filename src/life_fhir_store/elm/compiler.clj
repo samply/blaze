@@ -233,6 +233,32 @@
 
 ;; 2. Structured Values
 
+;; 2.1. Tuple
+(defmethod compile* :elm.compiler.type/tuple
+  [context {elements :element}]
+  (let [elements
+        (reduce
+          (fn [r {:keys [name value]}]
+            (assoc r name (compile context value)))
+          {}
+          elements)]
+    (reify Expression
+      (-eval [_ context scope]
+        (reduce-kv
+          (fn [r name value]
+            (assoc r name (-eval value context scope)))
+          {}
+          elements))
+      (-hash [_]
+        {:type :tuple
+         :elements
+         (reduce-kv
+           (fn [r name value]
+             (assoc r name (-hash value)))
+           {}
+           elements)}))))
+
+
 ;; 2.3. Property
 ;;
 ;; The Property operator returns the value of the property on `source` specified

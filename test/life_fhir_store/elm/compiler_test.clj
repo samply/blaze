@@ -78,6 +78,13 @@
 
 ;; 2. Structured Values
 
+;; 2.1. Tuple
+(deftest compile-tuple-test
+  (are [m res] (= res (-eval (compile {} (elm/tuple m)) {} nil))
+    {"id" #elm/int "1"} {"id" 1}
+    {"id" #elm/int "1" "name" #elm/string "john"} {"id" 1 "name" "john"}))
+
+
 ;; 2.3. Property
 (deftest compile-property-test
   (testing "with entity supplied over query context"

@@ -62,6 +62,15 @@
     (assoc :unit unit)))
 
 
+(s/fdef tuple
+  :args (s/cat :arg (s/map-of string? :elm/expression))
+  :ret :elm/expression)
+
+(defn tuple [m]
+  {:type "Tuple"
+   :element (reduce #(conj %1 {:name (key %2) :value (val %2)}) [] m)})
+
+
 (s/fdef equal
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)

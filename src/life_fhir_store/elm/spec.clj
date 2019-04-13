@@ -144,6 +144,27 @@
 
 ;; 2. Structured Values
 
+;; 2.1. Tuple
+(s/def :elm.tuple/name
+  string?)
+
+
+(s/def :elm.tuple/value
+  :elm/expression)
+
+
+(s/def :elm/tuple-element
+  (s/keys :req-un [:elm.tuple/name :elm.tuple/value]))
+
+
+(s/def :elm.tuple/element
+  (s/coll-of :elm/tuple-element))
+
+
+(defmethod expression :elm.spec.type/tuple [_]
+  (s/keys :opt-un [:elm.tuple/element]))
+
+
 ;; 2.3. Property
 (s/def :elm.property/source
   :elm/expression)
