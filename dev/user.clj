@@ -11,7 +11,7 @@
     [datomic.api :as d]
     [datomic-spec.test :as dst]
     [env-tools.alpha :as env-tools]
-    [life-fhir-store.cql :as cql]
+    [life-fhir-store.cql-translator :as cql]
     [life-fhir-store.elm.compiler :as compiler]
     [life-fhir-store.elm.deps-infer :as deps-infer]
     [life-fhir-store.elm.evaluator :as evaluator]

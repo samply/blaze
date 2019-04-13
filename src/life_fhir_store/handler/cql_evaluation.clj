@@ -8,7 +8,7 @@
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [life-fhir-store.cql :as cql]
+    [life-fhir-store.cql-translator :as cql]
     [life-fhir-store.datomic.pull :as pull]
     [life-fhir-store.elm.compiler :as compiler]
     [life-fhir-store.elm.evaluator :as evaluator]
@@ -81,7 +81,7 @@
   (fn [{:keys [body]}]
     (if-let [code (:code body)]
       (-> (md/let-flow'
-            [elm (to-error (md/future (cql/translate code)))
+            [elm (to-error (md/future (cql/translate code :locators? true)))
              expression-defs (to-error (md/future (compiler/compile-library elm {})))
              results (evaluator/evaluate (d/db conn) (OffsetDateTime/now) expression-defs)]
             (ring/response

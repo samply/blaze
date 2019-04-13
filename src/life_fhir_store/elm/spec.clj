@@ -1,7 +1,38 @@
 (ns life-fhir-store.elm.spec
   (:require
     [camel-snake-kebab.core :refer [->kebab-case-string]]
-    [clojure.spec.alpha :as s]))
+    [clojure.set :as set]
+    [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]
+    [clojure.string :as str]
+    [life-fhir-store.elm.quantity :refer [print-unit]])
+  (:import
+    [java.time LocalDate]
+    [javax.measure.spi SystemOfUnits]
+    [systems.uom.ucum UCUM]
+    [java.math RoundingMode]))
+
+
+(def temporal-keywords
+  "CQL temporal keywords as units for temporal quantities."
+  (->> ["year" "month" "week" "day" "hour" "minute" "second" "millisecond"]
+       (into #{} (mapcat #(vector % (str % "s"))))))
+
+
+(def ^SystemOfUnits ucum-service
+  (UCUM/getInstance))
+
+
+(def defined-units
+  "All defined units from ucum-service."
+  (into #{} (comp (map print-unit)
+                  (remove str/blank?)
+                  ;; TODO: UCUM can't parse powers of ten like 10^6
+                  (remove #(.contains ^String % "^"))
+                  (remove #(.contains ^String % "()"))
+                  (remove #(.contains ^String % "(W)"))
+                  (remove #(.contains ^String % "tec.uom.se")))
+        (.getUnits ucum-service)))
 
 
 (s/def :elm/alias
@@ -71,6 +102,45 @@
   (s/keys :req-un [:elm/valueType] :opt-un [:elm/value]))
 
 
+(s/def :elm.literal/type
+  #{"Literal"})
+
+
+(s/def :elm.integer/valueType
+  #{"{urn:hl7-org:elm-types:r1}Integer"})
+
+
+(s/def :elm.integer/value
+  (s/with-gen string? #(gen/fmap str (s/gen int?))))
+
+
+(s/def :elm/integer
+  (s/keys :req-un [:elm.literal/type :elm.integer/valueType :elm.integer/value]))
+
+
+(s/def :elm.decimal/valueType
+  #{"{urn:hl7-org:elm-types:r1}Decimal"})
+
+(def decimal-value
+  (->> (gen/large-integer)
+       (gen/fmap #(BigDecimal/valueOf ^long % 8))))
+
+
+(s/def :elm.decimal/value
+  (s/with-gen string? #(gen/fmap str decimal-value)))
+
+
+(s/def :elm/decimal
+  (s/keys :req-un [:elm.literal/type :elm.decimal/valueType :elm.decimal/value]))
+
+
+(defn non-zero-decimal-value []
+  (gen/fmap str (gen/such-that (complement zero?) decimal-value)))
+
+
+(s/def :elm/non-zero-decimal
+  (s/with-gen :elm/decimal #(s/gen :elm/decimal {:elm.decimal/value non-zero-decimal-value})))
+
 
 ;; 2. Structured Values
 
@@ -97,16 +167,90 @@
 
 
 ;; 3.9. Quantity
+(s/def :elm.quantity/type
+  #{"Quantity"})
+
+
 (s/def :elm.quantity/value
-  number?)
+  (s/with-gen number? (constantly decimal-value)))
 
 
 (s/def :elm.quantity/unit
-  string?)
+  (s/with-gen string? #(s/gen (set/union temporal-keywords defined-units))))
+
+
+(s/def :elm/quantity
+  (s/keys :req-un [:elm.quantity/type :elm.quantity/value]
+          :opt-un [:elm.quantity/unit]))
 
 
 (defmethod expression :elm.spec.type/quantity [_]
-  (s/keys :opt-un [:elm.quantity/value :elm.quantity/unit]))
+  :elm/quantity)
+
+
+(s/def :elm.quantity.temporal-keyword/unit
+  temporal-keywords)
+
+
+(s/def :elm/period
+  (s/keys :req-un [:elm.quantity/type :elm.quantity/value
+                   :elm.quantity.temporal-keyword/unit]))
+
+
+(defn years-unit-gen []
+  (s/gen #{"year" "years"}))
+
+
+(s/def :elm/years
+  (s/with-gen
+    :elm/period
+    #(s/gen :elm/period {:elm.quantity.temporal-keyword/unit years-unit-gen})))
+
+
+(defn pos-decimal-gen []
+  (gen/fmap #(BigDecimal/valueOf ^double %)
+            (gen/double* {:infinite? false :NaN? false :min 1 :max 10000})))
+
+
+(s/def :elm/pos-years
+  (s/with-gen
+    :elm/period
+    #(s/gen :elm/period {:elm.quantity/value pos-decimal-gen
+                         :elm.quantity.temporal-keyword/unit years-unit-gen})))
+
+
+(defn months-unit-gen []
+  (s/gen #{"month" "months"}))
+
+
+(s/def :elm/pos-months
+  (s/with-gen
+    :elm/period
+    #(s/gen :elm/period {:elm.quantity/value pos-decimal-gen
+                         :elm.quantity.temporal-keyword/unit months-unit-gen})))
+
+
+(defn days-unit-gen []
+  (s/gen #{"day" "days"}))
+
+
+(s/def :elm/pos-days
+  (s/with-gen
+    :elm/period
+    #(s/gen :elm/period {:elm.quantity/value pos-decimal-gen
+                         :elm.quantity.temporal-keyword/unit days-unit-gen})))
+
+
+(defn hours-unit-gen []
+  (s/gen #{"hour" "hours"}))
+
+
+(s/def :elm/pos-hours
+  (s/with-gen
+    :elm/period
+    #(s/gen :elm/period {:elm.quantity/value pos-decimal-gen
+                         :elm.quantity.temporal-keyword/unit hours-unit-gen})))
+
 
 
 ;; 4. Type Specifiers
@@ -373,10 +517,114 @@
 
 
 
+;; 15. Conditional Operators
+
+;; 15.2. If
+(s/def :elm.if/condition
+  :elm/expression)
+
+
+(s/def :elm.if/then
+  :elm/expression)
+
+
+(s/def :elm.if/else
+  :elm/expression)
+
+
+(defmethod expression :elm.spec.type/if [_]
+  (s/keys :opt-un [:elm.if/condition :elm.if/then :elm.if/else]))
+
+
+
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs
 (derive :elm.spec.type/abs :elm.spec.type/unary-expression)
+
+
+;; 16.2. Add
+(derive :elm.spec.type/add :elm.spec.type/binary-expression)
+
+
+;; 16.3. Ceiling
+(derive :elm.spec.type/ceiling :elm.spec.type/unary-expression)
+
+
+;; 16.4. Divide
+(derive :elm.spec.type/divide :elm.spec.type/binary-expression)
+
+
+;; 16.5. Exp
+(derive :elm.spec.type/exp :elm.spec.type/unary-expression)
+
+
+;; 16.6. Floor
+(derive :elm.spec.type/floor :elm.spec.type/unary-expression)
+
+
+;; 16.7. Log
+(derive :elm.spec.type/log :elm.spec.type/binary-expression)
+
+
+;; 16.8. Ln
+(derive :elm.spec.type/ln :elm.spec.type/unary-expression)
+
+
+;; 16.9. MaxValue
+(defmethod expression :elm.spec.type/max-value [_]
+  (s/keys :req-un [:elm/valueType]))
+
+
+;; 16.10. MinValue
+(defmethod expression :elm.spec.type/min-value [_]
+  (s/keys :req-un [:elm/valueType]))
+
+
+;; 16.11. Modulo
+(derive :elm.spec.type/modulo :elm.spec.type/binary-expression)
+
+
+;; 16.12. Multiply
+(derive :elm.spec.type/multiply :elm.spec.type/binary-expression)
+
+
+;; 16.13. Negate
+(derive :elm.spec.type/negate :elm.spec.type/unary-expression)
+
+
+;; 16.14. Power
+(derive :elm.spec.type/power :elm.spec.type/binary-expression)
+
+
+;; 16.15. Predecessor
+(derive :elm.spec.type/predecessor :elm.spec.type/unary-expression)
+
+
+;; 16.16. Round
+(s/def :elm.round/precision
+  :elm/expression)
+
+
+(defmethod expression :elm.spec.type/round [_]
+  (s/keys :req-un [:elm.unary-expression/operand]
+          :opt-un [:elm.round/precision]))
+
+
+;; 16.17. Subtract
+(derive :elm.spec.type/subtract :elm.spec.type/binary-expression)
+
+
+;; 16.18. Successor
+(derive :elm.spec.type/successor :elm.spec.type/unary-expression)
+
+
+;; 16.19. Truncate
+(derive :elm.spec.type/truncate :elm.spec.type/unary-expression)
+
+
+;; 16.20. TruncatedDivide
+(derive :elm.spec.type/truncated-divide :elm.spec.type/binary-expression)
 
 
 
@@ -387,20 +635,77 @@
 
 
 ;; 18.6. Date
+(defn year-value-gen []
+  (gen/fmap str (s/gen (s/int-in 1 10000))))
+
+
+(s/def :elm.date/year
+  (s/with-gen :elm/expression #(s/gen :elm/integer {:elm.integer/value year-value-gen})))
+
+
+(defn month-value-gen []
+  (gen/fmap str (s/gen (s/int-in 1 13))))
+
+
+(s/def :elm.date/month
+  (s/with-gen :elm/expression #(s/gen :elm/integer {:elm.integer/value month-value-gen})))
+
+
+(defn day-value-gen []
+  (gen/fmap str (s/gen (s/int-in 1 32))))
+
+
+(s/def :elm.date/day
+  (s/with-gen :elm/expression #(s/gen :elm/integer {:elm.integer/value day-value-gen})))
+
+
+(s/def :elm.date/type
+  #{"Date"})
+
+
 (s/def :elm/year
-  :elm/expression)
+  (s/keys :req-un [:elm.date/type :elm.date/year]))
 
 
-(s/def :elm/month
-  :elm/expression)
+(s/def :elm/literal-year
+  :elm/year)
 
 
-(s/def :elm/day
-  :elm/expression)
+(s/def :elm/year-month
+  (s/keys :req-un [:elm.date/type :elm.date/year :elm.date/month]))
+
+
+(s/def :elm/literal-year-month
+  :elm/year-month)
+
+(s/def :elm/date
+  (s/keys
+    :req-un
+    [:elm.date/type
+     (or :elm.date/year
+         (and :elm.date/year :elm.date/month)
+         (and :elm.date/year :elm.date/month :elm.date/day))]))
+
+
+(s/def :elm/literal-date
+  (s/with-gen
+    :elm/date
+    #(s/gen
+       (s/and
+         :elm/date
+         (fn [{{year :value} :year {month :value} :month {day :value} :day}]
+           (or
+             (nil? day)
+             (try
+               (LocalDate/of
+                 (Long/parseLong year)
+                 (Long/parseLong month)
+                 (Long/parseLong day))
+               (catch Exception _))))))))
 
 
 (defmethod expression :elm.spec.type/date [_]
-  (s/keys :req-un [:elm/year] :opt-un [:elm/month :elm/day]))
+  (s/or :year :elm/year :year-month :elm/year-month :date :elm/date))
 
 
 ;; 18.7. DateFrom
@@ -408,31 +713,83 @@
 
 
 ;; 18.8. DateTime
+(defn hour-value-gen []
+  (gen/fmap str (s/gen (s/int-in 0 24))))
+
+
 (s/def :elm/hour
-  :elm/expression)
+  (s/with-gen :elm/expression #(s/gen :elm/integer {:elm.integer/value hour-value-gen})))
+
+
+(defn minute-value-gen []
+  (gen/fmap str (s/gen (s/int-in 0 60))))
 
 
 (s/def :elm/minute
-  :elm/expression)
+  (s/with-gen :elm/expression #(s/gen :elm/integer {:elm.integer/value minute-value-gen})))
+
+
+(defn second-value-gen []
+  (gen/fmap str (s/gen (s/int-in 0 60))))
 
 
 (s/def :elm/second
-  :elm/expression)
+  (s/with-gen :elm/expression #(s/gen :elm/integer {:elm.integer/value second-value-gen})))
 
 
-(s/def :elm/millisecond
-  :elm/expression)
+(defn timezone-offset-gen []
+  (->> (gen/double* {:infinite? false :NaN? false :min -18 :max 18})
+       (gen/fmap #(BigDecimal/valueOf ^double %))
+       (gen/fmap str)))
 
 
 (s/def :elm/timezone-offset
-  :elm/expression)
+  (s/with-gen :elm/expression #(s/gen :elm/decimal {:elm.decimal/value timezone-offset-gen})))
+
+
+(s/def :elm.date-time/type
+  #{"DateTime"})
+
+
+(s/def :elm/date-time
+  (s/keys
+    :req-un
+    [:elm.date-time/type
+     (or :elm.date/year
+         (and :elm.date/year :elm.date/month)
+         (and :elm.date/year :elm.date/month :elm.date/day)
+         (and :elm.date/year :elm.date/month :elm.date/day :elm/hour)
+         (and :elm.date/year :elm.date/month :elm.date/day :elm/hour
+              :elm/timezone-offset)
+         (and :elm.date/year :elm.date/month :elm.date/day :elm/hour
+              :elm/minute)
+         (and :elm.date/year :elm.date/month :elm.date/day :elm/hour
+              :elm/minute :elm/timezone-offset)
+         (and :elm.date/year :elm.date/month :elm.date/day :elm/hour
+              :elm/minute :elm/second)
+         (and :elm.date/year :elm.date/month :elm.date/day :elm/hour
+              :elm/minute :elm/second :elm/timezone-offset))]))
+
+
+(s/def :elm/literal-date-time
+  (s/with-gen
+    :elm/date-time
+    #(s/gen
+       (s/and
+         :elm/date-time
+         (fn [{{year :value} :year {month :value} :month {day :value} :day}]
+           (or
+             (nil? day)
+             (try
+               (LocalDate/of
+                 (Long/parseLong year)
+                 (Long/parseLong month)
+                 (Long/parseLong day))
+               (catch Exception _))))))))
 
 
 (defmethod expression :elm.spec.type/date-time [_]
-  (s/keys :req-un [:elm/year]
-          :opt-un [:elm/month :elm/day :elm/hour :elm/minute :elm/second
-                   :elm/millisecond :elm/timezone-offset]))
-
+  :elm/date-time)
 
 ;; 18.9. DateTimeComponentFrom
 
@@ -466,6 +823,28 @@
 (defmethod expression :elm.spec.type/same-or-before [_]
   (s/keys :req-un [:elm.binary-expression/operand]
           :opt-un [:elm.date/precision]))
+
+
+;; 18.18. Time
+(s/def :elm.time/type
+  #{"Time"})
+
+
+(s/def :elm/time
+  (s/keys
+    :req-un
+    [:elm.time/type
+     (or :elm/hour
+         (and :elm/hour :elm/minute)
+         (and :elm/hour :elm/minute :elm/second))]))
+
+
+(s/def :elm/literal-time
+  :elm/time)
+
+
+(defmethod expression :elm.spec.type/time [_]
+  :elm/time)
 
 
 ;; 18.22. Today
