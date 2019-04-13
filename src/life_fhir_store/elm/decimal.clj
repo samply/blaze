@@ -196,8 +196,17 @@
   (to-decimal [x]
     (BigDecimal/valueOf x))
 
+  BigDecimal
+  (to-decimal [x] x)
+
   String
   (to-decimal [x]
     (when-let [d (try (BigDecimal. x) (catch Exception _))]
       (when (<= min d max)
-        d))))
+        (.setScale d 8 RoundingMode/HALF_UP)))))
+
+
+(defn from-literal [s]
+  (if-let [d (p/to-decimal s)]
+    d
+    (throw (Exception. (str "Invalid decimal literal `" s "`.")))))

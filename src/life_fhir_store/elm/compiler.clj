@@ -235,8 +235,9 @@
         "urn:hl7-org:elm-types:r1"
         (case value-type-name
           "Boolean" (Boolean/valueOf ^String value)
-          "Integer" (Long/parseLong value)
-          "Decimal" (.setScale (BigDecimal. ^String value) 8 RoundingMode/HALF_UP)
+          ;; TODO: maybe we can even use integers here
+          "Integer" (long (Integer/parseInt value))
+          "Decimal" (decimal/from-literal value)
           "String" value
           (throw (Exception. (str value-type-name " literals are not supported"))))))))
 
@@ -1170,14 +1171,13 @@
   "Creates a DateTime with a local date time adjusted for the offset of the
   evaluation request."
   [now year month day hour minute second millisecond timezone-offset]
-  (let [date-time (-> (OffsetDateTime/of ^long year ^long month ^long day ^long hour
-                                         ^long minute ^long second (* 1000000 millisecond)
-                                         (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
-                      (.withOffsetSameInstant (.getOffset ^OffsetDateTime now))
-                      (.toLocalDateTime))]
-    (when-not (< 0 (.getYear date-time) 10000)
-      (throw (Exception. (str "Year `" year "` out of range."))))
-    date-time))
+  (when-not (< 0 year 10000)
+    (throw (Exception. (str "Year `" year "` out of range."))))
+  (-> (OffsetDateTime/of ^long year ^long month ^long day ^long hour
+                         ^long minute ^long second (* 1000000 millisecond)
+                         (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
+      (.withOffsetSameInstant (.getOffset ^OffsetDateTime now))
+      (.toLocalDateTime)))
 
 
 ;; 18.6. Date

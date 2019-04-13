@@ -84,7 +84,9 @@
           #{"DecimalMinValue" "DecimalMaxValue"
             "Ln0" "LnNeg0"
             "Log1Base1"
-            "RoundNeg0D5" "RoundNeg1D5"})
+            "RoundNeg0D5" "RoundNeg1D5"
+            "IntegerMinValue"                               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
+            })
 
 
 (deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml" #{})
@@ -94,4 +96,15 @@
           #{"QuantityTest"                                  ; unit `lbs` unknown
             "QuantityTest2"                                 ; unit `eskimo kisses` unknown
             "DateTimeUncertain"                             ; TODO: not implemented yet
+            })
+
+(deftests "value-literals-and-selectors" "cql-test/ValueLiteralsAndSelectors.xml"
+          #{"IntegerNeg2Pow31IntegerMinValue"               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
+            "DecimalTenthStep"                              ; we round here
+            "DecimalPosTenthStep"                           ; we round here
+            "DecimalNegTenthStep"                           ; we round here
+            "Decimal10Pow28ToZeroOneStepDecimalMaxValue"    ; don't get it
+            "DecimalPos10Pow28ToZeroOneStepDecimalMaxValue" ; don't get it
+            "DecimalNeg10Pow28ToZeroOneStepDecimalMinValue" ; don't get it
+            "IntegerMinValue"                               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
             })

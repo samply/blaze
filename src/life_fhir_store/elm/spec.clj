@@ -111,7 +111,7 @@
 
 
 (s/def :elm.integer/value
-  (s/with-gen string? #(gen/fmap str (s/gen int?))))
+  (s/with-gen string? #(gen/fmap str (gen/int))))
 
 
 (s/def :elm/integer
