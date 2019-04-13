@@ -875,6 +875,41 @@
 
 ;; 19. Interval Operators
 
+;; 19.1. Interval
+(s/def :elm.interval/low
+  :elm/expression)
+
+
+(s/def :elm.interval/lowClosedExpression
+  :elm/expression)
+
+
+(s/def :elm.interval/high
+  :elm/expression)
+
+
+(s/def :elm.interval/highClosedExpression
+  :elm/expression)
+
+
+(s/def :elm.interval/lowClosed
+  boolean?)
+
+
+(s/def :elm.interval/highClosed
+  boolean?)
+
+
+(defmethod expression :elm.spec.type/interval [_]
+  (s/keys
+    :opt-un
+    [:elm.interval/low
+     :elm.interval/lowClosedExpression
+     :elm.interval/high
+     :elm.interval/highClosedExpression
+     :elm.interval/lowClosed
+     :elm.interval/highClosed]))
+
 ;; 19.15. Intersect
 (derive :elm.spec.type/intersect :elm.spec.type/nary-expression)
 

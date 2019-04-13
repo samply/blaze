@@ -24,6 +24,7 @@
     [life-fhir-store.elm.deps-infer :refer [infer-library-deps]]
     [life-fhir-store.elm.equiv-relationships :refer [find-equiv-rels-library]]
     [life-fhir-store.elm.integer]
+    [life-fhir-store.elm.interval :refer [interval]]
     [life-fhir-store.elm.nil]
     [life-fhir-store.elm.normalizer :refer [normalize-library]]
     [life-fhir-store.elm.protocols :as p]
@@ -35,8 +36,9 @@
   (:import
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
                ZoneOffset]
-    [java.time.temporal ChronoUnit]
-    [java.math RoundingMode])
+    [java.time.temporal ChronoUnit Temporal]
+    [java.math RoundingMode]
+    [javax.measure Quantity])
   (:refer-clojure :exclude [compile]))
 
 
@@ -210,6 +212,14 @@
             :operands [(-hash operand-1#) (-hash operand-2#)]})))))
 
 
+(defn- literal? [x]
+  (or (boolean? x)
+      (number? x)
+      (string? x)
+      (instance? Temporal x)
+      (instance? Quantity x)))
+
+
 
 ;; 1. Simple Values
 
@@ -246,7 +256,7 @@
       (-eval [_ context scope]
         (reduce-kv
           (fn [r name value]
-            (assoc r name (-eval value context scope)))
+            (assoc r (keyword name) (-eval value context scope)))
           {}
           elements))
       (-hash [_]
@@ -372,6 +382,12 @@
         :scope scope}))))
 
 
+(defn- tuple-type-specifier?
+  {:arglists '([type-specifier])}
+  [{:keys [type]}]
+  (= "TupleTypeSpecifier" type))
+
+
 (defn- choice-type-specifier?
   {:arglists '([type-specifier])}
   [{:keys [type]}]
@@ -393,67 +409,84 @@
                               ns "` in `Property` expression."))))))
 
 
-(defn- attr-kw
+(defn attr-kw
   {:arglists '([property-expression])}
-  [{:life/keys [source-type as-type-name] :keys [path]
-    result-type-specifier :resultTypeSpecifier}]
-  (let [[source-type-ns source-type-name] (elm-util/parse-qualified-name source-type)]
-    (if (= "http://hl7.org/fhir" source-type-ns)
-      (if (choice-type-specifier? result-type-specifier)
-        (if (contains-choice-type? result-type-specifier as-type-name)
-          (keyword source-type-name (str path (u/title-case (extract-local-fhir-name as-type-name))))
-          (throw (Exception. (str "Ambiguous choice type on property `"
-                                  source-type-name "/" path "`."))))
-        (keyword source-type-name path))
-      (throw (Exception. (str "Unsupported source type namespace `"
-                              source-type-ns "` in property expression."))))))
+  [{:life/keys [source-type as-type-name] :keys [path source]
+    result-type-specifier :resultTypeSpecifier :as expr}]
+  (cond
+    source-type
+    (let [[source-type-ns source-type-name] (elm-util/parse-qualified-name source-type)]
+      (if (= "http://hl7.org/fhir" source-type-ns)
+        (if (choice-type-specifier? result-type-specifier)
+          (if (contains-choice-type? result-type-specifier as-type-name)
+            (keyword source-type-name (str path (u/title-case (extract-local-fhir-name as-type-name))))
+            (throw (ex-info (str "Ambiguous choice type on property `"
+                                 source-type-name "/" path "`.") expr)))
+          (keyword source-type-name path))
+        (throw (ex-info (str "Unsupported source type namespace `"
+                             source-type-ns "` in property expression.") expr))))
+    source
+    (let [{type-specifier :resultTypeSpecifier type-name :resultTypeName} source]
+      (cond
+        (tuple-type-specifier? type-specifier) (keyword path)
+        type-name (attr-kw (assoc expr :life/source-type type-name))
+        :else
+        (throw (ex-info "Unable to determine attr-kw on property expression." expr))))
+    :else
+    (throw (ex-info "Unable to determine attr-kw on property expression." expr))))
 
 
-(defn- local-fhir-result-type
+(defn- property-result-type
   {:arglists '([property-expression])}
   [{result-type-name :resultTypeName
     result-type-specifier :resultTypeSpecifier
-    :life/keys [as-type-name]}]
+    :life/keys [as-type-name]
+    :as expr}]
   (cond
     result-type-name
-    (extract-local-fhir-name result-type-name)
+    (elm-util/parse-qualified-name result-type-name)
 
     (choice-type-specifier? result-type-specifier)
     (if (contains-choice-type? result-type-specifier as-type-name)
-      (extract-local-fhir-name as-type-name)
-      (throw (Exception. "Ambiguous choice type on property.")))
+      (elm-util/parse-qualified-name as-type-name)
+      (throw (ex-info "Ambiguous choice type on property." expr)))
 
     :else
-    (throw (Exception. "Undetermined result type on property."))))
+    (throw (ex-info "Undetermined result type on property." expr))))
 
 
 (defmethod compile* :elm.compiler.type/property
   [{:life/keys [single-query-scope] :as context}
-   {:keys [source scope path] :life/keys [source-type] :as expression}]
-  (assert source-type (str "Missing :life/source-type annotation on Property expression with source `" source "`, scope `" scope "` and path `" path "`."))
+   {:keys [source scope] :as expression}]
   (let [attr-kw (attr-kw expression)
-        result-type (local-fhir-result-type expression)
+        [result-type-ns result-type-name] (property-result-type expression)
         source (some->> source (compile context))]
     (cond
       ;; We evaluate the `source` to retrieve the entity.
       source
       (let [property-expression-fn
-            (case result-type
-              ("date" "dateTime" "time")
-              time-source-property-expression
-              "Quantity"
-              quantity-source-property-expression
+            (case result-type-ns
+              "http://hl7.org/fhir"
+              (case result-type-name
+                ("date" "dateTime" "time")
+                time-source-property-expression
+                "Quantity"
+                quantity-source-property-expression
+                source-property-expression)
               source-property-expression)]
         (property-expression-fn attr-kw source))
 
       ;; We use the `scope` to retrieve the entity from `query-context`.
       scope
       (let [property-expression-fn
-            (case result-type
-              ("date" "dateTime" "time")
-              time-scope-property-expression
-              "Quantity"
-              quantity-scope-property-expression
+            (case result-type-ns
+              "http://hl7.org/fhir"
+              (case result-type-name
+                ("date" "dateTime" "time")
+                time-scope-property-expression
+                "Quantity"
+                quantity-scope-property-expression
+                scope-property-expression)
               scope-property-expression)]
         (if (= single-query-scope scope)
           (property-expression-fn attr-kw)
@@ -1106,16 +1139,28 @@
 
 ;; 18. Date and Time Operators
 
+(defn- to-year [year]
+  (when-not (< 0 year 10000)
+    (throw (Exception. (str "Year `" year "` out of range."))))
+  (Year/of year))
+
+
 (defn- to-month [year month]
+  (when-not (< 0 year 10000)
+    (throw (Exception. (str "Year `" year "` out of range."))))
   (YearMonth/of ^long year ^long month))
 
 
 (defn- to-day [year month day]
+  (when-not (< 0 year 10000)
+    (throw (Exception. (str "Year `" year "` out of range."))))
   (LocalDate/of ^long year ^long month ^long day))
 
 
 (defn- to-local-date-time
   [year month day hour minute second millisecond]
+  (when-not (< 0 year 10000)
+    (throw (Exception. (str "Year `" year "` out of range."))))
   (LocalDateTime/of ^long year ^long month ^long day
                     ^long hour ^long minute ^long second
                     ^long (* 1000000 millisecond)))
@@ -1125,11 +1170,14 @@
   "Creates a DateTime with a local date time adjusted for the offset of the
   evaluation request."
   [now year month day hour minute second millisecond timezone-offset]
-  (-> (OffsetDateTime/of ^long year ^long month ^long day ^long hour
-                         ^long minute ^long second (* 1000000 millisecond)
-                         (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
-      (.withOffsetSameInstant (.getOffset ^OffsetDateTime now))
-      (.toLocalDateTime)))
+  (let [date-time (-> (OffsetDateTime/of ^long year ^long month ^long day ^long hour
+                                         ^long minute ^long second (* 1000000 millisecond)
+                                         (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
+                      (.withOffsetSameInstant (.getOffset ^OffsetDateTime now))
+                      (.toLocalDateTime))]
+    (when-not (< 0 (.getYear date-time) 10000)
+      (throw (Exception. (str "Year `" year "` out of range."))))
+    date-time))
 
 
 ;; 18.6. Date
@@ -1174,12 +1222,12 @@
            :month (-hash month)}))
 
       (int? year)
-      (Year/of year)
+      (some-> year to-year)
 
       :else
       (reify Expression
         (-eval [_ context scope]
-          (Year/of (-eval year context scope)))
+          (some-> (-eval year context scope) to-year))
         (-hash [_]
           {:type :date
            :year (-hash year)})))))
@@ -1340,12 +1388,12 @@
              :month (-hash month)}))
 
         (int? year)
-        (Year/of year)
+        (some-> year to-year)
 
         :else
         (reify Expression
           (-eval [_ context scope]
-            (some-> (-eval year context scope) (Year/of)))
+            (some-> (-eval year context scope) to-year))
           (-hash [_]
             {:type :date
              :year (-hash year)}))))))
@@ -1499,6 +1547,24 @@
 
 
 ;; 19. Interval Operators
+
+;; 19.1. Interval
+(defmethod compile* :elm.compiler.type/interval
+  [context {:keys [low high]
+            low-closed-expression :lowClosedExpression
+            high-closed-expression :highClosedExpression
+            low-closed :lowClosed
+            high-closed :lowClosed}]
+  (let [low (some->> low (compile context))
+        high (some->> high (compile context))
+        low-closed-expression (some->> low-closed-expression (compile context))
+        high-closed-expression (some->> high-closed-expression (compile context))]
+    (cond
+      (and (nil? low-closed-expression) (nil? high-closed-expression))
+      (cond
+        (and (literal? low) (literal? high))
+        (interval low high (or low-closed true) (or high-closed true))))))
+
 
 ;; 19.15. Intersect
 ;;

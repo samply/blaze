@@ -308,6 +308,27 @@
   {:type "DurationBetween" :operand [a b] :precision precision})
 
 
+;; 19.1. Interval
+(s/fdef interval
+  :args (s/cat :arg (s/coll-of :elm/expression))
+  :ret :elm/expression)
+
+(defn interval [arg]
+  (cond
+    (vector? arg)
+    {:type "Interval"
+     :low (first arg)
+     :high (second arg)
+     :lowClosed true
+     :highClosed true}
+    (list? arg)
+    {:type "Interval"
+     :low (first arg)
+     :high (second arg)
+     :lowClosed false
+     :highClosed false}))
+
+
 ;; 22.1. As
 (s/fdef as
   :args (s/cat :arg (s/tuple string? :elm/expression))

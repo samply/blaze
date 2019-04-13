@@ -18,15 +18,19 @@
   (UCUMFormat/getInstance UCUMFormat$Variant/CASE_SENSITIVE))
 
 
+(defn- parse-unit [unit]
+  (try
+    (.parse ucum-format unit)
+    (catch Throwable t
+      (throw (ex-info (str "Problem while parsing the unit `" unit "`.")
+                      {:unit unit :cause-msg (.getMessage t)})))))
+
+
 (s/fdef parse-quantity
   :args (s/cat :value number? :unit string?))
 
 (defn parse-quantity [value unit]
-  (->> (try
-         (.parse ucum-format unit)
-         (catch Throwable t
-           (throw (ex-info (str "Problem while parsing unit `" unit "`.")
-                           {:cause t}))))
+  (->> (parse-unit unit)
        (Quantities/getQuantity value)))
 
 

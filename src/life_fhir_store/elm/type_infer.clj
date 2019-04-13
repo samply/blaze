@@ -79,20 +79,17 @@
   [context expression]
   (let [infer-types #(infer-types* context %)
         infer-types #(update % :value infer-types)]
-    (update expression :element infer-types)))
+    (update expression :element #(mapv infer-types %))))
 
 
 ;; 2.3. Property
 (defmethod infer-types* :elm/property
   [context {:keys [source scope] :as expression}]
-  (let [{source-type-name :resultTypeName :as source}
-        (some->> source (infer-types context))
+  (let [source (some->> source (infer-types context))
         scope-type (get-in context [:life/scope-types scope])]
     (cond-> expression
       source
       (assoc :source source)
-      source-type-name
-      (assoc :life/source-type source-type-name)
       scope-type
       (assoc :life/source-type scope-type))))
 
@@ -233,7 +230,7 @@
 
 
 ;; 16.3. Ceiling
-(derive :elm/ceiling :elm/multiary-expression)
+(derive :elm/ceiling :elm/unary-expression)
 
 
 ;; 16.4. Divide
@@ -313,6 +310,27 @@
 
 ;; 18.11. DurationBetween
 (derive :elm/duration-between :elm/multiary-expression)
+
+
+
+;; 19. Interval Operators
+
+;; 19.1. Interval
+(defmethod infer-types* :elm/interval
+  [context
+   {:keys [low high]
+    low-closed-expression :lowClosedExpression
+    high-closed-expression :highClosedExpression
+    :as expression}]
+  (cond-> expression
+    low
+    (assoc :low (infer-types context low))
+    high
+    (assoc :high (infer-types context high))
+    low-closed-expression
+    (assoc :lowClosedExpression (infer-types context low-closed-expression))
+    high-closed-expression
+    (assoc :highClosedExpression (infer-types context high-closed-expression))))
 
 
 

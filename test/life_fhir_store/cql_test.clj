@@ -6,10 +6,17 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [life-fhir-store.cql-translator :refer [translate]]
-    [life-fhir-store.elm.compiler :refer [compile -eval]])
+    [life-fhir-store.elm.compiler :refer [compile -eval]]
+    [life-fhir-store.elm.type-infer :as type-infer]
+    [life-fhir-store.elm.deps-infer :as deps-infer]
+    [life-fhir-store.elm.equiv-relationships :as equiv-relationships]
+    [life-fhir-store.elm.normalizer :as normalizer])
   (:import
     [java.time OffsetDateTime])
   (:refer-clojure :exclude [compile eval]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -45,7 +52,12 @@
 
 (defn to-elm [cql]
   (let [library (translate (str "define x: " cql))]
-    (-> library :statements :def first :expression)))
+    (-> library
+        normalizer/normalize-library
+        equiv-relationships/find-equiv-rels-library
+        deps-infer/infer-library-deps
+        type-infer/infer-library-types
+        :statements :def first :expression)))
 
 (defn eval-elm [elm]
   (-eval (compile {} elm) {:now (OffsetDateTime/now)} nil))
@@ -76,3 +88,10 @@
 
 
 (deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml" #{})
+
+
+(deftests "types-test" "cql-test/CqlTypesTest.xml"
+          #{"QuantityTest"                                  ; unit `lbs` unknown
+            "QuantityTest2"                                 ; unit `eskimo kisses` unknown
+            "DateTimeUncertain"                             ; TODO: not implemented yet
+            })

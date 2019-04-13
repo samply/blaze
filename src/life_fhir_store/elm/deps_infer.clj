@@ -307,6 +307,31 @@
 
 ;; 19. Interval Operators
 
+;; 19.1. Interval
+(defmethod infer-deps :elm.deps.type/interval
+  [{:keys [low high]
+    low-closed-expression :lowClosedExpression
+    high-closed-expression :highClosedExpression
+    :as expression}]
+  (let [low (some-> low infer-deps)
+        high (some-> high infer-deps)
+        low-closed-expression (some-> low-closed-expression infer-deps)
+        high-closed-expression (some-> high-closed-expression infer-deps)
+        all [low high low-closed-expression high-closed-expression]]
+    (cond->
+      (assoc expression
+        :life/deps (transduce (map :life/deps) set/union all)
+        :life/scopes (transduce (map :life/scopes) set/union all))
+      low
+      (assoc :low low)
+      high
+      (assoc :high high)
+      low-closed-expression
+      (assoc :lowClosedExpression low-closed-expression)
+      high-closed-expression
+      (assoc :highClosedExpression high-closed-expression))))
+
+
 ;; 19.15. Intersect
 (derive :elm.deps.type/intersect :elm.deps.type/multiary-expression)
 

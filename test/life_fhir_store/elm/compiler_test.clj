@@ -13,6 +13,7 @@
     [life-fhir-store.elm.compiler
      :refer [compile compile-with-equiv-clause -eval -hash]]
     [life-fhir-store.elm.date-time :refer [period]]
+    [life-fhir-store.elm.interval :refer [interval]]
     [life-fhir-store.elm.literals :as elm]
     [life-fhir-store.elm.quantity :refer [parse-quantity]])
   (:import
@@ -84,8 +85,8 @@
 ;; 2.1. Tuple
 (deftest compile-tuple-test
   (are [m res] (= res (-eval (compile {} (elm/tuple m)) {} nil))
-    {"id" #elm/int "1"} {"id" 1}
-    {"id" #elm/int "1" "name" #elm/string "john"} {"id" 1 "name" "john"}))
+    {"id" #elm/int "1"} {:id 1}
+    {"id" #elm/int "1" "name" #elm/string "john"} {:id 1 :name "john"}))
 
 
 ;; 2.3. Property
@@ -2294,6 +2295,10 @@
       #elm/date-time "2019-03-23T12:13:14.1"
       (LocalDateTime/of 2019 3 23 12 13 14 1000000)))
 
+  (testing "Invalid DateTime above max value"
+    (are [elm] (thrown? Exception (compile {} elm))
+      #elm/date-time "10000-12-31T23:59:59.999"))
+
   (testing "with offset"
     (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
       #elm/date-time [#elm/int "2019" #elm/int "3" #elm/int "23"
@@ -2461,6 +2466,46 @@
 
 
 ;; 19. Interval Operators
+
+;; 19.1. Interval
+;;
+;; The Interval selector defines an interval value. An interval must be defined
+;; using a point type that supports comparison, as well as Successor and
+;; Predecessor operations, and Minimum and Maximum Value operations.
+;;
+;; The low and high bounds of the interval may each be defined as open or
+;; closed. Following standard terminology usage in interval mathematics, an open
+;; interval is defined to exclude the specified point, whereas a closed interval
+;; includes the point. The default is closed, indicating an inclusive interval.
+;;
+;; The low and high elements are both optional. If the low element is not
+;; specified, the low bound of the resulting interval is null. If the high
+;; element is not specified, the high bound of the resulting interval is null.
+;;
+;; The static type of the low bound determines the type of the interval, and the
+;; high bound must be of the same type.
+;;
+;; If the low bound of the interval is null and open, the low bound of the
+;; interval is interpreted as unknown, and computations involving the low
+;; boundary will result in null.
+;;
+;; If the low bound of the interval is null and closed, the interval is
+;; interpreted to start at the minimum value of the point type, and computations
+;; involving the low boundary will be performed with that value.
+;;
+;; If the high bound of the interval is null and open, the high bound of the
+;; interval is unknown, and computations involving the high boundary will result
+;; in null.
+;;
+;; If the high bound of the interval is null and closed, the interval is
+;; interpreted to end at the maximum value of the point type, and computations
+;; involving the high boundary will be performed with that interpretation.
+(deftest compile-interval-test
+  (testing "Literal interval"
+    (are [elm res] (= res (compile {} elm))
+      #elm/interval [#elm/int "1" #elm/int "2"] (interval 1 2 true true)
+      #elm/interval [#elm/dec "1" #elm/dec "2"] (interval 1M 2M true true))))
+
 
 ;; 19.15. Intersect
 (deftest compile-intersect-test
