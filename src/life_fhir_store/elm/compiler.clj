@@ -68,7 +68,7 @@
 (extend-protocol p/Equivalent
   Object
   (equivalent [x y]
-    (some->> y (= x))))
+    (= x y)))
 
 
 (extend-protocol p/Greater
@@ -1345,7 +1345,7 @@
         :else
         (reify Expression
           (-eval [_ context scope]
-            (Year/of (-eval year context scope)))
+            (some-> (-eval year context scope) (Year/of)))
           (-hash [_]
             {:type :date
              :year (-hash year)}))))))

@@ -306,3 +306,12 @@
 
 (defn duration-between [[a b precision]]
   {:type "DurationBetween" :operand [a b] :precision precision})
+
+
+;; 22.1. As
+(s/fdef as
+  :args (s/cat :arg (s/tuple string? :elm/expression))
+  :ret :elm/expression)
+
+(defn as [[type operand]]
+  {:type "As" :asType type :operand operand})

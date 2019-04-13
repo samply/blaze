@@ -25,6 +25,9 @@
   (:refer-clojure :exclude [compile]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (st/instrument
@@ -497,6 +500,11 @@
       {:type "Null"} #elm/dec "1.1" nil
       #elm/dec "1.1" {:type "Null"} nil))
 
+  (testing "Mixed Integer Decimal"
+    (are [a b res] (= res (-eval (compile {} (elm/equal [a b])) {} nil))
+      #elm/int "1" #elm/dec "1" true
+      #elm/dec "1" #elm/int "1" true))
+
   (testing "Quantity"
     (are [a b res] (= res (-eval (compile {} (elm/equal [a b])) {} nil))
       #elm/quantity [1] #elm/quantity [1] true
@@ -544,6 +552,10 @@
       {:type "Null"} #elm/date "2013-01-01" nil
       #elm/date "2013-01-01" {:type "Null"} nil))
 
+  (testing "Today() = Today()"
+    (are [a b] (true? (-eval (compile {} (elm/equal [a b])) {:now now} nil))
+      {:type "Today"} {:type "Today"}))
+
   (testing "DateTime with full precision (there is only one precision)"
     (are [a b res] (= res (-eval (compile {} (elm/equal [a b])) {} nil))
       #elm/date-time [#elm/int "2013" #elm/int "1" #elm/int "1"
@@ -576,6 +588,100 @@
 
       {:type "Null"} #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"] nil
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"] {:type "Null"} nil)))
+
+
+;; 12.2. Equivalent
+;;
+;; The Equivalent operator returns true if the arguments are the same value, or
+;; if they are both null; and false otherwise.
+;;
+;; For string values, equivalence returns true if the strings are the same value
+;; while ignoring case and locale, and normalizing whitespace. Normalizing
+;; whitespace means that all whitespace characters are treated as equivalent,
+;; with whitespace characters as defined in the whitespace lexical category.
+;;
+;; For ratios, equivalent means that the numerator and denominator represent the
+;; same ratio (e.g. 1:100 ~ 10:1000).
+;;
+;; For tuple types, this means that two tuple values are equivalent if and only
+;; if the tuples are of the same type, and the values for all elements by name
+;; are equivalent.
+;;
+;; For list types, this means that two lists are equivalent if and only if the
+;; lists contain elements of the same type, have the same number of elements,
+;; and for each element in the lists, in order, the elements are equivalent.
+;;
+;; For interval types, this means that two intervals are equivalent if and only
+;; if the intervals are over the same point type, and the starting and ending
+;; points of the intervals as determined by the Start and End operators are
+;; equivalent.
+;;
+;; For Date, DateTime, and Time values, the comparison is performed in the same
+;; way as it is for equality, except that if one input has a value for a given
+;; precision and the other does not, the comparison stops and the result is
+;; false, rather than null. As with equality, the second and millisecond
+;; precisions are considered a single precision using a decimal, with decimal
+;; equivalence semantics.
+;;
+;; For Code values, equivalence is defined based on the code and system elements
+;; only. The display and version elements are ignored for the purposes of
+;; determining Code equivalence.
+;;
+;; For Concept values, equivalence is defined as a non-empty intersection of the
+;; codes in each Concept.
+;;
+;; Note that this operator will always return true or false, even if either or
+;; both of its arguments are null or contain null components.
+(deftest compile-equivalent-test
+  (testing "Both null"
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+      {:type "Null"} {:type "Null"} true))
+
+  (testing "Boolean"
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+      #elm/boolean "true" #elm/boolean "true" true
+      #elm/boolean "true" #elm/boolean "false" false
+
+      {:type "Null"} #elm/boolean "true" false
+      #elm/boolean "true" {:type "Null"} false))
+
+  (testing "Integer"
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+      #elm/int "1" #elm/int "1" true
+      #elm/int "1" #elm/int "2" false
+
+      {:type "Null"} #elm/int "1" false
+      #elm/int "1" {:type "Null"} false))
+
+  (testing "Decimal"
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+      #elm/dec "1.1" #elm/dec "1.1" true
+      #elm/dec "1.1" #elm/dec "2.1" false
+
+      {:type "Null"} #elm/dec "1.1" false
+      #elm/dec "1.1" {:type "Null"} false))
+
+  (testing "Mixed Integer Decimal"
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+      #elm/int "1" #elm/dec "1" true
+      #elm/dec "1" #elm/int "1" true))
+
+  (testing "Quantity"
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+      #elm/quantity [1] #elm/quantity [1] true
+      #elm/quantity [1] #elm/quantity [2] false
+
+      #elm/quantity [1 "s"] #elm/quantity [1 "s"] true
+      #elm/quantity [1 "m"] #elm/quantity [1 "m"] true
+      #elm/quantity [100 "cm"] #elm/quantity [1 "m"] true
+      #elm/quantity [1 "s"] #elm/quantity [2 "s"] false
+      #elm/quantity [1 "s"] #elm/quantity [1 "m"] false
+
+      {:type "Null"} #elm/quantity [1] false
+      #elm/quantity [1] {:type "Null"} false
+
+      {:type "Null"} #elm/quantity [1 "s"] false
+      #elm/quantity [1 "s"] {:type "Null"} false)))
 
 
 ;; 12.3. Greater
@@ -2117,11 +2223,24 @@
 
 
 ;; 18.8. DateTime
+;;
+;; The DateTime operator constructs a DateTime value from the given components.
+;;
+;; At least one component other than timezoneOffset must be specified, and no
+;; component may be specified at a precision below an unspecified precision. For
+;; example, hour may be null, but if it is, minute, second, and millisecond must
+;; all be null as well.
+;;
+;; If timezoneOffset is not specified, it is defaulted to the timezone offset of
+;; the evaluation request.
 (deftest compile-date-time-test
   (testing "literal year"
     (are [elm res] (= res (compile {} elm))
-      #elm/date-time "2019"
-      (Year/of 2019)))
+      #elm/date-time "2019" (Year/of 2019)))
+
+  (testing "null year"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/date-time [#elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]] nil))
 
   (testing "non-literal year"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))

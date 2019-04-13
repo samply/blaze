@@ -27,6 +27,22 @@
   (/ (- 1E28M 1) 1E8M))
 
 
+;; 12.1. Equal
+(extend-protocol p/Equal
+  BigDecimal
+  (equal [x y]
+    (some->> y (== x))))
+
+
+;; 12.2. Equivalent
+(extend-protocol p/Equivalent
+  BigDecimal
+  (equivalent [x y]
+    (if y
+      (== x y)
+      false)))
+
+
 ;; 16.1. Abs
 (extend-protocol p/Abs
   BigDecimal

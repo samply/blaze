@@ -7,6 +7,8 @@
     [clojure.test :refer :all]
     [life-fhir-store.cql-translator :refer [translate]]
     [life-fhir-store.elm.compiler :refer [compile -eval]])
+  (:import
+    [java.time OffsetDateTime])
   (:refer-clojure :exclude [compile eval]))
 
 
@@ -46,7 +48,7 @@
     (-> library :statements :def first :expression)))
 
 (defn eval-elm [elm]
-  (-eval (compile {} elm) nil nil))
+  (-eval (compile {} elm) {:now (OffsetDateTime/now)} nil))
 
 (defn eval [cql]
   (eval-elm (to-elm cql)))
@@ -71,3 +73,6 @@
             "Ln0" "LnNeg0"
             "Log1Base1"
             "RoundNeg0D5" "RoundNeg1D5"})
+
+
+(deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml" #{})

@@ -18,4 +18,5 @@
  elm/subtract life-fhir-store.elm.literals/subtract
  elm/date life-fhir-store.elm.literals/date
  elm/date-time life-fhir-store.elm.literals/date-time
- elm/time life-fhir-store.elm.literals/time}
+ elm/time life-fhir-store.elm.literals/time
+ elm/as life-fhir-store.elm.literals/as}

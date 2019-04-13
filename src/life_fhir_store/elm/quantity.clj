@@ -52,6 +52,17 @@
         (catch UnconvertibleException _ false)))))
 
 
+;; 12.2. Equivalent
+(extend-protocol p/Equivalent
+  ComparableQuantity
+  (equivalent [a b]
+    (if b
+      (try
+        (.isEquivalentTo a b)
+        (catch UnconvertibleException _ false))
+      false)))
+
+
 ;; 16.1. Abs
 (extend-protocol p/Abs
   Quantity
