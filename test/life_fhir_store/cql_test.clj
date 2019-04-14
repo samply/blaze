@@ -92,6 +92,19 @@
 (deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml" #{})
 
 
+(deftests "logical-operators" "cql-test/CqlLogicalOperatorsTest.xml"
+          #{"TrueImpliesTrue"                               ; TODO: CQl-To-ELM error
+            "TrueImpliesFalse"                              ; TODO: CQl-To-ELM error
+            "TrueImpliesNull"                               ; TODO: CQl-To-ELM error
+            "FalseImpliesTrue"                              ; TODO: CQl-To-ELM error
+            "FalseImpliesFalse"                             ; TODO: CQl-To-ELM error
+            "FalseImpliesNull"                              ; TODO: CQl-To-ELM error
+            "NullImpliesTrue"                               ; TODO: CQl-To-ELM error
+            "NullImpliesFalse"                              ; TODO: CQl-To-ELM error
+            "NullImpliesNull"                               ; TODO: CQl-To-ELM error
+            })
+
+
 (deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
           #{"IntegerToString"                               ; TODO: implement
             "StringToIntegerError"                          ; TODO: implement
@@ -136,3 +149,8 @@
             "DecimalNeg10Pow28ToZeroOneStepDecimalMinValue" ; don't get it
             "IntegerMinValue"                               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
             })
+
+(comment
+  (to-elm "null implies null")
+  (translate (str "define x: true implies true"))
+  )
