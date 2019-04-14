@@ -172,3 +172,8 @@
 ;; 22.24. ToInteger
 (defprotocol ToInteger
   (to-integer [x]))
+
+
+;; 22.26. ToQuantity
+(defprotocol ToQuantity
+  (to-quantity [x]))

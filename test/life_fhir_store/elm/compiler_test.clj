@@ -13,9 +13,10 @@
     [life-fhir-store.elm.compiler
      :refer [compile compile-with-equiv-clause -eval -hash]]
     [life-fhir-store.elm.date-time :refer [period]]
+    [life-fhir-store.elm.decimal :as decimal]
     [life-fhir-store.elm.interval :refer [interval]]
     [life-fhir-store.elm.literals :as elm]
-    [life-fhir-store.elm.quantity :refer [parse-quantity]])
+    [life-fhir-store.elm.quantity :refer [quantity]])
   (:import
     [java.math BigDecimal]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
@@ -177,8 +178,8 @@
       #elm/quantity [2 "minutes"] (period 0 0 (* 2 60))
       #elm/quantity [1 "second"] (period 0 0 1)
       #elm/quantity [2 "seconds"] (period 0 0 2)
-      #elm/quantity [1 "s"] (parse-quantity 1 "s")
-      #elm/quantity [1 "cm2"] (parse-quantity 1 "cm2")))
+      #elm/quantity [1 "s"] (quantity 1 "s")
+      #elm/quantity [1 "cm2"] (quantity 1 "cm2")))
 
   (testing "Periods"
     (satisfies-prop 100
@@ -1163,13 +1164,13 @@
     #elm/quantity [0M] 0M
     #elm/quantity [1M] 1M
 
-    #elm/quantity [-1 "m"] (parse-quantity 1 "m")
-    #elm/quantity [0 "m"] (parse-quantity 0 "m")
-    #elm/quantity [1 "m"] (parse-quantity 1 "m")
+    #elm/quantity [-1 "m"] (quantity 1 "m")
+    #elm/quantity [0 "m"] (quantity 0 "m")
+    #elm/quantity [1 "m"] (quantity 1 "m")
 
-    #elm/quantity [-1M "m"] (parse-quantity 1M "m")
-    #elm/quantity [0M "m"] (parse-quantity 0M "m")
-    #elm/quantity [1M "m"] (parse-quantity 1M "m")
+    #elm/quantity [-1M "m"] (quantity 1M "m")
+    #elm/quantity [0M "m"] (quantity 0M "m")
+    #elm/quantity [1M "m"] (quantity 1M "m")
 
     {:type "Null"} nil))
 
@@ -1291,8 +1292,8 @@
 
   (testing "UCUM quantity"
     (are [a b res] (= res (-eval (compile {} (elm/add [a b])) {} nil))
-      #elm/quantity [1 "m"] #elm/quantity [1 "m"] (parse-quantity 2 "m")
-      #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (parse-quantity 1.01M "m")))
+      #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity 2 "m")
+      #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity 1.01M "m")))
 
   (testing "Incompatible UCUM Quantity Subtractions"
     (are [a b] (thrown? UnconvertibleException (-eval (compile {} (elm/add [a b])) {} nil))
@@ -1495,12 +1496,12 @@
 
   (testing "UCUM Quantity"
     (are [a b res] (= res (-eval (compile {} (elm/divide [a b])) {} nil))
-      #elm/quantity [1M "m"] #elm/int "2" (parse-quantity 0.5M "m")
+      #elm/quantity [1M "m"] #elm/int "2" (quantity 0.5M "m")
 
-      #elm/quantity [1 "m"] #elm/quantity [1 "s"] (parse-quantity 1 "m/s")
-      #elm/quantity [1M "m"] #elm/quantity [1M "s"] (parse-quantity 1M "m/s")
+      #elm/quantity [1 "m"] #elm/quantity [1 "s"] (quantity 1 "m/s")
+      #elm/quantity [1M "m"] #elm/quantity [1M "s"] (quantity 1M "m/s")
 
-      #elm/quantity [12 "cm2"] #elm/quantity [3 "cm"] (parse-quantity 4 "cm")
+      #elm/quantity [12 "cm2"] #elm/quantity [3 "cm"] (quantity 4 "cm")
 
       #elm/quantity [1 "m"] {:type "Null"} nil
       {:type "Null"} #elm/quantity [1 "m"] nil)))
@@ -1713,8 +1714,8 @@
 
   (testing "UCUM Quantity"
     (are [a b res] (= res (-eval (compile {} (elm/multiply [a b])) {} nil))
-      #elm/quantity [1 "m"] #elm/int "2" (parse-quantity 2 "m")
-      #elm/quantity [1 "m"] #elm/quantity [2 "m"] (parse-quantity 2 "m2")
+      #elm/quantity [1 "m"] #elm/int "2" (quantity 2 "m")
+      #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity 2 "m2")
 
       {:type "Null"} #elm/quantity [1 "m"] nil
       #elm/quantity [1 "m"] {:type "Null"} nil)))
@@ -1741,8 +1742,8 @@
 
     #elm/quantity [1] -1
     #elm/quantity [1M] -1M
-    #elm/quantity [1 "m"] (parse-quantity -1 "m")
-    #elm/quantity [1M "m"] (parse-quantity -1M "m")
+    #elm/quantity [1 "m"] (quantity -1 "m")
+    #elm/quantity [1M "m"] (quantity -1M "m")
 
     {:type "Null"} nil))
 
@@ -1822,8 +1823,8 @@
     #elm/date "2019-01-01" (LocalDate/of 2018 12 31)
     #elm/date-time "2019-01-01T00" (LocalDateTime/of 2018 12 31 23 59 59 999000000)
     #elm/time "12:00" (LocalTime/of 11 59 59 999000000)
-    #elm/quantity [0 "m"] (parse-quantity -1 "m")
-    #elm/quantity [0M "m"] (parse-quantity -1E-8M "m")
+    #elm/quantity [0 "m"] (quantity -1 "m")
+    #elm/quantity [0M "m"] (quantity -1E-8M "m")
     {:type "Null"} nil)
 
   (are [x] (thrown? Exception (-eval (compile {} (elm/predecessor x)) {} nil))
@@ -1958,8 +1959,8 @@
 
   (testing "UCUM quantity"
     (are [a b res] (= res (-eval (compile {} (elm/subtract [a b])) {} nil))
-      #elm/quantity [1 "m"] #elm/quantity [1 "m"] (parse-quantity 0 "m")
-      #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (parse-quantity 0.99 "m")))
+      #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity 0 "m")
+      #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity 0.99 "m")))
 
   (testing "Incompatible UCUM Quantity Subtractions"
     (are [a b] (thrown? UnconvertibleException (-eval (compile {} (elm/subtract [a b])) {} nil))
@@ -2087,8 +2088,8 @@
     #elm/date "2019-01-01" (LocalDate/of 2019 1 2)
     #elm/date-time "2019-01-01T00" (LocalDateTime/of 2019 1 1 0 0 0 1000000)
     #elm/time "00:00:00" (LocalTime/of 0 0 0 1000000)
-    #elm/quantity [0 "m"] (parse-quantity 1 "m")
-    #elm/quantity [0M "m"] (parse-quantity 1E-8M "m")
+    #elm/quantity [0 "m"] (quantity 1 "m")
+    #elm/quantity [0M "m"] (quantity 1E-8M "m")
     {:type "Null"} nil)
 
   (are [x] (thrown? Exception (-eval (compile {} (elm/successor x)) {} nil))
@@ -2748,7 +2749,7 @@
     (Year/of 2012)))
 
 
-;; 22.19. ToDate
+;; 22.21. ToDate
 ;;
 ;; The ToDate operator converts the value of its argument to a Date value.
 ;;
@@ -2798,14 +2799,14 @@
     (LocalDate/of 2019 1 1)))
 
 
-;; 22.20. ToDateTime
+;; 22.22. ToDateTime
 (deftest compile-to-date-time-test
   (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
     {:type "ToDateTime" :operand #elm/date "2019"}
     (Year/of 2019)))
 
 
-;; 22.21. ToDecimal
+;; 22.23. ToDecimal
 ;;
 ;; The ToDecimal operator converts the value of its argument to a Decimal value.
 ;; The operator accepts strings using the following format:
@@ -2827,38 +2828,20 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-decimal-test
   (are [x res] (= res (-eval (compile {} {:type "ToDecimal" :operand x}) {} nil))
+    (elm/string (str decimal/min)) decimal/min
+    #elm/string "-1.1" -1.1M
+    #elm/string "-1" -1M
     #elm/string "0" 0M
     #elm/string "1" 1M
-    #elm/string "1.1" 1.1M
+    (elm/string (str decimal/max)) decimal/max
+
+    (elm/string (str (- decimal/min 1e-8M))) nil
+    (elm/string (str (+ decimal/max 1e-8M))) nil
     #elm/string "a" nil
 
     #elm/int "1" 1M
 
     {:type "Null"} nil))
-
-
-;; 22.23. ToList
-;;
-;; The ToList operator returns its argument as a List value. The operator
-;; accepts a singleton value of any type and returns a list with the value as
-;; the single element.
-;;
-;; If the argument is null the operator returns an empty list.
-;;
-;; The operator is effectively shorthand for "if operand is null then { } else
-;; { operand }".
-;;
-;; The operator is used to implement list promotion efficiently.
-(deftest compile-to-list-test
-  (are [elm res] (= res (-eval (compile {} elm) {} nil))
-    {:type "ToList" :operand {:type "Null"}}
-    []
-
-    {:type "ToList" :operand #elm/boolean "false"}
-    [false]
-
-    {:type "ToList" :operand #elm/int "1"}
-    [1]))
 
 
 ;; 22.24. ToInteger
@@ -2891,6 +2874,68 @@
     #elm/string "a" nil
 
     #elm/int "1" 1
+
+    {:type "Null"} nil))
+
+
+;; 22.25. ToList
+;;
+;; The ToList operator returns its argument as a List value. The operator
+;; accepts a singleton value of any type and returns a list with the value as
+;; the single element.
+;;
+;; If the argument is null the operator returns an empty list.
+;;
+;; The operator is effectively shorthand for "if operand is null then { } else
+;; { operand }".
+;;
+;; The operator is used to implement list promotion efficiently.
+(deftest compile-to-list-test
+  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    {:type "ToList" :operand {:type "Null"}}
+    []
+
+    {:type "ToList" :operand #elm/boolean "false"}
+    [false]
+
+    {:type "ToList" :operand #elm/int "1"}
+    [1]))
+
+
+;; 22.26. ToQuantity
+;;
+;; The ToQuantity operator converts the value of its argument to a Quantity
+;; value. The operator accepts strings using the following format:
+;;
+;; (+|-)?#0(.0#)?('<unit>')?
+;;
+;; Meaning an optional polarity indicator, followed by any number of digits
+;; (including none) followed by at least one digit, optionally followed by a
+;; decimal point, at least one digit, and any number of additional digits, all
+;; optionally followed by a unit designator as a string literal specifying a
+;; valid UCUM unit of measure. Spaces are allowed between the quantity value and
+;; the unit designator.
+;;
+;; Note that the decimal value of the quantity returned by this operator must be
+;; a valid value in the range representable for Decimal values in CQL.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as a
+;; valid Quantity value, the result is null.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-to-quantity-test
+  (are [x res] (= res (-eval (compile {} {:type "ToQuantity" :operand x}) {} nil))
+    ; TODO (elm/string (str decimal/min)) decimal/min
+    ; TODO #elm/string "-1" -1M
+    ; TODO #elm/string "0" 0M
+    ; TODO #elm/string "1" 1M
+    ; TODO (elm/string (str decimal/max)) decimal/max
+
+    ; TODO #elm/string "5.5 cm" (quantity 5.5M "cm")
+
+    ; TODO (elm/string (str (- decimal/min 1e-8M))) nil
+    ; TODO (elm/string (str (+ decimal/max 1e-8M))) nil
+    ; TODO #elm/string "a" nil
 
     {:type "Null"} nil))
 

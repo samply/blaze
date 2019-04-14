@@ -203,7 +203,7 @@
   (to-decimal [x]
     (when-let [d (try (BigDecimal. x) (catch Exception _))]
       (when (<= min d max)
-        (.setScale d 8 RoundingMode/HALF_UP)))))
+        (.setScale ^BigDecimal d 8 RoundingMode/HALF_UP)))))
 
 
 (defn from-literal [s]

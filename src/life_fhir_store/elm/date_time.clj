@@ -506,4 +506,9 @@
   OffsetDateTime
   (to-date-time [this now]
     (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDateTime))))
+        (.toLocalDateTime)))
+
+  String
+  (to-date-time [s _]
+    ;; TODO: implement
+    (throw (Exception. (str "Not implemented yet `ToDateTime('" s "')`.")))))

@@ -28,7 +28,7 @@
     [life-fhir-store.elm.nil]
     [life-fhir-store.elm.normalizer :refer [normalize-library]]
     [life-fhir-store.elm.protocols :as p]
-    [life-fhir-store.elm.quantity :refer [parse-quantity]]
+    [life-fhir-store.elm.quantity :refer [quantity]]
     [life-fhir-store.elm.spec]
     [life-fhir-store.elm.type-infer :refer [infer-library-types]]
     [life-fhir-store.elm.util :as elm-util]
@@ -553,7 +553,7 @@
       ("second" "seconds") (date-time/period 0 0 value)
       ;; TODO: wrong
       ("millisecond" "milliseconds") (date-time/period 0 0 value)
-      (parse-quantity value unit))
+      (quantity value unit))
     value))
 
 
@@ -1720,27 +1720,45 @@
       :else
       (throw (Exception. "Unsupported `As` expression.")))))
 
+;; 22.2. CanConvert
 
-;; 22.19. ToDate
-;;
-;; The ToDate operator converts the value of its argument to a Date value.
-;;
-;; For String values, The operator expects the string to be formatted using the
-;; ISO-8601 date representation:
-;;
-;; YYYY-MM-DD
-;;
-;; In addition, the string must be interpretable as a valid date value.
-;;
-;; If the input string is not formatted correctly, or does not represent a valid
-;; date value, the result is null.
-;;
-;; As with date literals, date values may be specified to any precision.
-;;
-;; For DateTime values, the result is equivalent to extracting the Date
-;; component of the DateTime value.
-;;
-;; If the argument is null, the result is null.
+;; 22.3. CanConvertQuantity
+
+;; 22.4. Children
+
+;; 22.5. Convert
+
+;; 22.6. ConvertQuantity
+
+;; 22.7. ConvertsToBoolean
+
+;; 22.8. ConvertsToDate
+
+;; 22.9. ConvertsToDateTime
+
+;; 22.10. ConvertsToDecimal
+
+;; 22.11. ConvertsToInteger
+
+;; 22.12. ConvertsToQuantity
+
+;; 22.13. ConvertsToRatio
+
+;; 22.14. ConvertsToString
+
+;; 22.15. ConvertsToTime
+
+;; 22.16. Descendents
+
+;; 22.17. Is
+
+;; 22.18. ToBoolean
+
+;; 22.19. ToChars
+
+;; 22.20. ToConcept
+
+;; 22.21. ToDate
 (defmethod compile* :elm.compiler.type/to-date
   [context {:keys [operand]}]
   (let [operand (compile context operand)]
@@ -1752,7 +1770,7 @@
          :operand (-hash operand)}))))
 
 
-;; 22.20. ToDateTime
+;; 22.22. ToDateTime
 (defmethod compile* :elm.compiler.type/to-date-time
   [context {:keys [operand]}]
   (let [operand (compile context operand)]
@@ -1764,22 +1782,15 @@
          :operand (-hash operand)}))))
 
 
-;; 22.21. ToDecimal
+;; 22.23. ToDecimal
 (defunary-operator "to-decimal")
 
 
-;; 22.23. ToList
-;;
-;; The ToList operator returns its argument as a List value. The operator
-;; accepts a singleton value of any type and returns a list with the value as
-;; the single element.
-;;
-;; If the argument is null, the operator returns an empty list.
-;;
-;; The operator is effectively shorthand for "if operand is null then { } else
-;; { operand }".
-;;
-;; The operator is used to implement list promotion efficiently.
+;; 22.24. ToInteger
+(defunary-operator "to-integer")
+
+
+;; 22.25. ToList
 (defmethod compile* :elm.compiler.type/to-list
   [context {:keys [operand]}]
   (let [operand (compile context operand)]
@@ -1792,22 +1803,8 @@
          :operand (-hash operand)}))))
 
 
-;; 22.24. ToInteger
-(defunary-operator "to-integer")
-
-
-;; 22.24. ToQuantity
-;;
-;; The ToQuantity operator converts the value of its argument to a Quantity
-;; value. The operator accepts strings using the following format:
-;;
-;; (+|-)?0(.0)?('<unit>')?
-(defmethod compile* :elm.compiler.type/to-quantity
-  [context {:keys [operand]}]
-  (when-let [result (compile context operand)]
-    (if (number? result)
-      result
-      (throw (Exception. (str "Unsupported quantity `" result "`."))))))
+;; 22.26. ToQuantity
+(defunary-operator "to-quantity")
 
 
 

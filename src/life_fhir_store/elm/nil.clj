@@ -141,3 +141,8 @@
 (extend-protocol p/ToInteger
   nil
   (to-integer [_]))
+
+
+(extend-protocol p/ToQuantity
+  nil
+  (to-quantity [_]))

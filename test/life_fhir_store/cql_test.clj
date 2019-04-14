@@ -92,11 +92,39 @@
 (deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml" #{})
 
 
+(deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
+          #{"IntegerToString"                               ; TODO: implement
+            "StringToIntegerError"                          ; TODO: implement
+            "StringToDateTime"                              ; TODO: implement
+            "StringToTime"                                  ; TODO: implement
+            "IntegerIsInteger"                              ; TODO: implement
+            "StringIsInteger"                               ; TODO: implement
+            "StringNoToBoolean"                             ; TODO: implement
+            "CodeToConcept1"                                ; TODO: implement
+            "ToDateTime1"                                   ; TODO: implement
+            "ToDateTime2"                                   ; TODO: implement
+            "ToDateTime3"                                   ; TODO: implement
+            "ToDateTime4"                                   ; TODO: implement
+            "ToDateTime5"                                   ; TODO: implement
+            "ToDateTime6"                                   ; TODO: implement
+            "String5D5CMToQuantity"                         ; TODO: implement
+            "IntegerNeg5ToString"                           ; TODO: implement
+            "Decimal18D55ToString"                          ; TODO: implement
+            "Quantity5D5CMToString"                         ; TODO: implement
+            "BooleanTrueToString"                           ; TODO: implement
+            "ToTime1"                                       ; TODO: implement
+            "ToTime2"                                       ; TODO: implement
+            "ToTime3"                                       ; TODO: implement
+            "ToTime4"                                       ; TODO: implement
+            })
+
+
 (deftests "types-test" "cql-test/CqlTypesTest.xml"
           #{"QuantityTest"                                  ; unit `lbs` unknown
             "QuantityTest2"                                 ; unit `eskimo kisses` unknown
-            "DateTimeUncertain"                             ; TODO: not implemented yet
+            "DateTimeUncertain"                             ; TODO: implement
             })
+
 
 (deftests "value-literals-and-selectors" "cql-test/ValueLiteralsAndSelectors.xml"
           #{"IntegerNeg2Pow31IntegerMinValue"               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
@@ -107,11 +135,4 @@
             "DecimalPos10Pow28ToZeroOneStepDecimalMaxValue" ; don't get it
             "DecimalNeg10Pow28ToZeroOneStepDecimalMinValue" ; don't get it
             "IntegerMinValue"                               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
-            })
-
-
-(deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
-          #{"ToDateTime4"                                   ; TODO: implement
-            "ToDateTime5"                                   ; TODO: implement
-            "ToDateTime6"                                   ; TODO: implement
             })

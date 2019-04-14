@@ -322,31 +322,33 @@ The following table gives an overview of the current state of implementation of 
 1.27+<|22. Type Operators
 | 22.1. As | ! | no strictness
 | 22.2. CanConvert | ✗ |
-| 22.3. Children | ✗ |
-| 22.4. Convert | ✗ |
-| 22.5. ConvertsToBoolean | ✗ |
-| 22.6. ConvertsToDate | ✗ |
-| 22.7. ConvertsToDateTime | ✗ |
-| 22.8. ConvertsToDecimal | ✗ |
-| 22.9. ConvertsToInteger | ✗ |
-| 22.10. ConvertsToQuantity | ✗ |
-| 22.11. ConvertsToRatio | ✗ |
-| 22.12. ConvertsToString | ✗ |
-| 22.13. ConvertsToTime | ✗ |
-| 22.14. Descendents | ✗ |
-| 22.15. Is | ✗ |
-| 22.16. ToBoolean | ✗ |
-| 22.17. ToChars | ✗ |
-| 22.18. ToConcept | ✗ |
-| 22.19. ToDate | ✗ |
-| 22.20. ToDateTime | ✓ |
-| 22.21. ToDecimal | ✗ |
-| 22.22. ToInteger | ✓ |
-| 22.23. ToList | ✓ |
-| 22.24. ToQuantity | ✗ |
-| 22.25. ToRatio | ✗ |
-| 22.26. ToString | ✗ |
-| 22.27. ToTime | ✗ |
+| 22.3. CanConvertQuantity | ✗ |
+| 22.4. Children | ✗ |
+| 22.5. Convert | ✗ |
+| 22.6. ConvertQuantity | ✗ |
+| 22.7. ConvertsToBoolean | ✗ |
+| 22.8. ConvertsToDate | ✗ |
+| 22.9. ConvertsToDateTime | ✗ |
+| 22.10. ConvertsToDecimal | ✗ |
+| 22.11. ConvertsToInteger | ✗ |
+| 22.12. ConvertsToQuantity | ✗ |
+| 22.13. ConvertsToRatio | ✗ |
+| 22.14. ConvertsToString | ✗ |
+| 22.15. ConvertsToTime | ✗ |
+| 22.16. Descendents | ✗ |
+| 22.17. Is | ✗ |
+| 22.18. ToBoolean | ✗ |
+| 22.19. ToChars | ✗ |
+| 22.20. ToConcept | ✗ |
+| 22.21. ToDate | ✗ |
+| 22.22. ToDateTime | ! |
+| 22.23. ToDecimal | ✓ |
+| 22.24. ToInteger | ✓ |
+| 22.25. ToList | ✓ |
+| 22.26. ToQuantity | ✗ |
+| 22.27. ToRatio | ✗ |
+| 22.28. ToString | ✗ |
+| 22.29. ToTime | ✗ |
 
 1.11+<|23. Clinical Operators
 | 23.1. AnyInCodeSystem | ✗ |
@@ -364,7 +366,7 @@ The following table gives an overview of the current state of implementation of 
 1.1+<|24. Errors and Messages
 | 24.1. Message | ✗ |
 
-| | 2+<| ✓ = 67, ! = 13, ✗ = 166, 33 % finished
+| | 2+<| ✓ = 68, ! = 14, ✗ = 166, 33 % finished
 |===
 
 == Implementation

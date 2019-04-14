@@ -26,10 +26,12 @@
                       {:unit unit :cause-msg (.getMessage t)})))))
 
 
-(s/fdef parse-quantity
+(s/fdef quantity
   :args (s/cat :value number? :unit string?))
 
-(defn parse-quantity [value unit]
+(defn quantity
+  "Creates a quantity with numerical value and string unit."
+  [value unit]
   (->> (parse-unit unit)
        (Quantities/getQuantity value)))
 
@@ -153,3 +155,14 @@
   DecimalQuantity
   (successor [x]
     (.add x (Quantities/getQuantity 1E-8M (.getUnit x)))))
+
+
+;; 22.26. ToQuantity
+(extend-protocol p/ToQuantity
+  Number
+  (to-quantity [x] x)
+
+  String
+  (to-quantity [s]
+    ;; TODO: implement
+    (throw (Exception. (str "Not implemented yet `ToQuantity('" s "')`.")))))
