@@ -2861,6 +2861,40 @@
     [1]))
 
 
+;; 22.24. ToInteger
+;;
+;; The ToInteger operator converts the value of its argument to an Integer
+;; value. The operator accepts strings using the following format:
+;;
+;; (+|-)?#0
+;;
+;; Meaning an optional polarity indicator, followed by any number of digits
+;; (including none), followed by at least one digit.
+;;
+;; Note that the integer value returned by this operator must be a valid value
+;; in the range representable for Integer values in CQL.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as
+;; a valid Integer value, the result is null.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-to-integer-test
+  (are [x res] (= res (-eval (compile {} {:type "ToInteger" :operand x}) {} nil))
+    (elm/string (str Integer/MIN_VALUE)) Integer/MIN_VALUE
+    #elm/string "-1" -1
+    #elm/string "0" 0
+    #elm/string "1" 1
+    (elm/string (str Integer/MAX_VALUE)) Integer/MAX_VALUE
+
+    (elm/string (str (dec Integer/MIN_VALUE))) nil
+    (elm/string (str (inc Integer/MAX_VALUE))) nil
+    #elm/string "a" nil
+
+    #elm/int "1" 1
+
+    {:type "Null"} nil))
+
+
 
 ;; 23. Clinical Operators
 

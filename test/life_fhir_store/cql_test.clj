@@ -108,3 +108,10 @@
             "DecimalNeg10Pow28ToZeroOneStepDecimalMinValue" ; don't get it
             "IntegerMinValue"                               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
             })
+
+
+(deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
+          #{"ToDateTime4"                                   ; TODO: implement
+            "ToDateTime5"                                   ; TODO: implement
+            "ToDateTime6"                                   ; TODO: implement
+            })

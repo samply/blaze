@@ -167,3 +167,8 @@
 ;; 22.23. ToDecimal
 (defprotocol ToDecimal
   (to-decimal [x]))
+
+
+;; 22.24. ToInteger
+(defprotocol ToInteger
+  (to-integer [x]))

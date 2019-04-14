@@ -1792,6 +1792,10 @@
          :operand (-hash operand)}))))
 
 
+;; 22.24. ToInteger
+(defunary-operator "to-integer")
+
+
 ;; 22.24. ToQuantity
 ;;
 ;; The ToQuantity operator converts the value of its argument to a Quantity

@@ -136,3 +136,8 @@
 (extend-protocol p/ToDecimal
   nil
   (to-decimal [_]))
+
+
+(extend-protocol p/ToInteger
+  nil
+  (to-integer [_]))

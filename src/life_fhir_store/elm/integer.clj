@@ -163,3 +163,15 @@
   (truncated-divide [num div]
     (when (and div (not (zero? div)))
       (quot num div))))
+
+
+;; 22.24. ToInteger
+(extend-protocol p/ToInteger
+  Long
+  (to-integer [x] x)
+
+  String
+  (to-integer [s]
+    (try
+      (long (Integer/parseInt s))
+      (catch Exception _))))

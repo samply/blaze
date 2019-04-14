@@ -341,7 +341,7 @@ The following table gives an overview of the current state of implementation of 
 | 22.19. ToDate | ✗ |
 | 22.20. ToDateTime | ✓ |
 | 22.21. ToDecimal | ✗ |
-| 22.22. ToInteger | ✗ |
+| 22.22. ToInteger | ✓ |
 | 22.23. ToList | ✓ |
 | 22.24. ToQuantity | ✗ |
 | 22.25. ToRatio | ✗ |
@@ -364,7 +364,7 @@ The following table gives an overview of the current state of implementation of 
 1.1+<|24. Errors and Messages
 | 24.1. Message | ✗ |
 
-| | 2+<| ✓ = 47, ! = 13, ✗ = 186, 20 % finished
+| | 2+<| ✓ = 48, ! = 13, ✗ = 185, 20 % finished
 |===
 
 == Implementation
