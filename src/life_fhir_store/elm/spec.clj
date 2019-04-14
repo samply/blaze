@@ -540,21 +540,42 @@
 
 ;; 15. Conditional Operators
 
+(s/def :elm/when
+  :elm/expression)
+
+
+(s/def :elm/then
+  :elm/expression)
+
+
+(s/def :elm/else
+  :elm/expression)
+
+
+;; 15.1. Case
+(s/def :elm.case/comparand
+  :elm/expression)
+
+
+(s/def :elm.case/item
+  (s/keys :req-un [:elm/when :elm/then]))
+
+
+(s/def :elm/caseItem
+  (s/coll-of :elm.case/item :min-count 1))
+
+
+(defmethod expression :elm.spec.type/case [_]
+  (s/keys :req-un [:elm/caseItem :elm/else] :op-un [:elm.case/comparand]))
+
+
 ;; 15.2. If
 (s/def :elm.if/condition
   :elm/expression)
 
 
-(s/def :elm.if/then
-  :elm/expression)
-
-
-(s/def :elm.if/else
-  :elm/expression)
-
-
 (defmethod expression :elm.spec.type/if [_]
-  (s/keys :opt-un [:elm.if/condition :elm.if/then :elm.if/else]))
+  (s/keys :req-un [:elm.if/condition :elm/then :elm/else]))
 
 
 

@@ -207,6 +207,24 @@
 
 ;; 15. Conditional Operators
 
+;; 15.1. Case
+(defmethod infer-deps :elm.deps.type/case
+  [{:keys [comparand else] items :caseItem :as expression}]
+  (let [comparand (some-> comparand infer-deps)
+        items (mapv #(-> % (update :when infer-deps) (update :then infer-deps)) items)
+        else (infer-deps else)
+        item-exprs (into (mapv :when items) (map :then) items)
+        all (cond-> (conj item-exprs else) comparand (conj comparand))]
+    (cond->
+      (assoc expression
+        :caseItem items
+        :else else
+        :life/deps (transduce (map :life/deps) set/union all)
+        :life/scopes (transduce (map :life/scopes) set/union all))
+      comparand
+      (assoc :comparand comparand))))
+
+
 ;; 15.2. If
 (defmethod infer-deps :elm.deps.type/if
   [{:keys [condition then else] :as expression}]

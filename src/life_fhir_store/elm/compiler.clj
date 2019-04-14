@@ -1003,6 +1003,48 @@
 
 ;; 15. Conditional Operators
 
+;; 15.1. Case
+(defmethod compile* :elm.compiler.type/case
+  [context {:keys [comparand else] items :caseItem}]
+  (let [comparand (some->> comparand (compile context))
+        items (mapv #(-> % (update :when (partial compile context))
+                         (update :then (partial compile context)))
+                    items)
+        else (compile context else)]
+    (if comparand
+      (reify Expression
+        (-eval [_ context scope]
+          (let [comparand (-eval comparand context scope)]
+            (loop [[{:keys [when then]} & next-items] items]
+              (if (p/equal comparand (-eval when context scope))
+                (-eval then context scope)
+                (if (empty? next-items)
+                  (-eval else context scope)
+                  (recur next-items))))))
+        (-hash [_]
+          (cond->
+            {:type :case
+             :items (mapv #(-> % (update :when -hash) (update :then -hash)) items)
+             :else (-hash else)}
+            comparand
+            (assoc :comparand (-hash comparand)))))
+      (reify Expression
+        (-eval [_ context scope]
+          (loop [[{:keys [when then]} & next-items] items]
+            (if (-eval when context scope)
+              (-eval then context scope)
+              (if (empty? next-items)
+                (-eval else context scope)
+                (recur next-items)))))
+        (-hash [_]
+          (cond->
+            {:type :case
+             :items (mapv #(-> % (update :when -hash) (update :then -hash)) items)
+             :else (-hash else)}
+            comparand
+            (assoc :comparand (-hash comparand))))))))
+
+
 ;; 15.2. If
 (defmethod compile* :elm.compiler.type/if
   [context {:keys [condition then else]}]

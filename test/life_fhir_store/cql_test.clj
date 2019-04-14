@@ -105,7 +105,16 @@
             })
 
 
+;; 14. Nullological Operators
 (deftests "nullological-operators" "cql-test/CqlNullologicalOperatorsTest.xml" #{})
+
+
+;; 15. Conditional Operators
+(deftests "conditional-operators" "cql-test/CqlConditionalOperatorsTest.xml" #{})
+
+
+;; 18. Date and Time Operators
+;; TODO (deftests "date-time-operators" "cql-test/CqlDateTimeOperatorsTest.xml" #{})
 
 
 (deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
