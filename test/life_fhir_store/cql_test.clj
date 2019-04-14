@@ -105,6 +105,9 @@
             })
 
 
+(deftests "nullological-operators" "cql-test/CqlNullologicalOperatorsTest.xml" #{})
+
+
 (deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
           #{"IntegerToString"                               ; TODO: implement
             "StringToIntegerError"                          ; TODO: implement
@@ -149,8 +152,3 @@
             "DecimalNeg10Pow28ToZeroOneStepDecimalMinValue" ; don't get it
             "IntegerMinValue"                               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
             })
-
-(comment
-  (to-elm "null implies null")
-  (translate (str "define x: true implies true"))
-  )

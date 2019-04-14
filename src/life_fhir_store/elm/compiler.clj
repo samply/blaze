@@ -396,10 +396,10 @@
 
 
 (defn contains-choice-type?
-  {:arglists '([choice-type-specifier type-name])}
-  [{:keys [type]} type-name]
-  (when type-name
-    (some (fn [{:keys [name]}] (= type-name name)) type)))
+  {:arglists '([choice-type-specifier type])}
+  [{types :type} type]
+  (some #(and (= (:type type) (:type %))
+              (= (:name type) (:name %))) types))
 
 
 (defn- extract-local-fhir-name [type-name]
@@ -412,15 +412,15 @@
 
 (defn attr-kw
   {:arglists '([property-expression])}
-  [{:life/keys [source-type as-type-name] :keys [path source]
+  [{:life/keys [source-type as-type] :keys [path source]
     result-type-specifier :resultTypeSpecifier :as expr}]
   (cond
     source-type
     (let [[source-type-ns source-type-name] (elm-util/parse-qualified-name source-type)]
       (if (= "http://hl7.org/fhir" source-type-ns)
         (if (choice-type-specifier? result-type-specifier)
-          (if (contains-choice-type? result-type-specifier as-type-name)
-            (keyword source-type-name (str path (u/title-case (extract-local-fhir-name as-type-name))))
+          (if (contains-choice-type? result-type-specifier as-type)
+            (keyword source-type-name (str path (u/title-case (extract-local-fhir-name (:name as-type)))))
             (throw (ex-info (str "Ambiguous choice type on property `"
                                  source-type-name "/" path "`.") expr)))
           (keyword source-type-name path))
@@ -441,15 +441,15 @@
   {:arglists '([property-expression])}
   [{result-type-name :resultTypeName
     result-type-specifier :resultTypeSpecifier
-    :life/keys [as-type-name]
+    :life/keys [as-type]
     :as expr}]
   (cond
     result-type-name
     (elm-util/parse-qualified-name result-type-name)
 
     (choice-type-specifier? result-type-specifier)
-    (if (contains-choice-type? result-type-specifier as-type-name)
-      (elm-util/parse-qualified-name as-type-name)
+    (if (contains-choice-type? result-type-specifier as-type)
+      (elm-util/parse-qualified-name (:name as-type))
       (throw (ex-info "Ambiguous choice type on property." expr)))
 
     :else
@@ -949,18 +949,43 @@
 ;; arguments. If all arguments evaluate to null, the result is null.
 (defmethod compile* :elm.compiler.type/coalesce
   [context {operands :operand}]
-  (let [operands (mapv #(compile context %) operands)]
-    (reify Expression
-      (-eval [_ context scope]
-        (reduce
-          (fn [_ x]
-            (when (some? (-eval x context scope))
-              (reduced x)))
-          nil
-          operands))
-      (-hash [_]
-        {:type :and
-         :operands (mapv -hash operands)}))))
+  (condp = (count operands)
+    1
+    (let [operand (first operands)]
+      (if (= "List" (:type operand))
+        (let [operand (compile context operand)]
+          (reify Expression
+            (-eval [_ context scope]
+              (reduce
+                (fn [_ elem]
+                  (let [elem (-eval elem context scope)]
+                    (when (some? elem)
+                      (reduced elem))))
+                nil
+                (-eval operand context scope)))
+            (-hash [_]
+              {:type :coalesce
+               :operands (mapv -hash operands)})))
+        (let [operand (compile context operand)]
+          (reify Expression
+            (-eval [_ context scope]
+              (-eval operand context scope))
+            (-hash [_]
+              {:type :coalesce
+               :operands (mapv -hash operands)})))))
+    (let [operands (mapv #(compile context %) operands)]
+      (reify Expression
+        (-eval [_ context scope]
+          (reduce
+            (fn [_ operand]
+              (let [operand (-eval operand context scope)]
+                (when (some? operand)
+                  (reduced operand))))
+            nil
+            operands))
+        (-hash [_]
+          {:type :coalesce
+           :operands (mapv -hash operands)})))))
 
 
 ;; 14.3. IsFalse
@@ -1713,12 +1738,9 @@
 ;; attribute is true, an exception is thrown.
 (defmethod compile* :elm.compiler.type/as
   [context {:keys [operand] as-type :asType as-type-specifier :asTypeSpecifier}]
-  (let [as-type (or as-type (:name as-type-specifier))]
-    (cond
-      as-type
-      (compile context (assoc operand :life/as-type-name as-type))
-      :else
-      (throw (Exception. "Unsupported `As` expression.")))))
+  (let [as-type-specifier
+        (or as-type-specifier {:type "NamedTypeSpecifier" :name as-type})]
+    (compile context (assoc operand :life/as-type as-type-specifier))))
 
 ;; 22.2. CanConvert
 

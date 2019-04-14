@@ -1074,15 +1074,26 @@
 
 ;; 14.2. Coalesce
 ;;
+;; Coalesce<T>(argument1 T, argument2 T) T
+;; Coalesce<T>(argument1 T, argument2 T, argument3 T) T
+;; Coalesce<T>(argument1 T, argument2 T, argument3 T, argument4 T) T
+;; Coalesce<T>(argument1 T, argument2 T, argument3 T, argument4 T, argument5 T) T
+;; Coalesce<T>(arguments List<T>) T
+;;
 ;; The Coalesce operator returns the first non-null result in a list of
-;; arguments. If all arguments evaluate to null the result is null.
+;; arguments. If all arguments evaluate to null the result is null. The static
+;; type of the first argument determines the type of the result, and all
+;; subsequent arguments must be of that same type.
 (deftest compile-coalesce-test
   (are [elm res] (= res (-eval (compile {} {:type "Coalesce" :operand elm}) {} nil))
     [] nil
     [{:type "Null"}] nil
     [#elm/boolean "false" #elm/boolean "true"] false
     [{:type "Null"} #elm/int "1" #elm/int "2"] 1
-    [#elm/int "2"] 2))
+    [#elm/int "2"] 2
+    [#elm/list []] nil
+    [{:type "Null"} #elm/list [#elm/string "a"]] ["a"]
+    [#elm/list [{:type "Null"} #elm/string "a"]] "a"))
 
 
 ;; 14.3. IsFalse
