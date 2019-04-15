@@ -309,24 +309,136 @@
 
 
 ;; 19.1. Interval
+(s/def ::interval-arg
+  (s/cat :low-open (s/? #{:<})
+         :low :elm/expression
+         :high :elm/expression
+         :high-open (s/? #{:>})))
+
 (s/fdef interval
-  :args (s/cat :arg (s/coll-of :elm/expression))
+  :args (s/cat :arg (s/spec ::interval-arg))
   :ret :elm/expression)
 
 (defn interval [arg]
-  (cond
-    (vector? arg)
+  (let [{:keys [low-open low high high-open]} (s/conform ::interval-arg arg)]
     {:type "Interval"
-     :low (first arg)
-     :high (second arg)
-     :lowClosed true
-     :highClosed true}
-    (list? arg)
-    {:type "Interval"
-     :low (first arg)
-     :high (second arg)
-     :lowClosed false
-     :highClosed false}))
+     :low low
+     :high high
+     :lowClosed (nil? low-open)
+     :highClosed (nil? high-open)
+     :resultTypeSpecifier
+     {:type "IntervalTypeSpecifier",
+      :pointType
+      {:type "NamedTypeSpecifier"
+       :name (or (:resultTypeName low) (:resultTypeName high))}}}))
+
+
+;; 19.2. After
+(s/fdef after
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn after [ops]
+  {:type "After" :operand ops})
+
+
+;; 19.3. Before
+(s/fdef before
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn before [ops]
+  {:type "Before" :operand ops})
+
+
+;; 19.4. Collapse
+(s/fdef collapse
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn collapse [ops]
+  {:type "Collapse" :operand ops})
+
+
+;; 19.5. Contains
+(s/fdef contains
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn contains [ops]
+  {:type "Contains" :operand ops})
+
+
+;; 19.13. Except
+(s/fdef except
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn except [ops]
+  {:type "Except" :operand ops})
+
+
+;; 19.13. Includes
+(s/fdef includes
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn includes [ops]
+  {:type "Includes" :operand ops})
+
+
+;; 19.15. Intersect
+(s/fdef intersect
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn intersect [ops]
+  {:type "Intersect" :operand ops})
+
+
+;; 19.17. MeetsBefore
+(s/fdef meets-before
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn meets-before [ops]
+  {:type "MeetsBefore" :operand ops})
+
+
+;; 19.18. MeetsAfter
+(s/fdef meets-after
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn meets-after [ops]
+  {:type "MeetsAfter" :operand ops})
+
+
+;; 19.24. ProperContains
+(s/fdef proper-contains
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn proper-contains [ops]
+  {:type "ProperContains" :operand ops})
+
+
+;; 19.26. ProperIncludes
+(s/fdef proper-includes
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn proper-includes [ops]
+  {:type "ProperIncludes" :operand ops})
+
+
+;; 19.31. Union
+(s/fdef union
+  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn union [ops]
+  {:type "Union" :operand ops})
 
 
 ;; 22.1. As

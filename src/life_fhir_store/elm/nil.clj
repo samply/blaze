@@ -38,11 +38,6 @@
   (less-or-equal [_ _]))
 
 
-(extend-protocol p/NotEqual
-  nil
-  (not-equal [_ _]))
-
-
 (extend-protocol p/Abs
   nil
   (abs [_]))
@@ -131,6 +126,66 @@
 (extend-protocol p/TruncatedDivide
   nil
   (truncated-divide [_ _]))
+
+
+;; 18.11. DurationBetween
+(extend-protocol p/DurationBetween
+  nil
+  (duration-between [_ _ _]))
+
+
+;; 18.15. SameOrBefore
+(extend-protocol p/SameOrBefore
+  nil
+  (same-or-before [_ _ _]))
+
+
+;; 18.15. SameOrAfter
+(extend-protocol p/SameOrAfter
+  nil
+  (same-or-after [_ _ _]))
+
+
+;; 19.2. After
+(extend-protocol p/After
+  nil
+  (after [_ _ _]))
+
+
+;; 19.3. Before
+(extend-protocol p/Before
+  nil
+  (before [_ _ _]))
+
+
+;; 19.5. Contains
+(extend-protocol p/Contains
+  nil
+  (contains [_ _ _]))
+
+
+;; 19.10. Except
+(extend-protocol p/Except
+  nil
+  (except [_ _]))
+
+
+;; 19.13. Includes
+(extend-protocol p/Includes
+  nil
+  (includes [_ _ _]))
+
+
+;; 19.24. ProperContains
+(extend-protocol p/ProperContains
+  nil
+  (proper-contains [_ _ _]))
+
+
+;; 19.26. ProperIncludes
+(extend-protocol p/ProperIncludes
+  nil
+  (proper-includes [_ _ _]))
 
 
 (extend-protocol p/ToDecimal

@@ -12,14 +12,14 @@
     [life-fhir-store.datomic.quantity :as quantity]
     [life-fhir-store.elm.compiler
      :refer [compile compile-with-equiv-clause -eval -hash]]
-    [life-fhir-store.elm.date-time :refer [period]]
+    [life-fhir-store.elm.date-time :refer [local-time local-time? period]]
     [life-fhir-store.elm.decimal :as decimal]
     [life-fhir-store.elm.interval :refer [interval]]
     [life-fhir-store.elm.literals :as elm]
     [life-fhir-store.elm.quantity :refer [quantity]])
   (:import
     [java.math BigDecimal]
-    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
+    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth
                ZoneOffset]
     [java.time.temporal Temporal]
     [javax.measure UnconvertibleException]
@@ -55,6 +55,10 @@
        (if (true? (:result result#))
          (is :success)
          (is (clojure.pprint/pprint result#))))))
+
+
+(defn- binary-operand [type]
+  {:type type :operand [{:type "Null"} {:type "Null"}]})
 
 
 
@@ -573,7 +577,7 @@
       #elm/date-time [#elm/int "2013" #elm/int "1" #elm/int "1"
                       #elm/int "0" #elm/int "0" #elm/int "0"] true))
 
-  (testing "Time with full precision (there is only one precision)"
+  (testing "Time"
     (are [a b res] (= res (-eval (compile {} (elm/equal [a b])) {} nil))
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"]
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"] true
@@ -583,10 +587,10 @@
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"] false
 
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "0"]
-      #elm/time [#elm/int "12" #elm/int "30"] true
+      #elm/time [#elm/int "12" #elm/int "30"] nil
 
       #elm/time [#elm/int "12" #elm/int "0"]
-      #elm/time [#elm/int "12"] true
+      #elm/time [#elm/int "12"] nil
 
       {:type "Null"} #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"] nil
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"] {:type "Null"} nil)))
@@ -975,40 +979,9 @@
       #elm/time "00:00:00" {:type "Null"} nil)))
 
 
-;; 12.7. Not Equal
+;; 12.7. NotEqual
 (deftest compile-not-equal-test
-  (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} (elm/not-equal [a b])) {} nil))
-      #elm/int "1" #elm/int "2" true
-      #elm/int "1" #elm/int "1" false
-
-      {:type "Null"} #elm/int "1" nil
-      #elm/int "1" {:type "Null"} nil))
-
-  (testing "Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/not-equal [a b])) {} nil))
-      #elm/dec "1.1" #elm/dec "2.1" true
-      #elm/dec "1.1" #elm/dec "1.1" false
-
-      {:type "Null"} #elm/dec "1.1" nil
-      #elm/dec "1.1" {:type "Null"} nil))
-
-  (testing "Quantity"
-    (are [a b res] (= res (-eval (compile {} (elm/not-equal [a b])) {} nil))
-      #elm/quantity [1] #elm/quantity [2] true
-      #elm/quantity [1] #elm/quantity [1] false
-
-      #elm/quantity [1 "s"] #elm/quantity [2 "s"] true
-      #elm/quantity [1 "s"] #elm/quantity [1 "s"] false
-
-      #elm/quantity [1 "m"] #elm/quantity [101 "cm"] true
-      #elm/quantity [1 "m"] #elm/quantity [100 "cm"] false
-
-      {:type "Null"} #elm/quantity [1] nil
-      #elm/quantity [1] {:type "Null"} nil
-
-      {:type "Null"} #elm/quantity [1 "s"] nil
-      #elm/quantity [1 "s"] {:type "Null"} nil)))
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "NotEqual")))))
 
 
 
@@ -1031,8 +1004,10 @@
 
 
 ;; 13.2. Implies
+;;
+;; Normalized to Or and Not
 (deftest compile-implies-test
-  (is (thrown? Exception (compile {} {:type "Implies"}))))
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "Implies")))))
 
 
 ;; 13.3. Not
@@ -1061,7 +1036,7 @@
 
 ;; 13.5. Xor
 (deftest compile-xor-test
-  (is (thrown? Exception (compile {} {:type "Xor"}))))
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "Xor")))))
 
 
 
@@ -1432,16 +1407,9 @@
 
   (testing "Time + Quantity"
     (are [a b res] (= res (-eval (compile {} (elm/add [a b])) {} nil))
-      #elm/time "00:00:00" #elm/quantity [1 "hour"] (LocalTime/of 1 0 0)
-      #elm/time "00:00:00" #elm/quantity [1 "minute"] (LocalTime/of 0 1 0)
-      #elm/time "00:00:00" #elm/quantity [1 "second"] (LocalTime/of 0 0 1)))
-
-  (testing "Times are rings under addition."
-    (satisfies-prop 100
-      (prop/for-all [time (s/gen :elm/literal-time)
-                     hours (s/gen :elm/pos-hours)]
-        (let [elm (elm/less-or-equal [(elm/add [time hours]) #elm/time "23:59:59"])]
-          (true? (-eval (compile {} elm) {} {})))))))
+      #elm/time "00:00:00" #elm/quantity [1 "hour"] (local-time 1 0 0)
+      #elm/time "00:00:00" #elm/quantity [1 "minute"] (local-time 0 1 0)
+      #elm/time "00:00:00" #elm/quantity [1 "second"] (local-time 0 0 1))))
 
 
 ;; 16.3. Ceiling
@@ -1624,7 +1592,7 @@
     "{urn:hl7-org:elm-types:r1}Decimal" (/ (- 1E28M 1) 1E8M)
     "{urn:hl7-org:elm-types:r1}Date" (LocalDate/of 9999 12 31)
     "{urn:hl7-org:elm-types:r1}DateTime" (LocalDateTime/of 9999 12 31 23 59 59 999000000)
-    "{urn:hl7-org:elm-types:r1}Time" (LocalTime/of 23 59 59 999000000)))
+    "{urn:hl7-org:elm-types:r1}Time" (local-time 23 59 59 999)))
 
 
 ;; 16.10. MinValue
@@ -1656,7 +1624,7 @@
     "{urn:hl7-org:elm-types:r1}Decimal" (/ (+ -1E28M 1) 1E8M)
     "{urn:hl7-org:elm-types:r1}Date" (LocalDate/of 1 1 1)
     "{urn:hl7-org:elm-types:r1}DateTime" (LocalDateTime/of 1 1 1 0 0 0 0)
-    "{urn:hl7-org:elm-types:r1}Time" LocalTime/MIN))
+    "{urn:hl7-org:elm-types:r1}Time" (local-time 0 0 0 0)))
 
 
 ;; 16.11. Modulo
@@ -1833,7 +1801,7 @@
     #elm/date "2019-01" (YearMonth/of 2018 12)
     #elm/date "2019-01-01" (LocalDate/of 2018 12 31)
     #elm/date-time "2019-01-01T00" (LocalDateTime/of 2018 12 31 23 59 59 999000000)
-    #elm/time "12:00" (LocalTime/of 11 59 59 999000000)
+    #elm/time "12:00" (local-time 11 59)
     #elm/quantity [0 "m"] (quantity -1 "m")
     #elm/quantity [0M "m"] (quantity -1E-8M "m")
     {:type "Null"} nil)
@@ -2055,16 +2023,9 @@
 
   (testing "Time - Quantity"
     (are [a b res] (= res (-eval (compile {} (elm/subtract [a b])) {} nil))
-      #elm/time "00:00:00" #elm/quantity [1 "hour"] (LocalTime/of 23 0 0)
-      #elm/time "00:00:00" #elm/quantity [1 "minute"] (LocalTime/of 23 59 0)
-      #elm/time "00:00:00" #elm/quantity [1 "second"] (LocalTime/of 23 59 59)))
-
-  (testing "Times are rings under subtraction."
-    (satisfies-prop 100
-      (prop/for-all [time (s/gen :elm/literal-time)
-                     hours (s/gen :elm/pos-hours)]
-        (let [elm (elm/greater-or-equal [(elm/subtract [time hours]) #elm/time "00:00:00"])]
-          (true? (-eval (compile {} elm) {} {})))))))
+      #elm/time "00:00:00" #elm/quantity [1 "hour"] (local-time 23 0 0)
+      #elm/time "00:00:00" #elm/quantity [1 "minute"] (local-time 23 59 0)
+      #elm/time "00:00:00" #elm/quantity [1 "second"] (local-time 23 59 59))))
 
 
 ;; 16.18. Successor
@@ -2098,7 +2059,7 @@
     #elm/date "2019-01" (YearMonth/of 2019 2)
     #elm/date "2019-01-01" (LocalDate/of 2019 1 2)
     #elm/date-time "2019-01-01T00" (LocalDateTime/of 2019 1 1 0 0 0 1000000)
-    #elm/time "00:00:00" (LocalTime/of 0 0 0 1000000)
+    #elm/time "00:00:00" (local-time 0 0 1)
     #elm/quantity [0 "m"] (quantity 1 "m")
     #elm/quantity [0M "m"] (quantity 1E-8M "m")
     {:type "Null"} nil)
@@ -2163,14 +2124,9 @@
     #elm/string "a" {:type "Null"} nil))
 
 
-;; 17.11. Not Equal
-(deftest compile-not-equal-string-test
-  (are [a b res] (= res (-eval (compile {} (elm/not-equal [a b])) {} nil))
-    #elm/string "a" #elm/string "b" true
-    #elm/string "a" #elm/string "a" false
-
-    {:type "Null"} #elm/string "a" nil
-    #elm/string "a" {:type "Null"} nil))
+;; 17.11. NotEqual
+;;
+;; See 12.7. NotEqual
 
 
 
@@ -2385,21 +2341,60 @@
 
 
 ;; 18.12. Not Equal
-(deftest compile-not-equal-date-time-test
-  (testing "Date with year precision"
-    (are [a b res] (= res (-eval (compile {} (elm/not-equal [a b])) {} nil))
-      #elm/date "2012" #elm/date "2013" true
-      #elm/date "2012" #elm/date "2012" false
-
-      {:type "Null"} #elm/date "2012" nil
-      #elm/date "2012" {:type "Null"} nil)))
+;;
+;; See 12.7. NotEqual
 
 
 ;; 18.13. Now
+;;
+;; The Now operator returns the date and time of the start timestamp associated
+;; with the evaluation request. Now is defined in this way for two reasons:
+;;
+;; 1) The operation will always return the same value within any given
+;; evaluation, ensuring that the result of an expression containing Now will
+;; always return the same result.
+;;
+;; 2) The operation will return the timestamp associated with the evaluation
+;; request, allowing the evaluation to be performed with the same timezone
+;; offset information as the data delivered with the evaluation request.
 (deftest compile-now-test
   (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
     {:type "Now"}
     now))
+
+
+;; 18.15. SameOrBefore
+;;
+;; The SameOrBefore operator is defined for Date, DateTime, and Time values, as
+;; well as intervals.
+;;
+;; For the Interval overload, the SameOrBefore operator returns true if the
+;; first interval ends on or before the second one starts. In other words, if
+;; the ending point of the first interval is less than or equal to the starting
+;; point of the second interval, using the semantics described in the Start and
+;; End operators to determine interval boundaries.
+(deftest compile-same-or-before-test
+  (testing "Interval"
+    (are [x y res] (= res (-eval (compile {} {:type "SameOrBefore" :operand [x y]}) {} nil))
+      #elm/interval [#elm/int "1" #elm/int "2"]
+      #elm/interval [#elm/int "2" #elm/int "3"] true)))
+
+
+;; 18.15. SameOrAfter
+;;
+;; The SameOrAfter operator is defined for Date, DateTime, and Time values, as
+;; well as intervals.
+;;
+;; For the Interval overload, the SameOrAfter operator returns true if the first
+;; interval starts on or after the second one ends. In other words, if the
+;; starting point of the first interval is greater than or equal to the ending
+;; point of the second interval, using the semantics described in the Start and
+;; End operators to determine interval boundaries.
+(deftest compile-same-or-after-test
+  (testing "Interval"
+    (are [x y res] (= res (-eval (compile {} {:type "SameOrAfter" :operand [x y]}) {} nil))
+      #elm/interval [#elm/int "2" #elm/int "3"]
+      #elm/interval [#elm/int "1" #elm/int "2"] true)))
 
 
 ;; 18.18. Time
@@ -2413,57 +2408,55 @@
 ;;
 ;; If timezoneOffset is not specified, it is defaulted to the timezone offset
 ;; of the evaluation request.
-;;
-;; TODO: we don't support precision yet
 (deftest compile-time-test
   (testing "literal hour"
     (are [elm res] (= res (compile {} elm))
       #elm/time [#elm/int "12"]
-      (LocalTime/of 12 00)))
+      (local-time 12)))
 
   (testing "non-literal hour"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
       #elm/time [#elm/add [#elm/int "11" #elm/int "1"]]
-      (LocalTime/of 12 00)))
+      (local-time 12)))
 
   (testing "literal hour-minute"
     (are [elm res] (= res (compile {} elm))
       #elm/time [#elm/int "12" #elm/int "13"]
-      (LocalTime/of 12 13)))
+      (local-time 12 13)))
 
   (testing "non-literal hour-minute"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
       #elm/time [#elm/int "12" #elm/add [#elm/int "12"
                                          #elm/int "1"]]
-      (LocalTime/of 12 13)))
+      (local-time 12 13)))
 
   (testing "literal hour-minute-second"
     (are [elm res] (= res (compile {} elm))
       #elm/time [#elm/int "12" #elm/int "13" #elm/int "14"]
-      (LocalTime/of 12 13 14)))
+      (local-time 12 13 14)))
 
   (testing "non-literal hour-minute-second"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
       #elm/time [#elm/int "12" #elm/int "13"
                  #elm/add [#elm/int "13" #elm/int "1"]]
-      (LocalTime/of 12 13 14)))
+      (local-time 12 13 14)))
 
   (testing "literal hour-minute-second-millisecond"
     (are [elm res] (= res (compile {} elm))
       #elm/time [#elm/int "12" #elm/int "13" #elm/int "14"
                  #elm/int "15"]
-      (LocalTime/of 12 13 14 (* 15 1000 1000))))
+      (local-time 12 13 14 15)))
 
   (testing "non-literal hour-minute-second-millisecond"
     (are [elm res] (= res (-eval (compile {} elm) {} nil))
       #elm/time [#elm/int "12" #elm/int "13" #elm/int "14"
                  #elm/add [#elm/int "14" #elm/int "1"]]
-      (LocalTime/of 12 13 14 (* 15 1000 1000))))
+      (local-time 12 13 14 15)))
 
   (testing "an ELM time (only literals) always compiles to a LocalTime"
     (satisfies-prop 100
       (prop/for-all [time (s/gen :elm/time)]
-        (instance? LocalTime (compile {} time)))))
+        (local-time? (compile {} time)))))
 
   )
 (comment (s/exercise :elm/time))
@@ -2478,6 +2471,8 @@
 
 
 ;; 19. Interval Operators
+
+(def interval-zero #elm/interval [#elm/int "0" #elm/int "0"])
 
 ;; 19.1. Interval
 ;;
@@ -2514,67 +2509,787 @@
 ;; involving the high boundary will be performed with that interpretation.
 (deftest compile-interval-test
   (testing "Literal interval"
-    (are [elm res] (= res (compile {} elm))
-      #elm/interval [#elm/int "1" #elm/int "2"] (interval 1 2 true true)
-      #elm/interval [#elm/dec "1" #elm/dec "2"] (interval 1M 2M true true))))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+      #elm/interval [#elm/int "1" #elm/int "2"] (interval 1 2)
+      #elm/interval [#elm/dec "1" #elm/dec "2"] (interval 1M 2M)
+
+      #elm/interval [:< #elm/int "1" #elm/int "2"] (interval 2 2)
+      #elm/interval [#elm/int "1" #elm/int "2" :>] (interval 1 1)
+      #elm/interval [:< #elm/int "1" #elm/int "3" :>] (interval 2 2)))
+
+  (testing "Invalid interval"
+    (are [elm] (thrown? Exception (-eval (compile {} elm) {} nil))
+      #elm/interval [#elm/int "5" #elm/int "3"])))
+
+
+;; 19.2. After
+;;
+;; The After operator is defined for Intervals, as well as Date, DateTime, and
+;; Time values.
+;;
+;; For the Interval overload, the After operator returns true if the first
+;; interval starts after the second one ends. In other words, if the starting
+;; point of the first interval is greater than the ending point of the second
+;; interval using the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; For the Date, DateTime, and Time overloads, the After operator returns true
+;; if the first datetime is after the second datetime at the specified level of
+;; precision. The comparison is performed by considering each precision in
+;; order, beginning with years (or hours for time values). If the values are the
+;; same, comparison proceeds to the next precision; if the first value is
+;; greater than the second, the result is true; if the first value is less than
+;; the second, the result is false; if either input has no value for the
+;; precision, the comparison stops and the result is null; if the specified
+;; precision has been reached, the comparison stops and the result is false.
+;;
+;; If no precision is specified, the comparison is performed beginning with
+;; years (or hours for time values) and proceeding to the finest precision
+;; specified in either input.
+;;
+;; For Date values, precision must be one of year, month, or day.
+;;
+;; For DateTime values, precision must be one of year, month, day, hour, minute,
+;; second, or millisecond.
+;;
+;; For Time values, precision must be one of hour, minute, second, or
+;; millisecond.
+;;
+;; Note specifically that due to variability in the way week numbers are
+;; determined, comparisons involving weeks are not supported.
+;;
+;; As with all date and time calculations, comparisons are performed respecting
+;; the timezone offset.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-after-test
+  (testing "Interval"
+    (testing "null arguments result in null"
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+        interval-zero {:type "Null"} nil
+        {:type "Null"} interval-zero nil))
+
+    (testing "if both intervals are closed, the start of the first (3) has to be greater then the end of the second (2)"
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+        #elm/interval [#elm/int "3" #elm/int "4"]
+        #elm/interval [#elm/int "1" #elm/int "2"] true
+        #elm/interval [#elm/int "2" #elm/int "3"]
+        #elm/interval [#elm/int "1" #elm/int "2"] false))
+
+    (testing "if one of the intervals is open, start and end can be the same (2)"
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+        #elm/interval [#elm/int "2" #elm/int "3"]
+        #elm/interval [#elm/int "1" #elm/int "2" :>] true
+        #elm/interval [:< #elm/int "2" #elm/int "3"]
+        #elm/interval [#elm/int "1" #elm/int "2"] true
+        #elm/interval [:< #elm/int "2" #elm/int "3"]
+        #elm/interval [#elm/int "1" #elm/int "2" :>] true))
+
+    (testing "if both intervals are open, start and end can overlap slightly"
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+        #elm/interval [:< #elm/int "2" #elm/int "4"]
+        #elm/interval [#elm/int "1" #elm/int "3" :>] true))
+
+    (testing "if one of the relevant bounds is infinity, the result is false"
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+        #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/int "3"]
+        #elm/interval [#elm/int "1" #elm/int "2"] false
+        #elm/interval [#elm/int "2" #elm/int "3"]
+        #elm/interval [#elm/int "1" {:type "Null"}] false))
+
+    (testing "if the second interval has an unknown high bound, the result is null"
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+        #elm/interval [#elm/int "2" #elm/int "3"]
+        #elm/interval [#elm/int "1" {:type "Null"} :>] nil))))
+
+
+;; 19.3. Before
+;;
+;; The Before operator is defined for Intervals, as well as Date, DateTime, and
+;; Time values.
+;;
+;; For the Interval overload, the Before operator returns true if the first
+;; interval ends before the second one starts. In other words, if the ending
+;; point of the first interval is less than the starting point of the second
+;; interval, using the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; For the Date, DateTime, and Time overloads, the comparison is performed by
+;; considering each precision in order, beginning with years (or hours for time
+;; values). If the values are the same, comparison proceeds to the next
+;; precision; if the first value is less than the second, the result is true; if
+;; the first value is greater than the second, the result is false; if either
+;; input has no value for the precision, the comparison stops and the result is
+;; null; if the specified precision has been reached, the comparison stops and
+;; the result is false.
+;;
+;; If no precision is specified, the comparison is performed beginning with
+;; years (or hours for time values) and proceeding to the finest precision
+;; specified in either input.
+;;
+;; For Date values, precision must be one of year, month, or day.
+;;
+;; For DateTime values, precision must be one of year, month, day, hour, minute,
+;; second, or millisecond.
+;;
+;; For Time values, precision must be one of hour, minute, second, or
+;; millisecond.
+;;
+;; Note specifically that due to variability in the way week numbers are
+;; determined, comparisons involving weeks are not supported.
+;;
+;; As with all date and time calculations, comparisons are performed respecting
+;; the timezone offset.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-before-test
+  (testing "Interval"
+    (testing "null arguments result in null"
+      (are [x y res] (= res (-eval (compile {} (elm/before [x y])) {} nil))
+        interval-zero {:type "Null"} nil
+        {:type "Null"} interval-zero nil))
+
+    (testing "if both intervals are closed, the end of the first (2) has to be less then the start of the second (3)"
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "2"]
+        #elm/interval [#elm/int "3" #elm/int "4"] true
+        #elm/interval [#elm/int "1" #elm/int "2"]
+        #elm/interval [#elm/int "2" #elm/int "3"] false))
+
+    (testing "if one of the intervals is open, start and end can be the same (2)"
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "2" :>]
+        #elm/interval [#elm/int "2" #elm/int "3"] true
+        #elm/interval [#elm/int "1" #elm/int "2"]
+        #elm/interval [:< #elm/int "2" #elm/int "3"] true
+        #elm/interval [#elm/int "1" #elm/int "2" :>]
+        #elm/interval [:< #elm/int "2" #elm/int "3"] true))
+
+    (testing "if both intervals are open, start and end can overlap slightly"
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "3" :>]
+        #elm/interval [:< #elm/int "2" #elm/int "4"] true))
+
+    (testing "if one of the relevant bounds is infinity, the result is false"
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+        #elm/interval [#elm/int "1" {:type "Null"}]
+        #elm/interval [#elm/int "2" #elm/int "3"] false
+        #elm/interval [#elm/int "1" #elm/int "2"]
+        #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/int "3"] false))
+
+    (testing "if the second interval has an unknown low bound, the result is null"
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "2"]
+        #elm/interval [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/int "3"] nil))))
+
+
+;; 19.4. Collapse
+;;
+;; collapse(argument List<Interval<T>>) List<Interval<T>>
+;; collapse(argument List<Interval<T>>, per Quantity) List<Interval<T>>
+;;
+;; The Collapse operator returns the unique set of intervals that completely
+;; covers the ranges present in the given list of intervals.
+;;
+;; The operation is performed by combining successive intervals in the input
+;; that either overlap or meet, using the semantics defined for the Overlaps and
+;; Meets operators. Note that because those operators are themselves defined in
+;; terms of interval successor and predecessor operators, sets of Date-,
+;; DateTime-, and Time-based intervals that are only defined to a particular
+;; precision will calculate meets and overlaps at that precision. For example, a
+;; list of DateTime-based intervals where the boundaries are all specified to
+;; the hour will collapse at the hour precision, unless the collapse precision
+;; is overridden with the per argument.
+;;
+;; The per argument determines the precision at which the collapse is computed
+;; and must be a quantity-valued expression compatible with the interval point
+;; type. For numeric intervals, this means a default unit ('1'), for Date-,
+;; DateTime-, and Time-valued intervals, this means a temporal duration.
+;;
+;; If the per argument is null, the default unit interval for the point type of
+;; the intervals involved will be used (i.e. an interval with the same starting
+;; and ending boundary).
+;;
+;; If the list of intervals is empty, the result is empty. If the list of
+;; intervals contains a single interval, the result is a list with that
+;; interval. If the list of intervals contains nulls, they will be excluded from
+;; the resulting list.
+;;
+;; If the source argument is null, the result is null.
+(deftest compile-collapse-test
+  (are [source per res] (= res (-eval (compile {} (elm/collapse [source per])) {} nil))
+    #elm/list [#elm/interval [#elm/int "1" #elm/int "2"]]
+    {:type "Null"}
+    [(interval 1 2)]
+
+    #elm/list [#elm/interval [#elm/int "1" #elm/int "2"]
+               #elm/interval [#elm/int "2" #elm/int "3"]]
+    {:type "Null"}
+    [(interval 1 3)]
+
+    #elm/list [{:type "Null"}] {:type "Null"} []
+    #elm/list [{:type "Null"} {:type "Null"}] {:type "Null"} []
+    #elm/list [] {:type "Null"} []
+
+    {:type "Null"} {:type "Null"} nil))
+
+
+;; 19.5. Contains
+;;
+;; contains _precision_ (argument Interval<T>, point T) Boolean
+;;
+;; The Contains operator returns true if the first operand contains the second.
+;;
+;; There are two overloads of this operator: 1. List, T : The type of T must be
+;; the same as the element type of the list. 2. Interval, T : The type of T must
+;; be the same as the point type of the interval.
+;;
+;; For the List, T overload, this operator returns true if the given element is
+;; in the list, using equality semantics.
+;;
+;; For the Interval, T overload, this operator returns true if the given point
+;; is greater than or equal to the starting point of the interval, and less than
+;; or equal to the ending point of the interval. For open interval boundaries,
+;; exclusive comparison operators are used. For closed interval boundaries, if
+;; the interval boundary is null, the result of the boundary comparison is
+;; considered true. If precision is specified and the point type is a Date,
+;; DateTime, or Time type, comparisons used in the operation are performed at
+;; the specified precision.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-contains-test
+  (testing "Interval"
+    (testing "Null"
+      (are [interval x res] (= res (-eval (compile {} (elm/contains [interval x])) {} nil))
+        interval-zero {:type "Null"} nil))
+
+    (testing "Integer"
+      (are [interval x res] (= res (-eval (compile {} (elm/contains [interval x])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "1"] #elm/int "1" true
+        #elm/interval [#elm/int "1" #elm/int "1"] #elm/int "2" false)))
+
+  (testing "List"
+    ))
+
+
+;; 19.6. End
+;;
+;; The End operator returns the ending point of an interval.
+;;
+;; If the high boundary of the interval is open, this operator returns the
+;; Predecessor of the high value of the interval. Note that if the high value of
+;; the interval is null, the result is null.
+;;
+;; If the high boundary of the interval is closed and the high value of the
+;; interval is not null, this operator returns the high value of the interval.
+;; Otherwise, the result is the maximum value of the point type of the interval.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-end-test
+  (testing "Null"
+    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil))
+      {:type "Null"} nil))
+
+  (testing "Integer"
+    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil))
+      #elm/interval [#elm/int "1" #elm/int "2"] 2
+      #elm/interval [#elm/int "1" #elm/int "2" :>] 1
+      #elm/interval [#elm/int "1" {:type "Null"}] Integer/MAX_VALUE))
+
+  (testing "Decimal"
+    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil))
+      #elm/interval [#elm/dec "1" #elm/dec "2.1"] 2.1M
+      #elm/interval [#elm/dec "1" #elm/dec "2.1" :>] 2.09999999M
+      #elm/interval [#elm/dec "1" {:type "Null"}] decimal/max)))
+
+
+;; 19.7. Ends
+;;
+;; The Ends operator returns true if the first interval ends the second. In
+;; other words, if the starting point of the first interval is greater than or
+;; equal to the starting point of the second, and the ending point of the first
+;; interval is equal to the ending point of the second.
+;;
+;; This operator uses the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; If precision is specified and the point type is a Date, DateTime, or Time
+;; type, comparisons used in the operation are performed at the specified
+;; precision.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-ends-test
+  (testing "Null"
+    (are [a b res] (= res (-eval (compile {} {:type "Ends" :operand [a b]}) {} nil))
+      {:type "Null"} interval-zero nil
+      interval-zero {:type "Null"} nil))
+
+  (testing "Integer"
+    (are [a b res] (= res (-eval (compile {} {:type "Ends" :operand [a b]}) {} nil))
+      #elm/interval [#elm/int "1" #elm/int "3"]
+      #elm/interval [#elm/int "1" #elm/int "3"] true
+      #elm/interval [#elm/int "2" #elm/int "3"]
+      #elm/interval [#elm/int "1" #elm/int "3"] true
+      #elm/interval [#elm/int "1" #elm/int "3"]
+      #elm/interval [#elm/int "2" #elm/int "3"] false)))
+
+
+;; 19.10. Except
+;;
+;; The Except operator returns the set difference of the two arguments.
+;;
+;; This operator has two overloads: 1. List, List 2. Interval, Interval
+;;
+;; For the list overload, this operator returns a list with the elements that
+;; appear in the first operand, that do not appear in the second operand, using
+;; equality semantics. The operator is defined with set semantics, meaning that
+;; each element will appear in the result at most once, and that there is no
+;; expectation that the order of the inputs will be preserved in the results.
+;;
+;; For the interval overload, this operator returns the portion of the first
+;; interval that does not overlap with the second. If the second argument is
+;; properly contained within the first and does not start or end it, this
+;; operator returns null.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-except-test
+  (testing "Null"
+    (are [x y res] (= res (-eval (compile {} (elm/except [x y])) {} nil))
+      {:type "Null"} {:type "Null"} nil))
+
+  (testing "Interval"
+    (testing "Null"
+      (are [x y res] (= res (-eval (compile {} (elm/except [x y])) {} nil))
+        interval-zero {:type "Null"} nil))
+
+    (testing "Integer"
+      (are [x y res] (= res (-eval (compile {} (elm/except [x y])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "3"]
+        #elm/interval [#elm/int "3" #elm/int "4"]
+        (interval 1 2)
+
+        #elm/interval [#elm/int "3" #elm/int "5"]
+        #elm/interval [#elm/int "1" #elm/int "3"]
+        (interval 4 5)))))
+
+
+;; 19.12. In
+;;
+;; Normalized to Contains
+(deftest compile-in-test
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "In")))))
+
+
+;; 19.13. Includes
+;;
+;; The Includes operator returns true if the first operand completely includes
+;; the second.
+;;
+;; There are two overloads of this operator: 1. List, List : The element type of
+;; both lists must be the same. 2. Interval, Interval : The point type of both
+;; intervals must be the same.
+;;
+;; For the List, List overload, this operator returns true if the first operand
+;; includes every element of the second operand, using equality semantics.
+;;
+;; For the Interval, Interval overload, this operator returns true if starting
+;; point of the first interval is less than or equal to the starting point of
+;; the second interval, and the ending point of the first interval is greater
+;; than or equal to the ending point of the second interval. If precision is
+;; specified and the point type is a Date, DateTime, or Time type, comparisons
+;; used in the operation are performed at the specified precision.
+;;
+;; This operator uses the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-includes-test
+  (testing "Null"
+    (are [x y res] (= res (-eval (compile {} (elm/includes [x y])) {} nil))
+      {:type "Null"} {:type "Null"} nil))
+
+  (testing "Interval"
+    (testing "Null"
+      (are [x y res] (= res (-eval (compile {} (elm/includes [x y])) {} nil))
+        interval-zero {:type "Null"} nil))
+
+    (testing "Integer"
+      (are [x y res] (= res (-eval (compile {} (elm/includes [x y])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "2"]
+        #elm/interval [#elm/int "1" #elm/int "2"] true
+        #elm/interval [#elm/int "1" #elm/int "2"]
+        #elm/interval [#elm/int "1" #elm/int "3"] false))))
+
+
+;; 19.14. IncludedIn
+;;
+;; Normalized to Includes
+(deftest compile-included-in-test
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "IncludedIn")))))
 
 
 ;; 19.15. Intersect
+;;
+;; intersect(left Interval<T>, right Interval<T>) Interval<T>
+;;
+;; The Intersect operator returns the intersection of its arguments.
+;;
+;; This operator has two overloads: List Interval
+;;
+;; For the list overload, this operator returns a list with the elements that
+;; appear in both lists, using equality semantics. The operator is defined with
+;; set semantics, meaning that each element will appear in the result at most
+;; once, and that there is no expectation that the order of the inputs will be
+;; preserved in the results.
+;;
+;; For the interval overload, this operator returns the interval that defines
+;; the overlapping portion of both arguments. If the arguments do not overlap,
+;; this operator returns null.
+;;
+;; If either argument is null, the result is null.
+;;
+;; TODO: only implemented as binary operator because it's binary in CQL.
 (deftest compile-intersect-test
-  (are [elm res] (= res (-eval (compile {} elm) {} nil))
-    {:type "Intersect"
-     :operand [{:type "Null"}]}
+  (are [x y res] (= res (-eval (compile {} (elm/intersect [x y])) {} nil))
+    {:type "Null"} {:type "Null"} nil
+
+    #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] #{nil}
+    #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] #{1}
+    #elm/list [#elm/int "1"] #elm/list [#elm/int "2"] #{}
+    #elm/list [#elm/int "1"] #elm/list [#elm/int "1" #elm/int "2"] #{1}
+
+    #elm/interval [#elm/int "1" #elm/int "2"]
+    #elm/interval [#elm/int "2" #elm/int "3"]
+    (interval 2 2)
+
+    #elm/interval [#elm/int "2" #elm/int "3"]
+    #elm/interval [#elm/int "1" #elm/int "2"]
+    (interval 2 2)
+
+    #elm/interval [#elm/int "1" #elm/int "10"]
+    #elm/interval [#elm/int "5" #elm/int "8"]
+    (interval 5 8)
+
+    #elm/interval [#elm/int "1" #elm/int "10"]
+    #elm/interval [#elm/int "5" {:type "Null"} :>]
     nil
 
-    {:type "Intersect"
-     :operand [{:type "Null"} {:type "Null"}]}
-    nil
-
-    {:type "Intersect"
-     :operand [#elm/list [{:type "Null"}]]}
-    #{nil}
-
-    {:type "Intersect"
-     :operand [#elm/list [#elm/int "1"]]}
-    #{1}
-
-    {:type "Intersect"
-     :operand
-     [#elm/list [#elm/int "1"]
-      #elm/list [#elm/int "1" #elm/int "2"]]}
-    #{1}))
+    #elm/interval [#elm/int "1" #elm/int "2"]
+    #elm/interval [#elm/int "3" #elm/int "4"]
+    nil))
 
 
-;; 19.30. Union
+;; 19.16. Meets
+;;
+;; Normalized to MeetsBefore or MeetsAfter
+(deftest compile-meets-test
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "Meets")))))
+
+
+;; 19.17. MeetsBefore
+;;
+;; The MeetsBefore operator returns true if the first interval ends immediately
+;; before the second interval starts. In other words, if the ending point of the
+;; first interval is equal to the predecessor of the starting point of the
+;; second.
+;;
+;; This operator uses the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; If precision is specified and the point type is a Date, DateTime, or Time
+;; type, comparisons used in the operation are performed at the specified
+;; precision.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-meets-before-test
+  (testing "Null"
+    (are [x y res] (= res (-eval (compile {} (elm/meets-before [x y])) {} nil))
+      interval-zero {:type "Null"} nil
+      {:type "Null"} interval-zero nil))
+
+  (testing "Integer"
+    (are [x y res] (= res (-eval (compile {} (elm/meets-before [x y])) {} nil))
+      #elm/interval [#elm/int "1" #elm/int "2"]
+      #elm/interval [#elm/int "3" #elm/int "4"] true
+      #elm/interval [#elm/int "1" #elm/int "2"]
+      #elm/interval [#elm/int "4" #elm/int "5"] false)))
+
+
+;; 19.18. MeetsAfter
+;;
+;; The MeetsAfter operator returns true if the first interval starts immediately
+;; after the second interval ends. In other words, if the starting point of the
+;; first interval is equal to the successor of the ending point of the second.
+;;
+;; This operator uses the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; If precision is specified and the point type is a Date, DateTime, or Time
+;; type, comparisons used in the operation are performed at the specified
+;; precision.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-meets-after-test
+  (testing "Null"
+    (are [x y res] (= res (-eval (compile {} (elm/meets-after [x y])) {} nil))
+      interval-zero {:type "Null"} nil
+      {:type "Null"} interval-zero nil))
+
+  (testing "Integer"
+    (are [x y res] (= res (-eval (compile {} (elm/meets-after [x y])) {} nil))
+      #elm/interval [#elm/int "3" #elm/int "4"]
+      #elm/interval [#elm/int "1" #elm/int "2"] true
+      #elm/interval [#elm/int "4" #elm/int "5"]
+      #elm/interval [#elm/int "1" #elm/int "2"] false)))
+
+
+;; 19.20. Overlaps
+;;
+;; Normalized to OverlapsBefore or OverlapsAfter
+(deftest compile-overlaps-test
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "Overlaps")))))
+
+
+;; 19.21. OverlapsBefore
+;;
+;; Normalized to ProperContains Start
+(deftest compile-overlaps-before-test
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "OverlapsBefore")))))
+
+
+;; 19.22. OverlapsAfter
+;;
+;; Normalized to ProperContains End
+(deftest compile-overlaps-after-test
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "OverlapsAfter")))))
+
+
+;; 19.23. PointFrom
+;;
+;; The PointFrom expression extracts the single point from the source interval.
+;; The source interval must be a unit interval (meaning an interval with the
+;; same starting and ending boundary), otherwise, a run-time error is thrown.
+;;
+;; If the source interval is null, the result is null.
+(deftest compile-point-from-test
+  (are [x res] (= res (-eval (compile {} {:type "PointFrom" :operand x}) {} nil))
+    #elm/interval [#elm/int "1" #elm/int "1"] 1
+    {:type "Null"} nil))
+
+
+;; 19.24. ProperContains
+;;
+;; The ProperContains operator returns true if the first operand properly
+;; contains the second.
+;;
+;; There are two overloads of this operator: List, T: The type of T must be the
+;; same as the element type of the list. Interval, T : The type of T must be the
+;; same as the point type of the interval.
+;;
+;; For the List, T overload, this operator returns true if the given element is
+;; in the list, and it is not the only element in the list, using equality
+;; semantics.
+;;
+;; For the Interval, T overload, this operator returns true if the given point
+;; is greater than the starting point of the interval, and less than the ending
+;; point of the interval, as determined by the Start and End operators. If
+;; precision is specified and the point type is a Date, DateTime, or Time type,
+;; comparisons used in the operation are performed at the specified precision.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-proper-contains-test
+  (testing "Interval"
+    (testing "Null"
+      (are [interval x res] (= res (-eval (compile {} (elm/proper-contains [interval x])) {} nil))
+        interval-zero {:type "Null"} nil))
+
+    (testing "Integer"
+      (are [interval x res] (= res (-eval (compile {} (elm/proper-contains [interval x])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "3"] #elm/int "2" true
+        #elm/interval [#elm/int "1" #elm/int "1"] #elm/int "1" false
+        #elm/interval [#elm/int "1" #elm/int "1"] #elm/int "2" false))))
+
+
+;; 19.25. ProperIn
+;;
+;; Normalized to ProperContains
+(deftest compile-proper-in-test
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "ProperIn")))))
+
+
+;; 19.26. ProperIncludes
+;;
+;; The ProperIncludes operator returns true if the first operand includes the
+;; second, and is strictly larger.
+;;
+;; There are two overloads of this operator: List, List : The element type of
+;; both lists must be the same. Interval, Interval : The point type of both
+;; intervals must be the same.
+;;
+;; For the List, List overload, this operator returns true if the first list
+;; includes every element of the second list, using equality semantics, and the
+;; first list is strictly larger.
+;;
+;; For the Interval, Interval overload, this operator returns true if the first
+;; interval includes the second interval, and the intervals are not equal. If
+;; precision is specified and the point type is a Date, DateTime, or Time type,
+;; comparisons used in the operation are performed at the specified precision.
+;;
+;; This operator uses the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-proper-includes-test
+  (testing "Null"
+    (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil))
+      {:type "Null"} {:type "Null"} nil))
+
+  (testing "Interval"
+    (testing "Null"
+      (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil))
+        interval-zero {:type "Null"} nil))
+
+    (testing "Integer"
+      (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil))
+        #elm/interval [#elm/int "1" #elm/int "3"]
+        #elm/interval [#elm/int "1" #elm/int "2"] true
+        #elm/interval [#elm/int "1" #elm/int "2"]
+        #elm/interval [#elm/int "1" #elm/int "2"] false))))
+
+
+;; 19.27. ProperIncludedIn
+;;
+;; Normalized to ProperIncludes
+(deftest compile-proper-included-in-test
+  (is (thrown-with-msg? Exception #"Unsupported" (compile {} (binary-operand "ProperIncludedIn")))))
+
+
+;; 19.28. Size
+;;
+;; The Size operator returns the size of an interval.
+;;
+;; The result of this operator is equivalent to invoking: End(i) - Start(i) +
+;; point-size, where the point-size for the point type of the interval is
+;; determined by: Successor(Minimum_T) - Minimum_T.
+;;
+;; Note that this operator is not defined for intervals of type Date, DateTime,
+;; and Time.
+;;
+;; If the argument is null, the result is null.
+;;
+;; TODO: I don't get it
+
+
+;; 19.29. Start
+;;
+;; The Start operator returns the starting point of an interval.
+;;
+;; If the low boundary of the interval is open, this operator returns the
+;; Successor of the low value of the interval. Note that if the low value of
+;; the interval is null, the result is null.
+;;
+;; If the low boundary of the interval is closed and the low value of the
+;; interval is not null, this operator returns the low value of the interval.
+;; Otherwise, the result is the minimum value of the point type of the interval.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-start-test
+  (testing "Null"
+    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil))
+      {:type "Null"} nil))
+
+  (testing "Integer"
+    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil))
+      #elm/interval [#elm/int "1" #elm/int "2"] 1
+      #elm/interval [:< #elm/int "1" #elm/int "2"] 2
+      #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/int "2"] Integer/MIN_VALUE))
+
+  (testing "Decimal"
+    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil))
+      #elm/interval [#elm/dec "1.1" #elm/dec "2"] 1.1M
+      #elm/interval [:< #elm/dec "1.1" #elm/dec "2"] 1.10000001M
+      #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"} #elm/dec "2"] decimal/min)))
+
+
+;; 19.30. Starts
+;;
+;; The Starts operator returns true if the first interval starts the second. In
+;; other words, if the starting point of the first is equal to the starting
+;; point of the second interval and the ending point of the first interval is
+;; less than or equal to the ending point of the second interval.
+;;
+;; This operator uses the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; If precision is specified and the point type is a Date, DateTime, or Time
+;; type, comparisons used in the operation are performed at the specified
+;; precision.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-starts-test
+  (testing "Null"
+    (are [a b res] (= res (-eval (compile {} {:type "Starts" :operand [a b]}) {} nil))
+      {:type "Null"} #elm/interval [#elm/int "1" #elm/int "2"] nil
+      #elm/interval [#elm/int "1" #elm/int "2"] {:type "Null"} nil))
+
+  (testing "Integer"
+    (are [a b res] (= res (-eval (compile {} {:type "Starts" :operand [a b]}) {} nil))
+      #elm/interval [#elm/int "1" #elm/int "3"]
+      #elm/interval [#elm/int "1" #elm/int "3"] true
+      #elm/interval [#elm/int "1" #elm/int "2"]
+      #elm/interval [#elm/int "1" #elm/int "3"] true
+      #elm/interval [#elm/int "2" #elm/int "3"]
+      #elm/interval [#elm/int "1" #elm/int "3"] false)))
+
+
+;; 19.31. Union
+;;
+;; The Union operator returns the union of its arguments.
+;;
+;; This operator has two overloads: List Interval
+;;
+;; For the list overload, this operator returns a list with all unique elements
+;; from both arguments.
+;;
+;; For the interval overload, this operator returns the interval that starts at
+;; the earliest starting point in either argument, and ends at the latest
+;; starting point in either argument. If the arguments do not overlap or meet,
+;; this operator returns null.
+;;
+;; If either argument is null, the result is null.
+;;
+;; TODO: only implemented as binary operator because it's binary in CQL.
 (deftest compile-union-test
-  (are [elm res] (= res (-eval (compile {} elm) {} nil))
-    {:type "Union"
-     :operand [{:type "Null"}]}
-    nil
+  (are [x y res] (= res (-eval (compile {} (elm/union [x y])) {} nil))
+    {:type "Null"} {:type "Null"} nil
 
-    {:type "Union"
-     :operand [{:type "Null"} {:type "Null"}]}
-    nil
+    #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] #{nil}
+    #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] #{1}
+    #elm/list [#elm/int "1"] #elm/list [#elm/int "2"] #{1 2}
+    #elm/list [#elm/int "1"] #elm/list [#elm/int "1" #elm/int "2"] #{1 2}
 
-    {:type "Union"
-     :operand [#elm/list [{:type "Null"}]]}
-    #{nil}
+    #elm/interval [#elm/int "1" #elm/int "2"]
+    #elm/interval [#elm/int "3" #elm/int "4"]
+    (interval 1 4)))
 
-    {:type "Union"
-     :operand [#elm/list [#elm/int "1"]]}
-    #{1}
 
-    {:type "Union"
-     :operand
-     [#elm/list [#elm/int "1"]
-      #elm/list [#elm/int "2"]]}
-    #{1 2}
+;; 19.32. Width
+;;
+;; The Width operator returns the width of an interval. The result of this
+;; operator is equivalent to invoking: End(i) - Start(i).
+;;
+;; Note that this operator is not defined for intervals of type Date, DateTime,
+;; and Time.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-width-test
+  (testing "Null"
+    (are [x res] (= res (-eval (compile {} {:type "Width" :operand x}) {} nil))
+      {:type "Null"} nil))
 
-    {:type "Union"
-     :operand
-     [#elm/list [#elm/int "1"]
-      #elm/list [#elm/int "1" #elm/int "2"]]}
-    #{1 2}))
+  (testing "Integer"
+    (are [x res] (= res (-eval (compile {} {:type "Width" :operand x}) {} nil))
+      #elm/interval [#elm/int "1" #elm/int "2"] 1)))
 
 
 
@@ -2611,14 +3326,8 @@
 
 
 ;; 20.19. Not Equal
-(deftest compile-not-equal-list-test
-  (are [a b res] (= res (-eval (compile {} (elm/not-equal [a b])) {} nil))
-    #elm/list [#elm/int "1"] #elm/list [] true
-    #elm/list [#elm/int "1"] #elm/list [#elm/int "2"] true
-    #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] false
-
-    {:type "Null"} #elm/list [] nil
-    #elm/list [] {:type "Null"} nil))
+;;
+;; See 12.7. NotEqual
 
 
 ;; 20.25. SingletonFrom

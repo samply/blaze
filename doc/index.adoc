@@ -239,37 +239,37 @@ The following table gives an overview of the current state of implementation of 
 | 18.22. Today | ✓ |
 
 1.31+<|19. Interval Operators
-| 19.1. Interval | ✗ |
-| 19.2. After | ✗ |
-| 19.3. Before | ✗ |
-| 19.4. Collapse | ✗ |
-| 19.5. Contains | ✗ |
-| 19.6. End | ✗ |
-| 19.7. Ends | ✗ |
-| 19.8. Equal | ✗ |
-| 19.9. Equivalent | ✗ |
-| 19.10. Except | ✗ |
+| 19.1. Interval | ✓ |
+| 19.2. After | ✓ |
+| 19.3. Before | ✓ |
+| 19.4. Collapse | ✓ |
+| 19.5. Contains | ✓ |
+| 19.6. End | ✓ |
+| 19.7. Ends | ✓ |
+| 19.8. Equal | ✓ |
+| 19.9. Equivalent | ✓ |
+| 19.10. Except | ✓ |
 | 19.11. Expand | ✗ |
-| 19.12. In | ✗ |
-| 19.13. Includes | ✗ |
-| 19.14. IncludedIn | ✗ |
-| 19.15. Intersect | ✗ |
-| 19.16. Meets | ✗ |
-| 19.17. MeetsBefore | ✗ |
-| 19.18. MeetsAfter | ✗ |
-| 19.19. Not Equal | ✗ |
-| 19.20. Overlaps | ✗ |
-| 19.21. OverlapsBefore | ✗ |
-| 19.22. OverlapsAfter | ✗ |
-| 19.23. PointFrom | ✗ |
-| 19.24. ProperContains | ✗ |
-| 19.25. ProperIn | ✗ |
-| 19.26. ProperIncludes | ✗ |
-| 19.27. ProperIncludedIn | ✗ |
-| 19.28. Start | ✗ |
-| 19.29. Starts | ✗ |
-| 19.30. Union | ✗ |
-| 19.31. Width | ✗ |
+| 19.12. In | ✓ |
+| 19.13. Includes | ✓ |
+| 19.14. IncludedIn | ✓ |
+| 19.15. Intersect | ✓ |
+| 19.16. Meets | ✓ |
+| 19.17. MeetsBefore | ✓ |
+| 19.18. MeetsAfter | ✓ |
+| 19.19. Not Equal | ✓ |
+| 19.20. Overlaps | ✓ |
+| 19.21. OverlapsBefore | ✓ |
+| 19.22. OverlapsAfter | ✓ |
+| 19.23. PointFrom | ✓ |
+| 19.24. ProperContains | ✓ |
+| 19.25. ProperIn | ✓ |
+| 19.26. ProperIncludes | ✓ |
+| 19.27. ProperIncludedIn | ✓ |
+| 19.28. Start | ✓ |
+| 19.29. Starts | ✓ |
+| 19.31. Union | ✓ |
+| 19.31. Width | ✓ |
 
 1.29+<|20. List Operators
 | 20.1. List | ✓ |
@@ -366,7 +366,7 @@ The following table gives an overview of the current state of implementation of 
 1.1+<|24. Errors and Messages
 | 24.1. Message | ✗ |
 
-| | 2+<| ✓ = 70, ! = 14, ✗ = 164, 33 % finished
+| | 2+<| ✓ = 100, ! = 14, ✗ = 134, 46 % finished
 |===
 
 == Implementation

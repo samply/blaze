@@ -50,14 +50,16 @@
         :invalid? invalid?
         :output output})}))
 
+(defn to-source-elm [cql]
+  (translate (str "define x: " cql)))
+
 (defn to-elm [cql]
-  (let [library (translate (str "define x: " cql))]
-    (-> library
-        normalizer/normalize-library
-        equiv-relationships/find-equiv-rels-library
-        deps-infer/infer-library-deps
-        type-infer/infer-library-types
-        :statements :def first :expression)))
+  (-> (to-source-elm cql)
+      normalizer/normalize-library
+      equiv-relationships/find-equiv-rels-library
+      deps-infer/infer-library-deps
+      type-infer/infer-library-types
+      :statements :def first :expression))
 
 (defn eval-elm [elm]
   (-eval (compile {} elm) {:now (OffsetDateTime/now)} nil))
@@ -85,7 +87,7 @@
             "Ln0" "LnNeg0"
             "Log1Base1"
             "RoundNeg0D5" "RoundNeg1D5"
-            "IntegerMinValue"                               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
+            "IntegerMinValue"                               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than
             })
 
 
@@ -93,15 +95,15 @@
 
 
 (deftests "logical-operators" "cql-test/CqlLogicalOperatorsTest.xml"
-          #{"TrueImpliesTrue"                               ; TODO: CQl-To-ELM error
-            "TrueImpliesFalse"                              ; TODO: CQl-To-ELM error
-            "TrueImpliesNull"                               ; TODO: CQl-To-ELM error
-            "FalseImpliesTrue"                              ; TODO: CQl-To-ELM error
-            "FalseImpliesFalse"                             ; TODO: CQl-To-ELM error
-            "FalseImpliesNull"                              ; TODO: CQl-To-ELM error
-            "NullImpliesTrue"                               ; TODO: CQl-To-ELM error
-            "NullImpliesFalse"                              ; TODO: CQl-To-ELM error
-            "NullImpliesNull"                               ; TODO: CQl-To-ELM error
+          #{"TrueImpliesTrue"                               ; TODO: CQL-To-ELM error
+            "TrueImpliesFalse"                              ; TODO: CQL-To-ELM error
+            "TrueImpliesNull"                               ; TODO: CQL-To-ELM error
+            "FalseImpliesTrue"                              ; TODO: CQL-To-ELM error
+            "FalseImpliesFalse"                             ; TODO: CQL-To-ELM error
+            "FalseImpliesNull"                              ; TODO: CQL-To-ELM error
+            "NullImpliesTrue"                               ; TODO: CQL-To-ELM error
+            "NullImpliesFalse"                              ; TODO: CQL-To-ELM error
+            "NullImpliesNull"                               ; TODO: CQL-To-ELM error
             })
 
 
@@ -116,6 +118,46 @@
 ;; 18. Date and Time Operators
 ;; TODO (deftests "date-time-operators" "cql-test/CqlDateTimeOperatorsTest.xml" #{})
 
+
+;; 19. Interval Operators
+(deftests "interval-operators" "cql-test/CqlIntervalOperatorsTest.xml"
+          #{"TestAfterNull"                                 ; TODO: CQL-To-ELM error
+            "TestBeforeNull"                                ; TODO: CQL-To-ELM error
+            "TestPointFromNull"                             ; this is an infinity interval of type any?
+            "TestEndsNull"                                  ; CQL-To-ELM generates strange interval with property expression
+            "TestInNull"                                    ; CQL-To-ELM generates strange interval with property expression
+            "TestProperlyIncludedInNull"                    ; CQL-To-ELM generates strange interval with property expression
+            "TestOnOrAfterNull"                             ; CQL-To-ELM generates invalid PointFrom expression
+            "TestOnOrBeforeNull"                            ; CQL-To-ELM generates invalid PointFrom expression
+            "TestOverlapsNull"                              ; type Any
+            "TestOverlapsBeforeNull"                        ; type Any
+            "TestOverlapsAfterNull"                         ; type Any
+            "NullInterval"                                  ; type Any
+            "TestExceptNull"                                ; type Any
+            "TestUnionNull"                                 ; type Any
+            "TestStartsNull"                                ; type Any
+            "TestProperlyIncludesNull"                      ; type Any
+            "DateTimeWidth"                                 ; Width isn't defined for Date. DateTime or Time types
+            "TimeWidth"                                     ; Width isn't defined for Date. DateTime or Time types
+            "TestCollapseNull"                              ; I don't see why this should result in null
+            "TestNullElement1"                              ; Contains should return null on either null argument
+            "DateTimeIncludedInNull"                        ; as no precision is given, it should return true
+            })
+
+(comment
+  (eval "@2017-09-01T00:00:00.000 same millisecond or before @2017-09-01T00:00:00")
+
+  (clojure.repl/pst)
+
+  (to-source-elm "Interval[start of Interval[@2017-12-20T11:00:00, @2017-12-21T21:00:00],
+                 (start of Interval[@2017-12-20T11:00:00, @2017-12-21T21:00:00]) + 1 day]
+                 contains day @2017-12-20T10:30:00")
+
+  (eval "Interval[start of Interval[@2017-12-20T11:00:00, @2017-12-21T21:00:00],
+                 (start of Interval[@2017-12-20T11:00:00, @2017-12-21T21:00:00]) + 1 day]
+                 contains day @2017-12-20T10:30:00")
+
+  )
 
 (deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
           #{"IntegerToString"                               ; TODO: implement
@@ -152,12 +194,12 @@
 
 
 (deftests "value-literals-and-selectors" "cql-test/ValueLiteralsAndSelectors.xml"
-          #{"IntegerNeg2Pow31IntegerMinValue"               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
+          #{"IntegerNeg2Pow31IntegerMinValue"               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than
             "DecimalTenthStep"                              ; we round here
             "DecimalPosTenthStep"                           ; we round here
             "DecimalNegTenthStep"                           ; we round here
             "Decimal10Pow28ToZeroOneStepDecimalMaxValue"    ; don't get it
             "DecimalPos10Pow28ToZeroOneStepDecimalMaxValue" ; don't get it
             "DecimalNeg10Pow28ToZeroOneStepDecimalMinValue" ; don't get it
-            "IntegerMinValue"                               ; CQl-To-ELM negates the pos integer which is over Integer/MAX_Value than
+            "IntegerMinValue"                               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than
             })

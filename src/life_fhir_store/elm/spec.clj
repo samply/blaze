@@ -867,6 +867,12 @@
           :opt-un [:elm.date/precision]))
 
 
+;; 18.16. SameOrAfter
+(defmethod expression :elm.spec.type/same-or-after [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
 ;; 18.18. Time
 (s/def :elm.time/type
   #{"Time"})
@@ -931,12 +937,153 @@
      :elm.interval/lowClosed
      :elm.interval/highClosed]))
 
+
+;; 19.2. After
+(defmethod expression :elm.spec.type/after [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.3. Before
+(defmethod expression :elm.spec.type/before [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.4. Collapse
+(derive :elm.spec.type/collapse :elm.spec.type/binary-expression)
+
+
+;; 19.5. Contains
+(defmethod expression :elm.spec.type/contains [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.6. End
+(derive :elm.spec.type/end :elm.spec.type/unary-expression)
+
+
+;; 19.7. Ends
+(defmethod expression :elm.spec.type/ends [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.10. Except
+(derive :elm.spec.type/except :elm.spec.type/nary-expression)
+
+
+;; 19.11. Expand
+(derive :elm.spec.type/expand :elm.spec.type/binary-expression)
+
+
+;; 19.12. In
+(defmethod expression :elm.spec.type/in [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.13. Includes
+(defmethod expression :elm.spec.type/includes [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.14. IncludedIn
+(defmethod expression :elm.spec.type/included-in [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
 ;; 19.15. Intersect
 (derive :elm.spec.type/intersect :elm.spec.type/nary-expression)
 
 
-;; 19.30. Union
+;; 19.16. Meets
+(defmethod expression :elm.spec.type/meets [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.17. MeetsBefore
+(defmethod expression :elm.spec.type/meets-before [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.18. MeetsAfter
+(defmethod expression :elm.spec.type/meets-after [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.20. Overlaps
+(defmethod expression :elm.spec.type/overlaps [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.21. OverlapsBefore
+(defmethod expression :elm.spec.type/overlaps-before [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.22. OverlapsAfter
+(defmethod expression :elm.spec.type/overlaps-after [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.23. PointFrom
+(derive :elm.spec.type/point-from :elm.spec.type/unary-expression)
+
+
+;; 19.24. ProperContains
+(defmethod expression :elm.spec.type/proper-contains [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.25. ProperIn
+(defmethod expression :elm.spec.type/proper-in [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.26. ProperIncludes
+(defmethod expression :elm.spec.type/proper-includes [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.27. ProperIncludedIn
+(defmethod expression :elm.spec.type/proper-included-in [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.28. Size
+(derive :elm.spec.type/size :elm.spec.type/unary-expression)
+
+
+;; 19.29. Start
+(derive :elm.spec.type/start :elm.spec.type/unary-expression)
+
+
+;; 19.30. Starts
+(defmethod expression :elm.spec.type/starts [_]
+  (s/keys :req-un [:elm.binary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
+;; 19.31. Union
 (derive :elm.spec.type/union :elm.spec.type/nary-expression)
+
+
+;; 19.32. Width
+(derive :elm.spec.type/width :elm.spec.type/unary-expression)
 
 
 

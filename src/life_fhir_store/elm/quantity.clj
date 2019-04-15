@@ -26,6 +26,10 @@
                       {:unit unit :cause-msg (.getMessage t)})))))
 
 
+(defn quantity? [x]
+  (instance? Quantity x))
+
+
 (s/fdef quantity
   :args (s/cat :value number? :unit string?))
 

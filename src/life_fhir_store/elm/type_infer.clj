@@ -193,7 +193,6 @@
 (derive :elm/greater-or-equal :elm/multiary-expression)
 (derive :elm/less :elm/multiary-expression)
 (derive :elm/less-or-equal :elm/multiary-expression)
-(derive :elm/not-equal :elm/multiary-expression)
 
 
 

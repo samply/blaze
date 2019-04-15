@@ -106,8 +106,16 @@
 
 
 ;; 12.7. NotEqual
-(derive :elm.normalizer.type/not-equal :elm.normalizer.type/multiary-expression)
-
+(defmethod normalize :elm.normalizer.type/not-equal
+  [{[operand-1 operand-2] :operand}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    {:type "Not"
+     :operand
+     {:type "Equal"
+      :operand [operand-1 operand-2]
+      :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
 
 
 ;; 13. Logical Operators
@@ -119,7 +127,15 @@
 ;; 13.2 Implies
 (defmethod normalize :elm.normalizer.type/implies
   [{[operand-1 operand-2] :operand}]
-  {:type "Or" :operand [{:type "Not" :operand operand-1} operand-2]})
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    {:type "Or"
+     :operand
+     [{:type "Not"
+       :operand operand-1
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      operand-2]
+     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
 
 
 ;; 13.3. Not
@@ -133,11 +149,25 @@
 ;; 13.5 Xor
 (defmethod normalize :elm.normalizer.type/xor
   [{[operand-1 operand-2] :operand}]
-  {:type "Or"
-   :operand [{:type "And"
-              :operand [{:type "Not" :operand operand-1} operand-2]}
-             {:type "And"
-              :operand [operand-1 {:type "Not" :operand operand-2}]}]})
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    {:type "Or"
+     :operand
+     [{:type "And"
+       :operand
+       [{:type "Not"
+         :operand operand-1
+         :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+        operand-2]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      {:type "And"
+       :operand
+       [operand-1
+        {:type "Not"
+         :operand operand-2
+         :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}]
+     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
 
 
 
@@ -157,3 +187,144 @@
 
 ;; 14.3. IsTrue
 (derive :elm.normalizer.type/is-true :elm.normalizer.type/unary-expression)
+
+
+
+;; 19. Interval Operators
+
+;; 19.12. In
+(defmethod normalize :elm.normalizer.type/in
+  [{[operand-1 operand-2] :operand :keys [precision]}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    (cond->
+      {:type "Contains"
+       :operand [operand-2 operand-1]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      precision
+      (assoc :precision precision))))
+
+
+;; 19.14. IncludedIn
+(defmethod normalize :elm.normalizer.type/included-in
+  [{[operand-1 operand-2] :operand :keys [precision]}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    (cond->
+      {:type "Includes"
+       :operand [operand-2 operand-1]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      precision
+      (assoc :precision precision))))
+
+
+;; 19.16. Meets
+(defmethod normalize :elm.normalizer.type/meets
+  [{[operand-1 operand-2] :operand :keys [precision]}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    {:type "Or"
+     :operand
+     [(cond->
+        {:type "MeetsBefore"
+         :operand [operand-1 operand-2]
+         :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+        precision
+        (assoc :precision precision))
+      (cond->
+        {:type "MeetsAfter"
+         :operand [operand-1 operand-2]
+         :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+        precision
+        (assoc :precision precision))]
+     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
+
+
+;; 19.20. Overlaps
+(defmethod normalize :elm.normalizer.type/overlaps
+  [{[operand-1 operand-2] :operand :keys [precision]}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    {:type "Or"
+     :operand
+     [(normalize
+        (cond->
+          {:type "OverlapsBefore"
+           :operand [operand-1 operand-2]
+           :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+          precision
+          (assoc :precision precision)))
+      (normalize
+        (cond->
+          {:type "OverlapsAfter"
+           :operand [operand-1 operand-2]
+           :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+          precision
+          (assoc :precision precision)))]
+     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
+
+
+;; 19.21. OverlapsBefore
+(defmethod normalize :elm.normalizer.type/overlaps-before
+  [{[operand-1 operand-2] :operand :keys [precision]}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    (cond->
+      {:type "ProperContains"
+       :operand
+       [operand-1
+        (cond->
+          {:type "Start"
+           :operand operand-2}
+          (:resultTypeName operand-2)
+          (assoc :resultTypeName (:resultTypeName operand-2)))]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      precision
+      (assoc :precision precision))))
+
+
+;; 19.22. OverlapsAfter
+(defmethod normalize :elm.normalizer.type/overlaps-after
+  [{[operand-1 operand-2] :operand :keys [precision]}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    (cond->
+      {:type "ProperContains"
+       :operand
+       [operand-1
+        (cond->
+          {:type "End"
+           :operand operand-2}
+          (:resultTypeName operand-2)
+          (assoc :resultTypeName (:resultTypeName operand-2)))]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      precision
+      (assoc :precision precision))))
+
+
+;; 19.25. ProperIn
+(defmethod normalize :elm.normalizer.type/proper-in
+  [{[operand-1 operand-2] :operand :keys [precision]}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    (cond->
+      {:type "ProperContains"
+       :operand [operand-2 operand-1]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      precision
+      (assoc :precision precision))))
+
+
+;; 19.27. ProperIncludedIn
+(defmethod normalize :elm.normalizer.type/proper-included-in
+  [{[operand-1 operand-2] :operand :keys [precision]}]
+  (let [operand-1 (normalize operand-1)
+        operand-2 (normalize operand-2)]
+    (cond->
+      {:type "ProperIncludes"
+       :operand [operand-2 operand-1]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      precision
+      (assoc :precision precision))))
+
+

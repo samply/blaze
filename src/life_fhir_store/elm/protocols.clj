@@ -41,11 +41,6 @@
   (less-or-equal [x y]))
 
 
-;; 12.7. NotEqual
-(defprotocol NotEqual
-  (not-equal [x y]))
-
-
 
 ;; 16. Arithmetic Operators
 
@@ -143,7 +138,52 @@
 (defprotocol DurationBetween
   "Returns the duration in `chrono-unit` between `this` and `other` if the
   precisions are sufficient."
-  (duration-between [this other chrono-unit]))
+  (duration-between [this other precision]))
+
+
+;; 18.15. SameOrBefore
+(defprotocol SameOrBefore
+  (same-or-before [x y precision]))
+
+
+;; 18.16. SameOrAfter
+(defprotocol SameOrAfter
+  (same-or-after [x y precision]))
+
+
+;; 19.2. After
+(defprotocol After
+  (after [x y precision]))
+
+
+;; 19.3. Before
+(defprotocol Before
+  (before [x y precision]))
+
+
+;; 19.5. Contains
+(defprotocol Contains
+  (contains [interval-or-list x precision]))
+
+
+;; 19.10. Except
+(defprotocol Except
+  (except [x y]))
+
+
+;; 19.13. Includes
+(defprotocol Includes
+  (includes [x y precision]))
+
+
+;; 19.24. ProperContains
+(defprotocol ProperContains
+  (proper-contains [interval-or-list x precision]))
+
+
+;; 19.26. ProperIncludes
+(defprotocol ProperIncludes
+  (proper-includes [x y precision]))
 
 
 ;; 22.19. ToDate

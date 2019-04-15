@@ -19,12 +19,12 @@
     [life-fhir-store.datomic.cql :as cql]
     [life-fhir-store.datomic.time :as time]
     [life-fhir-store.datomic.quantity :as quantity]
-    [life-fhir-store.elm.date-time :as date-time]
+    [life-fhir-store.elm.date-time :as date-time :refer [local-time]]
     [life-fhir-store.elm.decimal :as decimal]
     [life-fhir-store.elm.deps-infer :refer [infer-library-deps]]
     [life-fhir-store.elm.equiv-relationships :refer [find-equiv-rels-library]]
     [life-fhir-store.elm.integer]
-    [life-fhir-store.elm.interval :refer [interval]]
+    [life-fhir-store.elm.interval :refer [interval interval?]]
     [life-fhir-store.elm.nil]
     [life-fhir-store.elm.normalizer :refer [normalize-library]]
     [life-fhir-store.elm.protocols :as p]
@@ -37,7 +37,6 @@
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
                ZoneOffset]
     [java.time.temporal ChronoUnit Temporal]
-    [java.math RoundingMode]
     [javax.measure Quantity])
   (:refer-clojure :exclude [compile]))
 
@@ -95,12 +94,6 @@
   Comparable
   (less-or-equal [x y]
     (some->> y (.compareTo x) (>= 0))))
-
-
-(extend-protocol p/NotEqual
-  Object
-  (not-equal [x y]
-    (some->> y (p/equal x) not)))
 
 
 (defmulti compile*
@@ -182,33 +175,82 @@
     (mapv #(compile-expression-def context %) (-> library :statements :def))))
 
 
-(defmacro defunary-operator
-  ([name]
-   `(defunary-operator ~name ~(symbol "life-fhir-store.elm.protocols" name)))
-  ([name op]
-   `(defmethod compile* ~(keyword "elm.compiler.type" name)
-      [context# {operand# :operand}]
-      (let [operand# (compile context# operand#)]
-        (reify Expression
-          (-eval [_ context# scope#]
-            (~op (-eval operand# context# scope#)))
-          (-hash [_]
-            {:type ~(keyword name)
-             :operand (-hash operand#)}))))))
+(defmacro defunop
+  {:arglists '([name bindings & body])}
+  [name [operand-binding expr-binding] & body]
+  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+     [context# expr#]
+     (let [operand# (compile context# (:operand expr#))
+           ~(or expr-binding '_) expr#]
+       (reify Expression
+         (-eval [~'_ context# scope#]
+           (let [~operand-binding (-eval operand# context# scope#)]
+             ~@body))
+         (-hash [_]
+           {:type ~(keyword (clojure.core/name name))
+            :operands (-hash operand#)})))))
 
 
-(defmacro defbinary-operator [name]
-  `(defmethod compile* ~(keyword "elm.compiler.type" name)
+
+(defmacro defbinop
+  {:arglists '([name bindings & body])}
+  [name [op-1-binding op-2-binding] & body]
+  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
      [context# {[operand-1# operand-2#] :operand}]
      (let [operand-1# (compile context# operand-1#)
            operand-2# (compile context# operand-2#)]
        (reify Expression
-         (-eval [_ context# scope#]
-           (~(symbol "life-fhir-store.elm.protocols" name)
-             (-eval operand-1# context# scope#)
-             (-eval operand-2# context# scope#)))
+         (-eval [~'_ context# scope#]
+           (let [~op-1-binding (-eval operand-1# context# scope#)
+                 ~op-2-binding (-eval operand-2# context# scope#)]
+             ~@body))
          (-hash [_]
-           {:type ~(keyword name)
+           {:type ~(keyword (clojure.core/name name))
+            :operands [(-hash operand-1#) (-hash operand-2#)]})))))
+
+
+(defmacro defnaryop
+  {:arglists '([name bindings & body])}
+  [name [operands-binding] & body]
+  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+     [context# {operands# :operand}]
+     (let [operands# (mapv #(compile context# %) operands#)]
+       (reify Expression
+         (-eval [~'_ context# scope#]
+           (let [~operands-binding (mapv #(-eval % context# scope#) operands#)]
+             ~@body))
+         (-hash [_]
+           {:type ~(keyword (clojure.core/name name))
+            :operands (mapv -hash operands#)})))))
+
+
+(defn- to-chrono-unit [precision]
+  (case precision
+    "Year" ChronoUnit/YEARS
+    "Month" ChronoUnit/MONTHS
+    "Week" ChronoUnit/WEEKS
+    "Day" ChronoUnit/DAYS
+    "Hour" ChronoUnit/HOURS
+    "Minute" ChronoUnit/MINUTES
+    "Second" ChronoUnit/SECONDS
+    "Millisecond" ChronoUnit/MILLIS))
+
+
+(defmacro defbinopp
+  {:arglists '([name bindings & body])}
+  [name [sym-op-1 sym-op-2 sym-precision] & body]
+  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+     [context# {[operand-1# operand-2#] :operand precision# :precision}]
+     (let [operand-1# (compile context# operand-1#)
+           operand-2# (compile context# operand-2#)
+           ~sym-precision (some-> precision# to-chrono-unit)]
+       (reify Expression
+         (-eval [~'_ context# scope#]
+           (let [~sym-op-1 (-eval operand-1# context# scope#)
+                 ~sym-op-2 (-eval operand-2# context# scope#)]
+             ~@body))
+         (-hash [_]
+           {:type ~(keyword (clojure.core/name name))
             :operands [(-hash operand-1#) (-hash operand-2#)]})))))
 
 
@@ -218,6 +260,12 @@
       (string? x)
       (instance? Temporal x)
       (instance? Quantity x)))
+
+
+(defn- append-locator [msg locator]
+  (if locator
+    (str msg " " locator ".")
+    (str msg ".")))
 
 
 
@@ -840,32 +888,39 @@
 ;; 12. Comparison Operators
 
 ;; 12.1. Equal
-(defbinary-operator "equal")
+(defbinop equal [operand-1 operand-2]
+  (p/equal operand-1 operand-2))
 
 
 ;; 12.2. Equivalent
-(defbinary-operator "equivalent")
+(defbinop equivalent [operand-1 operand-2]
+  (p/equivalent operand-1 operand-2))
 
 
 ;; 12.3. Greater
-(defbinary-operator "greater")
+(defbinop greater [operand-1 operand-2]
+  (p/greater operand-1 operand-2))
 
 
 ;; 12.4. GreaterOrEqual
-(defbinary-operator "greater-or-equal")
+(defbinop greater-or-equal [operand-1 operand-2]
+  (p/greater-or-equal operand-1 operand-2))
 
 
 ;; 12.5. Less
-(defbinary-operator "less")
+(defbinop less [operand-1 operand-2]
+  (p/less operand-1 operand-2))
 
 
 ;; 12.6. LessOrEqual
-(defbinary-operator "less-or-equal")
+(defbinop less-or-equal [operand-1 operand-2]
+  (p/less-or-equal operand-1 operand-2))
 
 
 ;; 12.7. NotEqual
-(defbinary-operator "not-equal")
-
+(defmethod compile* :elm.compiler.type/not-equal
+  [_ _]
+  (throw (Exception. "Unsupported NotEqual expression. Please normalize the ELM tree before compiling.")))
 
 
 ;; 13. Logical Operators
@@ -896,18 +951,10 @@
 
 
 ;; 13.3 Not
-(defmethod compile* :elm.compiler.type/not
-  [context {operand :operand}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ context scope]
-        (let [operand (-eval operand context scope)]
-          (cond
-            (true? operand) false
-            (false? operand) true)))
-      (-hash [_]
-        {:type :not
-         :operand (-hash operand)}))))
+(defunop not [operand]
+  (cond
+    (true? operand) false
+    (false? operand) true))
 
 
 ;; 13.4. Or
@@ -989,16 +1036,18 @@
 
 
 ;; 14.3. IsFalse
-(defunary-operator "is-false" false?)
+(defunop is-false [operand]
+  (false? operand))
 
 
 ;; 14.4. IsNull
-(defunary-operator "is-null" nil?)
+(defunop is-null [operand]
+  (nil? operand))
 
 
 ;; 14.5. IsTrue
-(defunary-operator "is-true" true?)
-
+(defunop is-true [operand]
+  (true? operand))
 
 
 ;; 15. Conditional Operators
@@ -1067,91 +1116,110 @@
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs
-(defunary-operator "abs")
+(defunop abs [x]
+  (p/abs x))
 
 
 ;; 16.2. Add
-(defbinary-operator "add")
+(defbinop add [x y]
+  (p/add x y))
 
 
 ;; 16.3. Ceiling
-(defunary-operator "ceiling")
+(defunop ceiling [x]
+  (p/ceiling x))
 
 
 ;; 16.4. Divide
-(defbinary-operator "divide")
+(defbinop divide [x y]
+  (p/divide x y))
 
 
 ;; 16.5. Exp
-(defunary-operator "exp")
+(defunop exp [x]
+  (p/exp x))
 
 
 ;; 16.6. Floor
-(defunary-operator "floor")
+(defunop floor [x]
+  (p/floor x))
 
 
 ;; 16.7. Log
-(defbinary-operator "log")
+(defbinop log [x base]
+  (p/log x base))
 
 
 ;; 16.8. Ln
-(defunary-operator "ln")
+(defunop ln [x]
+  (p/ln x))
 
 
 ;; 16.9. MaxValue
-(defmethod compile* :elm.compiler.type/max-value
-  [_ {type :valueType}]
+(defn max-value [type]
   (let [[ns name] (elm-util/parse-qualified-name type)]
     (case ns
       "urn:hl7-org:elm-types:r1"
       (case name
-        "Integer" Integer/MAX_VALUE
+        "Integer" (long Integer/MAX_VALUE)
         "Decimal" decimal/max
         "Date" date-time/max-date
         "DateTime" date-time/max-date-time
         "Time" date-time/max-time
         (throw (ex-info (str "Unsupported type `" name "` for MaxValue.")
                         {:type type})))
-      (throw (ex-info (str "Unknown type namespace `" ns "`.")
-                      {:type type})))))
+      (throw (ex-info (str "Unknown type namespace `" ns "`.") {:type type})))))
+
+
+(defmethod compile* :elm.compiler.type/max-value
+  [_ {type :valueType}]
+  (max-value type))
 
 
 ;; 16.10. MinValue
-(defmethod compile* :elm.compiler.type/min-value
-  [_ {type :valueType}]
+(defn min-value [type]
   (let [[ns name] (elm-util/parse-qualified-name type)]
     (case ns
       "urn:hl7-org:elm-types:r1"
       (case name
-        "Integer" Integer/MIN_VALUE
+        "Integer" (long Integer/MIN_VALUE)
         "Decimal" decimal/min
         "Date" date-time/min-date
         "DateTime" date-time/min-date-time
-        "Time" LocalTime/MIN
+        "Time" date-time/min-time
         (throw (ex-info (str "Unsupported type `" name "` for MinValue.")
                         {:type type})))
-      (throw (ex-info (str "Unknown type namespace `" ns "`.")
-                      {:type type})))))
+      (throw (ex-info (str "Unknown type namespace `" ns "`.") {:type type})))))
+
+
+(defmethod compile* :elm.compiler.type/min-value
+  [_ {type :valueType}]
+  (min-value type))
 
 
 ;; 16.11. Modulo
-(defbinary-operator "modulo")
+(defbinop modulo [num div]
+  (p/modulo num div))
 
 
 ;; 16.12. Multiply
-(defbinary-operator "multiply")
+(defbinop multiply [x y]
+  (p/multiply x y))
 
 
 ;; 16.13. Negate
-(defunary-operator "negate")
+(defunop negate [x]
+  (p/negate x))
 
 
 ;; 16.14. Power
-(defbinary-operator "power")
+(defbinop power [x exp]
+  (p/power x exp))
 
 
 ;; 16.15. Predecessor
-(defunary-operator "predecessor")
+(defunop predecessor [x]
+  (p/predecessor x))
 
 
 ;; 16.16. Round
@@ -1189,19 +1257,23 @@
 
 
 ;; 16.17. Subtract
-(defbinary-operator "subtract")
+(defbinop subtract [x y]
+  (p/subtract x y))
 
 
 ;; 16.18. Successor
-(defunary-operator "successor")
+(defunop successor [x]
+  (p/successor x))
 
 
 ;; 16.19. Truncate
-(defunary-operator "truncate")
+(defunop truncate [x]
+  (p/truncate x))
 
 
 ;; 16.20. TruncatedDivide
-(defbinary-operator "truncated-divide")
+(defbinop truncated-divide [num div]
+  (p/truncated-divide num div))
 
 
 
@@ -1467,62 +1539,12 @@
 
 
 ;; 18.11. DurationBetween
-;;
-;; The DurationBetween operator returns the number of whole calendar periods for
-;; the specified precision between the first and second arguments. If the first
-;; argument is after the second argument, the result is negative. The result of
-;; this operation is always an integer; any fractional periods are dropped.
-;;
-;; For Date values, precision must be one of Year, Month, Week, or Day.
-;;
-;; For Time values, precision must be one of Hour, Minute, Second, or
-;; Millisecond.
-;;
-;; For calculations involving weeks, the duration of a week is equivalent to 7
-;; days.
-;;
-;; If either argument is null, the result is null.
-;;
-;; Note that this operator can be implemented using Uncertainty as described in
-;; the CQL specification, Chapter 5, Precision-Based Timing.
-(defn to-chrono-unit [precision]
-  (case precision
-    "Year" ChronoUnit/YEARS
-    "Month" ChronoUnit/MONTHS
-    "Week" ChronoUnit/WEEKS
-    "Day" ChronoUnit/DAYS
-    "Hour" ChronoUnit/HOURS
-    "Minute" ChronoUnit/MINUTES
-    "Second" ChronoUnit/SECONDS
-    "Millisecond" ChronoUnit/MILLIS))
-
-(defmethod compile* :elm.compiler.type/duration-between
-  [context {operands :operand :keys [precision]}]
-  (let [[operand-1 operand-2 :as operands] (mapv #(compile context %) operands)
-        chrono-unit (to-chrono-unit precision)]
-    (reify Expression
-      (-eval [_ context scope]
-        (p/duration-between
-          (-eval operand-1 context scope)
-          (-eval operand-2 context scope)
-          chrono-unit))
-      (-hash [_]
-        {:type :duration-between
-         :operands (mapv -hash operands)}))))
+(defbinopp duration-between
+  [operand-1 operand-2 precision]
+  (p/duration-between operand-1 operand-2 precision))
 
 
 ;; 18.13. Now
-;;
-;; The Now operator returns the date and time of the start timestamp associated
-;; with the evaluation request. Now is defined in this way for two reasons:
-;;
-;; 1) The operation will always return the same value within any given
-;; evaluation, ensuring that the result of an expression containing Now will
-;; always return the same result.
-;;
-;; 2) The operation will return the timestamp associated with the evaluation
-;; request, allowing the evaluation to be performed with the same timezone
-;; offset information as the data delivered with the evaluation request.
 (defmethod compile* :elm.compiler.type/now
   [_ _]
   (reify Expression
@@ -1530,6 +1552,16 @@
       now)
     (-hash [_]
       {:type :now})))
+
+
+;; 18.15. SameOrBefore
+(defbinopp same-or-before [x y precision]
+  (p/same-or-before x y precision))
+
+
+;; 18.16. SameOrAfter
+(defbinopp same-or-after [x y precision]
+  (p/same-or-after x y precision))
 
 
 ;; 18.18. Time
@@ -1541,15 +1573,15 @@
         millisecond (some->> millisecond (compile context))]
     (cond
       (and (int? millisecond) (int? second) (int? minute) (int? hour))
-      (LocalTime/of hour minute second (* 1000 1000 millisecond))
+      (local-time hour minute second millisecond)
 
       (some? millisecond)
       (reify Expression
         (-eval [_ context scope]
-          (LocalTime/of (-eval hour context scope)
-                        (-eval minute context scope)
-                        (-eval second context scope)
-                        (* 1000 1000 (-eval millisecond context scope))))
+          (local-time (-eval hour context scope)
+                      (-eval minute context scope)
+                      (-eval second context scope)
+                      (-eval millisecond context scope)))
         (-hash [_]
           {:type :time
            :hour (-hash hour)
@@ -1558,14 +1590,14 @@
            :millisecond (-hash millisecond)}))
 
       (and (int? second) (int? minute) (int? hour))
-      (LocalTime/of hour minute second 0)
+      (local-time hour minute second)
 
       (some? second)
       (reify Expression
         (-eval [_ context scope]
-          (LocalTime/of (-eval hour context scope)
-                        (-eval minute context scope)
-                        (-eval second context scope)))
+          (local-time (-eval hour context scope)
+                      (-eval minute context scope)
+                      (-eval second context scope)))
         (-hash [_]
           {:type :time
            :hour (-hash hour)
@@ -1573,25 +1605,25 @@
            :second (-hash second)}))
 
       (and (int? minute) (int? hour))
-      (LocalTime/of hour minute 0 0)
+      (local-time hour minute)
 
       (some? minute)
       (reify Expression
         (-eval [_ context scope]
-          (LocalTime/of (-eval hour context scope)
-                        (-eval minute context scope)))
+          (local-time (-eval hour context scope)
+                      (-eval minute context scope)))
         (-hash [_]
           {:type :time
            :hour (-hash hour)
            :minute (-hash minute)}))
 
       (int? hour)
-      (LocalTime/of hour 0 0 0)
+      (local-time hour)
 
       :else
       (reify Expression
         (-eval [_ context scope]
-          (LocalTime/of (-eval hour context scope) 0))
+          (local-time (-eval hour context scope)))
         (-hash [_]
           {:type :time
            :hour (-hash hour)})))))
@@ -1616,83 +1648,221 @@
 ;; 19. Interval Operators
 
 ;; 19.1. Interval
+(defn- determine-type [{:keys [resultTypeName asType]}]
+  (or resultTypeName asType))
+
 (defmethod compile* :elm.compiler.type/interval
   [context {:keys [low high]
             low-closed-expression :lowClosedExpression
             high-closed-expression :highClosedExpression
             low-closed :lowClosed
-            high-closed :lowClosed}]
-  (let [low (some->> low (compile context))
+            high-closed :highClosed
+            :or {low-closed true high-closed true}}]
+  (let [type (determine-type low)
+        low (some->> low (compile context))
         high (some->> high (compile context))
         low-closed-expression (some->> low-closed-expression (compile context))
         high-closed-expression (some->> high-closed-expression (compile context))]
-    (cond
-      (and (nil? low-closed-expression) (nil? high-closed-expression))
-      (cond
-        (and (literal? low) (literal? high))
-        (interval low high (or low-closed true) (or high-closed true))))))
+    (assert (string? type) (prn-str low))
+    (reify Expression
+      (-eval [_ context scope]
+        (let [low (-eval low context scope)
+              high (-eval high context scope)
+              low-closed (or (-eval low-closed-expression context scope) low-closed)
+              high-closed (or (-eval high-closed-expression context scope) high-closed)]
+          (interval
+            (if low-closed
+              (if (nil? low)
+                (min-value type)
+                low)
+              (p/successor low))
+            (if high-closed
+              (if (nil? high)
+                (max-value type)
+                high)
+              (p/predecessor high)))))
+      (-hash [_]
+        (cond->
+          {:type :interval}
+          low
+          (assoc :low (-hash low))
+          high
+          (assoc :high (-hash high))
+          low-closed-expression
+          (assoc :low-closed-expression (-hash low-closed-expression))
+          high-closed-expression
+          (assoc :high-closed-expression (-hash high-closed-expression))
+          low-closed
+          (assoc :low-closed low-closed)
+          high-closed
+          (assoc :high-closed high-closed))))))
+
+
+;; 19.2. After
+(defbinopp after [operand-1 operand-2 precision]
+  (p/after operand-1 operand-2 precision))
+
+
+;; 19.3. Before
+(defbinopp before [operand-1 operand-2 precision]
+  (p/before operand-1 operand-2 precision))
+
+
+;; 19.4. Collapse
+(defbinop collapse [source per]
+  (when source
+    (let [source (sort-by :start (remove nil? source))]
+      (reverse
+        (reduce
+          (fn [r right]
+            (let [[left & others] r]
+              (if (p/greater-or-equal (:end left) (p/predecessor (:start right)))
+                (cons (interval (:start left) (:end right)) others)
+                (cons right r))))
+          (cond-> (list) (first source) (conj (first source)))
+          (rest source))))))
+
+
+;; 19.5. Contains
+(defbinopp contains [list-or-interval x precision]
+  (p/contains list-or-interval x precision))
+
+
+;; 19.6. End
+(defunop end [{:keys [end]}]
+  end)
+
+
+;; 19.7. Ends
+(defbinop ends [x y _]
+  (and (p/greater-or-equal (:start x) (:start y))
+       (p/equal (:end x) (:end y))))
+
+
+;; 19.10. Except
+(defbinop except [x y]
+  (p/except x y))
+
+
+;; 19.12. In
+(defmethod compile* :elm.compiler.type/in
+  [_ _]
+  (throw (Exception. "Unsupported In expression. Please normalize the ELM tree before compiling.")))
+
+
+;; 19.13. Includes
+(defbinopp includes [x y precision]
+  (p/includes x y precision))
+
+
+;; 19.14. IncludedIn
+(defmethod compile* :elm.compiler.type/included-in
+  [_ _]
+  (throw (Exception. "Unsupported IncludedIn expression. Please normalize the ELM tree before compiling.")))
 
 
 ;; 19.15. Intersect
-;;
-;; The Intersect operator returns the intersection of its arguments.
-;;
-;; This operator has two overloads: List Interval
-;;
-;; For the list overload, this operator returns a list with the elements that
-;; appear in both lists, using equality semantics. The operator is defined with
-;; set semantics, meaning that each element will appear in the result at most
-;; once, and that there is no expectation that the order of the inputs will be
-;; preserved in the results.
-;;
-;; For the interval overload, this operator returns the interval that defines
-;; the overlapping portion of both arguments. If the arguments do not overlap,
-;; this operator returns null.
-;;
-;; If either argument is null, the result is null.
-;;
-;; TODO: Interval Implementation
-(defmethod compile* :elm.compiler.type/intersect
-  [context {operands :operand}]
-  (let [operands (mapv #(compile context %) operands)]
-    (reify Expression
-      (-eval [_ context scope]
-        (let [operands (remove nil? (map #(-eval % context scope) operands))]
-          (when-not (empty? operands)
-            (apply set/intersection (map set operands)))))
-      (-hash [_]
-        {:type :intersect
-         :operands (mapv -hash operands)}))))
+(defbinop intersect [x y]
+  (when (and (some? x) (some? y))
+    (if (interval? x)
+      (let [[left right] (if (p/less (:start x) (:start y)) [x y] [y x])]
+        (when (p/greater-or-equal (:end left) (:start right))
+          (some->> (if (p/less (:end left) (:end right))
+                     (:end left)
+                     (:end right))
+                   (interval (:start right)))))
+      (set/intersection (set x) (set y)))))
 
 
-;; 19.30. Union
-;;
-;; The Union operator returns the union of its arguments.
-;;
-;; This operator has two overloads: List Interval
-;;
-;; For the list overload, this operator returns a list with all unique elements
-;; from both arguments.
-;;
-;; For the interval overload, this operator returns the interval that starts at
-;; the earliest starting point in either argument, and ends at the latest
-;; starting point in either argument. If the arguments do not overlap or meet,
-;; this operator returns null.
-;;
-;; If either argument is null, the result is null.
-;;
-;; TODO: Interval Implementation
-(defmethod compile* :elm.compiler.type/union
-  [context {operands :operand}]
-  (let [operands (mapv #(compile context %) operands)]
-    (reify Expression
-      (-eval [_ context scope]
-        (let [operands (remove nil? (map #(-eval % context scope) operands))]
-          (when-not (empty? operands)
-            (apply set/union (map set operands)))))
-      (-hash [_]
-        {:type :union
-         :operands (mapv -hash operands)}))))
+;; 19.16. Meets
+(defmethod compile* :elm.compiler.type/meets
+  [_ _]
+  (throw (Exception. "Unsupported Meets expression. Please normalize the ELM tree before compiling.")))
+
+
+;; 19.17. MeetsBefore
+(defbinopp meets-before [x y _]
+  (p/equal (:end x) (p/predecessor (:start y))))
+
+
+;; 19.18. MeetsAfter
+(defbinopp meets-after [x y _]
+  (p/equal (:start x) (p/successor (:end y))))
+
+
+;; 19.20. Overlaps
+(defmethod compile* :elm.compiler.type/overlaps
+  [_ _]
+  (throw (Exception. "Unsupported Overlaps expression. Please normalize the ELM tree before compiling.")))
+
+
+;; 19.21. OverlapsBefore
+(defmethod compile* :elm.compiler.type/overlaps-before
+  [_ _]
+  (throw (Exception. "Unsupported OverlapsBefore expression. Please normalize the ELM tree before compiling.")))
+
+
+;; 19.22. OverlapsAfter
+(defmethod compile* :elm.compiler.type/overlaps-after
+  [_ _]
+  (throw (Exception. "Unsupported OverlapsAfter expression. Please normalize the ELM tree before compiling.")))
+
+
+;; 19.23. PointFrom
+(defunop point-from [interval {{:keys [locator]} :operand :as expression}]
+  (when interval
+    (if (p/equal (:start interval) (:end interval))
+      (:start interval)
+      (throw (ex-info (append-locator "Invalid non-unit interval in `PointFrom` expression at" locator)
+                      {:expression expression})))))
+
+
+;; 19.24. ProperContains
+(defbinopp proper-contains [list-or-interval x precision]
+  (p/proper-contains list-or-interval x precision))
+
+
+;; 19.25. ProperIn
+(defmethod compile* :elm.compiler.type/proper-in
+  [_ _]
+  (throw (Exception. "Unsupported ProperIn expression. Please normalize the ELM tree before compiling.")))
+
+
+;; 19.26. ProperIncludes
+(defbinopp proper-includes [x y precision]
+  (p/proper-includes x y precision))
+
+
+;; 19.27. ProperIncludedIn
+(defmethod compile* :elm.compiler.type/proper-included-in
+  [_ _]
+  (throw (Exception. "Unsupported ProperIncludedIn expression. Please normalize the ELM tree before compiling.")))
+
+
+;; 19.29. Start
+(defunop start [{:keys [start]}]
+  start)
+
+
+;; 19.30. Starts
+(defbinop starts [x y _]
+  (and (p/equal (:start x) (:start y))
+       (p/less-or-equal (:end x) (:end y))))
+
+
+;; 19.31. Union
+(defbinop union [x y]
+  (when (and (some? x) (some? y))
+    (if (interval? x)
+      (let [[left right] (if (p/less (:start x) (:start y)) [x y] [y x])]
+        (when (p/greater-or-equal (:end left) (p/predecessor (:start right)))
+          (interval (:start left) (:end right))))
+      (set/union (set x) (set y)))))
+
+
+;; 19.32. Width
+(defunop width [{:keys [start end]}]
+  (p/subtract end start))
 
 
 
@@ -1726,19 +1896,12 @@
 ;; one element, that element is returned. If the list contains more than one
 ;; element, a run-time error is thrown. If the source list is null, the result
 ;; is null.
-(defmethod compile* :elm.compiler.type/singleton-from
-  [context {{:keys [locator] :as operand} :operand}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ context scope]
-        (let [operand (-eval operand context scope)]
-          (cond
-            (empty? operand) nil
-            (nil? (next operand)) (first operand)
-            :else (throw (Exception. (str "More than one element in expression `SingletonFrom` at " locator "."))))))
-      (-hash [_]
-        {:type :singleton-from
-         :opernad (-hash operand)}))))
+(defunop singleton-from [list {{:keys [locator]} :operand :as expression}]
+  (cond
+    (empty? list) nil
+    (nil? (next list)) (first list)
+    :else (throw (ex-info (append-locator "More than one element in expression `SingletonFrom` at" locator)
+                          {:expression expression}))))
 
 
 
@@ -1847,54 +2010,28 @@
 
 
 ;; 22.23. ToDecimal
-(defunary-operator "to-decimal")
+(defunop to-decimal [x]
+  (p/to-decimal x))
 
 
 ;; 22.24. ToInteger
-(defunary-operator "to-integer")
+(defunop to-integer [x]
+  (p/to-integer x))
 
 
 ;; 22.25. ToList
-(defmethod compile* :elm.compiler.type/to-list
-  [context {:keys [operand]}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ context scope]
-        (let [value (-eval operand context scope)]
-          (if (nil? value) [] [value])))
-      (-hash [_]
-        {:type :to-list
-         :operand (-hash operand)}))))
+(defunop to-list [x]
+  (if (nil? x) [] [x]))
 
 
 ;; 22.26. ToQuantity
-(defunary-operator "to-quantity")
+(defunop to-quantity [x]
+  (p/to-quantity x))
 
 
 
 ;; 23. Clinical Operators
 
 ;; 23.4. CalculateAgeAt
-;;
-;; Calculates the age in the specified precision of a person born on the first
-;; Date or DateTime as of the second Date or DateTime.
-;;
-;; The CalculateAgeAt operator has two signatures: Date, Date DateTime, DateTime
-;;
-;; For the Date overload, precision must be one of year, month, week, or day.
-;;
-;; The result of the calculation is the number of whole calendar periods that
-;; have elapsed between the first date/time and the second.
-(defmethod compile* :elm.compiler.type/calculate-age-at
-  [context {operands :operand :keys [precision]}]
-  (let [[operand-1 operand-2 :as operands] (mapv #(compile context %) operands)
-        chrono-unit (to-chrono-unit precision)]
-    (reify Expression
-      (-eval [_ context scope]
-        (p/duration-between
-          (-eval operand-1 context scope)
-          (-eval operand-2 context scope)
-          chrono-unit))
-      (-hash [_]
-        {:type :calculate-age-at
-         :operands (mapv -hash operands)}))))
+(defbinopp calculate-age-at [operand-1 operand-2 precision]
+  (p/duration-between operand-1 operand-2 precision))

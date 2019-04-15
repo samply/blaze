@@ -177,10 +177,6 @@
 (derive :elm.deps.type/less-or-equal :elm.deps.type/multiary-expression)
 
 
-;; 12.7. NotEqual
-(derive :elm.deps.type/not-equal :elm.deps.type/multiary-expression)
-
-
 
 ;; 13. Logical Operators
 
@@ -354,7 +350,7 @@
 (derive :elm.deps.type/intersect :elm.deps.type/multiary-expression)
 
 
-;; 19.30. Union
+;; 19.31. Union
 (derive :elm.deps.type/union :elm.deps.type/multiary-expression)
 
 
