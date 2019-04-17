@@ -128,10 +128,34 @@
   (truncated-divide [_ _]))
 
 
+;; 18.7. DateFrom
+(extend-protocol p/DateFrom
+  nil
+  (date-from [_]))
+
+
+;; 18.9. DateTimeComponentFrom
+(extend-protocol p/DateTimeComponentFrom
+  nil
+  (date-time-component-from [_ _]))
+
+
+;; 18.10. DifferenceBetween
+(extend-protocol p/DifferenceBetween
+  nil
+  (difference-between [_ _ _]))
+
+
 ;; 18.11. DurationBetween
 (extend-protocol p/DurationBetween
   nil
   (duration-between [_ _ _]))
+
+
+;; 18.14. SameAs
+(extend-protocol p/SameAs
+  nil
+  (same-as [_ _ _]))
 
 
 ;; 18.15. SameOrBefore
@@ -140,7 +164,7 @@
   (same-or-before [_ _ _]))
 
 
-;; 18.15. SameOrAfter
+;; 18.16. SameOrAfter
 (extend-protocol p/SameOrAfter
   nil
   (same-or-after [_ _ _]))

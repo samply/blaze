@@ -12,6 +12,15 @@
     (and (p/equal start other-start)
          (p/equal end other-end)))
 
+  p/SameAs
+  (same-as [_ y precision]
+    (when y
+      (if (temporal? start)
+        (and (p/same-as start (:start y) precision)
+             (p/same-as end (:end y) precision))
+        (and (p/equal start (:start y))
+             (p/equal end (:end y))))))
+
   p/SameOrBefore
   (same-or-before [_ y precision]
     (when-let [{y-start :start} y]

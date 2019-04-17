@@ -80,7 +80,7 @@
     ["Year2019PlusOneYear" :result] := (Year/of 2020)
     ["OneYearPlusOneYear" :result] := (date-time/period 2 0 0)
     ["OneYearPlusOneMonth" :result] := (date-time/period 1 1 0)
-    ["OneSecondPlusOneSecond" :result] := (date-time/period 0 0 2)))
+    ["OneSecondPlusOneSecond" :result] := (date-time/period 0 0 2000)))
 
 (comment
   (cql/translate (read-query "arithmetic"))

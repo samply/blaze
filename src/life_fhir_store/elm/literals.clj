@@ -285,7 +285,7 @@
         minute (assoc :minute minute)
         second (assoc :second second)
         millisecond (assoc :millisecond millisecond)
-        timezone-offset (assoc :timezone-offset timezone-offset)))))
+        timezone-offset (assoc :timezoneOffset timezone-offset)))))
 
 
 (s/fdef time

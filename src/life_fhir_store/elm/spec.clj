@@ -671,9 +671,13 @@
 
 
 ;; 18. Date and Time Operators
+;;
+;; TODO: why are both cases allowed? See DurationBetween vs. SameAs
 (s/def :elm.date/precision
   #{"Year" "Month" "Week" "Day"
-    "Hour" "Minute" "Second" "Millisecond"})
+    "Hour" "Minute" "Second" "Millisecond"
+    "year" "month" "week" "day"
+    "hour" "minute" "second" "millisecond"})
 
 
 ;; 18.6. Date
@@ -833,7 +837,11 @@
 (defmethod expression :elm.spec.type/date-time [_]
   :elm/date-time)
 
+
 ;; 18.9. DateTimeComponentFrom
+(defmethod expression :elm.spec.type/date-time-component-from [_]
+  (s/keys :req-un [:elm.unary-expression/operand]
+          :opt-un [:elm.date/precision]))
 
 
 ;; 18.10. DifferenceBetween
@@ -846,9 +854,6 @@
 (defmethod expression :elm.spec.type/duration-between [_]
   (s/keys :req-un [:elm.binary-expression/operand]
           :opt-un [:elm.date/precision]))
-
-
-;; 18.12. Not Equal
 
 
 ;; 18.13. Now
@@ -893,6 +898,18 @@
 
 (defmethod expression :elm.spec.type/time [_]
   :elm/time)
+
+
+;; 18.19. TimeFrom
+(derive :elm.spec.type/time-from :elm.spec.type/unary-expression)
+
+
+;; 18.20. TimezoneOffsetFrom
+(derive :elm.spec.type/timezone-offset-from :elm.spec.type/unary-expression)
+
+
+;; 18.21. TimeOfDay
+(derive :elm.spec.type/time-of-day :elm.spec.type/operator-expression)
 
 
 ;; 18.22. Today

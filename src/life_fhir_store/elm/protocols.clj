@@ -134,11 +134,29 @@
   (truncated-divide [num div]))
 
 
+;; 18.7. DateFrom
+(defprotocol DateFrom
+  (date-from [x]))
+
+
+;; 18.9. DateTimeComponentFrom
+(defprotocol DateTimeComponentFrom
+  (date-time-component-from [x precision]))
+
+
+;; 18.10. DifferenceBetween
+(defprotocol DifferenceBetween
+  (difference-between [x y precision]))
+
+
 ;; 18.11. DurationBetween
 (defprotocol DurationBetween
-  "Returns the duration in `chrono-unit` between `this` and `other` if the
-  precisions are sufficient."
-  (duration-between [this other precision]))
+  (duration-between [x y precision]))
+
+
+;; 18.14. SameAs
+(defprotocol SameAs
+  (same-as [x y precision]))
 
 
 ;; 18.15. SameOrBefore

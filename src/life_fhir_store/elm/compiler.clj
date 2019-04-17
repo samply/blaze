@@ -32,7 +32,8 @@
     [life-fhir-store.elm.spec]
     [life-fhir-store.elm.type-infer :refer [infer-library-types]]
     [life-fhir-store.elm.util :as elm-util]
-    [life-fhir-store.util :as u])
+    [life-fhir-store.util :as u]
+    [clojure.string :as str])
   (:import
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
                ZoneOffset]
@@ -191,7 +192,6 @@
             :operands (-hash operand#)})))))
 
 
-
 (defmacro defbinop
   {:arglists '([name bindings & body])}
   [name [op-1-binding op-2-binding] & body]
@@ -225,33 +225,50 @@
 
 
 (defn- to-chrono-unit [precision]
-  (case precision
-    "Year" ChronoUnit/YEARS
-    "Month" ChronoUnit/MONTHS
-    "Week" ChronoUnit/WEEKS
-    "Day" ChronoUnit/DAYS
-    "Hour" ChronoUnit/HOURS
-    "Minute" ChronoUnit/MINUTES
-    "Second" ChronoUnit/SECONDS
-    "Millisecond" ChronoUnit/MILLIS))
+  (case (str/lower-case precision)
+    "year" ChronoUnit/YEARS
+    "month" ChronoUnit/MONTHS
+    "week" ChronoUnit/WEEKS
+    "day" ChronoUnit/DAYS
+    "hour" ChronoUnit/HOURS
+    "minute" ChronoUnit/MINUTES
+    "second" ChronoUnit/SECONDS
+    "millisecond" ChronoUnit/MILLIS))
 
 
 (defmacro defbinopp
   {:arglists '([name bindings & body])}
-  [name [sym-op-1 sym-op-2 sym-precision] & body]
+  [name [op-1-binding op-2-binding precision-binding] & body]
   `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
      [context# {[operand-1# operand-2#] :operand precision# :precision}]
      (let [operand-1# (compile context# operand-1#)
            operand-2# (compile context# operand-2#)
-           ~sym-precision (some-> precision# to-chrono-unit)]
+           ~precision-binding (some-> precision# to-chrono-unit)]
        (reify Expression
          (-eval [~'_ context# scope#]
-           (let [~sym-op-1 (-eval operand-1# context# scope#)
-                 ~sym-op-2 (-eval operand-2# context# scope#)]
+           (let [~op-1-binding (-eval operand-1# context# scope#)
+                 ~op-2-binding (-eval operand-2# context# scope#)]
              ~@body))
          (-hash [_]
            {:type ~(keyword (clojure.core/name name))
             :operands [(-hash operand-1#) (-hash operand-2#)]})))))
+
+
+(defmacro defunopp
+  {:arglists '([name bindings & body])}
+  [name [operand-binding precision-binding expr-binding] & body]
+  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+     [context# {operand# :operand precision# :precision :as expr#}]
+     (let [operand# (compile context# operand#)
+           ~precision-binding (some-> precision# to-chrono-unit)
+           ~(or expr-binding '_) expr#]
+       (reify Expression
+         (-eval [~'_ context# scope#]
+           (let [~operand-binding (-eval operand# context# scope#)]
+             ~@body))
+         (-hash [_]
+           {:type ~(keyword (clojure.core/name name))
+            :operands (-hash operand#)})))))
 
 
 (defn- literal? [x]
@@ -594,12 +611,11 @@
     (case unit
       ("year" "years") (date-time/period value 0 0)
       ("month" "months") (date-time/period 0 value 0)
-      ("week" "weeks") (date-time/period 0 0 (* value 7 24 3600))
-      ("day" "days") (date-time/period 0 0 (* value 24 3600))
-      ("hour" "hours") (date-time/period 0 0 (* value 3600))
-      ("minute" "minutes") (date-time/period 0 0 (* value 60))
-      ("second" "seconds") (date-time/period 0 0 value)
-      ;; TODO: wrong
+      ("week" "weeks") (date-time/period 0 0 (* value 7 24 3600000))
+      ("day" "days") (date-time/period 0 0 (* value 24 3600000))
+      ("hour" "hours") (date-time/period 0 0 (* value 3600000))
+      ("minute" "minutes") (date-time/period 0 0 (* value 60000))
+      ("second" "seconds") (date-time/period 0 0 (* value 1000))
       ("millisecond" "milliseconds") (date-time/period 0 0 value)
       (quantity value unit))
     value))
@@ -1320,12 +1336,6 @@
 
 
 ;; 18.6. Date
-;;
-;; The Date operator constructs a date value from the given components.
-;;
-;; At least one component must be specified, and no component may be specified
-;; at a precision below an unspecified precision. For example, month may be null,
-;; but if it is, day must be null as well.
 (defmethod compile* :elm.compiler.type/date
   [context {:keys [year month day]}]
   (let [year (some->> year (compile context))
@@ -1372,19 +1382,15 @@
            :year (-hash year)})))))
 
 
+;; 18.7. DateFrom
+(defunop date-from [x]
+  (p/date-from x))
+
+
 ;; 18.8. DateTime
-;;
-;; The DateTime operator constructs a date/time value from the given components.
-;;
-;; At least one component other than timezoneOffset must be specified, and no
-;; component may be specified at a precision below an unspecified precision.
-;; For example, hour may be null, but if it is, minute, second, and millisecond
-;; must all be null as well.
-;;
-;; If timezoneOffset is not specified, it is defaulted to the timezone offset
-;; of the evaluation request.
 (defmethod compile* :elm.compiler.type/date-time
-  [context {:keys [year month day hour minute second millisecond timezone-offset]
+  [context {:keys [year month day hour minute second millisecond]
+            timezone-offset :timezoneOffset
             :as expression}]
   (let [year (some->> year (compile context))
         month (some->> month (compile context))
@@ -1538,9 +1544,18 @@
              :year (-hash year)}))))))
 
 
+;; 18.9. DateTimeComponentFrom
+(defunopp date-time-component-from [x precision]
+  (p/date-time-component-from x precision))
+
+
+;; 18.10. DifferenceBetween
+(defbinopp difference-between [operand-1 operand-2 precision]
+  (p/difference-between operand-1 operand-2 precision))
+
+
 ;; 18.11. DurationBetween
-(defbinopp duration-between
-  [operand-1 operand-2 precision]
+(defbinopp duration-between [operand-1 operand-2 precision]
   (p/duration-between operand-1 operand-2 precision))
 
 
@@ -1552,6 +1567,11 @@
       now)
     (-hash [_]
       {:type :now})))
+
+
+;; 18.14. SameAs
+(defbinopp same-as [x y precision]
+  (p/same-as x y precision))
 
 
 ;; 18.15. SameOrBefore
@@ -1629,12 +1649,17 @@
            :hour (-hash hour)})))))
 
 
+;; 18.21. TimeOfDay
+(defmethod compile* :elm.compiler.type/time-of-day
+  [_ _]
+  (reify Expression
+    (-eval [_ {:keys [now]} _]
+      (.toLocalTime ^OffsetDateTime now))
+    (-hash [_]
+      {:type :time-of-day})))
+
+
 ;; 18.22. Today
-;;
-;; The Today operator returns the date (with no time component) of the start
-;; timestamp associated with the evaluation request. See the Now operator for
-;; more information on the rationale for defining the Today operator in this
-;; way.
 (defmethod compile* :elm.compiler.type/today
   [_ _]
   (reify Expression
