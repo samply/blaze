@@ -59,7 +59,7 @@
             :pretty true})
          :location (location locator)
          :resultType "Bundle"}
-        {:result (pr-str (into [] result))
+        {:result (pr-str (into [] (take 2) result))
          :location (location locator)
          :resultType type-name}))
     "NamedTypeSpecifier"

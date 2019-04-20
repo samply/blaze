@@ -33,15 +33,18 @@
 
 (defn pull-pattern
   {:arglists '([context structure-definition])}
-  [context {:life.structure-definition/keys [elements]}]
-  (into
-    []
-    (comp (filter :life.element-definition/summary?)
-          (mapcat (partial element-pull-pattern context)))
-    (vals elements)))
+  [context {:life.structure-definition/keys [id elements]}]
+  (when-not (= "Quantity" id)
+    (into
+      []
+      (comp (filter :life.element-definition/summary?)
+            (mapcat (partial element-pull-pattern context)))
+      (vals elements))))
 
 (comment
-  (def def (life-fhir-store.util/structure-definitions "Observation"))
-  (pull-pattern life-fhir-store.util/structure-definitions def)
+  (def structure-definitions (sd/read-structure-definitions "fhir/r4"))
+  (def def (structure-definitions "Observation"))
+  (def def (structure-definitions "Quantity"))
+  (pull-pattern structure-definitions def)
   (clojure.repl/pst)
   )
