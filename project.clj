@@ -10,7 +10,7 @@
 
   :dependencies
   [[aleph "0.4.6"]
-   [bidi "2.1.5"]
+   [bidi "2.1.6"]
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.8.1"]
    [com.cognitect/anomalies "0.1.12"]
