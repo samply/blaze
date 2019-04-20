@@ -123,10 +123,23 @@
   (truncate [_]))
 
 
+;; 16.20. TruncatedDivide
 (extend-protocol p/TruncatedDivide
   nil
   (truncated-divide [_ _]))
 
+
+
+;; 17. String Operators
+
+;; 17.6. Indexer
+(extend-protocol p/Indexer
+  nil
+  (indexer [_ _]))
+
+
+
+;; 18. Date and Time Operators
 
 ;; 18.7. DateFrom
 (extend-protocol p/DateFrom
@@ -200,6 +213,12 @@
   (includes [_ _ _]))
 
 
+;; 19.15. Intersect
+(extend-protocol p/Intersect
+  nil
+  (intersect [_ _]))
+
+
 ;; 19.24. ProperContains
 (extend-protocol p/ProperContains
   nil
@@ -212,6 +231,13 @@
   (proper-includes [_ _ _]))
 
 
+;; 19.31. Union
+(extend-protocol p/Union
+  nil
+  (union [_ _]))
+
+
+;; 22.23. ToDecimal
 (extend-protocol p/ToDecimal
   nil
   (to-decimal [_]))

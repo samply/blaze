@@ -145,17 +145,9 @@
 
 ;; 13.5 Xor
 (deftest normalize-xor-test
-  (testing "A xor B normalizes to (not A and B) or (A and not B)"
-    (given (normalize {:type "Xor" :operand [#elm/string "A" #elm/string "B"]})
-      :type := "Or"
-      [:operand first :type] := "And"
-      [:operand first :operand first :type] := "Not"
-      [:operand first :operand first :operand] := #elm/string "A"
-      [:operand first :operand second] := #elm/string "B"
-      [:operand second :type] := "And"
-      [:operand second :operand first] := #elm/string "A"
-      [:operand second :operand second :type] := "Not"
-      [:operand second :operand second :operand] := #elm/string "B")))
+  (testing "Normalizes both operands of an Xor expression"
+    (given (normalize {:type "Xor" :operand [expression-1 expression-2]})
+      :operand := [(normalize expression-1) (normalize expression-2)])))
 
 
 

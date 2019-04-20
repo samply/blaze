@@ -20,4 +20,5 @@
  elm/date-time life-fhir-store.elm.literals/date-time
  elm/time life-fhir-store.elm.literals/time
  elm/interval life-fhir-store.elm.literals/interval
+ elm/current life-fhir-store.elm.literals/current
  elm/as life-fhir-store.elm.literals/as}

@@ -3,7 +3,7 @@
     [clojure.spec.alpha :as s]
     [life-fhir-store.elm.spec]
     [clojure.string :as str])
-  (:refer-clojure :exclude [boolean dec int list time]))
+  (:refer-clojure :exclude [boolean dec distinct flatten int list time]))
 
 
 (s/fdef boolean
@@ -439,6 +439,60 @@
 
 (defn union [ops]
   {:type "Union" :operand ops})
+
+
+;; 20.3. Current
+(s/fdef current
+  :args (s/cat :scope string?)
+  :ret :elm/expression)
+
+(defn current [scope]
+  {:type "Current" :scope scope})
+
+
+;; 20.4. Distinct
+(s/fdef distinct
+  :args (s/cat :list :elm/expression)
+  :ret :elm/expression)
+
+(defn distinct [list]
+  {:type "Distinct" :operand list})
+
+
+;; 20.8. Exists
+(s/fdef exists
+  :args (s/cat :list :elm/expression)
+  :ret :elm/expression)
+
+(defn exists [list]
+  {:type "Exists" :operand list})
+
+
+;; 20.11. Flatten
+(s/fdef flatten
+  :args (s/cat :list :elm/expression)
+  :ret :elm/expression)
+
+(defn flatten [list]
+  {:type "Flatten" :operand list})
+
+
+;; 20.25. SingletonFrom
+(s/fdef singleton-from
+  :args (s/cat :list :elm/expression)
+  :ret :elm/expression)
+
+(defn singleton-from [list]
+  {:type "SingletonFrom" :operand list})
+
+
+;; 20.28. Times
+(s/fdef times
+  :args (s/cat :lists (s/tuple :elm/expression :elm/expression))
+  :ret :elm/expression)
+
+(defn times [lists]
+  {:type "SingletonFrom" :operand lists})
 
 
 ;; 22.1. As

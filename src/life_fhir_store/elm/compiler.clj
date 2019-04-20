@@ -25,21 +25,23 @@
     [life-fhir-store.elm.equiv-relationships :refer [find-equiv-rels-library]]
     [life-fhir-store.elm.integer]
     [life-fhir-store.elm.interval :refer [interval interval?]]
+    [life-fhir-store.elm.list]
     [life-fhir-store.elm.nil]
     [life-fhir-store.elm.normalizer :refer [normalize-library]]
     [life-fhir-store.elm.protocols :as p]
     [life-fhir-store.elm.quantity :refer [quantity]]
     [life-fhir-store.elm.spec]
+    [life-fhir-store.elm.string]
     [life-fhir-store.elm.type-infer :refer [infer-library-types]]
     [life-fhir-store.elm.util :as elm-util]
     [life-fhir-store.util :as u]
     [clojure.string :as str])
   (:import
-    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
-               ZoneOffset]
+    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit Temporal]
-    [javax.measure Quantity])
-  (:refer-clojure :exclude [compile]))
+    [javax.measure Quantity]
+    [java.util Comparator])
+  (:refer-clojure :exclude [comparator compile]))
 
 
 (defprotocol Expression
@@ -729,12 +731,73 @@
         (some? return-xform) (conj (return-xform context))))))
 
 
+(defmulti compile-sort-by-item (fn [_ {:keys [type]}] type))
+
+
+(defmethod compile-sort-by-item "ByExpression"
+  [context sort-by-item]
+  (update sort-by-item :expression #(compile context %)))
+
+
+(defmethod compile-sort-by-item :default
+  [_ sort-by-item]
+  sort-by-item)
+
+
+(defmulti hash-sort-by-item :type)
+
+
+(defmethod hash-sort-by-item "ByExpression"
+  [sort-by-item]
+  (update sort-by-item :expression -hash))
+
+
+(defmethod hash-sort-by-item :default
+  [sort-by-item]
+  sort-by-item)
+
+
+(deftype AscComparator []
+  Comparator
+  (compare [_ x y]
+    (let [less (p/less x y)]
+      (cond
+        (true? less) -1
+        (false? less) 1
+        (nil? x) -1
+        (nil? y) 1
+        :else 0))))
+
+
+(def ^:private asc-comparator (->AscComparator))
+
+
+(deftype DescComparator []
+  Comparator
+  (compare [_ x y]
+    (let [less (p/less x y)]
+      (cond
+        (true? less) 1
+        (false? less) -1
+        (nil? x) 1
+        (nil? y) -1
+        :else 0))))
+
+
+(def ^:private desc-comparator (->DescComparator))
+
+
+(defn- comparator [direction]
+  (if (#{"desc" "descending"} direction) desc-comparator asc-comparator))
+
+
 (defmethod compile* :elm.compiler.type/query
   [context
    {sources :source
     relationships :relationship
     :keys [where]
-    {return :expression} :return}]
+    {return :expression} :return
+    {sort-by-items :by} :sort}]
   (if (= 1 (count sources))
     (let [{:keys [expression alias]} (first sources)
           context (assoc context :life/single-query-scope alias)
@@ -744,17 +807,33 @@
           where-xform (some->> where (compile context) where-xform)
           return-xform (some->> return (compile context) return-xform)
           xform (xform with-xforms where-xform return-xform)
+          sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)
           source (compile context expression)]
-      (reify Expression
-        (-eval [_ context _]
-          (into #{} (xform context) (-eval source context nil)))
-        (-hash [_]
-          (cond->
-            {:type :query
-             :source (-hash source)}
-            (some? where) (assoc :where (-hash where))
-            (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-            (some? return) (assoc :return (-hash return))))))
+      (if (empty? sort-by-items)
+        (reify Expression
+          (-eval [_ context _]
+            (vec (into #{} (xform context) (-eval source context nil))))
+          (-hash [_]
+            (cond->
+              {:type :query
+               :source (-hash source)}
+              (some? where) (assoc :where (-hash where))
+              (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+              (some? return) (assoc :return (-hash return)))))
+        (reify Expression
+          (-eval [_ context _]
+            ;; TODO: build a comparator of all sort by items
+            (->> (into #{} (xform context) (-eval source context nil))
+                 (sort-by identity (comparator (:direction (first sort-by-items))))
+                 (vec)))
+          (-hash [_]
+            (cond->
+              {:type :query
+               :source (-hash source)
+               :sort-by-items (mapv hash-sort-by-item sort-by-items)}
+              (some? where) (assoc :where (-hash where))
+              (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+              (some? return) (assoc :return (-hash return)))))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
 
@@ -993,9 +1072,10 @@
 
 
 ;; 13.5 Xor
-(defmethod compile* :elm.compiler.type/xor
-  [_ _]
-  (throw (Exception. "Unsupported Xor expression. Please normalize the ELM tree before compiling.")))
+(defbinop xor [a b]
+  (cond
+    (or (and (true? a) (true? b)) (and (false? a) (false? b))) false
+    (or (and (true? a) (false? b)) (and (false? a) (true? b))) true))
 
 
 
@@ -1290,6 +1370,19 @@
 ;; 16.20. TruncatedDivide
 (defbinop truncated-divide [num div]
   (p/truncated-divide num div))
+
+
+
+;; 17. String Operators
+
+;; 17.6. Indexer
+(defbinop indexer [x index]
+  (p/indexer x index))
+
+
+;; 17.8. Length
+(defunop length [x]
+  (count x))
 
 
 
@@ -1787,16 +1880,8 @@
 
 
 ;; 19.15. Intersect
-(defbinop intersect [x y]
-  (when (and (some? x) (some? y))
-    (if (interval? x)
-      (let [[left right] (if (p/less (:start x) (:start y)) [x y] [y x])]
-        (when (p/greater-or-equal (:end left) (:start right))
-          (some->> (if (p/less (:end left) (:end right))
-                     (:end left)
-                     (:end right))
-                   (interval (:start right)))))
-      (set/intersection (set x) (set y)))))
+(defbinop intersect [a b]
+  (p/intersect a b))
 
 
 ;; 19.16. Meets
@@ -1876,13 +1961,8 @@
 
 
 ;; 19.31. Union
-(defbinop union [x y]
-  (when (and (some? x) (some? y))
-    (if (interval? x)
-      (let [[left right] (if (p/less (:start x) (:start y)) [x y] [y x])]
-        (when (p/greater-or-equal (:end left) (p/predecessor (:start right)))
-          (interval (:start left) (:end right))))
-      (set/union (set x) (set y)))))
+(defbinop union [a b]
+  (p/union a b))
 
 
 ;; 19.32. Width
@@ -1894,15 +1974,6 @@
 ;; 20. List Operators
 
 ;; 20.1. List
-;;
-;; The List selector returns a value of type List, whose elements are the result
-;; of evaluating the arguments to the List selector, in order.
-;;
-;; If a typeSpecifier element is provided, the list is of that type. Otherwise,
-;; the static type of the first argument determines the type of the resulting
-;; list, and each subsequent argument must be of that same type.
-;;
-;; If any argument is null, the resulting list will have null for that element.
 (defmethod compile* :elm.compiler.type/list
   [context {elements :element}]
   (let [elements (mapv #(compile context %) elements)]
@@ -1914,19 +1985,228 @@
          :elements (mapv -hash elements)}))))
 
 
-;; 20.25. SingletonFrom
+;; 20.3. Current
+(defmethod compile* :elm.compiler.type/current
+  [_ {:keys [scope]}]
+  (if scope
+    (reify Expression
+      (-eval [_ _ scopes]
+        (get scopes scope))
+      (-hash [_]
+        {:type :current
+         :scope scope}))
+    (reify Expression
+      (-eval [_ _ scope]
+        scope)
+      (-hash [_]
+        {:type :current}))))
+
+
+;; 20.4. Distinct
 ;;
-;; The SingletonFrom expression extracts a single element from the source list.
-;; If the source list is empty, the result is null. If the source list contains
-;; one element, that element is returned. If the list contains more than one
-;; element, a run-time error is thrown. If the source list is null, the result
-;; is null.
+;; TODO: implementation is O(n^2)
+(defunop distinct [list]
+  (when list
+    (reduce
+      (fn [result x]
+        (if (p/contains result x nil)
+          result
+          (conj result x)))
+      []
+      list)))
+
+
+;; 20.8. Exists
+(defunop exists [list]
+  (not (empty? list)))
+
+
+;; 20.9. Filter
+(defmethod compile* :elm.compiler.type/filter
+  [context {:keys [source condition scope]}]
+  (let [source (compile context source)
+        condition (compile context condition)]
+    (if scope
+      (reify Expression
+        (-eval [_ context scopes]
+          (when-let [source (-eval source context scopes)]
+            (filterv
+              (fn [x]
+                (-eval condition context (assoc scopes scope x)))
+              source)))
+        (-hash [_]
+          {:type :filter
+           :source (-hash source)
+           :condition (-hash condition)}))
+      (reify Expression
+        (-eval [_ context scopes]
+          (when-let [source (-eval source context scopes)]
+            (filterv
+              (fn [_]
+                (-eval condition context scopes))
+              source)))
+        (-hash [_]
+          {:type :filter
+           :source (-hash source)
+           :condition (-hash condition)})))))
+
+
+;; 20.10. First
+;;
+;; TODO: orderBy
+(defmethod compile* :elm.compiler.type/first
+  [context {:keys [source]}]
+  (let [source (compile context source)]
+    (reify Expression
+      (-eval [_ context scopes]
+        (first (-eval source context scopes)))
+      (-hash [_]
+        {:type :first
+         :source (-hash source)}))))
+
+
+;; 20.11. Flatten
+(defunop flatten [list]
+  (when list
+    (letfn [(flatten [to from]
+              (reduce
+                (fn [result x]
+                  (if (sequential? x)
+                    (flatten result x)
+                    (conj result x)))
+                to
+                from))]
+      (flatten [] list))))
+
+
+;; 20.12. ForEach
+(defmethod compile* :elm.compiler.type/for-each
+  [context {:keys [source element scope]}]
+  (let [source (compile context source)
+        element (compile context element)]
+    (if scope
+      (reify Expression
+        (-eval [_ context scopes]
+          (when-let [source (-eval source context scopes)]
+            (mapv
+              (fn [x]
+                (-eval element context (assoc scopes scope x)))
+              source)))
+        (-hash [_]
+          {:type :filter
+           :source (-hash source)
+           :element (-hash element)}))
+      (reify Expression
+        (-eval [_ context scopes]
+          (when-let [source (-eval source context scopes)]
+            (mapv
+              (fn [_]
+                (-eval element context scopes))
+              source)))
+        (-hash [_]
+          {:type :filter
+           :source (-hash source)
+           :element (-hash element)})))))
+
+
+;; 20.16. IndexOf
+(defmethod compile* :elm.compiler.type/index-of
+  [context {:keys [source element]}]
+  (let [source (compile context source)
+        element (compile context element)]
+    (reify Expression
+      (-eval [_ context scopes]
+        (when-let [source (-eval source context scopes)]
+          (when-let [element (-eval element context scopes)]
+            (or
+              (first
+                (keep-indexed
+                  (fn [idx x]
+                    (when
+                      (p/equal element x)
+                      idx))
+                  source))
+              -1))))
+      (-hash [_]
+        {:type :filter
+         :source (-hash source)
+         :element (-hash element)}))))
+
+
+;; 20.18. Last
+;;
+;; TODO: orderBy
+(defmethod compile* :elm.compiler.type/last
+  [context {:keys [source]}]
+  (let [source (compile context source)]
+    (reify Expression
+      (-eval [_ context scopes]
+        (peek (-eval source context scopes)))
+      (-hash [_]
+        {:type :last
+         :source (-hash source)}))))
+
+
+;; 20.24. Repeat
+;;
+;; TODO: not implemented
+
+
+;; 20.25. SingletonFrom
 (defunop singleton-from [list {{:keys [locator]} :operand :as expression}]
   (cond
     (empty? list) nil
     (nil? (next list)) (first list)
     :else (throw (ex-info (append-locator "More than one element in expression `SingletonFrom` at" locator)
                           {:expression expression}))))
+
+
+;; 20.26. Slice
+(defmethod compile* :elm.compiler.type/slice
+  [context {:keys [source] start-index :startIndex end-index :endIndex}]
+  (let [source (compile context source)
+        start-index (some->> start-index (compile context))
+        end-index (some->> end-index (compile context))]
+    (reify Expression
+      (-eval [_ context scopes]
+        (when-let [source (-eval source context scopes)]
+          (let [start-index (or (-eval start-index context scopes) 0)
+                end-index (or (-eval end-index context scopes) (count source))]
+            (if (or (neg? start-index) (< end-index start-index))
+              []
+              (subvec
+                source
+                start-index
+                end-index)))))
+      (-hash [_]
+        (cond->
+          {:type :filter
+           :source (-hash source)
+           :start-index (-hash start-index)}
+          end-index
+          (assoc :end-index (-hash end-index)))))))
+
+
+;; 20.27. Sort
+(defmethod compile* :elm.compiler.type/sort
+  [context {:keys [source] sort-by-items :by}]
+  (let [source (compile context source)
+        sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)]
+    (reduce
+      (fn [source {:keys [type direction]}]
+        (case type
+          "ByDirection"
+          (let [comp (comparator direction)]
+            (reify Expression
+              (-eval [_ context scopes]
+                (when-let [source (-eval source context scopes)]
+                  (sort-by identity comp source)))
+              (-hash [_]
+                {:type :filter
+                 :source (-hash source)
+                 :sort-by-items (mapv hash-sort-by-item sort-by-items)})))))
+      source
+      sort-by-items)))
 
 
 
@@ -2001,6 +2281,16 @@
 ;; 22.15. ConvertsToTime
 
 ;; 22.16. Descendents
+(defmethod compile* :elm.compiler.type/descendents
+  [context {:keys [source]}]
+  (let [source (compile context source)]
+    (reify Expression
+      (-eval [_ context scopes]
+        )
+      (-hash [_]
+        {:type :first
+         :source (-hash source)}))))
+
 
 ;; 22.17. Is
 

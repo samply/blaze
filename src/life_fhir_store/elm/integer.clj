@@ -17,14 +17,14 @@
 (extend-protocol p/Equal
   Long
   (equal [x y]
-    (some->> y (== x))))
+    (some->> y (p/equivalent x))))
 
 
 ;; 12.2. Equivalent
 (extend-protocol p/Equivalent
   Long
   (equivalent [x y]
-    (if y
+    (if (number? y)
       (== x y)
       false)))
 

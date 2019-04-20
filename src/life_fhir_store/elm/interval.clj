@@ -1,4 +1,5 @@
 (ns life-fhir-store.elm.interval
+  "Implementation of the interval type."
   (:require
     [clojure.spec.alpha :as s]
     [life-fhir-store.elm.date-time :refer [temporal?]]
@@ -69,6 +70,15 @@
         (and (p/contains x y-end nil) (p/less-or-equal y-start start))
         (->Interval (p/successor y-end) end))))
 
+  p/Intersect
+  (intersect [a b]
+    (let [[left right] (if (p/less (:start a) (:start b)) [a b] [b a])]
+      (when (p/greater-or-equal (:end left) (:start right))
+        (some->> (if (p/less (:end left) (:end right))
+                   (:end left)
+                   (:end right))
+                 (->Interval (:start right))))))
+
   p/Includes
   (includes [_ y precision]
     (when-let [{y-start :start y-end :end} y]
@@ -86,7 +96,13 @@
 
   p/ProperIncludes
   (proper-includes [x y precision]
-    (and (p/includes x y precision) (not (p/equal x y)))))
+    (and (p/includes x y precision) (not (p/equal x y))))
+
+  p/Union
+  (union [a b]
+    (let [[left right] (if (p/less (:start a) (:start b)) [a b] [b a])]
+      (when (p/greater-or-equal (:end left) (p/predecessor (:start right)))
+        (->Interval (:start left) (:end right))))))
 
 
 (defn point?

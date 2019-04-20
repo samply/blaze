@@ -170,11 +170,16 @@
 
 ;; 12.1. Equal
 (extend-protocol p/Equal
+  Year
+  (equal [x y]
+    (when (instance? Year y)
+      (.equals x y)))
+
   PrecisionLocalTime
-  (equal [this other]
-    (when (instance? PrecisionLocalTime other)
-      (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
-                                           (:p-num this) (:p-num other) 3)]
+  (equal [x y]
+    (when (instance? PrecisionLocalTime y)
+      (when-let [cmp (compare-to-precision (:local-time x) (:local-time y)
+                                           (:p-num x) (:p-num y) 3)]
         (zero? cmp)))))
 
 
@@ -859,7 +864,7 @@
 
 ;; 22. Type Operators
 
-;; 22.19. ToDate
+;; 22.21. ToDate
 (extend-protocol p/ToDate
   nil
   (to-date [_ _])
@@ -897,7 +902,7 @@
         (.toLocalDate))))
 
 
-;; 22.20. ToDateTime
+;; 22.22. ToDateTime
 (extend-protocol p/ToDateTime
   nil
   (to-date-time [_ _])

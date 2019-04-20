@@ -371,15 +371,15 @@
 (derive :elm/as :elm/unary-expression)
 
 
-;; 22.19. ToDate
+;; 22.21. ToDate
 (derive :elm/to-date :elm/unary-expression)
 
 
-;; 22.20. ToDateTime
+;; 22.22. ToDateTime
 (derive :elm/to-date-time :elm/unary-expression)
 
 
-;; 22.24. ToQuantity
+;; 22.26. ToQuantity
 (derive :elm/to-quantity :elm/unary-expression)
 
 

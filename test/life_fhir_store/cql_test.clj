@@ -12,7 +12,7 @@
     [life-fhir-store.elm.equiv-relationships :as equiv-relationships]
     [life-fhir-store.elm.normalizer :as normalizer])
   (:import
-    [java.time OffsetDateTime Year])
+    [java.time OffsetDateTime])
   (:refer-clojure :exclude [compile eval]))
 
 
@@ -83,18 +83,11 @@
   (gen-tests name file exclusions))
 
 
-(deftests "arithmetic-functions" "cql-test/CqlArithmeticFunctionsTest.xml"
-          #{"DecimalMinValue" "DecimalMaxValue"
-            "Ln0" "LnNeg0"
-            "Log1Base1"
-            "RoundNeg0D5" "RoundNeg1D5"
-            "IntegerMinValue"                               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than
-            })
-
-
+;; 12. Comparison Operators
 (deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml" #{})
 
 
+;; 13. Logical Operators
 (deftests "logical-operators" "cql-test/CqlLogicalOperatorsTest.xml"
           #{"TrueImpliesTrue"                               ; TODO: CQL-To-ELM error
             "TrueImpliesFalse"                              ; TODO: CQL-To-ELM error
@@ -114,6 +107,16 @@
 
 ;; 15. Conditional Operators
 (deftests "conditional-operators" "cql-test/CqlConditionalOperatorsTest.xml" #{})
+
+
+;; 16. Arithmetic Operators
+(deftests "arithmetic-functions" "cql-test/CqlArithmeticFunctionsTest.xml"
+          #{"DecimalMinValue" "DecimalMaxValue"
+            "Ln0" "LnNeg0"
+            "Log1Base1"
+            "RoundNeg0D5" "RoundNeg1D5"
+            "IntegerMinValue"                               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than
+            })
 
 
 ;; 18. Date and Time Operators
@@ -188,19 +191,44 @@
             "DateTimeIncludedInPrecisionNull"               ; TODO: resolve, worked before
             })
 
-(comment
-  (eval (OffsetDateTime/now) "DateTime(2014, 10, 10, 20, 55, 45, 500) same millisecond as DateTime(2014, 10, 10, 21, 55, 45, 501)")
 
-  (.minu (Year/of 2014) 25)
-  (clojure.repl/pst)
+;; 20. List Operators
+(deftests "list-operators" "cql-test/CqlListOperatorsTest.xml"
+          #{"quantityList"                                  ; no unit `lbs`
+            "ExceptEmptyListAndEmptyList"                   ; don't have a Except function
+            "simpleSortAsc"                                 ; queries return distinct elements
+            "simpleSortDesc"                                ; queries return distinct elements
+            "SortDatesDesc"                                 ; the order of duplicates like @2012-10-05 and @2012-10-05T10:00 is unspecified
+            "DistinctNullNullNull"                          ; should preserve multiple null's
+            "DistinctANullANull"                            ; should preserve multiple null's
 
-  (to-source-elm "timezone from DateTime(2003, 10, 29, 20, 50, 33, 955, 1)")
+            "ExceptNullRight"                               ; I don't see null as the empty list
+            "In1Null"                                       ; I don't see null as the empty list
+            "ContainsNullLeft"                              ; I don't see null as the empty list
+            "IncludesNullLeft"                              ; I don't see null as the empty list
+            "IncludedInNullRight"                           ; I don't see null as the empty list
 
-  (eval "Interval[start of Interval[@2017-12-20T11:00:00, @2017-12-21T21:00:00],
-                 (start of Interval[@2017-12-20T11:00:00, @2017-12-21T21:00:00]) + 1 day]
-                 contains day @2017-12-20T10:30:00")
+            "IncludesListNullAndListNull"                   ; null isn't equal to null
+            "IncludedInListNullAndListNull"                 ; null isn't equal to null
 
-  )
+            "IndexOfNullIn1Null"                            ; second argument is null
+            "IndexOfEmptyNull"                              ; second argument is null
+            "ProperContainsNullRightFalse"                  ; second argument is null
+            "ProperContainsNullRightTrue"                   ; second argument is null
+            "ProperlyIncludedInNulRight"                    ; second argument is null
+            "ProperInNullRightFalse"                        ; first argument is null
+            "ProperInNullRightTrue"                         ; first argument is null
+            "ProperlyIncludesNullLeft"                      ; first argument is null
+
+            "EquivalentDateTimeNull"                        ; I don't get this test
+            "EquivalentTimeNull"                            ; I don't get this test
+
+            "ProperContainsTimeNull"                        ; why should null be returned here?
+            "ProperInTimeNull"                              ; why should null be returned here?
+
+            "Union123And2"                                  ; union hast set semantics
+            })
+
 
 (deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
           #{"IntegerToString"                               ; TODO: implement

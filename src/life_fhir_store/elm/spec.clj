@@ -63,6 +63,10 @@
   string?)
 
 
+(s/def :elm/direction
+  #{"asc" "ascending" "desc" "descending"})
+
+
 (s/def :elm/scope
   string?)
 
@@ -90,8 +94,44 @@
 
 (defmulti expression expression-dispatch)
 
+
 (s/def :elm/expression
   (s/multi-spec expression :type))
+
+
+(s/def :elm/source
+  :elm/expression)
+
+
+(s/def :elm/startIndex
+  :elm/expression)
+
+
+(s/def :elm/endIndex
+  :elm/expression)
+
+
+(s/def :elm/condition
+  :elm/expression)
+
+
+(s/def :elm/element
+  :elm/expression)
+
+
+(defmulti sort-by-item :type)
+
+
+(s/def :elm/sort-by-item
+  (s/multi-spec sort-by-item :type))
+
+
+(s/def :elm.sort/by
+  (s/coll-of :elm/sort-by-item :min-count 1))
+
+
+(s/def :elm/orderBy
+  :elm/sort-by-item)
 
 
 
@@ -166,12 +206,8 @@
 
 
 ;; 2.3. Property
-(s/def :elm.property/source
-  :elm/expression)
-
-
 (defmethod expression :elm.spec.type/property [_]
-  (s/keys :req-un [:elm/path] :opt-un [:elm.property/source :elm/scope]))
+  (s/keys :req-un [:elm/path] :opt-un [:elm/source :elm/scope]))
 
 
 
@@ -435,6 +471,26 @@
   (s/keys :opt-un [:elm/name]))
 
 
+;; 10.4. ByColumn
+(defmethod sort-by-item "ByColumn" [_]
+  (s/keys :opt-un [:elm/direction :elm/path]))
+
+
+;; 10.5. ByDirection
+(defmethod sort-by-item "ByDirection" [_]
+  (s/keys :opt-un [:elm/direction]))
+
+
+;; 10.6. ByExpression
+(defmethod sort-by-item "ByExpression" [_]
+  (s/keys :req-un [:elm/expression] :opt-un [:elm/direction]))
+
+
+;; 10.11. SortClause
+(s/def :elm.query/sort-clause
+  (s/keys :req-un [:elm.sort/by]))
+
+
 ;; 10.12. With
 (s/def :elm.query/with
   (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))
@@ -570,12 +626,8 @@
 
 
 ;; 15.2. If
-(s/def :elm.if/condition
-  :elm/expression)
-
-
 (defmethod expression :elm.spec.type/if [_]
-  (s/keys :req-un [:elm.if/condition :elm/then :elm/else]))
+  (s/keys :req-un [:elm/condition :elm/then :elm/else]))
 
 
 
@@ -667,6 +719,17 @@
 
 ;; 16.20. TruncatedDivide
 (derive :elm.spec.type/truncated-divide :elm.spec.type/binary-expression)
+
+
+
+;; 17. String Operators
+
+;; 17.6. Indexer
+(derive :elm.spec.type/indexer :elm.spec.type/binary-expression)
+
+
+;; 17.8. Length
+(derive :elm.spec.type/length :elm.spec.type/unary-expression)
 
 
 
@@ -1119,8 +1182,68 @@
   (s/keys :opt-un [:elm.list/typeSpecifier :elm.list/element]))
 
 
+;; 20.3. Current
+(defmethod expression :elm.spec.type/current [_]
+  (s/keys :opt-un [:elm/scope]))
+
+
+;; 20.4. Distinct
+(derive :elm.spec.type/distinct :elm.spec.type/unary-expression)
+
+
+;; 20.8. Exists
+(derive :elm.spec.type/exists :elm.spec.type/unary-expression)
+
+
+;; 20.9. Filter
+(defmethod expression :elm.spec.type/filter [_]
+  (s/keys :req-un [:elm/source :elm/condition] :opt-un [:elm/scope]))
+
+
+;; 20.10. First
+(defmethod expression :elm.spec.type/first [_]
+  (s/keys :req-un [:elm/source] :opt-un [:elm/orderBy]))
+
+
+;; 20.11. Flatten
+(derive :elm.spec.type/flatten :elm.spec.type/unary-expression)
+
+
+;; 20.12. ForEach
+(defmethod expression :elm.spec.type/for-each [_]
+  (s/keys :req-un [:elm/source :elm/element] :opt-un [:elm/scope]))
+
+
+;; 20.16. IndexOf
+(defmethod expression :elm.spec.type/index-of [_]
+  (s/keys :req-un [:elm/source :elm/element]))
+
+
+;; 20.18. Last
+(defmethod expression :elm.spec.type/last [_]
+  (s/keys :req-un [:elm/source] :opt-un [:elm/orderBy]))
+
+
+;; 20.24. Repeat
+(defmethod expression :elm.spec.type/repeat [_]
+  (s/keys :req-un [:elm/source :elm/element] :opt-un [:elm/scope]))
+
+
 ;; 20.25. SingletonFrom
 (derive :elm.spec.type/singleton-from :elm.spec.type/unary-expression)
+
+
+;; 20.26. Slice
+;;
+;; Postel's Law: there are defaults for startIndex and endIndex, so they can be
+;;               optional.
+(defmethod expression :elm.spec.type/slice [_]
+  (s/keys :req-un [:elm/source] :opt-un [:elm/startIndex :elm/endIndex]))
+
+
+;; 20.27. Sort
+(defmethod expression :elm.spec.type/sort [_]
+  (s/keys :req-un [:elm.sort/by]))
 
 
 
@@ -1197,55 +1320,113 @@
 (derive :elm.spec.type/can-convert :elm.spec.type/unary-expression)
 
 
-;; 22.4. TODO Convert
+;; 22.3. CanConvertQuantity
+(derive :elm.spec.type/can-convert-quantity :elm.spec.type/binary-expression)
+
+
+;; 22.4. Children
+(defmethod expression :elm.spec.type/children [_]
+  (s/keys :req-un [:elm/source]))
+
+
+;; 22.5. TODO Convert
 (derive :elm.spec.type/convert :elm.spec.type/unary-expression)
 
 
-;; 22.16. ToBoolean
+;; 22.6. ConvertQuantity
+(derive :elm.spec.type/convert-quantity :elm.spec.type/binary-expression)
+
+
+;; 22.7. ConvertsToBoolean
+(derive :elm.spec.type/converts-to-boolean :elm.spec.type/unary-expression)
+
+
+;; 22.8. ConvertsToDate
+(derive :elm.spec.type/converts-to-date :elm.spec.type/unary-expression)
+
+
+;; 22.9. ConvertsToDateTime
+(derive :elm.spec.type/converts-to-date-time :elm.spec.type/unary-expression)
+
+
+;; 22.10. ConvertsToDecimal
+(derive :elm.spec.type/converts-to-decimal :elm.spec.type/unary-expression)
+
+
+;; 22.11. ConvertsToInteger
+(derive :elm.spec.type/converts-to-integer :elm.spec.type/unary-expression)
+
+
+;; 22.12. ConvertsToQuantity
+(derive :elm.spec.type/converts-to-quantity :elm.spec.type/unary-expression)
+
+
+;; 22.13. ConvertsToRatio
+(derive :elm.spec.type/converts-to-ratio :elm.spec.type/unary-expression)
+
+
+;; 22.14. ConvertsToString
+(derive :elm.spec.type/converts-to-string :elm.spec.type/unary-expression)
+
+
+;; 22.15. ConvertsToTime
+(derive :elm.spec.type/converts-to-time :elm.spec.type/unary-expression)
+
+
+;; 22.16. Descendents
+(defmethod expression :elm.spec.type/descendents [_]
+  (s/keys :req-un [:elm/source]))
+
+
+;; 22.17. TODO Is
+(derive :elm.spec.type/is :elm.spec.type/unary-expression)
+
+
+;; 22.18. ToBoolean
 (derive :elm.spec.type/to-boolean :elm.spec.type/unary-expression)
 
 
-;; 22.17. ToChars
+;; 22.19. ToChars
 (derive :elm.spec.type/to-chars :elm.spec.type/unary-expression)
 
 
-;; 22.18. ToConcept
+;; 22.20. ToConcept
 (derive :elm.spec.type/to-concept :elm.spec.type/unary-expression)
 
 
-;; 22.19. ToDate
+;; 22.21. ToDate
 (derive :elm.spec.type/to-date :elm.spec.type/unary-expression)
 
 
-;; 22.20. ToDateTime
+;; 22.22. ToDateTime
 (derive :elm.spec.type/to-date-time :elm.spec.type/unary-expression)
 
 
-;; 22.21. ToDecimal
+;; 22.23. ToDecimal
 (derive :elm.spec.type/to-decimal :elm.spec.type/unary-expression)
 
 
-;; 22.21. ToInteger
+;; 22.24. ToInteger
 (derive :elm.spec.type/to-integer :elm.spec.type/unary-expression)
 
 
-;; 22.23. ToList
+;; 22.25. ToList
 (derive :elm.spec.type/to-list :elm.spec.type/unary-expression)
 
 
-;; 22.24. ToQuantity
+;; 22.26. ToQuantity
 (derive :elm.spec.type/to-quantity :elm.spec.type/unary-expression)
 
 
-;; 22.25. ToRatio
+;; 22.27. ToRatio
 (derive :elm.spec.type/to-ratio :elm.spec.type/unary-expression)
 
 
-;; 22.26. ToString
+;; 22.28. ToString
 (derive :elm.spec.type/to-string :elm.spec.type/unary-expression)
 
 
-;; 22.27. ToTime
+;; 22.29. ToTime
 (derive :elm.spec.type/to-time :elm.spec.type/unary-expression)
 
 

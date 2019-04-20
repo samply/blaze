@@ -200,9 +200,9 @@ The following table gives an overview of the current state of implementation of 
 | 17.3. EndsWith | ✗ |
 | 17.4. Equal | ✓ |
 | 17.5. Equivalent | ✗ |
-| 17.6. Indexer | ✗ |
+| 17.6. Indexer | ✓ |
 | 17.7. LastPositionOf | ✗ |
-| 17.8. Length | ✗ |
+| 17.8. Length | ✓ |
 | 17.9. Lower | ✗ |
 | 17.10. Matches | ✗ |
 | 17.11. Not Equal | ✓ |
@@ -273,32 +273,32 @@ The following table gives an overview of the current state of implementation of 
 
 1.29+<|20. List Operators
 | 20.1. List | ✓ |
-| 20.2. Contains | ✗ |
-| 20.3. Current | ✗ |
-| 20.4. Distinct | ✗ |
+| 20.2. Contains | ✓ |
+| 20.3. Current | ✓ |
+| 20.4. Distinct | ✓ |
 | 20.5. Equal | ✓ |
-| 20.6. Equivalent | ✗ |
-| 20.7. Except | ✗ |
-| 20.8. Exists | ✗ |
-| 20.9. Filter | ✗ |
-| 20.10. First | ✗ |
-| 20.11. Flatten | ✗ |
-| 20.12. ForEach | ✗ |
-| 20.13. In | ✗ |
-| 20.14. Includes | ✗ |
-| 20.15. IncludedIn | ✗ |
-| 20.16. IndexOf | ✗ |
+| 20.6. Equivalent | ✓ |
+| 20.7. Except | ✓ |
+| 20.8. Exists | ✓ |
+| 20.9. Filter | ✓ |
+| 20.10. First | ✓ |
+| 20.11. Flatten | ✓ |
+| 20.12. ForEach | ✓ |
+| 20.13. In | ✓ |
+| 20.14. Includes | ✓ |
+| 20.15. IncludedIn | ✓ |
+| 20.16. IndexOf | ✓ |
 | 20.17. Intersect | ✓ |
-| 20.18. Last | ✗ |
+| 20.18. Last | ✓ |
 | 20.19. Not Equal | ✓ |
-| 20.20. ProperContains | ✗ |
-| 20.21. ProperIn | ✗ |
-| 20.22. ProperIncludes | ✗ |
-| 20.23. ProperIncludedIn | ✗ |
+| 20.20. ProperContains | ✓ |
+| 20.21. ProperIn | ✓ |
+| 20.22. ProperIncludes | ✓ |
+| 20.23. ProperIncludedIn | ✓ |
 | 20.24. Repeat | ✗ |
 | 20.25. SingletonFrom | ✓ |
-| 20.26. Slice | ✗ |
-| 20.27. Sort | ✗ |
+| 20.26. Slice | ✓ |
+| 20.27. Sort | ✓ |
 | 20.28. Times | ✗ |
 | 20.29. Union | ✓ |
 
@@ -366,9 +366,15 @@ The following table gives an overview of the current state of implementation of 
 1.1+<|24. Errors and Messages
 | 24.1. Message | ✗ |
 
-| | 2+<| ✓ = 114, ! = 15, ✗ = 119, 52 % finished
+| | 2+<| ✓ = 137, ! = 15, ✗ = 98, 58 % finished
 |===
 
 == Implementation
 
-TODO
+=== 3-valued Logic and Set Theory
+
+CQL seems to use a Kleene K3 logic which is also used in SQL.
+
+https://en.wikipedia.org/wiki/Three-valued_logic#SQL
+http://www.cse.unsw.edu.au/~meyden/research/indef-review.ps
+

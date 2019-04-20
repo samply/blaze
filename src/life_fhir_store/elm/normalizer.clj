@@ -147,27 +147,7 @@
 
 
 ;; 13.5 Xor
-(defmethod normalize :elm.normalizer.type/xor
-  [{[operand-1 operand-2] :operand}]
-  (let [operand-1 (normalize operand-1)
-        operand-2 (normalize operand-2)]
-    {:type "Or"
-     :operand
-     [{:type "And"
-       :operand
-       [{:type "Not"
-         :operand operand-1
-         :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
-        operand-2]
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
-      {:type "And"
-       :operand
-       [operand-1
-        {:type "Not"
-         :operand operand-2
-         :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}]
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}]
-     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
+(derive :elm.normalizer.type/xor :elm.normalizer.type/multiary-expression)
 
 
 

@@ -134,6 +134,17 @@
   (truncated-divide [num div]))
 
 
+
+;; 17. String Operators
+
+;; 17.6. Indexer
+(defprotocol Indexer
+  (indexer [x index]))
+
+
+
+;; 18. Date and Time Operators
+
 ;; 18.7. DateFrom
 (defprotocol DateFrom
   (date-from [x]))
@@ -194,6 +205,11 @@
   (includes [x y precision]))
 
 
+;; 19.15. Intersect
+(defprotocol Intersect
+  (intersect [a b]))
+
+
 ;; 19.24. ProperContains
 (defprotocol ProperContains
   (proper-contains [interval-or-list x precision]))
@@ -204,7 +220,12 @@
   (proper-includes [x y precision]))
 
 
-;; 22.19. ToDate
+;; 19.31. Union
+(defprotocol Union
+  (union [a b]))
+
+
+;; 22.21. ToDate
 (defprotocol ToDate
   "Converts an object into something usable as Date relative to `now`.
 
@@ -213,7 +234,7 @@
   (to-date [x now]))
 
 
-;; 22.20. ToDateTime
+;; 22.22. ToDateTime
 (defprotocol ToDateTime
   "Converts an object into something usable as DateTime relative to `now`.
 
