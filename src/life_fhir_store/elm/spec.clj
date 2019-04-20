@@ -161,13 +161,13 @@
 (s/def :elm.decimal/valueType
   #{"{urn:hl7-org:elm-types:r1}Decimal"})
 
-(def decimal-value
+(defn decimal-value []
   (->> (gen/large-integer)
        (gen/fmap #(BigDecimal/valueOf ^long % 8))))
 
 
 (s/def :elm.decimal/value
-  (s/with-gen string? #(gen/fmap str decimal-value)))
+  (s/with-gen string? #(gen/fmap str (decimal-value))))
 
 
 (s/def :elm/decimal
@@ -175,7 +175,7 @@
 
 
 (defn non-zero-decimal-value []
-  (gen/fmap str (gen/such-that (complement zero?) decimal-value)))
+  (gen/fmap str (gen/such-that (complement zero?) (decimal-value))))
 
 
 (s/def :elm/non-zero-decimal
@@ -229,7 +229,7 @@
 
 
 (s/def :elm.quantity/value
-  (s/with-gen number? (constantly decimal-value)))
+  (s/with-gen number? decimal-value))
 
 
 (s/def :elm.quantity/unit
