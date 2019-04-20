@@ -5,6 +5,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
+    [cognitect.anomalies :as anom]
     [life-fhir-store.cql-translator :refer [translate]]
     [life-fhir-store.elm.compiler :refer [compile -eval]]
     [life-fhir-store.elm.type-infer :as type-infer]
@@ -54,12 +55,15 @@
   (translate (str "define x: " cql)))
 
 (defn to-elm [cql]
-  (-> (to-source-elm cql)
-      normalizer/normalize-library
-      equiv-relationships/find-equiv-rels-library
-      deps-infer/infer-library-deps
-      type-infer/infer-library-types
-      :statements :def first :expression))
+  (let [elm (to-source-elm cql)]
+    (if (::anom/category elm)
+      (throw (ex-info "CQL-to-ELM translation error" elm))
+      (-> elm
+          normalizer/normalize-library
+          equiv-relationships/find-equiv-rels-library
+          deps-infer/infer-library-deps
+          type-infer/infer-library-types
+          :statements :def first :expression))))
 
 (defn eval-elm [now elm]
   (-eval (compile {} elm) {:now now} nil))
