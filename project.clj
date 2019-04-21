@@ -41,7 +41,7 @@
   {:dev
    {:source-paths ["dev"]
     :dependencies
-    [[criterium "0.4.4"]
+    [[criterium "0.4.5"]
      [org.clojars.akiel/iota "0.1"]
      [org.clojure/data.xml "0.0.8"]
      [org.clojure/test.check "0.9.0"]
