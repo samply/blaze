@@ -245,7 +245,7 @@
 
 ;; 22.23. ToDecimal
 (defprotocol ToDecimal
-  (to-decimal [x]))
+  (to-decimal ^BigDecimal [x]))
 
 
 ;; 22.24. ToInteger
@@ -256,3 +256,8 @@
 ;; 22.26. ToQuantity
 (defprotocol ToQuantity
   (to-quantity [x]))
+
+
+;; 22.28. ToString
+(defprotocol ToString
+  (to-string [x]))

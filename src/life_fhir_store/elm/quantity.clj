@@ -14,6 +14,9 @@
     [tec.uom.se.quantity DecimalQuantity NumberQuantity Quantities]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (def ^:private ^UnitFormat ucum-format
   (UCUMFormat/getInstance UCUMFormat$Variant/CASE_SENSITIVE))
 
@@ -76,15 +79,15 @@
 ;; 16.1. Abs
 (extend-protocol p/Abs
   Quantity
-  (abs [this]
-    (Quantities/getQuantity (p/abs (.getValue this)) (.getUnit this))))
+  (abs [x]
+    (Quantities/getQuantity (p/abs (.getValue x)) (.getUnit x))))
 
 
 ;; 16.2. Add
 (extend-protocol p/Add
   Quantity
-  (add [a b]
-    (some->> b (.add a))))
+  (add [x y]
+    (some->> y (.add x))))
 
 
 ;; 16.4. Divide
@@ -129,7 +132,7 @@
 (extend-protocol p/Negate
   Quantity
   (negate [x]
-    (.multiply x -1)))
+    (Quantities/getQuantity (p/negate (.getValue x)) (.getUnit x))))
 
 
 ;; 16.15. Predecessor
@@ -170,3 +173,10 @@
   (to-quantity [s]
     ;; TODO: implement
     (throw (Exception. (str "Not implemented yet `ToQuantity('" s "')`.")))))
+
+
+;; 22.28. ToString
+(extend-protocol p/ToString
+  Quantity
+  (to-string [x]
+    (str (p/to-string (.getValue x)) " '" (.getUnit x) "'")))

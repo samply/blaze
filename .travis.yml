@@ -4,5 +4,6 @@ jdk:
 - openjdk8
 lein: 2.8.1
 script:
+- ./fetch-cql-tests.sh
 - lein check
 - lein test

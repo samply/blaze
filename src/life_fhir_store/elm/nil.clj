@@ -243,11 +243,19 @@
   (to-decimal [_]))
 
 
+;; 22.24. ToInteger
 (extend-protocol p/ToInteger
   nil
   (to-integer [_]))
 
 
+;; 22.26. ToQuantity
 (extend-protocol p/ToQuantity
   nil
   (to-quantity [_]))
+
+
+;; 22.28. ToString
+(extend-protocol p/ToString
+  nil
+  (to-string [_]))

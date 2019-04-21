@@ -464,35 +464,35 @@
   (successor [x]
     (if (.isBefore x max-year)
       (.plusYears x 1)
-      (throw (ex-info "Predecessor: argument is already the maximum value."
+      (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   YearMonth
   (successor [x]
     (if (.isBefore x max-year-month)
       (.plusMonths x 1)
-      (throw (ex-info "Predecessor: argument is already the maximum value."
+      (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   LocalDate
   (successor [x]
     (if (.isBefore x max-date)
       (.plusDays x 1)
-      (throw (ex-info "Predecessor: argument is already the maximum value."
+      (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   LocalDateTime
   (successor [x]
     (if (.isBefore x max-date-time)
       (.plusNanos x 1000000)
-      (throw (ex-info "Predecessor: argument is already the maximum value."
+      (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   PrecisionLocalTime
   (successor [{:keys [local-time p-num] :as x}]
     (if (p/less x max-time)
       (->PrecisionLocalTime (.plus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num)
-      (throw (ex-info "Predecessor: argument is already the maximum value."
+      (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x})))))
 
 
@@ -932,3 +932,26 @@
   (to-date-time [s _]
     ;; TODO: implement
     (throw (Exception. (str "Not implemented yet `ToDateTime('" s "')`.")))))
+
+
+;; 22.28. ToString
+(extend-protocol p/ToString
+  Year
+  (to-string [x]
+    (str x))
+
+  YearMonth
+  (to-string [x]
+    (str x))
+
+  LocalDate
+  (to-string [x]
+    (str x))
+
+  LocalDateTime
+  (to-string [x]
+    (str x))
+
+  PrecisionLocalTime
+  (to-string [{:keys [local-time]}]
+    (str local-time)))

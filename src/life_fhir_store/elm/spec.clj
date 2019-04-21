@@ -119,6 +119,30 @@
   :elm/expression)
 
 
+(s/def :elm/separator
+  :elm/expression)
+
+
+(s/def :elm/pattern
+  :elm/expression)
+
+
+(s/def :elm/string
+  :elm/expression)
+
+
+(s/def :elm/stringToSplit
+  :elm/expression)
+
+
+(s/def :elm/separatorPattern
+  :elm/expression)
+
+
+(s/def :elm/length
+  :elm/expression)
+
+
 (defmulti sort-by-item :type)
 
 
@@ -724,12 +748,70 @@
 
 ;; 17. String Operators
 
+;; 17.1. Combine
+(defmethod expression :elm.spec.type/combine [_]
+  (s/keys :req-un [:elm/source] :opt-un [:elm/separator]))
+
+
+;; 17.2. Concatenate
+(derive :elm.spec.type/concatenate :elm.spec.type/nary-expression)
+
+
+;; 17.3. EndsWith
+(derive :elm.spec.type/ends-with :elm.spec.type/binary-expression)
+
+
 ;; 17.6. Indexer
 (derive :elm.spec.type/indexer :elm.spec.type/binary-expression)
 
 
+;; 17.7. LastPositionOf
+(defmethod expression :elm.spec.type/last-position-of [_]
+  (s/keys :req-un [:elm/pattern :elm/string]))
+
+
 ;; 17.8. Length
 (derive :elm.spec.type/length :elm.spec.type/unary-expression)
+
+
+;; 17.9. Lower
+(derive :elm.spec.type/lower :elm.spec.type/unary-expression)
+
+
+;; 17.10. Matches
+(derive :elm.spec.type/matches :elm.spec.type/binary-expression)
+
+
+;; 17.12. PositionOf
+(defmethod expression :elm.spec.type/position-of [_]
+  (s/keys :req-un [:elm/pattern :elm/string]))
+
+
+;; 17.13. ReplaceMatches
+(derive :elm.spec.type/replace-matches :elm.spec.type/ternary-expression)
+
+
+;; 17.14. Split
+(defmethod expression :elm.spec.type/split [_]
+  (s/keys :req-un [:elm/stringToSplit] :opt-un [:elm/separator]))
+
+
+;; 17.15. SplitOnMatches
+(defmethod expression :elm.spec.type/split-on-matches [_]
+  (s/keys :req-un [:elm/stringToSplit :elm/separatorPattern]))
+
+
+;; 17.16. StartsWith
+(derive :elm.spec.type/starts-with :elm.spec.type/binary-expression)
+
+
+;; 17.17. Substring
+(defmethod expression :elm.spec.type/substring [_]
+  (s/keys :req-un [:elm/stringToSub :elm/startIndex] :opt-un [:elm/length]))
+
+
+;; 17.18. Upper
+(derive :elm.spec.type/upper :elm.spec.type/unary-expression)
 
 
 

@@ -11,14 +11,15 @@
     zone of the :now timestamp in the evaluation context."
   (:require
     [camel-snake-kebab.core :refer [->kebab-case-string]]
-    [clojure.set :as set]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [life-fhir-store.datomic.cql :as cql]
     [life-fhir-store.datomic.time :as time]
     [life-fhir-store.datomic.quantity :as quantity]
+    [life-fhir-store.elm.boolean]
     [life-fhir-store.elm.date-time :as date-time :refer [local-time]]
     [life-fhir-store.elm.decimal :as decimal]
     [life-fhir-store.elm.deps-infer :refer [infer-library-deps]]
@@ -31,11 +32,10 @@
     [life-fhir-store.elm.protocols :as p]
     [life-fhir-store.elm.quantity :refer [quantity]]
     [life-fhir-store.elm.spec]
-    [life-fhir-store.elm.string]
+    [life-fhir-store.elm.string :as string]
     [life-fhir-store.elm.type-infer :refer [infer-library-types]]
     [life-fhir-store.elm.util :as elm-util]
-    [life-fhir-store.util :as u]
-    [clojure.string :as str])
+    [life-fhir-store.util :as u])
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit Temporal]
@@ -209,6 +209,25 @@
          (-hash [_]
            {:type ~(keyword (clojure.core/name name))
             :operands [(-hash operand-1#) (-hash operand-2#)]})))))
+
+
+(defmacro defternop
+  {:arglists '([name bindings & body])}
+  [name [op-1-binding op-2-binding op-3-binding] & body]
+  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+     [context# {[operand-1# operand-2# operand-3#] :operand}]
+     (let [operand-1# (compile context# operand-1#)
+           operand-2# (compile context# operand-2#)
+           operand-3# (compile context# operand-3#)]
+       (reify Expression
+         (-eval [~'_ context# scope#]
+           (let [~op-1-binding (-eval operand-1# context# scope#)
+                 ~op-2-binding (-eval operand-2# context# scope#)
+                 ~op-3-binding (-eval operand-3# context# scope#)]
+             ~@body))
+         (-hash [_]
+           {:type ~(keyword (clojure.core/name name))
+            :operands [(-hash operand-1#) (-hash operand-2#) (-hash operand-3#)]})))))
 
 
 (defmacro defnaryop
@@ -1329,7 +1348,7 @@
         (-eval [_ context scope]
           (p/round (-eval operand context scope) 0))
         (-hash [_]
-          {:type :if
+          {:type :round
            :operand (-hash operand)}))
 
       (number? precision)
@@ -1337,7 +1356,7 @@
         (-eval [_ context scope]
           (p/round (-eval operand context scope) precision))
         (-hash [_]
-          {:type :if
+          {:type :round
            :operand (-hash operand)
            :precision (-hash precision)}))
 
@@ -1347,7 +1366,7 @@
           (p/round (-eval operand context scope)
                    (-eval precision context scope)))
         (-hash [_]
-          {:type :if
+          {:type :round
            :operand (-hash operand)
            :precision (-hash precision)})))))
 
@@ -1375,14 +1394,179 @@
 
 ;; 17. String Operators
 
+;; 17.1. Combine
+(defmethod compile* :elm.compiler.type/combine
+  [context {:keys [source separator]}]
+  (let [source (compile context source)
+        separator (some->> separator (compile context))]
+    (if separator
+      (reify Expression
+        (-eval [_ context scope]
+          (when-let [source (-eval source context scope)]
+            (string/combine (-eval separator context scope) source)))
+        (-hash [_]
+          {:type :combine
+           :source (-hash source)
+           :separator (-hash separator)}))
+      (reify Expression
+        (-eval [_ context scope]
+          (when-let [source (-eval source context scope)]
+            (string/combine source)))
+        (-hash [_]
+          {:type :combine
+           :source (-hash source)})))))
+
+
+;; 17.2. Concatenate
+(defnaryop concatenate [strings]
+  (string/combine strings))
+
+
+;; 17.3. EndsWith
+(defbinop ends-with [s suffix]
+  (when (and s suffix)
+    (str/ends-with? s suffix)))
+
+
 ;; 17.6. Indexer
 (defbinop indexer [x index]
   (p/indexer x index))
 
 
+;; 17.7. LastPositionOf
+(defmethod compile* :elm.compiler.type/last-position-of
+  [context {:keys [pattern string]}]
+  (let [pattern (compile context pattern)
+        string (compile context string)]
+    (reify Expression
+      (-eval [_ context scope]
+        (when-let [^String pattern (-eval pattern context scope)]
+          (when-let [^String string (-eval string context scope)]
+            (.lastIndexOf string pattern))))
+      (-hash [_]
+        {:type :last-position-of
+         :pattern (-hash pattern)
+         :string (-hash string)}))))
+
+
 ;; 17.8. Length
 (defunop length [x]
   (count x))
+
+
+;; 17.9. Lower
+(defunop lower [s]
+  (some-> s str/lower-case))
+
+
+;; 17.10. Matches
+(defbinop matches [s pattern]
+  (when (and s pattern)
+    (some? (re-matches (re-pattern pattern) s))))
+
+
+;; 17.12. PositionOf
+(defmethod compile* :elm.compiler.type/position-of
+  [context {:keys [pattern string]}]
+  (let [pattern (compile context pattern)
+        string (compile context string)]
+    (reify Expression
+      (-eval [_ context scope]
+        (when-let [^String pattern (-eval pattern context scope)]
+          (when-let [^String string (-eval string context scope)]
+            (.indexOf string pattern))))
+      (-hash [_]
+        {:type :last-position-of
+         :pattern (-hash pattern)
+         :string (-hash string)}))))
+
+
+;; 17.13. ReplaceMatches
+(defternop replace-matches [s pattern substitution]
+  (when (and s pattern substitution)
+    (str/replace s (re-pattern pattern) substitution)))
+
+
+;; 17.14. Split
+(defmethod compile* :elm.compiler.type/split
+  [context {string :stringToSplit :keys [separator]}]
+  (let [string (compile context string)
+        separator (some->> separator (compile context))]
+    (if separator
+      (reify Expression
+        (-eval [_ context scope]
+          (when-let [string (-eval string context scope)]
+            (if (= "" string)
+              [string]
+              (if-let [separator (-eval separator context scope)]
+                (condp = (count separator)
+                  1
+                  (loop [[char & more] string
+                         result []
+                         acc (StringBuilder.)]
+                    (if (= (str char) separator)
+                      (if more
+                        (recur more (conj result (str acc)) (StringBuilder.))
+                        (conj result (str acc)))
+                      (if more
+                        (recur more result (.append acc char))
+                        (conj result (str (.append acc char))))))
+                  ;; TODO: implement split with more than one char.
+                  (throw (Exception. "TODO: implement split with more than one char.")))
+                [string]))))
+        (-hash [_]
+          {:type :combine
+           :string (-hash string)
+           :separator (-hash separator)}))
+      (reify Expression
+        (-eval [_ context scope]
+          (when-let [string (-eval string context scope)]
+            [string]))
+        (-hash [_]
+          {:type :combine
+           :string (-hash string)})))))
+
+
+;; 17.16. StartsWith
+(defbinop starts-with [s prefix]
+  (when (and s prefix)
+    (str/starts-with? s prefix)))
+
+
+;; 17.17. Substring
+(defmethod compile* :elm.compiler.type/substring
+  [context {string :stringToSub start-index :startIndex :keys [length]}]
+  (let [string (compile context string)
+        start-index (compile context start-index)
+        length (some->> length (compile context))]
+    (if length
+      (reify Expression
+        (-eval [_ context scope]
+          (when-let [^String string (-eval string context scope)]
+            (when-let [start-index (-eval start-index context scope)]
+              (when (and (<= 0 start-index) (< start-index (count string)))
+                (subs string start-index (min (+ start-index length)
+                                              (count string)))))))
+        (-hash [_]
+          {:type :last-position-of
+           :string (-hash string)
+           :start-index (-hash start-index)
+           :length (-hash length)}))
+      (reify Expression
+        (-eval [_ context scope]
+          (when-let [^String string (-eval string context scope)]
+            (when-let [start-index (-eval start-index context scope)]
+              (when (and (<= 0 start-index) (< start-index (count string)))
+                (subs string start-index)))))
+        (-hash [_]
+          {:type :last-position-of
+           :string (-hash string)
+           :start-index (-hash start-index)})))))
+
+
+;; 17.18. Upper
+(defunop upper [s]
+  (some-> s str/upper-case))
 
 
 
@@ -2342,6 +2526,11 @@
 ;; 22.26. ToQuantity
 (defunop to-quantity [x]
   (p/to-quantity x))
+
+
+;; 22.28. ToString
+(defunop to-string [x]
+  (p/to-string x))
 
 
 

@@ -378,3 +378,6 @@ CQL seems to use a Kleene K3 logic which is also used in SQL.
 https://en.wikipedia.org/wiki/Three-valued_logic#SQL
 http://www.cse.unsw.edu.au/~meyden/research/indef-review.ps
 
+=== Decimal Arithmetic
+
+http://speleotrove.com/decimal/

@@ -4,3 +4,4 @@
 /kube-deployment.yml
 /queries
 /load-test.sh
+/cql-test

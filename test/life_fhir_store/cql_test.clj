@@ -123,6 +123,14 @@
             })
 
 
+;; 17. String Operators
+(deftests "string-operators" "cql-test/CqlStringOperatorsTest.xml"
+          #{"CombineEmptyList"                              ; If either argument is null, or the source list is empty, the result is null.
+            "QuantityToString"                              ; the spec says 125 'cm'
+            "DateTimeToString3"                             ; TODO: should contain a timezone offset
+            })
+
+
 ;; 18. Date and Time Operators
 (deftests "date-time-operators" "cql-test/CqlDateTimeOperatorsTest.xml"
           #{"DateTimeComponentFromTimezone"                 ; was renamed to TimezoneOffsetFrom

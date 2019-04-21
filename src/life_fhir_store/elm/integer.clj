@@ -139,13 +139,21 @@
 
 ;; 16.17. Subtract
 (extend-protocol p/Subtract
-  Number
+  Integer
+  (subtract [a b]
+    (some->> b (- a)))
+
+  Long
   (subtract [a b]
     (some->> b (- a))))
 
 
 ;; 16.18. Successor
 (extend-protocol p/Successor
+  Integer
+  (successor [x]
+    (inc x))
+
   Long
   (successor [x]
     (inc x)))
@@ -153,6 +161,9 @@
 
 ;; 16.19. Truncate
 (extend-protocol p/Truncate
+  Integer
+  (truncate [x] x)
+
   Long
   (truncate [x] x))
 
@@ -167,6 +178,9 @@
 
 ;; 22.24. ToInteger
 (extend-protocol p/ToInteger
+  Integer
+  (to-integer [x] x)
+
   Long
   (to-integer [x] x)
 
@@ -175,3 +189,10 @@
     (try
       (long (Integer/parseInt s))
       (catch Exception _))))
+
+
+;; 22.28. ToString
+(extend-protocol p/ToString
+  Number
+  (to-string [x]
+    (str x)))

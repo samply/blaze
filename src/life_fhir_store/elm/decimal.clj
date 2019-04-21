@@ -17,14 +17,54 @@
 (set! *warn-on-reflection* true)
 
 
-(def ^:const min
+(def ^:const ^long max-precision
+  "The maximum allowed precision of a decimal."
+  28)
+
+
+(def ^:const ^long max-scale
+  "The maximum allowed scale of a decimal."
+  8)
+
+
+(def ^:const ^long max-integral-digits
+  "Maximum number of integral digits of a decimal."
+  (- max-precision max-scale))
+
+
+(def ^:const ^BigDecimal min-step-size
+  "The minimum difference between one decimal and it's successor."
+  (.scaleByPowerOfTen 1M (- max-scale)))
+
+
+(def ^:const ^BigDecimal min
   "Minimum decimal (-10^28 + 1) / 10^8"
-  (/ (+ -1E28M 1) 1E8M))
+  (* (+ (- (.scaleByPowerOfTen 1M max-precision)) 1) min-step-size))
 
 
-(def ^:const max
+(def ^:const ^BigDecimal max
   "Maximum decimal (10^28 - 1) / 10^8"
-  (/ (- 1E28M 1) 1E8M))
+  (* (- (.scaleByPowerOfTen 1M max-precision) 1) min-step-size))
+
+
+(defn within-bounds?
+  "Returns true iff `x` is withing the bounds of `min` and `max`."
+  [^BigDecimal x]
+  (<= (- (.precision x) (.scale x)) max-integral-digits))
+
+
+(defn- check-overflow
+  "Checks that `x` is withing the bounds of `min` and `max`. Returns nil if not."
+  [x]
+  (when (within-bounds? x)
+    x))
+
+(defn- constrain-scale
+  "Rounds `x` if it's scale exceeds 8."
+  [^BigDecimal x]
+  (if (> (.scale x) max-scale)
+    (.setScale x max-scale RoundingMode/HALF_UP)
+    x))
 
 
 ;; 12.1. Equal
@@ -50,9 +90,18 @@
     (.abs x)))
 
 
+;; 16.2. Add
+(extend-protocol p/Add
+  BigDecimal
+  (add [x y]
+    (when y
+      ;; the scale isn't increased here, so it's sufficient to check for
+      ;; overflow. using a MathContext doesn't help here, because we need to
+      ;; implement fixed-point arithmetic.
+      (check-overflow (.add x (p/to-decimal y))))))
+
+
 ;; 16.3. Ceiling
-;;
-;; Ceiling(argument Decimal) Integer
 (extend-protocol p/Ceiling
   BigDecimal
   (ceiling [x]
@@ -65,27 +114,24 @@
 (extend-protocol p/Divide
   BigDecimal
   (divide [x y]
-    (let [y (if (int? y) (BigDecimal/valueOf ^long y) y)]
-      (try
-        (.divide x ^BigDecimal y 8 RoundingMode/HALF_UP)
-        (catch Exception _)))))
+    (when-let [y (p/to-decimal y)]
+      (when-not (.equals y 0M)
+        (check-overflow (.divide x y max-scale RoundingMode/HALF_UP))))))
 
 
 ;; 16.5. Exp
-;;
-;; Exp(argument Decimal) Decimal
 ;;
 ;; When invoked with an Integer argument, the argument will be implicitly
 ;; converted to Decimal.
 (extend-protocol p/Exp
   Number
   (exp [x]
-    (.setScale (BigDecimal/valueOf (Math/exp x)) 8 RoundingMode/HALF_UP)))
+    (-> (BigDecimal/valueOf (Math/exp x))
+        (constrain-scale)
+        (check-overflow))))
 
 
 ;; 16.6. Floor
-;;
-;; Floor(argument Decimal) Integer
 (extend-protocol p/Floor
   BigDecimal
   (floor [x]
@@ -94,8 +140,6 @@
 
 ;; 16.7. Log
 ;;
-;; Log(argument Decimal, base Decimal) Decimal
-;;
 ;; When invoked with Integer arguments, the arguments will be implicitly
 ;; converted to Decimal.
 ;;
@@ -103,11 +147,10 @@
 (extend-protocol p/Log
   Number
   (log [x base]
-    (when (and (pos? x) (some? base) (pos? base))
-      (try
-        (-> (BigDecimal/valueOf (/ (Math/log x) (Math/log base)))
-            (.setScale 8 RoundingMode/HALF_UP))
-        (catch Exception _)))))
+    (when (and (pos? x) (some? base) (pos? base) (not (== 1 base)))
+      (-> (BigDecimal/valueOf (/ (Math/log x) (Math/log base)))
+          (constrain-scale)
+          (check-overflow)))))
 
 
 ;; 16.8. Ln
@@ -123,7 +166,9 @@
   Number
   (ln [x]
     (when (pos? x)
-      (.setScale (BigDecimal/valueOf (Math/log x)) 8 RoundingMode/HALF_UP))))
+      (-> (BigDecimal/valueOf (Math/log x))
+          (constrain-scale)
+          (check-overflow)))))
 
 
 ;; 16.11. Modulo
@@ -135,13 +180,18 @@
 (extend-protocol p/Multiply
   BigDecimal
   (multiply [x y]
-    (let [y (if (int? y) (BigDecimal/valueOf ^long y) y)]
-      (some->> y (.multiply x)))))
+    (when y
+      (-> (.multiply x (p/to-decimal y))
+          (constrain-scale)
+          (check-overflow)))))
 
 
 ;; 16.13. Negate
-;;
-;; See integer implementation
+(extend-protocol p/Negate
+  BigDecimal
+  (negate [x]
+    ;; no overflow checking necessary
+    (.negate x)))
 
 
 ;; 16.14. Power
@@ -149,14 +199,21 @@
   BigDecimal
   (power [x exp]
     (when exp
-      (BigDecimal/valueOf (Math/pow x exp)))))
+      (-> (BigDecimal/valueOf (Math/pow x exp))
+          (constrain-scale)
+          (check-overflow)))))
 
 
 ;; 16.15. Predecessor
 (extend-protocol p/Predecessor
   BigDecimal
   (predecessor [x]
-    (.subtract x 1E-8M)))
+    (let [x (.subtract x min-step-size)]
+      (if (within-bounds? x)
+        x
+        ;; TODO: throwing an exception this is inconsistent with subtract
+        (throw (ex-info "Predecessor: argument is already the minimum value."
+                        {:x x}))))))
 
 
 ;; 16.16. Round
@@ -167,15 +224,26 @@
 
 
 ;; 16.17. Subtract
-;;
-;; See integer implementation
+(extend-protocol p/Subtract
+  BigDecimal
+  (subtract [x y]
+    (when y
+      ;; the scale isn't increased here, so it's sufficient to check for
+      ;; overflow. using a MathContext doesn't help here, because we need to
+      ;; implement fixed-point arithmetic.
+      (check-overflow (.subtract x (p/to-decimal y))))))
 
 
 ;; 16.18. Successor
 (extend-protocol p/Successor
   BigDecimal
   (successor [x]
-    (.add x 1E-8M)))
+    (let [x (.add x min-step-size)]
+      (if (within-bounds? x)
+        x
+        ;; TODO: throwing an exception this is inconsistent with add
+        (throw (ex-info "Successor: argument is already the maximum value."
+                        {:x x}))))))
 
 
 ;; 16.19. Truncate
@@ -200,13 +268,19 @@
   (to-decimal [x] x)
 
   String
-  (to-decimal [x]
-    (when-let [d (try (BigDecimal. x) (catch Exception _))]
-      (when (<= min d max)
-        (.setScale ^BigDecimal d 8 RoundingMode/HALF_UP)))))
+  (to-decimal [s]
+    (when-let [d (try (BigDecimal. s) (catch Exception _))]
+      (-> d constrain-scale check-overflow))))
 
 
 (defn from-literal [s]
   (if-let [d (p/to-decimal s)]
     d
     (throw (Exception. (str "Invalid decimal literal `" s "`.")))))
+
+
+;; 22.28. ToString
+(extend-protocol p/ToString
+  BigDecimal
+  (to-string [x]
+    (.toPlainString x)))
