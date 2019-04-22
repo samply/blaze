@@ -195,24 +195,24 @@ The following table gives an overview of the current state of implementation of 
 | 16.20. TruncatedDivide | ✓ |
 
 1.18+<|17. String Operators
-| 17.1. Combine | ✗ |
-| 17.2. Concatenate | ✗ |
-| 17.3. EndsWith | ✗ |
+| 17.1. Combine | ✓ |
+| 17.2. Concatenate | ✓ |
+| 17.3. EndsWith | ✓ |
 | 17.4. Equal | ✓ |
 | 17.5. Equivalent | ✗ |
 | 17.6. Indexer | ✓ |
-| 17.7. LastPositionOf | ✗ |
+| 17.7. LastPositionOf | ✓ |
 | 17.8. Length | ✓ |
-| 17.9. Lower | ✗ |
-| 17.10. Matches | ✗ |
+| 17.9. Lower | ✓ |
+| 17.10. Matches | ✓ |
 | 17.11. Not Equal | ✓ |
-| 17.12. PositionOf | ✗ |
-| 17.13. ReplaceMatches | ✗ |
-| 17.14. Split | ✗ |
+| 17.12. PositionOf | ✓ |
+| 17.13. ReplaceMatches | ✓ |
+| 17.14. Split | ✓ |
 | 17.15. SplitOnMatches | ✗ |
-| 17.16. StartsWith | ✗ |
-| 17.17. Substring | ✗ |
-| 17.18. Upper | ✗ |
+| 17.16. StartsWith | ✓ |
+| 17.17. Substring | ✓ |
+| 17.18. Upper | ✓ |
 
 1.22+<|18. Date and Time Operators
 | 18.1. Add | ✓ |
@@ -347,7 +347,7 @@ The following table gives an overview of the current state of implementation of 
 | 22.25. ToList | ✓ |
 | 22.26. ToQuantity | ✗ |
 | 22.27. ToRatio | ✗ |
-| 22.28. ToString | ✗ |
+| 22.28. ToString | ✓ |
 | 22.29. ToTime | ✗ |
 
 1.11+<|23. Clinical Operators
@@ -366,7 +366,7 @@ The following table gives an overview of the current state of implementation of 
 1.1+<|24. Errors and Messages
 | 24.1. Message | ✗ |
 
-| | 2+<| ✓ = 137, ! = 15, ✗ = 98, 58 % finished
+| | 2+<| ✓ = 150, ! = 15, ✗ = 83, 63 % finished
 |===
 
 == Implementation
