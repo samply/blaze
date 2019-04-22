@@ -105,10 +105,11 @@
   [{{{expression-defs :def} :statements} :library}
    {:keys [name] :as expression}]
   ;; TODO: look into other libraries (:libraryName)
-  (let [{eval-context :context} (find-by-name name expression-defs)]
-    (cond-> expression
-      eval-context
-      (assoc :life/eval-context eval-context))))
+  (if-let [{eval-context :context} (find-by-name name expression-defs)]
+    (assoc expression :life/eval-context eval-context)
+    (throw (ex-info (str "Missing expression-def `" name "`.")
+                    {:expression-ref expression
+                     :expression-defs expression-defs}))))
 
 
 ;; 9.4. FunctionRef
@@ -121,14 +122,8 @@
 ;; 10. Queries
 
 ;; 10.1. Query
-(defn- infer-source-type
-  "Infers the types on query sources and assocs them into the context under
-  [:life/scope-types `alias`]."
-  [context {:keys [alias expression]}]
-  (let [{{scope-type :elementType} :resultTypeSpecifier} (infer-types context expression)]
-    (cond-> context
-      scope-type
-      (assoc-in [:life/scope-types alias] (:name scope-type)))))
+(defn- infer-source-type [context source]
+  (update source :expression #(infer-types context %)))
 
 
 (defn- infer-relationship-types
@@ -165,10 +160,19 @@
       (assoc-in expression [:source 0 :expression] first-source))))
 
 
+(defn- extract-scope-types [sources]
+  (reduce
+    (fn [r {:keys [alias] {result-type :resultTypeSpecifier} :expression}]
+      (assoc r alias (-> result-type :elementType :name)))
+    {}
+    sources))
+
+
 (defmethod infer-types* :elm/query
   [context {sources :source :as expression}]
-  (let [context (reduce infer-source-type context sources)]
-    (->> expression
+  (let [sources (mapv #(infer-source-type context %) sources)
+        context (assoc context :life/scope-types (extract-scope-types sources))]
+    (->> (assoc expression :source sources)
          (infer-all-relationship-types context)
          (infer-query-where-type context)
          (infer-query-return-type context))))
@@ -351,6 +355,10 @@
 
 
 ;; 20. List Operators
+
+;; 20.8. Exists
+(derive :elm/exists :elm/unary-expression)
+
 
 ;; 20.25. SingletonFrom
 (derive :elm/singleton-from :elm/unary-expression)

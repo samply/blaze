@@ -132,16 +132,21 @@
 
 
 (defmethod infer-deps :elm.deps.type/query
-  [{sources :source relationships :relationship :as expression}]
+  [{sources :source relationships :relationship :keys [where] :as expression}]
   (let [sources (mapv infer-source-deps sources)
         relationships (mapv infer-relationship-deps relationships)
+        where (some-> where infer-deps)
         source-deps (transduce (map :life/deps) set/union sources)
         relationship-deps (transduce (map :life/deps) set/union relationships)
-        deps (set/union source-deps relationship-deps)]
-    (assoc expression
-      :source sources
-      :relationship relationships
-      :life/deps deps)))
+        deps (set/union source-deps relationship-deps (:life/deps where))]
+    (cond->
+      (assoc expression
+        :source sources
+        :relationship relationships)
+      where
+      (assoc :where where)
+      (seq deps)
+      (assoc :life/deps deps))))
 
 
 ;; 10.3. AliasRef
@@ -355,6 +360,13 @@
 
 
 
+;; 20. List Operators
+
+;; 20.8. Exists
+(derive :elm.deps.type/exists :elm.deps.type/unary-expression)
+
+
+
 ;; 21. Aggregate Operators
 
 ;; 21.1. AllTrue
@@ -422,3 +434,22 @@
 
 ;; 22.1. As
 (derive :elm.deps.type/as :elm.deps.type/unary-expression)
+
+
+;; 22.21. ToDate
+(derive :elm.deps.type/to-date :elm.deps.type/unary-expression)
+
+
+;; 22.22. ToDateTime
+(derive :elm.deps.type/to-date-time :elm.deps.type/unary-expression)
+
+
+;; 22.26. ToQuantity
+(derive :elm.deps.type/to-quantity :elm.deps.type/unary-expression)
+
+
+
+;; 23. Clinical Operators
+
+;; 23.4. CalculateAgeAt
+(derive :elm.deps.type/calculate-age-at :elm.deps.type/multiary-expression)

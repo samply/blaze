@@ -18,7 +18,7 @@
    [com.taoensso/timbre "4.10.0"]
    [danlentz/clj-uuid "0.1.7"
     :exclusions [primitive-math]]
-   [info.cqframework/cql-to-elm "1.3.10"]
+   [info.cqframework/cql-to-elm "1.3.15"]
    [integrant "0.7.0"]
    [javax.measure/unit-api "1.0"]
    [org.clojars.akiel/datomic-spec "0.4"]

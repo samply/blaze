@@ -88,7 +88,11 @@
 
 
 ;; 12. Comparison Operators
-(deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml" #{})
+(deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml"
+          #{"SimpleNotEqNullNull"                           ; TODO: CQL-To-ELM error
+            "EquivNullNull"                                 ; TODO: CQL-To-ELM error
+            "SimpleEqNullNull"                              ; TODO: CQL-To-ELM error
+            })
 
 
 ;; 13. Logical Operators
@@ -185,6 +189,7 @@
             "TestEndsNull"                                  ; CQL-To-ELM generates strange interval with property expression
             "TestInNull"                                    ; CQL-To-ELM generates strange interval with property expression
             "TestProperlyIncludedInNull"                    ; CQL-To-ELM generates strange interval with property expression
+            "TestEqualNull"                                 ; CQL-To-ELM generates strange interval with property expression
             "TestOnOrAfterNull"                             ; CQL-To-ELM generates invalid PointFrom expression
             "TestOnOrBeforeNull"                            ; CQL-To-ELM generates invalid PointFrom expression
             "TestOverlapsNull"                              ; type Any
@@ -286,3 +291,11 @@
             "DecimalNeg10Pow28ToZeroOneStepDecimalMinValue" ; don't get it
             "IntegerMinValue"                               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than
             })
+
+
+(comment
+  (to-source-elm "{1} union {}")
+  (to-elm "{1} union {}")
+  (clojure.repl/pst)
+
+  )

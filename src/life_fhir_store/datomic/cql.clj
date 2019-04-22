@@ -70,7 +70,7 @@
          key)))
 
 
-(s/fdef find-code
+(s/fdef find-coding
   :args (s/cat :db ::ds/db :system string? :code string?)
   :ret ::ds/entity-id)
 
@@ -96,8 +96,8 @@
     (mapv
       (partial d/entity db)
       (d/q
-        [:find ~'[?e ...]
-         :in ~'$ ~'?p ~'[?coding ...]
+        [:find '[?e ...]
+         :in '$ '?p '[?coding ...]
          :where
          ;; TODO: are there resources without a subject property?
          ['?e (keyword data-type-name "subject") '?p]

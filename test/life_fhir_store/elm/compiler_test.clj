@@ -218,13 +218,23 @@
 ;; 10.1. Query
 (deftest compile-query-test
   (testing "Non-retrieve queries"
-    (are [query res] (= res (-eval (compile {} query) {} nil))
-      {:type "Query"
-       :source
-       [{:alias "S"
-         :expression #elm/list [#elm/int "2" #elm/int "1" #elm/int "1"]}]
-       :sort {:by [{:type "ByDirection" :direction "asc"}]}}
-      [1 2]))
+    (testing "Sort"
+      (are [query res] (= res (-eval (compile {} query) {} nil))
+        {:type "Query"
+         :source
+         [{:alias "S"
+           :expression #elm/list [#elm/int "2" #elm/int "1" #elm/int "1"]}]
+         :sort {:by [{:type "ByDirection" :direction "asc"}]}}
+        [1 2]))
+
+    (testing "Return non-distinct"
+      (are [query res] (= res (-eval (compile {} query) {} nil))
+        {:type "Query"
+         :source
+         [{:alias "S"
+           :expression #elm/list [#elm/int "1" #elm/int "1"]}]
+         :return {:distinct false :expression {:type "AliasRef" :name "S"}}}
+        [1 1])))
 
   (testing "Retrieve queries"
     (st/instrument
@@ -4307,28 +4317,30 @@
       :scope "I"
       :type "Property"
       :resultTypeSpecifier
-      {:type [{:name "{http://hl7.org/fhir}Quantity",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}CodeableConcept",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}string",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}boolean",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}Range",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}Ratio",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}SampledData",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}Attachment",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}time",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}dateTime",
-               :type "NamedTypeSpecifier"}
-              {:name "{http://hl7.org/fhir}Period",
-               :type "NamedTypeSpecifier"}]}
+      {:type "ChoiceTypeSpecifier"
+       :choice
+       [{:name "{http://hl7.org/fhir}Quantity",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}CodeableConcept",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}string",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}boolean",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}Range",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}Ratio",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}SampledData",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}Attachment",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}time",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}dateTime",
+         :type "NamedTypeSpecifier"}
+        {:name "{http://hl7.org/fhir}Period",
+         :type "NamedTypeSpecifier"}]}
       :life/source-type "{http://hl7.org/fhir}Observation"}}
     {:Observation/valueQuantity (quantity/write 1.0)}
     1.0
@@ -4340,7 +4352,8 @@
       :scope "I"
       :type "Property"
       :resultTypeSpecifier
-      {:type
+      {:type "ChoiceTypeSpecifier"
+       :choice
        [{:name "{http://hl7.org/fhir}dateTime",
          :type "NamedTypeSpecifier"}
         {:name "{http://hl7.org/fhir}Period",

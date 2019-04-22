@@ -1,6 +1,6 @@
 library Retrieve version '1.0'
-using FHIR version '3.0.0'
-include FHIRHelpers version '3.0.0'
+using FHIR version '4.0.0'
+include FHIRHelpers version '4.0.0'
 
 codesystem "ICD-10-GM:2019": 'http://fhir.de/CodeSystem/dimdi/icd-10-gm' version '2019'
 codesystem "Sample Context": 'urn:mdr16:dataelement:20:1'
@@ -13,18 +13,14 @@ code "Serum": 'serum' from "Sample type liquid"
 code "Vollblut-EDTA": 'whole_blood-EDTA' from "Sample type liquid"
 
 context Patient
+
+define Qualifies:
+  (Exists([Condition: "Morbus Crohn"]) or Exists([Condition: "Colitis ulcerosa"])) and
+  Exists([Specimen: "Tumorgewebe"]) and
+  Exists([Specimen: "Gesundes Gewebe"]) and
+  (Exists([Specimen: "Serum"]) or Exists([Specimen: "Vollblut-EDTA"]))
+
 context Population
 
-define Patients:
-  from [Patient] P
-    with ([Condition: "Morbus Crohn"] union [Condition: "Colitis ulcerosa"]) C
-      such that P = C.subject
-    with [Specimen: "Tumorgewebe"] S
-      such that P = S.subject
-    with [Specimen: "Gesundes Gewebe"] S
-      such that P = S.subject
-    with ([Specimen: "Serum"] union [Specimen: "Vollblut-EDTA"]) S
-      such that P = S.subject
-
 define NumberOfPatients:
-  Count(Patients)
+  Count(Qualifies Q where Q return all Q)

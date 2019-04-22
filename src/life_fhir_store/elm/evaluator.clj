@@ -62,6 +62,15 @@
           {:db db :now now :library-context (zipmap deps intermediate-results)})))))
 
 
+(defn- create-expression
+  [name expression deps deferred-intermediate-results]
+  (if (empty? deps)
+    expression
+    (reify compiler/Expression
+      (-eval [_ context _]
+        (compiler/-eval expression (assoc context :library-context deferred-intermediate-results) nil)))))
+
+
 (defn- results
   "Creates a map from expression name to deferred result."
   [db now expression-defs]
@@ -76,8 +85,10 @@
       (if category
         (reduced expression-def)
         (if (= "Patient" eval-context)
-          ;;TODO
-          deferred-intermediate-results
+          (assoc deferred-intermediate-results
+            name
+            (create-expression
+              name expression (vec deps) deferred-intermediate-results))
           (assoc deferred-intermediate-results
             name
             (evaluate-expression

@@ -143,9 +143,12 @@
   (s/merge :elm/expression-def (s/keys :req [:life/expression])))
 
 
-(defn compile-expression-def
+(defn- compile-expression-def
   "Compiles the expression of `expression-def` in `context` and assocs the
-  resulting code under :life/code to the `expression-def` which is returned."
+  resulting compiled expression under :life/expression to the `expression-def`
+  which itself is returned.
+
+  In case compilation leads to an error, an anomaly is returned."
   {:arglists '([context expression-def])}
   [context {:keys [expression] :as expression-def}]
   (let [context (assoc context :eval-context (:context expression-def))]
@@ -356,17 +359,6 @@
            elements)}))))
 
 
-;; 2.3. Property
-;;
-;; The Property operator returns the value of the property on `source` specified
-;; by the `path` attribute.
-;;
-;; If the result of evaluating source is null, the result is null.
-;;
-;; If a scope is specified, the name is used to resolve the scope in which the
-;; path will be resolved. Scopes can be named by operators such as Filter and
-;; ForEach.
-
 (defn- source-property-expression
   "Creates an Expression which returns the property of `attr-kw` from `source`."
   [attr-kw source]
@@ -386,7 +378,7 @@
   [attr-kw source]
   (reify Expression
     (-eval [_ context scope]
-      (time/read (attr-kw (-eval source context scope))))
+      (some-> (attr-kw (-eval source context scope)) time/read))
     (-hash [_]
       {:type :property
        :attr-kw attr-kw
@@ -400,7 +392,7 @@
   [attr-kw source]
   (reify Expression
     (-eval [_ context scope]
-      (quantity/read (attr-kw (-eval source context scope))))
+      (some-> (attr-kw (-eval source context scope)) quantity/read))
     (-hash [_]
       {:type :property
        :attr-kw attr-kw
@@ -434,14 +426,14 @@
   ([attr-kw]
    (reify Expression
      (-eval [_ _ entity]
-       (time/read (attr-kw entity)))
+       (some-> (attr-kw entity) time/read))
      (-hash [_]
        {:type :property
         :attr-kw attr-kw})))
   ([attr-kw scope]
    (reify Expression
      (-eval [_ _ query-context]
-       (time/read (attr-kw (get query-context scope))))
+       (some-> (attr-kw (get query-context scope)) time/read))
      (-hash [_]
        {:type :property
         :attr-kw attr-kw
@@ -455,14 +447,14 @@
   ([attr-kw]
    (reify Expression
      (-eval [_ _ entity]
-       (quantity/read (attr-kw entity)))
+       (some-> (attr-kw entity) quantity/read))
      (-hash [_]
        {:type :property
         :attr-kw attr-kw})))
   ([attr-kw scope]
    (reify Expression
      (-eval [_ _ query-context]
-       (quantity/read (attr-kw (get query-context scope))))
+       (some-> (attr-kw (get query-context scope)) quantity/read))
      (-hash [_]
        {:type :property
         :attr-kw attr-kw
@@ -478,14 +470,14 @@
 (defn- choice-type-specifier?
   {:arglists '([type-specifier])}
   [{:keys [type]}]
-  (sequential? type))
+  (= "ChoiceTypeSpecifier" type))
 
 
 (defn contains-choice-type?
   {:arglists '([choice-type-specifier type])}
-  [{types :type} type]
+  [{choices :choice} type]
   (some #(and (= (:type type) (:type %))
-              (= (:name type) (:name %))) types))
+              (= (:name type) (:name %))) choices))
 
 
 (defn- extract-local-fhir-name [type-name]
@@ -515,8 +507,16 @@
     source
     (let [{type-specifier :resultTypeSpecifier type-name :resultTypeName} source]
       (cond
-        (tuple-type-specifier? type-specifier) (keyword path)
-        type-name (attr-kw (assoc expr :life/source-type type-name))
+        (tuple-type-specifier? type-specifier)
+        (keyword path)
+
+        type-name
+        (attr-kw (assoc expr :life/source-type type-name))
+
+        ;; TODO: HACK
+        (= "birthDate.value" path)
+        :Patient/birthDate
+
         :else
         (throw (ex-info "Unable to determine attr-kw on property expression." expr))))
     :else
@@ -527,6 +527,7 @@
   {:arglists '([property-expression])}
   [{result-type-name :resultTypeName
     result-type-specifier :resultTypeSpecifier
+    :keys [path]
     :life/keys [as-type]
     :as expr}]
   (cond
@@ -538,15 +539,41 @@
       (elm-util/parse-qualified-name (:name as-type))
       (throw (ex-info "Ambiguous choice type on property." expr)))
 
+    ;; TODO: HACK
+    (= "birthDate.value" path)
+    ["http://hl7.org/fhir" "date"]
+
     :else
     (throw (ex-info "Undetermined result type on property." expr))))
 
 
+;; 2.3. Property
+;;
+;; The Property operator returns the value of the property on source specified
+;; by the path attribute.
+;;
+;; If the result of evaluating source is null, the result is null.
+;;
+;; The path attribute may include qualifiers (.) and indexers ([x]). Indexers
+;; must be literal integer values.
+;;
+;; If the path attribute contains qualifiers or indexers, each qualifier or
+;; indexer is traversed to obtain the actual value. If the object of the
+;; property access at any point in traversing the path is null, the result is
+;; null.
+;;
+;; If a scope is specified, the name is used to resolve the scope in which the
+;; path will be resolved. Scopes can be named by operators such as Filter and
+;; ForEach.
+;;
+;; Property expressions can also be used to access the individual points and
+;; closed indicators for interval types using the property names low, high,
+;; lowClosed, and highClosed.
 (defmethod compile* :elm.compiler.type/property
   [{:life/keys [single-query-scope] :as context}
    {:keys [source scope] :as expression}]
-  (let [attr-kw (attr-kw expression)
-        [result-type-ns result-type-name] (property-result-type expression)
+  (let [[result-type-ns result-type-name] (property-result-type expression)
+        attr-kw (attr-kw expression)
         source (some->> source (compile context))]
     (cond
       ;; We evaluate the `source` to retrieve the entity.
@@ -654,23 +681,32 @@
   [{:keys [eval-context]} {:keys [name] def-eval-context :life/eval-context}]
   ;; TODO: look into other libraries (:libraryName)
   (when name
-    (if (and (= "Population" eval-context) (= "Patient" def-eval-context))
+    (cond
+      (and (= "Population" eval-context) (= "Patient" def-eval-context))
       ;; The referenced expression has Patient context but we are in the
       ;; Population context. So we map the referenced expression over all
       ;; patients.
       (reify Expression
-        (-eval [_ {:keys [db library-context] :as context} scope]
-          (mapv #(-eval (get library-context name) (assoc context :patient %) scope)
-                (cql/list-resource db "Patient")))
+        (-eval [_ {:keys [db library-context] :as context} _]
+          (if-let [expression (get library-context name)]
+            (mapv
+              (fn [patient]
+                (-eval expression (assoc context :patient patient) nil))
+              (cql/list-resource db "Patient"))
+            (throw (ex-info (str "Expression reference `" name "` not found.")
+                            {:context context}))))
         (-hash [_]
           ;; TODO: the expression does something different here. should it have a different hash?
           {:type :expression-ref
            :name name}))
 
+      :else
       (reify Expression
-        (-eval [_ {:keys [library-context]} _]
-          (or (get library-context name)
-              (throw (Exception. (str "Expression reference `" name "` not found.")))))
+        (-eval [_ {:keys [library-context] :as context} _]
+          (if-let [expression (get library-context name)]
+            (-eval expression context nil)
+            (throw (ex-info (str "Expression reference `" name "` not found.")
+                            {:context context}))))
         (-hash [_]
           {:type :expression-ref
            :name name})))))
@@ -815,7 +851,7 @@
    {sources :source
     relationships :relationship
     :keys [where]
-    {return :expression} :return
+    {return :expression :keys [distinct] :or {distinct true}} :return
     {sort-by-items :by} :sort}]
   (if (= 1 (count sources))
     (let [{:keys [expression alias]} (first sources)
@@ -829,30 +865,60 @@
           sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)
           source (compile context expression)]
       (if (empty? sort-by-items)
-        (reify Expression
-          (-eval [_ context _]
-            (vec (into #{} (xform context) (-eval source context nil))))
-          (-hash [_]
-            (cond->
-              {:type :query
-               :source (-hash source)}
-              (some? where) (assoc :where (-hash where))
-              (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-              (some? return) (assoc :return (-hash return)))))
-        (reify Expression
-          (-eval [_ context _]
-            ;; TODO: build a comparator of all sort by items
-            (->> (into #{} (xform context) (-eval source context nil))
-                 (sort-by identity (comparator (:direction (first sort-by-items))))
-                 (vec)))
-          (-hash [_]
-            (cond->
-              {:type :query
-               :source (-hash source)
-               :sort-by-items (mapv hash-sort-by-item sort-by-items)}
-              (some? where) (assoc :where (-hash where))
-              (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-              (some? return) (assoc :return (-hash return)))))))
+        (if distinct
+          (reify Expression
+            (-eval [_ context _]
+              (vec (into #{} (xform context) (-eval source context nil))))
+            (-hash [_]
+              (cond->
+                {:type :query
+                 :source (-hash source)
+                 :distinct true}
+                (some? where) (assoc :where (-hash where))
+                (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+                (some? return) (assoc :return (-hash return)))))
+          (reify Expression
+            (-eval [_ context _]
+              (into [] (xform context) (-eval source context nil)))
+            (-hash [_]
+              (cond->
+                {:type :query
+                 :source (-hash source)
+                 :distinct false}
+                (some? where) (assoc :where (-hash where))
+                (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+                (some? return) (assoc :return (-hash return))))))
+        (if distinct
+          (reify Expression
+            (-eval [_ context _]
+              ;; TODO: build a comparator of all sort by items
+              (->> (into #{} (xform context) (-eval source context nil))
+                   (sort-by identity (comparator (:direction (first sort-by-items))))
+                   (vec)))
+            (-hash [_]
+              (cond->
+                {:type :query
+                 :source (-hash source)
+                 :distinct true
+                 :sort-by-items (mapv hash-sort-by-item sort-by-items)}
+                (some? where) (assoc :where (-hash where))
+                (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+                (some? return) (assoc :return (-hash return)))))
+          (reify Expression
+            (-eval [_ context _]
+              ;; TODO: build a comparator of all sort by items
+              (->> (into [] (xform context) (-eval source context nil))
+                   (sort-by identity (comparator (:direction (first sort-by-items))))
+                   (vec)))
+            (-hash [_]
+              (cond->
+                {:type :query
+                 :source (-hash source)
+                 :distinct false
+                 :sort-by-items (mapv hash-sort-by-item sort-by-items)}
+                (some? where) (assoc :where (-hash where))
+                (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+                (some? return) (assoc :return (-hash return))))))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
 
