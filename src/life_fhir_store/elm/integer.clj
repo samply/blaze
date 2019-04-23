@@ -56,9 +56,7 @@
 (extend-protocol p/Divide
   Long
   (divide [x y]
-    (try
-      (/ x y)
-      (catch Exception _))))
+    (p/divide (p/to-decimal x) y)))
 
 
 ;; 16.5. Exp
