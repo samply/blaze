@@ -68,6 +68,8 @@
 
 
 ;; 12.1. Equal
+;;
+;; For decimal values, trailing zeroes are ignored.
 (extend-protocol p/Equal
   BigDecimal
   (equal [x y]
