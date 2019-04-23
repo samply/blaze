@@ -77,20 +77,19 @@ If you like to upload your own resources, it's important, that the LIFE FHIR Sto
 The most convenient way is to use the [CQL Runner][2]. You have to go into the `Config` menu and set the `CQL Engine` to `http://localhost:8080/cql/evaluate`. The other config options doesn't matter because the CQL Engine of the LIFE FHIR Store always uses its own internal data.
 
 As a test query you can use
-```bash
-library Retrieve1 version '1.0'
-using FHIR version '3.0.0'
+```
+using FHIR version '4.0.0'
 context Population
 
 define NumberOfPatients:
   Count([Patient])
 
-define Patient:
+define AllPatients:
   [Patient]
 ```
 The result should be something like
 
-```bash
+```
 >> NumberOfPatients [7:1] 10
 >> Patient [10:1] [ {
   "birthDate" : "AgfNBQg=",
