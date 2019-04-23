@@ -87,15 +87,15 @@
   (gen-tests name file exclusions))
 
 
-;; 12. Comparison Operators
-(deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml"
-          #{"SimpleNotEqNullNull"                           ; TODO: CQL-To-ELM error
-            "EquivNullNull"                                 ; TODO: CQL-To-ELM error
-            "SimpleEqNullNull"                              ; TODO: CQL-To-ELM error
+;; 1. Types
+(deftests "types" "cql-test/CqlTypesTest.xml"
+          #{"QuantityTest"                                  ; unit `lbs` unknown
+            "QuantityTest2"                                 ; unit `eskimo kisses` unknown
+            "DateTimeUncertain"                             ; TODO: implement
             })
 
 
-;; 13. Logical Operators
+;; 2. Logical Operators
 (deftests "logical-operators" "cql-test/CqlLogicalOperatorsTest.xml"
           #{"TrueImpliesTrue"                               ; TODO: CQL-To-ELM error
             "TrueImpliesFalse"                              ; TODO: CQL-To-ELM error
@@ -109,16 +109,48 @@
             })
 
 
-;; 14. Nullological Operators
+;; 3. Type Operators
+(deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
+          #{"IntegerToString"                               ; TODO: implement
+            "StringToIntegerError"                          ; TODO: implement
+            "StringToDateTime"                              ; TODO: implement
+            "StringToTime"                                  ; TODO: implement
+            "IntegerIsInteger"                              ; TODO: implement
+            "StringIsInteger"                               ; TODO: implement
+            "StringNoToBoolean"                             ; TODO: implement
+            "CodeToConcept1"                                ; TODO: implement
+            "ToDateTime1"                                   ; TODO: implement
+            "ToDateTime2"                                   ; TODO: implement
+            "ToDateTime3"                                   ; TODO: implement
+            "ToDateTime4"                                   ; TODO: implement
+            "ToDateTime5"                                   ; TODO: implement
+            "ToDateTime6"                                   ; TODO: implement
+            "String5D5CMToQuantity"                         ; TODO: implement
+            "IntegerNeg5ToString"                           ; TODO: implement
+            "Decimal18D55ToString"                          ; TODO: implement
+            "Quantity5D5CMToString"                         ; TODO: implement
+            "BooleanTrueToString"                           ; TODO: implement
+            "ToTime1"                                       ; TODO: implement
+            "ToTime2"                                       ; TODO: implement
+            "ToTime3"                                       ; TODO: implement
+            "ToTime4"                                       ; TODO: implement
+            })
+
+
+;; 4. Nullological Operators
 (deftests "nullological-operators" "cql-test/CqlNullologicalOperatorsTest.xml" #{})
 
 
-;; 15. Conditional Operators
-(deftests "conditional-operators" "cql-test/CqlConditionalOperatorsTest.xml" #{})
+;; 5. Comparison Operators
+(deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml"
+          #{"SimpleNotEqNullNull"                           ; TODO: CQL-To-ELM error
+            "EquivNullNull"                                 ; TODO: CQL-To-ELM error
+            "SimpleEqNullNull"                              ; TODO: CQL-To-ELM error
+            })
 
 
-;; 16. Arithmetic Operators
-(deftests "arithmetic-functions" "cql-test/CqlArithmeticFunctionsTest.xml"
+;; 6. Arithmetic Operators
+(deftests "arithmetic-operators" "cql-test/CqlArithmeticFunctionsTest.xml"
           #{"DecimalMinValue" "DecimalMaxValue"
             "Ln0" "LnNeg0"
             "Log1Base1"
@@ -127,7 +159,7 @@
             })
 
 
-;; 17. String Operators
+;; 7. String Operators
 (deftests "string-operators" "cql-test/CqlStringOperatorsTest.xml"
           #{"CombineEmptyList"                              ; If either argument is null, or the source list is empty, the result is null.
             "QuantityToString"                              ; the spec says 125 'cm'
@@ -135,7 +167,7 @@
             })
 
 
-;; 18. Date and Time Operators
+;; 8. Date and Time Operators
 (deftests "date-time-operators" "cql-test/CqlDateTimeOperatorsTest.xml"
           #{"DateTimeComponentFromTimezone"                 ; was renamed to TimezoneOffsetFrom
             "DateTimeAddInvalidYears"                       ; should be nil for 1.4
@@ -181,7 +213,7 @@
             })
 
 
-;; 19. Interval Operators
+;; 9. Interval Operators
 (deftests "interval-operators" "cql-test/CqlIntervalOperatorsTest.xml"
           #{"TestAfterNull"                                 ; TODO: CQL-To-ELM error
             "TestBeforeNull"                                ; TODO: CQL-To-ELM error
@@ -209,7 +241,7 @@
             })
 
 
-;; 20. List Operators
+;; 10. List Operators
 (deftests "list-operators" "cql-test/CqlListOperatorsTest.xml"
           #{"quantityList"                                  ; no unit `lbs`
             "ExceptEmptyListAndEmptyList"                   ; don't have a Except function
@@ -247,43 +279,11 @@
             })
 
 
-;; 21. Aggregate Operators
-(deftests "aggregate-operators" "cql-test/CqlAggregateFunctionsTest.xml" #{})
+;; 11. Aggregate Functions
+(deftests "aggregate-functions" "cql-test/CqlAggregateFunctionsTest.xml" #{})
 
 
-;; 22. Type Operators
-(deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
-          #{"IntegerToString"                               ; TODO: implement
-            "StringToIntegerError"                          ; TODO: implement
-            "StringToDateTime"                              ; TODO: implement
-            "StringToTime"                                  ; TODO: implement
-            "IntegerIsInteger"                              ; TODO: implement
-            "StringIsInteger"                               ; TODO: implement
-            "StringNoToBoolean"                             ; TODO: implement
-            "CodeToConcept1"                                ; TODO: implement
-            "ToDateTime1"                                   ; TODO: implement
-            "ToDateTime2"                                   ; TODO: implement
-            "ToDateTime3"                                   ; TODO: implement
-            "ToDateTime4"                                   ; TODO: implement
-            "ToDateTime5"                                   ; TODO: implement
-            "ToDateTime6"                                   ; TODO: implement
-            "String5D5CMToQuantity"                         ; TODO: implement
-            "IntegerNeg5ToString"                           ; TODO: implement
-            "Decimal18D55ToString"                          ; TODO: implement
-            "Quantity5D5CMToString"                         ; TODO: implement
-            "BooleanTrueToString"                           ; TODO: implement
-            "ToTime1"                                       ; TODO: implement
-            "ToTime2"                                       ; TODO: implement
-            "ToTime3"                                       ; TODO: implement
-            "ToTime4"                                       ; TODO: implement
-            })
-
-
-(deftests "types-test" "cql-test/CqlTypesTest.xml"
-          #{"QuantityTest"                                  ; unit `lbs` unknown
-            "QuantityTest2"                                 ; unit `eskimo kisses` unknown
-            "DateTimeUncertain"                             ; TODO: implement
-            })
+(deftests "conditional-operators" "cql-test/CqlConditionalOperatorsTest.xml" #{})
 
 
 (deftests "value-literals-and-selectors" "cql-test/ValueLiteralsAndSelectors.xml"
@@ -296,11 +296,3 @@
             "DecimalNeg10Pow28ToZeroOneStepDecimalMinValue" ; don't get it
             "IntegerMinValue"                               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than
             })
-
-
-(comment
-  (to-source-elm "{1} union {}")
-  (to-elm "{1} union {}")
-  (clojure.repl/pst)
-
-  )
