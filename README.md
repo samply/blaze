@@ -11,7 +11,7 @@ The goal of this project is to provide a FHIR Store with an internal CQL Evaluat
 
 ## State
 
-The project is currently under active development. Please report any issues you encounter during evaluation.
+The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
 ## Usage
 
@@ -93,3 +93,4 @@ your option) any later version.
 
 [1]: <https://github.com/life-research/life-fhir-gen>
 [2]: <http://cql-runner.dataphoria.org/>
+[3]: <https://cql.hl7.org/tests.html>
