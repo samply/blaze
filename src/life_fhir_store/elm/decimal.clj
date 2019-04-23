@@ -139,6 +139,11 @@
 
 
 ;; 16.6. Floor
+;;
+;; The Floor operator returns the first integer less than or equal to the
+;; argument.
+;;
+;; If the argument is null, the result is null.
 (extend-protocol p/Floor
   BigDecimal
   (floor [x]
@@ -161,8 +166,6 @@
 
 
 ;; 16.8. Ln
-;;
-;; Ln(argument Decimal) Decimal
 ;;
 ;; When invoked with Integer arguments, the arguments will be implicitly
 ;; converted to Decimal.

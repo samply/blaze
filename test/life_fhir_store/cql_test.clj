@@ -247,6 +247,11 @@
             })
 
 
+;; 21. Aggregate Operators
+(deftests "aggregate-operators" "cql-test/CqlAggregateFunctionsTest.xml" #{})
+
+
+;; 22. Type Operators
 (deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
           #{"IntegerToString"                               ; TODO: implement
             "StringToIntegerError"                          ; TODO: implement

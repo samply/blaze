@@ -66,7 +66,7 @@
 
 ;; 16.5. Exp
 (defprotocol Exp
-  (exp [x]))
+  (exp [x] "Calculates e raised to the power of `x`."))
 
 
 ;; 16.6. Floor
@@ -81,7 +81,7 @@
 
 ;; 16.8. Ln
 (defprotocol Ln
-  (ln [x]))
+  (ln [x] "Calculates the natural logarithm of `x`."))
 
 
 ;; 16.11. Modulo

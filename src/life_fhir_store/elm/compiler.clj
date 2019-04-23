@@ -19,7 +19,9 @@
     [life-fhir-store.datomic.cql :as cql]
     [life-fhir-store.datomic.time :as time]
     [life-fhir-store.datomic.quantity :as quantity]
+    [life-fhir-store.elm.aggregates :as aggregates]
     [life-fhir-store.elm.boolean]
+    [life-fhir-store.elm.data-provider :as data-provider]
     [life-fhir-store.elm.date-time :as date-time :refer [local-time]]
     [life-fhir-store.elm.decimal :as decimal]
     [life-fhir-store.elm.deps-infer :refer [infer-library-deps]]
@@ -246,6 +248,33 @@
          (-hash [_]
            {:type ~(keyword (clojure.core/name name))
             :operands (mapv -hash operands#)})))))
+
+
+(defmacro defaggop
+  {:arglists '([name bindings & body])}
+  [name [source-binding] & body]
+  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+     [{data-provider# :data-provider :as context#} {source# :source path# :path}]
+     (let [source# (compile context# source#)
+           path# (some-> path# (data-provider/compile-path data-provider#))]
+       (if path#
+         (reify Expression
+           (-eval [~'_ context# scope#]
+             (let [source# (-eval source# context# scope#)
+                   ~source-binding (data-provider/resolve-property
+                                     data-provider# source# path#)]
+               ~@body))
+           (-hash [_]
+             {:type ~(keyword (clojure.core/name name))
+              :source (-hash source#)
+              :path path#}))
+         (reify Expression
+           (-eval [~'_ context# scope#]
+             (let [~source-binding (-eval source# context# scope#)]
+               ~@body))
+           (-hash [_]
+             {:type ~(keyword (clojure.core/name name))
+              :source (-hash source#)}))))))
 
 
 (defn- to-chrono-unit [precision]
@@ -2462,27 +2491,86 @@
 
 ;; 21. Aggregate Operators
 
+;; 21.1. AllTrue
+(defaggop all-true [source]
+  (reduce #(if (false? %2) (reduced %2) %1) true source))
+
+
+;; 21.2. AnyTrue
+(defaggop any-true [source]
+  (reduce #(if (true? %2) (reduced %2) %1) false source))
+
+
+;; 21.3. Avg
+(defaggop avg [source]
+  (transduce identity aggregates/avg-reducer source))
+
+
 ;; 21.4. Count
-;;
-;; The Count operator returns the number of non-null elements in the source.
-;;
-;; If a path is specified, the count returns the number of elements that have a
-;; value for the property specified by the path.
-;;
-;; If the list is empty, the result is 0.
-;;
-;; If the list is null, the result is 0.
-(defmethod compile* :elm.compiler.type/count
-  [context {:keys [source]}]
-  ;; TODO: path
-  (let [source (compile context source)]
-    (reify Expression
-      (-eval [_ context scope]
-        (transduce (comp (remove nil?) (map (constantly 1))) +
-                   (-eval source context scope)))
-      (-hash [_]
-        {:type :count
-         :source (-hash source)}))))
+(defaggop count [source]
+  (transduce identity aggregates/count-reducer source))
+
+
+;; 21.5. GeometricMean
+(defaggop geometric-mean [source]
+  (transduce identity aggregates/geometric-mean-reducer source))
+
+
+;; 21.6. Product
+(defaggop product [source]
+  (transduce identity aggregates/product-reducer source))
+
+
+;; 21.7. Max
+(defaggop max [source]
+  (transduce identity aggregates/max-reducer source))
+
+
+;; 21.8. Median
+(defaggop median [source]
+  (let [sorted (vec (sort-by identity asc-comparator (remove nil? source)))]
+    (when (seq sorted)
+      (if (zero? (rem (count sorted) 2))
+        (let [upper-idx (quot (count sorted) 2)]
+          (p/divide (p/add (nth sorted (dec upper-idx))
+                           (nth sorted upper-idx))
+                    2))
+        (nth sorted (quot (count sorted) 2))))))
+
+
+;; 21.9. Min
+(defaggop min [source]
+  (transduce identity aggregates/min-reducer source))
+
+
+;; 21.10. Mode
+(defaggop mode [source]
+  (transduce identity aggregates/max-freq-reducer (frequencies (remove nil? source))))
+
+
+;; 21.11. PopulationVariance
+(defaggop population-variance [source]
+  (transduce identity aggregates/population-variance-reducer source))
+
+
+;; 21.12. PopulationStdDev
+(defaggop population-std-dev [source]
+  (p/power (transduce identity aggregates/population-variance-reducer source) 0.5M))
+
+
+;; 21.13. Sum
+(defaggop sum [source]
+  (transduce identity aggregates/sum-reducer source))
+
+
+;; 21.14. StdDev
+(defaggop std-dev [source]
+  (p/power (transduce identity aggregates/variance-reducer source) 0.5M))
+
+
+;; 21.15. Variance
+(defaggop variance [source]
+  (transduce identity aggregates/variance-reducer source))
 
 
 
