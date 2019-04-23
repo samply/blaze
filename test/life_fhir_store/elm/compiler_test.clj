@@ -1569,14 +1569,17 @@
 ;; The Divide operator is defined for the Decimal and Quantity types.
 (deftest compile-divide-test
   (testing "Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/divide [a b])) {} nil))
-      #elm/dec "1" #elm/dec "2" 0.5M
-      #elm/dec "1.1" #elm/dec "2" 0.55M
-      #elm/dec "10" #elm/dec "3" 3.33333333M
+    ;; Convert to string to be able to check for precision
+    (are [a b res] (= res (some-> (-eval (compile {} (elm/divide [a b])) {} nil) str))
+      #elm/dec "1" #elm/dec "2" "0.5"
+      #elm/dec "1.1" #elm/dec "2" "0.55"
+      #elm/dec "10" #elm/dec "3" "3.33333333"
 
-      #elm/dec "3" #elm/int "2" 1.5M
+      #elm/dec "3" #elm/int "2" "1.5"
 
       #elm/dec "1" #elm/dec "0" nil
+      ; test zero with different precision
+      #elm/dec "1" #elm/dec "0.0" nil
 
       #elm/dec "1.1" {:type "Null"} nil
       {:type "Null"} #elm/dec "1.1" nil))

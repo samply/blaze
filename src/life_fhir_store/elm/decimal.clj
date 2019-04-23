@@ -109,14 +109,19 @@
 
 
 ;; 16.4. Divide
-;;
-;; Using `.divide` over Clojure `/` is twice as fast.
 (extend-protocol p/Divide
   BigDecimal
   (divide [x y]
     (when-let [y (p/to-decimal y)]
-      (when-not (.equals y 0M)
-        (check-overflow (.divide x y max-scale RoundingMode/HALF_UP))))))
+      (when-not (zero? y)
+        (-> (try
+              ;; First try to perform an exact division because if we specify a
+              ;; scale it's taken literally and not as maximum.
+              (.divide x y)
+              (catch ArithmeticException _
+                (.divide x y max-scale RoundingMode/HALF_UP)))
+            (constrain-scale)
+            (check-overflow))))))
 
 
 ;; 16.5. Exp
