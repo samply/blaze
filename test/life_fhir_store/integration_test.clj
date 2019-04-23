@@ -71,7 +71,8 @@
     "query-3" 1
     "query-5" 3
     "query-6" 1
-    "query-7" 2))
+    "query-7" 2
+    "readme-example" 3))
 
 (deftest arithmetic-test
   (given (evaluate (db-with []) (read-query "arithmetic"))

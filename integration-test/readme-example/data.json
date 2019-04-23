@@ -1,0 +1,14 @@
+[
+  {
+    "resourceType": "Patient",
+    "id": "0"
+  },
+  {
+    "resourceType": "Patient",
+    "id": "1"
+  },
+  {
+    "resourceType": "Patient",
+    "id": "2"
+  }
+]
