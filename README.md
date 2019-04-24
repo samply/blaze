@@ -15,7 +15,7 @@ The project is currently under active development. Essentially all official [CQL
 
 ## Usage
 
-You need Docker to run the LIFE FHIR Store. The most convenient way is to check out this repository and use the `docker-compose.yml` to bring the LIFE FHIR Store up. The default memory requirements are 4 GB. You also need to have port 8080 free on your host.
+You need Docker to run the LIFE FHIR Store. The most convenient way is to check out this repository and use the `docker-compose.yml` to bring the LIFE FHIR Store up. The default minimum memory requirements are 4 GB. You have to change the memory settings for the LIFE FHIR Store and Datomic if you have less memory available. You also need to have port 8080 free on your host.
 
 To start the LIFE FHIR Store, type:
 
@@ -52,7 +52,7 @@ It should return `OK`.
 
 ### Upload FHIR Resources
 
-Before you can issue CQL queries against the LIFE FHIR Store, you have to upload some FHIR resources. If you have none, you can generate them y using the [FHIR Test Data Generator][1].
+Before you can issue CQL queries against the LIFE FHIR Store, you have to upload some FHIR resources. If you have none, you can generate them by using the [FHIR Test Data Generator][1].
 
 ```bash
 life-fhir-gen -n1 > bundle.json
@@ -75,6 +75,35 @@ If you like to upload your own resources, it's important, that the LIFE FHIR Sto
 ### Issuing a CQL Query
 
 The most convenient way is to use the [CQL Runner][2]. You have to go into the `Config` menu and set the `CQL Engine` to `http://localhost:8080/cql/evaluate`. The other config options doesn't matter because the CQL Engine of the LIFE FHIR Store always uses its own internal data.
+
+As a test query you can use
+```
+using FHIR version '4.0.0'
+context Patient
+context Population
+
+define NumberOfPatients:
+  Count([Patient])
+
+define AllPatients:
+  [Patient]
+```
+The result should be something like
+
+```
+>> NumberOfPatients [7:1] 10
+>> Patient [10:1] [ {
+  "birthDate" : "AgfNBQg=",
+  "id" : "1001",
+  "gender" : "male",
+  "resourceType" : "Patient"
+}, {
+  "birthDate" : "AgfOARE=",
+  "id" : "1002",
+  "gender" : "female",
+  "resourceType" : "Patient"
+} ]
+```
 
 ### Deleting the Data Volume
 
