@@ -308,3 +308,16 @@
       (assoc :precision precision))))
 
 
+
+;; 23. Clinical Operators
+
+;; 23.3. CalculateAge
+(defmethod normalize :elm.normalizer.type/calculate-age
+  [{birth-date :operand :keys [precision]}]
+  (let [birth-date (normalize birth-date)]
+    (cond->
+      {:type "CalculateAgeAt"
+       :operand [birth-date {:type "Today"}]
+       :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"}
+      precision
+      (assoc :precision precision))))

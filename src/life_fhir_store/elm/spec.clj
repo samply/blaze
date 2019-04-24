@@ -1515,6 +1515,12 @@
 
 ;; 23. Clinical Operators
 
+;; 23.3. CalculateAge
+(defmethod expression :elm.spec.type/calculate-age [_]
+  (s/keys :req-un [:elm.unary-expression/operand]
+          :opt-un [:elm.date/precision]))
+
+
 ;; 23.4. CalculateAgeAt
 (defmethod expression :elm.spec.type/calculate-age-at [_]
   (s/keys :req-un [:elm.binary-expression/operand]
