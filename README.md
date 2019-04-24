@@ -15,7 +15,7 @@ The project is currently under active development. Please report any issues you 
 
 ## Usage
 
-You need Docker to run the LIFE FHIR Store. The most convenient way is to check out this repository and use the `docker-compose.yml` to bring the LIFE FHIR Store up. The minimal memory requirements are 4 GB. You also need to have port 8080 free on your host.
+You need Docker to run the LIFE FHIR Store. The most convenient way is to check out this repository and use the `docker-compose.yml` to bring the LIFE FHIR Store up. The default minimum memory requirements are 4 GB. You have to change the memory settings for the LIFE FHIR Store and Datomic if you have less memory available. You also need to have port 8080 free on your host.
 
 To start the LIFE FHIR Store, type:
 
@@ -79,6 +79,7 @@ The most convenient way is to use the [CQL Runner][2]. You have to go into the `
 As a test query you can use
 ```
 using FHIR version '4.0.0'
+context Patient
 context Population
 
 define NumberOfPatients:
