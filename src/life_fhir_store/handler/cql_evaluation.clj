@@ -18,7 +18,8 @@
     [life-fhir-store.middleware.json :refer [wrap-json]]
     [manifold.deferred :as md]
     [ring.util.response :as ring]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [taoensso.timbre :as log])
   (:import
     [java.time OffsetDateTime]))
 
@@ -37,7 +38,8 @@
     (str "[" l "]")
     "[?:?]"))
 
-(defn- bundle [structure-definitions {:keys [result type locator]}]
+(defn- bundle
+  [structure-definitions {:keys [result type locator] :as full-result}]
   (case (:type type)
     "ListTypeSpecifier"
     (let [[_ type-name] (elm-util/parse-qualified-name (:name (:elementType type)))
@@ -59,22 +61,23 @@
             :pretty true})
          :location (location locator)
          :resultType "Bundle"}
-        {:result (pr-str (into [] (take 2) result))
+        {:result (pr-str (into [] (comp (take 2) (map str)) result))
          :location (location locator)
          :resultType type-name}))
     "NamedTypeSpecifier"
     {:result result
      :location (location locator)
-     :resultType (second (elm-util/parse-qualified-name (:name type)))}))
+     :resultType (second (elm-util/parse-qualified-name (:name type)))}
+    (throw (ex-info (str "Unexpected type `" (:type type) "`.") full-result))))
 
 
 (defn- to-error [deferred]
-  (-> deferred
-      (md/chain'
-        (fn [result]
-          (if (::anom/category result)
-            (md/error-deferred result)
-            (md/success-deferred result))))))
+  (md/chain'
+    deferred
+    (fn [result]
+      (if (::anom/category result)
+        (md/error-deferred result)
+        (md/success-deferred result)))))
 
 
 (defn- handler-intern [conn cache structure-definitions]
@@ -97,6 +100,7 @@
                 results)))
           (md/catch'
             (fn [e]
+              (log/error e)
               (ring/response
                 [{:translation-error
                   (cond

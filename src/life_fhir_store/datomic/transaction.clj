@@ -5,8 +5,8 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [life-fhir-store.datomic.coding :as coding]
-    [life-fhir-store.datomic.time :as time]
-    [life-fhir-store.datomic.quantity :as quantity]
+    [life-fhir-store.datomic.quantity :refer [quantity]]
+    [life-fhir-store.datomic.value :as value]
     [life-fhir-store.spec]
     [life-fhir-store.structure-definition :as sd]
     [life-fhir-store.util :as util]
@@ -23,7 +23,7 @@
 
 
 (defn- coerce-date-time [^String value]
-  (time/write
+  (value/write
     (case (.length value)
       4
       (Year/parse value)
@@ -38,7 +38,7 @@
 
 
 (defn- coerce-date [^String value]
-  (time/write
+  (value/write
     (case (.length value)
       4
       (Year/parse value)
@@ -59,7 +59,7 @@
     "decimal" (double value)
     "dateTime" (coerce-date-time value)
     "date" (coerce-date value)
-    "time" (time/write (LocalTime/parse value))
+    "time" (value/write (LocalTime/parse value))
     nil))
 
 
@@ -77,6 +77,13 @@
   :args (s/cat :structure-definitions map?
                :old (s/nilable map?) :new (s/nilable map?))
   :ret ::ds/tx-data)
+
+
+(defn- to-decimal [value]
+  (if (int? value)
+    (BigDecimal/valueOf ^long value)
+    value))
+
 
 (defn update-tx-data
   "Takes a function returning Life structure definitions, the old version of a
@@ -130,8 +137,8 @@
 
                   (= "Quantity" (type-code element))
                   (let [add-quantity
-                        (fn [val]
-                          [[:db/add db-id typed-key (quantity/write val)]])]
+                        (fn [{:keys [value unit]}]
+                          [[:db/add db-id typed-key (value/write (quantity (to-decimal value) unit))]])]
                     (if (sd/cardinality-many? element)
                       (into [] (mapcat add-quantity) val)
                       (add-quantity val)))

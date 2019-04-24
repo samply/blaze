@@ -17,8 +17,7 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [life-fhir-store.datomic.cql :as cql]
-    [life-fhir-store.datomic.time :as time]
-    [life-fhir-store.datomic.quantity :as quantity]
+    [life-fhir-store.datomic.value :as dv]
     [life-fhir-store.elm.aggregates :as aggregates]
     [life-fhir-store.elm.boolean]
     [life-fhir-store.elm.data-provider :as data-provider]
@@ -160,14 +159,14 @@
         #::anom
             {:category ::anom/fault
              :message (.getMessage e)
-             :e e
+             :_/e e
              :elm/expression expression}))))
 
 
 (s/fdef compile-library
   :args (s/cat :library :elm/library :opts map?)
-  :ret (s/coll-of (s/or :result (s/coll-of :life/compiled-expression-def)
-                        :anomaly ::anom/anomaly)))
+  :ret (s/or :result (s/coll-of :life/compiled-expression-def)
+             :anomaly ::anom/anomaly))
 
 (defn compile-library
   "Returns a collection of compiled expression defs.
@@ -180,7 +179,15 @@
                     infer-library-deps
                     infer-library-types)
         context (assoc opts :library library)]
-    (mapv #(compile-expression-def context %) (-> library :statements :def))))
+    (transduce
+      (map #(compile-expression-def context %))
+      (completing
+        (fn [r compiled-expression-def]
+          (if (::anom/category compiled-expression-def)
+            (reduced compiled-expression-def)
+            (conj r compiled-expression-def))))
+      []
+      (-> library :statements :def))))
 
 
 (defmacro defunop
@@ -407,7 +414,7 @@
   [attr-kw source]
   (reify Expression
     (-eval [_ context scope]
-      (some-> (attr-kw (-eval source context scope)) time/read))
+      (dv/read (attr-kw (-eval source context scope))))
     (-hash [_]
       {:type :property
        :attr-kw attr-kw
@@ -421,7 +428,7 @@
   [attr-kw source]
   (reify Expression
     (-eval [_ context scope]
-      (some-> (attr-kw (-eval source context scope)) quantity/read))
+      (dv/read (attr-kw (-eval source context scope))))
     (-hash [_]
       {:type :property
        :attr-kw attr-kw
@@ -455,14 +462,14 @@
   ([attr-kw]
    (reify Expression
      (-eval [_ _ entity]
-       (some-> (attr-kw entity) time/read))
+       (dv/read (attr-kw entity)))
      (-hash [_]
        {:type :property
         :attr-kw attr-kw})))
   ([attr-kw scope]
    (reify Expression
      (-eval [_ _ query-context]
-       (some-> (attr-kw (get query-context scope)) time/read))
+       (dv/read (attr-kw (get query-context scope))))
      (-hash [_]
        {:type :property
         :attr-kw attr-kw
@@ -476,14 +483,14 @@
   ([attr-kw]
    (reify Expression
      (-eval [_ _ entity]
-       (some-> (attr-kw entity) quantity/read))
+       (dv/read (attr-kw entity)))
      (-hash [_]
        {:type :property
         :attr-kw attr-kw})))
   ([attr-kw scope]
    (reify Expression
      (-eval [_ _ query-context]
-       (some-> (attr-kw (get query-context scope)) quantity/read))
+       (dv/read (attr-kw (get query-context scope))))
      (-hash [_]
        {:type :property
         :attr-kw attr-kw
@@ -2691,5 +2698,5 @@
 ;; 23. Clinical Operators
 
 ;; 23.4. CalculateAgeAt
-(defbinopp calculate-age-at [operand-1 operand-2 precision]
-  (p/duration-between operand-1 operand-2 precision))
+(defbinopp calculate-age-at [birth-date date precision]
+  (p/duration-between birth-date date precision))

@@ -1,41 +1,38 @@
 (ns life-fhir-store.datomic.quantity
-  "FHIR Quantity serialization.
-
-  Use `read` and `write` functions."
+  (:require
+    [clojure.spec.alpha :as s])
   (:import
-    [clojure.lang PersistentArrayMap]
-    [java.nio ByteBuffer])
-  (:refer-clojure :exclude [read]))
+    [systems.uom.ucum.format UCUMFormat$Variant UCUMFormat]
+    [javax.measure.format UnitFormat]
+    [tec.uom.se.quantity Quantities]))
 
 
-(defprotocol Write
-  (write [this]))
+(def ^:private ^UnitFormat ucum-format
+  (UCUMFormat/getInstance UCUMFormat$Variant/CASE_SENSITIVE))
 
 
-(extend-protocol Write
-  PersistentArrayMap
-  (write [{:keys [value]}]
-    (write value))
-
-  Double
-  (write [this]
-    (-> (doto (ByteBuffer/allocate 9)
-          (.put (byte 0))
-          (.putDouble this))
-        (.array))))
+(defn- parse-unit* [s]
+  (try
+    (.parse ucum-format s)
+    (catch Throwable t
+      (throw (ex-info (str "Problem while parsing the unit `" s "`.")
+                      {:unit s :cause-msg (.getMessage t)})))))
 
 
-(defn read [bytes]
-  (let [bb (ByteBuffer/wrap bytes)]
-    (case (.get bb)
-      0
-      (.getDouble bb))))
+(let [mem (volatile! {})]
+  (defn- parse-unit [s]
+    (if-let [unit (get @mem s)]
+      unit
+      (let [unit (parse-unit* s)]
+        (vswap! mem assoc s unit)
+        unit))))
 
 
-(comment
-  (let [bytes (write 1.0)]
-    (criterium.core/quick-bench (read bytes)))
+(s/fdef quantity
+  :args (s/cat :value number? :unit string?))
 
-  (read (write 1.0))
-
-  )
+(defn quantity
+  "Creates a quantity with numerical value and string unit."
+  [value unit]
+  (->> (parse-unit unit)
+       (Quantities/getQuantity value)))

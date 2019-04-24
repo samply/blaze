@@ -1,6 +1,7 @@
 (ns life-fhir-store.middleware.json
   (:require
     [cheshire.core :as json]
+    [cheshire.parse :refer [*use-bigdecimals?*]]
     [cognitect.anomalies :as anom]
     [manifold.deferred :as md]
     [ring.util.response :as ring]))
@@ -8,7 +9,8 @@
 
 (defn- parse-json [body]
   (try
-    (json/parse-string (slurp body) keyword)
+    (binding [*use-bigdecimals?* true]
+      (json/parse-string (slurp body) keyword))
     (catch Exception e
       #::anom{:category ::anom/incorrect :message (.getMessage e)})))
 

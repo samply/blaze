@@ -97,6 +97,21 @@
     expression-defs))
 
 
+(defn- eval-contexts
+  "Returns a map of expression-def name to eval-context."
+  [expression-defs]
+  (reduce
+    (fn [types
+         {::anom/keys [category]
+          :keys [name]
+          eval-context :context}]
+      (if category
+        types
+        (assoc types name eval-context)))
+    {}
+    expression-defs))
+
+
 (defn- types
   "Returns a map of expression-def name to result-type."
   [expression-defs]
@@ -132,14 +147,16 @@
     expression-defs))
 
 
-(defn- assoc-types-and-locators [results types locators]
+(defn- assoc-types-and-locators [results eval-contexts types locators]
   (into
     {}
-    (map
+    (mapcat
       (fn [[name result]]
-        [name {:result result
-               :type (get types name)
-               :locator (get locators name)}]))
+        (when (= "Population" (get eval-contexts name))
+          (when-let [type (get types name)]
+            [[name {:result result
+                    :type type
+                    :locator (get locators name)}]]))))
     results))
 
 
@@ -158,6 +175,8 @@
         (md/chain'
           (apply md/zip' (map results keys))
           (fn [results]
-            (assoc-types-and-locators (zipmap keys results)
-                                      (types expression-defs)
-                                      (locators expression-defs))))))))
+            (assoc-types-and-locators
+              (zipmap keys results)
+              (eval-contexts expression-defs)
+              (types expression-defs)
+              (locators expression-defs))))))))

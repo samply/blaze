@@ -22,7 +22,6 @@
     [life-fhir-store.datomic.cql :as dcql]
     [life-fhir-store.datomic.schema :as schema]
     [life-fhir-store.datomic.search :as search]
-    [life-fhir-store.datomic.time :as dtime]
     [life-fhir-store.datomic.transaction :as tx]
     [life-fhir-store.elm.literals]
     [life-fhir-store.fhir-client :as client]
@@ -119,7 +118,6 @@
     (time (into {} (filter (fn [[name]] (str/starts-with? name "Anzahl")))
                 @(evaluator/evaluate db now expression-defs))))
 
-  (dtime/read (:Patient/birthDate (d/entity db [:Patient/id "1000"])))
   (d/pull db '[{:Observation/_subject [*]}] [:Patient/id "1000"])
 
   (.clear (CollectorRegistry/defaultRegistry))

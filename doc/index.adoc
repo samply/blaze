@@ -319,7 +319,7 @@ The following table gives an overview of the current state of implementation of 
 | 21.14. StdDev | ! | no path
 | 21.15. Variance | ! | no path
 
-1.27+<|22. Type Operators
+1.29+<|22. Type Operators
 | 22.1. As | ! | no strictness
 | 22.2. CanConvert | ✗ |
 | 22.3. CanConvertQuantity | ✗ |
@@ -353,7 +353,7 @@ The following table gives an overview of the current state of implementation of 
 1.11+<|23. Clinical Operators
 | 23.1. AnyInCodeSystem | ✗ |
 | 23.2. AnyInValueSet | ✗ |
-| 23.3. CalculateAge | ✗ |
+| 23.3. CalculateAge | ✓ |
 | 23.4. CalculateAgeAt | ✓ |
 | 23.5. Equal | ✓ |
 | 23.6. Equivalent | ✗ |
@@ -366,7 +366,7 @@ The following table gives an overview of the current state of implementation of 
 1.1+<|24. Errors and Messages
 | 24.1. Message | ✗ |
 
-| | 2+<| ✓ = 150, ! = 29, ✗ = 71, 66 % finished
+| | 2+<| ✓ = 151, ! = 29, ✗ = 70, 66 % finished
 |===
 
 == Implementation
@@ -381,3 +381,38 @@ http://www.cse.unsw.edu.au/~meyden/research/indef-review.ps
 === Decimal Arithmetic
 
 http://speleotrove.com/decimal/
+
+
+=== Data Types
+
+.Mapping of FHIR Primitive Types to Datomic Data Types
+[cols="1,1,1", options="header,footer"]
+|===
+| FHIR Type | Datomic Type | Byte Codes
+| boolean | boolean |
+| integer | long |
+| string | string |
+| decimal | bytes | 6, 7, 8, 9, 10
+| uri | string |
+| url | string |
+| canonical | string |
+| base64Binary | bytes |
+| instant | instant |
+| date | bytes | 0, 1, 2
+| dateTime | bytes | 0, 1, 2, 4, 5
+| time | bytes | 3
+| code | string |
+| oid | string |
+| id | string |
+| markdown | string |
+| unsignedInt | long |
+| positiveInt | long |
+| uuid | uuid |
+|===
+
+.Mapping of FHIR Complex Types to Datomic Data Types
+[cols="1,1,1,3", options="header,footer"]
+|===
+| FHIR Type | Datomic Type | Byte Codes | Comment
+| Quantity | bytes | 12 | only value followed by unit
+|===

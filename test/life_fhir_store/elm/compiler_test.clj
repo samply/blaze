@@ -5,18 +5,17 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
-    [clojure.test.check :as tc]
     [clojure.test.check.properties :as prop]
     [life-fhir-store.datomic.cql :as cql]
-    [life-fhir-store.datomic.time :as time]
-    [life-fhir-store.datomic.quantity :as quantity]
     [life-fhir-store.elm.compiler
      :refer [compile compile-with-equiv-clause -eval -hash]]
     [life-fhir-store.elm.date-time :refer [local-time local-time? period]]
     [life-fhir-store.elm.decimal :as decimal]
     [life-fhir-store.elm.interval :refer [interval]]
     [life-fhir-store.elm.literals :as elm]
-    [life-fhir-store.elm.quantity :refer [quantity]])
+    [life-fhir-store.elm.quantity :refer [quantity]]
+    [life-fhir-store.test-util :refer [satisfies-prop]]
+    [life-fhir-store.datomic.value :as dv])
   (:import
     [java.math BigDecimal]
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth
@@ -46,15 +45,6 @@
 
 
 (def now (OffsetDateTime/now (ZoneOffset/ofHours 0)))
-
-
-(defmacro satisfies-prop [num-tests prop]
-  `(let [result# (tc/quick-check ~num-tests ~prop)]
-     (if (instance? Throwable (:result result#))
-       (throw (:result result#))
-       (if (true? (:result result#))
-         (is :success)
-         (is (clojure.pprint/pprint result#))))))
 
 
 (defn- binary-operand [type]
@@ -4645,8 +4635,8 @@
         {:name "{http://hl7.org/fhir}Period",
          :type "NamedTypeSpecifier"}]}
       :life/source-type "{http://hl7.org/fhir}Observation"}}
-    {:Observation/valueQuantity (quantity/write 1.0)}
-    1.0
+    {:Observation/valueQuantity (dv/write (quantity 1.0M "m"))}
+    (quantity 1.0M "m")
 
     {:asType "{http://hl7.org/fhir}dateTime"
      :type "As"
@@ -4666,7 +4656,7 @@
         {:name "{http://hl7.org/fhir}instant",
          :type "NamedTypeSpecifier"}]}
       :life/source-type "{http://hl7.org/fhir}Observation"}}
-    {:Observation/effectiveDateTime (time/write (Year/of 2012))}
+    {:Observation/effectiveDateTime (dv/write (Year/of 2012))}
     (Year/of 2012)))
 
 
