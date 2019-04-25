@@ -1,17 +1,19 @@
 version: '3.2'
 services:
   db:
-    image: "akiel/datomic-free:0.9.5656"
+    image: "akiel/datomic-free:0.9.5703-1"
     environment:
-      ALT_HOST: db
+      ALT_HOST: "db"
       XMS: "-Xms1g"
       XMX: "-Xmx1g"
+      ADMIN_PASSWORD: "admin"
+      DATOMIC_PASSWORD: "datomic"
     volumes:
     - "db-data:/data"
   store:
     image: "liferesearch/life-fhir-store:latest"
     environment:
-      DATABASE_URI: "datomic:free://db:4334/dev"
+      DATABASE_URI: "datomic:free://db:4334/dev?password=datomic"
       STRUCTURE_DEFINITIONS_PATH: "/app/fhir/r4"
       JVM_OPTS: "-server -Xms2g -Xmx2g -XX:+UseG1GC"
     ports:
