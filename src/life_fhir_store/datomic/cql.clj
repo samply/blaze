@@ -84,13 +84,7 @@
     db code system))
 
 
-(s/fdef list-patient-resource-by-code
-  :args (s/cat :patient ::ds/entity
-               :data-type-name string?
-               :code-property-name string?
-               :codings (s/coll-of ::ds/entity-id)))
-
-(defn list-patient-resource-by-code
+(defn list-patient-resource-by-code*
   [patient data-type-name code-property-name codings]
   (let [db (d/entity-db patient)]
     (mapv
@@ -104,3 +98,31 @@
          ['?e (keyword data-type-name code-property-name) '?c]
          '[?c :CodeableConcept/coding ?coding]]
         db (:db/id patient) codings))))
+
+
+;; TODO: make cache controllable upstream
+(def list-patient-resource-by-code-cache
+  (atom (cache/lru-cache-factory {} :threshold 100000)))
+
+
+(s/fdef list-patient-resource-by-code
+  :args (s/cat :patient ::ds/entity
+               :data-type-name string?
+               :code-property-name string?
+               :codings (s/coll-of ::ds/entity-id)))
+
+(defn list-patient-resource-by-code
+  [patient data-type-name code-property-name codings]
+  (let [db (d/entity-db patient)
+        key [(d/basis-t db) (:Patient/id patient) data-type-name code-property-name codings]]
+    (get (swap! list-patient-resource-by-code-cache
+                cache/through-cache
+                key
+                (fn [_]
+                  (list-patient-resource-by-code* patient data-type-name code-property-name codings)))
+         key)))
+
+(comment
+  (first @list-patient-resource-by-code-cache)
+  (count @list-patient-resource-by-code-cache)
+  )

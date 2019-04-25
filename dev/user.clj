@@ -65,6 +65,7 @@
 ;; Reset after making changes
 (comment
   (reset)
+  (st/unstrument)
   )
 
 
