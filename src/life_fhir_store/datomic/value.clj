@@ -1,7 +1,7 @@
 (ns life-fhir-store.datomic.value
   "Read/write for possibly polymorphic values."
   (:require
-    [life-fhir-store.datomic.quantity :refer [quantity]])
+    [life-fhir-store.datomic.quantity :refer [quantity format-unit]])
   (:import
     [java.nio ByteBuffer]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
@@ -95,14 +95,10 @@
       (String. bytes utf-8))))
 
 
-(defmacro extend-byte-array [& specs]
-  `(extend-type ~(Class/forName "[B") ~@specs))
-
-
-(extend-byte-array
+(extend-type
+  (Class/forName "[B")
   Read
-  (read [bytes]
-        (read* (ByteBuffer/wrap bytes))))
+  (read [bytes] (read* (ByteBuffer/wrap bytes))))
 
 
 ;; Objects read itself back
@@ -212,7 +208,7 @@
   Quantity
   (write [q]
     (let [^bytes value-bytes (write (.getValue q))
-          ^bytes unit-bytes (write (str (.getUnit q)))]
+          ^bytes unit-bytes (write (format-unit (.getUnit q)))]
       (-> (doto (ByteBuffer/allocate (+ (Array/getLength value-bytes) (Array/getLength unit-bytes) 1))
             (.put quantity-code)
             (.put value-bytes)
@@ -271,7 +267,7 @@
 
   (criterium.core/bench (read bytes))
 
-  (str (.getUnit (quantity 1M "nm")))
+  (format-unit (.getUnit (quantity 1M "nm")))
 
   (read (write (Year/of 2012)))
   (read (write (YearMonth/of 2012 2)))

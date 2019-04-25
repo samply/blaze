@@ -47,5 +47,6 @@
 (deftest quantity-test
   (are [x] (= x (read (write x)))
     (quantity 1M "kg")
-    (quantity 1M "m")
-    (quantity 1.1M "pl")))
+    (quantity 170M "cm")
+    (quantity 1.1M "pl")
+    (quantity 25M "kg/m2")))

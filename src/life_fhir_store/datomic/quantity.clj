@@ -2,8 +2,9 @@
   (:require
     [clojure.spec.alpha :as s])
   (:import
-    [systems.uom.ucum.format UCUMFormat$Variant UCUMFormat]
+    [javax.measure Unit]
     [javax.measure.format UnitFormat]
+    [systems.uom.ucum.format UCUMFormat$Variant UCUMFormat]
     [tec.uom.se.quantity Quantities]))
 
 
@@ -36,3 +37,16 @@
   [value unit]
   (->> (parse-unit unit)
        (Quantities/getQuantity value)))
+
+
+(defn unit? [x]
+  (instance? Unit x))
+
+
+(s/fdef format-unit
+  :args (s/cat :unit unit?))
+
+(defn format-unit
+  "Formats the unit after UCUM so that it is parsable again."
+  [unit]
+  (.format ucum-format unit))
