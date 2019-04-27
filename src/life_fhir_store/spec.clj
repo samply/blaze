@@ -7,48 +7,80 @@
 
 ;; ---- FHIR Element Definition -----------------------------------------------
 
-(s/def :fhir.element-definition/path
+(s/def :ElementDefinition/path
   string?)
 
-(s/def :fhir.element-definition/max
+
+(s/def :ElementDefinition/max
   string?)
 
-(s/def :fhir.element-definition.type/code
+
+(s/def :ElementDefinition.type/code
   string?)
 
-(s/def :fhir.element-definition/type
+
+(s/def :ElementDefinition.type/_code
+  map?)
+
+
+(s/def :ElementDefinition/type
   (s/coll-of
-    (s/keys :req-un [:fhir.element-definition.type/code])))
+    (s/keys :req [:ElementDefinition.type/code])))
 
-(s/def :fhir/element-definition
-  (s/keys :req-un [:fhir.element-definition/path]
-          :opt-un [:fhir.element-definition/max
-                   :fhir.element-definition/type]))
+
+(s/def :ElementDefinition/isSummary
+  boolean?)
+
+
+(s/def :ElementDefinition.un/type
+  (s/coll-of
+    (s/keys :req-un [(or :ElementDefinition.type/code
+                         :ElementDefinition.type/_code)])))
+
+
+(s/def :fhir/ElementDefinition
+  (s/keys :req [:ElementDefinition/path]
+          :opt [:ElementDefinition/max
+                :ElementDefinition/type]))
+
+
+(s/def :fhir.un/ElementDefinition
+  (s/keys :req-un [:ElementDefinition/path]
+          :opt-un [:ElementDefinition/max
+                   :ElementDefinition.un/type]))
 
 
 
 ;; ---- FHIR Structure Definition ---------------------------------------------
 
-(s/def :fhir.structure-definition/id
+(s/def :StructureDefinition/name
   string?)
 
-(s/def :fhir.structure-definition/name
-  string?)
 
-(s/def :fhir.structure-definition/element
-  (s/coll-of :fhir/element-definition))
+(s/def :StructureDefinition.snapshot/element
+  (s/coll-of :fhir/ElementDefinition))
 
-(s/def :fhir.structure-definition/snapshot
-  (s/keys :req-un [:fhir.structure-definition/element]))
 
-(s/def :fhir.structure-definition/differential
-  (s/keys :req-un [:fhir.structure-definition/element]))
+(s/def :StructureDefinition.snapshot.un/element
+  (s/coll-of :fhir.un/ElementDefinition))
 
-(s/def :fhir/structure-definition
-  (s/keys :req-un [:fhir.structure-definition/id
-                   :fhir.structure-definition/name]
-          :opt-un [:fhir.structure-definition/snapshot
-                   :fhir.structure-definition/differential]))
+
+(s/def :StructureDefinition/snapshot
+  (s/keys :req [:StructureDefinition.snapshot/element]))
+
+
+(s/def :StructureDefinition.un/snapshot
+  (s/keys :req-un [:StructureDefinition.snapshot.un/element]))
+
+
+(s/def :fhir/StructureDefinition
+  (s/keys :req [:StructureDefinition/name]
+          :opt [:StructureDefinition/snapshot]))
+
+
+(s/def :fhir.un/StructureDefinition
+  (s/keys :req-un [:StructureDefinition/name]
+          :opt-un [:StructureDefinition.un/snapshot]))
 
 
 
@@ -143,6 +175,14 @@
                    :fhir.observation/subject
                    :fhir.observation/valueQuantity]))
 
-(comment
 
-  )
+(s/def :fhir/resourceType
+  string?)
+
+
+(s/def :fhir/id
+  string?)
+
+
+(s/def :fhir/resource
+  (s/keys :req-un [:fhir/resourceType :fhir/id]))

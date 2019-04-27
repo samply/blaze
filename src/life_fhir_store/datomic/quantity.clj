@@ -30,12 +30,12 @@
 
 
 (s/fdef quantity
-  :args (s/cat :value number? :unit string?))
+  :args (s/cat :value decimal? :unit (s/nilable string?)))
 
 (defn quantity
   "Creates a quantity with numerical value and string unit."
   [value unit]
-  (->> (parse-unit unit)
+  (->> (parse-unit (or unit ""))
        (Quantities/getQuantity value)))
 
 

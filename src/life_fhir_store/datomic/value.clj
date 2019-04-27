@@ -39,6 +39,9 @@
 (def ^:private ^:const ^byte nil-code (byte 11))
 (def ^:private ^:const ^byte quantity-code (byte 12))
 (def ^:private ^:const ^byte string-byte-len-code (byte 13))
+(def ^:private ^:const ^byte string-short-len-code (byte 14))
+(def ^:private ^:const ^byte string-int-len-code (byte 15))
+(def ^:private ^:const ^byte boolean-code (byte 16))
 
 (def ^:private ^Charset utf-8 (Charset/forName "utf8"))
 
@@ -92,7 +95,10 @@
     13
     (let [bytes (byte-array (.get bb))]
       (.get bb bytes)
-      (String. bytes utf-8))))
+      (String. bytes utf-8))
+
+    16
+    (if (= 1 (.get bb)) true false)))
 
 
 (extend-type
@@ -101,10 +107,12 @@
   (read [bytes] (read* (ByteBuffer/wrap bytes))))
 
 
-;; Objects read itself back
+;; Objects and nil read itself back
 (extend-protocol Read
   Object
-  (read [x] x))
+  (read [x] x)
+  nil
+  (read [_]))
 
 
 (extend-protocol Write
@@ -225,7 +233,14 @@
               (.put string-byte-len-code)
               (.put (byte length))
               (.put bytes))
-            (.array))))))
+            (.array)))))
+
+  Boolean
+  (write [b]
+    (-> (doto (ByteBuffer/allocate 2)
+          (.put (byte 16))
+          (.put (byte (if b 1 0))))
+        (.array))))
 
 
 (comment

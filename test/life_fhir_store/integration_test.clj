@@ -1,11 +1,14 @@
 (ns life-fhir-store.integration-test
   (:require
     [cheshire.core :as json]
+    [clojure.core.cache :as cache]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
+    [datomic-tools.schema :as dts]
+    [juxt.iota :refer [given]]
     [life-fhir-store.cql-translator :as cql]
-    [life-fhir-store.datomic.cql :refer [list-resource-by-code-cache]]
     [life-fhir-store.datomic.schema :as schema]
     [life-fhir-store.datomic.transaction :as tx]
     [life-fhir-store.elm.compiler :as compiler]
@@ -16,9 +19,7 @@
     [life-fhir-store.elm.spec]
     [life-fhir-store.elm.type-infer :refer [infer-library-types]]
     [life-fhir-store.elm.evaluator :as evaluator]
-    [life-fhir-store.structure-definition :refer [read-structure-definitions]]
-    [clojure.core.cache :as cache]
-    [juxt.iota :refer [given]])
+    [life-fhir-store.structure-definition :refer [read-structure-definitions]])
   (:import
     [java.time OffsetDateTime Year]))
 
@@ -26,38 +27,37 @@
 (st/instrument)
 
 
-(def structure-definitions (read-structure-definitions "fhir/r4"))
+(def structure-definitions (read-structure-definitions "fhir/r4/structure-definitions"))
 
 
 (defn- insert-tx-data
-  [structure-definitions {:keys [resourceType] :as resource}]
-  (assert resourceType)
-  (let [old {:db/id (d/tempid (keyword "life.part" resourceType))}]
-    (tx/update-tx-data structure-definitions old (dissoc resource :meta :text))))
+  [db resource]
+  (tx/resource-update db (dissoc resource "meta" "text")))
 
 
 (defn- connect []
-  (d/delete-database "datomic:mem://test")
-  (d/create-database "datomic:mem://test")
-  (reset! list-resource-by-code-cache (cache/lru-cache-factory {}))
-  (let [conn (d/connect "datomic:mem://test")]
-    @(d/transact conn (schema/all-schema (vals structure-definitions)))
+  (d/delete-database "datomic:mem://integration-test")
+  (d/create-database "datomic:mem://integration-test")
+  (let [conn (d/connect "datomic:mem://integration-test")]
+    @(d/transact conn (dts/schema))
+    @(d/transact conn (schema/structure-definition-schemas (vals structure-definitions)))
     conn))
 
 
 (defn- db-with [data]
-  (let [tx-data (into [] (mapcat #(insert-tx-data structure-definitions %)) data)]
-    (:db-after @(d/transact (connect) tx-data))))
+  (let [conn (connect)
+        tx-data (into [] (mapcat #(insert-tx-data (d/db conn) %)) data)]
+    (:db-after @(d/transact conn tx-data))))
 
 
 (defn- evaluate [db query]
   @(evaluator/evaluate db (OffsetDateTime/now)
-                       (compiler/compile-library (cql/translate query) {})))
+                       (compiler/compile-library db (cql/translate query) {})))
 
 
 (defn read-data [query-name]
   (-> (slurp (str "integration-test/" query-name "/data.json"))
-      (json/parse-string keyword)))
+      (json/parse-string)))
 
 (defn read-query [query-name]
   (slurp (str "integration-test/" query-name "/query.cql")))
@@ -84,6 +84,6 @@
     ["OneSecondPlusOneSecond" :result] := (date-time/period 0 0 2000)))
 
 (comment
-  (cql/translate (read-query "arithmetic"))
+  (s/valid? :elm/library (cql/translate (read-query "query-3")))
   (clojure.repl/pst)
   )

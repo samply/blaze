@@ -163,31 +163,40 @@
              :elm/expression expression}))))
 
 
+(s/def :life/compiled-expression-defs
+  (s/coll-of :life/compiled-expression-def))
+
+
+(s/def :life/compiled-library
+  (s/keys :req [:life/compiled-expression-defs]))
+
+
 (s/fdef compile-library
-  :args (s/cat :library :elm/library :opts map?)
-  :ret (s/or :result (s/coll-of :life/compiled-expression-def)
+  :args (s/cat :db ::ds/db :library :elm/library :opts map?)
+  :ret (s/or :result :life/compiled-library
              :anomaly ::anom/anomaly))
 
 (defn compile-library
-  "Returns a collection of compiled expression defs.
+  "Compiles `library` using `db` to retrieve codes.
 
   There are currently no options."
-  [library opts]
+  [db library opts]
   (let [library (-> library
                     normalize-library
                     find-equiv-rels-library
                     infer-library-deps
                     infer-library-types)
-        context (assoc opts :library library)]
-    (transduce
-      (map #(compile-expression-def context %))
-      (completing
-        (fn [r compiled-expression-def]
-          (if (::anom/category compiled-expression-def)
-            (reduced compiled-expression-def)
-            (conj r compiled-expression-def))))
-      []
-      (-> library :statements :def))))
+        context (assoc opts :db db :library library)]
+    {:life/compiled-expression-defs
+     (transduce
+       (map #(compile-expression-def context %))
+       (completing
+         (fn [r compiled-expression-def]
+           (if (::anom/category compiled-expression-def)
+             (reduced compiled-expression-def)
+             (conj r compiled-expression-def))))
+       []
+       (-> library :statements :def))}))
 
 
 (defmacro defunop
@@ -647,34 +656,26 @@
 ;; 3. Clinical Values
 
 ;; 3.3. CodeRef
-;;
-;; The CodeRef expression allows a previously defined code to be referenced
-;; within an expression.
-(defn- get-code-def
+(defn- find-code-def
   "Returns the code-def with `name` from `library` or nil if not found."
   {:arglists '([library name])}
   [{{code-defs :def} :codes} name]
   (some #(when (= name (:name %)) %) code-defs))
 
 (defmethod compile* :elm.compiler.type/code-ref
-  [{:keys [library] :as context} {:keys [name]}]
+  [{:keys [library db] :as context} {:keys [name] :as expression}]
   ;; TODO: look into other libraries (:libraryName)
-  (when-let [{code-system-ref :codeSystem code :id} (get-code-def library name)]
+  (when-let [{code-system-ref :codeSystem code :id :as code-def}
+             (find-code-def library name)]
     (if code-system-ref
-      (when-let [{system :id} (compile context (assoc code-system-ref :type "CodeSystemRef"))]
+      (when-let [{:keys [version] system :id} (compile context (assoc code-system-ref :type "CodeSystemRef"))]
         ;; TODO: version
-        (reify Expression
-          (-eval [_ {:keys [db]} _]
-            (cql/find-coding db system code))
-          (-hash [_]
-            {:type :code-ref
-             :system system
-             :code code})))
-      `(fn ~'[{:keys [db]}]
-         (d/q ~'[:find ?coding . :in $ ?code :where [?coding :Coding/code ?code]]
-              ~'_db ~code)))))
+        (cql/find-code db system code))
+      (throw (ex-info "Can't handle code-defs without code-system-ref."
+                      {:expression expression
+                       :code-def code-def})))))
 
-(defn- get-code-system-def
+(defn- find-code-system-def
   "Returns the code-system-def with `name` from `library` or nil if not found."
   {:arglists '([library name])}
   [{{code-system-defs :def} :codeSystems} name]
@@ -685,7 +686,7 @@
 (defmethod compile* :elm.compiler.type/code-system-ref
   [{:keys [library]} {:keys [name]}]
   ;; TODO: look into other libraries (:libraryName)
-  (get-code-system-def library name))
+  (find-code-system-def library name))
 
 
 ;; 3.9. Quantity

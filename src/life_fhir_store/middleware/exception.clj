@@ -9,6 +9,6 @@
     (try
       (handler request)
       (catch Throwable e
-        (log/error (.getMessage e) e)
+        (log/error (log/stacktrace e))
         (-> (ring/response {:error (.getMessage e)})
             (ring/status 500))))))

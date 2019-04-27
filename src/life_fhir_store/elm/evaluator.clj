@@ -73,7 +73,7 @@
 
 (defn- results
   "Creates a map from expression name to deferred result."
-  [db now expression-defs]
+  [db now compiled-library]
   (reduce
     (fn [deferred-intermediate-results
          {::anom/keys [category]
@@ -94,12 +94,12 @@
             (evaluate-expression
               name expression db now (vec deps) deferred-intermediate-results)))))
     {}
-    expression-defs))
+    (:life/compiled-expression-defs compiled-library)))
 
 
 (defn- eval-contexts
   "Returns a map of expression-def name to eval-context."
-  [expression-defs]
+  [compiled-library]
   (reduce
     (fn [types
          {::anom/keys [category]
@@ -109,12 +109,12 @@
         types
         (assoc types name eval-context)))
     {}
-    expression-defs))
+    (:life/compiled-expression-defs compiled-library)))
 
 
 (defn- types
   "Returns a map of expression-def name to result-type."
-  [expression-defs]
+  [compiled-library]
   (reduce
     (fn [types
          {::anom/keys [category]
@@ -130,12 +130,12 @@
           :else
           types)))
     {}
-    expression-defs))
+    (:life/compiled-expression-defs compiled-library)))
 
 
 (defn- locators
   "Returns a map of expression-def name to locator."
-  [expression-defs]
+  [compiled-library]
   (reduce
     (fn [locators
          {::anom/keys [category]
@@ -144,7 +144,7 @@
         locators
         (assoc locators name locator)))
     {}
-    expression-defs))
+    (:life/compiled-expression-defs compiled-library)))
 
 
 (defn- assoc-types-and-locators [results eval-contexts types locators]
@@ -162,13 +162,13 @@
 
 (s/fdef evaluate
   :args (s/cat :db ::ds/db :now #(instance? OffsetDateTime %)
-               :expression-defs (s/coll-of :life/compiled-expression-def))
+               :compiled-library :life/compiled-library)
   :ret md/deferred?)
 
 (defn evaluate
   "Returns an error-deferred with an anomaly on evaluation errors."
-  [db now expression-defs]
-  (let [results (results db now expression-defs)]
+  [db now compiled-library]
+  (let [results (results db now compiled-library)]
     (if (::anom/category results)
       (md/error-deferred results)
       (let [keys (vec (keys results))]
@@ -177,6 +177,6 @@
           (fn [results]
             (assoc-types-and-locators
               (zipmap keys results)
-              (eval-contexts expression-defs)
-              (types expression-defs)
-              (locators expression-defs))))))))
+              (eval-contexts compiled-library)
+              (types compiled-library)
+              (locators compiled-library))))))))

@@ -1,8 +1,6 @@
 (ns user
   (:require
-    [cheshire.core :as json]
     [clojure.repl :refer [pst]]
-    [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
@@ -19,17 +17,12 @@
     [life-fhir-store.elm.normalizer :as normalizer]
     [life-fhir-store.elm.type-infer :as type-infer]
     [life-fhir-store.datomic.pull]
-    [life-fhir-store.datomic.cql :as dcql]
+    [life-fhir-store.datomic.cql :as datomic-cql]
     [life-fhir-store.datomic.schema :as schema]
-    [life-fhir-store.datomic.search :as search]
-    [life-fhir-store.datomic.transaction :as tx]
     [life-fhir-store.elm.literals]
-    [life-fhir-store.fhir-client :as client]
     [life-fhir-store.spec]
     [life-fhir-store.structure-definition :refer [read-structure-definitions]]
     [life-fhir-store.system :as system]
-    [life-fhir-store.util :as util]
-    [manifold.stream :as stream]
     [prometheus.alpha :as prom]
     [spec-coerce.alpha :refer [coerce]])
   (:import
@@ -81,14 +74,22 @@
   (def conn (d/connect "datomic:mem://dev"))
 
 
-  @(d/transact conn (schema/all-schema (vals (read-structure-definitions "fhir/r4"))))
+  @(d/transact conn (dts/schema))
+  @(d/transact conn (schema/structure-definition-schemas (vals (read-structure-definitions "fhir/r4/read-structure-definitions"))))
 
+  (def conn (:database-conn system))
+  (def db (d/db conn))
 
   (count-resources (d/db conn) "Coding")
   (count-resources (d/db conn) "Organization")
   (count-resources (d/db conn) "Patient")
   (count-resources (d/db conn) "Specimen")
   (count-resources (d/db conn) "Observation")
+  (d/pull (d/db conn) '[*] 1262239348687945)
+  (d/entity (d/db conn) :BackboneElement)
+  (d/q '[:find (pull ?e [*]) :where [?e :code/id]] (d/db conn))
+
+  (d/pull (d/db conn) '[*] (d/t->tx 1197))
 
   )
 
@@ -108,9 +109,10 @@
       )
 
   (def expression-defs
-    (compiler/compile-library library {}))
+    (:life/compiled-expression-defs
+      (compiler/compile-library db library {})))
 
-  (time (into {} (filter (fn [[name]] (str/starts-with? name "Anzahl"))) @(evaluator/evaluate db now (compiler/compile-library library {}))))
+  (time (into {} (filter (fn [[name]] (str/starts-with? name "Anzahl"))) @(evaluator/evaluate db now (compiler/compile-library db library {}))))
 
   (compiler/-hash (:life/expression (nth expression-defs 3)))
   (pst)
@@ -123,7 +125,9 @@
 
   (.clear (CollectorRegistry/defaultRegistry))
   (.register (CollectorRegistry/defaultRegistry) compiler/evaluation-seconds)
+  (.register (CollectorRegistry/defaultRegistry) datomic-cql/call-seconds)
   (prom/clear! compiler/evaluation-seconds)
+  (prom/clear! datomic-cql/call-seconds)
   (println (:body (prom/dump-metrics)))
 
   )

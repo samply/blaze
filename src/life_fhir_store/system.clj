@@ -7,7 +7,9 @@
   (:require
     [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [datomic.api :as d]
+    [datomic-tools.schema :as dts]
     [integrant.core :as ig]
     [life-fhir-store.datomic.schema :as schema]
     [life-fhir-store.handler.app :as app-handler]
@@ -16,8 +18,7 @@
     [life-fhir-store.handler.health :as health-handler]
     [life-fhir-store.server :as server]
     [life-fhir-store.structure-definition :refer [read-structure-definitions]]
-    [taoensso.timbre :as log]
-    [clojure.string :as str]))
+    [taoensso.timbre :as log]))
 
 
 
@@ -52,12 +53,10 @@
 
    :cql-evaluation-handler
    {:database/conn (ig/ref :database-conn)
-    :cache (ig/ref :cache)
-    :structure-definitions (ig/ref :structure-definitions)}
+    :cache (ig/ref :cache)}
 
    :fhir-transaction-handler
-   {:database/conn (ig/ref :database-conn)
-    :structure-definitions (ig/ref :structure-definitions)}
+   {:database/conn (ig/ref :database-conn)}
 
    :app-handler
    {:handler/health (ig/ref :health-handler)
@@ -93,8 +92,8 @@
   (log/info "Connect with database:" uri)
 
   (let [conn (d/connect uri)
-        {:keys [tx-data]} @(d/transact conn (schema/all-schema (vals structure-definitions)))]
-    tx-data
+        _ @(d/transact conn (dts/schema))
+        {:keys [tx-data]} @(d/transact conn (schema/structure-definition-schemas (vals structure-definitions)))]
     (log/info "Upsert schema in database:" uri "creating" (count tx-data) "new facts")
     conn))
 
@@ -118,13 +117,13 @@
 
 
 (defmethod ig/init-key :cql-evaluation-handler
-  [_ {:database/keys [conn] :keys [cache structure-definitions]}]
-  (cql-evaluation-handler/handler conn cache structure-definitions))
+  [_ {:database/keys [conn] :keys [cache]}]
+  (cql-evaluation-handler/handler conn cache))
 
 
 (defmethod ig/init-key :fhir-transaction-handler
-  [_ {:database/keys [conn] :keys [structure-definitions]}]
-  (fhir-transaction-handler/handler conn structure-definitions))
+  [_ {:database/keys [conn]}]
+  (fhir-transaction-handler/handler conn))
 
 
 (defmethod ig/init-key :app-handler

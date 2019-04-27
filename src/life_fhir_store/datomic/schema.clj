@@ -1,20 +1,100 @@
 (ns life-fhir-store.datomic.schema
+  "Creates a Datomic schema based on FHIR structure definitions."
   (:require
     [clojure.spec.alpha :as s]
-    [datomic-tools.schema :as dts]
+    [clojure.string :as str]
+    [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [life-fhir-store.datomic.coding]
+    [datomic-tools.schema :refer [defattr defpart]]
+    [life-fhir-store.datomic.element-definition]
     [life-fhir-store.spec]
-    [life-fhir-store.structure-definition :as sd]))
+    [life-fhir-store.util :as u]))
 
 
-(defn- db-type
+(defattr :type/elements
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many
+  :db/isComponent true)
+
+
+(defattr :element/primitive?
+  :db/valueType :db.type/boolean
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :element/choice-type?
+  :db/valueType :db.type/boolean
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :element/part-of-choice-type?
+  :db/valueType :db.type/boolean
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :element/type-attr-ident
+  :db/valueType :db.type/keyword
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :element/type-choices
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many)
+
+
+(defattr :element/type
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :element/type-code
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :element/json-key
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :element/code-system-url
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one)
+
+
+(defpart :part/code)
+
+(defattr :code/id
+  "Concatenation of system, possibly version and code."
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/unique :db.unique/identity)
+
+
+(defattr :code/system
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :code/version
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :code/code
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one)
+
+
+(defn- fhir-type-code->db-type
   "http://hl7.org/fhir/datatypes.html"
   [code]
-  (case code
+  ;; TODO: the Extension StructureDefinition misses a value for `code`
+  (case (or code "string")
     "boolean" :db.type/boolean
     ("integer" "unsignedInt" "positiveInt") :db.type/long
-    ("string" "code" "id" "markdown" "uri" "url" "canonical" "oid" "xhtml") :db.type/string
+    "code" :db.type/ref
+    ("string" "id" "markdown" "uri" "url" "canonical" "oid" "xhtml") :db.type/string
     ("date" "dateTime" "time") :db.type/bytes
     "decimal" :db.type/double
     "base64Binary" :db.type/bytes
@@ -24,62 +104,190 @@
     :db.type/ref))
 
 
-(s/fdef attribute-definition
-  :args (s/cat :element :life/element-definition))
+(defn- remove-choice-suffix
+  "Removes `[x]` from the end of `path`."
+  [path]
+  (if (str/ends-with? path "[x]")
+    (subs path 0 (- (count path) 3))
+    path))
 
-(defn- attribute-definition
-  [{:life.element-definition/keys [key]
-    {type-code :life.element-definition.type/code}
-    :life.element-definition/type
-    :as element}]
-  (let [valueType (db-type type-code)]
+
+(s/fdef path->ident
+  :args (s/cat :path :ElementDefinition/path)
+  :ret keyword?)
+
+(defn path->ident [path]
+  (let [path (remove-choice-suffix path)
+        parts (str/split path #"\.")]
+    (keyword
+      (some->> (butlast parts) (str/join "."))
+      (last parts))))
+
+
+(defn- component? [type]
+  (if (= 1 (count type))
+    (let [code (-> type first :code)]
+      (and (= :db.type/ref (fhir-type-code->db-type code))
+           (not (#{"code" "Reference"} code))))
+    false))
+
+
+(defn- with-ns
+  "Adds `ns` to all non-namespaced keywords in `m`."
+  [ns m]
+  (into {} (map (fn [[k v]] (if (namespace k) [k v] [(keyword ns (name k)) v]))) m))
+
+
+(defn needs-partition?
+  "Returns true iff the element is a parent and needs to create a partition and
+  link it's childs."
+  [{:keys [type]}]
+  (or (nil? type) (= "BackboneElement" (-> type first :code))))
+
+
+;; TODO: the Extension StructureDefinition misses a value for `code`
+(defn primitive? [{:keys [code] :or {code "string"}}]
+  (or (Character/isLowerCase ^char (first code)) (= "Quantity" code)))
+
+
+(defn parent-path [path]
+  (some->> (butlast (str/split path #"\.")) (str/join ".")))
+
+
+(defn choice-paths [{:keys [path type]}]
+  (let [path (remove-choice-suffix path)
+        path (str/split path #"\.")
+        butlast (str/join "." (butlast path))
+        last (last path)]
+    (mapv
+      (fn [{:keys [code] :as type}]
+        (assoc type :path [butlast (str last (u/title-case code))]))
+      type)))
+
+
+(defn code-system-url [{:keys [path]}]
+  ;; TODO: HACK use a terminology service instead
+  (case path
+    "Patient.gender"
+    "http://hl7.org/fhir/administrative-gender"
+    "Address.use"
+    "http://hl7.org/fhir/address-use"
+    "Address.type"
+    "http://hl7.org/fhir/address-type"
+    "Age.comparator"
+    "http://hl7.org/fhir/quantity-comparator"
+    "Observation.status"
+    "http://hl7.org/fhir/observation-status"
+    nil))
+
+
+(s/fdef element-definition-tx-data
+  :args (s/cat :element-definition :fhir.un/ElementDefinition)
+  :ret ::ds/tx-data)
+
+(defn element-definition-tx-data
+  "Returns transaction data which can be used to upsert `element-definition`."
+  {:arglists '([element-definition])}
+  [{:keys [path type max isSummary] :as element}]
+  (let [parent-path (parent-path path)
+        ident (path->ident path)
+        choice-type? (str/ends-with? path "[x]")]
     (cond->
-      #:db{:ident key
-           :valueType valueType
-           :cardinality
-           (if (sd/cardinality-many? element)
-             :db.cardinality/many
-             :db.cardinality/one)
-           :isComponent
-           (and (= :db.type/ref valueType)
-                (not (#{"Coding" "Quantity" "Reference"} type-code)))}
-      (= "id" (name key))
-      (assoc :db/unique :db.unique/identity))))
+      [(cond->
+         (if type
+           (cond->
+             {:db/id path
+              :db/ident ident
+              :db/cardinality
+              (if (= "*" max)
+                :db.cardinality/many
+                :db.cardinality/one)
+              :element/choice-type? choice-type?
+              :ElementDefinition/path path}
+             (and (not choice-type?) (component? type))
+             (assoc :db/isComponent true)
+             (and (not choice-type?) (= "id" (-> type first :code)))
+             (assoc :db/unique :db.unique/identity)
+             (not choice-type?)
+             (assoc
+               :db/valueType (fhir-type-code->db-type (-> type first :code))
+               :element/primitive? (primitive? (first type))
+               ;; TODO: the Extension StructureDefinition misses a value for `code`
+               :element/type-code (or (-> type first :code) "string")
+               :element/json-key (last (str/split path #"\.")))
+             choice-type?
+             (assoc :db/valueType :db.type/ref)
+             (and (= "code" (-> type first :code)) (code-system-url element))
+             (assoc :element/code-system-url (code-system-url element)))
+           {:db/id path
+            :db/ident ident})
+         isSummary
+         (assoc :ElementDefinition/isSummary true))]
+      choice-type?
+      (into
+        (mapcat identity)
+        (for [{[ns name :as choice-path] :path :keys [code]} (choice-paths element)]
+          (cond->
+            [{:db/id (str/join "." choice-path)
+              :db/ident (keyword ns name)
+              :db/valueType (fhir-type-code->db-type code)
+              :db/cardinality
+              (if (= "*" max)
+                :db.cardinality/many
+                :db.cardinality/one)
+              :element/primitive? (primitive? {:code code})
+              :element/part-of-choice-type? true
+              :element/type-attr-ident ident
+              :element/type-code code
+              :element/json-key name}
+             [:db/add path :element/type-choices (str/join "." choice-path)]]
+            (and (not (primitive? {:code code}))
+                 (not (#{"Extension" "BackboneElement" "Bundle" "Element"}
+                        code)))
+            (conj [:db/add (str/join "." choice-path) :element/type code]))))
+      (needs-partition? element)
+      (conj
+        {:db/id (str "part." path)
+         :db/ident (keyword "part" path)}
+        [:db/add :db.part/db :db.install/partition (str "part." path)])
+      (and type (not choice-type?) (not (primitive? (first type)))
+           (not (#{"Extension" "BackboneElement" "Bundle" "Element"}
+                  (-> type first :code))))
+      (conj [:db/add path :element/type (-> type first :code)])
+      parent-path
+      (conj [:db/add parent-path :type/elements path])
+
+      ;; extra attribute consisting of a direct list of codes of the CodeableConcept
+      (and (not choice-type?) (= "CodeableConcept" (-> type first :code)))
+      (conj
+        {:db/ident (keyword (str (namespace ident) ".index") (name ident))
+         :db/valueType :db.type/ref
+         :db/cardinality :db.cardinality/many}))))
 
 
-(s/fdef schema
-  :args (s/cat :structure-definition :life/structure-definition))
+(s/fdef structure-definition-tx-data
+  :args (s/cat :structure-definition :fhir.un/StructureDefinition)
+  :ret ::ds/tx-data)
 
-(defn schema
-  "Converts a Life structure definition into a seq of Datomic attribute
-  definitions."
-  [{:life.structure-definition/keys [name elements]}]
-  (into
-    [{:db/id (str "partition." name)
-      :db/ident (keyword "life.part" name)}
-     [:db/add :db.part/db :db.install/partition (str "partition." name)]]
-    (map attribute-definition)
-    (vals elements)))
-
-
-(def ^:private remove-fixed
-  "Removes hard-coded structure definitions."
-  (remove #(#{"Coding"} (:life.structure-definition/id %))))
+(defn structure-definition-tx-data
+  "Returns transaction data which can be used to upsert `structure-definition`."
+  [{{elements :element} :snapshot}]
+  (into [] (mapcat element-definition-tx-data) elements))
 
 
 (def ^:private remove-unwanted
   "Removes currently not needed structure definitions."
-  (remove #(#{"Bundle" "Meta"} (:life.structure-definition/id %))))
+  (remove #(#{"Bundle"} (:id %))))
 
 
-(s/fdef all-schema
-  :args (s/cat :structure-definitions (s/coll-of :life/structure-definition))
+(s/fdef structure-definition-schemas
+  :args (s/cat :structure-definitions (s/coll-of :fhir.un/StructureDefinition))
   :ret ::ds/tx-data)
 
-(defn all-schema [structure-definitions]
+(defn structure-definition-schemas [structure-definitions]
   (into
-    (dts/schema)
-    (comp remove-fixed
-          remove-unwanted
-          (mapcat schema))
+    []
+    (comp
+      remove-unwanted
+      (mapcat structure-definition-tx-data))
     structure-definitions))
