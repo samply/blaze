@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/life-research/life-fhir-store.svg?branch=master)](https://travis-ci.org/life-research/life-fhir-store)
 [![Dependencies Status](https://versions.deps.co/life-research/life-fhir-store/status.svg)](https://versions.deps.co/life-research/life-fhir-store)
+[![Docker Pulls](https://img.shields.io/docker/pulls/liferesearch/life-fhir-store.svg)](https://hub.docker.com/r/liferesearch/life-fhir-store/)
+[![Image Layers](https://images.microbadger.com/badges/image/liferesearch/life-fhir-store.svg)](https://microbadger.com/images/liferesearch/life-fhir-store)
 
 A FHIR Store with internal, fast CQL Evaluation Engine
 
