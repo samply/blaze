@@ -1,4 +1,4 @@
-FROM clojure:lein-2.8.1 as build
+FROM clojure:lein-2.9.1 as build
 
 COPY . /build/
 

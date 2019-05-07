@@ -21,7 +21,7 @@
    [info.cqframework/cql-to-elm "1.3.15"]
    [integrant "0.7.0"]
    [javax.measure/unit-api "1.0"]
-   [org.clojars.akiel/datomic-spec "0.4"]
+   [org.clojars.akiel/datomic-spec "0.5"]
    [org.clojars.akiel/datomic-tools "0.4"]
    [org.clojars.akiel/env-tools "0.2.1"]
    [org.clojars.akiel/spec-coerce "0.3.1"]
@@ -35,7 +35,7 @@
     :exclusions [clj-time commons-codec commons-fileupload
                  commons-io crypto-equality crypto-random]]
    [systems.uom/systems-ucum-java8 "0.9"]
-   [systems.uom/systems-quantity "0.9"]]
+   [systems.uom/systems-quantity "1.0"]]
 
   :profiles
   {:dev
@@ -53,7 +53,7 @@
      [com.sun.xml.bind/jaxb-impl "2.3.2"]]}
    :kaocha
    {:dependencies
-    [[lambdaisland/kaocha "0.0-413"]]}
+    [[lambdaisland/kaocha "0.0-418"]]}
 
    :uberjar
    {:aot [life-fhir-store.core]}}
