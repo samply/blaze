@@ -59,6 +59,14 @@
   string?)
 
 
+(s/def :elm/id
+  string?)
+
+
+(s/def :elm/version
+  string?)
+
+
 (s/def :elm/path
   string?)
 
@@ -237,14 +245,34 @@
 
 ;; 3. Clinical Values
 
+(s/def :elm/code-system-ref
+  (s/keys :opt-un [:elm/name :elm/libraryName]))
+
+
+;; 3.2. CodeDef
+(s/def :elm.code-def/codeSystem
+  :elm/code-system-ref)
+
+
+(s/def :elm/code-def
+  (s/keys :req-un [:elm/name :elm/id]
+          :opt-un [:elm.code-def/codeSystem]))
+
+
 ;; 3.3. CodeRef
 (defmethod expression :elm.spec.type/code-ref [_]
   (s/keys :opt-un [:elm/name :elm/libraryName]))
 
 
+;; 3.4. CodeSystemDef
+(s/def :elm/code-system-def
+  (s/keys :req-un [:elm/name :elm/id]
+          :opt-un [:elm/version]))
+
+
 ;; 3.5. CodeSystemRef
 (defmethod expression :elm.spec.type/code-system-ref [_]
-  (s/keys :opt-un [:elm/name :elm/libraryName]))
+  :elm/code-system-ref)
 
 
 ;; 3.9. Quantity
@@ -370,6 +398,22 @@
 ;; 5. Libraries
 
 ;; 5.1. Library
+(s/def :elm.library.code-systems/def
+  (s/coll-of :elm/code-system-def))
+
+
+(s/def :elm.library/code-systems
+  (s/keys :req-un [:elm.library.code-systems/def]))
+
+
+(s/def :elm.library.codes/def
+  (s/coll-of :elm/code-def))
+
+
+(s/def :elm.library/codes
+  (s/keys :req-un [:elm.library.codes/def]))
+
+
 (s/def :elm.library.statements/def
   (s/coll-of :elm/expression-def))
 
@@ -379,7 +423,10 @@
 
 
 (s/def :elm/library
-  (s/keys :req-un [:elm/identifier :elm/schemaIdentifier :elm.library/statements]))
+  (s/keys :req-un [:elm/identifier :elm/schemaIdentifier]
+          :opt-un [:elm.library/code-systems
+                   :elm.library/codes
+                   :elm.library/statements]))
 
 
 

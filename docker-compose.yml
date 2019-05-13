@@ -14,7 +14,7 @@ services:
     image: "liferesearch/life-fhir-store:0.2"
     environment:
       DATABASE_URI: "datomic:free://db:4334/dev?password=datomic"
-      STRUCTURE_DEFINITIONS_PATH: "/app/fhir/r4"
+      STRUCTURE_DEFINITIONS_PATH: "/app/fhir/r4/structure-definitions"
       JVM_OPTS: "-server -Xms2g -Xmx2g -XX:+UseG1GC"
     ports:
     - "8080:8080"

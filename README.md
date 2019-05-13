@@ -35,13 +35,13 @@ Attaching to life-fhir-store_db_1, life-fhir-store_store_1
 db_1     | Launching with Java options -server -Xms1g -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=50
 db_1     | Starting datomic:free://0.0.0.0:4334/<DB-NAME>, storing data in: /data ...
 db_1     | System started datomic:free://0.0.0.0:4334/<DB-NAME>, storing data in: /data
-store_1  | 19-03-29 08:57:48 52816fd744d6 INFO [life-fhir-store.system:110] - Read structure definitions from: /app/fhir/r4 resulting in: Address, Annotation, Period, CodeableConcept, Organization, Encounter, Specimen, Bundle, Coding, Patient, Range, ContactPoint, Meta, Quantity, HumanName, DeviceMetric, SampledData, Ratio, Device, Reference, Identifier, Narrative, Observation
-store_1  | 19-03-29 09:13:09 bc25669b9f17 INFO [life-fhir-store.system:90] - Created database at: datomic:free://db:4334/dev
-store_1  | 19-03-29 09:13:09 bc25669b9f17 INFO [life-fhir-store.system:93] - Connect with database: datomic:free://db:4334/dev
-store_1  | 19-03-29 09:13:10 bc25669b9f17 INFO [life-fhir-store.system:98] - Upsert schema in database: datomic:free://db:4334/dev creating 2300 new facts
-store_1  | 19-03-29 09:13:10 bc25669b9f17 INFO [life-fhir-store.server:33] - Start server on port 8080
-store_1  | 19-03-29 09:13:10 bc25669b9f17 INFO [life-fhir-store.core:49] - Maximum available memory: 2048
-store_1  | 19-03-29 09:13:10 bc25669b9f17 INFO [life-fhir-store.core:50] - Number of available processors: 4
+store_1  | 19-05-13 08:51:03 1ad81424eddb INFO [life-fhir-store.system:109] - Read structure definitions from: /app/fhir/r4/structure-definitions resulting in: Address, UsageContext, Annotation, Age, Attachment, Period, ContactDetail, DataRequirement, CodeableConcept, Organization, Encounter, CodeSystem, TriggerDefinition, Count, Specimen, Bundle, Expression, Coding, Dosage, Patient, Range, ContactPoint, Signature, RelatedArtifact, Timing, Meta, Quantity, Distance, HumanName, DeviceMetric, Duration, Money, SampledData, Ratio, Resource, Condition, Extension, ParameterDefinition, ServiceRequest, Device, Reference, Identifier, Narrative, Observation, Contributor
+store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [life-fhir-store.system:89] - Created database at: datomic:free://db:4334/dev?password=datomic
+store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [life-fhir-store.system:92] - Connect with database: datomic:free://db:4334/dev?password=datomic
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [life-fhir-store.system:97] - Upsert schema in database: datomic:free://db:4334/dev?password=datomic creating 10194 new facts
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [life-fhir-store.server:33] - Start server on port 8080
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [life-fhir-store.core:49] - Maximum available memory: 2048
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [life-fhir-store.core:50] - Number of available processors: 4
 ```
 
 In order to test connectivity, you can query the health endpoint:

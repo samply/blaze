@@ -10,7 +10,7 @@
 (defn- parse-json [body]
   (try
     (binding [*use-bigdecimals?* true]
-      (json/parse-string (slurp body) keyword))
+      (json/parse-string (slurp body)))
     (catch Exception e
       #::anom{:category ::anom/incorrect :message (.getMessage e)})))
 

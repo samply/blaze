@@ -134,18 +134,22 @@
 ;; 3. Clinical Values
 
 ;; 3.3. CodeRef
+;;
+;; The CodeRef expression allows a previously defined code to be referenced
+;; within an expression.
 (deftest compile-code-ref-test
   (st/instrument
-    `cql/find-coding
+    `cql/find-code
     {:spec
-     {`cql/find-coding
+     {`cql/find-code
       (s/fspec
         :args (s/cat :db #{::db} :system #{"life"} :code #{"0"})
-        :ret #{::coding})}
-     :stub #{`cql/find-coding}})
+        :ret #{::code})}
+     :stub #{`cql/find-code}})
 
   (let [context
-        {:library
+        {:db ::db
+         :library
          {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
           :codes
           {:def
@@ -153,9 +157,9 @@
              :id "0"
              :accessLevel "Public"
              :codeSystem {:name "life"}}]}}}]
-    (are [elm result] (= result (-eval (compile context elm) {:db ::db} nil))
-      {:name "lens_0" :type "CodeRef"}
-      ::coding)))
+    (are [name result] (= result (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil))
+      "lens_0"
+      ::code)))
 
 
 ;; 3.9. Quantity
@@ -362,13 +366,13 @@
 ;; 11.1. Retrieve
 (deftest compile-retrieve-test
   (st/instrument
-    `cql/find-coding
+    `cql/find-code
     {:spec
-     {`cql/find-coding
+     {`cql/find-code
       (s/fspec
         :args (s/cat :db #{::db} :system #{"life"} :code #{"0"})
-        :ret #{::coding})}
-     :stub #{`cql/find-coding}})
+        :ret #{::code})}
+     :stub #{`cql/find-code}})
 
   (st/instrument
     `cql/list-resource
@@ -380,7 +384,8 @@
      :stub #{`cql/list-resource}})
 
   (let [context
-        {:library
+        {:db ::db
+         :library
          {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
           :codes
           {:def
@@ -414,7 +419,7 @@
               :args (s/cat :patient #{::patient}
                            :data-type-name #{"Observation"}
                            :code-property-name #{"code"}
-                           :codings #{[::coding]})
+                           :code #{[::code]})
               :ret #{[::observation]})}
            :stub #{`cql/list-patient-resource-by-code}})
 
@@ -455,7 +460,7 @@
               :args (s/cat :db #{::db}
                            :data-type-name #{"Observation"}
                            :code-property-name #{"code"}
-                           :codings #{[::coding]})
+                           :codes #{[::code]})
               :ret #{[::observation]})}
            :stub #{`cql/list-resource-by-code}})
 

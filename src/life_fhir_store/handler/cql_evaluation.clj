@@ -5,6 +5,7 @@
   (:require
     [cheshire.core :as json]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
@@ -18,52 +19,42 @@
     [life-fhir-store.middleware.json :refer [wrap-json]]
     [manifold.deferred :as md]
     [ring.util.response :as ring]
-    [clojure.string :as str]
     [taoensso.timbre :as log])
   (:import
     [java.time OffsetDateTime]))
 
 
-(s/fdef pull-pattern
-  :args (s/cat :structure-definitions (s/map-of string? :life/structure-definition)
-               :type-name string?))
-
-(defn- pull-pattern [structure-definitions type-name]
-  (when-let [structure-definition (structure-definitions type-name)]
-    (pull/pull-pattern structure-definitions structure-definition)))
-
-
-(defn location [locator]
+(defn- location [locator]
   (if-let [l (first (str/split locator #"-"))]
     (str "[" l "]")
     "[?:?]"))
 
-(defn- bundle
-  [structure-definitions {:keys [result type locator] :as full-result}]
+
+(defn- primitive? [type-name]
+  (or (Character/isLowerCase ^char (first type-name)) (= "Quantity" type-name)))
+
+
+(defn- bundle [{:keys [result type locator] :as full-result}]
   (case (:type type)
     "ListTypeSpecifier"
-    (let [[_ type-name] (elm-util/parse-qualified-name (:name (:elementType type)))
-          pattern (pull-pattern structure-definitions type-name)]
-      (if pattern
+    (let [[_ type-name] (elm-util/parse-qualified-name (:name (:elementType type)))]
+      (if (primitive? type-name)
+        {:result (pr-str (into [] (comp (take 2) (map str)) result))
+         :location (location locator)
+         :resultType type-name}
         {:result
          (json/generate-string
            (into
              []
              (comp
                (take 2)
-               (map
-                 (fn [entity]
-                   (let [db (d/entity-db entity)]
-                     (d/pull db pattern (:db/id entity)))))
+               (map #(pull/pull-summary type-name %))
                (map #(assoc % :resourceType type-name)))
              result)
            {:key-fn name
             :pretty true})
          :location (location locator)
-         :resultType "Bundle"}
-        {:result (pr-str (into [] (comp (take 2) (map str)) result))
-         :location (location locator)
-         :resultType type-name}))
+         :resultType "Bundle"}))
     "NamedTypeSpecifier"
     {:result result
      :location (location locator)
@@ -80,39 +71,40 @@
         (md/success-deferred result)))))
 
 
-(defn- handler-intern [conn cache structure-definitions]
+(defn- handler-intern [conn cache]
   (fn [{:keys [body]}]
-    (if-let [code (:code body)]
-      (-> (md/let-flow'
-            [elm (to-error (md/future (cql/translate code :locators? true)))
-             expression-defs (to-error (md/future (compiler/compile-library elm {})))
-             results (evaluator/evaluate (d/db conn) (OffsetDateTime/now) expression-defs)]
-            (ring/response
-              (mapcat
-                (fn [[name result]]
-                  (if (instance? Exception result)
-                    [{:name name
-                      :error (.getMessage ^Exception result)
-                      :location "[?:?]"}]
-                    (if-let [bundle (bundle structure-definitions result)]
-                      [(assoc bundle :name name)]
-                      [])))
-                results)))
-          (md/catch'
-            (fn [e]
-              (log/error e)
+    (if-let [code (get body "code")]
+      (let [db (d/db conn)]
+        (-> (md/let-flow'
+              [elm (to-error (md/future (cql/translate code :locators? true)))
+               compiled-library (to-error (md/future (compiler/compile-library db elm {})))
+               results (evaluator/evaluate db (OffsetDateTime/now) compiled-library)]
               (ring/response
-                [{:translation-error
-                  (cond
-                    (::anom/category e)
-                    (or (::anom/message e)
-                        (name (::anom/category e)))
+                (mapcat
+                  (fn [[name result]]
+                    (if (instance? Exception result)
+                      [{:name name
+                        :error (.getMessage ^Exception result)
+                        :location "[?:?]"}]
+                      (if-let [bundle (bundle result)]
+                        [(assoc bundle :name name)]
+                        [])))
+                  results)))
+            (md/catch'
+              (fn [e]
+                (log/error e)
+                (ring/response
+                  [{:translation-error
+                    (cond
+                      (::anom/category e)
+                      (or (::anom/message e)
+                          (name (::anom/category e)))
 
-                    (instance? Exception e)
-                    (.getMessage ^Exception e)
+                      (instance? Exception e)
+                      (.getMessage ^Exception e)
 
-                    :else
-                    "Unknown error")}]))))
+                      :else
+                      "Unknown error")}])))))
       (ring/response [{:translation-error "Missing CQL code"}]))))
 
 
@@ -120,14 +112,14 @@
 
 
 (s/fdef handler
-  :args (s/cat :conn ::ds/conn :cache some? :structure-definitions map?)
+  :args (s/cat :conn ::ds/conn :cache some?)
   :ret :handler/cql-evaluation)
 
 (defn handler
   "Takes a Datomic `conn` and aa `cache` atom and returns a CQL evaluation
   Ring handler."
-  [conn cache structure-definitions]
-  (-> (handler-intern conn cache structure-definitions)
+  [conn cache]
+  (-> (handler-intern conn cache)
       (wrap-exception)
       (wrap-json)
       (wrap-cors)))

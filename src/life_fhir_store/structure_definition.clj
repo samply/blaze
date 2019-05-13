@@ -26,7 +26,7 @@
 
 
 (s/fdef path->key
-  :args (s/cat :path :fhir.element-definition/path)
+  :args (s/cat :path :ElementDefinition/path)
   :ret :life.element-definition/key)
 
 (defn- path->key [path]
@@ -35,6 +35,11 @@
       (some->> (butlast parts) (str/join "."))
       (last parts))))
 
+
+(comment
+  (path->key "Patient.deceased[x]")
+  (path->key "Patient.contact.name")
+  )
 
 (defn element-definition
   [{:keys [path max isSummary] [{type-code :code}] :type}]
@@ -48,7 +53,7 @@
 
 
 (s/fdef structure-definition
-  :args (s/cat :structure-definition :fhir/structure-definition)
+  :args (s/cat :structure-definition :fhir.un/StructureDefinition)
   :ret :life/structure-definition)
 
 (defn structure-definition
@@ -79,23 +84,22 @@
 
 
 (s/fdef cardinality-many?
-  :args (s/cat :element :life/element-definition)
+  :args (s/cat :element :fhir.un/ElementDefinition)
   :ret boolean?)
 
 (defn cardinality-many?
-  [{:life.element-definition/keys [max]}]
+  [{:keys [max]}]
   (or (= :* max) (< 1 max)))
 
 
 (defn- read-structure-definition [file]
-  (structure-definition (json/parse-string (slurp file) keyword)))
+  (json/parse-string (slurp file) keyword))
 
 
-(defn read-structure-definitions [path]
+(defn read-structure-definitions [dir]
   (reduce
-    (fn [ret file]
-      (let [{:life.structure-definition/keys [id] :as def}
-            (read-structure-definition file)]
-        (assoc ret id def)))
+    (fn [defs file]
+      (let [{:keys [id] :as def} (read-structure-definition file)]
+        (assoc defs id def)))
     {}
-    (rest (file-seq (io/file path)))))
+    (rest (file-seq (io/file dir)))))
