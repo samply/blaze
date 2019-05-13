@@ -1,6 +1,6 @@
-(defproject life-fhir-store "0.3-SNAPSHOT"
+(defproject blaze "0.3-SNAPSHOT"
   :description "A FHIR Store with internal, fast CQL Evaluation Engine"
-  :url "https://github.com/life-research/life-fhir-store"
+  :url "https://github.com/life-research/blaze"
 
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
@@ -56,8 +56,8 @@
     [[lambdaisland/kaocha "0.0-418"]]}
 
    :uberjar
-   {:aot [life-fhir-store.core]}}
+   {:aot [blaze.core]}}
 
-  :main ^:skip-aot life-fhir-store.core
+  :main ^:skip-aot blaze.core
 
   :aliases {"kaocha" ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"]})

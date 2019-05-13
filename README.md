@@ -1,15 +1,15 @@
-# LIFE FHIR Store
+# Blaze
 
-[![Build Status](https://travis-ci.org/life-research/life-fhir-store.svg?branch=master)](https://travis-ci.org/life-research/life-fhir-store)
-[![Dependencies Status](https://versions.deps.co/life-research/life-fhir-store/status.svg)](https://versions.deps.co/life-research/life-fhir-store)
-[![Docker Pulls](https://img.shields.io/docker/pulls/liferesearch/life-fhir-store.svg)](https://hub.docker.com/r/liferesearch/life-fhir-store/)
-[![Image Layers](https://images.microbadger.com/badges/image/liferesearch/life-fhir-store.svg)](https://microbadger.com/images/liferesearch/life-fhir-store)
+[![Build Status](https://travis-ci.org/life-research/blaze.svg?branch=master)](https://travis-ci.org/life-research/blaze)
+[![Dependencies Status](https://versions.deps.co/life-research/blaze/status.svg)](https://versions.deps.co/life-research/blaze)
+[![Docker Pulls](https://img.shields.io/docker/pulls/liferesearch/blaze.svg)](https://hub.docker.com/r/liferesearch/blaze/)
+[![Image Layers](https://images.microbadger.com/badges/image/liferesearch/blaze.svg)](https://microbadger.com/images/liferesearch/blaze)
 
-A FHIR Store with internal, fast CQL Evaluation Engine
+A FHIR® Store with internal, fast CQL Evaluation Engine
 
 ## Goal
 
-The goal of this project is to provide a FHIR Store with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries.
+The goal of this project is to provide a FHIR® Store with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries.
 
 ## State
 
@@ -17,9 +17,9 @@ The project is currently under active development. Essentially all official [CQL
 
 ## Usage
 
-You need Docker to run the LIFE FHIR Store. The most convenient way is to check out this repository and use the `docker-compose.yml` to bring the LIFE FHIR Store up. The default minimum memory requirements are 4 GB. You have to change the memory settings for the LIFE FHIR Store and Datomic if you have less memory available. You also need to have port 8080 free on your host.
+You need Docker to run Blaze. The most convenient way is to check out this repository and use the `docker-compose.yml` to bring Blaze up. The default minimum memory requirements are 4 GB. You have to change the memory settings for Blaze and Datomic if you have less memory available. You also need to have port 8080 free on your host.
 
-To start the LIFE FHIR Store, type:
+To start Blaze, type:
 
 ```bash
 docker-compose up
@@ -28,20 +28,20 @@ docker-compose up
 You should see a output similar to:
 
 ```
-Creating volume "life-fhir-store_db-data" with default driver
-Recreating life-fhir-store_db_1 ... done
-Recreating life-fhir-store_store_1 ... done
-Attaching to life-fhir-store_db_1, life-fhir-store_store_1
+Creating volume "blaze_db-data" with default driver
+Recreating blaze_db_1 ... done
+Recreating blaze_store_1 ... done
+Attaching to blaze_db_1, blaze_store_1
 db_1     | Launching with Java options -server -Xms1g -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=50
 db_1     | Starting datomic:free://0.0.0.0:4334/<DB-NAME>, storing data in: /data ...
 db_1     | System started datomic:free://0.0.0.0:4334/<DB-NAME>, storing data in: /data
-store_1  | 19-05-13 08:51:03 1ad81424eddb INFO [life-fhir-store.system:109] - Read structure definitions from: /app/fhir/r4/structure-definitions resulting in: Address, UsageContext, Annotation, Age, Attachment, Period, ContactDetail, DataRequirement, CodeableConcept, Organization, Encounter, CodeSystem, TriggerDefinition, Count, Specimen, Bundle, Expression, Coding, Dosage, Patient, Range, ContactPoint, Signature, RelatedArtifact, Timing, Meta, Quantity, Distance, HumanName, DeviceMetric, Duration, Money, SampledData, Ratio, Resource, Condition, Extension, ParameterDefinition, ServiceRequest, Device, Reference, Identifier, Narrative, Observation, Contributor
-store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [life-fhir-store.system:89] - Created database at: datomic:free://db:4334/dev?password=datomic
-store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [life-fhir-store.system:92] - Connect with database: datomic:free://db:4334/dev?password=datomic
-store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [life-fhir-store.system:97] - Upsert schema in database: datomic:free://db:4334/dev?password=datomic creating 10194 new facts
-store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [life-fhir-store.server:33] - Start server on port 8080
-store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [life-fhir-store.core:49] - Maximum available memory: 2048
-store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [life-fhir-store.core:50] - Number of available processors: 4
+store_1  | 19-05-13 08:51:03 1ad81424eddb INFO [blaze.system:109] - Read structure definitions from: /app/fhir/r4/structure-definitions resulting in: Address, UsageContext, Annotation, Age, Attachment, Period, ContactDetail, DataRequirement, CodeableConcept, Organization, Encounter, CodeSystem, TriggerDefinition, Count, Specimen, Bundle, Expression, Coding, Dosage, Patient, Range, ContactPoint, Signature, RelatedArtifact, Timing, Meta, Quantity, Distance, HumanName, DeviceMetric, Duration, Money, SampledData, Ratio, Resource, Condition, Extension, ParameterDefinition, ServiceRequest, Device, Reference, Identifier, Narrative, Observation, Contributor
+store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [blaze.system:89] - Created database at: datomic:free://db:4334/dev?password=datomic
+store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [blaze.system:92] - Connect with database: datomic:free://db:4334/dev?password=datomic
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.system:97] - Upsert schema in database: datomic:free://db:4334/dev?password=datomic creating 10194 new facts
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.server:33] - Start server on port 8080
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.core:49] - Maximum available memory: 2048
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.core:50] - Number of available processors: 4
 ```
 
 In order to test connectivity, you can query the health endpoint:
@@ -54,13 +54,13 @@ It should return `OK`.
 
 ### Upload FHIR Resources
 
-Before you can issue CQL queries against the LIFE FHIR Store, you have to upload some FHIR resources. If you have none, you can generate them by using the [FHIR Test Data Generator][1].
+Before you can issue CQL queries against Blaze, you have to upload some FHIR resources. If you have none, you can generate them by using the [FHIR Test Data Generator][1].
 
 ```bash
 life-fhir-gen -n1 > bundle.json
 ```
 
-Next you need to upload that `bundle.json` to the LIFE FHIR Store:
+Next you need to upload that `bundle.json` to Blaze:
 
 ```bash
 curl -d @bundle.json http://localhost:8080/fhir
@@ -72,11 +72,11 @@ The result should be:
 {"message":"OK","t":<some number>}
 ```
 
-If you like to upload your own resources, it's important, that the LIFE FHIR Store is currently configured to use a subset of FHIR R4. The available Resources can be seen at startup in the `Read structure definitions` output.
+If you like to upload your own resources, it's important, that Blaze is currently configured to use a subset of FHIR R4. The available Resources can be seen at startup in the `Read structure definitions` output.
 
 ### Issuing a CQL Query
 
-The most convenient way is to use the [CQL Runner][2]. You have to go into the `Config` menu and set the `CQL Engine` to `http://localhost:8080/cql/evaluate`. The other config options doesn't matter because the CQL Engine of the LIFE FHIR Store always uses its own internal data.
+The most convenient way is to use the [CQL Runner][2]. You have to go into the `Config` menu and set the `CQL Engine` to `http://localhost:8080/cql/evaluate`. The other config options doesn't matter because the CQL Engine of Blaze always uses its own internal data.
 
 As a test query you can use
 ```
@@ -112,7 +112,7 @@ The result should be something like
 If you like to restart with a fresh database, you have to delete the data volume. You can do this by typing:
 
 ```bash
-docker volume rm life-fhir-store_db-data
+docker volume rm blaze_db-data
 ```
 
 ## License
