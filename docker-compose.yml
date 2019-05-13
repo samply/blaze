@@ -11,7 +11,7 @@ services:
     volumes:
     - "db-data:/data"
   store:
-    image: "5f68268d0b96"
+    image: "liferesearch/blaze:0.3"
     environment:
       DATABASE_URI: "datomic:free://db:4334/dev?password=datomic"
       STRUCTURE_DEFINITIONS_PATH: "/app/fhir/r4/structure-definitions"
