@@ -41,6 +41,8 @@ store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.core:50] - Number of avail
 
 === Manual
 
+The installation should work under Windows, Linux and MacOS. Both Datomic and Blaze need a current Java 8 JDK. Other Versions of Java aren't currently tested.
+
 ==== Install Datomic
 
 Blaze needs a https://www.datomic.com[Datomic] database to store FHIR® resources. Different editions of Datomic are available. Four our use case, the Free Edition is sufficient.
@@ -61,7 +63,7 @@ Starting datomic:free://localhost:4334/<DB-NAME>, storing data in: data ...
 System started datomic:free://localhost:4334/<DB-NAME>, storing data in: data
 ```
 
-You can change the data dir in the properties file if you don't like to have it at the current location.
+You can change the data dir in the properties file if you like to have it at a different location.
 
 === Install Blaze
 
