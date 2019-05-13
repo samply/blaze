@@ -1,10 +1,91 @@
-= LIFE FHIR Store
+= Blaze
 Alexander Kiel <akiel@life.uni-leipzig.de>
 :toc: left
 
 == Goal
 
-The goal of this project is to provide a FHIR Store with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries.
+The goal of this project is to provide a FHIR® Store with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries.
+
+== Installation
+
+You can use one of our sample https://docs.docker.com/compose/[Docker Compose] files to bring up Blaze or install it manually.
+
+=== Docker
+
+The most convenient way is to check out this repository and use the `docker-compose.yml` to bring Blaze up. The default minimum memory requirements are 4 GB. You have to change the memory settings for Blaze and Datomic if you have less memory available. You also need to have port 8080 free on your host.
+
+To start Blaze, type:
+
+```bash
+docker-compose up
+```
+
+You should see a output similar to:
+
+```
+Creating volume "blaze_db-data" with default driver
+Recreating blaze_db_1 ... done
+Recreating blaze_store_1 ... done
+Attaching to blaze_db_1, blaze_store_1
+db_1     | Launching with Java options -server -Xms1g -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=50
+db_1     | Starting datomic:free://0.0.0.0:4334/<DB-NAME>, storing data in: /data ...
+db_1     | System started datomic:free://0.0.0.0:4334/<DB-NAME>, storing data in: /data
+store_1  | 19-05-13 08:51:03 1ad81424eddb INFO [blaze.system:109] - Read structure definitions from: /app/fhir/r4/structure-definitions resulting in: Address, UsageContext, Annotation, Age, Attachment, Period, ContactDetail, DataRequirement, CodeableConcept, Organization, Encounter, CodeSystem, TriggerDefinition, Count, Specimen, Bundle, Expression, Coding, Dosage, Patient, Range, ContactPoint, Signature, RelatedArtifact, Timing, Meta, Quantity, Distance, HumanName, DeviceMetric, Duration, Money, SampledData, Ratio, Resource, Condition, Extension, ParameterDefinition, ServiceRequest, Device, Reference, Identifier, Narrative, Observation, Contributor
+store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [blaze.system:89] - Created database at: datomic:free://db:4334/dev?password=datomic
+store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [blaze.system:92] - Connect with database: datomic:free://db:4334/dev?password=datomic
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.system:97] - Upsert schema in database: datomic:free://db:4334/dev?password=datomic creating 10194 new facts
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.server:33] - Start server on port 8080
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.core:49] - Maximum available memory: 2048
+store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.core:50] - Number of available processors: 4
+```
+
+=== Manual
+
+==== Install Datomic
+
+Blaze needs a https://www.datomic.com[Datomic] database to store FHIR® resources. Different editions of Datomic are available. Four our use case, the Free Edition is sufficient.
+
+You can download Datomic Free here: https://my.datomic.com/downloads/free
+
+Please download Version 0.9.5703 and unpack the ZIP into a directory of your choice. After that please follow the steps:
+
+* open a terminal and change into the `datomic-free-0.9.5703` dir
+* copy the sample properties file located at (relative) `config/samples/free-transactor-template.properties` to `config/transactor.properties`
+* start the database by calling `bin/transactor config/transactor.properties`
+
+The output should look like this:
+
+```
+Launching with Java options -server -Xms1g -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=50
+Starting datomic:free://localhost:4334/<DB-NAME>, storing data in: data ...
+System started datomic:free://localhost:4334/<DB-NAME>, storing data in: data
+```
+
+You can change the data dir in the properties file if you don't like to have it at the current location.
+
+=== Install Blaze
+
+Blaze runs on the JVM and comes as single JAR file. Download the most recent version https://github.com/life-research/blaze/releases/tag/v0.3[here]. Look for `blaze-0.3-standalone.jar`. In addition to the JAR file, Blaze needs a set of FHIR® structure definitions to build it's database schema. Please download and unpack the `fhir.zip` from the same location.
+
+After the download, you can start blaze with the following command:
+
+```
+DATABASE_URI=datomic:free://localhost:4334/db STRUCTURE_DEFINITIONS_PATH=fhir/r4/structure-definitions java -jar blaze-0.3-standalone.jar
+```
+
+The output should look like this:
+
+```
+19-05-13 14:06:09 localhost INFO [blaze.system:109] - Read structure definitions from: fhir/r4/structure-definitions resulting in: Address, UsageContext, Annotation, Age, Attachment, Period, ContactDetail, DataRequirement, CodeableConcept, Organization, Encounter, CodeSystem, TriggerDefinition, Count, Specimen, Bundle, Expression, Coding, Dosage, Patient, Range, ContactPoint, Signature, RelatedArtifact, Timing, Meta, Quantity, Distance, HumanName, DeviceMetric, Duration, Money, SampledData, Ratio, Resource, Condition, Extension, ParameterDefinition, ServiceRequest, Device, Reference, Identifier, Narrative, Observation, Contributor
+19-05-13 14:06:12 localhost INFO [blaze.system:89] - Created database at: datomic:free://localhost:4334/db
+19-05-13 14:06:12 localhost INFO [blaze.system:92] - Connect with database: datomic:free://localhost:4334/db
+19-05-13 14:06:13 localhost INFO [blaze.system:97] - Upsert schema in database: datomic:free://localhost:4334/db creating 10194 new facts
+19-05-13 14:06:13 localhost INFO [blaze.server:33] - Start server on port 8080
+19-05-13 14:06:13 localhost INFO [blaze.core:49] - Maximum available memory: 3641
+19-05-13 14:06:13 localhost INFO [blaze.core:50] - Number of available processors: 8
+```
+
+After installation, please refer to the https://github.com/life-research/blaze#usage[Usage] section of the README.
 
 == Architecture
 

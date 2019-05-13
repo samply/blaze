@@ -15,34 +15,11 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
+## Installation
+
+The installation of Blaze is described in the [Installation Section][4] of the Blaze documentation.
+
 ## Usage
-
-You need Docker to run Blaze. The most convenient way is to check out this repository and use the `docker-compose.yml` to bring Blaze up. The default minimum memory requirements are 4 GB. You have to change the memory settings for Blaze and Datomic if you have less memory available. You also need to have port 8080 free on your host.
-
-To start Blaze, type:
-
-```bash
-docker-compose up
-```
-
-You should see a output similar to:
-
-```
-Creating volume "blaze_db-data" with default driver
-Recreating blaze_db_1 ... done
-Recreating blaze_store_1 ... done
-Attaching to blaze_db_1, blaze_store_1
-db_1     | Launching with Java options -server -Xms1g -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=50
-db_1     | Starting datomic:free://0.0.0.0:4334/<DB-NAME>, storing data in: /data ...
-db_1     | System started datomic:free://0.0.0.0:4334/<DB-NAME>, storing data in: /data
-store_1  | 19-05-13 08:51:03 1ad81424eddb INFO [blaze.system:109] - Read structure definitions from: /app/fhir/r4/structure-definitions resulting in: Address, UsageContext, Annotation, Age, Attachment, Period, ContactDetail, DataRequirement, CodeableConcept, Organization, Encounter, CodeSystem, TriggerDefinition, Count, Specimen, Bundle, Expression, Coding, Dosage, Patient, Range, ContactPoint, Signature, RelatedArtifact, Timing, Meta, Quantity, Distance, HumanName, DeviceMetric, Duration, Money, SampledData, Ratio, Resource, Condition, Extension, ParameterDefinition, ServiceRequest, Device, Reference, Identifier, Narrative, Observation, Contributor
-store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [blaze.system:89] - Created database at: datomic:free://db:4334/dev?password=datomic
-store_1  | 19-05-13 08:51:09 1ad81424eddb INFO [blaze.system:92] - Connect with database: datomic:free://db:4334/dev?password=datomic
-store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.system:97] - Upsert schema in database: datomic:free://db:4334/dev?password=datomic creating 10194 new facts
-store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.server:33] - Start server on port 8080
-store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.core:49] - Maximum available memory: 2048
-store_1  | 19-05-13 08:51:12 1ad81424eddb INFO [blaze.core:50] - Number of available processors: 4
-```
 
 In order to test connectivity, you can query the health endpoint:
 
@@ -125,3 +102,4 @@ your option) any later version.
 [1]: <https://github.com/life-research/life-fhir-gen>
 [2]: <http://cql-runner.dataphoria.org/>
 [3]: <https://cql.hl7.org/tests.html>
+[4]: <https://life-research.github.io/blaze/#_installation>
