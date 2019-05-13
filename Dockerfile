@@ -5,7 +5,7 @@ COPY . /build/
 WORKDIR /build
 RUN lein uberjar
 
-FROM openjdk:8u201-jre-alpine3.9
+FROM openjdk:8u212-jre-alpine3.9
 
 COPY --from=build /build/target/blaze-0.4-SNAPSHOT-standalone.jar /app/
 COPY fhir /app/fhir/
