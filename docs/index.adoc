@@ -461,6 +461,102 @@ The following table gives an overview of the current state of implementation of 
 | | 2+<| ✓ = 151, ! = 29, ✗ = 70, 66 % finished
 |===
 
+== Performance
+
+=== FHIR Update Interaction
+
+We use the following resources in single update interactions.
+
+.Patient
+[source,json]
+----
+{
+  "resourceType": "Patient",
+  "id": "0",
+  "gender": "male",
+  "birthDate": "1994-01-10"
+}
+----
+
+.Condition
+[source,json]
+----
+{
+  "resourceType" : "Condition",
+  "id" : "0-0",
+  "subject" : {
+    "reference" : "Patient/0"
+  },
+  "code" : {
+    "coding" : [ {
+      "system" : "http://hl7.org/fhir/sid/icd-10",
+      "version" : "2016",
+      "code" : "C70"
+    } ]
+  },
+  "onsetDateTime" : "2006-08-09"
+}
+----
+
+.Observation
+[source,json]
+----
+{
+  "resourceType" : "Observation",
+  "id" : "0-0-body-weight",
+  "status" : "final",
+  "subject" : {
+    "reference" : "Patient/0"
+  },
+  "code" : {
+    "coding" : [ {
+      "system" : "http://loinc.org",
+      "code" : "29463-7"
+    } ]
+  },
+  "valueQuantity" : {
+    "value" : 103.2,
+    "unit" : "kg"
+  },
+  "effectiveDateTime" : "2006-08-09"
+}
+----
+
+.Specimen
+[source,json]
+----
+{
+  "resourceType" : "Specimen",
+  "id" : "0",
+  "subject" : {
+    "reference" : "Patient/0"
+  },
+  "type" : {
+    "coding" : [ {
+      "system" : "http://germanbiobanknode.de/fhir/code-systems/sample-liquid",
+      "code" : "serum"
+    } ]
+  },
+  "collection" : {
+    "collectedDateTime" : "2006-08-09"
+  }
+}
+----
+
+Results of performance tests using https://github.com/tsenart/vegeta[vegeta] at 100 requests per second, creating 3000 resources each and warming up with one run.
+
+Blaze was started with `-server -Xms2g -Xmx2g -XX:+UseG1GC` and Datomic v0.9.5703 with `-server -Xms1g -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=50` both running JRE 1.8.0_212.
+
+.Results
+[cols="1,1,1,1", options="header,footer"]
+|===
+| Resource Type | Median | Q-95 | Q-99
+| Patient | 7.5 ms | 10.8 ms | 17.4 ms
+| Condition | 7.9 ms | 13.9 ms, 36.1 ms
+| Observation | 8.2 ms | 14.4 ms | 27.7 ms
+| Specimen | 8.0 ms | 12.9 ms | 25.3 ms
+|===
+
 == Implementation
 
 === 3-valued Logic and Set Theory

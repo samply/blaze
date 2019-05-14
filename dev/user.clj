@@ -32,7 +32,6 @@
 
 ;; Spec Instrumentation
 (st/instrument)
-(comment (st/unstrument))
 (dst/instrument)
 
 

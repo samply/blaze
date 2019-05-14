@@ -1,16 +1,19 @@
 (ns blaze.datomic.pull
   "Create Pull Patterns from FHIR Structure Definitions"
   (:require
+    [blaze.datomic.quantity :as quantity]
+    [blaze.spec]
+    [blaze.datomic.util :as util]
+    [blaze.datomic.value :as value]
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
-    [datomic-spec.core :as ds]
-    [blaze.datomic.value :as value]
-    [blaze.spec]
-    [blaze.structure-definition :as sd]
-    [blaze.datomic.quantity :as quantity])
+    [datomic-spec.core :as ds])
   (:import
-    [java.time LocalDate LocalDateTime Year]
+    [java.time LocalDate LocalDateTime Year Instant]
     [javax.measure Quantity]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defprotocol ToJson
@@ -30,6 +33,9 @@
   LocalDateTime
   (-to-json [date-time]
     (str date-time))
+  Instant
+  (-to-json [instant]
+    (str instant))
   Quantity
   (-to-json [q]
     {"value" (.getValue q)
@@ -60,7 +66,7 @@
       ["version" version])
     (when-some [value (ident entity)]
       (if choice-type?
-        (pull-element db (d/entity db value) entity)
+        (pull-element db (util/cached-entity db value) entity)
         [json-key
          (cond
            (= :db.cardinality/many cardinality)
@@ -78,18 +84,27 @@
            (pull-non-primitive db type value))]))))
 
 
-(defn pull-non-primitive [db type-ident value]
+(defn- pull-non-primitive [db type-ident value]
   (into
     {}
-    (map #(pull-element db (d/entity db %) value))
-    (:type/elements (d/entity db type-ident))))
+    (map #(pull-element db (util/cached-entity db %) value))
+    (:type/elements (util/cached-entity db type-ident))))
 
+
+(s/fdef pull-resource
+  :args (s/cat :db ::ds/db :type string? :id string?))
 
 (defn pull-resource [db type id]
   (when-let [resource (d/entity db [(keyword type "id") id])]
-    (-> (pull-non-primitive db (keyword type) resource)
-        (assoc "resourceType" type)
-        (with-meta {:db/id (:db/id resource)}))))
+    (let [last-transaction (util/last-transaction resource)
+          last-transaction-instant (util/tx-instant last-transaction)
+          version-id (str (d/tx->t (:db/id last-transaction)))]
+      (-> (pull-non-primitive db (keyword type) resource)
+          (assoc "resourceType" type)
+          (assoc-in ["meta" "versionId"] version-id)
+          (assoc-in ["meta" "lastUpdated"] (-to-json last-transaction-instant))
+          (with-meta {:last-transaction-instant last-transaction-instant
+                      :version-id version-id})))))
 
 
 (defn summary-pattern*

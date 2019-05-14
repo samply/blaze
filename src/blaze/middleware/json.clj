@@ -1,37 +1,52 @@
 (ns blaze.middleware.json
   (:require
+    [blaze.handler.util :as handler-util]
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
+    [clojure.java.io :as io]
     [cognitect.anomalies :as anom]
     [manifold.deferred :as md]
     [ring.util.response :as ring]))
 
 
 (defn- parse-json [body]
-  (try
-    (binding [*use-bigdecimals?* true]
-      (json/parse-string (slurp body)))
-    (catch Exception e
-      #::anom{:category ::anom/incorrect :message (.getMessage e)})))
+  (-> (md/future
+        (with-open [reader (io/reader body)]
+          (binding [*use-bigdecimals?* true]
+            (json/parse-stream reader))))
+      (md/catch'
+        (fn [e]
+          (md/error-deferred
+            #::anom{:category ::anom/incorrect :message (.getMessage ^Exception e)})))))
 
 
 (defn- generate-json [body]
   (try
     (json/generate-string body {:key-fn name})
-    (catch Exception e
-      (json/generate-string {:error (.getMessage e)}))))
+    (catch Exception _
+      (json/generate-string
+        ;; TODO: add error details
+        {"resourceType" "OperationOutcome"}))))
+
+
+(defn- handle-response [{:keys [body] :as response}]
+  (if (some? body)
+    (-> (assoc response :body (generate-json body))
+        (ring/content-type "application/fhir+json"))
+    response))
 
 
 (defn wrap-json
   "Parses the request body as JSON, calls `handler` and generates JSON from the
   response."
   [handler]
-  (fn [{:keys [body] :as request}]
-    (let [body (parse-json body)]
-      (if-let [message (::anom/message body)]
-        (-> (ring/bad-request message)
-            (ring/content-type "text/plain"))
-        (md/let-flow' [response (handler (assoc request :body body))]
-          (-> response
-              (update :body generate-json)
-              (assoc-in [:headers "content-type"] "application/json")))))))
+  (fn [{:keys [request-method body] :as request}]
+    (-> (if (#{:put :post} request-method)
+          (-> (parse-json body)
+              (md/chain'
+                (fn [parsed-body]
+                  (assoc request :body parsed-body))))
+          request)
+        (md/chain' handler)
+        (md/chain' handle-response)
+        (md/catch' #(handle-response (handler-util/error-response %))))))

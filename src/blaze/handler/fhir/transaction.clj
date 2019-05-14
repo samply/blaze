@@ -19,7 +19,7 @@
     []
     (comp
       (map #(get % "resource"))
-      (mapcat #(tx/resource-update db (dissoc % "meta" "text"))))
+      (mapcat #(tx/resource-update db %)))
     (get bundle "entry")))
 
 
@@ -42,14 +42,6 @@
                 (ring/status 500)))))))
 
 
-(defn- wrap-post [handler]
-  (fn [{:keys [request-method] :as request}]
-    (if (= :post request-method)
-      (handler request)
-      (-> (ring/response "")
-          (ring/status 405)))))
-
-
 (s/def :handler.fhir/transaction fn?)
 
 
@@ -62,5 +54,4 @@
   [conn]
   (-> (handler-intern conn)
       (wrap-exception)
-      (wrap-json)
-      (wrap-post)))
+      (wrap-json)))

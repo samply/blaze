@@ -1,30 +1,26 @@
 (ns blaze.handler.app
   (:require
     [bidi.ring :as bidi-ring]
-    [clojure.spec.alpha :as s]
-    [blaze.handler.cql-evaluation]
-    [blaze.handler.fhir.transaction]
-    [ring.util.response :as ring]))
+    [clojure.spec.alpha :as s]))
 
 
 (def ^:private routes
   ["/"
    {"health" :handler/health
-    "cql" {"/evaluate" :handler/cql-evaluation}
-    "fhir" {"" :handler.fhir/transaction}}])
-
-
-(defn- wrap-not-found [handler]
-  (fn [req]
-    (if-let [resp (handler req)]
-      resp
-      (-> (ring/not-found "Not Found")
-          (ring/content-type "text/plain")))))
+    "cql" {"/evaluate" {:post :handler/cql-evaluation}}
+    "fhir"
+    {"" {:post :handler.fhir/transaction}
+     ["/" :type "/" :id]
+     {:get :handler.fhir/read
+      :put :handler.fhir/update}}}])
 
 
 (s/def ::handlers
-  (s/keys :req [:handler/health :handler/cql-evaluation
-                :handler.fhir/transaction]))
+  (s/keys :req [:handler/cql-evaluation
+                :handler/health
+                :handler.fhir/read
+                :handler.fhir/transaction
+                :handler.fhir/update]))
 
 
 (s/fdef handler
@@ -33,12 +29,4 @@
 (defn handler
   "Whole app Ring handler."
   [handlers]
-  (-> (bidi-ring/make-handler routes handlers)
-      (wrap-not-found)))
-
-
-(comment
-  (bidi.bidi/match-route routes "/health")
-  (bidi.bidi/match-route routes "/cql/evaluate")
-  (bidi.bidi/match-route routes "/fhir")
-  )
+  (bidi-ring/make-handler routes handlers))

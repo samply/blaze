@@ -14,7 +14,9 @@
     [blaze.datomic.schema :as schema]
     [blaze.handler.app :as app-handler]
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
+    [blaze.handler.fhir.read :as fhir-read-handler]
     [blaze.handler.fhir.transaction :as fhir-transaction-handler]
+    [blaze.handler.fhir.update :as fhir-update-handler]
     [blaze.handler.health :as health-handler]
     [blaze.server :as server]
     [blaze.structure-definition :refer [read-structure-definitions]]
@@ -55,13 +57,22 @@
    {:database/conn (ig/ref :database-conn)
     :cache (ig/ref :cache)}
 
+   :fhir-read-handler
+   {:database/conn (ig/ref :database-conn)}
+
    :fhir-transaction-handler
    {:database/conn (ig/ref :database-conn)}
 
+   :fhir-update-handler
+   {:base-uri "http://localhost:8080/fhir"
+    :database/conn (ig/ref :database-conn)}
+
    :app-handler
-   {:handler/health (ig/ref :health-handler)
-    :handler/cql-evaluation (ig/ref :cql-evaluation-handler)
-    :handler.fhir/transaction (ig/ref :fhir-transaction-handler)}
+   {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
+    :handler/health (ig/ref :health-handler)
+    :handler.fhir/read (ig/ref :fhir-read-handler)
+    :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
+    :handler.fhir/update (ig/ref :fhir-update-handler)}
 
    :server {:port 8080 :handler (ig/ref :app-handler)}})
 
@@ -121,9 +132,19 @@
   (cql-evaluation-handler/handler conn cache))
 
 
+(defmethod ig/init-key :fhir-read-handler
+  [_ {:database/keys [conn]}]
+  (fhir-read-handler/handler conn))
+
+
 (defmethod ig/init-key :fhir-transaction-handler
   [_ {:database/keys [conn]}]
   (fhir-transaction-handler/handler conn))
+
+
+(defmethod ig/init-key :fhir-update-handler
+  [_ {:keys [base-uri] :database/keys [conn]}]
+  (fhir-update-handler/handler base-uri conn))
 
 
 (defmethod ig/init-key :app-handler
