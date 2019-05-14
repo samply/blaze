@@ -65,7 +65,7 @@ System started datomic:free://localhost:4334/<DB-NAME>, storing data in: data
 
 You can change the data dir in the properties file if you like to have it at a different location.
 
-=== Install Blaze
+==== Install Blaze
 
 Blaze runs on the JVM and comes as single JAR file. Download the most recent version https://github.com/life-research/blaze/releases/tag/v0.3[here]. Look for `blaze-0.3-standalone.jar`. In addition to the JAR file, Blaze needs a set of FHIR® structure definitions to build it's database schema. Please download and unpack the `fhir.zip` from the same location.
 
