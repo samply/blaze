@@ -72,7 +72,7 @@ Blaze runs on the JVM and comes as single JAR file. Download the most recent ver
 After the download, you can start blaze with the following command (Linux, MacOS):
 
 ```
-DATABASE_URI=datomic:free://localhost:4334/db STRUCTURE_DEFINITIONS_PATH=fhir/r4/structure-definitions java -jar blaze-0.3-standalone.jar
+DATABASE_URI=datomic:free://localhost:4334/db STRUCTURE_DEFINITIONS_PATH=fhir/r4/structure-definitions java -server -Xms2g -Xmx2g -XX:+UseG1GC -jar blaze-0.3-standalone.jar
 ```
 
 Under Windows you need to set the Environment variables in the PowerShell before starting Blaze:
@@ -93,6 +93,8 @@ The output should look like this:
 19-05-13 14:06:13 localhost INFO [blaze.core:49] - Maximum available memory: 3641
 19-05-13 14:06:13 localhost INFO [blaze.core:50] - Number of available processors: 8
 ```
+
+The JVM Options `-server -Xms2g -Xmx2g -XX:+UseG1GC` are the default. You need to increase the Heap size if you have more data or the queries are slower than expected. You can use https://visualvm.github.io[VisualVM] to monitor the Heap size. Also https://prometheus.io[Prometheus] metrics will be available soon.
 
 After installation, please refer to the https://github.com/life-research/blaze#usage[Usage] section of the README.
 
