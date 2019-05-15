@@ -10,6 +10,7 @@
     "cql" {"/evaluate" {:post :handler/cql-evaluation}}
     "fhir"
     {"" {:post :handler.fhir/transaction}
+     "/metadata" {:get :handler.fhir/capabilities}
      ["/" :type "/" :id]
      {:get :handler.fhir/read
       :put :handler.fhir/update}}}])

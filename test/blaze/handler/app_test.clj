@@ -11,6 +11,7 @@
 (def handlers
   {:handler/cql-evaluation (constantly ::cql-evaluation-handler)
    :handler/health (constantly ::health-handler)
+   :handler.fhir/capabilities (constantly ::fhir-capabilities-handler)
    :handler.fhir/read (constantly ::fhir-read-handler)
    :handler.fhir/transaction (constantly ::fhir-transaction-handler)
    :handler.fhir/update (constantly ::fhir-update-handler)})
@@ -27,6 +28,7 @@
       "/health" :get ::health-handler
       "/health" :head ::health-handler
       "/fhir" :post ::fhir-transaction-handler
+      "/fhir/metadata" :get ::fhir-capabilities-handler
       "/fhir/Patient/0" :get ::fhir-read-handler
       "/fhir/Patient/0" :put ::fhir-update-handler
       "/fhir/Observation/0" :get ::fhir-read-handler

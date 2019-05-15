@@ -14,6 +14,7 @@
     [blaze.datomic.schema :as schema]
     [blaze.handler.app :as app-handler]
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
+    [blaze.handler.fhir.capabilities :as fhir-capabilities-handler]
     [blaze.handler.fhir.read :as fhir-read-handler]
     [blaze.handler.fhir.transaction :as fhir-transaction-handler]
     [blaze.handler.fhir.update :as fhir-update-handler]
@@ -57,6 +58,10 @@
    {:database/conn (ig/ref :database-conn)
     :cache (ig/ref :cache)}
 
+   :fhir-capabilities-handler
+   {:version "0.4-SNAPSHOT"
+    :structure-definitions (ig/ref :structure-definitions)}
+
    :fhir-read-handler
    {:database/conn (ig/ref :database-conn)}
 
@@ -70,6 +75,7 @@
    :app-handler
    {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
     :handler/health (ig/ref :health-handler)
+    :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
     :handler.fhir/read (ig/ref :fhir-read-handler)
     :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
     :handler.fhir/update (ig/ref :fhir-update-handler)}
@@ -130,6 +136,11 @@
 (defmethod ig/init-key :cql-evaluation-handler
   [_ {:database/keys [conn] :keys [cache]}]
   (cql-evaluation-handler/handler conn cache))
+
+
+(defmethod ig/init-key :fhir-capabilities-handler
+  [_ {:keys [version structure-definitions]}]
+  (fhir-capabilities-handler/handler version structure-definitions))
 
 
 (defmethod ig/init-key :fhir-read-handler
