@@ -1,6 +1,7 @@
 = Blaze
 Alexander Kiel <akiel@life.uni-leipzig.de>
 :toc: left
+:source-highlighter: coderay
 
 == Goal
 
@@ -552,7 +553,7 @@ Blaze was started with `-server -Xms2g -Xmx2g -XX:+UseG1GC` and Datomic v0.9.570
 |===
 | Resource Type | Median | Q-95 | Q-99
 | Patient | 7.5 ms | 10.8 ms | 17.4 ms
-| Condition | 7.9 ms | 13.9 ms, 36.1 ms
+| Condition | 7.9 ms | 13.9 ms | 36.1 ms
 | Observation | 8.2 ms | 14.4 ms | 27.7 ms
 | Specimen | 8.0 ms | 12.9 ms | 25.3 ms
 |===
