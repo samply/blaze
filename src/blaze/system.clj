@@ -44,6 +44,8 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
+(def ^:private version "0.4-SNAPSHOT")
+
 (def ^:private default-config
   {:structure-definitions {}
 
@@ -59,7 +61,7 @@
     :cache (ig/ref :cache)}
 
    :fhir-capabilities-handler
-   {:version "0.4-SNAPSHOT"
+   {:version version
     :structure-definitions (ig/ref :structure-definitions)}
 
    :fhir-read-handler
@@ -73,12 +75,14 @@
     :database/conn (ig/ref :database-conn)}
 
    :app-handler
-   {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
-    :handler/health (ig/ref :health-handler)
-    :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
-    :handler.fhir/read (ig/ref :fhir-read-handler)
-    :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
-    :handler.fhir/update (ig/ref :fhir-update-handler)}
+   {:handlers
+    {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
+     :handler/health (ig/ref :health-handler)
+     :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
+     :handler.fhir/read (ig/ref :fhir-read-handler)
+     :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
+     :handler.fhir/update (ig/ref :fhir-update-handler)}
+    :version version}
 
    :server {:port 8080 :handler (ig/ref :app-handler)}})
 
@@ -159,8 +163,8 @@
 
 
 (defmethod ig/init-key :app-handler
-  [_ handlers]
-  (app-handler/handler handlers))
+  [_ {:keys [handlers version]}]
+  (app-handler/handler handlers version))
 
 
 (defmethod ig/init-key :server

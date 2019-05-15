@@ -1,6 +1,6 @@
 (ns blaze.handler.app-test
   (:require
-    [blaze.handler.app :refer [handler]]
+    [blaze.handler.app :refer [handler-intern]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]))
 
@@ -18,7 +18,7 @@
 
 
 (defn app-handler [uri request-method]
-  ((handler handlers) {:request-method request-method :uri uri}))
+  ((handler-intern handlers) {:request-method request-method :uri uri}))
 
 
 (deftest handler-test

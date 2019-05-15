@@ -9,7 +9,7 @@
   :pedantic? :abort
 
   :dependencies
-  [[aleph "0.4.6"]
+  [[aleph "0.4.7-alpha1"]
    [bidi "2.1.6"]
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.8.1"]
