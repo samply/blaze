@@ -99,6 +99,10 @@ The JVM Options `-server -Xms2g -Xmx2g -XX:+UseG1GC` are the default. You need t
 
 After installation, please refer to the https://github.com/life-research/blaze#usage[Usage] section of the README.
 
+== Open Source
+
+Blaze is licenced under the Eclipse Public License and can be found on https://github.com/life-research/blaze[GitHub]. Please use the https://github.com/life-research/blaze/issues[Issue Tracker] if you have questions, feature requests or found a bug.
+
 == Architecture
 
 .Process-Level Architecture
