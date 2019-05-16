@@ -343,6 +343,23 @@
             [{:db/id :part/Organization
               :Organization/id "0"}
              [:db/add id :Patient/generalPractitioner :part/Organization]
+             [:db.fn/cas id :version 0 1]]))))
+
+
+    (testing "Contact"
+      (let [[db id] (with-resource db "Patient" "0")]
+        (is
+          (=
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-update
+                db
+                {"id" "0"
+                 "resourceType" "Patient"
+                 "contact"
+                 [{"name" {"family" "Doe"}}]}))
+            [[:db/add :part/HumanName :HumanName/family "Doe"]
+             [:db/add :part/Patient.contact :Patient.contact/name :part/HumanName]
+             [:db/add id :Patient/contact :part/Patient.contact]
              [:db.fn/cas id :version 0 1]])))))
 
 
