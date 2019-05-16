@@ -6,6 +6,7 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.datomic.pull :as pull]
+    [blaze.datomic.util :as util]
     [blaze.handler.fhir.read :refer [handler-intern]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -40,16 +41,46 @@
 
 
 (deftest handler-test
+  (testing "Returns Not Found on Non-Existing Resource Type"
+    (st/instrument
+      [`util/cached-entity]
+      {:spec
+       {`util/cached-entity
+        (s/fspec
+          :args (s/cat :db #{::db} :eid #{:Patient})
+          :ret nil?)}
+       :stub
+       #{`util/cached-entity}})
+
+    (let [{:keys [status body]}
+          ((handler-intern ::conn)
+            {:route-params {:type "Patient" :id "0"}})]
+
+      (is (= 404 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "error" (-> body :issue first :severity)))
+
+      (is (= "not-found" (-> body :issue first :code)))))
+
+
   (testing "Returns Not Found on Non-Existing Resource"
     (st/instrument
-      [`pull/pull-resource]
+      [`util/cached-entity
+       `pull/pull-resource]
       {:spec
-       {`pull/pull-resource
+       {`util/cached-entity
+        (s/fspec
+          :args (s/cat :db #{::db} :eid #{:Patient})
+          :ret #{::patient-type})
+        `pull/pull-resource
         (s/fspec
           :args (s/cat :db #{::db} :type #{"Patient"} :id #{"0"})
           :ret nil?)}
        :stub
-       #{`pull/pull-resource}})
+       #{`util/cached-entity
+         `pull/pull-resource}})
 
     (let [{:keys [status body]}
           ((handler-intern ::conn)

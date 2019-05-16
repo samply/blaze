@@ -117,7 +117,9 @@
 (s/fdef pull-resource
   :args (s/cat :db ::ds/db :type string? :id string?))
 
-(defn pull-resource [db type id]
+(defn pull-resource
+  "Type has to be valid."
+  [db type id]
   (when-let [resource (d/entity db [(keyword type "id") id])]
     (let [last-transaction (util/last-transaction resource)
           last-transaction-instant (util/tx-instant last-transaction)

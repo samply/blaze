@@ -4,6 +4,7 @@
   https://www.hl7.org/fhir/http.html#read"
   (:require
     [blaze.datomic.pull :as pull]
+    [blaze.datomic.util :as util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.json :refer [wrap-json]]
@@ -29,9 +30,14 @@
   (str "W/\"" (:version-id (meta resource)) "\""))
 
 
+(defn- pull-resource [db type id]
+  (and (util/cached-entity db (keyword type))
+       (pull/pull-resource db type id)))
+
+
 (defn handler-intern [conn]
   (fn [{{:keys [type id]} :route-params}]
-    (if-let [resource (pull/pull-resource (d/db conn) type id)]
+    (if-let [resource (pull-resource (d/db conn) type id)]
       (-> (ring/response resource)
           (ring/header "Last-Modified" (last-modified resource))
           (ring/header "ETag" (etag resource)))
