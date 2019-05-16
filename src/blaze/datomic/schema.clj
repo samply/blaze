@@ -173,16 +173,70 @@
 (defn code-system-url [{:keys [path]}]
   ;; TODO: HACK use a terminology service instead
   (case path
-    "Patient.gender"
-    "http://hl7.org/fhir/administrative-gender"
-    "Address.use"
-    "http://hl7.org/fhir/address-use"
     "Address.type"
     "http://hl7.org/fhir/address-type"
+
+    "Address.use"
+    "http://hl7.org/fhir/address-use"
+
     "Age.comparator"
     "http://hl7.org/fhir/quantity-comparator"
+
+    "Attachment.contentType"
+    "urn:ietf:bcp:13"
+
+    "Attachment.language"
+    "urn:ietf:bcp:47"
+
+    "ContactPoint.system"
+    "http://hl7.org/fhir/contact-point-system"
+
+    "ContactPoint.use"
+    "http://hl7.org/fhir/contact-point-use"
+
+    "HumanName.use"
+    "http://hl7.org/fhir/name-use"
+
+    "Identifier.use"
+    "http://hl7.org/fhir/identifier-use"
+
+    "Money.currency"
+    "urn:iso:std:iso:4217"
+
+    "Narrative.status"
+    "http://hl7.org/fhir/narrative-status"
+
     "Observation.status"
     "http://hl7.org/fhir/observation-status"
+
+    "Patient.contact.gender"
+    "http://hl7.org/fhir/administrative-gender"
+
+    "Patient.gender"
+    "http://hl7.org/fhir/administrative-gender"
+
+    "Quantity.comparator"
+    "http://hl7.org/fhir/quantity-comparator"
+
+    "Signature.targetFormat"
+    "urn:ietf:bcp:13"
+
+    "Signature.sigFormat"
+    "urn:ietf:bcp:13"
+
+    "Timing.repeat.dayOfWeek"
+    "http://hl7.org/fhir/days-of-week"
+
+    "Timing.repeat.durationUnit"
+    "http://unitsofmeasure.org"
+
+    "Timing.repeat.periodUnit"
+    "http://unitsofmeasure.org"
+
+    "Timing.repeat.when"
+    "http://hl7.org/fhir/event-timing"
+    ;; TODO: also http://terminology.hl7.org/CodeSystem/v3-TimingEvent
+
     nil))
 
 
