@@ -10,5 +10,5 @@ do
   cat patient-read.json | \
   jq -cM --arg id ${ID} '.url += $id'
 done | \
-vegeta attack -rate=100 -lazy -format=json -duration=30s | \
+vegeta attack -rate=3000 -format=json -duration=30s | \
 vegeta report

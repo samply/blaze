@@ -548,18 +548,18 @@ We use the following resources in single update interactions.
 }
 ----
 
-Results of performance tests using https://github.com/tsenart/vegeta[vegeta] at 100 requests per second, creating 3000 resources each and warming up with one run.
+Results of performance tests using https://github.com/tsenart/vegeta[vegeta] running for 30 s each.
 
 Blaze was started with `-server -Xms2g -Xmx2g -XX:+UseG1GC` and Datomic v0.9.5703 with `-server -Xms1g -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=50` both running JRE 1.8.0_212.
 
 .Results
-[cols="1,1,1,1", options="header,footer"]
+[cols="1,1,1,1,1,1", options="header,footer"]
 |===
-| Resource Type | Median | Q-95 | Q-99
-| Patient | 7.5 ms | 10.8 ms | 17.4 ms
-| Condition | 7.9 ms | 13.9 ms | 36.1 ms
-| Observation | 8.2 ms | 14.4 ms | 27.7 ms
-| Specimen | 8.0 ms | 12.9 ms | 25.3 ms
+| Resource Type | Rate | Mean | Median | Q-95 | Q-99
+| Patient | 200 | 5.5 ms | 4.7 ms | 5.6 ms | 19 ms
+| Condition | 200 | 5.4 ms | 5.1 ms | 6.2 ms | 16 ms
+| Observation | 200 | 5.6 ms | 5.2 ms | 6.4 ms | 16 ms
+| Specimen | 200 | 5.5 ms | 5.1 ms | 6.5 ms | 20 ms
 |===
 
 == Implementation
