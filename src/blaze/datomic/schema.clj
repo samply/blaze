@@ -197,6 +197,9 @@
     "ContactPoint.use"
     "http://hl7.org/fhir/contact-point-use"
 
+    "Encounter.status"
+    "http://hl7.org/fhir/encounter-status"
+
     "HumanName.use"
     "http://hl7.org/fhir/name-use"
 
