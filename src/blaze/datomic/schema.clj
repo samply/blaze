@@ -86,6 +86,11 @@
   :db/cardinality :db.cardinality/one)
 
 
+(defattr :version
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one)
+
+
 (defn- fhir-type-code->db-type
   "http://hl7.org/fhir/datatypes.html"
   [code]

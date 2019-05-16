@@ -9,7 +9,7 @@
   :pedantic? :abort
 
   :dependencies
-  [[aleph "0.4.6"]
+  [[aleph "0.4.7-alpha1"]
    [bidi "2.1.6"]
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.8.1"]
@@ -21,7 +21,8 @@
    [info.cqframework/cql-to-elm "1.3.15"]
    [integrant "0.7.0"]
    [javax.measure/unit-api "1.0"]
-   [org.clojars.akiel/datomic-spec "0.5"]
+   [org.apache.httpcomponents/httpcore "4.4.11"]
+   [org.clojars.akiel/datomic-spec "0.5.1"]
    [org.clojars.akiel/datomic-tools "0.4"]
    [org.clojars.akiel/env-tools "0.2.1"]
    [org.clojars.akiel/spec-coerce "0.3.1"]

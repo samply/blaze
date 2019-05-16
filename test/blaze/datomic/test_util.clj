@@ -15,7 +15,7 @@
   {:arglists '([db type id & more])}
   [db type id & {:as more}]
   (let [{db :db-after :keys [tempids]}
-        (d/with db [(merge {:db/id "tid" (keyword type "id") id} more)])
+        (d/with db [(merge {:db/id "tid" (keyword type "id") id :version 0} more)])
         id (d/resolve-tempid db tempids "tid")]
     [db id]))
 
@@ -48,3 +48,11 @@
                        (assoc :code/version version))])
          id (d/resolve-tempid db tempids "tid")]
      [db id])))
+
+
+(defn with-gender-code [db gender]
+  (with-code db "http://hl7.org/fhir/administrative-gender" gender))
+
+
+(defn with-icd10-code [db version code]
+  (with-code db "http://hl7.org/fhir/sid/icd-10" version code))

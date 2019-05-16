@@ -1,6 +1,7 @@
 = Blaze
 Alexander Kiel <akiel@life.uni-leipzig.de>
 :toc: left
+:source-highlighter: coderay
 
 == Goal
 
@@ -97,6 +98,10 @@ The output should look like this:
 The JVM Options `-server -Xms2g -Xmx2g -XX:+UseG1GC` are the default. You need to increase the Heap size if you have more data or the queries are slower than expected. You can use https://visualvm.github.io[VisualVM] to monitor the Heap size. Also https://prometheus.io[Prometheus] metrics will be available soon.
 
 After installation, please refer to the https://github.com/life-research/blaze#usage[Usage] section of the README.
+
+== Open Source
+
+Blaze is licenced under the Eclipse Public License and can be found on https://github.com/life-research/blaze[GitHub]. Please use the https://github.com/life-research/blaze/issues[Issue Tracker] if you have questions, feature requests or found a bug.
 
 == Architecture
 
@@ -459,6 +464,102 @@ The following table gives an overview of the current state of implementation of 
 | 24.1. Message | ✗ |
 
 | | 2+<| ✓ = 151, ! = 29, ✗ = 70, 66 % finished
+|===
+
+== Performance
+
+=== FHIR Update Interaction
+
+We use the following resources in single update interactions.
+
+.Patient
+[source,json]
+----
+{
+  "resourceType": "Patient",
+  "id": "0",
+  "gender": "male",
+  "birthDate": "1994-01-10"
+}
+----
+
+.Condition
+[source,json]
+----
+{
+  "resourceType" : "Condition",
+  "id" : "0-0",
+  "subject" : {
+    "reference" : "Patient/0"
+  },
+  "code" : {
+    "coding" : [ {
+      "system" : "http://hl7.org/fhir/sid/icd-10",
+      "version" : "2016",
+      "code" : "C70"
+    } ]
+  },
+  "onsetDateTime" : "2006-08-09"
+}
+----
+
+.Observation
+[source,json]
+----
+{
+  "resourceType" : "Observation",
+  "id" : "0-0-body-weight",
+  "status" : "final",
+  "subject" : {
+    "reference" : "Patient/0"
+  },
+  "code" : {
+    "coding" : [ {
+      "system" : "http://loinc.org",
+      "code" : "29463-7"
+    } ]
+  },
+  "valueQuantity" : {
+    "value" : 103.2,
+    "unit" : "kg"
+  },
+  "effectiveDateTime" : "2006-08-09"
+}
+----
+
+.Specimen
+[source,json]
+----
+{
+  "resourceType" : "Specimen",
+  "id" : "0",
+  "subject" : {
+    "reference" : "Patient/0"
+  },
+  "type" : {
+    "coding" : [ {
+      "system" : "http://germanbiobanknode.de/fhir/code-systems/sample-liquid",
+      "code" : "serum"
+    } ]
+  },
+  "collection" : {
+    "collectedDateTime" : "2006-08-09"
+  }
+}
+----
+
+Results of performance tests using https://github.com/tsenart/vegeta[vegeta] running for 30 s each.
+
+Blaze was started with `-server -Xms2g -Xmx2g -XX:+UseG1GC` and Datomic v0.9.5703 with `-server -Xms1g -Xmx1g -XX:+UseG1GC -XX:MaxGCPauseMillis=50` both running JRE 1.8.0_212.
+
+.Results
+[cols="1,1,1,1,1,1", options="header,footer"]
+|===
+| Resource Type | Rate | Mean | Median | Q-95 | Q-99
+| Patient | 200 | 5.5 ms | 4.7 ms | 5.6 ms | 19 ms
+| Condition | 200 | 5.4 ms | 5.1 ms | 6.2 ms | 16 ms
+| Observation | 200 | 5.6 ms | 5.2 ms | 6.4 ms | 16 ms
+| Specimen | 200 | 5.5 ms | 5.1 ms | 6.5 ms | 20 ms
 |===
 
 == Implementation

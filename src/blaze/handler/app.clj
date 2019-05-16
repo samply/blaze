@@ -2,43 +2,45 @@
   (:require
     [bidi.ring :as bidi-ring]
     [clojure.spec.alpha :as s]
-    [blaze.handler.cql-evaluation]
-    [blaze.handler.fhir.transaction]
+    [manifold.deferred :as md]
     [ring.util.response :as ring]))
 
 
 (def ^:private routes
   ["/"
    {"health" :handler/health
-    "cql" {"/evaluate" :handler/cql-evaluation}
-    "fhir" {"" :handler.fhir/transaction}}])
+    "cql" {"/evaluate" {:post :handler/cql-evaluation}}
+    "fhir"
+    {"" {:post :handler.fhir/transaction}
+     "/metadata" {:get :handler.fhir/capabilities}
+     ["/" :type "/" :id]
+     {:get :handler.fhir/read
+      :put :handler.fhir/update}}}])
 
 
-(defn- wrap-not-found [handler]
-  (fn [req]
-    (if-let [resp (handler req)]
-      resp
-      (-> (ring/not-found "Not Found")
-          (ring/content-type "text/plain")))))
+(defn wrap-server [handler server]
+  (fn [request]
+    (-> (handler request)
+        (md/chain' #(ring/header % "Server" server)))))
+
+
+(defn handler-intern [handlers]
+  (bidi-ring/make-handler routes handlers))
 
 
 (s/def ::handlers
-  (s/keys :req [:handler/health :handler/cql-evaluation
-                :handler.fhir/transaction]))
+  (s/keys :req [:handler/cql-evaluation
+                :handler/health
+                :handler.fhir/read
+                :handler.fhir/transaction
+                :handler.fhir/update]))
 
 
 (s/fdef handler
-  :args (s/cat :handlers ::handlers))
+  :args (s/cat :handlers ::handlers :version string?))
 
 (defn handler
   "Whole app Ring handler."
-  [handlers]
-  (-> (bidi-ring/make-handler routes handlers)
-      (wrap-not-found)))
-
-
-(comment
-  (bidi.bidi/match-route routes "/health")
-  (bidi.bidi/match-route routes "/cql/evaluate")
-  (bidi.bidi/match-route routes "/fhir")
-  )
+  [handlers version]
+  (-> (handler-intern handlers)
+      (wrap-server (str "Blaze/" version))))

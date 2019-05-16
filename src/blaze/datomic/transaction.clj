@@ -1,20 +1,22 @@
 (ns blaze.datomic.transaction
   (:require
-    [clojure.core.cache :as cache]
+    [blaze.datomic.quantity :as quantity]
+    [blaze.datomic.value :as value]
+    [blaze.datomic.util :as util]
+    [blaze.spec]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [blaze.datomic.quantity :as quantity]
-    [blaze.datomic.value :as value]
-    [blaze.spec])
+    [manifold.deferred :as md])
   (:import
     [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
                YearMonth]
     [java.time.format DateTimeFormatter]
-    [java.util Date]))
+    [java.util Date]
+    [java.util.concurrent ExecutionException]))
 
 
 (defn- coerce-date-time [^String value]
@@ -104,18 +106,6 @@
         (value/read value)))))
 
 
-(def ^:private cache (volatile! (cache/lru-cache-factory {} :threshold 1000)))
-
-(defn- cached-entity
-  "Returns a cached version of a Datomic entity.
-
-  This is useful for metadata."
-  [db eid]
-  (let [key [(d/basis-t db) eid]]
-    (-> (vswap! cache cache/through-cache key #(d/entity db (second %)))
-        (get key))))
-
-
 (defn- non-primitive-value-from-db
   "Returns a map like if would be formatted by `find-json-value` of `entity`.
 
@@ -124,12 +114,12 @@
   (into
     (with-meta {} {:entity entity})
     (comp
-      (map #(cached-entity db %))
+      (map #(util/cached-entity db %))
       (map
         (fn [{:element/keys [json-key] :as element}]
           (when-some [value (primitive-card-one-value-from-db element entity)]
             [json-key value]))))
-    (:type/elements (cached-entity db type-ident))))
+    (:type/elements (util/cached-entity db type-ident))))
 
 
 (defn- non-primitive-card-many-values-from-db
@@ -158,7 +148,7 @@
    entity]
   (if choice-type?
     (transduce
-      (map #(cached-entity db %))
+      (map #(util/cached-entity db %))
       (completing
         (fn [_ {:element/keys [json-key primitive?] :as element}]
           (let [value (get entity json-key)]
@@ -372,7 +362,7 @@
 (defn upsert-choice-typed-element
   [db {:db/keys [ident]} old-entity new-entity new-value new-value-element]
   (if-let [old-value-ident (ident old-entity)]
-    (let [old-value-element (cached-entity db old-value-ident)]
+    (let [old-value-element (util/cached-entity db old-value-ident)]
       (if (= old-value-element new-value-element)
         (upsert-single-typed-element
           db old-value-element old-entity new-entity new-value)
@@ -453,7 +443,7 @@
   [db {:db/keys [ident]} {:db/keys [id] :as entity}]
   (when-let [type-ident (ident entity)]
     (-> (if-some [value (type-ident entity)]
-          (retract-single-typed-element db (cached-entity db type-ident) entity value)
+          (retract-single-typed-element db (util/cached-entity db type-ident) entity value)
           [])
         (conj [:db/retract id ident type-ident]))))
 
@@ -477,7 +467,7 @@
   (into
     []
     (comp
-      (map #(cached-entity db %))
+      (map #(util/cached-entity db %))
       (filter
         (fn [{:db/keys [ident]}]
           (not (#{:Coding/system :Coding/version} ident))))
@@ -486,7 +476,11 @@
           (if-let [[new-value value-element] (find-json-value db element new-entity)]
             (upsert-element db element old-entity new-entity new-value value-element)
             (retract-element db element old-entity)))))
-    (:type/elements (cached-entity db type-ident))))
+    (:type/elements (util/cached-entity db type-ident))))
+
+
+(defn- version-increment [{:db/keys [id] :keys [version]}]
+  [:db.fn/cas id :version version (if version (inc version) 0)])
 
 
 (s/fdef resource-update
@@ -506,5 +500,26 @@
   (assert resourceType)
   (assert id)
   (let [old-resource (or (d/entity db [(keyword resourceType "id") id])
-                         {:db/id (d/tempid (keyword "part" resourceType))})]
-    (upsert db (keyword resourceType) old-resource resource)))
+                         {:db/id (d/tempid (keyword "part" resourceType))})
+        tx-data (->> (update resource "meta" dissoc "versionId" "lastUpdated")
+                     (upsert db (keyword resourceType) old-resource))]
+    (conj tx-data (version-increment old-resource))))
+
+
+(defn- category [e]
+  (case (:db/error (ex-data e))
+    :db.error/cas-failed ::anom/conflict
+    ::anom/fault))
+
+
+(s/fdef transact-async
+  :args (s/cat :conn ::ds/conn :tx-data ::ds/tx-data))
+
+(defn transact-async [conn tx-data]
+  (-> (d/transact-async conn tx-data)
+      (md/catch ExecutionException #(md/error-deferred (.getCause ^Exception %)))
+      (md/catch
+        (fn [e]
+          (md/error-deferred
+            {::anom/category (category e)
+             :data (ex-data e)})))))
