@@ -14,9 +14,10 @@
   Example: `(with-resource db \"Patient\" \"0\")`"
   {:arglists '([db type id & more])}
   [db type id & {:as more}]
-  (let [{db :db-after :keys [tempids]}
-        (d/with db [(merge {:db/id "tid" (keyword type "id") id :version 0} more)])
-        id (d/resolve-tempid db tempids "tid")]
+  (let [tid (d/tempid (keyword "part" type))
+        {db :db-after :keys [tempids]}
+        (d/with db [(merge {:db/id tid (keyword type "id") id :version 0} more)])
+        id (d/resolve-tempid db tempids tid)]
     [db id]))
 
 

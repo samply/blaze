@@ -50,12 +50,27 @@
 
 
 (declare pull-non-primitive)
+(declare pull-element)
 
 
-(defn pull-element
+(defn- pull-backbone-element
+  [db element value]
+  (into
+    {}
+    (map #(pull-element db (util/cached-entity db %) value))
+    (:type/elements element)))
+
+
+(defn- pull-reference [db element value]
+  (let [type (name (d/ident db (d/part (:db/id value))))]
+    {"reference" (str type "/" ((keyword type "id") value))}))
+
+
+(defn- pull-element
   {:arglists '([db element entity])}
   [db {:db/keys [ident cardinality]
-       :element/keys [choice-type? primitive? type type-code json-key]}
+       :element/keys [choice-type? primitive? type type-code json-key]
+       :as element}
    entity]
   (case ident
     :Coding/system
@@ -72,14 +87,22 @@
            (= :db.cardinality/many cardinality)
            (mapv
              (fn [value]
-               (if primitive?
+               (cond
+                 primitive?
                  (to-json value)
+                 (= "BackboneElement" type-code)
+                 (pull-backbone-element db element value)
+                 :else
                  (pull-non-primitive db type value)))
              value)
            (= "code" type-code)
            (:code/code value)
            primitive?
            (to-json value)
+           (= "BackboneElement" type-code)
+           (pull-backbone-element db element value)
+           (= "Reference" type-code)
+           (pull-reference db element value)
            :else
            (pull-non-primitive db type value))]))))
 

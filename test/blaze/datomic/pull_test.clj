@@ -96,4 +96,19 @@
             :Observation/valueDateTime (value/write (LocalDateTime/of 2019 5 8 18 21 42))
             :Observation/value :Observation/valueDateTime)]
       (given (pull-resource db "Observation" "0")
-        "valueDateTime" := "2019-05-08T18:21:42"))))
+        "valueDateTime" := "2019-05-08T18:21:42")))
+
+
+  (testing "Contact"
+    (let [[db id] (with-non-primitive db :HumanName/family "Doe")
+          [db id] (with-non-primitive db :Patient.contact/name id)
+          [db] (with-resource db "Patient" "0" :Patient/contact id)]
+      (given (pull-resource db "Patient" "0")
+        ["contact" first "name" "family"] := "Doe")))
+
+
+  (testing "Reference"
+    (let [[db id] (with-resource db "Organization" "0")
+          [db] (with-resource db "Patient" "0" :Patient/managingOrganization id)]
+      (given (pull-resource db "Patient" "0")
+        ["managingOrganization" "reference"] := "Organization/0"))))
