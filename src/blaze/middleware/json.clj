@@ -6,7 +6,8 @@
     [clojure.java.io :as io]
     [cognitect.anomalies :as anom]
     [manifold.deferred :as md]
-    [ring.util.response :as ring]))
+    [ring.util.response :as ring]
+    [taoensso.timbre :as log]))
 
 
 (defn- parse-json [body]
@@ -23,10 +24,14 @@
 (defn- generate-json [body]
   (try
     (json/generate-string body {:key-fn name})
-    (catch Exception _
+    (catch Exception e
+      (log/error (log/stacktrace e))
       (json/generate-string
-        ;; TODO: add error details
-        {"resourceType" "OperationOutcome"}))))
+        {"resourceType" "OperationOutcome"
+         "issue"
+         [{"severity" "error"
+           "code" "exception"
+           "diagnostics" (.getMessage ^Exception e)}]}))))
 
 
 (defn- handle-response [{:keys [body] :as response}]

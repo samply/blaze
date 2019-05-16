@@ -9,7 +9,8 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds])
   (:import
-    [java.time LocalDate LocalDateTime Year Instant]
+    [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
+               YearMonth]
     [javax.measure Quantity]))
 
 
@@ -27,10 +28,19 @@
   Year
   (-to-json [year]
     (str year))
+  YearMonth
+  (-to-json [year]
+    (str year))
   LocalDate
   (-to-json [date]
     (str date))
   LocalDateTime
+  (-to-json [date-time]
+    (str date-time))
+  LocalTime
+  (-to-json [time]
+    (str time))
+  OffsetDateTime
   (-to-json [date-time]
     (str date-time))
   Instant
