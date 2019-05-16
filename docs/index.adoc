@@ -556,11 +556,13 @@ Blaze was started with `-server -Xms2g -Xmx2g -XX:+UseG1GC` and Datomic v0.9.570
 [cols="1,1,1,1,1,1", options="header,footer"]
 |===
 | Resource Type | Rate | Mean | Median | Q-95 | Q-99
-| Patient | 200 | 5.5 ms | 4.7 ms | 5.6 ms | 19 ms
-| Condition | 200 | 5.4 ms | 5.1 ms | 6.2 ms | 16 ms
-| Observation | 200 | 5.6 ms | 5.2 ms | 6.4 ms | 16 ms
-| Specimen | 200 | 5.5 ms | 5.1 ms | 6.5 ms | 20 ms
+| Patient | 600 | 10 ms | 5.6 ms | 27 ms | 110 ms
+| Condition | 600 | 18 ms | 6.9 ms | 58 ms | 250 ms
+| Observation | 600 | 22 ms | 8.4 ms | 85 ms | 300 ms
+| Specimen | 600 | 28 ms | 8.1 ms | 91 ms | 480 ms
 |===
+
+The results show that Blaze is able to handle 600 updates per second with a 99% quantile of response times of less than half a second.
 
 == Implementation
 

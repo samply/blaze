@@ -1,7 +1,7 @@
 /target
 /.lein-*
 /.nrepl-port
-/kube-deployment.yml
 /queries
 /*.sh
 /cql-test
+/kube.yml

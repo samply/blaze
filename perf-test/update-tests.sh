@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-ID_START=42000
-ID_END=51000
+RATE=600
+ID_START=45000
+let "ID_END = $ID_START + $RATE * 30"
 
 
 echo "Patient Update Tests:"
@@ -10,7 +11,7 @@ do
   cat patient-update.json | \
   jq -cM --arg id ${ID} '.url += $id | .body.id = $id | .body |= @base64'
 done | \
-vegeta attack -rate=300 -format=json -duration=30s | \
+vegeta attack -rate=${RATE} -format=json -duration=30s | \
 vegeta report
 
 
@@ -20,7 +21,7 @@ do
   cat condition-update.json | \
   jq -cM --arg id ${ID} '.url += $id | .body.id = $id | .body.subject.reference += $id | .body |= @base64'
 done | \
-vegeta attack -rate=300 -format=json -duration=30s | \
+vegeta attack -rate=${RATE} -format=json -duration=30s | \
 vegeta report
 
 
@@ -30,7 +31,7 @@ do
   cat observation-update.json | \
   jq -cM --arg id ${ID} '.url += $id | .body.id = $id | .body.subject.reference += $id | .body |= @base64'
 done | \
-vegeta attack -rate=300 -format=json -duration=30s | \
+vegeta attack -rate=${RATE} -format=json -duration=30s | \
 vegeta report
 
 
@@ -40,5 +41,5 @@ do
   cat specimen-update.json | \
   jq -cM --arg id ${ID} '.url += $id | .body.id = $id | .body.subject.reference += $id | .body |= @base64'
 done | \
-vegeta attack -rate=300 -format=json -duration=30s | \
+vegeta attack -rate=${RATE} -format=json -duration=30s | \
 vegeta report
