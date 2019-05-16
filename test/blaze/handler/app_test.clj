@@ -13,6 +13,7 @@
    :handler/health (constantly ::health-handler)
    :handler.fhir/capabilities (constantly ::fhir-capabilities-handler)
    :handler.fhir/read (constantly ::fhir-read-handler)
+   :handler.fhir/search (constantly ::fhir-search-handler)
    :handler.fhir/transaction (constantly ::fhir-transaction-handler)
    :handler.fhir/update (constantly ::fhir-update-handler)})
 
@@ -29,7 +30,9 @@
       "/health" :head ::health-handler
       "/fhir" :post ::fhir-transaction-handler
       "/fhir/metadata" :get ::fhir-capabilities-handler
+      "/fhir/Patient" :get ::fhir-search-handler
       "/fhir/Patient/0" :get ::fhir-read-handler
       "/fhir/Patient/0" :put ::fhir-update-handler
+      "/fhir/Observation" :get ::fhir-search-handler
       "/fhir/Observation/0" :get ::fhir-read-handler
       "/fhir/Observation/0" :put ::fhir-update-handler)))

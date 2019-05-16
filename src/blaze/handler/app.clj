@@ -13,6 +13,8 @@
     "fhir"
     {"" {:post :handler.fhir/transaction}
      "/metadata" {:get :handler.fhir/capabilities}
+     ["/" :type]
+     {:get :handler.fhir/search}
      ["/" :type "/" :id]
      {:get :handler.fhir/read
       :put :handler.fhir/update}}}])
@@ -32,6 +34,7 @@
   (s/keys :req [:handler/cql-evaluation
                 :handler/health
                 :handler.fhir/read
+                :handler.fhir/search
                 :handler.fhir/transaction
                 :handler.fhir/update]))
 

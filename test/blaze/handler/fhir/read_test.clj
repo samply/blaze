@@ -6,15 +6,14 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.datomic.pull :as pull]
-    [blaze.datomic.transaction :as tx]
-    [blaze.datomic.util :as util]
     [blaze.handler.fhir.read :refer [handler-intern]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
     [datomic-spec.test :as dst])
-  (:import [java.time Instant]))
+  (:import
+    [java.time Instant]))
 
 
 (st/instrument)
@@ -38,9 +37,6 @@
 
 
 (use-fixtures :each fixture)
-
-
-(def base-uri "http://localhost:8080/fhir")
 
 
 (deftest handler-test

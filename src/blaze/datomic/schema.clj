@@ -188,6 +188,9 @@
     "Attachment.language"
     "urn:ietf:bcp:47"
 
+    "Bundle.type"
+    "http://hl7.org/fhir/bundle-type"
+
     "ContactPoint.system"
     "http://hl7.org/fhir/contact-point-system"
 
@@ -206,6 +209,9 @@
     "Narrative.status"
     "http://hl7.org/fhir/narrative-status"
 
+    "Observation.language"
+    "urn:ietf:bcp:47"
+
     "Observation.status"
     "http://hl7.org/fhir/observation-status"
 
@@ -215,6 +221,12 @@
     "Patient.gender"
     "http://hl7.org/fhir/administrative-gender"
 
+    "Patient.language"
+    "urn:ietf:bcp:47"
+
+    "Patient.link.type"
+    "http://hl7.org/fhir/link-type"
+
     "Quantity.comparator"
     "http://hl7.org/fhir/quantity-comparator"
 
@@ -223,6 +235,9 @@
 
     "Signature.sigFormat"
     "urn:ietf:bcp:13"
+
+    "Specimen.language"
+    "urn:ietf:bcp:47"
 
     "Timing.repeat.dayOfWeek"
     "http://hl7.org/fhir/days-of-week"

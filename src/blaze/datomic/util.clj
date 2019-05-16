@@ -1,6 +1,5 @@
 (ns blaze.datomic.util
   (:require
-    [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
     [datomic-spec.core :as ds])

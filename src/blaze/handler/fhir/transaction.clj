@@ -1,5 +1,5 @@
 (ns blaze.handler.fhir.transaction
-  "FHIR batch/transaction endpoint.
+  "FHIR batch/transaction interaction.
 
   https://www.hl7.org/fhir/http.html#transaction"
   (:require

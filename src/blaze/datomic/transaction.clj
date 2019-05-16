@@ -231,43 +231,44 @@
   [db {:element/keys [type-code part-of-choice-type? type-attr-ident]
        :ElementDefinition/keys [path] :db/keys [ident]}
    id value]
-  (case type-code
-    "Reference"
-    (when-let [reference (get value "reference")]
-      ;; TODO: check for valid internal references
-      (let [[type ref-id] (str/split reference #"/")]
-        (let [tid (d/tempid (keyword "part" type))]
-          [{:db/id tid
-            (keyword type "id") ref-id}
-           [:db/add id ident tid]])))
+  (when-not (empty? value)
+    (case type-code
+      "Reference"
+      (when-let [reference (get value "reference")]
+        ;; TODO: check for valid internal references
+        (let [[type ref-id] (str/split reference #"/")]
+          (let [tid (d/tempid (keyword "part" type))]
+            [{:db/id tid
+              (keyword type "id") ref-id}
+             [:db/add id ident tid]])))
 
-    "BackboneElement"
-    (let [tid (d/tempid (keyword "part" path))]
-      (conj
-        (upsert db ident {:db/id tid} value)
-        [:db/add id ident tid]))
+      "BackboneElement"
+      (let [tid (d/tempid (keyword "part" path))]
+        (conj
+          (upsert db ident {:db/id tid} value)
+          [:db/add id ident tid]))
 
-    "CodeableConcept"
-    (let [tid (d/tempid (keyword "part" type-code))
-          tx-data (upsert db (keyword type-code) {:db/id tid} value)
-          code-tids (find-code-tids tx-data)]
-      (into
+      "CodeableConcept"
+      (let [tid (d/tempid (keyword "part" type-code))
+            tx-data (upsert db (keyword type-code) {:db/id tid} value)
+            code-tids (find-code-tids tx-data)]
+        (into
+          (cond->
+            (conj tx-data [:db/add id ident tid])
+
+            part-of-choice-type?
+            (conj [:db/add id type-attr-ident ident]))
+          (map (fn [tid] [:db/add id (index-ident ident) tid]))
+          (if part-of-choice-type? [] code-tids)))
+
+      (let [tid (d/tempid (keyword "part" type-code))]
         (cond->
-          (conj tx-data [:db/add id ident tid])
+          (conj
+            (upsert db (keyword type-code) {:db/id tid} value)
+            [:db/add id ident tid])
 
           part-of-choice-type?
-          (conj [:db/add id type-attr-ident ident]))
-        (map (fn [tid] [:db/add id (index-ident ident) tid]))
-        (if part-of-choice-type? [] code-tids)))
-
-    (let [tid (d/tempid (keyword "part" type-code))]
-      (cond->
-        (conj
-          (upsert db (keyword type-code) {:db/id tid} value)
-          [:db/add id ident tid])
-
-        part-of-choice-type?
-        (conj [:db/add id type-attr-ident ident])))))
+          (conj [:db/add id type-attr-ident ident]))))))
 
 
 (defn add-element

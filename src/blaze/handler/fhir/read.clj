@@ -1,5 +1,5 @@
 (ns blaze.handler.fhir.read
-  "FHIR read endpoint.
+  "FHIR read interaction.
 
   https://www.hl7.org/fhir/http.html#read"
   (:require

@@ -1,5 +1,5 @@
 (ns blaze.handler.fhir.capabilities
-  "FHIR capabilities endpoint.
+  "FHIR capabilities interaction.
 
   https://www.hl7.org/fhir/http.html#capabilities"
   (:require
@@ -13,6 +13,7 @@
   {:type id
    :interaction
    [{:code "read"}
+    {:code "search-type"}
     {:code "update"}]})
 
 
@@ -48,7 +49,7 @@
 
 
 (s/fdef handler
-  :args (s/cat :version string? :structure-definitions map?)
+  :args (s/cat :base-uri string? :version string? :structure-definitions map?)
   :ret :handler.fhir/capabilities)
 
 (defn handler

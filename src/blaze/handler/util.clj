@@ -5,7 +5,8 @@
     [clojure.datafy :refer [datafy]]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [ring.util.response :as ring])
+    [ring.util.response :as ring]
+    [taoensso.timbre :as log])
   (:import
     [org.apache.http HeaderElement]
     [org.apache.http.message BasicHeaderValueParser]))
@@ -56,11 +57,22 @@
 
 
 (defn error-response [{::anom/keys [category] :as anomaly}]
-  (prn 'error-response anomaly)
-  (-> (ring/response (operation-outcome anomaly))
-      (ring/status
-        (case category
-          ::anom/incorrect 400
-          ::anom/not-found 404
-          ::anom/conflict 409
-          500))))
+  (cond
+    category
+    (do
+      (log/error anomaly)
+      (-> (ring/response (operation-outcome anomaly))
+          (ring/status
+            (case category
+              ::anom/incorrect 400
+              ::anom/not-found 404
+              ::anom/conflict 409
+              500))))
+
+    (instance? Exception anomaly)
+    (error-response
+      (merge {::anom/message (.getMessage ^Exception anomaly)}
+             (ex-data anomaly)))
+
+    :else
+    (error-response {::anom/category ::anom/fault})))

@@ -48,7 +48,7 @@
 (deftest resource-update-test
 
   (testing "Version handling"
-    (testing "starts with versionId 0"
+    (testing "Starts with versionId 0"
       (is
         (=
           (with-redefs [d/tempid (fn [partition] partition)]
@@ -65,7 +65,18 @@
             (resource-update
               db
               {"id" "0" "resourceType" "Patient"})
-            [[:db.fn/cas id :version 0 1]])))))
+            [[:db.fn/cas id :version 0 1]]))))
+
+    (testing "Ignores versionId"
+      (is
+        (=
+          (with-redefs [d/tempid (fn [partition] partition)]
+            (resource-update
+              db
+              {"id" "0" "resourceType" "Patient"
+               "meta" {"versionId" "42"}}))
+          [[:db/add :part/Patient :Patient/id "0"]
+           [:db.fn/cas :part/Patient :version nil 0]]))))
 
 
 

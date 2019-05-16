@@ -85,7 +85,7 @@
   (count-resources (d/db conn) "Specimen")
   (count-resources (d/db conn) "Observation")
   (d/pull (d/db conn) '[*] 1262239348687945)
-  (d/entity (d/db conn) :BackboneElement)
+  (d/touch (d/entity (d/db conn) :Patient.link/type))
   (d/q '[:find (pull ?e [*]) :where [?e :code/id]] (d/db conn))
 
   (d/pull (d/db conn) '[*] (d/t->tx 1197))

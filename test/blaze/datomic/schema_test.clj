@@ -163,6 +163,21 @@
             [:db/add "Patient.link.other" :element/type "Reference"]
             [:db/add "Patient.link" :type/elements "Patient.link.other"]])))
 
+  (testing "Patient.link.type"
+    (is (= (element-definition-tx-data (element-definitions "Patient.link.type"))
+           [{:db/id "Patient.link.type"
+             :db/ident :Patient.link/type
+             :db/valueType :db.type/ref
+             :db/cardinality :db.cardinality/one
+             :element/primitive? true
+             :element/choice-type? false
+             :ElementDefinition/path "Patient.link.type"
+             :ElementDefinition/isSummary true
+             :element/type-code "code"
+             :element/json-key "type"
+             :element/code-system-url "http://hl7.org/fhir/link-type"}
+            [:db/add "Patient.link" :type/elements "Patient.link.type"]])))
+
   (testing "Observation.code"
     (is (= (element-definition-tx-data (element-definitions "Observation.code"))
            [{:db/id "Observation.code"

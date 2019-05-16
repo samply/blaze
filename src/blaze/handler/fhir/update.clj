@@ -1,5 +1,5 @@
 (ns blaze.handler.fhir.update
-  "FHIR update endpoint.
+  "FHIR update interaction.
 
   https://www.hl7.org/fhir/http.html#update"
   (:require

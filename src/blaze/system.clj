@@ -16,6 +16,7 @@
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
     [blaze.handler.fhir.capabilities :as fhir-capabilities-handler]
     [blaze.handler.fhir.read :as fhir-read-handler]
+    [blaze.handler.fhir.search :as fhir-search-handler]
     [blaze.handler.fhir.transaction :as fhir-transaction-handler]
     [blaze.handler.fhir.update :as fhir-update-handler]
     [blaze.handler.health :as health-handler]
@@ -34,8 +35,9 @@
 (s/def :config/base-uri string?)
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
 (s/def :config/structure-definitions (s/keys :req [:structure-definitions/path]))
-(s/def :config/fhir-capabilities-handler (s/keys :req-un [:config/base-uri]))
-(s/def :config/fhir-update-handler (s/keys :req-un [:config/base-uri]))
+(s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-uri]))
+(s/def :config/fhir-search-handler (s/keys :opt-un [:config/base-uri]))
+(s/def :config/fhir-update-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
 
 (s/def :system/config
@@ -45,6 +47,7 @@
      :config/cache
      :config/structure-definitions
      :config/fhir-capabilities-handler
+     :config/fhir-search-handler
      :config/fhir-update-handler
      :config/server]))
 
@@ -78,6 +81,10 @@
    :fhir-read-handler
    {:database/conn (ig/ref :database-conn)}
 
+   :fhir-search-handler
+   {:base-uri base-uri
+    :database/conn (ig/ref :database-conn)}
+
    :fhir-transaction-handler
    {:database/conn (ig/ref :database-conn)}
 
@@ -91,6 +98,7 @@
      :handler/health (ig/ref :health-handler)
      :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
      :handler.fhir/read (ig/ref :fhir-read-handler)
+     :handler.fhir/search (ig/ref :fhir-search-handler)
      :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
      :handler.fhir/update (ig/ref :fhir-update-handler)}
     :version version}
@@ -161,6 +169,11 @@
 (defmethod ig/init-key :fhir-read-handler
   [_ {:database/keys [conn]}]
   (fhir-read-handler/handler conn))
+
+
+(defmethod ig/init-key :fhir-search-handler
+  [_ {:keys [base-uri] :database/keys [conn]}]
+  (fhir-search-handler/handler base-uri conn))
 
 
 (defmethod ig/init-key :fhir-transaction-handler
