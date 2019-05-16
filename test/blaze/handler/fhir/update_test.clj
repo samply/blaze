@@ -174,8 +174,8 @@
                  {:route-params {:type "Patient" :id "0"}
                   :body resource})]
 
-          (testing "Returns 204"
-            (is (= 204 status)))
+          (testing "Returns 200"
+            (is (= 200 status)))
 
           (testing "Transaction time in Last-Modified header"
             (is (= "Tue, 14 May 2019 13:58:20 GMT" (get headers "Last-Modified"))))

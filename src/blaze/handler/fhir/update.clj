@@ -62,11 +62,7 @@
             (= "OperationOutcome" return-preference)
             {:resourceType "OperationOutcome"})
           (ring/response)
-          (ring/status
-            (cond
-              (zero? version) 201
-              (#{"representation" "OperationOutcome"} return-preference) 200
-              :else 204))
+          (ring/status (if (zero? version) 201 200))
           (ring/header "Last-Modified" (ring-time/format-date last-modified))
           (ring/header "ETag" (str "W/\"" (d/basis-t db) "\"")))
       (zero? version)
