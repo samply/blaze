@@ -31,20 +31,30 @@
 (s/def :config/database-conn (s/keys :req [:database/uri]))
 (s/def :cache/threshold pos-int?)
 (s/def :structure-definitions/path string?)
+(s/def :config/base-uri string?)
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
 (s/def :config/structure-definitions (s/keys :req [:structure-definitions/path]))
+(s/def :config/fhir-capabilities-handler (s/keys :req-un [:config/base-uri]))
+(s/def :config/fhir-update-handler (s/keys :req-un [:config/base-uri]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
 
 (s/def :system/config
   (s/keys
-    :req-un [:config/database-conn :config/cache
-             :config/structure-definitions :config/server]))
+    :req-un
+    [:config/database-conn
+     :config/cache
+     :config/structure-definitions
+     :config/fhir-capabilities-handler
+     :config/fhir-update-handler
+     :config/server]))
 
 
 
 ;; ---- Functions -------------------------------------------------------------
 
 (def ^:private version "0.4")
+
+(def ^:private base-uri "http://localhost:8080")
 
 (def ^:private default-config
   {:structure-definitions {}
@@ -61,7 +71,8 @@
     :cache (ig/ref :cache)}
 
    :fhir-capabilities-handler
-   {:version version
+   {:base-uri base-uri
+    :version version
     :structure-definitions (ig/ref :structure-definitions)}
 
    :fhir-read-handler
@@ -71,7 +82,7 @@
    {:database/conn (ig/ref :database-conn)}
 
    :fhir-update-handler
-   {:base-uri "http://localhost:8080/fhir"
+   {:base-uri base-uri
     :database/conn (ig/ref :database-conn)}
 
    :app-handler
@@ -143,8 +154,8 @@
 
 
 (defmethod ig/init-key :fhir-capabilities-handler
-  [_ {:keys [version structure-definitions]}]
-  (fhir-capabilities-handler/handler version structure-definitions))
+  [_ {:keys [base-uri version structure-definitions]}]
+  (fhir-capabilities-handler/handler base-uri version structure-definitions))
 
 
 (defmethod ig/init-key :fhir-read-handler

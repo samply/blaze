@@ -15,8 +15,7 @@
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
     [ring.util.response :as ring]
-    [ring.util.time :as ring-time]
-    [taoensso.timbre :as log]))
+    [ring.util.time :as ring-time]))
 
 
 (defn- validate-resource [type id body]
@@ -71,7 +70,7 @@
           (ring/header "Last-Modified" (ring-time/format-date last-modified))
           (ring/header "ETag" (str "W/\"" (d/basis-t db) "\"")))
       (zero? version)
-      (ring/header "Location" (str base-uri "/" type "/" id)))))
+      (ring/header "Location" (str base-uri "/fhir/" type "/" id)))))
 
 
 (defn handler-intern [base-uri conn]

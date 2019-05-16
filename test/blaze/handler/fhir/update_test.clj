@@ -30,7 +30,7 @@
 (use-fixtures :each fixture)
 
 
-(def base-uri "http://localhost:8080/fhir")
+(def base-uri "http://localhost:8080")
 
 
 (defn- successful-update-mocks [resource version]

@@ -9,27 +9,37 @@
     [ring.util.response :as ring]))
 
 
-(defn- resource [id]
+(defn- resource [{:keys [id]}]
   {:type id
    :interaction
    [{:code "read"}
     {:code "update"}]})
 
 
-(defn handler-intern [version structure-definitions]
+(defn handler-intern [base-uri version structure-definitions]
   (fn [_]
     (ring/response
       {:resourceType "CapabilityStatement"
        :status "active"
+       :kind "instance"
        :date "2019-05-15T00:00:00Z"
        :software
        {:name "Blaze"
         :version version}
+       :implementation
+       {:description (str "Blaze running at " base-uri "/fhir")
+        :url (str base-uri "/fhir")}
        :fhirVersion "4.0.0"
        :format ["application/fhir+json"]
        :rest
        [{:mode "server"
-         :resource (into [] (map resource) (keys structure-definitions))
+         :resource
+         (into
+           []
+           (comp
+             (filter #(= "resource" (:kind %)))
+             (map resource))
+           (vals structure-definitions))
          :interaction
          [{:code "transaction"}]}]})))
 
@@ -43,7 +53,7 @@
 
 (defn handler
   ""
-  [version structure-definitions]
-  (-> (handler-intern version structure-definitions)
+  [base-uri version structure-definitions]
+  (-> (handler-intern base-uri version structure-definitions)
       (wrap-json)
       (wrap-exception)))

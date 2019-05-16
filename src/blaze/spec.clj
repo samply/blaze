@@ -57,6 +57,10 @@
   string?)
 
 
+(s/def :StructureDefinition/kind
+  #{"primitive-type" "complex-type" "resource" "logical"})
+
+
 (s/def :StructureDefinition.snapshot/element
   (s/coll-of :fhir/ElementDefinition))
 
@@ -74,52 +78,15 @@
 
 
 (s/def :fhir/StructureDefinition
-  (s/keys :req [:StructureDefinition/name]
+  (s/keys :req [:StructureDefinition/name
+                :StructureDefinition/kind]
           :opt [:StructureDefinition/snapshot]))
 
 
 (s/def :fhir.un/StructureDefinition
-  (s/keys :req-un [:StructureDefinition/name]
+  (s/keys :req-un [:StructureDefinition/name
+                   :StructureDefinition/kind]
           :opt-un [:StructureDefinition.un/snapshot]))
-
-
-
-;; ---- Life Element Definition -----------------------------------------------
-
-(s/def :life.element-definition/key
-  keyword?)
-
-(s/def :life.element-definition/type
-  (s/keys :req [:life.element-definition.type/code]))
-
-(s/def :life.element-definition/max
-  (s/or :size nat-int? :limit #{:*}))
-
-(s/def :life.element-definition/summary?
-  boolean?)
-
-(s/def :life/element-definition
-  (s/keys :req [:life.element-definition/key
-                :life.element-definition/type]
-          :opt [:life.element-definition/max]))
-
-
-
-;; ---- Life Structure Definition ---------------------------------------------
-
-(s/def :life.structure-definition/id
-  string?)
-
-(s/def :life.structure-definition/name
-  string?)
-
-(s/def :life.structure-definition/elements
-  (s/map-of :life.element-definition/key :life/element-definition))
-
-(s/def :life/structure-definition
-  (s/keys :req [:life.structure-definition/id
-                :life.structure-definition/name]
-          :opt [:life.structure-definition/elements]))
 
 
 
