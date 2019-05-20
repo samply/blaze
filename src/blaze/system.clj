@@ -44,7 +44,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.4")
+(def ^:private version "0.4.1")
 
 (def ^:private default-config
   {:structure-definitions {}
