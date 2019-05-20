@@ -12,6 +12,7 @@
   {:handler/cql-evaluation (constantly ::cql-evaluation-handler)
    :handler/health (constantly ::health-handler)
    :handler.fhir/capabilities (constantly ::fhir-capabilities-handler)
+   :handler.fhir/delete (constantly ::fhir-delete-handler)
    :handler.fhir/read (constantly ::fhir-read-handler)
    :handler.fhir/search (constantly ::fhir-search-handler)
    :handler.fhir/transaction (constantly ::fhir-transaction-handler)
@@ -34,6 +35,8 @@
       "/fhir/Patient" :get ::fhir-search-handler
       "/fhir/Patient/0" :get ::fhir-read-handler
       "/fhir/Patient/0" :put ::fhir-update-handler
+      "/fhir/Patient/0" :delete ::fhir-delete-handler
       "/fhir/Observation" :get ::fhir-search-handler
       "/fhir/Observation/0" :get ::fhir-read-handler
-      "/fhir/Observation/0" :put ::fhir-update-handler)))
+      "/fhir/Observation/0" :put ::fhir-update-handler
+      "/fhir/Observation/0" :delete ::fhir-delete-handler)))

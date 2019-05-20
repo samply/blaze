@@ -95,6 +95,48 @@
       (is (= "not-found" (-> body :issue first :code)))))
 
 
+  (testing "Returns Gone on Deleted Resource"
+    (let [resource
+          (with-meta {"meta" {"versionId" "42"}}
+                     {:last-transaction-instant (Instant/ofEpochMilli 0)
+                      :version-id "42"
+                      :deleted true})]
+      (st/instrument
+        [`util/cached-entity
+         `pull/pull-resource]
+        {:spec
+         {`util/cached-entity
+          (s/fspec
+            :args (s/cat :db #{::db} :eid #{:Patient})
+            :ret #{::patient-type})
+          `pull/pull-resource
+          (s/fspec
+            :args (s/cat :db #{::db} :type #{"Patient"} :id #{"0"})
+            :ret #{resource})}
+         :stub
+         #{`util/cached-entity
+           `pull/pull-resource}})
+
+      (let [{:keys [status body headers]}
+            ((handler-intern ::conn)
+              {:route-params {:type "Patient" :id "0"}})]
+
+        (is (= 410 status))
+
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "Version in ETag header"
+          ;; 42 is the T of the transaction of the resource update
+          (is (= "W/\"42\"" (get headers "ETag"))))
+
+        (is (= "OperationOutcome" (:resourceType body)))
+
+        (is (= "error" (-> body :issue first :severity)))
+
+        (is (= "deleted" (-> body :issue first :code))))))
+
+
   (testing "Returns Existing Resource"
     (let [resource
           (with-meta {"meta" {"versionId" "42"}}

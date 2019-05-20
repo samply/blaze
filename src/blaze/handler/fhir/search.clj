@@ -15,9 +15,9 @@
     [ring.util.response :as ring]))
 
 
-(defn entry [base-uri db type {:keys [v]}]
-  {:fullUrl (str base-uri "/fhir/" type "/" v)
-   :resource (pull/pull-resource db type v)})
+(defn entry [base-uri {:strs [resourceType id] :as resource}]
+  {:fullUrl (str base-uri "/fhir/" resourceType "/" id)
+   :resource resource})
 
 
 (defn search [base-uri db type]
@@ -27,8 +27,10 @@
    (into
      []
      (comp
+       (map #(pull/pull-resource db type (:v %)))
+       (filter #(not (:deleted (meta %))))
        (take 10)
-       (map #(entry base-uri db type %)))
+       (map #(entry base-uri %)))
      (d/datoms db :aevt (keyword type "id")))})
 
 

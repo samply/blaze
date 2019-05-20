@@ -22,7 +22,8 @@
      {:get :handler.fhir/search}
      ["/" :type "/" :id]
      {:get :handler.fhir/read
-      :put :handler.fhir/update}}}])
+      :put :handler.fhir/update
+      :delete :handler.fhir/delete}}}])
 
 
 (defn wrap-server [handler server]
@@ -38,6 +39,7 @@
 (s/def ::handlers
   (s/keys :req [:handler/cql-evaluation
                 :handler/health
+                :handler.fhir/delete
                 :handler.fhir/read
                 :handler.fhir/search
                 :handler.fhir/transaction

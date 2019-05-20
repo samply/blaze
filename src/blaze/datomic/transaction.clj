@@ -1,21 +1,26 @@
 (ns blaze.datomic.transaction
   (:require
     [blaze.datomic.quantity :as quantity]
+    [blaze.datomic.pull :as pull]
     [blaze.datomic.value :as value]
     [blaze.datomic.util :as util]
+    [blaze.fhir-client :as client]
     [blaze.spec]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
+    [clojure.walk :refer [postwalk]]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [manifold.deferred :as md])
+    [manifold.deferred :as md]
+    [taoensso.timbre :as log])
   (:import
     [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
                YearMonth]
     [java.time.format DateTimeFormatter]
-    [java.util Date]
+    [java.util Base64]
+    [java.util Date Map$Entry UUID]
     [java.util.concurrent ExecutionException]))
 
 
@@ -43,12 +48,17 @@
     (LocalDate/parse value)))
 
 
-(defn- quantity [{:strs [value unit] :as quantity}]
-  (-> (cond
-        (decimal? value) value
-        (int? value) (BigDecimal/valueOf ^long value)
-        :else (throw (ex-info "Invalid quantity." quantity)))
-      (quantity/quantity unit)))
+(defn- quantity [{:strs [value system code] :as quantity}]
+  (if (= "http://unitsofmeasure.org" system)
+    (-> (cond
+          (decimal? value) value
+          (int? value) (BigDecimal/valueOf ^long value)
+          :else (throw (ex-info "Invalid quantity." quantity)))
+        (quantity/quantity code))
+    (throw (ex-info (str "Can't create a quantity with a unit from unsupported "
+                         "system `" system "`.")
+                    {::anom/category ::anom/incorrect
+                     :quantity quantity}))))
 
 
 (s/fdef coerce-value
@@ -57,82 +67,37 @@
 (defn coerce-value
   [type-code value]
   (case type-code
-    ("string" "code" "id" "markdown" "uri" "xhtml" "boolean") value
+    ("boolean"
+      "integer"
+      "string"
+      "decimal"
+      "uri"
+      "url"
+      "canonical"
+      "code"
+      "oid"
+      "id"
+      "markdown"
+      "unsignedInt"
+      "positiveInt"
+      "xhtml") value
     "instant" (Date/from (Instant/from (.parse DateTimeFormatter/ISO_DATE_TIME value)))
-    "decimal" (double value)
-    "dateTime" (coerce-date-time value)
     "date" (coerce-date value)
+    "dateTime" (coerce-date-time value)
     "time" (LocalTime/parse value)
-    "Quantity" (quantity value)
-    nil))
-
-
-(defn- to-decimal [value]
-  (if (int? value)
-    (BigDecimal/valueOf ^long value)
-    value))
-
-
-(defn- coerce-value*
-  [{:db/keys [cardinality] :element/keys [type-code]} value]
-  (if (= :db.cardinality/one cardinality)
-    (coerce-value type-code value)
-    (into #{} (map #(coerce-value type-code %)) value)))
+    "base64Binary" (.decode (Base64/getDecoder) ^String value)
+    "uuid" (UUID/fromString value)
+    "Quantity" (quantity value)))
 
 
 (defn- write
   "Calls write on values stored as byte array."
-  [valueType value]
-  (if (= :db.type/bytes valueType) (value/write value) value))
-
-
-(defn- type-choice [{:element/keys [type-choices]} type-code]
-  (some #(when (= type-code (:element/type-code %)) %) type-choices))
-
-
-(defn- primitive-card-one-value-from-db
-  {:arglists '([element entity])}
-  [{:element/keys [type-code] :db/keys [ident]} entity]
-  (case ident
-    :Coding/system
-    (-> entity :Coding/code :code/system)
-    :Coding/version
-    (-> entity :Coding/code :code/version)
-    (when-some [value (ident entity)]
-      (cond
-        (= "code" type-code)
-        (:code/code value)
-        :else
-        (value/read value)))))
-
-
-(defn- non-primitive-value-from-db
-  "Returns a map like if would be formatted by `find-json-value` of `entity`.
-
-  The map preserves the original entity in its meta-data under :entity."
-  [db type-ident entity]
-  (into
-    (with-meta {} {:entity entity})
-    (comp
-      (map #(util/cached-entity db %))
-      (map
-        (fn [{:element/keys [json-key] :as element}]
-          (when-some [value (primitive-card-one-value-from-db element entity)]
-            [json-key value]))))
-    (:type/elements (util/cached-entity db type-ident))))
-
-
-(defn- non-primitive-card-many-values-from-db
-  "Returns the set of non-primitive values from the cardinality-many `element`
-  of `entity` from `db`."
-  {:arglists '([db element entity])}
-  [db {:db/keys [ident] :element/keys [type]} entity]
-  (case ident
-    (when-let [values (ident entity)]
-      (into
-        #{}
-        (map #(non-primitive-value-from-db db type %))
-        values))))
+  [type-code valueType value]
+  (assert (some? value) (str "Nil value in write of type `" type-code "`."))
+  (let [value (coerce-value type-code value)]
+    (if (= :db.type/bytes valueType)
+      (value/write value)
+      value)))
 
 
 (defn find-json-value
@@ -144,54 +109,63 @@
   Returns the first found value on choice typed elements.
 
   Returns nil of nothing was found."
-  [db {:element/keys [choice-type? primitive? type-choices json-key] :as element}
-   entity]
+  [db {:element/keys [choice-type? type-choices json-key] :as element} entity]
   (if choice-type?
     (transduce
       (map #(util/cached-entity db %))
       (completing
-        (fn [_ {:element/keys [json-key primitive?] :as element}]
+        (fn [_ {:element/keys [json-key] :as element}]
           (let [value (get entity json-key)]
             (when (some? value)
               (reduced
-                (when-some [value (if primitive? (coerce-value* element value) value)]
-                  [value element]))))))
+                [value element])))))
       nil
       type-choices)
     (when-some [value (get entity json-key)]
-      (when-some [value (if primitive? (coerce-value* element value) value)]
-        [value element]))))
+      [value element])))
 
 
 
 ;; ---- Add Element -----------------------------------------------------------
 
+(defn- add-code
+  "Returns tx-data for adding a code. All of `system`, `version` and `code` are
+  optional."
+  [ident id system version code]
+  (let [tid (d/tempid :part/code)]
+    [(cond->
+       {:db/id tid
+        :code/id (str system "|" version "|" code)}
+       system
+       (assoc :code/system system)
+       version
+       (assoc :code/version version)
+       code
+       (assoc :code/code code))
+     [:db/add id ident tid]]))
+
+
+(defn- add-code-according-value-set-binding
+  [{:db/keys [ident]} id code]
+  ;; TODO: resolve the code system and version
+  (add-code ident id nil nil code))
+
 
 (defn- add-primitive-element
-  {:arglists '([element id entity value])}
-  [{:element/keys [type-code part-of-choice-type? type-attr-ident]
-    :ElementDefinition/keys [path]
+  {:arglists '([context element id value])}
+  [{{:strs [system version]} :code}
+   {:element/keys [type-code part-of-choice-type? type-attr-ident
+                   value-set-binding]
     :db/keys [ident valueType] :as element}
-   id {:strs [system version]} value]
+   id value]
   (cond->
     (case type-code
       "code"
-      (if-let [system (or system (:element/code-system-url element))]
-        (let [tid (d/tempid :part/code)]
-          [(cond->
-             {:db/id tid
-              :code/id
-              (str (cond-> system version (str "|" version)) "|" value)
-              :code/system system
-              :code/code value}
-             version
-             (assoc :code/version version))
-           [:db/add id ident tid]])
-        (throw (ex-info (str "Can't refer to code `" value "` in element `"
-                             path "` because its code system is unknown.")
-                        {::anom/category ::anom/not-found
-                         :element element})))
-      [[:db/add id ident (write valueType value)]])
+      (if value-set-binding
+        (add-code-according-value-set-binding element id value)
+        (add-code ident id system version value))
+
+      [[:db/add id ident (write type-code valueType value)]])
     part-of-choice-type?
     (conj [:db/add id type-attr-ident ident])))
 
@@ -228,163 +202,221 @@
   "Returns tx-data for adding the non-primitive `value` as child of the
   existing entity with `id`."
   {:arglists '([db element id value])}
-  [db {:element/keys [type-code part-of-choice-type? type-attr-ident]
-       :ElementDefinition/keys [path] :db/keys [ident]}
+  [context {:element/keys [type-code part-of-choice-type? type-attr-ident]
+            :ElementDefinition/keys [path] :db/keys [ident]}
    id value]
-  (when-not (empty? value)
-    (case type-code
-      "Reference"
-      (when-let [reference (get value "reference")]
-        ;; TODO: check for valid internal references
-        (let [[type ref-id] (str/split reference #"/")]
-          (let [tid (d/tempid (keyword "part" type))]
-            [{:db/id tid
-              (keyword type "id") ref-id}
-             [:db/add id ident tid]])))
+  (case type-code
+    "Reference"
+    (when-let [reference (get value "reference")]
+      ;; TODO: check for valid internal references
+      (let [[type ref-id] (str/split reference #"/")]
+        (let [tid (d/tempid (keyword "part" type))]
+          [{:db/id tid
+            (keyword type "id") ref-id}
+           [:db/add id ident tid]])))
 
-      "BackboneElement"
-      (let [tid (d/tempid (keyword "part" path))]
-        (conj
-          (upsert db ident {:db/id tid} value)
-          [:db/add id ident tid]))
+    "BackboneElement"
+    (let [tid (d/tempid (keyword "part" path))
+          tx-data (upsert context ident {:db/id tid} value)]
+      (when-not (empty? tx-data)
+        (conj tx-data [:db/add id ident tid])))
 
-      "CodeableConcept"
-      (let [tid (d/tempid (keyword "part" type-code))
-            tx-data (upsert db (keyword type-code) {:db/id tid} value)
-            code-tids (find-code-tids tx-data)]
+    "CodeableConcept"
+    (let [tid (d/tempid (keyword "part" type-code))
+          tx-data (upsert context (keyword type-code) {:db/id tid} value)
+          code-tids (find-code-tids tx-data)]
+      (when-not (empty? tx-data)
         (into
           (cond->
             (conj tx-data [:db/add id ident tid])
-
             part-of-choice-type?
             (conj [:db/add id type-attr-ident ident]))
           (map (fn [tid] [:db/add id (index-ident ident) tid]))
-          (if part-of-choice-type? [] code-tids)))
+          (if part-of-choice-type? [] code-tids))))
 
-      (let [tid (d/tempid (keyword "part" type-code))]
+    "Resource"
+    (let [type (get value "resourceType")
+          tid (d/tempid (keyword "part" type))
+          tx-data (upsert context (keyword type) {:db/id tid} value)]
+      (when-not (empty? tx-data)
         (cond->
-          (conj
-            (upsert db (keyword type-code) {:db/id tid} value)
-            [:db/add id ident tid])
+          (conj tx-data [:db/add id ident tid])
+          part-of-choice-type?
+          (conj [:db/add id type-attr-ident ident]))))
 
+    (let [tid (d/tempid (keyword "part" type-code))
+          tx-data (upsert context (keyword type-code) {:db/id tid} value)]
+      (when-not (empty? tx-data)
+        (cond->
+          (conj tx-data [:db/add id ident tid])
           part-of-choice-type?
           (conj [:db/add id type-attr-ident ident]))))))
 
 
-(defn add-element
-  [db {:element/keys [primitive?] :as element} id entity value]
+(defn- add-element
+  [context {:element/keys [primitive?] :as element} id value]
   (if primitive?
-    (add-primitive-element element id entity value)
-    (add-non-primitive-element db element id value)))
+    (add-primitive-element context element id value)
+    (add-non-primitive-element context element id value)))
 
 
 
 ;; ---- Upsert Element --------------------------------------------------------
 
 (defn- upsert-primitive-card-one-element
-  [element old-entity new-entity new-value]
-  (let [old-value (primitive-card-one-value-from-db element old-entity)]
+  [{:keys [db] :as context} element old-entity new-value]
+  (let [old-value (second (pull/pull-element db element old-entity))]
     (when-not (= old-value new-value)
-      (add-primitive-element element (:db/id old-entity) new-entity new-value))))
+      (add-primitive-element context element (:db/id old-entity) new-value))))
 
 
 (defn- upsert-primitive-card-many-element
-  [{:db/keys [ident valueType]} {:db/keys [id] :as old-entity} new-values]
-  (let [old-values (into #{} value/read (ident old-entity))
+  {:arglists '([context element old-entity new-value])}
+  [{:keys [db] :as context} {:db/keys [ident valueType] :element/keys [type-code] :as element}
+   {:db/keys [id] :as old-entity} new-values]
+  (let [old-values (set (second (pull/pull-element db element old-entity)))
         new-values (set new-values)
         retract (set/difference old-values new-values)
         add (set/difference new-values old-values)]
     (-> []
         (into
-          (map (fn [value] [:db/retract id ident (write valueType value)]))
+          (map (fn [value] [:db/retract id ident (write type-code valueType value)]))
           retract)
         (into
-          (map (fn [value] [:db/add id ident (write valueType value)]))
+          (mapcat (fn [value] (add-primitive-element context element id value)))
           add))))
 
 
 (defn- upsert-reference
-  [db {:db/keys [ident] :as element} entity reference]
+  [{:keys [db] :as context} {:db/keys [ident] :as element} entity reference]
   (when-not (= (ident entity) (d/entity db (json-reference->lookup-ref reference)))
-    (add-non-primitive-element db element (:db/id entity) reference)))
+    (add-non-primitive-element context element (:db/id entity) reference)))
 
 
 (defn- upsert-non-primitive-card-one-element
-  [db {:db/keys [ident] :element/keys [type-code] :as element} old-entity
+  [context {:db/keys [ident] :element/keys [type-code] :as element} old-entity
    new-value]
   (if-let [old-value (ident old-entity)]
     (case type-code
       "Reference"
-      (upsert-reference db element old-entity new-value)
-      (upsert db (keyword type-code) old-value new-value))
-    (add-non-primitive-element db element (:db/id old-entity) new-value)))
+      (upsert-reference context element old-entity new-value)
+      "BackboneElement"
+      (upsert context ident old-value new-value)
+      (upsert context (keyword type-code) old-value new-value))
+    (add-non-primitive-element context element (:db/id old-entity) new-value)))
+
+
+(defn- vector->set [x]
+  (if (and (vector? x) (not (instance? Map$Entry x)))
+    (set x)
+    x))
+
+
+(defn- gen-upsert-pairs [context type retract add]
+  (for [old-entity retract
+        new-entity add]
+    {:old-entity old-entity
+     :new-entity new-entity
+     :retract-count
+     (transduce
+       (comp (filter #(= :db/retract (first %))) (map (constantly 1)))
+       +
+       (upsert context type (:entity (meta old-entity)) new-entity))}))
+
+
+(defn- gen-inline-resource-upsert-pairs [context retract add]
+  (for [old-entity retract
+        :let [old-type (keyword (util/resource-type (:entity (meta old-entity))))]
+        new-entity add
+        :let [new-type (keyword (get new-entity "resourceType"))]
+        :when (= old-type new-type)]
+    {:old-entity old-entity
+     :new-entity new-entity
+     :retract-count
+     (transduce
+       (comp (filter #(= :db/retract (first %))) (map (constantly 1)))
+       +
+       (upsert context new-type (:entity (meta old-entity)) new-entity))}))
 
 
 (defn- upsert-non-primitive-card-many-element
-  [db {:db/keys [ident] :element/keys [type-code] :as element}
+  [{:keys [db] :as context}
+   {:db/keys [ident] :element/keys [type-code] :as element}
    {:db/keys [id] :as old-entity} new-values]
-  (let [old-entities (non-primitive-card-many-values-from-db db element old-entity)
-        new-entities (set new-values)
+  (let [type (case type-code "BackboneElement" ident (keyword type-code))
+        old-entities (postwalk vector->set (second (pull/pull-element db element old-entity)))
+        new-entities (postwalk vector->set new-values)
         retract (set/difference old-entities new-entities)
-        add (set/difference new-entities old-entities)]
+        add (set/difference new-entities old-entities)
+        num-reuse (min (count retract) (count add))
+        reuse (take num-reuse (sort-by :retract-count (if (= :Resource type) (gen-inline-resource-upsert-pairs context retract add) (gen-upsert-pairs context type retract add))))
+        retract (set/difference retract (into #{} (map :old-entity) reuse))
+        add (set/difference add (into #{} (map :new-entity) reuse))]
     (-> []
         (into
           (mapcat
             (fn [old-entity]
+              (assert (:entity (meta old-entity)))
               (conj
-                (upsert db (keyword type-code) (:entity (meta old-entity)) nil)
+                (upsert context type (:entity (meta old-entity)) nil)
                 [:db/retract id ident (:db/id (:entity (meta old-entity)))])))
           retract)
         (into
-          (mapcat #(add-non-primitive-element db element id %))
+          (mapcat
+            (fn [{:keys [old-entity new-entity]}]
+              (upsert context (if (= :Resource type) (keyword (get new-entity "resourceType")) type) (:entity (meta old-entity)) new-entity)))
+          reuse)
+        (into
+          (mapcat #(add-non-primitive-element context element id %))
           add))))
 
 
 (defn upsert-single-typed-element
   {:arglists '([db element old-entity new-entity new-value])}
-  [db {:element/keys [primitive?] :db/keys [cardinality] :as element}
-   old-entity new-entity new-value]
+  [context {:element/keys [primitive?] :db/keys [cardinality] :as element}
+   old-entity new-value]
   (if primitive?
     (if (= :db.cardinality/one cardinality)
       (upsert-primitive-card-one-element
-        element old-entity new-entity new-value)
+        context element old-entity new-value)
       (upsert-primitive-card-many-element
-        element old-entity new-value))
+        context element old-entity new-value))
     (if (= :db.cardinality/one cardinality)
       (upsert-non-primitive-card-one-element
-        db element old-entity new-value)
+        context element old-entity new-value)
       (upsert-non-primitive-card-many-element
-        db element old-entity new-value))))
+        context element old-entity new-value))))
 
 
 (declare retract-single-typed-element)
 
 
 (defn upsert-choice-typed-element
-  [db {:db/keys [ident]} old-entity new-entity new-value new-value-element]
+  [{:keys [db] :as context} {:db/keys [ident]} old-entity new-value
+   new-value-element]
   (if-let [old-value-ident (ident old-entity)]
     (let [old-value-element (util/cached-entity db old-value-ident)]
       (if (= old-value-element new-value-element)
         (upsert-single-typed-element
-          db old-value-element old-entity new-entity new-value)
+          context old-value-element old-entity new-value)
         (into
           (if-let [old-value (old-value-ident old-entity)]
-            (retract-single-typed-element db old-value-element old-entity old-value)
+            (retract-single-typed-element context old-value-element old-entity old-value)
             [])
           (add-element
-            db new-value-element (:db/id old-entity) new-entity new-value))))
+            context new-value-element (:db/id old-entity) new-value))))
     (add-element
-      db new-value-element (:db/id old-entity) new-entity new-value)))
+      context new-value-element (:db/id old-entity) new-value)))
 
 
 (defn upsert-element
-  [db {:element/keys [choice-type?] :as element} old-entity new-entity
-   new-value new-value-element]
+  [context {:element/keys [choice-type?] :as element} old-entity new-value
+   new-value-element]
   (if choice-type?
     (upsert-choice-typed-element
-      db element old-entity new-entity new-value new-value-element)
+      context element old-entity new-value new-value-element)
     (upsert-single-typed-element
-      db element old-entity new-entity new-value)))
+      context element old-entity new-value)))
 
 
 
@@ -393,39 +425,42 @@
 
 (defn- retract-primitive-card-one-element
   [{:element/keys [type-code] :db/keys [ident]} {:db/keys [id]} value]
+  (assert (some? value))
   (case type-code
     "code"
-    [[:db/retract id ident (:db/id value)]]
+    (do (assert (:db/id value)) [[:db/retract id ident (:db/id value)]])
     [[:db/retract id ident value]]))
 
 
 (defn- retract-primitive-card-many-element
   [{:db/keys [ident]} {:db/keys [id]} value]
-  (mapv (fn [value] [:db/retract id ident value]) value))
+  (mapv (fn [value] (assert (some? value)) [:db/retract id ident value]) value))
 
 
 (defn- retract-non-primitive-card-one-element
-  [db {:element/keys [type-code] :db/keys [ident]} {:db/keys [id]} value]
+  [context {:element/keys [type-code] :db/keys [ident]} {:db/keys [id]} value]
+  (assert (:db/id value))
   (conj
-    (upsert db (keyword type-code) value nil)
+    (upsert context (keyword type-code) value nil)
     [:db/retract id ident (:db/id value)]))
 
 
 (defn- retract-non-primitive-card-many-element
-  [db {:element/keys [type-code] :db/keys [ident]} {:db/keys [id]} value]
+  [context {:db/keys [ident]} {:db/keys [id]} value]
   (into
     []
     (mapcat
       (fn [value]
+        (assert (:db/id value))
         (conj
-          (upsert db (keyword type-code) value nil)
+          (upsert context (keyword (util/resource-type value)) value nil)
           [:db/retract id ident (:db/id value)])))
     value))
 
 
 (defn- retract-single-typed-element
   {:arglists '([db element entity value])}
-  [db {:element/keys [primitive?] :db/keys [cardinality] :as element} entity
+  [context {:element/keys [primitive?] :db/keys [cardinality] :as element} entity
    value]
   (if primitive?
     (if (= :db.cardinality/one cardinality)
@@ -435,16 +470,16 @@
         element entity value))
     (if (= :db.cardinality/one cardinality)
       (retract-non-primitive-card-one-element
-        db element entity value)
+        context element entity value)
       (retract-non-primitive-card-many-element
-        db element entity value))))
+        context element entity value))))
 
 
 (defn- retract-choice-typed-element
-  [db {:db/keys [ident]} {:db/keys [id] :as entity}]
+  [{:keys [db] :as context} {:db/keys [ident]} {:db/keys [id] :as entity}]
   (when-let [type-ident (ident entity)]
     (-> (if-some [value (type-ident entity)]
-          (retract-single-typed-element db (util/cached-entity db type-ident) entity value)
+          (retract-single-typed-element context (util/cached-entity db type-ident) entity value)
           [])
         (conj [:db/retract id ident type-ident]))))
 
@@ -453,35 +488,77 @@
   "Returns tx-data for retracting `element` from `entity` if it holds some
   value."
   {:arglists '([db element entity])}
-  [db {:db/keys [ident] :element/keys [choice-type?] :as element} entity]
+  [context {:db/keys [ident] :element/keys [choice-type?] :as element} entity]
   (if choice-type?
-    (retract-choice-typed-element db element entity)
+    (retract-choice-typed-element context element entity)
     (when-some [value (ident entity)]
-      (retract-single-typed-element db element entity value))))
+      (retract-single-typed-element context element entity value))))
 
+
+(s/fdef upsert
+  :args (s/cat :context (s/keys :req-un [::ds/db])
+               :type-ident (s/and keyword? #(not (#{:BackboneElement :Resource} %)))
+               :old-entity some?
+               :new-entity (s/nilable (s/map-of string? any?))))
 
 (defn- upsert
   "Takes a `db` and `type-ident`, the old version of an entity as Datomic entity
   and the new version as JSON with string keys and returns Datomic transaction
   data for the update."
-  [db type-ident old-entity new-entity]
-  (into
-    []
-    (comp
-      (map #(util/cached-entity db %))
-      (filter
-        (fn [{:db/keys [ident]}]
-          (not (#{:Coding/system :Coding/version} ident))))
-      (mapcat
-        (fn [element]
-          (if-let [[new-value value-element] (find-json-value db element new-entity)]
-            (upsert-element db element old-entity new-entity new-value value-element)
-            (retract-element db element old-entity)))))
-    (:type/elements (util/cached-entity db type-ident))))
+  [{:keys [db] :as context} type-ident old-entity new-entity]
+  (let [context
+        (cond-> context
+          (= :Coding type-ident)
+          (assoc :code new-entity)
+          (= :CodeSystem type-ident)
+          (assoc :code
+                 (cond-> {"system" (get new-entity "url")}
+                   (contains? new-entity "version")
+                   (assoc "version" (get new-entity "version"))))
+          (= :ConceptMap/group type-ident)
+          (assoc :code
+                 (cond-> {"system" (get new-entity "source")}
+                   (contains? new-entity "sourceVersion")
+                   (assoc "version" (get new-entity "sourceVersion")))
+                 :target-code
+                 (cond-> {"system" (get new-entity "target")}
+                   (contains? new-entity "targetVersion")
+                   (assoc "version" (get new-entity "targetVersion"))))
+          (= :ConceptMap.group.element/target type-ident)
+          (assoc :code (:target-code context))
+          (= :ValueSet.compose/include type-ident)
+          (assoc :code new-entity)
+          (= :ValueSet.expansion/contains type-ident)
+          (assoc :code new-entity))]
+    (into
+      []
+      (comp
+        (map #(util/cached-entity db %))
+        (filter
+          (fn [{:db/keys [ident]}]
+            (not (#{:Coding/system :Coding/version} ident))))
+        (mapcat
+          (fn [element]
+            (if-let [[new-value value-element] (find-json-value db element new-entity)]
+              (upsert-element context element old-entity new-value value-element)
+              (retract-element context element old-entity)))))
+      (:type/elements (util/cached-entity db type-ident)))))
+
+
+(defn- prepare-resource
+  "Removes versionId and lastUpdated from meta because both will be set at read
+  time from :version attribute and its transaction."
+  [resource]
+  (update resource "meta" dissoc "versionId" "lastUpdated"))
 
 
 (defn- version-increment [{:db/keys [id] :keys [version]}]
-  [:db.fn/cas id :version version (if version (inc version) 0)])
+  (let [new-version
+        (cond
+          (nil? version) 0
+          (neg? version) (inc (- version))
+          :else (inc version))]
+    [:db.fn/cas id :version version new-version]))
 
 
 (s/fdef resource-update
@@ -502,9 +579,26 @@
   (assert id)
   (let [old-resource (or (d/entity db [(keyword resourceType "id") id])
                          {:db/id (d/tempid (keyword "part" resourceType))})
-        tx-data (->> (update resource "meta" dissoc "versionId" "lastUpdated")
-                     (upsert db (keyword resourceType) old-resource))]
+        tx-data (->> (prepare-resource resource)
+                     (upsert {:db db} (keyword resourceType) old-resource))]
     (conj tx-data (version-increment old-resource))))
+
+
+(defn- version-increment-delete [{:db/keys [id] :keys [version]}]
+  (assert version)
+  [:db.fn/cas id :version version (- (inc version))])
+
+
+(s/fdef resource-deletion
+  :args (s/cat :db ::ds/db :type string? :id string?)
+  :ret ::ds/tx-data)
+
+(defn resource-deletion
+  "Takes a `db` and the `type` and `id` of a resource and returns Datomic
+  transaction data for the deletion."
+  [db type id]
+  (when-let [resource (d/entity db [(keyword type "id") id])]
+    [(version-increment-delete resource)]))
 
 
 (defn- category [e]
@@ -523,4 +617,26 @@
         (fn [e]
           (md/error-deferred
             {::anom/category (category e)
+             ::anom/message (.getMessage ^Exception e)
              :data (ex-data e)})))))
+
+(comment
+  (def term-base-uri "http://test.fhir.org/r4")
+
+  (defn- fetch-code-system-info
+    "Returns a map with a least :system and optionally :version if something was found."
+    [value-set-binding code]
+    (log/info "fetch-code-system-url" value-set-binding code)
+    (let [[uri version] (str/split value-set-binding #"\|")]
+      (-> (client/fetch (str term-base-uri "/ValueSet/$expand")
+                        {:query-params
+                         {"url" uri
+                          "valueSetVersion" version
+                          "filter" code}})
+          (md/chain'
+            (fn [value-set]
+              (->> (-> value-set :expansion :contains)
+                   (some #(when (= code (:code %)) %))))))))
+
+  @(fetch-code-system-info "http://hl7.org/fhir/ValueSet/codesystem-content-mode|4.0.0" "complete")
+  )

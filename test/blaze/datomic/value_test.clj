@@ -50,3 +50,8 @@
     (quantity 170M "cm")
     (quantity 1.1M "pl")
     (quantity 25M "kg/m2")))
+
+
+(deftest bytes-test
+  (are [x] (= (vec x) (vec (read (write x))))
+    (byte-array [1 2 3])))

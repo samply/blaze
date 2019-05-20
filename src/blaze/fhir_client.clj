@@ -28,13 +28,13 @@
 
 
 (defn- status>anomaly
-  [^long status]
-  (case status
-    (400 405 406) ::anom/incorrect
-    (401 403) ::anom/forbidden
-    404 ::anom/not-found
-    409 ::anom/conflict
-    503 ::anom/unavailable
+  [status]
+  (cond
+    (= 404 status) ::anom/not-found
+    (= 409 status) ::anom/conflict
+    (#{401 403} status) ::anom/forbidden
+    (<= 400 status 499) ::anom/incorrect
+    (= 503 status) ::anom/unavailable
     :else ::anom/fault))
 
 
@@ -46,7 +46,7 @@
   and the ::response."
   [client]
   (fn [req]
-    (d/let-flow' [{:keys [status body] :as resp} (client req)]
+    (d/let-flow' [{:keys [status] :as resp} (client req)]
       (if (< status 400)
         resp
         (d/error-deferred
@@ -62,6 +62,11 @@
       body)))
 
 
+(defn- wrap-accept
+  [req]
+  (assoc-in req [:headers "accept"] "application/fhir+json"))
+
+
 (defn- middleware
   "The middleware used for requests. It includes parsing the body to XML, error
   handling and accept header setting."
@@ -71,7 +76,8 @@
          wrap-parse-body
          wrap-error-handling
          wrap-return-body)
-      (assoc req :throw-exceptions false))))
+      (-> (assoc req :throw-exceptions false)
+          wrap-accept))))
 
 
 

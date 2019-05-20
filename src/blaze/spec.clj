@@ -38,6 +38,19 @@
                          :ElementDefinition.type/_code)])))
 
 
+(s/def :ElementDefinition.binding/strength
+  string?)
+
+
+(s/def :ElementDefinition.binding/valueSet
+  string?)
+
+
+(s/def :ElementDefinition.un/binding
+  (s/keys :req-un [:ElementDefinition.binding/strength]
+          :opt-un [:ElementDefinition.binding/valueSet]))
+
+
 (s/def :fhir/ElementDefinition
   (s/keys :req [:ElementDefinition/path]
           :opt [:ElementDefinition/max
@@ -47,7 +60,8 @@
 (s/def :fhir.un/ElementDefinition
   (s/keys :req-un [:ElementDefinition/path]
           :opt-un [:ElementDefinition/max
-                   :ElementDefinition.un/type]))
+                   :ElementDefinition.un/type
+                   :ElementDefinition.un/binding]))
 
 
 

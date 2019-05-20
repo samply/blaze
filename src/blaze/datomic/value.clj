@@ -42,6 +42,7 @@
 (def ^:private ^:const ^byte string-short-len-code (byte 14))
 (def ^:private ^:const ^byte string-int-len-code (byte 15))
 (def ^:private ^:const ^byte boolean-code (byte 16))
+(def ^:private ^:const ^byte bytes-code (byte 17))
 
 (def ^:private ^Charset utf-8 (Charset/forName "utf8"))
 
@@ -98,7 +99,12 @@
       (String. bytes utf-8))
 
     16
-    (if (= 1 (.get bb)) true false)))
+    (if (= 1 (.get bb)) true false)
+
+    17
+    (let [bytes (byte-array (.getInt bb))]
+      (.get bb bytes)
+      bytes)))
 
 
 (extend-type
@@ -116,6 +122,15 @@
 
 
 (extend-protocol Write
+  (Class/forName "[B")
+  (write [bytes]
+    (let [length (Array/getLength bytes)]
+      (-> (doto (ByteBuffer/allocate (+ length 5))
+            (.put bytes-code)
+            (.putInt length)
+            (.put ^bytes bytes))
+          (.array))))
+
   Year
   (write [this]
     (-> (doto (ByteBuffer/allocate 3)

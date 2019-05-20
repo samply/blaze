@@ -38,9 +38,16 @@
 (defn handler-intern [conn]
   (fn [{{:keys [type id]} :route-params}]
     (if-let [resource (pull-resource (d/db conn) type id)]
-      (-> (ring/response resource)
-          (ring/header "Last-Modified" (last-modified resource))
-          (ring/header "ETag" (etag resource)))
+      (if (:deleted (meta resource))
+        (-> (handler-util/operation-outcome
+              {:fhir/issue "deleted"})
+            (ring/response)
+            (ring/status 410)
+            (ring/header "Last-Modified" (last-modified resource))
+            (ring/header "ETag" (etag resource)))
+        (-> (ring/response resource)
+            (ring/header "Last-Modified" (last-modified resource))
+            (ring/header "ETag" (etag resource))))
       (handler-util/error-response
         {::anom/category ::anom/not-found
          :fhir/issue "not-found"}))))

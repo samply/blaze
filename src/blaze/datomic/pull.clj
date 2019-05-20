@@ -11,6 +11,7 @@
   (:import
     [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
                YearMonth]
+    [java.util Base64]
     [javax.measure Quantity]))
 
 
@@ -25,6 +26,9 @@
 
 
 (extend-protocol ToJson
+  (Class/forName "[B")
+  (-to-json [bytes]
+    (.encodeToString (Base64/getEncoder) ^bytes bytes))
   Year
   (-to-json [year]
     (str year))
@@ -49,7 +53,8 @@
   Quantity
   (-to-json [q]
     {"value" (.getValue q)
-     "unit" (quantity/format-unit (.getUnit q))})
+     "system" "http://unitsofmeasure.org"
+     "code" (quantity/format-unit (.getUnit q))})
   Object
   (-to-json [x]
     x))
@@ -61,25 +66,50 @@
 
 (declare pull-non-primitive)
 (declare pull-element)
+(declare pull-resource)
 
 
 (defn- pull-backbone-element
   [db element value]
   (into
-    {}
+    (with-meta {} {:entity value})
     (map #(pull-element db (util/cached-entity db %) value))
     (:type/elements element)))
 
 
-(defn- pull-reference [db element value]
-  (let [type (name (d/ident db (d/part (:db/id value))))]
+(defn- pull-reference [_ _ value]
+  (let [type (util/resource-type value)]
     {"reference" (str type "/" ((keyword type "id") value))}))
 
 
-(defn- pull-element
+(defn- pull-inline-resource [db element resource]
+  (let [type (util/resource-type resource)]
+    (-> (pull-non-primitive db (keyword type) resource)
+        (assoc "resourceType" type))))
+
+
+(defn- pull-value
+  [db {:element/keys [primitive? type type-code]
+       :as element} value]
+  (cond
+    (= "code" type-code)
+    (:code/code value)
+    primitive?
+    (to-json value)
+    (= "BackboneElement" type-code)
+    (pull-backbone-element db element value)
+    (= "Reference" type-code)
+    (pull-reference db element value)
+    (= "Resource" type-code)
+    (pull-inline-resource db element value)
+    :else
+    (pull-non-primitive db type value)))
+
+
+(defn pull-element
   {:arglists '([db element entity])}
   [db {:db/keys [ident cardinality]
-       :element/keys [choice-type? primitive? type type-code json-key]
+       :element/keys [choice-type? json-key]
        :as element}
    entity]
   (case ident
@@ -93,33 +123,17 @@
       (if choice-type?
         (pull-element db (util/cached-entity db value) entity)
         [json-key
-         (cond
-           (= :db.cardinality/many cardinality)
+         (if (= :db.cardinality/many cardinality)
            (mapv
-             (fn [value]
-               (cond
-                 primitive?
-                 (to-json value)
-                 (= "BackboneElement" type-code)
-                 (pull-backbone-element db element value)
-                 :else
-                 (pull-non-primitive db type value)))
+             #(pull-value db element %)
              value)
-           (= "code" type-code)
-           (:code/code value)
-           primitive?
-           (to-json value)
-           (= "BackboneElement" type-code)
-           (pull-backbone-element db element value)
-           (= "Reference" type-code)
-           (pull-reference db element value)
-           :else
-           (pull-non-primitive db type value))]))))
+           (pull-value db element value))]))))
 
 
 (defn- pull-non-primitive [db type-ident value]
+  (assert type-ident)
   (into
-    {}
+    (with-meta {} {:entity value})
     (map #(pull-element db (util/cached-entity db %) value))
     (:type/elements (util/cached-entity db type-ident))))
 
@@ -139,7 +153,8 @@
           (assoc-in ["meta" "versionId"] version-id)
           (assoc-in ["meta" "lastUpdated"] (-to-json last-transaction-instant))
           (with-meta {:last-transaction-instant last-transaction-instant
-                      :version-id version-id})))))
+                      :version-id version-id
+                      :deleted (neg? (:version resource))})))))
 
 
 (defn summary-pattern*

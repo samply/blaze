@@ -13,8 +13,9 @@
   {:type id
    :interaction
    [{:code "read"}
-    {:code "search-type"}
-    {:code "update"}]})
+    {:code "update"}
+    {:code "delete"}
+    {:code "search-type"}]})
 
 
 (defn handler-intern [base-uri version structure-definitions]
@@ -40,7 +41,7 @@
            (comp
              (filter #(= "resource" (:kind %)))
              (map resource))
-           (vals structure-definitions))
+           structure-definitions)
          :interaction
          [{:code "transaction"}]}]})))
 
@@ -49,7 +50,7 @@
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :version string? :structure-definitions map?)
+  :args (s/cat :base-uri string? :version string? :structure-definitions sequential?)
   :ret :handler.fhir/capabilities)
 
 (defn handler

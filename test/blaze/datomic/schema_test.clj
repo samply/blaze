@@ -1,26 +1,24 @@
 (ns blaze.datomic.schema-test
   (:require
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :refer :all]
-    [juxt.iota :refer [given]]
     [blaze.datomic.schema :refer :all]
     [blaze.structure-definition :refer [read-structure-definitions]]
+    [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
-    [datomic.api :as d]))
+    [clojure.test :refer :all]
+    [juxt.iota :refer [given]]))
 
 
 (st/instrument)
 
+
 (def structure-definitions (read-structure-definitions "fhir/r4/structure-definitions"))
 
 
-(def patient (structure-definitions "Patient"))
-
-
 (defn- element-definitions [path]
-  (let [[name] (str/split path #"\.")]
-    (some #(when (= path (:path %)) %)
-          (:element (:snapshot (structure-definitions name))))))
+  (let [[id] (str/split path #"\.")]
+    (->> (-> (some #(when (= id (:id %)) %) structure-definitions)
+             :snapshot :element)
+         (some #(when (= path (:path %)) %)))))
 
 
 (deftest path->ident-test
@@ -66,7 +64,7 @@
              :ElementDefinition/isSummary true
              :element/type-code "code"
              :element/json-key "gender"
-             :element/code-system-url "http://hl7.org/fhir/administrative-gender"}
+             :element/value-set-binding "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.0"}
             [:db/add "Patient" :type/elements "Patient.gender"]])))
 
   (testing "Patient.birthDate"
@@ -175,8 +173,23 @@
              :ElementDefinition/isSummary true
              :element/type-code "code"
              :element/json-key "type"
-             :element/code-system-url "http://hl7.org/fhir/link-type"}
+             :element/value-set-binding "http://hl7.org/fhir/ValueSet/link-type|4.0.0"}
             [:db/add "Patient.link" :type/elements "Patient.link.type"]])))
+
+  (testing "Patient.extension"
+    (is (= (element-definition-tx-data (element-definitions "Patient.extension"))
+           [{:db/valueType :db.type/ref,
+             :db/isComponent true,
+             :ElementDefinition/path "Patient.extension",
+             :element/type-code "Extension",
+             :element/choice-type? false,
+             :element/json-key "extension",
+             :db/cardinality :db.cardinality/many,
+             :db/id "Patient.extension",
+             :db/ident :Patient/extension,
+             :element/primitive? false}
+            [:db/add "Patient.extension" :element/type "Extension"]
+            [:db/add "Patient" :type/elements "Patient.extension"]])))
 
   (testing "Observation.code"
     (is (= (element-definition-tx-data (element-definitions "Observation.code"))
@@ -195,19 +208,61 @@
             [:db/add "Observation" :type/elements "Observation.code"]
             {:db/ident :Observation.index/code
              :db/valueType :db.type/ref
-             :db/cardinality :db.cardinality/many}]))))
+             :db/cardinality :db.cardinality/many}])))
 
+  (testing "CodeSystem.concept"
+    (is (= (element-definition-tx-data (element-definitions "CodeSystem.concept"))
+           [{:db/valueType :db.type/ref,
+             :db/isComponent true,
+             :ElementDefinition/path "CodeSystem.concept",
+             :element/type-code "BackboneElement",
+             :element/choice-type? false,
+             :element/json-key "concept",
+             :db/cardinality :db.cardinality/many,
+             :db/id "CodeSystem.concept",
+             :db/ident :CodeSystem/concept,
+             :element/primitive? false}
+            #:db{:id "part.CodeSystem.concept", :ident :part/CodeSystem.concept}
+            [:db/add :db.part/db :db.install/partition "part.CodeSystem.concept"]
+            [:db/add "CodeSystem" :type/elements "CodeSystem.concept"]])))
 
-(comment
-  (->> (blaze.structure-definition/read-structure-definitions "fhir/r4/structure-definitions")
-       (vals)
-       (structure-definition-schemas)
-       (filter #(and (vector? %) (= :element/type (nth % 2))))
-       (map #(nth % 3))
-       (set)
-       (sort))
-  (clojure.repl/pst)
+  (testing "CodeSystem.concept.concept"
+    (is (= (element-definition-tx-data (element-definitions "CodeSystem.concept.concept"))
+           [[:db/add "CodeSystem.concept" :type/elements "CodeSystem.concept"]])))
 
-  (element-definition-tx-data (element-definitions "Patient.communication"))
-  (element-definition-tx-data (element-definitions "Patient.communication.preferred"))
-  )
+  (testing "Bundle"
+    (is (= (element-definition-tx-data (element-definitions "Bundle"))
+           [{:db/id "Bundle"
+             :db/ident :Bundle}
+            {:db/id "part.Bundle"
+             :db/ident :part/Bundle}
+            [:db/add :db.part/db :db.install/partition "part.Bundle"]])))
+
+  (testing "Bundle.id"
+    (is (= (element-definition-tx-data (element-definitions "Bundle.id"))
+           [{:db/id "Bundle.id"
+             :db/ident :Bundle/id
+             :db/valueType :db.type/string
+             :db/cardinality :db.cardinality/one
+             :db/unique :db.unique/identity
+             :element/primitive? true
+             :element/choice-type? false
+             :ElementDefinition/path "Bundle.id"
+             :ElementDefinition/isSummary true
+             :element/type-code "id"
+             :element/json-key "id"}
+            [:db/add "Bundle" :type/elements "Bundle.id"]])))
+
+  (testing "Money.value"
+    (is (= (element-definition-tx-data (element-definitions "Money.value"))
+           [{:db/id "Money.value"
+             :db/ident :Money/value
+             :db/valueType :db.type/bigdec
+             :db/cardinality :db.cardinality/one
+             :element/primitive? true
+             :element/choice-type? false
+             :ElementDefinition/path "Money.value"
+             :ElementDefinition/isSummary true
+             :element/type-code "decimal"
+             :element/json-key "value"}
+            [:db/add "Money" :type/elements "Money.value"]]))))

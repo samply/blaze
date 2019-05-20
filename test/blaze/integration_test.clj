@@ -1,7 +1,6 @@
 (ns blaze.integration-test
   (:require
     [cheshire.core :as json]
-    [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -32,7 +31,7 @@
 
 (defn- insert-tx-data
   [db resource]
-  (tx/resource-update db (dissoc resource "meta" "text")))
+  (tx/resource-update db resource))
 
 
 (defn- connect []
@@ -40,7 +39,7 @@
   (d/create-database "datomic:mem://integration-test")
   (let [conn (d/connect "datomic:mem://integration-test")]
     @(d/transact conn (dts/schema))
-    @(d/transact conn (schema/structure-definition-schemas (vals structure-definitions)))
+    @(d/transact conn (schema/structure-definition-schemas structure-definitions))
     conn))
 
 

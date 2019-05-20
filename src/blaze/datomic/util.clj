@@ -56,3 +56,14 @@
     entity
     (-> (vswap! metadata-cache assoc eid (d/entity db eid))
         (get eid))))
+
+
+(s/fdef resource-type
+  :args (s/cat :entity ::ds/entity)
+  :ret string?)
+
+(defn resource-type
+  "Returns the type of a resource like `Patient` or `Observation`."
+  {:arglists '([entity])}
+  [{:db/keys [id] :as entity}]
+  (name (d/ident (d/entity-db entity) (d/part id))))

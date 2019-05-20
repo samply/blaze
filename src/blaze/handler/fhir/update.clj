@@ -41,7 +41,6 @@
   [conn resource & {:keys [max-retries] :or {max-retries 5}}]
   (md/loop [retried 0
             db (d/db conn)]
-    ;; TODO: the database has to be at least to be newer (sync on next t)
     (-> (tx/transact-async conn (tx/resource-update db resource))
         (md/catch'
           (fn [{::anom/keys [category] :as anomaly}]
@@ -57,10 +56,12 @@
         return-preference (handler-util/preference headers "return")]
     (cond->
       (-> (cond
-            (= "representation" return-preference)
-            (pull/pull-resource db type id)
+            (= "minimal" return-preference)
+            nil
             (= "OperationOutcome" return-preference)
-            {:resourceType "OperationOutcome"})
+            {:resourceType "OperationOutcome"}
+            :else
+            (pull/pull-resource db type id))
           (ring/response)
           (ring/status (if (zero? version) 201 200))
           (ring/header "Last-Modified" (ring-time/format-date last-modified))

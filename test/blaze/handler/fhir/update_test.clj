@@ -141,7 +141,17 @@
           (testing "Location header"
             (is (= "http://localhost:8080/fhir/Patient/0" (get headers "Location"))))
 
-          (testing "Contains no body by default"
+          (testing "Contains the resource as body"
+            (is (= ::resource-after body)))))
+
+      (testing "with return=minimal Prefer header"
+        (let [{:keys [body]}
+              @((handler-intern base-uri ::conn)
+                 {:route-params {:type "Patient" :id "0"}
+                  :headers {"prefer" "return=minimal"}
+                  :body resource})]
+
+          (testing "Contains no body"
             (is (nil? body)))))
 
       (testing "with return=representation Prefer header"
@@ -184,7 +194,20 @@
             ;; 42 is the T of the transaction of the resource update
             (is (= "W/\"42\"" (get headers "ETag"))))
 
-          (testing "Contains no body by default"
+          (testing "Contains the resource as body"
+            (is (= ::resource-after body)))))
+
+      (testing "with return=minimal Prefer header"
+        (let [{:keys [status body]}
+              @((handler-intern base-uri ::conn)
+                 {:route-params {:type "Patient" :id "0"}
+                  :headers {"prefer" "return=minimal"}
+                  :body resource})]
+
+          (testing "Returns 200"
+            (is (= 200 status)))
+
+          (testing "Contains no body"
             (is (nil? body)))))
 
       (testing "with return=representation Prefer header"

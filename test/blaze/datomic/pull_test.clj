@@ -13,7 +13,8 @@
     [datomic-tools.schema :as dts]
     [juxt.iota :refer [given]])
   (:import
-    [java.time Year LocalDateTime]))
+    [java.time Year LocalDateTime]
+    [java.util Base64]))
 
 
 (st/instrument)
@@ -28,25 +29,34 @@
   (d/create-database "datomic:mem://datomic.pull-test")
   (let [conn (d/connect "datomic:mem://datomic.pull-test")]
     @(d/transact conn (dts/schema))
-    @(d/transact conn (schema/structure-definition-schemas (vals structure-definitions)))
+    @(d/transact conn (schema/structure-definition-schemas structure-definitions))
     conn))
 
 
 (def db (d/db (connect)))
 
 
+(defn- b64-decode [s]
+  (.decode (Base64/getDecoder) ^String s))
+
+
 (deftest pull-resource-test
 
   (testing "meta.versionId"
-    (let [[db] (with-resource db "Patient" "0" :version 42)]
+    (let [[db] (with-resource db "Patient" "0")]
       (given (pull-resource db "Patient" "0")
         ;; this is the t of the last transaction. it could change if the
         ;; transactions before change
-        ["meta" "versionId"] := "1100")))
+        ["meta" "versionId"] := "9841")))
 
   (testing "meta.lastUpdated"
-    (let [[db] (with-resource db "Patient" "0" :version 42)]
-      (string? (get-in (pull-resource db "Patient" "0") ["meta" "lastUpdated"]))))
+    (let [[db] (with-resource db "Patient" "0")]
+      (is (string? (get-in (pull-resource db "Patient" "0") ["meta" "lastUpdated"])))))
+
+  (testing "deleted"
+    (let [[db] (with-deleted-resource db "Patient" "0")]
+      (given (meta (pull-resource db "Patient" "0"))
+        :deleted := true)))
 
   (testing "primitive single-valued single-typed element"
     (testing "with boolean type"
@@ -64,7 +74,13 @@
       (let [[db] (with-resource db "Patient" "0" :Patient/birthDate
                                 (value/write (Year/of 2000)))]
         (given (pull-resource db "Patient" "0")
-          "birthDate" := "2000"))))
+          "birthDate" := "2000")))
+
+    (testing "with base64Binary type"
+      (let [[db id] (with-non-primitive db :Attachment/data (value/write (b64-decode "aGFsbG8=")))
+            [db] (with-resource db "Patient" "0" :Patient/photo id)]
+        (given (pull-resource db "Patient" "0")
+          ["photo" first "data"] := "aGFsbG8="))))
 
 
   (testing "Coding"
@@ -86,7 +102,7 @@
             :Observation/valueQuantity (value/write (quantity 1M "m"))
             :Observation/value :Observation/valueQuantity)]
       (given (pull-resource db "Observation" "0")
-        "valueQuantity" := {"value" 1M "unit" "m"})))
+        "valueQuantity" := {"value" 1M "system" "http://unitsofmeasure.org" "code" "m"})))
 
 
   (testing "DateTime"

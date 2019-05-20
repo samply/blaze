@@ -14,14 +14,15 @@
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.evaluator :as evaluator]
     [blaze.elm.equiv-relationships :as equiv-relationships]
+    [blaze.elm.literals]
     [blaze.elm.normalizer :as normalizer]
     [blaze.elm.type-infer :as type-infer]
-    [blaze.datomic.pull]
     [blaze.datomic.cql :as datomic-cql]
+    [blaze.datomic.pull]
     [blaze.datomic.schema :as schema]
-    [blaze.elm.literals]
+    [blaze.datomic.transaction :as tx]
     [blaze.spec]
-    [blaze.structure-definition :refer [read-structure-definitions]]
+    [blaze.structure-definition :refer [read-structure-definitions read-other]]
     [blaze.system :as system]
     [prometheus.alpha :as prom]
     [spec-coerce.alpha :refer [coerce]])
@@ -74,7 +75,7 @@
 
 
   @(d/transact conn (dts/schema))
-  @(d/transact conn (schema/structure-definition-schemas (vals (read-structure-definitions "fhir/r4/read-structure-definitions"))))
+  @(d/transact conn (schema/structure-definition-schemas (read-structure-definitions "fhir/r4/structure-definitions")))
 
   (def conn (:database-conn system))
   (def db (d/db conn))
@@ -85,7 +86,7 @@
   (count-resources (d/db conn) "Specimen")
   (count-resources (d/db conn) "Observation")
   (d/pull (d/db conn) '[*] 1262239348687945)
-  (d/touch (d/entity (d/db conn) :Patient.link/type))
+  (d/entity (d/db conn) [:Patient/id "0"])
   (d/q '[:find (pull ?e [*]) :where [?e :code/id]] (d/db conn))
 
   (d/pull (d/db conn) '[*] (d/t->tx 1197))

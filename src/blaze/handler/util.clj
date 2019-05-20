@@ -5,6 +5,7 @@
     [clojure.datafy :refer [datafy]]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
+    [io.aviso.exception :as aviso]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
@@ -41,8 +42,9 @@
        (some #(when (= name (:name %)) (:value %)))))
 
 
-(defn- operation-outcome
-  [{:fhir/keys [issue operation-outcome] :or {issue "exception"}}]
+(defn operation-outcome
+  [{:fhir/keys [issue operation-outcome] :or {issue "exception"}
+    :blaze/keys [stacktrace]}]
   {:resourceType "OperationOutcome"
    :issue
    [(cond->
@@ -53,15 +55,22 @@
         :details
         {:coding
          [{:system "http://terminology.hl7.org/CodeSystem/operation-outcome"
-           :code operation-outcome}]}))]})
+           :code operation-outcome}]})
+      stacktrace
+      (assoc :diagnostics stacktrace))]})
 
 
-(defn error-response [{::anom/keys [category] :as anomaly}]
+(defn error-response
+  "Converts `error` into a OperationOutcome response. Uses ::anom/category to
+  determine the response status."
+  {:arglists '([error])}
+  [{::anom/keys [category] :as error}]
   (cond
     category
     (do
-      (log/error anomaly)
-      (-> (ring/response (operation-outcome anomaly))
+      (when-not (:blaze/stacktrace error)
+        (log/error error))
+      (-> (ring/response (operation-outcome error))
           (ring/status
             (case category
               ::anom/incorrect 400
@@ -69,10 +78,14 @@
               ::anom/conflict 409
               500))))
 
-    (instance? Exception anomaly)
-    (error-response
-      (merge {::anom/message (.getMessage ^Exception anomaly)}
-             (ex-data anomaly)))
+    (instance? Throwable error)
+    (do
+      (log/error (log/stacktrace error))
+      (error-response
+        (merge {::anom/category ::anom/fault
+                ::anom/message (.getMessage ^Throwable error)
+                :blaze/stacktrace (aviso/format-exception error)}
+               (ex-data error))))
 
     :else
     (error-response {::anom/category ::anom/fault})))

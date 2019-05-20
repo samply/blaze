@@ -37,7 +37,7 @@
 (defn- handle-response [{:keys [body] :as response}]
   (if (some? body)
     (-> (assoc response :body (generate-json body))
-        (ring/content-type "application/fhir+json"))
+        (ring/content-type "application/fhir+json;charset=utf-8"))
     response))
 
 
