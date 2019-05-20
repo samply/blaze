@@ -24,9 +24,10 @@
 (deftest handler-test
   (testing "Routing"
     (are [uri request-method handler] (= (app-handler uri request-method) handler)
+      "/cql/evaluate" :options ::cql-evaluation-handler
       "/cql/evaluate" :post ::cql-evaluation-handler
-      "/health" :get ::health-handler
       "/health" :head ::health-handler
+      "/health" :get ::health-handler
       "/fhir" :post ::fhir-transaction-handler
       "/fhir/metadata" :get ::fhir-capabilities-handler
       "/fhir/Patient/0" :get ::fhir-read-handler
