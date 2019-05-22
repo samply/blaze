@@ -100,6 +100,7 @@
       (is (= "MSG_RESOURCE_TYPE_MISMATCH"
              (-> body :issue first :details :coding first :code)))))
 
+
   (testing "Returns Error on ID mismatch"
     (let [{:keys [status body]}
           @((handler-intern base-uri ::conn)
@@ -117,6 +118,7 @@
 
       (is (= "MSG_RESOURCE_ID_MISMATCH"
              (-> body :issue first :details :coding first :code)))))
+
 
   (testing "On newly created resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
@@ -173,6 +175,7 @@
 
           (testing "Contains an OperationOutcome as body"
             (is (= {:resourceType "OperationOutcome"} body)))))))
+
 
   (testing "On successful update of an existing resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]

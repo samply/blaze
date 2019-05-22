@@ -7,7 +7,6 @@
   (:require
     [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [datomic.api :as d]
     [datomic-tools.schema :as dts]
     [integrant.core :as ig]
@@ -15,6 +14,7 @@
     [blaze.handler.app :as app-handler]
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
     [blaze.handler.fhir.capabilities :as fhir-capabilities-handler]
+    [blaze.handler.fhir.create :as fhir-create-handler]
     [blaze.handler.fhir.delete :as fhir-delete-handler]
     [blaze.handler.fhir.read :as fhir-read-handler]
     [blaze.handler.fhir.search :as fhir-search-handler]
@@ -38,6 +38,7 @@
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
 (s/def :config/structure-definitions (s/keys :req [:structure-definitions/path]))
 (s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-uri]))
+(s/def :config/fhir-create-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-search-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-update-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
@@ -49,6 +50,7 @@
      :config/cache
      :config/structure-definitions
      :config/fhir-capabilities-handler
+     :config/fhir-create-handler
      :config/fhir-search-handler
      :config/fhir-update-handler
      :config/server]))
@@ -80,6 +82,10 @@
     :version version
     :structure-definitions (ig/ref :structure-definitions)}
 
+   :fhir-create-handler
+   {:base-uri base-uri
+    :database/conn (ig/ref :database-conn)}
+
    :fhir-delete-handler
    {:database/conn (ig/ref :database-conn)}
 
@@ -102,6 +108,7 @@
     {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
      :handler/health (ig/ref :health-handler)
      :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
+     :handler.fhir/create (ig/ref :fhir-create-handler)
      :handler.fhir/delete (ig/ref :fhir-delete-handler)
      :handler.fhir/read (ig/ref :fhir-read-handler)
      :handler.fhir/search (ig/ref :fhir-search-handler)
@@ -175,6 +182,11 @@
 (defmethod ig/init-key :fhir-capabilities-handler
   [_ {:keys [base-uri version structure-definitions]}]
   (fhir-capabilities-handler/handler base-uri version structure-definitions))
+
+
+(defmethod ig/init-key :fhir-create-handler
+  [_ {:keys [base-uri] :database/keys [conn]}]
+  (fhir-create-handler/handler base-uri conn))
 
 
 (defmethod ig/init-key :fhir-delete-handler

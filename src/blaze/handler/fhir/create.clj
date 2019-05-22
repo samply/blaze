@@ -1,7 +1,7 @@
-(ns blaze.handler.fhir.update
-  "FHIR update interaction.
+(ns blaze.handler.fhir.create
+  "FHIR create interaction.
 
-  https://www.hl7.org/fhir/http.html#update"
+  https://www.hl7.org/fhir/http.html#create"
   (:require
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
@@ -29,40 +29,33 @@
         {::anom/category ::anom/incorrect
          :fhir/issue "invariant"
          :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"})
-      (if-not (= id (get body "id"))
-        (md/error-deferred
-          {::anom/category ::anom/incorrect
-           :fhir/issue "invariant"
-           :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"})
-        body))))
+      (assoc body "id" id))))
 
 
 (defn- build-response [base-uri headers type id {db :db-after}]
-  (let [{:keys [version]} (d/entity db [(keyword type "id") id])
-        last-modified (:db/txInstant (util/basis-transaction db))
-        return-preference (handler-util/preference headers "return")]
-    (cond->
-      (-> (cond
+  (let [last-modified (:db/txInstant (util/basis-transaction db))
+        return-preference (handler-util/preference headers "return")
+        versionId (d/basis-t db)]
+    (-> (ring/created
+          (str base-uri "/fhir/" type "/" id "/_history/" versionId)
+          (cond
             (= "minimal" return-preference)
             nil
             (= "OperationOutcome" return-preference)
             {:resourceType "OperationOutcome"}
             :else
-            (pull/pull-resource db type id))
-          (ring/response)
-          (ring/status (if (zero? version) 201 200))
-          (ring/header "Last-Modified" (ring-time/format-date last-modified))
-          (ring/header "ETag" (str "W/\"" (d/basis-t db) "\"")))
-      (zero? version)
-      (ring/header "Location" (str base-uri "/fhir/" type "/" id)))))
+            (pull/pull-resource db type id)))
+        (ring/header "Last-Modified" (ring-time/format-date last-modified))
+        (ring/header "ETag" (str "W/\"" versionId "\"")))))
 
 
 (defn handler-intern [base-uri conn]
-  (fn [{{:keys [type id]} :route-params :keys [headers body]}]
-    (-> (validate-resource type id body)
-        (md/chain' #(handler-fhir-util/update-resource conn %))
-        (md/chain' #(build-response base-uri headers type id %))
-        (md/catch' handler-util/error-response))))
+  (fn [{{:keys [type]} :route-params :keys [headers body]}]
+    (let [id (str (d/squuid))]
+      (-> (validate-resource type id body)
+          (md/chain' #(handler-fhir-util/update-resource conn %))
+          (md/chain' #(build-response base-uri headers type id %))
+          (md/catch' handler-util/error-response)))))
 
 
 (s/def :handler.fhir/update fn?)

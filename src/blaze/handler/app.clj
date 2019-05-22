@@ -19,7 +19,8 @@
     {"" {:post :handler.fhir/transaction}
      "/metadata" {:get :handler.fhir/capabilities}
      ["/" :type]
-     {:get :handler.fhir/search}
+     {:get :handler.fhir/search
+      :post :handler.fhir/create}
      ["/" :type "/" :id]
      {:get :handler.fhir/read
       :put :handler.fhir/update
@@ -39,6 +40,7 @@
 (s/def ::handlers
   (s/keys :req [:handler/cql-evaluation
                 :handler/health
+                :handler.fhir/create
                 :handler.fhir/delete
                 :handler.fhir/read
                 :handler.fhir/search

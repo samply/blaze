@@ -20,7 +20,6 @@
     [blaze.datomic.cql :as datomic-cql]
     [blaze.datomic.pull]
     [blaze.datomic.schema :as schema]
-    [blaze.datomic.transaction :as tx]
     [blaze.spec]
     [blaze.structure-definition :refer [read-structure-definitions read-other]]
     [blaze.system :as system]

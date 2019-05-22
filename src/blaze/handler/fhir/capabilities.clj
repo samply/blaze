@@ -15,6 +15,7 @@
    [{:code "read"}
     {:code "update"}
     {:code "delete"}
+    {:code "create"}
     {:code "search-type"}]})
 
 
@@ -24,7 +25,7 @@
       {:resourceType "CapabilityStatement"
        :status "active"
        :kind "instance"
-       :date "2019-05-15T00:00:00Z"
+       :date "2019-05-22T00:00:00Z"
        :software
        {:name "Blaze"
         :version version}
