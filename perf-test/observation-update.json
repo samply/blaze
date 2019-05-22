@@ -18,7 +18,8 @@
     },
     "valueQuantity": {
       "value": 103.2,
-      "unit": "kg"
+      "system": "http://unitsofmeasure.org",
+      "code": "kg"
     },
     "effectiveDateTime": "2006-08-09"
   },
