@@ -202,18 +202,27 @@
   "Returns tx-data for adding the non-primitive `value` as child of the
   existing entity with `id`."
   {:arglists '([db element id value])}
-  [context {:element/keys [type-code part-of-choice-type? type-attr-ident]
-            :ElementDefinition/keys [path] :db/keys [ident]}
+  [{:keys [db] :as context}
+   {:element/keys [type-code part-of-choice-type? type-attr-ident]
+    :ElementDefinition/keys [path] :db/keys [ident]}
    id value]
   (case type-code
     "Reference"
     (when-let [reference (get value "reference")]
       ;; TODO: check for valid internal references
       (let [[type ref-id] (str/split reference #"/")]
-        (let [tid (d/tempid (keyword "part" type))]
-          [{:db/id tid
-            (keyword type "id") ref-id}
-           [:db/add id ident tid]])))
+        (if (util/cached-entity db (keyword type))
+          (if-let [eid (:db/id (d/entity db [(keyword type "id") ref-id]))]
+            [[:db/add id ident eid]]
+            (let [tid (d/tempid (keyword "part" type))]
+              [{:db/id tid
+                (keyword type "id") ref-id}
+               [:db.fn/cas tid :version nil 0]
+               [:db/add id ident tid]]))
+          (throw (ex-info (str "Invalid reference `" reference `". The type `"
+                               type "` is unknown.")
+                          {::anom/category ::anom/incorrect
+                           :reference reference})))))
 
     "BackboneElement"
     (let [tid (d/tempid (keyword "part" path))

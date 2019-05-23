@@ -578,7 +578,21 @@
                  "subject" {"reference" "Patient/0"}}))
             [{:db/id :part/Patient
               :Patient/id "0"}
+             [:db.fn/cas :part/Patient :version nil 0]
              [:db/add id :Observation/subject :part/Patient]
+             [:db.fn/cas id :version 0 1]]))))
+
+    (testing "single-valued special Reference type with existing target"
+      (let [[db patient-id] (with-resource db "Patient" "0")
+            [db id] (with-resource db "Observation" "0")]
+        (is
+          (=
+            (resource-update
+              db
+              {"id" "0"
+               "resourceType" "Observation"
+               "subject" {"reference" "Patient/0"}})
+            [[:db/add id :Observation/subject patient-id]
              [:db.fn/cas id :version 0 1]]))))
 
 
@@ -595,6 +609,7 @@
                  [{"reference" "Organization/0"}]}))
             [{:db/id :part/Organization
               :Organization/id "0"}
+             [:db.fn/cas :part/Organization :version nil 0]
              [:db/add id :Patient/generalPractitioner :part/Organization]
              [:db.fn/cas id :version 0 1]]))))
 
@@ -1206,6 +1221,7 @@
                  "subject" {"reference" "Patient/1"}}))
             [{:db/id :part/Patient
               :Patient/id "1"}
+             [:db.fn/cas :part/Patient :version nil 0]
              [:db/add id :Observation/subject :part/Patient]
              [:db.fn/cas id :version 0 1]]))))
 
