@@ -16,7 +16,7 @@
      {:options :handler/cql-evaluation
       :post :handler/cql-evaluation}}
     "fhir"
-    {"" {:post :handler.fhir/transaction}
+    {#{"" "/"} {:post :handler.fhir/transaction}
      "/metadata" {:get :handler.fhir/capabilities}
      ["/" :type]
      {:get :handler.fhir/search

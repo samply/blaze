@@ -32,6 +32,7 @@
       "/health" :head ::health-handler
       "/health" :get ::health-handler
       "/fhir" :post ::fhir-transaction-handler
+      "/fhir/" :post ::fhir-transaction-handler
       "/fhir/metadata" :get ::fhir-capabilities-handler
       "/fhir/Patient" :get ::fhir-search-handler
       "/fhir/Patient" :post ::fhir-create-handler
