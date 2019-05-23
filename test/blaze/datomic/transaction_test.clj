@@ -560,8 +560,47 @@
                 db
                 {"id" "0"
                  "resourceType" "Observation"
-                 "valueQuantity" {"value" 1M "system" "http://unitsofmeasure.org" "code" "m"}}))
+                 "valueQuantity"
+                 {"value" 1M
+                  "system" "http://unitsofmeasure.org"
+                  "code" "m"}}))
             [[:db/add id :Observation/valueQuantity (quantity 1M "m")]
+             [:db/add id :Observation/value :Observation/valueQuantity]
+             [:db.fn/cas id :version 0 1]]))))
+
+
+    (testing "special Quantity type with integer decimal value"
+      (let [[db id] (with-resource db "Observation" "0")]
+        (is
+          (=
+            (mapv
+              read-value
+              (resource-update
+                db
+                {"id" "0"
+                 "resourceType" "Observation"
+                 "valueQuantity"
+                 {"value" 1
+                  "system" "http://unitsofmeasure.org"
+                  "code" "m"}}))
+            [[:db/add id :Observation/valueQuantity (quantity 1M "m")]
+             [:db/add id :Observation/value :Observation/valueQuantity]
+             [:db.fn/cas id :version 0 1]]))))
+
+
+    (testing "special Quantity type with unit in unit"
+      (let [[db id] (with-resource db "Observation" "0")]
+        (is
+          (=
+            (mapv
+              read-value
+              (resource-update
+                db
+                {"id" "0"
+                 "resourceType" "Observation"
+                 "valueQuantity"
+                 {"value" 1 "unit" "a"}}))
+            [[:db/add id :Observation/valueQuantity (quantity 1M "a")]
              [:db/add id :Observation/value :Observation/valueQuantity]
              [:db.fn/cas id :version 0 1]]))))
 

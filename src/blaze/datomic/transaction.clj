@@ -24,6 +24,15 @@
     [java.util.concurrent ExecutionException]))
 
 
+(defn- coerce-decimal [value]
+  (cond
+    (decimal? value) value
+    (int? value) (BigDecimal/valueOf ^long value)
+    :else (throw (ex-info (str "Invalid decimal value `" value "`.")
+                          {::anom/category ::anom/incorrect
+                           :value value}))))
+
+
 (defn- coerce-date-time [^String value]
   (case (.length value)
     4
@@ -48,17 +57,19 @@
     (LocalDate/parse value)))
 
 
-(defn- quantity [{:strs [value system code] :as quantity}]
-  (if (= "http://unitsofmeasure.org" system)
-    (-> (cond
-          (decimal? value) value
-          (int? value) (BigDecimal/valueOf ^long value)
-          :else (throw (ex-info "Invalid quantity." quantity)))
-        (quantity/quantity code))
+(defn- quantity [{:strs [value system code unit] :as quantity}]
+  (cond
+    (= "http://unitsofmeasure.org" system)
+    (quantity/quantity (coerce-decimal value) code)
+
+    (some? system)
     (throw (ex-info (str "Can't create a quantity with a unit from unsupported "
                          "system `" system "`.")
                     {::anom/category ::anom/incorrect
-                     :quantity quantity}))))
+                     :quantity quantity}))
+
+    :else
+    (quantity/quantity (coerce-decimal value) unit)))
 
 
 (s/fdef coerce-value
@@ -70,7 +81,6 @@
     ("boolean"
       "integer"
       "string"
-      "decimal"
       "uri"
       "url"
       "canonical"
@@ -81,6 +91,7 @@
       "unsignedInt"
       "positiveInt"
       "xhtml") value
+    "decimal" (coerce-decimal value)
     "instant" (Date/from (Instant/from (.parse DateTimeFormatter/ISO_DATE_TIME value)))
     "date" (coerce-date value)
     "dateTime" (coerce-date-time value)
