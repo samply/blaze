@@ -57,19 +57,15 @@
     (LocalDate/parse value)))
 
 
-(defn- quantity [{:strs [value system code unit] :as quantity}]
-  (cond
-    (= "http://unitsofmeasure.org" system)
-    (quantity/quantity (coerce-decimal value) code)
-
-    (some? system)
-    (throw (ex-info (str "Can't create a quantity with a unit from unsupported "
-                         "system `" system "`.")
-                    {::anom/category ::anom/incorrect
-                     :quantity quantity}))
-
-    :else
-    (quantity/quantity (coerce-decimal value) unit)))
+(defn- quantity [{:strs [value code unit]}]
+  (let [value (coerce-decimal value)]
+    (try
+      (if code
+        (quantity/quantity value code)
+        (quantity/quantity value unit))
+      (catch Exception _
+        ;; TODO: find a better solution as to skip the unit
+        (quantity/quantity value "")))))
 
 
 (s/fdef coerce-value
@@ -233,7 +229,8 @@
           (throw (ex-info (str "Invalid reference `" reference `". The type `"
                                type "` is unknown.")
                           {::anom/category ::anom/incorrect
-                           :reference reference})))))
+                           :reference reference
+                           :element/ident ident})))))
 
     "BackboneElement"
     (let [tid (d/tempid (keyword "part" path))
@@ -639,6 +636,71 @@
             {::anom/category (category e)
              ::anom/message (.getMessage ^Exception e)
              :data (ex-data e)})))))
+
+
+(defn- resolve-link
+  [index link]
+  (if-let [{type "resourceType" id "id"} (get index link)]
+    (str type "/" id)
+    link))
+
+
+(declare resolve-links)
+
+
+(defn- resolve-single-element-links
+  [{:keys [index] :as context}
+   {:db/keys [ident] :element/keys [type-code primitive? type]}
+   value]
+  (cond
+    (= "Reference" type-code)
+    (if-let [reference (get value "reference")]
+      (assoc value "reference" (resolve-link index reference))
+      value)
+
+    primitive?
+    value
+
+    (= "BackboneElement" type-code)
+    (resolve-links context ident value)
+
+    :else
+    (resolve-links context type value)))
+
+
+(defn- resolve-element-links
+  [context {:db/keys [cardinality] :as element} value]
+  (if (= :db.cardinality/many cardinality)
+    (mapv #(resolve-single-element-links context element %) value)
+    (resolve-single-element-links context element value)))
+
+
+(defn- resolve-links
+  [{:keys [db] :as context} type-ident entity]
+  (transduce
+    (comp
+      (map #(util/cached-entity db %)))
+    (completing
+      (fn [entity element]
+        (if-let [[value {:element/keys [json-key] :as element}] (find-json-value db element entity)]
+          (assoc entity json-key (resolve-element-links context element value))
+          entity)))
+    entity
+    (:type/elements (util/cached-entity db type-ident))))
+
+
+(s/fdef resolve-entry-links
+  :args (s/cat :db ::ds/db :entries coll?))
+
+(defn resolve-entry-links
+  "Resolves all links in `entries` according the transaction processing rules."
+  [db entries]
+  (let [index (reduce (fn [r {url "fullUrl" :strs [resource]}] (assoc r url resource)) {} entries)]
+    (mapv
+      (fn [entry]
+        (update entry "resource" #(resolve-links {:db db :index index} (keyword (get % "resourceType")) %)))
+      entries)))
+
 
 (comment
   (def term-base-uri "http://test.fhir.org/r4")

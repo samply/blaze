@@ -7,9 +7,7 @@
   (:require
     [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
-    [datomic.api :as d]
-    [datomic-tools.schema :as dts]
-    [integrant.core :as ig]
+    [clojure.string :as str]
     [blaze.datomic.schema :as schema]
     [blaze.handler.app :as app-handler]
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
@@ -24,12 +22,19 @@
     [blaze.server :as server]
     [blaze.structure-definition :refer [read-structure-definitions
                                         read-other]]
+    [datomic.api :as d]
+    [datomic-tools.schema :as dts]
+    [integrant.core :as ig]
     [taoensso.timbre :as log]))
 
 
 
 ;; ---- Specs -------------------------------------------------------------
 
+(s/def :log/level
+  #{"trace" "debug" "info" "warn" "error" "fatal" "report"
+    "TRACE" "DEBUG" "INFO" "WARN" "ERROR" "FATAL" "REPORT"})
+(s/def :config/logging (s/keys :opt [:log/level]))
 (s/def :database/uri string?)
 (s/def :config/database-conn (s/keys :req [:database/uri]))
 (s/def :cache/threshold pos-int?)
@@ -46,7 +51,8 @@
 (s/def :system/config
   (s/keys
     :req-un
-    [:config/database-conn
+    [:config/logging
+     :config/database-conn
      :config/cache
      :config/structure-definitions
      :config/fhir-capabilities-handler
@@ -64,7 +70,9 @@
 (def ^:private base-uri "http://localhost:8080")
 
 (def ^:private default-config
-  {:structure-definitions {}
+  {:logging {:log/level "info"}
+
+   :structure-definitions {}
 
    :database-conn
    {:structure-definitions (ig/ref :structure-definitions)}
@@ -97,7 +105,8 @@
     :database/conn (ig/ref :database-conn)}
 
    :fhir-transaction-handler
-   {:database/conn (ig/ref :database-conn)}
+   {:base-uri base-uri
+    :database/conn (ig/ref :database-conn)}
 
    :fhir-update-handler
    {:base-uri base-uri
@@ -135,6 +144,12 @@
 
 
 ;; ---- Integrant Hooks -------------------------------------------------------
+
+(defmethod ig/init-key :logging
+  [_ {:log/keys [level]}]
+  (log/info "Set log level to:" (str/lower-case level))
+  (log/merge-config! {:level (keyword (str/lower-case level))}))
+
 
 (defmethod ig/init-key :structure-definitions
   [_ {:structure-definitions/keys [path]}]
@@ -205,8 +220,8 @@
 
 
 (defmethod ig/init-key :fhir-transaction-handler
-  [_ {:database/keys [conn]}]
-  (fhir-transaction-handler/handler conn))
+  [_ {:keys [base-uri] :database/keys [conn]}]
+  (fhir-transaction-handler/handler base-uri conn))
 
 
 (defmethod ig/init-key :fhir-update-handler

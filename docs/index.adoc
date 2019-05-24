@@ -99,6 +99,17 @@ The JVM Options `-server -Xms2g -Xmx2g -XX:+UseG1GC` are the default. You need t
 
 After installation, please refer to the https://github.com/life-research/blaze#usage[Usage] section of the README.
 
+=== List of Environment Variables
+
+Blaze is solely configured through these environment variables:
+
+.Environment Variables
+[cols="1,4", options="header,footer"]
+|===
+| Variable | Description
+| LOG_LEVEL | one of trace, debug, info, warn, error
+|===
+
 == Open Source
 
 Blaze is licenced under the Eclipse Public License and can be found on https://github.com/life-research/blaze[GitHub]. Please use the https://github.com/life-research/blaze/issues[Issue Tracker] if you have questions, feature requests or found a bug.

@@ -19,22 +19,27 @@
 
 
 (defn- validate-resource [type id body]
-  (if-not (map? body)
+  (cond
+    (not (map? body))
     (md/error-deferred
       {::anom/category ::anom/incorrect
        :fhir/issue "structure"
        :fhir/operation-outcome "MSG_JSON_OBJECT"})
-    (if-not (= type (get body "resourceType"))
-      (md/error-deferred
-        {::anom/category ::anom/incorrect
-         :fhir/issue "invariant"
-         :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"})
-      (if-not (= id (get body "id"))
-        (md/error-deferred
-          {::anom/category ::anom/incorrect
-           :fhir/issue "invariant"
-           :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"})
-        body))))
+
+    (not= type (get body "resourceType"))
+    (md/error-deferred
+      {::anom/category ::anom/incorrect
+       :fhir/issue "invariant"
+       :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"})
+
+    (not= id (get body "id"))
+    (md/error-deferred
+      {::anom/category ::anom/incorrect
+       :fhir/issue "invariant"
+       :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"})
+
+    :else
+    body))
 
 
 (defn- build-response [base-uri headers type id {db :db-after}]

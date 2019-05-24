@@ -44,7 +44,8 @@
 
 (defn operation-outcome
   [{:fhir/keys [issue operation-outcome] :or {issue "exception"}
-    :blaze/keys [stacktrace]}]
+    :blaze/keys [stacktrace]
+    ::anom/keys [message]}]
   {:resourceType "OperationOutcome"
    :issue
    [(cond->
@@ -56,6 +57,8 @@
         {:coding
          [{:system "http://terminology.hl7.org/CodeSystem/operation-outcome"
            :code operation-outcome}]})
+      message
+      (assoc :diagnostics message)
       stacktrace
       (assoc :diagnostics stacktrace))]})
 
@@ -75,6 +78,7 @@
             (case category
               ::anom/incorrect 400
               ::anom/not-found 404
+              ::anom/unsupported 405
               ::anom/conflict 409
               500))))
 

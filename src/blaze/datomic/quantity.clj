@@ -1,6 +1,7 @@
 (ns blaze.datomic.quantity
   (:require
-    [clojure.spec.alpha :as s])
+    [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom])
   (:import
     [javax.measure Unit]
     [javax.measure.format UnitFormat]
@@ -17,7 +18,11 @@
     (.parse ucum-format s)
     (catch Throwable t
       (throw (ex-info (str "Problem while parsing the unit `" s "`.")
-                      {:unit s :cause-msg (.getMessage t)})))))
+                      (cond->
+                        {::anom/category ::anom/incorrect
+                         :unit s}
+                        (.getMessage ^Throwable t)
+                        (assoc :cause-msg (.getMessage ^Throwable t))))))))
 
 
 (let [mem (volatile! {})]
@@ -35,8 +40,7 @@
 (defn quantity
   "Creates a quantity with numerical value and string unit."
   [value unit]
-  (->> (parse-unit (or unit ""))
-       (Quantities/getQuantity value)))
+  (Quantities/getQuantity value (parse-unit (or unit ""))))
 
 
 (defn unit? [x]

@@ -1,18 +1,12 @@
 (ns blaze.handler.fhir.util
   (:require
-    [blaze.datomic.pull :as pull]
     [blaze.datomic.transaction :as tx]
-    [blaze.datomic.util :as util]
-    [blaze.handler.util :as handler-util]
     [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.json :refer [wrap-json]]
-    [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
-    [datomic-spec.core :as ds]
-    [manifold.deferred :as md]
-    [ring.util.response :as ring]
-    [ring.util.time :as ring-time]))
+    [manifold.deferred :as md]))
 
 
 (defn update-resource
@@ -26,3 +20,13 @@
               (-> (d/sync conn (inc (d/basis-t db)))
                   (md/chain #(md/recur (inc retried) %)))
               (md/error-deferred anomaly)))))))
+
+
+(defn- remove-leading-slashes [url]
+  (if (str/starts-with? url "/")
+    (remove-leading-slashes (subs url 1))
+    url))
+
+
+(defn extract-type-and-id [url]
+  (str/split (remove-leading-slashes url) #"/"))

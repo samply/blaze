@@ -18,18 +18,22 @@
     [ring.util.time :as ring-time]))
 
 
-(defn- validate-resource [type id body]
-  (if-not (map? body)
+(defn- validate-resource [type body]
+  (cond
+    (not (map? body))
     (md/error-deferred
       {::anom/category ::anom/incorrect
        :fhir/issue "structure"
        :fhir/operation-outcome "MSG_JSON_OBJECT"})
-    (if-not (= type (get body "resourceType"))
-      (md/error-deferred
-        {::anom/category ::anom/incorrect
-         :fhir/issue "invariant"
-         :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"})
-      (assoc body "id" id))))
+
+    (not= type (get body "resourceType"))
+    (md/error-deferred
+      {::anom/category ::anom/incorrect
+       :fhir/issue "invariant"
+       :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"})
+
+    :else
+    body))
 
 
 (defn- build-response [base-uri headers type id {db :db-after}]
@@ -52,7 +56,8 @@
 (defn handler-intern [base-uri conn]
   (fn [{{:keys [type]} :route-params :keys [headers body]}]
     (let [id (str (d/squuid))]
-      (-> (validate-resource type id body)
+      (-> (validate-resource type body)
+          (md/chain' #(assoc % "id" id))
           (md/chain' #(handler-fhir-util/update-resource conn %))
           (md/chain' #(build-response base-uri headers type id %))
           (md/catch' handler-util/error-response)))))
