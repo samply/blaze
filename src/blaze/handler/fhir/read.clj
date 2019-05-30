@@ -12,7 +12,8 @@
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [ring.util.response :as ring])
+    [ring.util.response :as ring]
+    [manifold.deferred :as md])
   (:import
     [java.time ZonedDateTime ZoneId]
     [java.time.format DateTimeFormatter]))
@@ -35,22 +36,41 @@
        (pull/pull-resource db type id)))
 
 
+(defn- db [conn vid]
+  (cond
+    (and vid (re-matches #"\d+" vid))
+    (let [vid (Long/parseLong vid)]
+      (md/chain (d/sync conn vid) #(d/as-of % vid)))
+
+    vid
+    (md/error-deferred
+      {::anom/category ::anom/not-found
+       :fhir/issue "not-found"})
+
+    :else
+    (d/db conn)))
+
+
 (defn handler-intern [conn]
-  (fn [{{:keys [type id]} :route-params}]
-    (if-let [resource (pull-resource (d/db conn) type id)]
-      (if (:deleted (meta resource))
-        (-> (handler-util/operation-outcome
-              {:fhir/issue "deleted"})
-            (ring/response)
-            (ring/status 410)
-            (ring/header "Last-Modified" (last-modified resource))
-            (ring/header "ETag" (etag resource)))
-        (-> (ring/response resource)
-            (ring/header "Last-Modified" (last-modified resource))
-            (ring/header "ETag" (etag resource))))
-      (handler-util/error-response
-        {::anom/category ::anom/not-found
-         :fhir/issue "not-found"}))))
+  (fn [{{:keys [type id vid]} :route-params}]
+    (-> (db conn vid)
+        (md/chain'
+          (fn [db]
+            (if-let [resource (pull-resource db type id)]
+              (if (:deleted (meta resource))
+                (-> (handler-util/operation-outcome
+                      {:fhir/issue "deleted"})
+                    (ring/response)
+                    (ring/status 410)
+                    (ring/header "Last-Modified" (last-modified resource))
+                    (ring/header "ETag" (etag resource)))
+                (-> (ring/response resource)
+                    (ring/header "Last-Modified" (last-modified resource))
+                    (ring/header "ETag" (etag resource))))
+              (handler-util/error-response
+                {::anom/category ::anom/not-found
+                 :fhir/issue "not-found"}))))
+        (md/catch' handler-util/error-response))))
 
 
 (s/def :handler.fhir/read fn?)

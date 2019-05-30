@@ -1,14 +1,36 @@
-[
-  {
-    "resourceType": "Patient",
-    "id": "0"
-  },
-  {
-    "resourceType": "Patient",
-    "id": "1"
-  },
-  {
-    "resourceType": "Patient",
-    "id": "2"
-  }
-]
+{
+  "resourceType": "bundle",
+  "type": "transaction",
+  "entries": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "2"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    }
+  ]
+}

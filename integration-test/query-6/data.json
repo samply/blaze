@@ -1,61 +1,101 @@
-[
-  {
-    "resourceType": "Patient",
-    "id": "0"
-  },
-  {
-    "resourceType": "Patient",
-    "id": "1"
-  },
-  {
-    "resourceType": "Patient",
-    "id": "2"
-  },
-  {
-    "resourceType": "Condition",
-    "id": "0",
-    "code": {
-      "coding": [
-        {
-          "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
-          "version": "2019",
-          "code": "C50"
-        }
-      ]
+{
+  "resourceType": "bundle",
+  "type": "transaction",
+  "entries": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
     },
-    "subject": {
-      "reference": "Patient/0"
-    }
-  },
-  {
-    "resourceType": "Specimen",
-    "id": "0",
-    "type": {
-      "coding": [
-        {
-          "system": "urn:mdr16:dataelement:15:1",
-          "code": "tissue frozen"
-        }
-      ]
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
     },
-    "subject": {
-      "reference": "Patient/0"
-    }
-  },
-  {
-    "resourceType": "Condition",
-    "id": "1",
-    "code": {
-      "coding": [
-        {
-          "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
-          "version": "2019",
-          "code": "C50"
-        }
-      ]
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "2"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
     },
-    "subject": {
-      "reference": "Patient/1"
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "0",
+        "code": {
+          "coding": [
+            {
+              "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
+              "version": "2019",
+              "code": "C50"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/0"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "0",
+        "type": {
+          "coding": [
+            {
+              "system": "urn:mdr16:dataelement:15:1",
+              "code": "tissue frozen"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/0"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "1",
+        "code": {
+          "coding": [
+            {
+              "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
+              "version": "2019",
+              "code": "C50"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/1"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/1"
+      }
     }
-  }
-]
+  ]
+}

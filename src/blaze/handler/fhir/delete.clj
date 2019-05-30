@@ -19,7 +19,7 @@
 
 (defn- exists-resource? [db type id]
   (and (util/cached-entity db (keyword type))
-       (d/entity db [(keyword type "id") id])))
+       (util/resource db type id)))
 
 
 (defn- delete-resource

@@ -78,18 +78,22 @@
             (case category
               ::anom/incorrect 400
               ::anom/not-found 404
-              ::anom/unsupported 405
+              ::anom/unsupported 422
               ::anom/conflict 409
               500))))
 
     (instance? Throwable error)
-    (do
-      (log/error (log/stacktrace error))
+    (if (::anom/category (ex-data error))
       (error-response
-        (merge {::anom/category ::anom/fault
-                ::anom/message (.getMessage ^Throwable error)
-                :blaze/stacktrace (aviso/format-exception error)}
-               (ex-data error))))
+        (merge
+          {::anom/message (.getMessage ^Throwable error)}
+          (ex-data error)))
+      (do
+        (log/error (log/stacktrace error))
+        (error-response
+          {::anom/category ::anom/fault
+           ::anom/message (.getMessage ^Throwable error)
+           :blaze/stacktrace (aviso/format-exception error)})))
 
     :else
     (error-response {::anom/category ::anom/fault})))

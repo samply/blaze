@@ -5,14 +5,10 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.transaction :as tx]
-    [blaze.datomic.util :as util]
+    [blaze.handler.fhir.test-util :as test-util]
     [blaze.handler.fhir.update :refer [handler-intern]]
-    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
-    [datomic.api :as d]
     [datomic-spec.test :as dst]))
 
 
@@ -23,6 +19,7 @@
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
+  (test-util/stub-db ::conn ::db-before)
   (f)
   (st/unstrument))
 
@@ -33,56 +30,10 @@
 (def base-uri "http://localhost:8080")
 
 
-(defn- successful-update-mocks [resource version]
-  (st/instrument
-    [`d/basis-t
-     `d/db
-     `d/entity
-     `pull/pull-resource
-     `tx/resource-update
-     `tx/transact-async
-     `util/basis-transaction]
-    {:spec
-     {`d/basis-t
-      (s/fspec
-        :args (s/cat :db #{::db-after})
-        :ret #{"42"})
-      `d/db
-      (s/fspec
-        :args (s/cat :conn #{::conn})
-        :ret #{::db-before})
-      `d/entity
-      (s/fspec
-        :args (s/cat :db #{::db-after} :eid #{[:Patient/id "0"]})
-        :ret #{{:version version}})
-      `pull/pull-resource
-      (s/fspec
-        :args (s/cat :db #{::db-after} :type #{"Patient"} :id #{"0"})
-        :ret #{::resource-after})
-      `tx/resource-update
-      (s/fspec
-        :args (s/cat :db #{::db-before} :resource #{resource})
-        :ret #{::resource-tx-data})
-      `tx/transact-async
-      (s/fspec
-        :args (s/cat :conn #{::conn} :tx-data #{::resource-tx-data})
-        :ret #{{:db-after ::db-after}})
-      `util/basis-transaction
-      (s/fspec
-        :args (s/cat :db #{::db-after})
-        :ret #{{:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"}})}
-     :stub
-     #{`d/basis-t
-       `d/db
-       `d/entity
-       `pull/pull-resource
-       `tx/resource-update
-       `tx/transact-async
-       `util/basis-transaction}}))
-
-
 (deftest handler-test
   (testing "Returns Error on type mismatch"
+    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
+
     (let [{:keys [status body]}
           @((handler-intern base-uri ::conn)
              {:route-params {:type "Patient" :id "0"}
@@ -102,6 +53,8 @@
 
 
   (testing "Returns Error on ID mismatch"
+    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
+
     (let [{:keys [status body]}
           @((handler-intern base-uri ::conn)
              {:route-params {:type "Patient" :id "0"}
@@ -122,7 +75,12 @@
 
   (testing "On newly created resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (successful-update-mocks resource 0)
+      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
+      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
+      (test-util/stub-upsert-resource ::conn ::db-before -2 resource {:db-after ::db-after})
+      (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+      (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
+      (test-util/stub-basis-t ::db-after "42")
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
@@ -179,7 +137,12 @@
 
   (testing "On successful update of an existing resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (successful-update-mocks resource 1)
+      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
+      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
+      (test-util/stub-upsert-resource ::conn ::db-before -2 resource {:db-after ::db-after})
+      (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+      (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
+      (test-util/stub-basis-t ::db-after "42")
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}

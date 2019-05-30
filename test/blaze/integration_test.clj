@@ -5,8 +5,10 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
+    [datomic-spec.test :as dst]
     [datomic-tools.schema :as dts]
     [juxt.iota :refer [given]]
+    [blaze.bundle :as bundle]
     [blaze.cql-translator :as cql]
     [blaze.datomic.schema :as schema]
     [blaze.datomic.transaction :as tx]
@@ -24,14 +26,10 @@
 
 
 (st/instrument)
+(dst/instrument)
 
 
 (def structure-definitions (read-structure-definitions "fhir/r4/structure-definitions"))
-
-
-(defn- insert-tx-data
-  [db resource]
-  (tx/resource-update db resource))
 
 
 (defn- connect []
@@ -42,11 +40,10 @@
     @(d/transact conn (schema/structure-definition-schemas structure-definitions))
     conn))
 
+(def db (d/db (connect)))
 
-(defn- db-with [data]
-  (let [conn (connect)
-        tx-data (into [] (mapcat #(insert-tx-data (d/db conn) %)) data)]
-    (:db-after @(d/transact conn tx-data))))
+(defn- db-with [{:strs [entries]}]
+  (:db-after (d/with db (bundle/tx-data db entries))))
 
 
 (defn- evaluate [db query]
@@ -74,7 +71,7 @@
     "readme-example" 3))
 
 (deftest arithmetic-test
-  (given (evaluate (db-with []) (read-query "arithmetic"))
+  (given (evaluate db (read-query "arithmetic"))
     ["OnePlusOne" :result] := 2
     ["OnePointOnePlusOnePointOne" :result] := 2.2M
     ["Year2019PlusOneYear" :result] := (Year/of 2020)

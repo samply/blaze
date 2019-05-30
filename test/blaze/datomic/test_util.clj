@@ -1,9 +1,8 @@
 (ns blaze.datomic.test-util
   (:require
-    [cheshire.core :as json]
+    [blaze.datomic.util :as util]
     [clojure.test :refer :all]
-    [datomic.api :as d]
-    [blaze.datomic.transaction :as tx]))
+    [datomic.api :as d]))
 
 
 (defn with-resource
@@ -16,7 +15,7 @@
   [db type id & {:as more}]
   (let [tid (d/tempid (keyword "part" type))
         {db :db-after :keys [tempids]}
-        (d/with db [(merge {:db/id tid (keyword type "id") id :version 0} more)])
+        (d/with db [(merge {:db/id tid (util/resource-id-attr type) id :version 0} more)])
         id (d/resolve-tempid db tempids tid)]
     [db id]))
 
@@ -25,7 +24,7 @@
   [db type id]
   (let [tid (d/tempid (keyword "part" type))
         {db :db-after :keys [tempids]}
-        (d/with db [{:db/id tid (keyword type "id") id :version -1}])
+        (d/with db [{:db/id tid (util/resource-id-attr type) id :version -1}])
         id (d/resolve-tempid db tempids tid)]
     [db id]))
 
@@ -38,11 +37,6 @@
         (d/with db [(merge {:db/id tid attr value} more)])
         id (d/resolve-tempid db tempids tid)]
     [db id]))
-
-
-(defn with-code-system
-  [db file]
-  (d/with db (tx/resource-update db (json/parse-string (slurp file)))))
 
 
 (defn with-code

@@ -6,11 +6,13 @@
     [blaze.datomic.util :as util]
     [blaze.datomic.value :as value]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [datomic.api :as d]
     [datomic-spec.core :as ds])
   (:import
     [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
                YearMonth]
+    [java.time.format DateTimeFormatter]
     [java.util Base64]
     [javax.measure Quantity]))
 
@@ -33,28 +35,31 @@
   (-to-json [year]
     (str year))
   YearMonth
-  (-to-json [year]
-    (str year))
+  (-to-json [year-month]
+    (str year-month))
   LocalDate
   (-to-json [date]
-    (str date))
+    (.format (DateTimeFormatter/ISO_LOCAL_DATE) date))
   LocalDateTime
   (-to-json [date-time]
-    (str date-time))
+    (.format (DateTimeFormatter/ISO_LOCAL_DATE_TIME) date-time))
   LocalTime
   (-to-json [time]
-    (str time))
+    (.format (DateTimeFormatter/ISO_LOCAL_TIME) time))
   OffsetDateTime
   (-to-json [date-time]
-    (str date-time))
+    (.format (DateTimeFormatter/ISO_OFFSET_DATE_TIME) date-time))
   Instant
   (-to-json [instant]
     (str instant))
   Quantity
   (-to-json [q]
-    {"value" (.getValue q)
-     "system" "http://unitsofmeasure.org"
-     "code" (quantity/format-unit (.getUnit q))})
+    (let [unit (quantity/format-unit (.getUnit q))]
+      (cond->
+        {"value" (.getValue q)}
+        (not (str/blank? unit))
+        (assoc "system" "http://unitsofmeasure.org"
+               "code" unit))))
   Object
   (-to-json [x]
     x))
@@ -79,10 +84,12 @@
 
 (defn- pull-reference [_ _ value]
   (let [type (util/resource-type value)]
-    {"reference" (str type "/" ((keyword type "id") value))}))
+    (with-meta
+      {"reference" (str type "/" ((util/resource-id-attr type) value))}
+      {:entity value})))
 
 
-(defn- pull-inline-resource [db element resource]
+(defn- pull-inline-resource [db resource]
   (let [type (util/resource-type resource)]
     (-> (pull-non-primitive db (keyword type) resource)
         (assoc "resourceType" type))))
@@ -101,7 +108,7 @@
     (= "Reference" type-code)
     (pull-reference db element value)
     (= "Resource" type-code)
-    (pull-inline-resource db element value)
+    (pull-inline-resource db value)
     :else
     (pull-non-primitive db type value)))
 
@@ -138,23 +145,31 @@
     (:type/elements (util/cached-entity db type-ident))))
 
 
+(s/fdef pull-resource*
+  :args (s/cat :db ::ds/db :type string? :resource ::ds/entity))
+
+(defn pull-resource*
+  "Type has to be valid."
+  [db type resource]
+  (let [last-transaction (util/last-transaction resource)
+        last-transaction-instant (util/tx-instant last-transaction)
+        version-id (str (d/tx->t (:db/id last-transaction)))]
+    (-> (pull-non-primitive db (keyword type) resource)
+        (assoc "resourceType" type)
+        (assoc-in ["meta" "versionId"] version-id)
+        (assoc-in ["meta" "lastUpdated"] (-to-json last-transaction-instant))
+        (with-meta {:last-transaction-instant last-transaction-instant
+                    :version-id version-id
+                    :deleted (util/deleted? (:version resource))}))))
+
+
 (s/fdef pull-resource
   :args (s/cat :db ::ds/db :type string? :id string?))
 
 (defn pull-resource
   "Type has to be valid."
   [db type id]
-  (when-let [resource (d/entity db [(keyword type "id") id])]
-    (let [last-transaction (util/last-transaction resource)
-          last-transaction-instant (util/tx-instant last-transaction)
-          version-id (str (d/tx->t (:db/id last-transaction)))]
-      (-> (pull-non-primitive db (keyword type) resource)
-          (assoc "resourceType" type)
-          (assoc-in ["meta" "versionId"] version-id)
-          (assoc-in ["meta" "lastUpdated"] (-to-json last-transaction-instant))
-          (with-meta {:last-transaction-instant last-transaction-instant
-                      :version-id version-id
-                      :deleted (neg? (:version resource))})))))
+  (some->> (util/resource db type id) (pull-resource* db type)))
 
 
 (defn summary-pattern*

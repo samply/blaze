@@ -14,6 +14,7 @@
    :handler.fhir/capabilities (constantly ::fhir-capabilities-handler)
    :handler.fhir/create (constantly ::fhir-create-handler)
    :handler.fhir/delete (constantly ::fhir-delete-handler)
+   :handler.fhir/history (constantly ::fhir-history-handler)
    :handler.fhir/read (constantly ::fhir-read-handler)
    :handler.fhir/search (constantly ::fhir-search-handler)
    :handler.fhir/transaction (constantly ::fhir-transaction-handler)
@@ -39,8 +40,5 @@
       "/fhir/Patient/0" :get ::fhir-read-handler
       "/fhir/Patient/0" :put ::fhir-update-handler
       "/fhir/Patient/0" :delete ::fhir-delete-handler
-      "/fhir/Observation" :get ::fhir-search-handler
-      "/fhir/Observation" :post ::fhir-create-handler
-      "/fhir/Observation/0" :get ::fhir-read-handler
-      "/fhir/Observation/0" :put ::fhir-update-handler
-      "/fhir/Observation/0" :delete ::fhir-delete-handler)))
+      "/fhir/Patient/0/_history" :get ::fhir-history-handler
+      "/fhir/Patient/0/_history/42" :get ::fhir-read-handler)))

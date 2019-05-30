@@ -58,7 +58,7 @@
     (let [id (str (d/squuid))]
       (-> (validate-resource type body)
           (md/chain' #(assoc % "id" id))
-          (md/chain' #(handler-fhir-util/update-resource conn %))
+          (md/chain' #(handler-fhir-util/upsert-resource conn (d/db conn) 0 %))
           (md/chain' #(build-response base-uri headers type id %))
           (md/catch' handler-util/error-response)))))
 

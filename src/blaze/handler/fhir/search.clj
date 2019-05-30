@@ -31,7 +31,7 @@
        (filter #(not (:deleted (meta %))))
        (take 10)
        (map #(entry base-uri %)))
-     (d/datoms db :aevt (keyword type "id")))})
+     (d/datoms db :aevt (util/resource-id-attr type)))})
 
 
 (defn handler-intern [base-uri conn]

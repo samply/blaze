@@ -3,23 +3,21 @@
     [blaze.datomic.transaction :as tx]
     [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.json :refer [wrap-json]]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [manifold.deferred :as md]))
+    [clojure.string :as str]))
 
 
-(defn update-resource
-  [conn resource & {:keys [max-retries] :or {max-retries 5}}]
-  (md/loop [retried 0
-            db (d/db conn)]
-    (-> (tx/transact-async conn (tx/resource-update db resource))
-        (md/catch'
-          (fn [{::anom/keys [category] :as anomaly}]
-            (if (and (< retried max-retries) (= ::anom/conflict category))
-              (-> (d/sync conn (inc (d/basis-t db)))
-                  (md/chain #(md/recur (inc retried) %)))
-              (md/error-deferred anomaly)))))))
+(defn- tempids [db resource]
+  (when-let [[type id tempid] (tx/resource-tempid db resource)]
+    {type {id tempid}}))
+
+
+(defn upsert-resource
+  [conn db initial-version resource]
+  (let [tempids (tempids db resource)
+        tx-data (tx/resource-upsert db tempids initial-version resource)]
+    (if (empty? tx-data)
+      {:db-after db}
+      (tx/transact-async conn tx-data))))
 
 
 (defn- remove-leading-slashes [url]

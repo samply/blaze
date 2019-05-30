@@ -42,9 +42,9 @@
     body))
 
 
-(defn- build-response [base-uri headers type id {db :db-after}]
-  (let [{:keys [version]} (d/entity db [(keyword type "id") id])
-        last-modified (:db/txInstant (util/basis-transaction db))
+(defn- build-response [base-uri headers type id old-resource {db :db-after}]
+  (let [basis-transaction (util/basis-transaction db)
+        last-modified (:db/txInstant basis-transaction)
         return-preference (handler-util/preference headers "return")]
     (cond->
       (-> (cond
@@ -55,19 +55,24 @@
             :else
             (pull/pull-resource db type id))
           (ring/response)
-          (ring/status (if (zero? version) 201 200))
+          (ring/status (if old-resource 200 201))
           (ring/header "Last-Modified" (ring-time/format-date last-modified))
           (ring/header "ETag" (str "W/\"" (d/basis-t db) "\"")))
-      (zero? version)
+      (nil? old-resource)
       (ring/header "Location" (str base-uri "/fhir/" type "/" id)))))
 
 
 (defn handler-intern [base-uri conn]
   (fn [{{:keys [type id]} :route-params :keys [headers body]}]
-    (-> (validate-resource type id body)
-        (md/chain' #(handler-fhir-util/update-resource conn %))
-        (md/chain' #(build-response base-uri headers type id %))
-        (md/catch' handler-util/error-response))))
+    (let [db (d/db conn)]
+      (if (util/cached-entity db (keyword type))
+        (-> (validate-resource type id body)
+            (md/chain' #(handler-fhir-util/upsert-resource conn db -2 %))
+            (md/chain' #(build-response base-uri headers type id (util/resource db type id) %))
+            (md/catch' handler-util/error-response))
+        (handler-util/error-response
+          {::anom/category ::anom/not-found
+           :fhir/issue "not-found"})))))
 
 
 (s/def :handler.fhir/update fn?)

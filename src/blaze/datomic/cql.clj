@@ -1,5 +1,6 @@
 (ns blaze.datomic.cql
   (:require
+    [blaze.datomic.util :as util]
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
@@ -48,7 +49,7 @@
   (mapv
     (fn [{eid :e}]
       (d/entity db eid))
-    (d/datoms db :aevt (keyword type "id"))))
+    (d/datoms db :aevt (util/resource-id-attr type))))
 
 
 (s/fdef list-resource-by-code

@@ -3,6 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
+    [blaze.bundle :as bundle]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.util :as handler-fhir-util]
@@ -18,8 +19,6 @@
     [taoensso.timbre :as log]))
 
 
-
-
 (defn- validate-entry
   {:arglists '([db entry])}
   [db {:strs [resource] {:strs [method url]} "request" :as entry}]
@@ -29,7 +28,7 @@
       {::anom/category ::anom/incorrect
        :fhir/issue "code-invalid"}
 
-      (not (#{"PUT" "POST"} method))
+      (not (#{"POST" "PUT" "DELETE"} method))
       {::anom/category ::anom/unsupported
        :fhir/issue "not-supported"}
 
@@ -78,13 +77,23 @@
 
 
 (defn- prepare-entry
-  [{{:strs [method]} "request" :as entry}]
-  (if (= "POST" method)
+  [db {{:strs [method]} "request" :strs [resource] :as entry}]
+  (cond
+    (= "PUT" method)
+    (let [{type "resourceType" id "id"} resource]
+      (if-let [resource (util/resource db type id)]
+        (assoc entry :blaze/old-resource resource)
+        entry))
+
+    (= "POST" method)
     (assoc-in entry ["resource" "id"] (str (d/squuid)))
+
+    :else
     entry))
 
 
-(defn prepare-bundle [db {:strs [resourceType type entry]}]
+(defn validate-and-prepare-bundle
+  [db {:strs [resourceType type entry]}]
   (cond
     (not= "Bundle" resourceType)
     (md/error-deferred
@@ -100,49 +109,50 @@
     (let [entries (validate-entries db type entry)]
       (if (::anom/category entries)
         (md/error-deferred entries)
-        (mapv prepare-entry entries)))))
+        (mapv #(prepare-entry db %) entries)))))
 
 
-(defmulti transact (fn [_ type _] type))
+(defmulti upsert-entry
+  {:arglists '([conn db entry])}
+  (fn [_ _ {{:strs [method]} "request"}] method))
 
 
-(defmethod transact "batch" [conn _ entries]
-  (mapv
-    (fn [{:strs [resource] :as entry}]
-      (assoc entry :blaze/tx-result (handler-fhir-util/update-resource conn resource)))
-    entries))
+(defmethod upsert-entry "POST"
+  [conn db {:strs [resource]}]
+  (handler-fhir-util/upsert-resource conn db 0 resource))
 
 
-(defmethod transact "transaction" [conn _ entries]
-  (let [max-retries 5
-        entries (tx/resolve-entry-links (d/db conn) entries)]
-    (md/loop [retried 0
-              db (d/db conn)]
-      (-> (tx/transact-async conn (into [] (mapcat #(tx/resource-update db (get % "resource"))) entries))
-          (md/chain'
-            (fn [tx-result]
-              (mapv #(assoc % :blaze/tx-result tx-result) entries)))
-          (md/catch'
-            (fn [{::anom/keys [category] :as anomaly}]
-              (if (and (< retried max-retries) (= ::anom/conflict category))
-                (-> (d/sync conn (inc (d/basis-t db)))
-                    (md/chain #(md/recur (inc retried) %)))
-                (md/error-deferred anomaly))))))))
+(defmethod upsert-entry "PUT"
+  [conn db {:strs [resource]}]
+  (handler-fhir-util/upsert-resource conn db 1 resource))
 
 
-(defn- entry-response
+(defmulti transact
+  {:arglists '([conn db type prepared-entries])}
+  (fn [_ _ type _] type))
+
+
+(defmethod transact "batch" [conn db _ entries]
+  (mapv #(assoc % :blaze/tx-result (upsert-entry conn db %)) entries))
+
+
+(defmethod transact "transaction" [conn db _ entries]
+  (let [tx-result (tx/transact-async conn (bundle/tx-data db entries))]
+    (mapv #(assoc % :blaze/tx-result tx-result) entries)))
+
+
+(defn- build-entry
   [base-uri
    {{type "resourceType" id "id"} "resource" {db :db-after} :blaze/tx-result
-    :as entry}]
-  (let [{:keys [version]} (d/entity db [(keyword type "id") id])
-        last-modified (util/tx-instant (util/basis-transaction db))
+    :blaze/keys [old-resource] :as entry}]
+  (let [last-modified (util/tx-instant (util/basis-transaction db))
         versionId (d/basis-t db)
         response
         (cond->
-          {:status (str (if (zero? version) 201 200))
+          {:status (str (if old-resource 200 201))
            :etag (str "W/\"" versionId "\"")
            :lastModified (str last-modified)}
-          (zero? version)
+          (nil? old-resource)
           (assoc :location (str base-uri "/fhir/" type "/" id "/_history/" versionId)))]
     (-> entry
         (assoc :response response)
@@ -153,16 +163,17 @@
   (ring/response
     {:resourceType "Bundle"
      :type (str bundle-type "-response")
-     :entry (mapv #(entry-response base-uri %) entries)}))
+     :entry (mapv #(build-entry base-uri %) entries)}))
 
 
 (defn handler-intern [base-uri conn]
   (fn [{{:strs [type] :as bundle} :body}]
     (log/trace bundle)
-    (-> (prepare-bundle (d/db conn) bundle)
-        (md/chain' #(transact conn type %))
-        (md/chain' #(build-response base-uri type %))
-        (md/catch' handler-util/error-response))))
+    (let [db (d/db conn)]
+      (-> (validate-and-prepare-bundle db bundle)
+          (md/chain' #(transact conn db type %))
+          (md/chain' #(build-response base-uri type %))
+          (md/catch' handler-util/error-response)))))
 
 
 (s/def :handler.fhir/transaction fn?)

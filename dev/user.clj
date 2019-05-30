@@ -20,6 +20,7 @@
     [blaze.datomic.cql :as datomic-cql]
     [blaze.datomic.pull]
     [blaze.datomic.schema :as schema]
+    [blaze.datomic.util :as datomic-util]
     [blaze.spec]
     [blaze.structure-definition :refer [read-structure-definitions read-other]]
     [blaze.system :as system]
@@ -62,7 +63,7 @@
 
 
 (defn count-resources [db type]
-  (d/q '[:find (count ?e) . :in $ ?id :where [?e ?id]] db (keyword type "id")))
+  (d/q '[:find (count ?e) . :in $ ?id :where [?e ?id]] db (datomic-util/resource-id-attr type)))
 
 (comment
 
@@ -78,6 +79,17 @@
 
   (def conn (:database-conn system))
   (def db (d/db conn))
+  (def hdb (d/history db))
+
+  (d/q
+    '[:find [?v ...]
+      :where
+      [? :Patient/id "0"]
+      [?e :version ?v ?tx true]]
+    (d/history (d/db conn)))
+
+
+
 
   (count-resources (d/db conn) "Coding")
   (count-resources (d/db conn) "Organization")

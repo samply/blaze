@@ -22,9 +22,15 @@
      {:get :handler.fhir/search
       :post :handler.fhir/create}
      ["/" :type "/" :id]
-     {:get :handler.fhir/read
-      :put :handler.fhir/update
-      :delete :handler.fhir/delete}}}])
+     {""
+      {:get :handler.fhir/read
+       :put :handler.fhir/update
+       :delete :handler.fhir/delete}
+      "/_history"
+      {""
+       {:get :handler.fhir/history}
+       ["/" :vid]
+       {:get :handler.fhir/read}}}}}])
 
 
 (defn wrap-server [handler server]
@@ -42,6 +48,7 @@
                 :handler/health
                 :handler.fhir/create
                 :handler.fhir/delete
+                :handler.fhir/history
                 :handler.fhir/read
                 :handler.fhir/search
                 :handler.fhir/transaction

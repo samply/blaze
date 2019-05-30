@@ -9,6 +9,7 @@
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.create :refer [handler-intern]]
+    [blaze.handler.fhir.util :as handler-fhir-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -60,8 +61,7 @@
          `d/db
          `d/squuid
          `pull/pull-resource
-         `tx/resource-update
-         `tx/transact-async
+         `handler-fhir-util/upsert-resource
          `util/basis-transaction]
         {:spec
          {`d/basis-t
@@ -80,14 +80,12 @@
           (s/fspec
             :args (s/cat :db #{::db-after} :type #{"Patient"} :id #{(str id)})
             :ret #{::resource-after})
-          `tx/resource-update
+          `handler-fhir-util/upsert-resource
           (s/fspec
-            :args (s/cat :db #{::db-before}
+            :args (s/cat :conn #{::conn}
+                         :db #{::db-before}
+                         :initial-version #{0}
                          :resource #{{"resourceType" "Patient" "id" (str id)}})
-            :ret #{::resource-tx-data})
-          `tx/transact-async
-          (s/fspec
-            :args (s/cat :conn #{::conn} :tx-data #{::resource-tx-data})
             :ret #{{:db-after ::db-after}})
           `util/basis-transaction
           (s/fspec
@@ -98,8 +96,7 @@
            `d/db
            `d/squuid
            `pull/pull-resource
-           `tx/resource-update
-           `tx/transact-async
+           `handler-fhir-util/upsert-resource
            `util/basis-transaction}})
 
       (testing "with no Prefer header"

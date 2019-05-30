@@ -177,11 +177,10 @@
     (conj [:db/add id type-attr-ident ident])))
 
 
-(defn- json-reference->lookup-ref
+(defn- resource-ident-from-reference
   [{:strs [reference]}]
-  ;; TODO: check for valid internal references
   (let [[type id] (str/split reference #"/")]
-    [(keyword type "id") id]))
+    (util/resource-ident type id)))
 
 
 (defn- index-ident [ident]
@@ -205,6 +204,11 @@
 (declare upsert)
 
 
+(defn- resolve-reference [{:keys [db tempids]} type ref-id]
+  (or (:db/id (util/resource db type ref-id))
+      (get-in tempids [type ref-id])))
+
+
 (defn- add-non-primitive-element
   "Returns tx-data for adding the non-primitive `value` as child of the
   existing entity with `id`."
@@ -215,22 +219,30 @@
    id value]
   (case type-code
     "Reference"
-    (when-let [reference (get value "reference")]
-      ;; TODO: check for valid internal references
-      (let [[type ref-id] (str/split reference #"/")]
-        (if (util/cached-entity db (keyword type))
-          (if-let [eid (:db/id (d/entity db [(keyword type "id") ref-id]))]
-            [[:db/add id ident eid]]
-            (let [tid (d/tempid (keyword "part" type))]
-              [{:db/id tid
-                (keyword type "id") ref-id}
-               [:db.fn/cas tid :version nil 0]
-               [:db/add id ident tid]]))
-          (throw (ex-info (str "Invalid reference `" reference `". The type `"
-                               type "` is unknown.")
-                          {::anom/category ::anom/incorrect
-                           :reference reference
-                           :element/ident ident})))))
+    (let [{:strs [reference identifier]} value]
+      (cond
+        reference
+        (let [[type ref-id] (str/split reference #"/")]
+          (if (util/cached-entity db (keyword type))
+            (if-let [eid (resolve-reference context type ref-id)]
+              [[:db/add id ident eid]]
+              (throw (ex-info (str "Reference `" reference "` can't be resolved.")
+                              {::anom/category ::anom/incorrect
+                               :fhir/issue "value"
+                               :reference reference
+                               :element/ident ident})))
+            (throw (ex-info (str "Invalid reference `" reference `". The type `"
+                                 type "` is unknown.")
+                            {::anom/category ::anom/incorrect
+                             :fhir/issue "value"
+                             :reference reference
+                             :element/ident ident}))))
+        identifier
+        (throw (ex-info "Unsupported logical reference."
+                        {::anom/category ::anom/unsupported
+                         :fhir/issue "not-supported"
+                         :reference reference
+                         :element/ident ident}))))
 
     "BackboneElement"
     (let [tid (d/tempid (keyword "part" path))
@@ -306,7 +318,7 @@
 
 (defn- upsert-reference
   [{:keys [db] :as context} {:db/keys [ident] :as element} entity reference]
-  (when-not (= (ident entity) (d/entity db (json-reference->lookup-ref reference)))
+  (when-not (= (ident entity) (d/entity db (resource-ident-from-reference reference)))
     (add-non-primitive-element context element (:db/id entity) reference)))
 
 
@@ -329,7 +341,7 @@
     x))
 
 
-(defn- gen-upsert-pairs [context type retract add]
+(defn- gen-normal-upsert-pairs [context type retract add]
   (for [old-entity retract
         new-entity add]
     {:old-entity old-entity
@@ -356,17 +368,51 @@
        (upsert context new-type (:entity (meta old-entity)) new-entity))}))
 
 
+(defn- gen-upsert-pairs [context type retract add]
+  (if (= :Resource type)
+    (gen-inline-resource-upsert-pairs context retract add)
+    (gen-normal-upsert-pairs context type retract add)))
+
+
+(defn- remove-duplicates
+  [{:keys [seen-old seen-new] :as res} {:keys [old-entity new-entity] :as pair}]
+  (if (or (contains? seen-old old-entity) (contains? seen-new new-entity))
+    res
+    (-> res
+        (update :pairs conj pair)
+        (update :seen-old conj old-entity)
+        (update :seen-new conj new-entity))))
+
+
+(defn- extract-upsert-pairs [num-reuse upsert-pairs]
+  (->> (sort-by :retract-count upsert-pairs)
+       (reduce remove-duplicates {:pairs [] :seen-old #{} :seen-new #{}})
+       (:pairs)
+       (take num-reuse)))
+
+
+(defn- remove-non-stored-elements
+  "Removes elements with are not stored by design like Reference.display from
+  values."
+  [type-code values]
+  (case type-code
+    "Reference"
+    (mapv #(dissoc % "display") values)
+    values))
+
+
 (defn- upsert-non-primitive-card-many-element
   [{:keys [db] :as context}
    {:db/keys [ident] :element/keys [type-code] :as element}
    {:db/keys [id] :as old-entity} new-values]
   (let [type (case type-code "BackboneElement" ident (keyword type-code))
         old-entities (postwalk vector->set (second (pull/pull-element db element old-entity)))
-        new-entities (postwalk vector->set new-values)
+        new-entities (postwalk vector->set (remove-non-stored-elements type-code new-values))
         retract (set/difference old-entities new-entities)
         add (set/difference new-entities old-entities)
         num-reuse (min (count retract) (count add))
-        reuse (take num-reuse (sort-by :retract-count (if (= :Resource type) (gen-inline-resource-upsert-pairs context retract add) (gen-upsert-pairs context type retract add))))
+        ;; TODO: make old entities disjunct, we can't reuse an old entity twice
+        reuse (extract-upsert-pairs num-reuse (gen-upsert-pairs context type retract add))
         retract (set/difference retract (into #{} (map :old-entity) reuse))
         add (set/difference add (into #{} (map :new-entity) reuse))]
     (-> []
@@ -381,7 +427,10 @@
         (into
           (mapcat
             (fn [{:keys [old-entity new-entity]}]
-              (upsert context (if (= :Resource type) (keyword (get new-entity "resourceType")) type) (:entity (meta old-entity)) new-entity)))
+              (let [type (if (= :Resource type) (keyword (get new-entity "resourceType")) type)]
+                (if (= :Reference type)
+                  (upsert-reference context element (:entity (meta old-entity)) new-entity)
+                  (upsert context type (:entity (meta old-entity)) new-entity)))))
           reuse)
         (into
           (mapcat #(add-non-primitive-element context element id %))
@@ -569,41 +618,62 @@
   (update resource "meta" dissoc "versionId" "lastUpdated"))
 
 
-(defn- version-increment [{:db/keys [id] :keys [version]}]
-  (let [new-version
-        (cond
-          (nil? version) 0
-          (neg? version) (inc (- version))
-          :else (inc version))]
-    [:db.fn/cas id :version version new-version]))
+(defn- upsert-decrement [version]
+  (if (util/deleted? version)
+    (- version 1)
+    (- version 2)))
 
 
-(s/fdef resource-update
-  :args (s/cat :db ::ds/db :resource (s/nilable (s/map-of string? some?)))
+(s/def ::resource
+  (s/map-of string? some?))
+
+
+(s/def ::tempids
+  (s/map-of string? (s/map-of string? ::ds/tempid)))
+
+
+(s/fdef resource-upsert
+  :args (s/cat :db ::ds/db :tempids (s/nilable ::tempids) :initial-version #{0 -2}
+               :resource ::resource)
   :ret ::ds/tx-data)
 
-(defn resource-update
-  "Takes a `db` and the new version of a `resource` as JSON with string keys and
-  returns Datomic transaction data for the update.
+(defn resource-upsert
+  "Generates transaction data for creating or updating `resource`.
 
   The resource has to have at least a `resourceType` and an `id`.
 
-  The resource is compared with its current version in the database. If no
-  current version is found, transaction data for creating it is returned."
-  {:arglists '([db resource])}
-  [db {:strs [resourceType id] :as resource}]
-  (assert resourceType)
+  Resources have an internal :version attribute that will be incremented on each
+  update using CAS for optimistic locking. The function `transact-async` will
+  return an error deferred with ::anom/conflict on optimistic locking conflicts.
+
+  In order to differentiate between an internally generated `id` and an
+  externally given one, resources created with the former will start with
+  version 0 where resources created with a externally given `id` will start with
+  version 1.
+
+  Resources are maps taken straight from there parsed JSON with string keys."
+  {:arglists '([db tempids initial-version resource])}
+  [db tempids initial-version {type "resourceType" id "id" :as resource}]
+  (assert type)
   (assert id)
-  (let [old-resource (or (d/entity db [(keyword resourceType "id") id])
-                         {:db/id (d/tempid (keyword "part" resourceType))})
-        tx-data (->> (prepare-resource resource)
-                     (upsert {:db db} (keyword resourceType) old-resource))]
-    (conj tx-data (version-increment old-resource))))
+  (let [resource (prepare-resource resource)]
+    (if-let [old-resource (util/resource db type id)]
+
+      (let [tx-data (upsert {:db db :tempids tempids} (keyword type) old-resource resource)
+            {:db/keys [id] :keys [version]} old-resource]
+        (when (or (not (empty? tx-data)) (util/deleted? version))
+          (conj tx-data [:db.fn/cas id :version version (upsert-decrement version)])))
+
+      (let [tempid (get-in tempids [type id])]
+        (assert tempid)
+        (conj (upsert {:db db :tempids tempids} (keyword type) {:db/id tempid}
+                      resource)
+              [:db.fn/cas tempid :version nil initial-version])))))
 
 
 (defn- version-increment-delete [{:db/keys [id] :keys [version]}]
   (assert version)
-  [:db.fn/cas id :version version (- (inc version))])
+  [:db.fn/cas id :version version (dec version)])
 
 
 (s/fdef resource-deletion
@@ -614,8 +684,9 @@
   "Takes a `db` and the `type` and `id` of a resource and returns Datomic
   transaction data for the deletion."
   [db type id]
-  (when-let [resource (d/entity db [(keyword type "id") id])]
-    [(version-increment-delete resource)]))
+  (when-let [resource (util/resource db type id)]
+    (when-not (util/deleted? (:version resource))
+      [(version-increment-delete resource)])))
 
 
 (defn- category [e]
@@ -625,7 +696,8 @@
 
 
 (s/fdef transact-async
-  :args (s/cat :conn ::ds/conn :tx-data ::ds/tx-data))
+  :args (s/cat :conn ::ds/conn :tx-data ::ds/tx-data)
+  :ret md/deferred?)
 
 (defn transact-async [conn tx-data]
   (-> (d/transact-async conn tx-data)
@@ -633,73 +705,21 @@
       (md/catch
         (fn [e]
           (md/error-deferred
-            {::anom/category (category e)
-             ::anom/message (.getMessage ^Exception e)
-             :data (ex-data e)})))))
+            (assoc (ex-data e)
+              ::anom/category (category e)
+              ::anom/message (.getMessage ^Exception e)))))))
 
 
-(defn- resolve-link
-  [index link]
-  (if-let [{type "resourceType" id "id"} (get index link)]
-    (str type "/" id)
-    link))
+(s/fdef resource-tempid
+  :args (s/cat :db ::ds/db :resource ::resource))
 
-
-(declare resolve-links)
-
-
-(defn- resolve-single-element-links
-  [{:keys [index] :as context}
-   {:db/keys [ident] :element/keys [type-code primitive? type]}
-   value]
-  (cond
-    (= "Reference" type-code)
-    (if-let [reference (get value "reference")]
-      (assoc value "reference" (resolve-link index reference))
-      value)
-
-    primitive?
-    value
-
-    (= "BackboneElement" type-code)
-    (resolve-links context ident value)
-
-    :else
-    (resolve-links context type value)))
-
-
-(defn- resolve-element-links
-  [context {:db/keys [cardinality] :as element} value]
-  (if (= :db.cardinality/many cardinality)
-    (mapv #(resolve-single-element-links context element %) value)
-    (resolve-single-element-links context element value)))
-
-
-(defn- resolve-links
-  [{:keys [db] :as context} type-ident entity]
-  (transduce
-    (comp
-      (map #(util/cached-entity db %)))
-    (completing
-      (fn [entity element]
-        (if-let [[value {:element/keys [json-key] :as element}] (find-json-value db element entity)]
-          (assoc entity json-key (resolve-element-links context element value))
-          entity)))
-    entity
-    (:type/elements (util/cached-entity db type-ident))))
-
-
-(s/fdef resolve-entry-links
-  :args (s/cat :db ::ds/db :entries coll?))
-
-(defn resolve-entry-links
-  "Resolves all links in `entries` according the transaction processing rules."
-  [db entries]
-  (let [index (reduce (fn [r {url "fullUrl" :strs [resource]}] (assoc r url resource)) {} entries)]
-    (mapv
-      (fn [entry]
-        (update entry "resource" #(resolve-links {:db db :index index} (keyword (get % "resourceType")) %)))
-      entries)))
+(defn resource-tempid
+  "Returns a triple of resource type, logical id and tempid for `resources`
+  which have to be created in `db`."
+  {:arglists '([db resource])}
+  [db {type "resourceType" id "id"}]
+  (when-not (util/resource db type id)
+    [type id (d/tempid (keyword "part" type))]))
 
 
 (comment

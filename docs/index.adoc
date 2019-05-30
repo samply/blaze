@@ -165,6 +165,14 @@ Data Tier     | Datomic Transactor Free Version |
 +-----------------------+
 ----
 
+== Design Choices
+
+=== References
+
+One of the main goals of Blaze is to facilitate fast queries over a graph of resources. Performing such queries requires that all resources are available locally inside the database of Blaze. Besides that, referential integrity is important in order to allow for http://hl7.org/fhir/storage.html#joins[joins] and be able to walk the graph. For that reason, Blaze only allows https://www.hl7.org/fhir/codesystem-reference-handling-policy.html#reference-handling-policy-local[local] references and https://www.hl7.org/fhir/codesystem-reference-handling-policy.html#reference-handling-policy-enforced[enforces] referential integrity.
+
+Currently, references have to be also https://www.hl7.org/fhir/codesystem-reference-handling-policy.html#reference-handling-policy-literal[literal] to ease implementation. This could change in the future.
+
 == API
 
 TODO

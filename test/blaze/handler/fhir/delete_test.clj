@@ -4,16 +4,15 @@
   https://www.hl7.org/fhir/http.html#delete"
   (:require
     [blaze.datomic.pull :as pull]
+    [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.delete :refer [handler-intern]]
+    [blaze.handler.fhir.test-util :as test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
-    [datomic-spec.test :as dst]
-    [blaze.datomic.transaction :as tx])
-  (:import
-    [java.time Instant]))
+    [datomic-spec.test :as dst]))
 
 
 (st/instrument)
@@ -23,15 +22,7 @@
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
-  (st/instrument
-    [`d/db]
-    {:spec
-     {`d/db
-      (s/fspec
-        :args (s/cat :conn #{::conn})
-        :ret #{::db})}
-     :stub
-     #{`d/db}})
+  (test-util/stub-db ::conn ::db)
   (f)
   (st/unstrument))
 
@@ -41,15 +32,7 @@
 
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Resource Type"
-    (st/instrument
-      [`util/cached-entity]
-      {:spec
-       {`util/cached-entity
-        (s/fspec
-          :args (s/cat :db #{::db} :eid #{:Patient})
-          :ret nil?)}
-       :stub
-       #{`util/cached-entity}})
+    (test-util/stub-cached-entity ::db #{:Patient} nil?)
 
     (let [{:keys [status body]}
           ((handler-intern ::conn)
@@ -65,21 +48,8 @@
 
 
   (testing "Returns Not Found on Non-Existing Resource"
-    (st/instrument
-      [`d/entity
-       `util/cached-entity]
-      {:spec
-       {`d/entity
-        (s/fspec
-          :args (s/cat :db #{::db} :eid #{[:Patient/id "0"]})
-          :ret nil?)
-        `util/cached-entity
-        (s/fspec
-          :args (s/cat :db #{::db} :eid #{:Patient})
-          :ret #{::patient-type})}
-       :stub
-       #{`d/entity
-         `util/cached-entity}})
+    (test-util/stub-cached-entity ::db #{:Patient} some?)
+    (test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
 
     (let [{:keys [status body]}
           ((handler-intern ::conn)
@@ -95,45 +65,20 @@
 
 
   (testing "Returns No Content on Successful Deletion"
+    (test-util/stub-cached-entity ::db #{:Patient} some?)
+    (test-util/stub-resource ::db #{"Patient"} #{"0"} #{::patient})
     (st/instrument
-      [`d/basis-t
-       `d/entity
-       `tx/resource-deletion
-       `tx/transact-async
-       `util/basis-transaction
-       `util/cached-entity]
+      [`tx/resource-deletion]
       {:spec
-       {`d/basis-t
-        (s/fspec
-          :args (s/cat :db #{::db-after})
-          :ret #{"42"})
-        `d/entity
-        (s/fspec
-          :args (s/cat :db #{::db} :eid #{[:Patient/id "0"]})
-          :ret #{::patient})
-        `tx/resource-deletion
+       {`tx/resource-deletion
         (s/fspec
           :args (s/cat :db #{::db} :type #{"Patient"} :id #{"0"})
-          :ret #{::resource-tx-data})
-        `tx/transact-async
-        (s/fspec
-          :args (s/cat :conn #{::conn} :tx-data #{::resource-tx-data})
-          :ret #{{:db-after ::db-after}})
-        `util/basis-transaction
-        (s/fspec
-          :args (s/cat :db #{::db-after})
-          :ret #{{:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"}})
-        `util/cached-entity
-        (s/fspec
-          :args (s/cat :db #{::db} :eid #{:Patient})
-          :ret #{::patient-type})}
+          :ret #{::tx-data})}
        :stub
-       #{`d/basis-t
-         `d/entity
-         `tx/resource-deletion
-         `tx/transact-async
-         `util/basis-transaction
-         `util/cached-entity}})
+       #{`tx/resource-deletion}})
+    (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+    (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
+    (test-util/stub-basis-t ::db-after "42")
 
     (let [{:keys [status headers body]}
           @((handler-intern ::conn)

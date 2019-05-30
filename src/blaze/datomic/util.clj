@@ -8,6 +8,34 @@
     [java.util Date]))
 
 
+(s/fdef resource-type
+  :args (s/cat :entity ::ds/entity)
+  :ret string?)
+
+(defn resource-type
+  "Returns the type of a resource like `Patient` or `Observation`."
+  {:arglists '([entity])}
+  [{:db/keys [id] :as entity}]
+  (name (d/ident (d/entity-db entity) (d/part id))))
+
+
+(defn resource-id-attr [type]
+  (keyword type "id"))
+
+
+(s/fdef first-transaction
+  :args (s/cat :resource ::ds/entity)
+  :ret ::ds/entity)
+
+(defn first-transaction
+  "Returns the transaction of the creation of `resource`."
+  {:arglists '([resource])}
+  [{:db/keys [id] :as resource}]
+  (let [db (d/entity-db resource)
+        id-attr (resource-id-attr (resource-type resource))]
+    (d/entity db (:tx (first (d/datoms db :eavt id id-attr))))))
+
+
 (s/fdef last-transaction
   :args (s/cat :resource ::ds/entity)
   :ret ::ds/entity)
@@ -58,12 +86,18 @@
         (get eid))))
 
 
-(s/fdef resource-type
-  :args (s/cat :entity ::ds/entity)
-  :ret string?)
+(defn resource-ident [type id]
+  [(resource-id-attr type) id])
 
-(defn resource-type
-  "Returns the type of a resource like `Patient` or `Observation`."
-  {:arglists '([entity])}
-  [{:db/keys [id] :as entity}]
-  (name (d/ident (d/entity-db entity) (d/part id))))
+
+(s/fdef resource
+  :args (s/cat :db ::ds/db :type string? :id string?)
+  :ret ::ds/entity)
+
+(defn resource
+  [db type id]
+  (d/entity db (resource-ident type id)))
+
+
+(defn deleted? [version]
+  (odd? version))
