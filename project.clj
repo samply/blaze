@@ -35,7 +35,7 @@
    [ring/ring-core "1.7.1"
     :exclusions [clj-time commons-codec commons-fileupload
                  commons-io crypto-equality crypto-random]]
-   [systems.uom/systems-ucum-java8 "0.9"]
+   [systems.uom/systems-ucum "0.9"]
    [systems.uom/systems-quantity "1.0"]]
 
   :profiles

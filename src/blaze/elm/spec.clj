@@ -8,9 +8,8 @@
     [blaze.elm.quantity :refer [print-unit]])
   (:import
     [java.time LocalDate]
-    [javax.measure.spi SystemOfUnits]
-    [systems.uom.ucum UCUM]
-    [java.math RoundingMode]))
+    [javax.measure.spi ServiceProvider SystemOfUnits]
+    [tec.units.indriya.unit TransformedUnit]))
 
 
 (def temporal-keywords
@@ -20,18 +19,13 @@
 
 
 (def ^SystemOfUnits ucum-service
-  (UCUM/getInstance))
+  (.getSystemOfUnits (.getSystemOfUnitsService (ServiceProvider/current)) "UCUM"))
 
 
 (def defined-units
   "All defined units from ucum-service."
-  (into #{} (comp (map print-unit)
-                  (remove str/blank?)
-                  ;; TODO: UCUM can't parse powers of ten like 10^6
-                  (remove #(.contains ^String % "^"))
-                  (remove #(.contains ^String % "()"))
-                  (remove #(.contains ^String % "(W)"))
-                  (remove #(.contains ^String % "tec.uom.se")))
+  (into #{} (comp (remove #(= TransformedUnit (class %)))
+                  (map print-unit))
         (.getUnits ucum-service)))
 
 

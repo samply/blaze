@@ -4,13 +4,13 @@
     [cognitect.anomalies :as anom])
   (:import
     [javax.measure Unit]
+    [javax.measure.spi ServiceProvider]
     [javax.measure.format UnitFormat]
-    [systems.uom.ucum.format UCUMFormat$Variant UCUMFormat]
-    [tec.uom.se.quantity Quantities]))
+    [tec.units.indriya.quantity Quantities]))
 
 
 (def ^:private ^UnitFormat ucum-format
-  (UCUMFormat/getInstance UCUMFormat$Variant/CASE_SENSITIVE))
+  (.getUnitFormat (.getUnitFormatService (ServiceProvider/current)) "UCUM"))
 
 
 (defn- parse-unit* [s]

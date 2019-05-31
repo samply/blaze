@@ -9,16 +9,16 @@
   (:import
     [javax.measure Quantity UnconvertibleException]
     [javax.measure.format UnitFormat]
-    [systems.uom.ucum.format UCUMFormat$Variant UCUMFormat]
-    [tec.uom.se ComparableQuantity]
-    [tec.uom.se.quantity DecimalQuantity NumberQuantity Quantities]))
+    [javax.measure.spi ServiceProvider]
+    [tec.units.indriya ComparableQuantity]
+    [tec.units.indriya.quantity DecimalQuantity NumberQuantity Quantities]))
 
 
 (set! *warn-on-reflection* true)
 
 
 (def ^:private ^UnitFormat ucum-format
-  (UCUMFormat/getInstance UCUMFormat$Variant/CASE_SENSITIVE))
+  (.getUnitFormat (.getUnitFormatService (ServiceProvider/current)) "UCUM"))
 
 
 (defn- parse-unit [unit]
@@ -61,7 +61,7 @@
   (equal [a b]
     (when b
       (try
-        (.isEquivalentTo a b)
+        (.isEquivalentOf a b)
         (catch UnconvertibleException _ false)))))
 
 
@@ -71,7 +71,7 @@
   (equivalent [a b]
     (if b
       (try
-        (.isEquivalentTo a b)
+        (.isEquivalentOf a b)
         (catch UnconvertibleException _ false))
       false)))
 
