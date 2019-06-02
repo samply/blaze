@@ -31,6 +31,7 @@
     []
     (comp
       (filter :added)
+      (take 50)
       (map #(d/entity db (:tx %))))
     (d/datoms (d/history db) :eavt eid :version)))
 

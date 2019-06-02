@@ -48,7 +48,7 @@
        (filter (resource-pred db type query-params))
        (map #(pull/pull-resource* db type %))
        (filter #(not (:deleted (meta %))))
-       (take 10)
+       (take 50)
        (map #(entry base-uri %)))
      (d/datoms db :aevt (util/resource-id-attr type)))})
 
