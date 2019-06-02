@@ -138,29 +138,31 @@
 (defn- add-code
   "Returns tx-data for adding a code. All of `system`, `version` and `code` are
   optional."
-  [ident id system version code]
-  (let [tid (d/tempid :part/code)]
-    [(cond->
-       {:db/id tid
-        :code/id (str system "|" version "|" code)}
-       system
-       (assoc :code/system system)
-       version
-       (assoc :code/version version)
-       code
-       (assoc :code/code code))
-     [:db/add id ident tid]]))
+  [db ident id system version code]
+  (if-let [entity (d/entity db [:code/id (str system "|" version "|" code)])]
+    [[:db/add id ident (:db/id entity)]]
+    (let [tid (d/tempid :part/code)]
+      [(cond->
+         {:db/id tid
+          :code/id (str system "|" version "|" code)}
+         system
+         (assoc :code/system system)
+         version
+         (assoc :code/version version)
+         code
+         (assoc :code/code code))
+       [:db/add id ident tid]])))
 
 
 (defn- add-code-according-value-set-binding
-  [{:db/keys [ident]} id code]
+  [db {:db/keys [ident]} id code]
   ;; TODO: resolve the code system and version
-  (add-code ident id nil nil code))
+  (add-code db ident id nil nil code))
 
 
 (defn- add-primitive-element
   {:arglists '([context element id value])}
-  [{{:strs [system version]} :code}
+  [{:keys [db] {:strs [system version]} :code}
    {:element/keys [type-code part-of-choice-type? type-attr-ident
                    value-set-binding]
     :db/keys [ident valueType] :as element}
@@ -169,8 +171,8 @@
     (case type-code
       "code"
       (if value-set-binding
-        (add-code-according-value-set-binding element id value)
-        (add-code ident id system version value))
+        (add-code-according-value-set-binding db element id value)
+        (add-code db ident id system version value))
 
       [[:db/add id ident (write type-code valueType value)]])
     part-of-choice-type?
@@ -208,9 +210,14 @@
 
 
 (defn- resolve-referenced-entity
-  [{:keys [db] :as context} {:strs [reference]}]
+  [{:keys [db] :as context} {:strs [reference] :as value}]
   (if (str/starts-with? reference "#")
-    (d/entity db (resolve-local-reference context (subs reference 1)))
+    (if-let [eid (resolve-local-reference context (subs reference 1))]
+      (d/entity db eid)
+      (throw (ex-info (str "Local reference `" reference "` can't be resolved.")
+                      {::anom/category ::anom/incorrect
+                       :fhir/issue "value"
+                       :reference value})))
     (let [[type id] (str/split reference #"/")]
       (util/resource db type id))))
 
@@ -643,15 +650,18 @@
 
 (defn- upsert-contained-resource
   [context old-entity new-entity]
-  (if-let [id (get new-entity "id")]
-    (let [type (keyword (util/resource-type old-entity))]
-      {:tx-data (upsert context type old-entity (dissoc new-entity "id"))
-       :id id
-       :eid (:db/id old-entity)})
-    (throw (ex-info "Invalid contained resource without `id` element."
-                    {::anom/category ::anom/incorrect
-                     :fhir/issue "value"
-                     :contained-resource new-entity}))))
+  (let [type (keyword (util/resource-type old-entity))]
+    (upsert context type old-entity (dissoc new-entity "id"))))
+
+
+(defn- contained-resource-eids [resources]
+  (transduce
+    (map (comp :entity meta))
+    (completing
+      (fn [res {:db/keys [id] :keys [local-id]}]
+        (assoc res local-id id)))
+    {}
+    resources))
 
 
 (defn- upsert-contained-resources
@@ -666,26 +676,29 @@
             reuse (extract-upsert-pairs num-reuse (gen-contained-resource-upsert-pairs context retract add))
             retract (set/difference retract (into #{} (map :old-entity) reuse))
             add (set/difference add (into #{} (map :new-entity) reuse))
-            tx-data
-            (into
-              []
-              (mapcat
-                (fn [old-entity]
-                  (let [old-entity (:entity (meta old-entity))]
-                    (conj
-                      (upsert context (keyword (util/resource-type old-entity)) old-entity nil)
-                      [:db/retract container-id ident (:db/id old-entity)]))))
+            res
+            (reduce
+              (fn [res old-entity]
+                (let [old-entity (:entity (meta old-entity))
+                      type (util/resource-type old-entity)]
+                  (-> res
+                      (update
+                        :tx-data
+                        into
+                        (conj
+                          (upsert context (keyword type) old-entity nil)
+                          [:db/retract container-id ident (:db/id old-entity)]))
+                      (update :eids dissoc (:local-id old-entity)))))
+              {:tx-data []
+               :eids (contained-resource-eids old-entities)}
               retract)
             res
             (reduce
               (fn [res {:keys [old-entity new-entity]}]
-                (let [{:keys [tx-data id eid]}
-                      (upsert-contained-resource
-                        context (:entity (meta old-entity)) new-entity)]
-                  (-> res
-                      (update :tx-data into tx-data)
-                      (assoc-in [:eids id] eid))))
-              {:tx-data tx-data}
+                (let [tx-data (upsert-contained-resource
+                                context (:entity (meta old-entity)) new-entity)]
+                  (update res :tx-data into tx-data)))
+              res
               reuse)]
         (reduce
           (fn [res value]

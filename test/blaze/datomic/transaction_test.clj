@@ -1259,14 +1259,14 @@
 
 
     (testing "Contained resources"
-      (let [[db contained-id] (with-non-primitive db :Patient/active false
-                                                  :local-id "0")
-            [db id] (with-resource db "Observation" "0"
-                                   :Observation/contained contained-id
-                                   :Observation/subject contained-id)]
-        (is
-          (=
-            (with-redefs [d/tempid (fn [partition] partition)]
+      (testing "with changes inside the contained resource"
+        (let [[db contained-id] (with-non-primitive db :Patient/active false
+                                                    :local-id "0")
+              [db id] (with-resource db "Observation" "0"
+                                     :Observation/contained contained-id
+                                     :Observation/subject contained-id)]
+          (is
+            (=
               (resource-upsert
                 db nil 0
                 {"id" "0"
@@ -1275,9 +1275,33 @@
                  "contained"
                  [{"id" "0"
                    "resourceType" "Patient"
-                   "active" true}]}))
-            [[:db/add contained-id :Patient/active true]
-             [:db.fn/cas id :version 0 -2]]))))
+                   "active" true}]})
+              [[:db/add contained-id :Patient/active true]
+               [:db.fn/cas id :version 0 -2]]))))
+
+      (testing "with changes inside the container resource"
+        (let [[db contained-id] (with-non-primitive db :Patient/active true
+                                                    :local-id "0")
+              [db preliminary-id] (with-code db "preliminary")
+              [db final-id] (with-code db "final")
+              [db id] (with-resource db "Observation" "0"
+                                     :Observation/status preliminary-id
+                                     :Observation/contained contained-id
+                                     :Observation/subject contained-id)]
+          (is
+            (=
+              (resource-upsert
+                db nil 0
+                {"id" "0"
+                 "resourceType" "Observation"
+                 "subject" {"reference" "#0"}
+                 "status" "final"
+                 "contained"
+                 [{"id" "0"
+                   "resourceType" "Patient"
+                   "active" true}]})
+              [[:db/add id :Observation/status final-id]
+               [:db.fn/cas id :version 0 -2]])))))
 
 
     (testing "Don't reuse old entities or new entities more than once"
