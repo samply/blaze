@@ -3,9 +3,8 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.util :as util]
     [blaze.handler.fhir.search :refer [handler-intern]]
+    [blaze.handler.fhir.test-util :as test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -20,15 +19,7 @@
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
-  (st/instrument
-    [`d/db]
-    {:spec
-     {`d/db
-      (s/fspec
-        :args (s/cat :conn #{::conn})
-        :ret #{::db})}
-     :stub
-     #{`d/db}})
+  (test-util/stub-db ::conn ::db)
   (f)
   (st/unstrument))
 
@@ -41,15 +32,7 @@
 
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Resource Type"
-    (st/instrument
-      [`util/cached-entity]
-      {:spec
-       {`util/cached-entity
-        (s/fspec
-          :args (s/cat :db #{::db} :eid #{:Patient})
-          :ret nil?)}
-       :stub
-       #{`util/cached-entity}})
+    (test-util/stub-cached-entity ::db #{:Patient} nil?)
 
     (let [{:keys [status body]}
           ((handler-intern base-uri ::conn)
@@ -66,27 +49,55 @@
 
   (testing "Returns Existing all Resources of Type"
     (let [patient {"resourceType" "Patient" "id" "0"}]
+      (test-util/stub-cached-entity ::db #{:Patient} some?)
       (st/instrument
-        [`d/datoms
-         `util/cached-entity
-         `pull/pull-resource]
+        [`d/datoms]
         {:spec
          {`d/datoms
           (s/fspec
             :args (s/cat :db #{::db} :index #{:aevt} :attr #{:Patient/id})
-            :ret #{[{:v "0"}]})
-          `util/cached-entity
-          (s/fspec
-            :args (s/cat :db #{::db} :eid #{:Patient})
-            :ret #{::patient-type})
-          `pull/pull-resource
-          (s/fspec
-            :args (s/cat :db #{::db} :type #{"Patient"} :id #{"0"})
-            :ret #{patient})}
+            :ret #{[{:e 143757}]})}
          :stub
-         #{`d/datoms
-           `util/cached-entity
-           `pull/pull-resource}})
+         #{`d/datoms}})
+      (test-util/stub-entity ::db #{143757} #{::patient})
+      (test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+
+      (let [{:keys [status body]}
+            ((handler-intern base-uri ::conn)
+              {:route-params {:type "Patient"}})]
+
+        (is (= 200 status))
+
+        (testing "Body contains a bundle"
+          (is (= "Bundle" (:resourceType body))))
+
+        (testing "Bundle type is searchset"
+          (is (= "searchset" (:type body))))
+
+        (testing "contains one entry"
+          (is (= 1 (count (:entry body)))))
+
+        (testing "The entry has the right fullUrl"
+          (is (= (str base-uri "/fhir/Patient/0") (-> body :entry first :fullUrl))))
+
+        (testing "The entry has the right resource"
+          (is (= patient (-> body :entry first :resource)))))))
+
+
+  (testing "Identifier search"
+    (let [patient {"resourceType" "Patient" "id" "0"}]
+      (test-util/stub-cached-entity ::db #{:Patient} some?)
+      (st/instrument
+        [`d/datoms]
+        {:spec
+         {`d/datoms
+          (s/fspec
+            :args (s/cat :db #{::db} :index #{:aevt} :attr #{:Patient/id})
+            :ret #{[{:e 143757}]})}
+         :stub
+         #{`d/datoms}})
+      (test-util/stub-entity ::db #{143757} #{::patient})
+      (test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
 
       (let [{:keys [status body]}
             ((handler-intern base-uri ::conn)

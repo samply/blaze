@@ -94,6 +94,18 @@
      #{`pull/pull-resource}}))
 
 
+(defn stub-pull-resource* [db type resource resource-spec]
+  (st/instrument
+    [`pull/pull-resource*]
+    {:spec
+     {`pull/pull-resource*
+      (s/fspec
+        :args (s/cat :db #{db} :type #{type} :resource #{resource})
+        :ret resource-spec)}
+     :stub
+     #{`pull/pull-resource*}}))
+
+
 (defn stub-resource [db type-spec id-spec entity-spec]
   (st/instrument
     [`util/resource]

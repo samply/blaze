@@ -273,5 +273,7 @@
 (defn structure-definition-schemas [structure-definitions]
   (into
     []
-    (mapcat structure-definition-tx-data)
+    (comp
+      (remove :experimental)
+      (mapcat structure-definition-tx-data))
     structure-definitions))

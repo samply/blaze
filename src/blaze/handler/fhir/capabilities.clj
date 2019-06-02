@@ -27,7 +27,7 @@
     :readHistory true
     :updateCreate true
     :conditionalCreate false
-    :conditionalRead false
+    :conditionalRead "not-supported"
     :conditionalUpdate false
     :conditionalDelete "not-supported"
     :referencePolicy
@@ -47,7 +47,7 @@
         :resourceType "CapabilityStatement"
         :status "active"
         :kind "instance"
-        :date "2019-05-22T00:00:00Z"
+        :date "2019-06-02T00:00:00Z"
         :software
         {:name "Blaze"
          :version version}
@@ -63,7 +63,8 @@
             []
             (comp
               (filter #(= "resource" (:kind %)))
-              (remove #(= "Resource" (:id %)))
+              (remove :experimental)
+              (remove :abstract)
               (map resource))
             structure-definitions)
           :interaction

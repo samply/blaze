@@ -66,7 +66,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.5-alpha48")
+(def ^:private version "0.5-alpha50")
 
 (def ^:private base-uri "http://localhost:8080")
 
@@ -242,6 +242,7 @@
 
 (defmethod ig/init-key :app-handler
   [_ {:keys [handlers version]}]
+  (log/info "Starting Blaze version" version)
   (app-handler/handler handlers version))
 
 

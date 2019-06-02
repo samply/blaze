@@ -229,19 +229,19 @@
               (throw (ex-info (str "Reference `" reference "` can't be resolved.")
                               {::anom/category ::anom/incorrect
                                :fhir/issue "value"
-                               :reference reference
+                               :reference value
                                :element/ident ident})))
             (throw (ex-info (str "Invalid reference `" reference `". The type `"
                                  type "` is unknown.")
                             {::anom/category ::anom/incorrect
                              :fhir/issue "value"
-                             :reference reference
+                             :reference value
                              :element/ident ident}))))
         identifier
         (throw (ex-info "Unsupported logical reference."
                         {::anom/category ::anom/unsupported
                          :fhir/issue "not-supported"
-                         :reference reference
+                         :reference value
                          :element/ident ident}))))
 
     "BackboneElement"

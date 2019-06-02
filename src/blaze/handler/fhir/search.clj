@@ -12,22 +12,41 @@
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
+    [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]))
 
 
-(defn entry [base-uri {:strs [resourceType id] :as resource}]
+;; TODO: improve quick hack
+(defn- resource-pred [db type {:strs [identifier]}]
+  (if identifier
+    (let [attr (keyword type "identifier")
+          {:db/keys [cardinality]} (util/cached-entity db attr)
+          matches?
+          (fn [{:Identifier/keys [value]}]
+            (= identifier value))]
+      (fn [resource]
+        (let [value (get resource attr)]
+          (if (= :db.cardinality/many cardinality)
+            (some matches? value)
+            (matches? value)))))
+    (fn [_] true)))
+
+
+(defn- entry [base-uri {:strs [resourceType id] :as resource}]
   {:fullUrl (str base-uri "/fhir/" resourceType "/" id)
    :resource resource})
 
 
-(defn search [base-uri db type]
+(defn- search [base-uri db type query-params]
   {:resourceType "Bundle"
    :type "searchset"
    :entry
    (into
      []
      (comp
-       (map #(pull/pull-resource db type (:v %)))
+       (map #(d/entity db (:e %)))
+       (filter (resource-pred db type query-params))
+       (map #(pull/pull-resource* db type %))
        (filter #(not (:deleted (meta %))))
        (take 10)
        (map #(entry base-uri %)))
@@ -35,10 +54,10 @@
 
 
 (defn handler-intern [base-uri conn]
-  (fn [{{:keys [type]} :route-params}]
+  (fn [{{:keys [type]} :route-params :keys [query-params]}]
     (let [db (d/db conn)]
       (if (util/cached-entity db (keyword type))
-        (ring/response (search base-uri db type))
+        (ring/response (search base-uri db type query-params))
         (handler-util/error-response
           {::anom/category ::anom/not-found
            :fhir/issue "not-found"})))))
@@ -55,5 +74,6 @@
   ""
   [base-uri conn]
   (-> (handler-intern base-uri conn)
+      (wrap-params)
       (wrap-json)
       (wrap-exception)))

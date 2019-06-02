@@ -72,7 +72,10 @@
     category
     (do
       (when-not (:blaze/stacktrace error)
-        (log/error error))
+        (case category
+          ::anom/fault
+          (log/error error)
+          (log/warn error)))
       (-> (ring/response (operation-outcome error))
           (ring/status
             (case category
