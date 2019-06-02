@@ -83,16 +83,21 @@
 
 
 (defn- pull-reference [_ _ value]
-  (let [type (util/resource-type value)]
+  (let [type (util/resource-type value)
+        id-attr (util/resource-id-attr type)]
     (with-meta
-      {"reference" (str type "/" ((util/resource-id-attr type) value))}
-      {:entity value})))
+      {"reference"
+       (if-let [id (id-attr value)]
+         (str type "/" id)
+         (str "#" (:local-id value)))}
+      {:entity id-attr})))
 
 
-(defn- pull-inline-resource [db resource]
+(defn- pull-contained-resource [db resource]
   (let [type (util/resource-type resource)]
     (-> (pull-non-primitive db (keyword type) resource)
-        (assoc "resourceType" type))))
+        (assoc "resourceType" type
+               "id" (:local-id resource)))))
 
 
 (defn- pull-value
@@ -108,7 +113,7 @@
     (= "Reference" type-code)
     (pull-reference db element value)
     (= "Resource" type-code)
-    (pull-inline-resource db value)
+    (pull-contained-resource db value)
     :else
     (pull-non-primitive db type value)))
 

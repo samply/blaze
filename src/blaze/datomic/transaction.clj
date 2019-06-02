@@ -177,12 +177,6 @@
     (conj [:db/add id type-attr-ident ident])))
 
 
-(defn- resource-ident-from-reference
-  [{:strs [reference]}]
-  (let [[type id] (str/split reference #"/")]
-    (util/resource-ident type id)))
-
-
 (defn- index-ident [ident]
   (keyword (str (namespace ident) ".index") (name ident)))
 
@@ -204,9 +198,47 @@
 (declare upsert)
 
 
-(defn- resolve-reference [{:keys [db tempids]} type ref-id]
-  (or (:db/id (util/resource db type ref-id))
-      (get-in tempids [type ref-id])))
+(defn- resolve-reference [{:keys [db tempids]} type id]
+  (or (:db/id (util/resource db type id))
+      (get-in tempids [type id])))
+
+
+(defn- resolve-local-reference [{:keys [contained-resource-eids]} id]
+  (get contained-resource-eids id))
+
+
+(defn- resolve-referenced-entity
+  [{:keys [db] :as context} {:strs [reference]}]
+  (if (str/starts-with? reference "#")
+    (d/entity db (resolve-local-reference context (subs reference 1)))
+    (let [[type id] (str/split reference #"/")]
+      (util/resource db type id))))
+
+
+(defn- add-contained-resource
+  {:arglists '([context element id value])}
+  [context
+   {:element/keys [part-of-choice-type? type-attr-ident] :db/keys [ident]}
+   id value]
+  (if-let [resource-id (get value "id")]
+    (let [type (get value "resourceType")
+          tid (d/tempid (keyword "part" type))
+          tx-data (upsert context (keyword type) {:db/id tid}
+                          (dissoc value "id"))]
+      {:tx-data
+       (cond->
+         (conj
+           tx-data
+           [:db/add tid :local-id resource-id]
+           [:db/add id ident tid])
+         part-of-choice-type?
+         (conj [:db/add id type-attr-ident ident]))
+       :id resource-id
+       :eid tid})
+    (throw (ex-info "Invalid contained resource without `id` element."
+                    {::anom/category ::anom/incorrect
+                     :fhir/issue "value"
+                     :contained-resource value}))))
 
 
 (defn- add-non-primitive-element
@@ -215,28 +247,36 @@
   {:arglists '([db element id value])}
   [{:keys [db] :as context}
    {:element/keys [type-code part-of-choice-type? type-attr-ident]
-    :ElementDefinition/keys [path] :db/keys [ident]}
+    :ElementDefinition/keys [path] :db/keys [ident] :as element}
    id value]
   (case type-code
     "Reference"
     (let [{:strs [reference identifier]} value]
       (cond
         reference
-        (let [[type ref-id] (str/split reference #"/")]
-          (if (util/cached-entity db (keyword type))
-            (if-let [eid (resolve-reference context type ref-id)]
-              [[:db/add id ident eid]]
-              (throw (ex-info (str "Reference `" reference "` can't be resolved.")
-                              {::anom/category ::anom/incorrect
-                               :fhir/issue "value"
-                               :reference value
-                               :element/ident ident})))
-            (throw (ex-info (str "Invalid reference `" reference `". The type `"
-                                 type "` is unknown.")
+        (if (str/starts-with? reference "#")
+          (if-let [eid (resolve-local-reference context (subs reference 1))]
+            [[:db/add id ident eid]]
+            (throw (ex-info (str "Local reference `" reference "` can't be resolved.")
                             {::anom/category ::anom/incorrect
                              :fhir/issue "value"
                              :reference value
-                             :element/ident ident}))))
+                             :element/ident ident})))
+          (let [[type ref-id] (str/split reference #"/")]
+            (if (util/cached-entity db (keyword type))
+              (if-let [eid (resolve-reference context type ref-id)]
+                [[:db/add id ident eid]]
+                (throw (ex-info (str "Reference `" reference "` can't be resolved.")
+                                {::anom/category ::anom/incorrect
+                                 :fhir/issue "value"
+                                 :reference value
+                                 :element/ident ident})))
+              (throw (ex-info (str "Invalid reference `" reference `". The type `"
+                                   type "` is unknown.")
+                              {::anom/category ::anom/incorrect
+                               :fhir/issue "value"
+                               :reference value
+                               :element/ident ident})))))
         identifier
         (throw (ex-info "Unsupported logical reference."
                         {::anom/category ::anom/unsupported
@@ -262,16 +302,6 @@
             (conj [:db/add id type-attr-ident ident]))
           (map (fn [tid] [:db/add id (index-ident ident) tid]))
           (if part-of-choice-type? [] code-tids))))
-
-    "Resource"
-    (let [type (get value "resourceType")
-          tid (d/tempid (keyword "part" type))
-          tx-data (upsert context (keyword type) {:db/id tid} value)]
-      (when-not (empty? tx-data)
-        (cond->
-          (conj tx-data [:db/add id ident tid])
-          part-of-choice-type?
-          (conj [:db/add id type-attr-ident ident]))))
 
     (let [tid (d/tempid (keyword "part" type-code))
           tx-data (upsert context (keyword type-code) {:db/id tid} value)]
@@ -317,8 +347,8 @@
 
 
 (defn- upsert-reference
-  [{:keys [db] :as context} {:db/keys [ident] :as element} entity reference]
-  (when-not (= (ident entity) (d/entity db (resource-ident-from-reference reference)))
+  [context {:db/keys [ident] :as element} entity reference]
+  (when-not (= (ident entity) (resolve-referenced-entity context reference))
     (add-non-primitive-element context element (:db/id entity) reference)))
 
 
@@ -341,7 +371,7 @@
     x))
 
 
-(defn- gen-normal-upsert-pairs [context type retract add]
+(defn- gen-upsert-pairs [context type retract add]
   (for [old-entity retract
         new-entity add]
     {:old-entity old-entity
@@ -353,7 +383,7 @@
        (upsert context type (:entity (meta old-entity)) new-entity))}))
 
 
-(defn- gen-inline-resource-upsert-pairs [context retract add]
+(defn- gen-contained-resource-upsert-pairs [context retract add]
   (for [old-entity retract
         :let [old-type (keyword (util/resource-type (:entity (meta old-entity))))]
         new-entity add
@@ -366,12 +396,6 @@
        (comp (filter #(= :db/retract (first %))) (map (constantly 1)))
        +
        (upsert context new-type (:entity (meta old-entity)) new-entity))}))
-
-
-(defn- gen-upsert-pairs [context type retract add]
-  (if (= :Resource type)
-    (gen-inline-resource-upsert-pairs context retract add)
-    (gen-normal-upsert-pairs context type retract add)))
 
 
 (defn- remove-duplicates
@@ -411,7 +435,6 @@
         retract (set/difference old-entities new-entities)
         add (set/difference new-entities old-entities)
         num-reuse (min (count retract) (count add))
-        ;; TODO: make old entities disjunct, we can't reuse an old entity twice
         reuse (extract-upsert-pairs num-reuse (gen-upsert-pairs context type retract add))
         retract (set/difference retract (into #{} (map :old-entity) reuse))
         add (set/difference add (into #{} (map :new-entity) reuse))]
@@ -561,6 +584,12 @@
       (retract-single-typed-element context element entity value))))
 
 
+(def ^:private remove-contained-resource-element
+  (remove
+    (fn [{:element/keys [type-code]}]
+      (= "Resource" type-code))))
+
+
 (s/fdef upsert
   :args (s/cat :context (s/keys :req-un [::ds/db])
                :type-ident (s/and keyword? #(not (#{:BackboneElement :Resource} %)))
@@ -600,15 +629,98 @@
       []
       (comp
         (map #(util/cached-entity db %))
-        (filter
+        remove-contained-resource-element
+        (remove
           (fn [{:db/keys [ident]}]
-            (not (#{:Coding/system :Coding/version} ident))))
+            (#{:Coding/system :Coding/version} ident)))
         (mapcat
           (fn [element]
             (if-let [[new-value value-element] (find-json-value db element new-entity)]
               (upsert-element context element old-entity new-value value-element)
               (retract-element context element old-entity)))))
       (:type/elements (util/cached-entity db type-ident)))))
+
+
+(defn- upsert-contained-resource
+  [context old-entity new-entity]
+  (if-let [id (get new-entity "id")]
+    (let [type (keyword (util/resource-type old-entity))]
+      {:tx-data (upsert context type old-entity (dissoc new-entity "id"))
+       :id id
+       :eid (:db/id old-entity)})
+    (throw (ex-info "Invalid contained resource without `id` element."
+                    {::anom/category ::anom/incorrect
+                     :fhir/issue "value"
+                     :contained-resource new-entity}))))
+
+
+(defn- upsert-contained-resources
+  [{:keys [db] :as context} type {container-id :db/id :as old-container} new-container]
+  (when-let [{:db/keys [ident] :as element} (util/cached-entity db (keyword type "contained"))]
+    (if-let [[new-values] (find-json-value db element new-container)]
+      (let [old-entities (postwalk vector->set (second (pull/pull-element db element old-container)))
+            new-entities (postwalk vector->set new-values)
+            retract (set/difference old-entities new-entities)
+            add (set/difference new-entities old-entities)
+            num-reuse (min (count retract) (count add))
+            reuse (extract-upsert-pairs num-reuse (gen-contained-resource-upsert-pairs context retract add))
+            retract (set/difference retract (into #{} (map :old-entity) reuse))
+            add (set/difference add (into #{} (map :new-entity) reuse))
+            tx-data
+            (into
+              []
+              (mapcat
+                (fn [old-entity]
+                  (let [old-entity (:entity (meta old-entity))]
+                    (conj
+                      (upsert context (keyword (util/resource-type old-entity)) old-entity nil)
+                      [:db/retract container-id ident (:db/id old-entity)]))))
+              retract)
+            res
+            (reduce
+              (fn [res {:keys [old-entity new-entity]}]
+                (let [{:keys [tx-data id eid]}
+                      (upsert-contained-resource
+                        context (:entity (meta old-entity)) new-entity)]
+                  (-> res
+                      (update :tx-data into tx-data)
+                      (assoc-in [:eids id] eid))))
+              {:tx-data tx-data}
+              reuse)]
+        (reduce
+          (fn [res value]
+            (if-let [{:keys [tx-data id eid]}
+                     (add-contained-resource context element container-id value)]
+              (-> res
+                  (update :tx-data into tx-data)
+                  (assoc-in [:eids id] eid))
+              res))
+          res
+          add))
+      {:tx-data
+       (into
+         []
+         (mapcat
+           (fn [{resource-id :db/id :as resource}]
+             (conj
+               (upsert context (keyword (util/resource-type resource)) resource
+                       nil)
+               [:db/retract resource-id :local-id (:local-id resource)]
+               [:db/retract container-id ident resource-id])))
+         (ident old-container))})))
+
+
+(defn- upsert-resource
+  [context type old-resource new-resource]
+  (let [{:keys [tx-data eids]}
+        (upsert-contained-resources context type old-resource new-resource)
+        context
+        (cond-> context
+          eids
+          (assoc :contained-resource-eids eids))]
+    (into
+      (or tx-data [])
+      (upsert context (keyword type) old-resource new-resource))))
 
 
 (defn- prepare-resource
@@ -659,15 +771,16 @@
   (let [resource (prepare-resource resource)]
     (if-let [old-resource (util/resource db type id)]
 
-      (let [tx-data (upsert {:db db :tempids tempids} (keyword type) old-resource resource)
+      (let [tx-data (upsert-resource {:db db :tempids tempids} type
+                                     old-resource resource)
             {:db/keys [id] :keys [version]} old-resource]
         (when (or (not (empty? tx-data)) (util/deleted? version))
           (conj tx-data [:db.fn/cas id :version version (upsert-decrement version)])))
 
       (let [tempid (get-in tempids [type id])]
         (assert tempid)
-        (conj (upsert {:db db :tempids tempids} (keyword type) {:db/id tempid}
-                      resource)
+        (conj (upsert-resource {:db db :tempids tempids} type
+                               {:db/id tempid} resource)
               [:db.fn/cas tempid :version nil initial-version])))))
 
 

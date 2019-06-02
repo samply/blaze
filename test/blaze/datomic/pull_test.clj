@@ -47,7 +47,7 @@
       (given (pull-resource db "Patient" "0")
         ;; this is the t of the last transaction. it could change if the
         ;; transactions before change
-        ["meta" "versionId"] := "9841")))
+        ["meta" "versionId"] := "9842")))
 
   (testing "meta.lastUpdated"
     (let [[db] (with-resource db "Patient" "0")]
@@ -127,4 +127,14 @@
     (let [[db id] (with-resource db "Organization" "0")
           [db] (with-resource db "Patient" "0" :Patient/managingOrganization id)]
       (given (pull-resource db "Patient" "0")
-        ["managingOrganization" "reference"] := "Organization/0"))))
+        ["managingOrganization" "reference"] := "Organization/0")))
+
+
+  (testing "Contained resource"
+    (let [[db id] (with-non-primitive db :Patient/active true :local-id "1")
+          [db] (with-resource db "Observation" "0"
+                              :Observation/contained id
+                              :Observation/subject id)]
+      (given (pull-resource db "Observation" "0")
+        ["contained" 0 "id"] := "1"
+        ["subject" "reference"] := "#1"))))

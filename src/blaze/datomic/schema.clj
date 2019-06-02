@@ -91,6 +91,11 @@
   :db/cardinality :db.cardinality/one)
 
 
+(defattr :local-id
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one)
+
+
 (defn- fhir-type-code->db-type
   "http://hl7.org/fhir/datatypes.html"
   [code]

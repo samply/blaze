@@ -675,22 +675,24 @@
              [:db.fn/cas id :version 0 -2]]))))
 
 
-    (testing "Inline resources"
-      (let [[db id] (with-resource db "Patient" "0")]
+    (testing "Contained resources"
+      (let [[db id] (with-resource db "Observation" "0")]
         (is
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
                 db nil 0
                 {"id" "0"
-                 "resourceType" "Patient"
+                 "resourceType" "Observation"
+                 "subject" {"reference" "#0"}
                  "contained"
-                 [{"id" "1"
+                 [{"id" "0"
                    "resourceType" "Patient"
                    "active" true}]}))
             [[:db/add :part/Patient :Patient/active true]
-             [:db/add :part/Patient :Patient/id "1"]
-             [:db/add id :Patient/contained :part/Patient]
+             [:db/add :part/Patient :local-id "0"]
+             [:db/add id :Observation/contained :part/Patient]
+             [:db/add id :Observation/subject :part/Patient]
              [:db.fn/cas id :version 0 -2]]))))
 
 
@@ -992,8 +994,8 @@
                  [{"system" "url"}]}]})))))
 
 
-    (testing "Inline resources"
-      (let [[db id] (with-resource db "Patient" "1" :Patient/active true)
+    (testing "Contained resources"
+      (let [[db id] (with-non-primitive db :Patient/active true :local-id "0")
             [db] (with-resource db "Patient" "0" :Patient/contained id)]
         (is
           (empty?
@@ -1002,7 +1004,7 @@
               {"id" "0"
                "resourceType" "Patient"
                "contained"
-               [{"id" "1"
+               [{"id" "0"
                  "resourceType" "Patient"
                  "active" true}]})))))
 
@@ -1255,22 +1257,28 @@
             [[:db/add observation-id :Observation/subject patient-1-id]
              [:db.fn/cas observation-id :version 0 -2]]))))
 
-    (testing "Inline resources"
-      (let [[db inline-id] (with-resource db "Patient" "1" :Patient/active false)
-            [db id] (with-resource db "Patient" "0" :Patient/contained inline-id)]
+
+    (testing "Contained resources"
+      (let [[db contained-id] (with-non-primitive db :Patient/active false
+                                                  :local-id "0")
+            [db id] (with-resource db "Observation" "0"
+                                   :Observation/contained contained-id
+                                   :Observation/subject contained-id)]
         (is
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
                 db nil 0
                 {"id" "0"
-                 "resourceType" "Patient"
+                 "resourceType" "Observation"
+                 "subject" {"reference" "#0"}
                  "contained"
-                 [{"id" "1"
+                 [{"id" "0"
                    "resourceType" "Patient"
                    "active" true}]}))
-            [[:db/add inline-id :Patient/active true]
+            [[:db/add contained-id :Patient/active true]
              [:db.fn/cas id :version 0 -2]]))))
+
 
     (testing "Don't reuse old entities or new entities more than once"
       (let [[db component-1-id]
@@ -1424,33 +1432,57 @@
              [:db.fn/cas encounter-id :version 0 -2]]))))
 
 
+    (testing "Contained resources"
+      (testing "retracts all contained resources"
+        (let [[db contained-1-id] (with-non-primitive db :Patient/active true
+                                                      :local-id "1")
+              [db contained-2-id] (with-non-primitive db :Patient/active false
+                                                      :local-id "2")
+              [db id] (with-resource db "Patient" "0" :Patient/contained
+                                     #{contained-1-id contained-2-id})]
+          (is
+            (=
+              (set
+                (resource-upsert
+                  db nil 0
+                  {"id" "0"
+                   "resourceType" "Patient"}))
+              #{[:db/retract contained-1-id :Patient/active true]
+                [:db/retract contained-1-id :local-id "1"]
+                [:db/retract id :Patient/contained contained-1-id]
+                [:db/retract contained-2-id :Patient/active false]
+                [:db/retract contained-2-id :local-id "2"]
+                [:db/retract id :Patient/contained contained-2-id]
+                [:db.fn/cas id :version 0 -2]}))))))
 
-    (testing "Fails"
 
-      (testing "on non-existing reference target"
-        (let [[db] (with-resource db "Observation" "0")]
-          (try
-            (resource-upsert
-              db nil 0
-              {"id" "0"
-               "resourceType" "Observation"
-               "subject" {"reference" "Patient/0"}})
-            (catch Exception e
-              (given (ex-data e)
-                ::anom/category := ::anom/incorrect)))))
 
-      (testing "on logical references"
-        (let [[db] (with-resource db "Observation" "0")]
-          (try
-            (resource-upsert
-              db nil 0
-              {"id" "0"
-               "resourceType" "Observation"
-               "subject" {"identifier" {}}})
-            (catch Exception e
-              (given (ex-data e)
-                ::anom/category := ::anom/unsupported
-                :fhir/issue := "not-supported"))))))))
+  (testing "Fails"
+
+    (testing "on non-existing reference target"
+      (let [[db] (with-resource db "Observation" "0")]
+        (try
+          (resource-upsert
+            db nil 0
+            {"id" "0"
+             "resourceType" "Observation"
+             "subject" {"reference" "Patient/0"}})
+          (catch Exception e
+            (given (ex-data e)
+              ::anom/category := ::anom/incorrect)))))
+
+    (testing "on logical references"
+      (let [[db] (with-resource db "Observation" "0")]
+        (try
+          (resource-upsert
+            db nil 0
+            {"id" "0"
+             "resourceType" "Observation"
+             "subject" {"identifier" {}}})
+          (catch Exception e
+            (given (ex-data e)
+              ::anom/category := ::anom/unsupported
+              :fhir/issue := "not-supported")))))))
 
 
 (deftest resource-deletion-test
