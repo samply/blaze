@@ -13,7 +13,8 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
-    [datomic-spec.test :as dst])
+    [datomic-spec.test :as dst]
+    [manifold.deferred :as md])
   (:import
     [java.time Instant]))
 
@@ -162,7 +163,9 @@
 
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
-      (test-util/stub-upsert-resource ::conn ::db-before 1 resource {:db-after ::db-after})
+      (test-util/stub-upsert-resource
+        ::conn ::db-before -2 resource
+        (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (test-util/stub-basis-t ::db-after "42")
@@ -247,7 +250,9 @@
 
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
-      (test-util/stub-upsert-resource ::conn ::db-before 1 resource {:db-after ::db-after})
+      (test-util/stub-upsert-resource
+        ::conn ::db-before -2 resource
+        (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (test-util/stub-basis-t ::db-after "42")
@@ -294,7 +299,8 @@
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} #{::old-patient})
       (stub-tx-data ::db-before #{entries} ::tx-data)
-      (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
+      (test-util/stub-transact-async
+        ::conn ::tx-data (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (test-util/stub-basis-t ::db-after "42")
@@ -327,7 +333,9 @@
 
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (stub-squuid id)
-      (test-util/stub-upsert-resource ::conn ::db-before 0 (assoc resource "id" (str id)) {:db-after ::db-after})
+      (test-util/stub-upsert-resource
+        ::conn ::db-before 0 (assoc resource "id" (str id))
+        (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-resource ::db-after #{"Patient"} #{(str id)} #{{:version 0}})
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))

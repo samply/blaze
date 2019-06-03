@@ -107,7 +107,7 @@
 
 (defmethod entry-tx-data "PUT"
   [db tempids {:strs [resource]}]
-  (tx/resource-upsert db tempids 1 resource))
+  (tx/resource-upsert db tempids -2 resource))
 
 
 (defmethod entry-tx-data "DELETE"

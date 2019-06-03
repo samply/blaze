@@ -124,7 +124,7 @@
 
 (defmethod upsert-entry "PUT"
   [conn db {:strs [resource]}]
-  (handler-fhir-util/upsert-resource conn db 1 resource))
+  (handler-fhir-util/upsert-resource conn db -2 resource))
 
 
 (defmulti transact
@@ -133,12 +133,32 @@
 
 
 (defmethod transact "batch" [conn db _ entries]
-  (mapv #(assoc % :blaze/tx-result (upsert-entry conn db %)) entries))
+  (md/loop [[entry & entries] entries
+            results []]
+    (if entry
+      (-> (upsert-entry conn db entry)
+          (md/chain'
+            (fn [tx-result]
+              (md/recur
+                entries
+                (conj
+                  results
+                  (assoc entry :blaze/tx-result tx-result)))))
+          (md/catch'
+            (fn [tx-result]
+              (md/recur
+                entries
+                (conj
+                  results
+                  (assoc entry :blaze/tx-result tx-result))))))
+      results)))
 
 
 (defmethod transact "transaction" [conn db _ entries]
-  (let [tx-result (tx/transact-async conn (bundle/tx-data db entries))]
-    (mapv #(assoc % :blaze/tx-result tx-result) entries)))
+  (-> (tx/transact-async conn (bundle/tx-data db entries))
+      (md/chain'
+        (fn [tx-result]
+          (mapv #(assoc % :blaze/tx-result tx-result) entries)))))
 
 
 (defn- build-entry

@@ -9,7 +9,8 @@
     [blaze.handler.fhir.update :refer [handler-intern]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
-    [datomic-spec.test :as dst]))
+    [datomic-spec.test :as dst]
+    [manifold.deferred :as md]))
 
 
 (st/instrument)
@@ -77,7 +78,9 @@
     (let [resource {"resourceType" "Patient" "id" "0"}]
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
-      (test-util/stub-upsert-resource ::conn ::db-before -2 resource {:db-after ::db-after})
+      (test-util/stub-upsert-resource
+        ::conn ::db-before -2 resource
+        (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
       (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
       (test-util/stub-basis-t ::db-after "42")
@@ -139,7 +142,9 @@
     (let [resource {"resourceType" "Patient" "id" "0"}]
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
-      (test-util/stub-upsert-resource ::conn ::db-before -2 resource {:db-after ::db-after})
+      (test-util/stub-upsert-resource
+        ::conn ::db-before -2 resource
+        (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
       (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
       (test-util/stub-basis-t ::db-after "42")
