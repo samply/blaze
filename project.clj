@@ -9,7 +9,8 @@
   :pedantic? :abort
 
   :dependencies
-  [[aleph "0.4.7-alpha1"]
+  [[aleph "0.4.7-alpha1"
+    :exclusions [org.clojure/tools.logging]]
    [bidi "2.1.6"]
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.8.1"]
@@ -27,9 +28,10 @@
    [org.clojars.akiel/env-tools "0.2.1"]
    [org.clojars.akiel/spec-coerce "0.3.1"]
    [org.clojure/clojure "1.10.0"]
-   [org.clojure/tools.reader "1.3.2"]
-   [org.clojure/tools.cli "0.4.2"]
    [org.clojure/core.cache "0.7.2"]
+   [org.clojure/tools.cli "0.4.2"]
+   [org.clojure/tools.logging "0.4.0"]
+   [org.clojure/tools.reader "1.3.2"]
    [phrase "0.3-alpha3"]
    [prom-metrics "0.5-alpha2"]
    [ring/ring-core "1.7.1"
@@ -37,6 +39,8 @@
                  commons-io crypto-equality crypto-random]]
    [systems.uom/systems-ucum "0.9"]
    [systems.uom/systems-quantity "1.0"]]
+
+  :plugins [[lein-cloverage/lein-cloverage "1.1.1"]]
 
   :profiles
   {:dev

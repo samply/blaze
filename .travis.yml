@@ -7,3 +7,6 @@ script:
 - ./fetch-cql-tests.sh
 - lein check
 - lein test
+after_success:
+- CLOVERAGE_VERSION=1.1.1 lein cloverage --codecov
+- bash <(curl -s https://codecov.io/bash)
