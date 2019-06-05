@@ -11,6 +11,7 @@
 (def handlers
   {:handler/cql-evaluation (constantly ::cql-evaluation-handler)
    :handler/health (constantly ::health-handler)
+   :handler/metrics (constantly ::metrics-handler)
    :handler.fhir/capabilities (constantly ::fhir-capabilities-handler)
    :handler.fhir/create (constantly ::fhir-create-handler)
    :handler.fhir/delete (constantly ::fhir-delete-handler)
@@ -32,6 +33,8 @@
       "/cql/evaluate" :post ::cql-evaluation-handler
       "/health" :head ::health-handler
       "/health" :get ::health-handler
+      "/metrics" :head ::metrics-handler
+      "/metrics" :get ::metrics-handler
       "/fhir" :post ::fhir-transaction-handler
       "/fhir/" :post ::fhir-transaction-handler
       "/fhir/metadata" :get ::fhir-capabilities-handler

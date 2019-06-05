@@ -1,4 +1,4 @@
-(defproject blaze "0.5"
+(defproject blaze "0.6-alpha1"
   :description "A FHIR Store with internal, fast CQL Evaluation Engine"
   :url "https://github.com/life-research/blaze"
 
@@ -21,6 +21,7 @@
     :exclusions [primitive-math]]
    [info.cqframework/cql-to-elm "1.3.15"]
    [integrant "0.7.0"]
+   [io.prometheus/simpleclient_hotspot "0.6.0"]
    [javax.measure/unit-api "1.0"]
    [org.apache.httpcomponents/httpcore "4.4.11"]
    [org.clojars.akiel/datomic-spec "0.5.1"]

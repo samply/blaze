@@ -7,6 +7,7 @@
     [blaze.datomic.util :as util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.exception :refer [wrap-exception]]
+    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -76,4 +77,5 @@
   (-> (handler-intern base-uri conn)
       (wrap-params)
       (wrap-json)
-      (wrap-exception)))
+      (wrap-exception)
+      (wrap-observe-request-duration "search-type")))

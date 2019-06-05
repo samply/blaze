@@ -9,6 +9,7 @@
     [blaze.handler.fhir.util :as handler-fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.exception :refer [wrap-exception]]
+    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -196,6 +197,14 @@
           (md/catch' handler-util/error-response)))))
 
 
+(defn wrap-interaction-name [handler]
+  (fn [{{:strs [type]} :body :as request}]
+    (-> (handler request)
+        (md/chain'
+          (fn [response]
+            (assoc response :fhir/interaction-name type))))))
+
+
 (s/def :handler.fhir/transaction fn?)
 
 
@@ -207,5 +216,7 @@
   ""
   [base-uri conn]
   (-> (handler-intern base-uri conn)
+      (wrap-interaction-name)
+      (wrap-json)
       (wrap-exception)
-      (wrap-json)))
+      (wrap-observe-request-duration)))

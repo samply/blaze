@@ -11,6 +11,9 @@
    {"health"
     {:head :handler/health
      :get :handler/health}
+    "metrics"
+    {:head :handler/metrics
+     :get :handler/metrics}
     "cql"
     {"/evaluate"
      {:options :handler/cql-evaluation
@@ -46,6 +49,7 @@
 (s/def ::handlers
   (s/keys :req [:handler/cql-evaluation
                 :handler/health
+                :handler/metrics
                 :handler.fhir/create
                 :handler.fhir/delete
                 :handler.fhir/history

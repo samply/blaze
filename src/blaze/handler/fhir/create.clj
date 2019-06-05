@@ -8,6 +8,7 @@
     [blaze.handler.fhir.util :as handler-fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.exception :refer [wrap-exception]]
+    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -75,4 +76,5 @@
   [base-uri conn]
   (-> (handler-intern base-uri conn)
       (wrap-json)
-      (wrap-exception)))
+      (wrap-exception)
+      (wrap-observe-request-duration "create")))

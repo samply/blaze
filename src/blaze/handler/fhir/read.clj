@@ -7,6 +7,7 @@
     [blaze.datomic.util :as util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.exception :refer [wrap-exception]]
+    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -73,6 +74,14 @@
         (md/catch' handler-util/error-response))))
 
 
+(defn wrap-interaction-name [handler]
+  (fn [{{:keys [vid]} :route-params :as request}]
+    (-> (handler request)
+        (md/chain'
+          (fn [response]
+            (assoc response :fhir/interaction-name (if vid "vread" "read")))))))
+
+
 (s/def :handler.fhir/read fn?)
 
 
@@ -85,4 +94,6 @@
   [conn]
   (-> (handler-intern conn)
       (wrap-json)
-      (wrap-exception)))
+      (wrap-interaction-name)
+      (wrap-exception)
+      (wrap-observe-request-duration)))

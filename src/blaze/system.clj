@@ -20,13 +20,19 @@
     [blaze.handler.fhir.transaction :as fhir-transaction-handler]
     [blaze.handler.fhir.update :as fhir-update-handler]
     [blaze.handler.health :as health-handler]
+    [blaze.handler.metrics :as metrics-handler]
+    [blaze.middleware.fhir.metrics :as fhir-metrics]
     [blaze.server :as server]
     [blaze.structure-definition :refer [read-structure-definitions
                                         read-other]]
     [datomic.api :as d]
     [datomic-tools.schema :as dts]
     [integrant.core :as ig]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import [io.prometheus.client CollectorRegistry]
+           [io.prometheus.client.hotspot StandardExports MemoryPoolsExports
+                                         GarbageCollectorExports ThreadExports
+                                         ClassLoadingExports VersionInfoExports]))
 
 
 
@@ -66,7 +72,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.5")
+(def ^:private version "0.6-alpha1")
 
 (def ^:private base-uri "http://localhost:8080")
 
@@ -80,7 +86,13 @@
 
    :cache {}
 
+   :metrics/registry
+   {}
+
    :health-handler {}
+
+   :metrics-handler
+   {:registry (ig/ref :metrics/registry)}
 
    :cql-evaluation-handler
    {:database/conn (ig/ref :database-conn)
@@ -121,6 +133,7 @@
    {:handlers
     {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
      :handler/health (ig/ref :health-handler)
+     :handler/metrics (ig/ref :metrics-handler)
      :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
      :handler.fhir/create (ig/ref :fhir-create-handler)
      :handler.fhir/delete (ig/ref :fhir-delete-handler)
@@ -190,9 +203,26 @@
   (atom (cache/lru-cache-factory {} :threshold threshold)))
 
 
+(defmethod ig/init-key :metrics/registry [_ _]
+  (doto (CollectorRegistry. true)
+    (.register (StandardExports.))
+    (.register (MemoryPoolsExports.))
+    (.register (GarbageCollectorExports.))
+    (.register (ThreadExports.))
+    (.register (ClassLoadingExports.))
+    (.register (VersionInfoExports.))
+    (.register fhir-metrics/requests-total)
+    (.register fhir-metrics/request-duration-seconds)))
+
+
 (defmethod ig/init-key :health-handler
   [_ _]
   (health-handler/handler))
+
+
+(defmethod ig/init-key :metrics-handler
+  [_ {:keys [registry]}]
+  (metrics-handler/metrics-handler registry))
 
 
 (defmethod ig/init-key :cql-evaluation-handler
