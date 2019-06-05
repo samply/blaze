@@ -1,0 +1,39 @@
+Run each test for 60 seconds with a rate of 1000 requests/second.
+Start with ID 0
+
+Patient Update Tests:
+Requests      [total, rate]            60000, 1000.02
+Duration      [total, attack, wait]    1m0.001777123s, 59.998928581s, 2.848542ms
+Latencies     [mean, 50, 95, 99, max]  4.881648ms, 3.620811ms, 10.672711ms, 20.514696ms, 307.369339ms
+Bytes In      [total, mean]            9039845, 150.66
+Bytes Out     [total, mean]            4788890, 79.81
+Success       [ratio]                  100.00%
+Status Codes  [code:count]             200:60000
+Error Set:
+Condition Update Tests:
+Requests      [total, rate]            60000, 1000.02
+Duration      [total, attack, wait]    1m0.001363237s, 59.998794828s, 2.568409ms
+Latencies     [mean, 50, 95, 99, max]  7.457366ms, 5.165567ms, 17.901988ms, 33.688296ms, 445.750102ms
+Bytes In      [total, mean]            16498284, 274.97
+Bytes Out     [total, mean]            12217780, 203.63
+Success       [ratio]                  100.00%
+Status Codes  [code:count]             200:60000
+Error Set:
+Observation Update Tests:
+Requests      [total, rate]            60000, 1000.01
+Duration      [total, attack, wait]    1m0.001653377s, 59.999125859s, 2.527518ms
+Latencies     [mean, 50, 95, 99, max]  6.122344ms, 4.493679ms, 14.228567ms, 26.612053ms, 308.093301ms
+Bytes In      [total, mean]            21123944, 352.07
+Bytes Out     [total, mean]            16837780, 280.63
+Success       [ratio]                  100.00%
+Status Codes  [code:count]             200:60000
+Error Set:
+Specimen Update Tests:
+Requests      [total, rate]            60000, 1000.02
+Duration      [total, attack, wait]    1m0.00272618s, 59.998780701s, 3.945479ms
+Latencies     [mean, 50, 95, 99, max]  9.076733ms, 4.307575ms, 15.655437ms, 86.455989ms, 1.016224186s
+Bytes In      [total, mean]            18423960, 307.07
+Bytes Out     [total, mean]            14137780, 235.63
+Success       [ratio]                  100.00%
+Status Codes  [code:count]             200:60000
+Error Set:
