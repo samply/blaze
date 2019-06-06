@@ -83,6 +83,7 @@
               ::anom/not-found 404
               ::anom/unsupported 422
               ::anom/conflict 409
+              ::anom/busy 503
               500))))
 
     (instance? Throwable error)

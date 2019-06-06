@@ -76,6 +76,6 @@
   [base-uri conn]
   (-> (handler-intern base-uri conn)
       (wrap-params)
-      (wrap-json)
       (wrap-exception)
+      (wrap-json)
       (wrap-observe-request-duration "search-type")))

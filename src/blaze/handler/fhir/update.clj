@@ -87,6 +87,6 @@
   ""
   [base-uri conn]
   (-> (handler-intern base-uri conn)
-      (wrap-json)
       (wrap-exception)
+      (wrap-json)
       (wrap-observe-request-duration "update")))

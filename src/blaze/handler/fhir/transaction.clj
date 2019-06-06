@@ -217,6 +217,6 @@
   [base-uri conn]
   (-> (handler-intern base-uri conn)
       (wrap-interaction-name)
-      (wrap-json)
       (wrap-exception)
+      (wrap-json)
       (wrap-observe-request-duration)))

@@ -8,6 +8,7 @@
     [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
+    [blaze.datomic.transaction :as tx]
     [blaze.datomic.schema :as schema]
     [blaze.handler.app :as app-handler]
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
@@ -22,6 +23,7 @@
     [blaze.handler.health :as health-handler]
     [blaze.handler.metrics :as metrics-handler]
     [blaze.middleware.fhir.metrics :as fhir-metrics]
+    [blaze.middleware.json :as json]
     [blaze.server :as server]
     [blaze.structure-definition :refer [read-structure-definitions
                                         read-other]]
@@ -72,7 +74,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha1")
+(def ^:private version "0.6-alpha10")
 
 (def ^:private base-uri "http://localhost:8080")
 
@@ -212,7 +214,10 @@
     (.register (ClassLoadingExports.))
     (.register (VersionInfoExports.))
     (.register fhir-metrics/requests-total)
-    (.register fhir-metrics/request-duration-seconds)))
+    (.register fhir-metrics/request-duration-seconds)
+    (.register json/parse-duration-seconds)
+    (.register json/generate-duration-seconds)
+    (.register tx/resource-upsert-duration-seconds)))
 
 
 (defmethod ig/init-key :health-handler

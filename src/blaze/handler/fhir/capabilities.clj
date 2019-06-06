@@ -85,6 +85,6 @@
   ""
   [base-uri version structure-definitions]
   (-> (handler-intern base-uri version structure-definitions)
-      (wrap-json)
       (wrap-exception)
+      (wrap-json)
       (wrap-observe-request-duration "capabilities")))

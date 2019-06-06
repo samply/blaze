@@ -6,24 +6,49 @@
     [clojure.java.io :as io]
     [cognitect.anomalies :as anom]
     [manifold.deferred :as md]
+    [prometheus.alpha :as prom]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
 
 
-(defn- parse-json [body]
-  (-> (md/future
-        (with-open [reader (io/reader body)]
-          (binding [*use-bigdecimals?* true]
-            (json/parse-stream reader))))
-      (md/catch'
-        (fn [e]
+(prom/defhistogram parse-duration-seconds
+  "FHIR parsing latencies in seconds."
+  {:namespace "fhir"}
+  (take 13 (iterate #(* 2 %) 0.00001))
+  "format")
+
+
+(prom/defhistogram generate-duration-seconds
+  "FHIR generating latencies in seconds."
+  {:namespace "fhir"}
+  (take 13 (iterate #(* 2 %) 0.00001))
+  "format")
+
+
+(defn- parse-json
+  "Takes a request `body` and returns a deferred with the parsed JSON content
+  with string keys and BigDecimal numbers.
+
+  Executes the parsing on `parse-executor`. Returns an error deferred with an
+  busy anomaly if parse-executor rejects the task.
+
+  Returns an error deferred with an incorrect anomaly on parse errors."
+  [body]
+  (with-open [_ (prom/timer parse-duration-seconds "json")
+              reader (io/reader body)]
+    (binding [*use-bigdecimals?* true]
+      (try
+        (json/parse-stream reader)
+        (catch Exception e
           (md/error-deferred
-            #::anom{:category ::anom/incorrect :message (.getMessage ^Exception e)})))))
+            #::anom{:category ::anom/incorrect
+                    :message (.getMessage ^Exception e)}))))))
 
 
 (defn- generate-json [body]
   (try
-    (json/generate-string body {:key-fn name})
+    (with-open [_ (prom/timer generate-duration-seconds "json")]
+      (json/generate-string body {:key-fn name}))
     (catch Exception e
       (log/error (log/stacktrace e))
       (json/generate-string

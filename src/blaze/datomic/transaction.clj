@@ -14,6 +14,7 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
+    [prometheus.alpha :as prom]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
@@ -757,6 +758,13 @@
   (s/map-of string? (s/map-of string? ::ds/tempid)))
 
 
+(prom/defhistogram resource-upsert-duration-seconds
+  "Datomic resource upsert transaction data generating latencies in seconds."
+  {:namespace "datomic"
+   :subsystem "transaction"}
+  (take 13 (iterate #(* 2 %) 0.00001)))
+
+
 (s/fdef resource-upsert
   :args (s/cat :db ::ds/db :tempids (s/nilable ::tempids) :initial-version #{0 -2}
                :resource ::resource)
@@ -781,20 +789,21 @@
   [db tempids initial-version {type "resourceType" id "id" :as resource}]
   (assert type)
   (assert id)
-  (let [resource (prepare-resource resource)]
-    (if-let [old-resource (util/resource db type id)]
+  (with-open [_ (prom/timer resource-upsert-duration-seconds)]
+    (let [resource (prepare-resource resource)]
+      (if-let [old-resource (util/resource db type id)]
 
-      (let [tx-data (upsert-resource {:db db :tempids tempids} type
-                                     old-resource resource)
-            {:db/keys [id] :keys [version]} old-resource]
-        (when (or (not (empty? tx-data)) (util/deleted? version))
-          (conj tx-data [:db.fn/cas id :version version (upsert-decrement version)])))
+        (let [tx-data (upsert-resource {:db db :tempids tempids} type
+                                       old-resource resource)
+              {:db/keys [id] :keys [version]} old-resource]
+          (when (or (not (empty? tx-data)) (util/deleted? version))
+            (conj tx-data [:db.fn/cas id :version version (upsert-decrement version)])))
 
-      (let [tempid (get-in tempids [type id])]
-        (assert tempid)
-        (conj (upsert-resource {:db db :tempids tempids} type
-                               {:db/id tempid} resource)
-              [:db.fn/cas tempid :version nil initial-version])))))
+        (let [tempid (get-in tempids [type id])]
+          (assert tempid)
+          (conj (upsert-resource {:db db :tempids tempids} type
+                                 {:db/id tempid} resource)
+                [:db.fn/cas tempid :version nil initial-version]))))))
 
 
 (defn- version-increment-delete [{:db/keys [id] :keys [version]}]

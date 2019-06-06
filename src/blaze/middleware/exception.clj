@@ -1,7 +1,6 @@
 (ns blaze.middleware.exception
   (:require
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
+    [blaze.handler.util :as handler-util]))
 
 
 (defn wrap-exception [handler]
@@ -9,6 +8,4 @@
     (try
       (handler request)
       (catch Throwable e
-        (log/error (log/stacktrace e))
-        (-> (ring/response {:error (.getMessage e)})
-            (ring/status 500))))))
+        (handler-util/error-response e)))))

@@ -93,7 +93,7 @@
   ""
   [conn]
   (-> (handler-intern conn)
+      (wrap-exception)
       (wrap-json)
       (wrap-interaction-name)
-      (wrap-exception)
       (wrap-observe-request-duration)))

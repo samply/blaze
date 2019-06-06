@@ -8,7 +8,8 @@
     [clojure.spec.alpha :as s]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]))
+    [java.io Closeable]
+    [java.util.concurrent Executors]))
 
 
 
@@ -31,7 +32,7 @@
   port."
   [port handler]
   (log/info "Start server on port" port)
-  (http/start-server handler {:port port}))
+  (http/start-server handler {:port port :executor (Executors/newWorkStealingPool)}))
 
 
 (s/fdef shutdown!
