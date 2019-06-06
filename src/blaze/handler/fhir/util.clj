@@ -1,8 +1,6 @@
 (ns blaze.handler.fhir.util
   (:require
     [blaze.datomic.transaction :as tx]
-    [blaze.middleware.exception :refer [wrap-exception]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.string :as str]))
 
 

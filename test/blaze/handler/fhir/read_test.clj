@@ -5,10 +5,8 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.util :as util]
     [blaze.handler.fhir.test-util :as test-util]
-    [blaze.handler.fhir.read :refer [handler-intern]]
+    [blaze.handler.fhir.read :refer [handler]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -25,6 +23,12 @@
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :conn #{::conn}))}})
   (f)
   (st/unstrument))
 
@@ -38,8 +42,8 @@
     (test-util/stub-cached-entity ::db #{:Patient} nil?)
 
     (let [{:keys [status body]}
-          @((handler-intern ::conn)
-            {:route-params {:type "Patient" :id "0"}})]
+          @((handler ::conn)
+             {:path-params {:type "Patient" :id "0"}})]
 
       (is (= 404 status))
 
@@ -56,8 +60,8 @@
     (test-util/stub-pull-resource ::db "Patient" "0" nil?)
 
     (let [{:keys [status body]}
-          @((handler-intern ::conn)
-            {:route-params {:type "Patient" :id "0"}})]
+          @((handler ::conn)
+             {:path-params {:type "Patient" :id "0"}})]
 
       (is (= 404 status))
 
@@ -70,8 +74,8 @@
 
   (testing "Returns Not Found on Invalid Version ID"
     (let [{:keys [status body]}
-          @((handler-intern ::conn)
-             {:route-params {:type "Patient" :id "0" :vid "a"}})]
+          @((handler ::conn)
+             {:path-params {:type "Patient" :id "0" :vid "a"}})]
 
       (is (= 404 status))
 
@@ -93,8 +97,8 @@
       (test-util/stub-pull-resource ::db "Patient" "0" #{resource})
 
       (let [{:keys [status body headers]}
-            @((handler-intern ::conn)
-              {:route-params {:type "Patient" :id "0"}})]
+            @((handler ::conn)
+               {:path-params {:type "Patient" :id "0"}})]
 
         (is (= 410 status))
 
@@ -122,8 +126,8 @@
       (test-util/stub-pull-resource ::db "Patient" "0" #{resource})
 
       (let [{:keys [status headers body]}
-            @((handler-intern ::conn)
-               {:route-params {:type "Patient" :id "0"}})]
+            @((handler ::conn)
+               {:path-params {:type "Patient" :id "0"}})]
 
         (is (= 200 status))
 
@@ -148,8 +152,8 @@
       (test-util/stub-pull-resource ::as-of-db "Patient" "0" #{resource})
 
       (let [{:keys [status headers body]}
-            @((handler-intern ::conn)
-               {:route-params {:type "Patient" :id "0" :vid "42"}})]
+            @((handler ::conn)
+               {:path-params {:type "Patient" :id "0" :vid "42"}})]
 
         (is (= 200 status))
 

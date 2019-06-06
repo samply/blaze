@@ -15,7 +15,6 @@
     [blaze.elm.evaluator :as evaluator]
     [blaze.elm.util :as elm-util]
     [blaze.middleware.cors :refer [wrap-cors]]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.json :refer [wrap-json]]
     [manifold.deferred :as md]
     [ring.util.response :as ring]
@@ -120,6 +119,5 @@
   Ring handler."
   [conn cache]
   (-> (handler-intern conn cache)
-      (wrap-exception)
       (wrap-json)
       (wrap-cors)))

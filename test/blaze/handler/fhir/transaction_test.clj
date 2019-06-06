@@ -8,7 +8,7 @@
     [blaze.bundle :as bundle]
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.test-util :as test-util]
-    [blaze.handler.fhir.transaction :refer [handler-intern]]
+    [blaze.handler.fhir.transaction :refer [handler]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -26,6 +26,12 @@
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :base-uri string? :conn #{::conn}))}})
   (test-util/stub-db ::conn ::db-before)
   (f)
   (st/unstrument))
@@ -78,7 +84,7 @@
     (test-util/stub-cached-entity ::db-before #{:Foo} nil?)
 
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
+          @((handler base-uri ::conn)
              {:body
               {"resourceType" "Bundle"
                "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -101,7 +107,7 @@
     (test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
+          @((handler base-uri ::conn)
              {:body
               {"resourceType" "Bundle"
                "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -130,7 +136,7 @@
     (test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
+          @((handler base-uri ::conn)
              {:body
               {"resourceType" "Bundle"
                "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -171,7 +177,7 @@
       (test-util/stub-basis-t ::db-after "42")
 
       (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
+            @((handler base-uri ::conn)
                {:body
                 {"resourceType" "Bundle"
                  "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -220,7 +226,7 @@
       (test-util/stub-basis-t ::db-after "42")
 
       (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
+            @((handler base-uri ::conn)
                {:body
                 {"resourceType" "Bundle"
                  "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -258,7 +264,7 @@
       (test-util/stub-basis-t ::db-after "42")
 
       (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
+            @((handler base-uri ::conn)
                {:body
                 {"resourceType" "Bundle"
                  "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -306,7 +312,7 @@
       (test-util/stub-basis-t ::db-after "42")
 
       (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
+            @((handler base-uri ::conn)
                {:body
                 {"resourceType" "Bundle"
                  "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -342,7 +348,7 @@
       (test-util/stub-basis-t ::db-after "42")
 
       (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
+            @((handler base-uri ::conn)
                {:body
                 {"resourceType" "Bundle"
                  "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
@@ -402,7 +408,7 @@
       (test-util/stub-basis-t ::db-after "42")
 
       (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
+            @((handler base-uri ::conn)
                {:body
                 {"resourceType" "Bundle"
                  "id" "37984866-e704-4a00-b215-ebd2c9b7e465"

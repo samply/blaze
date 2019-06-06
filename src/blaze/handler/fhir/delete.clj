@@ -6,9 +6,7 @@
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -36,8 +34,8 @@
               (md/error-deferred anomaly)))))))
 
 
-(defn handler-intern [conn]
-  (fn [{{:keys [type id]} :route-params}]
+(defn- handler-intern [conn]
+  (fn [{{:keys [type id]} :path-params}]
     (if (exists-resource? (d/db conn) type id)
       (-> (delete-resource conn type id)
           (md/chain'
@@ -63,6 +61,4 @@
   ""
   [conn]
   (-> (handler-intern conn)
-      (wrap-exception)
-      (wrap-json)
       (wrap-observe-request-duration "delete")))

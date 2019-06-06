@@ -7,9 +7,7 @@
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.util :as handler-fhir-util]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -63,8 +61,8 @@
       (ring/header "Location" (str base-uri "/fhir/" type "/" id)))))
 
 
-(defn handler-intern [base-uri conn]
-  (fn [{{:keys [type id]} :route-params :keys [headers body]}]
+(defn- handler-intern [base-uri conn]
+  (fn [{{:keys [type id]} :path-params :keys [headers body]}]
     (let [db (d/db conn)]
       (if (util/cached-entity db (keyword type))
         (-> (validate-resource type id body)
@@ -87,6 +85,4 @@
   ""
   [base-uri conn]
   (-> (handler-intern base-uri conn)
-      (wrap-exception)
-      (wrap-json)
       (wrap-observe-request-duration "update")))

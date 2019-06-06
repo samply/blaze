@@ -6,9 +6,7 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -88,8 +86,8 @@
     (d/since (Date/from (Instant/parse since)))))
 
 
-(defn handler-intern [base-uri conn]
-  (fn [{{:keys [type id]} :route-params :keys [query-params]}]
+(defn- handler-intern [base-uri conn]
+  (fn [{{:keys [type id]} :path-params :keys [query-params]}]
     (let [db (d/db conn)]
       (if-let [eid (resource-eid db type id)]
         (let [transactions (transactions (since db query-params) eid)]
@@ -111,6 +109,4 @@
   [base-uri conn]
   (-> (handler-intern base-uri conn)
       (wrap-params)
-      (wrap-exception)
-      (wrap-json)
       (wrap-observe-request-duration "history-instance")))

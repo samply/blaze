@@ -6,7 +6,7 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
-    [blaze.handler.fhir.delete :refer [handler-intern]]
+    [blaze.handler.fhir.delete :refer [handler]]
     [blaze.handler.fhir.test-util :as test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -22,6 +22,12 @@
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :conn #{::conn}))}})
   (test-util/stub-db ::conn ::db)
   (f)
   (st/unstrument))
@@ -35,8 +41,8 @@
     (test-util/stub-cached-entity ::db #{:Patient} nil?)
 
     (let [{:keys [status body]}
-          ((handler-intern ::conn)
-            {:route-params {:type "Patient" :id "0"}})]
+          @((handler ::conn)
+            {:path-params {:type "Patient" :id "0"}})]
 
       (is (= 404 status))
 
@@ -52,8 +58,8 @@
     (test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
 
     (let [{:keys [status body]}
-          ((handler-intern ::conn)
-            {:route-params {:type "Patient" :id "0"}})]
+          @((handler ::conn)
+            {:path-params {:type "Patient" :id "0"}})]
 
       (is (= 404 status))
 
@@ -81,8 +87,8 @@
     (test-util/stub-basis-t ::db-after "42")
 
     (let [{:keys [status headers body]}
-          @((handler-intern ::conn)
-             {:route-params {:type "Patient" :id "0"}})]
+          @((handler ::conn)
+             {:path-params {:type "Patient" :id "0"}})]
 
       (is (= 204 status))
 

@@ -6,9 +6,7 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -54,8 +52,8 @@
      (d/datoms db :aevt (util/resource-id-attr type)))})
 
 
-(defn handler-intern [base-uri conn]
-  (fn [{{:keys [type]} :route-params :keys [query-params]}]
+(defn- handler-intern [base-uri conn]
+  (fn [{{:keys [type]} :path-params :keys [query-params]}]
     (let [db (d/db conn)]
       (if (util/cached-entity db (keyword type))
         (ring/response (search base-uri db type query-params))
@@ -76,6 +74,4 @@
   [base-uri conn]
   (-> (handler-intern base-uri conn)
       (wrap-params)
-      (wrap-exception)
-      (wrap-json)
       (wrap-observe-request-duration "search-type")))

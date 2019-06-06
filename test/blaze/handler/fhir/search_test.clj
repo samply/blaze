@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-    [blaze.handler.fhir.search :refer [handler-intern]]
+    [blaze.handler.fhir.search :refer [handler]]
     [blaze.handler.fhir.test-util :as test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -19,6 +19,12 @@
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :base-uri string? :conn #{::conn}))}})
   (test-util/stub-db ::conn ::db)
   (f)
   (st/unstrument))
@@ -35,8 +41,8 @@
     (test-util/stub-cached-entity ::db #{:Patient} nil?)
 
     (let [{:keys [status body]}
-          ((handler-intern base-uri ::conn)
-            {:route-params {:type "Patient"}})]
+          @((handler base-uri ::conn)
+            {:path-params {:type "Patient"}})]
 
       (is (= 404 status))
 
@@ -63,8 +69,8 @@
       (test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
 
       (let [{:keys [status body]}
-            ((handler-intern base-uri ::conn)
-              {:route-params {:type "Patient"}})]
+            @((handler base-uri ::conn)
+              {:path-params {:type "Patient"}})]
 
         (is (= 200 status))
 
@@ -100,8 +106,8 @@
       (test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
 
       (let [{:keys [status body]}
-            ((handler-intern base-uri ::conn)
-              {:route-params {:type "Patient"}})]
+            @((handler base-uri ::conn)
+              {:path-params {:type "Patient"}})]
 
         (is (= 200 status))
 

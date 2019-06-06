@@ -8,9 +8,7 @@
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.util :as handler-fhir-util]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -187,7 +185,7 @@
      :entry (mapv #(build-entry base-uri %) entries)}))
 
 
-(defn handler-intern [base-uri conn]
+(defn- handler-intern [base-uri conn]
   (fn [{{:strs [type] :as bundle} :body}]
     (log/trace bundle)
     (let [db (d/db conn)]
@@ -217,6 +215,4 @@
   [base-uri conn]
   (-> (handler-intern base-uri conn)
       (wrap-interaction-name)
-      (wrap-exception)
-      (wrap-json)
       (wrap-observe-request-duration)))

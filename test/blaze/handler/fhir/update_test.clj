@@ -6,7 +6,8 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.handler.fhir.test-util :as test-util]
-    [blaze.handler.fhir.update :refer [handler-intern]]
+    [blaze.handler.fhir.update :refer [handler]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic-spec.test :as dst]
@@ -20,6 +21,12 @@
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :base-uri string? :conn #{::conn}))}})
   (test-util/stub-db ::conn ::db-before)
   (f)
   (st/unstrument))
@@ -36,8 +43,8 @@
     (test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
-             {:route-params {:type "Patient" :id "0"}
+          @((handler base-uri ::conn)
+             {:path-params {:type "Patient" :id "0"}
               :body {"resourceType" "Observation"}})]
 
       (is (= 400 status))
@@ -57,8 +64,8 @@
     (test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
-             {:route-params {:type "Patient" :id "0"}
+          @((handler base-uri ::conn)
+             {:path-params {:type "Patient" :id "0"}
               :body {"resourceType" "Patient" "id" "1"}})]
 
       (is (= 400 status))
@@ -87,8 +94,8 @@
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler base-uri ::conn)
+                 {:path-params {:type "Patient" :id "0"}
                   :body resource})]
 
           (testing "Returns 201"
@@ -109,8 +116,8 @@
 
       (testing "with return=minimal Prefer header"
         (let [{:keys [body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler base-uri ::conn)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=minimal"}
                   :body resource})]
 
@@ -119,8 +126,8 @@
 
       (testing "with return=representation Prefer header"
         (let [{:keys [body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler base-uri ::conn)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=representation"}
                   :body resource})]
 
@@ -129,8 +136,8 @@
 
       (testing "with return=OperationOutcome Prefer header"
         (let [{:keys [body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler base-uri ::conn)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=OperationOutcome"}
                   :body resource})]
 
@@ -151,8 +158,8 @@
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler base-uri ::conn)
+                 {:path-params {:type "Patient" :id "0"}
                   :body resource})]
 
           (testing "Returns 200"
@@ -170,8 +177,8 @@
 
       (testing "with return=minimal Prefer header"
         (let [{:keys [status body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler base-uri ::conn)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=minimal"}
                   :body resource})]
 
@@ -183,8 +190,8 @@
 
       (testing "with return=representation Prefer header"
         (let [{:keys [status body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler base-uri ::conn)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=representation"}
                   :body resource})]
 
@@ -196,8 +203,8 @@
 
       (testing "with return=OperationOutcome Prefer header"
         (let [{:keys [status body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler base-uri ::conn)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=OperationOutcome"}
                   :body resource})]
 

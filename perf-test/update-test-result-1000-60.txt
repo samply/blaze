@@ -3,8 +3,8 @@ Start with ID 0
 
 Patient Update Tests:
 Requests      [total, rate]            60000, 1000.02
-Duration      [total, attack, wait]    1m0.001453506s, 59.998798787s, 2.654719ms
-Latencies     [mean, 50, 95, 99, max]  3.672032ms, 2.837461ms, 7.023291ms, 13.628235ms, 290.097137ms
+Duration      [total, attack, wait]    1m0.00209049s, 59.99887116s, 3.21933ms
+Latencies     [mean, 50, 95, 99, max]  3.527543ms, 2.638659ms, 6.953507ms, 15.599162ms, 201.908465ms
 Bytes In      [total, mean]            9035991, 150.60
 Bytes Out     [total, mean]            4788890, 79.81
 Success       [ratio]                  100.00%
@@ -12,8 +12,8 @@ Status Codes  [code:count]             200:60000
 Error Set:
 Condition Update Tests:
 Requests      [total, rate]            60000, 1000.02
-Duration      [total, attack, wait]    1m0.001614768s, 59.998925242s, 2.689526ms
-Latencies     [mean, 50, 95, 99, max]  6.556032ms, 3.474806ms, 9.791656ms, 49.919238ms, 884.508165ms
+Duration      [total, attack, wait]    1m0.002882738s, 59.9986777s, 4.205038ms
+Latencies     [mean, 50, 95, 99, max]  4.099646ms, 3.281882ms, 8.013998ms, 14.248084ms, 195.375435ms
 Bytes In      [total, mean]            16472520, 274.54
 Bytes Out     [total, mean]            12217780, 203.63
 Success       [ratio]                  100.00%
@@ -21,8 +21,8 @@ Status Codes  [code:count]             200:60000
 Error Set:
 Observation Update Tests:
 Requests      [total, rate]            60000, 1000.02
-Duration      [total, attack, wait]    1m0.001728564s, 59.998613246s, 3.115318ms
-Latencies     [mean, 50, 95, 99, max]  5.152487ms, 3.977236ms, 10.582253ms, 17.855264ms, 273.440732ms
+Duration      [total, attack, wait]    1m0.002226749s, 59.998793946s, 3.432803ms
+Latencies     [mean, 50, 95, 99, max]  5.80995ms, 3.829456ms, 12.440745ms, 28.779485ms, 507.781865ms
 Bytes In      [total, mean]            21092552, 351.54
 Bytes Out     [total, mean]            16837780, 280.63
 Success       [ratio]                  100.00%
@@ -30,8 +30,8 @@ Status Codes  [code:count]             200:60000
 Error Set:
 Specimen Update Tests:
 Requests      [total, rate]            60000, 1000.02
-Duration      [total, attack, wait]    1m0.00164896s, 59.998988911s, 2.660049ms
-Latencies     [mean, 50, 95, 99, max]  5.28946ms, 3.125479ms, 8.535725ms, 24.117931ms, 648.464655ms
+Duration      [total, attack, wait]    1m0.001206923s, 59.998652129s, 2.554794ms
+Latencies     [mean, 50, 95, 99, max]  3.533527ms, 2.767909ms, 6.931535ms, 13.868393ms, 164.20693ms
 Bytes In      [total, mean]            18392483, 306.54
 Bytes Out     [total, mean]            14137780, 235.63
 Success       [ratio]                  100.00%

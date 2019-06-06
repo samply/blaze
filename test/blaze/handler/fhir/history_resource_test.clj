@@ -7,7 +7,7 @@
   (:require
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
-    [blaze.handler.fhir.read :refer [handler-intern]]
+    [blaze.handler.fhir.read :refer [handler]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]

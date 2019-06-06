@@ -1,4 +1,4 @@
-(defproject blaze "0.6-alpha10"
+(defproject blaze "0.6-alpha12"
   :description "A FHIR Store with internal, fast CQL Evaluation Engine"
   :url "https://github.com/life-research/blaze"
 
@@ -11,7 +11,6 @@
   :dependencies
   [[aleph "0.4.7-alpha1"
     :exclusions [org.clojure/tools.logging]]
-   [bidi "2.1.6"]
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.8.1"]
    [com.cognitect/anomalies "0.1.12"]
@@ -23,6 +22,8 @@
    [integrant "0.7.0"]
    [io.prometheus/simpleclient_hotspot "0.6.0"]
    [javax.measure/unit-api "1.0"]
+   [metosin/reitit-ring "0.3.7"
+    :exclusions [commons-codec]]
    [org.apache.httpcomponents/httpcore "4.4.11"]
    [org.clojars.akiel/datomic-spec "0.5.1"]
    [org.clojars.akiel/datomic-tools "0.4"]

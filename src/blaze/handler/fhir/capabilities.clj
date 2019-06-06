@@ -6,9 +6,7 @@
   We use `array-map` here to keep the order of keys in maps to gain human
   readability."
   (:require
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [ring.util.response :as ring]))
 
@@ -41,38 +39,6 @@
       :type "token"}]))
 
 
-(defn handler-intern [base-uri version structure-definitions]
-  (fn [_]
-    (ring/response
-      (array-map
-        :resourceType "CapabilityStatement"
-        :status "active"
-        :kind "instance"
-        :date "2019-06-02T00:00:00Z"
-        :software
-        {:name "Blaze"
-         :version version}
-        :implementation
-        {:description (str "Blaze running at " base-uri "/fhir")
-         :url (str base-uri "/fhir")}
-        :fhirVersion "4.0.0"
-        :format ["application/fhir+json"]
-        :rest
-        [{:mode "server"
-          :resource
-          (into
-            []
-            (comp
-              (filter #(= "resource" (:kind %)))
-              (remove :experimental)
-              (remove :abstract)
-              (map resource))
-            structure-definitions)
-          :interaction
-          [{:code "transaction"}
-           {:code "batch"}]}]))))
-
-
 (s/def :handler.fhir/capabilities fn?)
 
 
@@ -84,7 +50,33 @@
 (defn handler
   ""
   [base-uri version structure-definitions]
-  (-> (handler-intern base-uri version structure-definitions)
-      (wrap-exception)
-      (wrap-json)
+  (-> (fn [_]
+        (ring/response
+          (array-map
+            :resourceType "CapabilityStatement"
+            :status "active"
+            :kind "instance"
+            :date "2019-06-02T00:00:00Z"
+            :software
+            {:name "Blaze"
+             :version version}
+            :implementation
+            {:description (str "Blaze running at " base-uri "/fhir")
+             :url (str base-uri "/fhir")}
+            :fhirVersion "4.0.0"
+            :format ["application/fhir+json"]
+            :rest
+            [{:mode "server"
+              :resource
+              (into
+                []
+                (comp
+                  (filter #(= "resource" (:kind %)))
+                  (remove :experimental)
+                  (remove :abstract)
+                  (map resource))
+                structure-definitions)
+              :interaction
+              [{:code "transaction"}
+               {:code "batch"}]}])))
       (wrap-observe-request-duration "capabilities")))

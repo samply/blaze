@@ -7,9 +7,7 @@
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.util :as handler-fhir-util]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -54,8 +52,8 @@
         (ring/header "ETag" (str "W/\"" versionId "\"")))))
 
 
-(defn handler-intern [base-uri conn]
-  (fn [{{:keys [type]} :route-params :keys [headers body]}]
+(defn- handler-intern [base-uri conn]
+  (fn [{{:keys [type]} :path-params :keys [headers body]}]
     (let [id (str (d/squuid))]
       (-> (validate-resource type body)
           (md/chain' #(assoc % "id" id))
@@ -75,6 +73,4 @@
   ""
   [base-uri conn]
   (-> (handler-intern base-uri conn)
-      (wrap-exception)
-      (wrap-json)
       (wrap-observe-request-duration "create")))

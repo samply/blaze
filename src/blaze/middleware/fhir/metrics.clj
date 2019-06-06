@@ -23,9 +23,10 @@
 
 
 (defn- inc-requests-total!
-  [interaction-name {:keys [request-method]} response]
-  (prom/inc! requests-total (str (get response :status 404)) interaction-name
-             (name request-method)))
+  [interaction-name {:keys [request-method]} {:keys [status]}]
+  (when (and request-method status)
+    (prom/inc! requests-total (str status) interaction-name
+               (name request-method))))
 
 
 (defn- duration-s

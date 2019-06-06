@@ -1,49 +1,42 @@
 (ns blaze.handler.app
   (:require
-    [bidi.ring :as bidi-ring]
+    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
-    [manifold.deferred :as md]
+    [reitit.ring :as reitit-ring]
     [ring.util.response :as ring]))
 
 
-(def ^:private routes
-  ["/"
-   {"health"
-    {:head :handler/health
-     :get :handler/health}
-    "metrics"
-    {:head :handler/metrics
-     :get :handler/metrics}
-    "cql"
-    {"/evaluate"
-     {:options :handler/cql-evaluation
-      :post :handler/cql-evaluation}}
-    "fhir"
-    {#{"" "/"} {:post :handler.fhir/transaction}
-     "/metadata" {:get :handler.fhir/capabilities}
-     ["/" :type]
-     {:get :handler.fhir/search
-      :post :handler.fhir/create}
-     ["/" :type "/" :id]
-     {""
-      {:get :handler.fhir/read
-       :put :handler.fhir/update
-       :delete :handler.fhir/delete}
-      "/_history"
-      {""
-       {:get :handler.fhir/history}
-       ["/" :vid]
-       {:get :handler.fhir/read}}}}}])
-
-
-(defn wrap-server [handler server]
-  (fn [request]
-    (-> (handler request)
-        (md/chain' #(ring/header % "Server" server)))))
-
-
-(defn handler-intern [handlers]
-  (bidi-ring/make-handler routes handlers))
+(defn router [handlers]
+  (reitit-ring/router
+    [["/health"
+      {:head (:handler/health handlers)
+       :get (:handler/health handlers)}]
+     ["/metrics"
+      {:head (:handler/metrics handlers)
+       :get (:handler/metrics handlers)}]
+     ["/cql/evaluate"
+      {:options (:handler/cql-evaluation handlers)
+       :post (:handler/cql-evaluation handlers)}]
+     ["/fhir" {:middleware [wrap-json]}
+      [""
+       {:post (:handler.fhir/transaction handlers)}]
+      ["/metadata"
+       {:get (:handler.fhir/capabilities handlers)}]
+      ["/{type}"
+       [""
+        {:get (:handler.fhir/search handlers)
+         :post (:handler.fhir/create handlers)}]
+       ["/{id}"
+        [""
+         {:get (:handler.fhir/read handlers)
+          :put (:handler.fhir/update handlers)
+          :delete (:handler.fhir/delete handlers)}]
+        ["/_history"
+         [""
+          {:get (:handler.fhir/history handlers)}]
+         ["/{vid}"
+          {:get (:handler.fhir/read handlers)}]]]]]]
+    {:conflicts nil}))
 
 
 (s/def ::handlers
@@ -60,10 +53,12 @@
 
 
 (s/fdef handler
-  :args (s/cat :handlers ::handlers :version string?))
+  :args (s/cat :handlers ::handlers))
 
 (defn handler
   "Whole app Ring handler."
-  [handlers version]
-  (-> (handler-intern handlers)
-      (wrap-server (str "Blaze/" version))))
+  [handlers]
+  (reitit-ring/ring-handler
+    (router handlers)
+    (fn [_]
+      (ring/not-found "Not-Found"))))

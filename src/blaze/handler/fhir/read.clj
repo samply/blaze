@@ -6,9 +6,7 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -52,8 +50,8 @@
     (d/db conn)))
 
 
-(defn handler-intern [conn]
-  (fn [{{:keys [type id vid]} :route-params}]
+(defn- handler-intern [conn]
+  (fn [{{:keys [type id vid]} :path-params}]
     (-> (db conn vid)
         (md/chain'
           (fn [db]
@@ -75,7 +73,7 @@
 
 
 (defn wrap-interaction-name [handler]
-  (fn [{{:keys [vid]} :route-params :as request}]
+  (fn [{{:keys [vid]} :path-params :as request}]
     (-> (handler request)
         (md/chain'
           (fn [response]
@@ -93,7 +91,5 @@
   ""
   [conn]
   (-> (handler-intern conn)
-      (wrap-exception)
-      (wrap-json)
       (wrap-interaction-name)
       (wrap-observe-request-duration)))

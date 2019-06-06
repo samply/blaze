@@ -74,7 +74,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha10")
+(def ^:private version "0.6-alpha12")
 
 (def ^:private base-uri "http://localhost:8080")
 
@@ -143,10 +143,12 @@
      :handler.fhir/read (ig/ref :fhir-read-handler)
      :handler.fhir/search (ig/ref :fhir-search-handler)
      :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
-     :handler.fhir/update (ig/ref :fhir-update-handler)}
-    :version version}
+     :handler.fhir/update (ig/ref :fhir-update-handler)}}
 
-   :server {:port 8080 :handler (ig/ref :app-handler)}})
+   :server
+   {:port 8080
+    :handler (ig/ref :app-handler)
+    :version version}})
 
 
 (s/fdef init!
@@ -276,14 +278,13 @@
 
 
 (defmethod ig/init-key :app-handler
-  [_ {:keys [handlers version]}]
-  (log/info "Starting Blaze version" version)
-  (app-handler/handler handlers version))
+  [_ {:keys [handlers]}]
+  (app-handler/handler handlers))
 
 
 (defmethod ig/init-key :server
-  [_ {:keys [port handler]}]
-  (server/init! port handler))
+  [_ {:keys [port handler version]}]
+  (server/init! port handler version))
 
 
 (defmethod ig/init-key :default
