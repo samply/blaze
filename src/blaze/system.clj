@@ -22,6 +22,7 @@
     [blaze.handler.fhir.update :as fhir-update-handler]
     [blaze.handler.health :as health-handler]
     [blaze.handler.metrics :as metrics-handler]
+    [blaze.metrics :as metrics]
     [blaze.middleware.fhir.metrics :as fhir-metrics]
     [blaze.middleware.json :as json]
     [blaze.server :as server]
@@ -56,6 +57,7 @@
 (s/def :config/fhir-search-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-update-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
+(s/def :config/metrics-server (s/keys :opt-un [::server/port]))
 
 (s/def :system/config
   (s/keys
@@ -68,13 +70,14 @@
      :config/fhir-create-handler
      :config/fhir-search-handler
      :config/fhir-update-handler
-     :config/server]))
+     :config/server
+     :config/metrics-server]))
 
 
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha12")
+(def ^:private version "0.6-alpha25")
 
 (def ^:private base-uri "http://localhost:8080")
 
@@ -88,13 +91,7 @@
 
    :cache {}
 
-   :metrics/registry
-   {}
-
    :health-handler {}
-
-   :metrics-handler
-   {:registry (ig/ref :metrics/registry)}
 
    :cql-evaluation-handler
    {:database/conn (ig/ref :database-conn)
@@ -135,7 +132,6 @@
    {:handlers
     {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
      :handler/health (ig/ref :health-handler)
-     :handler/metrics (ig/ref :metrics-handler)
      :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
      :handler.fhir/create (ig/ref :fhir-create-handler)
      :handler.fhir/delete (ig/ref :fhir-delete-handler)
@@ -148,6 +144,17 @@
    :server
    {:port 8080
     :handler (ig/ref :app-handler)
+    :version version}
+
+   :metrics/registry
+   {:server (ig/ref :server)}
+
+   :metrics-handler
+   {:registry (ig/ref :metrics/registry)}
+
+   :metrics-server
+   {:port 8081
+    :handler (ig/ref :metrics-handler)
     :version version}})
 
 
@@ -207,29 +214,9 @@
   (atom (cache/lru-cache-factory {} :threshold threshold)))
 
 
-(defmethod ig/init-key :metrics/registry [_ _]
-  (doto (CollectorRegistry. true)
-    (.register (StandardExports.))
-    (.register (MemoryPoolsExports.))
-    (.register (GarbageCollectorExports.))
-    (.register (ThreadExports.))
-    (.register (ClassLoadingExports.))
-    (.register (VersionInfoExports.))
-    (.register fhir-metrics/requests-total)
-    (.register fhir-metrics/request-duration-seconds)
-    (.register json/parse-duration-seconds)
-    (.register json/generate-duration-seconds)
-    (.register tx/resource-upsert-duration-seconds)))
-
-
 (defmethod ig/init-key :health-handler
   [_ _]
   (health-handler/handler))
-
-
-(defmethod ig/init-key :metrics-handler
-  [_ {:keys [registry]}]
-  (metrics-handler/metrics-handler registry))
 
 
 (defmethod ig/init-key :cql-evaluation-handler
@@ -284,6 +271,38 @@
 
 (defmethod ig/init-key :server
   [_ {:keys [port handler version]}]
+  (log/info "Start main server on port" port)
+  (server/init! port handler version))
+
+
+(defmethod ig/init-key :metrics/registry
+  [_ {{:keys [executor]} :server}]
+  (doto (CollectorRegistry. true)
+    (.register (StandardExports.))
+    (.register (MemoryPoolsExports.))
+    (.register (GarbageCollectorExports.))
+    (.register (ThreadExports.))
+    (.register (ClassLoadingExports.))
+    (.register (VersionInfoExports.))
+    (.register fhir-metrics/requests-total)
+    (.register fhir-metrics/request-duration-seconds)
+    (.register json/parse-duration-seconds)
+    (.register json/generate-duration-seconds)
+    (.register tx/resource-upsert-duration-seconds)
+    (.register tx/execution-duration-seconds)
+    (.register (metrics/fork-join-pool-collector
+                 [["server" executor]
+                  ["transactor" tx/tx-executor]]))))
+
+
+(defmethod ig/init-key :metrics-handler
+  [_ {:keys [registry]}]
+  (metrics-handler/metrics-handler registry))
+
+
+(defmethod ig/init-key :metrics-server
+  [_ {:keys [port handler version]}]
+  (log/info "Start metrics server on port" port)
   (server/init! port handler version))
 
 
@@ -294,4 +313,10 @@
 
 (defmethod ig/halt-key! :server
   [_ server]
+  (log/info "Shutdown main server")
+  (server/shutdown! server))
+
+(defmethod ig/halt-key! :metrics-server
+  [_ server]
+  (log/info "Shutdown metrics server")
   (server/shutdown! server))

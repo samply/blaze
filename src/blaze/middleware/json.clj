@@ -14,14 +14,14 @@
 (prom/defhistogram parse-duration-seconds
   "FHIR parsing latencies in seconds."
   {:namespace "fhir"}
-  (take 13 (iterate #(* 2 %) 0.00001))
+  (take 17 (iterate #(* 2 %) 0.00001))
   "format")
 
 
 (prom/defhistogram generate-duration-seconds
   "FHIR generating latencies in seconds."
   {:namespace "fhir"}
-  (take 13 (iterate #(* 2 %) 0.00001))
+  (take 17 (iterate #(* 2 %) 0.00001))
   "format")
 
 
@@ -43,6 +43,13 @@
           (md/error-deferred
             #::anom{:category ::anom/incorrect
                     :message (.getMessage ^Exception e)}))))))
+
+
+(defn- handle-request [{:keys [request-method body] :as request}]
+  (if (#{:put :post} request-method)
+    (-> (parse-json body)
+        (md/chain' #(assoc request :body %)))
+    request))
 
 
 (defn- generate-json [body]
@@ -70,13 +77,8 @@
   "Parses the request body as JSON, calls `handler` and generates JSON from the
   response."
   [handler]
-  (fn [{:keys [request-method body] :as request}]
-    (-> (if (#{:put :post} request-method)
-          (-> (parse-json body)
-              (md/chain'
-                (fn [parsed-body]
-                  (assoc request :body parsed-body))))
-          request)
+  (fn [request]
+    (-> (handle-request request)
         (md/chain' handler)
         (md/chain' handle-response)
         (md/catch' #(handle-response (handler-util/error-response %))))))

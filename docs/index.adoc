@@ -106,9 +106,15 @@ Blaze is solely configured through these environment variables:
 .Environment Variables
 [cols="1,4", options="header,footer"]
 |===
-| Variable | Description
-| LOG_LEVEL | one of trace, debug, info, warn, error
+| Variable | Default | Description
+| SERVER_PORT | 8080 | port of the main server with FHIR API
+| METRICS_SERVER_PORT | 8081 | port of the metrics server
+| LOG_LEVEL | info | one of trace, debug, info, warn, error
 |===
+
+== Monitoring
+
+Blaze provides a https://prometheus.io[Prometheus] monitoring endpoint with various metrics. The endpoint lives on a different port `METRICS_SERVER_PORT` (defaults to 8081) because it should not be exposed to the outside like the normal FHIR API. The best way to explore the available metrics is to simply fetch it and read through the help texts.
 
 == Open Source
 
@@ -584,6 +590,14 @@ Blaze was started with `-server -Xms2g -Xmx2g -XX:+UseG1GC` and Datomic v0.9.570
 The results show that Blaze is able to handle 600 updates per second with a 99% quantile of response times of less than half a second.
 
 == Implementation
+
+=== Threading Model
+
+Blaze uses the https://aleph.io/aleph/http.html[Aleph HTTP server] which is able to process requests asynchronously. Aleph doesn't need one thread per request processing. Instead it uses a low number of threads to handle I/O for multiple requests buffering HTTP headers and bodies. Once a request is fully received, a worker thread is used to calculate the response. In case the response calculation needs to perform I/O itself, like connecting to the Datomic transactor for writes, it uses https://aleph.io/manifold/deferreds.html[Manifold Deferreds] to do that asynchronously as well. Doing so makes all other request processing CPU bound. For that reason Blaze uses a single https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newWorkStealingPool--[work-stealing thread pool] with the parallelism level set to the number of available cores for all it's request processing.
+
+For transactions, Blaze has to do I/O. The transaction data is send to the Datomic transactor and Blaze has to wait for the answer. In order to maximize the throughput of the transactor, Blaze uses a parallelism level of 20 while sending data to it. Again a work-stealing thread pool is used to achieve and maintain that parallelism level.
+
+Currently the queues in front of both thread pools are unbounded. Future work should focus on ways to introduce timeouts or bounded queues.
 
 === 3-valued Logic and Set Theory
 

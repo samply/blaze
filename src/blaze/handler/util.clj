@@ -43,14 +43,14 @@
 
 
 (defn operation-outcome
-  [{:fhir/keys [issue operation-outcome] :or {issue "exception"}
+  [{:fhir/keys [issue operation-outcome]
     :blaze/keys [stacktrace]
-    ::anom/keys [message]}]
+    ::anom/keys [category message]}]
   {:resourceType "OperationOutcome"
    :issue
    [(cond->
       {:severity "error"
-       :code issue}
+       :code (or issue (when (= ::anom/busy category) "timeout") "exception")}
       operation-outcome
       (assoc
         :details

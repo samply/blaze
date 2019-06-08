@@ -22,7 +22,7 @@
     [java.time.format DateTimeFormatter]
     [java.util Base64]
     [java.util Date Map$Entry UUID]
-    [java.util.concurrent ExecutionException]))
+    [java.util.concurrent ExecutionException Executors]))
 
 
 (defn- coerce-decimal [value]
@@ -830,14 +830,42 @@
     ::anom/fault))
 
 
+(def tx-executor
+  (Executors/newWorkStealingPool 20))
+
+
+(prom/defhistogram execution-duration-seconds
+  "Datomic transaction execution latencies in seconds."
+  {:namespace "datomic"
+   :subsystem "transaction"}
+  (take 14 (iterate #(* 2 %) 0.001)))
+
+
+(def ^:private ^:const transact-timeout-ms 10000)
+
+
 (s/fdef transact-async
   :args (s/cat :conn ::ds/conn :tx-data ::ds/tx-data)
   :ret md/deferred?)
 
-(defn transact-async [conn tx-data]
-  (-> (d/transact-async conn tx-data)
-      (md/catch ExecutionException #(md/error-deferred (.getCause ^Exception %)))
-      (md/catch
+(defn transact-async
+  "Like `datomic.api/transact-async` but returns a deferred instead of a future
+  and an error deferred with an anomaly in case of errors.
+
+  Uses an executor with a maximum parallelism of 20 and times out after 10
+  seconds."
+  [conn tx-data]
+  (-> (md/future-with tx-executor
+        (with-open [_ (prom/timer execution-duration-seconds)]
+          (let [result (deref (d/transact-async conn tx-data)
+                              transact-timeout-ms ::timed-out)]
+            (if (= ::timed-out result)
+              (md/error-deferred
+                {::anom/category ::anom/busy
+                 ::anom/message "Transaction timed out."})
+              result))))
+      (md/catch' ExecutionException #(md/error-deferred (.getCause ^Exception %)))
+      (md/catch'
         (fn [e]
           (md/error-deferred
             (assoc (ex-data e)

@@ -18,7 +18,7 @@
   "The HTTP request latencies in seconds."
   {:namespace "http"
    :subsystem "fhir"}
-  (take 13 (iterate #(* 2 %) 0.001))
+  (take 16 (iterate #(* 2 %) 0.001))
   "interaction" "method")
 
 

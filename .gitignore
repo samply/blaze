@@ -4,4 +4,4 @@
 /queries
 /*.sh
 /cql-test
-/kube.yml
+/kube*

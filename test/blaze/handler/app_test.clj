@@ -14,7 +14,6 @@
 (def ^:private handlers
   {:handler/cql-evaluation (fn [_] ::cql-evaluation-handler)
    :handler/health (fn [_] ::health-handler)
-   :handler/metrics (fn [_] ::metrics-handler)
    :handler.fhir/capabilities (fn [_] ::fhir-capabilities-handler)
    :handler.fhir/create (fn [_] ::fhir-create-handler)
    :handler.fhir/delete (fn [_] ::fhir-delete-handler)
@@ -35,8 +34,6 @@
     "/cql/evaluate" :post ::cql-evaluation-handler
     "/health" :head ::health-handler
     "/health" :get ::health-handler
-    "/metrics" :head ::metrics-handler
-    "/metrics" :get ::metrics-handler
     "/fhir" :post ::fhir-transaction-handler
     "/fhir/metadata" :get ::fhir-capabilities-handler
     "/fhir/Patient" :get ::fhir-search-handler
