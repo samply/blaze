@@ -11,7 +11,8 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
-    [datomic-spec.test :as dst])
+    [datomic-spec.test :as dst]
+    [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
 
@@ -29,7 +30,7 @@
      {`handler
       (s/fspec
         :args (s/cat :conn #{::conn}))}})
-  (f)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 

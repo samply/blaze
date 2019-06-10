@@ -165,7 +165,7 @@
         (assoc-in ["meta" "lastUpdated"] (-to-json last-transaction-instant))
         (with-meta {:last-transaction-instant last-transaction-instant
                     :version-id version-id
-                    :deleted (util/deleted? (:version resource))}))))
+                    :deleted (util/deleted? resource)}))))
 
 
 (s/fdef pull-resource

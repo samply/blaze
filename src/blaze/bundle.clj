@@ -102,12 +102,12 @@
 
 (defmethod entry-tx-data "POST"
   [db tempids {:strs [resource]}]
-  (tx/resource-upsert db tempids 0 resource))
+  (tx/resource-upsert db tempids :server-assigned-id resource))
 
 
 (defmethod entry-tx-data "PUT"
   [db tempids {:strs [resource]}]
-  (tx/resource-upsert db tempids -2 resource))
+  (tx/resource-upsert db tempids :client-assigned-id resource))
 
 
 (defmethod entry-tx-data "DELETE"

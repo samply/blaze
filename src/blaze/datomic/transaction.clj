@@ -748,18 +748,34 @@
   (update resource "meta" dissoc "versionId" "lastUpdated"))
 
 
-(defn- upsert-decrement [version]
-  (if (util/deleted? version)
-    (- version 1)
-    (- version 2)))
+(defn- upsert-decrement
+  "Decrements the version in the upper 62 bit, clears the deletion bit (1) and
+  carries over the creation-mode bit (0)."
+  [version]
+  (let [new-version (bit-shift-left (dec (bit-shift-right version 2)) 2)]
+    (if (bit-test version 0) (bit-set new-version 0) new-version)))
 
 
-(s/def ::resource
-  (s/map-of string? some?))
+(defn- initial-version
+  "The creation mode is encoded in the first bit of the version. Because the
+  deletion state is encoded in the second bit, the values -4 and -3 are used.
+  Both leave the second bit at zero."
+  [creation-mode]
+  (case creation-mode
+    :server-assigned-id -3
+    :client-assigned-id -4))
 
 
 (s/def ::tempids
   (s/map-of string? (s/map-of string? ::ds/tempid)))
+
+
+(s/def ::creation-mode
+  #{:server-assigned-id :client-assigned-id})
+
+
+(s/def ::resource
+  (s/map-of string? some?))
 
 
 (prom/defhistogram resource-upsert-duration-seconds
@@ -770,7 +786,8 @@
 
 
 (s/fdef resource-upsert
-  :args (s/cat :db ::ds/db :tempids (s/nilable ::tempids) :initial-version #{0 -2}
+  :args (s/cat :db ::ds/db :tempids (s/nilable ::tempids)
+               :creation-mode ::creation-mode
                :resource ::resource)
   :ret ::ds/tx-data)
 
@@ -783,14 +800,9 @@
   update using CAS for optimistic locking. The function `transact-async` will
   return an error deferred with ::anom/conflict on optimistic locking conflicts.
 
-  In order to differentiate between an internally generated `id` and an
-  externally given one, resources created with the former will start with
-  version 0 where resources created with a externally given `id` will start with
-  version 1.
-
   Resources are maps taken straight from there parsed JSON with string keys."
   {:arglists '([db tempids initial-version resource])}
-  [db tempids initial-version {type "resourceType" id "id" :as resource}]
+  [db tempids creation-mode {type "resourceType" id "id" :as resource}]
   (assert type)
   (assert id)
   (with-open [_ (prom/timer resource-upsert-duration-seconds)]
@@ -800,19 +812,28 @@
         (let [tx-data (upsert-resource {:db db :tempids tempids} type
                                        old-resource resource)
               {:db/keys [id] :keys [version]} old-resource]
-          (when (or (not (empty? tx-data)) (util/deleted? version))
+          (when (or (not (empty? tx-data)) (util/deleted? old-resource))
             (conj tx-data [:db.fn/cas id :version version (upsert-decrement version)])))
 
         (let [tempid (get-in tempids [type id])]
           (assert tempid)
           (conj (upsert-resource {:db db :tempids tempids} type
                                  {:db/id tempid} resource)
-                [:db.fn/cas tempid :version nil initial-version]))))))
+                [:db.fn/cas tempid :version nil (initial-version creation-mode)]))))))
 
 
-(defn- version-increment-delete [{:db/keys [id] :keys [version]}]
+(defn- deletion-decrement
+  "Decrements the version in the upper 62 bit, sets the deletion bit (1) and
+  carries over the creation-mode bit (0)."
+  [version]
+  (let [new-version (bit-shift-left (dec (bit-shift-right version 2)) 2)
+        new-version (bit-set new-version 1)]
+    (if (bit-test version 0) (bit-set new-version 0) new-version)))
+
+
+(defn- version-decrement-delete [{:db/keys [id] :keys [version]}]
   (assert version)
-  [:db.fn/cas id :version version (dec version)])
+  [:db.fn/cas id :version version (deletion-decrement version)])
 
 
 (defn- resource-id-remover [type]
@@ -828,12 +849,14 @@
 
 (defn resource-deletion
   "Takes a `db` and the `type` and `id` of a resource and returns Datomic
-  transaction data for the deletion."
+  transaction data for the deletion.
+
+  Returns nil if the resource never existed or is currently deleted."
   [db type id]
   (when-let [resource (util/resource db type id)]
-    (when-not (util/deleted? (:version resource))
+    (when-not (util/deleted? resource)
       (into
-        [(version-increment-delete resource)]
+        [(version-decrement-delete resource)]
         (comp
           (map #(util/cached-entity db %))
           contained-resource-element-remover

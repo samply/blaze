@@ -118,12 +118,12 @@
 
 (defmethod upsert-entry "POST"
   [conn db {:strs [resource]}]
-  (handler-fhir-util/upsert-resource conn db 0 resource))
+  (handler-fhir-util/upsert-resource conn db :server-assigned-id resource))
 
 
 (defmethod upsert-entry "PUT"
   [conn db {:strs [resource]}]
-  (handler-fhir-util/upsert-resource conn db -2 resource))
+  (handler-fhir-util/upsert-resource conn db :client-assigned-id resource))
 
 
 (defmulti transact

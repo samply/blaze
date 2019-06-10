@@ -9,14 +9,14 @@
 
 
 (s/fdef resource-type
-  :args (s/cat :entity ::ds/entity)
+  :args (s/cat :resource ::ds/entity)
   :ret string?)
 
 (defn resource-type
-  "Returns the type of a resource like `Patient` or `Observation`."
-  {:arglists '([entity])}
-  [{:db/keys [id] :as entity}]
-  (name (d/ident (d/entity-db entity) (d/part id))))
+  "Returns the type of a `resource` like \"Patient\" or \"Observation\"."
+  {:arglists '([resource])}
+  [{:db/keys [id] :as resource}]
+  (name (d/ident (d/entity-db resource) (d/part id))))
 
 
 (defn resource-id-attr [type]
@@ -95,9 +95,20 @@
   :ret ::ds/entity)
 
 (defn resource
+  "Returns the resource with `type` and `id`.
+
+  Also returns deleted resources. Please use the function `deleted?` to test
+  for deleted resources."
   [db type id]
   (d/entity db (resource-ident type id)))
 
 
-(defn deleted? [version]
-  (odd? version))
+(defn deleted? [resource]
+  (bit-test (:version resource) 1))
+
+(defn ordinal-version
+  "Returns the strong monotonic increasing ordinal version of `resource`.
+
+  Ordinal versions start with 1."
+  [resource]
+  (- (bit-shift-right (:version resource) 2)))

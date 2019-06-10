@@ -15,7 +15,7 @@
   [db type id & {:as more}]
   (let [tid (d/tempid (keyword "part" type))
         {db :db-after :keys [tempids]}
-        (d/with db [(merge {:db/id tid (util/resource-id-attr type) id :version 0} more)])
+        (d/with db [(merge {:db/id tid (util/resource-id-attr type) id :version -3} more)])
         id (d/resolve-tempid db tempids tid)]
     [db id]))
 
@@ -24,7 +24,7 @@
   [db type id]
   (let [tid (d/tempid (keyword "part" type))
         {db :db-after :keys [tempids]}
-        (d/with db [{:db/id tid (util/resource-id-attr type) id :version -1}])
+        (d/with db [{:db/id tid (util/resource-id-attr type) id :version -2}])
         id (d/resolve-tempid db tempids tid)]
     [db id]))
 

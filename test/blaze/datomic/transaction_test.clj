@@ -58,53 +58,53 @@
 (deftest resource-upsert-test
 
   (testing "Version handling"
-    (testing "Starts with initial version 0"
+    (testing "Starts with initial version -3 at creation mode :server-assigned-id"
       (let [tempid (d/tempid :part/Patient)]
         (is
           (=
             (resource-upsert
-              db {"Patient" {"0" tempid}} 0
+              db {"Patient" {"0" tempid}} :server-assigned-id
               {"id" "0" "resourceType" "Patient"})
             [[:db/add tempid :Patient/id "0"]
-             [:db.fn/cas tempid :version nil 0]]))))
+             [:db.fn/cas tempid :version nil -3]]))))
 
-    (testing "Starts with initial version -2"
+    (testing "Starts with initial version -4 at creation mode :client-assigned-id"
       (let [tempid (d/tempid :part/Patient)]
         (is
           (=
             (resource-upsert
-              db {"Patient" {"0" tempid}} -2
+              db {"Patient" {"0" tempid}} :client-assigned-id
               {"id" "0" "resourceType" "Patient"})
             [[:db/add tempid :Patient/id "0"]
-             [:db.fn/cas tempid :version nil -2]]))))
+             [:db.fn/cas tempid :version nil -4]]))))
 
     (testing "Doesn't increment version on empty update"
       (let [[db] (with-resource db "Patient" "0")]
         (is
           (empty?
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0" "resourceType" "Patient"})))))
 
-    (testing "Brings back even version on update"
+    (testing "Clear deletion bit on upsert"
       (let [[db id] (with-deleted-resource db "Patient" "0")]
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0" "resourceType" "Patient"})
-            [[:db.fn/cas id :version -1 -2]]))))
+            [[:db.fn/cas id :version -2 -8]]))))
 
     (testing "Ignores versionId in meta"
       (let [tempid (d/tempid :part/Patient)]
         (is
           (=
             (resource-upsert
-              db {"Patient" {"0" tempid}} 0
+              db {"Patient" {"0" tempid}} :server-assigned-id
               {"id" "0" "resourceType" "Patient"
                "meta" {"versionId" "42"}})
             [[:db/add tempid :Patient/id "0"]
-             [:db.fn/cas tempid :version nil 0]])))))
+             [:db.fn/cas tempid :version nil -3]])))))
 
 
 
@@ -116,10 +116,10 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "active" true})
               [[:db/add id :Patient/active true]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
         (let [[db id] (with-resource db "Patient" "0")]
@@ -127,13 +127,13 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient" "gender" "male"}))
               [{:db/id :part/code
                 :code/id "||male"
                 :code/code "male"}
                [:db/add id :Patient/gender :part/code]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with date type"
         (let [[db id] (with-resource db "Patient" "0")]
@@ -142,10 +142,10 @@
               (mapv
                 read-value
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient" "birthDate" "2000"}))
               [[:db/add id :Patient/birthDate (Year/of 2000)]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with unsignedInt type"
         (let [[db id] (with-resource db "CodeSystem" "0")]
@@ -154,10 +154,10 @@
               (mapv
                 read-value
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType" "CodeSystem" "count" 1}))
               [[:db/add id :CodeSystem/count 1]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with base64Binary type"
         (let [[db id] (with-resource db "Patient" "0")]
@@ -167,12 +167,12 @@
                 read-value
                 (with-redefs [d/tempid (fn [partition] partition)]
                   (resource-upsert
-                    db nil 0
+                    db nil :server-assigned-id
                     {"id" "0" "resourceType" "Patient"
                      "photo" [{"data" "aGFsbG8="}]})))
               [[:db/add :part/Attachment :Attachment/data "aGFsbG8="]
                [:db/add id :Patient/photo :part/Attachment]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "primitive single-valued choice-typed element"
@@ -181,11 +181,11 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "deceasedBoolean" true})
               [[:db/add id :Patient/deceasedBoolean true]
                [:db/add id :Patient/deceased :Patient/deceasedBoolean]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with dateTime choice"
         (let [[db id] (with-resource db "Patient" "0")]
@@ -194,22 +194,22 @@
               (mapv
                 read-value
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient" "deceasedDateTime" "2001-01"}))
               [[:db/add id :Patient/deceasedDateTime (YearMonth/of 2001 1)]
                [:db/add id :Patient/deceased :Patient/deceasedDateTime]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with string choice"
         (let [[db id] (with-resource db "Observation" "0")]
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Observation" "valueString" "foo"})
               [[:db/add id :Observation/valueString "foo"]
                [:db/add id :Observation/value :Observation/valueString]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "primitive multi-valued single-typed element"
@@ -219,19 +219,19 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0"
                    "resourceType" "ServiceRequest"
                    "instantiatesUri" ["foo"]}))
               [[:db/add id :ServiceRequest/instantiatesUri "foo"]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
         (let [[db id] (with-resource db "CodeSystem" "0")]
           (is
             (= (with-redefs [d/tempid (fn [partition] partition)]
                  (resource-upsert
-                   db nil 0
+                   db nil :server-assigned-id
                    {"id" "0"
                     "resourceType" "CodeSystem"
                     "filter"
@@ -241,13 +241,13 @@
                  :code/code "="}
                 [:db/add :part/CodeSystem.filter :CodeSystem.filter/operator :part/code]
                 [:db/add id :CodeSystem/filter :part/CodeSystem.filter]
-                [:db.fn/cas id :version 0 -2]])))
+                [:db.fn/cas id :version -3 -7]])))
 
         (let [[db id] (with-resource db "AllergyIntolerance" "0")]
           (is
             (= (with-redefs [d/tempid (fn [partition] partition)]
                  (resource-upsert
-                   db nil 0
+                   db nil :server-assigned-id
                    {"id" "0"
                     "resourceType" "AllergyIntolerance"
                     "category"
@@ -256,7 +256,7 @@
                  :code/id "||medication"
                  :code/code "medication"}
                 [:db/add id :AllergyIntolerance/category :part/code]
-                [:db.fn/cas id :version 0 -2]])))))
+                [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "primitive multi-valued backbone element"
@@ -266,14 +266,14 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0"
                    "resourceType" "Patient"
                    "communication"
                    [{"preferred" true}]}))
               [[:db/add :part/Patient.communication :Patient.communication/preferred true]
                [:db/add id :Patient/communication :part/Patient.communication]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "non-primitive single-valued single-typed element"
@@ -281,13 +281,13 @@
         (is
           (= (with-redefs [d/tempid (fn [partition] partition)]
                (resource-upsert
-                 db nil 0
+                 db nil :server-assigned-id
                  {"id" "0"
                   "resourceType" "Patient"
                   "maritalStatus" {"text" "married"}}))
              [[:db/add :part/CodeableConcept :CodeableConcept/text "married"]
               [:db/add id :Patient/maritalStatus :part/CodeableConcept]
-              [:db.fn/cas id :version 0 -2]]))))
+              [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "non-primitive single-valued choice-typed element"
@@ -297,14 +297,14 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0"
                    "resourceType" "Observation"
                    "valueCodeableConcept" {"text" "foo"}}))
               [[:db/add :part/CodeableConcept :CodeableConcept/text "foo"]
                [:db/add id :Observation/valueCodeableConcept :part/CodeableConcept]
                [:db/add id :Observation/value :Observation/valueCodeableConcept]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with Period choice"
         (let [[db id] (with-resource db "Observation" "0")]
@@ -314,14 +314,14 @@
                 (mapv
                   read-value
                   (resource-upsert
-                    db nil 0
+                    db nil :server-assigned-id
                     {"id" "0"
                      "resourceType" "Observation"
                      "valuePeriod" {"start" "2019"}})))
               [[:db/add :part/Period :Period/start (Year/of 2019)]
                [:db/add id :Observation/valuePeriod :part/Period]
                [:db/add id :Observation/value :Observation/valuePeriod]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "non-primitive multi-valued single-typed element"
@@ -330,11 +330,11 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "name" [{"family" "Doe"}]}))
             [[:db/add :part/HumanName :HumanName/family "Doe"]
              [:db/add id :Patient/name :part/HumanName]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "Coding"
@@ -344,7 +344,7 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0"
                    "resourceType" "Encounter"
                    "class"
@@ -356,7 +356,7 @@
                 :code/code "AMB"}
                [:db/add :part/Coding :Coding/code :part/code]
                [:db/add id :Encounter/class :part/Coding]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with version"
         (let [[db id] (with-resource db "Observation" "0")]
@@ -364,7 +364,7 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0"
                    "resourceType" "Observation"
                    "code"
@@ -381,7 +381,7 @@
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
                [:db/add id :Observation/code :part/CodeableConcept]
                [:db/add id :Observation.index/code :part/code]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with userSelected"
         (let [[db id] (with-resource db "Observation" "0")]
@@ -389,7 +389,7 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0"
                    "resourceType" "Observation"
                    "code"
@@ -408,7 +408,7 @@
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
                [:db/add id :Observation/code :part/CodeableConcept]
                [:db/add id :Observation.index/code :part/code]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
     (testing "CodeSystem with code in concept"
       (let [[db id] (with-resource db "CodeSystem" "0")]
@@ -416,7 +416,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "CodeSystem"
                  "url" "http://hl7.org/fhir/administrative-gender"
@@ -429,7 +429,7 @@
               :code/code "male"}
              [:db/add :part/CodeSystem.concept :CodeSystem.concept/code :part/code]
              [:db/add id :CodeSystem/concept :part/CodeSystem.concept]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "CodeSystem with version and code in concept"
@@ -438,7 +438,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "CodeSystem"
                  "url" "http://hl7.org/fhir/administrative-gender"
@@ -454,7 +454,7 @@
               :code/code "male"}
              [:db/add :part/CodeSystem.concept :CodeSystem.concept/code :part/code]
              [:db/add id :CodeSystem/concept :part/CodeSystem.concept]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "CodeSystem with code in content uses http://hl7.org/fhir/codesystem-content-mode"
@@ -463,7 +463,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "CodeSystem"
                  "url" "http://hl7.org/fhir/administrative-gender"
@@ -475,7 +475,7 @@
              [:db/add id :CodeSystem/content :part/code]
              [:db/add id :CodeSystem/version "4.0.0"]
              [:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "CodeSystem with sub-concept"
@@ -484,7 +484,7 @@
           (=
             (with-redefs [d/tempid (tempid)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "CodeSystem"
                  "url" "http://something"
@@ -499,7 +499,7 @@
              [:db/add [:part/CodeSystem.concept 2] :CodeSystem.concept/code [:part/code 2]]
              [:db/add [:part/CodeSystem.concept 1] :CodeSystem/concept [:part/CodeSystem.concept 2]]
              [:db/add id :CodeSystem/concept [:part/CodeSystem.concept 1]]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "ValueSet with code in compose include"
@@ -513,7 +513,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "ValueSet"
                  "compose"
@@ -529,7 +529,7 @@
               :code/version "2.36"}
              [:db/add :part/ValueSet.compose.include.concept :ValueSet.compose.include.concept/code :part/code]
              [:db/add include-id :ValueSet.compose.include/concept :part/ValueSet.compose.include.concept]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "ValueSet with code in expansion contains"
@@ -543,7 +543,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "ValueSet"
                  "expansion"
@@ -557,7 +557,7 @@
               :code/code "14647-2"
               :code/version "2.50"}
              [:db/add contains-id :ValueSet.expansion.contains/code :part/code]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "special Quantity type"
@@ -567,7 +567,7 @@
             (mapv
               read-value
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "valueQuantity"
@@ -576,7 +576,7 @@
                   "code" "m"}}))
             [[:db/add id :Observation/valueQuantity (quantity 1M "m")]
              [:db/add id :Observation/value :Observation/valueQuantity]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "special Quantity type with integer decimal value"
@@ -586,7 +586,7 @@
             (mapv
               read-value
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "valueQuantity"
@@ -595,7 +595,7 @@
                   "code" "m"}}))
             [[:db/add id :Observation/valueQuantity (quantity 1M "m")]
              [:db/add id :Observation/value :Observation/valueQuantity]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "special Quantity type with unit in unit"
@@ -605,14 +605,14 @@
             (mapv
               read-value
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "valueQuantity"
                  {"value" 1 "unit" "a"}}))
             [[:db/add id :Observation/valueQuantity (quantity 1M "a")]
              [:db/add id :Observation/value :Observation/valueQuantity]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "single-valued special Reference type"
@@ -622,12 +622,12 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "subject" {"reference" "Patient/0"}})
               [[:db/add observation-id :Observation/subject patient-id]
-               [:db.fn/cas observation-id :version 0 -2]]))))
+               [:db.fn/cas observation-id :version -3 -7]]))))
 
       (testing "with resource resolvable in tempids"
         (let [patient-id (d/tempid :part/Patient)
@@ -635,12 +635,12 @@
           (is
             (=
               (resource-upsert
-                db {"Patient" {"0" patient-id}} 0
+                db {"Patient" {"0" patient-id}} :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "subject" {"reference" "Patient/0"}})
               [[:db/add observation-id :Observation/subject patient-id]
-               [:db.fn/cas observation-id :version 0 -2]])))))
+               [:db.fn/cas observation-id :version -3 -7]])))))
 
 
     (testing "multi-valued special Reference type"
@@ -649,13 +649,13 @@
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0"
                "resourceType" "Patient"
                "generalPractitioner"
                [{"reference" "Organization/0"}]})
             [[:db/add patient-id :Patient/generalPractitioner organization-id]
-             [:db.fn/cas patient-id :version 0 -2]]))))
+             [:db.fn/cas patient-id :version -3 -7]]))))
 
 
     (testing "Contact"
@@ -664,7 +664,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Patient"
                  "contact"
@@ -672,7 +672,7 @@
             [[:db/add :part/HumanName :HumanName/family "Doe"]
              [:db/add :part/Patient.contact :Patient.contact/name :part/HumanName]
              [:db/add id :Patient/contact :part/Patient.contact]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "Contained resources"
@@ -681,7 +681,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "subject" {"reference" "#0"}
@@ -693,7 +693,7 @@
              [:db/add :part/Patient :local-id "0"]
              [:db/add id :Observation/contained :part/Patient]
              [:db/add id :Observation/subject :part/Patient]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "ConceptMap with source code"
@@ -703,7 +703,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "ConceptMap"
                  "group"
@@ -716,7 +716,7 @@
               :code/code "bar"}
              [:db/add :part/ConceptMap.group.element :ConceptMap.group.element/code :part/code]
              [:db/add group-id :ConceptMap.group/element :part/ConceptMap.group.element]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "ConceptMap with target code"
@@ -725,7 +725,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "ConceptMap"
                  "group"
@@ -742,7 +742,7 @@
              [:db/add :part/ConceptMap.group :ConceptMap.group/element :part/ConceptMap.group.element]
              [:db/add :part/ConceptMap.group :ConceptMap.group/target "http://foo"]
              [:db/add id :ConceptMap/group :part/ConceptMap.group]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
     (testing "Code typed extension"
       ;; TODO: resolve the value set binding here
@@ -752,7 +752,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "CodeSystem"
                  "extension"
@@ -761,7 +761,7 @@
             [{:db/id :part/code, :code/id "||draft", :code/code "draft"}
              [:db/add extension-id :Extension/valueCode :part/code]
              [:db/add extension-id :Extension/value :Extension/valueCode]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
     (testing "ValueSet compose include system"
       (let [[db id] (with-resource db "ValueSet" "0")]
@@ -769,7 +769,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "ValueSet"
                  "compose"
@@ -778,7 +778,7 @@
             [[:db/add :part/ValueSet.compose.include :ValueSet.compose.include/system "http://loinc.org"]
              [:db/add :part/ValueSet.compose :ValueSet.compose/include :part/ValueSet.compose.include]
              [:db/add id :ValueSet/compose :part/ValueSet.compose]
-             [:db.fn/cas id :version 0 -2]])))))
+             [:db.fn/cas id :version -3 -7]])))))
 
 
 
@@ -790,7 +790,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "active" true})))))
 
       (testing "with code type"
@@ -799,7 +799,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "gender" "male"})))))
 
       (testing "with date type"
@@ -808,7 +808,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "birthDate" "2000"})))))
 
       (testing "with dateTime type"
@@ -819,7 +819,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "CodeSystem" "date" "2016-01-28"}))))
 
         (let [[db]
@@ -829,7 +829,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "CodeSystem"
                  "date" "2018-12-27T22:37:54+11:00"}))))
 
@@ -842,7 +842,7 @@
             (is
               (empty?
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType" "CodeSystem"
                    "date" "2018-06-05T14:06:02+00:00"})))))))
 
@@ -857,7 +857,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Observation" "valueString" "foo"}))))))
 
 
@@ -871,7 +871,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "valueCodeableConcept" {"text" "foo"}}))))))
@@ -885,7 +885,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "ServiceRequest"
                  "instantiatesUri" ["foo"]})))))
@@ -897,7 +897,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "AllergyIntolerance"
                  "category"
@@ -910,7 +910,7 @@
         (is
           (empty?
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0" "resourceType" "Patient" "name" [{"family" "Doe"}]})))))
 
 
@@ -923,7 +923,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "code"
@@ -940,7 +940,7 @@
           (is
             (empty?
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "code"
@@ -960,7 +960,7 @@
         (is
           (empty?
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0"
                "resourceType" "Observation"
                "valueQuantity" {"value" 1M "system" "http://unitsofmeasure.org" "code" "m"}})))))
@@ -972,7 +972,7 @@
         (is
           (empty?
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0"
                "resourceType" "Observation"
                "subject" {"reference" "Patient/0"}})))))
@@ -986,7 +986,7 @@
         (is
           (empty?
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0"
                "resourceType" "CodeSystem"
                "contact"
@@ -1000,7 +1000,7 @@
         (is
           (empty?
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0"
                "resourceType" "Patient"
                "contained"
@@ -1016,7 +1016,7 @@
           (empty?
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Schedule"
                  "actor"
@@ -1033,10 +1033,10 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "active" true})
               [[:db/add id :Patient/active true]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
         (let [[db id] (with-gender-code db "male")
@@ -1045,13 +1045,13 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient" "gender" "female"}))
               [{:db/id :part/code
                 :code/id "||female"
                 :code/code "female"}
                [:db/add id :Patient/gender :part/code]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with date type"
         (let [[db id] (with-resource db "Patient" "0" :Patient/birthDate
@@ -1061,10 +1061,10 @@
               (mapv
                 read-value
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient" "birthDate" "2001"}))
               [[:db/add id :Patient/birthDate (Year/of 2001)]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "primitive multi-valued single-typed element"
@@ -1074,13 +1074,13 @@
                 db "ServiceRequest" "0" :ServiceRequest/instantiatesUri "foo")]
           (is
             (= (resource-upsert
-                 db nil 0
+                 db nil :server-assigned-id
                  {"id" "0"
                   "resourceType" "ServiceRequest"
                   "instantiatesUri" ["bar"]})
                [[:db/retract id :ServiceRequest/instantiatesUri "foo"]
                 [:db/add id :ServiceRequest/instantiatesUri "bar"]
-                [:db.fn/cas id :version 0 -2]]))))
+                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with multiple values"
         (let [[db id]
@@ -1089,13 +1089,13 @@
                 :ServiceRequest/instantiatesUri #{"one" "two" "three"})]
           (is
             (= (resource-upsert
-                 db nil 0
+                 db nil :server-assigned-id
                  {"id" "0"
                   "resourceType" "ServiceRequest"
                   "instantiatesUri" ["one" "TWO" "three"]})
                [[:db/retract id :ServiceRequest/instantiatesUri "two"]
                 [:db/add id :ServiceRequest/instantiatesUri "TWO"]
-                [:db.fn/cas id :version 0 -2]]))))
+                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
         (let [[db id] (with-code db "medication")
@@ -1104,7 +1104,7 @@
           (is
             (= (with-redefs [d/tempid (fn [partition] partition)]
                  (resource-upsert
-                   db nil 0
+                   db nil :server-assigned-id
                    {"id" "0"
                     "resourceType" "AllergyIntolerance"
                     "category"
@@ -1113,7 +1113,7 @@
                  :code/id "||food"
                  :code/code "food"}
                 [:db/add id :AllergyIntolerance/category :part/code]
-                [:db.fn/cas id :version 0 -2]])))))
+                [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "single-valued choice-typed element"
@@ -1125,11 +1125,11 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Observation" "valueString" "bar"})
               [[:db/add id :Observation/valueString "bar"]
                [:db/add id :Observation/value :Observation/valueString]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "switch from string choice to boolean choice"
         (let [[db id]
@@ -1139,12 +1139,12 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Observation" "valueBoolean" true})
               [[:db/retract id :Observation/valueString "foo"]
                [:db/add id :Observation/valueBoolean true]
                [:db/add id :Observation/value :Observation/valueBoolean]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "switch from string choice to CodeableConcept choice"
         (let [[db id]
@@ -1155,14 +1155,14 @@
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType"
                    "Observation" "valueCodeableConcept" {"text" "bar"}}))
               [[:db/retract id :Observation/valueString "foo"]
                [:db/add :part/CodeableConcept :CodeableConcept/text "bar"]
                [:db/add id :Observation/valueCodeableConcept :part/CodeableConcept]
                [:db/add id :Observation/value :Observation/valueCodeableConcept]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "non-primitive single-valued single-typed element"
@@ -1173,12 +1173,12 @@
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0"
                "resourceType" "Patient"
                "maritalStatus" {"text" "unmarried"}})
             [[:db/add status-id :CodeableConcept/text "unmarried"]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "non-primitive multi-valued single-typed element"
@@ -1189,10 +1189,10 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "name" [{"family" "bar"}]})
               [[:db/add name-id :HumanName/family "bar"]
-               [:db.fn/cas patient-id :version 0 -2]]))))
+               [:db.fn/cas patient-id :version -3 -7]]))))
 
       (testing "with primitive multi-valued single-typed child element"
         (let [[db name-id] (with-non-primitive db :HumanName/given "foo")
@@ -1201,11 +1201,11 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "name" [{"given" ["bar"]}]})
               [[:db/retract name-id :HumanName/given "foo"]
                [:db/add name-id :HumanName/given "bar"]
-               [:db.fn/cas patient-id :version 0 -2]])))
+               [:db.fn/cas patient-id :version -3 -7]])))
 
         (let [[db name-id] (with-non-primitive db :HumanName/given "foo")
               [db patient-id]
@@ -1213,10 +1213,10 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "name" [{"given" ["foo" "bar"]}]})
               [[:db/add name-id :HumanName/given "bar"]
-               [:db.fn/cas patient-id :version 0 -2]])))))
+               [:db.fn/cas patient-id :version -3 -7]])))))
 
     (testing "Coding"
       (let [[db code-id]
@@ -1229,7 +1229,7 @@
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Encounter"
                  "class"
@@ -1240,7 +1240,7 @@
               :code/system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
               :code/code "EMER"}
              [:db/add coding-id :Coding/code :part/code]
-             [:db.fn/cas encounter-id :version 0 -2]]))))
+             [:db.fn/cas encounter-id :version -3 -7]]))))
 
 
     (testing "single-valued special Reference type"
@@ -1250,12 +1250,12 @@
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0"
                "resourceType" "Observation"
                "subject" {"reference" "Patient/1"}})
             [[:db/add observation-id :Observation/subject patient-1-id]
-             [:db.fn/cas observation-id :version 0 -2]]))))
+             [:db.fn/cas observation-id :version -3 -7]]))))
 
 
     (testing "Contained resources"
@@ -1268,7 +1268,7 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "subject" {"reference" "#0"}
@@ -1277,7 +1277,7 @@
                    "resourceType" "Patient"
                    "active" true}]})
               [[:db/add contained-id :Patient/active true]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with changes inside the container resource"
         (let [[db contained-id] (with-non-primitive db :Patient/active true
@@ -1291,7 +1291,7 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "subject" {"reference" "#0"}
@@ -1301,7 +1301,7 @@
                    "resourceType" "Patient"
                    "active" true}]})
               [[:db/add id :Observation/status final-id]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
 
     (testing "Don't reuse old entities or new entities more than once"
@@ -1323,7 +1323,7 @@
             (mapv
               read-value
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0"
                  "resourceType" "Observation"
                  "component"
@@ -1343,7 +1343,7 @@
               :Observation.component/valueQuantity
               (quantity 1M "m")]
              [:db/add component-1-id :Observation.component/value :Observation.component/valueQuantity]
-             [:db.fn/cas observation-id :version 0 -2]])))))
+             [:db.fn/cas observation-id :version -3 -7]])))))
 
 
 
@@ -1355,10 +1355,10 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient"})
               [[:db/retract id :Patient/active false]
-               [:db.fn/cas id :version 0 -2]]))))
+               [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
         (let [[db gender-id] (with-gender-code db "male")
@@ -1367,10 +1367,10 @@
           (is
             (=
               (resource-upsert
-                db nil 0
+                db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient"})
               [[:db/retract patient-id :Patient/gender gender-id]
-               [:db.fn/cas patient-id :version 0 -2]]))))
+               [:db.fn/cas patient-id :version -3 -7]]))))
 
       (testing "with date type"
         (let [[db id] (with-resource db "Patient" "0" :Patient/birthDate
@@ -1380,10 +1380,10 @@
               (mapv
                 read-value
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient"}))
               [[:db/retract id :Patient/birthDate (Year/of 2000)]
-               [:db.fn/cas id :version 0 -2]])))))
+               [:db.fn/cas id :version -3 -7]])))))
 
     (testing "non-primitive single-valued single-typed element"
       (let [[db status-id]
@@ -1393,11 +1393,11 @@
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0" "resourceType" "Patient"})
             [[:db/retract status-id :CodeableConcept/text "married"]
              [:db/retract patient-id :Patient/maritalStatus status-id]
-             [:db.fn/cas patient-id :version 0 -2]]))))
+             [:db.fn/cas patient-id :version -3 -7]]))))
 
 
     (testing "non-primitive multi-valued element"
@@ -1406,22 +1406,22 @@
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0" "resourceType" "Patient" "name" []})
             [[:db/retract name-id :HumanName/family "Doe"]
              [:db/retract patient-id :Patient/name name-id]
-             [:db.fn/cas patient-id :version 0 -2]])))
+             [:db.fn/cas patient-id :version -3 -7]])))
 
       (let [[db name-id] (with-non-primitive db :HumanName/family "Doe")
             [db patient-id] (with-resource db "Patient" "0" :Patient/name name-id)]
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0" "resourceType" "Patient"})
             [[:db/retract name-id :HumanName/family "Doe"]
              [:db/retract patient-id :Patient/name name-id]
-             [:db.fn/cas patient-id :version 0 -2]]))))
+             [:db.fn/cas patient-id :version -3 -7]]))))
 
 
     (testing "single-valued choice-typed element"
@@ -1432,11 +1432,11 @@
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0" "resourceType" "Observation"})
             [[:db/retract id :Observation/valueString "foo"]
              [:db/retract id :Observation/value :Observation/valueString]
-             [:db.fn/cas id :version 0 -2]]))))
+             [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "Coding"
@@ -1449,11 +1449,11 @@
         (is
           (=
             (resource-upsert
-              db nil 0
+              db nil :server-assigned-id
               {"id" "0" "resourceType" "Encounter"})
             [[:db/retract coding-id :Coding/code code-id]
              [:db/retract encounter-id :Encounter/class coding-id]
-             [:db.fn/cas encounter-id :version 0 -2]]))))
+             [:db.fn/cas encounter-id :version -3 -7]]))))
 
 
     (testing "Contained resources"
@@ -1468,7 +1468,7 @@
             (=
               (set
                 (resource-upsert
-                  db nil 0
+                  db nil :server-assigned-id
                   {"id" "0"
                    "resourceType" "Patient"}))
               #{[:db/retract contained-1-id :Patient/active true]
@@ -1477,7 +1477,7 @@
                 [:db/retract contained-2-id :Patient/active false]
                 [:db/retract contained-2-id :local-id "2"]
                 [:db/retract id :Patient/contained contained-2-id]
-                [:db.fn/cas id :version 0 -2]}))))))
+                [:db.fn/cas id :version -3 -7]}))))))
 
 
 
@@ -1487,7 +1487,7 @@
       (let [[db] (with-resource db "Observation" "0")]
         (try
           (resource-upsert
-            db nil 0
+            db nil :server-assigned-id
             {"id" "0"
              "resourceType" "Observation"
              "subject" {"reference" "Patient/0"}})
@@ -1499,7 +1499,7 @@
       (let [[db] (with-resource db "Observation" "0")]
         (try
           (resource-upsert
-            db nil 0
+            db nil :server-assigned-id
             {"id" "0"
              "resourceType" "Observation"
              "subject" {"identifier" {}}})
@@ -1510,12 +1510,12 @@
 
 
 (deftest resource-deletion-test
-  (testing "Makes version odd"
+  (testing "Decrements version and sets deletion bit"
     (let [[db id] (with-resource db "Patient" "0")]
       (is
         (=
           (resource-deletion db "Patient" "0")
-          [[:db.fn/cas id :version 0 -1]]))))
+          [[:db.fn/cas id :version -3 -5]]))))
 
   (testing "Does nothing on subsequent delete"
     (let [[db] (with-deleted-resource db "Patient" "0")]
@@ -1529,7 +1529,7 @@
           (is
             (=
               (resource-deletion db "Patient" "0")
-              [[:db.fn/cas id :version 0 -1]
+              [[:db.fn/cas id :version -3 -5]
                [:db/retract id :Patient/active true]])))))
 
     (testing "non-primitive single-valued single-typed element"
@@ -1540,7 +1540,7 @@
         (is
           (=
             (resource-deletion db "Patient" "0")
-            [[:db.fn/cas patient-id :version 0 -1]
+            [[:db.fn/cas patient-id :version -3 -5]
              [:db/retract status-id :CodeableConcept/text "married"]
              [:db/retract patient-id :Patient/maritalStatus status-id]]))))
 
@@ -1550,7 +1550,7 @@
         (is
           (=
             (resource-deletion db "Patient" "0")
-            [[:db.fn/cas patient-id :version 0 -1]
+            [[:db.fn/cas patient-id :version -3 -5]
              [:db/retract name-id :HumanName/family "Doe"]
              [:db/retract patient-id :Patient/name name-id]]))))))
 

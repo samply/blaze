@@ -12,9 +12,9 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
-    [datomic.api :as d]
     [datomic-spec.test :as dst]
-    [manifold.deferred :as md])
+    [manifold.deferred :as md]
+    [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
 
@@ -33,7 +33,7 @@
       (s/fspec
         :args (s/cat :base-uri string? :conn #{::conn}))}})
   (test-util/stub-db ::conn ::db-before)
-  (f)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
@@ -65,18 +65,6 @@
         :ret #{result})}
      :stub
      #{`bundle/tx-data}}))
-
-
-(defn- stub-squuid [id]
-  (st/instrument
-    [`d/squuid]
-    {:spec
-     {`d/squuid
-      (s/fspec
-        :args (s/cat)
-        :ret #{id})}
-     :stub
-     #{`d/squuid}}))
 
 
 (deftest handler-test
@@ -170,11 +158,11 @@
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
       (test-util/stub-upsert-resource
-        ::conn ::db-before -2 resource
+        ::conn ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -223,7 +211,7 @@
       (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -257,11 +245,11 @@
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
       (test-util/stub-upsert-resource
-        ::conn ::db-before -2 resource
+        ::conn ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -309,7 +297,7 @@
         ::conn ::tx-data (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -338,14 +326,14 @@
           id #uuid "7973d432-d948-43e8-874e-3f29cf26548e"]
 
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (stub-squuid id)
+      (test-util/stub-squuid id)
       (test-util/stub-upsert-resource
-        ::conn ::db-before 0 (assoc resource "id" (str id))
+        ::conn ::db-before :server-assigned-id (assoc resource "id" (str id))
         (md/success-deferred {:db-after ::db-after}))
       (test-util/stub-resource ::db-after #{"Patient"} #{(str id)} #{{:version 0}})
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -399,13 +387,13 @@
               (assoc-in [1 "resource" "id"] (str id)))]
 
       (test-util/stub-cached-entity ::db-before #{:Patient :Observation} some?)
-      (stub-squuid id)
+      (test-util/stub-squuid id)
       (stub-tx-data ::db-before #{prepared-entries} ::tx-data)
       (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
       (test-util/stub-resource ::db-after #{"Patient" "Observation"} #{(str id)} #{{:version 0}})
       (test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)

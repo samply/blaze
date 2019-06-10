@@ -11,7 +11,8 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic-spec.test :as dst]
-    [manifold.deferred :as md]))
+    [manifold.deferred :as md]
+    [taoensso.timbre :as log]))
 
 
 (st/instrument)
@@ -28,7 +29,7 @@
       (s/fspec
         :args (s/cat :base-uri string? :conn #{::conn}))}})
   (test-util/stub-db ::conn ::db-before)
-  (f)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
@@ -86,11 +87,12 @@
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
       (test-util/stub-upsert-resource
-        ::conn ::db-before -2 resource
+        ::conn ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+      (test-util/stub-basis-transaction
+        ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
       (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
-      (test-util/stub-basis-t ::db-after "42")
+      (test-util/stub-basis-t ::db-after 42)
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
@@ -150,11 +152,12 @@
       (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
       (test-util/stub-upsert-resource
-        ::conn ::db-before -2 resource
+        ::conn ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+      (test-util/stub-basis-transaction
+        ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
       (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
-      (test-util/stub-basis-t ::db-after "42")
+      (test-util/stub-basis-t ::db-after 42)
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}

@@ -5,16 +5,14 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.util :as util]
     [blaze.handler.fhir.create :refer [handler]]
     [blaze.handler.fhir.test-util :as test-util]
-    [blaze.handler.fhir.util :as handler-fhir-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
-    [datomic.api :as d]
-    [datomic-spec.test :as dst]))
+    [datomic-spec.test :as dst]
+    [manifold.deferred :as md]
+    [taoensso.timbre :as log]))
 
 
 (st/instrument)
@@ -30,7 +28,7 @@
      {`handler
       (s/fspec
         :args (s/cat :base-uri string? :conn #{::conn}))}})
-  (f)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
@@ -62,48 +60,17 @@
 
   (testing "On newly created resource"
     (let [id #uuid "6f9c4f5e-a9b3-40fb-871c-7b0ccddb3c99"]
-      (st/instrument
-        [`d/basis-t
-         `d/db
-         `d/squuid
-         `pull/pull-resource
-         `handler-fhir-util/upsert-resource
-         `util/basis-transaction]
-        {:spec
-         {`d/basis-t
-          (s/fspec
-            :args (s/cat :db #{::db-after})
-            :ret #{"42"})
-          `d/db
-          (s/fspec
-            :args (s/cat :conn #{::conn})
-            :ret #{::db-before})
-          `d/squuid
-          (s/fspec
-            :args (s/cat)
-            :ret #{id})
-          `pull/pull-resource
-          (s/fspec
-            :args (s/cat :db #{::db-after} :type #{"Patient"} :id #{(str id)})
-            :ret #{::resource-after})
-          `handler-fhir-util/upsert-resource
-          (s/fspec
-            :args (s/cat :conn #{::conn}
-                         :db #{::db-before}
-                         :initial-version #{0}
-                         :resource #{{"resourceType" "Patient" "id" (str id)}})
-            :ret #{{:db-after ::db-after}})
-          `util/basis-transaction
-          (s/fspec
-            :args (s/cat :db #{::db-after})
-            :ret #{{:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"}})}
-         :stub
-         #{`d/basis-t
-           `d/db
-           `d/squuid
-           `pull/pull-resource
-           `handler-fhir-util/upsert-resource
-           `util/basis-transaction}})
+      (test-util/stub-db ::conn ::db-before)
+      (test-util/stub-squuid id)
+      (test-util/stub-upsert-resource
+        ::conn ::db-before :server-assigned-id
+        {"resourceType" "Patient" "id" (str id)}
+        (md/success-deferred {:db-after ::db-after}))
+      (test-util/stub-basis-transaction
+        ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+      (test-util/stub-pull-resource
+        ::db-after "Patient" (str id) #{::resource-after})
+      (test-util/stub-basis-t ::db-after 42)
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}

@@ -22,32 +22,28 @@
 
 
 (defn- delete-resource
-  [conn type id & {:keys [max-retries] :or {max-retries 5}}]
-  (md/loop [retried 0
-            db (d/db conn)]
-    (-> (tx/transact-async conn (tx/resource-deletion db type id))
-        (md/catch'
-          (fn [{::anom/keys [category] :as anomaly}]
-            (if (and (< retried max-retries) (= ::anom/conflict category))
-              (-> (d/sync conn (inc (d/basis-t db)))
-                  (md/chain #(md/recur (inc retried) %)))
-              (md/error-deferred anomaly)))))))
+  [conn db type id]
+  (let [tx-data (tx/resource-deletion db type id)]
+    (if (empty? tx-data)
+      {:db-after db}
+      (tx/transact-async conn tx-data))))
 
 
 (defn- handler-intern [conn]
   (fn [{{:keys [type id]} :path-params}]
-    (if (exists-resource? (d/db conn) type id)
-      (-> (delete-resource conn type id)
-          (md/chain'
-            (fn [{db :db-after}]
-              (let [last-modified (:db/txInstant (util/basis-transaction db))]
-                (-> (ring/response nil)
-                    (ring/status 204)
-                    (ring/header "Last-Modified" (ring-time/format-date last-modified))
-                    (ring/header "ETag" (str "W/\"" (d/basis-t db) "\"")))))))
-      (handler-util/error-response
-        {::anom/category ::anom/not-found
-         :fhir/issue "not-found"}))))
+    (let [db (d/db conn)]
+      (if (exists-resource? db type id)
+        (-> (delete-resource conn db type id)
+            (md/chain'
+              (fn [{db :db-after}]
+                (let [last-modified (:db/txInstant (util/basis-transaction db))]
+                  (-> (ring/response nil)
+                      (ring/status 204)
+                      (ring/header "Last-Modified" (ring-time/format-date last-modified))
+                      (ring/header "ETag" (str "W/\"" (d/basis-t db) "\"")))))))
+        (handler-util/error-response
+          {::anom/category ::anom/not-found
+           :fhir/issue "not-found"})))))
 
 
 (s/def :handler.fhir/delete fn?)

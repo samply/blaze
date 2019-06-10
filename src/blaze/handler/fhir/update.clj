@@ -66,7 +66,9 @@
     (let [db (d/db conn)]
       (if (util/cached-entity db (keyword type))
         (-> (validate-resource type id body)
-            (md/chain' #(handler-fhir-util/upsert-resource conn db -2 %))
+            (md/chain'
+              #(handler-fhir-util/upsert-resource
+                 conn db :client-assigned-id %))
             (md/chain' #(build-response base-uri headers type id (util/resource db type id) %))
             (md/catch' handler-util/error-response))
         (handler-util/error-response

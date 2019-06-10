@@ -22,6 +22,9 @@
      #{`d/as-of}}))
 
 
+(s/fdef stub-basis-t
+  :args (s/cat :db some? :t pos-int?))
+
 (defn stub-basis-t [db t]
   (st/instrument
     [`d/basis-t]
@@ -118,6 +121,33 @@
      #{`util/resource}}))
 
 
+(defn stub-resource-deletion [db type id result-spec]
+  (st/instrument
+    [`tx/resource-deletion]
+    {:spec
+     {`tx/resource-deletion
+      (s/fspec
+        :args (s/cat :db #{db} :type #{type} :id #{id})
+        :ret result-spec)}
+     :stub
+     #{`tx/resource-deletion}}))
+
+
+(s/fdef stub-squuid
+  :args (s/cat :id uuid?))
+
+(defn stub-squuid [id]
+  (st/instrument
+    [`d/squuid]
+    {:spec
+     {`d/squuid
+      (s/fspec
+        :args (s/cat)
+        :ret #{id})}
+     :stub
+     #{`d/squuid}}))
+
+
 (defn stub-sync [conn t db]
   (st/instrument
     [`d/sync]
@@ -142,13 +172,13 @@
      #{`tx/transact-async}}))
 
 
-(defn stub-upsert-resource [conn db initial-version resource tx-result]
+(defn stub-upsert-resource [conn db creation-mode resource tx-result]
   (st/instrument
     [`handler-fhir-util/upsert-resource]
     {:spec
      {`handler-fhir-util/upsert-resource
       (s/fspec
-        :args (s/cat :conn #{conn} :db #{db} :initial-version #{initial-version}
+        :args (s/cat :conn #{conn} :db #{db} :creation-mode #{creation-mode}
                      :resource #{resource})
         :ret #{tx-result})}
      :stub

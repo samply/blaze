@@ -35,24 +35,23 @@
     (d/datoms (d/history db) :eavt eid :version)))
 
 
-(defn- method [version]
+(defn- method [resource]
   (cond
-    (zero? version) "POST"
-    (util/deleted? version) "DELETE"
+    (= -3 (:version resource)) "POST"
+    (util/deleted? resource) "DELETE"
     :else "PUT"))
 
 
 (defn- url [base-uri type id version]
   (cond-> (str base-uri "/" type)
-    (not (zero? version))
+    (not= -3 version)
     (str "/" id)))
 
 
-(defn status [version]
+(defn status [resource]
   (cond
-    (zero? version) "201"
-    (util/deleted? version) "204"
-    ;; TODO: differentiate between PUT 201 und 200
+    (#{-3 -4} (:version resource)) "201"
+    (util/deleted? resource) "204"
     :else "200"))
 
 
@@ -63,13 +62,13 @@
     (cond->
       {:fullUrl (str base-uri "/" type "/" id)
        :request
-       {:method (method (:version resource))
+       {:method (method resource)
         :url (url base-uri type id (:version resource))}
        :response
-       {:status (status (:version resource))
+       {:status (status resource)
         :etag (str "W/\"" t "\"")
         :lastModified (str (util/tx-instant transaction))}}
-      (not (util/deleted? (:version resource)))
+      (not (util/deleted? resource))
       (assoc :resource (pull/pull-resource* db type resource)))))
 
 
@@ -77,6 +76,7 @@
   (ring/response
     {:resourceType "Bundle"
      :type "history"
+     :total (util/ordinal-version (d/entity db eid))
      :entry (mapv #(build-entry base-uri db type id eid %) transactions)}))
 
 
