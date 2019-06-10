@@ -1519,7 +1519,40 @@
 
   (testing "Does nothing on subsequent delete"
     (let [[db] (with-deleted-resource db "Patient" "0")]
-      (is (empty? (resource-deletion db "Patient" "0"))))))
+      (is (empty? (resource-deletion db "Patient" "0")))))
+
+  (testing "Retracts"
+
+    (testing "primitive single-valued single-typed element"
+      (testing "with boolean type"
+        (let [[db id] (with-resource db "Patient" "0" :Patient/active true)]
+          (is
+            (=
+              (resource-deletion db "Patient" "0")
+              [[:db.fn/cas id :version 0 -1]
+               [:db/retract id :Patient/active true]])))))
+
+    (testing "non-primitive single-valued single-typed element"
+      (let [[db status-id]
+            (with-non-primitive db :CodeableConcept/text "married")
+            [db patient-id]
+            (with-resource db "Patient" "0" :Patient/maritalStatus status-id)]
+        (is
+          (=
+            (resource-deletion db "Patient" "0")
+            [[:db.fn/cas patient-id :version 0 -1]
+             [:db/retract status-id :CodeableConcept/text "married"]
+             [:db/retract patient-id :Patient/maritalStatus status-id]]))))
+
+    (testing "non-primitive multi-valued element"
+      (let [[db name-id] (with-non-primitive db :HumanName/family "Doe")
+            [db patient-id] (with-resource db "Patient" "0" :Patient/name name-id)]
+        (is
+          (=
+            (resource-deletion db "Patient" "0")
+            [[:db.fn/cas patient-id :version 0 -1]
+             [:db/retract name-id :HumanName/family "Doe"]
+             [:db/retract patient-id :Patient/name name-id]]))))))
 
 
 (deftest coerce-value-test

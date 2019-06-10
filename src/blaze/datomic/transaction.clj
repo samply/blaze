@@ -592,10 +592,16 @@
       (retract-single-typed-element context element entity value))))
 
 
-(def ^:private remove-contained-resource-element
+(def ^:private contained-resource-element-remover
   (remove
     (fn [{:element/keys [type-code]}]
       (= "Resource" type-code))))
+
+
+(def ^:private coding-system-version-remover
+  (remove
+    (fn [{:db/keys [ident]}]
+      (#{:Coding/system :Coding/version} ident))))
 
 
 (s/fdef upsert
@@ -637,10 +643,8 @@
       []
       (comp
         (map #(util/cached-entity db %))
-        remove-contained-resource-element
-        (remove
-          (fn [{:db/keys [ident]}]
-            (#{:Coding/system :Coding/version} ident)))
+        contained-resource-element-remover
+        coding-system-version-remover
         (mapcat
           (fn [element]
             (if-let [[new-value value-element] (find-json-value db element new-entity)]
@@ -811,6 +815,13 @@
   [:db.fn/cas id :version version (dec version)])
 
 
+(defn- resource-id-remover [type]
+  (let [id-attr (util/resource-id-attr type)]
+    (remove
+      (fn [{:db/keys [ident]}]
+        (= id-attr ident)))))
+
+
 (s/fdef resource-deletion
   :args (s/cat :db ::ds/db :type string? :id string?)
   :ret ::ds/tx-data)
@@ -821,7 +832,17 @@
   [db type id]
   (when-let [resource (util/resource db type id)]
     (when-not (util/deleted? (:version resource))
-      [(version-increment-delete resource)])))
+      (into
+        [(version-increment-delete resource)]
+        (comp
+          (map #(util/cached-entity db %))
+          contained-resource-element-remover
+          coding-system-version-remover
+          (resource-id-remover type)
+          (mapcat
+            (fn [element]
+              (retract-element {:db db} element resource))))
+        (:type/elements (util/cached-entity db (keyword type)))))))
 
 
 (defn- category [e]
