@@ -255,7 +255,7 @@
   {:arglists '([db element id value])}
   [{:keys [db] :as context}
    {:element/keys [type-code part-of-choice-type? type-attr-ident]
-    :ElementDefinition/keys [path] :db/keys [ident] :as element}
+    :db/keys [ident]}
    id value]
   (case type-code
     "Reference"
@@ -293,7 +293,7 @@
                          :element/ident ident}))))
 
     "BackboneElement"
-    (let [tid (d/tempid (keyword "part" path))
+    (let [tid (d/tempid (keyword "part" (str (namespace ident) "." (name ident))))
           tx-data (upsert context ident {:db/id tid} value)]
       (when-not (empty? tx-data)
         (conj tx-data [:db/add id ident tid])))

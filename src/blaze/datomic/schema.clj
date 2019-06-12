@@ -198,8 +198,7 @@
                 (if (= "*" max)
                   :db.cardinality/many
                   :db.cardinality/one)
-                :element/choice-type? choice-type?
-                :ElementDefinition/path path}
+                :element/choice-type? choice-type?}
                (and (not choice-type?) (component? type))
                (assoc :db/isComponent true)
                (and (not choice-type?) (= "id" (-> type first :code)))

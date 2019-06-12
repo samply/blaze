@@ -46,11 +46,23 @@
              :db/unique :db.unique/identity
              :element/primitive? true
              :element/choice-type? false
-             :ElementDefinition/path "Patient.id"
              :ElementDefinition/isSummary true
              :element/type-code "id"
              :element/json-key "id"}
             [:db/add "Patient" :type/elements "Patient.id"]])))
+
+  (testing "Patient.active"
+    (is (= (element-definition-tx-data (element-definitions "Patient.active"))
+           [{:db/id "Patient.active"
+             :db/ident :Patient/active
+             :db/valueType :db.type/boolean
+             :db/cardinality :db.cardinality/one
+             :element/primitive? true
+             :element/choice-type? false
+             :ElementDefinition/isSummary true
+             :element/type-code "boolean"
+             :element/json-key "active"}
+            [:db/add "Patient" :type/elements "Patient.active"]])))
 
   (testing "Patient.gender"
     (is (= (element-definition-tx-data (element-definitions "Patient.gender"))
@@ -60,7 +72,6 @@
              :db/cardinality :db.cardinality/one
              :element/primitive? true
              :element/choice-type? false
-             :ElementDefinition/path "Patient.gender"
              :ElementDefinition/isSummary true
              :element/type-code "code"
              :element/json-key "gender"
@@ -75,7 +86,6 @@
              :db/cardinality :db.cardinality/one
              :element/primitive? true
              :element/choice-type? false
-             :ElementDefinition/path "Patient.birthDate"
              :ElementDefinition/isSummary true
              :element/type-code "date"
              :element/json-key "birthDate"}
@@ -88,7 +98,6 @@
              :db/valueType :db.type/ref
              :db/cardinality :db.cardinality/one
              :element/choice-type? true
-             :ElementDefinition/path "Patient.deceased[x]"
              :ElementDefinition/isSummary true}
             {:db/id "Patient.deceasedBoolean"
              :db/ident :Patient/deceasedBoolean
@@ -121,7 +130,6 @@
              :db/isComponent true
              :element/primitive? false
              :element/choice-type? false
-             :ElementDefinition/path "Patient.telecom"
              :ElementDefinition/isSummary true
              :element/type-code "ContactPoint"
              :element/json-key "telecom"}
@@ -137,7 +145,6 @@
              :db/isComponent true
              :element/primitive? false
              :element/choice-type? false
-             :ElementDefinition/path "Patient.link"
              :ElementDefinition/isSummary true
              :element/type-code "BackboneElement"
              :element/json-key "link"}
@@ -154,7 +161,6 @@
              :db/cardinality :db.cardinality/one
              :element/primitive? false
              :element/choice-type? false
-             :ElementDefinition/path "Patient.link.other"
              :ElementDefinition/isSummary true
              :element/type-code "Reference"
              :element/json-key "other"}
@@ -169,7 +175,6 @@
              :db/cardinality :db.cardinality/one
              :element/primitive? true
              :element/choice-type? false
-             :ElementDefinition/path "Patient.link.type"
              :ElementDefinition/isSummary true
              :element/type-code "code"
              :element/json-key "type"
@@ -180,7 +185,6 @@
     (is (= (element-definition-tx-data (element-definitions "Patient.extension"))
            [{:db/valueType :db.type/ref,
              :db/isComponent true,
-             :ElementDefinition/path "Patient.extension",
              :element/type-code "Extension",
              :element/choice-type? false,
              :element/json-key "extension",
@@ -200,7 +204,6 @@
              :db/isComponent true
              :element/primitive? false
              :element/choice-type? false
-             :ElementDefinition/path "Observation.code"
              :ElementDefinition/isSummary true
              :element/type-code "CodeableConcept"
              :element/json-key "code"}
@@ -214,7 +217,6 @@
     (is (= (element-definition-tx-data (element-definitions "CodeSystem.concept"))
            [{:db/valueType :db.type/ref,
              :db/isComponent true,
-             :ElementDefinition/path "CodeSystem.concept",
              :element/type-code "BackboneElement",
              :element/choice-type? false,
              :element/json-key "concept",
@@ -247,7 +249,6 @@
              :db/unique :db.unique/identity
              :element/primitive? true
              :element/choice-type? false
-             :ElementDefinition/path "Bundle.id"
              :ElementDefinition/isSummary true
              :element/type-code "id"
              :element/json-key "id"}
@@ -261,7 +262,6 @@
              :db/cardinality :db.cardinality/one
              :element/primitive? true
              :element/choice-type? false
-             :ElementDefinition/path "Money.value"
              :ElementDefinition/isSummary true
              :element/type-code "decimal"
              :element/json-key "value"}
