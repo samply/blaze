@@ -530,8 +530,12 @@
 
 
 (defn- retract-primitive-card-many-element
-  [{:db/keys [ident]} {:db/keys [id]} value]
-  (mapv (fn [value] (assert (some? value)) [:db/retract id ident value]) value))
+  [{:db/keys [ident] :element/keys [type-code]} {:db/keys [id]} value]
+  (mapv
+    (fn [value]
+      (assert (some? value))
+      [:db/retract id ident (if (= "code" type-code) (:db/id value) value)])
+    value))
 
 
 (defn- retract-non-primitive-card-one-element

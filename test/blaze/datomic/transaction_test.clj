@@ -1521,6 +1521,7 @@
     (let [[db] (with-deleted-resource db "Patient" "0")]
       (is (empty? (resource-deletion db "Patient" "0")))))
 
+
   (testing "Retracts"
 
     (testing "primitive single-valued single-typed element"
@@ -1530,7 +1531,49 @@
             (=
               (resource-deletion db "Patient" "0")
               [[:db.fn/cas id :version -3 -5]
-               [:db/retract id :Patient/active true]])))))
+               [:db/retract id :Patient/active true]]))))
+
+      (testing "with code type"
+        (let [[db gender-id] (with-gender-code db "male")
+              [db patient-id]
+              (with-resource db "Patient" "0" :Patient/gender gender-id)]
+          (is
+            (=
+              (resource-deletion db "Patient" "0")
+              [[:db.fn/cas patient-id :version -3 -5]
+               [:db/retract patient-id :Patient/gender gender-id]])))))
+
+    (testing "primitive multi-valued single-typed element"
+      (testing "with one value"
+        (let [[db id]
+              (with-resource
+                db "ServiceRequest" "0" :ServiceRequest/instantiatesUri "foo")]
+          (is
+            (= (resource-deletion db "ServiceRequest" "0")
+               [[:db.fn/cas id :version -3 -5]
+                [:db/retract id :ServiceRequest/instantiatesUri "foo"]]))))
+
+      (testing "with multiple values"
+        (let [[db id]
+              (with-resource
+                db "ServiceRequest" "0"
+                :ServiceRequest/instantiatesUri #{"one" "two"})]
+          (is
+            (= (set (resource-deletion db "ServiceRequest" "0"))
+               #{[:db.fn/cas id :version -3 -5]
+                 [:db/retract id :ServiceRequest/instantiatesUri "one"]
+                 [:db/retract id :ServiceRequest/instantiatesUri "two"]}))))
+
+      (testing "with code type"
+        (let [[db medication-id] (with-code db "medication")
+              [db id]
+              (with-resource
+                db "AllergyIntolerance" "0"
+                :AllergyIntolerance/category medication-id)]
+          (is
+            (= (resource-deletion db "AllergyIntolerance" "0")
+               [[:db.fn/cas id :version -3 -5]
+                [:db/retract id :AllergyIntolerance/category medication-id]])))))
 
     (testing "non-primitive single-valued single-typed element"
       (let [[db status-id]
