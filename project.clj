@@ -67,4 +67,6 @@
 
   :main ^:skip-aot blaze.core
 
+  :hiera {:ignore-ns #{user}}
+
   :aliases {"kaocha" ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"]})
