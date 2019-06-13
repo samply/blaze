@@ -43,9 +43,9 @@
 (defn last-transaction
   "Returns the transaction of the last update of `resource`."
   {:arglists '([resource])}
-  [{:db/keys [id] :as resource}]
+  [{eid :db/id :as resource}]
   (let [db (d/entity-db resource)]
-    (d/entity db (:tx (first (d/datoms db :eavt id :version))))))
+    (d/entity db (:tx (first (d/datoms db :eavt eid :version))))))
 
 
 (s/fdef tx-instant
@@ -106,9 +106,20 @@
 (defn deleted? [resource]
   (bit-test (:version resource) 1))
 
+
 (defn ordinal-version
   "Returns the strong monotonic increasing ordinal version of `resource`.
 
   Ordinal versions start with 1."
   [resource]
   (- (bit-shift-right (:version resource) 2)))
+
+
+(defn transaction-history
+  "Returns a reducible coll of all transactions on resource with `eid`.
+  Newest first."
+  [db eid]
+  (eduction
+    (filter :added)
+    (map #(d/entity db (:tx %)))
+    (d/datoms (d/history db) :eavt eid :version)))

@@ -23,18 +23,6 @@
        (:db/id (util/resource db type id))))
 
 
-(defn- transactions
-  "Returns a seq of all transactions on resource with `eid`. Newest first."
-  [db eid]
-  (into
-    []
-    (comp
-      (filter :added)
-      (take 50)
-      (map #(d/entity db (:tx %))))
-    (d/datoms (d/history db) :eavt eid :version)))
-
-
 (defn- method [resource]
   (cond
     (= -3 (:version resource)) "POST"
@@ -90,7 +78,11 @@
   (fn [{{:keys [type id]} :path-params :keys [query-params]}]
     (let [db (d/db conn)]
       (if-let [eid (resource-eid db type id)]
-        (let [transactions (transactions (since db query-params) eid)]
+        (let [transactions
+              (into
+                []
+                (take 50)
+                (util/transaction-history (since db query-params) eid))]
           (build-response base-uri db type id eid transactions))
         (handler-util/error-response
           {::anom/category ::anom/not-found
