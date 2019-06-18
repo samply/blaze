@@ -47,7 +47,7 @@
       (given (pull-resource db "Patient" "0")
         ;; this is the t of the last transaction. it could change if the
         ;; transactions before change
-        ["meta" "versionId"] := "9841")))
+        ["meta" "versionId"] := "9779")))
 
   (testing "meta.lastUpdated"
     (let [[db] (with-resource db "Patient" "0")]

@@ -67,6 +67,8 @@
 
 (comment
 
+  (count (read-structure-definitions "fhir/r4/structure-definitions"))
+
   (d/create-database "datomic:mem://dev")
   (d/create-database "datomic:free://localhost:4334/dev-7?password=foo")
   (d/delete-database "datomic:mem://dev")

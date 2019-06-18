@@ -19,7 +19,10 @@
 (defn read-structure-definitions [dir]
   (into
     (extract "complex-type" (read-bundle (str dir "/profiles-types.json")))
-    (extract "resource" (read-bundle (str dir "/profiles-resources.json")))))
+    (into
+      []
+      (remove #(= "Parameters" (:name %)))
+      (extract "resource" (read-bundle (str dir "/profiles-resources.json"))))))
 
 
 (defn read-other [dir file]
