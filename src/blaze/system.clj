@@ -11,7 +11,7 @@
     [blaze.bundle :as bundle]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.schema :as schema]
-    [blaze.executors :as executors]
+    [blaze.executors :as ex]
     [blaze.handler.app :as app-handler]
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
     [blaze.handler.fhir.capabilities :as fhir-capabilities-handler]
@@ -25,14 +25,16 @@
     [blaze.handler.fhir.search :as fhir-search-handler]
     [blaze.handler.fhir.transaction :as fhir-transaction-handler]
     [blaze.handler.fhir.update :as fhir-update-handler]
+    [blaze.fhir.operation.evaluate-measure.handler
+     :as fhir-operation-evaluate-measure-handler]
     [blaze.handler.health :as health-handler]
     [blaze.handler.metrics :as metrics-handler]
     [blaze.metrics :as metrics]
     [blaze.middleware.fhir.metrics :as fhir-metrics]
     [blaze.middleware.json :as json]
     [blaze.server :as server]
-    [blaze.structure-definition :refer [read-structure-definitions
-                                        read-other]]
+    [blaze.structure-definition :refer [read-structure-definitions]]
+    [blaze.terminology-service.extern :as ts]
     [datomic.api :as d]
     [datomic-tools.schema :as dts]
     [integrant.core :as ig]
@@ -40,7 +42,9 @@
   (:import [io.prometheus.client CollectorRegistry]
            [io.prometheus.client.hotspot StandardExports MemoryPoolsExports
                                          GarbageCollectorExports ThreadExports
-                                         ClassLoadingExports VersionInfoExports]))
+                                         ClassLoadingExports VersionInfoExports]
+           [java.time Clock]
+           [java.util.concurrent ArrayBlockingQueue TimeUnit ThreadPoolExecutor]))
 
 
 
@@ -51,7 +55,9 @@
     "TRACE" "DEBUG" "INFO" "WARN" "ERROR" "FATAL" "REPORT"})
 (s/def :config/logging (s/keys :opt [:log/level]))
 (s/def :database/uri string?)
-(s/def :config/database-conn (s/keys :req [:database/uri]))
+(s/def :config/database-conn (s/keys :opt [:database/uri]))
+(s/def :term-service/uri string?)
+(s/def :config/term-service (s/keys :opt [:term-service/uri]))
 (s/def :cache/threshold pos-int?)
 (s/def :structure-definitions/path string?)
 (s/def :config/base-url string?)
@@ -67,6 +73,7 @@
     :opt-un
     [:config/logging
      :config/database-conn
+     :config/term-service
      :config/cache
      :config/structure-definitions
      :config/fhir-capabilities-handler
@@ -78,7 +85,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha52")
+(def ^:private version "0.6-alpha58")
 
 (def ^:private base-url "http://localhost:8080")
 
@@ -92,9 +99,17 @@
    {:structure-definitions (ig/ref :structure-definitions)
     :database/uri "datomic:mem://dev"}
 
+   :term-service-executor {}
+
+   :term-service
+   {:term-service/uri "http://tx.fhir.org/r4"
+    :executor (ig/ref :term-service-executor)}
+
    :cache {}
 
    :transaction-interaction-executor {}
+
+   :evaluate-measure-operation-executor {}
 
    :health-handler {}
 
@@ -108,7 +123,8 @@
     :structure-definitions (ig/ref :structure-definitions)}
 
    :fhir-create-handler
-   {:database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)
+    :term-service (ig/ref :term-service)}
 
    :fhir-delete-handler
    {:database/conn (ig/ref :database-conn)}
@@ -129,11 +145,19 @@
    {:database/conn (ig/ref :database-conn)}
 
    :fhir-transaction-handler
-   {:executor (ig/ref :transaction-interaction-executor)
-    :database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)
+    :executor (ig/ref :transaction-interaction-executor)
+    :term-service (ig/ref :term-service)}
 
    :fhir-update-handler
-   {:database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)
+    :term-service (ig/ref :term-service)}
+
+   :fhir-operation-evaluate-measure-handler
+   {:clock (Clock/systemDefaultZone)
+    :term-service (ig/ref :term-service)
+    :executor (ig/ref :evaluate-measure-operation-executor)
+    :database/conn (ig/ref :database-conn)}
 
    :fhir-core-handler
    {:base-url base-url
@@ -148,7 +172,9 @@
      :handler.fhir/read (ig/ref :fhir-read-handler)
      :handler.fhir/search (ig/ref :fhir-search-handler)
      :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
-     :handler.fhir/update (ig/ref :fhir-update-handler)}}
+     :handler.fhir/update (ig/ref :fhir-update-handler)
+     :handler.fhir.operation/evaluate-measure
+     (ig/ref :fhir-operation-evaluate-measure-handler)}}
 
    :app-handler
    {:base-url base-url
@@ -168,7 +194,9 @@
 
    :metrics/registry
    {:server-executor (ig/ref :server-executor)
-    :transaction-interaction-executor (ig/ref :transaction-interaction-executor)}
+    :transaction-interaction-executor (ig/ref :transaction-interaction-executor)
+    :evaluate-measure-operation-executor (ig/ref :evaluate-measure-operation-executor)
+    :term-service-executor (ig/ref :term-service-executor)}
 
    :metrics-handler
    {:registry (ig/ref :metrics/registry)}
@@ -230,6 +258,16 @@
   (d/connect uri))
 
 
+(defmethod ig/init-key :term-service-executor
+  [_ _]
+  (ThreadPoolExecutor. 4 4 1 TimeUnit/MINUTES (ArrayBlockingQueue. 100)))
+
+
+(defmethod ig/init-key :term-service
+  [_ {:term-service/keys [uri] :keys [executor]}]
+  (ts/term-service uri executor))
+
+
 (defmethod ig/init-key :cache
   [_ {:cache/keys [threshold] :or {threshold 128}}]
   (atom (cache/lru-cache-factory {} :threshold threshold)))
@@ -237,7 +275,7 @@
 
 (defmethod ig/init-key :transaction-interaction-executor
   [_ _]
-  (executors/cpu-bound-pool))
+  (ex/cpu-bound-pool "transaction-interaction-%d"))
 
 
 (defmethod ig/init-key :health-handler
@@ -256,8 +294,8 @@
 
 
 (defmethod ig/init-key :fhir-create-handler
-  [_ {:database/keys [conn]}]
-  (fhir-create-handler/handler conn))
+  [_ {:database/keys [conn] :keys [term-service]}]
+  (fhir-create-handler/handler conn term-service))
 
 
 (defmethod ig/init-key :fhir-delete-handler
@@ -291,18 +329,28 @@
 
 
 (defmethod ig/init-key :fhir-transaction-handler
-  [_ {:keys [executor] :database/keys [conn]}]
-  (fhir-transaction-handler/handler conn executor))
+  [_ {:database/keys [conn] :keys [term-service executor]}]
+  (fhir-transaction-handler/handler conn term-service executor))
 
 
 (defmethod ig/init-key :fhir-update-handler
-  [_ {:database/keys [conn]}]
-  (fhir-update-handler/handler conn))
+  [_ {:database/keys [conn] :keys [term-service]}]
+  (fhir-update-handler/handler conn term-service))
 
 
 (defmethod ig/init-key :fhir-core-handler
   [_ {:keys [base-url handlers] :database/keys [conn]}]
   (fhir-core-handler/handler (str base-url "/fhir") conn handlers))
+
+
+(defmethod ig/init-key :evaluate-measure-operation-executor
+  [_ _]
+  (ex/cpu-bound-pool "evaluate-measure-operation-%d"))
+
+
+(defmethod ig/init-key :fhir-operation-evaluate-measure-handler
+  [_ {:keys [clock term-service executor] :database/keys [conn]}]
+  (fhir-operation-evaluate-measure-handler/handler clock conn term-service executor))
 
 
 (defmethod ig/init-key :app-handler
@@ -312,7 +360,7 @@
 
 (defmethod ig/init-key :server-executor
   [_ _]
-  (executors/cpu-bound-pool))
+  (ex/cpu-bound-pool "server-%d"))
 
 
 (defmethod ig/init-key :server
@@ -322,7 +370,9 @@
 
 
 (defmethod ig/init-key :metrics/registry
-  [_ {:keys [server-executor transaction-interaction-executor]}]
+  [_ {:keys [server-executor transaction-interaction-executor
+             evaluate-measure-operation-executor
+             term-service-executor]}]
   (doto (CollectorRegistry. true)
     (.register (StandardExports.))
     (.register (MemoryPoolsExports.))
@@ -339,9 +389,12 @@
     (.register tx/resources-total)
     (.register tx/datoms-total)
     (.register bundle/tx-data-duration-seconds)
+    (.register ts/request-duration-seconds)
     (.register (metrics/thread-pool-executor-collector
                  [["server" server-executor]
                   ["transaction-interaction" transaction-interaction-executor]
+                  ["evaluate-measure-operation" evaluate-measure-operation-executor]
+                  ["term-service-executor" term-service-executor]
                   ["transactor" tx/tx-executor]]))))
 
 
@@ -353,7 +406,7 @@
 (defmethod ig/init-key :metrics-server
   [_ {:keys [port handler version]}]
   (log/info "Start metrics server on port" port)
-  (server/init! port (executors/single-thread-executor) handler version))
+  (server/init! port (ex/single-thread-executor) handler version))
 
 
 (defmethod ig/init-key :default

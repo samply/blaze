@@ -7,6 +7,7 @@
     [clojure.test :refer :all]
     [clojure.test.check.properties :as prop]
     [blaze.datomic.cql :as cql]
+    [blaze.datomic.cql-test :as cql-test]
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.elm.compiler
      :refer [compile compile-with-equiv-clause -eval -hash]]
@@ -18,12 +19,13 @@
     [blaze.test-util :refer [satisfies-prop]]
     [blaze.datomic.value :as dv])
   (:import
+    [blaze.elm.date_time Period]
+    [clojure.core Eduction]
     [java.math BigDecimal]
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth
                ZoneOffset]
     [java.time.temporal Temporal]
-    [javax.measure UnconvertibleException]
-    [blaze.elm.date_time Period])
+    [javax.measure UnconvertibleException])
   (:refer-clojure :exclude [compile]))
 
 
@@ -134,19 +136,29 @@
 
 ;; 3. Clinical Values
 
+;; 3.1. Code
+;;
+;; The Code type represents a literal code selector.
+(deftest compile-code-test
+  (cql-test/stub-find-code ::db "life" "0" ::code)
+
+  (let [context
+        {:db ::db
+         :library
+         {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}}}
+        code
+        {:type "Code"
+         :system {:name "life"}
+         :code "0"}]
+    (is (= ::code (-eval (compile context code) {:db ::db} nil)))))
+
+
 ;; 3.3. CodeRef
 ;;
 ;; The CodeRef expression allows a previously defined code to be referenced
 ;; within an expression.
 (deftest compile-code-ref-test
-  (st/instrument
-    `cql/find-code
-    {:spec
-     {`cql/find-code
-      (s/fspec
-        :args (s/cat :db #{::db} :system #{"life"} :code #{"0"})
-        :ret #{::code})}
-     :stub #{`cql/find-code}})
+  (cql-test/stub-find-code ::db "life" "0" ::code)
 
   (let [context
         {:db ::db
@@ -193,8 +205,8 @@
 
   (testing "Periods"
     (satisfies-prop 100
-      (prop/for-all [period (s/gen :elm/period)]
-        (#{BigDecimal Period} (type (-eval (compile {} period) {} {})))))))
+                    (prop/for-all [period (s/gen :elm/period)]
+                      (#{BigDecimal Period} (type (-eval (compile {} period) {} {})))))))
 
 
 ;; 9. Reusing Logic
@@ -229,7 +241,15 @@
          [{:alias "S"
            :expression #elm/list [#elm/int "1" #elm/int "1"]}]
          :return {:distinct false :expression {:type "AliasRef" :name "S"}}}
-        [1 1])))
+        [1 1]))
+
+    (testing "returns only the first item on optimize first"
+      (let [query {:type "Query"
+                   :source
+                   [{:alias "S"
+                     :expression #elm/list [#elm/int "1" #elm/int "1"]}]}
+            res (-eval (compile {:optimizations #{:first}} query) {} nil)]
+        (instance? Eduction res))))
 
   (testing "Retrieve queries"
     (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
@@ -352,14 +372,7 @@
 
 ;; 11.1. Retrieve
 (deftest compile-retrieve-test
-  (st/instrument
-    `cql/find-code
-    {:spec
-     {`cql/find-code
-      (s/fspec
-        :args (s/cat :db #{::db} :system #{"life"} :code #{"0"})
-        :ret #{::code})}
-     :stub #{`cql/find-code}})
+  (cql-test/stub-find-code ::db "life" "0" {:db/id ::code-eid :code/id "code-id"})
   (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
   (let [context
@@ -376,41 +389,52 @@
     (testing "in Patient eval context"
 
       (testing "while retrieving patients"
-        (let [elm {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}]
+        (let [elm {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
+              expr (compile (assoc context :eval-context "Patient") elm)
+              context {:patient ::patient}]
           (testing "a singleton list of the current patient is returned"
-            (is (= [::patient]
-                   (-eval (compile (assoc context :eval-context "Patient") elm)
-                          {:patient ::patient} nil))))))
+            (is (= [::patient] (-eval expr context nil))))))
 
       (testing "while retrieving observations"
-        (let [elm {:dataType "{http://hl7.org/fhir}Observation" :type "Retrieve"}]
+        (let [elm {:dataType "{http://hl7.org/fhir}Observation" :type "Retrieve"}
+              expr (compile (assoc context :eval-context "Patient") elm)
+              context {:patient {:Observation/_subject [::observation]}}]
           (testing "the observations of the current patient are returned"
-            (is (= [::observation]
-                   (-eval (compile (assoc context :eval-context "Patient") elm)
-                          {:patient {:Observation/_subject [::observation]}} nil))))))
+            (is (= [::observation] (-eval expr context nil))))))
 
       (testing "while retrieving observations with one specific code"
+        (let [elm {:dataType "{http://hl7.org/fhir}Observation"
+                   :codeProperty "code"
+                   :type "Retrieve"
+                   :codes {:type "ToList"
+                           :operand {:name "lens_0" :type "CodeRef"}}}
+              expr (compile (assoc context :eval-context "Patient") elm)
+              context {:db ::db :patient {:Patient.Observation.code/code-id [::observation]}}]
+          (testing "the observations with that code of the current patient are returned"
+            (is (= [::observation] (-eval expr context nil))))))
+
+      (testing "while retrieving conditions with one specific code"
         (st/instrument
           `cql/list-patient-resource-by-code
           {:spec
            {`cql/list-patient-resource-by-code
             (s/fspec
               :args (s/cat :patient #{::patient}
-                           :data-type-name #{"Observation"}
-                           :code-property-name #{"code"}
-                           :code #{[::code]})
-              :ret #{[::observation]})}
+                           :subject-attr #{:Condition/subject}
+                           ::code-index-attr #{:Condition.index/code}
+                           :code #{[::code-eid]})
+              :ret #{[::condition]})}
            :stub #{`cql/list-patient-resource-by-code}})
 
-        (let [elm {:dataType "{http://hl7.org/fhir}Observation"
+        (let [elm {:dataType "{http://hl7.org/fhir}Condition"
                    :codeProperty "code"
                    :type "Retrieve"
                    :codes {:type "ToList"
-                           :operand {:name "lens_0" :type "CodeRef"}}}]
-          (testing "the observations with that code of the current patient are returned"
-            (is (= [::observation]
-                   (-eval (compile (assoc context :eval-context "Patient") elm)
-                          {:db ::db :patient ::patient} nil)))))))
+                           :operand {:name "lens_0" :type "CodeRef"}}}
+              expr (compile (assoc context :eval-context "Patient") elm)
+              context {:db ::db :patient ::patient}]
+          (testing "the conditions with that code of the current patient are returned"
+            (is (= [::condition] (-eval expr context nil)))))))
 
     (testing "Population Eval Context"
       (testing "retrieving all patients"
@@ -432,7 +456,7 @@
               :args (s/cat :db #{::db}
                            :data-type-name #{"Observation"}
                            :code-property-name #{"code"}
-                           :codes #{[::code]})
+                           :codes #{[::code-eid]})
               :ret #{[::observation]})}
            :stub #{`cql/list-resource-by-code}})
 
@@ -722,7 +746,25 @@
       #elm/quantity [1] {:type "Null"} false
 
       {:type "Null"} #elm/quantity [1 "s"] false
-      #elm/quantity [1 "s"] {:type "Null"} false)))
+      #elm/quantity [1 "s"] {:type "Null"} false))
+
+  (testing "List"
+    (are [x y res] (= res (-eval (compile {} (elm/equivalent [x y])) {} nil))
+      #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] true
+      #elm/list [] #elm/list [] true
+
+      #elm/list [#elm/int "1"] #elm/list [] false
+      #elm/list [#elm/int "1"] #elm/list [#elm/int "2"] false
+      #elm/list [#elm/int "1" #elm/int "1"]
+      #elm/list [#elm/int "1" #elm/int "2"] false
+
+      #elm/list [#elm/int "1" {:type "Null"}]
+      #elm/list [#elm/int "1" {:type "Null"}] true
+      #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] true
+      #elm/list [#elm/date "2019"] #elm/list [#elm/date "2019-01"] false
+
+      {:type "Null"} #elm/list [] false
+      #elm/list [] {:type "Null"} false)))
 
 
 ;; 12.3. Greater
@@ -1299,22 +1341,22 @@
 
   (testing "Adding zero integer to any integer or decimal doesn't change it"
     (satisfies-prop 100
-      (prop/for-all [operand (s/gen (s/or :i :elm/integer :d :elm/decimal))]
-        (let [elm (elm/equal [(elm/add [operand #elm/int "0"]) operand])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [operand (s/gen (s/or :i :elm/integer :d :elm/decimal))]
+                      (let [elm (elm/equal [(elm/add [operand #elm/int "0"]) operand])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding zero decimal to any decimal doesn't change it"
     (satisfies-prop 100
-      (prop/for-all [operand (s/gen :elm/decimal)]
-        (let [elm (elm/equal [(elm/add [operand #elm/dec "0"]) operand])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [operand (s/gen :elm/decimal)]
+                      (let [elm (elm/equal [(elm/add [operand #elm/dec "0"]) operand])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding identical integers equals multiplying the same integer by two"
     (satisfies-prop 100
-      (prop/for-all [integer (s/gen :elm/integer)]
-        (let [elm (elm/equivalent [(elm/add [integer integer])
-                                   (elm/multiply [integer #elm/int "2"])])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [integer (s/gen :elm/integer)]
+                      (let [elm (elm/equivalent [(elm/add [integer integer])
+                                                 (elm/multiply [integer #elm/int "2"])])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Decimal"
     (testing "Decimal"
@@ -1343,18 +1385,18 @@
 
   (testing "Adding identical decimals equals multiplying the same decimal by two"
     (satisfies-prop 100
-      (prop/for-all [decimal (s/gen :elm/decimal)]
-        (let [elm (elm/equal [(elm/add [decimal decimal])
-                              (elm/multiply [decimal #elm/int "2"])])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [decimal (s/gen :elm/decimal)]
+                      (let [elm (elm/equal [(elm/add [decimal decimal])
+                                            (elm/multiply [decimal #elm/int "2"])])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding identical decimals and dividing by two results in the same decimal"
     (satisfies-prop 100
-      (prop/for-all [decimal (s/gen :elm/decimal)]
-        (let [elm (elm/equal [(elm/divide [(elm/add [decimal decimal])
-                                           #elm/int "2"])
-                              decimal])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [decimal (s/gen :elm/decimal)]
+                      (let [elm (elm/equal [(elm/divide [(elm/add [decimal decimal])
+                                                         #elm/int "2"])
+                                            decimal])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Time-based quantity"
     (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
@@ -1380,18 +1422,18 @@
 
   (testing "Adding identical quantities equals multiplying the same quantity with two"
     (satisfies-prop 100
-      (prop/for-all [quantity (s/gen :elm/quantity)]
-        (let [elm (elm/equal [(elm/add [quantity quantity])
-                              (elm/multiply [quantity #elm/int "2"])])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [quantity (s/gen :elm/quantity)]
+                      (let [elm (elm/equal [(elm/add [quantity quantity])
+                                            (elm/multiply [quantity #elm/int "2"])])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding identical quantities and dividing by two results in the same quantity"
     (satisfies-prop 100
-      (prop/for-all [quantity (s/gen :elm/quantity)]
-        (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
-                                           #elm/int "2"])
-                              quantity])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [quantity (s/gen :elm/quantity)]
+                      (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
+                                                         #elm/int "2"])
+                                            quantity])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Date + Quantity"
     (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
@@ -1410,82 +1452,82 @@
 
   (testing "Adding a positive amount of years to a year makes it greater"
     (satisfies-prop 100
-      (prop/for-all [year (s/gen :elm/year)
-                     years (s/gen :elm/pos-years)]
-        (let [elm (elm/greater [(elm/add [year years]) year])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [year (s/gen :elm/year)
+                                   years (s/gen :elm/pos-years)]
+                      (let [elm (elm/greater [(elm/add [year years]) year])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding a positive amount of years to a year-month makes it greater"
     (satisfies-prop 100
-      (prop/for-all [year-month (s/gen :elm/year-month)
-                     years (s/gen :elm/pos-years)]
-        (let [elm (elm/greater [(elm/add [year-month years]) year-month])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [year-month (s/gen :elm/year-month)
+                                   years (s/gen :elm/pos-years)]
+                      (let [elm (elm/greater [(elm/add [year-month years]) year-month])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding a positive amount of years to a date makes it greater"
     (satisfies-prop 100
-      (prop/for-all [date (s/gen :elm/literal-date)
-                     years (s/gen :elm/pos-years)]
-        (let [elm (elm/greater [(elm/add [date years]) date])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [date (s/gen :elm/literal-date)
+                                   years (s/gen :elm/pos-years)]
+                      (let [elm (elm/greater [(elm/add [date years]) date])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding a positive amount of years to a date-time makes it greater"
     (satisfies-prop 100
-      (prop/for-all [date-time (s/gen :elm/literal-date-time)
-                     years (s/gen :elm/pos-years)]
-        (let [elm (elm/greater [(elm/add [date-time years]) date-time])]
-          (true? (-eval (compile {} elm) {:now now} {}))))))
+                    (prop/for-all [date-time (s/gen :elm/literal-date-time)
+                                   years (s/gen :elm/pos-years)]
+                      (let [elm (elm/greater [(elm/add [date-time years]) date-time])]
+                        (true? (-eval (compile {} elm) {:now now} {}))))))
 
   (testing "Adding a positive amount of months to a year-month makes it greater"
     (satisfies-prop 100
-      (prop/for-all [year-month (s/gen :elm/year-month)
-                     months (s/gen :elm/pos-months)]
-        (let [elm (elm/greater [(elm/add [year-month months]) year-month])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [year-month (s/gen :elm/year-month)
+                                   months (s/gen :elm/pos-months)]
+                      (let [elm (elm/greater [(elm/add [year-month months]) year-month])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding a positive amount of months to a date makes it greater or lets it equal because a date can be also a year and adding a small amount of months to a year doesn't change it."
     (satisfies-prop 100
-      (prop/for-all [date (s/gen :elm/literal-date)
-                     months (s/gen :elm/pos-months)]
-        (let [elm (elm/greater-or-equal [(elm/add [date months]) date])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [date (s/gen :elm/literal-date)
+                                   months (s/gen :elm/pos-months)]
+                      (let [elm (elm/greater-or-equal [(elm/add [date months]) date])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding a positive amount of months to a date-time makes it greater or lets it equal because a date-time can be also a year and adding a small amount of months to a year doesn't change it."
     (satisfies-prop 100
-      (prop/for-all [date-time (s/gen :elm/literal-date-time)
-                     months (s/gen :elm/pos-months)]
-        (let [elm (elm/greater-or-equal [(elm/add [date-time months]) date-time])]
-          (true? (-eval (compile {} elm) {:now now} {}))))))
+                    (prop/for-all [date-time (s/gen :elm/literal-date-time)
+                                   months (s/gen :elm/pos-months)]
+                      (let [elm (elm/greater-or-equal [(elm/add [date-time months]) date-time])]
+                        (true? (-eval (compile {} elm) {:now now} {}))))))
 
   ;; TODO: is that right?
   (testing "Adding a positive amount of days to a year doesn't change it."
     (satisfies-prop 100
-      (prop/for-all [year (s/gen :elm/year)
-                     days (s/gen :elm/pos-days)]
-        (let [elm (elm/equal [(elm/add [year days]) year])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [year (s/gen :elm/year)
+                                   days (s/gen :elm/pos-days)]
+                      (let [elm (elm/equal [(elm/add [year days]) year])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   ;; TODO: is that right?
   (testing "Adding a positive amount of days to a year-month doesn't change it."
     (satisfies-prop 100
-      (prop/for-all [year-month (s/gen :elm/year-month)
-                     days (s/gen :elm/pos-days)]
-        (let [elm (elm/equal [(elm/add [year-month days]) year-month])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [year-month (s/gen :elm/year-month)
+                                   days (s/gen :elm/pos-days)]
+                      (let [elm (elm/equal [(elm/add [year-month days]) year-month])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding a positive amount of days to a date makes it greater or lets it equal because a date can be also a year or year-month and adding any amount of days to a year or year-month doesn't change it."
     (satisfies-prop 100
-      (prop/for-all [date (s/gen :elm/literal-date)
-                     days (s/gen :elm/pos-days)]
-        (let [elm (elm/greater-or-equal [(elm/add [date days]) date])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [date (s/gen :elm/literal-date)
+                                   days (s/gen :elm/pos-days)]
+                      (let [elm (elm/greater-or-equal [(elm/add [date days]) date])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Adding a positive amount of days to a date-time makes it greater or lets it equal because a date-time can be also a year or year-month and adding any amount of days to a year or year-month doesn't change it."
     (satisfies-prop 100
-      (prop/for-all [date-time (s/gen :elm/literal-date-time)
-                     days (s/gen :elm/pos-days)]
-        (let [elm (elm/greater-or-equal [(elm/add [date-time days]) date-time])]
-          (true? (-eval (compile {} elm) {:now now} {}))))))
+                    (prop/for-all [date-time (s/gen :elm/literal-date-time)
+                                   days (s/gen :elm/pos-days)]
+                      (let [elm (elm/greater-or-equal [(elm/add [date-time days]) date-time])]
+                        (true? (-eval (compile {} elm) {:now now} {}))))))
 
   (testing "DateTime + Quantity"
     (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
@@ -1554,15 +1596,15 @@
   ;; TODO: fails for -1E-8 because of rounding
   #_(testing "(d * d) / d = d"
       (satisfies-prop 100
-        (prop/for-all [decimal (s/gen :elm/non-zero-decimal)]
-          (let [elm (elm/equal [(elm/divide [(elm/multiply [decimal decimal]) decimal]) decimal])]
-            (true? (-eval (compile {} elm) {} {}))))))
+                      (prop/for-all [decimal (s/gen :elm/non-zero-decimal)]
+                        (let [elm (elm/equal [(elm/divide [(elm/multiply [decimal decimal]) decimal]) decimal])]
+                          (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "(d / d) * d = d"
     (satisfies-prop 100
-      (prop/for-all [decimal (s/gen :elm/non-zero-decimal)]
-        (let [elm (elm/equal [(elm/multiply [(elm/divide [decimal decimal]) decimal]) decimal])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [decimal (s/gen :elm/non-zero-decimal)]
+                      (let [elm (elm/equal [(elm/multiply [(elm/divide [decimal decimal]) decimal]) decimal])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "UCUM Quantity"
     (are [a b res] (= res (-eval (compile {} (elm/divide [a b])) {} nil))
@@ -1971,8 +2013,8 @@
 
   (testing "Subtracting identical integers results in zero"
     (satisfies-prop 100
-      (prop/for-all [integer (s/gen :elm/integer)]
-        (zero? (-eval (compile {} (elm/subtract [integer integer])) {} {})))))
+                    (prop/for-all [integer (s/gen :elm/integer)]
+                      (zero? (-eval (compile {} (elm/subtract [integer integer])) {} {})))))
 
   (testing "Decimal"
     (testing "Decimal"
@@ -1997,8 +2039,8 @@
 
   (testing "Subtracting identical decimals results in zero"
     (satisfies-prop 100
-      (prop/for-all [decimal (s/gen :elm/decimal)]
-        (zero? (-eval (compile {} (elm/subtract [decimal decimal])) {} {})))))
+                    (prop/for-all [decimal (s/gen :elm/decimal)]
+                      (zero? (-eval (compile {} (elm/subtract [decimal decimal])) {} {})))))
 
   (testing "Time-based quantity"
     (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
@@ -2024,12 +2066,12 @@
 
   (testing "Subtracting identical quantities results in zero"
     (satisfies-prop 100
-      (prop/for-all [quantity (s/gen :elm/quantity)]
-        ;; Can't test for zero because can't extract value from quantity
-        ;; so use negate trick
-        (let [elm (elm/equal [(elm/negate (elm/subtract [quantity quantity]))
-                              (elm/subtract [quantity quantity])])]
-          (true? (-eval (compile {} elm) {} {}))))))
+                    (prop/for-all [quantity (s/gen :elm/quantity)]
+                      ;; Can't test for zero because can't extract value from quantity
+                      ;; so use negate trick
+                      (let [elm (elm/equal [(elm/negate (elm/subtract [quantity quantity]))
+                                            (elm/subtract [quantity quantity])])]
+                        (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "Date - Quantity"
     (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
@@ -2049,50 +2091,50 @@
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a year makes it smaller"
       (satisfies-prop 100
-        (prop/for-all [year (s/gen :elm/year)
-                       years (s/gen :elm/pos-years)]
-          (let [elm (elm/less [(elm/subtract [year years]) year])]
-            (true? (-eval (compile {} elm) {} {}))))))
+                      (prop/for-all [year (s/gen :elm/year)
+                                     years (s/gen :elm/pos-years)]
+                        (let [elm (elm/less [(elm/subtract [year years]) year])]
+                          (true? (-eval (compile {} elm) {} {}))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a year-month makes it smaller"
       (satisfies-prop 100
-        (prop/for-all [year-month (s/gen :elm/year-month)
-                       years (s/gen :elm/pos-years)]
-          (let [elm (elm/less [(elm/subtract [year-month years]) year-month])]
-            (true? (-eval (compile {} elm) {} {}))))))
+                      (prop/for-all [year-month (s/gen :elm/year-month)
+                                     years (s/gen :elm/pos-years)]
+                        (let [elm (elm/less [(elm/subtract [year-month years]) year-month])]
+                          (true? (-eval (compile {} elm) {} {}))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a date makes it smaller"
       (satisfies-prop 100
-        (prop/for-all [date (s/gen :elm/literal-date)
-                       years (s/gen :elm/pos-years)]
-          (let [elm (elm/less [(elm/subtract [date years]) date])]
-            (true? (-eval (compile {} elm) {} {}))))))
+                      (prop/for-all [date (s/gen :elm/literal-date)
+                                     years (s/gen :elm/pos-years)]
+                        (let [elm (elm/less [(elm/subtract [date years]) date])]
+                          (true? (-eval (compile {} elm) {} {}))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of months from a year-month makes it smaller"
       (satisfies-prop 100
-        (prop/for-all [year-month (s/gen :elm/year-month)
-                       months (s/gen :elm/pos-months)]
-          (let [elm (elm/less [(elm/subtract [year-month months]) year-month])]
-            (true? (-eval (compile {} elm) {} {}))))))
+                      (prop/for-all [year-month (s/gen :elm/year-month)
+                                     months (s/gen :elm/pos-months)]
+                        (let [elm (elm/less [(elm/subtract [year-month months]) year-month])]
+                          (true? (-eval (compile {} elm) {} {}))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of months from a date makes it smaller or lets it equal because a date can be also a year and subtracting a small amount of months from a year doesn't change it."
       (satisfies-prop 100
-        (prop/for-all [date (s/gen :elm/literal-date)
-                       months (s/gen :elm/pos-months)]
-          (let [elm (elm/less-or-equal [(elm/subtract [date months]) date])]
-            (true? (-eval (compile {} elm) {} {}))))))
+                      (prop/for-all [date (s/gen :elm/literal-date)
+                                     months (s/gen :elm/pos-months)]
+                        (let [elm (elm/less-or-equal [(elm/subtract [date months]) date])]
+                          (true? (-eval (compile {} elm) {} {}))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of days from a date makes it smaller or lets it equal because a date can be also a year or year-month and subtracting any amount of days from a year or year-month doesn't change it."
       (satisfies-prop 100
-        (prop/for-all [date (s/gen :elm/literal-date)
-                       days (s/gen :elm/pos-days)]
-          (let [elm (elm/less-or-equal [(elm/subtract [date days]) date])]
-            (true? (-eval (compile {} elm) {} {}))))))
+                      (prop/for-all [date (s/gen :elm/literal-date)
+                                     days (s/gen :elm/pos-days)]
+                        (let [elm (elm/less-or-equal [(elm/subtract [date days]) date])]
+                          (true? (-eval (compile {} elm) {} {}))))))
 
   (testing "DateTime - Quantity"
     (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
@@ -2606,18 +2648,18 @@
 
   (testing "an ELM year (only literals) always compiles to a Year"
     (satisfies-prop 100
-      (prop/for-all [year (s/gen :elm/literal-year)]
-        (instance? Year (compile {} year)))))
+                    (prop/for-all [year (s/gen :elm/literal-year)]
+                      (instance? Year (compile {} year)))))
 
   (testing "an ELM year-month (only literals) always compiles to a YearMonth"
     (satisfies-prop 100
-      (prop/for-all [year-month (s/gen :elm/literal-year-month)]
-        (instance? YearMonth (compile {} year-month)))))
+                    (prop/for-all [year-month (s/gen :elm/literal-year-month)]
+                      (instance? YearMonth (compile {} year-month)))))
 
   (testing "an ELM date (only literals) always compiles to something implementing Temporal"
     (satisfies-prop 100
-      (prop/for-all [date (s/gen :elm/literal-date)]
-        (instance? Temporal (compile {} date))))))
+                    (prop/for-all [date (s/gen :elm/literal-date)]
+                      (instance? Temporal (compile {} date))))))
 
 
 ;; 18.7. DateFrom
@@ -2750,8 +2792,8 @@
 
   (testing "an ELM date-time (only literals) always evaluates to something implementing Temporal"
     (satisfies-prop 100
-      (prop/for-all [date-time (s/gen :elm/literal-date-time)]
-        (instance? Temporal (-eval (compile {} date-time) {:now now} nil))))))
+                    (prop/for-all [date-time (s/gen :elm/literal-date-time)]
+                      (instance? Temporal (-eval (compile {} date-time) {:now now} nil))))))
 
 
 ;; 18.9. DateTimeComponentFrom
@@ -2967,8 +3009,8 @@
 
   (testing "an ELM time (only literals) always compiles to a LocalTime"
     (satisfies-prop 100
-      (prop/for-all [time (s/gen :elm/time)]
-        (local-time? (compile {} time)))))
+                    (prop/for-all [time (s/gen :elm/time)]
+                      (local-time? (compile {} time)))))
 
   )
 (comment (s/exercise :elm/time))

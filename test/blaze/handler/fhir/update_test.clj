@@ -25,7 +25,7 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :conn #{::conn}))}})
+        :args (s/cat :conn #{::conn} :term-service #{::term-service}))}})
   (datomic-test-util/stub-db ::conn ::db-before)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
@@ -37,7 +37,7 @@
 (deftest handler-test
   (testing "Returns Error on type mismatch"
     (let [{:keys [status body]}
-          @((handler ::conn)
+          @((handler ::conn ::term-service)
              {:path-params {:type "Patient" :id "0"}
               :body {"resourceType" "Observation"}})]
 
@@ -56,7 +56,7 @@
 
   (testing "Returns Error on ID mismatch"
     (let [{:keys [status body]}
-          @((handler ::conn)
+          @((handler ::conn ::term-service)
              {:path-params {:type "Patient" :id "0"}
               :body {"resourceType" "Patient" "id" "1"}})]
 
@@ -77,7 +77,7 @@
     (let [resource {"resourceType" "Patient" "id" "0"}]
       (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
       (test-util/stub-upsert-resource
-        ::conn ::db-before :client-assigned-id resource
+        ::conn ::term-service ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
       (datomic-test-util/stub-basis-transaction
         ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
@@ -88,7 +88,7 @@
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
-              @((handler ::conn)
+              @((handler ::conn ::term-service)
                 {::reitit/router ::router
                  :path-params {:type "Patient" :id "0"}
                   :body resource})]
@@ -111,7 +111,7 @@
 
       (testing "with return=minimal Prefer header"
         (let [{:keys [body]}
-              @((handler ::conn)
+              @((handler ::conn ::term-service)
                 {::reitit/router ::router
                  :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=minimal"}
@@ -122,7 +122,7 @@
 
       (testing "with return=representation Prefer header"
         (let [{:keys [body]}
-              @((handler ::conn)
+              @((handler ::conn ::term-service)
                 {::reitit/router ::router
                  :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=representation"}
@@ -133,7 +133,7 @@
 
       (testing "with return=OperationOutcome Prefer header"
         (let [{:keys [body]}
-              @((handler ::conn)
+              @((handler ::conn ::term-service)
                 {::reitit/router ::router
                  :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=OperationOutcome"}
@@ -147,7 +147,7 @@
     (let [resource {"resourceType" "Patient" "id" "0"}]
       (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
       (test-util/stub-upsert-resource
-        ::conn ::db-before :client-assigned-id resource
+        ::conn ::term-service ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
       (datomic-test-util/stub-basis-transaction
         ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
@@ -156,7 +156,7 @@
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
-              @((handler ::conn)
+              @((handler ::conn ::term-service)
                  {:path-params {:type "Patient" :id "0"}
                   :body resource})]
 
@@ -175,7 +175,7 @@
 
       (testing "with return=minimal Prefer header"
         (let [{:keys [status body]}
-              @((handler ::conn)
+              @((handler ::conn ::term-service)
                  {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=minimal"}
                   :body resource})]
@@ -188,7 +188,7 @@
 
       (testing "with return=representation Prefer header"
         (let [{:keys [status body]}
-              @((handler ::conn)
+              @((handler ::conn ::term-service)
                  {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=representation"}
                   :body resource})]
@@ -201,7 +201,7 @@
 
       (testing "with return=OperationOutcome Prefer header"
         (let [{:keys [status body]}
-              @((handler ::conn)
+              @((handler ::conn ::term-service)
                  {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=OperationOutcome"}
                   :body resource})]

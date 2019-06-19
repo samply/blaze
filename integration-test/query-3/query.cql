@@ -10,7 +10,7 @@ code "Seronegative chronische Polyarthritis": 'M06.9' from "ICD-10-GM:2019"
 context Patient
 
 define Qualifies:
-  Exists([Condition: "Seronegative chronische Polyarthritis"] C
+  exists([Condition: "Seronegative chronische Polyarthritis"] C
           where AgeInYearsAt(C.onset) >= 18)
 
 context Population

@@ -19,7 +19,6 @@
     [blaze.elm.type-infer :as type-infer]
     [blaze.datomic.cql :as datomic-cql]
     [blaze.datomic.pull]
-    [blaze.datomic.schema :as schema]
     [blaze.datomic.util :as datomic-util]
     [blaze.spec]
     [blaze.structure-definition :refer [read-structure-definitions read-other]]
@@ -91,7 +90,9 @@
   (def db (d/db conn))
   (def now (OffsetDateTime/now))
 
-  (def library (cql/translate (slurp "queries/time-based-2.cql")))
+  (def library (cql/translate (slurp "queries/q1-gender.cql")))
+  (def library (cql/translate (slurp "queries/q2-bmi.cql")))
+  (def library (cql/translate (slurp "queries/q3-storage-temperature.cql")))
 
   (-> library
       normalizer/normalize-library
@@ -122,4 +123,14 @@
   (prom/clear! datomic-cql/call-seconds)
   (println (:body (prom/dump-metrics)))
 
+  )
+
+;; Extract Codes from Code System
+(comment
+  (mapcat
+    (fn [{:strs [code concept]}]
+      (if concept
+        (cons code (map #(get % "code") concept))
+        [code]))
+    (cheshire.core/parse-string ""))
   )

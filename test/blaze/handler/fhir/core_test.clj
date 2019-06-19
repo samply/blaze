@@ -45,7 +45,9 @@
    :handler.fhir/read (fn [_] ::fhir-read-handler)
    :handler.fhir/search (fn [_] ::fhir-search-handler)
    :handler.fhir/transaction (fn [_] ::fhir-transaction-handler)
-   :handler.fhir/update (fn [_] ::fhir-update-handler)})
+   :handler.fhir/update (fn [_] ::fhir-update-handler)
+   :handler.fhir.operation/evaluate-measure
+   (fn [_] ::fhir-operation-evaluate-measure-handler)})
 
 
 (defn test-handler []
@@ -66,7 +68,9 @@
     "Patient/0" :put ::fhir-update-handler
     "Patient/0" :delete ::fhir-delete-handler
     "Patient/0/_history" :get ::fhir-history-instance-handler
-    "Patient/0/_history/42" :get ::fhir-read-handler))
+    "Patient/0/_history/42" :get ::fhir-read-handler
+    "Measure/0/$evaluate-measure" :get ::fhir-operation-evaluate-measure-handler
+    "Measure/0/$evaluate-measure" :post ::fhir-operation-evaluate-measure-handler))
 
 
 (deftest router-match-by-name-test

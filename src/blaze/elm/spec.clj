@@ -243,6 +243,24 @@
   (s/keys :opt-un [:elm/name :elm/libraryName]))
 
 
+;; 3.1. Code
+(s/def :elm.code/system
+  :elm/code-system-ref)
+
+
+(s/def :elm.code/code
+  string?)
+
+
+(s/def :elm.code/display
+  string?)
+
+
+(defmethod expression :elm.spec.type/code [_]
+  (s/keys :req-un [:elm.code/system :elm.code/code]
+          :opt-un [:elm.code/display]))
+
+
 ;; 3.2. CodeDef
 (s/def :elm.code-def/codeSystem
   :elm/code-system-ref)

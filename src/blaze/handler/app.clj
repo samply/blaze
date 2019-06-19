@@ -10,7 +10,7 @@
 
 (defn- wrap-remove-context-path [handler]
   (fn [{{{:keys [more] :or {more ""}} :path-params} ::reitit/match :as request}]
-    (handler (assoc request :uri more))))
+    (handler (-> request (assoc :uri more) (dissoc ::reitit/match :path-params)))))
 
 
 (defn router [handlers]

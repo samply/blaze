@@ -18,9 +18,11 @@
     [blaze.elm.type-infer :refer [infer-library-types]]
     [blaze.elm.evaluator :as evaluator]
     [blaze.structure-definition :refer [read-structure-definitions]]
+    [blaze.terminology-service.extern :as ts]
     [taoensso.timbre :as log])
   (:import
-    [java.time OffsetDateTime Year]))
+    [java.time OffsetDateTime Year]
+    [java.util.concurrent Executors]))
 
 
 (defonce db (d/db (st/with-instrument-disabled (test-util/connect))))
@@ -36,8 +38,13 @@
 (use-fixtures :each fixture)
 
 
+(def term-service
+  (ts/term-service "http://tx.fhir.org/r4" (Executors/newSingleThreadExecutor)))
+
+
 (defn- db-with [{:strs [entries]}]
-  (let [{db :db-after} (d/with db (bundle/code-tx-data db entries))]
+  (let [entries @(bundle/annotate-codes term-service db entries)
+        {db :db-after} (d/with db (bundle/code-tx-data db entries))]
     (:db-after (d/with db (bundle/tx-data db entries)))))
 
 

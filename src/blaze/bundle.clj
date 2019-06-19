@@ -3,8 +3,11 @@
   (:require
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
+    [blaze.deferred :as bd]
+    [blaze.terminology-service :refer [term-service?]]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds]
+    [manifold.deferred :as md :refer [deferred?]]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [reitit.core :as reitit]))
 
@@ -114,6 +117,23 @@
       (fn [tempids [type id tempid]]
         (assoc-in tempids [type id] tempid)))
     {}
+    entries))
+
+
+(s/fdef annotate-codes
+  :args (s/cat :term-service term-service? :db ::ds/db :entries coll?)
+  :ret deferred?)
+
+(defn annotate-codes
+  [term-service db entries]
+  (transduce
+    (bd/map
+      (fn [{:strs [resource] :as entry}]
+        (if resource
+          (-> (tx/annotate-codes term-service db resource)
+              (md/chain' #(assoc entry "resource" %)))
+          entry)))
+    conj
     entries))
 
 

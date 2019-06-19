@@ -47,12 +47,13 @@
   [client]
   (fn [req]
     (d/let-flow' [{:keys [status] :as resp} (client req)]
-      (if (< status 400)
+      (if (< status 300)
         resp
         (d/error-deferred
-          (ex-info "???" {::anom/category (status>anomaly status)
-                          ::request req
-                          ::response resp}))))))
+          {::anom/category (status>anomaly status)
+           ::anom/message (format "Unexpected response status %d." status)
+           ::request req
+           ::response resp})))))
 
 
 (defn- wrap-return-body
@@ -96,8 +97,8 @@
   "Fetches the resource at `uri` using `opts` which go to the Aleph HTTP client.
 
   Returns either a manifold deferred with the parsed body as map with keyword
-  keys or an error deferred with `ex-data` which includes an ::anom/category,
-  the ::request and the ::response.
+  keys or an error deferred with an anomaly with includes the ::request and the
+  ::response.
 
   Custom :middleware can be put into `opts` to handle things like authentication
   and caching. Also middleware from :pool is still used. The whole Aleph API can
@@ -137,9 +138,9 @@
   client.
 
   Returns a manifold stream with each page as map with keyword keys. The last
-  element in the stream can be an error with `ex-data` which includes an
-  ::anom/category, the ::request and the ::response. The stream is closed when
-  all pages are fetched or an error occurred.
+  element in the stream can be an error with an anomaly with includes the
+  ::request and the ::response. The stream is closed when all pages are fetched
+  or an error occurred.
 
   Custom :middleware can be put into `opts` to handle things like authentication
   and caching. Also middleware from :pool is still used. The whole Aleph API can

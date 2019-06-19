@@ -427,6 +427,20 @@
              :element/type-code "BackboneElement"
              :element/json-key "synonym"}
             [:db/add "SubstanceSpecification.name.synonym" :element/type "SubstanceSpecification.name"]
-            [:db/add "SubstanceSpecification.name" :type/elements "SubstanceSpecification.name.synonym"]]))))
+            [:db/add "SubstanceSpecification.name" :type/elements "SubstanceSpecification.name.synonym"]])))
 
-
+  (testing "Library.url"
+    (is (= (element-definition-tx-data
+             (structure-definition "Library")
+             (element-definition "Library.url"))
+           [{:db/id "Library.url"
+             :db/ident :Library/url
+             :db/valueType :db.type/string
+             :db/cardinality :db.cardinality/one
+             :db/index true
+             :element/primitive? true
+             :element/choice-type? false
+             :ElementDefinition/isSummary true
+             :element/type-code "uri"
+             :element/json-key "url"}
+            [:db/add "Library" :type/elements "Library.url"]]))))

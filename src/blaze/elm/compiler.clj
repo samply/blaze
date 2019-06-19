@@ -38,6 +38,7 @@
     [blaze.elm.util :as elm-util]
     [blaze.util :as u])
   (:import
+    [clojure.core Eduction]
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit Temporal]
     [javax.measure Quantity]
@@ -199,20 +200,30 @@
        (-> library :statements :def))}))
 
 
+(defn static? [x]
+  (not (instance? blaze.elm.compiler.Expression x)))
+
+
 (defmacro defunop
-  {:arglists '([name bindings & body])}
-  [name [operand-binding expr-binding] & body]
-  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
-     [context# expr#]
-     (let [operand# (compile context# (:operand expr#))
-           ~(or expr-binding '_) expr#]
-       (reify Expression
-         (-eval [~'_ context# scope#]
-           (let [~operand-binding (-eval operand# context# scope#)]
-             ~@body))
-         (-hash [_]
-           {:type ~(keyword (clojure.core/name name))
-            :operands (-hash operand#)})))))
+  {:arglists '([name attr-map? bindings & body])}
+  [name & more]
+  (let [attr-map (when (map? (first more)) (first more))
+        more (if (map? (first more)) (next more) more)
+        [[operand-binding expr-binding] & body] more]
+    `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+       [context# expr#]
+       (let [operand# (compile (merge context# ~attr-map) (:operand expr#))
+             ~(or expr-binding '_) expr#]
+         (if (static? operand#)
+           (let [~operand-binding operand#]
+             ~@body)
+           (reify Expression
+             (-eval [~'_ context# scope#]
+               (let [~operand-binding (-eval operand# context# scope#)]
+                 ~@body))
+             (-hash [_]
+               {:type ~(keyword (clojure.core/name name))
+                :operand (-hash operand#)})))))))
 
 
 (defmacro defbinop
@@ -655,6 +666,25 @@
 
 ;; 3. Clinical Values
 
+(defn- find-code-system-def
+  "Returns the code-system-def with `name` from `library` or nil if not found."
+  {:arglists '([library name])}
+  [{{code-system-defs :def} :codeSystems} name]
+  (some #(when (= name (:name %)) %) code-system-defs))
+
+
+;; 3.1. Code
+(defmethod compile* :elm.compiler.type/code
+  [{:keys [library db] :as context}
+   {{system-name :name} :system :keys [code] :as expression}]
+  ;; TODO: look into other libraries (:libraryName)
+  (if-let [{system :id} (find-code-system-def library system-name)]
+    (cql/find-code db system code)
+    (throw (ex-info (format "Can't find the code system `%s`." system-name)
+                    {:context context
+                     :expression expression}))))
+
+
 ;; 3.3. CodeRef
 (defn- find-code-def
   "Returns the code-def with `name` from `library` or nil if not found."
@@ -672,14 +702,9 @@
         ;; TODO: version
         (cql/find-code db system code))
       (throw (ex-info "Can't handle code-defs without code-system-ref."
-                      {:expression expression
+                      {:context context
+                       :expression expression
                        :code-def code-def})))))
-
-(defn- find-code-system-def
-  "Returns the code-system-def with `name` from `library` or nil if not found."
-  {:arglists '([library name])}
-  [{{code-system-defs :def} :codeSystems} name]
-  (some #(when (= name (:name %)) %) code-system-defs))
 
 
 ;; 3.5. CodeSystemRef
@@ -730,7 +755,7 @@
               (fn [patient]
                 (-eval expression (assoc context :patient patient) nil))
               (datomic-util/list-resources db "Patient"))
-            (throw (ex-info (str "Expression reference `" name "` not found.")
+            (throw (ex-info (str "Expression `" name "` not found.")
                             {:context context}))))
         (-hash [_]
           ;; TODO: the expression does something different here. should it have a different hash?
@@ -742,7 +767,7 @@
         (-eval [_ {:keys [library-context] :as context} _]
           (if-some [expression (get library-context name)]
             (-eval expression context nil)
-            (throw (ex-info (str "Expression reference `" name "` not found.")
+            (throw (ex-info (str "Expression `" name "` not found.")
                             {:context context}))))
         (-hash [_]
           {:type :expression-ref
@@ -785,6 +810,17 @@
              :name name
              :operand (-hash operand)})))
 
+      "ToString"
+      (let [operand (first operands)]
+        (reify Expression
+          (-eval [_ context scope]
+            (let [value (-eval operand context scope)]
+              (str (or (:code/code value) value))))
+          (-hash [_]
+            {:type :function-ref
+             :name name
+             :operand (-hash operand)})))
+
       (throw (Exception. (str "Unsupported function `" name "` in `FunctionRef` expression."))))))
 
 
@@ -813,14 +849,40 @@
     (map #(-eval return-expr context %))))
 
 
+(defn- comp-xforms [context xforms]
+  (transduce (map #(% context)) comp xforms))
+
+
 (defn- xform [with-xforms where-xform return-xform]
-  (fn [context]
-    (apply
-      comp
-      (cond-> []
-        (some? where-xform) (conj (where-xform context))
-        (seq with-xforms) (into (map #(% context) with-xforms))
-        (some? return-xform) (conj (return-xform context))))))
+  (if (some? where-xform)
+    (if (seq with-xforms)
+      (if (some? return-xform)
+        (fn [context]
+          (comp
+            (where-xform context)
+            (comp-xforms context with-xforms)
+            (return-xform context)))
+        (fn [context]
+          (comp
+            (where-xform context)
+            (comp-xforms context with-xforms))))
+      (if (some? return-xform)
+        (fn [context]
+          (comp
+            (where-xform context)
+            (return-xform context)))
+        where-xform))
+    (if (seq with-xforms)
+      (if (some? return-xform)
+        (fn [context]
+          (comp
+            (comp-xforms context with-xforms)
+            (return-xform context)))
+        (fn [context]
+          (comp-xforms context with-xforms)))
+      (if (some? return-xform)
+        return-xform
+        (fn [_] identity)))))
 
 
 (defmulti compile-sort-by-item (fn [_ {:keys [type]}] type))
@@ -884,7 +946,7 @@
 
 
 (defmethod compile* :elm.compiler.type/query
-  [context
+  [{:keys [optimizations] :as context}
    {sources :source
     relationships :relationship
     :keys [where]
@@ -903,17 +965,29 @@
           source (compile context expression)]
       (if (empty? sort-by-items)
         (if distinct
-          (reify Expression
-            (-eval [_ context _]
-              (vec (into #{} (xform context) (-eval source context nil))))
-            (-hash [_]
-              (cond->
-                {:type :query
-                 :source (-hash source)
-                 :distinct true}
-                (some? where) (assoc :where (-hash where))
-                (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-                (some? return) (assoc :return (-hash return)))))
+          (if (contains? optimizations :first)
+            (reify Expression
+              (-eval [_ context _]
+                (Eduction. (xform context) (-eval source context nil)))
+              (-hash [_]
+                (cond->
+                  {:type :query
+                   :source (-hash source)
+                   :distinct true}
+                  (some? where) (assoc :where (-hash where))
+                  (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+                  (some? return) (assoc :return (-hash return)))))
+            (reify Expression
+              (-eval [_ context _]
+                (vec (into #{} (xform context) (-eval source context nil))))
+              (-hash [_]
+                (cond->
+                  {:type :query
+                   :source (-hash source)
+                   :distinct true}
+                  (some? where) (assoc :where (-hash where))
+                  (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
+                  (some? return) (assoc :return (-hash return))))))
           (reify Expression
             (-eval [_ context _]
               (into [] (xform context) (-eval source context nil)))
@@ -1035,43 +1109,78 @@
 ;; Implementation Note:
 ;;
 ;; The compiler generates a function with takes a context map with a required
-;; :db and an optional :patient-id. The :db is the database from which the data
+;; :db and an optional :patient. The :db is the database from which the data
 ;; will be retrieved.
 ;;
 ;; The :patient-id can be optionally populated with a patient identifier to
-;; retrieve only data from that patient. In case :patient-id is `nil`, data from
+;; retrieve only data from that patient. In case :patient is `nil`, data from
 ;; all patients will be retrieved.
 ;;
 ;; The :patient-id will be set if the evaluation context is `"Patient"`. It'll
 ;; be `nil` if the evaluation context is `"Population"`.
+
+(defn- list-patient-observations-by-code
+  [patient {:code/keys [id]}]
+  ((keyword "Patient.Observation.code" id) patient))
+
 (defmethod compile* :elm.compiler.type/retrieve
   [{:keys [eval-context] :as context}
    {:keys [codes] code-property-name :codeProperty data-type :dataType
     :or {code-property-name "code"}}]
   (let [patient-eval-context? (= "Patient" eval-context)
         [_ data-type-name] (elm-util/parse-qualified-name data-type)]
-    (if-let [codings (some->> codes (compile context))]
+    (if-let [codes (some->> codes (compile context))]
       (if patient-eval-context?
+        (if (and (= "Observation" data-type-name)
+                 (= "code" code-property-name))
+          (let [[code & more] codes]
+            (if (empty? more)
+              (let [attr (keyword "Patient.Observation.code" (:code/id code))]
+                (reify Expression
+                  (-eval [_ {:keys [patient]} _]
+                    (attr patient))
+                  (-hash [_]
+                    {:type :retrieve
+                     :context :patient
+                     :data-type-name data-type-name
+                     :code-property-name code-property-name
+                     :codes (-hash codes)})))
+              (reify Expression
+                (-eval [_ {:keys [patient]} _]
+                  (transduce
+                    (mapcat #(list-patient-observations-by-code patient %))
+                    conj
+                    []
+                    codes))
+                (-hash [_]
+                  {:type :retrieve
+                   :context :patient
+                   :data-type-name data-type-name
+                   :code-property-name code-property-name
+                   :codes (-hash codes)}))))
+          (let [code-index-attr (keyword (str data-type-name ".index") code-property-name)
+                subject-attr (keyword data-type-name "subject")]
+            (reify Expression
+              (-eval [_ {:keys [patient]} _]
+                (cql/list-patient-resource-by-code
+                  patient subject-attr code-index-attr (map :db/id codes)))
+              (-hash [_]
+                {:type :retrieve
+                 :context :patient
+                 :data-type-name data-type-name
+                 :code-property-name code-property-name
+                 :codes (-hash codes)}))))
+
         (reify Expression
-          (-eval [_ {:keys [patient] :as context} _]
-            (cql/list-patient-resource-by-code
-              patient data-type-name code-property-name (-eval codings context nil)))
-          (-hash [_]
-            {:type :retrieve
-             :context :patient
-             :data-type-name data-type-name
-             :code-property-name code-property-name
-             :codings (-hash codings)}))
-        (reify Expression
-          (-eval [_ {:keys [db] :as context} _]
+          (-eval [_ {:keys [db]} _]
             (cql/list-resource-by-code
-              db data-type-name code-property-name (-eval codings context nil)))
+              db data-type-name code-property-name (map :db/id codes)))
           (-hash [_]
             {:type :retrieve
              :context :db
              :data-type-name data-type-name
              :code-property-name code-property-name
-             :codings (-hash codings)})))
+             :codes (-hash codes)})))
 
       (if patient-eval-context?
         (if (= "Patient" data-type-name)
@@ -2304,7 +2413,9 @@
 
 
 ;; 20.8. Exists
-(defunop exists [list]
+(defunop exists
+  {:optimizations #{:first}}
+  [list]
   (not (empty? list)))
 
 

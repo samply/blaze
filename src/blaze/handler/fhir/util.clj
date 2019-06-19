@@ -4,9 +4,11 @@
   (:require
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
+    [blaze.terminology-service :refer [term-service?]]
     [clojure.spec.alpha :as s]
+    [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [manifold.deferred :as md]
+    [manifold.deferred :as md :refer [deferrable?]]
     [reitit.core :as reitit]))
 
 
@@ -47,21 +49,25 @@
 
 
 (s/fdef upsert-resource
-  :args (s/cat :conn ::ds/conn :db ::ds/db
+  :args (s/cat :conn ::ds/conn :term-service term-service? :db ::ds/db
                :creation-mode ::tx/creation-mode
-               :resource ::tx/resource))
+               :resource ::tx/resource)
+  :ret deferrable?)
 
 (defn upsert-resource
-  [conn db creation-mode resource]
-  (-> (md/future (tx/resource-codes-creation db resource))
+  [conn term-service db creation-mode resource]
+  (-> (tx/annotate-codes term-service db resource)
       (md/chain'
-        (fn [tx-data]
-          (if (empty? tx-data)
-            (upsert-resource* conn db creation-mode resource)
-            (-> (tx/transact-async conn tx-data)
-                (md/chain'
-                  (fn [{db :db-after}]
-                    (upsert-resource* conn db creation-mode resource)))))))))
+        (fn [resource]
+          (-> (tx/resource-codes-creation db resource)
+              (md/chain'
+                (fn [tx-data]
+                  (if (empty? tx-data)
+                    (upsert-resource* conn db creation-mode resource)
+                    (-> (tx/transact-async conn tx-data)
+                        (md/chain'
+                          (fn [{db :db-after}]
+                            (upsert-resource* conn db creation-mode resource))))))))))))
 
 
 (defn- decrement-total [type]

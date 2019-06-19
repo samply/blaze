@@ -10,7 +10,7 @@ code "tissue frozen": 'tissue frozen' from "Sample type tissue"
 context Patient
 
 define Qualifies:
-  Exists([Condition: "Brustkrebs"]) and Exists([Specimen: "tissue frozen"])
+  exists([Condition: "Brustkrebs"]) and exists([Specimen: "tissue frozen"])
 
 context Population
 

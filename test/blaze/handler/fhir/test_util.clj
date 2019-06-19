@@ -6,13 +6,14 @@
     [clojure.test :refer :all]))
 
 
-(defn stub-upsert-resource [conn db creation-mode resource tx-result]
+(defn stub-upsert-resource [conn term-service db creation-mode resource tx-result]
   (st/instrument
     [`util/upsert-resource]
     {:spec
      {`util/upsert-resource
       (s/fspec
-        :args (s/cat :conn #{conn} :db #{db} :creation-mode #{creation-mode}
+        :args (s/cat :conn #{conn} :term-service #{term-service} :db #{db}
+                     :creation-mode #{creation-mode}
                      :resource #{resource})
         :ret #{tx-result})}
      :stub

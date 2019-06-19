@@ -4,8 +4,9 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.value :as value]
     [blaze.datomic.util :as util]
-    [blaze.fhir-client :as client]
+    [blaze.deferred :as bd]
     [blaze.spec]
+    [blaze.terminology-service :as ts :refer [term-service?]]
     [blaze.util :refer [throw-anom]]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
@@ -14,7 +15,7 @@
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [manifold.deferred :as md]
+    [manifold.deferred :as md :refer [deferred?]]
     [prometheus.alpha :as prom :refer [defcounter defhistogram]]
     [taoensso.timbre :as log])
   (:import
@@ -147,22 +148,23 @@
 
 
 (defn check-primitive [{:element/keys [primitive? type-code] :db/keys [ident]} value]
-  (if (and primitive? (not (= "Quantity" type-code)))
-    (when (map? value)
-      (throw-anom
-        {::anom/category ::anom/incorrect
-         ::anom/message
-         (str "Incorrect non-primitive value at primitive element `" (ident->path ident) "`.")
-         :fhir/issue "value"
-         :fhir.issue/expression (ident->path ident)}))
-    (when-not (or (map? value) (s/valid? (s/coll-of map?) value))
-      (throw-anom
-        {::anom/category ::anom/incorrect
-         ::anom/message
-         (str "Incorrect primitive value `" (pr-str value)
-              "` at non-primitive element `" (ident->path ident) "`.")
-         :fhir/issue "value"
-         :fhir.issue/expression (ident->path ident)}))))
+  (when-not (= "code" type-code)
+    (if (and primitive? (not (= "Quantity" type-code)))
+      (when (map? value)
+        (throw-anom
+          {::anom/category ::anom/incorrect
+           ::anom/message
+           (str "Incorrect non-primitive value at primitive element `" (ident->path ident) "`.")
+           :fhir/issue "value"
+           :fhir.issue/expression (ident->path ident)}))
+      (when-not (or (map? value) (s/valid? (s/coll-of map?) value))
+        (throw-anom
+          {::anom/category ::anom/incorrect
+           ::anom/message
+           (str "Incorrect primitive value `" (pr-str value)
+                "` at non-primitive element `" (ident->path ident) "`.")
+           :fhir/issue "value"
+           :fhir.issue/expression (ident->path ident)})))))
 
 
 (defn find-json-value
@@ -195,37 +197,56 @@
 
 ;; ---- Add Element -----------------------------------------------------------
 
+(defn- resolve-reference [{:keys [db tempids]} type id]
+  (or (:db/id (util/resource db type id))
+      (get-in tempids [type id])))
+
+
+(defn- subject-index
+  [{{resource-type "resourceType" :as resource} :resource :keys [code-ident]
+    :as context}
+   code-id]
+  (when (= :Observation/code code-ident)
+    (when (= resource-type (namespace code-ident))
+      (when-let [subject (get resource "subject")]
+        (when-let [sub-ref (get subject "reference")]
+          (let [[type sub-id] (str/split sub-ref #"/")]
+            (when (= "Patient" type)
+              (when-let [sub-eid (resolve-reference context type sub-id)]
+                [[:db/add sub-eid
+                  (keyword (str "Patient." resource-type "." (name code-ident))
+                           code-id)
+                  (resolve-reference context resource-type (get resource "id"))]]))))))))
+
+
 (defn- add-code
   "Returns tx-data for adding a code. All of `system`, `version` and `code` are
   optional."
-  [db ident id system version code]
+  [{:keys [db] :as context} {:db/keys [ident] :as element} parent-id system
+   version code]
   (let [code-id (str system "|" version "|" code)]
-    (if-let [entity (d/entity db [:code/id code-id])]
-      [[:db/add id ident (:db/id entity)]]
+    (if-let [{:db/keys [id]} (d/entity db [:code/id code-id])]
+      (into [[:db/add parent-id ident id]] (subject-index context code-id))
       (throw-anom
         {::anom/category ::anom/fault
-         ::anom/message (str "Can't find code with id `" code-id "`.")}))))
-
-
-(defn- add-code-according-value-set-binding
-  [db {:db/keys [ident]} id code]
-  ;; TODO: resolve the code system and version
-  (add-code db ident id nil nil code))
+         ::anom/message (str "Can't find code with id `" code-id "`.")
+         :context context
+         :element element}))))
 
 
 (defn- add-primitive-element
   {:arglists '([context element id value])}
-  [{:keys [db] {:strs [system version]} :code}
-   {:element/keys [type-code part-of-choice-type? type-attr-ident
-                   value-set-binding]
+  [{{:strs [system version]} :code :as context}
+   {:element/keys [type-code part-of-choice-type? type-attr-ident]
     :db/keys [ident valueType] :as element}
    id value]
   (cond->
     (case type-code
       "code"
-      (if value-set-binding
-        (add-code-according-value-set-binding db element id value)
-        (add-code db ident id system version value))
+      (if (symbol? value)
+        (let [{:keys [system version]} (meta value)]
+          (add-code context element id system version (str value)))
+        (add-code context element id system version value))
 
       [[:db/add id ident (write element valueType value)]])
     part-of-choice-type?
@@ -253,11 +274,6 @@
 (declare upsert)
 
 
-(defn- resolve-reference [{:keys [db tempids]} type id]
-  (or (:db/id (util/resource db type id))
-      (get-in tempids [type id])))
-
-
 (defn- resolve-local-reference [{:keys [contained-resource-eids]} id]
   (get contained-resource-eids id))
 
@@ -283,8 +299,7 @@
   (if-let [resource-id (get value "id")]
     (let [type (get value "resourceType")
           tid (d/tempid (keyword "part" type))
-          tx-data (upsert context (keyword type) {:db/id tid}
-                          (dissoc value "id"))]
+          tx-data (upsert context (keyword type) {:db/id tid} (dissoc value "id"))]
       {:tx-data
        (cond->
          (conj
@@ -350,6 +365,7 @@
 
     "CodeableConcept"
     (let [tid (d/tempid (keyword "part" type-code))
+          context (assoc context :code-ident ident)
           tx-data (upsert context (keyword type-code) {:db/id tid} value)
           code-tids (find-code-tids tx-data)]
       (when-not (empty? tx-data)
@@ -404,7 +420,7 @@
           (map
             (fn [value]
               (if (= "code" type-code)
-                (let [code-id (:db/id (some #(when (= value (:code/code %)) %)
+                (let [code-id (:db/id (some #(when (= (str value) (:code/code %)) %)
                                             (ident old-entity)))]
                   (assert code-id)
                   [:db/retract id ident code-id])
@@ -703,7 +719,9 @@
           (= :ValueSet.compose/include type-ident)
           (assoc :code new-entity)
           (= :ValueSet.expansion/contains type-ident)
-          (assoc :code new-entity))]
+          (assoc :code new-entity)
+          (get new-entity "resourceType")
+          (assoc :resource new-entity))]
     (into
       []
       (comp
@@ -820,14 +838,19 @@
     (if (bit-test version 0) (bit-set new-version 0) new-version)))
 
 
+(defn- version-decrement-upsert [id version]
+  [:db.fn/cas id :instance/version version (upsert-decrement version)])
+
+
 (defn- initial-version
   "The creation mode is encoded in the first bit of the version. Because the
   deletion state is encoded in the second bit, the values -4 and -3 are used.
   Both leave the second bit at zero."
-  [creation-mode]
-  (case creation-mode
-    :server-assigned-id -3
-    :client-assigned-id -4))
+  [tempid creation-mode]
+  [:db.fn/cas tempid :instance/version nil
+   (case creation-mode
+     :server-assigned-id -3
+     :client-assigned-id -4)])
 
 
 (s/def ::tempids
@@ -858,7 +881,8 @@
 (defn resource-upsert
   "Generates transaction data for creating or updating `resource`.
 
-  The resource has to have at least a `resourceType` and an `id`.
+  The resource has to have at least a `resourceType` and an `id`. Additionally
+  all single codes have to be annotated using `annotate-codes`.
 
   Resources have an internal :instance/version attribute that will be
   incremented on each update using CAS for optimistic locking. The function
@@ -881,13 +905,13 @@
                                        old-resource resource)
               {:db/keys [id] :instance/keys [version]} old-resource]
           (when (or (not (empty? tx-data)) (util/deleted? old-resource))
-            (conj tx-data [:db.fn/cas id :instance/version version (upsert-decrement version)])))
+            (conj tx-data (version-decrement-upsert id version))))
 
         (let [tempid (get-in tempids [type id])]
           (assert tempid)
           (conj (upsert-resource {:db db :tempids tempids} type
                                  {:db/id tempid} resource)
-                [:db.fn/cas tempid :instance/version nil (initial-version creation-mode)]))))))
+                (initial-version tempid creation-mode)))))))
 
 
 (defn- deletion-decrement
@@ -930,9 +954,7 @@
           contained-resource-element-remover
           coding-system-version-remover
           (resource-id-remover type)
-          (mapcat
-            (fn [element]
-              (retract-element {:db db} element resource))))
+          (mapcat #(retract-element {:db db} % resource)))
         (:type/elements (util/cached-entity db (keyword type)))))))
 
 
@@ -967,7 +989,7 @@
 
 (s/fdef transact-async
   :args (s/cat :conn ::ds/conn :tx-data ::ds/tx-data)
-  :ret md/deferred?)
+  :ret deferred?)
 
 (defn transact-async
   "Like `datomic.api/transact-async` but returns a deferred instead of a future
@@ -1018,13 +1040,13 @@
     [type id (d/tempid (keyword "part" type))]))
 
 
-;; ---- Create Codes ----------------------------------------------------------
 
+;; ---- Create Codes ----------------------------------------------------------
 
 (defn- create-code
   "Returns tx-data for creating a code. All of `system`, `version` and `code`
   are optional."
-  [db system version code]
+  [{:keys [db]} system version code]
   (let [id (str system "|" version "|" code)]
     (when-not (d/entity db [:code/id id])
       (let [tid (d/tempid :part/code)]
@@ -1036,24 +1058,22 @@
            version
            (assoc :code/version version)
            code
-           (assoc :code/code code))]))))
-
-
-(defn- create-code-according-value-set-binding
-  [db code]
-  ;; TODO: resolve the code system and version
-  (create-code db nil nil code))
+           (assoc :code/code code))
+         {:db/ident (keyword "Patient.Observation.code" id)
+          :db/valueType :db.type/ref
+          :db/cardinality :db.cardinality/many}]))))
 
 
 (defn- create-code-primitive-element
   {:arglists '([context element value])}
-  [{:keys [db] {:strs [system version]} :code}
-   {:element/keys [type-code value-set-binding]}
+  [{{:strs [system version]} :code :as context}
+   {:element/keys [type-code]}
    value]
   (when (= "code" type-code)
-    (if value-set-binding
-      (create-code-according-value-set-binding db value)
-      (create-code db system version value))))
+    (if (symbol? value)
+      (let [{:keys [system version]} (meta value)]
+        (create-code context system version (str value)))
+      (create-code context system version value))))
 
 
 (declare create-codes)
@@ -1126,13 +1146,19 @@
       (:type/elements (util/cached-entity db type-ident)))))
 
 
+
+(s/fdef resource-codes-creation
+  :args (s/cat :db ::ds/db :resource ::resource)
+  :ret ::ds/tx-data)
+
 (defn resource-codes-creation
   "Generates transaction data for creating codes which occur in `resource`.
 
   Codes have to created in a separate transaction before transaction tx-data
   obtained from `resource-upsert`.
 
-  The resource has to have at least a `resourceType` and an `id`."
+  The resource has to have at least a `resourceType` and an `id`. Additionally
+  all single codes have to be annotated using `annotate-codes`."
   {:arglists '([db resource])}
   [db {type "resourceType" id "id" :as resource}]
   (assert type)
@@ -1140,23 +1166,133 @@
   (create-codes {:db db} (keyword type) resource))
 
 
-(comment
-  (def term-base-url "http://test.fhir.org/r4")
 
-  (defn- fetch-code-system-info
-    "Returns a map with a least :system and optionally :version if something was found."
-    [value-set-binding code]
-    (log/info "fetch-code-system-url" value-set-binding code)
-    (let [[uri version] (str/split value-set-binding #"\|")]
-      (-> (client/fetch (str term-base-url "/ValueSet/$expand")
-                        {:query-params
-                         {"url" uri
-                          "valueSetVersion" version
-                          "filter" code}})
-          (md/chain'
-            (fn [value-set]
-              (->> (-> value-set :expansion :contains)
-                   (some #(when (= code (:code %)) %))))))))
+;; ---- Annotate Codes ----------------------------------------------------------
 
-  @(fetch-code-system-info "http://hl7.org/fhir/ValueSet/codesystem-content-mode|4.0.0" "complete")
-  )
+(defn- fetch-code-system
+  "Returns a map with a least :system and optionally :version if something was found."
+  [{:keys [term-service]} value-set-binding code]
+  (let [[uri version] (str/split value-set-binding #"\|")]
+    (-> (ts/expand-value-set
+          term-service
+          (cond-> {:url uri} version (assoc :valueSetVersion version)))
+        (md/chain'
+          (fn [value-set]
+            (->> (-> value-set :expansion :contains)
+                 (some #(when (= code (:code %)) %))))))))
+
+
+(defn- annotate-code [system version code]
+  (with-meta
+    (symbol code)
+    (cond->
+      {:system system}
+      version
+      (assoc :version version))))
+
+
+(defn- determine-static-code-system [value-set-binding]
+  (let [[uri] (str/split value-set-binding #"\|")]
+    (case uri
+      "http://hl7.org/fhir/ValueSet/mimetypes" {:system "urn:ietf:bcp:13"}
+      nil)))
+
+
+(defn- annotate-code-according-value-set-binding
+  [context value-set-binding code]
+  (if-let [{:keys [system version]} (determine-static-code-system value-set-binding)]
+    (annotate-code system version code)
+    (-> (fetch-code-system context value-set-binding code)
+        (md/chain'
+          (fn [{:keys [system version]}]
+            (if system
+              (annotate-code system version code)
+              (md/error-deferred
+                {::anom/category ::anom/conflict
+                 ::anom/message (format "ValueSet expansion of `%s` with code `%s` didn't return any codes." value-set-binding code)}))))
+        (md/catch'
+          (fn [e]
+            (md/error-deferred
+              {::anom/category ::anom/fault
+               ::anom/message (format "ValueSet expansion of `%s` with code `%s` resulted in the following error: %s" value-set-binding code (::anom/message e))}))))))
+
+
+(defn- annotate-code-primitive-element
+  {:arglists '([context element value])}
+  [context {:element/keys [type-code value-set-binding] :as element} value]
+  (if (and (= "code" type-code) value-set-binding)
+    (-> (annotate-code-according-value-set-binding context value-set-binding value)
+        (md/catch'
+          (fn [e]
+            (md/error-deferred
+              (if (::anom/category e)
+                (assoc e :context context :element element)
+                e)))))
+    value))
+
+
+(declare annotate-codes*)
+
+
+(defn- annotate-codes-non-primitive-element
+  {:arglists '([context element value])}
+  [context {:element/keys [type]} value]
+  (annotate-codes* context type value))
+
+
+(defn- annotate-codes-element
+  {:arglists '([context element value])}
+  [context {:element/keys [primitive?] :db/keys [cardinality] :as element}
+   value]
+  (if primitive?
+    (if (= :db.cardinality/one cardinality)
+      (annotate-code-primitive-element context element value)
+      (transduce
+        (bd/map #(annotate-code-primitive-element context element %))
+        conj
+        value))
+    (if (= :db.cardinality/one cardinality)
+      (annotate-codes-non-primitive-element context element value)
+      (transduce
+        (bd/map #(annotate-codes-non-primitive-element context element %))
+        conj
+        value))))
+
+
+(defn- type-ident [type k]
+  (if-let [ns (namespace type)]
+    (keyword (str ns "." (name type)) k)
+    (keyword (name type) k)))
+
+
+(defn- annotate-codes*
+  [{:keys [db] :as context} type entity]
+  (transduce
+    (bd/map
+      (fn [[k v]]
+        (if-let [element (util/cached-entity db (type-ident type k))]
+          (-> (annotate-codes-element context element v)
+              (md/chain' #(vector k %)))
+          [k v])))
+    conj
+    {}
+    entity))
+
+
+
+(s/fdef annotate-codes
+  :args (s/cat :term-service term-service? :db ::ds/db :resource ::resource)
+  :ret deferred?)
+
+(defn annotate-codes
+  "Annotates single codes with value set bindings with there system and version.
+
+  Doesn't touch the other values.
+
+  The resource has to have at least a `resourceType` and an `id`."
+  {:arglists '([term-service db resource])}
+  [term-service db {type "resourceType" id "id" :as resource}]
+  (assert type)
+  (assert id)
+  (-> (annotate-codes* {:term-service term-service :db db} (keyword type) resource)
+      (md/chain' #(assoc % "resourceType" type))))

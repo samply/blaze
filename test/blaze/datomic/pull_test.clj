@@ -53,7 +53,7 @@
       (let [[db id] (with-gender-code db "male")
             [db] (with-resource db "Patient" "0" :Patient/gender id)]
         (given (pull-resource db "Patient" "0")
-          "gender" := "male")))
+          "gender" := 'male)))
 
     (testing "with date type"
       (let [[db] (with-resource db "Patient" "0" :Patient/birthDate

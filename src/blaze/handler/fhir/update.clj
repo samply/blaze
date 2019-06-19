@@ -8,6 +8,7 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.terminology-service :refer [term-service?]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -65,14 +66,14 @@
         "Location" (fhir-util/versioned-instance-url router type id vid)))))
 
 
-(defn- handler-intern [conn]
+(defn- handler-intern [conn term-service]
   (fn [{{:keys [type id]} :path-params :keys [headers body]
         ::reitit/keys [router]}]
     (let [db (d/db conn)]
       (-> (validate-resource type id body)
           (md/chain'
             #(fhir-util/upsert-resource
-               conn db :client-assigned-id %))
+               conn term-service db :client-assigned-id %))
           (md/chain'
             #(build-response
                router headers type id (util/resource db type id) %))
@@ -83,11 +84,11 @@
 
 
 (s/fdef handler
-  :args (s/cat :conn ::ds/conn)
+  :args (s/cat :conn ::ds/conn :term-service term-service?)
   :ret :handler.fhir/update)
 
 (defn handler
   ""
-  [conn]
-  (-> (handler-intern conn)
+  [conn term-service]
+  (-> (handler-intern conn term-service)
       (wrap-observe-request-duration "update")))

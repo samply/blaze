@@ -312,6 +312,18 @@
      #{`util/resource}}))
 
 
+(defn stub-resource-by [db attr-spec val-spec entity-spec]
+  (st/instrument
+    [`util/resource-by]
+    {:spec
+     {`util/resource-by
+      (s/fspec
+        :args (s/cat :db #{db} :attr attr-spec :val val-spec)
+        :ret entity-spec)}
+     :stub
+     #{`util/resource-by}}))
+
+
 (defn stub-resource-type [resource type]
   (st/instrument
     [`util/resource-type]
@@ -398,6 +410,18 @@
 
 
 ;; ---- blaze.datomic.pull stubs ----------------------------------------------
+
+(defn stub-pull-non-primitive [db type-ident value result]
+  (st/instrument
+    [`pull/pull-non-primitive]
+    {:spec
+     {`pull/pull-non-primitive
+      (s/fspec
+        :args (s/cat :db #{db} :type-ident #{type-ident} :value #{value})
+        :ret #{result})}
+     :stub
+     #{`pull/pull-non-primitive}}))
+
 
 (defn stub-pull-resource [db type id resource-spec]
   (st/instrument

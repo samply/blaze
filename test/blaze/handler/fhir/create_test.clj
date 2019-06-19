@@ -8,6 +8,7 @@
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.create :refer [handler]]
     [blaze.handler.fhir.test-util :as fhir-test-util]
+    [blaze.fhir.response.create-test :as create-test]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -25,7 +26,7 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :conn #{::conn}))}})
+        :args (s/cat :conn #{::conn} :term-service #{::term-service}))}})
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
@@ -36,9 +37,9 @@
 (deftest handler-test
   (testing "Returns Error on type mismatch"
     (let [{:keys [status body]}
-          @((handler ::conn)
-             {:path-params {:type "Patient"}
-              :body {"resourceType" "Observation"}})]
+          @((handler ::conn ::term-service)
+            {:path-params {:type "Patient"}
+             :body {"resourceType" "Observation"}})]
 
       (is (= 400 status))
 
@@ -58,69 +59,49 @@
       (datomic-test-util/stub-db ::conn ::db-before)
       (datomic-test-util/stub-squuid id)
       (fhir-test-util/stub-upsert-resource
-        ::conn ::db-before :server-assigned-id
+        ::conn ::term-service ::db-before :server-assigned-id
         {"resourceType" "Patient" "id" (str id)}
         (md/success-deferred {:db-after ::db-after}))
-      (datomic-test-util/stub-basis-transaction
-        ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
-      (datomic-test-util/stub-pull-resource
-        ::db-after "Patient" (str id) #{::resource-after})
-      (datomic-test-util/stub-basis-t ::db-after 42)
-      (fhir-test-util/stub-versioned-instance-url
-        ::router "Patient" (str id) "42" ::location)
 
       (testing "with no Prefer header"
-        (let [{:keys [status headers body]}
-              @((handler ::conn)
-                {::reitit/router ::router
-                 :path-params {:type "Patient"}
-                  :body {"resourceType" "Patient"}})]
+        (create-test/stub-build-created-response
+          ::router nil? ::db-after "Patient" (str id) ::response)
 
-          (testing "Returns 201"
-            (is (= 201 status)))
-
-          (testing "Transaction time in Last-Modified header"
-            (is (= "Tue, 14 May 2019 13:58:20 GMT" (get headers "Last-Modified"))))
-
-          (testing "Version in ETag header"
-            ;; 42 is the T of the transaction of the resource update
-            (is (= "W/\"42\"" (get headers "ETag"))))
-
-          (testing "Location header"
-            (is (= ::location (get headers "Location"))))
-
-          (testing "Contains the resource as body"
-            (is (= ::resource-after body)))))
+        (is (= ::response
+               @((handler ::conn ::term-service)
+                 {::reitit/router ::router
+                  :path-params {:type "Patient"}
+                  :body {"resourceType" "Patient"}}))))
 
       (testing "with return=minimal Prefer header"
-        (let [{:keys [body]}
-              @((handler ::conn)
-                {::reitit/router ::router
-                 :path-params {:type "Patient"}
-                  :headers {"prefer" "return=minimal"}
-                  :body {"resourceType" "Patient"}})]
+        (create-test/stub-build-created-response
+          ::router #{"minimal"} ::db-after "Patient" (str id) ::response)
 
-          (testing "Contains no body"
-            (is (nil? body)))))
+        (is (= ::response
+               @((handler ::conn ::term-service)
+                 {::reitit/router ::router
+                  :path-params {:type "Patient"}
+                  :headers {"prefer" "return=minimal"}
+                  :body {"resourceType" "Patient"}}))))
 
       (testing "with return=representation Prefer header"
-        (let [{:keys [body]}
-              @((handler ::conn)
-                {::reitit/router ::router
-                 :path-params {:type "Patient"}
-                  :headers {"prefer" "return=representation"}
-                  :body {"resourceType" "Patient"}})]
+        (create-test/stub-build-created-response
+          ::router #{"representation"} ::db-after "Patient" (str id) ::response)
 
-          (testing "Contains the resource as body"
-            (is (= ::resource-after body)))))
+        (is (= ::response
+               @((handler ::conn ::term-service)
+                 {::reitit/router ::router
+                  :path-params {:type "Patient"}
+                  :headers {"prefer" "return=representation"}
+                  :body {"resourceType" "Patient"}}))))
 
       (testing "with return=OperationOutcome Prefer header"
-        (let [{:keys [body]}
-              @((handler ::conn)
-                {::reitit/router ::router
-                 :path-params {:type "Patient"}
-                  :headers {"prefer" "return=OperationOutcome"}
-                  :body {"resourceType" "Patient"}})]
+        (create-test/stub-build-created-response
+          ::router #{"OperationOutcome"} ::db-after "Patient" (str id) ::response)
 
-          (testing "Contains an OperationOutcome as body"
-            (is (= {:resourceType "OperationOutcome"} body))))))))
+        (is (= ::response
+               @((handler ::conn ::term-service)
+                 {::reitit/router ::router
+                  :path-params {:type "Patient"}
+                  :headers {"prefer" "return=OperationOutcome"}
+                  :body {"resourceType" "Patient"}})))))))
