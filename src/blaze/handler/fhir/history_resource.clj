@@ -19,8 +19,7 @@
 
 
 (defn- resource-eid [db type id]
-  (and (util/cached-entity db (keyword type))
-       (:db/id (util/resource db type id))))
+  (:db/id (util/resource db type id)))
 
 
 (defn- method [resource]

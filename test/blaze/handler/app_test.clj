@@ -1,6 +1,8 @@
 (ns blaze.handler.app-test
   (:require
     [blaze.handler.app :refer [handler router]]
+    [blaze.middleware.fhir.type :refer [wrap-type]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [juxt.iota :refer [given]]
@@ -8,7 +10,25 @@
     [taoensso.timbre :as log]))
 
 
-(st/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :conn #{::conn} :handlers map?))}})
+  (st/instrument
+    [`wrap-type]
+    {:spec
+     {`wrap-type
+      (s/fspec
+        :args (s/cat :handler fn? :conn #{::conn}))}})
+  (log/with-merged-config {:level :fatal} (f))
+  (st/unstrument))
+
+
+(use-fixtures :each fixture)
 
 
 (def ^:private handlers
@@ -25,7 +45,7 @@
 
 
 (defn- match [path request-method]
-  ((:handler (request-method (:data (reitit/match-by-path (router handlers) path)))) {}))
+  ((:handler (request-method (:data (reitit/match-by-path (router ::conn handlers) path)))) {}))
 
 
 (deftest router-test
@@ -51,11 +71,9 @@
 
 (deftest exception-test
   (testing "Exceptions from handlers are converted to OperationOutcomes."
-    (given (log/with-merged-config
-             {:level :fatal}
-             @((handler handler-throwing)
-                {:uri "/fhir/metadata"
-                 :request-method :get}))
+    (given @((handler ::conn handler-throwing)
+             {:uri "/fhir/metadata"
+              :request-method :get})
       :status := 500
       [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
       :body :# #".*OperationOutcome.*")))

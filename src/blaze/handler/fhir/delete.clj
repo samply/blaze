@@ -16,11 +16,6 @@
     [ring.util.time :as ring-time]))
 
 
-(defn- exists-resource? [db type id]
-  (and (util/cached-entity db (keyword type))
-       (util/resource db type id)))
-
-
 (defn- delete-resource
   [conn db type id]
   (let [tx-data (tx/resource-deletion db type id)]
@@ -32,7 +27,7 @@
 (defn- handler-intern [conn]
   (fn [{{:keys [type id]} :path-params}]
     (let [db (d/db conn)]
-      (if (exists-resource? db type id)
+      (if (util/resource db type id)
         (-> (delete-resource conn db type id)
             (md/chain'
               (fn [{db :db-after}]

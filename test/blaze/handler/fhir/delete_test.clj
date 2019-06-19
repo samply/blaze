@@ -35,24 +35,7 @@
 
 
 (deftest handler-test
-  (testing "Returns Not Found on non-existing resource type"
-    (test-util/stub-cached-entity ::db #{:Patient} nil?)
-
-    (let [{:keys [status body]}
-          @((handler ::conn)
-            {:path-params {:type "Patient" :id "0"}})]
-
-      (is (= 404 status))
-
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
-
-
   (testing "Returns Not Found on non-existing resource"
-    (test-util/stub-cached-entity ::db #{:Patient} some?)
     (test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
 
     (let [{:keys [status body]}
@@ -69,7 +52,6 @@
 
 
   (testing "Returns No Content on successful deletion"
-    (test-util/stub-cached-entity ::db #{:Patient} some?)
     (test-util/stub-resource ::db #{"Patient"} #{"0"} #{::patient})
     (test-util/stub-resource-deletion ::db "Patient" "0" #{[::tx-data]})
     (test-util/stub-transact-async ::conn [::tx-data] {:db-after ::db-after})
@@ -93,7 +75,6 @@
 
 
   (testing "Returns No Content on already deleted resource"
-    (test-util/stub-cached-entity ::db #{:Patient} some?)
     (test-util/stub-resource ::db #{"Patient"} #{"0"} #{::patient})
     (test-util/stub-resource-deletion ::db "Patient" "0" nil?)
     (test-util/stub-basis-transaction ::db {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})

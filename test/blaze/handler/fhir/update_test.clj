@@ -41,8 +41,6 @@
 
 (deftest handler-test
   (testing "Returns Error on type mismatch"
-    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-
     (let [{:keys [status body]}
           @((handler base-uri ::conn)
              {:path-params {:type "Patient" :id "0"}
@@ -62,8 +60,6 @@
 
 
   (testing "Returns Error on ID mismatch"
-    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-
     (let [{:keys [status body]}
           @((handler base-uri ::conn)
              {:path-params {:type "Patient" :id "0"}
@@ -84,7 +80,6 @@
 
   (testing "On newly created resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
       (test-util/stub-upsert-resource
         ::conn ::db-before :client-assigned-id resource
@@ -149,7 +144,6 @@
 
   (testing "On successful update of an existing resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
       (test-util/stub-upsert-resource
         ::conn ::db-before :client-assigned-id resource

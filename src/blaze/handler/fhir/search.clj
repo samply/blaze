@@ -54,12 +54,8 @@
 
 (defn- handler-intern [base-uri conn]
   (fn [{{:keys [type]} :path-params :keys [query-params]}]
-    (let [db (d/db conn)]
-      (if (util/cached-entity db (keyword type))
-        (ring/response (search base-uri db type query-params))
-        (handler-util/error-response
-          {::anom/category ::anom/not-found
-           :fhir/issue "not-found"})))))
+    (-> (search base-uri (d/db conn) type query-params)
+        (ring/response))))
 
 
 (s/def :handler.fhir/search fn?)

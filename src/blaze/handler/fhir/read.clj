@@ -30,11 +30,6 @@
   (str "W/\"" (:version-id (meta resource)) "\""))
 
 
-(defn- pull-resource [db type id]
-  (and (util/cached-entity db (keyword type))
-       (pull/pull-resource db type id)))
-
-
 (defn- db [conn vid]
   (cond
     (and vid (re-matches #"\d+" vid))
@@ -55,7 +50,7 @@
     (-> (db conn vid)
         (md/chain'
           (fn [db]
-            (if-let [resource (pull-resource db type id)]
+            (if-let [resource (pull/pull-resource db type id)]
               (if (:deleted (meta resource))
                 (-> (handler-util/operation-outcome
                       {:fhir/issue "deleted"})

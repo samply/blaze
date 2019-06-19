@@ -1,12 +1,14 @@
 (ns blaze.handler.app
   (:require
     [blaze.middleware.json :refer [wrap-json]]
+    [blaze.middleware.fhir.type :refer [wrap-type]]
     [clojure.spec.alpha :as s]
+    [datomic-spec.core :as ds]
     [reitit.ring :as reitit-ring]
     [ring.util.response :as ring]))
 
 
-(defn router [handlers]
+(defn router [conn handlers]
   (reitit-ring/router
     [["/health"
       {:head (:handler/health handlers)
@@ -19,7 +21,7 @@
        {:post (:handler.fhir/transaction handlers)}]
       ["/metadata"
        {:get (:handler.fhir/capabilities handlers)}]
-      ["/{type}"
+      ["/{type}" {:middleware [[wrap-type conn]]}
        [""
         {:get (:handler.fhir/search handlers)
          :post (:handler.fhir/create handlers)}]
@@ -49,12 +51,12 @@
 
 
 (s/fdef handler
-  :args (s/cat :handlers ::handlers))
+  :args (s/cat :conn ::ds/conn :handlers ::handlers))
 
 (defn handler
   "Whole app Ring handler."
-  [handlers]
+  [conn handlers]
   (reitit-ring/ring-handler
-    (router handlers)
+    (router conn handlers)
     (fn [_]
       (ring/not-found "Not-Found"))))

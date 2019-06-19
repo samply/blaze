@@ -38,25 +38,8 @@
 
 
 (deftest handler-test
-  (testing "Returns Not Found on Non-Existing Resource Type"
-    (test-util/stub-cached-entity ::db #{:Patient} nil?)
-
-    (let [{:keys [status body]}
-          @((handler base-uri ::conn)
-            {:path-params {:type "Patient"}})]
-
-      (is (= 404 status))
-
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
-
-
   (testing "Returns Existing all Resources of Type"
     (let [patient {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-cached-entity ::db #{:Patient} some?)
       (st/instrument
         [`d/datoms]
         {:spec
@@ -93,7 +76,6 @@
 
   (testing "Identifier search"
     (let [patient {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-cached-entity ::db #{:Patient} some?)
       (st/instrument
         [`d/datoms]
         {:spec

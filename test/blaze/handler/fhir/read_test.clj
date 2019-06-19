@@ -17,10 +17,6 @@
     [java.time Instant]))
 
 
-(st/instrument)
-(dst/instrument)
-
-
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
@@ -38,26 +34,8 @@
 
 
 (deftest handler-test
-  (testing "Returns Not Found on Non-Existing Resource Type"
-    (test-util/stub-db ::conn ::db)
-    (test-util/stub-cached-entity ::db #{:Patient} nil?)
-
-    (let [{:keys [status body]}
-          @((handler ::conn)
-             {:path-params {:type "Patient" :id "0"}})]
-
-      (is (= 404 status))
-
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
-
-
   (testing "Returns Not Found on Non-Existing Resource"
     (test-util/stub-db ::conn ::db)
-    (test-util/stub-cached-entity ::db #{:Patient} some?)
     (test-util/stub-pull-resource ::db "Patient" "0" nil?)
 
     (let [{:keys [status body]}
@@ -94,7 +72,6 @@
                       :version-id "42"
                       :deleted true})]
       (test-util/stub-db ::conn ::db)
-      (test-util/stub-cached-entity ::db #{:Patient} some?)
       (test-util/stub-pull-resource ::db "Patient" "0" #{resource})
 
       (let [{:keys [status body headers]}
@@ -123,7 +100,6 @@
                      {:last-transaction-instant (Instant/ofEpochMilli 0)
                       :version-id "42"})]
       (test-util/stub-db ::conn ::db)
-      (test-util/stub-cached-entity ::db #{:Patient} some?)
       (test-util/stub-pull-resource ::db "Patient" "0" #{resource})
 
       (let [{:keys [status headers body]}
@@ -149,7 +125,6 @@
                       :version-id "42"})]
       (test-util/stub-sync ::conn 42 ::db)
       (test-util/stub-as-of ::db 42 ::as-of-db)
-      (test-util/stub-cached-entity ::as-of-db #{:Patient} some?)
       (test-util/stub-pull-resource ::as-of-db "Patient" "0" #{resource})
 
       (let [{:keys [status headers body]}
