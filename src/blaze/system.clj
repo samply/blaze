@@ -61,7 +61,7 @@
 
 (s/def :system/config
   (s/keys
-    :req-un
+    :opt-un
     [:config/logging
      :config/database-conn
      :config/cache
@@ -84,10 +84,12 @@
 (def ^:private default-config
   {:logging {:log/level "info"}
 
-   :structure-definitions {}
+   :structure-definitions
+   {:structure-definitions/path "fhir/r4/structure-definitions"}
 
    :database-conn
-   {:structure-definitions (ig/ref :structure-definitions)}
+   {:structure-definitions (ig/ref :structure-definitions)
+    :database/uri "datomic:mem://dev"}
 
    :cache {}
 
@@ -129,7 +131,8 @@
     :database/conn (ig/ref :database-conn)}
 
    :app-handler
-   {:handlers
+   {:database/conn (ig/ref :database-conn)
+    :handlers
     {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
      :handler/health (ig/ref :health-handler)
      :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
@@ -265,8 +268,8 @@
 
 
 (defmethod ig/init-key :app-handler
-  [_ {:keys [handlers]}]
-  (app-handler/handler handlers))
+  [_ {:database/keys [conn] :keys [handlers]}]
+  (app-handler/handler conn handlers))
 
 
 (defmethod ig/init-key :server
