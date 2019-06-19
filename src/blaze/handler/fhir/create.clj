@@ -64,12 +64,12 @@
           (md/catch' handler-util/error-response)))))
 
 
-(s/def :handler.fhir/update fn?)
+(s/def :handler.fhir/create fn?)
 
 
 (s/fdef handler
   :args (s/cat :base-uri string? :conn ::ds/conn)
-  :ret :handler.fhir/update)
+  :ret :handler.fhir/create)
 
 (defn handler
   ""
