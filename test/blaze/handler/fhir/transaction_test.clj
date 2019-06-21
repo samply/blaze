@@ -6,6 +6,7 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.bundle :as bundle]
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.test-util :as test-util]
     [blaze.handler.fhir.transaction :refer [handler]]
@@ -32,7 +33,7 @@
      {`handler
       (s/fspec
         :args (s/cat :base-uri string? :conn #{::conn}))}})
-  (test-util/stub-db ::conn ::db-before)
+  (datomic-test-util/stub-db ::conn ::db-before)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
@@ -69,7 +70,7 @@
 
 (deftest handler-test
   (testing "Returns Error on unknown type"
-    (test-util/stub-cached-entity ::db-before #{:Foo} nil?)
+    (datomic-test-util/stub-cached-entity ::db-before #{:Foo} nil?)
 
     (let [{:keys [status body]}
           @((handler base-uri ::conn)
@@ -92,7 +93,7 @@
 
 
   (testing "Returns Error on type mismatch of a update"
-    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
+    (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
           @((handler base-uri ::conn)
@@ -121,7 +122,7 @@
 
 
   (testing "Returns Error on ID mismatch of a update"
-    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
+    (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
           @((handler base-uri ::conn)
@@ -155,14 +156,14 @@
           {"resourceType" "Patient"
            "id" "0"}]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
+      (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
       (test-util/stub-upsert-resource
         ::conn ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -205,13 +206,13 @@
             {"method" "PUT"
              "url" "Patient/0"}}]]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
+      (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
       (stub-tx-data ::db-before #{entries} ::tx-data)
-      (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -242,14 +243,14 @@
           {"resourceType" "Patient"
            "id" "0"}]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
+      (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
       (test-util/stub-upsert-resource
         ::conn ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -290,14 +291,14 @@
              "url" "Patient/0"}
             :blaze/old-resource ::old-patient}]]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} #{::old-patient})
+      (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} #{::old-patient})
       (stub-tx-data ::db-before #{entries} ::tx-data)
-      (test-util/stub-transact-async
+      (datomic-test-util/stub-transact-async
         ::conn ::tx-data (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -325,15 +326,15 @@
     (let [resource {"resourceType" "Patient"}
           id #uuid "7973d432-d948-43e8-874e-3f29cf26548e"]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-squuid id)
+      (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
+      (datomic-test-util/stub-squuid id)
       (test-util/stub-upsert-resource
         ::conn ::db-before :server-assigned-id (assoc resource "id" (str id))
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-resource ::db-after #{"Patient"} #{(str id)} #{{:version 0}})
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (datomic-test-util/stub-resource ::db-after #{"Patient"} #{(str id)} #{{:version 0}})
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -386,14 +387,14 @@
               (assoc-in [0 "resource" "id"] (str id))
               (assoc-in [1 "resource" "id"] (str id)))]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient :Observation} some?)
-      (test-util/stub-squuid id)
+      (datomic-test-util/stub-cached-entity ::db-before #{:Patient :Observation} some?)
+      (datomic-test-util/stub-squuid id)
       (stub-tx-data ::db-before #{prepared-entries} ::tx-data)
-      (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
-      (test-util/stub-resource ::db-after #{"Patient" "Observation"} #{(str id)} #{{:version 0}})
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
+      (datomic-test-util/stub-resource ::db-after #{"Patient" "Observation"} #{(str id)} #{{:version 0}})
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)

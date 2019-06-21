@@ -14,9 +14,9 @@
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
     [datomic-spec.core :as ds]
     [blaze.datomic.cql :as cql]
+    [blaze.datomic.util :as datomic-util]
     [blaze.datomic.value :as dv]
     [blaze.elm.aggregates :as aggregates]
     [blaze.elm.boolean]
@@ -729,7 +729,7 @@
             (mapv
               (fn [patient]
                 (-eval expression (assoc context :patient patient) nil))
-              (cql/list-resource db "Patient"))
+              (datomic-util/list-resources db "Patient"))
             (throw (ex-info (str "Expression reference `" name "` not found.")
                             {:context context}))))
         (-hash [_]
@@ -1094,7 +1094,7 @@
 
         (reify Expression
           (-eval [_ {:keys [db]} _]
-            (cql/list-resource db data-type-name))
+            (datomic-util/list-resources db data-type-name))
           (-hash [_]
             {:type :retrieve
              :context :db

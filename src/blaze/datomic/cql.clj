@@ -20,38 +20,6 @@
   "function")
 
 
-(s/fdef find-patient
-  :args (s/cat :db ::ds/db :id string?)
-  :ret ::ds/entity)
-
-(defn find-patient
-  "Returns the patient with `id` in `db` as Datomic entity or nil if not found."
-  [db id]
-  (d/entity db [:Patient/id id]))
-
-
-(s/fdef list-patient-ids
-  :args (s/cat :db ::ds/db)
-  :ret (s/coll-of string?))
-
-(defn list-patient-ids [db]
-  (mapv :v (d/datoms db :aevt :Patient/id)))
-
-
-(s/fdef list-resource
-  :args (s/cat :db ::ds/db :data-type-name string?)
-  :ret (s/coll-of ::ds/entity))
-
-(defn list-resource
-  "Returns a reducible collection of all resources (as Datomic entity) of `type`
-  in `db`."
-  [db type]
-  (mapv
-    (fn [{eid :e}]
-      (d/entity db eid))
-    (d/datoms db :aevt (util/resource-id-attr type))))
-
-
 (s/fdef list-resource-by-code
   :args (s/cat :db ::ds/db
                :data-type-name string?

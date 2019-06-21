@@ -3,18 +3,14 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.search :refer [handler]]
-    [blaze.handler.fhir.test-util :as test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
     [datomic-spec.test :as dst]
     [taoensso.timbre :as log]))
-
-
-(st/instrument)
-(dst/instrument)
 
 
 (defn fixture [f]
@@ -26,7 +22,7 @@
      {`handler
       (s/fspec
         :args (s/cat :base-uri string? :conn #{::conn}))}})
-  (test-util/stub-db ::conn ::db)
+  (datomic-test-util/stub-db ::conn ::db)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
@@ -49,8 +45,8 @@
             :ret #{[{:e 143757}]})}
          :stub
          #{`d/datoms}})
-      (test-util/stub-entity ::db #{143757} #{::patient})
-      (test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+      (datomic-test-util/stub-entity ::db #{143757} #{::patient})
+      (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
@@ -85,8 +81,8 @@
             :ret #{[{:e 143757}]})}
          :stub
          #{`d/datoms}})
-      (test-util/stub-entity ::db #{143757} #{::patient})
-      (test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+      (datomic-test-util/stub-entity ::db #{143757} #{::patient})
+      (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)

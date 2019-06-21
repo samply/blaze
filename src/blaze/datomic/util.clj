@@ -115,6 +115,21 @@
   (- (bit-shift-right (:version resource) 2)))
 
 
+(s/fdef list-resources
+  :args (s/cat :db ::ds/db :type string?)
+  :ret (s/coll-of ::ds/entity))
+
+(defn list-resources
+  "Returns a collection of all non-deleted resources of `type`."
+  [db type]
+  (into
+    []
+    (comp
+      (map (fn [{eid :e}] (d/entity db eid)))
+      (remove deleted?))
+    (d/datoms db :aevt (resource-id-attr type))))
+
+
 (defn transaction-history
   "Returns a reducible coll of all transactions on resource with `eid`.
   Newest first."

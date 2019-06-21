@@ -7,6 +7,7 @@
     [clojure.test :refer :all]
     [clojure.test.check.properties :as prop]
     [blaze.datomic.cql :as cql]
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.elm.compiler
      :refer [compile compile-with-equiv-clause -eval -hash]]
     [blaze.elm.date-time :refer [local-time local-time? period]]
@@ -231,14 +232,7 @@
         [1 1])))
 
   (testing "Retrieve queries"
-    (st/instrument
-      `cql/list-resource
-      {:spec
-       {`cql/list-resource
-        (s/fspec
-          :args (s/cat :db #{::db} :data-type-name #{"Patient"})
-          :ret #{[::patient]})}
-       :stub #{`cql/list-resource}})
+    (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
     (let [retrieve {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
           where {:type "Equal"
@@ -306,15 +300,8 @@
      {`compile-with-equiv-clause
       (s/fspec
         :args (s/cat :context any? :with-equiv-clause :elm.query.life/with-equiv))}})
-
-  (st/instrument
-    `cql/list-resource
-    {:spec
-     {`cql/list-resource
-      (s/fspec
-        :args (s/cat :db #{::db} :data-type-name #{"Observation"})
-        :ret #{[{:Observation/subject ::subject}]})}
-     :stub #{`cql/list-resource}})
+  (datomic-test-util/stub-list-resources
+    ::db "Observation" #{[{:Observation/subject ::subject}]})
 
   (testing "Equiv With with two Observations comparing there subjects."
     (let [elm {:alias "O1"
@@ -373,15 +360,7 @@
         :args (s/cat :db #{::db} :system #{"life"} :code #{"0"})
         :ret #{::code})}
      :stub #{`cql/find-code}})
-
-  (st/instrument
-    `cql/list-resource
-    {:spec
-     {`cql/list-resource
-      (s/fspec
-        :args (s/cat :db #{::db} :data-type-name #{"Patient"})
-        :ret #{[::patient]})}
-     :stub #{`cql/list-resource}})
+  (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
   (let [context
         {:db ::db
@@ -435,14 +414,7 @@
 
     (testing "Population Eval Context"
       (testing "retrieving all patients"
-        (st/instrument
-          `cql/list-resource
-          {:spec
-           {`cql/list-resource
-            (s/fspec
-              :args (s/cat :db #{::db} :data-type-name #{"Patient"})
-              :ret #{[::patient]})}
-           :stub #{`cql/list-resource}})
+        (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
         (are [elm res]
           (= res (-eval (compile (assoc context :eval-context "Population") elm)
@@ -4178,14 +4150,7 @@
   (are [list] (thrown? Exception (-eval (compile {} (elm/singleton-from list)) {} nil))
     #elm/list [#elm/int "1" #elm/int "1"])
 
-  (st/instrument
-    `cql/list-resource
-    {:spec
-     {`cql/list-resource
-      (s/fspec
-        :args (s/cat :db #{::db} :data-type-name #{"Patient"})
-        :ret #{[::patient]})}
-     :stub #{`cql/list-resource}})
+  (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
   (are [list res] (= res (-eval (compile {} (elm/singleton-from list)) {:db ::db} nil))
     {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}

@@ -1,6 +1,6 @@
 (ns blaze.middleware.fhir.type-test
   (:require
-    [blaze.handler.fhir.test-util :as test-util]
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.middleware.fhir.type :refer [wrap-type]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -16,7 +16,7 @@
      {`wrap-type
       (s/fspec
         :args (s/cat :handler fn? :conn #{::conn}))}})
-  (test-util/stub-db ::conn ::db)
+  (datomic-test-util/stub-db ::conn ::db)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
@@ -26,7 +26,7 @@
 
 (deftest wrap-type-test
   (testing "Returns Not Found on Non-Existing Resource Type"
-    (test-util/stub-cached-entity ::db #{:Patient} nil?)
+    (datomic-test-util/stub-cached-entity ::db #{:Patient} nil?)
 
     (let [{:keys [status body]}
           ((wrap-type (fn [_]) ::conn) {:path-params {:type "Patient"}})]
@@ -41,7 +41,7 @@
 
 
   (testing "Calls Handler on Existing Resource Type"
-    (test-util/stub-cached-entity ::db #{:Patient} some?)
+    (datomic-test-util/stub-cached-entity ::db #{:Patient} some?)
 
     (let [request {:path-params {:type "Patient"}}
           response ((wrap-type identity ::conn) request)]

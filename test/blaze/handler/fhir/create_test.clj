@@ -5,6 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.create :refer [handler]]
     [blaze.handler.fhir.test-util :as test-util]
     [clojure.spec.alpha :as s]
@@ -13,10 +14,6 @@
     [datomic-spec.test :as dst]
     [manifold.deferred :as md]
     [taoensso.timbre :as log]))
-
-
-(st/instrument)
-(dst/instrument)
 
 
 (defn fixture [f]
@@ -60,17 +57,17 @@
 
   (testing "On newly created resource"
     (let [id #uuid "6f9c4f5e-a9b3-40fb-871c-7b0ccddb3c99"]
-      (test-util/stub-db ::conn ::db-before)
-      (test-util/stub-squuid id)
+      (datomic-test-util/stub-db ::conn ::db-before)
+      (datomic-test-util/stub-squuid id)
       (test-util/stub-upsert-resource
         ::conn ::db-before :server-assigned-id
         {"resourceType" "Patient" "id" (str id)}
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction
+      (datomic-test-util/stub-basis-transaction
         ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
-      (test-util/stub-pull-resource
+      (datomic-test-util/stub-pull-resource
         ::db-after "Patient" (str id) #{::resource-after})
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}

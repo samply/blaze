@@ -5,7 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.handler.fhir.test-util :as test-util]
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.read :refer [handler]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -35,8 +35,8 @@
 
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Resource"
-    (test-util/stub-db ::conn ::db)
-    (test-util/stub-pull-resource ::db "Patient" "0" nil?)
+    (datomic-test-util/stub-db ::conn ::db)
+    (datomic-test-util/stub-pull-resource ::db "Patient" "0" nil?)
 
     (let [{:keys [status body]}
           @((handler ::conn)
@@ -71,8 +71,8 @@
                      {:last-transaction-instant (Instant/ofEpochMilli 0)
                       :version-id "42"
                       :deleted true})]
-      (test-util/stub-db ::conn ::db)
-      (test-util/stub-pull-resource ::db "Patient" "0" #{resource})
+      (datomic-test-util/stub-db ::conn ::db)
+      (datomic-test-util/stub-pull-resource ::db "Patient" "0" #{resource})
 
       (let [{:keys [status body headers]}
             @((handler ::conn)
@@ -99,8 +99,8 @@
           (with-meta {"meta" {"versionId" "42"}}
                      {:last-transaction-instant (Instant/ofEpochMilli 0)
                       :version-id "42"})]
-      (test-util/stub-db ::conn ::db)
-      (test-util/stub-pull-resource ::db "Patient" "0" #{resource})
+      (datomic-test-util/stub-db ::conn ::db)
+      (datomic-test-util/stub-pull-resource ::db "Patient" "0" #{resource})
 
       (let [{:keys [status headers body]}
             @((handler ::conn)
@@ -123,9 +123,9 @@
           (with-meta {"meta" {"versionId" "42"}}
                      {:last-transaction-instant (Instant/ofEpochMilli 0)
                       :version-id "42"})]
-      (test-util/stub-sync ::conn 42 ::db)
-      (test-util/stub-as-of ::db 42 ::as-of-db)
-      (test-util/stub-pull-resource ::as-of-db "Patient" "0" #{resource})
+      (datomic-test-util/stub-sync ::conn 42 ::db)
+      (datomic-test-util/stub-as-of ::db 42 ::as-of-db)
+      (datomic-test-util/stub-pull-resource ::as-of-db "Patient" "0" #{resource})
 
       (let [{:keys [status headers body]}
             @((handler ::conn)

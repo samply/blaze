@@ -5,6 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.test-util :as test-util]
     [blaze.handler.fhir.update :refer [handler]]
     [clojure.spec.alpha :as s]
@@ -13,10 +14,6 @@
     [datomic-spec.test :as dst]
     [manifold.deferred :as md]
     [taoensso.timbre :as log]))
-
-
-(st/instrument)
-(dst/instrument)
 
 
 (defn fixture [f]
@@ -28,7 +25,7 @@
      {`handler
       (s/fspec
         :args (s/cat :base-uri string? :conn #{::conn}))}})
-  (test-util/stub-db ::conn ::db-before)
+  (datomic-test-util/stub-db ::conn ::db-before)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
@@ -80,14 +77,14 @@
 
   (testing "On newly created resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
       (test-util/stub-upsert-resource
         ::conn ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction
+      (datomic-test-util/stub-basis-transaction
         ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
-      (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
@@ -144,14 +141,14 @@
 
   (testing "On successful update of an existing resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
       (test-util/stub-upsert-resource
         ::conn ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction
+      (datomic-test-util/stub-basis-transaction
         ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
-      (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
-      (test-util/stub-basis-t ::db-after 42)
+      (datomic-test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
