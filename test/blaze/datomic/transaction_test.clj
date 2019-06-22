@@ -1529,20 +1529,7 @@
              "subject" {"reference" "Patient/0"}})
           (catch Exception e
             (given (ex-data e)
-              ::anom/category := ::anom/incorrect)))))
-
-    (testing "on logical references"
-      (let [[db] (with-resource db "Observation" "0")]
-        (try
-          (resource-upsert
-            db nil :server-assigned-id
-            {"id" "0"
-             "resourceType" "Observation"
-             "subject" {"identifier" {}}})
-          (catch Exception e
-            (given (ex-data e)
-              ::anom/category := ::anom/unsupported
-              :fhir/issue := "not-supported")))))))
+              ::anom/category := ::anom/incorrect)))))))
 
 
 (deftest resource-deletion-test

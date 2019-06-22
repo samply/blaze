@@ -289,11 +289,9 @@
                                :reference value
                                :fhir.issue/expression (ident->path ident)})))))
         identifier
-        (throw (ex-info "Unsupported logical reference."
-                        {::anom/category ::anom/unsupported
-                         :fhir/issue "not-supported"
-                         :reference value
-                         :fhir.issue/expression (ident->path ident)}))))
+        (do (log/warn (str "Unsupported logical reference in element `"
+                           (ident->path ident) "`. Skip storing it."))
+            [])))
 
     "BackboneElement"
     (let [tid (d/tempid (keyword "part" (ident->path ident)))
