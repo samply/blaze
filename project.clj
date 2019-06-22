@@ -50,7 +50,7 @@
      [org.clojars.akiel/iota "0.1"]
      [org.clojure/data.xml "0.0.8"]
      [org.clojure/test.check "0.9.0"]
-     [org.clojure/tools.namespace "0.2.11"]]}
+     [org.clojure/tools.namespace "0.3.0"]]}
 
    :jdk-11
    {:dependencies
