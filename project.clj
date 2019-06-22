@@ -27,7 +27,7 @@
    [org.clojars.akiel/datomic-tools "0.4"]
    [org.clojars.akiel/env-tools "0.2.1"]
    [org.clojars.akiel/spec-coerce "0.3.1"]
-   [org.clojure/clojure "1.10.0"]
+   [org.clojure/clojure "1.10.1"]
    [org.clojure/core.cache "0.7.2"]
    [org.clojure/tools.cli "0.4.2"]
    [org.clojure/tools.logging "0.4.0"]
