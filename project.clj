@@ -51,20 +51,16 @@
      [org.clojure/data.xml "0.0.8"]
      [org.clojure/test.check "0.9.0"]
      [org.clojure/tools.namespace "0.2.11"]]}
+
    :jdk-11
    {:dependencies
     [[javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]
      [com.sun.xml.bind/jaxb-core "2.3.0.1"]
      [com.sun.xml.bind/jaxb-impl "2.3.2"]]}
-   :kaocha
-   {:dependencies
-    [[lambdaisland/kaocha "0.0-418"]]}
 
    :uberjar
    {:aot [blaze.core]}}
 
   :main ^:skip-aot blaze.core
 
-  :hiera {:ignore-ns #{user}}
-
-  :aliases {"kaocha" ["with-profile" "+kaocha" "run" "-m" "kaocha.runner"]})
+  :hiera {:ignore-ns #{user}})
