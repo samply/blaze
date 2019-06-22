@@ -16,8 +16,6 @@
    [com.cognitect/anomalies "0.1.12"]
    [com.datomic/datomic-free "0.9.5697"]
    [com.taoensso/timbre "4.10.0"]
-   [danlentz/clj-uuid "0.1.7"
-    :exclusions [primitive-math]]
    [info.cqframework/cql-to-elm "1.3.15"]
    [integrant "0.7.0"]
    [io.prometheus/simpleclient_hotspot "0.6.0"]
