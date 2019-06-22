@@ -6,6 +6,7 @@
     [blaze.datomic.util :as util]
     [blaze.fhir-client :as client]
     [blaze.spec]
+    [blaze.util :refer [throw-anom]]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -25,13 +26,21 @@
     [java.util.concurrent ExecutionException Executors]))
 
 
-(defn- coerce-decimal [value]
+(defn- ident->path [ident]
+  (str (namespace ident) "." (name ident)))
+
+
+(defn- coerce-decimal [{:db/keys [ident]} value]
   (cond
     (decimal? value) value
     (int? value) (BigDecimal/valueOf ^long value)
-    :else (throw (ex-info (str "Invalid decimal value `" value "`.")
-                          {::anom/category ::anom/incorrect
-                           :value value}))))
+    :else
+    (throw-anom
+      {::anom/category ::anom/incorrect
+       ::anom/message (str "Invalid decimal value `" value "`.")
+       :fhir/issue "value"
+       :fhir.issue/expression (ident->path ident)
+       :value value})))
 
 
 (defn- coerce-date-time [^String value]
@@ -58,8 +67,8 @@
     (LocalDate/parse value)))
 
 
-(defn- quantity [{:strs [value code unit]}]
-  (let [value (coerce-decimal value)]
+(defn- quantity [element {:strs [value code unit]}]
+  (let [value (coerce-decimal element value)]
     (try
       (if code
         (quantity/quantity value code)
@@ -69,11 +78,8 @@
         (quantity/quantity value "")))))
 
 
-(s/fdef coerce-value
-  :args (s/cat :type-code string? :value some?))
-
 (defn coerce-value
-  [type-code value]
+  [{:element/keys [type-code] :as element} value]
   (case type-code
     ("boolean"
       "integer"
@@ -88,24 +94,42 @@
       "unsignedInt"
       "positiveInt"
       "xhtml") value
-    "decimal" (coerce-decimal value)
+    "decimal" (coerce-decimal element value)
     "instant" (Date/from (Instant/from (.parse DateTimeFormatter/ISO_DATE_TIME value)))
     "date" (coerce-date value)
     "dateTime" (coerce-date-time value)
     "time" (LocalTime/parse value)
     "base64Binary" (.decode (Base64/getDecoder) ^String value)
     "uuid" (UUID/fromString value)
-    "Quantity" (quantity value)))
+    "Quantity" (quantity element value)))
 
 
 (defn- write
   "Calls write on values stored as byte array."
-  [type-code valueType value]
-  (assert (some? value) (str "Nil value in write of type `" type-code "`."))
-  (let [value (coerce-value type-code value)]
+  [{:db/keys [ident] :as element} valueType value]
+  (assert (some? value) (str "Nil value in element `" (ident->path ident) "`."))
+  (let [value (coerce-value element value)]
     (if (= :db.type/bytes valueType)
       (value/write value)
       value)))
+
+
+(defn- check-cardinality [{:db/keys [ident cardinality]} value]
+  (if (= :db.cardinality/one cardinality)
+    (when (or (vector? value) (set? value))
+      (throw-anom
+        {::anom/category ::anom/incorrect
+         ::anom/message
+         (str "Incorrect sequential value at element `" (ident->path ident) "`.")
+         :fhir/issue "value"
+         :fhir.issue/expression (ident->path ident)}))
+    (when (not (or (vector? value) (set? value)))
+      (throw-anom
+        {::anom/category ::anom/incorrect
+         ::anom/message
+         (str "Incorrect non-sequential value at element `" (ident->path ident) "`.")
+         :fhir/issue "value"
+         :fhir.issue/expression (ident->path ident)}))))
 
 
 (defn find-json-value
@@ -130,11 +154,9 @@
       nil
       type-choices)
     (when-some [value (get entity json-key)]
+      (check-cardinality element value)
       [value element])))
 
-
-(defn- ident->path [ident]
-  (str (namespace ident) "." (name ident)))
 
 
 ;; ---- Add Element -----------------------------------------------------------
@@ -178,7 +200,7 @@
         (add-code-according-value-set-binding db element id value)
         (add-code db ident id system version value))
 
-      [[:db/add id ident (write type-code valueType value)]])
+      [[:db/add id ident (write element valueType value)]])
     part-of-choice-type?
     (conj [:db/add id type-attr-ident ident])))
 
@@ -348,7 +370,7 @@
         add (set/difference new-values old-values)]
     (-> []
         (into
-          (map (fn [value] [:db/retract id ident (write type-code valueType value)]))
+          (map (fn [value] [:db/retract id ident (write element valueType value)]))
           retract)
         (into
           (mapcat (fn [value] (add-primitive-element context element id value)))

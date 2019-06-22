@@ -1623,29 +1623,29 @@
 
 (deftest coerce-value-test
   (testing "date with year precision"
-    (is (= (Year/of 2019) (value/read (coerce-value "date" "2019")))))
+    (is (= (Year/of 2019) (value/read (coerce-value {:element/type-code "date"} "2019")))))
 
   (testing "date with year-month precision"
-    (is (= (YearMonth/of 2019 1) (value/read (coerce-value "date" "2019-01")))))
+    (is (= (YearMonth/of 2019 1) (value/read (coerce-value {:element/type-code "date"} "2019-01")))))
 
   (testing "date"
-    (is (= (LocalDate/of 2019 2 3) (value/read (coerce-value "date" "2019-02-03")))))
+    (is (= (LocalDate/of 2019 2 3) (value/read (coerce-value {:element/type-code "date"} "2019-02-03")))))
 
   (testing "dateTime with year precision"
-    (is (= (Year/of 2019) (value/read (coerce-value "dateTime" "2019")))))
+    (is (= (Year/of 2019) (value/read (coerce-value {:element/type-code "dateTime"} "2019")))))
 
   (testing "dateTime with year-month precision"
-    (is (= (YearMonth/of 2019 1) (value/read (coerce-value "dateTime" "2019-01")))))
+    (is (= (YearMonth/of 2019 1) (value/read (coerce-value {:element/type-code "dateTime"} "2019-01")))))
 
   (testing "dateTime with date precision"
-    (is (= (LocalDate/of 2019 2 3) (value/read (coerce-value "dateTime" "2019-02-03")))))
+    (is (= (LocalDate/of 2019 2 3) (value/read (coerce-value {:element/type-code "dateTime"} "2019-02-03")))))
 
   (testing "dateTime without timezone"
-    (is (= (LocalDateTime/of 2019 2 3 12 13 14) (value/read (coerce-value "dateTime" "2019-02-03T12:13:14")))))
+    (is (= (LocalDateTime/of 2019 2 3 12 13 14) (value/read (coerce-value {:element/type-code "dateTime"} "2019-02-03T12:13:14")))))
 
   (testing "dateTime with timezone"
     (is (= (OffsetDateTime/of 2019 2 3 12 13 14 0 (ZoneOffset/ofHours 1))
-           (value/read (coerce-value "dateTime" "2019-02-03T12:13:14+01:00"))))))
+           (value/read (coerce-value {:element/type-code "dateTime"} "2019-02-03T12:13:14+01:00"))))))
 
 
 (deftest transact-async-test
