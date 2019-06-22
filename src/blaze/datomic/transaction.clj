@@ -950,13 +950,13 @@
                 {::anom/category ::anom/busy
                  ::anom/message "Transaction timed out."})
               result))))
-      (md/catch' ExecutionException #(md/error-deferred (.getCause ^Exception %)))
+      (md/catch' ExecutionException #(md/error-deferred (ex-cause %)))
       (md/catch'
         (fn [e]
           (md/error-deferred
             (assoc (ex-data e)
               ::anom/category (category e)
-              ::anom/message (.getMessage ^Exception e)))))))
+              ::anom/message (ex-message e)))))))
 
 
 (s/fdef resource-tempid

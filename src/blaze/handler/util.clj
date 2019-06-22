@@ -103,13 +103,13 @@
     (if (::anom/category (ex-data error))
       (error-response
         (merge
-          {::anom/message (.getMessage ^Throwable error)}
+          {::anom/message (ex-message error)}
           (ex-data error)))
       (do
         (log/error (log/stacktrace error))
         (error-response
           {::anom/category ::anom/fault
-           ::anom/message (.getMessage ^Throwable error)
+           ::anom/message (ex-message error)
            :blaze/stacktrace (aviso/format-exception error)})))
 
     :else

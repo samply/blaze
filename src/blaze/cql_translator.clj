@@ -21,7 +21,7 @@
                                            (options locators?))]
     (if-let [errors (seq (.getErrors translator))]
       {::anom/category ::anom/fault
-       ::anom/message (apply str (map #(.getMessage ^Exception %) errors))
+       ::anom/message (apply str (map ex-message errors))
        :errors errors}
       (:library
         (binding [*use-bigdecimals?* true]

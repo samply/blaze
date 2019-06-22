@@ -42,7 +42,7 @@
         (catch Exception e
           (md/error-deferred
             #::anom{:category ::anom/incorrect
-                    :message (.getMessage ^Exception e)}))))))
+                    :message (ex-message e)}))))))
 
 
 (defn- handle-request [{:keys [request-method body] :as request}]
@@ -63,7 +63,7 @@
          "issue"
          [{"severity" "error"
            "code" "exception"
-           "diagnostics" (.getMessage ^Exception e)}]}))))
+           "diagnostics" (ex-message e)}]}))))
 
 
 (defn- handle-response [{:keys [body] :as response}]

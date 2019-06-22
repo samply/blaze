@@ -158,7 +158,7 @@
       (catch Exception e
         #::anom
             {:category ::anom/fault
-             :message (.getMessage e)
+             :message (ex-message e)
              :_/e e
              :elm/expression expression}))))
 

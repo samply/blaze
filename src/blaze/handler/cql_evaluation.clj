@@ -83,7 +83,7 @@
                   (fn [[name result]]
                     (if (instance? Exception result)
                       [{:name name
-                        :error (.getMessage ^Exception result)
+                        :error (ex-message result)
                         :location "[?:?]"}]
                       (if-let [bundle (bundle result)]
                         [(assoc bundle :name name)]
@@ -100,7 +100,7 @@
                           (name (::anom/category e)))
 
                       (instance? Exception e)
-                      (.getMessage ^Exception e)
+                      (ex-message e)
 
                       :else
                       "Unknown error")}])))))

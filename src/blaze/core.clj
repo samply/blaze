@@ -25,9 +25,9 @@
       (log/error
         (cond->
           {:ex-data (ex-data e)
-           :msg (.getMessage e)}
-          (.getCause e)
-          (assoc :cause-msg (.getMessage (.getCause e)))))
+           :msg (ex-message e)}
+          (ex-cause e)
+          (assoc :cause-msg (ex-message (ex-cause e)))))
       (System/exit 1))))
 
 

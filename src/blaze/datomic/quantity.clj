@@ -21,8 +21,8 @@
                       (cond->
                         {::anom/category ::anom/incorrect
                          :unit s}
-                        (.getMessage ^Throwable t)
-                        (assoc :cause-msg (.getMessage ^Throwable t))))))))
+                        (ex-message t)
+                        (assoc :cause-msg (ex-message t))))))))
 
 
 (let [mem (volatile! {})]
