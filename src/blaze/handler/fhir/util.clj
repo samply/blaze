@@ -17,6 +17,8 @@
                :resource ::tx/resource))
 
 (defn upsert-resource
+  "Throws exceptions with `ex-data` containing an anomaly on errors or
+  unsupported features."
   [conn db creation-mode resource]
   (let [tempids (tempids db resource)
         tx-data (tx/resource-upsert db tempids creation-mode resource)]

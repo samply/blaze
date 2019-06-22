@@ -133,6 +133,9 @@
       [value element])))
 
 
+(defn- ident->path [ident]
+  (str (namespace ident) "." (name ident)))
+
 
 ;; ---- Add Element -----------------------------------------------------------
 
@@ -269,7 +272,7 @@
                             {::anom/category ::anom/incorrect
                              :fhir/issue "value"
                              :reference value
-                             :element/ident ident})))
+                             :fhir.issue/expression (ident->path ident)})))
           (let [[type ref-id] (str/split reference #"/")]
             (if (util/cached-entity db (keyword type))
               (if-let [eid (resolve-reference context type ref-id)]
@@ -278,22 +281,22 @@
                                 {::anom/category ::anom/incorrect
                                  :fhir/issue "value"
                                  :reference value
-                                 :element/ident ident})))
+                                 :fhir.issue/expression (ident->path ident)})))
               (throw (ex-info (str "Invalid reference `" reference `". The type `"
                                    type "` is unknown.")
                               {::anom/category ::anom/incorrect
                                :fhir/issue "value"
                                :reference value
-                               :element/ident ident})))))
+                               :fhir.issue/expression (ident->path ident)})))))
         identifier
         (throw (ex-info "Unsupported logical reference."
                         {::anom/category ::anom/unsupported
                          :fhir/issue "not-supported"
                          :reference value
-                         :element/ident ident}))))
+                         :fhir.issue/expression (ident->path ident)}))))
 
     "BackboneElement"
-    (let [tid (d/tempid (keyword "part" (str (namespace ident) "." (name ident))))
+    (let [tid (d/tempid (keyword "part" (ident->path ident)))
           tx-data (upsert context ident {:db/id tid} value)]
       (when-not (empty? tx-data)
         (conj tx-data [:db/add id ident tid])))
@@ -804,7 +807,10 @@
   update using CAS for optimistic locking. The function `transact-async` will
   return an error deferred with ::anom/conflict on optimistic locking conflicts.
 
-  Resources are maps taken straight from there parsed JSON with string keys."
+  Resources are maps taken straight from there parsed JSON with string keys.
+
+  Throws exceptions with `ex-data` containing an anomaly on errors or
+  unsupported features."
   {:arglists '([db tempids initial-version resource])}
   [db tempids creation-mode {type "resourceType" id "id" :as resource}]
   (assert type)

@@ -44,6 +44,7 @@
 
 (defn operation-outcome
   [{:fhir/keys [issue operation-outcome]
+    :fhir.issue/keys [expression]
     :blaze/keys [stacktrace]
     ::anom/keys [category message]}]
   {:resourceType "OperationOutcome"
@@ -60,12 +61,24 @@
       message
       (assoc :diagnostics message)
       stacktrace
-      (assoc :diagnostics stacktrace))]})
+      (assoc :diagnostics stacktrace)
+      (sequential? expression)
+      (assoc :expression expression)
+      (some? expression)
+      (assoc :expression [expression]))]})
 
 
 (defn error-response
   "Converts `error` into a OperationOutcome response. Uses ::anom/category to
-  determine the response status."
+  determine the response status.
+
+  Other used keys are:
+
+  * :fhir/issue - will go into `OperationOutcome.issue.code`
+  * :fhir/operation-outcome
+      - will go into `OperationOutcome.issue.details` as code with system
+        http://terminology.hl7.org/CodeSystem/operation-outcome
+  * :fhir.issue/expression - will go into `OperationOutcome.issue.expression`"
   {:arglists '([error])}
   [{::anom/keys [category] :as error}]
   (cond
