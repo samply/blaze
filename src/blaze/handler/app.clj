@@ -35,7 +35,8 @@
           {:get (:handler.fhir/history handlers)}]
          ["/{vid}"
           {:get (:handler.fhir/read handlers)}]]]]]]
-    {:conflicts nil}))
+    {:syntax :bracket
+     :conflicts nil}))
 
 
 (s/def ::handlers

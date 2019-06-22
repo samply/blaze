@@ -20,7 +20,7 @@
    [integrant "0.7.0"]
    [io.prometheus/simpleclient_hotspot "0.6.0"]
    [javax.measure/unit-api "1.0"]
-   [metosin/reitit-ring "0.3.7"
+   [metosin/reitit-ring "0.3.9"
     :exclusions [commons-codec]]
    [org.apache.httpcomponents/httpcore "4.4.11"]
    [org.clojars.akiel/datomic-spec "0.5.1"]
