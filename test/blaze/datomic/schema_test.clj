@@ -232,6 +232,11 @@
     (is (= (element-definition-tx-data (element-definitions "CodeSystem.concept.concept"))
            [[:db/add "CodeSystem.concept" :type/elements "CodeSystem.concept"]])))
 
+  (testing "ImplementationGuide.definition.page.page"
+    ;; TODO: HACK see #19
+    (is (= (element-definition-tx-data (element-definitions "ImplementationGuide.definition.page.page"))
+           [])))
+
   (testing "Bundle"
     (is (= (element-definition-tx-data (element-definitions "Bundle"))
            [{:db/id "Bundle"

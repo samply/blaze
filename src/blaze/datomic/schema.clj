@@ -187,7 +187,12 @@
         ident (path->ident path)
         choice-type? (str/ends-with? path "[x]")]
     (if content-reference
-      [[:db/add (subs content-reference 1) :type/elements (subs content-reference 1)]]
+      ;; TODO: HACK see #19
+      (if (#{"#ImplementationGuide.definition.page"
+             "#Consent.provision"}
+           content-reference)
+        []
+        [[:db/add (subs content-reference 1) :type/elements (subs content-reference 1)]])
       (cond->
         [(cond->
            (if type
