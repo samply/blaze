@@ -542,22 +542,34 @@
 
 
 (defn- retract-non-primitive-card-one-element
-  [context {:element/keys [type-code] :db/keys [ident]} {:db/keys [id]} value]
+  [context {:element/keys [type-code] :db/keys [ident] :as element}
+   {:db/keys [id]} value]
   (assert (:db/id value))
   (conj
-    (upsert context (keyword type-code) value nil)
+    (case type-code
+      "Reference"
+      (upsert-reference context element value nil)
+      "BackboneElement"
+      (upsert context ident value nil)
+      (upsert context (keyword type-code) value nil))
     [:db/retract id ident (:db/id value)]))
 
 
 (defn- retract-non-primitive-card-many-element
-  [context {:db/keys [ident]} {:db/keys [id]} value]
+  [context {:element/keys [type-code] :db/keys [ident] :as element}
+   {:db/keys [id]} value]
   (into
     []
     (mapcat
       (fn [value]
         (assert (:db/id value))
         (conj
-          (upsert context (keyword (util/resource-type value)) value nil)
+          (case type-code
+            "Reference"
+            (upsert-reference context element value nil)
+            "BackboneElement"
+            (upsert context ident value nil)
+            (upsert context (keyword type-code) value nil))
           [:db/retract id ident (:db/id value)])))
     value))
 

@@ -259,8 +259,8 @@
                 [:db.fn/cas id :version -3 -7]])))))
 
 
-    (testing "primitive multi-valued backbone element"
-      (testing "with uri type"
+    (testing "primitive single-valued element in multi-valued backbone element"
+      (testing "with boolean type"
         (let [[db id] (with-resource db "Patient" "0")]
           (is
             (=
@@ -1437,6 +1437,42 @@
             [[:db/retract id :Observation/valueString "foo"]
              [:db/retract id :Observation/value :Observation/valueString]
              [:db.fn/cas id :version -3 -7]]))))
+
+
+    (testing "primitive single-valued element in single-valued backbone element"
+      (let [[db software-id]
+            (with-non-primitive
+              db :TerminologyCapabilities.software/name "foo")
+            [db capabilities-id]
+            (with-resource
+              db "TerminologyCapabilities" "0"
+              :TerminologyCapabilities/software software-id)]
+        (is
+          (=
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "TerminologyCapabilities"})
+            [[:db/retract software-id :TerminologyCapabilities.software/name "foo"]
+             [:db/retract capabilities-id :TerminologyCapabilities/software software-id]
+             [:db.fn/cas capabilities-id :version -3 -7]]))))
+
+
+    (testing "primitive single-valued element in multi-valued backbone element"
+      (let [[db communication-id]
+            (with-non-primitive db :Patient.communication/preferred true)
+            [db patient-id]
+            (with-resource
+              db "Patient" "0" :Patient/communication communication-id)]
+        (is
+          (=
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "Patient"})
+            [[:db/retract communication-id :Patient.communication/preferred true]
+             [:db/retract patient-id :Patient/communication communication-id]
+             [:db.fn/cas patient-id :version -3 -7]]))))
 
 
     (testing "Coding"
