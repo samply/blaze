@@ -38,11 +38,11 @@
               (upsert-resource* conn db creation-mode resource)))))))
 
 
-(defn- remove-leading-slashes [url]
-  (if (str/starts-with? url "/")
-    (remove-leading-slashes (subs url 1))
-    url))
-
-
-(defn extract-type-and-id [url]
-  (str/split (remove-leading-slashes url) #"/"))
+(defn delete-resource
+  "Throws exceptions with `ex-data` containing an anomaly on errors or
+  unsupported features."
+  [conn db type id]
+  (let [tx-data (tx/resource-deletion db type id)]
+    (if (empty? tx-data)
+      {:db-after db}
+      (tx/transact-async conn tx-data))))

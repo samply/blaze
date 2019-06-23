@@ -86,14 +86,14 @@
 
     (let [{:keys [status body]}
           @((handler base-uri ::conn)
-             {:body
-              {"resourceType" "Bundle"
-               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-               "type" "transaction"
-               "entry"
-               [{"request"
-                 {"method" "PUT"
-                  "url" "Foo/0"}}]}})]
+            {:body
+             {"resourceType" "Bundle"
+              "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
+              "type" "transaction"
+              "entry"
+              [{"request"
+                {"method" "PUT"
+                 "url" "Foo/0"}}]}})]
 
       (is (= 400 status))
 
@@ -109,16 +109,16 @@
 
     (let [{:keys [status body]}
           @((handler base-uri ::conn)
-             {:body
-              {"resourceType" "Bundle"
-               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-               "type" "transaction"
-               "entry"
-               [{"resource"
-                 {"resourceType" "Observation"}
-                 "request"
-                 {"method" "PUT"
-                  "url" "Patient/0"}}]}})]
+            {:body
+             {"resourceType" "Bundle"
+              "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
+              "type" "transaction"
+              "entry"
+              [{"resource"
+                {"resourceType" "Observation"}
+                "request"
+                {"method" "PUT"
+                 "url" "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -138,17 +138,17 @@
 
     (let [{:keys [status body]}
           @((handler base-uri ::conn)
-             {:body
-              {"resourceType" "Bundle"
-               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-               "type" "transaction"
-               "entry"
-               [{"resource"
-                 {"resourceType" "Patient"
-                  "id" "1"}
-                 "request"
-                 {"method" "PUT"
-                  "url" "Patient/0"}}]}})]
+            {:body
+             {"resourceType" "Bundle"
+              "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
+              "type" "transaction"
+              "entry"
+              [{"resource"
+                {"resourceType" "Patient"
+                 "id" "1"}
+                "request"
+                {"method" "PUT"
+                 "url" "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -179,16 +179,16 @@
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                 "type" "batch"
-                 "entry"
-                 [{"resource"
-                   resource
-                   "request"
-                   {"method" "PUT"
-                    "url" "Patient/0"}}]}})]
+              {:body
+               {"resourceType" "Bundle"
+                "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
+                "type" "batch"
+                "entry"
+                [{"resource"
+                  resource
+                  "request"
+                  {"method" "PUT"
+                   "url" "Patient/0"}}]}})]
 
         (is (= 200 status))
 
@@ -220,8 +220,8 @@
 
       (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
-      (stub-code-tx-data ::db-before #{entries} [])
-      (stub-tx-data ::db-before #{entries} ::tx-data)
+      (stub-code-tx-data ::db-before coll? [])
+      (stub-tx-data ::db-before coll? ::tx-data)
       (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
@@ -229,11 +229,11 @@
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                 "type" "transaction"
-                 "entry" entries}})]
+              {:body
+               {"resourceType" "Bundle"
+                "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
+                "type" "transaction"
+                "entry" entries}})]
 
         (is (= 200 status))
 
@@ -267,16 +267,16 @@
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                 "type" "batch"
-                 "entry"
-                 [{"resource"
-                   resource
-                   "request"
-                   {"method" "PUT"
-                    "url" "Patient/0"}}]}})]
+              {:body
+               {"resourceType" "Bundle"
+                "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
+                "type" "batch"
+                "entry"
+                [{"resource"
+                  resource
+                  "request"
+                  {"method" "PUT"
+                   "url" "Patient/0"}}]}})]
 
         (is (= 200 status))
 
@@ -306,8 +306,8 @@
 
       (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} #{::old-patient})
-      (stub-code-tx-data ::db-before #{entries} [])
-      (stub-tx-data ::db-before #{entries} ::tx-data)
+      (stub-code-tx-data ::db-before coll? [])
+      (stub-tx-data ::db-before coll? ::tx-data)
       (datomic-test-util/stub-transact-async
         ::conn ::tx-data (md/success-deferred {:db-after ::db-after}))
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
@@ -316,11 +316,11 @@
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                 "type" "transaction"
-                 "entry" entries}})]
+              {:body
+               {"resourceType" "Bundle"
+                "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
+                "type" "transaction"
+                "entry" entries}})]
 
         (is (= 200 status))
 
@@ -352,16 +352,16 @@
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
-                 "type" "batch"
-                 "entry"
-                 [{"resource"
-                   resource
-                   "request"
-                   {"method" "POST"
-                    "url" "Patient"}}]}})]
+              {:body
+               {"resourceType" "Bundle"
+                "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
+                "type" "batch"
+                "entry"
+                [{"resource"
+                  resource
+                  "request"
+                  {"method" "POST"
+                   "url" "Patient"}}]}})]
 
         (is (= 200 status))
 
@@ -395,16 +395,12 @@
             {"resourceType" "Patient"}
             "request"
             {"method" "POST"
-             "url" "Patient"}}]
-          prepared-entries
-          (-> entries
-              (assoc-in [0 "resource" "id"] (str id))
-              (assoc-in [1 "resource" "id"] (str id)))]
+             "url" "Patient"}}]]
 
       (datomic-test-util/stub-cached-entity ::db-before #{:Patient :Observation} some?)
       (datomic-test-util/stub-squuid id)
-      (stub-code-tx-data ::db-before #{prepared-entries} [])
-      (stub-tx-data ::db-before #{prepared-entries} ::tx-data)
+      (stub-code-tx-data ::db-before coll? [])
+      (stub-tx-data ::db-before coll? ::tx-data)
       (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
       (datomic-test-util/stub-resource ::db-after #{"Patient" "Observation"} #{(str id)} #{{:version 0}})
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
@@ -413,11 +409,11 @@
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
-                 "type" "transaction"
-                 "entry" entries}})]
+              {:body
+               {"resourceType" "Bundle"
+                "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
+                "type" "transaction"
+                "entry" entries}})]
 
         (is (= 200 status))
 

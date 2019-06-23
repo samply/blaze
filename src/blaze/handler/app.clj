@@ -25,6 +25,7 @@
        [""
         {:get (:handler.fhir/search handlers)
          :post (:handler.fhir/create handlers)}]
+       ["/_search" {:post (:handler.fhir/search handlers)}]
        ["/{id}"
         [""
          {:get (:handler.fhir/read handlers)

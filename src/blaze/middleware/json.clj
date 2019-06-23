@@ -8,7 +8,8 @@
     [manifold.deferred :as md]
     [prometheus.alpha :as prom]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log]
+    [clojure.string :as str]))
 
 
 (prom/defhistogram parse-duration-seconds
@@ -45,8 +46,11 @@
                     :message (ex-message e)}))))))
 
 
-(defn- handle-request [{:keys [request-method body] :as request}]
-  (if (#{:put :post} request-method)
+(defn- handle-request
+  [{:keys [request-method headers body] :as request}]
+  (if (and (#{:put :post} request-method)
+           (str/starts-with? (get headers "content-type")
+                             "application/fhir+json"))
     (-> (parse-json body)
         (md/chain' #(assoc request :body %)))
     request))

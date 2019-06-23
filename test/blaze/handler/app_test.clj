@@ -58,6 +58,7 @@
     "/fhir/metadata" :get ::fhir-capabilities-handler
     "/fhir/Patient" :get ::fhir-search-handler
     "/fhir/Patient" :post ::fhir-create-handler
+    "/fhir/Patient/_search" :post ::fhir-search-handler
     "/fhir/Patient/0" :get ::fhir-read-handler
     "/fhir/Patient/0" :put ::fhir-update-handler
     "/fhir/Patient/0" :delete ::fhir-delete-handler

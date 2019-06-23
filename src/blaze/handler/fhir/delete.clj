@@ -3,8 +3,8 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
-    [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
+    [blaze.handler.fhir.util :as handler-fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
@@ -16,19 +16,11 @@
     [ring.util.time :as ring-time]))
 
 
-(defn- delete-resource
-  [conn db type id]
-  (let [tx-data (tx/resource-deletion db type id)]
-    (if (empty? tx-data)
-      {:db-after db}
-      (tx/transact-async conn tx-data))))
-
-
 (defn- handler-intern [conn]
   (fn [{{:keys [type id]} :path-params}]
     (let [db (d/db conn)]
       (if (util/resource db type id)
-        (-> (delete-resource conn db type id)
+        (-> (handler-fhir-util/delete-resource conn db type id)
             (md/chain'
               (fn [{db :db-after}]
                 (let [last-modified (:db/txInstant (util/basis-transaction db))]

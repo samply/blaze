@@ -68,6 +68,16 @@
       (assoc :expression [expression]))]})
 
 
+(defn- status [category]
+  (case category
+    ::anom/incorrect 400
+    ::anom/not-found 404
+    ::anom/unsupported 422
+    ::anom/conflict 409
+    ::anom/busy 503
+    500))
+
+
 (defn error-response
   "Converts `error` into a OperationOutcome response. Uses ::anom/category to
   determine the response status.
@@ -90,14 +100,7 @@
           (log/error error)
           (log/warn error)))
       (-> (ring/response (operation-outcome error))
-          (ring/status
-            (case category
-              ::anom/incorrect 400
-              ::anom/not-found 404
-              ::anom/unsupported 422
-              ::anom/conflict 409
-              ::anom/busy 503
-              500))))
+          (ring/status (status category))))
 
     (instance? Throwable error)
     (if (::anom/category (ex-data error))
@@ -114,3 +117,34 @@
 
     :else
     (error-response {::anom/category ::anom/fault})))
+
+
+(defn bundle-error-response
+  {:arglists '([error])}
+  [{::anom/keys [category] :as error}]
+  (cond
+    category
+    (do
+      (when-not (:blaze/stacktrace error)
+        (case category
+          ::anom/fault
+          (log/error error)
+          (log/warn error)))
+      {:status (str (status category))
+       :outcome (operation-outcome error)})
+
+    (instance? Throwable error)
+    (if (::anom/category (ex-data error))
+      (bundle-error-response
+        (merge
+          {::anom/message (ex-message error)}
+          (ex-data error)))
+      (do
+        (log/error (log/stacktrace error))
+        (bundle-error-response
+          {::anom/category ::anom/fault
+           ::anom/message (ex-message error)
+           :blaze/stacktrace (aviso/format-exception error)})))
+
+    :else
+    (bundle-error-response {::anom/category ::anom/fault})))

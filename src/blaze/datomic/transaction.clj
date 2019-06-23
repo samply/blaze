@@ -602,8 +602,6 @@
   (assert (:db/id value))
   (conj
     (case type-code
-      "Reference"
-      (upsert-reference context element value nil)
       "BackboneElement"
       (upsert context ident value nil)
       (upsert context (keyword type-code) value nil))
@@ -620,8 +618,6 @@
         (assert (:db/id value))
         (conj
           (case type-code
-            "Reference"
-            (upsert-reference context element value nil)
             "BackboneElement"
             (upsert context ident value nil)
             (upsert context (keyword type-code) value nil))

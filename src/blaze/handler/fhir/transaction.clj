@@ -14,37 +14,57 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
+    [reitit.core :as reitit]
+    [ring.util.response :as ring]))
+
+
+(def ^:private router
+  (reitit/router
+    [["{type}" :type]
+     ["{type}/{id}" :resource]]
+    {:syntax :bracket}))
 
 
 (defn- validate-entry
   {:arglists '([db entry])}
   [db {:strs [resource] {:strs [method url]} "request" :as entry}]
-  (let [[type id] (handler-fhir-util/extract-type-and-id url)]
+  (let [match (reitit/match-by-path router url)
+        {:keys [type id]} (:path-params match)]
     (cond
       (not (#{"GET" "HEAD" "POST" "PUT" "DELETE" "PATCH"} method))
       {::anom/category ::anom/incorrect
-       :fhir/issue "code-invalid"}
+       ::anom/message (str "Unknown method `" method "`.")
+       :fhir/issue "value"}
 
       (not (#{"POST" "PUT" "DELETE"} method))
       {::anom/category ::anom/unsupported
+       ::anom/message (str "Unsupported method `" method "`.")
        :fhir/issue "not-supported"}
+
+      (nil? type)
+      {::anom/category ::anom/incorrect
+       ::anom/message "Can't parse type from `entry.request.url` `" url "`."
+       :fhir/issue "value"}
 
       (nil? (util/cached-entity db (keyword type)))
       {::anom/category ::anom/incorrect
        ::anom/message (str "Unknown type `" type "`.")
        :fhir/issue "value"}
 
-      (not (map? resource))
+      (and (#{"POST" "PUT"} method) (not (map? resource)))
       {::anom/category ::anom/incorrect
        :fhir/issue "structure"
        :fhir/operation-outcome "MSG_JSON_OBJECT"}
 
-      (not= type (get resource "resourceType"))
+      (and (#{"POST" "PUT"} method) (not= type (get resource "resourceType")))
       {::anom/category ::anom/incorrect
        :fhir/issue "invariant"
        :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"}
+
+      (and (= "PUT" method) (nil? id))
+      {::anom/category ::anom/incorrect
+       ::anom/message "Can't parse id from `entry.request.url` `" url "`."
+       :fhir/issue "value"}
 
       (and (= "PUT" method) (not= id (get resource "id")))
       {::anom/category ::anom/incorrect
@@ -52,7 +72,7 @@
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"}
 
       :else
-      entry)))
+      (assoc-in entry ["request" ::reitit/match] match))))
 
 
 (defmulti validate-entries (fn [_ type _] type))
@@ -60,7 +80,13 @@
 
 (defmethod validate-entries "batch"
   [db _ entries]
-  (mapv #(validate-entry db %) entries))
+  (mapv
+    (fn [entry]
+      (let [validated-entry (validate-entry db entry)]
+        (if (::anom/category validated-entry)
+          (assoc entry :response (handler-util/bundle-error-response validated-entry))
+          validated-entry)))
+    entries))
 
 
 (defmethod validate-entries "transaction"
@@ -118,12 +144,27 @@
 
 (defmethod upsert-entry "POST"
   [conn db {:strs [resource]}]
-  (handler-fhir-util/upsert-resource conn db :server-assigned-id resource))
+  (try
+    (handler-fhir-util/upsert-resource conn db :server-assigned-id resource)
+    (catch Exception e
+      (md/error-deferred (ex-data e)))))
 
 
 (defmethod upsert-entry "PUT"
   [conn db {:strs [resource]}]
-  (handler-fhir-util/upsert-resource conn db :client-assigned-id resource))
+  (try
+    (handler-fhir-util/upsert-resource conn db :client-assigned-id resource)
+    (catch Exception e
+      (md/error-deferred (ex-data e)))))
+
+
+(defmethod upsert-entry "DELETE"
+  [conn db {{::reitit/keys [match]} "request"}]
+  (let [{:keys [type id]} (:path-params match)]
+    (try
+      (handler-fhir-util/delete-resource conn db type id)
+      (catch Exception e
+        (md/error-deferred (ex-data e))))))
 
 
 (defmulti transact
@@ -135,21 +176,24 @@
   (md/loop [[entry & entries] entries
             results []]
     (if entry
-      (-> (upsert-entry conn db entry)
-          (md/chain'
-            (fn [tx-result]
-              (md/recur
-                entries
-                (conj
-                  results
-                  (assoc entry :blaze/tx-result tx-result)))))
-          (md/catch'
-            (fn [tx-result]
-              (md/recur
-                entries
-                (conj
-                  results
-                  (assoc entry :blaze/tx-result tx-result))))))
+      (if (:response entry)
+        (md/recur entries (conj results entry))
+        (-> (upsert-entry conn db entry)
+            (md/chain'
+              (fn [tx-result]
+                (md/recur
+                  entries
+                  (conj
+                    results
+                    (assoc entry :blaze/tx-result tx-result)))))
+            (md/catch'
+              (fn [error]
+                (md/recur
+                  entries
+                  (conj
+                    results
+                    (assoc entry
+                      :response (handler-util/bundle-error-response error))))))))
       results)))
 
 
@@ -173,19 +217,22 @@
 (defn- build-entry
   [base-uri
    {{type "resourceType" id "id"} "resource" {db :db-after} :blaze/tx-result
-    :blaze/keys [old-resource] :as entry}]
-  (let [last-modified (util/tx-instant (util/basis-transaction db))
-        versionId (d/basis-t db)
-        response
-        (cond->
-          {:status (str (if old-resource 200 201))
-           :etag (str "W/\"" versionId "\"")
-           :lastModified (str last-modified)}
-          (nil? old-resource)
-          (assoc :location (str base-uri "/fhir/" type "/" id "/_history/" versionId)))]
-    (-> entry
-        (assoc :response response)
-        (dissoc :blaze/tx-result))))
+    :blaze/keys [old-resource] :keys [response] :as entry}]
+  (if response
+    (update entry "request" dissoc ::reitit/match)
+    (let [last-modified (util/tx-instant (util/basis-transaction db))
+          versionId (d/basis-t db)
+          response
+          (cond->
+            {:status (str (if old-resource 200 201))
+             :etag (str "W/\"" versionId "\"")
+             :lastModified (str last-modified)}
+            (nil? old-resource)
+            (assoc :location (str base-uri "/fhir/" type "/" id "/_history/" versionId)))]
+      (-> entry
+          (assoc :response response)
+          (dissoc :blaze/tx-result)
+          (update "request" dissoc ::reitit/match)))))
 
 
 (defn- build-response [base-uri bundle-type entries]

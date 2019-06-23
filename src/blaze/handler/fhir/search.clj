@@ -36,7 +36,7 @@
    :resource resource})
 
 
-(defn- search [base-uri db type query-params]
+(defn- search [base-uri db type params]
   {:resourceType "Bundle"
    :type "searchset"
    :entry
@@ -44,7 +44,7 @@
      []
      (comp
        (map #(d/entity db (:e %)))
-       (filter (resource-pred db type query-params))
+       (filter (resource-pred db type params))
        (map #(pull/pull-resource* db type %))
        (filter #(not (:deleted (meta %))))
        (take 50)
@@ -53,8 +53,8 @@
 
 
 (defn- handler-intern [base-uri conn]
-  (fn [{{:keys [type]} :path-params :keys [query-params]}]
-    (-> (search base-uri (d/db conn) type query-params)
+  (fn [{{:keys [type]} :path-params :keys [params]}]
+    (-> (search base-uri (d/db conn) type params)
         (ring/response))))
 
 
