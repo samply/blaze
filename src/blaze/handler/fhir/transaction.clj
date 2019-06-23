@@ -153,11 +153,21 @@
       results)))
 
 
-(defmethod transact "transaction" [conn db _ entries]
+(defn- transact-resources [conn db entries]
   (-> (tx/transact-async conn (bundle/tx-data db entries))
       (md/chain'
         (fn [tx-result]
           (mapv #(assoc % :blaze/tx-result tx-result) entries)))))
+
+
+(defmethod transact "transaction" [conn db _ entries]
+  (let [code-tx-data (bundle/code-tx-data db entries)]
+    (if (empty? code-tx-data)
+      (transact-resources conn db entries)
+      (-> (tx/transact-async conn code-tx-data)
+          (md/chain'
+            (fn [{db :db-after}]
+              (transact-resources conn db entries)))))))
 
 
 (defn- build-entry

@@ -13,10 +13,12 @@
 
 (def structure-definitions (read-structure-definitions "fhir/r4/structure-definitions"))
 
+(defn- structure-definition [id]
+  (some #(when (= id (:id %)) %) structure-definitions))
 
-(defn- element-definitions [path]
+(defn- element-definition [path]
   (let [[id] (str/split path #"\.")]
-    (->> (-> (some #(when (= id (:id %)) %) structure-definitions)
+    (->> (-> (structure-definition id)
              :snapshot :element)
          (some #(when (= path (:path %)) %)))))
 
@@ -30,7 +32,9 @@
 
 (deftest element-definition-test
   (testing "Patient"
-    (is (= (element-definition-tx-data (element-definitions "Patient"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient"))
            [{:db/id "Patient"
              :db/ident :Patient}
             {:db/id "part.Patient"
@@ -38,7 +42,9 @@
             [:db/add :db.part/db :db.install/partition "part.Patient"]])))
 
   (testing "Patient.id"
-    (is (= (element-definition-tx-data (element-definitions "Patient.id"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.id"))
            [{:db/id "Patient.id"
              :db/ident :Patient/id
              :db/valueType :db.type/string
@@ -52,7 +58,9 @@
             [:db/add "Patient" :type/elements "Patient.id"]])))
 
   (testing "Patient.active"
-    (is (= (element-definition-tx-data (element-definitions "Patient.active"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.active"))
            [{:db/id "Patient.active"
              :db/ident :Patient/active
              :db/valueType :db.type/boolean
@@ -65,7 +73,9 @@
             [:db/add "Patient" :type/elements "Patient.active"]])))
 
   (testing "Patient.gender"
-    (is (= (element-definition-tx-data (element-definitions "Patient.gender"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.gender"))
            [{:db/id "Patient.gender"
              :db/ident :Patient/gender
              :db/valueType :db.type/ref
@@ -79,7 +89,9 @@
             [:db/add "Patient" :type/elements "Patient.gender"]])))
 
   (testing "Patient.birthDate"
-    (is (= (element-definition-tx-data (element-definitions "Patient.birthDate"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.birthDate"))
            [{:db/id "Patient.birthDate"
              :db/ident :Patient/birthDate
              :db/valueType :db.type/bytes
@@ -92,7 +104,9 @@
             [:db/add "Patient" :type/elements "Patient.birthDate"]])))
 
   (testing "Patient.deceased[x]"
-    (is (= (element-definition-tx-data (element-definitions "Patient.deceased[x]"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.deceased[x]"))
            [{:db/id "Patient.deceased[x]"
              :db/ident :Patient/deceased
              :db/valueType :db.type/ref
@@ -122,7 +136,9 @@
             [:db/add "Patient" :type/elements "Patient.deceased[x]"]])))
 
   (testing "Patient.telecom"
-    (is (= (element-definition-tx-data (element-definitions "Patient.telecom"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.telecom"))
            [{:db/id "Patient.telecom"
              :db/ident :Patient/telecom
              :db/valueType :db.type/ref
@@ -137,7 +153,9 @@
             [:db/add "Patient" :type/elements "Patient.telecom"]])))
 
   (testing "Patient.link"
-    (is (= (element-definition-tx-data (element-definitions "Patient.link"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.link"))
            [{:db/id "Patient.link"
              :db/ident :Patient/link
              :db/valueType :db.type/ref
@@ -154,7 +172,9 @@
             [:db/add "Patient" :type/elements "Patient.link"]])))
 
   (testing "Patient.link.other"
-    (is (= (element-definition-tx-data (element-definitions "Patient.link.other"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.link.other"))
            [{:db/id "Patient.link.other"
              :db/ident :Patient.link/other
              :db/valueType :db.type/ref
@@ -168,7 +188,9 @@
             [:db/add "Patient.link" :type/elements "Patient.link.other"]])))
 
   (testing "Patient.link.type"
-    (is (= (element-definition-tx-data (element-definitions "Patient.link.type"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.link.type"))
            [{:db/id "Patient.link.type"
              :db/ident :Patient.link/type
              :db/valueType :db.type/ref
@@ -182,7 +204,9 @@
             [:db/add "Patient.link" :type/elements "Patient.link.type"]])))
 
   (testing "Patient.extension"
-    (is (= (element-definition-tx-data (element-definitions "Patient.extension"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.extension"))
            [{:db/valueType :db.type/ref,
              :db/isComponent true,
              :element/type-code "Extension",
@@ -196,7 +220,9 @@
             [:db/add "Patient" :type/elements "Patient.extension"]])))
 
   (testing "Observation.code"
-    (is (= (element-definition-tx-data (element-definitions "Observation.code"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Observation")
+             (element-definition "Observation.code"))
            [{:db/id "Observation.code"
              :db/ident :Observation/code
              :db/valueType :db.type/ref
@@ -214,7 +240,9 @@
              :db/cardinality :db.cardinality/many}])))
 
   (testing "CodeSystem.concept"
-    (is (= (element-definition-tx-data (element-definitions "CodeSystem.concept"))
+    (is (= (element-definition-tx-data
+             (structure-definition "CodeSystem")
+             (element-definition "CodeSystem.concept"))
            [{:db/valueType :db.type/ref,
              :db/isComponent true,
              :element/type-code "BackboneElement",
@@ -229,16 +257,22 @@
             [:db/add "CodeSystem" :type/elements "CodeSystem.concept"]])))
 
   (testing "CodeSystem.concept.concept"
-    (is (= (element-definition-tx-data (element-definitions "CodeSystem.concept.concept"))
+    (is (= (element-definition-tx-data
+             (structure-definition "CodeSystem")
+             (element-definition "CodeSystem.concept.concept"))
            [[:db/add "CodeSystem.concept" :type/elements "CodeSystem.concept"]])))
 
   (testing "ImplementationGuide.definition.page.page"
     ;; TODO: HACK see #19
-    (is (= (element-definition-tx-data (element-definitions "ImplementationGuide.definition.page.page"))
+    (is (= (element-definition-tx-data
+             (structure-definition "ImplementationGuide")
+             (element-definition "ImplementationGuide.definition.page.page"))
            [])))
 
   (testing "Bundle"
-    (is (= (element-definition-tx-data (element-definitions "Bundle"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Bundle")
+             (element-definition "Bundle"))
            [{:db/id "Bundle"
              :db/ident :Bundle}
             {:db/id "part.Bundle"
@@ -246,7 +280,9 @@
             [:db/add :db.part/db :db.install/partition "part.Bundle"]])))
 
   (testing "Bundle.id"
-    (is (= (element-definition-tx-data (element-definitions "Bundle.id"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Bundle")
+             (element-definition "Bundle.id"))
            [{:db/id "Bundle.id"
              :db/ident :Bundle/id
              :db/valueType :db.type/string
@@ -259,8 +295,38 @@
              :element/json-key "id"}
             [:db/add "Bundle" :type/elements "Bundle.id"]])))
 
+  (testing "ElementDefinition.id"
+    (is (= (element-definition-tx-data
+             (structure-definition "ElementDefinition")
+             (element-definition "ElementDefinition.id"))
+           [{:db/id "ElementDefinition.id"
+             :db/ident :ElementDefinition/id
+             :db/valueType :db.type/string
+             :db/cardinality :db.cardinality/one
+             :element/primitive? true
+             :element/choice-type? false
+             :element/type-code "string"
+             :element/json-key "id"}
+            [:db/add "ElementDefinition" :type/elements "ElementDefinition.id"]])))
+
+  (testing "Money.id"
+    (is (= (element-definition-tx-data
+             (structure-definition "Money")
+             (element-definition "Money.id"))
+           [{:db/id "Money.id"
+             :db/ident :Money/id
+             :db/valueType :db.type/string
+             :db/cardinality :db.cardinality/one
+             :element/primitive? true
+             :element/choice-type? false
+             :element/type-code "string"
+             :element/json-key "id"}
+            [:db/add "Money" :type/elements "Money.id"]])))
+
   (testing "Money.value"
-    (is (= (element-definition-tx-data (element-definitions "Money.value"))
+    (is (= (element-definition-tx-data
+             (structure-definition "Money")
+             (element-definition "Money.value"))
            [{:db/id "Money.value"
              :db/ident :Money/value
              :db/valueType :db.type/bigdec
@@ -271,3 +337,7 @@
              :element/type-code "decimal"
              :element/json-key "value"}
             [:db/add "Money" :type/elements "Money.value"]]))))
+
+(comment
+  (element-definition "ElementDefinition.id")
+  )

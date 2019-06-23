@@ -12,6 +12,7 @@
 
 
 (defattr :type/elements
+  "References to all data elements of a non-primitive data type."
   :db/valueType :db.type/ref
   :db/cardinality :db.cardinality/many
   :db/isComponent true)
@@ -43,6 +44,7 @@
 
 
 (defattr :element/type
+  "Reference to the data type of a non-primitive data element."
   :db/valueType :db.type/ref
   :db/cardinality :db.cardinality/one)
 
@@ -176,13 +178,16 @@
 
 
 (s/fdef element-definition-tx-data
-  :args (s/cat :element-definition :fhir.un/ElementDefinition)
+  :args (s/cat :structure-definition :fhir.un/StructureDefinition
+               :element-definition :fhir.un/ElementDefinition)
   :ret ::ds/tx-data)
 
 (defn element-definition-tx-data
   "Returns transaction data which can be used to upsert `element-definition`."
-  {:arglists '([element-definition])}
-  [{:keys [path type max isSummary] content-reference :contentReference :as element}]
+  {:arglists '([structure-definition element-definition])}
+  [structure-definition
+   {:keys [path type max isSummary] content-reference :contentReference
+    :as element}]
   (let [parent-path (parent-path path)
         ident (path->ident path)
         choice-type? (str/ends-with? path "[x]")]
@@ -204,10 +209,14 @@
                   :db.cardinality/many
                   :db.cardinality/one)
                 :element/choice-type? choice-type?}
+
                (and (not choice-type?) (component? type))
                (assoc :db/isComponent true)
-               (and (not choice-type?) (= "id" (-> type first :code)))
+
+               (let [{:keys [name kind]} structure-definition]
+                 (and (= "resource" kind) (= (str name ".id") path)))
                (assoc :db/unique :db.unique/identity)
+
                (not choice-type?)
                (assoc
                  :db/valueType (fhir-type-code->db-type (-> type first :code))
@@ -215,8 +224,10 @@
                  ;; TODO: the Extension StructureDefinition misses a value for `code`
                  :element/type-code (or (-> type first :code) "string")
                  :element/json-key (last (str/split path #"\.")))
+
                choice-type?
                (assoc :db/valueType :db.type/ref)
+
                (and (= "code" (-> type first :code)) (-> element :binding :valueSet))
                (assoc :element/value-set-binding (-> element :binding :valueSet)))
              {:db/id path
@@ -271,8 +282,8 @@
 
 (defn structure-definition-tx-data
   "Returns transaction data which can be used to upsert `structure-definition`."
-  [{{elements :element} :snapshot}]
-  (into [] (mapcat element-definition-tx-data) elements))
+  [{{elements :element} :snapshot :as structure-definition}]
+  (into [] (mapcat #(element-definition-tx-data structure-definition %)) elements))
 
 
 (s/fdef structure-definition-schemas

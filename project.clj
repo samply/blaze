@@ -1,4 +1,4 @@
-(defproject blaze "0.6-alpha30"
+(defproject blaze "0.6-alpha31"
   :description "A FHIR Store with internal, fast CQL Evaluation Engine"
   :url "https://github.com/life-research/blaze"
 

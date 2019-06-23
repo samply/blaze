@@ -115,6 +115,17 @@
   (tx/resource-deletion db type id))
 
 
+(s/fdef code-tx-data
+  :args (s/cat :db ::ds/db :entries coll?)
+  :ret ::ds/tx-data)
+
+(defn code-tx-data
+  "Returns transaction data for creating codes of all `entries` of a transaction
+  bundle."
+  [db entries]
+  (into [] (mapcat #(tx/resource-codes-creation db (get % "resource"))) entries))
+
+
 (s/fdef tx-data
   :args (s/cat :db ::ds/db :entries coll?)
   :ret ::ds/tx-data)

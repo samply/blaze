@@ -67,6 +67,17 @@
     (LocalDate/parse value)))
 
 
+(defn- uuid [{:db/keys [ident]} s]
+  (try
+    (UUID/fromString s)
+    (catch Exception _
+      (throw-anom
+        {::anom/category ::anom/incorrect
+         ::anom/message (str "Invalid UUID `" s "`.")
+         :fhir/issue "value"
+         :fhir.issue/expression (ident->path ident)}))))
+
+
 (defn- quantity [element {:strs [value code unit]}]
   (let [value (coerce-decimal element value)]
     (try
@@ -100,7 +111,7 @@
     "dateTime" (coerce-date-time value)
     "time" (LocalTime/parse value)
     "base64Binary" (.decode (Base64/getDecoder) ^String value)
-    "uuid" (UUID/fromString value)
+    "uuid" (uuid element value)
     "Quantity" (quantity element value)))
 
 
@@ -165,19 +176,12 @@
   "Returns tx-data for adding a code. All of `system`, `version` and `code` are
   optional."
   [db ident id system version code]
-  (if-let [entity (d/entity db [:code/id (str system "|" version "|" code)])]
-    [[:db/add id ident (:db/id entity)]]
-    (let [tid (d/tempid :part/code)]
-      [(cond->
-         {:db/id tid
-          :code/id (str system "|" version "|" code)}
-         system
-         (assoc :code/system system)
-         version
-         (assoc :code/version version)
-         code
-         (assoc :code/code code))
-       [:db/add id ident tid]])))
+  (let [code-id (str system "|" version "|" code)]
+    (if-let [entity (d/entity db [:code/id code-id])]
+      [[:db/add id ident (:db/id entity)]]
+      (throw-anom
+        {::anom/category ::anom/fault
+         ::anom/message (str "Can't find code with id `" code-id "`.")}))))
 
 
 (defn- add-code-according-value-set-binding
@@ -277,7 +281,7 @@
 (defn- add-non-primitive-element
   "Returns tx-data for adding the non-primitive `value` as child of the
   existing entity with `id`."
-  {:arglists '([db element id value])}
+  {:arglists '([context element id value])}
   [{:keys [db] :as context}
    {:element/keys [type-code part-of-choice-type? type-attr-ident]
     :db/keys [ident]}
@@ -360,9 +364,13 @@
       (add-primitive-element context element (:db/id old-entity) new-value))))
 
 
+(declare retract-primitive-card-one-element)
+
+
 (defn- upsert-primitive-card-many-element
   {:arglists '([context element old-entity new-value])}
-  [{:keys [db] :as context} {:db/keys [ident valueType] :element/keys [type-code] :as element}
+  [{:keys [db] :as context}
+   {:element/keys [type-code] :db/keys [ident valueType] :as element}
    {:db/keys [id] :as old-entity} new-values]
   (let [old-values (set (second (pull/pull-element db element old-entity)))
         new-values (set new-values)
@@ -370,10 +378,17 @@
         add (set/difference new-values old-values)]
     (-> []
         (into
-          (map (fn [value] [:db/retract id ident (write element valueType value)]))
+          (map
+            (fn [value]
+              (if (= "code" type-code)
+                (let [code-id (:db/id (some #(when (= value (:code/code %)) %)
+                                            (ident old-entity)))]
+                  (assert code-id)
+                  [:db/retract id ident code-id])
+                [:db/retract id ident (write element valueType value)])))
           retract)
         (into
-          (mapcat (fn [value] (add-primitive-element context element id value)))
+          (mapcat #(add-primitive-element context element id %))
           add))))
 
 
@@ -491,8 +506,8 @@
           add))))
 
 
-(defn upsert-single-typed-element
-  {:arglists '([db element old-entity new-entity new-value])}
+(defn- upsert-single-typed-element
+  {:arglists '([context element old-entity new-value])}
   [context {:element/keys [primitive?] :db/keys [cardinality] :as element}
    old-entity new-value]
   (if primitive?
@@ -511,7 +526,7 @@
 (declare retract-single-typed-element)
 
 
-(defn upsert-choice-typed-element
+(defn- upsert-choice-typed-element
   [{:keys [db] :as context} {:db/keys [ident]} old-entity new-value
    new-value-element]
   (if-let [old-value-ident (ident old-entity)]
@@ -529,7 +544,7 @@
       context new-value-element (:db/id old-entity) new-value)))
 
 
-(defn upsert-element
+(defn- upsert-element
   [context {:element/keys [choice-type?] :as element} old-entity new-value
    new-value-element]
   (if choice-type?
@@ -544,6 +559,7 @@
 
 
 (defn- retract-primitive-card-one-element
+  {:arglists '([element old-entity value])}
   [{:element/keys [type-code] :db/keys [ident]} {:db/keys [id]} value]
   (assert (some? value))
   (case type-code
@@ -595,9 +611,9 @@
 
 
 (defn- retract-single-typed-element
-  {:arglists '([db element entity value])}
-  [context {:element/keys [primitive?] :db/keys [cardinality] :as element} entity
-   value]
+  {:arglists '([context element entity value])}
+  [context {:element/keys [primitive?] :db/keys [cardinality] :as element}
+   entity value]
   (if primitive?
     (if (= :db.cardinality/one cardinality)
       (retract-primitive-card-one-element
@@ -623,7 +639,7 @@
 (defn- retract-element
   "Returns tx-data for retracting `element` from `entity` if it holds some
   value."
-  {:arglists '([db element entity])}
+  {:arglists '([context element entity])}
   [context {:db/keys [ident] :element/keys [choice-type?] :as element} entity]
   (if choice-type?
     (retract-choice-typed-element context element entity)
@@ -843,7 +859,7 @@
 
   Throws exceptions with `ex-data` containing an anomaly on errors or
   unsupported features."
-  {:arglists '([db tempids initial-version resource])}
+  {:arglists '([context tempids initial-version resource])}
   [db tempids creation-mode {type "resourceType" id "id" :as resource}]
   (assert type)
   (assert id)
@@ -958,17 +974,141 @@
               ::anom/category (category e)
               ::anom/message (ex-message e)))))))
 
-
 (s/fdef resource-tempid
-  :args (s/cat :db ::ds/db :resource ::resource))
+  :args (s/cat :db ::ds/db :resource ::resource)
+  :ret (s/tuple string? string? keyword?))
 
 (defn resource-tempid
   "Returns a triple of resource type, logical id and tempid for `resources`
   which have to be created in `db`."
-  {:arglists '([db resource])}
+  {:arglists '([context resource])}
   [db {type "resourceType" id "id"}]
   (when-not (util/resource db type id)
     [type id (d/tempid (keyword "part" type))]))
+
+
+;; ---- Create Codes ----------------------------------------------------------
+
+
+(defn- create-code
+  "Returns tx-data for creating a code. All of `system`, `version` and `code`
+  are optional."
+  [db system version code]
+  (let [id (str system "|" version "|" code)]
+    (when-not (d/entity db [:code/id id])
+      (let [tid (d/tempid :part/code)]
+        [(cond->
+           {:db/id tid
+            :code/id id}
+           system
+           (assoc :code/system system)
+           version
+           (assoc :code/version version)
+           code
+           (assoc :code/code code))]))))
+
+
+(defn- create-code-according-value-set-binding
+  [db code]
+  ;; TODO: resolve the code system and version
+  (create-code db nil nil code))
+
+
+(defn- create-code-primitive-element
+  {:arglists '([context element value])}
+  [{:keys [db] {:strs [system version]} :code}
+   {:element/keys [type-code value-set-binding]}
+   value]
+  (when (= "code" type-code)
+    (if value-set-binding
+      (create-code-according-value-set-binding db value)
+      (create-code db system version value))))
+
+
+(declare create-codes)
+
+
+(defn- create-codes-non-primitive-element
+  {:arglists '([context element value])}
+  [context {:element/keys [type-code] :db/keys [ident]} value]
+  (if (= "BackboneElement" type-code)
+    (create-codes context ident value)
+    (create-codes context (keyword type-code) value)))
+
+
+(defn- create-codes-element
+  {:arglists '([context element new-value])}
+  [context {:element/keys [primitive?] :db/keys [cardinality] :as element}
+   new-value]
+  (if primitive?
+    (if (= :db.cardinality/one cardinality)
+      (create-code-primitive-element
+        context element new-value)
+      (into
+        []
+        (mapcat #(create-code-primitive-element context element %))
+        new-value))
+    (if (= :db.cardinality/one cardinality)
+      (create-codes-non-primitive-element
+        context element new-value)
+      (into
+        []
+        (mapcat #(create-codes-non-primitive-element context element %))
+        new-value))))
+
+
+(defn- create-codes
+  "Returns tx-data to create new codes."
+  [{:keys [db] :as context} type-ident new-entity]
+  (let [context
+        (cond-> context
+          (= :Coding type-ident)
+          (assoc :code new-entity)
+          (= :CodeSystem type-ident)
+          (assoc :code
+                 (cond-> {"system" (get new-entity "url")}
+                   (contains? new-entity "version")
+                   (assoc "version" (get new-entity "version"))))
+          (= :ConceptMap/group type-ident)
+          (assoc :code
+                 (cond-> {"system" (get new-entity "source")}
+                   (contains? new-entity "sourceVersion")
+                   (assoc "version" (get new-entity "sourceVersion")))
+                 :target-code
+                 (cond-> {"system" (get new-entity "target")}
+                   (contains? new-entity "targetVersion")
+                   (assoc "version" (get new-entity "targetVersion"))))
+          (= :ConceptMap.group.element/target type-ident)
+          (assoc :code (:target-code context))
+          (= :ValueSet.compose/include type-ident)
+          (assoc :code new-entity)
+          (= :ValueSet.expansion/contains type-ident)
+          (assoc :code new-entity))]
+    (into
+      []
+      (comp
+        (map #(util/cached-entity db %))
+        contained-resource-element-remover
+        coding-system-version-remover
+        (mapcat
+          (fn [element]
+            (when-let [[new-value value-element] (find-json-value db element new-entity)]
+              (create-codes-element context value-element new-value)))))
+      (:type/elements (util/cached-entity db type-ident)))))
+
+
+(defn resource-codes-creation
+  "Generates transaction data for creating codes which occur in `resource`.
+
+  Codes have to created in a separate transaction before transaction tx-data
+  obtained from `resource-upsert`.
+
+  The resource has to have at least a `resourceType` and an `id`."
+  {:arglists '([db resource])}
+  [db {type "resourceType" id "id" :as resource}]
+  (assert type)
+  (assert id)
+  (create-codes {:db db} (keyword type) resource))
 
 
 (comment

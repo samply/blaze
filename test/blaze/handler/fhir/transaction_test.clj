@@ -56,6 +56,18 @@
      #{`util/tx-instant}}))
 
 
+(defn- stub-code-tx-data [db entries-spec result]
+  (st/instrument
+    [`bundle/code-tx-data]
+    {:spec
+     {`bundle/code-tx-data
+      (s/fspec
+        :args (s/cat :db #{db} :entries entries-spec)
+        :ret #{result})}
+     :stub
+     #{`bundle/code-tx-data}}))
+
+
 (defn- stub-tx-data [db entries-spec result]
   (st/instrument
     [`bundle/tx-data]
@@ -208,6 +220,7 @@
 
       (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
+      (stub-code-tx-data ::db-before #{entries} [])
       (stub-tx-data ::db-before #{entries} ::tx-data)
       (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
@@ -293,6 +306,7 @@
 
       (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
       (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} #{::old-patient})
+      (stub-code-tx-data ::db-before #{entries} [])
       (stub-tx-data ::db-before #{entries} ::tx-data)
       (datomic-test-util/stub-transact-async
         ::conn ::tx-data (md/success-deferred {:db-after ::db-after}))
@@ -389,6 +403,7 @@
 
       (datomic-test-util/stub-cached-entity ::db-before #{:Patient :Observation} some?)
       (datomic-test-util/stub-squuid id)
+      (stub-code-tx-data ::db-before #{prepared-entries} [])
       (stub-tx-data ::db-before #{prepared-entries} ::tx-data)
       (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
       (datomic-test-util/stub-resource ::db-after #{"Patient" "Observation"} #{(str id)} #{{:version 0}})

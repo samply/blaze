@@ -101,8 +101,8 @@
 
 
 (defn- pull-value
-  [db {:element/keys [primitive? type type-code]
-       :as element} value]
+  {:arglists '([db element value])}
+  [db {:element/keys [primitive? type type-code] :as element} value]
   (cond
     (= "code" type-code)
     (:code/code value)

@@ -43,7 +43,8 @@
 (def db (d/db (connect)))
 
 (defn- db-with [{:strs [entries]}]
-  (:db-after (d/with db (bundle/tx-data db entries))))
+  (let [{db :db-after} (d/with db (bundle/code-tx-data db entries))]
+    (:db-after (d/with db (bundle/tx-data db entries)))))
 
 
 (defn- evaluate [db query]

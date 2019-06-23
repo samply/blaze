@@ -5,7 +5,7 @@
     [blaze.datomic.test-util :refer :all]
     [blaze.datomic.transaction
      :refer [resource-upsert resource-deletion
-             coerce-value transact-async]]
+             coerce-value transact-async resource-codes-creation]]
     [blaze.datomic.value :as value]
     [blaze.structure-definition :refer [read-structure-definitions]]
     [clojure.spec.test.alpha :as st]
@@ -122,17 +122,14 @@
                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
-        (let [[db id] (with-resource db "Patient" "0")]
+        (let [[db code-id] (with-code db "male")
+              [db id] (with-resource db "Patient" "0")]
           (is
             (=
-              (with-redefs [d/tempid (fn [partition] partition)]
-                (resource-upsert
-                  db nil :server-assigned-id
-                  {"id" "0" "resourceType" "Patient" "gender" "male"}))
-              [{:db/id :part/code
-                :code/id "||male"
-                :code/code "male"}
-               [:db/add id :Patient/gender :part/code]
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0" "resourceType" "Patient" "gender" "male"})
+              [[:db/add id :Patient/gender code-id]
                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with date type"
@@ -227,7 +224,8 @@
                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
-        (let [[db id] (with-resource db "CodeSystem" "0")]
+        (let [[db code-id] (with-code db "=")
+              [db id] (with-resource db "CodeSystem" "0")]
           (is
             (= (with-redefs [d/tempid (fn [partition] partition)]
                  (resource-upsert
@@ -236,26 +234,20 @@
                     "resourceType" "CodeSystem"
                     "filter"
                     [{"operator" ["="]}]}))
-               [{:db/id :part/code
-                 :code/id "||="
-                 :code/code "="}
-                [:db/add :part/CodeSystem.filter :CodeSystem.filter/operator :part/code]
+               [[:db/add :part/CodeSystem.filter :CodeSystem.filter/operator code-id]
                 [:db/add id :CodeSystem/filter :part/CodeSystem.filter]
                 [:db.fn/cas id :version -3 -7]])))
 
-        (let [[db id] (with-resource db "AllergyIntolerance" "0")]
+        (let [[db code-id] (with-code db "medication")
+              [db id] (with-resource db "AllergyIntolerance" "0")]
           (is
-            (= (with-redefs [d/tempid (fn [partition] partition)]
-                 (resource-upsert
-                   db nil :server-assigned-id
-                   {"id" "0"
-                    "resourceType" "AllergyIntolerance"
-                    "category"
-                    ["medication"]}))
-               [{:db/id :part/code
-                 :code/id "||medication"
-                 :code/code "medication"}
-                [:db/add id :AllergyIntolerance/category :part/code]
+            (= (resource-upsert
+                 db nil :server-assigned-id
+                 {"id" "0"
+                  "resourceType" "AllergyIntolerance"
+                  "category"
+                  ["medication"]})
+               [[:db/add id :AllergyIntolerance/category code-id]
                 [:db.fn/cas id :version -3 -7]])))))
 
 
@@ -339,7 +331,9 @@
 
     (testing "Coding"
       (testing "without version"
-        (let [[db id] (with-resource db "Encounter" "0")]
+        (let [[db code-id]
+              (with-code db "http://terminology.hl7.org/CodeSystem/v3-ActCode" "AMB")
+              [db id] (with-resource db "Encounter" "0")]
           (is
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
@@ -350,16 +344,14 @@
                    "class"
                    {"system" "http://terminology.hl7.org/CodeSystem/v3-ActCode"
                     "code" "AMB"}}))
-              [{:db/id :part/code
-                :code/id "http://terminology.hl7.org/CodeSystem/v3-ActCode||AMB"
-                :code/system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
-                :code/code "AMB"}
-               [:db/add :part/Coding :Coding/code :part/code]
+              [[:db/add :part/Coding :Coding/code code-id]
                [:db/add id :Encounter/class :part/Coding]
                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with version"
-        (let [[db id] (with-resource db "Observation" "0")]
+        (let [[db code-id]
+              (with-code db "http://hl7.org/fhir/sid/icd-10" "2016" "Q14")
+              [db id] (with-resource db "Observation" "0")]
           (is
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
@@ -372,19 +364,16 @@
                     [{"system" "http://hl7.org/fhir/sid/icd-10"
                       "version" "2016"
                       "code" "Q14"}]}}))
-              [{:db/id :part/code
-                :code/id "http://hl7.org/fhir/sid/icd-10|2016|Q14"
-                :code/system "http://hl7.org/fhir/sid/icd-10"
-                :code/version "2016"
-                :code/code "Q14"}
-               [:db/add :part/Coding :Coding/code :part/code]
+              [[:db/add :part/Coding :Coding/code code-id]
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
                [:db/add id :Observation/code :part/CodeableConcept]
-               [:db/add id :Observation.index/code :part/code]
+               [:db/add id :Observation.index/code code-id]
                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with userSelected"
-        (let [[db id] (with-resource db "Observation" "0")]
+        (let [[db code-id]
+              (with-code db "http://hl7.org/fhir/sid/icd-10" "2016" "Q14")
+              [db id] (with-resource db "Observation" "0")]
           (is
             (=
               (with-redefs [d/tempid (fn [partition] partition)]
@@ -399,19 +388,17 @@
                       "code" "Q14"
                       "userSelected" true}]}}))
               [[:db/add :part/Coding :Coding/userSelected true]
-               {:db/id :part/code
-                :code/id "http://hl7.org/fhir/sid/icd-10|2016|Q14"
-                :code/system "http://hl7.org/fhir/sid/icd-10"
-                :code/version "2016"
-                :code/code "Q14"}
-               [:db/add :part/Coding :Coding/code :part/code]
+               [:db/add :part/Coding :Coding/code code-id]
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
                [:db/add id :Observation/code :part/CodeableConcept]
-               [:db/add id :Observation.index/code :part/code]
+               [:db/add id :Observation.index/code code-id]
                [:db.fn/cas id :version -3 -7]])))))
 
     (testing "CodeSystem with code in concept"
-      (let [[db id] (with-resource db "CodeSystem" "0")]
+      (let [[db code-id]
+            (with-code
+              db "http://hl7.org/fhir/administrative-gender" "male")
+            [db id] (with-resource db "CodeSystem" "0")]
         (is
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
@@ -423,17 +410,16 @@
                  "concept"
                  [{"code" "male"}]}))
             [[:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
-             {:db/id :part/code
-              :code/id "http://hl7.org/fhir/administrative-gender||male"
-              :code/system "http://hl7.org/fhir/administrative-gender"
-              :code/code "male"}
-             [:db/add :part/CodeSystem.concept :CodeSystem.concept/code :part/code]
+             [:db/add :part/CodeSystem.concept :CodeSystem.concept/code code-id]
              [:db/add id :CodeSystem/concept :part/CodeSystem.concept]
              [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "CodeSystem with version and code in concept"
-      (let [[db id] (with-resource db "CodeSystem" "0")]
+      (let [[db code-id]
+            (with-code
+              db "http://hl7.org/fhir/administrative-gender" "4.0.0" "male")
+            [db id] (with-resource db "CodeSystem" "0")]
         (is
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
@@ -447,39 +433,33 @@
                  [{"code" "male"}]}))
             [[:db/add id :CodeSystem/version "4.0.0"]
              [:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
-             {:db/id :part/code
-              :code/id "http://hl7.org/fhir/administrative-gender|4.0.0|male"
-              :code/system "http://hl7.org/fhir/administrative-gender"
-              :code/version "4.0.0"
-              :code/code "male"}
-             [:db/add :part/CodeSystem.concept :CodeSystem.concept/code :part/code]
+             [:db/add :part/CodeSystem.concept :CodeSystem.concept/code code-id]
              [:db/add id :CodeSystem/concept :part/CodeSystem.concept]
              [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "CodeSystem with code in content uses http://hl7.org/fhir/codesystem-content-mode"
-      (let [[db id] (with-resource db "CodeSystem" "0")]
+      (let [[db code-id] (with-code db "complete")
+            [db id] (with-resource db "CodeSystem" "0")]
         (is
           (=
-            (with-redefs [d/tempid (fn [partition] partition)]
-              (resource-upsert
-                db nil :server-assigned-id
-                {"id" "0"
-                 "resourceType" "CodeSystem"
-                 "url" "http://hl7.org/fhir/administrative-gender"
-                 "version" "4.0.0"
-                 "content" "complete"}))
-            [{:db/id :part/code
-              :code/id "||complete"
-              :code/code "complete"}
-             [:db/add id :CodeSystem/content :part/code]
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "CodeSystem"
+               "url" "http://hl7.org/fhir/administrative-gender"
+               "version" "4.0.0"
+               "content" "complete"})
+            [[:db/add id :CodeSystem/content code-id]
              [:db/add id :CodeSystem/version "4.0.0"]
              [:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
              [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "CodeSystem with sub-concept"
-      (let [[db id] (with-resource db "CodeSystem" "0")]
+      (let [[db foo-id] (with-code db "http://something" "foo")
+            [db bar-id] (with-code db "http://something" "bar")
+            [db id] (with-resource db "CodeSystem" "0")]
         (is
           (=
             (with-redefs [d/tempid (tempid)]
@@ -493,17 +473,16 @@
                    "concept"
                    [{"code" "bar"}]}]}))
             [[:db/add id :CodeSystem/url "http://something"]
-             {:db/id [:part/code 1] :code/id "http://something||foo" :code/system "http://something" :code/code "foo"}
-             [:db/add [:part/CodeSystem.concept 1] :CodeSystem.concept/code [:part/code 1]]
-             {:db/id [:part/code 2] :code/id "http://something||bar" :code/system "http://something" :code/code "bar"}
-             [:db/add [:part/CodeSystem.concept 2] :CodeSystem.concept/code [:part/code 2]]
+             [:db/add [:part/CodeSystem.concept 1] :CodeSystem.concept/code foo-id]
+             [:db/add [:part/CodeSystem.concept 2] :CodeSystem.concept/code bar-id]
              [:db/add [:part/CodeSystem.concept 1] :CodeSystem/concept [:part/CodeSystem.concept 2]]
              [:db/add id :CodeSystem/concept [:part/CodeSystem.concept 1]]
              [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "ValueSet with code in compose include"
-      (let [[db include-id]
+      (let [[db code-id] (with-code db "http://loinc.org" "2.36" "14647-2")
+            [db include-id]
             (with-non-primitive
               db :ValueSet.compose.include/system "http://loinc.org"
               :ValueSet.compose.include/version "2.36")
@@ -522,18 +501,14 @@
                     "version" "2.36"
                     "concept"
                     [{"code" "14647-2"}]}]}}))
-            [{:db/id :part/code
-              :code/id "http://loinc.org|2.36|14647-2"
-              :code/system "http://loinc.org"
-              :code/code "14647-2"
-              :code/version "2.36"}
-             [:db/add :part/ValueSet.compose.include.concept :ValueSet.compose.include.concept/code :part/code]
+            [[:db/add :part/ValueSet.compose.include.concept :ValueSet.compose.include.concept/code code-id]
              [:db/add include-id :ValueSet.compose.include/concept :part/ValueSet.compose.include.concept]
              [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "ValueSet with code in expansion contains"
-      (let [[db contains-id]
+      (let [[db code-id] (with-code db "http://loinc.org" "2.50" "14647-2")
+            [db contains-id]
             (with-non-primitive
               db :ValueSet.expansion.contains/system "http://loinc.org"
               :ValueSet.expansion.contains/version "2.50")
@@ -541,22 +516,16 @@
             [db id] (with-resource db "ValueSet" "0" :ValueSet/expansion expansion-id)]
         (is
           (=
-            (with-redefs [d/tempid (fn [partition] partition)]
-              (resource-upsert
-                db nil :server-assigned-id
-                {"id" "0"
-                 "resourceType" "ValueSet"
-                 "expansion"
-                 {"contains"
-                  [{"system" "http://loinc.org"
-                    "version" "2.50"
-                    "code" "14647-2"}]}}))
-            [{:db/id :part/code
-              :code/id "http://loinc.org|2.50|14647-2"
-              :code/system "http://loinc.org"
-              :code/code "14647-2"
-              :code/version "2.50"}
-             [:db/add contains-id :ValueSet.expansion.contains/code :part/code]
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "ValueSet"
+               "expansion"
+               {"contains"
+                [{"system" "http://loinc.org"
+                  "version" "2.50"
+                  "code" "14647-2"}]}})
+            [[:db/add contains-id :ValueSet.expansion.contains/code code-id]
              [:db.fn/cas id :version -3 -7]]))))
 
 
@@ -697,7 +666,8 @@
 
 
     (testing "ConceptMap with source code"
-      (let [[db group-id] (with-non-primitive db :ConceptMap.group/source "http://foo")
+      (let [[db code-id] (with-code db "http://foo" "bar")
+            [db group-id] (with-non-primitive db :ConceptMap.group/source "http://foo")
             [db id] (with-resource db "ConceptMap" "0" :ConceptMap/group group-id)]
         (is
           (=
@@ -710,17 +680,14 @@
                  [{"source" "http://foo"
                    "element"
                    [{"code" "bar"}]}]}))
-            [{:db/id :part/code
-              :code/id "http://foo||bar"
-              :code/system "http://foo"
-              :code/code "bar"}
-             [:db/add :part/ConceptMap.group.element :ConceptMap.group.element/code :part/code]
+            [[:db/add :part/ConceptMap.group.element :ConceptMap.group.element/code code-id]
              [:db/add group-id :ConceptMap.group/element :part/ConceptMap.group.element]
              [:db.fn/cas id :version -3 -7]]))))
 
 
     (testing "ConceptMap with target code"
-      (let [[db id] (with-resource db "ConceptMap" "0")]
+      (let [[db code-id] (with-code db "http://foo" "bar")
+            [db id] (with-resource db "ConceptMap" "0")]
         (is
           (=
             (with-redefs [d/tempid (fn [partition] partition)]
@@ -733,11 +700,7 @@
                    "element"
                    [{"target"
                      [{"code" "bar"}]}]}]}))
-            [{:db/id :part/code
-              :code/id "http://foo||bar"
-              :code/system "http://foo"
-              :code/code "bar"}
-             [:db/add :part/ConceptMap.group.element.target :ConceptMap.group.element.target/code :part/code]
+            [[:db/add :part/ConceptMap.group.element.target :ConceptMap.group.element.target/code code-id]
              [:db/add :part/ConceptMap.group.element :ConceptMap.group.element/target :part/ConceptMap.group.element.target]
              [:db/add :part/ConceptMap.group :ConceptMap.group/element :part/ConceptMap.group.element]
              [:db/add :part/ConceptMap.group :ConceptMap.group/target "http://foo"]
@@ -746,20 +709,19 @@
 
     (testing "Code typed extension"
       ;; TODO: resolve the value set binding here
-      (let [[db extension-id] (with-non-primitive db :Extension/url "http://foo")
+      (let [[db draft-id] (with-code db "draft")
+            [db extension-id] (with-non-primitive db :Extension/url "http://foo")
             [db id] (with-resource db "CodeSystem" "0" :CodeSystem/extension extension-id)]
         (is
           (=
-            (with-redefs [d/tempid (fn [partition] partition)]
-              (resource-upsert
-                db nil :server-assigned-id
-                {"id" "0"
-                 "resourceType" "CodeSystem"
-                 "extension"
-                 [{"url" "http://foo"
-                   "valueCode" "draft"}]}))
-            [{:db/id :part/code, :code/id "||draft", :code/code "draft"}
-             [:db/add extension-id :Extension/valueCode :part/code]
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "CodeSystem"
+               "extension"
+               [{"url" "http://foo"
+                 "valueCode" "draft"}]})
+            [[:db/add extension-id :Extension/valueCode draft-id]
              [:db/add extension-id :Extension/value :Extension/valueCode]
              [:db.fn/cas id :version -3 -7]]))))
 
@@ -1039,18 +1001,15 @@
                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
-        (let [[db id] (with-gender-code db "male")
-              [db id] (with-resource db "Patient" "0" :Patient/gender id)]
+        (let [[db male-id] (with-code db "male")
+              [db female-id] (with-code db "female")
+              [db id] (with-resource db "Patient" "0" :Patient/gender male-id)]
           (is
             (=
-              (with-redefs [d/tempid (fn [partition] partition)]
-                (resource-upsert
-                  db nil :server-assigned-id
-                  {"id" "0" "resourceType" "Patient" "gender" "female"}))
-              [{:db/id :part/code
-                :code/id "||female"
-                :code/code "female"}
-               [:db/add id :Patient/gender :part/code]
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0" "resourceType" "Patient" "gender" "female"})
+              [[:db/add id :Patient/gender female-id]
                [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with date type"
@@ -1098,9 +1057,10 @@
                 [:db.fn/cas id :version -3 -7]]))))
 
       (testing "with code type"
-        (let [[db id] (with-code db "medication")
+        (let [[db medication-id] (with-code db "medication")
+              [db food-id] (with-code db "food")
               [db id] (with-resource db "AllergyIntolerance" "0"
-                                     :AllergyIntolerance/category id)]
+                                     :AllergyIntolerance/category medication-id)]
           (is
             (= (with-redefs [d/tempid (fn [partition] partition)]
                  (resource-upsert
@@ -1109,10 +1069,7 @@
                     "resourceType" "AllergyIntolerance"
                     "category"
                     ["medication" "food"]}))
-               [{:db/id :part/code
-                 :code/id "||food"
-                 :code/code "food"}
-                [:db/add id :AllergyIntolerance/category :part/code]
+               [[:db/add id :AllergyIntolerance/category food-id]
                 [:db.fn/cas id :version -3 -7]])))))
 
 
@@ -1219,10 +1176,13 @@
                [:db.fn/cas patient-id :version -3 -7]])))))
 
     (testing "Coding"
-      (let [[db code-id]
-            (with-code db "http://terminology.hl7.org/CodeSystem/v3-ActCode"
-                       "AMB")
-            [db coding-id] (with-non-primitive db :Coding/code code-id)
+      (let [[db amb-id]
+            (with-code
+              db "http://terminology.hl7.org/CodeSystem/v3-ActCode" "AMB")
+            [db emer-id]
+            (with-code
+              db "http://terminology.hl7.org/CodeSystem/v3-ActCode" "EMER")
+            [db coding-id] (with-non-primitive db :Coding/code amb-id)
             [db encounter-id]
             (with-resource db "Encounter" "0" :Encounter/class coding-id)]
         (is
@@ -1235,11 +1195,7 @@
                  "class"
                  {"system" "http://terminology.hl7.org/CodeSystem/v3-ActCode"
                   "code" "EMER"}}))
-            [{:db/id :part/code
-              :code/id "http://terminology.hl7.org/CodeSystem/v3-ActCode||EMER"
-              :code/system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
-              :code/code "EMER"}
-             [:db/add coding-id :Coding/code :part/code]
+            [[:db/add coding-id :Coding/code emer-id]
              [:db.fn/cas encounter-id :version -3 -7]]))))
 
 
@@ -1343,7 +1299,25 @@
               :Observation.component/valueQuantity
               (quantity 1M "m")]
              [:db/add component-1-id :Observation.component/value :Observation.component/valueQuantity]
-             [:db.fn/cas observation-id :version -3 -7]])))))
+             [:db.fn/cas observation-id :version -3 -7]]))))
+
+
+    (testing "multi-valued code element"
+      (let [[db medication-id] (with-code db "medication")
+            [db food-id] (with-code db "food")
+            [db id] (with-resource db "AllergyIntolerance" "0"
+                                   :AllergyIntolerance/category medication-id)]
+        (is
+          (= (with-redefs [d/tempid (fn [partition] partition)]
+               (resource-upsert
+                 db nil :server-assigned-id
+                 {"id" "0"
+                  "resourceType" "AllergyIntolerance"
+                  "category"
+                  ["food"]}))
+             [[:db/retract id :AllergyIntolerance/category medication-id]
+              [:db/add id :AllergyIntolerance/category food-id]
+              [:db.fn/cas id :version -3 -7]])))))
 
 
 
@@ -1619,6 +1593,165 @@
             [[:db.fn/cas patient-id :version -3 -5]
              [:db/retract name-id :HumanName/family "Doe"]
              [:db/retract patient-id :Patient/name name-id]]))))))
+
+
+(deftest resource-codes-creation-test
+  (testing "single-valued code element"
+    (is
+      (=
+        (with-redefs [d/tempid (fn [partition] partition)]
+          (resource-codes-creation
+            db
+            {"id" "0" "resourceType" "Patient" "gender" "male"}))
+        [{:db/id :part/code
+          :code/id "||male"
+          :code/code "male"}])))
+
+  (testing "multi-valued code element"
+    (is
+      (= (with-redefs [d/tempid (fn [partition] partition)]
+           (resource-codes-creation
+             db
+             {"id" "0"
+              "resourceType" "AllergyIntolerance"
+              "category"
+              ["medication"]}))
+         [{:db/id :part/code
+           :code/id "||medication"
+           :code/code "medication"}])))
+
+  (testing "single-valued Coding element"
+    (is
+      (=
+        (with-redefs [d/tempid (fn [partition] partition)]
+          (resource-codes-creation
+            db
+            {"id" "0"
+             "resourceType" "Encounter"
+             "class"
+             {"system" "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+              "code" "AMB"}}))
+        [{:db/id :part/code
+          :code/id "http://terminology.hl7.org/CodeSystem/v3-ActCode||AMB"
+          :code/system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+          :code/code "AMB"}])))
+
+  (testing "multi-valued code element in multi-valued Backbone element"
+    (is
+      (= (with-redefs [d/tempid (fn [partition] partition)]
+           (resource-codes-creation
+             db
+             {"id" "0"
+              "resourceType" "CodeSystem"
+              "filter"
+              [{"operator" ["="]}]}))
+         [{:db/id :part/code
+           :code/id "||="
+           :code/code "="}])))
+
+  (testing "Coding in CodeableConcept"
+    (is
+      (=
+        (with-redefs [d/tempid (fn [partition] partition)]
+          (resource-codes-creation
+            db
+            {"id" "0"
+             "resourceType" "Observation"
+             "code"
+             {"coding"
+              [{"system" "http://hl7.org/fhir/sid/icd-10"
+                "version" "2016"
+                "code" "Q14"}]}}))
+        [{:db/id :part/code
+          :code/id "http://hl7.org/fhir/sid/icd-10|2016|Q14"
+          :code/system "http://hl7.org/fhir/sid/icd-10"
+          :code/version "2016"
+          :code/code "Q14"}])))
+
+  (testing "CodeSystem with code in concept"
+    (is
+      (=
+        (with-redefs [d/tempid (fn [partition] partition)]
+          (resource-codes-creation
+            db
+            {"id" "0"
+             "resourceType" "CodeSystem"
+             "url" "http://hl7.org/fhir/administrative-gender"
+             "concept"
+             [{"code" "male"}]}))
+        [{:db/id :part/code
+          :code/id "http://hl7.org/fhir/administrative-gender||male"
+          :code/system "http://hl7.org/fhir/administrative-gender"
+          :code/code "male"}])))
+
+  (testing "CodeSystem with version and code in concept"
+    (is
+      (=
+        (with-redefs [d/tempid (fn [partition] partition)]
+          (resource-codes-creation
+            db
+            {"id" "0"
+             "resourceType" "CodeSystem"
+             "url" "http://hl7.org/fhir/administrative-gender"
+             "version" "4.0.0"
+             "concept"
+             [{"code" "male"}]}))
+        [{:db/id :part/code
+          :code/id "http://hl7.org/fhir/administrative-gender|4.0.0|male"
+          :code/system "http://hl7.org/fhir/administrative-gender"
+          :code/version "4.0.0"
+          :code/code "male"}])))
+
+  (testing "ConceptMap with source code"
+    (is
+      (=
+        (with-redefs [d/tempid (fn [partition] partition)]
+          (resource-codes-creation
+            db
+            {"id" "0"
+             "resourceType" "ConceptMap"
+             "group"
+             [{"source" "http://foo"
+               "element"
+               [{"code" "bar"}]}]}))
+        [{:db/id :part/code
+          :code/id "http://foo||bar"
+          :code/system "http://foo"
+          :code/code "bar"}])))
+
+  (testing "ConceptMap with target code"
+    (is
+      (=
+        (with-redefs [d/tempid (fn [partition] partition)]
+          (resource-codes-creation
+            db
+            {"id" "0"
+             "resourceType" "ConceptMap"
+             "group"
+             [{"target" "http://foo"
+               "element"
+               [{"target"
+                 [{"code" "bar"}]}]}]}))
+        [{:db/id :part/code
+          :code/id "http://foo||bar"
+          :code/system "http://foo"
+          :code/code "bar"}])))
+
+  (testing "Code typed extension"
+    ;; TODO: resolve the value set binding here
+    (is
+      (=
+        (with-redefs [d/tempid (fn [partition] partition)]
+          (resource-codes-creation
+            db
+            {"id" "0"
+             "resourceType" "CodeSystem"
+             "extension"
+             [{"url" "http://foo"
+               "valueCode" "draft"}]}))
+        [{:db/id :part/code
+          :code/id "||draft"
+          :code/code "draft"}]))))
 
 
 (deftest coerce-value-test
