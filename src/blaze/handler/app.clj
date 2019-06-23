@@ -1,6 +1,6 @@
 (ns blaze.handler.app
   (:require
-    [blaze.middleware.json :refer [wrap-json]]
+    [blaze.middleware.json :as json :refer [wrap-json]]
     [blaze.middleware.fhir.type :refer [wrap-type]]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds]
@@ -39,6 +39,37 @@
      :conflicts nil}))
 
 
+(def ^:private default-handler
+  (reitit-ring/create-default-handler
+    {:not-found
+     (fn [_]
+       (-> (ring/not-found
+             {:resourceType "OperationOutcome"
+              :issue
+              [{:severity "information"
+                :code "not-found"}]})
+           (json/handle-response)))
+     :method-not-allowed
+     (fn [_]
+       (-> (ring/response
+             {:resourceType "OperationOutcome"
+              :issue
+              [{:severity "information"
+                :code "not-found"}]})
+           (ring/status 405)
+           (json/handle-response)))
+     :not-acceptable
+     (fn [_]
+       (-> (ring/response
+             {:resourceType "OperationOutcome"
+              :issue
+              [{:severity "error"
+                :code "structure"}]})
+           (ring/status 406)
+           (json/handle-response))
+       :not-acceptable)}))
+
+
 (s/def ::handlers
   (s/keys :req [:handler/cql-evaluation
                 :handler/health
@@ -59,5 +90,4 @@
   [conn handlers]
   (reitit-ring/ring-handler
     (router conn handlers)
-    (fn [_]
-      (ring/not-found "Not-Found"))))
+    default-handler))
