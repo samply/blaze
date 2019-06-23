@@ -143,21 +143,22 @@
          :fhir.issue/expression (ident->path ident)}))))
 
 
-(defn check-primitive [{:element/keys [primitive?] :db/keys [ident]} value]
-  (when (and primitive? (map? value))
-    (throw-anom
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (str "Incorrect non-primitive value at primitive element `" (ident->path ident) "`.")
-       :fhir/issue "value"
-       :fhir.issue/expression (ident->path ident)}))
-  (when-not (or primitive? (map? value))
-    (throw-anom
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (str "Incorrect primitive value at non-primitive element `" (ident->path ident) "`.")
-       :fhir/issue "value"
-       :fhir.issue/expression (ident->path ident)})))
+(defn check-primitive [{:element/keys [primitive? type-code] :db/keys [ident]} value]
+  (if (and primitive? (not (= "Quantity" type-code)))
+    (when (map? value)
+      (throw-anom
+        {::anom/category ::anom/incorrect
+         ::anom/message
+         (str "Incorrect non-primitive value at primitive element `" (ident->path ident) "`.")
+         :fhir/issue "value"
+         :fhir.issue/expression (ident->path ident)}))
+    (when-not (or (map? value) (s/valid? (s/coll-of map?) value))
+      (throw-anom
+        {::anom/category ::anom/incorrect
+         ::anom/message
+         (str "Incorrect primitive value at non-primitive element `" (ident->path ident) "`.")
+         :fhir/issue "value"
+         :fhir.issue/expression (ident->path ident)}))))
 
 
 (defn find-json-value
