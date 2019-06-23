@@ -197,7 +197,6 @@
 
 (defn- handler-intern [base-uri conn]
   (fn [{{:strs [type] :as bundle} :body}]
-    (log/trace bundle)
     (let [db (d/db conn)]
       (-> (validate-and-prepare-bundle db bundle)
           (md/chain' #(transact conn db type %))

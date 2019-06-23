@@ -143,6 +143,23 @@
          :fhir.issue/expression (ident->path ident)}))))
 
 
+(defn check-primitive [{:element/keys [primitive?] :db/keys [ident]} value]
+  (when (and primitive? (map? value))
+    (throw-anom
+      {::anom/category ::anom/incorrect
+       ::anom/message
+       (str "Incorrect non-primitive value at primitive element `" (ident->path ident) "`.")
+       :fhir/issue "value"
+       :fhir.issue/expression (ident->path ident)}))
+  (when-not (or primitive? (map? value))
+    (throw-anom
+      {::anom/category ::anom/incorrect
+       ::anom/message
+       (str "Incorrect primitive value at non-primitive element `" (ident->path ident) "`.")
+       :fhir/issue "value"
+       :fhir.issue/expression (ident->path ident)})))
+
+
 (defn find-json-value
   "Tries to find a value suitable for `element` in a JSON `entity`.
 
@@ -166,6 +183,7 @@
       type-choices)
     (when-some [value (get entity json-key)]
       (check-cardinality element value)
+      (check-primitive element value)
       [value element])))
 
 
