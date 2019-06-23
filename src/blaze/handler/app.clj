@@ -17,8 +17,8 @@
       {:options (:handler/cql-evaluation handlers)
        :post (:handler/cql-evaluation handlers)}]
      ["/fhir" {:middleware [wrap-json]}
-      [""
-       {:post (:handler.fhir/transaction handlers)}]
+      ["" {:post (:handler.fhir/transaction handlers)}]
+      ["/" {:post (:handler.fhir/transaction handlers)}]
       ["/metadata"
        {:get (:handler.fhir/capabilities handlers)}]
       ["/{type}" {:middleware [[wrap-type conn]]}
