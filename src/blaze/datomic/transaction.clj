@@ -131,14 +131,16 @@
       (throw-anom
         {::anom/category ::anom/incorrect
          ::anom/message
-         (str "Incorrect sequential value at element `" (ident->path ident) "`.")
+         (str "Incorrect sequential value `" (pr-str value)
+              "` at element `" (ident->path ident) "`.")
          :fhir/issue "value"
          :fhir.issue/expression (ident->path ident)}))
     (when (not (or (vector? value) (set? value)))
       (throw-anom
         {::anom/category ::anom/incorrect
          ::anom/message
-         (str "Incorrect non-sequential value at element `" (ident->path ident) "`.")
+         (str "Incorrect non-sequential value `" (pr-str value)
+              "` at element `" (ident->path ident) "`.")
          :fhir/issue "value"
          :fhir.issue/expression (ident->path ident)}))))
 
@@ -156,7 +158,8 @@
       (throw-anom
         {::anom/category ::anom/incorrect
          ::anom/message
-         (str "Incorrect primitive value at non-primitive element `" (ident->path ident) "`.")
+         (str "Incorrect primitive value `" (pr-str value)
+              "` at non-primitive element `" (ident->path ident) "`.")
          :fhir/issue "value"
          :fhir.issue/expression (ident->path ident)}))))
 
@@ -302,7 +305,7 @@
   existing entity with `id`."
   {:arglists '([context element id value])}
   [{:keys [db] :as context}
-   {:element/keys [type-code part-of-choice-type? type-attr-ident]
+   {:element/keys [type-code type part-of-choice-type? type-attr-ident]
     :db/keys [ident]}
    id value]
   (case type-code
@@ -339,8 +342,8 @@
             [])))
 
     "BackboneElement"
-    (let [tid (d/tempid (keyword "part" (ident->path ident)))
-          tx-data (upsert context ident {:db/id tid} value)]
+    (let [tid (d/tempid (keyword "part" (str (namespace type) "." (name type))))
+          tx-data (upsert context type {:db/id tid} value)]
       (when-not (empty? tx-data)
         (conj tx-data [:db/add id ident tid])))
 
@@ -418,15 +421,13 @@
 
 
 (defn- upsert-non-primitive-card-one-element
-  [context {:db/keys [ident] :element/keys [type-code] :as element} old-entity
-   new-value]
+  [context {:db/keys [ident] :element/keys [type-code type] :as element}
+   old-entity new-value]
   (if-let [old-value (ident old-entity)]
     (case type-code
       "Reference"
       (upsert-reference context element old-entity new-value)
-      "BackboneElement"
-      (upsert context ident old-value new-value)
-      (upsert context (keyword type-code) old-value new-value))
+      (upsert context type old-value new-value))
     (add-non-primitive-element context element (:db/id old-entity) new-value)))
 
 
@@ -492,10 +493,9 @@
 
 (defn- upsert-non-primitive-card-many-element
   [{:keys [db] :as context}
-   {:db/keys [ident] :element/keys [type-code] :as element}
+   {:db/keys [ident] :element/keys [type-code type] :as element}
    {:db/keys [id] :as old-entity} new-values]
-  (let [type (case type-code "BackboneElement" ident (keyword type-code))
-        old-entities (postwalk vector->set (second (pull/pull-element db element old-entity)))
+  (let [old-entities (postwalk vector->set (second (pull/pull-element db element old-entity)))
         new-entities (postwalk vector->set (remove-non-stored-elements type-code new-values))
         retract (set/difference old-entities new-entities)
         add (set/difference new-entities old-entities)
@@ -597,19 +597,16 @@
 
 
 (defn- retract-non-primitive-card-one-element
-  [context {:element/keys [type-code] :db/keys [ident] :as element}
+  [context {:element/keys [type] :db/keys [ident]}
    {:db/keys [id]} value]
   (assert (:db/id value))
   (conj
-    (case type-code
-      "BackboneElement"
-      (upsert context ident value nil)
-      (upsert context (keyword type-code) value nil))
+    (upsert context type value nil)
     [:db/retract id ident (:db/id value)]))
 
 
 (defn- retract-non-primitive-card-many-element
-  [context {:element/keys [type-code] :db/keys [ident] :as element}
+  [context {:element/keys [type] :db/keys [ident]}
    {:db/keys [id]} value]
   (into
     []
@@ -617,10 +614,7 @@
       (fn [value]
         (assert (:db/id value))
         (conj
-          (case type-code
-            "BackboneElement"
-            (upsert context ident value nil)
-            (upsert context (keyword type-code) value nil))
+          (upsert context type value nil)
           [:db/retract id ident (:db/id value)])))
     value))
 
@@ -1045,10 +1039,8 @@
 
 (defn- create-codes-non-primitive-element
   {:arglists '([context element value])}
-  [context {:element/keys [type-code] :db/keys [ident]} value]
-  (if (= "BackboneElement" type-code)
-    (create-codes context ident value)
-    (create-codes context (keyword type-code) value)))
+  [context {:element/keys [type] :as element} value]
+  (create-codes context type value))
 
 
 (defn- create-codes-element

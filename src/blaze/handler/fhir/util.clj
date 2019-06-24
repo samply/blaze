@@ -2,7 +2,6 @@
   (:require
     [blaze.datomic.transaction :as tx]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]))
 

@@ -150,11 +150,25 @@
   (into {} (map (fn [[k v]] (if (namespace k) [k v] [(keyword ns (name k)) v]))) m))
 
 
-(defn needs-partition?
-  "Returns true iff the element is a parent and needs to create a partition and
-  link it's childs."
-  [{:keys [type]}]
-  (or (nil? type) (= "BackboneElement" (-> type first :code))))
+(defn- backbone-element?
+  {:arglists '([element])}
+  [{[{:keys [code]}] :type}]
+  (= "BackboneElement" code))
+
+
+(defn- has-content-reference?
+  {:arglists '([element])}
+  [{content-reference :contentReference}]
+  (some? content-reference))
+
+
+(defn- needs-partition?
+  "Returns true iff the `element` is a parent and needs to create a partition
+  and link it's childs."
+  {:arglists '([element])}
+  [{:keys [type] :as element}]
+  (and (or (nil? type) (backbone-element? element))
+       (not (has-content-reference? element))))
 
 
 ;; TODO: the Extension StructureDefinition misses a value for `code`
@@ -177,6 +191,16 @@
       type)))
 
 
+(defn- normal-non-primitive-type? [choice-type? type]
+  (and type (not choice-type?) (not (primitive? (first type)))
+       (not (#{"BackboneElement" "Bundle"} (-> type first :code)))))
+
+
+(defn- resolve-element [structure-definition reference]
+  (->> (-> structure-definition :snapshot :element)
+       (some #(when (= (subs reference 1) (:id %)) %))))
+
+
 (s/fdef element-definition-tx-data
   :args (s/cat :structure-definition :fhir.un/StructureDefinition
                :element-definition :fhir.un/ElementDefinition)
@@ -190,90 +214,94 @@
     :as element}]
   (let [parent-path (parent-path path)
         ident (path->ident path)
-        choice-type? (str/ends-with? path "[x]")]
-    (if content-reference
-      ;; TODO: HACK see #19
-      (if (#{"#ImplementationGuide.definition.page"
-             "#Consent.provision"}
-           content-reference)
-        []
-        [[:db/add (subs content-reference 1) :type/elements (subs content-reference 1)]])
-      (cond->
-        [(cond->
-           (if type
-             (cond->
-               {:db/id path
-                :db/ident ident
-                :db/cardinality
-                (if (= "*" max)
-                  :db.cardinality/many
-                  :db.cardinality/one)
-                :element/choice-type? choice-type?}
-
-               (and (not choice-type?) (component? type))
-               (assoc :db/isComponent true)
-
-               (let [{:keys [name kind]} structure-definition]
-                 (and (= "resource" kind) (= (str name ".id") path)))
-               (assoc :db/unique :db.unique/identity)
-
-               (not choice-type?)
-               (assoc
-                 :db/valueType (fhir-type-code->db-type (-> type first :code))
-                 :element/primitive? (primitive? (first type))
-                 ;; TODO: the Extension StructureDefinition misses a value for `code`
-                 :element/type-code (or (-> type first :code) "string")
-                 :element/json-key (last (str/split path #"\.")))
-
-               choice-type?
-               (assoc :db/valueType :db.type/ref)
-
-               (and (= "code" (-> type first :code)) (-> element :binding :valueSet))
-               (assoc :element/value-set-binding (-> element :binding :valueSet)))
+        choice-type? (str/ends-with? path "[x]")
+        content-element (some->> content-reference (resolve-element structure-definition))
+        type (if content-element (:type content-element) type)]
+    (cond->
+      [(cond->
+         (if type
+           (cond->
              {:db/id path
-              :db/ident ident})
-           isSummary
-           (assoc :ElementDefinition/isSummary true))]
-        choice-type?
-        (into
-          (mapcat identity)
-          (for [{[ns name :as choice-path] :path :keys [code]} (choice-paths element)]
-            (cond->
-              [{:db/id (str/join "." choice-path)
-                :db/ident (keyword ns name)
-                :db/valueType (fhir-type-code->db-type code)
-                :db/cardinality
-                (if (= "*" max)
-                  :db.cardinality/many
-                  :db.cardinality/one)
-                :element/primitive? (primitive? {:code code})
-                :element/part-of-choice-type? true
-                :element/type-attr-ident ident
-                :element/type-code code
-                :element/json-key name}
-               [:db/add path :element/type-choices (str/join "." choice-path)]]
-              (and (not (primitive? {:code code}))
-                   (not (#{"BackboneElement" "Bundle" "Element"}
-                          code)))
-              (conj [:db/add (str/join "." choice-path) :element/type code]))))
-        (needs-partition? element)
-        (conj
-          {:db/id (str "part." path)
-           :db/ident (keyword "part" path)}
-          [:db/add :db.part/db :db.install/partition (str "part." path)])
-        (and type (not choice-type?) (not (primitive? (first type)))
-             (not (#{"BackboneElement" "Bundle" "Element"}
-                    (-> type first :code))))
-        (conj [:db/add path :element/type (-> type first :code)])
-        parent-path
-        (conj [:db/add parent-path :type/elements path])
+              :db/ident ident
+              :db/cardinality
+              (if (= "*" max)
+                :db.cardinality/many
+                :db.cardinality/one)
+              :element/choice-type? choice-type?}
 
-        ;; extra attribute consisting of a direct list of codes of the CodeableConcept
-        (and (not choice-type?) (= "CodeableConcept" (-> type first :code)))
-        (conj
-          {:db/ident (keyword (str (namespace ident) ".index") (name ident))
-           :db/valueType :db.type/ref
-           :db/cardinality :db.cardinality/many})))))
+             (and (not choice-type?) (component? type))
+             (assoc :db/isComponent true)
+
+             (let [{:keys [name kind]} structure-definition]
+               (and (= "resource" kind) (= (str name ".id") path)))
+             (assoc :db/unique :db.unique/identity)
+
+             (not choice-type?)
+             (assoc
+               :db/valueType (fhir-type-code->db-type (-> type first :code))
+               :element/primitive? (primitive? (first type))
+               ;; TODO: the Extension StructureDefinition misses a value for `code`
+               :element/type-code (or (-> type first :code) "string")
+               :element/json-key (last (str/split path #"\.")))
+
+             choice-type?
+             (assoc :db/valueType :db.type/ref)
+
+             (and (= "code" (-> type first :code)) (-> element :binding :valueSet))
+             (assoc :element/value-set-binding (-> element :binding :valueSet)))
+
+           {:db/id path
+            :db/ident ident})
+
+         isSummary
+         (assoc :ElementDefinition/isSummary true))]
+
+      choice-type?
+      (into
+        (mapcat identity)
+        (for [{[ns name :as choice-path] :path :keys [code]} (choice-paths element)]
+          (cond->
+            [{:db/id (str/join "." choice-path)
+              :db/ident (keyword ns name)
+              :db/valueType (fhir-type-code->db-type code)
+              :db/cardinality
+              (if (= "*" max)
+                :db.cardinality/many
+                :db.cardinality/one)
+              :element/primitive? (primitive? {:code code})
+              :element/part-of-choice-type? true
+              :element/type-attr-ident ident
+              :element/type-code code
+              :element/json-key name}
+             [:db/add path :element/type-choices (str/join "." choice-path)]]
+            (and (not (primitive? {:code code}))
+                 (not (#{"BackboneElement" "Bundle"} code)))
+            (conj [:db/add (str/join "." choice-path) :element/type code]))))
+
+      (needs-partition? element)
+      (conj
+        {:db/id (str "part." path)
+         :db/ident (keyword "part" path)}
+        [:db/add :db.part/db :db.install/partition (str "part." path)])
+
+      (normal-non-primitive-type? choice-type? type)
+      (conj [:db/add path :element/type (-> type first :code)])
+
+      content-element
+      (conj [:db/add path :element/type (:path content-element)])
+
+      (backbone-element? element)
+      (conj [:db/add path :element/type path])
+
+      parent-path
+      (conj [:db/add parent-path :type/elements path])
+
+      ;; extra attribute consisting of a direct list of codes of the CodeableConcept
+      (and (not choice-type?) (= "CodeableConcept" (-> type first :code)))
+      (conj
+        {:db/ident (keyword (str (namespace ident) ".index") (name ident))
+         :db/valueType :db.type/ref
+         :db/cardinality :db.cardinality/many}))))
 
 
 (s/fdef structure-definition-tx-data

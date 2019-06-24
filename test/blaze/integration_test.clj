@@ -29,7 +29,8 @@
 (dst/instrument)
 
 
-(def structure-definitions (read-structure-definitions "fhir/r4/structure-definitions"))
+(defonce structure-definitions
+  (read-structure-definitions "fhir/r4/structure-definitions"))
 
 
 (defn- connect []
@@ -40,7 +41,9 @@
     @(d/transact conn (schema/structure-definition-schemas structure-definitions))
     conn))
 
-(def db (d/db (connect)))
+
+(defonce db (d/db (connect)))
+
 
 (defn- db-with [{:strs [entries]}]
   (let [{db :db-after} (d/with db (bundle/code-tx-data db entries))]

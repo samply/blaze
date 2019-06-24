@@ -11,15 +11,17 @@
 (st/instrument)
 
 
-(def structure-definitions (read-structure-definitions "fhir/r4/structure-definitions"))
+(defonce structure-definitions
+  (read-structure-definitions "fhir/r4/structure-definitions"))
+
 
 (defn- structure-definition [id]
   (some #(when (= id (:id %)) %) structure-definitions))
 
+
 (defn- element-definition [path]
   (let [[id] (str/split path #"\.")]
-    (->> (-> (structure-definition id)
-             :snapshot :element)
+    (->> (-> (structure-definition id) :snapshot :element)
          (some #(when (= path (:path %)) %)))))
 
 
@@ -169,6 +171,7 @@
             {:db/id "part.Patient.link"
              :db/ident :part/Patient.link}
             [:db/add :db.part/db :db.install/partition "part.Patient.link"]
+            [:db/add "Patient.link" :element/type "Patient.link"]
             [:db/add "Patient" :type/elements "Patient.link"]])))
 
   (testing "Patient.link.other"
@@ -207,14 +210,14 @@
     (is (= (element-definition-tx-data
              (structure-definition "Patient")
              (element-definition "Patient.extension"))
-           [{:db/valueType :db.type/ref,
-             :db/isComponent true,
-             :element/type-code "Extension",
-             :element/choice-type? false,
-             :element/json-key "extension",
-             :db/cardinality :db.cardinality/many,
-             :db/id "Patient.extension",
-             :db/ident :Patient/extension,
+           [{:db/valueType :db.type/ref
+             :db/isComponent true
+             :element/type-code "Extension"
+             :element/choice-type? false
+             :element/json-key "extension"
+             :db/cardinality :db.cardinality/many
+             :db/id "Patient.extension"
+             :db/ident :Patient/extension
              :element/primitive? false}
             [:db/add "Patient.extension" :element/type "Extension"]
             [:db/add "Patient" :type/elements "Patient.extension"]])))
@@ -243,31 +246,51 @@
     (is (= (element-definition-tx-data
              (structure-definition "CodeSystem")
              (element-definition "CodeSystem.concept"))
-           [{:db/valueType :db.type/ref,
-             :db/isComponent true,
-             :element/type-code "BackboneElement",
-             :element/choice-type? false,
-             :element/json-key "concept",
-             :db/cardinality :db.cardinality/many,
-             :db/id "CodeSystem.concept",
-             :db/ident :CodeSystem/concept,
+           [{:db/id "CodeSystem.concept"
+             :db/ident :CodeSystem/concept
+             :db/valueType :db.type/ref
+             :db/isComponent true
+             :element/type-code "BackboneElement"
+             :element/choice-type? false
+             :element/json-key "concept"
+             :db/cardinality :db.cardinality/many
              :element/primitive? false}
-            #:db{:id "part.CodeSystem.concept", :ident :part/CodeSystem.concept}
+            {:db/id "part.CodeSystem.concept" :db/ident :part/CodeSystem.concept}
             [:db/add :db.part/db :db.install/partition "part.CodeSystem.concept"]
+            [:db/add "CodeSystem.concept" :element/type "CodeSystem.concept"]
             [:db/add "CodeSystem" :type/elements "CodeSystem.concept"]])))
 
   (testing "CodeSystem.concept.concept"
     (is (= (element-definition-tx-data
              (structure-definition "CodeSystem")
              (element-definition "CodeSystem.concept.concept"))
-           [[:db/add "CodeSystem.concept" :type/elements "CodeSystem.concept"]])))
+           [{:db/id "CodeSystem.concept.concept"
+             :db/ident :CodeSystem.concept/concept
+             :db/valueType :db.type/ref
+             :db/isComponent true
+             :element/type-code "BackboneElement"
+             :element/choice-type? false
+             :element/json-key "concept"
+             :db/cardinality :db.cardinality/many
+             :element/primitive? false}
+            [:db/add "CodeSystem.concept.concept" :element/type "CodeSystem.concept"]
+            [:db/add "CodeSystem.concept" :type/elements "CodeSystem.concept.concept"]])))
 
   (testing "ImplementationGuide.definition.page.page"
-    ;; TODO: HACK see #19
     (is (= (element-definition-tx-data
              (structure-definition "ImplementationGuide")
              (element-definition "ImplementationGuide.definition.page.page"))
-           [])))
+           [{:db/id "ImplementationGuide.definition.page.page"
+             :db/ident :ImplementationGuide.definition.page/page
+             :db/valueType :db.type/ref
+             :db/isComponent true
+             :element/type-code "BackboneElement"
+             :element/choice-type? false
+             :element/json-key "page"
+             :db/cardinality :db.cardinality/many
+             :element/primitive? false}
+            [:db/add "ImplementationGuide.definition.page.page" :element/type "ImplementationGuide.definition.page"]
+            [:db/add "ImplementationGuide.definition.page" :type/elements "ImplementationGuide.definition.page.page"]])))
 
   (testing "Bundle"
     (is (= (element-definition-tx-data
@@ -336,8 +359,58 @@
              :ElementDefinition/isSummary true
              :element/type-code "decimal"
              :element/json-key "value"}
-            [:db/add "Money" :type/elements "Money.value"]]))))
+            [:db/add "Money" :type/elements "Money.value"]])))
 
-(comment
-  (element-definition "ElementDefinition.id")
-  )
+  (testing "SubstanceSpecification.name"
+    (is (= (element-definition-tx-data
+             (structure-definition "SubstanceSpecification")
+             (element-definition "SubstanceSpecification.name"))
+           [{:db/id "SubstanceSpecification.name"
+             :db/ident :SubstanceSpecification/name
+             :db/valueType :db.type/ref
+             :db/cardinality :db.cardinality/many
+             :db/isComponent true
+             :element/primitive? false
+             :element/choice-type? false
+             :ElementDefinition/isSummary true
+             :element/type-code "BackboneElement"
+             :element/json-key "name"}
+            {:db/id "part.SubstanceSpecification.name"
+             :db/ident :part/SubstanceSpecification.name}
+            [:db/add :db.part/db :db.install/partition "part.SubstanceSpecification.name"]
+            [:db/add "SubstanceSpecification.name" :element/type "SubstanceSpecification.name"]
+            [:db/add "SubstanceSpecification" :type/elements "SubstanceSpecification.name"]])))
+
+  (testing "SubstanceSpecification.name.name"
+    (is (= (element-definition-tx-data
+             (structure-definition "SubstanceSpecification")
+             (element-definition "SubstanceSpecification.name.name"))
+           [{:db/id "SubstanceSpecification.name.name"
+             :db/ident :SubstanceSpecification.name/name
+             :db/valueType :db.type/string
+             :db/cardinality :db.cardinality/one
+             :element/primitive? true
+             :element/choice-type? false
+             :ElementDefinition/isSummary true
+             :element/type-code "string"
+             :element/json-key "name"}
+            [:db/add "SubstanceSpecification.name" :type/elements "SubstanceSpecification.name.name"]])))
+
+  (testing "SubstanceSpecification.name.synonym"
+    (is (= (element-definition-tx-data
+             (structure-definition "SubstanceSpecification")
+             (element-definition "SubstanceSpecification.name.synonym"))
+           [{:db/id "SubstanceSpecification.name.synonym"
+             :db/ident :SubstanceSpecification.name/synonym
+             :db/valueType :db.type/ref
+             :db/cardinality :db.cardinality/many
+             :db/isComponent true
+             :element/primitive? false
+             :element/choice-type? false
+             :ElementDefinition/isSummary true
+             :element/type-code "BackboneElement"
+             :element/json-key "synonym"}
+            [:db/add "SubstanceSpecification.name.synonym" :element/type "SubstanceSpecification.name"]
+            [:db/add "SubstanceSpecification.name" :type/elements "SubstanceSpecification.name.synonym"]]))))
+
+

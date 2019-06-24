@@ -15,7 +15,7 @@
 (dst/instrument)
 
 
-(def structure-definitions
+(defonce structure-definitions
   (read-structure-definitions "fhir/r4/structure-definitions"))
 
 
@@ -28,7 +28,7 @@
     conn))
 
 
-(def db (d/db (connect)))
+(defonce db (d/db (connect)))
 
 
 (deftest resolve-entry-links-test

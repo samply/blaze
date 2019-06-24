@@ -21,7 +21,8 @@
 (dst/instrument)
 
 
-(def structure-definitions (read-structure-definitions "fhir/r4/structure-definitions"))
+(defonce structure-definitions
+  (read-structure-definitions "fhir/r4/structure-definitions"))
 
 
 (defn- connect []
@@ -33,7 +34,7 @@
     conn))
 
 
-(def db (d/db (connect)))
+(defonce db (d/db (connect)))
 
 
 (defn- b64-decode [s]
@@ -47,7 +48,7 @@
       (given (pull-resource db "Patient" "0")
         ;; this is the t of the last transaction. it could change if the
         ;; transactions before change
-        ["meta" "versionId"] := "9779")))
+        ["meta" "versionId"] := "9833")))
 
   (testing "meta.lastUpdated"
     (let [[db] (with-resource db "Patient" "0")]

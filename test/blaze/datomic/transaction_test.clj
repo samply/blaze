@@ -25,7 +25,7 @@
 (dst/instrument)
 
 
-(def structure-definitions
+(defonce structure-definitions
   (read-structure-definitions "fhir/r4/structure-definitions"))
 
 
@@ -38,7 +38,7 @@
     conn))
 
 
-(def db (d/db (connect)))
+(defonce db (d/db (connect)))
 
 (defn- tempid []
   (let [v (volatile! {})]
@@ -473,9 +473,9 @@
                    "concept"
                    [{"code" "bar"}]}]}))
             [[:db/add id :CodeSystem/url "http://something"]
-             [:db/add [:part/CodeSystem.concept 1] :CodeSystem.concept/code foo-id]
              [:db/add [:part/CodeSystem.concept 2] :CodeSystem.concept/code bar-id]
-             [:db/add [:part/CodeSystem.concept 1] :CodeSystem/concept [:part/CodeSystem.concept 2]]
+             [:db/add [:part/CodeSystem.concept 1] :CodeSystem.concept/concept [:part/CodeSystem.concept 2]]
+             [:db/add [:part/CodeSystem.concept 1] :CodeSystem.concept/code foo-id]
              [:db/add id :CodeSystem/concept [:part/CodeSystem.concept 1]]
              [:db.fn/cas id :version -3 -7]]))))
 
