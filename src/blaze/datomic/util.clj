@@ -138,3 +138,11 @@
     (filter :added)
     (map #(d/entity db (:tx %)))
     (d/datoms (d/history db) :eavt eid :version)))
+
+
+(s/fdef resource-type-total
+  :args (s/cat :db ::ds/db :type string?)
+  :ret int?)
+
+(defn resource-type-total [db type]
+  (get (d/entity db (keyword type)) :total 0))

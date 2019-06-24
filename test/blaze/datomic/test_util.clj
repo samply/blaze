@@ -244,3 +244,15 @@
         :ret #{tx-result})}
      :stub
      #{`tx/transact-async}}))
+
+
+(defn stub-resource-type-total [db type result]
+  (st/instrument
+    [`util/resource-type-total]
+    {:spec
+     {`util/resource-type-total
+      (s/fspec
+        :args (s/cat :db #{db} :type #{type})
+        :ret #{result})}
+     :stub
+     #{`util/resource-type-total}}))

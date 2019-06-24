@@ -4,11 +4,13 @@
   https://www.hl7.org/fhir/http.html#delete"
   (:require
     [blaze.datomic.test-util :as datomic-test-util]
+    [blaze.handler.fhir.test-util :as fhir-test-util]
     [blaze.handler.fhir.delete :refer [handler]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic-spec.test :as dst]
+    [manifold.deferred :as md]
     [taoensso.timbre :as log]))
 
 
@@ -48,9 +50,10 @@
 
   (testing "Returns No Content on successful deletion"
     (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} #{::patient})
-    (datomic-test-util/stub-resource-deletion ::db "Patient" "0" #{[::tx-data]})
-    (datomic-test-util/stub-transact-async ::conn [::tx-data] {:db-after ::db-after})
-    (datomic-test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+    (fhir-test-util/stub-delete-resource
+      ::conn ::db "Patient" "0" (md/success-deferred {:db-after ::db-after}))
+    (datomic-test-util/stub-basis-transaction
+      ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
     (datomic-test-util/stub-basis-t ::db-after 42)
 
     (let [{:keys [status headers body]}
@@ -71,8 +74,10 @@
 
   (testing "Returns No Content on already deleted resource"
     (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} #{::patient})
-    (datomic-test-util/stub-resource-deletion ::db "Patient" "0" nil?)
-    (datomic-test-util/stub-basis-transaction ::db {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+    (fhir-test-util/stub-delete-resource
+      ::conn ::db "Patient" "0" (md/success-deferred {:db-after ::db}))
+    (datomic-test-util/stub-basis-transaction
+      ::db {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
     (datomic-test-util/stub-basis-t ::db 42)
 
     (let [{:keys [status headers body]}

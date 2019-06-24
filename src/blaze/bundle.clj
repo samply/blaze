@@ -89,7 +89,9 @@
   transaction bundle."
   [db entries]
   (transduce
-    (map #(entry-tempid db %))
+    (comp
+      (map #(entry-tempid db %))
+      (remove nil?))
     (completing
       (fn [tempids [type id tempid]]
         (assoc-in tempids [type id] tempid)))
@@ -126,6 +128,40 @@
   (into [] (mapcat #(tx/resource-codes-creation db (get % "resource"))) entries))
 
 
+(defn- resource-total-increments
+  "Returns a map of resource type to total count increment.
+
+  The total count is incremented for newly created resources through POST or PUT
+  and decremented for DELETE. So it can be negative."
+  [db entries]
+  (reduce
+    (fn [res {{:strs [method]} "request" {type "resourceType" id "id"} "resource"}]
+      (case method
+        "POST"
+        (update res type (fnil inc 0))
+
+        "PUT"
+        (let [resource (util/resource db type id)]
+          (if (or (nil? resource) (util/deleted? resource))
+            (update res type (fnil inc 0))
+            res))
+
+        "DELETE"
+        (let [resource (util/resource db type id)]
+          (if (and (some? resource) (not (util/deleted? resource)))
+            (update res type (fnil dec 0))
+            res))))
+    {}
+    entries))
+
+
+(defn- resource-total-tx-data [increments]
+  (mapv
+    (fn [[type amount]]
+      [:fn/increment-total (keyword type) amount])
+    increments))
+
+
 (s/fdef tx-data
   :args (s/cat :db ::ds/db :entries coll?)
   :ret ::ds/tx-data)
@@ -135,4 +171,6 @@
   [db entries]
   (let [entries (resolve-entry-links db entries)
         tempids (collect-tempids db entries)]
-    (into [] (mapcat #(entry-tx-data db tempids %)) entries)))
+    (into
+      (resource-total-tx-data (resource-total-increments db entries))
+      (mapcat #(entry-tx-data db tempids %)) entries)))

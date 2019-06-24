@@ -47,6 +47,7 @@
          #{`d/datoms}})
       (datomic-test-util/stub-entity ::db #{143757} #{::patient})
       (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+      (datomic-test-util/stub-resource-type-total ::db "Patient" 1)
 
       (let [{:keys [status body]}
             @((handler base-uri ::conn)

@@ -800,9 +800,8 @@
         (cond-> context
           eids
           (assoc :contained-resource-eids eids))]
-    (into
-      (or tx-data [])
-      (upsert context (keyword type) old-resource new-resource))))
+    (-> (or tx-data [])
+        (into (upsert context (keyword type) old-resource new-resource)))))
 
 
 (defn- prepare-resource

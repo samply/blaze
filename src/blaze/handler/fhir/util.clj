@@ -1,6 +1,7 @@
 (ns blaze.handler.fhir.util
   (:require
     [blaze.datomic.transaction :as tx]
+    [blaze.datomic.util :as util]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]))
@@ -11,12 +12,19 @@
     {type {id tempid}}))
 
 
+(defn- update-resource-tx-data [db {type "resourceType" id "id"}]
+  (let [resource (util/resource db type id)]
+    (if (or (nil? resource) (util/deleted? resource))
+      [[:fn/increment-total (keyword type) 1]]
+      [])))
+
+
 (defn- upsert-resource* [conn db creation-mode resource]
   (let [tempids (tempids db resource)
         tx-data (tx/resource-upsert db tempids creation-mode resource)]
     (if (empty? tx-data)
       {:db-after db}
-      (tx/transact-async conn tx-data))))
+      (tx/transact-async conn (into tx-data (update-resource-tx-data db resource))))))
 
 
 (s/fdef upsert-resource
@@ -37,6 +45,16 @@
               (upsert-resource* conn db creation-mode resource)))))))
 
 
+(defn- delete-resource-tx-data [db type id]
+  (let [resource (util/resource db type id)]
+    (if (and (some? resource) (not (util/deleted? resource)))
+      [[:fn/increment-total (keyword type) -1]]
+      [])))
+
+
+(s/fdef delete-resource
+  :args (s/cat :conn ::ds/conn :db ::ds/db :type string? :id string?))
+
 (defn delete-resource
   "Throws exceptions with `ex-data` containing an anomaly on errors or
   unsupported features."
@@ -44,4 +62,4 @@
   (let [tx-data (tx/resource-deletion db type id)]
     (if (empty? tx-data)
       {:db-after db}
-      (tx/transact-async conn tx-data))))
+      (tx/transact-async conn (into tx-data (delete-resource-tx-data db type id))))))

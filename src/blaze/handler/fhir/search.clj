@@ -5,10 +5,8 @@
   (:require
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
-    [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [ring.middleware.params :refer [wrap-params]]
@@ -17,7 +15,7 @@
 
 ;; TODO: improve quick hack
 (defn- resource-pred [db type {:strs [identifier]}]
-  (if identifier
+  (when identifier
     (let [attr (keyword type "identifier")
           {:db/keys [cardinality]} (util/cached-entity db attr)
           matches?
@@ -27,8 +25,7 @@
         (let [value (get resource attr)]
           (if (= :db.cardinality/many cardinality)
             (some matches? value)
-            (matches? value)))))
-    (fn [_] true)))
+            (matches? value)))))))
 
 
 (defn- entry [base-uri {:strs [resourceType id] :as resource}]
@@ -37,19 +34,24 @@
 
 
 (defn- search [base-uri db type params]
-  {:resourceType "Bundle"
-   :type "searchset"
-   :entry
-   (into
-     []
-     (comp
-       (map #(d/entity db (:e %)))
-       (filter (resource-pred db type params))
-       (map #(pull/pull-resource* db type %))
-       (filter #(not (:deleted (meta %))))
-       (take 50)
-       (map #(entry base-uri %)))
-     (d/datoms db :aevt (util/resource-id-attr type)))})
+  (let [pred (resource-pred db type params)]
+    (cond->
+      {:resourceType "Bundle"
+       :type "searchset"
+       :entry
+       (into
+         []
+         (comp
+           (map #(d/entity db (:e %)))
+           (filter (or pred (fn [_] true)))
+           (map #(pull/pull-resource* db type %))
+           (filter #(not (:deleted (meta %))))
+           (take 50)
+           (map #(entry base-uri %)))
+         (d/datoms db :aevt (util/resource-id-attr type)))}
+
+      (nil? pred)
+      (assoc :total (util/resource-type-total db type)))))
 
 
 (defn- handler-intern [base-uri conn]

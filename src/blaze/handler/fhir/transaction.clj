@@ -118,16 +118,19 @@
 
 
 (defn validate-and-prepare-bundle
-  [db {:strs [resourceType type entry]}]
+  [db {:strs [resourceType type entry] :as bundle}]
   (cond
     (not= "Bundle" resourceType)
     (md/error-deferred
       {::anom/category ::anom/incorrect
+       ::anom/message (str "Expected a Bundle but was `" resourceType "`.")
        :fhir/issue "value"})
 
     (not (#{"batch" "transaction"} type))
     (md/error-deferred
       {::anom/category ::anom/incorrect
+       ::anom/message
+       (str "Expected a Bundle type of batch or transaction but was `" type "`.")
        :fhir/issue "value"})
 
     :else

@@ -5,7 +5,7 @@
     [clojure.string :as str]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
-    [datomic-tools.schema :refer [defattr defpart]]
+    [datomic-tools.schema :refer [defattr defunc defpart]]
     [blaze.datomic.element-definition]
     [blaze.spec]
     [blaze.util :as u]))
@@ -93,9 +93,30 @@
   :db/cardinality :db.cardinality/one)
 
 
+(defattr :total
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one)
+
+
 (defattr :local-id
   :db/valueType :db.type/string
   :db/cardinality :db.cardinality/one)
+
+
+(defunc fn/increment-total
+  "Increments the total number of resources of a particular type.
+
+  Type is the ident of the resources type like :Patient."
+  [db type amount]
+  [[:db/add type :total (+ (get (d/entity db type) :total 0) amount)]])
+
+
+(defunc fn/decrement-version
+  "Decrements the version of resource changes of a particular type.
+
+  Type is the ident of the resources type like :Patient."
+  [db type]
+  [[:db/add type :version (dec (get (d/entity db type) :version 0))]])
 
 
 (defn- fhir-type-code->db-type

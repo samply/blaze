@@ -17,3 +17,15 @@
         :ret #{tx-result})}
      :stub
      #{`handler-fhir-util/upsert-resource}}))
+
+
+(defn stub-delete-resource [conn db type id tx-result]
+  (st/instrument
+    [`handler-fhir-util/delete-resource]
+    {:spec
+     {`handler-fhir-util/delete-resource
+      (s/fspec
+        :args (s/cat :conn #{conn} :db #{db} :type #{type} :id #{id})
+        :ret #{tx-result})}
+     :stub
+     #{`handler-fhir-util/delete-resource}}))
