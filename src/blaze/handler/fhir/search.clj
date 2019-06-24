@@ -33,6 +33,15 @@
    :resource resource})
 
 
+(def ^:private ^:const max-page-size 50)
+
+
+(defn- page-size [{count "_count"}]
+  (if (and count (re-matches #"\d+" count))
+    (min (Long/parseLong count) max-page-size)
+    max-page-size))
+
+
 (defn- search [base-uri db type params]
   (let [pred (resource-pred db type params)]
     (cond->
@@ -46,7 +55,7 @@
            (filter (or pred (fn [_] true)))
            (map #(pull/pull-resource* db type %))
            (filter #(not (:deleted (meta %))))
-           (take 50)
+           (take (page-size params))
            (map #(entry base-uri %)))
          (d/datoms db :aevt (util/resource-id-attr type)))}
 

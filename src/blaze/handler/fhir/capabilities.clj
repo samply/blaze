@@ -56,7 +56,7 @@
             :resourceType "CapabilityStatement"
             :status "active"
             :kind "instance"
-            :date "2019-06-02T00:00:00Z"
+            :date "2019-06-25T00:00:00Z"
             :software
             {:name "Blaze"
              :version version}
