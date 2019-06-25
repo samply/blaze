@@ -107,6 +107,10 @@
   (bit-test (:version resource) 1))
 
 
+(s/fdef ordinal-version
+  :args (s/cat :resource ::ds/entity)
+  :ret nat-int?)
+
 (defn ordinal-version
   "Returns the strong monotonic increasing ordinal version of `resource`.
 
@@ -130,6 +134,9 @@
     (d/datoms db :aevt (resource-id-attr type))))
 
 
+(s/fdef transaction-history
+  :args (s/cat :db ::ds/db :eid ::ds/entity-id))
+
 (defn transaction-history
   "Returns a reducible coll of all transactions on resource with `eid`.
   Newest first."
@@ -142,7 +149,7 @@
 
 (s/fdef resource-type-total
   :args (s/cat :db ::ds/db :type string?)
-  :ret int?)
+  :ret nat-int?)
 
 (defn resource-type-total [db type]
   (get (d/entity db (keyword type)) :total 0))

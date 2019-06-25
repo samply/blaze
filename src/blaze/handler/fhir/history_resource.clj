@@ -59,11 +59,20 @@
       (assoc :resource (pull/pull-resource* db type resource)))))
 
 
+(defn- total [db eid]
+  (let [resource (d/entity db eid)]
+    ;; test for resource existence since `d/entity` always returns something
+    ;; when called with an eid
+    (if (:version resource)
+      (util/ordinal-version resource)
+      0)))
+
+
 (defn- build-response [base-uri db type id eid transactions]
   (ring/response
     {:resourceType "Bundle"
      :type "history"
-     :total (util/ordinal-version (d/entity db eid))
+     :total (total db eid)
      :entry (mapv #(build-entry base-uri db type id eid %) transactions)}))
 
 
@@ -77,11 +86,12 @@
   (fn [{{:keys [type id]} :path-params :keys [query-params]}]
     (let [db (d/db conn)]
       (if-let [eid (resource-eid db type id)]
-        (let [transactions
+        (let [db (since db query-params)
+              transactions
               (into
                 []
                 (take 50)
-                (util/transaction-history (since db query-params) eid))]
+                (util/transaction-history db eid))]
           (build-response base-uri db type id eid transactions))
         (handler-util/error-response
           {::anom/category ::anom/not-found
