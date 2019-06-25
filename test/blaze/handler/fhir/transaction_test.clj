@@ -345,7 +345,8 @@
       (test-util/stub-upsert-resource
         ::conn ::db-before :server-assigned-id (assoc resource "id" (str id))
         (md/success-deferred {:db-after ::db-after}))
-      (datomic-test-util/stub-resource ::db-after #{"Patient"} #{(str id)} #{{:version 0}})
+      (datomic-test-util/stub-resource
+        ::db-after #{"Patient"} #{(str id)} #{{:instance/version 0}})
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (datomic-test-util/stub-basis-t ::db-after 42)
@@ -402,7 +403,8 @@
       (stub-code-tx-data ::db-before coll? [])
       (stub-tx-data ::db-before coll? ::tx-data)
       (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
-      (datomic-test-util/stub-resource ::db-after #{"Patient" "Observation"} #{(str id)} #{{:version 0}})
+      (datomic-test-util/stub-resource
+        ::db-after #{"Patient" "Observation"} #{(str id)} #{{:instance/version 0}})
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (datomic-test-util/stub-basis-t ::db-after 42)

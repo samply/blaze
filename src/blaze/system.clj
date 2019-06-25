@@ -15,7 +15,8 @@
     [blaze.handler.fhir.capabilities :as fhir-capabilities-handler]
     [blaze.handler.fhir.create :as fhir-create-handler]
     [blaze.handler.fhir.delete :as fhir-delete-handler]
-    [blaze.handler.fhir.history-resource :as fhir-history-handler]
+    [blaze.handler.fhir.history-system :as fhir-history-system-handler]
+    [blaze.handler.fhir.history-instance :as fhir-history-instance-handler]
     [blaze.handler.fhir.read :as fhir-read-handler]
     [blaze.handler.fhir.search :as fhir-search-handler]
     [blaze.handler.fhir.transaction :as fhir-transaction-handler]
@@ -54,6 +55,8 @@
 (s/def :config/structure-definitions (s/keys :req [:structure-definitions/path]))
 (s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-create-handler (s/keys :opt-un [:config/base-uri]))
+(s/def :config/fhir-history-instance-handler (s/keys :opt-un [:config/base-uri]))
+(s/def :config/fhir-history-system-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-search-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-update-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
@@ -68,6 +71,8 @@
      :config/structure-definitions
      :config/fhir-capabilities-handler
      :config/fhir-create-handler
+     :config/fhir-history-instance-handler
+     :config/fhir-history-system-handler
      :config/fhir-search-handler
      :config/fhir-update-handler
      :config/server
@@ -77,7 +82,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha35")
+(def ^:private version "0.6-alpha39")
 
 (def ^:private base-uri "http://localhost:8080")
 
@@ -111,7 +116,11 @@
    :fhir-delete-handler
    {:database/conn (ig/ref :database-conn)}
 
-   :fhir-history-handler
+   :fhir-history-instance-handler
+   {:base-uri base-uri
+    :database/conn (ig/ref :database-conn)}
+
+   :fhir-history-system-handler
    {:base-uri base-uri
     :database/conn (ig/ref :database-conn)}
 
@@ -138,7 +147,8 @@
      :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
      :handler.fhir/create (ig/ref :fhir-create-handler)
      :handler.fhir/delete (ig/ref :fhir-delete-handler)
-     :handler.fhir/history (ig/ref :fhir-history-handler)
+     :handler.fhir/history-instance (ig/ref :fhir-history-instance-handler)
+     :handler.fhir/history-system (ig/ref :fhir-history-system-handler)
      :handler.fhir/read (ig/ref :fhir-read-handler)
      :handler.fhir/search (ig/ref :fhir-search-handler)
      :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
@@ -242,9 +252,14 @@
   (fhir-delete-handler/handler conn))
 
 
-(defmethod ig/init-key :fhir-history-handler
+(defmethod ig/init-key :fhir-history-instance-handler
   [_ {:keys [base-uri] :database/keys [conn]}]
-  (fhir-history-handler/handler base-uri conn))
+  (fhir-history-instance-handler/handler base-uri conn))
+
+
+(defmethod ig/init-key :fhir-history-system-handler
+  [_ {:keys [base-uri] :database/keys [conn]}]
+  (fhir-history-system-handler/handler base-uri conn))
 
 
 (defmethod ig/init-key :fhir-read-handler

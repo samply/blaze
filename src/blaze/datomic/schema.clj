@@ -88,7 +88,17 @@
   :db/cardinality :db.cardinality/one)
 
 
-(defattr :version
+(defattr :instance/version
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :type/version
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one)
+
+
+(defattr :system/version
   :db/valueType :db.type/long
   :db/cardinality :db.cardinality/one)
 
@@ -103,7 +113,7 @@
   :db/cardinality :db.cardinality/one)
 
 
-(defunc fn/increment-total
+(defunc fn/increment-type-total
   "Increments the total number of resources of a particular type.
 
   Type is the ident of the resources type like :Patient."
@@ -111,12 +121,26 @@
   [[:db/add type :total (+ (get (d/entity db type) :total 0) amount)]])
 
 
-(defunc fn/decrement-version
+(defunc fn/increment-system-total
+  "Increments the total number of resources in the whole system."
+  [db amount]
+  [[:db/add :system :total (+ (get (d/entity db :system) :total 0) amount)]])
+
+
+(defunc fn/decrement-type-version
   "Decrements the version of resource changes of a particular type.
 
   Type is the ident of the resources type like :Patient."
-  [db type]
-  [[:db/add type :version (dec (get (d/entity db type) :version 0))]])
+  [db type amount]
+  [[:db/add type :type/version
+    (- (get (d/entity db type) :type/version 0) amount)]])
+
+
+(defunc fn/decrement-system-version
+  "Decrements the version of all resource changes."
+  [db amount]
+  [[:db/add :system :system/version
+    (- (get (d/entity db :system) :system/version 0) amount)]])
 
 
 (defn- fhir-type-code->db-type
@@ -341,7 +365,8 @@
 
 (defn structure-definition-schemas [structure-definitions]
   (into
-    []
+    [{:db/id "system"
+      :db/ident :system}]
     (comp
       (remove :experimental)
       (mapcat structure-definition-tx-data))

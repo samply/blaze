@@ -45,7 +45,7 @@
   {:arglists '([resource])}
   [{eid :db/id :as resource}]
   (let [db (d/entity-db resource)]
-    (d/entity db (:tx (first (d/datoms db :eavt eid :version))))))
+    (d/entity db (:tx (first (d/datoms db :eavt eid :instance/version))))))
 
 
 (s/fdef tx-instant
@@ -104,7 +104,7 @@
 
 
 (defn deleted? [resource]
-  (bit-test (:version resource) 1))
+  (bit-test (:instance/version resource) 1))
 
 
 (s/fdef ordinal-version
@@ -116,7 +116,7 @@
 
   Ordinal versions start with 1."
   [resource]
-  (- (bit-shift-right (:version resource) 2)))
+  (- (bit-shift-right (:instance/version resource) 2)))
 
 
 (s/fdef list-resources
@@ -135,7 +135,7 @@
 
 
 (s/fdef transaction-history
-  :args (s/cat :db ::ds/db :eid ::ds/entity-id))
+  :args (s/cat :db ::ds/db :eid ::ds/entity-identifier))
 
 (defn transaction-history
   "Returns a reducible coll of all transactions on resource with `eid`.
@@ -144,7 +144,16 @@
   (eduction
     (filter :added)
     (map #(d/entity db (:tx %)))
-    (d/datoms (d/history db) :eavt eid :version)))
+    (d/datoms (d/history db) :eavt eid :instance/version)))
+
+(defn system-transaction-history
+  "Returns a reducible coll of all transactions in the whole system.
+  Newest first."
+  [db]
+  (eduction
+    (filter :added)
+    (map #(d/entity db (:tx %)))
+    (d/datoms (d/history db) :eavt :system :system/version)))
 
 
 (s/fdef resource-type-total

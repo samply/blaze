@@ -84,11 +84,9 @@
   (def hdb (d/history db))
 
   (d/q
-    '[:find [?v ...]
-      :where
-      [? :Patient/id "0"]
-      [?e :version ?v ?tx true]]
-    (d/history (d/db conn)))
+    '[:find [(pull ?e [*]) ...] :in $ ?t :where [?e :instance/version _ ?t]]
+    (d/as-of db 9840)
+    (d/t->tx 9840))
 
 
 

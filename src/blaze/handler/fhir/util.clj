@@ -15,8 +15,12 @@
 (defn- update-resource-tx-data [db {type "resourceType" id "id"}]
   (let [resource (util/resource db type id)]
     (if (or (nil? resource) (util/deleted? resource))
-      [[:fn/increment-total (keyword type) 1]]
-      [])))
+      [[:fn/increment-type-total (keyword type) 1]
+       [:fn/increment-system-total 1]
+       [:fn/decrement-type-version (keyword type) 1]
+       [:fn/decrement-system-version 1]]
+      [[:fn/decrement-type-version (keyword type) 1]
+       [:fn/decrement-system-version 1]])))
 
 
 (defn- upsert-resource* [conn db creation-mode resource]
@@ -45,11 +49,11 @@
               (upsert-resource* conn db creation-mode resource)))))))
 
 
-(defn- delete-resource-tx-data [db type id]
-  (let [resource (util/resource db type id)]
-    (if (and (some? resource) (not (util/deleted? resource)))
-      [[:fn/increment-total (keyword type) -1]]
-      [])))
+(defn- delete-resource-tx-data [type]
+  [[:fn/increment-type-total (keyword type) -1]
+   [:fn/increment-system-total -1]
+   [:fn/decrement-type-version (keyword type) 1]
+   [:fn/decrement-system-version 1]])
 
 
 (s/fdef delete-resource
@@ -62,4 +66,17 @@
   (let [tx-data (tx/resource-deletion db type id)]
     (if (empty? tx-data)
       {:db-after db}
-      (tx/transact-async conn (into tx-data (delete-resource-tx-data db type id))))))
+      (tx/transact-async conn (into tx-data (delete-resource-tx-data type))))))
+
+
+(def ^:private ^:const max-page-size 50)
+
+
+(defn page-size
+  "Returns the page size as minimum from a possible `_count` param and the max
+  page size of 50."
+  {:arglists '([params])}
+  [{count "_count"}]
+  (if (and count (re-matches #"\d+" count))
+    (min (Long/parseLong count) max-page-size)
+    max-page-size))

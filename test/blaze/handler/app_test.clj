@@ -37,7 +37,8 @@
    :handler.fhir/capabilities (fn [_] ::fhir-capabilities-handler)
    :handler.fhir/create (fn [_] ::fhir-create-handler)
    :handler.fhir/delete (fn [_] ::fhir-delete-handler)
-   :handler.fhir/history (fn [_] ::fhir-history-handler)
+   :handler.fhir/history-instance (fn [_] ::fhir-history-instance-handler)
+   :handler.fhir/history-system (fn [_] ::fhir-history-system-handler)
    :handler.fhir/read (fn [_] ::fhir-read-handler)
    :handler.fhir/search (fn [_] ::fhir-search-handler)
    :handler.fhir/transaction (fn [_] ::fhir-transaction-handler)
@@ -56,13 +57,14 @@
     "/health" :get ::health-handler
     "/fhir" :post ::fhir-transaction-handler
     "/fhir/metadata" :get ::fhir-capabilities-handler
+    "/fhir/_history" :get ::fhir-history-system-handler
     "/fhir/Patient" :get ::fhir-search-handler
     "/fhir/Patient" :post ::fhir-create-handler
     "/fhir/Patient/_search" :post ::fhir-search-handler
     "/fhir/Patient/0" :get ::fhir-read-handler
     "/fhir/Patient/0" :put ::fhir-update-handler
     "/fhir/Patient/0" :delete ::fhir-delete-handler
-    "/fhir/Patient/0/_history" :get ::fhir-history-handler
+    "/fhir/Patient/0/_history" :get ::fhir-history-instance-handler
     "/fhir/Patient/0/_history/42" :get ::fhir-read-handler))
 
 

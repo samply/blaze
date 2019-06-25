@@ -877,15 +877,15 @@
 
         (let [tx-data (upsert-resource {:db db :tempids tempids} type
                                        old-resource resource)
-              {:db/keys [id] :keys [version]} old-resource]
+              {:db/keys [id] :instance/keys [version]} old-resource]
           (when (or (not (empty? tx-data)) (util/deleted? old-resource))
-            (conj tx-data [:db.fn/cas id :version version (upsert-decrement version)])))
+            (conj tx-data [:db.fn/cas id :instance/version version (upsert-decrement version)])))
 
         (let [tempid (get-in tempids [type id])]
           (assert tempid)
           (conj (upsert-resource {:db db :tempids tempids} type
                                  {:db/id tempid} resource)
-                [:db.fn/cas tempid :version nil (initial-version creation-mode)]))))))
+                [:db.fn/cas tempid :instance/version nil (initial-version creation-mode)]))))))
 
 
 (defn- deletion-decrement
@@ -897,9 +897,9 @@
     (if (bit-test version 0) (bit-set new-version 0) new-version)))
 
 
-(defn- version-decrement-delete [{:db/keys [id] :keys [version]}]
+(defn- version-decrement-delete [{:db/keys [id] :instance/keys [version]}]
   (assert version)
-  [:db.fn/cas id :version version (deletion-decrement version)])
+  [:db.fn/cas id :instance/version version (deletion-decrement version)])
 
 
 (defn- resource-id-remover [type]

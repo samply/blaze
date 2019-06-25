@@ -5,6 +5,7 @@
   (:require
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
+    [blaze.handler.fhir.util :as fhir-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
@@ -33,15 +34,6 @@
    :resource resource})
 
 
-(def ^:private ^:const max-page-size 50)
-
-
-(defn- page-size [{count "_count"}]
-  (if (and count (re-matches #"\d+" count))
-    (min (Long/parseLong count) max-page-size)
-    max-page-size))
-
-
 (defn- search [base-uri db type params]
   (let [pred (resource-pred db type params)]
     (cond->
@@ -55,7 +47,7 @@
            (filter (or pred (fn [_] true)))
            (map #(pull/pull-resource* db type %))
            (filter #(not (:deleted (meta %))))
-           (take (page-size params))
+           (take (fhir-util/page-size params))
            (map #(entry base-uri %)))
          (d/datoms db :aevt (util/resource-id-attr type)))}
 

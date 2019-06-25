@@ -66,7 +66,7 @@
               db {"Patient" {"0" tempid}} :server-assigned-id
               {"id" "0" "resourceType" "Patient"})
             [[:db/add tempid :Patient/id "0"]
-             [:db.fn/cas tempid :version nil -3]]))))
+             [:db.fn/cas tempid :instance/version nil -3]]))))
 
     (testing "Starts with initial version -4 at creation mode :client-assigned-id"
       (let [tempid (d/tempid :part/Patient)]
@@ -76,7 +76,7 @@
               db {"Patient" {"0" tempid}} :client-assigned-id
               {"id" "0" "resourceType" "Patient"})
             [[:db/add tempid :Patient/id "0"]
-             [:db.fn/cas tempid :version nil -4]]))))
+             [:db.fn/cas tempid :instance/version nil -4]]))))
 
     (testing "Doesn't increment version on empty update"
       (let [[db] (with-resource db "Patient" "0")]
@@ -93,7 +93,7 @@
             (resource-upsert
               db nil :server-assigned-id
               {"id" "0" "resourceType" "Patient"})
-            [[:db.fn/cas id :version -2 -8]]))))
+            [[:db.fn/cas id :instance/version -2 -8]]))))
 
     (testing "Ignores versionId in meta"
       (let [tempid (d/tempid :part/Patient)]
@@ -104,7 +104,7 @@
               {"id" "0" "resourceType" "Patient"
                "meta" {"versionId" "42"}})
             [[:db/add tempid :Patient/id "0"]
-             [:db.fn/cas tempid :version nil -3]])))))
+             [:db.fn/cas tempid :instance/version nil -3]])))))
 
 
 
@@ -119,7 +119,7 @@
                 db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "active" true})
               [[:db/add id :Patient/active true]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
         (let [[db code-id] (with-code db "male")
@@ -130,7 +130,7 @@
                 db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "gender" "male"})
               [[:db/add id :Patient/gender code-id]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with date type"
         (let [[db id] (with-resource db "Patient" "0")]
@@ -142,7 +142,7 @@
                   db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient" "birthDate" "2000"}))
               [[:db/add id :Patient/birthDate (Year/of 2000)]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with unsignedInt type"
         (let [[db id] (with-resource db "CodeSystem" "0")]
@@ -154,7 +154,7 @@
                   db nil :server-assigned-id
                   {"id" "0" "resourceType" "CodeSystem" "count" 1}))
               [[:db/add id :CodeSystem/count 1]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with base64Binary type"
         (let [[db id] (with-resource db "Patient" "0")]
@@ -169,7 +169,7 @@
                      "photo" [{"data" "aGFsbG8="}]})))
               [[:db/add :part/Attachment :Attachment/data "aGFsbG8="]
                [:db/add id :Patient/photo :part/Attachment]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "primitive single-valued choice-typed element"
@@ -182,7 +182,7 @@
                 {"id" "0" "resourceType" "Patient" "deceasedBoolean" true})
               [[:db/add id :Patient/deceasedBoolean true]
                [:db/add id :Patient/deceased :Patient/deceasedBoolean]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with dateTime choice"
         (let [[db id] (with-resource db "Patient" "0")]
@@ -195,7 +195,7 @@
                   {"id" "0" "resourceType" "Patient" "deceasedDateTime" "2001-01"}))
               [[:db/add id :Patient/deceasedDateTime (YearMonth/of 2001 1)]
                [:db/add id :Patient/deceased :Patient/deceasedDateTime]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with string choice"
         (let [[db id] (with-resource db "Observation" "0")]
@@ -206,7 +206,7 @@
                 {"id" "0" "resourceType" "Observation" "valueString" "foo"})
               [[:db/add id :Observation/valueString "foo"]
                [:db/add id :Observation/value :Observation/valueString]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "primitive multi-valued single-typed element"
@@ -221,7 +221,7 @@
                    "resourceType" "ServiceRequest"
                    "instantiatesUri" ["foo"]}))
               [[:db/add id :ServiceRequest/instantiatesUri "foo"]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
         (let [[db code-id] (with-code db "=")
@@ -236,7 +236,7 @@
                     [{"operator" ["="]}]}))
                [[:db/add :part/CodeSystem.filter :CodeSystem.filter/operator code-id]
                 [:db/add id :CodeSystem/filter :part/CodeSystem.filter]
-                [:db.fn/cas id :version -3 -7]])))
+                [:db.fn/cas id :instance/version -3 -7]])))
 
         (let [[db code-id] (with-code db "medication")
               [db id] (with-resource db "AllergyIntolerance" "0")]
@@ -248,7 +248,7 @@
                   "category"
                   ["medication"]})
                [[:db/add id :AllergyIntolerance/category code-id]
-                [:db.fn/cas id :version -3 -7]])))))
+                [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "primitive single-valued element in multi-valued backbone element"
@@ -265,7 +265,7 @@
                    [{"preferred" true}]}))
               [[:db/add :part/Patient.communication :Patient.communication/preferred true]
                [:db/add id :Patient/communication :part/Patient.communication]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "non-primitive single-valued single-typed element"
@@ -279,7 +279,7 @@
                   "maritalStatus" {"text" "married"}}))
              [[:db/add :part/CodeableConcept :CodeableConcept/text "married"]
               [:db/add id :Patient/maritalStatus :part/CodeableConcept]
-              [:db.fn/cas id :version -3 -7]]))))
+              [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "non-primitive single-valued choice-typed element"
@@ -296,7 +296,7 @@
               [[:db/add :part/CodeableConcept :CodeableConcept/text "foo"]
                [:db/add id :Observation/valueCodeableConcept :part/CodeableConcept]
                [:db/add id :Observation/value :Observation/valueCodeableConcept]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with Period choice"
         (let [[db id] (with-resource db "Observation" "0")]
@@ -313,7 +313,7 @@
               [[:db/add :part/Period :Period/start (Year/of 2019)]
                [:db/add id :Observation/valuePeriod :part/Period]
                [:db/add id :Observation/value :Observation/valuePeriod]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "non-primitive multi-valued single-typed element"
@@ -326,7 +326,7 @@
                 {"id" "0" "resourceType" "Patient" "name" [{"family" "Doe"}]}))
             [[:db/add :part/HumanName :HumanName/family "Doe"]
              [:db/add id :Patient/name :part/HumanName]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "Coding"
@@ -346,7 +346,7 @@
                     "code" "AMB"}}))
               [[:db/add :part/Coding :Coding/code code-id]
                [:db/add id :Encounter/class :part/Coding]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with version"
         (let [[db code-id]
@@ -368,7 +368,7 @@
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
                [:db/add id :Observation/code :part/CodeableConcept]
                [:db/add id :Observation.index/code code-id]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with userSelected"
         (let [[db code-id]
@@ -392,7 +392,7 @@
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
                [:db/add id :Observation/code :part/CodeableConcept]
                [:db/add id :Observation.index/code code-id]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
     (testing "CodeSystem with code in concept"
       (let [[db code-id]
@@ -412,7 +412,7 @@
             [[:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
              [:db/add :part/CodeSystem.concept :CodeSystem.concept/code code-id]
              [:db/add id :CodeSystem/concept :part/CodeSystem.concept]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "CodeSystem with version and code in concept"
@@ -435,7 +435,7 @@
              [:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
              [:db/add :part/CodeSystem.concept :CodeSystem.concept/code code-id]
              [:db/add id :CodeSystem/concept :part/CodeSystem.concept]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "CodeSystem with code in content uses http://hl7.org/fhir/codesystem-content-mode"
@@ -453,7 +453,7 @@
             [[:db/add id :CodeSystem/content code-id]
              [:db/add id :CodeSystem/version "4.0.0"]
              [:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "CodeSystem with sub-concept"
@@ -477,7 +477,7 @@
              [:db/add [:part/CodeSystem.concept 1] :CodeSystem.concept/concept [:part/CodeSystem.concept 2]]
              [:db/add [:part/CodeSystem.concept 1] :CodeSystem.concept/code foo-id]
              [:db/add id :CodeSystem/concept [:part/CodeSystem.concept 1]]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "ValueSet with code in compose include"
@@ -503,7 +503,7 @@
                     [{"code" "14647-2"}]}]}}))
             [[:db/add :part/ValueSet.compose.include.concept :ValueSet.compose.include.concept/code code-id]
              [:db/add include-id :ValueSet.compose.include/concept :part/ValueSet.compose.include.concept]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "ValueSet with code in expansion contains"
@@ -526,7 +526,7 @@
                   "version" "2.50"
                   "code" "14647-2"}]}})
             [[:db/add contains-id :ValueSet.expansion.contains/code code-id]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "special Quantity type"
@@ -545,7 +545,7 @@
                   "code" "m"}}))
             [[:db/add id :Observation/valueQuantity (quantity 1M "m")]
              [:db/add id :Observation/value :Observation/valueQuantity]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "special Quantity type with integer decimal value"
@@ -564,7 +564,7 @@
                   "code" "m"}}))
             [[:db/add id :Observation/valueQuantity (quantity 1M "m")]
              [:db/add id :Observation/value :Observation/valueQuantity]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "special Quantity type with unit in unit"
@@ -581,7 +581,7 @@
                  {"value" 1 "unit" "a"}}))
             [[:db/add id :Observation/valueQuantity (quantity 1M "a")]
              [:db/add id :Observation/value :Observation/valueQuantity]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "single-valued special Reference type"
@@ -596,7 +596,7 @@
                  "resourceType" "Observation"
                  "subject" {"reference" "Patient/0"}})
               [[:db/add observation-id :Observation/subject patient-id]
-               [:db.fn/cas observation-id :version -3 -7]]))))
+               [:db.fn/cas observation-id :instance/version -3 -7]]))))
 
       (testing "with resource resolvable in tempids"
         (let [patient-id (d/tempid :part/Patient)
@@ -609,7 +609,7 @@
                  "resourceType" "Observation"
                  "subject" {"reference" "Patient/0"}})
               [[:db/add observation-id :Observation/subject patient-id]
-               [:db.fn/cas observation-id :version -3 -7]])))))
+               [:db.fn/cas observation-id :instance/version -3 -7]])))))
 
 
     (testing "multi-valued special Reference type"
@@ -624,7 +624,7 @@
                "generalPractitioner"
                [{"reference" "Organization/0"}]})
             [[:db/add patient-id :Patient/generalPractitioner organization-id]
-             [:db.fn/cas patient-id :version -3 -7]]))))
+             [:db.fn/cas patient-id :instance/version -3 -7]]))))
 
 
     (testing "Contact"
@@ -641,7 +641,7 @@
             [[:db/add :part/HumanName :HumanName/family "Doe"]
              [:db/add :part/Patient.contact :Patient.contact/name :part/HumanName]
              [:db/add id :Patient/contact :part/Patient.contact]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "Contained resources"
@@ -662,7 +662,7 @@
              [:db/add :part/Patient :local-id "0"]
              [:db/add id :Observation/contained :part/Patient]
              [:db/add id :Observation/subject :part/Patient]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "ConceptMap with source code"
@@ -682,7 +682,7 @@
                    [{"code" "bar"}]}]}))
             [[:db/add :part/ConceptMap.group.element :ConceptMap.group.element/code code-id]
              [:db/add group-id :ConceptMap.group/element :part/ConceptMap.group.element]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "ConceptMap with target code"
@@ -705,7 +705,7 @@
              [:db/add :part/ConceptMap.group :ConceptMap.group/element :part/ConceptMap.group.element]
              [:db/add :part/ConceptMap.group :ConceptMap.group/target "http://foo"]
              [:db/add id :ConceptMap/group :part/ConceptMap.group]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
     (testing "Code typed extension"
       ;; TODO: resolve the value set binding here
@@ -723,7 +723,7 @@
                  "valueCode" "draft"}]})
             [[:db/add extension-id :Extension/valueCode draft-id]
              [:db/add extension-id :Extension/value :Extension/valueCode]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
     (testing "ValueSet compose include system"
       (let [[db id] (with-resource db "ValueSet" "0")]
@@ -740,7 +740,7 @@
             [[:db/add :part/ValueSet.compose.include :ValueSet.compose.include/system "http://loinc.org"]
              [:db/add :part/ValueSet.compose :ValueSet.compose/include :part/ValueSet.compose.include]
              [:db/add id :ValueSet/compose :part/ValueSet.compose]
-             [:db.fn/cas id :version -3 -7]])))))
+             [:db.fn/cas id :instance/version -3 -7]])))))
 
 
 
@@ -998,7 +998,7 @@
                 db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "active" true})
               [[:db/add id :Patient/active true]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
         (let [[db male-id] (with-code db "male")
@@ -1010,7 +1010,7 @@
                 db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "gender" "female"})
               [[:db/add id :Patient/gender female-id]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with date type"
         (let [[db id] (with-resource db "Patient" "0" :Patient/birthDate
@@ -1023,7 +1023,7 @@
                   db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient" "birthDate" "2001"}))
               [[:db/add id :Patient/birthDate (Year/of 2001)]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "primitive multi-valued single-typed element"
@@ -1039,7 +1039,7 @@
                   "instantiatesUri" ["bar"]})
                [[:db/retract id :ServiceRequest/instantiatesUri "foo"]
                 [:db/add id :ServiceRequest/instantiatesUri "bar"]
-                [:db.fn/cas id :version -3 -7]]))))
+                [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with multiple values"
         (let [[db id]
@@ -1054,7 +1054,7 @@
                   "instantiatesUri" ["one" "TWO" "three"]})
                [[:db/retract id :ServiceRequest/instantiatesUri "two"]
                 [:db/add id :ServiceRequest/instantiatesUri "TWO"]
-                [:db.fn/cas id :version -3 -7]]))))
+                [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
         (let [[db medication-id] (with-code db "medication")
@@ -1070,7 +1070,7 @@
                     "category"
                     ["medication" "food"]}))
                [[:db/add id :AllergyIntolerance/category food-id]
-                [:db.fn/cas id :version -3 -7]])))))
+                [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "single-valued choice-typed element"
@@ -1086,7 +1086,7 @@
                 {"id" "0" "resourceType" "Observation" "valueString" "bar"})
               [[:db/add id :Observation/valueString "bar"]
                [:db/add id :Observation/value :Observation/valueString]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "switch from string choice to boolean choice"
         (let [[db id]
@@ -1101,7 +1101,7 @@
               [[:db/retract id :Observation/valueString "foo"]
                [:db/add id :Observation/valueBoolean true]
                [:db/add id :Observation/value :Observation/valueBoolean]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "switch from string choice to CodeableConcept choice"
         (let [[db id]
@@ -1119,7 +1119,7 @@
                [:db/add :part/CodeableConcept :CodeableConcept/text "bar"]
                [:db/add id :Observation/valueCodeableConcept :part/CodeableConcept]
                [:db/add id :Observation/value :Observation/valueCodeableConcept]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "non-primitive single-valued single-typed element"
@@ -1135,7 +1135,7 @@
                "resourceType" "Patient"
                "maritalStatus" {"text" "unmarried"}})
             [[:db/add status-id :CodeableConcept/text "unmarried"]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "non-primitive multi-valued single-typed element"
@@ -1149,7 +1149,7 @@
                 db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "name" [{"family" "bar"}]})
               [[:db/add name-id :HumanName/family "bar"]
-               [:db.fn/cas patient-id :version -3 -7]]))))
+               [:db.fn/cas patient-id :instance/version -3 -7]]))))
 
       (testing "with primitive multi-valued single-typed child element"
         (let [[db name-id] (with-non-primitive db :HumanName/given "foo")
@@ -1162,7 +1162,7 @@
                 {"id" "0" "resourceType" "Patient" "name" [{"given" ["bar"]}]})
               [[:db/retract name-id :HumanName/given "foo"]
                [:db/add name-id :HumanName/given "bar"]
-               [:db.fn/cas patient-id :version -3 -7]])))
+               [:db.fn/cas patient-id :instance/version -3 -7]])))
 
         (let [[db name-id] (with-non-primitive db :HumanName/given "foo")
               [db patient-id]
@@ -1173,7 +1173,7 @@
                 db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient" "name" [{"given" ["foo" "bar"]}]})
               [[:db/add name-id :HumanName/given "bar"]
-               [:db.fn/cas patient-id :version -3 -7]])))))
+               [:db.fn/cas patient-id :instance/version -3 -7]])))))
 
     (testing "Coding"
       (let [[db amb-id]
@@ -1196,7 +1196,7 @@
                  {"system" "http://terminology.hl7.org/CodeSystem/v3-ActCode"
                   "code" "EMER"}}))
             [[:db/add coding-id :Coding/code emer-id]
-             [:db.fn/cas encounter-id :version -3 -7]]))))
+             [:db.fn/cas encounter-id :instance/version -3 -7]]))))
 
 
     (testing "single-valued special Reference type"
@@ -1211,7 +1211,7 @@
                "resourceType" "Observation"
                "subject" {"reference" "Patient/1"}})
             [[:db/add observation-id :Observation/subject patient-1-id]
-             [:db.fn/cas observation-id :version -3 -7]]))))
+             [:db.fn/cas observation-id :instance/version -3 -7]]))))
 
 
     (testing "Contained resources"
@@ -1233,7 +1233,7 @@
                    "resourceType" "Patient"
                    "active" true}]})
               [[:db/add contained-id :Patient/active true]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with changes inside the container resource"
         (let [[db contained-id] (with-non-primitive db :Patient/active true
@@ -1257,7 +1257,7 @@
                    "resourceType" "Patient"
                    "active" true}]})
               [[:db/add id :Observation/status final-id]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
 
     (testing "Don't reuse old entities or new entities more than once"
@@ -1299,7 +1299,7 @@
               :Observation.component/valueQuantity
               (quantity 1M "m")]
              [:db/add component-1-id :Observation.component/value :Observation.component/valueQuantity]
-             [:db.fn/cas observation-id :version -3 -7]]))))
+             [:db.fn/cas observation-id :instance/version -3 -7]]))))
 
 
     (testing "multi-valued code element"
@@ -1317,7 +1317,7 @@
                   ["food"]}))
              [[:db/retract id :AllergyIntolerance/category medication-id]
               [:db/add id :AllergyIntolerance/category food-id]
-              [:db.fn/cas id :version -3 -7]])))))
+              [:db.fn/cas id :instance/version -3 -7]])))))
 
 
 
@@ -1332,7 +1332,7 @@
                 db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient"})
               [[:db/retract id :Patient/active false]
-               [:db.fn/cas id :version -3 -7]]))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
         (let [[db gender-id] (with-gender-code db "male")
@@ -1344,7 +1344,7 @@
                 db nil :server-assigned-id
                 {"id" "0" "resourceType" "Patient"})
               [[:db/retract patient-id :Patient/gender gender-id]
-               [:db.fn/cas patient-id :version -3 -7]]))))
+               [:db.fn/cas patient-id :instance/version -3 -7]]))))
 
       (testing "with date type"
         (let [[db id] (with-resource db "Patient" "0" :Patient/birthDate
@@ -1357,7 +1357,7 @@
                   db nil :server-assigned-id
                   {"id" "0" "resourceType" "Patient"}))
               [[:db/retract id :Patient/birthDate (Year/of 2000)]
-               [:db.fn/cas id :version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]])))))
 
     (testing "non-primitive single-valued single-typed element"
       (let [[db status-id]
@@ -1371,7 +1371,7 @@
               {"id" "0" "resourceType" "Patient"})
             [[:db/retract status-id :CodeableConcept/text "married"]
              [:db/retract patient-id :Patient/maritalStatus status-id]
-             [:db.fn/cas patient-id :version -3 -7]]))))
+             [:db.fn/cas patient-id :instance/version -3 -7]]))))
 
 
     (testing "non-primitive multi-valued element"
@@ -1384,7 +1384,7 @@
               {"id" "0" "resourceType" "Patient" "name" []})
             [[:db/retract name-id :HumanName/family "Doe"]
              [:db/retract patient-id :Patient/name name-id]
-             [:db.fn/cas patient-id :version -3 -7]])))
+             [:db.fn/cas patient-id :instance/version -3 -7]])))
 
       (let [[db name-id] (with-non-primitive db :HumanName/family "Doe")
             [db patient-id] (with-resource db "Patient" "0" :Patient/name name-id)]
@@ -1395,7 +1395,7 @@
               {"id" "0" "resourceType" "Patient"})
             [[:db/retract name-id :HumanName/family "Doe"]
              [:db/retract patient-id :Patient/name name-id]
-             [:db.fn/cas patient-id :version -3 -7]]))))
+             [:db.fn/cas patient-id :instance/version -3 -7]]))))
 
 
     (testing "single-valued choice-typed element"
@@ -1410,7 +1410,7 @@
               {"id" "0" "resourceType" "Observation"})
             [[:db/retract id :Observation/valueString "foo"]
              [:db/retract id :Observation/value :Observation/valueString]
-             [:db.fn/cas id :version -3 -7]]))))
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "primitive single-valued element in single-valued backbone element"
@@ -1429,7 +1429,7 @@
                "resourceType" "TerminologyCapabilities"})
             [[:db/retract software-id :TerminologyCapabilities.software/name "foo"]
              [:db/retract capabilities-id :TerminologyCapabilities/software software-id]
-             [:db.fn/cas capabilities-id :version -3 -7]]))))
+             [:db.fn/cas capabilities-id :instance/version -3 -7]]))))
 
 
     (testing "primitive single-valued element in multi-valued backbone element"
@@ -1446,7 +1446,7 @@
                "resourceType" "Patient"})
             [[:db/retract communication-id :Patient.communication/preferred true]
              [:db/retract patient-id :Patient/communication communication-id]
-             [:db.fn/cas patient-id :version -3 -7]]))))
+             [:db.fn/cas patient-id :instance/version -3 -7]]))))
 
 
     (testing "Coding"
@@ -1463,7 +1463,7 @@
               {"id" "0" "resourceType" "Encounter"})
             [[:db/retract coding-id :Coding/code code-id]
              [:db/retract encounter-id :Encounter/class coding-id]
-             [:db.fn/cas encounter-id :version -3 -7]]))))
+             [:db.fn/cas encounter-id :instance/version -3 -7]]))))
 
 
     (testing "Contained resources"
@@ -1487,7 +1487,7 @@
                 [:db/retract contained-2-id :Patient/active false]
                 [:db/retract contained-2-id :local-id "2"]
                 [:db/retract id :Patient/contained contained-2-id]
-                [:db.fn/cas id :version -3 -7]}))))))
+                [:db.fn/cas id :instance/version -3 -7]}))))))
 
 
 
@@ -1512,7 +1512,7 @@
       (is
         (=
           (resource-deletion db "Patient" "0")
-          [[:db.fn/cas id :version -3 -5]]))))
+          [[:db.fn/cas id :instance/version -3 -5]]))))
 
   (testing "Does nothing on subsequent delete"
     (let [[db] (with-deleted-resource db "Patient" "0")]
@@ -1527,7 +1527,7 @@
           (is
             (=
               (resource-deletion db "Patient" "0")
-              [[:db.fn/cas id :version -3 -5]
+              [[:db.fn/cas id :instance/version -3 -5]
                [:db/retract id :Patient/active true]]))))
 
       (testing "with code type"
@@ -1537,7 +1537,7 @@
           (is
             (=
               (resource-deletion db "Patient" "0")
-              [[:db.fn/cas patient-id :version -3 -5]
+              [[:db.fn/cas patient-id :instance/version -3 -5]
                [:db/retract patient-id :Patient/gender gender-id]])))))
 
     (testing "primitive multi-valued single-typed element"
@@ -1547,7 +1547,7 @@
                 db "ServiceRequest" "0" :ServiceRequest/instantiatesUri "foo")]
           (is
             (= (resource-deletion db "ServiceRequest" "0")
-               [[:db.fn/cas id :version -3 -5]
+               [[:db.fn/cas id :instance/version -3 -5]
                 [:db/retract id :ServiceRequest/instantiatesUri "foo"]]))))
 
       (testing "with multiple values"
@@ -1557,7 +1557,7 @@
                 :ServiceRequest/instantiatesUri #{"one" "two"})]
           (is
             (= (set (resource-deletion db "ServiceRequest" "0"))
-               #{[:db.fn/cas id :version -3 -5]
+               #{[:db.fn/cas id :instance/version -3 -5]
                  [:db/retract id :ServiceRequest/instantiatesUri "one"]
                  [:db/retract id :ServiceRequest/instantiatesUri "two"]}))))
 
@@ -1569,7 +1569,7 @@
                 :AllergyIntolerance/category medication-id)]
           (is
             (= (resource-deletion db "AllergyIntolerance" "0")
-               [[:db.fn/cas id :version -3 -5]
+               [[:db.fn/cas id :instance/version -3 -5]
                 [:db/retract id :AllergyIntolerance/category medication-id]])))))
 
     (testing "non-primitive single-valued single-typed element"
@@ -1580,7 +1580,7 @@
         (is
           (=
             (resource-deletion db "Patient" "0")
-            [[:db.fn/cas patient-id :version -3 -5]
+            [[:db.fn/cas patient-id :instance/version -3 -5]
              [:db/retract status-id :CodeableConcept/text "married"]
              [:db/retract patient-id :Patient/maritalStatus status-id]]))))
 
@@ -1590,7 +1590,7 @@
         (is
           (=
             (resource-deletion db "Patient" "0")
-            [[:db.fn/cas patient-id :version -3 -5]
+            [[:db.fn/cas patient-id :instance/version -3 -5]
              [:db/retract name-id :HumanName/family "Doe"]
              [:db/retract patient-id :Patient/name name-id]]))))))
 
@@ -1784,10 +1784,10 @@
 (deftest transact-async-test
   (testing "Returns error deferred with anomaly on CAS Failed"
     (let [conn (connect)]
-      @(d/transact-async conn [{:Patient/id "0" :version 0}])
-      @(d/transact-async conn [[:db.fn/cas [:Patient/id "0"] :version 0 1]])
+      @(d/transact-async conn [{:Patient/id "0" :instance/version 0}])
+      @(d/transact-async conn [[:db.fn/cas [:Patient/id "0"] :instance/version 0 1]])
 
-      @(-> (transact-async conn [[:db.fn/cas [:Patient/id "0"] :version 0 1]])
+      @(-> (transact-async conn [[:db.fn/cas [:Patient/id "0"] :instance/version 0 1]])
            (md/catch'
              (fn [{::anom/keys [category]}]
                (is (= ::anom/conflict category))))))))

@@ -21,6 +21,8 @@
       ["/" {:post (:handler.fhir/transaction handlers)}]
       ["/metadata"
        {:get (:handler.fhir/capabilities handlers)}]
+      ["/_history"
+       {:get (:handler.fhir/history-system handlers)}]
       ["/{type}" {:middleware [[wrap-type conn]]}
        [""
         {:get (:handler.fhir/search handlers)
@@ -33,7 +35,7 @@
           :delete (:handler.fhir/delete handlers)}]
         ["/_history"
          [""
-          {:get (:handler.fhir/history handlers)}]
+          {:get (:handler.fhir/history-instance handlers)}]
          ["/{vid}"
           {:get (:handler.fhir/read handlers)}]]]]]]
     {:syntax :bracket
@@ -74,9 +76,11 @@
 (s/def ::handlers
   (s/keys :req [:handler/cql-evaluation
                 :handler/health
+                :handler.fhir/capabilities
                 :handler.fhir/create
                 :handler.fhir/delete
-                :handler.fhir/history
+                :handler.fhir/history-instance
+                :handler.fhir/history-system
                 :handler.fhir/read
                 :handler.fhir/search
                 :handler.fhir/transaction

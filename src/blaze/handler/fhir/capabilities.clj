@@ -78,5 +78,6 @@
                 structure-definitions)
               :interaction
               [{:code "transaction"}
-               {:code "batch"}]}])))
+               {:code "batch"}
+               {:code "history-system"}]}])))
       (wrap-observe-request-duration "capabilities")))

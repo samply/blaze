@@ -103,18 +103,29 @@
 
 
 (defmethod entry-tx-data "POST"
-  [db tempids {:strs [resource]}]
-  (tx/resource-upsert db tempids :server-assigned-id resource))
+  [db tempids {{type "resourceType" :as resource} "resource"}]
+  {:type (keyword type)
+   :total-increment 1
+   :version-increment 1
+   :tx-data (tx/resource-upsert db tempids :server-assigned-id resource)})
 
 
 (defmethod entry-tx-data "PUT"
-  [db tempids {:strs [resource]}]
-  (tx/resource-upsert db tempids :client-assigned-id resource))
+  [db tempids {{type "resourceType" :as resource} "resource"}]
+  (let [tx-data (tx/resource-upsert db tempids :client-assigned-id resource)]
+    {:type (keyword type)
+     :total-increment 0
+     :version-increment (if (empty? tx-data) 0 1)
+     :tx-data tx-data}))
 
 
 (defmethod entry-tx-data "DELETE"
   [db _ {{type "resourceType" id "id"} "resource"}]
-  (tx/resource-deletion db type id))
+  (let [tx-data (tx/resource-deletion db type id)]
+    {:type (keyword type)
+     :total-increment (if (empty? tx-data) 0 -1)
+     :version-increment (if (empty? tx-data) 0 1)
+     :tx-data tx-data}))
 
 
 (s/fdef code-tx-data
@@ -155,11 +166,25 @@
     entries))
 
 
-(defn- resource-total-tx-data [increments]
-  (mapv
-    (fn [[type amount]]
-      [:fn/increment-total (keyword type) amount])
-    increments))
+(defn- system-tx-data [tx-data-and-increments]
+  (into
+    [[:fn/increment-system-total
+      (reduce
+        (fn [sum {:keys [total-increment]}]
+          (+ sum total-increment))
+        0
+        tx-data-and-increments)]
+     [:fn/decrement-system-version
+      (reduce
+        (fn [sum {:keys [version-increment]}]
+          (+ sum version-increment))
+        0
+        tx-data-and-increments)]]
+    (mapcat
+      (fn [{:keys [type total-increment version-increment]}]
+        [[:fn/increment-type-total type total-increment]
+         [:fn/decrement-type-version type version-increment]]))
+    tx-data-and-increments))
 
 
 (s/fdef tx-data
@@ -170,7 +195,8 @@
   "Returns transaction data of all `entries` of a transaction bundle."
   [db entries]
   (let [entries (resolve-entry-links db entries)
-        tempids (collect-tempids db entries)]
+        tempids (collect-tempids db entries)
+        tx-data-and-increments (mapv #(entry-tx-data db tempids %) entries)]
     (into
-      (resource-total-tx-data (resource-total-increments db entries))
-      (mapcat #(entry-tx-data db tempids %)) entries)))
+      (system-tx-data tx-data-and-increments)
+      (mapcat :tx-data) tx-data-and-increments)))
