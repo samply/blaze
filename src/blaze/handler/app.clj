@@ -27,6 +27,7 @@
        [""
         {:get (:handler.fhir/search handlers)
          :post (:handler.fhir/create handlers)}]
+       ["/_history" {:get (:handler.fhir/history-type handlers)}]
        ["/_search" {:post (:handler.fhir/search handlers)}]
        ["/{id}"
         [""
@@ -80,6 +81,7 @@
                 :handler.fhir/create
                 :handler.fhir/delete
                 :handler.fhir/history-instance
+                :handler.fhir/history-type
                 :handler.fhir/history-system
                 :handler.fhir/read
                 :handler.fhir/search

@@ -20,6 +20,7 @@
      {:code "update"}
      {:code "delete"}
      {:code "history-instance"}
+     {:code "history-type"}
      {:code "create"}
      {:code "search-type"}]
     :versioning "versioned"

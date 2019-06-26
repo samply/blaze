@@ -38,6 +38,7 @@
    :handler.fhir/create (fn [_] ::fhir-create-handler)
    :handler.fhir/delete (fn [_] ::fhir-delete-handler)
    :handler.fhir/history-instance (fn [_] ::fhir-history-instance-handler)
+   :handler.fhir/history-type (fn [_] ::fhir-history-type-handler)
    :handler.fhir/history-system (fn [_] ::fhir-history-system-handler)
    :handler.fhir/read (fn [_] ::fhir-read-handler)
    :handler.fhir/search (fn [_] ::fhir-search-handler)
@@ -60,6 +61,7 @@
     "/fhir/_history" :get ::fhir-history-system-handler
     "/fhir/Patient" :get ::fhir-search-handler
     "/fhir/Patient" :post ::fhir-create-handler
+    "/fhir/Patient/_history" :get ::fhir-history-type-handler
     "/fhir/Patient/_search" :post ::fhir-search-handler
     "/fhir/Patient/0" :get ::fhir-read-handler
     "/fhir/Patient/0" :put ::fhir-update-handler

@@ -15,8 +15,9 @@
     [blaze.handler.fhir.capabilities :as fhir-capabilities-handler]
     [blaze.handler.fhir.create :as fhir-create-handler]
     [blaze.handler.fhir.delete :as fhir-delete-handler]
-    [blaze.handler.fhir.history-system :as fhir-history-system-handler]
     [blaze.handler.fhir.history-instance :as fhir-history-instance-handler]
+    [blaze.handler.fhir.history-type :as fhir-history-type-handler]
+    [blaze.handler.fhir.history-system :as fhir-history-system-handler]
     [blaze.handler.fhir.read :as fhir-read-handler]
     [blaze.handler.fhir.search :as fhir-search-handler]
     [blaze.handler.fhir.transaction :as fhir-transaction-handler]
@@ -56,6 +57,7 @@
 (s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-create-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-history-instance-handler (s/keys :opt-un [:config/base-uri]))
+(s/def :config/fhir-history-type-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-history-system-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-search-handler (s/keys :opt-un [:config/base-uri]))
 (s/def :config/fhir-update-handler (s/keys :opt-un [:config/base-uri]))
@@ -72,6 +74,7 @@
      :config/fhir-capabilities-handler
      :config/fhir-create-handler
      :config/fhir-history-instance-handler
+     :config/fhir-history-type-handler
      :config/fhir-history-system-handler
      :config/fhir-search-handler
      :config/fhir-update-handler
@@ -120,6 +123,10 @@
    {:base-uri base-uri
     :database/conn (ig/ref :database-conn)}
 
+   :fhir-history-type-handler
+   {:base-uri base-uri
+    :database/conn (ig/ref :database-conn)}
+
    :fhir-history-system-handler
    {:base-uri base-uri
     :database/conn (ig/ref :database-conn)}
@@ -148,6 +155,7 @@
      :handler.fhir/create (ig/ref :fhir-create-handler)
      :handler.fhir/delete (ig/ref :fhir-delete-handler)
      :handler.fhir/history-instance (ig/ref :fhir-history-instance-handler)
+     :handler.fhir/history-type (ig/ref :fhir-history-type-handler)
      :handler.fhir/history-system (ig/ref :fhir-history-system-handler)
      :handler.fhir/read (ig/ref :fhir-read-handler)
      :handler.fhir/search (ig/ref :fhir-search-handler)
@@ -255,6 +263,11 @@
 (defmethod ig/init-key :fhir-history-instance-handler
   [_ {:keys [base-uri] :database/keys [conn]}]
   (fhir-history-instance-handler/handler base-uri conn))
+
+
+(defmethod ig/init-key :fhir-history-type-handler
+  [_ {:keys [base-uri] :database/keys [conn]}]
+  (fhir-history-type-handler/handler base-uri conn))
 
 
 (defmethod ig/init-key :fhir-history-system-handler

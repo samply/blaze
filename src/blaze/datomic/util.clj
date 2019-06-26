@@ -146,6 +146,20 @@
     (map #(d/entity db (:tx %)))
     (d/datoms (d/history db) :eavt eid :instance/version)))
 
+
+(s/fdef type-transaction-history
+  :args (s/cat :db ::ds/db :type string?))
+
+(defn type-transaction-history
+  "Returns a reducible coll of all transactions on `type`.
+  Newest first."
+  [db type]
+  (eduction
+    (filter :added)
+    (map #(d/entity db (:tx %)))
+    (d/datoms (d/history db) :eavt (keyword type) :type/version)))
+
+
 (defn system-transaction-history
   "Returns a reducible coll of all transactions in the whole system.
   Newest first."
