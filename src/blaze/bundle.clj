@@ -139,33 +139,6 @@
   (into [] (mapcat #(tx/resource-codes-creation db (get % "resource"))) entries))
 
 
-(defn- resource-total-increments
-  "Returns a map of resource type to total count increment.
-
-  The total count is incremented for newly created resources through POST or PUT
-  and decremented for DELETE. So it can be negative."
-  [db entries]
-  (reduce
-    (fn [res {{:strs [method]} "request" {type "resourceType" id "id"} "resource"}]
-      (case method
-        "POST"
-        (update res type (fnil inc 0))
-
-        "PUT"
-        (let [resource (util/resource db type id)]
-          (if (or (nil? resource) (util/deleted? resource))
-            (update res type (fnil inc 0))
-            res))
-
-        "DELETE"
-        (let [resource (util/resource db type id)]
-          (if (and (some? resource) (not (util/deleted? resource)))
-            (update res type (fnil dec 0))
-            res))))
-    {}
-    entries))
-
-
 (defn- system-tx-data [tx-data-and-increments]
   (into
     [[:fn/increment-system-total
@@ -181,10 +154,20 @@
         0
         tx-data-and-increments)]]
     (mapcat
-      (fn [{:keys [type total-increment version-increment]}]
-        [[:fn/increment-type-total type total-increment]
-         [:fn/decrement-type-version type version-increment]]))
-    tx-data-and-increments))
+      (fn [[type increments]]
+        [[:fn/increment-type-total type
+          (reduce
+            (fn [sum {:keys [total-increment]}]
+              (+ sum total-increment))
+            0
+            increments)]
+         [:fn/decrement-type-version type
+          (reduce
+            (fn [sum {:keys [version-increment]}]
+              (+ sum version-increment))
+            0
+            increments)]]))
+    (group-by :type tx-data-and-increments)))
 
 
 (s/fdef tx-data
