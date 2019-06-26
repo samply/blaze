@@ -33,3 +33,22 @@
     (#{-3 -4} (:instance/version resource)) "201"
     (datomic-util/deleted? resource) "204"
     :else "200"))
+
+
+(defn changed-resources [log db t]
+  (into
+    []
+    (map #(d/entity db %))
+    (let [version-attr-id (d/entid db :instance/version)]
+      (sort
+        (into
+          #{}
+          (comp
+            (mapcat
+              (fn [{:keys [data]}]
+                data))
+            (filter
+              (fn [{:keys [a]}]
+                (= version-attr-id a)))
+            (map :e))
+          (d/tx-range log t (inc t)))))))

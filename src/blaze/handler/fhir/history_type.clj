@@ -15,21 +15,13 @@
     [ring.util.response :as ring]))
 
 
-(defn- changed-resources [db transaction]
-  (into
-    []
-    (map #(d/entity db %))
-    (d/q
-      '[:find [?e ...] :in $ ?t :where [?e :instance/version _ ?t]]
-      db (:db/id transaction))))
-
-
-(defn- build-entry [base-uri db type transaction]
+(defn- build-entry [base-uri log db type transaction]
   (let [t (d/tx->t (:db/id transaction))
         db (d/as-of db t)
-        resources (changed-resources db transaction)]
-    (for [resource resources]
-      (let [id ((util/resource-id-attr type) resource)]
+        resources (history-util/changed-resources log db t)
+        resource-id-attr (util/resource-id-attr type)]
+    (for [resource (filter resource-id-attr resources)]
+      (let [id (resource-id-attr resource)]
         (cond->
           {:fullUrl (str base-uri "/fhir/" type "/" id)
            :request
@@ -54,7 +46,7 @@
       total)))
 
 
-(defn- build-response [base-uri db since-t params type transactions]
+(defn- build-response [base-uri log db since-t params type transactions]
   (ring/response
     {:resourceType "Bundle"
      :type "history"
@@ -63,7 +55,7 @@
      (into
        []
        (comp
-         (mapcat #(build-entry base-uri db type %))
+         (mapcat #(build-entry base-uri log db type %))
          (take (fhir-util/page-size params)))
        transactions)}))
 
@@ -74,7 +66,8 @@
           since-t (history-util/since-t db query-params)
           since-db (if since-t (d/since db since-t) db)
           transactions (util/type-transaction-history since-db type)]
-      (build-response base-uri db since-t query-params type transactions))))
+      (build-response base-uri (d/log conn) db since-t query-params type
+                      transactions))))
 
 
 (s/def :handler.fhir/history-type fn?)

@@ -15,19 +15,10 @@
     [ring.util.response :as ring]))
 
 
-(defn- changed-resources [db transaction]
-  (into
-    []
-    (map #(d/entity db %))
-    (d/q
-      '[:find [?e ...] :in $ ?t :where [?e :instance/version _ ?t]]
-      db (:db/id transaction))))
-
-
-(defn- build-entry [base-uri db transaction]
+(defn- build-entry [base-uri log db transaction]
   (let [t (d/tx->t (:db/id transaction))
         db (d/as-of db t)
-        resources (changed-resources db transaction)]
+        resources (history-util/changed-resources log db t)]
     (for [resource resources]
       (let [type (util/resource-type resource)
             id ((util/resource-id-attr type) resource)]
@@ -55,7 +46,7 @@
       total)))
 
 
-(defn- build-response [base-uri db since-t params transactions]
+(defn- build-response [base-uri log db since-t params transactions]
   (ring/response
     {:resourceType "Bundle"
      :type "history"
@@ -64,7 +55,7 @@
      (into
        []
        (comp
-         (mapcat #(build-entry base-uri db %))
+         (mapcat #(build-entry base-uri log db %))
          (take (fhir-util/page-size params)))
        transactions)}))
 
@@ -75,7 +66,8 @@
           since-t (history-util/since-t db query-params)
           since-db (if since-t (d/since db since-t) db)
           transactions (util/system-transaction-history since-db)]
-      (build-response base-uri db since-t query-params transactions))))
+      (build-response base-uri (d/log conn) db since-t query-params
+                      transactions))))
 
 
 (s/def :handler.fhir/history-system fn?)
