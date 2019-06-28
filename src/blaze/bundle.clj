@@ -147,7 +147,7 @@
           (+ sum total-increment))
         0
         tx-data-and-increments)]
-     [:fn/decrement-system-version
+     [:fn/increment-system-version
       (reduce
         (fn [sum {:keys [version-increment]}]
           (+ sum version-increment))
@@ -161,7 +161,7 @@
               (+ sum total-increment))
             0
             increments)]
-         [:fn/decrement-type-version type
+         [:fn/increment-type-version type
           (reduce
             (fn [sum {:keys [version-increment]}]
               (+ sum version-increment))

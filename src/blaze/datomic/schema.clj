@@ -89,21 +89,31 @@
 
 
 (defattr :instance/version
+  "The version of one particular resource instance."
   :db/valueType :db.type/long
   :db/cardinality :db.cardinality/one)
 
 
 (defattr :type/version
+  "The version (number of changes) of all resources of a particular resource
+  type."
   :db/valueType :db.type/long
   :db/cardinality :db.cardinality/one)
 
 
 (defattr :system/version
+  "The version (number of changes) of all resources in the whole system."
   :db/valueType :db.type/long
   :db/cardinality :db.cardinality/one)
 
 
 (defattr :total
+  "Total number of non-deleted resources either of a particular type or the
+  whole system.
+
+  The total number of non-deleted resources of a particular type can be found at
+  the type idents like :Patient or :Observation. The total number of all
+  non-deleted resources of the whole system can be found at :system."
   :db/valueType :db.type/long
   :db/cardinality :db.cardinality/one)
 
@@ -114,30 +124,38 @@
 
 
 (defunc fn/increment-type-total
-  "Increments the total number of resources of a particular type.
+  "Increments the total number of resources of a particular type by `amount`.
 
-  Type is the ident of the resources type like :Patient."
+  Type is the ident of the resources type like :Patient. The amount will be
+  negative if resources are deleted."
   [db type amount]
   [[:db/add type :total (+ (get (d/entity db type) :total 0) amount)]])
 
 
 (defunc fn/increment-system-total
-  "Increments the total number of resources in the whole system."
+  "Increments the total number of resources in the whole system by `amount`.
+
+  The amount will be negative if resources are deleted."
   [db amount]
   [[:db/add :system :total (+ (get (d/entity db :system) :total 0) amount)]])
 
 
-(defunc fn/decrement-type-version
-  "Decrements the version of resource changes of a particular type.
+(defunc fn/increment-type-version
+  "Increments the version (number of resource changes) of a particular resource
+  type by `amount`.
 
-  Type is the ident of the resources type like :Patient."
+  Type is the ident of the resources type like :Patient. The amount will be
+  always positive."
   [db type amount]
   [[:db/add type :type/version
     (- (get (d/entity db type) :type/version 0) amount)]])
 
 
-(defunc fn/decrement-system-version
-  "Decrements the version of all resource changes."
+(defunc fn/increment-system-version
+  "Increments the version (number of resource changes) in the whole system by
+  `amount`.
+
+  The amount will be always positive."
   [db amount]
   [[:db/add :system :system/version
     (- (get (d/entity db :system) :system/version 0) amount)]])

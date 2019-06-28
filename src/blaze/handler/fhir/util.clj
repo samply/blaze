@@ -17,10 +17,10 @@
     (if (or (nil? resource) (util/deleted? resource))
       [[:fn/increment-type-total (keyword type) 1]
        [:fn/increment-system-total 1]
-       [:fn/decrement-type-version (keyword type) 1]
-       [:fn/decrement-system-version 1]]
-      [[:fn/decrement-type-version (keyword type) 1]
-       [:fn/decrement-system-version 1]])))
+       [:fn/increment-type-version (keyword type) 1]
+       [:fn/increment-system-version 1]]
+      [[:fn/increment-type-version (keyword type) 1]
+       [:fn/increment-system-version 1]])))
 
 
 (defn- upsert-resource* [conn db creation-mode resource]
@@ -52,8 +52,8 @@
 (defn- delete-resource-tx-data [type]
   [[:fn/increment-type-total (keyword type) -1]
    [:fn/increment-system-total -1]
-   [:fn/decrement-type-version (keyword type) 1]
-   [:fn/decrement-system-version 1]])
+   [:fn/increment-type-version (keyword type) 1]
+   [:fn/increment-system-version 1]])
 
 
 (s/fdef delete-resource
