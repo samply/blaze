@@ -14,22 +14,13 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
-    [reitit.core :as reitit]
     [ring.util.response :as ring]))
-
-
-(def ^:private router
-  (reitit/router
-    [["{type}" :type]
-     ["{type}/{id}" :resource]]
-    {:syntax :bracket}))
 
 
 (defn- validate-entry
   {:arglists '([db entry])}
   [db {:strs [resource] {:strs [method url]} "request" :as entry}]
-  (let [match (reitit/match-by-path router url)
-        {:keys [type id]} (:path-params match)]
+  (let [[type id] (bundle/match-url url)]
     (cond
       (not (#{"GET" "HEAD" "POST" "PUT" "DELETE" "PATCH"} method))
       {::anom/category ::anom/incorrect
@@ -72,7 +63,7 @@
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"}
 
       :else
-      (assoc-in entry ["request" ::reitit/match] match))))
+      (assoc entry :blaze/type type :blaze/id id))))
 
 
 (defmulti validate-entries (fn [_ type _] type))
@@ -118,7 +109,7 @@
 
 
 (defn validate-and-prepare-bundle
-  [db {:strs [resourceType type entry] :as bundle}]
+  [db {:strs [resourceType type entry]}]
   (cond
     (not= "Bundle" resourceType)
     (md/error-deferred
@@ -162,12 +153,11 @@
 
 
 (defmethod upsert-entry "DELETE"
-  [conn db {{::reitit/keys [match]} "request"}]
-  (let [{:keys [type id]} (:path-params match)]
-    (try
-      (handler-fhir-util/delete-resource conn db type id)
-      (catch Exception e
-        (md/error-deferred (ex-data e))))))
+  [conn db {:blaze/keys [type id]}]
+  (try
+    (handler-fhir-util/delete-resource conn db type id)
+    (catch Exception e
+      (md/error-deferred (ex-data e)))))
 
 
 (defmulti transact
@@ -222,7 +212,7 @@
    {{type "resourceType" id "id"} "resource" {db :db-after} :blaze/tx-result
     :blaze/keys [old-resource] :keys [response] :as entry}]
   (if response
-    (update entry "request" dissoc ::reitit/match)
+    (dissoc entry :blaze/type :blaze/id)
     (let [last-modified (util/tx-instant (util/basis-transaction db))
           versionId (d/basis-t db)
           response
@@ -234,8 +224,7 @@
             (assoc :location (str base-uri "/fhir/" type "/" id "/_history/" versionId)))]
       (-> entry
           (assoc :response response)
-          (dissoc :blaze/tx-result)
-          (update "request" dissoc ::reitit/match)))))
+          (dissoc :blaze/type :blaze/id :blaze/tx-result)))))
 
 
 (defn- build-response [base-uri bundle-type entries]

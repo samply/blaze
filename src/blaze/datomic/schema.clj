@@ -123,6 +123,12 @@
   :db/cardinality :db.cardinality/one)
 
 
+(defattr :tx/resources
+  "A set of resources changed in a transaction."
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many)
+
+
 (defunc fn/increment-type-total
   "Increments the total number of resources of a particular type by `amount`.
 

@@ -867,7 +867,7 @@
 
   Throws exceptions with `ex-data` containing an anomaly on errors or
   unsupported features."
-  {:arglists '([context tempids initial-version resource])}
+  {:arglists '([db tempids creation-mode resource])}
   [db tempids creation-mode {type "resourceType" id "id" :as resource}]
   (assert type)
   (assert id)
@@ -981,6 +981,7 @@
             (assoc (ex-data e)
               ::anom/category (category e)
               ::anom/message (ex-message e)))))))
+
 
 (s/fdef resource-tempid
   :args (s/cat :db ::ds/db :resource ::resource)

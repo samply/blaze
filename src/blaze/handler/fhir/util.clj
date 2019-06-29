@@ -1,4 +1,6 @@
 (ns blaze.handler.fhir.util
+  "Utilities for FHIR interactions. Main functions are `upsert-resource` and
+  `delete-resource`."
   (:require
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
@@ -7,28 +9,40 @@
     [manifold.deferred :as md]))
 
 
-(defn- tempids [db resource]
-  (when-let [[type id tempid] (tx/resource-tempid db resource)]
-    {type {id tempid}}))
+(defn- increment-total [type]
+  [[:fn/increment-type-total (keyword type) 1]
+   [:fn/increment-system-total 1]])
 
 
-(defn- update-resource-tx-data [db {type "resourceType" id "id"}]
+(defn- increment-version [type]
+  [[:fn/increment-type-version (keyword type) 1]
+   [:fn/increment-system-version 1]])
+
+
+(defn- update-system-and-type-tx-data
+  [db tempid {type "resourceType" id "id"}]
   (let [resource (util/resource db type id)]
-    (if (or (nil? resource) (util/deleted? resource))
-      [[:fn/increment-type-total (keyword type) 1]
-       [:fn/increment-system-total 1]
-       [:fn/increment-type-version (keyword type) 1]
-       [:fn/increment-system-version 1]]
-      [[:fn/increment-type-version (keyword type) 1]
-       [:fn/increment-system-version 1]])))
+    (cond->
+      (increment-version type)
+
+      (or (nil? resource) (util/deleted? resource))
+      (into (increment-total type))
+
+      (nil? resource)
+      (conj [:db/add "datomic.tx" :tx/resources tempid])
+
+      (some? resource)
+      (conj [:db/add "datomic.tx" :tx/resources (:db/id resource)]))))
 
 
 (defn- upsert-resource* [conn db creation-mode resource]
-  (let [tempids (tempids db resource)
+  (let [[type id tempid] (tx/resource-tempid db resource)
+        tempids (when tempid {type {id tempid}})
         tx-data (tx/resource-upsert db tempids creation-mode resource)]
     (if (empty? tx-data)
       {:db-after db}
-      (tx/transact-async conn (into tx-data (update-resource-tx-data db resource))))))
+      (tx/transact-async
+        conn (into tx-data (update-system-and-type-tx-data db tempid resource))))))
 
 
 (s/fdef upsert-resource
@@ -49,11 +63,16 @@
               (upsert-resource* conn db creation-mode resource)))))))
 
 
-(defn- delete-resource-tx-data [type]
+(defn- decrement-total [type]
   [[:fn/increment-type-total (keyword type) -1]
-   [:fn/increment-system-total -1]
-   [:fn/increment-type-version (keyword type) 1]
-   [:fn/increment-system-version 1]])
+   [:fn/increment-system-total -1]])
+
+
+(defn- delete-system-and-type-tx-data [db type id]
+  (let [resource (util/resource db type id)]
+    (-> (decrement-total type)
+        (into (increment-version type))
+        (conj [:db/add "datomic.tx" :tx/resources (:db/id resource)]))))
 
 
 (s/fdef delete-resource
@@ -66,7 +85,8 @@
   (let [tx-data (tx/resource-deletion db type id)]
     (if (empty? tx-data)
       {:db-after db}
-      (tx/transact-async conn (into tx-data (delete-resource-tx-data type))))))
+      (tx/transact-async
+        conn (into tx-data (delete-system-and-type-tx-data db type id))))))
 
 
 (def ^:private ^:const max-page-size 50)

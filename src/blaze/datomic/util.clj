@@ -23,6 +23,17 @@
   (keyword type "id"))
 
 
+(s/fdef literal-reference
+  :args (s/cat :resource ::ds/entity)
+  :ret (s/tuple string? string?))
+
+(defn literal-reference
+  "Returns a tuple of type and id of `resource`."
+  [resource]
+  (let [type (resource-type resource)]
+    [type ((resource-id-attr type) resource)]))
+
+
 (s/fdef first-transaction
   :args (s/cat :resource ::ds/entity)
   :ret ::ds/entity)
@@ -103,8 +114,35 @@
   (d/entity db (resource-ident type id)))
 
 
-(defn deleted? [resource]
+(s/fdef deleted?
+  :args (s/cat :resource ::ds/entity)
+  :ret boolean?)
+
+(defn deleted?
+  "Returns true iff the resource is currently deleted."
+  [resource]
   (bit-test (:instance/version resource) 1))
+
+
+(s/fdef initial-version?
+  :args (s/cat :resource ::ds/entity)
+  :ret boolean?)
+
+(defn initial-version?
+  "Returns true iff the resource is in it's initial version."
+  [resource]
+  (#{-3 -4} (:instance/version resource)))
+
+
+(s/fdef initial-version-server-assigned-id?
+  :args (s/cat :resource ::ds/entity)
+  :ret boolean?)
+
+(defn initial-version-server-assigned-id?
+  "Returns true iff the resource is in it's initial version and had it's
+  literal id server assigned."
+  [resource]
+  (= -3 (:instance/version resource)))
 
 
 (s/fdef ordinal-version
@@ -134,10 +172,11 @@
     (d/datoms db :aevt (resource-id-attr type))))
 
 
-(s/fdef transaction-history
-  :args (s/cat :db ::ds/db :eid ::ds/entity-identifier))
+(s/fdef instance-transaction-history
+  :args (s/cat :db ::ds/db :eid ::ds/entity-identifier)
+  :ret (s/coll-of ::ds/entity))
 
-(defn transaction-history
+(defn instance-transaction-history
   "Returns a reducible coll of all transactions on resource with `eid`.
   Newest first."
   [db eid]
@@ -148,7 +187,8 @@
 
 
 (s/fdef type-transaction-history
-  :args (s/cat :db ::ds/db :type string?))
+  :args (s/cat :db ::ds/db :type string?)
+  :ret (s/coll-of ::ds/entity))
 
 (defn type-transaction-history
   "Returns a reducible coll of all transactions on `type`.
@@ -159,6 +199,10 @@
     (map #(d/entity db (:tx %)))
     (d/datoms (d/history db) :eavt (keyword type) :type/version)))
 
+
+(s/fdef system-transaction-history
+  :args (s/cat :db ::ds/db)
+  :ret (s/coll-of ::ds/entity))
 
 (defn system-transaction-history
   "Returns a reducible coll of all transactions in the whole system.

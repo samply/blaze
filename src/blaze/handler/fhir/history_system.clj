@@ -3,8 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.util :as util]
+    [blaze.datomic.util :as datomic-util]
     [blaze.handler.fhir.history.util :as history-util]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
@@ -13,26 +12,6 @@
     [datomic-spec.core :as ds]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]))
-
-
-(defn- build-entry [base-uri log db transaction]
-  (let [t (d/tx->t (:db/id transaction))
-        db (d/as-of db t)
-        resources (history-util/changed-resources log db t)]
-    (for [resource resources]
-      (let [type (util/resource-type resource)
-            id ((util/resource-id-attr type) resource)]
-        (cond->
-          {:fullUrl (str base-uri "/fhir/" type "/" id)
-           :request
-           {:method (history-util/method resource)
-            :url (history-util/url base-uri type id (:instance/version resource))}
-           :response
-           {:status (history-util/status resource)
-            :etag (str "W/\"" t "\"")
-            :lastModified (str (util/tx-instant transaction))}}
-          (not (util/deleted? resource))
-          (assoc :resource (pull/pull-resource* db type resource)))))))
 
 
 (defn- total* [db]
@@ -46,7 +25,15 @@
       total)))
 
 
-(defn- build-response [base-uri log db since-t params transactions]
+(defn- expand-resources
+  "Returns tuples of `transaction` and resource eid of resources changed in
+  transaction."
+  [transaction]
+  (for [resource (:tx/resources transaction)]
+    [transaction (:db/id resource)]))
+
+
+(defn- build-response [base-uri db since-t params transactions]
   (ring/response
     {:resourceType "Bundle"
      :type "history"
@@ -55,8 +42,9 @@
      (into
        []
        (comp
-         (mapcat #(build-entry base-uri log db %))
-         (take (fhir-util/page-size params)))
+         (mapcat expand-resources)
+         (take (fhir-util/page-size params))
+         (map (fn [[tx eid]] (history-util/build-entry base-uri db tx eid))))
        transactions)}))
 
 
@@ -65,9 +53,8 @@
     (let [db (d/db conn)
           since-t (history-util/since-t db query-params)
           since-db (if since-t (d/since db since-t) db)
-          transactions (util/system-transaction-history since-db)]
-      (build-response base-uri (d/log conn) db since-t query-params
-                      transactions))))
+          transactions (datomic-util/system-transaction-history since-db)]
+      (build-response base-uri db since-t query-params transactions))))
 
 
 (s/def :handler.fhir/history-system fn?)

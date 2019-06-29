@@ -4,7 +4,21 @@
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
     [clojure.spec.alpha :as s]
-    [datomic-spec.core :as ds]))
+    [datomic-spec.core :as ds]
+    [reitit.core :as reitit]))
+
+
+(def ^:private router
+  (reitit/router
+    [["{type}" :type]
+     ["{type}/{id}" :resource]]
+    {:syntax :bracket}))
+
+
+(defn match-url [url]
+  (let [match (reitit/match-by-path router url)
+        {:keys [type id]} (:path-params match)]
+    [type id]))
 
 
 (defn- resolve-link
@@ -67,7 +81,9 @@
   (let [index (reduce (fn [r {url "fullUrl" :strs [resource]}] (assoc r url resource)) {} entries)]
     (mapv
       (fn [entry]
-        (update entry "resource" #(resolve-links {:db db :index index} (keyword (get % "resourceType")) %)))
+        (if-let [{type "resourceType" :as resource} (get entry "resource")]
+          (assoc entry "resource" (resolve-links {:db db :index index} (keyword type) resource))
+          entry))
       entries)))
 
 
@@ -103,29 +119,44 @@
 
 
 (defmethod entry-tx-data "POST"
-  [db tempids {{type "resourceType" :as resource} "resource"}]
+  [db tempids {{type "resourceType" id "id" :as resource} "resource"}]
   {:type (keyword type)
+   :tempid (get-in tempids [type id])
    :total-increment 1
    :version-increment 1
    :tx-data (tx/resource-upsert db tempids :server-assigned-id resource)})
 
 
 (defmethod entry-tx-data "PUT"
-  [db tempids {{type "resourceType" :as resource} "resource"}]
-  (let [tx-data (tx/resource-upsert db tempids :client-assigned-id resource)]
-    {:type (keyword type)
-     :total-increment 0
-     :version-increment (if (empty? tx-data) 0 1)
-     :tx-data tx-data}))
+  [db tempids {{type "resourceType" id "id" :as resource} "resource"}]
+  (let [tx-data (tx/resource-upsert db tempids :client-assigned-id resource)
+        tempid (get-in tempids [type id])]
+    (cond->
+      {:type (keyword type)
+       :total-increment (if tempid 1 0)
+       :version-increment (if (empty? tx-data) 0 1)
+       :tx-data tx-data}
+
+      (and tempid (not (empty? tx-data)))
+      (assoc :tempid tempid)
+
+      (and (nil? tempid) (not (empty? tx-data)))
+      (assoc :eid (:db/id (util/resource db type id))))))
 
 
 (defmethod entry-tx-data "DELETE"
-  [db _ {{type "resourceType" id "id"} "resource"}]
-  (let [tx-data (tx/resource-deletion db type id)]
-    {:type (keyword type)
-     :total-increment (if (empty? tx-data) 0 -1)
-     :version-increment (if (empty? tx-data) 0 1)
-     :tx-data tx-data}))
+  [db _ {{:strs [url]} "request"}]
+  (let [[type id] (match-url url)
+        tx-data (tx/resource-deletion db type id)
+        resource (util/resource db type id)]
+    (cond->
+      {:type (keyword type)
+       :total-increment (if (empty? tx-data) 0 -1)
+       :version-increment (if (empty? tx-data) 0 1)
+       :tx-data tx-data}
+
+      (and resource (not (util/deleted? resource)))
+      (assoc :eid (:db/id resource)))))
 
 
 (s/fdef code-tx-data
@@ -139,35 +170,37 @@
   (into [] (mapcat #(tx/resource-codes-creation db (get % "resource"))) entries))
 
 
-(defn- system-tx-data [tx-data-and-increments]
-  (into
-    [[:fn/increment-system-total
-      (reduce
-        (fn [sum {:keys [total-increment]}]
-          (+ sum total-increment))
-        0
-        tx-data-and-increments)]
-     [:fn/increment-system-version
-      (reduce
-        (fn [sum {:keys [version-increment]}]
-          (+ sum version-increment))
-        0
-        tx-data-and-increments)]]
-    (mapcat
-      (fn [[type increments]]
-        [[:fn/increment-type-total type
-          (reduce
-            (fn [sum {:keys [total-increment]}]
-              (+ sum total-increment))
-            0
-            increments)]
-         [:fn/increment-type-version type
-          (reduce
-            (fn [sum {:keys [version-increment]}]
-              (+ sum version-increment))
-            0
-            increments)]]))
-    (group-by :type tx-data-and-increments)))
+(defn- sum [key ms]
+  (reduce
+    (fn [sum m]
+      (+ sum (get m key)))
+    0
+    ms))
+
+
+(defn- system-and-type-tx-data [increments]
+  (-> (let [total (sum :total-increment increments)
+            version (sum :version-increment increments)]
+        (cond-> []
+          (not (zero? total)) (conj [:fn/increment-system-total total])
+          (pos? version) (conj [:fn/increment-system-version version])))
+      (into
+        (mapcat
+          (fn [[type increments]]
+            (let [total (sum :total-increment increments)
+                  version (sum :version-increment increments)]
+              (cond-> []
+                (not (zero? total)) (conj [:fn/increment-type-total type total])
+                (pos? version) (conj [:fn/increment-type-version type version])))))
+        (group-by :type increments))
+      (into
+        (mapcat
+          (fn [{:keys [tempid eid]}]
+            (cond
+              tempid [[:db/add "datomic.tx" :tx/resources tempid]]
+              eid [[:db/add "datomic.tx" :tx/resources eid]]
+              :else [])))
+        increments)))
 
 
 (s/fdef tx-data
@@ -181,5 +214,5 @@
         tempids (collect-tempids db entries)
         tx-data-and-increments (mapv #(entry-tx-data db tempids %) entries)]
     (into
-      (system-tx-data tx-data-and-increments)
+      (system-and-type-tx-data tx-data-and-increments)
       (mapcat :tx-data) tx-data-and-increments)))

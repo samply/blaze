@@ -21,10 +21,6 @@
     [java.util Base64]))
 
 
-(st/instrument)
-(dst/instrument)
-
-
 (defonce structure-definitions
   (read-structure-definitions "fhir/r4/structure-definitions"))
 
@@ -39,6 +35,17 @@
 
 
 (defonce db (d/db (connect)))
+
+
+(defn fixture [f]
+  (st/instrument)
+  (dst/instrument)
+  (f)
+  (st/unstrument))
+
+
+(use-fixtures :each fixture)
+
 
 (defn- tempid []
   (let [v (volatile! {})]

@@ -1,7 +1,9 @@
 (ns blaze.bundle-test
   (:require
-    [blaze.bundle :refer [resolve-entry-links]]
+    [blaze.bundle :refer [resolve-entry-links tx-data]]
     [blaze.datomic.schema :as schema]
+    [blaze.datomic.transaction :as tx]
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.structure-definition :refer [read-structure-definitions]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -94,3 +96,164 @@
              "url" "Claim"}}]]
       (given (resolve-entry-links db entries)
         [1 "resource" "diagnosis" 0 "diagnosisReference" "reference"] := "Condition/0"))))
+
+
+(deftest tx-data-test
+  (testing "Single POST"
+    (let [resource {"resourceType" "Patient" "id" "0"}]
+      (datomic-test-util/stub-resource-upsert
+        db {"Patient" {"0" :part/Patient}} :server-assigned-id #{resource}
+        #{[::resource-upsert-tx-data]})
+
+      (is
+        (=
+          (with-redefs [d/tempid (fn [partition] partition)]
+            (tx-data
+              db
+              [{"request" {"method" "POST"}
+                "resource" resource}]))
+          [[:fn/increment-system-total 1]
+           [:fn/increment-system-version 1]
+           [:fn/increment-type-total :Patient 1]
+           [:fn/increment-type-version :Patient 1]
+           [:db/add "datomic.tx" :tx/resources :part/Patient]
+           ::resource-upsert-tx-data]))))
+
+
+  (testing "Single PUT"
+    (testing "with non-existing resource"
+      (let [resource {"resourceType" "Patient" "id" "0"}]
+        (datomic-test-util/stub-resource-upsert
+          db {"Patient" {"0" :part/Patient}} :client-assigned-id #{resource}
+          #{[::resource-upsert-tx-data]})
+
+        (is
+          (=
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (tx-data
+                db
+                [{"request" {"method" "PUT"}
+                  "resource" resource}]))
+            [[:fn/increment-system-total 1]
+             [:fn/increment-system-version 1]
+             [:fn/increment-type-total :Patient 1]
+             [:fn/increment-type-version :Patient 1]
+             [:db/add "datomic.tx" :tx/resources :part/Patient]
+             ::resource-upsert-tx-data]))))
+
+    (testing "with existing resource and no differences"
+      (let [[db] (datomic-test-util/with-resource db "Patient" "0")
+            resource {"resourceType" "Patient" "id" "0"}]
+        (datomic-test-util/stub-resource-upsert
+          db {} :client-assigned-id #{resource} #{[]})
+
+        (is
+          (empty?
+            (tx-data
+              db
+              [{"request" {"method" "PUT"}
+                "resource" resource}])))))
+
+    (testing "with existing resource and novelty"
+      (let [[db id] (datomic-test-util/with-resource db "Patient" "0")
+            resource {"resourceType" "Patient" "id" "0" "active" true}]
+        (datomic-test-util/stub-resource-upsert
+          db {} :client-assigned-id #{resource} #{[::resource-upsert-tx-data]})
+
+        (is
+          (=
+            (tx-data
+              db
+              [{"request" {"method" "PUT"}
+                "resource" resource}])
+            [[:fn/increment-system-version 1]
+             [:fn/increment-type-version :Patient 1]
+             [:db/add "datomic.tx" :tx/resources id]
+             ::resource-upsert-tx-data])))))
+
+
+  (testing "Multiple PUT"
+    (testing "with non-existing resource"
+      (datomic-test-util/stub-resource-upsert
+        db {"Patient" {"0" :part/Patient}
+            "Observation" {"1" :part/Observation}}
+        :client-assigned-id map?
+        #{[::resource-upsert-tx-data]})
+
+      (is
+        (=
+          (with-redefs [d/tempid (fn [partition] partition)]
+            (tx-data
+              db
+              [{"request" {"method" "PUT"}
+                "resource" {"resourceType" "Patient" "id" "0"}}
+               {"request" {"method" "PUT"}
+                "resource" {"resourceType" "Observation" "id" "1"}}]))
+          [[:fn/increment-system-total 2]
+           [:fn/increment-system-version 2]
+           [:fn/increment-type-total :Patient 1]
+           [:fn/increment-type-version :Patient 1]
+           [:fn/increment-type-total :Observation 1]
+           [:fn/increment-type-version :Observation 1]
+           [:db/add "datomic.tx" :tx/resources :part/Patient]
+           [:db/add "datomic.tx" :tx/resources :part/Observation]
+           ::resource-upsert-tx-data
+           ::resource-upsert-tx-data]))))
+
+
+  (testing "Single DELETE"
+    (testing "with non-existing resource"
+      (datomic-test-util/stub-resource-deletion
+        db "Patient" "0" #{[]})
+
+      (is
+        (empty?
+          (tx-data
+            db
+            [{"request" {"method" "DELETE" "url" "Patient/0"}}]))))
+
+    (testing "with existing resource"
+      (let [[db id] (datomic-test-util/with-resource db "Patient" "0")]
+        (datomic-test-util/stub-resource-deletion
+          db "Patient" "0" #{[::resource-deletion-tx-data]})
+
+        (is
+          (=
+            (tx-data
+              db
+              [{"request" {"method" "DELETE" "url" "Patient/0"}}])
+            [[:fn/increment-system-total -1]
+             [:fn/increment-system-version 1]
+             [:fn/increment-type-total :Patient -1]
+             [:fn/increment-type-version :Patient 1]
+             [:db/add "datomic.tx" :tx/resources id]
+             ::resource-deletion-tx-data]))))
+
+
+    (testing "One POST and one DELETE"
+      (let [[db id] (datomic-test-util/with-resource db "Observation" "1")
+            patient {"resourceType" "Patient" "id" "0"}]
+        (datomic-test-util/stub-resource-upsert
+          db {"Patient" {"0" :part/Patient}}
+          :client-assigned-id #{patient}
+          #{[::resource-upsert-tx-data]})
+        (datomic-test-util/stub-resource-deletion
+          db "Observation" "1" #{[::resource-deletion-tx-data]})
+
+        (is
+          (=
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (tx-data
+                db
+                [{"request" {"method" "PUT"}
+                  "resource" patient}
+                 {"request" {"method" "DELETE" "url" "Observation/1"}}]))
+            [[:fn/increment-system-version 2]
+             [:fn/increment-type-total :Patient 1]
+             [:fn/increment-type-version :Patient 1]
+             [:fn/increment-type-total :Observation -1]
+             [:fn/increment-type-version :Observation 1]
+             [:db/add "datomic.tx" :tx/resources :part/Patient]
+             [:db/add "datomic.tx" :tx/resources id]
+             ::resource-upsert-tx-data
+             ::resource-deletion-tx-data]))))))

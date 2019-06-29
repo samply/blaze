@@ -3,7 +3,6 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
-    [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
     [blaze.handler.fhir.history.util :as history-util]
     [blaze.handler.fhir.util :as fhir-util]
@@ -19,23 +18,6 @@
 
 (defn- resource-eid [db type id]
   (:db/id (util/resource db type id)))
-
-
-(defn- build-entry [base-uri db type id eid transaction]
-  (let [t (d/tx->t (:db/id transaction))
-        db (d/as-of db t)
-        resource (d/entity db eid)]
-    (cond->
-      {:fullUrl (str base-uri "/fhir/" type "/" id)
-       :request
-       {:method (history-util/method resource)
-        :url (history-util/url base-uri type id (:instance/version resource))}
-       :response
-       {:status (history-util/status resource)
-        :etag (str "W/\"" t "\"")
-        :lastModified (str (util/tx-instant transaction))}}
-      (not (util/deleted? resource))
-      (assoc :resource (pull/pull-resource* db type resource)))))
 
 
 (defn- total* [db eid]
@@ -54,7 +36,7 @@
       total)))
 
 
-(defn- build-response [base-uri db since-t params type id eid transactions]
+(defn- build-response [base-uri db since-t params eid transactions]
   (ring/response
     {:resourceType "Bundle"
      :type "history"
@@ -63,8 +45,8 @@
      (into
        []
        (comp
-         (map #(build-entry base-uri db type id eid %))
-         (take (fhir-util/page-size params)))
+         (take (fhir-util/page-size params))
+         (map #(history-util/build-entry base-uri db % eid)))
        transactions)}))
 
 
@@ -74,8 +56,8 @@
       (if-let [eid (resource-eid db type id)]
         (let [since-t (history-util/since-t db query-params)
               since-db (if since-t (d/since db since-t) db)
-              transactions (util/transaction-history since-db eid)]
-          (build-response base-uri db since-t query-params type id eid transactions))
+              transactions (util/instance-transaction-history since-db eid)]
+          (build-response base-uri db since-t query-params eid transactions))
         (handler-util/error-response
           {::anom/category ::anom/not-found
            :fhir/issue "not-found"})))))

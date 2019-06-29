@@ -74,6 +74,9 @@
   (with-code db "http://hl7.org/fhir/sid/icd-10" version code))
 
 
+
+;; ---- datomic.api stubs -----------------------------------------------------
+
 (defn stub-as-of [db t as-of-db]
   (st/instrument
     [`d/as-of]
@@ -86,9 +89,6 @@
      #{`d/as-of}}))
 
 
-(s/fdef stub-basis-t
-  :args (s/cat :db some? :t pos-int?))
-
 (defn stub-basis-t [db t]
   (st/instrument
     [`d/basis-t]
@@ -99,30 +99,6 @@
         :ret #{t})}
      :stub
      #{`d/basis-t}}))
-
-
-(defn stub-basis-transaction [db transaction]
-  (st/instrument
-    [`util/basis-transaction]
-    {:spec
-     {`util/basis-transaction
-      (s/fspec
-        :args (s/cat :db #{db})
-        :ret #{transaction})}
-     :stub
-     #{`util/basis-transaction}}))
-
-
-(defn stub-cached-entity [db eid-spec entity-spec]
-  (st/instrument
-    [`util/cached-entity]
-    {:spec
-     {`util/cached-entity
-      (s/fspec
-        :args (s/cat :db #{db} :eid eid-spec)
-        :ret entity-spec)}
-     :stub
-     #{`util/cached-entity}}))
 
 
 (defn stub-db [conn db]
@@ -149,6 +125,105 @@
      #{`d/entity}}))
 
 
+(defn stub-squuid [id]
+  (st/instrument
+    [`d/squuid]
+    {:spec
+     {`d/squuid
+      (s/fspec
+        :args (s/cat)
+        :ret #{id})}
+     :stub
+     #{`d/squuid}}))
+
+
+(defn stub-sync [conn t db]
+  (st/instrument
+    [`d/sync]
+    {:spec
+     {`d/sync
+      (s/fspec
+        :args (s/cat :conn #{conn} :t #{t})
+        :ret #{db})}
+     :stub
+     #{`d/sync}}))
+
+
+
+;; ---- blaze.datomic.util stubs ----------------------------------------------
+
+(defn stub-basis-transaction [db transaction]
+  (st/instrument
+    [`util/basis-transaction]
+    {:spec
+     {`util/basis-transaction
+      (s/fspec
+        :args (s/cat :db #{db})
+        :ret #{transaction})}
+     :stub
+     #{`util/basis-transaction}}))
+
+
+(defn stub-cached-entity [db eid-spec entity-spec]
+  (st/instrument
+    [`util/cached-entity]
+    {:spec
+     {`util/cached-entity
+      (s/fspec
+        :args (s/cat :db #{db} :eid eid-spec)
+        :ret entity-spec)}
+     :stub
+     #{`util/cached-entity}}))
+
+
+(defn stub-deleted? [resource result-spec]
+  (st/instrument
+    [`util/deleted?]
+    {:spec
+     {`util/deleted?
+      (s/fspec
+        :args (s/cat :resource #{resource})
+        :ret result-spec)}
+     :stub
+     #{`util/deleted?}}))
+
+
+(defn stub-initial-version? [resource result-spec]
+  (st/instrument
+    [`util/initial-version?]
+    {:spec
+     {`util/initial-version?
+      (s/fspec
+        :args (s/cat :resource #{resource})
+        :ret result-spec)}
+     :stub
+     #{`util/initial-version?}}))
+
+
+(defn stub-initial-version-server-assigned-id? [resource result-spec]
+  (st/instrument
+    [`util/initial-version-server-assigned-id?]
+    {:spec
+     {`util/initial-version-server-assigned-id?
+      (s/fspec
+        :args (s/cat :resource #{resource})
+        :ret result-spec)}
+     :stub
+     #{`util/initial-version-server-assigned-id?}}))
+
+
+(defn stub-instance-transaction-history [db eid result]
+  (st/instrument
+    [`util/instance-transaction-history]
+    {:spec
+     {`util/instance-transaction-history
+      (s/fspec
+        :args (s/cat :db #{db} :eid #{eid})
+        :ret #{result})}
+     :stub
+     #{`util/instance-transaction-history}}))
+
+
 (defn stub-list-resources [db type resources-spec]
   (st/instrument
     `util/list-resources
@@ -160,6 +235,93 @@
      :stub
      #{`util/list-resources}}))
 
+
+(defn stub-literal-reference [resource result]
+  (st/instrument
+    [`util/literal-reference]
+    {:spec
+     {`util/literal-reference
+      (s/fspec
+        :args (s/cat :resource #{resource})
+        :ret #{result})}
+     :stub
+     #{`util/literal-reference}}))
+
+
+(defn stub-ordinal-version [resource result]
+  (st/instrument
+    `util/ordinal-version
+    {:spec
+     {`util/ordinal-version
+      (s/fspec
+        :args (s/cat :resource #{resource})
+        :ret #{result})}
+     :stub
+     #{`util/ordinal-version}}))
+
+
+(defn stub-resource [db type-spec id-spec entity-spec]
+  (st/instrument
+    [`util/resource]
+    {:spec
+     {`util/resource
+      (s/fspec
+        :args (s/cat :db #{db} :type type-spec :id id-spec)
+        :ret entity-spec)}
+     :stub
+     #{`util/resource}}))
+
+
+(defn stub-resource-type [resource type]
+  (st/instrument
+    [`util/resource-type]
+    {:spec
+     {`util/resource-type
+      (s/fspec
+        :args (s/cat :resource #{resource})
+        :ret #{type})}
+     :stub
+     #{`util/resource-type}}))
+
+
+(defn stub-tx-instant [transaction result]
+  (st/instrument
+    [`util/tx-instant]
+    {:spec
+     {`util/tx-instant
+      (s/fspec
+        :args (s/cat :transaction #{transaction})
+        :ret #{result})}
+     :stub
+     #{`util/tx-instant}}))
+
+
+(defn stub-type-transaction-history [db type result]
+  (st/instrument
+    [`util/type-transaction-history]
+    {:spec
+     {`util/type-transaction-history
+      (s/fspec
+        :args (s/cat :db #{db} :type #{type})
+        :ret #{result})}
+     :stub
+     #{`util/type-transaction-history}}))
+
+
+(defn stub-system-transaction-history [db result]
+  (st/instrument
+    [`util/system-transaction-history]
+    {:spec
+     {`util/system-transaction-history
+      (s/fspec
+        :args (s/cat :db #{db})
+        :ret #{result})}
+     :stub
+     #{`util/system-transaction-history}}))
+
+
+
+;; ---- blaze.datomic.pull stubs ----------------------------------------------
 
 (defn stub-pull-resource [db type id resource-spec]
   (st/instrument
@@ -185,17 +347,8 @@
      #{`pull/pull-resource*}}))
 
 
-(defn stub-resource [db type-spec id-spec entity-spec]
-  (st/instrument
-    [`util/resource]
-    {:spec
-     {`util/resource
-      (s/fspec
-        :args (s/cat :db #{db} :type type-spec :id id-spec)
-        :ret entity-spec)}
-     :stub
-     #{`util/resource}}))
 
+;; ---- blaze.datomic.transaction stubs ---------------------------------------
 
 (defn stub-resource-deletion [db type id result-spec]
   (st/instrument
@@ -209,31 +362,30 @@
      #{`tx/resource-deletion}}))
 
 
-(s/fdef stub-squuid
-  :args (s/cat :id uuid?))
-
-(defn stub-squuid [id]
+(defn stub-resource-type-total [db type result]
   (st/instrument
-    [`d/squuid]
+    [`util/resource-type-total]
     {:spec
-     {`d/squuid
+     {`util/resource-type-total
       (s/fspec
-        :args (s/cat)
-        :ret #{id})}
+        :args (s/cat :db #{db} :type #{type})
+        :ret #{result})}
      :stub
-     #{`d/squuid}}))
+     #{`util/resource-type-total}}))
 
 
-(defn stub-sync [conn t db]
+(defn stub-resource-upsert [db tempids initial-version resource-spec result-spec]
   (st/instrument
-    [`d/sync]
+    [`tx/resource-upsert]
     {:spec
-     {`d/sync
+     {`tx/resource-upsert
       (s/fspec
-        :args (s/cat :conn #{conn} :t #{t})
-        :ret #{db})}
+        :args (s/cat :db #{db} :tempids #{tempids}
+                     :initial-version #{initial-version}
+                     :resource resource-spec)
+        :ret result-spec)}
      :stub
-     #{`d/sync}}))
+     #{`tx/resource-upsert}}))
 
 
 (defn stub-transact-async [conn tx-data tx-result]
@@ -246,15 +398,3 @@
         :ret #{tx-result})}
      :stub
      #{`tx/transact-async}}))
-
-
-(defn stub-resource-type-total [db type result]
-  (st/instrument
-    [`util/resource-type-total]
-    {:spec
-     {`util/resource-type-total
-      (s/fspec
-        :args (s/cat :db #{db} :type #{type})
-        :ret #{result})}
-     :stub
-     #{`util/resource-type-total}}))
