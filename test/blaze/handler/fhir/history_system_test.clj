@@ -40,7 +40,7 @@
           tx {:tx/resources [patient]}]
       (datomic-test-util/stub-db ::conn ::db)
       (datomic-test-util/stub-system-transaction-history ::db [tx])
-      (datomic-test-util/stub-entity ::db #{:system} #{{:system/version -1}})
+      (datomic-test-util/stub-system-version ::db 1)
       (datomic-test-util/stub-resource-type patient "Patient")
       (history-test-util/stub-build-entry base-uri ::db tx 0 ::entry))
 

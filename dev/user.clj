@@ -67,26 +67,13 @@
 
 (comment
 
-  (count (read-structure-definitions "fhir/r4/structure-definitions"))
-
-  (d/create-database "datomic:mem://dev")
-  (d/create-database "datomic:free://localhost:4334/dev-7?password=foo")
-  (d/delete-database "datomic:mem://dev")
-  (d/delete-database "datomic:mem://dev")
-  (def conn (d/connect "datomic:mem://dev"))
-
-
-  @(d/transact conn (dts/schema))
-  @(d/transact conn (schema/structure-definition-schemas (read-structure-definitions "fhir/r4/structure-definitions")))
-
   (def conn (:database-conn system))
   (def db (d/db conn))
   (def hdb (d/history db))
 
-  (d/q
-    '[:find [(pull ?e [*]) ...] :in $ ?t :where [?e :instance/version _ ?t]]
-    (d/as-of db 9840)
-    (d/t->tx 9840))
+  (d/part (d/entid db :system))
+  (d/part (d/entid db :Patient))
+  (d/ident db 4)
 
 
 

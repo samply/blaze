@@ -6,6 +6,7 @@
     [blaze.bundle :as bundle]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
+    [blaze.executors :as executors]
     [blaze.handler.fhir.util :as handler-fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
@@ -234,10 +235,11 @@
      :entry (mapv #(build-entry base-uri %) entries)}))
 
 
-(defn- handler-intern [base-uri conn]
+(defn- handler-intern [base-uri conn executor]
   (fn [{{:strs [type] :as bundle} :body}]
     (let [db (d/db conn)]
-      (-> (validate-and-prepare-bundle db bundle)
+      (-> (md/future-with executor
+            (validate-and-prepare-bundle db bundle))
           (md/chain' #(transact conn db type %))
           (md/chain' #(build-response base-uri type %))
           (md/catch' handler-util/error-response)))))
@@ -255,12 +257,12 @@
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :conn ::ds/conn)
+  :args (s/cat :base-uri string? :conn ::ds/conn :executor executors/executor?)
   :ret :handler.fhir/transaction)
 
 (defn handler
   ""
-  [base-uri conn]
-  (-> (handler-intern base-uri conn)
+  [base-uri conn executor]
+  (-> (handler-intern base-uri conn executor)
       (wrap-interaction-name)
       (wrap-observe-request-duration)))

@@ -320,6 +320,18 @@
      #{`util/system-transaction-history}}))
 
 
+(defn stub-system-version [db result]
+  (st/instrument
+    [`util/system-version]
+    {:spec
+     {`util/system-version
+      (s/fspec
+        :args (s/cat :db #{db})
+        :ret #{result})}
+     :stub
+     #{`util/system-version}}))
+
+
 
 ;; ---- blaze.datomic.pull stubs ----------------------------------------------
 

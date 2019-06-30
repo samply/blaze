@@ -107,15 +107,24 @@
   :db/cardinality :db.cardinality/one)
 
 
-(defattr :total
-  "Total number of non-deleted resources either of a particular type or the
-  whole system.
+(defattr :type/total
+  "Total number of non-deleted resources of a particular type.
 
   The total number of non-deleted resources of a particular type can be found at
-  the type idents like :Patient or :Observation. The total number of all
-  non-deleted resources of the whole system can be found at :system."
+  the type idents like :Patient or :Observation."
   :db/valueType :db.type/long
-  :db/cardinality :db.cardinality/one)
+  :db/cardinality :db.cardinality/one
+  :db/noHistory true)
+
+
+(defattr :system/total
+  "Total number of non-deleted resources of the whole system.
+
+  The total number of all non-deleted resources of the whole system can be
+  found at :system."
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/noHistory true)
 
 
 (defattr :local-id
@@ -135,7 +144,8 @@
   Type is the ident of the resources type like :Patient. The amount will be
   negative if resources are deleted."
   [db type amount]
-  [[:db/add type :total (+ (get (d/entity db type) :total 0) amount)]])
+  [[:db/add type :type/total
+    (- (get (d/entity db type) :type/total 0) amount)]])
 
 
 (defunc fn/increment-system-total
@@ -143,7 +153,8 @@
 
   The amount will be negative if resources are deleted."
   [db amount]
-  [[:db/add :system :total (+ (get (d/entity db :system) :total 0) amount)]])
+  [[:db/add :system :system/total
+    (- (get (d/entity db :system) :system/total 0) amount)]])
 
 
 (defunc fn/increment-type-version

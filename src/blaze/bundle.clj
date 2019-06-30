@@ -5,6 +5,7 @@
     [blaze.datomic.util :as util]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds]
+    [prometheus.alpha :as prom :refer [defhistogram]]
     [reitit.core :as reitit]))
 
 
@@ -203,6 +204,13 @@
         increments)))
 
 
+(defhistogram tx-data-duration-seconds
+  "FHIR bundle transaction data generating latencies in seconds."
+  {:namespace "fhir"
+   :subsystem "bundle"}
+  (take 12 (iterate #(* 2 %) 0.01)))
+
+
 (s/fdef tx-data
   :args (s/cat :db ::ds/db :entries coll?)
   :ret ::ds/tx-data)
@@ -210,9 +218,10 @@
 (defn tx-data
   "Returns transaction data of all `entries` of a transaction bundle."
   [db entries]
-  (let [entries (resolve-entry-links db entries)
-        tempids (collect-tempids db entries)
-        tx-data-and-increments (mapv #(entry-tx-data db tempids %) entries)]
-    (into
-      (system-and-type-tx-data tx-data-and-increments)
-      (mapcat :tx-data) tx-data-and-increments)))
+  (with-open [_ (prom/timer tx-data-duration-seconds)]
+    (let [entries (resolve-entry-links db entries)
+          tempids (collect-tempids db entries)
+          tx-data-and-increments (mapv #(entry-tx-data db tempids %) entries)]
+      (into
+        (system-and-type-tx-data tx-data-and-increments)
+        (mapcat :tx-data) tx-data-and-increments))))

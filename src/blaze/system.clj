@@ -8,8 +8,10 @@
     [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
+    [blaze.bundle :as bundle]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.schema :as schema]
+    [blaze.executors :as executors]
     [blaze.handler.app :as app-handler]
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
     [blaze.handler.fhir.capabilities :as fhir-capabilities-handler]
@@ -85,7 +87,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha42")
+(def ^:private version "0.6-alpha48")
 
 (def ^:private base-uri "http://localhost:8080")
 
@@ -100,6 +102,8 @@
     :database/uri "datomic:mem://dev"}
 
    :cache {}
+
+   :transaction-interaction-executor {}
 
    :health-handler {}
 
@@ -140,6 +144,7 @@
 
    :fhir-transaction-handler
    {:base-uri base-uri
+    :executor (ig/ref :transaction-interaction-executor)
     :database/conn (ig/ref :database-conn)}
 
    :fhir-update-handler
@@ -162,13 +167,17 @@
      :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
      :handler.fhir/update (ig/ref :fhir-update-handler)}}
 
+   :server-executor {}
+
    :server
    {:port 8080
+    :executor (ig/ref :server-executor)
     :handler (ig/ref :app-handler)
     :version version}
 
    :metrics/registry
-   {:server (ig/ref :server)}
+   {:server-executor (ig/ref :server-executor)
+    :transaction-interaction-executor (ig/ref :transaction-interaction-executor)}
 
    :metrics-handler
    {:registry (ig/ref :metrics/registry)}
@@ -235,6 +244,11 @@
   (atom (cache/lru-cache-factory {} :threshold threshold)))
 
 
+(defmethod ig/init-key :transaction-interaction-executor
+  [_ _]
+  (executors/cpu-bound-pool))
+
+
 (defmethod ig/init-key :health-handler
   [_ _]
   (health-handler/handler))
@@ -286,8 +300,8 @@
 
 
 (defmethod ig/init-key :fhir-transaction-handler
-  [_ {:keys [base-uri] :database/keys [conn]}]
-  (fhir-transaction-handler/handler base-uri conn))
+  [_ {:keys [base-uri executor] :database/keys [conn]}]
+  (fhir-transaction-handler/handler base-uri conn executor))
 
 
 (defmethod ig/init-key :fhir-update-handler
@@ -300,14 +314,19 @@
   (app-handler/handler conn handlers))
 
 
+(defmethod ig/init-key :server-executor
+  [_ _]
+  (executors/cpu-bound-pool))
+
+
 (defmethod ig/init-key :server
-  [_ {:keys [port handler version]}]
+  [_ {:keys [port executor handler version]}]
   (log/info "Start main server on port" port)
-  (server/init! port handler version))
+  (server/init! port executor handler version))
 
 
 (defmethod ig/init-key :metrics/registry
-  [_ {{:keys [executor]} :server}]
+  [_ {:keys [server-executor transaction-interaction-executor]}]
   (doto (CollectorRegistry. true)
     (.register (StandardExports.))
     (.register (MemoryPoolsExports.))
@@ -321,8 +340,11 @@
     (.register json/generate-duration-seconds)
     (.register tx/resource-upsert-duration-seconds)
     (.register tx/execution-duration-seconds)
-    (.register (metrics/fork-join-pool-collector
-                 [["server" executor]
+    (.register tx/resources-total)
+    (.register bundle/tx-data-duration-seconds)
+    (.register (metrics/thread-pool-executor-collector
+                 [["server" server-executor]
+                  ["transaction-interaction" transaction-interaction-executor]
                   ["transactor" tx/tx-executor]]))))
 
 
@@ -334,7 +356,7 @@
 (defmethod ig/init-key :metrics-server
   [_ {:keys [port handler version]}]
   (log/info "Start metrics server on port" port)
-  (server/init! port handler version))
+  (server/init! port (executors/single-thread-executor) handler version))
 
 
 (defmethod ig/init-key :default

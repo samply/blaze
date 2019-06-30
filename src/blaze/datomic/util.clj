@@ -219,4 +219,14 @@
   :ret nat-int?)
 
 (defn resource-type-total [db type]
-  (get (d/entity db (keyword type)) :total 0))
+  (- (get (d/entity db (keyword type)) :type/total 0)))
+
+
+(s/fdef system-version
+  :args (s/cat :db ::ds/db)
+  :ret nat-int?)
+
+(defn system-version
+  "Returns the number of resource changes in the whole system."
+  [db]
+  (- (get (d/entity db :system) :system/version 0)))

@@ -14,14 +14,10 @@
     [ring.util.response :as ring]))
 
 
-(defn- total* [db]
-  (- (get (d/entity db :system) :system/version 0)))
-
-
 (defn- total [db since-t]
-  (let [total (total* db)]
+  (let [total (datomic-util/system-version db)]
     (if since-t
-      (- total (total* (d/as-of db since-t)))
+      (- total (datomic-util/system-version (d/as-of db since-t)))
       total)))
 
 

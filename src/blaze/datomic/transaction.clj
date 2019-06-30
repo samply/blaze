@@ -15,7 +15,7 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
-    [prometheus.alpha :as prom]
+    [prometheus.alpha :as prom :refer [defcounter defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
@@ -23,7 +23,8 @@
     [java.time.format DateTimeFormatter]
     [java.util Base64]
     [java.util Date Map$Entry UUID]
-    [java.util.concurrent ExecutionException Executors]))
+    [java.util.concurrent ExecutionException TimeUnit ThreadPoolExecutor
+                          ArrayBlockingQueue RejectedExecutionException]))
 
 
 (defn- ident->path [ident]
@@ -806,7 +807,7 @@
 
 (defn- prepare-resource
   "Removes versionId and lastUpdated from meta because both will be set at read
-  time from :version attribute and its transaction."
+  time from :instance/version attribute and its transaction."
   [resource]
   (update resource "meta" dissoc "versionId" "lastUpdated"))
 
@@ -841,7 +842,7 @@
   (s/map-of string? some?))
 
 
-(prom/defhistogram resource-upsert-duration-seconds
+(defhistogram resource-upsert-duration-seconds
   "Datomic resource upsert transaction data generating latencies in seconds."
   {:namespace "datomic"
    :subsystem "transaction"}
@@ -859,9 +860,10 @@
 
   The resource has to have at least a `resourceType` and an `id`.
 
-  Resources have an internal :version attribute that will be incremented on each
-  update using CAS for optimistic locking. The function `transact-async` will
-  return an error deferred with ::anom/conflict on optimistic locking conflicts.
+  Resources have an internal :instance/version attribute that will be
+  incremented on each update using CAS for optimistic locking. The function
+  `transact-async` will return an error deferred with ::anom/conflict on
+  optimistic locking conflicts.
 
   Resources are maps taken straight from there parsed JSON with string keys.
 
@@ -941,14 +943,20 @@
 
 
 (def tx-executor
-  (Executors/newWorkStealingPool 20))
+  (ThreadPoolExecutor. 20 20 1 TimeUnit/MINUTES (ArrayBlockingQueue. 100)))
 
 
-(prom/defhistogram execution-duration-seconds
+(defhistogram execution-duration-seconds
   "Datomic transaction execution latencies in seconds."
   {:namespace "datomic"
    :subsystem "transaction"}
   (take 14 (iterate #(* 2 %) 0.001)))
+
+
+(defcounter resources-total
+  "Total number of FHIR resources transacted."
+  {:namespace "datomic"
+   :subsystem "transaction"})
 
 
 (def ^:private ^:const transact-timeout-ms 10000)
@@ -965,22 +973,32 @@
   Uses an executor with a maximum parallelism of 20 and times out after 10
   seconds."
   [conn tx-data]
-  (-> (md/future-with tx-executor
-        (with-open [_ (prom/timer execution-duration-seconds)]
-          (let [result (deref (d/transact-async conn tx-data)
-                              transact-timeout-ms ::timed-out)]
-            (if (= ::timed-out result)
-              (md/error-deferred
-                {::anom/category ::anom/busy
-                 ::anom/message "Transaction timed out."})
-              result))))
-      (md/catch' ExecutionException #(md/error-deferred (ex-cause %)))
-      (md/catch'
-        (fn [e]
-          (md/error-deferred
-            (assoc (ex-data e)
-              ::anom/category (category e)
-              ::anom/message (ex-message e)))))))
+  (try
+    (-> (md/future-with tx-executor
+          (with-open [_ (prom/timer execution-duration-seconds)]
+            (let [result (deref (d/transact-async conn tx-data)
+                                transact-timeout-ms ::timed-out)]
+              (if (= ::timed-out result)
+                (md/error-deferred
+                  {::anom/category ::anom/busy
+                   ::anom/message "Transaction timed out."})
+                result))))
+        (md/chain'
+          (fn [{:keys [db-before db-after] :as tx-result}]
+            (prom/inc! resources-total (- (util/system-version db-after)
+                                          (util/system-version db-before)))
+            tx-result))
+        (md/catch' ExecutionException #(md/error-deferred (ex-cause %)))
+        (md/catch'
+          (fn [e]
+            (md/error-deferred
+              (assoc (ex-data e)
+                ::anom/category (category e)
+                ::anom/message (ex-message e))))))
+    (catch RejectedExecutionException _
+      (md/error-deferred
+        {::anom/category ::anom/busy
+         ::anom/message "The database is busy. Please try again later."}))))
 
 
 (s/fdef resource-tempid
@@ -1039,7 +1057,7 @@
 
 (defn- create-codes-non-primitive-element
   {:arglists '([context element value])}
-  [context {:element/keys [type] :as element} value]
+  [context {:element/keys [type]} value]
   (create-codes context type value))
 
 

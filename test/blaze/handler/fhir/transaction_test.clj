@@ -8,6 +8,7 @@
     [blaze.bundle :as bundle]
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.datomic.util :as util]
+    [blaze.executors :as executors]
     [blaze.handler.fhir.test-util :as test-util]
     [blaze.handler.fhir.transaction :refer [handler]]
     [clojure.spec.alpha :as s]
@@ -20,10 +21,6 @@
     [java.time Instant]))
 
 
-(st/instrument)
-(dst/instrument)
-
-
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
@@ -32,7 +29,8 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :base-uri string? :conn #{::conn}))}})
+        :args (s/cat :base-uri string? :conn #{::conn}
+                     :executor executors/executor?))}})
   (datomic-test-util/stub-db ::conn ::db-before)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
@@ -42,6 +40,9 @@
 
 
 (def base-uri "http://localhost:8080")
+
+
+(defonce executor (executors/single-thread-executor))
 
 
 (defn- stub-tx-instant [transaction instant]
@@ -85,7 +86,7 @@
     (datomic-test-util/stub-cached-entity ::db-before #{:Foo} nil?)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler base-uri ::conn executor)
             {:body
              {"resourceType" "Bundle"
               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -108,7 +109,7 @@
     (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler base-uri ::conn executor)
             {:body
              {"resourceType" "Bundle"
               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -137,7 +138,7 @@
     (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler base-uri ::conn executor)
             {:body
              {"resourceType" "Bundle"
               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -178,7 +179,7 @@
       (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
+            @((handler base-uri ::conn executor)
               {:body
                {"resourceType" "Bundle"
                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -228,7 +229,7 @@
       (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
+            @((handler base-uri ::conn executor)
               {:body
                {"resourceType" "Bundle"
                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -266,7 +267,7 @@
       (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
+            @((handler base-uri ::conn executor)
               {:body
                {"resourceType" "Bundle"
                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -315,7 +316,7 @@
       (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
+            @((handler base-uri ::conn executor)
               {:body
                {"resourceType" "Bundle"
                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -352,7 +353,7 @@
       (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
+            @((handler base-uri ::conn executor)
               {:body
                {"resourceType" "Bundle"
                 "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
@@ -410,7 +411,7 @@
       (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
+            @((handler base-uri ::conn executor)
               {:body
                {"resourceType" "Bundle"
                 "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
