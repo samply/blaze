@@ -58,7 +58,8 @@
       (datomic-test-util/stub-instance-transaction-history ::db 0 [::tx])
       (datomic-test-util/stub-entity ::db #{0} #{patient})
       (datomic-test-util/stub-ordinal-version patient 1)
-      (history-test-util/stub-build-entry base-uri ::db ::tx 0 ::entry))
+      (history-test-util/stub-build-entry
+        base-uri ::db #{::tx} #{0} (constantly ::entry)))
 
     (let [{:keys [status body]}
           @((handler base-uri ::conn)

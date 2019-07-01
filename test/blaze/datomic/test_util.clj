@@ -101,6 +101,17 @@
      #{`d/basis-t}}))
 
 
+(defn stub-datoms [db index components-spec replace-fn]
+  (st/instrument
+    [`d/datoms]
+    {:spec
+     {`d/datoms
+      (s/fspec
+        :args (s/cat :db #{db} :index #{index} :components components-spec))}
+     :replace
+     {`d/datoms replace-fn}}))
+
+
 (defn stub-db [conn db]
   (st/instrument
     [`d/db]
@@ -123,6 +134,18 @@
         :ret entity-spec)}
      :stub
      #{`d/entity}}))
+
+
+(defn stub-entity-db [entity-spec db]
+  (st/instrument
+    [`d/entity-db]
+    {:spec
+     {`d/entity-db
+      (s/fspec
+        :args (s/cat :entity entity-spec)
+        :ret #{db})}
+     :stub
+     #{`d/entity-db}}))
 
 
 (defn stub-squuid [id]

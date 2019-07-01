@@ -89,14 +89,20 @@
         conn (into tx-data (delete-system-and-type-tx-data db type id))))))
 
 
-(def ^:private ^:const max-page-size 50)
+(def ^:private ^:const default-page-size 50)
+(def ^:private ^:const max-page-size 500)
 
+
+(s/fdef page-size
+  :args (s/cat :query-params (s/map-of string? string?))
+  :ret nat-int?)
 
 (defn page-size
-  "Returns the page size as minimum from a possible `_count` param and the max
-  page size of 50."
-  {:arglists '([params])}
+  "Returns the page size taken from a possible `_count` query param.
+
+  The default page size is 50 and the maximum page size is 500."
+  {:arglists '([query-params])}
   [{count "_count"}]
-  (if (and count (re-matches #"\d+" count))
+  (if (some->> count (re-matches #"\d+"))
     (min (Long/parseLong count) max-page-size)
-    max-page-size))
+    default-page-size))
