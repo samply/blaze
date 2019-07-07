@@ -34,7 +34,7 @@
 
 (defn- resolve-single-element-links
   [{:keys [index] :as context}
-   {:db/keys [ident] :element/keys [type-code primitive? type]}
+   {:element/keys [type-code primitive? type]}
    value]
   (cond
     (= "Reference" type-code)
@@ -45,8 +45,8 @@
     primitive?
     value
 
-    (= "BackboneElement" type-code)
-    (resolve-links context ident value)
+    (= "Resource" type-code)
+    (resolve-links context (keyword (get value "resourceType")) value)
 
     :else
     (resolve-links context type value)))
@@ -60,16 +60,17 @@
 
 
 (defn- resolve-links
-  [{:keys [db] :as context} type-ident entity]
+  [{:keys [db] :as context} type-ident resource]
   (transduce
-    (comp
-      (map #(util/cached-entity db %)))
+    (map #(util/cached-entity db %))
     (completing
-      (fn [entity element]
-        (if-let [[value {:element/keys [json-key] :as element}] (tx/find-json-value db element entity)]
-          (assoc entity json-key (resolve-element-links context element value))
-          entity)))
-    entity
+      (fn [resource element]
+        (if-let [[value {:element/keys [json-key] :as element}]
+                 (tx/find-json-value db element resource)]
+          (assoc resource
+            json-key (resolve-element-links context element value))
+          resource)))
+    resource
     (:type/elements (util/cached-entity db type-ident))))
 
 

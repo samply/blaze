@@ -71,18 +71,12 @@
   (def db (d/db conn))
   (def hdb (d/history db))
 
-  (d/part (d/entid db :system))
-  (d/part (d/entid db :Patient))
-  (d/ident db 4)
-
-
-
-
   (count-resources (d/db conn) "Coding")
   (count-resources (d/db conn) "Organization")
   (count-resources (d/db conn) "Patient")
   (count-resources (d/db conn) "Specimen")
   (count-resources (d/db conn) "Observation")
+
   (d/pull (d/db conn) '[*] 1262239348687945)
   (d/entity (d/db conn) [:Patient/id "0"])
   (d/q '[:find (pull ?e [*]) :where [?e :code/id]] (d/db conn))

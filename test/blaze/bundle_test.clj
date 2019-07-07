@@ -98,6 +98,31 @@
         [1 "resource" "diagnosis" 0 "diagnosisReference" "reference"] := "Condition/0"))))
 
 
+(deftest resolve-entry-links-in-contained-resources-test
+  (let [entries
+        [{"fullUrl" "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"
+          "resource"
+          {"resourceType" "Patient"
+           "id" "0"}
+          "request"
+          {"method" "POST"
+           "url" "Patient"}}
+         {"fullUrl" "urn:uuid:d0f40d1f-2f95-4990-a994-8182cfe71bc2"
+          "resource"
+          {"resourceType" "ExplanationOfBenefit"
+           "id" "0"
+           "contained"
+           [{"resourceType" "ServiceRequest"
+             "id" "0"
+             "subject"
+             {"reference" "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
+          "request"
+          {"method" "POST"
+           "url" "ExplanationOfBenefit"}}]]
+    (given (resolve-entry-links db entries)
+      [1 "resource" "contained" 0 "subject" "reference"] := "Patient/0")))
+
+
 (deftest tx-data-test
   (testing "Single POST"
     (let [resource {"resourceType" "Patient" "id" "0"}]

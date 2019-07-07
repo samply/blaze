@@ -222,6 +222,22 @@
             [:db/add "Patient.extension" :element/type "Extension"]
             [:db/add "Patient" :type/elements "Patient.extension"]])))
 
+  (testing "Patient.contained"
+    (is (= (element-definition-tx-data
+             (structure-definition "Patient")
+             (element-definition "Patient.contained"))
+           [{:db/valueType :db.type/ref
+             :db/isComponent true
+             :element/type-code "Resource"
+             :element/choice-type? false
+             :element/json-key "contained"
+             :db/cardinality :db.cardinality/many
+             :db/id "Patient.contained"
+             :db/ident :Patient/contained
+             :element/primitive? false}
+            [:db/add "Patient.contained" :element/type "Resource"]
+            [:db/add "Patient" :type/elements "Patient.contained"]])))
+
   (testing "Observation.code"
     (is (= (element-definition-tx-data
              (structure-definition "Observation")
