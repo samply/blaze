@@ -714,6 +714,26 @@
              [:db/add id :ConceptMap/group :part/ConceptMap.group]
              [:db.fn/cas id :instance/version -3 -7]]))))
 
+
+    (testing "String typed extension"
+      (let [[db id] (with-resource db "Patient" "0")]
+        (is
+          (=
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "Patient"
+                 "extension"
+                 [{"url" "http://foo"
+                   "valueString" "bar"}]}))
+            [[:db/add :part/Extension :Extension/valueString "bar"]
+             [:db/add :part/Extension :Extension/value :Extension/valueString]
+             [:db/add :part/Extension :Extension/url "http://foo"]
+             [:db/add id :Patient/extension :part/Extension]
+             [:db.fn/cas id :instance/version -3 -7]]))))
+
+
     (testing "Code typed extension"
       ;; TODO: resolve the value set binding here
       (let [[db draft-id] (with-code db "draft")
@@ -731,6 +751,7 @@
             [[:db/add extension-id :Extension/valueCode draft-id]
              [:db/add extension-id :Extension/value :Extension/valueCode]
              [:db.fn/cas id :instance/version -3 -7]]))))
+
 
     (testing "ValueSet compose include system"
       (let [[db id] (with-resource db "ValueSet" "0")]

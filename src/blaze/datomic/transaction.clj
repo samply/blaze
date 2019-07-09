@@ -959,7 +959,10 @@
    :subsystem "transaction"})
 
 
-(def ^:private ^:const transact-timeout-ms 10000)
+(defcounter datoms-total
+  "Total number of Datoms created."
+  {:namespace "datomic"
+   :subsystem "transaction"})
 
 
 (s/fdef transact-async
@@ -976,20 +979,16 @@
   (try
     (-> (md/future-with tx-executor
           (with-open [_ (prom/timer execution-duration-seconds)]
-            (let [result (deref (d/transact-async conn tx-data)
-                                transact-timeout-ms ::timed-out)]
-              (if (= ::timed-out result)
-                (md/error-deferred
-                  {::anom/category ::anom/busy
-                   ::anom/message "Transaction timed out."})
-                result))))
+            @(d/transact-async conn tx-data)))
         (md/chain'
-          (fn [{:keys [db-before db-after] :as tx-result}]
+          (fn [{:keys [db-before db-after tx-data] :as tx-result}]
             (prom/inc! resources-total (- (util/system-version db-after)
                                           (util/system-version db-before)))
+            (prom/inc! datoms-total (count tx-data))
             tx-result))
         (md/catch' ExecutionException #(md/error-deferred (ex-cause %)))
         (md/catch'
+          Exception
           (fn [e]
             (md/error-deferred
               (assoc (ex-data e)
@@ -998,7 +997,12 @@
     (catch RejectedExecutionException _
       (md/error-deferred
         {::anom/category ::anom/busy
-         ::anom/message "The database is busy. Please try again later."}))))
+         ::anom/message "The database is busy. Please try again later."}))
+    (catch Exception e
+      (log/error e)
+      (md/error-deferred
+        {::anom/category ::anom/fault
+         ::anom/message (ex-message e)}))))
 
 
 (s/fdef resource-tempid

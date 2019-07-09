@@ -341,6 +341,7 @@
     (.register tx/resource-upsert-duration-seconds)
     (.register tx/execution-duration-seconds)
     (.register tx/resources-total)
+    (.register tx/datoms-total)
     (.register bundle/tx-data-duration-seconds)
     (.register (metrics/thread-pool-executor-collector
                  [["server" server-executor]
