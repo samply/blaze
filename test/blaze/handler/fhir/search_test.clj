@@ -61,6 +61,9 @@
         (testing "Bundle type is searchset"
           (is (= "searchset" (:type body))))
 
+        (testing "total is 1"
+          (is (= 1 (:total body))))
+
         (testing "contains one entry"
           (is (= 1 (count (:entry body)))))
 
@@ -69,6 +72,44 @@
 
         (testing "The entry has the right resource"
           (is (= patient (-> body :entry first :resource)))))))
+
+  (testing "Summary Count"
+    (datomic-test-util/stub-resource-type-total ::db "Patient" 42)
+
+    (let [{:keys [status body]}
+          @((handler base-uri ::conn)
+            {:path-params {:type "Patient"}
+             :params {"_summary" "count"}})]
+
+      (is (= 200 status))
+
+      (testing "Body contains a bundle"
+        (is (= "Bundle" (:resourceType body))))
+
+      (testing "Bundle type is searchset"
+        (is (= "searchset" (:type body))))
+
+      (testing "total is 42"
+        (is (= 42 (:total body))))))
+
+  (testing "Count Zero (equal to Summary Count)"
+    (datomic-test-util/stub-resource-type-total ::db "Patient" 23)
+
+    (let [{:keys [status body]}
+          @((handler base-uri ::conn)
+            {:path-params {:type "Patient"}
+             :params {"_count" "0"}})]
+
+      (is (= 200 status))
+
+      (testing "Body contains a bundle"
+        (is (= "Bundle" (:resourceType body))))
+
+      (testing "Bundle type is searchset"
+        (is (= "searchset" (:type body))))
+
+      (testing "total is 42"
+        (is (= 23 (:total body))))))
 
 
   (testing "Identifier search"

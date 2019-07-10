@@ -29,30 +29,41 @@
             (matches? value)))))))
 
 
-(defn- entry [base-uri {:strs [resourceType id] :as resource}]
-  {:fullUrl (str base-uri "/fhir/" resourceType "/" id)
-   :resource resource})
+(defn- entry
+  [base-uri {type "resourceType" id "id" :as resource}]
+  {:fullUrl (str base-uri "/fhir/" type "/" id)
+   :resource resource
+   :search {:mode "match"}})
 
 
-(defn- search [base-uri db type params]
-  (let [pred (resource-pred db type params)]
+(defn- summary?
+  "Returns true iff a summary result is requested."
+  [{summary "_summary" :as query-params}]
+  (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
+
+
+(defn- search [base-uri db type query-params]
+  (let [pred (resource-pred db type query-params)]
     (cond->
       {:resourceType "Bundle"
-       :type "searchset"
-       :entry
-       (into
-         []
-         (comp
-           (map #(d/entity db (:e %)))
-           (filter (or pred (fn [_] true)))
-           (map #(pull/pull-resource* db type %))
-           (filter #(not (:deleted (meta %))))
-           (take (fhir-util/page-size params))
-           (map #(entry base-uri %)))
-         (d/datoms db :aevt (util/resource-id-attr type)))}
+       :type "searchset"}
 
       (nil? pred)
-      (assoc :total (util/resource-type-total db type)))))
+      (assoc :total (util/resource-type-total db type))
+
+      (not (summary? query-params))
+      (assoc
+        :entry
+        (into
+          []
+          (comp
+            (map #(d/entity db (:e %)))
+            (filter (or pred (fn [_] true)))
+            (map #(pull/pull-resource* db type %))
+            (filter #(not (:deleted (meta %))))
+            (take (fhir-util/page-size query-params))
+            (map #(entry base-uri %)))
+          (d/datoms db :aevt (util/resource-id-attr type)))))))
 
 
 (defn- handler-intern [base-uri conn]

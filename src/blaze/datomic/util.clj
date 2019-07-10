@@ -218,7 +218,9 @@
   :args (s/cat :db ::ds/db :type string?)
   :ret nat-int?)
 
-(defn resource-type-total [db type]
+(defn resource-type-total
+  "Returns the total number of resources with `type` in `db`."
+  [db type]
   (- (get (d/entity db (keyword type)) :type/total 0)))
 
 
