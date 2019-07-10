@@ -4,6 +4,7 @@
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
     [blaze.bundle :as bundle]
+    [blaze.datomic.pull :as pull]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
     [blaze.executors :as executors]
@@ -209,39 +210,42 @@
 
 
 (defn- build-entry
-  [base-uri
+  [base-uri return-preference
    {{type "resourceType" id "id"} "resource" {db :db-after} :blaze/tx-result
-    :blaze/keys [old-resource] :keys [response] :as entry}]
+    :blaze/keys [old-resource] :keys [response]}]
   (if response
-    (dissoc entry :blaze/type :blaze/id)
+    {:response response}
     (let [last-modified (util/tx-instant (util/basis-transaction db))
-          versionId (d/basis-t db)
-          response
-          (cond->
-            {:status (str (if old-resource 200 201))
-             :etag (str "W/\"" versionId "\"")
-             :lastModified (str last-modified)}
-            (nil? old-resource)
-            (assoc :location (str base-uri "/fhir/" type "/" id "/_history/" versionId)))]
-      (-> entry
-          (assoc :response response)
-          (dissoc :blaze/type :blaze/id :blaze/tx-result)))))
+          versionId (d/basis-t db)]
+      (cond->
+        {:response
+         (cond->
+           {:status (str (if old-resource 200 201))
+            :etag (str "W/\"" versionId "\"")
+            :lastModified (str last-modified)}
+           (nil? old-resource)
+           (assoc :location (str base-uri "/fhir/" type "/" id "/_history/" versionId)))}
+
+        (= "representation" return-preference)
+        (assoc :resource (pull/pull-resource db type id))))))
 
 
-(defn- build-response [base-uri bundle-type entries]
+(defn- build-response [base-uri return-preference bundle-type entries]
   (ring/response
     {:resourceType "Bundle"
      :type (str bundle-type "-response")
-     :entry (mapv #(build-entry base-uri %) entries)}))
+     :entry (mapv #(build-entry base-uri return-preference %) entries)}))
 
 
 (defn- handler-intern [base-uri conn executor]
-  (fn [{{:strs [type] :as bundle} :body}]
+  (fn [{{:strs [type] :as bundle} :body :keys [headers]}]
     (let [db (d/db conn)]
       (-> (md/future-with executor
             (validate-and-prepare-bundle db bundle))
           (md/chain' #(transact conn db type %))
-          (md/chain' #(build-response base-uri type %))
+          (md/chain'
+            #(build-response
+               base-uri (handler-util/preference headers "return") type %))
           (md/catch' handler-util/error-response)))))
 
 

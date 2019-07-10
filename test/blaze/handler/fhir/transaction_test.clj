@@ -315,26 +315,30 @@
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (datomic-test-util/stub-basis-t ::db-after 42)
 
-      (let [{:keys [status body]}
-            @((handler base-uri ::conn executor)
-              {:body
-               {"resourceType" "Bundle"
-                "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                "type" "transaction"
-                "entry" entries}})]
+      (testing "with no Prefer header"
+        (let [{:keys [status body]}
+              @((handler base-uri ::conn executor)
+                {:body
+                 {"resourceType" "Bundle"
+                  "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
+                  "type" "transaction"
+                  "entry" entries}})]
 
-        (is (= 200 status))
+          (is (= 200 status))
 
-        (is (= "Bundle" (:resourceType body)))
+          (is (= "Bundle" (:resourceType body)))
 
-        (is (= "transaction-response" (:type body)))
+          (is (= "transaction-response" (:type body)))
 
-        (is (= "200" (-> body :entry first :response :status)))
+          (is (= "200" (-> body :entry first :response :status)))
 
-        (is (= "W/\"42\"" (-> body :entry first :response :etag)))
+          (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 
-        (is (= "1970-01-01T00:00:00Z"
-               (-> body :entry first :response :lastModified))))))
+          (is (= "1970-01-01T00:00:00Z"
+                 (-> body :entry first :response :lastModified)))
+
+          (testing "there is no resource embedded in the entry"
+            (is (nil? (-> body :entry first :resource))))))))
 
 
   (testing "On create in batch"
@@ -352,34 +356,65 @@
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (datomic-test-util/stub-basis-t ::db-after 42)
 
-      (let [{:keys [status body]}
-            @((handler base-uri ::conn executor)
-              {:body
-               {"resourceType" "Bundle"
-                "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
-                "type" "batch"
-                "entry"
-                [{"resource"
-                  resource
-                  "request"
-                  {"method" "POST"
-                   "url" "Patient"}}]}})]
+      (testing "with no Prefer header"
+        (let [{:keys [status body]}
+              @((handler base-uri ::conn executor)
+                {:body
+                 {"resourceType" "Bundle"
+                  "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
+                  "type" "batch"
+                  "entry"
+                  [{"resource"
+                    resource
+                    "request"
+                    {"method" "POST"
+                     "url" "Patient"}}]}})]
 
-        (is (= 200 status))
+          (is (= 200 status))
 
-        (is (= "Bundle" (:resourceType body)))
+          (is (= "Bundle" (:resourceType body)))
 
-        (is (= "batch-response" (:type body)))
+          (is (= "batch-response" (:type body)))
 
-        (is (= "201" (-> body :entry first :response :status)))
+          (is (= "201" (-> body :entry first :response :status)))
 
-        (is (= (str "http://localhost:8080/fhir/Patient/" id "/_history/42")
-               (-> body :entry first :response :location)))
+          (is (= (str "http://localhost:8080/fhir/Patient/" id "/_history/42")
+                 (-> body :entry first :response :location)))
 
-        (is (= "W/\"42\"" (-> body :entry first :response :etag)))
+          (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 
-        (is (= "1970-01-01T00:00:00Z"
-               (-> body :entry first :response :lastModified))))))
+          (is (= "1970-01-01T00:00:00Z"
+                 (-> body :entry first :response :lastModified)))
+
+          (testing "there is no resource embedded in the entry"
+            (is (nil? (-> body :entry first :resource))))))
+
+      (testing "with return=representation Prefer header"
+        (datomic-test-util/stub-pull-resource
+          ::db-after "Patient" (str id) #{::resource})
+
+        (let [{:keys [status body]}
+              @((handler base-uri ::conn executor)
+                {:headers {"prefer" "return=representation"}
+                 :body
+                 {"resourceType" "Bundle"
+                  "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
+                  "type" "batch"
+                  "entry"
+                  [{"resource"
+                    resource
+                    "request"
+                    {"method" "POST"
+                     "url" "Patient"}}]}})]
+
+          (is (= 200 status))
+
+          (is (= "Bundle" (:resourceType body)))
+
+          (is (= "batch-response" (:type body)))
+
+          (testing "there is a resource embedded in the entry"
+            (is (= ::resource (-> body :entry first :resource))))))))
 
 
   (testing "On create in transaction with references"
