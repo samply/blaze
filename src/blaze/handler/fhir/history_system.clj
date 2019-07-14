@@ -47,7 +47,7 @@
     transactions))
 
 
-(defn- build-response [base-uri db match since-t query-params transactions]
+(defn- build-response [router db match since-t query-params transactions]
   (let [page-size (fhir-util/page-size query-params)
         entries (entries (history-util/page-eid query-params) (inc page-size) transactions)
         more-entries-available? (< page-size (count entries))]
@@ -56,18 +56,18 @@
         {:resourceType "Bundle"
          :type "history"
          :total (total db since-t)
-         :link [(history-util/nav-link base-uri match query-params "self" (first entries))]
+         :link [(history-util/nav-link match query-params "self" (first entries))]
          :entry
          (into
            []
            (comp
              (take page-size)
-             (map (fn [[tx eid]] (history-util/build-entry base-uri db tx eid))))
+             (map (fn [[tx eid]] (history-util/build-entry router db tx eid))))
            entries)}
 
         more-entries-available?
         (update :link conj
-                (history-util/nav-link base-uri match query-params "next" (peek entries)))))))
+                (history-util/nav-link match query-params "next" (peek entries)))))))
 
 
 (defn- tx-db
@@ -84,11 +84,11 @@
     (if page-t (d/as-of tx-db page-t) tx-db)))
 
 
-(defn- handle [base-uri db match query-params t]
+(defn- handle [router db match query-params t]
   (let [since-t (history-util/since-t db query-params)
         tx-db (tx-db db since-t t)
         transactions (datomic-util/system-transaction-history tx-db)]
-    (build-response base-uri db match since-t query-params transactions)))
+    (build-response router db match since-t query-params transactions)))
 
 
 (defn- db [conn t]
@@ -97,23 +97,23 @@
     (d/db conn)))
 
 
-(defn- handler-intern [base-uri conn]
-  (fn [{:keys [query-params] ::reitit/keys [match]}]
+(defn- handler-intern [conn]
+  (fn [{:keys [query-params] ::reitit/keys [router match]}]
     (let [t (history-util/page-t query-params)]
       (-> (db conn t)
-          (md/chain #(handle base-uri % match query-params t))))))
+          (md/chain #(handle router % match query-params t))))))
 
 
 (s/def :handler.fhir/history-system fn?)
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :conn ::ds/conn)
+  :args (s/cat :conn ::ds/conn)
   :ret :handler.fhir/history-system)
 
 (defn handler
   ""
-  [base-uri conn]
-  (-> (handler-intern base-uri conn)
+  [conn]
+  (-> (handler-intern conn)
       (wrap-params)
       (wrap-observe-request-duration "history-system")))

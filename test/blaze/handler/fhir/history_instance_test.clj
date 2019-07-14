@@ -12,6 +12,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic-spec.test :as dst]
+    [reitit.core :as reitit]
     [taoensso.timbre :as log]))
 
 
@@ -23,15 +24,12 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :base-uri string? :conn #{::conn}))}})
+        :args (s/cat :conn #{::conn}))}})
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
 (use-fixtures :each fixture)
-
-
-(def base-uri "http://localhost:8080")
 
 
 (deftest handler-test
@@ -40,7 +38,7 @@
     (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler ::conn)
             {:path-params {:type "Patient" :id "0"}})]
 
       (is (= 404 status))
@@ -59,11 +57,12 @@
       (datomic-test-util/stub-entity ::db #{0} #{patient})
       (datomic-test-util/stub-ordinal-version patient 1)
       (history-test-util/stub-build-entry
-        base-uri ::db #{::tx} #{0} (constantly ::entry)))
+        ::router ::db #{::tx} #{0} (constantly ::entry)))
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
-            {:path-params {:type "Patient" :id "0"}})]
+          @((handler ::conn)
+            {::reitit/router ::router
+             :path-params {:type "Patient" :id "0"}})]
 
       (is (= 200 status))
 

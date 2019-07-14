@@ -10,6 +10,7 @@
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
+    [reitit.core :as reitit]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]))
 
@@ -30,8 +31,8 @@
 
 
 (defn- entry
-  [base-uri {type "resourceType" id "id" :as resource}]
-  {:fullUrl (str base-uri "/fhir/" type "/" id)
+  [router {type "resourceType" id "id" :as resource}]
+  {:fullUrl (fhir-util/instance-url router type id)
    :resource resource
    :search {:mode "match"}})
 
@@ -42,7 +43,7 @@
   (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 
 
-(defn- search [base-uri db type query-params]
+(defn- search [router db type query-params]
   (let [pred (resource-pred db type query-params)]
     (cond->
       {:resourceType "Bundle"
@@ -62,13 +63,13 @@
             (map #(pull/pull-resource* db type %))
             (filter #(not (:deleted (meta %))))
             (take (fhir-util/page-size query-params))
-            (map #(entry base-uri %)))
+            (map #(entry router %)))
           (d/datoms db :aevt (util/resource-id-attr type)))))))
 
 
-(defn- handler-intern [base-uri conn]
-  (fn [{{:keys [type]} :path-params :keys [params]}]
-    (-> (search base-uri (d/db conn) type params)
+(defn- handler-intern [conn]
+  (fn [{{:keys [type]} :path-params :keys [params] ::reitit/keys [router]}]
+    (-> (search router (d/db conn) type params)
         (ring/response))))
 
 
@@ -76,12 +77,12 @@
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :conn ::ds/conn)
+  :args (s/cat :conn ::ds/conn)
   :ret :handler.fhir/search)
 
 (defn handler
   ""
-  [base-uri conn]
-  (-> (handler-intern base-uri conn)
+  [conn]
+  (-> (handler-intern conn)
       (wrap-params)
       (wrap-observe-request-duration "search-type")))

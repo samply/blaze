@@ -9,6 +9,7 @@
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.datomic.util :as util]
     [blaze.executors :as executors]
+    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.fhir.test-util :as test-util]
     [blaze.handler.fhir.transaction :refer [handler]]
     [clojure.spec.alpha :as s]
@@ -16,6 +17,7 @@
     [clojure.test :refer :all]
     [datomic-spec.test :as dst]
     [manifold.deferred :as md]
+    [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
@@ -29,17 +31,13 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :base-uri string? :conn #{::conn}
-                     :executor executors/executor?))}})
+        :args (s/cat :conn #{::conn} :executor executors/executor?))}})
   (datomic-test-util/stub-db ::conn ::db-before)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
 (use-fixtures :each fixture)
-
-
-(def base-uri "http://localhost:8080")
 
 
 (defonce executor (executors/single-thread-executor))
@@ -86,7 +84,7 @@
     (datomic-test-util/stub-cached-entity ::db-before #{:Foo} nil?)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn executor)
+          @((handler ::conn executor)
             {:body
              {"resourceType" "Bundle"
               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -109,7 +107,7 @@
     (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn executor)
+          @((handler ::conn executor)
             {:body
              {"resourceType" "Bundle"
               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -138,7 +136,7 @@
     (datomic-test-util/stub-cached-entity ::db-before #{:Patient} some?)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn executor)
+          @((handler ::conn executor)
             {:body
              {"resourceType" "Bundle"
               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -177,10 +175,12 @@
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (datomic-test-util/stub-basis-t ::db-after 42)
+      (test-util/stub-versioned-instance-url ::router "Patient" "0" "42" ::location)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn executor)
-              {:body
+            @((handler ::conn executor)
+              {::reitit/router ::router
+               :body
                {"resourceType" "Bundle"
                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
                 "type" "batch"
@@ -199,8 +199,7 @@
 
         (is (= "201" (-> body :entry first :response :status)))
 
-        (is (= "http://localhost:8080/fhir/Patient/0/_history/42"
-               (-> body :entry first :response :location)))
+        (is (= ::location (-> body :entry first :response :location)))
 
         (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 
@@ -227,10 +226,12 @@
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (datomic-test-util/stub-basis-t ::db-after 42)
+      (test-util/stub-versioned-instance-url ::router "Patient" "0" "42" ::location)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn executor)
-              {:body
+            @((handler ::conn executor)
+              {::reitit/router ::router
+               :body
                {"resourceType" "Bundle"
                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
                 "type" "transaction"
@@ -244,8 +245,7 @@
 
         (is (= "201" (-> body :entry first :response :status)))
 
-        (is (= "http://localhost:8080/fhir/Patient/0/_history/42"
-               (-> body :entry first :response :location)))
+        (is (= ::location (-> body :entry first :response :location)))
 
         (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 
@@ -267,7 +267,7 @@
       (datomic-test-util/stub-basis-t ::db-after 42)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn executor)
+            @((handler ::conn executor)
               {:body
                {"resourceType" "Bundle"
                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -317,7 +317,7 @@
 
       (testing "with no Prefer header"
         (let [{:keys [status body]}
-              @((handler base-uri ::conn executor)
+              @((handler ::conn executor)
                 {:body
                  {"resourceType" "Bundle"
                   "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
@@ -355,11 +355,13 @@
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (datomic-test-util/stub-basis-t ::db-after 42)
+      (test-util/stub-versioned-instance-url ::router "Patient" (str id) "42" ::location)
 
       (testing "with no Prefer header"
         (let [{:keys [status body]}
-              @((handler base-uri ::conn executor)
-                {:body
+              @((handler ::conn executor)
+                {::reitit/router ::router
+                 :body
                  {"resourceType" "Bundle"
                   "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
                   "type" "batch"
@@ -378,8 +380,7 @@
 
           (is (= "201" (-> body :entry first :response :status)))
 
-          (is (= (str "http://localhost:8080/fhir/Patient/" id "/_history/42")
-                 (-> body :entry first :response :location)))
+          (is (= ::location (-> body :entry first :response :location)))
 
           (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 
@@ -394,8 +395,9 @@
           ::db-after "Patient" (str id) #{::resource})
 
         (let [{:keys [status body]}
-              @((handler base-uri ::conn executor)
-                {:headers {"prefer" "return=representation"}
+              @((handler ::conn executor)
+                {::reitit/router ::router
+                 :headers {"prefer" "return=representation"}
                  :body
                  {"resourceType" "Bundle"
                   "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
@@ -444,10 +446,23 @@
       (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
       (datomic-test-util/stub-basis-t ::db-after 42)
+      (test-util/stub-versioned-instance-url ::router "Patient" (str id) "42" ::location)
+      (st/instrument
+        [`fhir-util/versioned-instance-url]
+        {:spec
+         {`fhir-util/versioned-instance-url
+          (s/fspec
+            :args (s/cat :router #{::router} :type string? :id string?
+                         :vid string?))}
+         :replace
+         {`fhir-util/versioned-instance-url
+          (fn [_ type _ _]
+            (keyword "location" type))}})
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn executor)
-              {:body
+            @((handler ::conn executor)
+              {::reitit/router ::router
+               :body
                {"resourceType" "Bundle"
                 "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
                 "type" "transaction"
@@ -463,11 +478,9 @@
 
         (is (= "201" (-> body :entry second :response :status)))
 
-        (is (= (str "http://localhost:8080/fhir/Observation/" id "/_history/42")
-               (-> body :entry first :response :location)))
+        (is (= :location/Observation (-> body :entry first :response :location)))
 
-        (is (= (str "http://localhost:8080/fhir/Patient/" id "/_history/42")
-               (-> body :entry second :response :location)))
+        (is (= :location/Patient (-> body :entry second :response :location)))
 
         (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 

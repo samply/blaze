@@ -8,7 +8,7 @@
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
     [blaze.executors :as executors]
-    [blaze.handler.fhir.util :as handler-fhir-util]
+    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
@@ -16,6 +16,7 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
+    [reitit.core :as reitit]
     [ring.util.response :as ring]))
 
 
@@ -133,119 +134,149 @@
         (mapv #(prepare-entry db %) entries)))))
 
 
-(defmulti upsert-entry
-  {:arglists '([conn db entry])}
-  (fn [_ _ {{:strs [method]} "request"}] method))
+(defmulti build-response-entry
+  "Builds the response entry."
+  {:arglists '([context request-entry tx-result])}
+  (fn [_ {{:strs [method]} "request"} _] method))
 
 
-(defmethod upsert-entry "POST"
-  [conn db {:strs [resource]}]
-  (try
-    (handler-fhir-util/upsert-resource conn db :server-assigned-id resource)
-    (catch Exception e
-      (md/error-deferred (ex-data e)))))
+(defmethod build-response-entry "POST"
+  [{:keys [router return-preference]}
+   {{type "resourceType" id "id"} "resource"}
+   {db :db-after}]
+  (let [last-modified (util/tx-instant (util/basis-transaction db))
+        vid (str (d/basis-t db))]
+    (cond->
+      {:response
+       {:status "201"
+        :etag (str "W/\"" vid "\"")
+        :lastModified (str last-modified)
+        :location
+        (fhir-util/versioned-instance-url router type id vid)}}
+
+      (= "representation" return-preference)
+      (assoc :resource (pull/pull-resource db type id)))))
 
 
-(defmethod upsert-entry "PUT"
-  [conn db {:strs [resource]}]
-  (try
-    (handler-fhir-util/upsert-resource conn db :client-assigned-id resource)
-    (catch Exception e
-      (md/error-deferred (ex-data e)))))
+(defmethod build-response-entry "PUT"
+  [{:keys [router return-preference]}
+   {{type "resourceType" id "id"} "resource" :blaze/keys [old-resource]}
+   {db :db-after}]
+  (let [last-modified (util/tx-instant (util/basis-transaction db))
+        vid (str (d/basis-t db))]
+    (cond->
+      {:response
+       (cond->
+         {:status (if old-resource "200" "201")
+          :etag (str "W/\"" vid "\"")
+          :lastModified (str last-modified)}
+         (nil? old-resource)
+         (assoc
+           :location
+           (fhir-util/versioned-instance-url router type id vid)))}
+
+      (= "representation" return-preference)
+      (assoc :resource (pull/pull-resource db type id)))))
 
 
-(defmethod upsert-entry "DELETE"
-  [conn db {:blaze/keys [type id]}]
-  (try
-    (handler-fhir-util/delete-resource conn db type id)
-    (catch Exception e
-      (md/error-deferred (ex-data e)))))
+(defmethod build-response-entry "DELETE"
+  [_ _ {db :db-after}]
+  (let [last-modified (util/tx-instant (util/basis-transaction db))
+        vid (d/basis-t db)]
+    {:response
+     {:status "204"
+      :etag (str "W/\"" vid "\"")
+      :lastModified (str last-modified)}}))
 
 
-(defmulti transact
-  {:arglists '([conn db type prepared-entries])}
-  (fn [_ _ type _] type))
+(defmulti process-batch-entry
+  "Processes one request entry returning the response entry."
+  {:arglists '([context request-entry])}
+  (fn [_ {{:strs [method]} "request"}] method))
 
 
-(defmethod transact "batch" [conn db _ entries]
-  (md/loop [[entry & entries] entries
-            results []]
-    (if entry
-      (if (:response entry)
-        (md/recur entries (conj results entry))
-        (-> (upsert-entry conn db entry)
+(defmethod process-batch-entry "POST"
+  [{:keys [conn db] :as context} {:strs [resource] :as request-entry}]
+  (-> (fhir-util/upsert-resource conn db :server-assigned-id resource)
+      (md/chain' #(build-response-entry context request-entry %))))
+
+
+(defmethod process-batch-entry "PUT"
+  [{:keys [conn db] :as context} {:strs [resource] :as request-entry}]
+  (-> (fhir-util/upsert-resource conn db :client-assigned-id resource)
+      (md/chain' #(build-response-entry context request-entry %))))
+
+
+(defmethod process-batch-entry "DELETE"
+  [{:keys [conn db] :as context} {:blaze/keys [type id] :as request-entry}]
+  (-> (fhir-util/delete-resource conn db type id)
+      (md/chain' #(build-response-entry context request-entry %))))
+
+
+(defmulti process
+  "Processes the prepared entries according the batch or transaction rules and
+  returns the response entries."
+  {:arglists '([context type request-entries])}
+  (fn [_ type _] type))
+
+
+(defmethod process "batch"
+  [context _ request-entries]
+  (md/loop [[request-entry & request-entries] request-entries
+            response-entries []]
+    (if request-entry
+      (if (:response request-entry)
+        (md/recur request-entries (conj response-entries request-entry))
+        (-> (process-batch-entry context request-entry)
             (md/chain'
-              (fn [tx-result]
-                (md/recur
-                  entries
-                  (conj
-                    results
-                    (assoc entry :blaze/tx-result tx-result)))))
+              (fn [response-entry]
+                (md/recur request-entries (conj response-entries response-entry))))
             (md/catch'
               (fn [error]
-                (md/recur
-                  entries
-                  (conj
-                    results
-                    (assoc entry
-                      :response (handler-util/bundle-error-response error))))))))
-      results)))
+                (let [response (handler-util/bundle-error-response error)]
+                  (md/recur request-entries (conj response-entries {:response response})))))))
+      response-entries)))
 
 
-(defn- transact-resources [conn db entries]
-  (-> (tx/transact-async conn (bundle/tx-data db entries))
+(defn- transact-resources
+  [{:keys [conn db] :as context} request-entries]
+  (-> (tx/transact-async conn (bundle/tx-data db request-entries))
       (md/chain'
         (fn [tx-result]
-          (mapv #(assoc % :blaze/tx-result tx-result) entries)))))
+          (mapv
+            #(build-response-entry context % tx-result)
+            request-entries)))))
 
 
-(defmethod transact "transaction" [conn db _ entries]
-  (let [code-tx-data (bundle/code-tx-data db entries)]
+(defmethod process "transaction"
+  [{:keys [conn db] :as context} _ request-entries]
+  (let [code-tx-data (bundle/code-tx-data db request-entries)]
     (if (empty? code-tx-data)
-      (transact-resources conn db entries)
+      (transact-resources context request-entries)
       (-> (tx/transact-async conn code-tx-data)
           (md/chain'
             (fn [{db :db-after}]
-              (transact-resources conn db entries)))))))
+              (transact-resources (assoc context :db db) request-entries)))))))
 
 
-(defn- build-entry
-  [base-uri return-preference
-   {{type "resourceType" id "id"} "resource" {db :db-after} :blaze/tx-result
-    :blaze/keys [old-resource] :keys [response]}]
-  (if response
-    {:response response}
-    (let [last-modified (util/tx-instant (util/basis-transaction db))
-          versionId (d/basis-t db)]
-      (cond->
-        {:response
-         (cond->
-           {:status (str (if old-resource 200 201))
-            :etag (str "W/\"" versionId "\"")
-            :lastModified (str last-modified)}
-           (nil? old-resource)
-           (assoc :location (str base-uri "/fhir/" type "/" id "/_history/" versionId)))}
-
-        (= "representation" return-preference)
-        (assoc :resource (pull/pull-resource db type id))))))
-
-
-(defn- build-response [base-uri return-preference bundle-type entries]
-  (ring/response
-    {:resourceType "Bundle"
-     :type (str bundle-type "-response")
-     :entry (mapv #(build-entry base-uri return-preference %) entries)}))
-
-
-(defn- handler-intern [base-uri conn executor]
-  (fn [{{:strs [type] :as bundle} :body :keys [headers]}]
+(defn- handler-intern [conn executor]
+  (fn [{{:strs [type] :as bundle} :body :keys [headers] ::reitit/keys [router]}]
     (let [db (d/db conn)]
       (-> (md/future-with executor
             (validate-and-prepare-bundle db bundle))
-          (md/chain' #(transact conn db type %))
           (md/chain'
-            #(build-response
-               base-uri (handler-util/preference headers "return") type %))
+            (let [context
+                  {:router router
+                   :conn conn
+                   :db db
+                   :return-preference (handler-util/preference headers "return")}]
+              #(process context type %)))
+          (md/chain'
+            (fn [response-entries]
+              (ring/response
+                {:resourceType "Bundle"
+                 :type (str type "-response")
+                 :entry response-entries})))
           (md/catch' handler-util/error-response)))))
 
 
@@ -261,12 +292,12 @@
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :conn ::ds/conn :executor executors/executor?)
+  :args (s/cat :conn ::ds/conn :executor executors/executor?)
   :ret :handler.fhir/transaction)
 
 (defn handler
   ""
-  [base-uri conn executor]
-  (-> (handler-intern base-uri conn executor)
+  [conn executor]
+  (-> (handler-intern conn executor)
       (wrap-interaction-name)
       (wrap-observe-request-duration)))

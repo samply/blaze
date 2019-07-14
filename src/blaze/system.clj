@@ -53,16 +53,11 @@
 (s/def :config/database-conn (s/keys :req [:database/uri]))
 (s/def :cache/threshold pos-int?)
 (s/def :structure-definitions/path string?)
-(s/def :config/base-uri string?)
+(s/def :config/base-url string?)
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
 (s/def :config/structure-definitions (s/keys :req [:structure-definitions/path]))
-(s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-uri]))
-(s/def :config/fhir-create-handler (s/keys :opt-un [:config/base-uri]))
-(s/def :config/fhir-history-instance-handler (s/keys :opt-un [:config/base-uri]))
-(s/def :config/fhir-history-type-handler (s/keys :opt-un [:config/base-uri]))
-(s/def :config/fhir-history-system-handler (s/keys :opt-un [:config/base-uri]))
-(s/def :config/fhir-search-handler (s/keys :opt-un [:config/base-uri]))
-(s/def :config/fhir-update-handler (s/keys :opt-un [:config/base-uri]))
+(s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-url]))
+(s/def :config/fhir-app-handler (s/keys :opt-un [:config/base-url]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
 (s/def :config/metrics-server (s/keys :opt-un [::server/port]))
 
@@ -74,12 +69,7 @@
      :config/cache
      :config/structure-definitions
      :config/fhir-capabilities-handler
-     :config/fhir-create-handler
-     :config/fhir-history-instance-handler
-     :config/fhir-history-type-handler
-     :config/fhir-history-system-handler
-     :config/fhir-search-handler
-     :config/fhir-update-handler
+     :config/fhir-app-handler
      :config/server
      :config/metrics-server]))
 
@@ -89,7 +79,7 @@
 
 (def ^:private version "0.6-alpha52")
 
-(def ^:private base-uri "http://localhost:8080")
+(def ^:private base-url "http://localhost:8080")
 
 (def ^:private default-config
   {:logging {:log/level "info"}
@@ -112,47 +102,41 @@
     :cache (ig/ref :cache)}
 
    :fhir-capabilities-handler
-   {:base-uri base-uri
+   {:base-url base-url
     :version version
     :structure-definitions (ig/ref :structure-definitions)}
 
    :fhir-create-handler
-   {:base-uri base-uri
-    :database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)}
 
    :fhir-delete-handler
    {:database/conn (ig/ref :database-conn)}
 
    :fhir-history-instance-handler
-   {:base-uri base-uri
-    :database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)}
 
    :fhir-history-type-handler
-   {:base-uri base-uri
-    :database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)}
 
    :fhir-history-system-handler
-   {:base-uri base-uri
-    :database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)}
 
    :fhir-read-handler
    {:database/conn (ig/ref :database-conn)}
 
    :fhir-search-handler
-   {:base-uri base-uri
-    :database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)}
 
    :fhir-transaction-handler
-   {:base-uri base-uri
-    :executor (ig/ref :transaction-interaction-executor)
+   {:executor (ig/ref :transaction-interaction-executor)
     :database/conn (ig/ref :database-conn)}
 
    :fhir-update-handler
-   {:base-uri base-uri
-    :database/conn (ig/ref :database-conn)}
+   {:database/conn (ig/ref :database-conn)}
 
    :app-handler
-   {:database/conn (ig/ref :database-conn)
+   {:base-url base-url
+    :database/conn (ig/ref :database-conn)
     :handlers
     {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
      :handler/health (ig/ref :health-handler)
@@ -260,13 +244,13 @@
 
 
 (defmethod ig/init-key :fhir-capabilities-handler
-  [_ {:keys [base-uri version structure-definitions]}]
-  (fhir-capabilities-handler/handler base-uri version structure-definitions))
+  [_ {:keys [base-url version structure-definitions]}]
+  (fhir-capabilities-handler/handler base-url version structure-definitions))
 
 
 (defmethod ig/init-key :fhir-create-handler
-  [_ {:keys [base-uri] :database/keys [conn]}]
-  (fhir-create-handler/handler base-uri conn))
+  [_ {:database/keys [conn]}]
+  (fhir-create-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-delete-handler
@@ -275,18 +259,18 @@
 
 
 (defmethod ig/init-key :fhir-history-instance-handler
-  [_ {:keys [base-uri] :database/keys [conn]}]
-  (fhir-history-instance-handler/handler base-uri conn))
+  [_ {:database/keys [conn]}]
+  (fhir-history-instance-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-history-type-handler
-  [_ {:keys [base-uri] :database/keys [conn]}]
-  (fhir-history-type-handler/handler base-uri conn))
+  [_ {:database/keys [conn]}]
+  (fhir-history-type-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-history-system-handler
-  [_ {:keys [base-uri] :database/keys [conn]}]
-  (fhir-history-system-handler/handler base-uri conn))
+  [_ {:database/keys [conn]}]
+  (fhir-history-system-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-read-handler
@@ -295,23 +279,23 @@
 
 
 (defmethod ig/init-key :fhir-search-handler
-  [_ {:keys [base-uri] :database/keys [conn]}]
-  (fhir-search-handler/handler base-uri conn))
+  [_ {:database/keys [conn]}]
+  (fhir-search-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-transaction-handler
-  [_ {:keys [base-uri executor] :database/keys [conn]}]
-  (fhir-transaction-handler/handler base-uri conn executor))
+  [_ {:keys [executor] :database/keys [conn]}]
+  (fhir-transaction-handler/handler conn executor))
 
 
 (defmethod ig/init-key :fhir-update-handler
-  [_ {:keys [base-uri] :database/keys [conn]}]
-  (fhir-update-handler/handler base-uri conn))
+  [_ {:database/keys [conn]}]
+  (fhir-update-handler/handler conn))
 
 
 (defmethod ig/init-key :app-handler
-  [_ {:database/keys [conn] :keys [handlers]}]
-  (app-handler/handler conn handlers))
+  [_ {:keys [base-url handlers] :database/keys [conn]}]
+  (app-handler/handler base-url conn handlers))
 
 
 (defmethod ig/init-key :server-executor

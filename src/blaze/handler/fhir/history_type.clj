@@ -10,6 +10,7 @@
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
+    [reitit.core :as reitit]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]))
 
@@ -39,7 +40,7 @@
     (:tx/resources transaction)))
 
 
-(defn- build-response [base-uri db since-t params type transactions]
+(defn- build-response [router db since-t params type transactions]
   (ring/response
     {:resourceType "Bundle"
      :type "history"
@@ -50,29 +51,29 @@
        (comp
          (mapcat #(expand-resources type %))
          (take (fhir-util/page-size params))
-         (map (fn [[tx eid]] (history-util/build-entry base-uri db tx eid))))
+         (map (fn [[tx eid]] (history-util/build-entry router db tx eid))))
        transactions)}))
 
 
-(defn- handler-intern [base-uri conn]
-  (fn [{{:keys [type]} :path-params :keys [query-params]}]
+(defn- handler-intern [conn]
+  (fn [{{:keys [type]} :path-params :keys [query-params] ::reitit/keys [router]}]
     (let [db (d/db conn)
           since-t (history-util/since-t db query-params)
           since-db (if since-t (d/since db since-t) db)
           transactions (datomic-util/type-transaction-history since-db type)]
-      (build-response base-uri db since-t query-params type transactions))))
+      (build-response router db since-t query-params type transactions))))
 
 
 (s/def :handler.fhir/history-type fn?)
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :conn ::ds/conn)
+  :args (s/cat :conn ::ds/conn)
   :ret :handler.fhir/history-type)
 
 (defn handler
   ""
-  [base-uri conn]
-  (-> (handler-intern base-uri conn)
+  [conn]
+  (-> (handler-intern conn)
       (wrap-params)
       (wrap-observe-request-duration "history-type")))

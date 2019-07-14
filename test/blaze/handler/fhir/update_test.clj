@@ -13,6 +13,7 @@
     [clojure.test :refer :all]
     [datomic-spec.test :as dst]
     [manifold.deferred :as md]
+    [reitit.core :as reitit]
     [taoensso.timbre :as log]))
 
 
@@ -24,7 +25,7 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :base-uri string? :conn #{::conn}))}})
+        :args (s/cat :conn #{::conn}))}})
   (datomic-test-util/stub-db ::conn ::db-before)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
@@ -33,13 +34,10 @@
 (use-fixtures :each fixture)
 
 
-(def base-uri "http://localhost:8080")
-
-
 (deftest handler-test
   (testing "Returns Error on type mismatch"
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler ::conn)
              {:path-params {:type "Patient" :id "0"}
               :body {"resourceType" "Observation"}})]
 
@@ -58,7 +56,7 @@
 
   (testing "Returns Error on ID mismatch"
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler ::conn)
              {:path-params {:type "Patient" :id "0"}
               :body {"resourceType" "Patient" "id" "1"}})]
 
@@ -85,11 +83,14 @@
         ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
       (datomic-test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
       (datomic-test-util/stub-basis-t ::db-after 42)
+      (test-util/stub-versioned-instance-url
+        ::router "Patient" "0" "42" "location")
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
-              @((handler base-uri ::conn)
-                 {:path-params {:type "Patient" :id "0"}
+              @((handler ::conn)
+                {::reitit/router ::router
+                 :path-params {:type "Patient" :id "0"}
                   :body resource})]
 
           (testing "Returns 201"
@@ -103,15 +104,16 @@
             (is (= "W/\"42\"" (get headers "ETag"))))
 
           (testing "Location header"
-            (is (= "http://localhost:8080/fhir/Patient/0" (get headers "Location"))))
+            (is (= "location" (get headers "Location"))))
 
           (testing "Contains the resource as body"
             (is (= ::resource-after body)))))
 
       (testing "with return=minimal Prefer header"
         (let [{:keys [body]}
-              @((handler base-uri ::conn)
-                 {:path-params {:type "Patient" :id "0"}
+              @((handler ::conn)
+                {::reitit/router ::router
+                 :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=minimal"}
                   :body resource})]
 
@@ -120,8 +122,9 @@
 
       (testing "with return=representation Prefer header"
         (let [{:keys [body]}
-              @((handler base-uri ::conn)
-                 {:path-params {:type "Patient" :id "0"}
+              @((handler ::conn)
+                {::reitit/router ::router
+                 :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=representation"}
                   :body resource})]
 
@@ -130,8 +133,9 @@
 
       (testing "with return=OperationOutcome Prefer header"
         (let [{:keys [body]}
-              @((handler base-uri ::conn)
-                 {:path-params {:type "Patient" :id "0"}
+              @((handler ::conn)
+                {::reitit/router ::router
+                 :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=OperationOutcome"}
                   :body resource})]
 
@@ -152,7 +156,7 @@
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
-              @((handler base-uri ::conn)
+              @((handler ::conn)
                  {:path-params {:type "Patient" :id "0"}
                   :body resource})]
 
@@ -171,7 +175,7 @@
 
       (testing "with return=minimal Prefer header"
         (let [{:keys [status body]}
-              @((handler base-uri ::conn)
+              @((handler ::conn)
                  {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=minimal"}
                   :body resource})]
@@ -184,7 +188,7 @@
 
       (testing "with return=representation Prefer header"
         (let [{:keys [status body]}
-              @((handler base-uri ::conn)
+              @((handler ::conn)
                  {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=representation"}
                   :body resource})]
@@ -197,7 +201,7 @@
 
       (testing "with return=OperationOutcome Prefer header"
         (let [{:keys [status body]}
-              @((handler base-uri ::conn)
+              @((handler ::conn)
                  {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=OperationOutcome"}
                   :body resource})]

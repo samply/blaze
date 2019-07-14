@@ -12,6 +12,7 @@
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
+    [reitit.core :as reitit]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]))
 
@@ -36,7 +37,7 @@
       total)))
 
 
-(defn- build-response [base-uri db since-t params eid transactions]
+(defn- build-response [router db since-t params eid transactions]
   (ring/response
     {:resourceType "Bundle"
      :type "history"
@@ -46,18 +47,19 @@
        []
        (comp
          (take (fhir-util/page-size params))
-         (map #(history-util/build-entry base-uri db % eid)))
+         (map #(history-util/build-entry router db % eid)))
        transactions)}))
 
 
-(defn- handler-intern [base-uri conn]
-  (fn [{{:keys [type id]} :path-params :keys [query-params]}]
+(defn- handler-intern [conn]
+  (fn [{{:keys [type id]} :path-params :keys [query-params]
+        ::reitit/keys [router]}]
     (let [db (d/db conn)]
       (if-let [eid (resource-eid db type id)]
         (let [since-t (history-util/since-t db query-params)
               since-db (if since-t (d/since db since-t) db)
               transactions (util/instance-transaction-history since-db eid)]
-          (build-response base-uri db since-t query-params eid transactions))
+          (build-response router db since-t query-params eid transactions))
         (handler-util/error-response
           {::anom/category ::anom/not-found
            :fhir/issue "not-found"})))))
@@ -67,12 +69,12 @@
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :conn ::ds/conn)
+  :args (s/cat :conn ::ds/conn)
   :ret :handler.fhir/history-instance)
 
 (defn handler
   ""
-  [base-uri conn]
-  (-> (handler-intern base-uri conn)
+  [conn]
+  (-> (handler-intern conn)
       (wrap-params)
       (wrap-observe-request-duration "history-instance")))

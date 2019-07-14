@@ -2,6 +2,8 @@
   (:require
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as datomic-util]
+    [blaze.handler.fhir.spec]
+    [blaze.handler.fhir.util :as fhir-util]
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
@@ -45,18 +47,19 @@
 
 
 (s/fdef nav-link
-  :args (s/cat :base-uri string? :match some?
+  :args (s/cat :match :fhir.router/match
                :query-params (s/map-of string? string?)
                :relation string? :entry (s/tuple ::ds/entity ::ds/entity-id)))
 
 (defn nav-link
   "Returns a nav link with `relation` and `entry` as first entry of the page."
-  {:arglists '([base-uri match query-params relation entry])}
-  [base-uri match query-params relation [transaction eid]]
+  {:arglists '([match query-params relation entry])}
+  [{{:blaze/keys [base-url]} :data :as match} query-params relation
+   [transaction eid]]
   (let [t (d/tx->t (:db/id transaction))
         path (reitit/match->path match (assoc query-params "t" t "eid" eid))]
     {:relation relation
-     :url (str base-uri path)}))
+     :url (str base-url path)}))
 
 
 (defn- method [resource]
@@ -66,10 +69,10 @@
     :else "PUT"))
 
 
-(defn- url [base-uri type id resource]
-  (cond-> (str base-uri "/fhir/" type)
-    (not (datomic-util/initial-version-server-assigned-id? resource))
-    (str "/" id)))
+(defn- url [router type id resource]
+  (if (datomic-util/initial-version-server-assigned-id? resource)
+    (fhir-util/type-url router type)
+    (fhir-util/instance-url router type id)))
 
 
 (defn- status [resource]
@@ -80,19 +83,19 @@
 
 
 (s/fdef build-entry
-  :args (s/cat :base-uri string? :db ::ds/db :transaction ::ds/entity
+  :args (s/cat :router reitit/router? :db ::ds/db :transaction ::ds/entity
                :resource-eid ::ds/entity-id))
 
-(defn build-entry [base-uri db transaction resource-eid]
+(defn build-entry [router db transaction resource-eid]
   (let [t (d/tx->t (:db/id transaction))
         db (d/as-of db t)
         resource (d/entity db resource-eid)
         [type id] (datomic-util/literal-reference resource)]
     (cond->
-      {:fullUrl (str base-uri "/fhir/" type "/" id)
+      {:fullUrl (fhir-util/instance-url router type id)
        :request
        {:method (method resource)
-        :url (url base-uri type id resource)}
+        :url (url router type id resource)}
        :response
        {:status (status resource)
         :etag (str "W/\"" t "\"")

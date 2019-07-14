@@ -41,3 +41,39 @@
         :ret #{result})}
      :stub
      #{`util/page-size}}))
+
+
+(defn stub-type-url [router type url]
+  (st/instrument
+    [`util/type-url]
+    {:spec
+     {`util/type-url
+      (s/fspec
+        :args (s/cat :router #{router} :type #{type})
+        :ret #{url})}
+     :stub
+     #{`util/type-url}}))
+
+
+(defn stub-instance-url [router type id url]
+  (st/instrument
+    [`util/instance-url]
+    {:spec
+     {`util/instance-url
+      (s/fspec
+        :args (s/cat :router #{router} :type #{type} :id #{id})
+        :ret #{url})}
+     :stub
+     #{`util/instance-url}}))
+
+
+(defn stub-versioned-instance-url [router type id vid url]
+  (st/instrument
+    [`util/versioned-instance-url]
+    {:spec
+     {`util/versioned-instance-url
+      (s/fspec
+        :args (s/cat :router #{router} :type #{type} :id #{id} :vid #{vid})
+        :ret #{url})}
+     :stub
+     #{`util/versioned-instance-url}}))

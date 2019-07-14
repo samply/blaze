@@ -5,7 +5,7 @@
   (:require
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
-    [blaze.handler.fhir.util :as handler-fhir-util]
+    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
@@ -13,6 +13,7 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
+    [reitit.core :as reitit]
     [ring.util.response :as ring]
     [ring.util.time :as ring-time]))
 
@@ -41,10 +42,12 @@
     body))
 
 
-(defn- build-response [base-uri headers type id old-resource {db :db-after}]
+(defn- build-response
+  [router headers type id old-resource {db :db-after}]
   (let [basis-transaction (util/basis-transaction db)
         last-modified (:db/txInstant basis-transaction)
-        return-preference (handler-util/preference headers "return")]
+        return-preference (handler-util/preference headers "return")
+        vid (str (d/basis-t db))]
     (cond->
       (-> (cond
             (= "minimal" return-preference)
@@ -56,19 +59,23 @@
           (ring/response)
           (ring/status (if old-resource 200 201))
           (ring/header "Last-Modified" (ring-time/format-date last-modified))
-          (ring/header "ETag" (str "W/\"" (d/basis-t db) "\"")))
+          (ring/header "ETag" (str "W/\"" vid "\"")))
       (nil? old-resource)
-      (ring/header "Location" (str base-uri "/fhir/" type "/" id)))))
+      (ring/header
+        "Location" (fhir-util/versioned-instance-url router type id vid)))))
 
 
-(defn- handler-intern [base-uri conn]
-  (fn [{{:keys [type id]} :path-params :keys [headers body]}]
+(defn- handler-intern [conn]
+  (fn [{{:keys [type id]} :path-params :keys [headers body]
+        ::reitit/keys [router]}]
     (let [db (d/db conn)]
       (-> (validate-resource type id body)
           (md/chain'
-            #(handler-fhir-util/upsert-resource
+            #(fhir-util/upsert-resource
                conn db :client-assigned-id %))
-          (md/chain' #(build-response base-uri headers type id (util/resource db type id) %))
+          (md/chain'
+            #(build-response
+               router headers type id (util/resource db type id) %))
           (md/catch' handler-util/error-response)))))
 
 
@@ -76,11 +83,11 @@
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :conn ::ds/conn)
+  :args (s/cat :conn ::ds/conn)
   :ret :handler.fhir/update)
 
 (defn handler
   ""
-  [base-uri conn]
-  (-> (handler-intern base-uri conn)
+  [conn]
+  (-> (handler-intern conn)
       (wrap-observe-request-duration "update")))

@@ -1141,14 +1141,14 @@
 
 
 (comment
-  (def term-base-uri "http://test.fhir.org/r4")
+  (def term-base-url "http://test.fhir.org/r4")
 
   (defn- fetch-code-system-info
     "Returns a map with a least :system and optionally :version if something was found."
     [value-set-binding code]
     (log/info "fetch-code-system-url" value-set-binding code)
     (let [[uri version] (str/split value-set-binding #"\|")]
-      (-> (client/fetch (str term-base-uri "/ValueSet/$expand")
+      (-> (client/fetch (str term-base-url "/ValueSet/$expand")
                         {:query-params
                          {"url" uri
                           "valueSetVersion" version

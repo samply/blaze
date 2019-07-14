@@ -4,6 +4,9 @@
     [clojure.spec.gen.alpha :as sg]))
 
 
+(s/def :blaze/base-url
+  string?)
+
 
 ;; ---- FHIR Element Definition -----------------------------------------------
 

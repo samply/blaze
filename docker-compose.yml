@@ -13,7 +13,7 @@ services:
   store:
     image: "liferesearch/blaze:0.5"
     environment:
-      BASE_URI: "http://localhost:8080"
+      BASE_URL: "http://localhost:8080"
       DATABASE_URI: "datomic:free://db:4334/dev?password=datomic"
       STRUCTURE_DEFINITIONS_PATH: "/app/fhir/r4/structure-definitions"
       JVM_OPTS: "-server -Xms2g -Xmx2g -XX:+UseG1GC"

@@ -6,7 +6,8 @@
     [blaze.datomic.util :as util]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds]
-    [manifold.deferred :as md]))
+    [manifold.deferred :as md]
+    [reitit.core :as reitit]))
 
 
 (defn- increment-total [type]
@@ -51,16 +52,16 @@
                :resource ::tx/resource))
 
 (defn upsert-resource
-  "Throws exceptions with `ex-data` containing an anomaly on errors or
-  unsupported features."
   [conn db creation-mode resource]
-  (let [tx-data (tx/resource-codes-creation db resource)]
-    (if (empty? tx-data)
-      (upsert-resource* conn db creation-mode resource)
-      (-> (tx/transact-async conn tx-data)
-          (md/chain'
-            (fn [{db :db-after}]
-              (upsert-resource* conn db creation-mode resource)))))))
+  (-> (md/future (tx/resource-codes-creation db resource))
+      (md/chain'
+        (fn [tx-data]
+          (if (empty? tx-data)
+            (upsert-resource* conn db creation-mode resource)
+            (-> (tx/transact-async conn tx-data)
+                (md/chain'
+                  (fn [{db :db-after}]
+                    (upsert-resource* conn db creation-mode resource)))))))))
 
 
 (defn- decrement-total [type]
@@ -79,14 +80,14 @@
   :args (s/cat :conn ::ds/conn :db ::ds/db :type string? :id string?))
 
 (defn delete-resource
-  "Throws exceptions with `ex-data` containing an anomaly on errors or
-  unsupported features."
   [conn db type id]
-  (let [tx-data (tx/resource-deletion db type id)]
-    (if (empty? tx-data)
-      {:db-after db}
-      (tx/transact-async
-        conn (into tx-data (delete-system-and-type-tx-data db type id))))))
+  (-> (md/future (tx/resource-deletion db type id))
+      (md/chain'
+        (fn [tx-data]
+          (if (empty? tx-data)
+            {:db-after db}
+            (tx/transact-async
+              conn (into tx-data (delete-system-and-type-tx-data db type id))))))))
 
 
 (def ^:private ^:const default-page-size 50)
@@ -106,3 +107,41 @@
   (if (some->> count (re-matches #"\d+"))
     (min (Long/parseLong count) max-page-size)
     default-page-size))
+
+
+(s/fdef type-url
+  :args (s/cat :router reitit/router? :type string?)
+  :ret string?)
+
+(defn type-url
+  "Returns the URL of a resource type like `[base]/[type]`."
+  [router type]
+  (let [{:keys [path] {:blaze/keys [base-url]} :data}
+        (reitit/match-by-name router :fhir/type {:type type})]
+    (str base-url path)))
+
+
+(s/fdef instance-url
+  :args (s/cat :router reitit/router? :type string? :id string?)
+  :ret string?)
+
+(defn instance-url
+  "Returns the URL of a instance (resource) like `[base]/[type]/[id]`."
+  [router type id]
+  (let [{:keys [path] {:blaze/keys [base-url]} :data}
+        (reitit/match-by-name router :fhir/instance {:type type :id id})]
+    (str base-url path)))
+
+
+(s/fdef versioned-instance-url
+  :args (s/cat :router reitit/router? :type string? :id string? :vid string?)
+  :ret string?)
+
+(defn versioned-instance-url
+  "Returns the URL of a versioned instance (resource) like
+  `[base]/[type]/[id]/_history/[vid]`."
+  [router type id vid]
+  (let [{:keys [path] {:blaze/keys [base-url]} :data}
+        (reitit/match-by-name
+          router :fhir/versioned-instance {:type type :id id :vid vid})]
+    (str base-url path)))

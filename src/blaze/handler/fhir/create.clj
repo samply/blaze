@@ -13,6 +13,7 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
+    [reitit.core :as reitit]
     [ring.util.response :as ring]
     [ring.util.time :as ring-time]))
 
@@ -35,12 +36,11 @@
     body))
 
 
-(defn- build-response [base-uri headers type id {db :db-after}]
+(defn- build-response [router return-preference type id {db :db-after}]
   (let [last-modified (:db/txInstant (util/basis-transaction db))
-        return-preference (handler-util/preference headers "return")
-        versionId (d/basis-t db)]
+        vid (str (d/basis-t db))]
     (-> (ring/created
-          (str base-uri "/fhir/" type "/" id "/_history/" versionId)
+          (handler-fhir-util/versioned-instance-url router type id vid)
           (cond
             (= "minimal" return-preference)
             nil
@@ -49,18 +49,19 @@
             :else
             (pull/pull-resource db type id)))
         (ring/header "Last-Modified" (ring-time/format-date last-modified))
-        (ring/header "ETag" (str "W/\"" versionId "\"")))))
+        (ring/header "ETag" (str "W/\"" vid "\"")))))
 
 
-(defn- handler-intern [base-uri conn]
-  (fn [{{:keys [type]} :path-params :keys [headers body]}]
-    (let [id (str (d/squuid))]
+(defn- handler-intern [conn]
+  (fn [{{:keys [type]} :path-params :keys [headers body] ::reitit/keys [router]}]
+    (let [return-preference (handler-util/preference headers "return")
+          id (str (d/squuid))]
       (-> (validate-resource type body)
           (md/chain' #(assoc % "id" id))
           (md/chain'
             #(handler-fhir-util/upsert-resource
                conn (d/db conn) :server-assigned-id %))
-          (md/chain' #(build-response base-uri headers type id %))
+          (md/chain' #(build-response router return-preference type id %))
           (md/catch' handler-util/error-response)))))
 
 
@@ -68,11 +69,11 @@
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :conn ::ds/conn)
+  :args (s/cat :conn ::ds/conn)
   :ret :handler.fhir/create)
 
 (defn handler
   ""
-  [base-uri conn]
-  (-> (handler-intern base-uri conn)
+  [conn]
+  (-> (handler-intern conn)
       (wrap-observe-request-duration "create")))

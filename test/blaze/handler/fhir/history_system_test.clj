@@ -25,15 +25,12 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :base-uri string? :conn #{::conn}))}})
+        :args (s/cat :conn #{::conn}))}})
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
 (use-fixtures :each fixture)
-
-
-(def base-uri "http://localhost:8080")
 
 
 (deftest handler-test-1
@@ -50,15 +47,16 @@
         (constantly [{:v ::patient-eid}]))
       (datomic-test-util/stub-system-version ::db 1)
       (history-test-util/stub-nav-link
-        base-uri ::match ::query-params #{"self"} tx #{::patient-eid}
+        ::match ::query-params #{"self"} tx #{::patient-eid}
         (constantly ::self-link))
       (history-test-util/stub-build-entry
-        base-uri ::db #{tx} #{::patient-eid} (constantly ::entry)))
+        ::router ::db #{tx} #{::patient-eid} (constantly ::entry)))
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler ::conn)
             {:path-params {:type "Patient"}
              :query-params ::query-params
+             ::reitit/router ::router
              ::reitit/match ::match})]
 
       (is (= 200 status))
@@ -90,19 +88,20 @@
         (constantly [{:v ::patient-1-eid} {:v ::patient-2-eid}]))
       (datomic-test-util/stub-system-version ::db 2)
       (history-test-util/stub-nav-link
-        base-uri ::match ::query-params #{"self"} tx #{::patient-1-eid}
+        ::match ::query-params #{"self"} tx #{::patient-1-eid}
         (constantly ::self-link))
       (history-test-util/stub-build-entry
-        base-uri ::db #{tx} #{::patient-1-eid ::patient-2-eid}
+        ::router ::db #{tx} #{::patient-1-eid ::patient-2-eid}
         (fn [_ _ _ resource-eid]
           (case resource-eid
             ::patient-1-eid ::entry-1
             ::patient-2-eid ::entry-2))))
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler ::conn)
             {:path-params {:type "Patient"}
              :query-params ::query-params
+             ::reitit/router ::router
              ::reitit/match ::match})]
 
       (is (= 200 status))
@@ -138,19 +137,20 @@
             ::tx-2-eid [{:v ::patient-2-eid}])))
       (datomic-test-util/stub-system-version ::db 2)
       (history-test-util/stub-nav-link
-        base-uri ::match ::query-params #{"self"} tx-1 #{::patient-1-eid}
+        ::match ::query-params #{"self"} tx-1 #{::patient-1-eid}
         (constantly ::self-link))
       (history-test-util/stub-build-entry
-        base-uri ::db #{tx-1 tx-2} #{::patient-1-eid ::patient-2-eid}
+        ::router ::db #{tx-1 tx-2} #{::patient-1-eid ::patient-2-eid}
         (fn [_ _ _ resource-eid]
           (case resource-eid
             ::patient-1-eid ::entry-1
             ::patient-2-eid ::entry-2))))
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler ::conn)
             {:path-params {:type "Patient"}
              :query-params ::query-params
+             ::reitit/router ::router
              ::reitit/match ::match})]
 
       (is (= 200 status))
@@ -182,19 +182,20 @@
         (constantly [{:v ::patient-1-eid} {:v ::patient-2-eid}]))
       (datomic-test-util/stub-system-version ::db 1)
       (history-test-util/stub-nav-link
-        base-uri ::match ::query-params #{"self" "next"} tx
+        ::match ::query-params #{"self" "next"} tx
         #{::patient-1-eid ::patient-2-eid}
-        (fn [_ _ _ _ [_ resource-eid]]
+        (fn [_ _ _ [_ resource-eid]]
           (case resource-eid
             ::patient-1-eid ::self-link
             ::patient-2-eid ::next-link)))
       (history-test-util/stub-build-entry
-        base-uri ::db #{tx} #{::patient-1-eid} (constantly ::entry))
+        ::router ::db #{tx} #{::patient-1-eid} (constantly ::entry))
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
+            @((handler ::conn)
               {:path-params {:type "Patient"}
                :query-params ::query-params
+               ::reitit/router ::router
                ::reitit/match ::match})]
 
         (is (= 200 status))

@@ -6,27 +6,29 @@
     [clojure.test :refer :all]))
 
 
-(defn stub-build-entry [base-uri db transaction-spec resource-eid-spec replace-fn]
+(defn stub-build-entry
+  [router db transaction-spec resource-eid-spec replace-fn]
   (st/instrument
     [`util/build-entry]
     {:spec
      {`util/build-entry
       (s/fspec
-        :args (s/cat :base-uri #{base-uri} :db #{db} :transaction transaction-spec
+        :args (s/cat :router #{router} :db #{db}
+                     :transaction transaction-spec
                      :resource-eid resource-eid-spec))}
      :replace
      {`util/build-entry replace-fn}}))
 
 
 (defn stub-nav-link
-  [base-uri match query-params relation-spec transaction resource-eid-spec
+  [match query-params relation-spec transaction resource-eid-spec
    replace-fn]
   (st/instrument
     [`util/nav-link]
     {:spec
      {`util/nav-link
       (s/fspec
-        :args (s/cat :base-uri #{base-uri} :match #{match}
+        :args (s/cat :match #{match}
                      :query-params #{query-params}
                      :relation relation-spec
                      :entry (s/tuple #{transaction} resource-eid-spec)))}

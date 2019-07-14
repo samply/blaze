@@ -5,11 +5,13 @@
   (:require
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.search :refer [handler]]
+    [blaze.handler.fhir.test-util :as fhir-test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
     [datomic-spec.test :as dst]
+    [reitit.core :as reitit]
     [taoensso.timbre :as log]))
 
 
@@ -21,16 +23,13 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :base-uri string? :conn #{::conn}))}})
+        :args (s/cat :conn #{::conn}))}})
   (datomic-test-util/stub-db ::conn ::db)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
 (use-fixtures :each fixture)
-
-
-(def base-uri "http://localhost:8080")
 
 
 (deftest handler-test
@@ -48,10 +47,12 @@
       (datomic-test-util/stub-entity ::db #{143757} #{::patient})
       (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
       (datomic-test-util/stub-resource-type-total ::db "Patient" 1)
+      (fhir-test-util/stub-instance-url ::router "Patient" "0" ::full-url)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
-              {:path-params {:type "Patient"}})]
+            @((handler ::conn)
+              {::reitit/router ::router
+               :path-params {:type "Patient"}})]
 
         (is (= 200 status))
 
@@ -68,7 +69,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "The entry has the right fullUrl"
-          (is (= (str base-uri "/fhir/Patient/0") (-> body :entry first :fullUrl))))
+          (is (= ::full-url (-> body :entry first :fullUrl))))
 
         (testing "The entry has the right resource"
           (is (= patient (-> body :entry first :resource)))))))
@@ -77,7 +78,7 @@
     (datomic-test-util/stub-resource-type-total ::db "Patient" 42)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler ::conn)
             {:path-params {:type "Patient"}
              :params {"_summary" "count"}})]
 
@@ -96,7 +97,7 @@
     (datomic-test-util/stub-resource-type-total ::db "Patient" 23)
 
     (let [{:keys [status body]}
-          @((handler base-uri ::conn)
+          @((handler ::conn)
             {:path-params {:type "Patient"}
              :params {"_count" "0"}})]
 
@@ -125,10 +126,12 @@
          #{`d/datoms}})
       (datomic-test-util/stub-entity ::db #{143757} #{::patient})
       (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+      (fhir-test-util/stub-instance-url ::router "Patient" "0" ::full-url)
 
       (let [{:keys [status body]}
-            @((handler base-uri ::conn)
-              {:path-params {:type "Patient"}})]
+            @((handler ::conn)
+              {::reitit/router ::router
+               :path-params {:type "Patient"}})]
 
         (is (= 200 status))
 
@@ -142,7 +145,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "The entry has the right fullUrl"
-          (is (= (str base-uri "/fhir/Patient/0") (-> body :entry first :fullUrl))))
+          (is (= ::full-url (-> body :entry first :fullUrl))))
 
         (testing "The entry has the right resource"
           (is (= patient (-> body :entry first :resource))))))))

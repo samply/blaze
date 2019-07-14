@@ -44,13 +44,13 @@
 
 
 (s/fdef handler
-  :args (s/cat :base-uri string? :version string?
+  :args (s/cat :base-url string? :version string?
                :structure-definitions (s/coll-of :fhir.un/StructureDefinition))
   :ret :handler.fhir/capabilities)
 
 (defn handler
   ""
-  [base-uri version structure-definitions]
+  [base-url version structure-definitions]
   (-> (fn [_]
         (ring/response
           (array-map
@@ -62,8 +62,8 @@
             {:name "Blaze"
              :version version}
             :implementation
-            {:description (str "Blaze running at " base-uri "/fhir")
-             :url (str base-uri "/fhir")}
+            {:description (str "Blaze running at " base-url "/fhir")
+             :url (str base-url "/fhir")}
             :fhirVersion "4.0.0"
             :format ["application/fhir+json"]
             :rest

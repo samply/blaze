@@ -17,7 +17,7 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :conn #{::conn} :handlers map?))}})
+        :args (s/cat :base-url #{::base-url} :conn #{::conn} :handlers map?))}})
   (st/instrument
     [`wrap-type]
     {:spec
@@ -47,7 +47,7 @@
 
 
 (defn- match [path request-method]
-  ((:handler (request-method (:data (reitit/match-by-path (router ::conn handlers) path)))) {}))
+  ((:handler (request-method (:data (reitit/match-by-path (router ::base-url ::conn handlers) path)))) {}))
 
 
 (deftest router-test
@@ -70,13 +70,30 @@
     "/fhir/Patient/0/_history/42" :get ::fhir-read-handler))
 
 
+(deftest router-match-by-name-test
+  (let [router (router ::base-url ::conn handlers)]
+    (are [name params path]
+      (= (reitit/match->path (reitit/match-by-name router name params)) path)
+
+      :fhir/type
+      {:type "Patient"}
+      "/fhir/Patient"
+
+      :fhir/instance
+      {:type "Patient" :id "23"}
+      "/fhir/Patient/23"
+
+      :fhir/versioned-instance
+      {:type "Patient" :id "23" :vid "42"}
+      "/fhir/Patient/23/_history/42")))
+
 (def ^:private handler-throwing
   (assoc handlers :handler.fhir/capabilities (fn [_] (throw (Exception. "")))))
 
 
 (deftest exception-test
   (testing "Exceptions from handlers are converted to OperationOutcomes."
-    (given @((handler ::conn handler-throwing)
+    (given @((handler ::base-url ::conn handler-throwing)
              {:uri "/fhir/metadata"
               :request-method :get})
       :status := 500

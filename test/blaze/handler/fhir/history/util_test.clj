@@ -2,6 +2,7 @@
   (:require
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.history.util :refer [build-entry]]
+    [blaze.handler.fhir.test-util :as test-util]
     [clojure.test :refer :all]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -16,7 +17,7 @@
     {:spec
      {`build-entry
       (s/fspec
-        :args (s/cat :base-uri some? :db some? :transaction some?
+        :args (s/cat :router #{::router} :db #{::db} :transaction some?
                      :resource-eid some?))}})
   (f)
   (st/unstrument))
@@ -25,7 +26,6 @@
 (use-fixtures :each fixture)
 
 
-(def base-uri "http://localhost:8080")
 (def transaction {:db/id 0})
 
 
@@ -40,14 +40,16 @@
     (datomic-test-util/stub-deleted? ::resource false?)
     (datomic-test-util/stub-pull-resource*
       ::as-of-db "Patient" ::resource #{::pulled-resource})
+    (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
+    (test-util/stub-type-url ::router "Patient" ::patient-type-url)
 
     (is
       (=
-        (build-entry base-uri ::db transaction ::resource-eid)
-        {:fullUrl "http://localhost:8080/fhir/Patient/0"
+        (build-entry ::router ::db transaction ::resource-eid)
+        {:fullUrl ::patient-url
          :request
          {:method "POST"
-          :url "http://localhost:8080/fhir/Patient"}
+          :url ::patient-type-url}
          :resource ::pulled-resource
          :response
          {:etag "W/\"0\""
@@ -65,14 +67,15 @@
     (datomic-test-util/stub-deleted? ::resource false?)
     (datomic-test-util/stub-pull-resource*
       ::as-of-db "Patient" ::resource #{::pulled-resource})
+    (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
 
     (is
       (=
-        (build-entry base-uri ::db transaction ::resource-eid)
-        {:fullUrl "http://localhost:8080/fhir/Patient/0"
+        (build-entry ::router ::db transaction ::resource-eid)
+        {:fullUrl ::patient-url
          :request
          {:method "PUT"
-          :url "http://localhost:8080/fhir/Patient/0"}
+          :url ::patient-url}
          :resource ::pulled-resource
          :response
          {:etag "W/\"0\""
@@ -90,14 +93,15 @@
     (datomic-test-util/stub-deleted? ::resource false?)
     (datomic-test-util/stub-pull-resource*
       ::as-of-db "Patient" ::resource #{::pulled-resource})
+    (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
 
     (is
       (=
-        (build-entry base-uri ::db transaction ::resource-eid)
-        {:fullUrl "http://localhost:8080/fhir/Patient/0"
+        (build-entry ::router ::db transaction ::resource-eid)
+        {:fullUrl ::patient-url
          :request
          {:method "PUT"
-          :url "http://localhost:8080/fhir/Patient/0"}
+          :url ::patient-url}
          :resource ::pulled-resource
          :response
          {:etag "W/\"0\""
@@ -115,14 +119,15 @@
     (datomic-test-util/stub-deleted? ::resource true?)
     (datomic-test-util/stub-pull-resource*
       ::as-of-db "Patient" ::resource #{::pulled-resource})
+    (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
 
     (is
       (=
-        (build-entry base-uri ::db transaction ::resource-eid)
-        {:fullUrl "http://localhost:8080/fhir/Patient/0"
+        (build-entry ::router ::db transaction ::resource-eid)
+        {:fullUrl ::patient-url
          :request
          {:method "DELETE"
-          :url "http://localhost:8080/fhir/Patient/0"}
+          :url ::patient-url}
          :response
          {:etag "W/\"0\""
           :lastModified "last-modified"
