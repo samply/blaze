@@ -118,7 +118,7 @@
   [router type]
   (let [{:keys [path] {:blaze/keys [base-url]} :data}
         (reitit/match-by-name router :fhir/type {:type type})]
-    (str base-url path)))
+    (str base-url "/" path)))
 
 
 (s/fdef instance-url
@@ -130,7 +130,7 @@
   [router type id]
   (let [{:keys [path] {:blaze/keys [base-url]} :data}
         (reitit/match-by-name router :fhir/instance {:type type :id id})]
-    (str base-url path)))
+    (str base-url "/" path)))
 
 
 (s/fdef versioned-instance-url
@@ -144,4 +144,4 @@
   (let [{:keys [path] {:blaze/keys [base-url]} :data}
         (reitit/match-by-name
           router :fhir/versioned-instance {:type type :id id :vid vid})]
-    (str base-url path)))
+    (str base-url "/" path)))

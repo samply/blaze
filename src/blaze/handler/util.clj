@@ -120,6 +120,8 @@
 
 
 (defn bundle-error-response
+  "Returns an error response suitable for bundles. Accepts anomalies and
+  exceptions."
   {:arglists '([error])}
   [{::anom/keys [category] :as error}]
   (cond

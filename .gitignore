@@ -5,3 +5,4 @@
 /*.sh
 /cql-test
 /kube*
+/nginx.conf

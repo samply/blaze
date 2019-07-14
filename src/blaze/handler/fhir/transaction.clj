@@ -17,7 +17,11 @@
     [datomic-spec.core :as ds]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
-    [ring.util.response :as ring]))
+    [reitit.ring :as reitit-ring]
+    [ring.util.response :as ring]
+    [clojure.string :as str])
+  (:import
+    [java.time.format DateTimeFormatter]))
 
 
 (defn- validate-entry
@@ -30,7 +34,7 @@
        ::anom/message (str "Unknown method `" method "`.")
        :fhir/issue "value"}
 
-      (not (#{"POST" "PUT" "DELETE"} method))
+      (not (#{"GET" "POST" "PUT" "DELETE"} method))
       {::anom/category ::anom/unsupported
        ::anom/message (str "Unsupported method `" method "`.")
        :fhir/issue "not-supported"}
@@ -69,22 +73,8 @@
       (assoc entry :blaze/type type :blaze/id id))))
 
 
-(defmulti validate-entries (fn [_ type _] type))
-
-
-(defmethod validate-entries "batch"
-  [db _ entries]
-  (mapv
-    (fn [entry]
-      (let [validated-entry (validate-entry db entry)]
-        (if (::anom/category validated-entry)
-          (assoc entry :response (handler-util/bundle-error-response validated-entry))
-          validated-entry)))
-    entries))
-
-
-(defmethod validate-entries "transaction"
-  [db _ entries]
+(defn- validate-entries
+  [db entries]
   (reduce
     (fn [res entry]
       (let [entry (validate-entry db entry)]
@@ -111,8 +101,8 @@
     entry))
 
 
-(defn validate-and-prepare-bundle
-  [db {:strs [resourceType type entry]}]
+(defn- validate-and-prepare-bundle
+  [db {:strs [resourceType type] entries "entry" :as bundle}]
   (cond
     (not= "Bundle" resourceType)
     (md/error-deferred
@@ -128,10 +118,12 @@
        :fhir/issue "value"})
 
     :else
-    (let [entries (validate-entries db type entry)]
-      (if (::anom/category entries)
-        (md/error-deferred entries)
-        (mapv #(prepare-entry db %) entries)))))
+    (if (= "transaction" type)
+      (let [entries (validate-entries db entries)]
+        (if (::anom/category entries)
+          (md/error-deferred entries)
+          (mapv #(prepare-entry db %) entries)))
+      entries)))
 
 
 (defmulti build-response-entry
@@ -189,28 +181,64 @@
       :lastModified (str last-modified)}}))
 
 
-(defmulti process-batch-entry
-  "Processes one request entry returning the response entry."
-  {:arglists '([context request-entry])}
-  (fn [_ {{:strs [method]} "request"}] method))
+(defn- strip-leading-slash [s]
+  (if (str/starts-with? s "/")
+    (subs s 1)
+    s))
 
 
-(defmethod process-batch-entry "POST"
-  [{:keys [conn db] :as context} {:strs [resource] :as request-entry}]
-  (-> (fhir-util/upsert-resource conn db :server-assigned-id resource)
-      (md/chain' #(build-response-entry context request-entry %))))
+(defn- convert-http-date
+  "Converts string `s` representing a HTTP date into a FHIR instant formatted
+  string."
+  [s]
+  (->> (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)
+       (.format DateTimeFormatter/ISO_INSTANT)))
 
 
-(defmethod process-batch-entry "PUT"
-  [{:keys [conn db] :as context} {:strs [resource] :as request-entry}]
-  (-> (fhir-util/upsert-resource conn db :client-assigned-id resource)
-      (md/chain' #(build-response-entry context request-entry %))))
+(defn- process-batch-entry
+  [{:keys [handler]} {{:strs [method url]} "request" :strs [resource]}]
+  (let [url (strip-leading-slash (str/trim url))
+        [url query-string] (str/split url #"\?")]
+    (if (= "" url)
+      (handler-util/bundle-error-response
+        {::anom/category ::anom/incorrect
+         ::anom/message (format "Invalid URL `%s` in bundle request." url)
+         :fhir/issue "value"})
+      (let [request
+            (cond->
+              {:uri url :request-method (keyword (str/lower-case method))}
 
+              query-string
+              (assoc :query-string query-string)
 
-(defmethod process-batch-entry "DELETE"
-  [{:keys [conn db] :as context} {:blaze/keys [type id] :as request-entry}]
-  (-> (fhir-util/delete-resource conn db type id)
-      (md/chain' #(build-response-entry context request-entry %))))
+              resource
+              (assoc :body resource))]
+        (-> (handler request)
+            (md/chain'
+              (fn [{:keys [status body]
+                    {etag "ETag"
+                     last-modified "Last-Modified"
+                     location "Location"}
+                    :headers}]
+                (cond->
+                  {:response
+                   (cond->
+                     {:status (str status)}
+
+                     etag
+                     (assoc :etag etag)
+
+                     last-modified
+                     (assoc :lastModified (convert-http-date last-modified))
+
+                     location
+                     (assoc :location location))}
+
+                  (and (#{200 201} status) body)
+                  (assoc :resource body)
+
+                  (<= 400 status)
+                  (update :response assoc :outcome body)))))))))
 
 
 (defmulti process
@@ -267,6 +295,7 @@
           (md/chain'
             (let [context
                   {:router router
+                   :handler (reitit-ring/ring-handler router)
                    :conn conn
                    :db db
                    :return-preference (handler-util/preference headers "return")}]

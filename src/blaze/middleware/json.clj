@@ -47,10 +47,10 @@
 
 
 (defn- handle-request
-  [{:keys [request-method headers body] :as request}]
+  [{:keys [request-method body] {:strs [content-type]} :headers :as request}]
   (if (and (#{:put :post} request-method)
-           (str/starts-with? (get headers "content-type")
-                             "application/fhir+json"))
+           content-type
+           (str/starts-with? content-type "application/fhir+json"))
     (-> (parse-json body)
         (md/chain' #(assoc request :body %)))
     request))

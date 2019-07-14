@@ -1,14 +1,18 @@
 (ns blaze.handler.app
   (:require
-    [blaze.middleware.json :as json :refer [wrap-json]]
+    [blaze.middleware.json :refer [wrap-json]]
     [blaze.middleware.fhir.type :refer [wrap-type]]
     [clojure.spec.alpha :as s]
-    [datomic-spec.core :as ds]
-    [reitit.ring :as reitit-ring]
-    [ring.util.response :as ring]))
+    [reitit.core :as reitit]
+    [reitit.ring :as reitit-ring]))
 
 
-(defn router [base-url conn handlers]
+(defn- wrap-remove-context-path [handler]
+  (fn [{{{:keys [more] :or {more ""}} :path-params} ::reitit/match :as request}]
+    (handler (assoc request :uri more))))
+
+
+(defn router [handlers]
   (reitit-ring/router
     [["/health"
       {:head (:handler/health handlers)
@@ -16,89 +20,25 @@
      ["/cql/evaluate"
       {:options (:handler/cql-evaluation handlers)
        :post (:handler/cql-evaluation handlers)}]
-     ["/fhir" {:blaze/base-url base-url
-               :middleware [wrap-json]}
-      ["" {:post (:handler.fhir/transaction handlers)}]
-      ["/" {:post (:handler.fhir/transaction handlers)}]
-      ["/metadata"
-       {:get (:handler.fhir/capabilities handlers)}]
-      ["/_history"
-       {:get (:handler.fhir/history-system handlers)}]
-      ["/{type}" {:middleware [[wrap-type conn]]}
-       [""
-        {:name :fhir/type
-         :get (:handler.fhir/search handlers)
-         :post (:handler.fhir/create handlers)}]
-       ["/_history" {:get (:handler.fhir/history-type handlers)}]
-       ["/_search" {:post (:handler.fhir/search handlers)}]
-       ["/{id}"
-        [""
-         {:name :fhir/instance
-          :get (:handler.fhir/read handlers)
-          :put (:handler.fhir/update handlers)
-          :delete (:handler.fhir/delete handlers)}]
-        ["/_history"
-         [""
-          {:get (:handler.fhir/history-instance handlers)}]
-         ["/{vid}"
-          {:name :fhir/versioned-instance
-           :get (:handler.fhir/read handlers)}]]]]]]
-    {:syntax :bracket
-     :conflicts nil}))
-
-
-(def ^:private default-handler
-  (reitit-ring/create-default-handler
-    {:not-found
-     (fn [_]
-       (-> (ring/not-found
-             {:resourceType "OperationOutcome"
-              :issue
-              [{:severity "information"
-                :code "not-found"}]})
-           (json/handle-response)))
-     :method-not-allowed
-     (fn [_]
-       (-> (ring/response
-             {:resourceType "OperationOutcome"
-              :issue
-              [{:severity "information"
-                :code "not-found"}]})
-           (ring/status 405)
-           (json/handle-response)))
-     :not-acceptable
-     (fn [_]
-       (-> (ring/response
-             {:resourceType "OperationOutcome"
-              :issue
-              [{:severity "error"
-                :code "structure"}]})
-           (ring/status 406)
-           (json/handle-response))
-       :not-acceptable)}))
+     ["/fhir"
+      {:middleware [wrap-json wrap-remove-context-path]
+       :handler (:handler.fhir/core handlers)}]
+     ["/fhir/{*more}"
+      {:middleware [wrap-json wrap-remove-context-path]
+       :handler (:handler.fhir/core handlers)}]]
+    {:syntax :bracket}))
 
 
 (s/def ::handlers
   (s/keys :req [:handler/cql-evaluation
                 :handler/health
-                :handler.fhir/capabilities
-                :handler.fhir/create
-                :handler.fhir/delete
-                :handler.fhir/history-instance
-                :handler.fhir/history-type
-                :handler.fhir/history-system
-                :handler.fhir/read
-                :handler.fhir/search
-                :handler.fhir/transaction
-                :handler.fhir/update]))
+                :handler.fhir/core]))
 
 
 (s/fdef handler
-  :args (s/cat :base-url string? :conn ::ds/conn :handlers ::handlers))
+  :args (s/cat :handlers ::handlers))
 
 (defn handler
   "Whole app Ring handler."
-  [base-url conn handlers]
-  (reitit-ring/ring-handler
-    (router base-url conn handlers)
-    default-handler))
+  [handlers]
+  (reitit-ring/ring-handler (router handlers)))

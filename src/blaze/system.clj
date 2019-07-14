@@ -15,6 +15,7 @@
     [blaze.handler.app :as app-handler]
     [blaze.handler.cql-evaluation :as cql-evaluation-handler]
     [blaze.handler.fhir.capabilities :as fhir-capabilities-handler]
+    [blaze.handler.fhir.core :as fhir-core-handler]
     [blaze.handler.fhir.create :as fhir-create-handler]
     [blaze.handler.fhir.delete :as fhir-delete-handler]
     [blaze.handler.fhir.history-instance :as fhir-history-instance-handler]
@@ -57,7 +58,7 @@
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
 (s/def :config/structure-definitions (s/keys :req [:structure-definitions/path]))
 (s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-url]))
-(s/def :config/fhir-app-handler (s/keys :opt-un [:config/base-url]))
+(s/def :config/fhir-core-handler (s/keys :opt-un [:config/base-url]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
 (s/def :config/metrics-server (s/keys :opt-un [::server/port]))
 
@@ -69,7 +70,7 @@
      :config/cache
      :config/structure-definitions
      :config/fhir-capabilities-handler
-     :config/fhir-app-handler
+     :config/fhir-core-handler
      :config/server
      :config/metrics-server]))
 
@@ -134,13 +135,11 @@
    :fhir-update-handler
    {:database/conn (ig/ref :database-conn)}
 
-   :app-handler
+   :fhir-core-handler
    {:base-url base-url
     :database/conn (ig/ref :database-conn)
     :handlers
-    {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
-     :handler/health (ig/ref :health-handler)
-     :handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
+    {:handler.fhir/capabilities (ig/ref :fhir-capabilities-handler)
      :handler.fhir/create (ig/ref :fhir-create-handler)
      :handler.fhir/delete (ig/ref :fhir-delete-handler)
      :handler.fhir/history-instance (ig/ref :fhir-history-instance-handler)
@@ -150,6 +149,14 @@
      :handler.fhir/search (ig/ref :fhir-search-handler)
      :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
      :handler.fhir/update (ig/ref :fhir-update-handler)}}
+
+   :app-handler
+   {:base-url base-url
+    :database/conn (ig/ref :database-conn)
+    :handlers
+    {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
+     :handler/health (ig/ref :health-handler)
+     :handler.fhir/core (ig/ref :fhir-core-handler)}}
 
    :server-executor {}
 
@@ -293,9 +300,14 @@
   (fhir-update-handler/handler conn))
 
 
-(defmethod ig/init-key :app-handler
+(defmethod ig/init-key :fhir-core-handler
   [_ {:keys [base-url handlers] :database/keys [conn]}]
-  (app-handler/handler base-url conn handlers))
+  (fhir-core-handler/handler (str base-url "/fhir") conn handlers))
+
+
+(defmethod ig/init-key :app-handler
+  [_ {:keys [handlers]}]
+  (app-handler/handler handlers))
 
 
 (defmethod ig/init-key :server-executor

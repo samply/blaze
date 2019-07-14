@@ -17,3 +17,15 @@
         :ret #{match})}
      :stub
      #{`reitit/match-by-name}}))
+
+
+(defn stub-match-by-path [router path match]
+  (st/instrument
+    [`reitit/match-by-path]
+    {:spec
+     {`reitit/match-by-path
+      (s/fspec
+        :args (s/cat :router #{router} :path #{path})
+        :ret #{match})}
+     :stub
+     #{`reitit/match-by-path}}))
