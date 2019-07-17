@@ -50,7 +50,8 @@
   [{:keys [request-method body] {:strs [content-type]} :headers :as request}]
   (if (and (#{:put :post} request-method)
            content-type
-           (str/starts-with? content-type "application/fhir+json"))
+           (or (str/starts-with? content-type "application/fhir+json")
+               (str/starts-with? content-type "application/json")))
     (-> (parse-json body)
         (md/chain' #(assoc request :body %)))
     request))
