@@ -35,7 +35,11 @@
          {:name :fhir/versioned-instance
           :get (:handler.fhir/read handlers)}]]]]]
     {:syntax :bracket
-     :conflicts nil}))
+     :conflicts nil
+     ::reitit-ring/default-options-handler
+     (fn [_]
+       (-> (ring/response nil)
+           (ring/status 405)))}))
 
 
 (def ^:private default-handler

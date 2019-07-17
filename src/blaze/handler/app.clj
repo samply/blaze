@@ -4,7 +4,8 @@
     [blaze.middleware.fhir.type :refer [wrap-type]]
     [clojure.spec.alpha :as s]
     [reitit.core :as reitit]
-    [reitit.ring :as reitit-ring]))
+    [reitit.ring :as reitit-ring]
+    [ring.util.response :as ring]))
 
 
 (defn- wrap-remove-context-path [handler]
@@ -26,7 +27,11 @@
      ["/fhir/{*more}"
       {:middleware [wrap-json wrap-remove-context-path]
        :handler (:handler.fhir/core handlers)}]]
-    {:syntax :bracket}))
+    {:syntax :bracket
+     ::reitit-ring/default-options-handler
+     (fn [_]
+       (-> (ring/response nil)
+           (ring/status 405)))}))
 
 
 (s/def ::handlers
