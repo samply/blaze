@@ -46,7 +46,7 @@
          #{`d/datoms}})
       (datomic-test-util/stub-entity ::db #{143757} #{::patient})
       (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
-      (datomic-test-util/stub-resource-type-total ::db "Patient" 1)
+      (datomic-test-util/stub-type-total ::db "Patient" 1)
       (fhir-test-util/stub-instance-url ::router "Patient" "0" ::full-url)
 
       (let [{:keys [status body]}
@@ -75,7 +75,7 @@
           (is (= patient (-> body :entry first :resource)))))))
 
   (testing "Summary Count"
-    (datomic-test-util/stub-resource-type-total ::db "Patient" 42)
+    (datomic-test-util/stub-type-total ::db "Patient" 42)
 
     (let [{:keys [status body]}
           @((handler ::conn)
@@ -94,7 +94,7 @@
         (is (= 42 (:total body))))))
 
   (testing "Count Zero (equal to Summary Count)"
-    (datomic-test-util/stub-resource-type-total ::db "Patient" 23)
+    (datomic-test-util/stub-type-total ::db "Patient" 23)
 
     (let [{:keys [status body]}
           @((handler ::conn)

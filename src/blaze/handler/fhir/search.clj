@@ -50,7 +50,7 @@
        :type "searchset"}
 
       (nil? pred)
-      (assoc :total (util/resource-type-total db type))
+      (assoc :total (util/type-total db type))
 
       (not (summary? query-params))
       (assoc

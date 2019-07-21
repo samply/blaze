@@ -21,19 +21,19 @@
 
 
 (defn stub-nav-link
-  [match query-params relation-spec transaction resource-eid-spec
-   replace-fn]
+  [match query-params t transaction eid-spec replace-fn]
   (st/instrument
-    [`util/nav-link]
+    [`util/nav-url]
     {:spec
-     {`util/nav-link
+     {`util/nav-url
       (s/fspec
         :args (s/cat :match #{match}
                      :query-params #{query-params}
-                     :relation relation-spec
-                     :entry (s/tuple #{transaction} resource-eid-spec)))}
+                     :t #{t}
+                     :transaction #{transaction}
+                     :eid eid-spec))}
      :replace
-     {`util/nav-link replace-fn}}))
+     {`util/nav-url replace-fn}}))
 
 
 (defn stub-page-eid [query-params result-spec]
@@ -48,13 +48,37 @@
      #{`util/page-eid}}))
 
 
-(defn stub-page-t [query-params result-spec]
+(defn stub-page-t [query-params t-spec]
   (st/instrument
     [`util/page-t]
     {:spec
      {`util/page-t
       (s/fspec
         :args (s/cat :query-params #{query-params})
-        :ret result-spec)}
+        :ret t-spec)}
      :stub
      #{`util/page-t}}))
+
+
+(defn stub-since-t [db query-params t-spec]
+  (st/instrument
+    [`util/since-t]
+    {:spec
+     {`util/since-t
+      (s/fspec
+        :args (s/cat :db #{db} :query-params #{query-params})
+        :ret t-spec)}
+     :stub
+     #{`util/since-t}}))
+
+
+(defn stub-tx-db [db since-t-spec page-t-spec tx-db]
+  (st/instrument
+    [`util/tx-db]
+    {:spec
+     {`util/tx-db
+      (s/fspec
+        :args (s/cat :db #{db} :since-t since-t-spec :page-t page-t-spec)
+        :ret #{tx-db})}
+     :stub
+     #{`util/tx-db}}))

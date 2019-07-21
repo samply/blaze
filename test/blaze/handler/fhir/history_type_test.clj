@@ -8,6 +8,7 @@
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.history.test-util :as history-test-util]
     [blaze.handler.fhir.history-type :refer [handler]]
+    [blaze.handler.fhir.test-util :as fhir-test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -32,20 +33,36 @@
 (use-fixtures :each fixture)
 
 
-(deftest handler-test
+(deftest handler-test-1
   (testing "Returns History with one Patient"
-    (let [patient {:db/id 0}
-          tx {:tx/resources [patient]}]
+    (let [tx {:db/id ::tx-eid}]
+      (fhir-test-util/stub-t ::query-params nil?)
       (datomic-test-util/stub-db ::conn ::db)
+      (history-test-util/stub-page-t ::query-params nil?)
+      (history-test-util/stub-since-t ::db ::query-params nil?)
+      (history-test-util/stub-tx-db ::db nil? nil? ::db)
       (datomic-test-util/stub-type-transaction-history ::db "Patient" [tx])
-      (datomic-test-util/stub-entity ::db #{:Patient} #{{:type/version -1}})
-      (datomic-test-util/stub-resource-type patient "Patient")
+      (fhir-test-util/stub-page-size ::query-params 50)
+      (history-test-util/stub-page-eid ::query-params nil?)
+      (datomic-test-util/stub-entity-db #{tx} ::db)
+      (datomic-test-util/stub-datoms
+        ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
+        (constantly [{:v ::patient-eid}]))
+      (datomic-test-util/stub-as-of-t ::db nil?)
+      (datomic-test-util/stub-basis-t ::db 152026)
+      (datomic-test-util/stub-type-version ::db "Patient" 1)
+      (datomic-test-util/stub-resource-type* ::db ::patient-eid "Patient")
+      (history-test-util/stub-nav-link
+        ::match ::query-params 152026 tx #{::patient-eid}
+        (constantly ::self-link-url))
       (history-test-util/stub-build-entry
-        ::router ::db #{tx} #{0} (constantly ::entry)))
+        ::router ::db #{tx} #{::patient-eid} (constantly ::entry)))
 
     (let [{:keys [status body]}
           @((handler ::conn)
             {::reitit/router ::router
+             ::reitit/match ::match
+             :query-params ::query-params
              :path-params {:type "Patient"}})]
 
       (is (= 200 status))

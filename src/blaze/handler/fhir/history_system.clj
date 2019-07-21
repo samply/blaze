@@ -27,81 +27,82 @@
 
 
 (defn- expand-resources
-  "Returns tuples of `transaction` and resource eid of resources changed in
-  transaction."
-  [first-transaction last-resource-eid transaction]
+  "Returns a reducible coll of tuples of `transaction` and resource eid of
+  resources changed in transaction starting possibly with the resource with
+  `first-resource-eid`."
+  [transaction first-resource-eid]
   (let [db (d/entity-db transaction)]
     (eduction
       (map (fn [{:keys [v]}] [transaction v]))
-      (if (and (= first-transaction transaction) last-resource-eid)
-        (d/datoms db :eavt (:db/id transaction) :tx/resources last-resource-eid)
-        (d/datoms db :eavt (:db/id transaction) :tx/resources)))))
+      (d/datoms db :eavt (:db/id transaction) :tx/resources first-resource-eid))))
 
 
-(defn- entries [last-resource-eid page-size transactions]
-  (into
-    []
-    (comp
-      (mapcat #(expand-resources (first transactions) last-resource-eid %))
-      (take page-size))
-    transactions))
+(defn- entries [[first-transaction & more-transactions] first-resource-eid page-size]
+  (when first-transaction
+    (let [first-entries (into [] (take page-size) (expand-resources first-transaction first-resource-eid))]
+      (into
+        first-entries
+        (comp
+          (mapcat #(expand-resources % nil))
+          (take (- page-size (count first-entries))))
+        more-transactions))))
 
 
-(defn- build-response [router db match since-t query-params transactions]
+(defn- build-response
+  "The coll of `transactions` already starts at `page-t`."
+  [router match query-params db since-t transactions]
   (let [page-size (fhir-util/page-size query-params)
-        entries (entries (history-util/page-eid query-params) (inc page-size) transactions)
-        more-entries-available? (< page-size (count entries))]
+        entries (entries transactions (history-util/page-eid query-params) (inc page-size))
+        more-entries-available? (< page-size (count entries))
+        t (or (d/as-of-t db) (d/basis-t db))
+        self-link
+        (fn [[transaction eid]]
+          {:relation "self"
+           :url (history-util/nav-url match query-params t transaction eid)})
+        next-link
+        (fn [[transaction eid]]
+          {:relation "next"
+           :url (history-util/nav-url match query-params t transaction eid)})]
     (ring/response
       (cond->
         {:resourceType "Bundle"
          :type "history"
          :total (total db since-t)
-         :link [(history-util/nav-link match query-params "self" (first entries))]
+         :link []
          :entry
          (into
            []
            (comp
+             ;; we need take here again because we take page-size + 1 above
              (take page-size)
              (map (fn [[tx eid]] (history-util/build-entry router db tx eid))))
            entries)}
 
+        (first entries)
+        (update :link conj (self-link (first entries)))
+
         more-entries-available?
-        (update :link conj
-                (history-util/nav-link match query-params "next" (peek entries)))))))
+        (update :link conj (next-link (peek entries)))))))
 
 
-(defn- tx-db
-  "Returns a database which includes resources since the optional `since-t` and
-  up-to (as-of) the optional `page-t`. If both times are omitted, `db` is
-  returned unchanged.
-
-  While `page-t` is used for paging, restricting the database page by page more
-  into the past, `since-t` is used to cut the database at some point in the past
-  in order to include only resources up-to this point in time. So `page-t`
-  should be always greater or equal to `since-t`."
-  [db since-t page-t]
-  (let [tx-db (if since-t (d/since db since-t) db)]
-    (if page-t (d/as-of tx-db page-t) tx-db)))
-
-
-(defn- handle [router db match query-params t]
-  (let [since-t (history-util/since-t db query-params)
-        tx-db (tx-db db since-t t)
+(defn- handle [router match query-params db]
+  (let [page-t (history-util/page-t query-params)
+        since-t (history-util/since-t db query-params)
+        tx-db (history-util/tx-db db since-t page-t)
         transactions (datomic-util/system-transaction-history tx-db)]
-    (build-response router db match since-t query-params transactions)))
+    (build-response router match query-params db since-t transactions)))
 
 
 (defn- db [conn t]
   (if t
-    (d/sync conn t)
+    (-> (d/sync conn t) (md/chain #(d/as-of % t)))
     (d/db conn)))
 
 
 (defn- handler-intern [conn]
-  (fn [{:keys [query-params] ::reitit/keys [router match]}]
-    (let [t (history-util/page-t query-params)]
-      (-> (db conn t)
-          (md/chain #(handle router % match query-params t))))))
+  (fn [{::reitit/keys [router match] :keys [query-params]}]
+    (-> (db conn (fhir-util/t query-params))
+        (md/chain' #(handle router match query-params %)))))
 
 
 (s/def :handler.fhir/history-system fn?)

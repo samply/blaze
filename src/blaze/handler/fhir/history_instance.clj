@@ -12,6 +12,7 @@
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
+    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]))
@@ -21,48 +22,73 @@
   (:db/id (util/resource db type id)))
 
 
-(defn- total* [db eid]
-  (let [resource (d/entity db eid)]
-    ;; test for resource existence since `d/entity` always returns something
-    ;; when called with an eid
-    (if (:instance/version resource)
-      (util/ordinal-version resource)
-      0)))
-
-
 (defn- total [db since-t eid]
-  (let [total (total* db eid)]
+  (let [total (util/instance-version (d/entity db eid))]
     (if since-t
-      (- total (total* (d/as-of db since-t) eid))
+      (- total (util/instance-version (d/entity (d/as-of db since-t) eid)))
       total)))
 
 
-(defn- build-response [router db since-t params eid transactions]
-  (ring/response
-    {:resourceType "Bundle"
-     :type "history"
-     :total (total db since-t eid)
-     :entry
-     (into
-       []
-       (comp
-         (take (fhir-util/page-size params))
-         (map #(history-util/build-entry router db % eid)))
-       transactions)}))
+(defn- build-response
+  "The coll of `transactions` already starts at `page-t`."
+  [router match query-params db since-t eid transactions]
+  (let [page-size (fhir-util/page-size query-params)
+        transactions (into [] (take (inc page-size) transactions))
+        more-entries-available? (< page-size (count transactions))
+        t (or (d/as-of-t db) (d/basis-t db))
+        self-link
+        (fn [transaction]
+          {:relation "self"
+           :url (history-util/nav-url match query-params t transaction nil)})
+        next-link
+        (fn [transaction]
+          {:relation "next"
+           :url (history-util/nav-url match query-params t transaction nil)})]
+    (ring/response
+      (cond->
+        {:resourceType "Bundle"
+         :type "history"
+         :total (total db since-t eid)
+         :link []
+         :entry
+         (into
+           []
+           (comp
+             ;; we need take here again because we take page-size + 1 above
+             (take page-size)
+             (map #(history-util/build-entry router db % eid)))
+           transactions)}
+
+        (first transactions)
+        (update :link conj (self-link (first transactions)))
+
+        more-entries-available?
+        (update :link conj (next-link (peek transactions)))))))
+
+
+(defn handle [router match query-params db type id]
+  (if-let [eid (resource-eid db type id)]
+    (let [page-t (history-util/page-t query-params)
+          since-t (history-util/since-t db query-params)
+          tx-db (history-util/tx-db db since-t page-t)
+          transactions (util/instance-transaction-history tx-db eid)]
+      (build-response router match query-params db since-t eid transactions))
+    (handler-util/error-response
+      {::anom/category ::anom/not-found
+       :fhir/issue "not-found"})))
+
+
+(defn- db [conn t]
+  (if t
+    (-> (d/sync conn t) (md/chain #(d/as-of % t)))
+    (d/db conn)))
 
 
 (defn- handler-intern [conn]
-  (fn [{{:keys [type id]} :path-params :keys [query-params]
-        ::reitit/keys [router]}]
-    (let [db (d/db conn)]
-      (if-let [eid (resource-eid db type id)]
-        (let [since-t (history-util/since-t db query-params)
-              since-db (if since-t (d/since db since-t) db)
-              transactions (util/instance-transaction-history since-db eid)]
-          (build-response router db since-t query-params eid transactions))
-        (handler-util/error-response
-          {::anom/category ::anom/not-found
-           :fhir/issue "not-found"})))))
+  (fn [{::reitit/keys [router match] :keys [query-params]
+        {:keys [type id]} :path-params}]
+    (-> (db conn (fhir-util/t query-params))
+        (md/chain' #(handle router match query-params % type id)))))
 
 
 (s/def :handler.fhir/history-instance fn?)

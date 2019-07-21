@@ -31,16 +31,28 @@
      #{`util/delete-resource}}))
 
 
-(defn stub-page-size [query-params result]
+(defn stub-page-size [query-params page-size]
   (st/instrument
     [`util/page-size]
     {:spec
      {`util/page-size
       (s/fspec
         :args (s/cat :query-params #{query-params})
-        :ret #{result})}
+        :ret #{page-size})}
      :stub
      #{`util/page-size}}))
+
+
+(defn stub-t [query-params t-spec]
+  (st/instrument
+    [`util/t]
+    {:spec
+     {`util/t
+      (s/fspec
+        :args (s/cat :query-params #{query-params})
+        :ret t-spec)}
+     :stub
+     #{`util/t}}))
 
 
 (defn stub-type-url [router type url]

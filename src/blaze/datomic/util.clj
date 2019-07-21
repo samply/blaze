@@ -8,6 +8,15 @@
     [java.util Date]))
 
 
+(s/fdef resource-type*
+  :args (s/cat :db ::ds/db :eid ::ds/entity-id)
+  :ret string?)
+
+(defn resource-type*
+  [db eid]
+  (name (d/ident db (d/part eid))))
+
+
 (s/fdef resource-type
   :args (s/cat :resource ::ds/entity)
   :ret string?)
@@ -16,7 +25,7 @@
   "Returns the type of a `resource` like \"Patient\" or \"Observation\"."
   {:arglists '([resource])}
   [{:db/keys [id] :as resource}]
-  (name (d/ident (d/entity-db resource) (d/part id))))
+  (resource-type* (d/entity-db resource) id))
 
 
 (defn resource-id-attr [type]
@@ -145,18 +154,6 @@
   (= -3 (:instance/version resource)))
 
 
-(s/fdef ordinal-version
-  :args (s/cat :resource ::ds/entity)
-  :ret nat-int?)
-
-(defn ordinal-version
-  "Returns the strong monotonic increasing ordinal version of `resource`.
-
-  Ordinal versions start with 1."
-  [resource]
-  (- (bit-shift-right (:instance/version resource) 2)))
-
-
 (s/fdef list-resources
   :args (s/cat :db ::ds/db :type string?)
   :ret (s/coll-of ::ds/entity))
@@ -184,6 +181,18 @@
     (filter :added)
     (map #(d/entity db (:tx %)))
     (d/datoms (d/history db) :eavt eid :instance/version)))
+
+
+(s/fdef instance-version
+  :args (s/cat :resource ::ds/entity)
+  :ret nat-int?)
+
+(defn instance-version
+  "Returns the strong monotonic increasing ordinal version of `resource`.
+
+  Ordinal versions start with 1."
+  [resource]
+  (- (bit-shift-right (:instance/version resource 0) 2)))
 
 
 (s/fdef type-transaction-history
@@ -214,14 +223,14 @@
     (d/datoms (d/history db) :eavt :system :system/version)))
 
 
-(s/fdef resource-type-total
+(s/fdef type-total
   :args (s/cat :db ::ds/db :type string?)
   :ret nat-int?)
 
-(defn resource-type-total
+(defn type-total
   "Returns the total number of resources with `type` in `db`."
   [db type]
-  (- (get (d/entity db (keyword type)) :type/total 0)))
+  (- (:type/total (d/entity db (keyword type)) 0)))
 
 
 (s/fdef system-version
@@ -231,4 +240,14 @@
 (defn system-version
   "Returns the number of resource changes in the whole system."
   [db]
-  (- (get (d/entity db :system) :system/version 0)))
+  (- (:system/version (d/entity db :system) 0)))
+
+
+(s/fdef type-version
+  :args (s/cat :db ::ds/db :type string?)
+  :ret nat-int?)
+
+(defn type-version
+  "Returns the number of resource changes of `type`."
+  [db type]
+  (- (:type/version (d/entity db (keyword type)) 0)))

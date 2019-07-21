@@ -34,7 +34,7 @@
   (cond
     (and vid (re-matches #"\d+" vid))
     (let [vid (Long/parseLong vid)]
-      (md/chain (d/sync conn vid) #(d/as-of % vid)))
+      (-> (d/sync conn vid) (md/chain #(d/as-of % vid))))
 
     vid
     (md/error-deferred

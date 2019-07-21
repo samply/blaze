@@ -23,7 +23,7 @@
    [metosin/reitit-ring "0.3.9"
     :exclusions [commons-codec]]
    [org.apache.httpcomponents/httpcore "4.4.11"]
-   [org.clojars.akiel/datomic-spec "0.5.1"]
+   [org.clojars.akiel/datomic-spec "0.5.2"]
    [org.clojars.akiel/datomic-tools "0.4"]
    [org.clojars.akiel/env-tools "0.2.1"]
    [org.clojars.akiel/spec-coerce "0.3.1"]

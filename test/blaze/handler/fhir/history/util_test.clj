@@ -1,7 +1,7 @@
 (ns blaze.handler.fhir.history.util-test
   (:require
     [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.handler.fhir.history.util :refer [build-entry]]
+    [blaze.handler.fhir.history.util :refer [build-entry nav-url]]
     [blaze.handler.fhir.test-util :as test-util]
     [clojure.test :refer :all]
     [clojure.spec.alpha :as s]

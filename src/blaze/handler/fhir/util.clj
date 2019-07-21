@@ -90,6 +90,18 @@
               conn (into tx-data (delete-system-and-type-tx-data db type id))))))))
 
 
+(s/fdef t
+  :args (s/cat :query-params (s/map-of string? string?))
+  :ret (s/nilable nat-int?))
+
+(defn t
+  "Returns the t (optional) of the database which should be stay stable."
+  {:arglists '([query-params])}
+  [{:strs [t]}]
+  (when (some->> t (re-matches #"\d+"))
+    (Long/parseLong t)))
+
+
 (def ^:private ^:const default-page-size 50)
 (def ^:private ^:const max-page-size 500)
 

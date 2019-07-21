@@ -8,6 +8,7 @@
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.history.test-util :as history-test-util]
     [blaze.handler.fhir.history-instance :refer [handler]]
+    [blaze.handler.fhir.test-util :as fhir-test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
@@ -32,7 +33,7 @@
 (use-fixtures :each fixture)
 
 
-(deftest handler-test
+(deftest handler-test-0
   (testing "Returns Not Found on Non-Existing Resource"
     (datomic-test-util/stub-db ::conn ::db)
     (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
@@ -47,21 +48,35 @@
 
       (is (= "error" (-> body :issue first :severity)))
 
-      (is (= "not-found" (-> body :issue first :code)))))
+      (is (= "not-found" (-> body :issue first :code))))))
 
+
+(deftest handler-test
   (testing "Returns History with one Patient"
     (let [patient {:instance/version ::foo}]
+      (fhir-test-util/stub-t ::query-params nil?)
       (datomic-test-util/stub-db ::conn ::db)
       (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} #{{:db/id 0}})
+      (history-test-util/stub-page-t ::query-params nil?)
+      (history-test-util/stub-since-t ::db ::query-params nil?)
+      (history-test-util/stub-tx-db ::db nil? nil? ::db)
       (datomic-test-util/stub-instance-transaction-history ::db 0 [::tx])
+      (fhir-test-util/stub-page-size ::query-params 50)
+      (datomic-test-util/stub-as-of-t ::db nil?)
+      (datomic-test-util/stub-basis-t ::db 173105)
       (datomic-test-util/stub-entity ::db #{0} #{patient})
       (datomic-test-util/stub-ordinal-version patient 1)
+      (history-test-util/stub-nav-link
+        ::match ::query-params 173105 ::tx nil?
+        (constantly ::self-link-url))
       (history-test-util/stub-build-entry
         ::router ::db #{::tx} #{0} (constantly ::entry)))
 
     (let [{:keys [status body]}
           @((handler ::conn)
             {::reitit/router ::router
+             ::reitit/match ::match
+             :query-params ::query-params
              :path-params {:type "Patient" :id "0"}})]
 
       (is (= 200 status))
@@ -73,5 +88,9 @@
       (is (= 1 (:total body)))
 
       (is (= 1 (count (:entry body))))
+
+      (is (= "self" (-> body :link first :relation)))
+
+      (is (= ::self-link-url (-> body :link first :url)))
 
       (is (= ::entry (-> body :entry first))))))

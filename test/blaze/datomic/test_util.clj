@@ -89,6 +89,18 @@
      #{`d/as-of}}))
 
 
+(defn stub-as-of-t [db t-spec]
+  (st/instrument
+    [`d/as-of-t]
+    {:spec
+     {`d/as-of-t
+      (s/fspec
+        :args (s/cat :db #{db})
+        :ret t-spec)}
+     :stub
+     #{`d/as-of-t}}))
+
+
 (defn stub-basis-t [db t]
   (st/instrument
     [`d/basis-t]
@@ -273,14 +285,14 @@
 
 (defn stub-ordinal-version [resource result]
   (st/instrument
-    `util/ordinal-version
+    `util/instance-version
     {:spec
-     {`util/ordinal-version
+     {`util/instance-version
       (s/fspec
         :args (s/cat :resource #{resource})
         :ret #{result})}
      :stub
-     #{`util/ordinal-version}}))
+     #{`util/instance-version}}))
 
 
 (defn stub-resource [db type-spec id-spec entity-spec]
@@ -305,6 +317,18 @@
         :ret #{type})}
      :stub
      #{`util/resource-type}}))
+
+
+(defn stub-resource-type* [db eid type]
+  (st/instrument
+    [`util/resource-type*]
+    {:spec
+     {`util/resource-type*
+      (s/fspec
+        :args (s/cat :db #{db} :eid #{eid})
+        :ret #{type})}
+     :stub
+     #{`util/resource-type*}}))
 
 
 (defn stub-tx-instant [transaction result]
@@ -355,6 +379,18 @@
      #{`util/system-version}}))
 
 
+(defn stub-type-version [db type result]
+  (st/instrument
+    [`util/type-version]
+    {:spec
+     {`util/type-version
+      (s/fspec
+        :args (s/cat :db #{db} :type #{type})
+        :ret #{result})}
+     :stub
+     #{`util/type-version}}))
+
+
 
 ;; ---- blaze.datomic.pull stubs ----------------------------------------------
 
@@ -397,16 +433,16 @@
      #{`tx/resource-deletion}}))
 
 
-(defn stub-resource-type-total [db type result]
+(defn stub-type-total [db type result]
   (st/instrument
-    [`util/resource-type-total]
+    [`util/type-total]
     {:spec
-     {`util/resource-type-total
+     {`util/type-total
       (s/fspec
         :args (s/cat :db #{db} :type #{type})
         :ret #{result})}
      :stub
-     #{`util/resource-type-total}}))
+     #{`util/type-total}}))
 
 
 (defn stub-resource-upsert [db tempids initial-version resource-spec result-spec]
