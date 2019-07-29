@@ -3,10 +3,15 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
+    [blaze.structure-definition :refer [read-structure-definitions]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
-    [datomic.api :as d]))
+    [datomic.api :as d]
+    [datomic-tools.schema :as dts]
+    [blaze.datomic.schema :as schema])
+  (:import
+    [java.util UUID]))
 
 
 (defn with-resource
@@ -469,3 +474,15 @@
         :ret #{tx-result})}
      :stub
      #{`tx/transact-async}}))
+
+
+(defn connect
+  "Connects to a new in-memory database with applied schema."
+  []
+  (let [uri (str "datomic:mem://" (UUID/randomUUID))]
+    (d/create-database uri)
+    (let [structure-definitions (read-structure-definitions "fhir/r4/structure-definitions")
+          conn (d/connect uri)]
+      @(d/transact conn (dts/schema))
+      @(d/transact conn (schema/structure-definition-schemas structure-definitions))
+      conn)))

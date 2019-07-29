@@ -1,17 +1,14 @@
 (ns blaze.integration-test
   (:require
     [cheshire.core :as json]
-    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
     [datomic-spec.test :as dst]
-    [datomic-tools.schema :as dts]
     [juxt.iota :refer [given]]
     [blaze.bundle :as bundle]
     [blaze.cql-translator :as cql]
-    [blaze.datomic.schema :as schema]
-    [blaze.datomic.transaction :as tx]
+    [blaze.datomic.test-util :as test-util]
     [blaze.elm.compiler :as compiler]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.deps-infer :refer [infer-library-deps]]
@@ -26,20 +23,7 @@
     [java.time OffsetDateTime Year]))
 
 
-(defonce structure-definitions
-  (read-structure-definitions "fhir/r4/structure-definitions"))
-
-
-(defn- connect []
-  (d/delete-database "datomic:mem://integration-test")
-  (d/create-database "datomic:mem://integration-test")
-  (let [conn (d/connect "datomic:mem://integration-test")]
-    @(d/transact conn (dts/schema))
-    @(d/transact conn (schema/structure-definition-schemas structure-definitions))
-    conn))
-
-
-(defonce db (d/db (connect)))
+(defonce db (d/db (st/with-instrument-disabled (test-util/connect))))
 
 
 (defn fixture [f]

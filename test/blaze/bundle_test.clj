@@ -1,15 +1,12 @@
 (ns blaze.bundle-test
   (:require
     [blaze.bundle :refer [resolve-entry-links tx-data]]
-    [blaze.datomic.schema :as schema]
-    [blaze.datomic.transaction :as tx]
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.structure-definition :refer [read-structure-definitions]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
     [datomic-spec.test :as dst]
-    [datomic-tools.schema :as dts]
     [juxt.iota :refer [given]]))
 
 
@@ -17,20 +14,7 @@
 (dst/instrument)
 
 
-(defonce structure-definitions
-  (read-structure-definitions "fhir/r4/structure-definitions"))
-
-
-(defn- connect []
-  (d/delete-database "datomic:mem://bundle-test")
-  (d/create-database "datomic:mem://bundle-test")
-  (let [conn (d/connect "datomic:mem://bundle-test")]
-    @(d/transact conn (dts/schema))
-    @(d/transact conn (schema/structure-definition-schemas structure-definitions))
-    conn))
-
-
-(defonce db (d/db (connect)))
+(defonce db (d/db (st/with-instrument-disabled (datomic-test-util/connect))))
 
 
 (deftest resolve-entry-links-test

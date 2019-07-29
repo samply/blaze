@@ -3,14 +3,11 @@
     [blaze.datomic.pull :refer :all]
     [blaze.datomic.quantity :refer [quantity]]
     [blaze.datomic.test-util :refer :all]
-    [blaze.datomic.schema :as schema]
     [blaze.datomic.value :as value]
-    [blaze.structure-definition :refer [read-structure-definitions]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
     [datomic-spec.test :as dst]
-    [datomic-tools.schema :as dts]
     [juxt.iota :refer [given]])
   (:import
     [java.time Year LocalDateTime]
@@ -21,20 +18,7 @@
 (dst/instrument)
 
 
-(defonce structure-definitions
-  (read-structure-definitions "fhir/r4/structure-definitions"))
-
-
-(defn- connect []
-  (d/delete-database "datomic:mem://datomic.pull-test")
-  (d/create-database "datomic:mem://datomic.pull-test")
-  (let [conn (d/connect "datomic:mem://datomic.pull-test")]
-    @(d/transact conn (dts/schema))
-    @(d/transact conn (schema/structure-definition-schemas structure-definitions))
-    conn))
-
-
-(defonce db (d/db (connect)))
+(defonce db (d/db (st/with-instrument-disabled (connect))))
 
 
 (defn- b64-decode [s]

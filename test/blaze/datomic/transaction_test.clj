@@ -1,7 +1,6 @@
 (ns blaze.datomic.transaction-test
   (:require
     [blaze.datomic.quantity :refer [quantity]]
-    [blaze.datomic.schema :as schema]
     [blaze.datomic.test-util :refer :all]
     [blaze.datomic.transaction
      :refer [resource-upsert resource-deletion
@@ -13,7 +12,6 @@
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.test :as dst]
-    [datomic-tools.schema :as dts]
     [juxt.iota :refer [given]]
     [manifold.deferred :as md])
   (:import
@@ -21,20 +19,7 @@
     [java.util Base64]))
 
 
-(defonce structure-definitions
-  (read-structure-definitions "fhir/r4/structure-definitions"))
-
-
-(defn- connect []
-  (d/delete-database "datomic:mem://datomic.transaction-test")
-  (d/create-database "datomic:mem://datomic.transaction-test")
-  (let [conn (d/connect "datomic:mem://datomic.transaction-test")]
-    @(d/transact conn (dts/schema))
-    @(d/transact conn (schema/structure-definition-schemas structure-definitions))
-    conn))
-
-
-(defonce db (d/db (connect)))
+(defonce db (d/db (st/with-instrument-disabled (connect))))
 
 
 (defn fixture [f]
