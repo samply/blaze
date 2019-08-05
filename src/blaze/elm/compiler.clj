@@ -725,7 +725,7 @@
       ;; patients.
       (reify Expression
         (-eval [_ {:keys [db library-context] :as context} _]
-          (if-let [expression (get library-context name)]
+          (if-some [expression (get library-context name)]
             (mapv
               (fn [patient]
                 (-eval expression (assoc context :patient patient) nil))
@@ -740,7 +740,7 @@
       :else
       (reify Expression
         (-eval [_ {:keys [library-context] :as context} _]
-          (if-let [expression (get library-context name)]
+          (if-some [expression (get library-context name)]
             (-eval expression context nil)
             (throw (ex-info (str "Expression reference `" name "` not found.")
                             {:context context}))))
