@@ -35,12 +35,14 @@
 
 (deftest handler-test-0
   (testing "Returns Not Found on Non-Existing Resource"
-    (datomic-test-util/stub-db ::conn ::db)
+    (fhir-test-util/stub-t ::query-params nil?)
+    (history-test-util/stub-db ::conn nil? ::db)
     (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
 
     (let [{:keys [status body]}
           @((handler ::conn)
-            {:path-params {:type "Patient" :id "0"}})]
+            {:query-params ::query-params
+             :path-params {:type "Patient" :id "0"}})]
 
       (is (= 404 status))
 
@@ -55,7 +57,7 @@
   (testing "Returns History with one Patient"
     (let [patient {:instance/version ::foo}]
       (fhir-test-util/stub-t ::query-params nil?)
-      (datomic-test-util/stub-db ::conn ::db)
+      (history-test-util/stub-db ::conn nil? ::db)
       (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} #{{:db/id 0}})
       (history-test-util/stub-page-t ::query-params nil?)
       (history-test-util/stub-since-t ::db ::query-params nil?)

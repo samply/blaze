@@ -7,6 +7,7 @@
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
+    [manifold.deferred :as md]
     [reitit.core :as reitit])
   (:import
     [java.time Instant]
@@ -113,6 +114,16 @@
         :lastModified (str (datomic-util/tx-instant transaction))}}
       (not (datomic-util/deleted? resource))
       (assoc :resource (pull/pull-resource* db type resource)))))
+
+
+(s/fdef db
+  :args (s/cat :conn ::ds/conn :t (s/nilable nat-int?))
+  :ret md/deferred?)
+
+(defn db [conn t]
+  (if t
+    (-> (d/sync conn t) (md/chain #(d/as-of % t)))
+    (d/db conn)))
 
 
 (s/fdef tx-db

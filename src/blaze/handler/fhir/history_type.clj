@@ -95,16 +95,10 @@
     (build-response router match query-params db since-t type transactions)))
 
 
-(defn- db [conn t]
-  (if t
-    (-> (d/sync conn t) (md/chain #(d/as-of % t)))
-    (d/db conn)))
-
-
 (defn- handler-intern [conn]
   (fn [{::reitit/keys [router match] :keys [query-params]
         {:keys [type]} :path-params}]
-    (-> (db conn (fhir-util/t query-params))
+    (-> (history-util/db conn (fhir-util/t query-params))
         (md/chain' #(handle router match query-params % type)))))
 
 

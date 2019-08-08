@@ -37,7 +37,7 @@
   (testing "Returns History with one Patient"
     (let [tx {:db/id ::tx-eid}]
       (fhir-test-util/stub-t ::query-params nil?)
-      (datomic-test-util/stub-db ::conn ::db)
+      (history-test-util/stub-db ::conn nil? ::db)
       (history-test-util/stub-page-t ::query-params nil?)
       (history-test-util/stub-since-t ::db ::query-params nil?)
       (history-test-util/stub-tx-db ::db nil? nil? ::db)

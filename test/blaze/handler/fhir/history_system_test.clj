@@ -36,7 +36,7 @@
 (deftest handler-test-0
   (testing "Returns empty History"
     (fhir-test-util/stub-t ::query-params nil?)
-    (datomic-test-util/stub-db ::conn ::db)
+    (history-test-util/stub-db ::conn nil? ::db)
     (history-test-util/stub-page-t ::query-params nil?)
     (history-test-util/stub-since-t ::db ::query-params nil?)
     (history-test-util/stub-tx-db ::db nil? nil? ::db)
@@ -68,7 +68,7 @@
   (testing "Returns History with one Patient"
     (let [tx {:db/id ::tx-eid}]
       (fhir-test-util/stub-t ::query-params nil?)
-      (datomic-test-util/stub-db ::conn ::db)
+      (history-test-util/stub-db ::conn nil? ::db)
       (history-test-util/stub-page-t ::query-params nil?)
       (history-test-util/stub-since-t ::db ::query-params nil?)
       (history-test-util/stub-tx-db ::db nil? nil? ::db)
@@ -115,7 +115,7 @@
   (testing "Returns History with two Patients in one Transaction"
     (let [tx {:db/id ::tx-eid}]
       (fhir-test-util/stub-t ::query-params nil?)
-      (datomic-test-util/stub-db ::conn ::db)
+      (history-test-util/stub-db ::conn nil? ::db)
       (history-test-util/stub-page-t ::query-params nil?)
       (history-test-util/stub-since-t ::db ::query-params nil?)
       (history-test-util/stub-tx-db ::db nil? nil? ::db)
@@ -167,7 +167,7 @@
     (let [tx-1 {:db/id ::tx-1-eid}
           tx-2 {:db/id ::tx-2-eid}]
       (fhir-test-util/stub-t ::query-params nil?)
-      (datomic-test-util/stub-db ::conn ::db)
+      (history-test-util/stub-db ::conn nil? ::db)
       (history-test-util/stub-page-t ::query-params nil?)
       (history-test-util/stub-since-t ::db ::query-params nil?)
       (history-test-util/stub-tx-db ::db nil? nil? ::db)
@@ -221,7 +221,7 @@
   (testing "Returns History with next Link"
     (let [tx {:db/id ::tx-eid}]
       (fhir-test-util/stub-t ::query-params nil?)
-      (datomic-test-util/stub-db ::conn ::db)
+      (history-test-util/stub-db ::conn nil? ::db)
       (history-test-util/stub-page-t ::query-params nil?)
       (history-test-util/stub-since-t ::db ::query-params nil?)
       (history-test-util/stub-tx-db ::db nil? nil? ::db)

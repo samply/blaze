@@ -72,6 +72,18 @@
      #{`util/since-t}}))
 
 
+(defn stub-db [conn t-spec db]
+  (st/instrument
+    [`util/db]
+    {:spec
+     {`util/db
+      (s/fspec
+        :args (s/cat :conn #{conn} :t t-spec)
+        :ret #{db})}
+     :stub
+     #{`util/db}}))
+
+
 (defn stub-tx-db [db since-t-spec page-t-spec tx-db]
   (st/instrument
     [`util/tx-db]
