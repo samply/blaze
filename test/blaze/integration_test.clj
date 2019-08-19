@@ -39,7 +39,7 @@
 
 
 (def term-service
-  (ts/term-service "http://tx.fhir.org/r4" (Executors/newSingleThreadExecutor)))
+  (ts/term-service "http://tx.fhir.org/r4" {}))
 
 
 (defn- db-with [{:strs [entries]}]

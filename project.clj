@@ -1,4 +1,4 @@
-(defproject blaze "0.6-alpha58"
+(defproject blaze "0.6-alpha59"
   :description "A FHIR Store with internal, fast CQL Evaluation Engine"
   :url "https://github.com/life-research/blaze"
 
@@ -38,7 +38,12 @@
     :exclusions [clj-time commons-codec commons-fileupload
                  commons-io crypto-equality crypto-random]]
    [systems.uom/systems-ucum "0.9"]
-   [systems.uom/systems-quantity "1.0"]]
+   [systems.uom/systems-quantity "1.0"]
+
+   ;; Needed to work with Java 11. Doesn't hurt Java 8.
+   [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]
+   [com.sun.xml.bind/jaxb-core "2.3.0.1"]
+   [com.sun.xml.bind/jaxb-impl "2.3.2"]]
 
   :plugins [[lein-cloverage/lein-cloverage "1.1.1"]]
 
@@ -51,12 +56,6 @@
      [org.clojure/data.xml "0.0.8"]
      [org.clojure/test.check "0.9.0"]
      [org.clojure/tools.namespace "0.3.0"]]}
-
-   :jdk-11
-   {:dependencies
-    [[javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]
-     [com.sun.xml.bind/jaxb-core "2.3.0.1"]
-     [com.sun.xml.bind/jaxb-impl "2.3.2"]]}
 
    :uberjar
    {:aot [blaze.core]}}

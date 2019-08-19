@@ -57,12 +57,17 @@
 (s/def :database/uri string?)
 (s/def :config/database-conn (s/keys :opt [:database/uri]))
 (s/def :term-service/uri string?)
-(s/def :config/term-service (s/keys :opt [:term-service/uri]))
+(s/def :term-service/proxy-host string?)
+(s/def :term-service/proxy-port pos-int?)
+(s/def :config/term-service
+  (s/keys :opt-un [:term-service/uri
+                   :term-service/proxy-host
+                   :term-service/proxy-port]))
 (s/def :cache/threshold pos-int?)
 (s/def :structure-definitions/path string?)
 (s/def :config/base-url string?)
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
-(s/def :config/structure-definitions (s/keys :req [:structure-definitions/path]))
+(s/def :config/structure-definitions (s/keys :opt [:structure-definitions/path]))
 (s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-url]))
 (s/def :config/fhir-core-handler (s/keys :opt-un [:config/base-url]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
@@ -85,7 +90,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha58")
+(def ^:private version "0.6-alpha59")
 
 (def ^:private base-url "http://localhost:8080")
 
@@ -99,11 +104,8 @@
    {:structure-definitions (ig/ref :structure-definitions)
     :database/uri "datomic:mem://dev"}
 
-   :term-service-executor {}
-
    :term-service
-   {:term-service/uri "http://tx.fhir.org/r4"
-    :executor (ig/ref :term-service-executor)}
+   {:uri "http://tx.fhir.org/r4"}
 
    :cache {}
 
@@ -195,8 +197,7 @@
    :metrics/registry
    {:server-executor (ig/ref :server-executor)
     :transaction-interaction-executor (ig/ref :transaction-interaction-executor)
-    :evaluate-measure-operation-executor (ig/ref :evaluate-measure-operation-executor)
-    :term-service-executor (ig/ref :term-service-executor)}
+    :evaluate-measure-operation-executor (ig/ref :evaluate-measure-operation-executor)}
 
    :metrics-handler
    {:registry (ig/ref :metrics/registry)}
@@ -258,14 +259,20 @@
   (d/connect uri))
 
 
-(defmethod ig/init-key :term-service-executor
-  [_ _]
-  (ThreadPoolExecutor. 4 4 1 TimeUnit/MINUTES (ArrayBlockingQueue. 100)))
-
-
 (defmethod ig/init-key :term-service
-  [_ {:term-service/keys [uri] :keys [executor]}]
-  (ts/term-service uri executor))
+  [_ {:keys [uri proxy-host proxy-port]}]
+  (log/info
+    (cond->
+      (str "Init terminology server connection: " uri)
+      proxy-host
+      (str " using proxy host " proxy-host)
+      proxy-port
+      (str ", port " proxy-port)))
+  (ts/term-service
+    uri
+    (cond-> {}
+      proxy-host (assoc :host proxy-host)
+      proxy-port (assoc :port proxy-port))))
 
 
 (defmethod ig/init-key :cache
@@ -371,8 +378,7 @@
 
 (defmethod ig/init-key :metrics/registry
   [_ {:keys [server-executor transaction-interaction-executor
-             evaluate-measure-operation-executor
-             term-service-executor]}]
+             evaluate-measure-operation-executor]}]
   (doto (CollectorRegistry. true)
     (.register (StandardExports.))
     (.register (MemoryPoolsExports.))
@@ -389,12 +395,12 @@
     (.register tx/resources-total)
     (.register tx/datoms-total)
     (.register bundle/tx-data-duration-seconds)
+    (.register ts/errors-total)
     (.register ts/request-duration-seconds)
     (.register (metrics/thread-pool-executor-collector
                  [["server" server-executor]
                   ["transaction-interaction" transaction-interaction-executor]
                   ["evaluate-measure-operation" evaluate-measure-operation-executor]
-                  ["term-service-executor" term-service-executor]
                   ["transactor" tx/tx-executor]]))))
 
 
