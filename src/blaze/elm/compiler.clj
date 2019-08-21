@@ -744,9 +744,9 @@
   ;; TODO: look into other libraries (:libraryName)
   (when name
     (cond
-      (and (= "Population" eval-context) (= "Patient" def-eval-context))
+      (and (= "Unspecified" eval-context) (= "Patient" def-eval-context))
       ;; The referenced expression has Patient context but we are in the
-      ;; Population context. So we map the referenced expression over all
+      ;; Unspecified context. So we map the referenced expression over all
       ;; patients.
       (reify Expression
         (-eval [_ {:keys [db library-context] :as context} _]
@@ -1117,7 +1117,7 @@
 ;; all patients will be retrieved.
 ;;
 ;; The :patient-id will be set if the evaluation context is `"Patient"`. It'll
-;; be `nil` if the evaluation context is `"Population"`.
+;; be `nil` if the evaluation context is `"Unspecified"`.
 
 (defn- list-patient-observations-by-code
   [patient {:code/keys [id]}]

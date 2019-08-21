@@ -12,7 +12,7 @@ context Patient
 define Qualifies:
   exists([Condition: "Brustkrebs"]) and exists([Specimen: "tissue frozen"])
 
-context Population
+context Unspecified
 
 define NumberOfPatients:
   Count(Qualifies Q where Q return all Q)

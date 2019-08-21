@@ -387,6 +387,10 @@
 (derive :elm/to-date-time :elm/unary-expression)
 
 
+;; 22.25. ToList
+(derive :elm/to-list :elm/unary-expression)
+
+
 ;; 22.26. ToQuantity
 (derive :elm/to-quantity :elm/unary-expression)
 

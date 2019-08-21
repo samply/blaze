@@ -444,6 +444,10 @@
 (derive :elm.deps.type/to-date-time :elm.deps.type/unary-expression)
 
 
+;; 22.25. ToList
+(derive :elm.deps.type/to-list :elm.deps.type/unary-expression)
+
+
 ;; 22.26. ToQuantity
 (derive :elm.deps.type/to-quantity :elm.deps.type/unary-expression)
 

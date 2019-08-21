@@ -81,16 +81,17 @@ evaluate-measure() {
 
 usage()
 {
-  echo "Usage: $0 [ -f QUERY_FILE ] BASE"
+  echo "Usage: $0 -f QUERY_FILE [ -t type ] BASE"
   exit 2
 }
 
-unset FILE BASE
+unset FILE TYPE BASE
 
-while getopts 'f:' c
+while getopts 'f:t:' c
 do
   case ${c} in
     f) FILE=$OPTARG ;;
+    t) TYPE=$OPTARG ;;
   esac
 done
 
@@ -98,6 +99,7 @@ shift $((OPTIND-1))
 BASE=$1
 
 [[ -z "$FILE" ]] && usage
+[[ -z "$TYPE" ]] && TYPE="Patient"
 [[ -z "$BASE" ]] && usage
 
 DATA=$(cat ${FILE} | base64 | tr -d '\n')

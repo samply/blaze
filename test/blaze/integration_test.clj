@@ -21,8 +21,7 @@
     [blaze.terminology-service.extern :as ts]
     [taoensso.timbre :as log])
   (:import
-    [java.time OffsetDateTime Year]
-    [java.util.concurrent Executors]))
+    [java.time OffsetDateTime Year]))
 
 
 (defonce db (d/db (st/with-instrument-disabled (test-util/connect))))
@@ -68,10 +67,10 @@
                              (read-query query-name))
                    ["NumberOfPatients" :result]))
 
-    "query-3" 1
-    "query-5" 3
-    "query-6" 1
-    "query-7" 2
+    ;"query-3" 1
+    ;"query-5" 3
+    ;"query-6" 1
+    ;"query-7" 2
     "readme-example" 3))
 
 

@@ -13,7 +13,7 @@ define Qualifies:
   exists([Condition: "Seronegative chronische Polyarthritis"] C
           where AgeInYearsAt(C.onset) >= 18)
 
-context Population
+context Unspecified
 
 define NumberOfPatients:
   Count(Qualifies Q where Q return all Q)

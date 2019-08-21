@@ -96,7 +96,7 @@
 (deftest compile-property-test
   (testing "with entity supplied over query context"
     (are [elm entity result]
-      (= result (-eval (compile {:eval-context "Population"} elm)
+      (= result (-eval (compile {:eval-context "Unspecified"} elm)
                        nil {"P" entity}))
       {:path "gender"
        :scope "P"
@@ -108,7 +108,7 @@
 
   (testing "with entity supplied directly"
     (are [elm entity result]
-      (= result (-eval (compile {:eval-context "Population"
+      (= result (-eval (compile {:eval-context "Unspecified"
                                  :life/single-query-scope "P"}
                                 elm)
                        nil entity))
@@ -122,7 +122,7 @@
 
   (testing "with source"
     (are [elm source result]
-      (= result (-eval (compile {:eval-context "Population"} elm)
+      (= result (-eval (compile {:eval-context "Unspecified"} elm)
                        {:library-context {"Patient" source}} nil))
       {:path "gender"
        :source {:name "Patient" :type "ExpressionRef"}
@@ -436,12 +436,12 @@
           (testing "the conditions with that code of the current patient are returned"
             (is (= [::condition] (-eval expr context nil)))))))
 
-    (testing "Population Eval Context"
+    (testing "Unspecified Eval Context"
       (testing "retrieving all patients"
         (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
         (are [elm res]
-          (= res (-eval (compile (assoc context :eval-context "Population") elm)
+          (= res (-eval (compile (assoc context :eval-context "Unspecified") elm)
                         {:db ::db} nil))
 
           {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
@@ -461,7 +461,7 @@
            :stub #{`cql/list-resource-by-code}})
 
         (are [elm res]
-          (= res (-eval (compile (assoc context :eval-context "Population") elm)
+          (= res (-eval (compile (assoc context :eval-context "Unspecified") elm)
                         {:db ::db} nil))
 
           {:dataType "{http://hl7.org/fhir}Observation"

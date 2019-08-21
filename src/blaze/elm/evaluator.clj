@@ -152,7 +152,7 @@
     {}
     (mapcat
       (fn [[name result]]
-        (when (= "Population" (get eval-contexts name))
+        (when (= "Unspecified" (get eval-contexts name))
           (when-let [type (get types name)]
             [[name {:result result
                     :type type

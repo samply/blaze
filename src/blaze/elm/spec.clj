@@ -38,7 +38,7 @@
 
 
 (s/def :elm/context
-  #{"Patient" "Population"})
+  string?)
 
 
 (s/def :elm/dataType

@@ -210,6 +210,8 @@
             "DateTimeDurationBetweenMonthUncertain5"        ; TODO: implement uncertainty
             "DateTimeDurationBetweenMonthUncertain6"        ; TODO: implement uncertainty
             "DateTimeDurationBetweenMonthUncertain7"        ; TODO: implement uncertainty
+
+            "TimeDurationBetweenHourDiffPrecision"          ; new in v1.4.6
             })
 
 
@@ -275,7 +277,14 @@
             "ProperContainsTimeNull"                        ; why should null be returned here?
             "ProperInTimeNull"                              ; why should null be returned here?
 
-            "Union123And2"                                  ; union hast set semantics
+            "Union123And2"                                  ; union has set semantics
+
+            "EquivalentABCAnd123"                           ; new in v1.4.6
+            "NotEqual123AndString123"                       ; new in v1.4.6
+            "NotEqual123AndABC"                             ; new in v1.4.6
+            "NotEqualABCAnd123"                             ; new in v1.4.6
+            "Equivalent123AndString123"                     ; new in v1.4.6
+            "Equivalent123AndABC"                           ; new in v1.4.6
             })
 
 

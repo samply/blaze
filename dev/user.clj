@@ -90,7 +90,8 @@
   (def db (d/db conn))
   (def now (OffsetDateTime/now))
 
-  (def library (cql/translate (slurp "queries/q1-gender.cql")))
+  (def library (cql/translate (slurp "queries/q1-gender-patient.cql")))
+  (def library (cql/translate (slurp "queries/q1-gender-specimen.cql")))
   (def library (cql/translate (slurp "queries/q2-bmi.cql")))
   (def library (cql/translate (slurp "queries/q3-storage-temperature.cql")))
 
