@@ -353,6 +353,10 @@
     (assoc :highClosedExpression (infer-types context high-closed-expression))))
 
 
+;; 19.5. Contains
+(derive :elm/contains :elm/multiary-expression)
+
+
 
 ;; 20. List Operators
 

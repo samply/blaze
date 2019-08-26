@@ -103,7 +103,7 @@
 
 
 (defn- validate-and-prepare-bundle
-  [db {:strs [resourceType type] entries "entry" :as bundle}]
+  [db {:strs [resourceType type] entries "entry"}]
   (cond
     (not= "Bundle" resourceType)
     (md/error-deferred

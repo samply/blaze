@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.cql
   (:require
     [blaze.datomic.util :as datomic-util]
-    [blaze.elm.compiler :as compiler]
+    [blaze.elm.compiler.protocols :refer [-eval]]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds])
   (:import
@@ -9,38 +9,44 @@
 
 
 (defn- evaluate-expression-1
-  [context expression-defs]
+  [context resource expression-defs]
   (reduce
     (fn [context {:keys [name] :life/keys [expression]}]
-      (let [res (compiler/-eval expression context nil)]
+      (let [res (-eval expression context resource nil)]
         (update context :library-context assoc name res)))
     context
     expression-defs))
 
 
-(def ^:private patient-cache (volatile! {}))
+(def ^:private resource-cache (volatile! {}))
 
 
-(defn- list-patients [db]
-  (let [key (datomic-util/type-version db "Patient")]
-    (if-let [patients (get @patient-cache key)]
-      patients
-      (-> (vreset! patient-cache {key (datomic-util/list-resources db "Patient")})
-          (get key)))))
+(defn clear-resource-cache! []
+  (vreset! resource-cache {}))
+
+
+(defn- list-resources [db resource-type]
+  (let [key [resource-type (datomic-util/type-version db resource-type)]]
+    (if-let [resources (get @resource-cache key)]
+      resources
+      (let [resources (datomic-util/list-resources db resource-type)]
+        (vswap! resource-cache assoc key resources)
+        resources))))
 
 
 (s/fdef evaluate-expression
   :args (s/cat :db ::ds/db :now #(instance? OffsetDateTime %)
-               :library :life/compiled-library :expression-name string?))
+               :library :life/compiled-library :subject string?
+               :expression-name string?))
 
 (defn evaluate-expression
-  [db now {expression-defs :life/compiled-expression-defs} expression-name]
-  (let [context {:now now}]
+  [db now {expression-defs :life/compiled-expression-defs} subject
+   expression-name]
+  (let [context {:db db :now now}]
     (transduce
       (filter
-        (fn [patient]
-          (-> (assoc context :patient patient)
-              (evaluate-expression-1 expression-defs)
+        (fn [resource]
+          (-> (evaluate-expression-1 context resource expression-defs)
               :library-context
               (get expression-name))))
       (fn
@@ -49,6 +55,6 @@
         ([count _]
          (inc count)))
       0
-      (list-patients db))))
+      (list-resources db subject))))
 
 

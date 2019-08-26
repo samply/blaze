@@ -21,7 +21,6 @@
     [blaze.datomic.pull]
     [blaze.datomic.util :as datomic-util]
     [blaze.spec]
-    [blaze.structure-definition :refer [read-structure-definitions read-other]]
     [blaze.system :as system]
     [prometheus.alpha :as prom]
     [spec-coerce.alpha :refer [coerce]])
@@ -90,10 +89,7 @@
   (def db (d/db conn))
   (def now (OffsetDateTime/now))
 
-  (def library (cql/translate (slurp "queries/q1-gender-patient.cql")))
-  (def library (cql/translate (slurp "queries/q1-gender-specimen.cql")))
-  (def library (cql/translate (slurp "queries/q2-bmi.cql")))
-  (def library (cql/translate (slurp "queries/q3-storage-temperature.cql")))
+  (def library (cql/translate (slurp "queries/q1-patient-gender.cql")))
 
   (-> library
       normalizer/normalize-library

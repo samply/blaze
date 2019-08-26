@@ -1,5 +1,5 @@
 *
-!fhir
+!resources
 !src
 !Dockerfile
 !project.clj

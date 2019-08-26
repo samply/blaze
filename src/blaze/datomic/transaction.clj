@@ -202,11 +202,17 @@
       (get-in tempids [type id])))
 
 
+(def ^:private supported-subject-indices
+  #{:Observation/code
+    :Condition/code
+    :Specimen/type})
+
+
 (defn- subject-index
   [{{resource-type "resourceType" :as resource} :resource :keys [code-ident]
     :as context}
    code-id]
-  (when (= :Observation/code code-ident)
+  (when (supported-subject-indices code-ident)
     (when (= resource-type (namespace code-ident))
       (when-let [subject (get resource "subject")]
         (when-let [sub-ref (get subject "reference")]
@@ -1043,6 +1049,22 @@
 
 ;; ---- Create Codes ----------------------------------------------------------
 
+(defn- create-subject-index-attr [resource-type data-element-name code-id]
+  {:db/ident
+   (keyword (format "Patient.%s.%s" resource-type data-element-name) code-id)
+   :db/valueType :db.type/ref
+   :db/cardinality :db.cardinality/many})
+
+
+(defn- create-subject-index-attrs [code-id]
+  (mapv
+    (fn [subject-index]
+      (let [resource-type (namespace subject-index)
+            data-element-name (name subject-index)]
+        (create-subject-index-attr resource-type data-element-name code-id)))
+    supported-subject-indices))
+
+
 (defn- create-code
   "Returns tx-data for creating a code. All of `system`, `version` and `code`
   are optional."
@@ -1050,18 +1072,17 @@
   (let [id (str system "|" version "|" code)]
     (when-not (d/entity db [:code/id id])
       (let [tid (d/tempid :part/code)]
-        [(cond->
-           {:db/id tid
-            :code/id id}
-           system
-           (assoc :code/system system)
-           version
-           (assoc :code/version version)
-           code
-           (assoc :code/code code))
-         {:db/ident (keyword "Patient.Observation.code" id)
-          :db/valueType :db.type/ref
-          :db/cardinality :db.cardinality/many}]))))
+        (conj
+          (create-subject-index-attrs id)
+          (cond->
+            {:db/id tid
+             :code/id id}
+            system
+            (assoc :code/system system)
+            version
+            (assoc :code/version version)
+            code
+            (assoc :code/code code)))))))
 
 
 (defn- create-code-primitive-element
@@ -1137,7 +1158,6 @@
       []
       (comp
         (map #(util/cached-entity db %))
-        contained-resource-element-remover
         coding-system-version-remover
         (mapcat
           (fn [element]
@@ -1195,6 +1215,8 @@
   (let [[uri] (str/split value-set-binding #"\|")]
     (case uri
       "http://hl7.org/fhir/ValueSet/mimetypes" {:system "urn:ietf:bcp:13"}
+      "http://hl7.org/fhir/ValueSet/languages" {:system "urn:ietf:bcp:47"}
+      "http://hl7.org/fhir/ValueSet/all-languages" {:system "urn:ietf:bcp:47"}
       nil)))
 
 
@@ -1214,7 +1236,7 @@
           (fn [e]
             (md/error-deferred
               {::anom/category ::anom/fault
-               ::anom/message (format "ValueSet expansion of `%s` with code `%s` resulted in the following error: %s" value-set-binding code (::anom/message e))}))))))
+               ::anom/message (format "ValueSet expansion of `%s` with code `%s` resulted in the following error: %s" value-set-binding code (or (::anom/message e) (ex-message e)))}))))))
 
 
 (defn- annotate-code-primitive-element
@@ -1244,6 +1266,8 @@
   {:arglists '([context element value])}
   [context {:element/keys [primitive?] :db/keys [cardinality] :as element}
    value]
+  (check-cardinality element value)
+  (check-primitive element value)
   (if primitive?
     (if (= :db.cardinality/one cardinality)
       (annotate-code-primitive-element context element value)
@@ -1267,16 +1291,17 @@
 
 (defn- annotate-codes*
   [{:keys [db] :as context} type entity]
-  (transduce
-    (bd/map
-      (fn [[k v]]
-        (if-let [element (util/cached-entity db (type-ident type k))]
-          (-> (annotate-codes-element context element v)
-              (md/chain' #(vector k %)))
-          [k v])))
-    conj
-    {}
-    entity))
+  (let [type (if (= :Resource type) (keyword (get entity "resourceType")) type)]
+    (transduce
+      (bd/map
+        (fn [[k v]]
+          (if-let [element (util/cached-entity db (type-ident type k))]
+            (-> (annotate-codes-element context element v)
+                (md/chain' #(vector k %)))
+            [k v])))
+      conj
+      {}
+      entity)))
 
 
 

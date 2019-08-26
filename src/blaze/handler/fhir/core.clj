@@ -51,7 +51,6 @@
   (reitit-ring/create-default-handler
     {:not-found
      (fn [_]
-       (clojure.pprint/pprint _)
        (ring/not-found
          {:resourceType "OperationOutcome"
           :issue

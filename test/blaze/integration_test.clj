@@ -17,7 +17,6 @@
     [blaze.elm.spec]
     [blaze.elm.type-infer :refer [infer-library-types]]
     [blaze.elm.evaluator :as evaluator]
-    [blaze.structure-definition :refer [read-structure-definitions]]
     [blaze.terminology-service.extern :as ts]
     [taoensso.timbre :as log])
   (:import

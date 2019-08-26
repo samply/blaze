@@ -12,32 +12,38 @@
 
 
 (defn- resource [{:keys [id]}]
-  (array-map
-    :type id
-    :interaction
-    [{:code "read"}
-     {:code "vread"}
-     {:code "update"}
-     {:code "delete"}
-     {:code "history-instance"}
-     {:code "history-type"}
-     {:code "create"}
-     {:code "search-type"}]
-    :versioning "versioned"
-    :readHistory true
-    :updateCreate true
-    :conditionalCreate false
-    :conditionalRead "not-supported"
-    :conditionalUpdate false
-    :conditionalDelete "not-supported"
-    :referencePolicy
-    ["literal"
-     "enforced"
-     "local"]
-    :searchParam
-    [{:name "identifier"
-      :definition (str "http://hl7.org/fhir/SearchParameter/" id "-identifier")
-      :type "token"}]))
+  (cond->
+    {:type id
+     :interaction
+     [{:code "read"}
+      {:code "vread"}
+      {:code "update"}
+      {:code "delete"}
+      {:code "history-instance"}
+      {:code "history-type"}
+      {:code "create"}
+      {:code "search-type"}]
+     :versioning "versioned"
+     :readHistory true
+     :updateCreate true
+     :conditionalCreate false
+     :conditionalRead "not-supported"
+     :conditionalUpdate false
+     :conditionalDelete "not-supported"
+     :referencePolicy
+     ["literal"
+      "enforced"
+      "local"]
+     :searchParam
+     [{:name "identifier"
+       :definition (str "http://hl7.org/fhir/SearchParameter/" id "-identifier")
+       :type "token"}]}
+
+    (= "Measure" id)
+    (assoc
+      :operation
+      [{:name "evaluate-measure"
+        :definition "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"}])))
 
 
 (s/def :handler.fhir/capabilities fn?)
@@ -57,7 +63,7 @@
             :resourceType "CapabilityStatement"
             :status "active"
             :kind "instance"
-            :date "2019-06-25T00:00:00Z"
+            :date "2019-08-27T00:00:00Z"
             :software
             {:name "Blaze"
              :version version}

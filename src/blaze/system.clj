@@ -43,8 +43,7 @@
            [io.prometheus.client.hotspot StandardExports MemoryPoolsExports
                                          GarbageCollectorExports ThreadExports
                                          ClassLoadingExports VersionInfoExports]
-           [java.time Clock]
-           [java.util.concurrent ArrayBlockingQueue TimeUnit ThreadPoolExecutor]))
+           [java.time Clock]))
 
 
 
@@ -64,10 +63,8 @@
                    :term-service/proxy-host
                    :term-service/proxy-port]))
 (s/def :cache/threshold pos-int?)
-(s/def :structure-definitions/path string?)
 (s/def :config/base-url string?)
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
-(s/def :config/structure-definitions (s/keys :opt [:structure-definitions/path]))
 (s/def :config/fhir-capabilities-handler (s/keys :opt-un [:config/base-url]))
 (s/def :config/fhir-core-handler (s/keys :opt-un [:config/base-url]))
 (s/def :config/server (s/keys :opt-un [::server/port]))
@@ -80,7 +77,6 @@
      :config/database-conn
      :config/term-service
      :config/cache
-     :config/structure-definitions
      :config/fhir-capabilities-handler
      :config/fhir-core-handler
      :config/server
@@ -90,15 +86,14 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha59")
+(def ^:private version "0.6-alpha65")
 
 (def ^:private base-url "http://localhost:8080")
 
 (def ^:private default-config
   {:logging {:log/level "info"}
 
-   :structure-definitions
-   {:structure-definitions/path "fhir/r4/structure-definitions"}
+   :structure-definitions {}
 
    :database-conn
    {:structure-definitions (ig/ref :structure-definitions)
@@ -232,9 +227,9 @@
 
 
 (defmethod ig/init-key :structure-definitions
-  [_ {:structure-definitions/keys [path]}]
-  (let [structure-definitions (read-structure-definitions path)]
-    (log/info "Read structure definitions from:" path "resulting in:"
+  [_ _]
+  (let [structure-definitions (read-structure-definitions)]
+    (log/info "Read structure definitions resulting in:"
               (count structure-definitions) "structure definitions")
     structure-definitions))
 

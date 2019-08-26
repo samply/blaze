@@ -68,7 +68,7 @@ create-library() {
 }
 
 create-measure() {
-  measure | jq -cM ".url = \"urn:uuid:$1\" | .library[0] = \"urn:uuid:$2\""
+  measure | jq -cM ".url = \"urn:uuid:$1\" | .library[0] = \"urn:uuid:$2\" | .subjectCodeableConcept.coding[0].code = \"$3\""
 }
 
 post() {
@@ -108,7 +108,7 @@ MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
 create-library ${LIBRARY_URI} ${DATA} | post "Library" > /dev/null
 
-MEASURE_ID=$(create-measure ${MEASURE_URI} ${LIBRARY_URI} | post "Measure" | jq -r .id)
+MEASURE_ID=$(create-measure ${MEASURE_URI} ${LIBRARY_URI} ${TYPE} | post "Measure" | jq -r .id)
 
 COUNT=$(evaluate-measure ${MEASURE_ID} | jq ".group[0].population[0].count")
 

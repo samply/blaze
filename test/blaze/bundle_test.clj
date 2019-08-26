@@ -2,7 +2,6 @@
   (:require
     [blaze.bundle :refer [resolve-entry-links tx-data annotate-codes]]
     [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.structure-definition :refer [read-structure-definitions]]
     [blaze.terminology-service :as ts]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]

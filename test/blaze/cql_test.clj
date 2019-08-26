@@ -7,7 +7,8 @@
     [clojure.test :refer :all]
     [cognitect.anomalies :as anom]
     [blaze.cql-translator :refer [translate]]
-    [blaze.elm.compiler :refer [compile -eval]]
+    [blaze.elm.compiler :refer [compile]]
+    [blaze.elm.compiler.protocols :refer [-eval]]
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
@@ -66,7 +67,7 @@
           :statements :def first :expression))))
 
 (defn eval-elm [now elm]
-  (-eval (compile {} elm) {:now now} nil))
+  (-eval (compile {} elm) {:now now} nil nil))
 
 (defn eval [now cql]
   (eval-elm now (to-elm cql)))

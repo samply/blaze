@@ -9,8 +9,9 @@
     [blaze.datomic.cql :as cql]
     [blaze.datomic.cql-test :as cql-test]
     [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.elm.compiler
-     :refer [compile compile-with-equiv-clause -eval -hash]]
+    [blaze.elm.compiler :refer [compile compile-with-equiv-clause]]
+    [blaze.elm.compiler.protocols :refer [Expression -eval -hash]]
+    [blaze.elm.compiler.retrieve-test :as retrieve-test]
     [blaze.elm.date-time :refer [local-time local-time? period]]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.interval :refer [interval]]
@@ -87,7 +88,7 @@
 
 ;; 2.1. Tuple
 (deftest compile-tuple-test
-  (are [m res] (= res (-eval (compile {} (elm/tuple m)) {} nil))
+  (are [m res] (= res (-eval (compile {} (elm/tuple m)) {} nil nil))
     {"id" #elm/int "1"} {:id 1}
     {"id" #elm/int "1" "name" #elm/string "john"} {:id 1 :name "john"}))
 
@@ -97,7 +98,7 @@
   (testing "with entity supplied over query context"
     (are [elm entity result]
       (= result (-eval (compile {:eval-context "Unspecified"} elm)
-                       nil {"P" entity}))
+                       nil nil {"P" entity}))
       {:path "gender"
        :scope "P"
        :type "Property"
@@ -111,7 +112,7 @@
       (= result (-eval (compile {:eval-context "Unspecified"
                                  :life/single-query-scope "P"}
                                 elm)
-                       nil entity))
+                       nil nil entity))
       {:path "gender"
        :scope "P"
        :type "Property"
@@ -122,8 +123,8 @@
 
   (testing "with source"
     (are [elm source result]
-      (= result (-eval (compile {:eval-context "Unspecified"} elm)
-                       {:library-context {"Patient" source}} nil))
+      (= result (-eval (compile {:eval-context "Patient"} elm)
+                       {:library-context {"Patient" source}} nil nil))
       {:path "gender"
        :source {:name "Patient" :type "ExpressionRef"}
        :type "Property"
@@ -150,7 +151,7 @@
         {:type "Code"
          :system {:name "life"}
          :code "0"}]
-    (is (= ::code (-eval (compile context code) {:db ::db} nil)))))
+    (is (= ::code (-eval (compile context code) {:db ::db} nil nil)))))
 
 
 ;; 3.3. CodeRef
@@ -170,7 +171,7 @@
              :id "0"
              :accessLevel "Public"
              :codeSystem {:name "life"}}]}}}]
-    (are [name result] (= result (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil))
+    (are [name result] (= result (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil nil))
       "lens_0"
       ::code)))
 
@@ -206,7 +207,7 @@
   (testing "Periods"
     (satisfies-prop 100
                     (prop/for-all [period (s/gen :elm/period)]
-                      (#{BigDecimal Period} (type (-eval (compile {} period) {} {})))))))
+                      (#{BigDecimal Period} (type (-eval (compile {} period) {} nil nil)))))))
 
 
 ;; 9. Reusing Logic
@@ -214,7 +215,7 @@
 ;; 9.2. ExpressionRef
 (deftest compile-expression-ref-test
   (are [elm res]
-    (= res (-eval (compile {} elm) {:library-context {"foo" ::result}} nil))
+    (= res (-eval (compile {} elm) {:library-context {"foo" ::result}} nil nil))
     {:type "ExpressionRef" :name "foo"}
     ::result))
 
@@ -226,7 +227,7 @@
 (deftest compile-query-test
   (testing "Non-retrieve queries"
     (testing "Sort"
-      (are [query res] (= res (-eval (compile {} query) {} nil))
+      (are [query res] (= res (-eval (compile {} query) {} nil nil))
         {:type "Query"
          :source
          [{:alias "S"
@@ -235,7 +236,7 @@
         [1 2]))
 
     (testing "Return non-distinct"
-      (are [query res] (= res (-eval (compile {} query) {} nil))
+      (are [query res] (= res (-eval (compile {} query) {} nil nil))
         {:type "Query"
          :source
          [{:alias "S"
@@ -248,7 +249,7 @@
                    :source
                    [{:alias "S"
                      :expression #elm/list [#elm/int "1" #elm/int "1"]}]}
-            res (-eval (compile {:optimizations #{:first}} query) {} nil)]
+            res (-eval (compile {:optimizations #{:first}} query) {} nil nil)]
         (instance? Eduction res))))
 
   (testing "Retrieve queries"
@@ -268,7 +269,7 @@
                   :type "Property"
                   :resultTypeName "{http://hl7.org/fhir}string"
                   :life/source-type "{http://hl7.org/fhir}Patient"}]
-      (are [query res] (= res (-eval (compile {} query) {:db ::db} nil))
+      (are [query res] (= res (-eval (compile {:eval-context "Unspecified"} query) {:db ::db} nil nil))
         {:type "Query"
          :source
          [{:alias "P"
@@ -307,7 +308,7 @@
 
 ;; 10.3. AliasRef
 (deftest compile-alias-ref-test
-  (are [elm res] (= res (-eval (compile {} elm) {} {"foo" ::result}))
+  (are [elm res] (= res (-eval (compile {} elm) {} nil {"foo" ::result}))
     {:type "AliasRef" :name "foo"}
     ::result))
 
@@ -341,12 +342,12 @@
                  :resultTypeName "{http://hl7.org/fhir}Reference"
                  :life/scopes #{"O1"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
-          compile-context {:life/single-query-scope "O0"}
+          compile-context {:life/single-query-scope "O0" :eval-context "Unspecified"}
           create-clause (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
-          eval-clause (create-clause eval-context)
+          eval-clause (create-clause eval-context nil)
           lhs-entity {:Observation/subject ::subject}]
-      (is (true? (eval-clause eval-context lhs-entity)))))
+      (is (true? (eval-clause eval-context nil lhs-entity)))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
     (let [elm {:alias "O"
@@ -360,19 +361,18 @@
                                :resultTypeName "{http://hl7.org/fhir}Reference"
                                :life/scopes #{"O"}
                                :life/source-type "{http://hl7.org/fhir}Observation"}]}
-          compile-context {:life/single-query-scope "P"}
+          compile-context {:life/single-query-scope "P" :eval-context "Unspecified"}
           create-clause (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
-          eval-clause (create-clause eval-context)
+          eval-clause (create-clause eval-context nil)
           lhs-entity ::subject]
-      (is (true? (eval-clause eval-context lhs-entity))))))
+      (is (true? (eval-clause eval-context nil lhs-entity))))))
 
 
 ;; 11. External Data
 
 ;; 11.1. Retrieve
 (deftest compile-retrieve-test
-  (cql-test/stub-find-code ::db "life" "0" {:db/id ::code-eid :code/id "code-id"})
   (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
   (let [context
@@ -387,44 +387,46 @@
              :codeSystem {:name "life"}}]}}}]
 
     (testing "in Patient eval context"
+      (cql-test/stub-find-code ::db "life" "0" ::code)
 
       (testing "while retrieving patients"
         (let [elm {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
-              expr (compile (assoc context :eval-context "Patient") elm)
-              context {:patient ::patient}]
+              expr (compile (assoc context :eval-context "Patient") elm)]
           (testing "a singleton list of the current patient is returned"
-            (is (= [::patient] (-eval expr context nil))))))
+            (is (= [::patient] (-eval expr context ::patient nil))))))
 
       (testing "while retrieving observations"
+        ;; TODO: test also :Observation/_performer
         (let [elm {:dataType "{http://hl7.org/fhir}Observation" :type "Retrieve"}
               expr (compile (assoc context :eval-context "Patient") elm)
-              context {:patient {:Observation/_subject [::observation]}}]
+              resource {:Observation/_subject [::observation]}]
           (testing "the observations of the current patient are returned"
-            (is (= [::observation] (-eval expr context nil))))))
+            (is (= [::observation] (-eval expr {} resource nil))))))
 
       (testing "while retrieving observations with one specific code"
+        (retrieve-test/stub-single-code-expr
+          ::db "Patient" "Observation" "code" ::code
+          (reify Expression
+            (-eval [_ _ _ _]
+              [::observation])))
+
         (let [elm {:dataType "{http://hl7.org/fhir}Observation"
                    :codeProperty "code"
                    :type "Retrieve"
                    :codes {:type "ToList"
                            :operand {:name "lens_0" :type "CodeRef"}}}
               expr (compile (assoc context :eval-context "Patient") elm)
-              context {:db ::db :patient {:Patient.Observation.code/code-id [::observation]}}]
+              context {:db ::db}
+              resource {:db/id ::patient-eid}]
           (testing "the observations with that code of the current patient are returned"
-            (is (= [::observation] (-eval expr context nil))))))
+            (is (= [::observation] (-eval expr context resource nil))))))
 
       (testing "while retrieving conditions with one specific code"
-        (st/instrument
-          `cql/list-patient-resource-by-code
-          {:spec
-           {`cql/list-patient-resource-by-code
-            (s/fspec
-              :args (s/cat :patient #{::patient}
-                           :subject-attr #{:Condition/subject}
-                           ::code-index-attr #{:Condition.index/code}
-                           :code #{[::code-eid]})
-              :ret #{[::condition]})}
-           :stub #{`cql/list-patient-resource-by-code}})
+        (retrieve-test/stub-single-code-expr
+          ::db "Patient" "Condition" "code" ::code
+          (reify Expression
+            (-eval [_ _ _ _]
+              [::condition])))
 
         (let [elm {:dataType "{http://hl7.org/fhir}Condition"
                    :codeProperty "code"
@@ -432,17 +434,53 @@
                    :codes {:type "ToList"
                            :operand {:name "lens_0" :type "CodeRef"}}}
               expr (compile (assoc context :eval-context "Patient") elm)
-              context {:db ::db :patient ::patient}]
+              context {:db ::db}
+              resource {:db/id ::patient-eid}]
           (testing "the conditions with that code of the current patient are returned"
-            (is (= [::condition] (-eval expr context nil)))))))
+            (is (= [::condition] (-eval expr context resource nil)))))))
+
+    (testing "in Specimen eval context"
+
+      (testing "while retrieving specimens"
+        (let [elm {:dataType "{http://hl7.org/fhir}Specimen" :type "Retrieve"}
+              expr (compile (assoc context :eval-context "Specimen") elm)]
+          (testing "a singleton list of the current specimen is returned"
+            (is (= [::specimen] (-eval expr {} ::specimen nil))))))
+
+      (testing "while retrieving observations"
+        (let [elm {:dataType "{http://hl7.org/fhir}Observation" :type "Retrieve"}
+              expr (compile (assoc context :eval-context "Specimen") elm)
+              resource {:Observation/_specimen [::observation]}]
+          (testing "the observations of the current specimen are returned"
+            (is (= [::observation] (-eval expr {} resource nil))))))
+
+      (testing "while retrieving observations with one specific code"
+        (retrieve-test/stub-single-code-expr
+          ::db "Specimen" "Observation" "code" ::code
+          (reify Expression
+            (-eval [_ _ _ _]
+              [::observation])))
+
+        (let [elm {:dataType "{http://hl7.org/fhir}Observation"
+                   :codeProperty "code"
+                   :type "Retrieve"
+                   :codes {:type "ToList"
+                           :operand {:name "lens_0" :type "CodeRef"}}}
+              expr (compile (assoc context :eval-context "Specimen") elm)
+              context {:db ::db}
+              resource {:db/id ::specimen-eid}]
+          (testing "the observations with that code of the current specimen are returned"
+            (is (= [::observation] (-eval expr context resource nil)))))))
 
     (testing "Unspecified Eval Context"
+      (cql-test/stub-find-code ::db "life" "0" {:db/id ::code-eid})
+
       (testing "retrieving all patients"
         (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
         (are [elm res]
           (= res (-eval (compile (assoc context :eval-context "Unspecified") elm)
-                        {:db ::db} nil))
+                        {:db ::db} nil nil))
 
           {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
           [::patient]))
@@ -462,7 +500,7 @@
 
         (are [elm res]
           (= res (-eval (compile (assoc context :eval-context "Unspecified") elm)
-                        {:db ::db} nil))
+                        {:db ::db} nil nil))
 
           {:dataType "{http://hl7.org/fhir}Observation"
            :codeProperty "code"
@@ -513,7 +551,7 @@
 ;; If either argument is null, the result is null.
 (deftest compile-equal-test
   (testing "Integer"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/int "1" #elm/int "1" true
       #elm/int "1" #elm/int "2" false
 
@@ -521,7 +559,7 @@
       #elm/int "1" {:type "Null"} nil))
 
   (testing "Decimal"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/dec "1.1" #elm/dec "1.1" true
       #elm/dec "1.1" #elm/dec "2.1" false
 
@@ -529,22 +567,22 @@
       #elm/dec "1.1" {:type "Null"} nil))
 
   (testing "Mixed Integer Decimal"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/int "1" #elm/dec "1" true
       #elm/dec "1" #elm/int "1" true))
 
   (testing "Mixed Integer String"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/int "1" #elm/string "1" false
       #elm/string "1" #elm/int "1" false))
 
   (testing "Mixed Decimal String"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/dec "1" #elm/string "1" false
       #elm/string "1" #elm/dec "1" false))
 
   (testing "Quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/quantity [1] #elm/quantity [1] true
       #elm/quantity [1] #elm/quantity [2] false
 
@@ -561,7 +599,7 @@
       #elm/quantity [1 "s"] {:type "Null"} nil))
 
   (testing "Date with year precision"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/date "2013" #elm/date "2013" true
       #elm/date "2012" #elm/date "2013" false
       #elm/date "2013" #elm/date "2012" false
@@ -570,7 +608,7 @@
       #elm/date "2013" {:type "Null"} nil))
 
   (testing "Date with year-month precision"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/date "2013-01" #elm/date "2013-01" true
       #elm/date "2013-01" #elm/date "2013-02" false
       #elm/date "2013-02" #elm/date "2013-01" false
@@ -579,7 +617,7 @@
       #elm/date "2013-01" {:type "Null"} nil))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/date "2013-01-01" #elm/date "2013-01-01" true
       #elm/date "2013-01-01" #elm/date "2013-01-02" false
       #elm/date "2013-01-02" #elm/date "2013-01-01" false
@@ -588,15 +626,15 @@
       #elm/date "2013-01-01" {:type "Null"} nil))
 
   (testing "Date with differing precisions"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/date "2013" #elm/date "2013-01" nil))
 
   (testing "Today() = Today()"
-    (are [a b] (true? (-eval (compile {} (elm/equal [a b])) {:now now} nil))
+    (are [a b] (true? (-eval (compile {} (elm/equal [a b])) {:now now} nil nil))
       {:type "Today"} {:type "Today"}))
 
   (testing "DateTime with full precision (there is only one precision)"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/date-time [#elm/int "2013" #elm/int "1" #elm/int "1"
                       #elm/int "0" #elm/int "0" #elm/int "0"]
       #elm/date-time [#elm/int "2013" #elm/int "1" #elm/int "1"
@@ -611,7 +649,7 @@
                       #elm/int "0" #elm/int "0" #elm/int "0"] true))
 
   (testing "Time"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"]
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"] true
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"]
@@ -629,7 +667,7 @@
       #elm/time [#elm/int "12" #elm/int "30" #elm/int "15"] {:type "Null"} nil))
 
   (testing "List"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] true
       #elm/list [] #elm/list [] true
 
@@ -647,7 +685,7 @@
       #elm/list [] {:type "Null"} nil))
 
   (testing "String"
-    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equal [x y])) {} nil nil))
       #elm/string "a" #elm/string "a" true
       #elm/string "a" #elm/string "b" false
 
@@ -699,11 +737,11 @@
 ;; both of its arguments are null or contain null components.
 (deftest compile-equivalent-test
   (testing "Both null"
-    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil nil))
       {:type "Null"} {:type "Null"} true))
 
   (testing "Boolean"
-    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil nil))
       #elm/boolean "true" #elm/boolean "true" true
       #elm/boolean "true" #elm/boolean "false" false
 
@@ -711,7 +749,7 @@
       #elm/boolean "true" {:type "Null"} false))
 
   (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil nil))
       #elm/int "1" #elm/int "1" true
       #elm/int "1" #elm/int "2" false
 
@@ -719,7 +757,7 @@
       #elm/int "1" {:type "Null"} false))
 
   (testing "Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil nil))
       #elm/dec "1.1" #elm/dec "1.1" true
       #elm/dec "1.1" #elm/dec "2.1" false
 
@@ -727,12 +765,12 @@
       #elm/dec "1.1" {:type "Null"} false))
 
   (testing "Mixed Integer Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil nil))
       #elm/int "1" #elm/dec "1" true
       #elm/dec "1" #elm/int "1" true))
 
   (testing "Quantity"
-    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/equivalent [a b])) {} nil nil))
       #elm/quantity [1] #elm/quantity [1] true
       #elm/quantity [1] #elm/quantity [2] false
 
@@ -749,7 +787,7 @@
       #elm/quantity [1 "s"] {:type "Null"} false))
 
   (testing "List"
-    (are [x y res] (= res (-eval (compile {} (elm/equivalent [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/equivalent [x y])) {} nil nil))
       #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] true
       #elm/list [] #elm/list [] true
 
@@ -770,7 +808,7 @@
 ;; 12.3. Greater
 (deftest compile-greater-test
   (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil nil))
       #elm/int "2" #elm/int "1" true
       #elm/int "1" #elm/int "1" false
 
@@ -778,7 +816,7 @@
       #elm/int "1" {:type "Null"} nil))
 
   (testing "Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil nil))
       #elm/dec "2" #elm/dec "1" true
       #elm/dec "1" #elm/dec "1" false
 
@@ -786,7 +824,7 @@
       #elm/dec "1" {:type "Null"} nil))
 
   (testing "String"
-    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil nil))
       #elm/string "b" #elm/string "a" true
       #elm/string "a" #elm/string "a" false
 
@@ -794,7 +832,7 @@
       #elm/string "a" {:type "Null"} nil))
 
   (testing "Quantity"
-    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil nil))
       #elm/quantity [2] #elm/quantity [1] true
       #elm/quantity [1] #elm/quantity [1] false
 
@@ -812,7 +850,7 @@
       #elm/quantity [1 "s"] {:type "Null"} nil))
 
   (testing "Date with year precision"
-    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil nil))
       #elm/date "2014" #elm/date "2013" true
       #elm/date "2013" #elm/date "2013" false
 
@@ -820,12 +858,12 @@
       #elm/date "2013" {:type "Null"} nil))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
-    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil nil))
       #elm/date "2013" #elm/date "2013-01" nil
       #elm/date "2013-01" #elm/date "2013" nil))
 
   (testing "Time"
-    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater [a b])) {} nil nil))
       #elm/time "00:00:01" #elm/time "00:00:00" true
       #elm/time "00:00:00" #elm/time "00:00:00" false
 
@@ -836,7 +874,7 @@
 ;; 12.4. GreaterOrEqual
 (deftest compile-greater-or-equal-test
   (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil nil))
       #elm/int "1" #elm/int "1" true
       #elm/int "2" #elm/int "1" true
       #elm/int "1" #elm/int "2" false
@@ -845,7 +883,7 @@
       #elm/int "1" {:type "Null"} nil))
 
   (testing "Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil nil))
       #elm/dec "1.1" #elm/dec "1.1" true
       #elm/dec "2.1" #elm/dec "1.1" true
       #elm/dec "1.1" #elm/dec "2.1" false
@@ -854,7 +892,7 @@
       #elm/dec "1.1" {:type "Null"} nil))
 
   (testing "Quantity"
-    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil nil))
       #elm/quantity [1] #elm/quantity [1] true
       #elm/quantity [2] #elm/quantity [1] true
       #elm/quantity [1] #elm/quantity [2] false
@@ -874,7 +912,7 @@
       #elm/quantity [1 "s"] {:type "Null"} nil))
 
   (testing "Date"
-    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil nil))
       #elm/date "2013" #elm/date "2013" true
       #elm/date "2014" #elm/date "2013" true
       #elm/date "2013" #elm/date "2014" false
@@ -886,7 +924,7 @@
       #elm/date "2014" {:type "Null"} nil))
 
   (testing "Time"
-    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/greater-or-equal [a b])) {} nil nil))
       #elm/time "00:00:00" #elm/time "00:00:00" true
       #elm/time "00:00:01" #elm/time "00:00:00" true
       #elm/time "00:00:00" #elm/time "00:00:01" false
@@ -920,7 +958,7 @@
 ;; DateTime, Time, and Quantity types.
 (deftest compile-less-test
   (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil nil))
       #elm/int "1" #elm/int "2" true
       #elm/int "1" #elm/int "1" false
 
@@ -928,7 +966,7 @@
       #elm/int "1" {:type "Null"} nil))
 
   (testing "Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil nil))
       #elm/dec "1" #elm/dec "2" true
       #elm/dec "1" #elm/dec "1" false
 
@@ -936,7 +974,7 @@
       #elm/dec "1" {:type "Null"} nil))
 
   (testing "String"
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil nil))
       #elm/string "a" #elm/string "b" true
       #elm/string "a" #elm/string "a" false
 
@@ -944,7 +982,7 @@
       #elm/string "a" {:type "Null"} nil))
 
   (testing "Quantity"
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil nil))
       #elm/quantity [1] #elm/quantity [2] true
       #elm/quantity [1] #elm/quantity [1] false
 
@@ -961,7 +999,7 @@
       #elm/quantity [1 "s"] {:type "Null"} nil))
 
   (testing "Date with year precision"
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil nil))
       #elm/date "2012" #elm/date "2013" true
       #elm/date "2013" #elm/date "2013" false
 
@@ -969,12 +1007,12 @@
       #elm/date "2013" {:type "Null"} nil))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil nil))
       #elm/date "2013" #elm/date "2013-01" nil
       #elm/date "2013-01" #elm/date "2013" nil))
 
   (testing "Date with full precision"
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {:now now} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {:now now} nil nil))
       #elm/date "2013-06-14" #elm/date "2013-06-15" true
       #elm/date "2013-06-15" #elm/date "2013-06-15" false
 
@@ -982,17 +1020,17 @@
       #elm/date "2013-06-15" {:type "Null"} nil))
 
   (testing "Comparing dates with mixed precisions (year-month and full) results in null."
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil nil))
       #elm/date "2013-01" #elm/date "2013-01-01" nil
       #elm/date "2013-01-01" #elm/date "2013-01" nil))
 
   (testing "DateTime with full precision (there is only one precision)"
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {:now now} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {:now now} nil nil))
       #elm/date-time "2013-06-15T11" #elm/date-time "2013-06-15T12" true
       #elm/date-time "2013-06-15T12" #elm/date-time "2013-06-15T12" false))
 
   (testing "Time with full precision (there is only one precision)"
-    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less [a b])) {} nil nil))
       #elm/time "12:30:14" #elm/time "12:30:15" true
       #elm/time "12:30:15" #elm/time "12:30:15" false
 
@@ -1003,7 +1041,7 @@
 ;; 12.6. LessOrEqual
 (deftest compile-less-or-equal-test
   (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil nil))
       #elm/int "1" #elm/int "1" true
       #elm/int "1" #elm/int "2" true
 
@@ -1011,14 +1049,14 @@
       #elm/int "1" {:type "Null"} nil))
 
   (testing "Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil nil))
       #elm/dec "1" #elm/dec "2" true
 
       {:type "Null"} #elm/dec "2" nil
       #elm/dec "1" {:type "Null"} nil))
 
   (testing "Quantity"
-    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil nil))
       #elm/quantity [1] #elm/quantity [2] true
       #elm/quantity [1] #elm/quantity [1] true
       #elm/quantity [2] #elm/quantity [1] false
@@ -1038,7 +1076,7 @@
       #elm/quantity [1] {:type "Null"} nil))
 
   (testing "Date"
-    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil nil))
       #elm/date "2013-06-14" #elm/date "2013-06-15" true
       #elm/date "2013-06-16" #elm/date "2013-06-15" false
       #elm/date "2013-06-15" #elm/date "2013-06-15" true
@@ -1047,7 +1085,7 @@
       #elm/date-time "2013-06-15T00" #elm/date "2013-06-15" nil))
 
   (testing "Time"
-    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/less-or-equal [a b])) {} nil nil))
       #elm/time "00:00:00" #elm/time "00:00:00" true
       #elm/time "00:00:00" #elm/time "00:00:01" true
       #elm/time "00:00:01" #elm/time "00:00:00" false
@@ -1072,7 +1110,7 @@
 ;; the result is true; otherwise, the result is null. Note also that ELM does
 ;; not prescribe short-circuit evaluation.
 (deftest compile-and-test
-  (are [a b res] (= res (-eval (compile {} {:type "And" :operand [a b]}) {} nil))
+  (are [a b res] (= res (-eval (compile {} {:type "And" :operand [a b]}) {} nil nil))
     #elm/boolean "true" #elm/boolean "true" true
     #elm/boolean "true" #elm/boolean "false" false
     #elm/boolean "true" {:type "Null"} nil
@@ -1098,7 +1136,7 @@
 ;; Note that implies may use short-circuit evaluation in the case that the first
 ;; operand evaluates to false.
 (deftest compile-implies-test
-  (are [a b res] (= res (-eval (compile {} {:type "Or" :operand [{:type "Not" :operand a} b]}) {} nil))
+  (are [a b res] (= res (-eval (compile {} {:type "Or" :operand [{:type "Not" :operand a} b]}) {} nil nil))
     #elm/boolean "true" #elm/boolean "true" true
     #elm/boolean "true" #elm/boolean "false" false
     #elm/boolean "true" {:type "Null"} nil
@@ -1118,7 +1156,7 @@
 ;; argument is true, the result is false; if the argument is false, the result
 ;; is true; otherwise, the result is null.
 (deftest compile-not-test
-  (are [a res] (= res (-eval (compile {} {:type "Not" :operand a}) {} nil))
+  (are [a res] (= res (-eval (compile {} {:type "Not" :operand a}) {} nil nil))
     #elm/boolean "true" false
     #elm/boolean "false" true
     {:type "Null"} nil))
@@ -1132,7 +1170,7 @@
 ;; result is false; otherwise, the result is null. Note also that ELM does not
 ;; prescribe short-circuit evaluation.
 (deftest compile-or-test
-  (are [a b res] (= res (-eval (compile {} {:type "Or" :operand [a b]}) {} nil))
+  (are [a b res] (= res (-eval (compile {} {:type "Or" :operand [a b]}) {} nil nil))
     #elm/boolean "true" #elm/boolean "true" true
     #elm/boolean "true" #elm/boolean "false" true
     #elm/boolean "true" {:type "Null"} true
@@ -1155,7 +1193,7 @@
 ;; arguments are false. If either or both arguments are null, the result is
 ;; null.
 (deftest compile-xor-test
-  (are [a b res] (= res (-eval (compile {} {:type "Xor" :operand [a b]}) {} nil))
+  (are [a b res] (= res (-eval (compile {} {:type "Xor" :operand [a b]}) {} nil nil))
     #elm/boolean "true" #elm/boolean "true" false
     #elm/boolean "true" #elm/boolean "false" true
     #elm/boolean "true" {:type "Null"} nil
@@ -1184,7 +1222,7 @@
 ;; type of the first argument determines the type of the result, and all
 ;; subsequent arguments must be of that same type.
 (deftest compile-coalesce-test
-  (are [elm res] (= res (-eval (compile {} {:type "Coalesce" :operand elm}) {} nil))
+  (are [elm res] (= res (-eval (compile {} {:type "Coalesce" :operand elm}) {} nil nil))
     [] nil
     [{:type "Null"}] nil
     [#elm/boolean "false" #elm/boolean "true"] false
@@ -1201,7 +1239,7 @@
 ;; false. If the argument evaluates to false, the result is true; if the
 ;; argument evaluates to true or null, the result is false.
 (deftest compile-is-false-test
-  (are [x res] (= res (-eval (compile {} {:type "IsFalse" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "IsFalse" :operand x}) {} nil nil))
     #elm/boolean "true" false
     #elm/boolean "false" true
     {:type "Null"} false))
@@ -1213,7 +1251,7 @@
 ;; If the argument evaluates to null, the result is true; otherwise, the result
 ;; is false.
 (deftest compile-is-null-test
-  (are [x res] (= res (-eval (compile {} {:type "IsNull" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "IsNull" :operand x}) {} nil nil))
     #elm/boolean "true" false
     #elm/boolean "false" false
     {:type "Null"} true))
@@ -1225,7 +1263,7 @@
 ;; If the argument evaluates to true, the result is true; if the argument
 ;; evaluates to false or null, the result is false.
 (deftest compile-is-true-test
-  (are [x res] (= res (-eval (compile {} {:type "IsTrue" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "IsTrue" :operand x}) {} nil nil))
     #elm/boolean "true" true
     #elm/boolean "false" false
     {:type "Null"} false))
@@ -1242,7 +1280,7 @@
 ;; determines the result type of the conditional, and the else argument must be
 ;; of that same type.
 (deftest compile-if-test
-  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+  (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
     #elm/if [#elm/boolean "true" #elm/int "1" #elm/int "2"] 1
     #elm/if [#elm/boolean "false" #elm/int "1" #elm/int "2"] 2
     #elm/if [{:type "Null"} #elm/int "1" #elm/int "2"] 2))
@@ -1261,7 +1299,7 @@
 ;;
 ;; The Abs operator is defined for the Integer, Decimal, and Quantity types.
 (deftest compile-abs-test
-  (are [x res] (= res (-eval (compile {} {:type "Abs" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "Abs" :operand x}) {} nil nil))
     #elm/int "-1" 1
     #elm/int "0" 0
     #elm/int "1" 1
@@ -1329,7 +1367,7 @@
 ;; overflow), the result is null.
 (deftest compile-add-test
   (testing "Integer"
-    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil nil))
       #elm/int "-1" #elm/int "-1" -2
       #elm/int "-1" #elm/int "0" -1
       #elm/int "-1" #elm/int "1" 0
@@ -1343,24 +1381,24 @@
     (satisfies-prop 100
                     (prop/for-all [operand (s/gen (s/or :i :elm/integer :d :elm/decimal))]
                       (let [elm (elm/equal [(elm/add [operand #elm/int "0"]) operand])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding zero decimal to any decimal doesn't change it"
     (satisfies-prop 100
                     (prop/for-all [operand (s/gen :elm/decimal)]
                       (let [elm (elm/equal [(elm/add [operand #elm/dec "0"]) operand])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding identical integers equals multiplying the same integer by two"
     (satisfies-prop 100
                     (prop/for-all [integer (s/gen :elm/integer)]
                       (let [elm (elm/equivalent [(elm/add [integer integer])
                                                  (elm/multiply [integer #elm/int "2"])])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Decimal"
     (testing "Decimal"
-      (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
+      (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil nil))
         #elm/dec "-1.1" #elm/dec "-1.1" -2.2M
         #elm/dec "-1.1" #elm/dec "0" -1.1M
         #elm/dec "-1.1" #elm/dec "1.1" 0M
@@ -1371,15 +1409,15 @@
         #elm/dec "1" {:type "Null"} nil))
 
     (testing "Mix with integer"
-      (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
+      (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil nil))
         #elm/dec "1" #elm/int "1" 2M))
 
     (testing "Trailing zeros are preserved"
-      (are [x y res] (= res (str (-eval (compile {} (elm/add [x y])) {} nil)))
+      (are [x y res] (= res (str (-eval (compile {} (elm/add [x y])) {} nil nil)))
         #elm/dec "1.23" #elm/dec "1.27" "2.50"))
 
     (testing "Arithmetic overflow results in nil"
-      (are [x y] (nil? (-eval (compile {} (elm/add [x y])) {} nil))
+      (are [x y] (nil? (-eval (compile {} (elm/add [x y])) {} nil nil))
         #elm/dec "99999999999999999999" #elm/dec "1"
         #elm/dec "99999999999999999999.99999999" #elm/dec "1")))
 
@@ -1388,7 +1426,7 @@
                     (prop/for-all [decimal (s/gen :elm/decimal)]
                       (let [elm (elm/equal [(elm/add [decimal decimal])
                                             (elm/multiply [decimal #elm/int "2"])])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding identical decimals and dividing by two results in the same decimal"
     (satisfies-prop 100
@@ -1396,10 +1434,10 @@
                       (let [elm (elm/equal [(elm/divide [(elm/add [decimal decimal])
                                                          #elm/int "2"])
                                             decimal])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Time-based quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil nil))
       #elm/quantity [1 "year"] #elm/quantity [1 "year"] (period 2 0 0)
       #elm/quantity [1 "year"] #elm/quantity [1 "month"] (period 1 1 0)
       #elm/quantity [1 "year"] #elm/quantity [1 "day"] (period 1 0 (* 24 3600 1000))
@@ -1411,12 +1449,12 @@
       #elm/quantity [1 "year"] #elm/quantity [13.1M "month"] (period 2 1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil nil))
       #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity 2 "m")
       #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity 1.01M "m")))
 
   (testing "Incompatible UCUM Quantity Subtractions"
-    (are [a b] (thrown? UnconvertibleException (-eval (compile {} (elm/add [a b])) {} nil))
+    (are [a b] (thrown? UnconvertibleException (-eval (compile {} (elm/add [a b])) {} nil nil))
       #elm/quantity [1 "cm2"] #elm/quantity [1 "cm"]
       #elm/quantity [1 "m"] #elm/quantity [1 "s"]))
 
@@ -1425,7 +1463,7 @@
                     (prop/for-all [quantity (s/gen :elm/quantity)]
                       (let [elm (elm/equal [(elm/add [quantity quantity])
                                             (elm/multiply [quantity #elm/int "2"])])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding identical quantities and dividing by two results in the same quantity"
     (satisfies-prop 100
@@ -1433,10 +1471,10 @@
                       (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
                                                          #elm/int "2"])
                                             quantity])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Date + Quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil nil))
       #elm/date "2019" #elm/quantity [1 "year"] (Year/of 2020)
       #elm/date "2019" #elm/quantity [13 "months"] (Year/of 2020)
 
@@ -1455,49 +1493,49 @@
                     (prop/for-all [year (s/gen :elm/year)
                                    years (s/gen :elm/pos-years)]
                       (let [elm (elm/greater [(elm/add [year years]) year])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of years to a year-month makes it greater"
     (satisfies-prop 100
                     (prop/for-all [year-month (s/gen :elm/year-month)
                                    years (s/gen :elm/pos-years)]
                       (let [elm (elm/greater [(elm/add [year-month years]) year-month])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of years to a date makes it greater"
     (satisfies-prop 100
                     (prop/for-all [date (s/gen :elm/literal-date)
                                    years (s/gen :elm/pos-years)]
                       (let [elm (elm/greater [(elm/add [date years]) date])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of years to a date-time makes it greater"
     (satisfies-prop 100
                     (prop/for-all [date-time (s/gen :elm/literal-date-time)
                                    years (s/gen :elm/pos-years)]
                       (let [elm (elm/greater [(elm/add [date-time years]) date-time])]
-                        (true? (-eval (compile {} elm) {:now now} {}))))))
+                        (true? (-eval (compile {} elm) {:now now} nil nil))))))
 
   (testing "Adding a positive amount of months to a year-month makes it greater"
     (satisfies-prop 100
                     (prop/for-all [year-month (s/gen :elm/year-month)
                                    months (s/gen :elm/pos-months)]
                       (let [elm (elm/greater [(elm/add [year-month months]) year-month])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of months to a date makes it greater or lets it equal because a date can be also a year and adding a small amount of months to a year doesn't change it."
     (satisfies-prop 100
                     (prop/for-all [date (s/gen :elm/literal-date)
                                    months (s/gen :elm/pos-months)]
                       (let [elm (elm/greater-or-equal [(elm/add [date months]) date])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of months to a date-time makes it greater or lets it equal because a date-time can be also a year and adding a small amount of months to a year doesn't change it."
     (satisfies-prop 100
                     (prop/for-all [date-time (s/gen :elm/literal-date-time)
                                    months (s/gen :elm/pos-months)]
                       (let [elm (elm/greater-or-equal [(elm/add [date-time months]) date-time])]
-                        (true? (-eval (compile {} elm) {:now now} {}))))))
+                        (true? (-eval (compile {} elm) {:now now} nil nil))))))
 
   ;; TODO: is that right?
   (testing "Adding a positive amount of days to a year doesn't change it."
@@ -1505,7 +1543,7 @@
                     (prop/for-all [year (s/gen :elm/year)
                                    days (s/gen :elm/pos-days)]
                       (let [elm (elm/equal [(elm/add [year days]) year])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   ;; TODO: is that right?
   (testing "Adding a positive amount of days to a year-month doesn't change it."
@@ -1513,24 +1551,24 @@
                     (prop/for-all [year-month (s/gen :elm/year-month)
                                    days (s/gen :elm/pos-days)]
                       (let [elm (elm/equal [(elm/add [year-month days]) year-month])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of days to a date makes it greater or lets it equal because a date can be also a year or year-month and adding any amount of days to a year or year-month doesn't change it."
     (satisfies-prop 100
                     (prop/for-all [date (s/gen :elm/literal-date)
                                    days (s/gen :elm/pos-days)]
                       (let [elm (elm/greater-or-equal [(elm/add [date days]) date])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of days to a date-time makes it greater or lets it equal because a date-time can be also a year or year-month and adding any amount of days to a year or year-month doesn't change it."
     (satisfies-prop 100
                     (prop/for-all [date-time (s/gen :elm/literal-date-time)
                                    days (s/gen :elm/pos-days)]
                       (let [elm (elm/greater-or-equal [(elm/add [date-time days]) date-time])]
-                        (true? (-eval (compile {} elm) {:now now} {}))))))
+                        (true? (-eval (compile {} elm) {:now now} nil nil))))))
 
   (testing "DateTime + Quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil nil))
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "year"] (LocalDateTime/of 2020 1 1 0 0 0)
       #elm/date-time "2012-02-29T00" #elm/quantity [1 "year"] (LocalDateTime/of 2013 2 28 0 0 0)
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "month"] (LocalDateTime/of 2019 2 1 0 0 0)
@@ -1540,7 +1578,7 @@
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "second"] (LocalDateTime/of 2019 1 1 0 0 1)))
 
   (testing "Time + Quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/add [x y])) {} nil nil))
       #elm/time "00:00:00" #elm/quantity [1 "hour"] (local-time 1 0 0)
       #elm/time "00:00:00" #elm/quantity [1 "minute"] (local-time 0 1 0)
       #elm/time "00:00:00" #elm/quantity [1 "second"] (local-time 0 0 1))))
@@ -1553,7 +1591,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-ceiling-test
-  (are [x res] (= res (-eval (compile {} {:type "Ceiling" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "Ceiling" :operand x}) {} nil nil))
     #elm/int "1" 1
 
     #elm/dec "1.1" 2
@@ -1579,7 +1617,7 @@
 (deftest compile-divide-test
   (testing "Decimal"
     ;; Convert to string to be able to check for precision
-    (are [a b res] (= res (some-> (-eval (compile {} (elm/divide [a b])) {} nil) str))
+    (are [a b res] (= res (some-> (-eval (compile {} (elm/divide [a b])) {} nil nil) str))
       #elm/dec "1" #elm/dec "2" "0.5"
       #elm/dec "1.1" #elm/dec "2" "0.55"
       #elm/dec "10" #elm/dec "3" "3.33333333"
@@ -1598,16 +1636,16 @@
       (satisfies-prop 100
                       (prop/for-all [decimal (s/gen :elm/non-zero-decimal)]
                         (let [elm (elm/equal [(elm/divide [(elm/multiply [decimal decimal]) decimal]) decimal])]
-                          (true? (-eval (compile {} elm) {} {}))))))
+                          (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "(d / d) * d = d"
     (satisfies-prop 100
                     (prop/for-all [decimal (s/gen :elm/non-zero-decimal)]
                       (let [elm (elm/equal [(elm/multiply [(elm/divide [decimal decimal]) decimal]) decimal])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "UCUM Quantity"
-    (are [a b res] (= res (-eval (compile {} (elm/divide [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/divide [a b])) {} nil nil))
       #elm/quantity [1M "m"] #elm/int "2" (quantity 0.5M "m")
 
       #elm/quantity [1 "m"] #elm/quantity [1 "s"] (quantity 1 "m/s")
@@ -1625,7 +1663,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-exp-test
-  (are [x res] (= res (-eval (compile {} {:type "Exp" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "Exp" :operand x}) {} nil nil))
     #elm/int "0" 1M
     #elm/dec "0" 1M
     {:type "Null"} nil))
@@ -1638,7 +1676,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-floor-test
-  (are [x res] (= res (-eval (compile {} {:type "Floor" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "Floor" :operand x}) {} nil nil))
     #elm/int "1" 1
     #elm/dec "1.1" 1
     {:type "Null"} nil))
@@ -1651,7 +1689,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-log-test
-  (are [x base res] (= res (-eval (compile {} {:type "Log" :operand [x base]}) {} nil))
+  (are [x base res] (= res (-eval (compile {} {:type "Log" :operand [x base]}) {} nil nil))
     #elm/int "16" #elm/int "2" 4M
 
     #elm/dec "100" #elm/dec "10" 2M
@@ -1675,7 +1713,7 @@
 ;;
 ;; If the result of the operation cannot be represented, the result is null.
 (deftest compile-ln-test
-  (are [x res] (= res (-eval (compile {} {:type "Ln" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "Ln" :operand x}) {} nil nil))
     #elm/int "1" 0M
     #elm/dec "1" 0M
 
@@ -1712,7 +1750,7 @@
 ;;
 ;; For any other type, attempting to invoke MaxValue results in an error.
 (deftest compile-max-value-test
-  (are [type res] (= res (-eval (compile {} {:type "MaxValue" :valueType type}) {} nil))
+  (are [type res] (= res (-eval (compile {} {:type "MaxValue" :valueType type}) {} nil nil))
     "{urn:hl7-org:elm-types:r1}Integer" Integer/MAX_VALUE
     "{urn:hl7-org:elm-types:r1}Decimal" (/ (- 1E28M 1) 1E8M)
     "{urn:hl7-org:elm-types:r1}Date" (LocalDate/of 9999 12 31)
@@ -1744,7 +1782,7 @@
 ;;
 ;; For any other type, attempting to invoke MinValue results in an error.
 (deftest compile-min-value-test
-  (are [type res] (= res (-eval (compile {} {:type "MinValue" :valueType type}) {} nil))
+  (are [type res] (= res (-eval (compile {} {:type "MinValue" :valueType type}) {} nil nil))
     "{urn:hl7-org:elm-types:r1}Integer" Integer/MIN_VALUE
     "{urn:hl7-org:elm-types:r1}Decimal" (/ (+ -1E28M 1) 1E8M)
     "{urn:hl7-org:elm-types:r1}Date" (LocalDate/of 1 1 1)
@@ -1763,7 +1801,7 @@
 ;;
 ;; The Modulo operator is defined for the Integer and Decimal types.
 (deftest compile-modulo-test
-  (are [x div res] (= res (-eval (compile {} {:type "Modulo" :operand [x div]}) {} nil))
+  (are [x div res] (= res (-eval (compile {} {:type "Modulo" :operand [x div]}) {} nil nil))
     #elm/int "1" #elm/int "2" 1
     #elm/int "3" #elm/int "2" 1
     #elm/int "5" #elm/int "3" 2
@@ -1798,7 +1836,7 @@
 ;; The Multiply operator is defined for the Integer, Decimal and Quantity types.
 (deftest compile-multiply-test
   (testing "Integer"
-    (are [x y res] (= res (-eval (compile {} (elm/multiply [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/multiply [x y])) {} nil nil))
       #elm/int "1" #elm/int "2" 2
 
       {:type "Null"} #elm/int "1" nil
@@ -1806,7 +1844,7 @@
 
   (testing "Decimal"
     (testing "Decimal"
-      (are [x y res] (= res (-eval (compile {} (elm/multiply [x y])) {} nil))
+      (are [x y res] (= res (-eval (compile {} (elm/multiply [x y])) {} nil nil))
         #elm/dec "1" #elm/dec "2" 2M
         #elm/dec "1.23456" #elm/dec "1.23456" 1.52413839M
 
@@ -1814,12 +1852,12 @@
         #elm/dec "1" {:type "Null"} nil))
 
     (testing "Arithmetic overflow results in nil"
-      (are [x y] (nil? (-eval (compile {} (elm/multiply [x y])) {} nil))
+      (are [x y] (nil? (-eval (compile {} (elm/multiply [x y])) {} nil nil))
         #elm/dec "99999999999999999999" #elm/dec "2"
         #elm/dec "99999999999999999999.99999999" #elm/dec "2")))
 
   (testing "UCUM Quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/multiply [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/multiply [x y])) {} nil nil))
       #elm/quantity [1 "m"] #elm/int "2" (quantity 2 "m")
       #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity 2 "m2")
 
@@ -1837,7 +1875,7 @@
 ;;
 ;; The Negate operator is defined for the Integer, Decimal, and Quantity types.
 (deftest compile-negate-test
-  (are [x res] (= res (-eval (compile {} {:type "Negate" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "Negate" :operand x}) {} nil nil))
     #elm/int "1" -1
 
     #elm/dec "1" -1M
@@ -1861,7 +1899,7 @@
 ;; If either argument is null, the result is null.
 (deftest compile-power-test
   (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} (elm/power [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/power [a b])) {} nil nil))
       #elm/int "10" #elm/int "2" 100
       #elm/int "2" #elm/int "-2" 0.25M
 
@@ -1869,7 +1907,7 @@
       #elm/int "1" {:type "Null"} nil))
 
   (testing "Decimal"
-    (are [a b res] (= res (-eval (compile {} (elm/power [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/power [a b])) {} nil nil))
       #elm/dec "2.5" #elm/dec "2" 6.25M
       #elm/dec "10" #elm/dec "2" 100M
       #elm/dec "4" #elm/dec "0.5" 2M
@@ -1878,7 +1916,7 @@
       #elm/dec "1" {:type "Null"} nil))
 
   (testing "Mixed"
-    (are [a b res] (= res (-eval (compile {} (elm/power [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/power [a b])) {} nil nil))
       #elm/dec "2.5" #elm/int "2" 6.25M
       #elm/dec "10" #elm/int "2" 100M
       #elm/dec "10" #elm/int "2" 100M)))
@@ -1912,7 +1950,7 @@
 ;;
 ;; If the result of the operation cannot be represented, the result is null.
 (deftest compile-predecessor-test
-  (are [x res] (= res (-eval (compile {} (elm/predecessor x)) {} nil))
+  (are [x res] (= res (-eval (compile {} (elm/predecessor x)) {} nil nil))
     #elm/int "0" -1
     #elm/dec "0" -1E-8M
     #elm/date "2019" (Year/of 2018)
@@ -1924,7 +1962,7 @@
     #elm/quantity [0M "m"] (quantity -1E-8M "m")
     {:type "Null"} nil)
 
-  (are [x] (thrown? Exception (-eval (compile {} (elm/predecessor x)) {} nil))
+  (are [x] (thrown? Exception (-eval (compile {} (elm/predecessor x)) {} nil nil))
     (elm/dec (str decimal/min))
     #elm/date "0001"
     #elm/date "0001-01"
@@ -1945,7 +1983,7 @@
 ;; precision is not specified or null, 0 is assumed.
 (deftest compile-round-test
   (testing "Without precision"
-    (are [x res] (= res (-eval (compile {} (elm/round [x])) {} nil))
+    (are [x res] (= res (-eval (compile {} (elm/round [x])) {} nil nil))
       #elm/int "1" 1M
       #elm/dec "1" 1M
       #elm/dec "0.5" 1M
@@ -1959,11 +1997,11 @@
       {:type "Null"} nil))
 
   (testing "With literal precision"
-    (are [x precision res] (= res (-eval (compile {} (elm/round [x precision])) {} nil))
+    (are [x precision res] (= res (-eval (compile {} (elm/round [x precision])) {} nil nil))
       #elm/dec "3.14159" #elm/int "3" 3.142M))
 
   (testing "With non-literal precision"
-    (are [x precision res] (= res (-eval (compile {} (elm/round [x precision])) {} nil))
+    (are [x precision res] (= res (-eval (compile {} (elm/round [x precision])) {} nil nil))
       #elm/dec "3.14159" #elm/add [#elm/int "2" #elm/int "1"] 3.142M)))
 
 
@@ -2001,7 +2039,7 @@
 ;; If either argument is null, the result is null.
 (deftest compile-subtract-test
   (testing "Integer"
-    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
       #elm/int "-1" #elm/int "-1" 0
       #elm/int "-1" #elm/int "0" -1
       #elm/int "1" #elm/int "1" 0
@@ -2014,11 +2052,11 @@
   (testing "Subtracting identical integers results in zero"
     (satisfies-prop 100
                     (prop/for-all [integer (s/gen :elm/integer)]
-                      (zero? (-eval (compile {} (elm/subtract [integer integer])) {} {})))))
+                      (zero? (-eval (compile {} (elm/subtract [integer integer])) {} nil nil)))))
 
   (testing "Decimal"
     (testing "Decimal"
-      (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
+      (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
         #elm/dec "-1" #elm/dec "-1" 0M
         #elm/dec "-1" #elm/dec "0" -1M
         #elm/dec "1" #elm/dec "1" 0M
@@ -2029,21 +2067,21 @@
         #elm/dec "1.1" {:type "Null"} nil))
 
     (testing "Mix with integer"
-      (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
+      (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
         #elm/dec "1" #elm/int "1" 0M))
 
     (testing "Arithmetic overflow results in nil"
-      (are [x y] (nil? (-eval (compile {} (elm/subtract [x y])) {} nil))
+      (are [x y] (nil? (-eval (compile {} (elm/subtract [x y])) {} nil nil))
         #elm/dec "-99999999999999999999" #elm/dec "1"
         #elm/dec "-99999999999999999999.99999999" #elm/dec "1")))
 
   (testing "Subtracting identical decimals results in zero"
     (satisfies-prop 100
                     (prop/for-all [decimal (s/gen :elm/decimal)]
-                      (zero? (-eval (compile {} (elm/subtract [decimal decimal])) {} {})))))
+                      (zero? (-eval (compile {} (elm/subtract [decimal decimal])) {} nil nil)))))
 
   (testing "Time-based quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
       #elm/quantity [1 "year"] #elm/quantity [1 "year"] (period 0 0 0)
       #elm/quantity [1 "year"] #elm/quantity [1 "month"] (period 0 11 0)
       #elm/quantity [1 "year"] #elm/quantity [1 "day"] (period 1 0 (- (* 24 3600 1000)))
@@ -2055,12 +2093,12 @@
       #elm/quantity [1 "year"] #elm/quantity [13.1M "month"] (period 0 -1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
       #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity 0 "m")
       #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity 0.99 "m")))
 
   (testing "Incompatible UCUM Quantity Subtractions"
-    (are [a b] (thrown? UnconvertibleException (-eval (compile {} (elm/subtract [a b])) {} nil))
+    (are [a b] (thrown? UnconvertibleException (-eval (compile {} (elm/subtract [a b])) {} nil nil))
       #elm/quantity [1 "cm2"] #elm/quantity [1 "cm"]
       #elm/quantity [1 "m"] #elm/quantity [1 "s"]))
 
@@ -2071,10 +2109,10 @@
                       ;; so use negate trick
                       (let [elm (elm/equal [(elm/negate (elm/subtract [quantity quantity]))
                                             (elm/subtract [quantity quantity])])]
-                        (true? (-eval (compile {} elm) {} {}))))))
+                        (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Date - Quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
       #elm/date "2019" #elm/quantity [1 "year"] (Year/of 2018)
       #elm/date "2019" #elm/quantity [13 "months"] (Year/of 2018)
 
@@ -2094,7 +2132,7 @@
                       (prop/for-all [year (s/gen :elm/year)
                                      years (s/gen :elm/pos-years)]
                         (let [elm (elm/less [(elm/subtract [year years]) year])]
-                          (true? (-eval (compile {} elm) {} {}))))))
+                          (true? (-eval (compile {} elm) {} nil nil))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a year-month makes it smaller"
@@ -2102,7 +2140,7 @@
                       (prop/for-all [year-month (s/gen :elm/year-month)
                                      years (s/gen :elm/pos-years)]
                         (let [elm (elm/less [(elm/subtract [year-month years]) year-month])]
-                          (true? (-eval (compile {} elm) {} {}))))))
+                          (true? (-eval (compile {} elm) {} nil nil))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a date makes it smaller"
@@ -2110,7 +2148,7 @@
                       (prop/for-all [date (s/gen :elm/literal-date)
                                      years (s/gen :elm/pos-years)]
                         (let [elm (elm/less [(elm/subtract [date years]) date])]
-                          (true? (-eval (compile {} elm) {} {}))))))
+                          (true? (-eval (compile {} elm) {} nil nil))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of months from a year-month makes it smaller"
@@ -2118,7 +2156,7 @@
                       (prop/for-all [year-month (s/gen :elm/year-month)
                                      months (s/gen :elm/pos-months)]
                         (let [elm (elm/less [(elm/subtract [year-month months]) year-month])]
-                          (true? (-eval (compile {} elm) {} {}))))))
+                          (true? (-eval (compile {} elm) {} nil nil))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of months from a date makes it smaller or lets it equal because a date can be also a year and subtracting a small amount of months from a year doesn't change it."
@@ -2126,7 +2164,7 @@
                       (prop/for-all [date (s/gen :elm/literal-date)
                                      months (s/gen :elm/pos-months)]
                         (let [elm (elm/less-or-equal [(elm/subtract [date months]) date])]
-                          (true? (-eval (compile {} elm) {} {}))))))
+                          (true? (-eval (compile {} elm) {} nil nil))))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of days from a date makes it smaller or lets it equal because a date can be also a year or year-month and subtracting any amount of days from a year or year-month doesn't change it."
@@ -2134,10 +2172,10 @@
                       (prop/for-all [date (s/gen :elm/literal-date)
                                      days (s/gen :elm/pos-days)]
                         (let [elm (elm/less-or-equal [(elm/subtract [date days]) date])]
-                          (true? (-eval (compile {} elm) {} {}))))))
+                          (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "DateTime - Quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "year"] (LocalDateTime/of 2018 1 1 0 0 0)
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "month"] (LocalDateTime/of 2018 12 1 0 0 0)
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "day"] (LocalDateTime/of 2018 12 31 0 0 0)
@@ -2146,7 +2184,7 @@
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "second"] (LocalDateTime/of 2018 12 31 23 59 59)))
 
   (testing "Time - Quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
       #elm/time "00:00:00" #elm/quantity [1 "hour"] (local-time 23 0 0)
       #elm/time "00:00:00" #elm/quantity [1 "minute"] (local-time 23 59 0)
       #elm/time "00:00:00" #elm/quantity [1 "second"] (local-time 23 59 59))))
@@ -2174,7 +2212,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-successor-test
-  (are [x res] (= res (-eval (compile {} (elm/successor x)) {} nil))
+  (are [x res] (= res (-eval (compile {} (elm/successor x)) {} nil nil))
     #elm/int "0" 1
     #elm/dec "0" 1E-8M
     #elm/date "2019" (Year/of 2020)
@@ -2186,7 +2224,7 @@
     #elm/quantity [0M "m"] (quantity 1E-8M "m")
     {:type "Null"} nil)
 
-  (are [x] (thrown? Exception (-eval (compile {} (elm/successor x)) {} nil))
+  (are [x] (thrown? Exception (-eval (compile {} (elm/successor x)) {} nil nil))
     (elm/dec (str decimal/max))
     #elm/date "9999"
     #elm/date "9999-12"
@@ -2201,7 +2239,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-truncate-test
-  (are [x res] (= res (-eval (compile {} (elm/truncate x)) {} nil))
+  (are [x res] (= res (-eval (compile {} (elm/truncate x)) {} nil nil))
     #elm/int "1" 1
     #elm/dec "1.1" 1
     {:type "Null"} nil))
@@ -2218,7 +2256,7 @@
 ;;
 ;; The TruncatedDivide operator is defined for the Integer and Decimal types.
 (deftest compile-truncated-divide-test
-  (are [num div res] (= res (-eval (compile {} (elm/truncated-divide [num div])) {} nil))
+  (are [num div res] (= res (-eval (compile {} (elm/truncated-divide [num div])) {} nil nil))
     #elm/int "1" #elm/int "2" 0
     #elm/int "2" #elm/int "2" 1
 
@@ -2243,7 +2281,7 @@
 ;; TODO: This definition is inconsistent with the CQL definition https://cql.hl7.org/2019May/09-b-cqlreference.html#combine
 (deftest compile-combine-test
   (testing "Without separator"
-    (are [src res] (= res (-eval (compile {} {:type "Combine" :source src}) {} nil))
+    (are [src res] (= res (-eval (compile {} {:type "Combine" :source src}) {} nil nil))
       #elm/list [#elm/string "a"] "a"
       #elm/list [#elm/string "a" #elm/string "b"] "ab"
 
@@ -2253,7 +2291,7 @@
       {:type "Null"} nil))
 
   (testing "With separator"
-    (are [src res] (= res (-eval (compile {} {:type "Combine" :source src :separator #elm/string " "}) {} nil))
+    (are [src res] (= res (-eval (compile {} {:type "Combine" :source src :separator #elm/string " "}) {} nil nil))
       #elm/list [#elm/string "a"] "a"
       #elm/list [#elm/string "a" #elm/string "b"] "a b"
 
@@ -2269,7 +2307,7 @@
 ;;
 ;; If any argument is null, the result is null.
 (deftest compile-concatenate-test
-  (are [args res] (= res (-eval (compile {} {:type "Concatenate" :operand args}) {} nil))
+  (are [args res] (= res (-eval (compile {} {:type "Concatenate" :operand args}) {} nil nil))
     [#elm/string "a"] "a"
     [#elm/string "a" #elm/string "b"] "ab"
 
@@ -2286,7 +2324,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-ends-with-test
-  (are [s suffix res] (= res (-eval (compile {} {:type "EndsWith" :operand [s suffix]}) {} nil))
+  (are [s suffix res] (= res (-eval (compile {} {:type "EndsWith" :operand [s suffix]}) {} nil nil))
     #elm/string "a" #elm/string "a" true
     #elm/string "ab" #elm/string "b" true
 
@@ -2320,7 +2358,7 @@
 ;; If either argument is null, the result is null.
 (deftest compile-indexer-test
   (testing "String"
-    (are [x i res] (= res (-eval (compile {} {:type "Indexer" :operand [x i]}) {} nil))
+    (are [x i res] (= res (-eval (compile {} {:type "Indexer" :operand [x i]}) {} nil nil))
       #elm/string "a" #elm/int "0" "a"
       #elm/string "ab" #elm/int "1" "b"
 
@@ -2332,7 +2370,7 @@
       {:type "Null"} #elm/int "0" nil))
 
   (testing "List"
-    (are [x i res] (= res (-eval (compile {} {:type "Indexer" :operand [x i]}) {} nil))
+    (are [x i res] (= res (-eval (compile {} {:type "Indexer" :operand [x i]}) {} nil nil))
       #elm/list [#elm/int "1"] #elm/int "0" 1
       #elm/list [#elm/int "1" #elm/int "2"] #elm/int "1" 2
 
@@ -2353,7 +2391,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-last-position-of-test
-  (are [pattern s res] (= res (-eval (compile {} {:type "LastPositionOf" :pattern pattern :string s}) {} nil))
+  (are [pattern s res] (= res (-eval (compile {} {:type "LastPositionOf" :pattern pattern :string s}) {} nil nil))
     #elm/string "a" #elm/string "a" 0
     #elm/string "a" #elm/string "aa" 1
 
@@ -2374,7 +2412,7 @@
 ;;
 ;; If the argument is null, the result is 0.
 (deftest compile-length-test
-  (are [x res] (= res (-eval (compile {} {:type "Length" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "Length" :operand x}) {} nil nil))
     #elm/string "" 0
     #elm/string "a" 1
     #elm/list [] 0
@@ -2395,7 +2433,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-lower-test
-  (are [s res] (= res (-eval (compile {} {:type "Lower" :operand s}) {} nil))
+  (are [s res] (= res (-eval (compile {} {:type "Lower" :operand s}) {} nil nil))
     #elm/string "" ""
     #elm/string "A" "a"
 
@@ -2416,7 +2454,7 @@
 ;; such, CQL does not prescribe a particular dialect, but recommends the use of
 ;; the PCRE dialect.
 (deftest compile-matches-test
-  (are [s pattern res] (= res (-eval (compile {} {:type "Matches" :operand [s pattern]}) {} nil))
+  (are [s pattern res] (= res (-eval (compile {} {:type "Matches" :operand [s pattern]}) {} nil nil))
     #elm/string "a" #elm/string "a" true
 
     #elm/string "a" #elm/string "\\d" false
@@ -2440,7 +2478,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-position-of-test
-  (are [pattern s res] (= res (-eval (compile {} {:type "PositionOf" :pattern pattern :string s}) {} nil))
+  (are [pattern s res] (= res (-eval (compile {} {:type "PositionOf" :pattern pattern :string s}) {} nil nil))
     #elm/string "a" #elm/string "a" 0
     #elm/string "a" #elm/string "aa" 0
 
@@ -2467,7 +2505,7 @@
 ;; such, CQL does not prescribe a particular dialect, but recommends the use of
 ;; the PCRE dialect.
 (deftest compile-replace-matches-test
-  (are [s pattern substitution res] (= res (-eval (compile {} {:type "ReplaceMatches" :operand [s pattern substitution]}) {} nil))
+  (are [s pattern substitution res] (= res (-eval (compile {} {:type "ReplaceMatches" :operand [s pattern substitution]}) {} nil nil))
     #elm/string "a" #elm/string "a" #elm/string "b" "b"
 
     {:type "Null"} #elm/string "a" {:type "Null"} nil
@@ -2486,14 +2524,14 @@
 ;; value of the stringToSplit argument.
 (deftest compile-split-test
   (testing "Without separator"
-    (are [s res] (= res (-eval (compile {} {:type "Split" :stringToSplit s}) {} nil))
+    (are [s res] (= res (-eval (compile {} {:type "Split" :stringToSplit s}) {} nil nil))
       #elm/string "" [""]
       #elm/string "a" ["a"]
 
       {:type "Null"} nil))
 
   (testing "With separator"
-    (are [s separator res] (= res (-eval (compile {} {:type "Split" :stringToSplit s :separator separator}) {} nil))
+    (are [s separator res] (= res (-eval (compile {} {:type "Split" :stringToSplit s :separator separator}) {} nil nil))
       #elm/string "" #elm/string "," [""]
       #elm/string "a,b" #elm/string "," ["a" "b"]
       #elm/string "a,,b" #elm/string "," ["a" "" "b"]
@@ -2527,7 +2565,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-starts-with-test
-  (are [s prefix res] (= res (-eval (compile {} {:type "StartsWith" :operand [s prefix]}) {} nil))
+  (are [s prefix res] (= res (-eval (compile {} {:type "StartsWith" :operand [s prefix]}) {} nil nil))
     #elm/string "a" #elm/string "a" true
     #elm/string "ba" #elm/string "b" true
 
@@ -2553,7 +2591,7 @@
 ;; TODO: what todo if the length is out of range?
 (deftest compile-substring-test
   (testing "Without length"
-    (are [s start-index res] (= res (-eval (compile {} {:type "Substring" :stringToSub s :startIndex start-index}) {} nil))
+    (are [s start-index res] (= res (-eval (compile {} {:type "Substring" :stringToSub s :startIndex start-index}) {} nil nil))
       #elm/string "ab" #elm/int "1" "b"
 
       #elm/string "a" #elm/int "-1" nil
@@ -2563,7 +2601,7 @@
       {:type "Null"} {:type "Null"} nil))
 
   (testing "With length"
-    (are [s start-index length res] (= res (-eval (compile {} {:type "Substring" :stringToSub s :startIndex start-index :length length}) {} nil))
+    (are [s start-index length res] (= res (-eval (compile {} {:type "Substring" :stringToSub s :startIndex start-index :length length}) {} nil nil))
       #elm/string "a" #elm/int "0" #elm/int "1" "a"
       #elm/string "a" #elm/int "0" #elm/int "2" "a"
       #elm/string "abc" #elm/int "1" #elm/int "1" "b"
@@ -2587,7 +2625,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-upper-test
-  (are [s res] (= res (-eval (compile {} {:type "Upper" :operand s}) {} nil))
+  (are [s res] (= res (-eval (compile {} {:type "Upper" :operand s}) {} nil nil))
     #elm/string "" ""
     #elm/string "a" "A"
 
@@ -2600,7 +2638,7 @@
 ;; 18.4. Equal
 (deftest compile-equal-date-time-test
   (testing "date"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/equal [#elm/date "2012" #elm/date "2012"] true
       #elm/equal [#elm/date "2012" #elm/date "2013"] false
       #elm/equal [{:type "Null"} #elm/date "2012"] nil
@@ -2621,7 +2659,7 @@
       (Year/of 2019)))
 
   (testing "non-literal year"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/date [#elm/add [#elm/int "2018" #elm/int "1"]]
       (Year/of 2019)))
 
@@ -2631,7 +2669,7 @@
       (YearMonth/of 2019 3)))
 
   (testing "non-literal year-month"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/date [#elm/int "2019" #elm/add [#elm/int "2" #elm/int "1"]]
       (YearMonth/of 2019 3)))
 
@@ -2641,7 +2679,7 @@
       (LocalDate/of 2019 3 23)))
 
   (testing "non-literal date"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/date [#elm/int "2019" #elm/int "3"
                  #elm/add [#elm/int "22" #elm/int "1"]]
       (LocalDate/of 2019 3 23)))
@@ -2669,7 +2707,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-date-from-test
-  (are [x res] (= res (-eval (compile {} {:type "DateFrom" :operand x}) {:now now} nil))
+  (are [x res] (= res (-eval (compile {} {:type "DateFrom" :operand x}) {:now now} nil nil))
     #elm/date "2019-04-17" (LocalDate/of 2019 4 17)
     #elm/date-time "2019-04-17T12:48" (LocalDate/of 2019 4 17)
     {:type "Null"} nil))
@@ -2692,11 +2730,11 @@
       #elm/date-time "2019" (Year/of 2019)))
 
   (testing "null year"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/date-time [#elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]] nil))
 
   (testing "non-literal year"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/date-time [#elm/add [#elm/int "2018" #elm/int "1"]]
       (Year/of 2019)))
 
@@ -2706,7 +2744,7 @@
       (YearMonth/of 2019 3)))
 
   (testing "non-literal year-month"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/date-time [#elm/int "2019" #elm/add [#elm/int "2" #elm/int "1"]]
       (YearMonth/of 2019 3)))
 
@@ -2716,7 +2754,7 @@
       (LocalDate/of 2019 3 23)))
 
   (testing "non-literal date"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/date-time [#elm/int "2019" #elm/int "3"
                       #elm/add [#elm/int "22" #elm/int "1"]]
       (LocalDate/of 2019 3 23)))
@@ -2727,7 +2765,7 @@
       (LocalDateTime/of 2019 3 23 12 0 0)))
 
   (testing "non-literal hour"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/date-time [#elm/int "2019" #elm/int "3" #elm/int "23"
                       #elm/add [#elm/int "11" #elm/int "1"]]
       (LocalDateTime/of 2019 3 23 12 0 0)))
@@ -2752,7 +2790,7 @@
       #elm/date-time "10000-12-31T23:59:59.999"))
 
   (testing "with offset"
-    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
       #elm/date-time [#elm/int "2019" #elm/int "3" #elm/int "23"
                       #elm/int "12" #elm/int "13" #elm/int "14" #elm/int "0"
                       #elm/dec "-2"]
@@ -2784,7 +2822,7 @@
       (LocalDateTime/of 2012 3 10 3 20 0 999000000)))
 
   (testing "with decimal offset"
-    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
       #elm/date-time [#elm/int "2019" #elm/int "3" #elm/int "23"
                       #elm/int "12" #elm/int "13" #elm/int "14" #elm/int "0"
                       #elm/dec "1.5"]
@@ -2793,7 +2831,7 @@
   (testing "an ELM date-time (only literals) always evaluates to something implementing Temporal"
     (satisfies-prop 100
                     (prop/for-all [date-time (s/gen :elm/literal-date-time)]
-                      (instance? Temporal (-eval (compile {} date-time) {:now now} nil))))))
+                      (instance? Temporal (-eval (compile {} date-time) {:now now} nil nil))))))
 
 
 ;; 18.9. DateTimeComponentFrom
@@ -2807,7 +2845,7 @@
 ;; Millisecond. Note specifically that since there is variability how weeks are
 ;; counted, Week precision is not supported, and will result in an error.
 (deftest compile-date-time-component-from-test
-  (are [x precision res] (= res (-eval (compile {} {:type "DateTimeComponentFrom" :operand x :precision precision}) {:now now} nil))
+  (are [x precision res] (= res (-eval (compile {} {:type "DateTimeComponentFrom" :operand x :precision precision}) {:now now} nil nil))
     #elm/date "2019-04-17" "Year" 2019
     #elm/date-time "2019-04-17T12:48" "Hour" 12
     {:type "Null"} "Year" nil))
@@ -2816,31 +2854,31 @@
 ;; 18.11. DurationBetween
 (deftest compile-duration-between-test
   (testing "Year precision"
-    (are [a b res] (= res (-eval (compile {} (elm/duration-between [a b "Year"])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/duration-between [a b "Year"])) {} nil nil))
       #elm/date "2018" #elm/date "2019" 1
       #elm/date "2018" #elm/date "2017" -1
       #elm/date "2018" #elm/date "2018" 0))
 
   (testing "Month precision"
-    (are [a b res] (= res (-eval (compile {} (elm/duration-between [a b "Month"])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/duration-between [a b "Month"])) {} nil nil))
       #elm/date "2018-01" #elm/date "2018-02" 1
       #elm/date "2018-01" #elm/date "2017-12" -1
       #elm/date "2018-01" #elm/date "2018-01" 0))
 
   (testing "Day precision"
-    (are [a b res] (= res (-eval (compile {} (elm/duration-between [a b "Day"])) {:now now} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/duration-between [a b "Day"])) {:now now} nil nil))
       #elm/date "2018-01-01" #elm/date "2018-01-02" 1
       #elm/date "2018-01-01" #elm/date "2017-12-31" -1
       #elm/date "2018-01-01" #elm/date "2018-01-01" 0))
 
   (testing "Hour precision"
-    (are [a b res] (= res (-eval (compile {} (elm/duration-between [a b "Hour"])) {:now now} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/duration-between [a b "Hour"])) {:now now} nil nil))
       #elm/date-time "2018-01-01T00" #elm/date-time "2018-01-01T01" 1
       #elm/date-time "2018-01-01T00" #elm/date-time "2017-12-31T23" -1
       #elm/date-time "2018-01-01T00" #elm/date-time "2018-01-01T00" 0))
 
   (testing "Calculating the duration between temporals with insufficient precision results in null."
-    (are [a b p] (nil? (-eval (compile {} (elm/duration-between [a b p])) {} nil))
+    (are [a b p] (nil? (-eval (compile {} (elm/duration-between [a b p])) {} nil nil))
       #elm/date "2018" #elm/date "2018" "Month"
       #elm/date "2018-01" #elm/date "2018-01" "Day"
       #elm/date "2018-01-01" #elm/date "2018-01-01" "Hour")))
@@ -2888,13 +2926,13 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-same-as-test
-  (are [x y res] (= res (-eval (compile {} {:type "SameAs" :operand [x y]}) {} nil))
+  (are [x y res] (= res (-eval (compile {} {:type "SameAs" :operand [x y]}) {} nil nil))
     #elm/date "2019-04-17" #elm/date "2019-04-17" true
     #elm/date "2019-04-17" #elm/date "2019-04-18" false
     )
 
   (testing "With year precision"
-    (are [x y res] (= res (-eval (compile {} {:type "SameAs" :operand [x y] :precision "year"}) {} nil))
+    (are [x y res] (= res (-eval (compile {} {:type "SameAs" :operand [x y] :precision "year"}) {} nil nil))
       #elm/date "2019-04-17" #elm/date "2019-04-17" true
       #elm/date "2019-04-17" #elm/date "2019-04-18" true)))
 
@@ -2912,7 +2950,7 @@
 ;; request, allowing the evaluation to be performed with the same timezone
 ;; offset information as the data delivered with the evaluation request.
 (deftest compile-now-test
-  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
     {:type "Now"}
     now))
 
@@ -2929,7 +2967,7 @@
 ;; End operators to determine interval boundaries.
 (deftest compile-same-or-before-test
   (testing "Interval"
-    (are [x y res] (= res (-eval (compile {} {:type "SameOrBefore" :operand [x y]}) {} nil))
+    (are [x y res] (= res (-eval (compile {} {:type "SameOrBefore" :operand [x y]}) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "2"]
       #elm/interval [#elm/int "2" #elm/int "3"] true)))
 
@@ -2946,7 +2984,7 @@
 ;; End operators to determine interval boundaries.
 (deftest compile-same-or-after-test
   (testing "Interval"
-    (are [x y res] (= res (-eval (compile {} {:type "SameOrAfter" :operand [x y]}) {} nil))
+    (are [x y res] (= res (-eval (compile {} {:type "SameOrAfter" :operand [x y]}) {} nil nil))
       #elm/interval [#elm/int "2" #elm/int "3"]
       #elm/interval [#elm/int "1" #elm/int "2"] true)))
 
@@ -2969,7 +3007,7 @@
       (local-time 12)))
 
   (testing "non-literal hour"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/time [#elm/add [#elm/int "11" #elm/int "1"]]
       (local-time 12)))
 
@@ -2979,7 +3017,7 @@
       (local-time 12 13)))
 
   (testing "non-literal hour-minute"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/time [#elm/int "12" #elm/add [#elm/int "12"
                                          #elm/int "1"]]
       (local-time 12 13)))
@@ -2990,7 +3028,7 @@
       (local-time 12 13 14)))
 
   (testing "non-literal hour-minute-second"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/time [#elm/int "12" #elm/int "13"
                  #elm/add [#elm/int "13" #elm/int "1"]]
       (local-time 12 13 14)))
@@ -3002,7 +3040,7 @@
       (local-time 12 13 14 15)))
 
   (testing "non-literal hour-minute-second-millisecond"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/time [#elm/int "12" #elm/int "13" #elm/int "14"
                  #elm/add [#elm/int "14" #elm/int "1"]]
       (local-time 12 13 14 15)))
@@ -3022,7 +3060,7 @@
 ;; associated with the evaluation request. See the Now operator for more
 ;; information on the rationale for defining the TimeOfDay operator in this way.
 (deftest compile-time-of-day-test
-  (are [res] (= res (-eval (compile {} {:type "TimeOfDay"}) {:now now} nil))
+  (are [res] (= res (-eval (compile {} {:type "TimeOfDay"}) {:now now} nil nil))
     (.toLocalTime now)))
 
 
@@ -3033,7 +3071,7 @@
 ;; more information on the rationale for defining the Today operator in this
 ;; way.
 (deftest compile-today-test
-  (are [res] (= res (-eval (compile {} {:type "Today"}) {:now now} nil))
+  (are [res] (= res (-eval (compile {} {:type "Today"}) {:now now} nil nil))
     (.toLocalDate now)))
 
 
@@ -3077,7 +3115,7 @@
 ;; involving the high boundary will be performed with that interpretation.
 (deftest compile-interval-test
   (testing "Literal interval"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "2"] (interval 1 2)
       #elm/interval [#elm/dec "1" #elm/dec "2"] (interval 1M 2M)
 
@@ -3086,7 +3124,7 @@
       #elm/interval [:< #elm/int "1" #elm/int "3" :>] (interval 2 2)))
 
   (testing "Invalid interval"
-    (are [elm] (thrown? Exception (-eval (compile {} elm) {} nil))
+    (are [elm] (thrown? Exception (-eval (compile {} elm) {} nil nil))
       #elm/interval [#elm/int "5" #elm/int "3"])))
 
 
@@ -3133,19 +3171,19 @@
 (deftest compile-after-test
   (testing "Interval"
     (testing "null arguments result in null"
-      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil nil))
         interval-zero {:type "Null"} nil
         {:type "Null"} interval-zero nil))
 
     (testing "if both intervals are closed, the start of the first (3) has to be greater then the end of the second (2)"
-      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil nil))
         #elm/interval [#elm/int "3" #elm/int "4"]
         #elm/interval [#elm/int "1" #elm/int "2"] true
         #elm/interval [#elm/int "2" #elm/int "3"]
         #elm/interval [#elm/int "1" #elm/int "2"] false))
 
     (testing "if one of the intervals is open, start and end can be the same (2)"
-      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil nil))
         #elm/interval [#elm/int "2" #elm/int "3"]
         #elm/interval [#elm/int "1" #elm/int "2" :>] true
         #elm/interval [:< #elm/int "2" #elm/int "3"]
@@ -3154,19 +3192,19 @@
         #elm/interval [#elm/int "1" #elm/int "2" :>] true))
 
     (testing "if both intervals are open, start and end can overlap slightly"
-      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil nil))
         #elm/interval [:< #elm/int "2" #elm/int "4"]
         #elm/interval [#elm/int "1" #elm/int "3" :>] true))
 
     (testing "if one of the relevant bounds is infinity, the result is false"
-      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil nil))
         #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/int "3"]
         #elm/interval [#elm/int "1" #elm/int "2"] false
         #elm/interval [#elm/int "2" #elm/int "3"]
         #elm/interval [#elm/int "1" {:type "Null"}] false))
 
     (testing "if the second interval has an unknown high bound, the result is null"
-      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/after [a b])) {} nil nil))
         #elm/interval [#elm/int "2" #elm/int "3"]
         #elm/interval [#elm/int "1" {:type "Null"} :>] nil))))
 
@@ -3213,19 +3251,19 @@
 (deftest compile-before-test
   (testing "Interval"
     (testing "null arguments result in null"
-      (are [x y res] (= res (-eval (compile {} (elm/before [x y])) {} nil))
+      (are [x y res] (= res (-eval (compile {} (elm/before [x y])) {} nil nil))
         interval-zero {:type "Null"} nil
         {:type "Null"} interval-zero nil))
 
     (testing "if both intervals are closed, the end of the first (2) has to be less then the start of the second (3)"
-      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "2"]
         #elm/interval [#elm/int "3" #elm/int "4"] true
         #elm/interval [#elm/int "1" #elm/int "2"]
         #elm/interval [#elm/int "2" #elm/int "3"] false))
 
     (testing "if one of the intervals is open, start and end can be the same (2)"
-      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "2" :>]
         #elm/interval [#elm/int "2" #elm/int "3"] true
         #elm/interval [#elm/int "1" #elm/int "2"]
@@ -3234,19 +3272,19 @@
         #elm/interval [:< #elm/int "2" #elm/int "3"] true))
 
     (testing "if both intervals are open, start and end can overlap slightly"
-      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "3" :>]
         #elm/interval [:< #elm/int "2" #elm/int "4"] true))
 
     (testing "if one of the relevant bounds is infinity, the result is false"
-      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil nil))
         #elm/interval [#elm/int "1" {:type "Null"}]
         #elm/interval [#elm/int "2" #elm/int "3"] false
         #elm/interval [#elm/int "1" #elm/int "2"]
         #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/int "3"] false))
 
     (testing "if the second interval has an unknown low bound, the result is null"
-      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/before [a b])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "2"]
         #elm/interval [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/int "3"] nil))))
 
@@ -3282,7 +3320,7 @@
 ;;
 ;; If the source argument is null, the result is null.
 (deftest compile-collapse-test
-  (are [source per res] (= res (-eval (compile {} (elm/collapse [source per])) {} nil))
+  (are [source per res] (= res (-eval (compile {} (elm/collapse [source per])) {} nil nil))
     #elm/list [#elm/interval [#elm/int "1" #elm/int "2"]]
     {:type "Null"}
     [(interval 1 2)]
@@ -3323,16 +3361,16 @@
 (deftest compile-contains-test
   (testing "Interval"
     (testing "Null"
-      (are [interval x res] (= res (-eval (compile {} (elm/contains [interval x])) {} nil))
+      (are [interval x res] (= res (-eval (compile {} (elm/contains [interval x])) {} nil nil))
         interval-zero {:type "Null"} nil))
 
     (testing "Integer"
-      (are [interval x res] (= res (-eval (compile {} (elm/contains [interval x])) {} nil))
+      (are [interval x res] (= res (-eval (compile {} (elm/contains [interval x])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "1"] #elm/int "1" true
         #elm/interval [#elm/int "1" #elm/int "1"] #elm/int "2" false)))
 
   (testing "List"
-    (are [list x res] (= res (-eval (compile {} (elm/contains [list x])) {} nil))
+    (are [list x res] (= res (-eval (compile {} (elm/contains [list x])) {} nil nil))
       #elm/list [] #elm/int "1" false
       #elm/list [#elm/int "1"] #elm/int "1" true
       #elm/list [#elm/quantity [1 "m"]] #elm/quantity [100 "cm"] true
@@ -3358,17 +3396,17 @@
 ;; If the argument is null, the result is null.
 (deftest compile-end-test
   (testing "Null"
-    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil))
+    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil nil))
       {:type "Null"} nil))
 
   (testing "Integer"
-    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil))
+    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "2"] 2
       #elm/interval [#elm/int "1" #elm/int "2" :>] 1
       #elm/interval [#elm/int "1" {:type "Null"}] Integer/MAX_VALUE))
 
   (testing "Decimal"
-    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil))
+    (are [x res] (= res (-eval (compile {} {:type "End" :operand x}) {} nil nil))
       #elm/interval [#elm/dec "1" #elm/dec "2.1"] 2.1M
       #elm/interval [#elm/dec "1" #elm/dec "2.1" :>] 2.09999999M
       #elm/interval [#elm/dec "1" {:type "Null"}] decimal/max)))
@@ -3391,12 +3429,12 @@
 ;; If either argument is null, the result is null.
 (deftest compile-ends-test
   (testing "Null"
-    (are [a b res] (= res (-eval (compile {} {:type "Ends" :operand [a b]}) {} nil))
+    (are [a b res] (= res (-eval (compile {} {:type "Ends" :operand [a b]}) {} nil nil))
       {:type "Null"} interval-zero nil
       interval-zero {:type "Null"} nil))
 
   (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} {:type "Ends" :operand [a b]}) {} nil))
+    (are [a b res] (= res (-eval (compile {} {:type "Ends" :operand [a b]}) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "3"]
       #elm/interval [#elm/int "1" #elm/int "3"] true
       #elm/interval [#elm/int "2" #elm/int "3"]
@@ -3425,11 +3463,11 @@
 ;; If either argument is null, the result is null.
 (deftest compile-except-test
   (testing "Null"
-    (are [a b res] (= res (-eval (compile {} (elm/except [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/except [a b])) {} nil nil))
       {:type "Null"} {:type "Null"} nil))
 
   (testing "List"
-    (are [a b res] (= res (-eval (compile {} (elm/except [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/except [a b])) {} nil nil))
       #elm/list [] #elm/list [] []
       #elm/list [] #elm/list [#elm/int "1"] []
       #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] []
@@ -3442,11 +3480,11 @@
 
   (testing "Interval"
     (testing "Null"
-      (are [a b res] (= res (-eval (compile {} (elm/except [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/except [a b])) {} nil nil))
         interval-zero {:type "Null"} nil))
 
     (testing "Integer"
-      (are [a b res] (= res (-eval (compile {} (elm/except [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/except [a b])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "3"]
         #elm/interval [#elm/int "3" #elm/int "4"]
         (interval 1 2)
@@ -3488,11 +3526,11 @@
 ;; If either argument is null, the result is null.
 (deftest compile-includes-test
   (testing "Null"
-    (are [a b res] (= res (-eval (compile {} (elm/includes [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/includes [a b])) {} nil nil))
       {:type "Null"} {:type "Null"} nil))
 
   (testing "List"
-    (are [a b res] (= res (-eval (compile {} (elm/includes [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/includes [a b])) {} nil nil))
       #elm/list [] #elm/list [] true
       #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] true
       #elm/list [#elm/int "1" #elm/int "2"] #elm/list [#elm/int "1"] true
@@ -3503,11 +3541,11 @@
 
   (testing "Interval"
     (testing "Null"
-      (are [a b res] (= res (-eval (compile {} (elm/includes [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/includes [a b])) {} nil nil))
         interval-zero {:type "Null"} nil))
 
     (testing "Integer"
-      (are [a b res] (= res (-eval (compile {} (elm/includes [a b])) {} nil))
+      (are [a b res] (= res (-eval (compile {} (elm/includes [a b])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "2"]
         #elm/interval [#elm/int "1" #elm/int "2"] true
         #elm/interval [#elm/int "1" #elm/int "2"]
@@ -3542,7 +3580,7 @@
 ;; TODO: only implemented as binary operator because it's binary in CQL.
 (deftest compile-intersect-test
   (testing "List"
-    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil nil))
       #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] []
       #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] [1]
       #elm/list [#elm/int "1"] #elm/list [#elm/int "2"] []
@@ -3551,7 +3589,7 @@
       #elm/list [] {:type "Null"} nil))
 
   (testing "Interval"
-    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "2"]
       #elm/interval [#elm/int "2" #elm/int "3"]
       (interval 2 2)
@@ -3575,7 +3613,7 @@
       interval-zero {:type "Null"} nil))
 
   (testing "Null"
-    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil))
+    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil nil))
       {:type "Null"} {:type "Null"} nil)))
 
 
@@ -3603,12 +3641,12 @@
 ;; If either argument is null, the result is null.
 (deftest compile-meets-before-test
   (testing "Null"
-    (are [x y res] (= res (-eval (compile {} (elm/meets-before [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/meets-before [x y])) {} nil nil))
       interval-zero {:type "Null"} nil
       {:type "Null"} interval-zero nil))
 
   (testing "Integer"
-    (are [x y res] (= res (-eval (compile {} (elm/meets-before [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/meets-before [x y])) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "2"]
       #elm/interval [#elm/int "3" #elm/int "4"] true
       #elm/interval [#elm/int "1" #elm/int "2"]
@@ -3631,12 +3669,12 @@
 ;; If either argument is null, the result is null.
 (deftest compile-meets-after-test
   (testing "Null"
-    (are [x y res] (= res (-eval (compile {} (elm/meets-after [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/meets-after [x y])) {} nil nil))
       interval-zero {:type "Null"} nil
       {:type "Null"} interval-zero nil))
 
   (testing "Integer"
-    (are [x y res] (= res (-eval (compile {} (elm/meets-after [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/meets-after [x y])) {} nil nil))
       #elm/interval [#elm/int "3" #elm/int "4"]
       #elm/interval [#elm/int "1" #elm/int "2"] true
       #elm/interval [#elm/int "4" #elm/int "5"]
@@ -3672,7 +3710,7 @@
 ;;
 ;; If the source interval is null, the result is null.
 (deftest compile-point-from-test
-  (are [x res] (= res (-eval (compile {} {:type "PointFrom" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "PointFrom" :operand x}) {} nil nil))
     #elm/interval [#elm/int "1" #elm/int "1"] 1
     {:type "Null"} nil))
 
@@ -3700,11 +3738,11 @@
 (deftest compile-proper-contains-test
   (testing "Interval"
     (testing "Null"
-      (are [interval x res] (= res (-eval (compile {} (elm/proper-contains [interval x])) {} nil))
+      (are [interval x res] (= res (-eval (compile {} (elm/proper-contains [interval x])) {} nil nil))
         interval-zero {:type "Null"} nil))
 
     (testing "Integer"
-      (are [interval x res] (= res (-eval (compile {} (elm/proper-contains [interval x])) {} nil))
+      (are [interval x res] (= res (-eval (compile {} (elm/proper-contains [interval x])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "3"] #elm/int "2" true
         #elm/interval [#elm/int "1" #elm/int "1"] #elm/int "1" false
         #elm/interval [#elm/int "1" #elm/int "1"] #elm/int "2" false))))
@@ -3741,16 +3779,16 @@
 ;; If either argument is null, the result is null.
 (deftest compile-proper-includes-test
   (testing "Null"
-    (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil nil))
       {:type "Null"} {:type "Null"} nil))
 
   (testing "Interval"
     (testing "Null"
-      (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil))
+      (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil nil))
         interval-zero {:type "Null"} nil))
 
     (testing "Integer"
-      (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil))
+      (are [x y res] (= res (-eval (compile {} (elm/proper-includes [x y])) {} nil nil))
         #elm/interval [#elm/int "1" #elm/int "3"]
         #elm/interval [#elm/int "1" #elm/int "2"] true
         #elm/interval [#elm/int "1" #elm/int "2"]
@@ -3795,17 +3833,17 @@
 ;; If the argument is null, the result is null.
 (deftest compile-start-test
   (testing "Null"
-    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil))
+    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil nil))
       {:type "Null"} nil))
 
   (testing "Integer"
-    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil))
+    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "2"] 1
       #elm/interval [:< #elm/int "1" #elm/int "2"] 2
       #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/int "2"] Integer/MIN_VALUE))
 
   (testing "Decimal"
-    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil))
+    (are [x res] (= res (-eval (compile {} {:type "Start" :operand x}) {} nil nil))
       #elm/interval [#elm/dec "1.1" #elm/dec "2"] 1.1M
       #elm/interval [:< #elm/dec "1.1" #elm/dec "2"] 1.10000001M
       #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"} #elm/dec "2"] decimal/min)))
@@ -3828,12 +3866,12 @@
 ;; If either argument is null, the result is null.
 (deftest compile-starts-test
   (testing "Null"
-    (are [a b res] (= res (-eval (compile {} {:type "Starts" :operand [a b]}) {} nil))
+    (are [a b res] (= res (-eval (compile {} {:type "Starts" :operand [a b]}) {} nil nil))
       {:type "Null"} #elm/interval [#elm/int "1" #elm/int "2"] nil
       #elm/interval [#elm/int "1" #elm/int "2"] {:type "Null"} nil))
 
   (testing "Integer"
-    (are [a b res] (= res (-eval (compile {} {:type "Starts" :operand [a b]}) {} nil))
+    (are [a b res] (= res (-eval (compile {} {:type "Starts" :operand [a b]}) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "3"]
       #elm/interval [#elm/int "1" #elm/int "3"] true
       #elm/interval [#elm/int "1" #elm/int "2"]
@@ -3861,7 +3899,7 @@
 ;; TODO: only implemented as binary operator because it's binary in CQL.
 (deftest compile-union-test
   (testing "List"
-    (are [x y res] (= res (-eval (compile {} (elm/union [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/union [x y])) {} nil nil))
       #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] [nil nil]
       #elm/list [#elm/int "1"] #elm/list [#elm/int "1"] [1]
       #elm/list [#elm/int "1"] #elm/list [#elm/int "2"] [1 2]
@@ -3870,7 +3908,7 @@
       {:type "Null"} {:type "Null"} nil))
 
   (testing "Interval"
-    (are [x y res] (= res (-eval (compile {} (elm/union [x y])) {} nil))
+    (are [x y res] (= res (-eval (compile {} (elm/union [x y])) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "2"]
       #elm/interval [#elm/int "3" #elm/int "4"]
       (interval 1 4)
@@ -3889,11 +3927,11 @@
 ;; If the argument is null, the result is null.
 (deftest compile-width-test
   (testing "Null"
-    (are [x res] (= res (-eval (compile {} {:type "Width" :operand x}) {} nil))
+    (are [x res] (= res (-eval (compile {} {:type "Width" :operand x}) {} nil nil))
       {:type "Null"} nil))
 
   (testing "Integer"
-    (are [x res] (= res (-eval (compile {} {:type "Width" :operand x}) {} nil))
+    (are [x res] (= res (-eval (compile {} {:type "Width" :operand x}) {} nil nil))
       #elm/interval [#elm/int "1" #elm/int "2"] 1)))
 
 
@@ -3911,7 +3949,7 @@
 ;;
 ;; If any argument is null, the resulting list will have null for that element.
 (deftest compile-list-test
-  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+  (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
     #elm/list []
     []
 
@@ -3942,10 +3980,10 @@
 ;; It is an error to invoke the Current operator outside the context of a scoped
 ;; operation.
 (deftest compile-current-test
-  (are [a] (= a (-eval (compile {} {:type "Current"}) {} a))
+  (are [a] (= a (-eval (compile {} {:type "Current"}) {} nil a))
     1)
 
-  (are [a] (= a (-eval (compile {} {:type "Current" :scope "A"}) {} {"A" a}))
+  (are [a] (= a (-eval (compile {} {:type "Current" :scope "A"}) {} nil {"A" a}))
     1))
 
 
@@ -3962,7 +4000,7 @@
 ;;
 ;; If the source argument is null, the result is null.
 (deftest compile-distinct-test
-  (are [list res] (= res (-eval (compile {} (elm/distinct list)) {} nil))
+  (are [list res] (= res (-eval (compile {} (elm/distinct list)) {} nil nil))
     #elm/list [#elm/int "1"] [1]
     #elm/list [#elm/int "1" #elm/int "1"] [1]
     #elm/list [#elm/int "1" #elm/int "1" #elm/int "2"] [1 2]
@@ -3996,7 +4034,7 @@
 ;;
 ;; If the argument is null, the result is false.
 (deftest compile-exists-test
-  (are [list res] (= res (-eval (compile {} (elm/exists list)) {} nil))
+  (are [list res] (= res (-eval (compile {} (elm/exists list)) {} nil nil))
     #elm/list [#elm/int "1"] true
     #elm/list [#elm/int "1" #elm/int "1"] true
     #elm/list [] false
@@ -4011,7 +4049,7 @@
 ;;
 ;; If the source argument is null, the result is null.
 (deftest compile-filter-test
-  (are [source condition res] (= res (-eval (compile {} {:type "Filter" :source source :condition condition :scope "A"}) {} nil))
+  (are [source condition res] (= res (-eval (compile {} {:type "Filter" :source source :condition condition :scope "A"}) {} nil nil))
     #elm/list [#elm/int "1"] #elm/boolean "false" []
     #elm/list [#elm/int "1"] #elm/equal [#elm/current "A" #elm/int "1"] [1]
 
@@ -4026,7 +4064,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-first-test
-  (are [source res] (= res (-eval (compile {} {:type "First" :source source}) {} nil))
+  (are [source res] (= res (-eval (compile {} {:type "First" :source source}) {} nil nil))
     #elm/list [#elm/int "1"] 1
     #elm/list [#elm/int "1" #elm/int "2"] 1
 
@@ -4039,7 +4077,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-flatten-test
-  (are [list res] (= res (-eval (compile {} (elm/flatten list)) {} nil))
+  (are [list res] (= res (-eval (compile {} (elm/flatten list)) {} nil nil))
     #elm/list [] []
     #elm/list [#elm/int "1"] [1]
     #elm/list [#elm/int "1" #elm/list [#elm/int "2"]] [1 2]
@@ -4063,13 +4101,13 @@
 ;; the resulting list will contain a null for that element.
 (deftest compile-for-each-test
   (testing "Without scope"
-    (are [source element res] (= res (-eval (compile {} {:type "ForEach" :source source :element element}) {} nil))
+    (are [source element res] (= res (-eval (compile {} {:type "ForEach" :source source :element element}) {} nil nil))
       #elm/list [#elm/int "1"] {:type "Null"} [nil]
 
       {:type "Null"} {:type "Null"} nil))
 
   (testing "With scope"
-    (are [source element res] (= res (-eval (compile {} {:type "ForEach" :source source :element element :scope "A"}) {} nil))
+    (are [source element res] (= res (-eval (compile {} {:type "ForEach" :source source :element element :scope "A"}) {} nil nil))
       #elm/list [#elm/int "1"] #elm/current "A" [1]
       #elm/list [#elm/int "1" #elm/int "2"] #elm/add [#elm/current "A" #elm/int "1"] [2 3]
 
@@ -4104,7 +4142,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-index-of-test
-  (are [source element res] (= res (-eval (compile {} {:type "IndexOf" :source source :element element}) {} nil))
+  (are [source element res] (= res (-eval (compile {} {:type "IndexOf" :source source :element element}) {} nil nil))
     #elm/list [] #elm/int "1" -1
     #elm/list [#elm/int "1"] #elm/int "1" 0
     #elm/list [#elm/int "1" #elm/int "1"] #elm/int "1" 0
@@ -4128,7 +4166,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-last-test
-  (are [source res] (= res (-eval (compile {} {:type "Last" :source source}) {} nil))
+  (are [source res] (= res (-eval (compile {} {:type "Last" :source source}) {} nil nil))
     #elm/list [#elm/int "1"] 1
     #elm/list [#elm/int "1" #elm/int "2"] 2
 
@@ -4184,17 +4222,17 @@
 ;; element, a run-time error is thrown. If the source list is null, the result
 ;; is null.
 (deftest compile-singleton-from-test
-  (are [list res] (= res (-eval (compile {} (elm/singleton-from list)) {} nil))
+  (are [list res] (= res (-eval (compile {} (elm/singleton-from list)) {} nil nil))
     #elm/list [] nil
     #elm/list [#elm/int "1"] 1
     {:type "Null"} nil)
 
-  (are [list] (thrown? Exception (-eval (compile {} (elm/singleton-from list)) {} nil))
+  (are [list] (thrown? Exception (-eval (compile {} (elm/singleton-from list)) {} nil nil))
     #elm/list [#elm/int "1" #elm/int "1"])
 
   (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
-  (are [list res] (= res (-eval (compile {} (elm/singleton-from list)) {:db ::db} nil))
+  (are [list res] (= res (-eval (compile {:eval-context "Unspecified"} (elm/singleton-from list)) {:db ::db} nil nil))
     {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
     ::patient))
 
@@ -4213,7 +4251,7 @@
 ;; If the startIndex or endIndex is less than 0, or if the endIndex is less than
 ;; the startIndex, the result is an empty list.
 (deftest compile-slice-test
-  (are [source start end res] (= res (-eval (compile {} {:type "Slice" :source source :startIndex start :endIndex end}) {} nil))
+  (are [source start end res] (= res (-eval (compile {} {:type "Slice" :source source :startIndex start :endIndex end}) {} nil nil))
     #elm/list [#elm/int "1"] #elm/int "0" #elm/int "1" [1]
     #elm/list [#elm/int "1" #elm/int "2"] #elm/int "0" #elm/int "1" [1]
     #elm/list [#elm/int "1" #elm/int "2"] #elm/int "1" #elm/int "2" [2]
@@ -4239,7 +4277,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-sort-test
-  (are [source by res] (= res (-eval (compile {} {:type "Sort" :source source :by [by]}) {} nil))
+  (are [source by res] (= res (-eval (compile {} {:type "Sort" :source source :by [by]}) {} nil nil))
     #elm/list [#elm/int "2" #elm/int "1"]
     {:type "ByDirection" :direction "asc"} [1 2]
     #elm/list [#elm/int "1" #elm/int "2"]
@@ -4282,7 +4320,7 @@
 ;; If the source is null, the result is true.
 (deftest compile-all-true-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "AllTrue" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "AllTrue" :source source}) {} nil nil))
       #elm/list [#elm/boolean "true" #elm/boolean "false"] false
       #elm/list [#elm/boolean "false"] false
       #elm/list [#elm/boolean "true"] true
@@ -4303,7 +4341,7 @@
 ;; If the source is null, the result is false.
 (deftest compile-any-true-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "AnyTrue" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "AnyTrue" :source source}) {} nil nil))
       #elm/list [#elm/boolean "true" #elm/boolean "false"] true
       #elm/list [#elm/boolean "false"] false
       #elm/list [#elm/boolean "true"] true
@@ -4325,7 +4363,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-avg-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Avg" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Avg" :source source}) {} nil nil))
       #elm/list [#elm/dec "1" #elm/dec "2"] 1.5M
       #elm/list [#elm/int "1" #elm/int "2"] 1.5M
       #elm/list [#elm/int "1"] 1M
@@ -4347,7 +4385,7 @@
 ;; If the list is null the result is 0.
 (deftest compile-count-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Count" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Count" :source source}) {} nil nil))
       #elm/list [#elm/int "1"] 1
       #elm/list [#elm/int "1" #elm/int "1"] 2
 
@@ -4369,7 +4407,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-geometric-mean-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "GeometricMean" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "GeometricMean" :source source}) {} nil nil))
       #elm/list [#elm/dec "2" #elm/dec "8"] 4M
       #elm/list [#elm/int "2" #elm/int "8"] 4M
       #elm/list [#elm/int "1"] 1M
@@ -4392,7 +4430,7 @@
 ;; If the list is null, the result is null.
 (deftest compile-product-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Product" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Product" :source source}) {} nil nil))
       #elm/list [#elm/dec "2" #elm/dec "8"] 16M
       #elm/list [#elm/int "2" #elm/int "8"] 16
       #elm/list [#elm/int "1"] 1
@@ -4416,7 +4454,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-max-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Max" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Max" :source source}) {} nil nil))
       #elm/list [#elm/dec "2" #elm/dec "8"] 8M
       #elm/list [#elm/int "2" #elm/int "8"] 8
       #elm/list [#elm/int "1"] 1
@@ -4438,7 +4476,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-median-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Median" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Median" :source source}) {} nil nil))
       #elm/list [#elm/dec "2" #elm/dec "10" #elm/dec "8"] 8M
       #elm/list [#elm/int "2" #elm/int "10" #elm/int "8"] 8
       #elm/list [#elm/int "1" #elm/int "2"] 1.5M
@@ -4463,7 +4501,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-min-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Min" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Min" :source source}) {} nil nil))
       #elm/list [#elm/dec "2" #elm/dec "8"] 2M
       #elm/list [#elm/int "2" #elm/int "8"] 2
       #elm/list [#elm/int "1"] 1
@@ -4485,7 +4523,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-mode-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Mode" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Mode" :source source}) {} nil nil))
       #elm/list [#elm/dec "2" #elm/dec "2" #elm/dec "8"] 2M
       #elm/list [#elm/int "2" #elm/int "2" #elm/int "8"] 2
       #elm/list [#elm/int "1"] 1
@@ -4509,7 +4547,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-population-variance-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "PopulationVariance" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "PopulationVariance" :source source}) {} nil nil))
       #elm/list [#elm/dec "1" #elm/dec "2" #elm/dec "3" #elm/dec "4" #elm/dec "5"] 2M
 
       #elm/list [{:type "Null"}] nil
@@ -4530,7 +4568,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-population-std-dev-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "PopulationStdDev" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "PopulationStdDev" :source source}) {} nil nil))
       #elm/list [#elm/dec "1" #elm/dec "2" #elm/dec "3" #elm/dec "4" #elm/dec "5"] 1.41421356M
 
       #elm/list [{:type "Null"}] nil
@@ -4550,7 +4588,7 @@
 ;; If the list is null, the result is null.
 (deftest compile-sum-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Sum" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Sum" :source source}) {} nil nil))
       #elm/list [#elm/dec "2" #elm/dec "8"] 10M
       #elm/list [#elm/int "2" #elm/int "8"] 10
       #elm/list [#elm/int "1"] 1
@@ -4573,7 +4611,7 @@
 ;; If the list is null, the result is null.
 (deftest compile-std-dev-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "StdDev" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "StdDev" :source source}) {} nil nil))
       #elm/list [#elm/dec "1" #elm/dec "2" #elm/dec "3" #elm/dec "4" #elm/dec "5"] 1.58113883M
 
       #elm/list [{:type "Null"}] nil
@@ -4594,7 +4632,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-variance-test
   (testing "Without path"
-    (are [source res] (= res (-eval (compile {} {:type "Variance" :source source}) {} nil))
+    (are [source res] (= res (-eval (compile {} {:type "Variance" :source source}) {} nil nil))
       #elm/list [#elm/dec "1" #elm/dec "2" #elm/dec "3" #elm/dec "4" #elm/dec "5"] 2.5M
 
       #elm/list [{:type "Null"}] nil
@@ -4614,7 +4652,7 @@
 ;; result is null. If the argument is not of the specified type and the strict
 ;; attribute is true an exception is thrown.
 (deftest compile-as-test
-  (are [elm input res] (= res (-eval (compile {} elm) {} {"I" input}))
+  (are [elm input res] (= res (-eval (compile {} elm) {} nil {"I" input}))
     {:asType "{http://hl7.org/fhir}Quantity"
      :type "As"
      :operand
@@ -4683,7 +4721,7 @@
 ;;
 ;; If the source is null, the result is null.
 (deftest compile-to-descendents-test
-  (are [elm res] (= res (-eval (compile {} {:type "Descendents" :source elm}) {:now now} nil))
+  (are [elm res] (= res (-eval (compile {} {:type "Descendents" :source elm}) {:now now} nil nil))
     {:type "Null"} nil))
 
 
@@ -4708,7 +4746,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-date-test
-  (are [elm res] (= res (-eval (compile {} {:type "ToDate" :operand elm}) {:now now} nil))
+  (are [elm res] (= res (-eval (compile {} {:type "ToDate" :operand elm}) {:now now} nil nil))
     #elm/string "2019" (Year/of 2019)
     #elm/string "2019-01" (YearMonth/of 2019 1)
     #elm/string "2019-01-01" (LocalDate/of 2019 1 1)
@@ -4724,7 +4762,7 @@
 
 ;; 22.22. ToDateTime
 (deftest compile-to-date-time-test
-  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
     {:type "ToDateTime" :operand #elm/date "2019"}
     (Year/of 2019)))
 
@@ -4750,7 +4788,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-decimal-test
-  (are [x res] (= res (-eval (compile {} {:type "ToDecimal" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "ToDecimal" :operand x}) {} nil nil))
     (elm/string (str decimal/min)) decimal/min
     #elm/string "-1.1" -1.1M
     #elm/string "-1" -1M
@@ -4785,7 +4823,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-integer-test
-  (are [x res] (= res (-eval (compile {} {:type "ToInteger" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "ToInteger" :operand x}) {} nil nil))
     (elm/string (str Integer/MIN_VALUE)) Integer/MIN_VALUE
     #elm/string "-1" -1
     #elm/string "0" 0
@@ -4814,7 +4852,7 @@
 ;;
 ;; The operator is used to implement list promotion efficiently.
 (deftest compile-to-list-test
-  (are [elm res] (= res (-eval (compile {} elm) {} nil))
+  (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
     {:type "ToList" :operand {:type "Null"}}
     []
 
@@ -4847,7 +4885,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-quantity-test
-  (are [x res] (= res (-eval (compile {} {:type "ToQuantity" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "ToQuantity" :operand x}) {} nil nil))
     ; TODO (elm/string (str decimal/min)) decimal/min
     ; TODO #elm/string "-1" -1M
     ; TODO #elm/string "0" 0M
@@ -4879,7 +4917,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-string-test
-  (are [x res] (= res (-eval (compile {} {:type "ToString" :operand x}) {} nil))
+  (are [x res] (= res (-eval (compile {} {:type "ToString" :operand x}) {} nil nil))
     #elm/boolean "true" "true"
     #elm/boolean "false" "false"
 
@@ -4934,7 +4972,7 @@
 ;;; have elapsed between the first date/time and the second.
 (deftest compile-calculate-age-at-test
   (testing "Null"
-    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
       {:type "CalculateAgeAt" :operand [#elm/date "2018" {:type "Null"}]
        :precision "Year"}
       nil
@@ -4943,7 +4981,7 @@
       nil))
 
   (testing "Year"
-    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil))
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
       {:type "CalculateAgeAt" :operand [#elm/date "2018" #elm/date "2019"]
        :precision "Year"}
       1

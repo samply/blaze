@@ -141,6 +141,18 @@
      #{`d/db}}))
 
 
+(defn stub-entid [db ident eid]
+  (st/instrument
+    [`d/entid]
+    {:spec
+     {`d/entid
+      (s/fspec
+        :args (s/cat :db #{db} :ident #{ident})
+        :ret #{eid})}
+     :stub
+     #{`d/entid}}))
+
+
 (defn stub-entity [db eid-spec entity-spec]
   (st/instrument
     [`d/entity]
@@ -505,7 +517,7 @@
   []
   (let [uri (str "datomic:mem://" (UUID/randomUUID))]
     (d/create-database uri)
-    (let [structure-definitions (read-structure-definitions "fhir/r4/structure-definitions")
+    (let [structure-definitions (read-structure-definitions)
           conn (d/connect uri)]
       @(d/transact conn (dts/schema))
       @(d/transact conn (schema/structure-definition-schemas structure-definitions))

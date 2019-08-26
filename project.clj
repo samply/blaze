@@ -1,4 +1,4 @@
-(defproject blaze "0.6-alpha59"
+(defproject blaze "0.6-alpha65"
   :description "A FHIR Store with internal, fast CQL Evaluation Engine"
   :url "https://github.com/life-research/blaze"
 
@@ -9,10 +9,9 @@
   :pedantic? :abort
 
   :dependencies
-  [[aleph "0.4.7-alpha1"
-    :exclusions [org.clojure/tools.logging]]
+  [[aleph "0.4.7-alpha1"]
    [camel-snake-kebab "0.4.0"]
-   [cheshire "5.8.1"]
+   [cheshire "5.9.0"]
    [com.cognitect/anomalies "0.1.12"]
    [com.datomic/datomic-free "0.9.5697"]
    [com.taoensso/timbre "4.10.0"]
@@ -28,9 +27,7 @@
    [org.clojars.akiel/env-tools "0.2.1"]
    [org.clojars.akiel/spec-coerce "0.3.1"]
    [org.clojure/clojure "1.10.1"]
-   [org.clojure/core.cache "0.7.2"]
-   [org.clojure/tools.cli "0.4.2"]
-   [org.clojure/tools.logging "0.4.0"]
+   [org.clojure/core.cache "0.8.1"]
    [org.clojure/tools.reader "1.3.2"]
    [phrase "0.3-alpha3"]
    [prom-metrics "0.5-alpha2"]
@@ -54,8 +51,8 @@
     [[criterium "0.4.5"]
      [org.clojars.akiel/iota "0.1"]
      [org.clojure/data.xml "0.0.8"]
-     [org.clojure/test.check "0.9.0"]
-     [org.clojure/tools.namespace "0.3.0"]]}
+     [org.clojure/test.check "0.10.0"]
+     [org.clojure/tools.namespace "0.3.1"]]}
 
    :uberjar
    {:aot [blaze.core]}}

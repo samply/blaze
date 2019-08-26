@@ -66,7 +66,8 @@
        :fhir.issue/expression "library"})
     {::anom/category ::anom/unsupported
      ::anom/message "Missing primary library. Currently only CQL expressions together with one primary library are supported."
-     :fhir/issue "not-supported"}))
+     :fhir/issue "not-supported"
+     :measure measure}))
 
 
 (defn- compiled-primary-library
@@ -78,13 +79,13 @@
 
 
 (defn- evaluate-population
-  {:arglists '([db now library population])}
-  [db now library
+  {:arglists '([db now library subject population])}
+  [db now library subject
    {{:Expression/keys [language expression]} :Measure.group.population/criteria
     :Measure.group.population/keys [code]}]
   (if (= "text/cql" (:code/code language))
     (cond->
-      {:count (cql/evaluate-expression db now library expression)}
+      {:count (cql/evaluate-expression db now library subject expression)}
       code
       (assoc :code (pull/pull-non-primitive db :CodeableConcept code)))
     {::anom/category ::anom/unsupported
@@ -93,26 +94,31 @@
 
 
 (defn- evaluate-group
-  {:arglists '([db library now group])}
-  [db library now {:Measure.group/keys [code population]}]
+  {:arglists '([db now library subject group])}
+  [db now library subject {:Measure.group/keys [code population]}]
   (cond-> {}
     code
     (assoc :code code)
     (seq population)
-    (assoc :population (mapv #(evaluate-population db now library %) population))))
+    (assoc :population (mapv #(evaluate-population db now library subject %) population))))
 
 
-(defn- evaluate-groups* [db library now groups]
-  (mapv #(evaluate-group db library now %) groups))
+(defn- evaluate-groups* [db now library subject groups]
+  (mapv #(evaluate-group db now library subject %) groups))
 
 
-(defn- evaluate-groups [db library now groups]
+(defn- evaluate-groups [db now library subject groups]
   (with-open [_ (prom/timer evaluate-duration-seconds)]
-    (evaluate-groups* db library now groups)))
+    (evaluate-groups* db now library subject groups)))
 
 
 (defn- canonical [{:Measure/keys [url version]}]
   (cond-> url version (str "|" version)))
+
+
+(defn- subject-code
+  [{{:CodeableConcept/keys [coding]} :Measure/subjectCodeableConcept}]
+  (or (-> coding first :Coding/code :code/code) "Patient"))
 
 
 (defn- temporal? [x]
@@ -143,4 +149,6 @@
          {:start (pull/to-json start)
           :end (pull/to-json end)}}
         (seq groups)
-        (assoc :group (evaluate-groups db library now groups))))))
+        (assoc
+          :group
+          (evaluate-groups db now library (subject-code measure) groups))))))
