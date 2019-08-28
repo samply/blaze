@@ -1,8 +1,6 @@
 # Blaze
 
 [![Build Status](https://travis-ci.org/life-research/blaze.svg?branch=master)](https://travis-ci.org/life-research/blaze)
-[![Dependencies Status](https://versions.deps.co/life-research/blaze/status.svg)](https://versions.deps.co/life-research/blaze)
-[![codecov](https://codecov.io/gh/life-research/blaze/branch/master/graph/badge.svg)](https://codecov.io/gh/life-research/blaze)
 [![Docker Pulls](https://img.shields.io/docker/pulls/liferesearch/blaze.svg)](https://hub.docker.com/r/liferesearch/blaze/)
 [![Image Layers](https://images.microbadger.com/badges/image/liferesearch/blaze.svg)](https://microbadger.com/images/liferesearch/blaze)
 
