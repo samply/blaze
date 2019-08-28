@@ -14,82 +14,36 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
-## Installation
+Latest release: [v0.6][5]
 
-The installation of Blaze is described in the [Installation Section][4] of the Blaze documentation.
+## Quick Start
 
-## Usage
+In order to run Blaze with an in-memory, volatile database, just execute the following:
 
-In order to test connectivity, you can query the health endpoint:
+### Docker
+
+```bash
+docker run -p 8080:8080 liferesearch/blaze:0.6
+```
+
+### Java
+
+```bash
+wget https://github.com/life-research/blaze/releases/download/v0.6/blaze-0.6-standalone.jar
+java -jar blaze-0.6-standalone.jar
+```
+
+Logging output should appear which prints the most important settings and system parameters like Java version and available memory.
+
+In order to test connectivity, query the health endpoint:
 
 ```bash
 curl http://localhost:8080/health
 ```
 
-It should return `OK`.
+## Installation
 
-### Upload FHIR Resources
-
-Before you can issue CQL queries against Blaze, you have to upload some FHIR resources. If you have none, you can generate them by using the [FHIR Test Data Generator][1].
-
-```bash
-life-fhir-gen -n1 > bundle.json
-```
-
-Next you need to upload that `bundle.json` to Blaze:
-
-```bash
-curl -d @bundle.json http://localhost:8080/fhir
-```
-
-The result should be:
-
-```
-{"message":"OK","t":<some number>}
-```
-
-If you like to upload your own resources, it's important, that Blaze is currently configured to use a subset of FHIR R4. The available Resources can be seen at startup in the `Read structure definitions` output.
-
-### Issuing a CQL Query
-
-The most convenient way is to use the [CQL Runner][2]. You have to go into the `Config` menu and set the `CQL Engine` to `http://localhost:8080/cql/evaluate`. The other config options doesn't matter because the CQL Engine of Blaze always uses its own internal data.
-
-As a test query you can use
-```
-using FHIR version '4.0.0'
-context Patient
-context Unspecified
-
-define NumberOfPatients:
-  Count([Patient])
-
-define AllPatients:
-  [Patient]
-```
-The result should be something like
-
-```
->> NumberOfPatients [7:1] 10
->> Patient [10:1] [ {
-  "birthDate" : "AgfNBQg=",
-  "id" : "1001",
-  "gender" : "male",
-  "resourceType" : "Patient"
-}, {
-  "birthDate" : "AgfOARE=",
-  "id" : "1002",
-  "gender" : "female",
-  "resourceType" : "Patient"
-} ]
-```
-
-### Deleting the Data Volume
-
-If you like to restart with a fresh database, you have to delete the data volume. You can do this by typing:
-
-```bash
-docker volume rm blaze_db-data
-```
+The installation of Blaze is described in the [Installation Section][4] of the Blaze documentation.
 
 ## License
 
@@ -102,3 +56,4 @@ your option) any later version.
 [2]: <http://cql-runner.dataphoria.org/>
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://life-research.github.io/blaze/#_installation>
+[5]: <https://github.com/life-research/blaze/releases/tag/v0.6>
