@@ -86,7 +86,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6-alpha65")
+(def ^:private version "0.6")
 
 (def ^:private base-url "http://localhost:8080")
 
