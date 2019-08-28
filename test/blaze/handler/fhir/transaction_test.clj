@@ -6,9 +6,10 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.bundle :as bundle]
+    [blaze.bundle-test :as bundle-test]
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.datomic.util :as util]
-    [blaze.executors :as executors]
+    [blaze.executors :as ex]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.fhir.test-util :as fhir-test-util]
     [blaze.handler.fhir.transaction :refer [handler]]
@@ -33,7 +34,9 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :conn #{::conn} :executor executors/executor?))}})
+        :args (s/cat :conn #{::conn}
+                     :term-service #{::term-service}
+                     :executor ex/executor?))}})
   (datomic-test-util/stub-db ::conn ::db-before)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
@@ -42,7 +45,7 @@
 (use-fixtures :each fixture)
 
 
-(defonce executor (executors/single-thread-executor))
+(defonce executor (ex/single-thread-executor))
 
 
 (defn- stub-tx-instant [transaction instant]
@@ -91,7 +94,7 @@
     (datomic-test-util/stub-cached-entity ::db-before #{:Foo} nil?)
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {:body
              {"resourceType" "Bundle"
               "type" "transaction"
@@ -113,7 +116,7 @@
     (given-types-available "Patient")
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {:body
              {"resourceType" "Bundle"
               "type" "transaction"
@@ -141,7 +144,7 @@
     (given-types-available "Patient")
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {:body
              {"resourceType" "Bundle"
               "type" "transaction"
@@ -179,6 +182,7 @@
 
       (given-types-available "Patient")
       (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
+      (bundle-test/stub-annotate-codes ::term-service ::db-before)
       (stub-code-tx-data ::db-before coll? [])
       (stub-tx-data ::db-before coll? ::tx-data)
       (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
@@ -188,7 +192,7 @@
       (fhir-test-util/stub-versioned-instance-url ::router "Patient" "0" "42" ::location)
 
       (let [{:keys [status body]}
-            @((handler ::conn executor)
+            @((handler ::conn ::term-service executor)
               {::reitit/router ::router
                :body
                {"resourceType" "Bundle"
@@ -225,6 +229,7 @@
 
       (given-types-available "Patient")
       (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} #{::old-patient})
+      (bundle-test/stub-annotate-codes ::term-service ::db-before)
       (stub-code-tx-data ::db-before coll? [])
       (stub-tx-data ::db-before coll? ::tx-data)
       (datomic-test-util/stub-transact-async
@@ -235,7 +240,7 @@
 
       (testing "with no Prefer header"
         (let [{:keys [status body]}
-              @((handler ::conn executor)
+              @((handler ::conn ::term-service executor)
                 {:body
                  {"resourceType" "Bundle"
                   "type" "transaction"
@@ -277,6 +282,7 @@
 
       (given-types-available "Patient" "Observation")
       (datomic-test-util/stub-squuid id)
+      (bundle-test/stub-annotate-codes ::term-service ::db-before)
       (stub-code-tx-data ::db-before coll? [])
       (stub-tx-data ::db-before coll? ::tx-data)
       (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
@@ -299,7 +305,7 @@
             (keyword "location" type))}})
 
       (let [{:keys [status body]}
-            @((handler ::conn executor)
+            @((handler ::conn ::term-service executor)
               {::reitit/router ::router
                :body
                {"resourceType" "Bundle"
@@ -346,7 +352,7 @@
         ::router "Patient" {:result {:post {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {::reitit/router ::router
              :body
              {"resourceType" "Bundle"
@@ -383,7 +389,7 @@
         ::router "Patient" {:result {:post {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {::reitit/router ::router
              :body
              {"resourceType" "Bundle"
@@ -420,7 +426,7 @@
         ::router "Patient/0" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {::reitit/router ::router
              :body
              {"resourceType" "Bundle"
@@ -453,7 +459,7 @@
         ::router "Patient/0" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {::reitit/router ::router
              :body
              {"resourceType" "Bundle"
@@ -486,7 +492,7 @@
         ::router "Patient" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {::reitit/router ::router
              :body
              {"resourceType" "Bundle"
@@ -522,7 +528,7 @@
         ::router "Patient/0" {:result {:put {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler ::conn executor)
+          @((handler ::conn ::term-service executor)
             {::reitit/router ::router
              :body
              {"resourceType" "Bundle"

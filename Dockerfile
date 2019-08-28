@@ -5,13 +5,10 @@ COPY . /build/
 WORKDIR /build
 RUN lein uberjar
 
-FROM openjdk:8u212-jre-alpine3.9
+FROM openjdk:8u222-jre
 
-COPY --from=build /build/target/blaze-0.6-alpha52-standalone.jar /app/
-COPY fhir /app/fhir/
+COPY --from=build /build/target/blaze-0.6-alpha65-standalone.jar /app/
 
 WORKDIR /app
 
-EXPOSE 80
-
-CMD ["/bin/sh", "-c", "java $JVM_OPTS -jar blaze-0.6-alpha52-standalone.jar"]
+CMD ["/bin/sh", "-c", "java $JVM_OPTS -jar blaze-0.6-alpha65-standalone.jar"]

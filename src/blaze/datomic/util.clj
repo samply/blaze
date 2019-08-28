@@ -112,15 +112,27 @@
 
 (s/fdef resource
   :args (s/cat :db ::ds/db :type string? :id string?)
-  :ret ::ds/entity)
+  :ret (s/nilable ::ds/entity))
 
 (defn resource
-  "Returns the resource with `type` and `id`.
+  "Returns the resource with `type` and `id` or `nil` if nothing was found.
 
   Also returns deleted resources. Please use the function `deleted?` to test
   for deleted resources."
   [db type id]
   (d/entity db (resource-ident type id)))
+
+
+(s/fdef resource-by
+  :args (s/cat :db ::ds/db :attr keyword? :val some?)
+  :ret (s/nilable ::ds/entity))
+
+(defn resource-by
+  "Returns the resource by using the index on `attr` or `nil` if nothing was
+  found."
+  [db attr val]
+  (when-let [eid (:e (first (d/datoms db :avet attr val)))]
+    (d/entity db eid)))
 
 
 (s/fdef deleted?

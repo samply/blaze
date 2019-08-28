@@ -73,14 +73,13 @@ Blaze runs on the JVM and comes as single JAR file. Download the most recent ver
 After the download, you can start blaze with the following command (Linux, MacOS):
 
 ```
-DATABASE_URI=datomic:free://localhost:4334/db STRUCTURE_DEFINITIONS_PATH=fhir/r4/structure-definitions java -server -Xms2g -Xmx2g -XX:+UseG1GC -jar blaze-0.3-standalone.jar
+DATABASE_URI=datomic:free://localhost:4334/db java -server -Xms2g -Xmx2g -XX:+UseG1GC -jar blaze-0.3-standalone.jar
 ```
 
 Under Windows you need to set the Environment variables in the PowerShell before starting Blaze:
 
 ```
 $Env:DATABASE_URI = "datomic:free://localhost:4334/db"
-$Env:STRUCTURE_DEFINITIONS_PATH = "fhir/r4/structure-definitions"
 ```
 
 The output should look like this:

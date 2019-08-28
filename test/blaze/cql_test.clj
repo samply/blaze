@@ -7,7 +7,8 @@
     [clojure.test :refer :all]
     [cognitect.anomalies :as anom]
     [blaze.cql-translator :refer [translate]]
-    [blaze.elm.compiler :refer [compile -eval]]
+    [blaze.elm.compiler :refer [compile]]
+    [blaze.elm.compiler.protocols :refer [-eval]]
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
@@ -66,7 +67,7 @@
           :statements :def first :expression))))
 
 (defn eval-elm [now elm]
-  (-eval (compile {} elm) {:now now} nil))
+  (-eval (compile {} elm) {:now now} nil nil))
 
 (defn eval [now cql]
   (eval-elm now (to-elm cql)))
@@ -210,6 +211,8 @@
             "DateTimeDurationBetweenMonthUncertain5"        ; TODO: implement uncertainty
             "DateTimeDurationBetweenMonthUncertain6"        ; TODO: implement uncertainty
             "DateTimeDurationBetweenMonthUncertain7"        ; TODO: implement uncertainty
+
+            "TimeDurationBetweenHourDiffPrecision"          ; new in v1.4.6
             })
 
 
@@ -275,7 +278,14 @@
             "ProperContainsTimeNull"                        ; why should null be returned here?
             "ProperInTimeNull"                              ; why should null be returned here?
 
-            "Union123And2"                                  ; union hast set semantics
+            "Union123And2"                                  ; union has set semantics
+
+            "EquivalentABCAnd123"                           ; new in v1.4.6
+            "NotEqual123AndString123"                       ; new in v1.4.6
+            "NotEqual123AndABC"                             ; new in v1.4.6
+            "NotEqualABCAnd123"                             ; new in v1.4.6
+            "Equivalent123AndString123"                     ; new in v1.4.6
+            "Equivalent123AndABC"                           ; new in v1.4.6
             })
 
 

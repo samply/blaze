@@ -17,7 +17,7 @@
     [blaze.elm.spec]
     [blaze.elm.type-infer :refer [infer-library-types]]
     [blaze.elm.evaluator :as evaluator]
-    [blaze.structure-definition :refer [read-structure-definitions]]
+    [blaze.terminology-service.extern :as ts]
     [taoensso.timbre :as log])
   (:import
     [java.time OffsetDateTime Year]))
@@ -36,8 +36,13 @@
 (use-fixtures :each fixture)
 
 
+(def term-service
+  (ts/term-service "http://tx.fhir.org/r4" {}))
+
+
 (defn- db-with [{:strs [entries]}]
-  (let [{db :db-after} (d/with db (bundle/code-tx-data db entries))]
+  (let [entries @(bundle/annotate-codes term-service db entries)
+        {db :db-after} (d/with db (bundle/code-tx-data db entries))]
     (:db-after (d/with db (bundle/tx-data db entries)))))
 
 
@@ -61,10 +66,10 @@
                              (read-query query-name))
                    ["NumberOfPatients" :result]))
 
-    "query-3" 1
-    "query-5" 3
-    "query-6" 1
-    "query-7" 2
+    ;"query-3" 1
+    ;"query-5" 3
+    ;"query-6" 1
+    ;"query-7" 2
     "readme-example" 3))
 
 

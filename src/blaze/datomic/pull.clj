@@ -65,7 +65,7 @@
     x))
 
 
-(defn- to-json [x]
+(defn to-json [x]
   (-to-json (value/read x)))
 
 
@@ -102,10 +102,13 @@
 
 (defn- pull-value
   {:arglists '([db element value])}
-  [db {:element/keys [primitive? type type-code] :as element} value]
+  [db {:element/keys [primitive? type type-code value-set-binding] :as element}
+   value]
   (cond
     (= "code" type-code)
-    (:code/code value)
+    (if value-set-binding
+      (symbol (:code/code value))
+      (:code/code value))
     primitive?
     (to-json value)
     (= "BackboneElement" type-code)
@@ -142,8 +145,10 @@
            (pull-value db element value))]))))
 
 
-(defn- pull-non-primitive [db type-ident value]
-  (assert type-ident)
+(s/fdef pull-non-primitive
+  :args (s/cat :db ::ds/db :type-ident keyword? :value ::ds/entity))
+
+(defn pull-non-primitive [db type-ident value]
   (into
     (with-meta {} {:entity value})
     (map #(pull-element db (util/cached-entity db %) value))

@@ -24,6 +24,22 @@
         false))))
 
 
+;; 12.2. Equivalent
+(extend-protocol p/Equivalent
+  PersistentVector
+  (equivalent [x y]
+    (if y
+      (if (= (count x) (count y))
+        (if (empty? x)
+          true
+          (loop [[t & ts] (map p/equivalent x y)]
+            (if (and (true? t) ts)
+              (recur ts)
+              t)))
+        false)
+      (nil? x))))
+
+
 ;; 17.6. Indexer
 (extend-protocol p/Indexer
   PersistentVector

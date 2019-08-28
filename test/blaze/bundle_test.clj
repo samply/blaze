@@ -1,13 +1,16 @@
 (ns blaze.bundle-test
   (:require
-    [blaze.bundle :refer [resolve-entry-links tx-data]]
+    [blaze.bundle :refer [resolve-entry-links tx-data annotate-codes]]
     [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.structure-definition :refer [read-structure-definitions]]
+    [blaze.terminology-service :as ts]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
+    [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [datomic-spec.test :as dst]
-    [juxt.iota :refer [given]]))
+    [juxt.iota :refer [given]]
+    [manifold.deferred :as md]
+    [clojure.spec.alpha :as s]))
 
 
 (st/instrument)
@@ -15,6 +18,12 @@
 
 
 (defonce db (d/db (st/with-instrument-disabled (datomic-test-util/connect))))
+
+
+(def term-service
+  (reify ts/TermService
+    (-expand-value-set [_ _]
+      (md/error-deferred {::anom/category ::anom/fault}))))
 
 
 (deftest resolve-entry-links-test
@@ -266,3 +275,15 @@
              [:db/add "datomic.tx" :tx/resources id]
              ::resource-upsert-tx-data
              ::resource-deletion-tx-data]))))))
+
+
+(defn stub-annotate-codes [term-service db]
+  (st/instrument
+    [`annotate-codes]
+    {:spec
+     {`annotate-codes
+      (s/fspec
+        :args (s/cat :term-service #{term-service} :db #{db} :entries some?))}
+     :replace
+     {`annotate-codes
+      (fn [_ _ entries] entries)}}))

@@ -11,8 +11,7 @@
 (st/instrument)
 
 
-(defonce structure-definitions
-  (read-structure-definitions "fhir/r4/structure-definitions"))
+(defonce structure-definitions (read-structure-definitions))
 
 
 (defn- structure-definition [id]
@@ -427,6 +426,39 @@
              :element/type-code "BackboneElement"
              :element/json-key "synonym"}
             [:db/add "SubstanceSpecification.name.synonym" :element/type "SubstanceSpecification.name"]
-            [:db/add "SubstanceSpecification.name" :type/elements "SubstanceSpecification.name.synonym"]]))))
+            [:db/add "SubstanceSpecification.name" :type/elements "SubstanceSpecification.name.synonym"]])))
 
+  (testing "Library.url"
+    (is (= (element-definition-tx-data
+             (structure-definition "Library")
+             (element-definition "Library.url"))
+           [{:db/id "Library.url"
+             :db/ident :Library/url
+             :db/valueType :db.type/string
+             :db/cardinality :db.cardinality/one
+             :db/index true
+             :element/primitive? true
+             :element/choice-type? false
+             :ElementDefinition/isSummary true
+             :element/type-code "uri"
+             :element/json-key "url"}
+            [:db/add "Library" :type/elements "Library.url"]])))
 
+  (testing "Specimen.collection.bodySite"
+    (is (= (element-definition-tx-data
+             (structure-definition "Specimen")
+             (element-definition "Specimen.collection.bodySite"))
+           [{:db/id "Specimen.collection.bodySite"
+             :db/ident :Specimen.collection/bodySite
+             :db/valueType :db.type/ref
+             :db/cardinality :db.cardinality/one
+             :db/isComponent true
+             :element/primitive? false
+             :element/choice-type? false
+             :element/type-code "CodeableConcept"
+             :element/json-key "bodySite"}
+            [:db/add "Specimen.collection.bodySite" :element/type "CodeableConcept"]
+            [:db/add "Specimen.collection" :type/elements "Specimen.collection.bodySite"]
+            #:db{:cardinality :db.cardinality/many
+                 :ident :Specimen.collection.index/bodySite
+                 :valueType :db.type/ref}]))))

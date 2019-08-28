@@ -33,7 +33,12 @@
          {:get (:handler.fhir/history-instance handlers)}]
         ["/{vid}"
          {:name :fhir/versioned-instance
-          :get (:handler.fhir/read handlers)}]]]]]
+          :get (:handler.fhir/read handlers)}]]]]
+     ["Measure/{id}/$evaluate-measure"
+      {:get
+       (:handler.fhir.operation/evaluate-measure handlers)
+       :post
+       (:handler.fhir.operation/evaluate-measure handlers)}]]
     {:syntax :bracket
      :conflicts nil
      ::reitit-ring/default-options-handler
@@ -66,8 +71,7 @@
               :issue
               [{:severity "error"
                 :code "structure"}]})
-           (ring/status 406))
-       :not-acceptable)}))
+           (ring/status 406)))}))
 
 
 (s/def ::handlers
@@ -80,7 +84,8 @@
                 :handler.fhir/read
                 :handler.fhir/search
                 :handler.fhir/transaction
-                :handler.fhir/update]))
+                :handler.fhir/update
+                :handler.fhir.operation/evaluate-measure]))
 
 
 (s/def :handler.fhir/core fn?)

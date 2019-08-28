@@ -5,7 +5,7 @@
   again."
   (:require
     [aleph.http :as http]
-    [blaze.executors :as executors]
+    [blaze.executors :as ex]
     [clojure.spec.alpha :as s]
     [manifold.deferred :as md]
     [ring.util.response :as ring])
@@ -24,7 +24,7 @@
 
 
 (s/fdef init!
-  :args (s/cat :port ::port :executor executors/executor? :handler fn?
+  :args (s/cat :port ::port :executor ex/executor? :handler fn?
                :version string?))
 
 (defn init!
@@ -42,6 +42,6 @@
   :args (s/cat :server #(instance? Closeable %)))
 
 (defn shutdown!
-  "Shuts the server down releasing its port."
+  "Shuts `server` down, releasing its port."
   [server]
   (.close ^Closeable server))

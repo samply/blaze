@@ -7,7 +7,8 @@
     [cognitect.anomalies :as anom]
     [io.aviso.exception :as aviso]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [clojure.spec.alpha :as s])
   (:import
     [org.apache.http HeaderElement]
     [org.apache.http.message BasicHeaderValueParser]))
@@ -34,6 +35,10 @@
            s BasicHeaderValueParser/INSTANCE)
          (into [] (map datafy)))))
 
+
+(s/fdef preference
+  :args (s/cat :headers (s/nilable map?) :name string?)
+  :ret (s/nilable string?))
 
 (defn preference
   "Returns the value of the preference with `name` from Ring `headers`."

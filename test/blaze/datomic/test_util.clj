@@ -141,6 +141,18 @@
      #{`d/db}}))
 
 
+(defn stub-entid [db ident eid]
+  (st/instrument
+    [`d/entid]
+    {:spec
+     {`d/entid
+      (s/fspec
+        :args (s/cat :db #{db} :ident #{ident})
+        :ret #{eid})}
+     :stub
+     #{`d/entid}}))
+
+
 (defn stub-entity [db eid-spec entity-spec]
   (st/instrument
     [`d/entity]
@@ -312,6 +324,18 @@
      #{`util/resource}}))
 
 
+(defn stub-resource-by [db attr-spec val-spec entity-spec]
+  (st/instrument
+    [`util/resource-by]
+    {:spec
+     {`util/resource-by
+      (s/fspec
+        :args (s/cat :db #{db} :attr attr-spec :val val-spec)
+        :ret entity-spec)}
+     :stub
+     #{`util/resource-by}}))
+
+
 (defn stub-resource-type [resource type]
   (st/instrument
     [`util/resource-type]
@@ -399,6 +423,18 @@
 
 ;; ---- blaze.datomic.pull stubs ----------------------------------------------
 
+(defn stub-pull-non-primitive [db type-ident value result]
+  (st/instrument
+    [`pull/pull-non-primitive]
+    {:spec
+     {`pull/pull-non-primitive
+      (s/fspec
+        :args (s/cat :db #{db} :type-ident #{type-ident} :value #{value})
+        :ret #{result})}
+     :stub
+     #{`pull/pull-non-primitive}}))
+
+
 (defn stub-pull-resource [db type id resource-spec]
   (st/instrument
     [`pull/pull-resource]
@@ -481,7 +517,7 @@
   []
   (let [uri (str "datomic:mem://" (UUID/randomUUID))]
     (d/create-database uri)
-    (let [structure-definitions (read-structure-definitions "fhir/r4/structure-definitions")
+    (let [structure-definitions (read-structure-definitions)
           conn (d/connect uri)]
       @(d/transact conn (dts/schema))
       @(d/transact conn (schema/structure-definition-schemas structure-definitions))

@@ -7,10 +7,11 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
-    [blaze.executors :as executors]
+    [blaze.executors :as ex]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.terminology-service :refer [term-service?]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -102,7 +103,7 @@
 
 
 (defn- validate-and-prepare-bundle
-  [db {:strs [resourceType type] entries "entry" :as bundle}]
+  [db {:strs [resourceType type] entries "entry"}]
   (cond
     (not= "Bundle" resourceType)
     (md/error-deferred
@@ -277,17 +278,20 @@
 
 
 (defmethod process "transaction"
-  [{:keys [conn db] :as context} _ request-entries]
-  (let [code-tx-data (bundle/code-tx-data db request-entries)]
-    (if (empty? code-tx-data)
-      (transact-resources context request-entries)
-      (-> (tx/transact-async conn code-tx-data)
-          (md/chain'
-            (fn [{db :db-after}]
-              (transact-resources (assoc context :db db) request-entries)))))))
+  [{:keys [conn term-service db] :as context} _ request-entries]
+  (-> (bundle/annotate-codes term-service db request-entries)
+      (md/chain'
+        (fn [request-entries]
+          (let [code-tx-data (bundle/code-tx-data db request-entries)]
+            (if (empty? code-tx-data)
+              (transact-resources context request-entries)
+              (-> (tx/transact-async conn code-tx-data)
+                  (md/chain'
+                    (fn [{db :db-after}]
+                      (transact-resources (assoc context :db db) request-entries))))))))))
 
 
-(defn- handler-intern [conn executor]
+(defn- handler-intern [conn term-service executor]
   (fn [{{:strs [type] :as bundle} :body :keys [headers] ::reitit/keys [router]}]
     (let [db (d/db conn)]
       (-> (md/future-with executor
@@ -297,6 +301,7 @@
                   {:router router
                    :handler (reitit-ring/ring-handler router)
                    :conn conn
+                   :term-service term-service
                    :db db
                    :return-preference (handler-util/preference headers "return")}]
               #(process context type %)))
@@ -321,12 +326,12 @@
 
 
 (s/fdef handler
-  :args (s/cat :conn ::ds/conn :executor executors/executor?)
+  :args (s/cat :conn ::ds/conn :term-service term-service? :executor ex/executor?)
   :ret :handler.fhir/transaction)
 
 (defn handler
   ""
-  [conn executor]
-  (-> (handler-intern conn executor)
+  [conn term-service executor]
+  (-> (handler-intern conn term-service executor)
       (wrap-interaction-name)
       (wrap-observe-request-duration)))

@@ -3,10 +3,10 @@
     [blaze.datomic.quantity :refer [quantity]]
     [blaze.datomic.test-util :refer :all]
     [blaze.datomic.transaction
-     :refer [resource-upsert resource-deletion
+     :refer [annotate-codes resource-upsert resource-deletion
              coerce-value transact-async resource-codes-creation]]
     [blaze.datomic.value :as value]
-    [blaze.structure-definition :refer [read-structure-definitions]]
+    [blaze.terminology-service :as ts]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [cognitect.anomalies :as anom]
@@ -32,6 +32,54 @@
 (use-fixtures :each fixture)
 
 
+(def term-service
+  (reify ts/TermService
+    (-expand-value-set [_ {:keys [url valueSetVersion]}]
+      (case url
+        "http://hl7.org/fhir/ValueSet/administrative-gender"
+        (case valueSetVersion
+          "4.0.0"
+          (md/success-deferred
+            {:expansion
+             {:contains
+              [{:system "http://hl7.org/fhir/administrative-gender"
+                :code "male"}
+               {:system "http://hl7.org/fhir/administrative-gender"
+                :code "female"}]}}))
+        "http://hl7.org/fhir/ValueSet/allergy-intolerance-category"
+        (case valueSetVersion
+          "4.0.0"
+          (md/success-deferred
+            {:expansion
+             {:contains
+              [{:system "http://hl7.org/fhir/allergy-intolerance-category"
+                :code "medication"}
+               {:system "http://hl7.org/fhir/allergy-intolerance-category"
+                :code "food"}]}}))
+        "http://hl7.org/fhir/ValueSet/filter-operator"
+        (case valueSetVersion
+          "4.0.0"
+          (md/success-deferred
+            {:expansion
+             {:contains
+              [{:system "http://hl7.org/fhir/filter-operator"
+                :code "="}]}}))
+        "http://hl7.org/fhir/ValueSet/narrative-status"
+        (case valueSetVersion
+          "4.0.0"
+          (md/success-deferred
+            {:expansion
+             {:contains
+              [{:system "http://hl7.org/fhir/narrative-status"
+                :code "generated"}]}}))))))
+
+
+(def failing-term-service
+  (reify ts/TermService
+    (-expand-value-set [_ _]
+      (md/error-deferred {::anom/category ::anom/fault}))))
+
+
 (defn- tempid []
   (let [v (volatile! {})]
     (fn [partition]
@@ -45,6 +93,93 @@
         [op e a (.encodeToString (Base64/getEncoder) ^bytes value)]
         [op e a value]))
     tx-data))
+
+
+(defn- annotate-codes-system [resource path]
+  (:system
+    (meta
+      (get-in
+        @(annotate-codes
+           term-service db
+           resource)
+        path))))
+
+
+(deftest annotate-codes-test
+  (testing "single-valued"
+    (is
+      (=
+        (annotate-codes-system
+          {"id" "0"
+           "resourceType" "Patient"
+           "gender" "male"}
+          ["gender"])
+        "http://hl7.org/fhir/administrative-gender")))
+
+  (testing "multi-valued two-values"
+    (is
+      (=
+        (annotate-codes-system
+          {"id" "0"
+           "resourceType" "AllergyIntolerance"
+           "category"
+           ["medication" "food"]}
+          ["category" 0])
+        "http://hl7.org/fhir/allergy-intolerance-category")))
+
+  (testing "multi-valued nested"
+    (is
+      (=
+        (annotate-codes-system
+          {"id" "0"
+           "resourceType" "CodeSystem"
+           "filter"
+           [{"operator" ["="]}]}
+          ["filter" 0 "operator" 0])
+        "http://hl7.org/fhir/filter-operator")))
+
+  (testing "within contained resource"
+    (is
+      (=
+        (annotate-codes-system
+          {"id" "0"
+           "resourceType" "MedicationKnowledge"
+           "contained"
+           [{"resourceType" "Organization"
+             "text"
+             {"status" "generated"}}]}
+          ["contained" 0 "text" "status"])
+        "http://hl7.org/fhir/narrative-status")))
+
+  (testing "mime-type"
+    (is
+      (=
+        (annotate-codes-system
+          {"id" "0"
+           "resourceType" "Library"
+           "content" [{"contentType" "text/cql"}]}
+          ["content" 0 "contentType"])
+        "urn:ietf:bcp:13")))
+
+  (testing "languages"
+    (is
+      (=
+        (annotate-codes-system
+          {"id" "0"
+           "resourceType" "Library"
+           "language" "en"}
+          ["language"])
+        "urn:ietf:bcp:47")))
+
+  (testing "failing term-service"
+    (try
+      @(annotate-codes
+         failing-term-service db
+         {"id" "0"
+          "resourceType" "Patient"
+          "gender" "male"})
+      (catch Exception e
+        (is (= ::anom/fault (::anom/category (:error (ex-data e)))))))))
 
 
 (deftest resource-upsert-test
@@ -114,13 +249,16 @@
                [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
-        (let [[db code-id] (with-code db "male")
+        (let [[db code-id] (with-gender-code db "male")
               [db id] (with-resource db "Patient" "0")]
           (is
             (=
               (resource-upsert
                 db nil :server-assigned-id
-                {"id" "0" "resourceType" "Patient" "gender" "male"})
+                {"id" "0"
+                 "resourceType" "Patient"
+                 "gender"
+                 (with-meta 'male {:system "http://hl7.org/fhir/administrative-gender"})})
               [[:db/add id :Patient/gender code-id]
                [:db.fn/cas id :instance/version -3 -7]]))))
 
@@ -216,7 +354,7 @@
                [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
-        (let [[db code-id] (with-code db "=")
+        (let [[db code-id] (with-code db "http://hl7.org/fhir/filter-operator" "=")
               [db id] (with-resource db "CodeSystem" "0")]
           (is
             (= (with-redefs [d/tempid (fn [partition] partition)]
@@ -225,12 +363,13 @@
                    {"id" "0"
                     "resourceType" "CodeSystem"
                     "filter"
-                    [{"operator" ["="]}]}))
+                    [{"operator"
+                      [(with-meta '= {:system "http://hl7.org/fhir/filter-operator"})]}]}))
                [[:db/add :part/CodeSystem.filter :CodeSystem.filter/operator code-id]
                 [:db/add id :CodeSystem/filter :part/CodeSystem.filter]
                 [:db.fn/cas id :instance/version -3 -7]])))
 
-        (let [[db code-id] (with-code db "medication")
+        (let [[db code-id] (with-code db "http://hl7.org/fhir/allergy-intolerance-category" "medication")
               [db id] (with-resource db "AllergyIntolerance" "0")]
           (is
             (= (resource-upsert
@@ -238,7 +377,7 @@
                  {"id" "0"
                   "resourceType" "AllergyIntolerance"
                   "category"
-                  ["medication"]})
+                  [(with-meta 'medication {:system "http://hl7.org/fhir/allergy-intolerance-category"})]})
                [[:db/add id :AllergyIntolerance/category code-id]
                 [:db.fn/cas id :instance/version -3 -7]])))))
 
@@ -384,12 +523,35 @@
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
                [:db/add id :Observation/code :part/CodeableConcept]
                [:db/add id :Observation.index/code code-id]
-               [:db.fn/cas id :instance/version -3 -7]])))))
+               [:db.fn/cas id :instance/version -3 -7]]))))
+
+      (testing "with subject-code index"
+        (let [[db code-id] (with-code db "http://loinc.org" "39156-5")
+              [db obs-id] (with-resource db "Observation" "0")
+              [db pat-id] (with-resource db "Patient" "0")]
+          (is
+            (=
+              (with-redefs [d/tempid (fn [partition] partition)]
+                (resource-upsert
+                  db nil :server-assigned-id
+                  {"id" "0"
+                   "resourceType" "Observation"
+                   "code"
+                   {"coding"
+                    [{"system" "http://loinc.org"
+                      "code" "39156-5"}]}
+                   "subject"
+                   {"reference" "Patient/0"}}))
+              [[:db/add obs-id :Observation/subject pat-id]
+               [:db/add :part/Coding :Coding/code code-id]
+               [:db/add pat-id (keyword "Patient.Observation.code" "http://loinc.org||39156-5") obs-id]
+               [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
+               [:db/add obs-id :Observation/code :part/CodeableConcept]
+               [:db/add obs-id :Observation.index/code code-id]
+               [:db.fn/cas obs-id :instance/version -3 -7]])))))
 
     (testing "CodeSystem with code in concept"
-      (let [[db code-id]
-            (with-code
-              db "http://hl7.org/fhir/administrative-gender" "male")
+      (let [[db code-id] (with-code db "http://hl7.org/fhir/administrative-gender" "male")
             [db id] (with-resource db "CodeSystem" "0")]
         (is
           (=
@@ -408,9 +570,7 @@
 
 
     (testing "CodeSystem with version and code in concept"
-      (let [[db code-id]
-            (with-code
-              db "http://hl7.org/fhir/administrative-gender" "4.0.0" "male")
+      (let [[db code-id] (with-code db "http://hl7.org/fhir/administrative-gender" "4.0.0" "male")
             [db id] (with-resource db "CodeSystem" "0")]
         (is
           (=
@@ -431,7 +591,7 @@
 
 
     (testing "CodeSystem with code in content uses http://hl7.org/fhir/codesystem-content-mode"
-      (let [[db code-id] (with-code db "complete")
+      (let [[db code-id] (with-code db "http://hl7.org/fhir/codesystem-content-mode" "complete")
             [db id] (with-resource db "CodeSystem" "0")]
         (is
           (=
@@ -441,7 +601,8 @@
                "resourceType" "CodeSystem"
                "url" "http://hl7.org/fhir/administrative-gender"
                "version" "4.0.0"
-               "content" "complete"})
+               "content"
+               (with-meta 'complete {:system "http://hl7.org/fhir/codesystem-content-mode"})})
             [[:db/add id :CodeSystem/content code-id]
              [:db/add id :CodeSystem/version "4.0.0"]
              [:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
@@ -775,7 +936,9 @@
             (empty?
               (resource-upsert
                 db nil :server-assigned-id
-                {"id" "0" "resourceType" "Patient" "gender" "male"})))))
+                {"id" "0"
+                 "resourceType" "Patient"
+                 "gender" (with-meta 'male {:system "http://hl7.org/fhir/administrative-gender"})})))))
 
       (testing "with date type"
         (let [[db] (with-resource db "Patient" "0" :Patient/birthDate
@@ -866,7 +1029,7 @@
                  "instantiatesUri" ["foo"]})))))
 
       (testing "with code type"
-        (let [[db id] (with-code db "medication")
+        (let [[db id] (with-code db "http://hl7.org/fhir/allergy-intolerance-category" "medication")
               [db] (with-resource db "AllergyIntolerance" "0"
                                   :AllergyIntolerance/category id)]
           (is
@@ -876,7 +1039,7 @@
                 {"id" "0"
                  "resourceType" "AllergyIntolerance"
                  "category"
-                 ["medication"]}))))))
+                 [(with-meta 'medication {:system "http://hl7.org/fhir/allergy-intolerance-category"})]}))))))
 
 
     (testing "non-primitive multi-valued single-typed element"
@@ -966,7 +1129,7 @@
                "resourceType" "CodeSystem"
                "contact"
                [{"telecom"
-                 [{"system" "url"}]}]})))))
+                 [{"system" (with-meta 'url {:system "http://hl7.org/fhir/contact-point-system"})}]}]})))))
 
 
     (testing "Contained resources"
@@ -1014,14 +1177,17 @@
                [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
-        (let [[db male-id] (with-code db "male")
-              [db female-id] (with-code db "female")
+        (let [[db male-id] (with-gender-code db "male")
+              [db female-id] (with-gender-code db "female")
               [db id] (with-resource db "Patient" "0" :Patient/gender male-id)]
           (is
             (=
               (resource-upsert
                 db nil :server-assigned-id
-                {"id" "0" "resourceType" "Patient" "gender" "female"})
+                {"id" "0"
+                 "resourceType" "Patient"
+                 "gender"
+                 (with-meta 'female {:system "http://hl7.org/fhir/administrative-gender"})})
               [[:db/add id :Patient/gender female-id]
                [:db.fn/cas id :instance/version -3 -7]]))))
 
@@ -1070,8 +1236,8 @@
                 [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with code type"
-        (let [[db medication-id] (with-code db "medication")
-              [db food-id] (with-code db "food")
+        (let [[db medication-id] (with-code db "http://hl7.org/fhir/allergy-intolerance-category" "medication")
+              [db food-id] (with-code db "http://hl7.org/fhir/allergy-intolerance-category" "food")
               [db id] (with-resource db "AllergyIntolerance" "0"
                                      :AllergyIntolerance/category medication-id)]
           (is
@@ -1081,7 +1247,8 @@
                    {"id" "0"
                     "resourceType" "AllergyIntolerance"
                     "category"
-                    ["medication" "food"]}))
+                    [(with-meta 'medication {:system "http://hl7.org/fhir/allergy-intolerance-category"})
+                     (with-meta 'food {:system "http://hl7.org/fhir/allergy-intolerance-category"})]}))
                [[:db/add id :AllergyIntolerance/category food-id]
                 [:db.fn/cas id :instance/version -3 -7]])))))
 
@@ -1189,12 +1356,8 @@
                [:db.fn/cas patient-id :instance/version -3 -7]])))))
 
     (testing "Coding"
-      (let [[db amb-id]
-            (with-code
-              db "http://terminology.hl7.org/CodeSystem/v3-ActCode" "AMB")
-            [db emer-id]
-            (with-code
-              db "http://terminology.hl7.org/CodeSystem/v3-ActCode" "EMER")
+      (let [[db amb-id] (with-code db "http://terminology.hl7.org/CodeSystem/v3-ActCode" "AMB")
+            [db emer-id] (with-code db "http://terminology.hl7.org/CodeSystem/v3-ActCode" "EMER")
             [db coding-id] (with-non-primitive db :Coding/code amb-id)
             [db encounter-id]
             (with-resource db "Encounter" "0" :Encounter/class coding-id)]
@@ -1251,8 +1414,8 @@
       (testing "with changes inside the container resource"
         (let [[db contained-id] (with-non-primitive db :Patient/active true
                                                     :local-id "0")
-              [db preliminary-id] (with-code db "preliminary")
-              [db final-id] (with-code db "final")
+              [db preliminary-id] (with-code db "http://hl7.org/fhir/observation-status" "preliminary")
+              [db final-id] (with-code db "http://hl7.org/fhir/observation-status" "final")
               [db id] (with-resource db "Observation" "0"
                                      :Observation/status preliminary-id
                                      :Observation/contained contained-id
@@ -1264,7 +1427,8 @@
                 {"id" "0"
                  "resourceType" "Observation"
                  "subject" {"reference" "#0"}
-                 "status" "final"
+                 "status"
+                 (with-meta 'final {:system "http://hl7.org/fhir/observation-status"})
                  "contained"
                  [{"id" "0"
                    "resourceType" "Patient"
@@ -1316,8 +1480,8 @@
 
 
     (testing "multi-valued code element"
-      (let [[db medication-id] (with-code db "medication")
-            [db food-id] (with-code db "food")
+      (let [[db medication-id] (with-code db "http://hl7.org/fhir/allergy-intolerance-category" "medication")
+            [db food-id] (with-code db "http://hl7.org/fhir/allergy-intolerance-category" "food")
             [db id] (with-resource db "AllergyIntolerance" "0"
                                    :AllergyIntolerance/category medication-id)]
         (is
@@ -1327,11 +1491,10 @@
                  {"id" "0"
                   "resourceType" "AllergyIntolerance"
                   "category"
-                  ["food"]}))
+                  [(with-meta 'food {:system "http://hl7.org/fhir/allergy-intolerance-category"})]}))
              [[:db/retract id :AllergyIntolerance/category medication-id]
               [:db/add id :AllergyIntolerance/category food-id]
               [:db.fn/cas id :instance/version -3 -7]])))))
-
 
 
   (testing "Retracts"
@@ -1575,7 +1738,7 @@
                  [:db/retract id :ServiceRequest/instantiatesUri "two"]}))))
 
       (testing "with code type"
-        (let [[db medication-id] (with-code db "medication")
+        (let [[db medication-id] (with-code db "http://hl7.org/fhir/allergy-intolerance-category" "medication")
               [db id]
               (with-resource
                 db "AllergyIntolerance" "0"
@@ -1610,161 +1773,271 @@
 
 (deftest resource-codes-creation-test
   (testing "single-valued code element"
-    (is
-      (=
-        (with-redefs [d/tempid (fn [partition] partition)]
-          (resource-codes-creation
-            db
-            {"id" "0" "resourceType" "Patient" "gender" "male"}))
-        [{:db/id :part/code
-          :code/id "||male"
-          :code/code "male"}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "Patient"
+                 "gender" (with-meta 'male {:system "http://hl7.org/fhir/administrative-gender"})})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://hl7.org/fhir/administrative-gender||male"
+           :code/system "http://hl7.org/fhir/administrative-gender"
+           :code/code "male"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender||male")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Condition.code" "http://hl7.org/fhir/administrative-gender||male")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "multi-valued code element"
-    (is
-      (= (with-redefs [d/tempid (fn [partition] partition)]
-           (resource-codes-creation
-             db
-             {"id" "0"
-              "resourceType" "AllergyIntolerance"
-              "category"
-              ["medication"]}))
-         [{:db/id :part/code
-           :code/id "||medication"
-           :code/code "medication"}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "AllergyIntolerance"
+                 "category"
+                 [(with-meta 'medication {:system "http://hl7.org/fhir/allergy-intolerance-category"})]})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://hl7.org/fhir/allergy-intolerance-category||medication"
+           :code/system "http://hl7.org/fhir/allergy-intolerance-category"
+           :code/code "medication"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/allergy-intolerance-category||medication")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Condition.code" "http://hl7.org/fhir/allergy-intolerance-category||medication")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "single-valued Coding element"
-    (is
-      (=
-        (with-redefs [d/tempid (fn [partition] partition)]
-          (resource-codes-creation
-            db
-            {"id" "0"
-             "resourceType" "Encounter"
-             "class"
-             {"system" "http://terminology.hl7.org/CodeSystem/v3-ActCode"
-              "code" "AMB"}}))
-        [{:db/id :part/code
-          :code/id "http://terminology.hl7.org/CodeSystem/v3-ActCode||AMB"
-          :code/system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
-          :code/code "AMB"}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "Encounter"
+                 "class"
+                 {"system" "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                  "code" "AMB"}})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://terminology.hl7.org/CodeSystem/v3-ActCode||AMB"
+           :code/system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+           :code/code "AMB"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://terminology.hl7.org/CodeSystem/v3-ActCode||AMB")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "multi-valued code element in multi-valued Backbone element"
-    (is
-      (= (with-redefs [d/tempid (fn [partition] partition)]
-           (resource-codes-creation
-             db
-             {"id" "0"
-              "resourceType" "CodeSystem"
-              "filter"
-              [{"operator" ["="]}]}))
-         [{:db/id :part/code
-           :code/id "||="
-           :code/code "="}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "CodeSystem"
+                 "filter"
+                 [{"operator"
+                   [(with-meta '= {:system "http://hl7.org/fhir/filter-operator"})]}]})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://hl7.org/fhir/filter-operator||="
+           :code/system "http://hl7.org/fhir/filter-operator"
+           :code/code "="}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/filter-operator||=")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "Coding in CodeableConcept"
-    (is
-      (=
-        (with-redefs [d/tempid (fn [partition] partition)]
-          (resource-codes-creation
-            db
-            {"id" "0"
-             "resourceType" "Observation"
-             "code"
-             {"coding"
-              [{"system" "http://hl7.org/fhir/sid/icd-10"
-                "version" "2016"
-                "code" "Q14"}]}}))
-        [{:db/id :part/code
-          :code/id "http://hl7.org/fhir/sid/icd-10|2016|Q14"
-          :code/system "http://hl7.org/fhir/sid/icd-10"
-          :code/version "2016"
-          :code/code "Q14"}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "Observation"
+                 "code"
+                 {"coding"
+                  [{"system" "http://hl7.org/fhir/sid/icd-10"
+                    "version" "2016"
+                    "code" "Q14"}]}})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://hl7.org/fhir/sid/icd-10|2016|Q14"
+           :code/system "http://hl7.org/fhir/sid/icd-10"
+           :code/version "2016"
+           :code/code "Q14"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/sid/icd-10|2016|Q14")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "CodeSystem with code in concept"
-    (is
-      (=
-        (with-redefs [d/tempid (fn [partition] partition)]
-          (resource-codes-creation
-            db
-            {"id" "0"
-             "resourceType" "CodeSystem"
-             "url" "http://hl7.org/fhir/administrative-gender"
-             "concept"
-             [{"code" "male"}]}))
-        [{:db/id :part/code
-          :code/id "http://hl7.org/fhir/administrative-gender||male"
-          :code/system "http://hl7.org/fhir/administrative-gender"
-          :code/code "male"}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "CodeSystem"
+                 "url" "http://hl7.org/fhir/administrative-gender"
+                 "concept"
+                 [{"code" "male"}]})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://hl7.org/fhir/administrative-gender||male"
+           :code/system "http://hl7.org/fhir/administrative-gender"
+           :code/code "male"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender||male")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "CodeSystem with version and code in concept"
-    (is
-      (=
-        (with-redefs [d/tempid (fn [partition] partition)]
-          (resource-codes-creation
-            db
-            {"id" "0"
-             "resourceType" "CodeSystem"
-             "url" "http://hl7.org/fhir/administrative-gender"
-             "version" "4.0.0"
-             "concept"
-             [{"code" "male"}]}))
-        [{:db/id :part/code
-          :code/id "http://hl7.org/fhir/administrative-gender|4.0.0|male"
-          :code/system "http://hl7.org/fhir/administrative-gender"
-          :code/version "4.0.0"
-          :code/code "male"}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "CodeSystem"
+                 "url" "http://hl7.org/fhir/administrative-gender"
+                 "version" "4.0.0"
+                 "concept"
+                 [{"code" "male"}]})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://hl7.org/fhir/administrative-gender|4.0.0|male"
+           :code/system "http://hl7.org/fhir/administrative-gender"
+           :code/version "4.0.0"
+           :code/code "male"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender|4.0.0|male")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "ConceptMap with source code"
-    (is
-      (=
-        (with-redefs [d/tempid (fn [partition] partition)]
-          (resource-codes-creation
-            db
-            {"id" "0"
-             "resourceType" "ConceptMap"
-             "group"
-             [{"source" "http://foo"
-               "element"
-               [{"code" "bar"}]}]}))
-        [{:db/id :part/code
-          :code/id "http://foo||bar"
-          :code/system "http://foo"
-          :code/code "bar"}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "ConceptMap"
+                 "group"
+                 [{"source" "http://foo"
+                   "element"
+                   [{"code" "bar"}]}]})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://foo||bar"
+           :code/system "http://foo"
+           :code/code "bar"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://foo||bar")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "ConceptMap with target code"
-    (is
-      (=
-        (with-redefs [d/tempid (fn [partition] partition)]
-          (resource-codes-creation
-            db
-            {"id" "0"
-             "resourceType" "ConceptMap"
-             "group"
-             [{"target" "http://foo"
-               "element"
-               [{"target"
-                 [{"code" "bar"}]}]}]}))
-        [{:db/id :part/code
-          :code/id "http://foo||bar"
-          :code/system "http://foo"
-          :code/code "bar"}])))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "ConceptMap"
+                 "group"
+                 [{"target" "http://foo"
+                   "element"
+                   [{"target"
+                     [{"code" "bar"}]}]}]})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "http://foo||bar"
+           :code/system "http://foo"
+           :code/code "bar"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "http://foo||bar")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many}))))
 
   (testing "Code typed extension"
     ;; TODO: resolve the value set binding here
-    (is
-      (=
-        (with-redefs [d/tempid (fn [partition] partition)]
-          (resource-codes-creation
-            db
-            {"id" "0"
-             "resourceType" "CodeSystem"
-             "extension"
-             [{"url" "http://foo"
-               "valueCode" "draft"}]}))
-        [{:db/id :part/code
-          :code/id "||draft"
-          :code/code "draft"}]))))
+    (let [tx-data
+          (set
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-codes-creation
+                db
+                {"id" "0"
+                 "resourceType" "CodeSystem"
+                 "extension"
+                 [{"url" "http://foo"
+                   "valueCode" "draft"}]})))]
+      (is
+        (contains?
+          tx-data
+          {:db/id :part/code
+           :code/id "||draft"
+           :code/code "draft"}))
+      (is
+        (contains?
+          tx-data
+          {:db/ident (keyword "Patient.Observation.code" "||draft")
+           :db/valueType :db.type/ref
+           :db/cardinality :db.cardinality/many})))))
 
 
 (deftest coerce-value-test

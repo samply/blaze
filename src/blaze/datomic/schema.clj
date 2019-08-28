@@ -316,6 +316,9 @@
                (and (= "resource" kind) (= (str name ".id") path)))
              (assoc :db/unique :db.unique/identity)
 
+             (#{"Library.url" "Measure.url"} path)
+             (assoc :db/index true)
+
              (not choice-type?)
              (assoc
                :db/valueType (fhir-type-code->db-type (-> type first :code))
