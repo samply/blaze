@@ -15,12 +15,12 @@ code "Vollblut-EDTA": 'whole_blood-EDTA' from "Sample type liquid"
 context Patient
 
 define Qualifies:
-  (Exists([Condition: "Morbus Crohn"]) or Exists([Condition: "Colitis ulcerosa"])) and
-  Exists([Specimen: "Tumorgewebe"]) and
-  Exists([Specimen: "Gesundes Gewebe"]) and
-  (Exists([Specimen: "Serum"]) or Exists([Specimen: "Vollblut-EDTA"]))
+  (exists([Condition: "Morbus Crohn"]) or exists([Condition: "Colitis ulcerosa"])) and
+  exists([Specimen: "Tumorgewebe"]) and
+  exists([Specimen: "Gesundes Gewebe"]) and
+  (exists([Specimen: "Serum"]) or exists([Specimen: "Vollblut-EDTA"]))
 
-context Population
+context Unspecified
 
 define NumberOfPatients:
   Count(Qualifies Q where Q return all Q)

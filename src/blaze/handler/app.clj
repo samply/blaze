@@ -1,65 +1,49 @@
 (ns blaze.handler.app
   (:require
-    [bidi.ring :as bidi-ring]
+    [blaze.middleware.json :refer [wrap-json]]
+    [blaze.middleware.fhir.type :refer [wrap-type]]
     [clojure.spec.alpha :as s]
-    [manifold.deferred :as md]
+    [reitit.core :as reitit]
+    [reitit.ring :as reitit-ring]
     [ring.util.response :as ring]))
 
 
-(def ^:private routes
-  ["/"
-   {"health"
-    {:head :handler/health
-     :get :handler/health}
-    "cql"
-    {"/evaluate"
-     {:options :handler/cql-evaluation
-      :post :handler/cql-evaluation}}
-    "fhir"
-    {#{"" "/"} {:post :handler.fhir/transaction}
-     "/metadata" {:get :handler.fhir/capabilities}
-     ["/" :type]
-     {:get :handler.fhir/search
-      :post :handler.fhir/create}
-     ["/" :type "/" :id]
-     {""
-      {:get :handler.fhir/read
-       :put :handler.fhir/update
-       :delete :handler.fhir/delete}
-      "/_history"
-      {""
-       {:get :handler.fhir/history}
-       ["/" :vid]
-       {:get :handler.fhir/read}}}}}])
+(defn- wrap-remove-context-path [handler]
+  (fn [{{{:keys [more] :or {more ""}} :path-params} ::reitit/match :as request}]
+    (handler (-> request (assoc :uri more) (dissoc ::reitit/match :path-params)))))
 
 
-(defn wrap-server [handler server]
-  (fn [request]
-    (-> (handler request)
-        (md/chain' #(ring/header % "Server" server)))))
-
-
-(defn handler-intern [handlers]
-  (bidi-ring/make-handler routes handlers))
+(defn router [handlers]
+  (reitit-ring/router
+    [["/health"
+      {:head (:handler/health handlers)
+       :get (:handler/health handlers)}]
+     ["/cql/evaluate"
+      {:options (:handler/cql-evaluation handlers)
+       :post (:handler/cql-evaluation handlers)}]
+     ["/fhir"
+      {:middleware [wrap-json wrap-remove-context-path]
+       :handler (:handler.fhir/core handlers)}]
+     ["/fhir/{*more}"
+      {:middleware [wrap-json wrap-remove-context-path]
+       :handler (:handler.fhir/core handlers)}]]
+    {:syntax :bracket
+     ::reitit-ring/default-options-handler
+     (fn [_]
+       (-> (ring/response nil)
+           (ring/status 405)))}))
 
 
 (s/def ::handlers
   (s/keys :req [:handler/cql-evaluation
                 :handler/health
-                :handler.fhir/create
-                :handler.fhir/delete
-                :handler.fhir/history
-                :handler.fhir/read
-                :handler.fhir/search
-                :handler.fhir/transaction
-                :handler.fhir/update]))
+                :handler.fhir/core]))
 
 
 (s/fdef handler
-  :args (s/cat :handlers ::handlers :version string?))
+  :args (s/cat :handlers ::handlers))
 
 (defn handler
   "Whole app Ring handler."
-  [handlers version]
-  (-> (handler-intern handlers)
-      (wrap-server (str "Blaze/" version))))
+  [handlers]
+  (reitit-ring/ring-handler (router handlers)))

@@ -1,0 +1,220 @@
+{
+  "resourceType": "TestScript",
+  "url": "http://localhost:8080/foo",
+  "name": "SystemHistoryPaging",
+  "title": "System History Paging",
+  "status": "draft",
+  "fixture": [
+    {
+      "id": "patient",
+      "autocreate": false,
+      "autodelete": false,
+      "resource": {
+        "reference": "patient.json"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "name": "OriginalHistorySelfURL",
+      "description": "The URL from the self link of the original history response.",
+      "expression": "Bundle.link.where(relation = 'self').url",
+      "sourceId": "OriginalHistory"
+    },
+    {
+      "name": "OriginalHistoryNextURL",
+      "description": "The URL from the next link of the original history response.",
+      "expression": "Bundle.link.where(relation = 'next').url",
+      "sourceId": "OriginalHistory"
+    },
+    {
+      "name": "OriginalHistoryTotal",
+      "description": "The bundle total value of the original history response.",
+      "expression": "Bundle.total",
+      "sourceId": "OriginalHistory"
+    }
+  ],
+  "setup": {
+    "action": [
+      {
+        "operation": {
+          "type": {
+            "system": "http://hl7.org/fhir/testscript-operation-codes",
+            "code": "create"
+          },
+          "accept": "json",
+          "contentType": "json",
+          "encodeRequestUrl": false,
+          "sourceId": "patient"
+        }
+      },
+      {
+        "assert": {
+          "description": "status code is 201",
+          "response": "created",
+          "warningOnly": false
+        }
+      },
+      {
+        "operation": {
+          "type": {
+            "system": "http://hl7.org/fhir/testscript-operation-codes",
+            "code": "create"
+          },
+          "accept": "json",
+          "contentType": "json",
+          "encodeRequestUrl": false,
+          "sourceId": "patient"
+        }
+      },
+      {
+        "assert": {
+          "description": "status code is 201",
+          "response": "created",
+          "warningOnly": false
+        }
+      }
+    ]
+  },
+  "test": [
+    {
+      "name": "Ensure System History Not Empty",
+      "description": "Ensure that the system history contains at least one entry.",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "system": "http://hl7.org/fhir/testscript-operation-codes",
+              "code": "history"
+            },
+            "accept": "json",
+            "encodeRequestUrl": false,
+            "params": "/_history?_count=1",
+            "responseId": "OriginalHistory"
+          }
+        },
+        {
+          "assert": {
+            "description": "status code is 200",
+            "response": "okay",
+            "warningOnly": false
+          }
+        },
+        {
+          "assert": {
+            "description": "the response contains a bundle",
+            "resource": "Bundle",
+            "warningOnly": false
+          }
+        },
+        {
+          "assert": {
+            "description": "Bundle.total is greater then zero",
+            "expression": "Bundle.total > 0",
+            "warningOnly": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create another Patient",
+      "description": "Creates another Patient in order to a a new history entry.",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "system": "http://hl7.org/fhir/testscript-operation-codes",
+              "code": "create"
+            },
+            "sourceId": "patient"
+          }
+        },
+        {
+          "assert": {
+            "description": "status code is 201",
+            "response": "created",
+            "warningOnly": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ensure Original System History Still Reports the Same Total",
+      "description": "Ensure that the system history accessible from the self link of the original invocation reports still the same total value.",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "system": "http://hl7.org/fhir/testscript-operation-codes",
+              "code": "history"
+            },
+            "accept": "json",
+            "encodeRequestUrl": false,
+            "url": "${OriginalHistorySelfURL}"
+          }
+        },
+        {
+          "assert": {
+            "description": "status code is 200",
+            "response": "okay",
+            "warningOnly": false
+          }
+        },
+        {
+          "assert": {
+            "description": "the response contains a bundle",
+            "resource": "Bundle",
+            "warningOnly": false
+          }
+        },
+        {
+          "assert": {
+            "description": "Bundle.total is the same as in the previous history",
+            "path": "$.total",
+            "value": "${OriginalHistoryTotal}",
+            "warningOnly": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ensure Next Page of Original History Still Reports the Same Total",
+      "description": "Ensure that the system history accessible from the next link of the original invocation reports still the same total value.",
+      "action": [
+        {
+          "operation": {
+            "type": {
+              "system": "http://hl7.org/fhir/testscript-operation-codes",
+              "code": "history"
+            },
+            "accept": "json",
+            "encodeRequestUrl": false,
+            "url": "${OriginalHistoryNextURL}"
+          }
+        },
+        {
+          "assert": {
+            "description": "status code is 200",
+            "response": "okay",
+            "warningOnly": false
+          }
+        },
+        {
+          "assert": {
+            "description": "the response contains a bundle",
+            "resource": "Bundle",
+            "warningOnly": false
+          }
+        },
+        {
+          "assert": {
+            "description": "Bundle.total is the same as in the previous history",
+            "path": "$.total",
+            "value": "${OriginalHistoryTotal}",
+            "warningOnly": false
+          }
+        }
+      ]
+    }
+  ]
+}

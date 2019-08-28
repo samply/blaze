@@ -3,53 +3,38 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-    [blaze.handler.fhir.search :refer [handler-intern]]
-    [blaze.handler.fhir.test-util :as test-util]
+    [blaze.datomic.test-util :as datomic-test-util]
+    [blaze.handler.fhir.search :refer [handler]]
+    [blaze.handler.fhir.test-util :as fhir-test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
-    [datomic-spec.test :as dst]))
-
-
-(st/instrument)
-(dst/instrument)
+    [datomic-spec.test :as dst]
+    [reitit.core :as reitit]
+    [taoensso.timbre :as log]))
 
 
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
-  (test-util/stub-db ::conn ::db)
-  (f)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :conn #{::conn}))}})
+  (datomic-test-util/stub-db ::conn ::db)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
 (use-fixtures :each fixture)
 
 
-(def base-uri "http://localhost:8080")
-
-
 (deftest handler-test
-  (testing "Returns Not Found on Non-Existing Resource Type"
-    (test-util/stub-cached-entity ::db #{:Patient} nil?)
-
-    (let [{:keys [status body]}
-          ((handler-intern base-uri ::conn)
-            {:route-params {:type "Patient"}})]
-
-      (is (= 404 status))
-
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
-
-
   (testing "Returns Existing all Resources of Type"
     (let [patient {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-cached-entity ::db #{:Patient} some?)
       (st/instrument
         [`d/datoms]
         {:spec
@@ -59,12 +44,15 @@
             :ret #{[{:e 143757}]})}
          :stub
          #{`d/datoms}})
-      (test-util/stub-entity ::db #{143757} #{::patient})
-      (test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+      (datomic-test-util/stub-entity ::db #{143757} #{::patient})
+      (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+      (datomic-test-util/stub-type-total ::db "Patient" 1)
+      (fhir-test-util/stub-instance-url ::router "Patient" "0" ::full-url)
 
       (let [{:keys [status body]}
-            ((handler-intern base-uri ::conn)
-              {:route-params {:type "Patient"}})]
+            @((handler ::conn)
+              {::reitit/router ::router
+               :path-params {:type "Patient"}})]
 
         (is (= 200 status))
 
@@ -74,19 +62,59 @@
         (testing "Bundle type is searchset"
           (is (= "searchset" (:type body))))
 
+        (testing "total is 1"
+          (is (= 1 (:total body))))
+
         (testing "contains one entry"
           (is (= 1 (count (:entry body)))))
 
         (testing "The entry has the right fullUrl"
-          (is (= (str base-uri "/fhir/Patient/0") (-> body :entry first :fullUrl))))
+          (is (= ::full-url (-> body :entry first :fullUrl))))
 
         (testing "The entry has the right resource"
           (is (= patient (-> body :entry first :resource)))))))
 
+  (testing "Summary Count"
+    (datomic-test-util/stub-type-total ::db "Patient" 42)
+
+    (let [{:keys [status body]}
+          @((handler ::conn)
+            {:path-params {:type "Patient"}
+             :params {"_summary" "count"}})]
+
+      (is (= 200 status))
+
+      (testing "Body contains a bundle"
+        (is (= "Bundle" (:resourceType body))))
+
+      (testing "Bundle type is searchset"
+        (is (= "searchset" (:type body))))
+
+      (testing "total is 42"
+        (is (= 42 (:total body))))))
+
+  (testing "Count Zero (equal to Summary Count)"
+    (datomic-test-util/stub-type-total ::db "Patient" 23)
+
+    (let [{:keys [status body]}
+          @((handler ::conn)
+            {:path-params {:type "Patient"}
+             :params {"_count" "0"}})]
+
+      (is (= 200 status))
+
+      (testing "Body contains a bundle"
+        (is (= "Bundle" (:resourceType body))))
+
+      (testing "Bundle type is searchset"
+        (is (= "searchset" (:type body))))
+
+      (testing "total is 42"
+        (is (= 23 (:total body))))))
+
 
   (testing "Identifier search"
     (let [patient {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-cached-entity ::db #{:Patient} some?)
       (st/instrument
         [`d/datoms]
         {:spec
@@ -96,12 +124,14 @@
             :ret #{[{:e 143757}]})}
          :stub
          #{`d/datoms}})
-      (test-util/stub-entity ::db #{143757} #{::patient})
-      (test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+      (datomic-test-util/stub-entity ::db #{143757} #{::patient})
+      (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
+      (fhir-test-util/stub-instance-url ::router "Patient" "0" ::full-url)
 
       (let [{:keys [status body]}
-            ((handler-intern base-uri ::conn)
-              {:route-params {:type "Patient"}})]
+            @((handler ::conn)
+              {::reitit/router ::router
+               :path-params {:type "Patient"}})]
 
         (is (= 200 status))
 
@@ -115,7 +145,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "The entry has the right fullUrl"
-          (is (= (str base-uri "/fhir/Patient/0") (-> body :entry first :fullUrl))))
+          (is (= ::full-url (-> body :entry first :fullUrl))))
 
         (testing "The entry has the right resource"
           (is (= patient (-> body :entry first :resource))))))))

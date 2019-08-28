@@ -6,8 +6,7 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.util :as util]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.exception :refer [wrap-exception]]
-    [blaze.middleware.json :refer [wrap-json]]
+    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
@@ -31,16 +30,11 @@
   (str "W/\"" (:version-id (meta resource)) "\""))
 
 
-(defn- pull-resource [db type id]
-  (and (util/cached-entity db (keyword type))
-       (pull/pull-resource db type id)))
-
-
 (defn- db [conn vid]
   (cond
     (and vid (re-matches #"\d+" vid))
     (let [vid (Long/parseLong vid)]
-      (md/chain (d/sync conn vid) #(d/as-of % vid)))
+      (-> (d/sync conn vid) (md/chain #(d/as-of % vid))))
 
     vid
     (md/error-deferred
@@ -51,12 +45,12 @@
     (d/db conn)))
 
 
-(defn handler-intern [conn]
-  (fn [{{:keys [type id vid]} :route-params}]
+(defn- handler-intern [conn]
+  (fn [{{:keys [type id vid]} :path-params}]
     (-> (db conn vid)
         (md/chain'
           (fn [db]
-            (if-let [resource (pull-resource db type id)]
+            (if-let [resource (pull/pull-resource db type id)]
               (if (:deleted (meta resource))
                 (-> (handler-util/operation-outcome
                       {:fhir/issue "deleted"})
@@ -73,6 +67,14 @@
         (md/catch' handler-util/error-response))))
 
 
+(defn wrap-interaction-name [handler]
+  (fn [{{:keys [vid]} :path-params :as request}]
+    (-> (handler request)
+        (md/chain'
+          (fn [response]
+            (assoc response :fhir/interaction-name (if vid "vread" "read")))))))
+
+
 (s/def :handler.fhir/read fn?)
 
 
@@ -84,5 +86,5 @@
   ""
   [conn]
   (-> (handler-intern conn)
-      (wrap-json)
-      (wrap-exception)))
+      (wrap-interaction-name)
+      (wrap-observe-request-duration)))

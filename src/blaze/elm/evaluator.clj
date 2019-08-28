@@ -6,7 +6,7 @@
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic-spec.core :as ds]
-    [blaze.elm.compiler :as compiler]
+    [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [manifold.deferred :as md]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
@@ -34,7 +34,7 @@
   (md/future
     (log/debug "Evaluate expression:" name)
     (with-open [_ (prom/timer evaluation-seconds name)]
-      (compiler/-eval expression context nil))))
+      (-eval expression context nil nil))))
 
 
 (defn- evaluate-expression
@@ -66,9 +66,9 @@
   [name expression deps deferred-intermediate-results]
   (if (empty? deps)
     expression
-    (reify compiler/Expression
-      (-eval [_ context _]
-        (compiler/-eval expression (assoc context :library-context deferred-intermediate-results) nil)))))
+    (reify Expression
+      (-eval [_ context _ _]
+        (-eval expression (assoc context :library-context deferred-intermediate-results) nil nil)))))
 
 
 (defn- results
@@ -152,7 +152,7 @@
     {}
     (mapcat
       (fn [[name result]]
-        (when (= "Population" (get eval-contexts name))
+        (when (= "Unspecified" (get eval-contexts name))
           (when-let [type (get types name)]
             [[name {:result result
                     :type type

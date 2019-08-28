@@ -5,40 +5,43 @@
   again."
   (:require
     [aleph.http :as http]
+    [blaze.executors :as ex]
     [clojure.spec.alpha :as s]
-    [taoensso.timbre :as log])
+    [manifold.deferred :as md]
+    [ring.util.response :as ring])
   (:import
     [java.io Closeable]))
 
-
-
-;; ---- Specs -----------------------------------------------------------------
 
 (s/def ::port
   (s/and nat-int? #(<= % 65535)))
 
 
+(defn- wrap-server [handler server]
+  (fn [request]
+    (-> (handler request)
+        (md/chain' #(ring/header % "Server" server)))))
 
-;; ---- Functions -------------------------------------------------------------
 
 (s/fdef init!
-  :args (s/cat :port ::port :handler fn?))
+  :args (s/cat :port ::port :executor ex/executor? :handler fn?
+               :version string?))
 
 (defn init!
   "Creates a new HTTP server listening on `port` serving from `handler`.
 
   Call `shutdown!` on the returned server to stop listening and releasing its
   port."
-  [port handler]
-  (log/info "Start server on port" port)
-  (http/start-server handler {:port port}))
+  [port executor handler version]
+  (http/start-server
+    (wrap-server handler (str "Blaze/" version))
+    {:port port :executor executor}))
 
 
 (s/fdef shutdown!
   :args (s/cat :server #(instance? Closeable %)))
 
 (defn shutdown!
-  "Shuts the server down releasing its port."
+  "Shuts `server` down, releasing its port."
   [server]
-  (log/info "Stop server")
   (.close ^Closeable server))

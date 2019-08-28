@@ -19,10 +19,8 @@
     [blaze.elm.type-infer :as type-infer]
     [blaze.datomic.cql :as datomic-cql]
     [blaze.datomic.pull]
-    [blaze.datomic.schema :as schema]
     [blaze.datomic.util :as datomic-util]
     [blaze.spec]
-    [blaze.structure-definition :refer [read-structure-definitions read-other]]
     [blaze.system :as system]
     [prometheus.alpha :as prom]
     [spec-coerce.alpha :refer [coerce]])
@@ -67,35 +65,16 @@
 
 (comment
 
-  (d/create-database "datomic:mem://dev")
-  (d/create-database "datomic:free://localhost:4334/dev-7?password=foo")
-  (d/delete-database "datomic:mem://dev")
-  (d/delete-database "datomic:mem://dev")
-  (def conn (d/connect "datomic:mem://dev"))
-
-
-  @(d/transact conn (dts/schema))
-  @(d/transact conn (schema/structure-definition-schemas (read-structure-definitions "fhir/r4/structure-definitions")))
-
   (def conn (:database-conn system))
   (def db (d/db conn))
   (def hdb (d/history db))
-
-  (d/q
-    '[:find [?v ...]
-      :where
-      [? :Patient/id "0"]
-      [?e :version ?v ?tx true]]
-    (d/history (d/db conn)))
-
-
-
 
   (count-resources (d/db conn) "Coding")
   (count-resources (d/db conn) "Organization")
   (count-resources (d/db conn) "Patient")
   (count-resources (d/db conn) "Specimen")
   (count-resources (d/db conn) "Observation")
+
   (d/pull (d/db conn) '[*] 1262239348687945)
   (d/entity (d/db conn) [:Patient/id "0"])
   (d/q '[:find (pull ?e [*]) :where [?e :code/id]] (d/db conn))
@@ -110,7 +89,7 @@
   (def db (d/db conn))
   (def now (OffsetDateTime/now))
 
-  (def library (cql/translate (slurp "queries/time-based-2.cql")))
+  (def library (cql/translate (slurp "queries/q1-patient-gender.cql")))
 
   (-> library
       normalizer/normalize-library
@@ -141,4 +120,14 @@
   (prom/clear! datomic-cql/call-seconds)
   (println (:body (prom/dump-metrics)))
 
+  )
+
+;; Extract Codes from Code System
+(comment
+  (mapcat
+    (fn [{:strs [code concept]}]
+      (if concept
+        (cons code (map #(get % "code") concept))
+        [code]))
+    (cheshire.core/parse-string ""))
   )

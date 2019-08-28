@@ -3,8 +3,26 @@
   (:require
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
+    [blaze.deferred :as bd]
+    [blaze.terminology-service :refer [term-service?]]
     [clojure.spec.alpha :as s]
-    [datomic-spec.core :as ds]))
+    [datomic-spec.core :as ds]
+    [manifold.deferred :as md :refer [deferred?]]
+    [prometheus.alpha :as prom :refer [defhistogram]]
+    [reitit.core :as reitit]))
+
+
+(def ^:private router
+  (reitit/router
+    [["{type}" :type]
+     ["{type}/{id}" :resource]]
+    {:syntax :bracket}))
+
+
+(defn match-url [url]
+  (let [match (reitit/match-by-path router url)
+        {:keys [type id]} (:path-params match)]
+    [type id]))
 
 
 (defn- resolve-link
@@ -19,7 +37,7 @@
 
 (defn- resolve-single-element-links
   [{:keys [index] :as context}
-   {:db/keys [ident] :element/keys [type-code primitive? type]}
+   {:element/keys [type-code primitive? type]}
    value]
   (cond
     (= "Reference" type-code)
@@ -30,8 +48,8 @@
     primitive?
     value
 
-    (= "BackboneElement" type-code)
-    (resolve-links context ident value)
+    (= "Resource" type-code)
+    (resolve-links context (keyword (get value "resourceType")) value)
 
     :else
     (resolve-links context type value)))
@@ -45,16 +63,17 @@
 
 
 (defn- resolve-links
-  [{:keys [db] :as context} type-ident entity]
+  [{:keys [db] :as context} type-ident resource]
   (transduce
-    (comp
-      (map #(util/cached-entity db %)))
+    (map #(util/cached-entity db %))
     (completing
-      (fn [entity element]
-        (if-let [[value {:element/keys [json-key] :as element}] (tx/find-json-value db element entity)]
-          (assoc entity json-key (resolve-element-links context element value))
-          entity)))
-    entity
+      (fn [resource element]
+        (if-let [[value {:element/keys [json-key] :as element}]
+                 (tx/find-json-value db element resource)]
+          (assoc resource
+            json-key (resolve-element-links context element value))
+          resource)))
+    resource
     (:type/elements (util/cached-entity db type-ident))))
 
 
@@ -67,7 +86,9 @@
   (let [index (reduce (fn [r {url "fullUrl" :strs [resource]}] (assoc r url resource)) {} entries)]
     (mapv
       (fn [entry]
-        (update entry "resource" #(resolve-links {:db db :index index} (keyword (get % "resourceType")) %)))
+        (if-let [{type "resourceType" :as resource} (get entry "resource")]
+          (assoc entry "resource" (resolve-links {:db db :index index} (keyword type) resource))
+          entry))
       entries)))
 
 
@@ -89,7 +110,9 @@
   transaction bundle."
   [db entries]
   (transduce
-    (map #(entry-tempid db %))
+    (comp
+      (map #(entry-tempid db %))
+      (remove nil?))
     (completing
       (fn [tempids [type id tempid]]
         (assoc-in tempids [type id] tempid)))
@@ -97,22 +120,116 @@
     entries))
 
 
+(s/fdef annotate-codes
+  :args (s/cat :term-service term-service? :db ::ds/db :entries coll?)
+  :ret deferred?)
+
+(defn annotate-codes
+  [term-service db entries]
+  (transduce
+    (bd/map
+      (fn [{:strs [resource] :as entry}]
+        (if resource
+          (-> (tx/annotate-codes term-service db resource)
+              (md/chain' #(assoc entry "resource" %)))
+          entry)))
+    conj
+    entries))
+
+
 (defmulti entry-tx-data (fn [_ _ {{:strs [method]} "request"}] method))
 
 
 (defmethod entry-tx-data "POST"
-  [db tempids {:strs [resource]}]
-  (tx/resource-upsert db tempids 0 resource))
+  [db tempids {{type "resourceType" id "id" :as resource} "resource"}]
+  {:type (keyword type)
+   :tempid (get-in tempids [type id])
+   :total-increment 1
+   :version-increment 1
+   :tx-data (tx/resource-upsert db tempids :server-assigned-id resource)})
 
 
 (defmethod entry-tx-data "PUT"
-  [db tempids {:strs [resource]}]
-  (tx/resource-upsert db tempids -2 resource))
+  [db tempids {{type "resourceType" id "id" :as resource} "resource"}]
+  (let [tx-data (tx/resource-upsert db tempids :client-assigned-id resource)
+        tempid (get-in tempids [type id])]
+    (cond->
+      {:type (keyword type)
+       :total-increment (if tempid 1 0)
+       :version-increment (if (empty? tx-data) 0 1)
+       :tx-data tx-data}
+
+      (and tempid (not (empty? tx-data)))
+      (assoc :tempid tempid)
+
+      (and (nil? tempid) (not (empty? tx-data)))
+      (assoc :eid (:db/id (util/resource db type id))))))
 
 
 (defmethod entry-tx-data "DELETE"
-  [db _ {{type "resourceType" id "id"} "resource"}]
-  (tx/resource-deletion db type id))
+  [db _ {{:strs [url]} "request"}]
+  (let [[type id] (match-url url)
+        tx-data (tx/resource-deletion db type id)
+        resource (util/resource db type id)]
+    (cond->
+      {:type (keyword type)
+       :total-increment (if (empty? tx-data) 0 -1)
+       :version-increment (if (empty? tx-data) 0 1)
+       :tx-data tx-data}
+
+      (and resource (not (util/deleted? resource)))
+      (assoc :eid (:db/id resource)))))
+
+
+(s/fdef code-tx-data
+  :args (s/cat :db ::ds/db :entries coll?)
+  :ret ::ds/tx-data)
+
+(defn code-tx-data
+  "Returns transaction data for creating codes of all `entries` of a transaction
+  bundle."
+  [db entries]
+  (into [] (mapcat #(tx/resource-codes-creation db (get % "resource"))) entries))
+
+
+(defn- sum [key ms]
+  (reduce
+    (fn [sum m]
+      (+ sum (get m key)))
+    0
+    ms))
+
+
+(defn- system-and-type-tx-data [increments]
+  (-> (let [total (sum :total-increment increments)
+            version (sum :version-increment increments)]
+        (cond-> []
+          (not (zero? total)) (conj [:fn/increment-system-total total])
+          (pos? version) (conj [:fn/increment-system-version version])))
+      (into
+        (mapcat
+          (fn [[type increments]]
+            (let [total (sum :total-increment increments)
+                  version (sum :version-increment increments)]
+              (cond-> []
+                (not (zero? total)) (conj [:fn/increment-type-total type total])
+                (pos? version) (conj [:fn/increment-type-version type version])))))
+        (group-by :type increments))
+      (into
+        (mapcat
+          (fn [{:keys [tempid eid]}]
+            (cond
+              tempid [[:db/add "datomic.tx" :tx/resources tempid]]
+              eid [[:db/add "datomic.tx" :tx/resources eid]]
+              :else [])))
+        increments)))
+
+
+(defhistogram tx-data-duration-seconds
+  "FHIR bundle transaction data generating latencies in seconds."
+  {:namespace "fhir"
+   :subsystem "bundle"}
+  (take 12 (iterate #(* 2 %) 0.01)))
 
 
 (s/fdef tx-data
@@ -122,6 +239,10 @@
 (defn tx-data
   "Returns transaction data of all `entries` of a transaction bundle."
   [db entries]
-  (let [entries (resolve-entry-links db entries)
-        tempids (collect-tempids db entries)]
-    (into [] (mapcat #(entry-tx-data db tempids %)) entries)))
+  (with-open [_ (prom/timer tx-data-duration-seconds)]
+    (let [entries (resolve-entry-links db entries)
+          tempids (collect-tempids db entries)
+          tx-data-and-increments (mapv #(entry-tx-data db tempids %) entries)]
+      (into
+        (system-and-type-tx-data tx-data-and-increments)
+        (mapcat :tx-data) tx-data-and-increments))))

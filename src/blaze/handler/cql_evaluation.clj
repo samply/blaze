@@ -15,7 +15,6 @@
     [blaze.elm.evaluator :as evaluator]
     [blaze.elm.util :as elm-util]
     [blaze.middleware.cors :refer [wrap-cors]]
-    [blaze.middleware.exception :refer [wrap-exception]]
     [blaze.middleware.json :refer [wrap-json]]
     [manifold.deferred :as md]
     [ring.util.response :as ring]
@@ -84,7 +83,7 @@
                   (fn [[name result]]
                     (if (instance? Exception result)
                       [{:name name
-                        :error (.getMessage ^Exception result)
+                        :error (ex-message result)
                         :location "[?:?]"}]
                       (if-let [bundle (bundle result)]
                         [(assoc bundle :name name)]
@@ -101,7 +100,7 @@
                           (name (::anom/category e)))
 
                       (instance? Exception e)
-                      (.getMessage ^Exception e)
+                      (ex-message e)
 
                       :else
                       "Unknown error")}])))))
@@ -120,6 +119,5 @@
   Ring handler."
   [conn cache]
   (-> (handler-intern conn cache)
-      (wrap-exception)
       (wrap-json)
       (wrap-cors)))

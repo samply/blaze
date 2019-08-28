@@ -3,14 +3,11 @@
     [blaze.datomic.pull :refer :all]
     [blaze.datomic.quantity :refer [quantity]]
     [blaze.datomic.test-util :refer :all]
-    [blaze.datomic.schema :as schema]
     [blaze.datomic.value :as value]
-    [blaze.structure-definition :refer [read-structure-definitions]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic.api :as d]
     [datomic-spec.test :as dst]
-    [datomic-tools.schema :as dts]
     [juxt.iota :refer [given]])
   (:import
     [java.time Year LocalDateTime]
@@ -21,19 +18,7 @@
 (dst/instrument)
 
 
-(def structure-definitions (read-structure-definitions "fhir/r4/structure-definitions"))
-
-
-(defn- connect []
-  (d/delete-database "datomic:mem://datomic.pull-test")
-  (d/create-database "datomic:mem://datomic.pull-test")
-  (let [conn (d/connect "datomic:mem://datomic.pull-test")]
-    @(d/transact conn (dts/schema))
-    @(d/transact conn (schema/structure-definition-schemas structure-definitions))
-    conn))
-
-
-(def db (d/db (connect)))
+(defonce db (d/db (st/with-instrument-disabled (connect))))
 
 
 (defn- b64-decode [s]
@@ -47,7 +32,7 @@
       (given (pull-resource db "Patient" "0")
         ;; this is the t of the last transaction. it could change if the
         ;; transactions before change
-        ["meta" "versionId"] := "9842")))
+        ["meta" "versionId"] := "9838")))
 
   (testing "meta.lastUpdated"
     (let [[db] (with-resource db "Patient" "0")]
@@ -68,7 +53,7 @@
       (let [[db id] (with-gender-code db "male")
             [db] (with-resource db "Patient" "0" :Patient/gender id)]
         (given (pull-resource db "Patient" "0")
-          "gender" := "male")))
+          "gender" := 'male)))
 
     (testing "with date type"
       (let [[db] (with-resource db "Patient" "0" :Patient/birthDate

@@ -1,44 +1,68 @@
 (ns blaze.handler.app-test
   (:require
-    [blaze.handler.app :refer [handler-intern]]
+    [blaze.handler.app :refer [handler router]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer :all]))
+    [clojure.test :refer :all]
+    [juxt.iota :refer [given]]
+    [manifold.deferred :as md]
+    [reitit.ring :as reitit-ring]
+    [taoensso.timbre :as log]))
 
 
-(st/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :handlers map?))}})
+  (log/with-merged-config {:level :fatal} (f))
+  (st/unstrument))
 
 
-(def handlers
-  {:handler/cql-evaluation (constantly ::cql-evaluation-handler)
-   :handler/health (constantly ::health-handler)
-   :handler.fhir/capabilities (constantly ::fhir-capabilities-handler)
-   :handler.fhir/create (constantly ::fhir-create-handler)
-   :handler.fhir/delete (constantly ::fhir-delete-handler)
-   :handler.fhir/history (constantly ::fhir-history-handler)
-   :handler.fhir/read (constantly ::fhir-read-handler)
-   :handler.fhir/search (constantly ::fhir-search-handler)
-   :handler.fhir/transaction (constantly ::fhir-transaction-handler)
-   :handler.fhir/update (constantly ::fhir-update-handler)})
+(use-fixtures :each fixture)
 
 
-(defn app-handler [uri request-method]
-  ((handler-intern handlers) {:request-method request-method :uri uri}))
+(def ^:private handlers
+  {:handler/cql-evaluation (fn [_] ::cql-evaluation-handler)
+   :handler/health (fn [_] ::health-handler)
+   :handler.fhir/core (fn [_] ::fhir-core-handler)})
 
 
-(deftest handler-test
-  (testing "Routing"
-    (are [uri request-method handler] (= (app-handler uri request-method) handler)
-      "/cql/evaluate" :options ::cql-evaluation-handler
-      "/cql/evaluate" :post ::cql-evaluation-handler
-      "/health" :head ::health-handler
-      "/health" :get ::health-handler
-      "/fhir" :post ::fhir-transaction-handler
-      "/fhir/" :post ::fhir-transaction-handler
-      "/fhir/metadata" :get ::fhir-capabilities-handler
-      "/fhir/Patient" :get ::fhir-search-handler
-      "/fhir/Patient" :post ::fhir-create-handler
-      "/fhir/Patient/0" :get ::fhir-read-handler
-      "/fhir/Patient/0" :put ::fhir-update-handler
-      "/fhir/Patient/0" :delete ::fhir-delete-handler
-      "/fhir/Patient/0/_history" :get ::fhir-history-handler
-      "/fhir/Patient/0/_history/42" :get ::fhir-read-handler)))
+(def ^:private test-handler
+  (reitit-ring/ring-handler (router handlers)))
+
+
+(defn- match [path request-method]
+  (let [response (test-handler {:request-method request-method :uri path})]
+    (if (md/deferred? response)
+      @response
+      response)))
+
+
+(deftest router-test
+  (are [path request-method handler] (= handler (match path request-method))
+    "/cql/evaluate" :options ::cql-evaluation-handler
+    "/cql/evaluate" :post ::cql-evaluation-handler
+    "/fhir" :get ::fhir-core-handler
+    "/fhir/" :get ::fhir-core-handler
+    "/fhir/foo" :get ::fhir-core-handler
+    "/fhir" :post ::fhir-core-handler
+    "/fhir" :put ::fhir-core-handler
+    "/fhir" :delete ::fhir-core-handler))
+
+
+(def ^:private handlers-throwing
+  (assoc handlers :handler.fhir/core (fn [_] (throw (Exception. "")))))
+
+
+(deftest exception-test
+  (testing "Exceptions from handlers are converted to OperationOutcomes."
+    (given @((handler handlers-throwing)
+             {:uri "/fhir"
+              :request-method :get})
+      :status := 500
+      [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+      :body :# #".*OperationOutcome.*")))

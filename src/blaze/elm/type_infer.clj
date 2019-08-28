@@ -353,6 +353,10 @@
     (assoc :highClosedExpression (infer-types context high-closed-expression))))
 
 
+;; 19.5. Contains
+(derive :elm/contains :elm/multiary-expression)
+
+
 
 ;; 20. List Operators
 
@@ -385,6 +389,10 @@
 
 ;; 22.22. ToDateTime
 (derive :elm/to-date-time :elm/unary-expression)
+
+
+;; 22.25. ToList
+(derive :elm/to-list :elm/unary-expression)
 
 
 ;; 22.26. ToQuantity

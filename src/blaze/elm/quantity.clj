@@ -26,7 +26,7 @@
     (.parse ucum-format unit)
     (catch Throwable t
       (throw (ex-info (str "Problem while parsing the unit `" unit "`.")
-                      {:unit unit :cause-msg (.getMessage t)})))))
+                      {:unit unit :cause-msg (ex-message t)})))))
 
 
 (defn quantity? [x]

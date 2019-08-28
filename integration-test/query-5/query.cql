@@ -10,11 +10,11 @@ code "Thrombotische Mikroangiopathie": 'M31.1' from "ICD-10-GM:2019"
 context Patient
 
 define Qualifies:
-  Exists([Condition: "Weichteilsarkom"]) or
-  Exists([Condition: "Speicheldrüsenkrebs"]) or
-  Exists([Condition: "Thrombotische Mikroangiopathie"])
+  exists([Condition: "Weichteilsarkom"]) or
+  exists([Condition: "Speicheldrüsenkrebs"]) or
+  exists([Condition: "Thrombotische Mikroangiopathie"])
 
-context Population
+context Unspecified
 
 define NumberOfPatients:
   Count(Qualifies Q where Q return all Q)

@@ -1,10 +1,14 @@
 (ns blaze.structure-definition
   (:require
-    [cheshire.core :as json]))
+    [cheshire.core :as json]
+    [clojure.java.io :as io]))
 
 
-(defn- read-bundle [file]
-  (json/parse-string (slurp file) keyword))
+(defn- read-bundle
+  "Reads a bundle from classpath named `resource-name`."
+  [resource-name]
+  (with-open [rdr (io/reader (io/resource resource-name))]
+    (json/parse-stream rdr keyword)))
 
 
 (defn- extract [kind bundle]
@@ -16,16 +20,11 @@
     (:entry bundle)))
 
 
-(defn read-structure-definitions [dir]
-  (into
-    (extract "complex-type" (read-bundle (str dir "/profiles-types.json")))
-    (extract "resource" (read-bundle (str dir "/profiles-resources.json")))))
-
-
-(defn read-other [dir file]
-  (into
-    []
-    (comp
-      (map #(get % "resource"))
-      (map #(dissoc % "text")))
-    (get (json/parse-string (slurp (str dir "/" file))) "entry")))
+(defn read-structure-definitions []
+  (let [package "blaze/fhir/r4/structure-definitions"]
+    (into
+      (extract "complex-type" (read-bundle (str package "/profiles-types.json")))
+      (into
+        []
+        (remove #(= "Parameters" (:name %)))
+        (extract "resource" (read-bundle (str package "/profiles-resources.json")))))))

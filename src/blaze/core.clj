@@ -25,9 +25,9 @@
       (log/error
         (cond->
           {:ex-data (ex-data e)
-           :msg (.getMessage e)}
-          (.getCause e)
-          (assoc :cause-msg (.getMessage (.getCause e)))))
+           :msg (ex-message e)}
+          (ex-cause e)
+          (assoc :cause-msg (ex-message (ex-cause e)))))
       (System/exit 1))))
 
 
@@ -47,7 +47,7 @@
       (do
         (init-system! coerced-config)
         (log/info "JVM version:" (System/getProperty "java.version"))
-        (log/info "Maximum available memory:" (max-memory))
+        (log/info "Maximum available memory:" (max-memory) "MiB")
         (log/info "Number of available processors:" (available-processors)))
       (log/error (phrase-first nil :system/config config)))))
 

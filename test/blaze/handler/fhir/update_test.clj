@@ -5,39 +5,40 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.test-util :as test-util]
-    [blaze.handler.fhir.update :refer [handler-intern]]
+    [blaze.handler.fhir.update :refer [handler]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
     [datomic-spec.test :as dst]
-    [manifold.deferred :as md]))
-
-
-(st/instrument)
-(dst/instrument)
+    [manifold.deferred :as md]
+    [reitit.core :as reitit]
+    [taoensso.timbre :as log]))
 
 
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
-  (test-util/stub-db ::conn ::db-before)
-  (f)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :conn #{::conn} :term-service #{::term-service}))}})
+  (datomic-test-util/stub-db ::conn ::db-before)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
 (use-fixtures :each fixture)
 
 
-(def base-uri "http://localhost:8080")
-
-
 (deftest handler-test
   (testing "Returns Error on type mismatch"
-    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
-             {:route-params {:type "Patient" :id "0"}
+          @((handler ::conn ::term-service)
+             {:path-params {:type "Patient" :id "0"}
               :body {"resourceType" "Observation"}})]
 
       (is (= 400 status))
@@ -54,11 +55,9 @@
 
 
   (testing "Returns Error on ID mismatch"
-    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
-             {:route-params {:type "Patient" :id "0"}
+          @((handler ::conn ::term-service)
+             {:path-params {:type "Patient" :id "0"}
               :body {"resourceType" "Patient" "id" "1"}})]
 
       (is (= 400 status))
@@ -76,19 +75,22 @@
 
   (testing "On newly created resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
       (test-util/stub-upsert-resource
-        ::conn ::db-before -2 resource
+        ::conn ::term-service ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
-      (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
-      (test-util/stub-basis-t ::db-after "42")
+      (datomic-test-util/stub-basis-transaction
+        ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+      (datomic-test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
+      (datomic-test-util/stub-basis-t ::db-after 42)
+      (test-util/stub-versioned-instance-url
+        ::router "Patient" "0" "42" "location")
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler ::conn ::term-service)
+                {::reitit/router ::router
+                 :path-params {:type "Patient" :id "0"}
                   :body resource})]
 
           (testing "Returns 201"
@@ -102,15 +104,16 @@
             (is (= "W/\"42\"" (get headers "ETag"))))
 
           (testing "Location header"
-            (is (= "http://localhost:8080/fhir/Patient/0" (get headers "Location"))))
+            (is (= "location" (get headers "Location"))))
 
           (testing "Contains the resource as body"
             (is (= ::resource-after body)))))
 
       (testing "with return=minimal Prefer header"
         (let [{:keys [body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler ::conn ::term-service)
+                {::reitit/router ::router
+                 :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=minimal"}
                   :body resource})]
 
@@ -119,8 +122,9 @@
 
       (testing "with return=representation Prefer header"
         (let [{:keys [body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler ::conn ::term-service)
+                {::reitit/router ::router
+                 :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=representation"}
                   :body resource})]
 
@@ -129,8 +133,9 @@
 
       (testing "with return=OperationOutcome Prefer header"
         (let [{:keys [body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler ::conn ::term-service)
+                {::reitit/router ::router
+                 :path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=OperationOutcome"}
                   :body resource})]
 
@@ -140,19 +145,19 @@
 
   (testing "On successful update of an existing resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
       (test-util/stub-upsert-resource
-        ::conn ::db-before -2 resource
+        ::conn ::term-service ::db-before :client-assigned-id resource
         (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
-      (test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
-      (test-util/stub-basis-t ::db-after "42")
+      (datomic-test-util/stub-basis-transaction
+        ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+      (datomic-test-util/stub-pull-resource ::db-after "Patient" "0" #{::resource-after})
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
       (testing "with no Prefer header"
         (let [{:keys [status headers body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler ::conn ::term-service)
+                 {:path-params {:type "Patient" :id "0"}
                   :body resource})]
 
           (testing "Returns 200"
@@ -170,8 +175,8 @@
 
       (testing "with return=minimal Prefer header"
         (let [{:keys [status body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler ::conn ::term-service)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=minimal"}
                   :body resource})]
 
@@ -183,8 +188,8 @@
 
       (testing "with return=representation Prefer header"
         (let [{:keys [status body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler ::conn ::term-service)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=representation"}
                   :body resource})]
 
@@ -196,8 +201,8 @@
 
       (testing "with return=OperationOutcome Prefer header"
         (let [{:keys [status body]}
-              @((handler-intern base-uri ::conn)
-                 {:route-params {:type "Patient" :id "0"}
+              @((handler ::conn ::term-service)
+                 {:path-params {:type "Patient" :id "0"}
                   :headers {"prefer" "return=OperationOutcome"}
                   :body resource})]
 

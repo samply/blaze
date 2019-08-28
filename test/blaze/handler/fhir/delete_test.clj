@@ -3,27 +3,28 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.transaction :as tx]
-    [blaze.datomic.util :as util]
-    [blaze.handler.fhir.delete :refer [handler-intern]]
-    [blaze.handler.fhir.test-util :as test-util]
+    [blaze.datomic.test-util :as datomic-test-util]
+    [blaze.handler.fhir.test-util :as fhir-test-util]
+    [blaze.handler.fhir.delete :refer [handler]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
-    [datomic.api :as d]
-    [datomic-spec.test :as dst]))
-
-
-(st/instrument)
-(dst/instrument)
+    [datomic-spec.test :as dst]
+    [manifold.deferred :as md]
+    [taoensso.timbre :as log]))
 
 
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
-  (test-util/stub-db ::conn ::db)
-  (f)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :conn #{::conn}))}})
+  (datomic-test-util/stub-db ::conn ::db)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
@@ -31,12 +32,12 @@
 
 
 (deftest handler-test
-  (testing "Returns Not Found on Non-Existing Resource Type"
-    (test-util/stub-cached-entity ::db #{:Patient} nil?)
+  (testing "Returns Not Found on non-existing resource"
+    (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
 
     (let [{:keys [status body]}
-          ((handler-intern ::conn)
-            {:route-params {:type "Patient" :id "0"}})]
+          @((handler ::conn)
+            {:path-params {:type "Patient" :id "0"}})]
 
       (is (= 404 status))
 
@@ -47,42 +48,41 @@
       (is (= "not-found" (-> body :issue first :code)))))
 
 
-  (testing "Returns Not Found on Non-Existing Resource"
-    (test-util/stub-cached-entity ::db #{:Patient} some?)
-    (test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
-
-    (let [{:keys [status body]}
-          ((handler-intern ::conn)
-            {:route-params {:type "Patient" :id "0"}})]
-
-      (is (= 404 status))
-
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
-
-
-  (testing "Returns No Content on Successful Deletion"
-    (test-util/stub-cached-entity ::db #{:Patient} some?)
-    (test-util/stub-resource ::db #{"Patient"} #{"0"} #{::patient})
-    (st/instrument
-      [`tx/resource-deletion]
-      {:spec
-       {`tx/resource-deletion
-        (s/fspec
-          :args (s/cat :db #{::db} :type #{"Patient"} :id #{"0"})
-          :ret #{::tx-data})}
-       :stub
-       #{`tx/resource-deletion}})
-    (test-util/stub-basis-transaction ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
-    (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
-    (test-util/stub-basis-t ::db-after "42")
+  (testing "Returns No Content on successful deletion"
+    (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} #{::patient})
+    (fhir-test-util/stub-delete-resource
+      ::conn ::db "Patient" "0" (md/success-deferred {:db-after ::db-after}))
+    (datomic-test-util/stub-basis-transaction
+      ::db-after {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+    (datomic-test-util/stub-basis-t ::db-after 42)
 
     (let [{:keys [status headers body]}
-          @((handler-intern ::conn)
-             {:route-params {:type "Patient" :id "0"}})]
+          @((handler ::conn)
+             {:path-params {:type "Patient" :id "0"}})]
+
+      (is (= 204 status))
+
+      (testing "Transaction time in Last-Modified header"
+        (is (= "Tue, 14 May 2019 13:58:20 GMT" (get headers "Last-Modified"))))
+
+      (testing "Version in ETag header"
+        ;; 42 is the T of the transaction of the resource update
+        (is (= "W/\"42\"" (get headers "ETag"))))
+
+      (is (nil? body))))
+
+
+  (testing "Returns No Content on already deleted resource"
+    (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} #{::patient})
+    (fhir-test-util/stub-delete-resource
+      ::conn ::db "Patient" "0" (md/success-deferred {:db-after ::db}))
+    (datomic-test-util/stub-basis-transaction
+      ::db {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
+    (datomic-test-util/stub-basis-t ::db 42)
+
+    (let [{:keys [status headers body]}
+          @((handler ::conn)
+             {:path-params {:type "Patient" :id "0"}})]
 
       (is (= 204 status))
 

@@ -6,35 +6,46 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.bundle :as bundle]
+    [blaze.bundle-test :as bundle-test]
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.datomic.util :as util]
-    [blaze.handler.fhir.test-util :as test-util]
-    [blaze.handler.fhir.transaction :refer [handler-intern]]
+    [blaze.executors :as ex]
+    [blaze.handler.fhir.util :as fhir-util]
+    [blaze.handler.fhir.test-util :as fhir-test-util]
+    [blaze.handler.fhir.transaction :refer [handler]]
+    [blaze.handler.test-util :as test-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]
-    [datomic.api :as d]
     [datomic-spec.test :as dst]
-    [manifold.deferred :as md])
+    [manifold.deferred :as md]
+    [reitit.core :as reitit]
+    [ring.util.response :as ring]
+    [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
-
-
-(st/instrument)
-(dst/instrument)
 
 
 (defn fixture [f]
   (st/instrument)
   (dst/instrument)
-  (test-util/stub-db ::conn ::db-before)
-  (f)
+  (st/instrument
+    [`handler]
+    {:spec
+     {`handler
+      (s/fspec
+        :args (s/cat :conn #{::conn}
+                     :term-service #{::term-service}
+                     :executor ex/executor?))}})
+  (datomic-test-util/stub-db ::conn ::db-before)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
 (use-fixtures :each fixture)
 
 
-(def base-uri "http://localhost:8080")
+(defonce executor (ex/single-thread-executor))
 
 
 (defn- stub-tx-instant [transaction instant]
@@ -49,6 +60,18 @@
      #{`util/tx-instant}}))
 
 
+(defn- stub-code-tx-data [db entries-spec result]
+  (st/instrument
+    [`bundle/code-tx-data]
+    {:spec
+     {`bundle/code-tx-data
+      (s/fspec
+        :args (s/cat :db #{db} :entries entries-spec)
+        :ret #{result})}
+     :stub
+     #{`bundle/code-tx-data}}))
+
+
 (defn- stub-tx-data [db entries-spec result]
   (st/instrument
     [`bundle/tx-data]
@@ -61,32 +84,24 @@
      #{`bundle/tx-data}}))
 
 
-(defn- stub-squuid [id]
-  (st/instrument
-    [`d/squuid]
-    {:spec
-     {`d/squuid
-      (s/fspec
-        :args (s/cat)
-        :ret #{id})}
-     :stub
-     #{`d/squuid}}))
+(defn- given-types-available [& types]
+  (datomic-test-util/stub-cached-entity
+    ::db-before (into #{} (map keyword) types) some?))
 
 
 (deftest handler-test
   (testing "Returns Error on unknown type"
-    (test-util/stub-cached-entity ::db-before #{:Foo} nil?)
+    (datomic-test-util/stub-cached-entity ::db-before #{:Foo} nil?)
 
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
-             {:body
-              {"resourceType" "Bundle"
-               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-               "type" "transaction"
-               "entry"
-               [{"request"
-                 {"method" "PUT"
-                  "url" "Foo/0"}}]}})]
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"request"
+                {"method" "PUT"
+                 "url" "Foo/0"}}]}})]
 
       (is (= 400 status))
 
@@ -98,20 +113,19 @@
 
 
   (testing "Returns Error on type mismatch of a update"
-    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
+    (given-types-available "Patient")
 
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
-             {:body
-              {"resourceType" "Bundle"
-               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-               "type" "transaction"
-               "entry"
-               [{"resource"
-                 {"resourceType" "Observation"}
-                 "request"
-                 {"method" "PUT"
-                  "url" "Patient/0"}}]}})]
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"resource"
+                {"resourceType" "Observation"}
+                "request"
+                {"method" "PUT"
+                 "url" "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -127,21 +141,20 @@
 
 
   (testing "Returns Error on ID mismatch of a update"
-    (test-util/stub-cached-entity ::db-before #{:Patient} some?)
+    (given-types-available "Patient")
 
     (let [{:keys [status body]}
-          @((handler-intern base-uri ::conn)
-             {:body
-              {"resourceType" "Bundle"
-               "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-               "type" "transaction"
-               "entry"
-               [{"resource"
-                 {"resourceType" "Patient"
-                  "id" "1"}
-                 "request"
-                 {"method" "PUT"
-                  "url" "Patient/0"}}]}})]
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"resource"
+                {"resourceType" "Patient"
+                 "id" "1"}
+                "request"
+                {"method" "PUT"
+                 "url" "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -156,50 +169,6 @@
              (-> body :issue first :details :coding first :code)))))
 
 
-  (testing "On newly created resource of a update in batch"
-    (let [resource
-          {"resourceType" "Patient"
-           "id" "0"}]
-
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
-      (test-util/stub-upsert-resource
-        ::conn ::db-before -2 resource
-        (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after ::transaction)
-      (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
-
-      (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                 "type" "batch"
-                 "entry"
-                 [{"resource"
-                   resource
-                   "request"
-                   {"method" "PUT"
-                    "url" "Patient/0"}}]}})]
-
-        (is (= 200 status))
-
-        (is (= "Bundle" (:resourceType body)))
-
-        (is (= "batch-response" (:type body)))
-
-        (is (= "201" (-> body :entry first :response :status)))
-
-        (is (= "http://localhost:8080/fhir/Patient/0/_history/42"
-               (-> body :entry first :response :location)))
-
-        (is (= "W/\"42\"" (-> body :entry first :response :etag)))
-
-        (is (= "1970-01-01T00:00:00Z"
-               (-> body :entry first :response :lastModified))))))
-
-
   (testing "On newly created resource of a update in transaction"
     (let [resource
           {"resourceType" "Patient"
@@ -211,21 +180,24 @@
             {"method" "PUT"
              "url" "Patient/0"}}]]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
-      (stub-tx-data ::db-before #{entries} ::tx-data)
-      (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (given-types-available "Patient")
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} nil?)
+      (bundle-test/stub-annotate-codes ::term-service ::db-before)
+      (stub-code-tx-data ::db-before coll? [])
+      (stub-tx-data ::db-before coll? ::tx-data)
+      (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (datomic-test-util/stub-basis-t ::db-after 42)
+      (fhir-test-util/stub-versioned-instance-url ::router "Patient" "0" "42" ::location)
 
       (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                 "type" "transaction"
-                 "entry" entries}})]
+            @((handler ::conn ::term-service executor)
+              {::reitit/router ::router
+               :body
+               {"resourceType" "Bundle"
+                "type" "transaction"
+                "entry" entries}})]
 
         (is (= 200 status))
 
@@ -235,48 +207,7 @@
 
         (is (= "201" (-> body :entry first :response :status)))
 
-        (is (= "http://localhost:8080/fhir/Patient/0/_history/42"
-               (-> body :entry first :response :location)))
-
-        (is (= "W/\"42\"" (-> body :entry first :response :etag)))
-
-        (is (= "1970-01-01T00:00:00Z"
-               (-> body :entry first :response :lastModified))))))
-
-  (testing "On updated resource in batch"
-    (let [resource
-          {"resourceType" "Patient"
-           "id" "0"}]
-
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
-      (test-util/stub-upsert-resource
-        ::conn ::db-before -2 resource
-        (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after ::transaction)
-      (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
-
-      (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                 "type" "batch"
-                 "entry"
-                 [{"resource"
-                   resource
-                   "request"
-                   {"method" "PUT"
-                    "url" "Patient/0"}}]}})]
-
-        (is (= 200 status))
-
-        (is (= "Bundle" (:resourceType body)))
-
-        (is (= "batch-response" (:type body)))
-
-        (is (= "200" (-> body :entry first :response :status)))
+        (is (= ::location (-> body :entry first :response :location)))
 
         (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 
@@ -296,79 +227,40 @@
              "url" "Patient/0"}
             :blaze/old-resource ::old-patient}]]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (test-util/stub-resource ::db-before #{"Patient"} #{"0"} #{::old-patient})
-      (stub-tx-data ::db-before #{entries} ::tx-data)
-      (test-util/stub-transact-async
+      (given-types-available "Patient")
+      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} #{::old-patient})
+      (bundle-test/stub-annotate-codes ::term-service ::db-before)
+      (stub-code-tx-data ::db-before coll? [])
+      (stub-tx-data ::db-before coll? ::tx-data)
+      (datomic-test-util/stub-transact-async
         ::conn ::tx-data (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (datomic-test-util/stub-basis-t ::db-after 42)
 
-      (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "01a674d5-2a05-43a7-9ed4-b4bd7c676621"
-                 "type" "transaction"
-                 "entry" entries}})]
+      (testing "with no Prefer header"
+        (let [{:keys [status body]}
+              @((handler ::conn ::term-service executor)
+                {:body
+                 {"resourceType" "Bundle"
+                  "type" "transaction"
+                  "entry" entries}})]
 
-        (is (= 200 status))
+          (is (= 200 status))
 
-        (is (= "Bundle" (:resourceType body)))
+          (is (= "Bundle" (:resourceType body)))
 
-        (is (= "transaction-response" (:type body)))
+          (is (= "transaction-response" (:type body)))
 
-        (is (= "200" (-> body :entry first :response :status)))
+          (is (= "200" (-> body :entry first :response :status)))
 
-        (is (= "W/\"42\"" (-> body :entry first :response :etag)))
+          (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 
-        (is (= "1970-01-01T00:00:00Z"
-               (-> body :entry first :response :lastModified))))))
+          (is (= "1970-01-01T00:00:00Z"
+                 (-> body :entry first :response :lastModified)))
 
-
-  (testing "On create in batch"
-    (let [resource {"resourceType" "Patient"}
-          id #uuid "7973d432-d948-43e8-874e-3f29cf26548e"]
-
-      (test-util/stub-cached-entity ::db-before #{:Patient} some?)
-      (stub-squuid id)
-      (test-util/stub-upsert-resource
-        ::conn ::db-before 0 (assoc resource "id" (str id))
-        (md/success-deferred {:db-after ::db-after}))
-      (test-util/stub-resource ::db-after #{"Patient"} #{(str id)} #{{:version 0}})
-      (test-util/stub-basis-transaction ::db-after ::transaction)
-      (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
-
-      (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
-                 "type" "batch"
-                 "entry"
-                 [{"resource"
-                   resource
-                   "request"
-                   {"method" "POST"
-                    "url" "Patient"}}]}})]
-
-        (is (= 200 status))
-
-        (is (= "Bundle" (:resourceType body)))
-
-        (is (= "batch-response" (:type body)))
-
-        (is (= "201" (-> body :entry first :response :status)))
-
-        (is (= (str "http://localhost:8080/fhir/Patient/" id "/_history/42")
-               (-> body :entry first :response :location)))
-
-        (is (= "W/\"42\"" (-> body :entry first :response :etag)))
-
-        (is (= "1970-01-01T00:00:00Z"
-               (-> body :entry first :response :lastModified))))))
+          (testing "there is no resource embedded in the entry"
+            (is (nil? (-> body :entry first :resource))))))))
 
 
   (testing "On create in transaction with references"
@@ -386,28 +278,39 @@
             {"resourceType" "Patient"}
             "request"
             {"method" "POST"
-             "url" "Patient"}}]
-          prepared-entries
-          (-> entries
-              (assoc-in [0 "resource" "id"] (str id))
-              (assoc-in [1 "resource" "id"] (str id)))]
+             "url" "Patient"}}]]
 
-      (test-util/stub-cached-entity ::db-before #{:Patient :Observation} some?)
-      (stub-squuid id)
-      (stub-tx-data ::db-before #{prepared-entries} ::tx-data)
-      (test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
-      (test-util/stub-resource ::db-after #{"Patient" "Observation"} #{(str id)} #{{:version 0}})
-      (test-util/stub-basis-transaction ::db-after ::transaction)
+      (given-types-available "Patient" "Observation")
+      (datomic-test-util/stub-squuid id)
+      (bundle-test/stub-annotate-codes ::term-service ::db-before)
+      (stub-code-tx-data ::db-before coll? [])
+      (stub-tx-data ::db-before coll? ::tx-data)
+      (datomic-test-util/stub-transact-async ::conn ::tx-data {:db-after ::db-after})
+      (datomic-test-util/stub-resource
+        ::db-after #{"Patient" "Observation"} #{(str id)} #{{:instance/version 0}})
+      (datomic-test-util/stub-basis-transaction ::db-after ::transaction)
       (stub-tx-instant ::transaction (Instant/ofEpochMilli 0))
-      (test-util/stub-basis-t ::db-after "42")
+      (datomic-test-util/stub-basis-t ::db-after 42)
+      (fhir-test-util/stub-versioned-instance-url ::router "Patient" (str id) "42" ::location)
+      (st/instrument
+        [`fhir-util/versioned-instance-url]
+        {:spec
+         {`fhir-util/versioned-instance-url
+          (s/fspec
+            :args (s/cat :router #{::router} :type string? :id string?
+                         :vid string?))}
+         :replace
+         {`fhir-util/versioned-instance-url
+          (fn [_ type _ _]
+            (keyword "location" type))}})
 
       (let [{:keys [status body]}
-            @((handler-intern base-uri ::conn)
-               {:body
-                {"resourceType" "Bundle"
-                 "id" "37984866-e704-4a00-b215-ebd2c9b7e465"
-                 "type" "transaction"
-                 "entry" entries}})]
+            @((handler ::conn ::term-service executor)
+              {::reitit/router ::router
+               :body
+               {"resourceType" "Bundle"
+                "type" "transaction"
+                "entry" entries}})]
 
         (is (= 200 status))
 
@@ -419,11 +322,9 @@
 
         (is (= "201" (-> body :entry second :response :status)))
 
-        (is (= (str "http://localhost:8080/fhir/Observation/" id "/_history/42")
-               (-> body :entry first :response :location)))
+        (is (= :location/Observation (-> body :entry first :response :location)))
 
-        (is (= (str "http://localhost:8080/fhir/Patient/" id "/_history/42")
-               (-> body :entry second :response :location)))
+        (is (= :location/Patient (-> body :entry second :response :location)))
 
         (is (= "W/\"42\"" (-> body :entry first :response :etag)))
 
@@ -434,3 +335,221 @@
 
         (is (= "1970-01-01T00:00:00Z"
                (-> body :entry second :response :lastModified)))))))
+
+
+(deftest handler-batch-create-test
+  (given-types-available "Patient")
+
+  (testing "Successful"
+    (let [handler
+          (fn [{:keys [body]}]
+            (is (= {"resourceType" "Patient"} body))
+            (md/success-deferred
+              (-> (ring/created "location" ::response-body)
+                  (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
+                  (ring/header "ETag" "etag"))))]
+      (test-util/stub-match-by-path
+        ::router "Patient" {:result {:post {:handler handler}}}))
+
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {::reitit/router ::router
+             :body
+             {"resourceType" "Bundle"
+              "type" "batch"
+              "entry"
+              [{"resource"
+                {"resourceType" "Patient"}
+                "request"
+                {"method" "POST"
+                 "url" "Patient"}}]}})]
+
+      (is (= 200 status))
+
+      (is (= "Bundle" (:resourceType body)))
+
+      (is (= "batch-response" (:type body)))
+
+      (is (= "201" (-> body :entry first :response :status)))
+
+      (is (= "location" (-> body :entry first :response :location)))
+
+      (is (= "etag" (-> body :entry first :response :etag)))
+
+      (is (= "2019-06-24T09:54:26Z" (-> body :entry first :response :lastModified)))
+
+      (is (= ::response-body (-> body :entry first :resource)))))
+
+  (testing "Failing"
+    (let [handler
+          (fn [_]
+            (md/success-deferred
+              (ring/bad-request ::operation-outcome)))]
+      (test-util/stub-match-by-path
+        ::router "Patient" {:result {:post {:handler handler}}}))
+
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {::reitit/router ::router
+             :body
+             {"resourceType" "Bundle"
+              "type" "batch"
+              "entry"
+              [{"resource"
+                {"resourceType" "Patient"}
+                "request"
+                {"method" "POST"
+                 "url" "Patient"}}]}})]
+
+      (is (= 200 status))
+
+      (is (= "Bundle" (:resourceType body)))
+
+      (is (= "batch-response" (:type body)))
+
+      (is (= "400" (-> body :entry first :response :status)))
+
+      (is (= ::operation-outcome (-> body :entry first :response :outcome))))))
+
+
+(deftest handler-batch-read-test
+  (given-types-available "Patient")
+
+  (testing "Successful"
+    (let [handler
+          (fn [_]
+            (md/success-deferred
+              (-> (ring/response ::response-body)
+                  (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
+                  (ring/header "ETag" "etag"))))]
+      (test-util/stub-match-by-path
+        ::router "Patient/0" {:result {:get {:handler handler}}}))
+
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {::reitit/router ::router
+             :body
+             {"resourceType" "Bundle"
+              "type" "batch"
+              "entry"
+              [{"request"
+                {"method" "GET"
+                 "url" "Patient/0"}}]}})]
+
+      (is (= 200 status))
+
+      (is (= "Bundle" (:resourceType body)))
+
+      (is (= "batch-response" (:type body)))
+
+      (is (= "200" (-> body :entry first :response :status)))
+
+      (is (= "etag" (-> body :entry first :response :etag)))
+
+      (is (= "2019-06-24T09:54:26Z" (-> body :entry first :response :lastModified)))
+
+      (is (= ::response-body (-> body :entry first :resource)))))
+
+  (testing "Failing"
+    (let [handler
+          (fn [_]
+            (md/success-deferred
+              (ring/bad-request ::operation-outcome)))]
+      (test-util/stub-match-by-path
+        ::router "Patient/0" {:result {:get {:handler handler}}}))
+
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {::reitit/router ::router
+             :body
+             {"resourceType" "Bundle"
+              "type" "batch"
+              "entry"
+              [{"request"
+                {"method" "GET"
+                 "url" "Patient/0"}}]}})]
+
+      (is (= 200 status))
+
+      (is (= "Bundle" (:resourceType body)))
+
+      (is (= "batch-response" (:type body)))
+
+      (is (= "400" (-> body :entry first :response :status)))
+
+      (is (= ::operation-outcome (-> body :entry first :response :outcome))))))
+
+
+(deftest handler-batch-search-type-test
+  (given-types-available "Patient")
+
+  (testing "Successful"
+    (let [handler
+          (fn [_]
+            (md/success-deferred
+              (ring/response ::response-body)))]
+      (test-util/stub-match-by-path
+        ::router "Patient" {:result {:get {:handler handler}}}))
+
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {::reitit/router ::router
+             :body
+             {"resourceType" "Bundle"
+              "type" "batch"
+              "entry"
+              [{"request"
+                {"method" "GET"
+                 "url" "Patient"}}]}})]
+
+      (is (= 200 status))
+
+      (is (= "Bundle" (:resourceType body)))
+
+      (is (= "batch-response" (:type body)))
+
+      (is (= "200" (-> body :entry first :response :status)))
+
+      (is (= ::response-body (-> body :entry first :resource))))))
+
+
+(deftest handler-batch-update-test
+  (given-types-available "Patient")
+
+  (testing "Successful"
+    (let [handler
+          (fn [{:keys [body]}]
+            (is (= {"resourceType" "Patient"} body))
+            (md/success-deferred
+              (-> (ring/response ::response-body)
+                  (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
+                  (ring/header "ETag" "etag"))))]
+      (test-util/stub-match-by-path
+        ::router "Patient/0" {:result {:put {:handler handler}}}))
+
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {::reitit/router ::router
+             :body
+             {"resourceType" "Bundle"
+              "type" "batch"
+              "entry"
+              [{"resource"
+                {"resourceType" "Patient"}
+                "request"
+                {"method" "PUT"
+                 "url" "Patient/0"}}]}})]
+
+      (is (= 200 status))
+
+      (is (= "Bundle" (:resourceType body)))
+
+      (is (= "batch-response" (:type body)))
+
+      (is (= "200" (-> body :entry first :response :status)))
+
+      (is (= "etag" (-> body :entry first :response :etag)))
+
+      (is (= "2019-06-24T09:54:26Z" (-> body :entry first :response :lastModified)))
+
+      (is (= ::response-body (-> body :entry first :resource))))))
