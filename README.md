@@ -41,9 +41,9 @@ In order to test connectivity, query the health endpoint:
 curl http://localhost:8080/health
 ```
 
-## Installation
+## Deployment
 
-The installation of Blaze is described in the [Installation Section][4] of the Blaze documentation.
+In-deep deployment options of Blaze are described in the [Deployment Section][4] of the Blaze documentation.
 
 ## License
 
@@ -55,5 +55,5 @@ your option) any later version.
 [1]: <https://github.com/life-research/life-fhir-gen>
 [2]: <http://cql-runner.dataphoria.org/>
 [3]: <https://cql.hl7.org/tests.html>
-[4]: <https://life-research.github.io/blaze/#_installation>
+[4]: <https://alexanderkiel.gitbook.io/blaze/deployment#production-deployment>
 [5]: <https://github.com/life-research/blaze/releases/tag/v0.6>
