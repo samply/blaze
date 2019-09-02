@@ -58,10 +58,14 @@
 (s/def :term-service/uri string?)
 (s/def :term-service/proxy-host string?)
 (s/def :term-service/proxy-port pos-int?)
+(s/def :term-service/proxy-user string?)
+(s/def :term-service/proxy-password string?)
 (s/def :config/term-service
   (s/keys :opt-un [:term-service/uri
                    :term-service/proxy-host
-                   :term-service/proxy-port]))
+                   :term-service/proxy-port
+                   :term-service/proxy-user
+                   :term-service/proxy-password]))
 (s/def :cache/threshold pos-int?)
 (s/def :config/base-url string?)
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
@@ -86,7 +90,7 @@
 
 ;; ---- Functions -------------------------------------------------------------
 
-(def ^:private version "0.6")
+(def ^:private version "0.6.1-beta1")
 
 (def ^:private base-url "http://localhost:8080")
 
@@ -255,19 +259,25 @@
 
 
 (defmethod ig/init-key :term-service
-  [_ {:keys [uri proxy-host proxy-port]}]
+  [_ {:keys [uri proxy-host proxy-port proxy-user proxy-password]}]
   (log/info
     (cond->
       (str "Init terminology server connection: " uri)
       proxy-host
       (str " using proxy host " proxy-host)
       proxy-port
-      (str ", port " proxy-port)))
+      (str ", port " proxy-port)
+      proxy-user
+      (str ", user " proxy-user)
+      proxy-password
+      (str ", password ***")))
   (ts/term-service
     uri
     (cond-> {}
       proxy-host (assoc :host proxy-host)
-      proxy-port (assoc :port proxy-port))))
+      proxy-port (assoc :port proxy-port)
+      proxy-user (assoc :user proxy-user)
+      proxy-password (assoc :password proxy-password))))
 
 
 (defmethod ig/init-key :cache

@@ -44,7 +44,7 @@
   :ret (s/nilable ::ds/entity-id))
 
 (defn page-eid
-  ""
+  "Returns the `page-eid` query param in case it is a valid integer."
   {:arglists '([query-params])}
   [{:strs [page-eid]}]
   (when (some->> page-eid (re-matches #"\d+"))
