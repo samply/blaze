@@ -55,5 +55,5 @@ your option) any later version.
 [1]: <https://github.com/life-research/life-fhir-gen>
 [2]: <http://cql-runner.dataphoria.org/>
 [3]: <https://cql.hl7.org/tests.html>
-[4]: <https://alexanderkiel.gitbook.io/blaze/deployment#production-deployment>
+[4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
 [5]: <https://github.com/life-research/blaze/releases/tag/v0.6.1>
