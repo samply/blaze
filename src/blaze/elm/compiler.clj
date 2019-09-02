@@ -10,13 +10,14 @@
     Every local (without time zone) date or time is meant relative to the time
     zone of the :now timestamp in the evaluation context."
   (:require
-    [camel-snake-kebab.core :refer [->kebab-case-string]]
+    [camel-snake-kebab.core :refer [->kebab-case-string ->camelCaseString]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [datomic-spec.core :as ds]
     [blaze.elm.compiler.protocols :refer [Expression -eval -hash]]
     [blaze.elm.compiler.retrieve :as retrieve]
+    [blaze.elm.compiler.query :as query]
     [blaze.datomic.cql :as cql]
     [blaze.datomic.util :as datomic-util]
     [blaze.datomic.value :as dv]
@@ -38,10 +39,8 @@
     [blaze.elm.string :as string]
     [blaze.elm.type-infer :refer [infer-library-types]]
     [blaze.elm.util :as elm-util]
-    [blaze.util :as u]
-    [datomic.api :as d])
+    [blaze.util :as u])
   (:import
-    [clojure.core Eduction]
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit Temporal]
     [javax.measure Quantity]
@@ -204,26 +203,40 @@
   (not (instance? blaze.elm.compiler.protocols.Expression x)))
 
 
+(defn- record-name [s]
+  (str (u/title-case (->camelCaseString (name s))) "OperatorExpression"))
+
+
 (defmacro defunop
   {:arglists '([name attr-map? bindings & body])}
   [name & more]
   (let [attr-map (when (map? (first more)) (first more))
         more (if (map? (first more)) (next more) more)
         [[operand-binding expr-binding] & body] more]
-    `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
-       [context# expr#]
-       (let [operand# (compile (merge context# ~attr-map) (:operand expr#))
-             ~(or expr-binding '_) expr#]
-         (if (static? operand#)
-           (let [~operand-binding operand#]
-             ~@body)
-           (reify Expression
+    `(do
+       ~(if expr-binding
+          `(defrecord ~(symbol (record-name name)) [~'operand ~'expr]
+             Expression
              (-eval [~'_ context# resource# scope#]
-               (let [~operand-binding (-eval operand# context# resource# scope#)]
-                 ~@body))
-             (-hash [_]
-               {:type ~(keyword (clojure.core/name name))
-                :operand (-hash operand#)})))))))
+               (let [~operand-binding (-eval ~'operand context# resource# scope#)
+                     ~expr-binding ~'expr]
+                 ~@body)))
+          `(defrecord ~(symbol (record-name name)) [~'operand]
+             Expression
+             (-eval [~'_ context# resource# scope#]
+               (let [~operand-binding (-eval ~'operand context# resource# scope#)]
+                 ~@body))))
+
+       (defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+         [context# ~'expr]
+         (let [~'operand (compile (merge context# ~attr-map) (:operand ~'expr))]
+           (if (static? ~'operand)
+             (let [~operand-binding ~'operand
+                   ~(or expr-binding '_) ~'expr]
+               ~@body)
+             ~(if expr-binding
+                `(~(symbol (str "->" (record-name name))) ~'operand ~'expr)
+                `(~(symbol (str "->" (record-name name))) ~'operand))))))))
 
 
 (defmacro defbinop
@@ -998,17 +1011,7 @@
       (if (empty? sort-by-items)
         (if distinct
           (if (contains? optimizations :first)
-            (reify Expression
-              (-eval [_ context resource scope]
-                (Eduction. (xform context resource scope) (-eval source context resource scope)))
-              (-hash [_]
-                (cond->
-                  {:type :query
-                   :source (-hash source)
-                   :distinct true}
-                  (some? where) (assoc :where (-hash where))
-                  (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-                  (some? return) (assoc :return (-hash return)))))
+            (query/eduction-expr xform source)
             (reify Expression
               (-eval [_ context resource scope]
                 (vec (into #{} (xform context resource scope) (-eval source context resource scope))))
@@ -1152,12 +1155,6 @@
 ;;
 ;; The :patient-id will be set if the evaluation context is `"Patient"`. It'll
 ;; be `nil` if the evaluation context is `"Unspecified"`.
-(defn- reverse-subject-kw [eval-context data-type-name]
-  (case eval-context
-    "Patient" (keyword data-type-name "_subject")
-    "Specimen" (keyword data-type-name "_specimen")))
-
-
 (defmethod compile* :elm.compiler.type/retrieve
   [{:keys [db eval-context] :as context}
    {:keys [codes] code-property-name :codeProperty data-type :dataType
@@ -1201,15 +1198,7 @@
               {:type :retrieve
                :context eval-context}))
 
-          ;; TODO: use https://www.hl7.org/fhir/compartmentdefinition-patient.html
-          (let [reverse-subject-kw (reverse-subject-kw eval-context data-type-name)]
-            (reify Expression
-              (-eval [_ _ resource _]
-                (reverse-subject-kw resource))
-              (-hash [_]
-                {:type :retrieve
-                 :context eval-context
-                 :reverse-subject-kw reverse-subject-kw}))))))))
+          (retrieve/context-expr eval-context data-type-name))))))
 
 
 
