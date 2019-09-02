@@ -1,11 +1,11 @@
 (ns blaze.elm.compiler.retrieve
   (:require
     [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
+    [blaze.util :refer [throw-anom]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
-    [datomic-spec.core :as ds]
-    [blaze.util :refer [throw-anom]]))
+    [datomic-spec.core :as ds]))
 
 
 (defrecord SingleCodeRetrieveExpression [attr-id]
@@ -68,3 +68,31 @@
   [db context data-type property codes]
   (let [single-code-expr #(single-code-expr db context data-type property %)]
     (->MultipleCodeRetrieveExpression (map single-code-expr codes))))
+
+
+(defrecord CardOneRetrieveExpression [kw]
+  Expression
+  (-eval [_ _ resource _]
+    [(kw resource)]))
+
+
+(defrecord CardManyRetrieveExpression [kw]
+  Expression
+  (-eval [_ _ resource _]
+    (kw resource)))
+
+
+(s/fdef context-expr
+  :args (s/cat :eval-context string? :data-type-name string?))
+
+;; TODO: use https://www.hl7.org/fhir/compartmentdefinition-patient.html
+(defn context-expr [eval-context data-type-name]
+  (case eval-context
+    "Patient"
+    (->CardManyRetrieveExpression (keyword data-type-name "_subject"))
+    "Specimen"
+    (case data-type-name
+      "Patient"
+      (->CardOneRetrieveExpression :Specimen/subject)
+      "Observation"
+      (->CardManyRetrieveExpression :Observation/_specimen))))
