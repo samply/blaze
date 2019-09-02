@@ -473,7 +473,7 @@
 
 (defn- gen-contained-resource-upsert-pairs [context retract add]
   (for [old-entity retract
-        :let [old-type (keyword (util/resource-type (:entity (meta old-entity))))]
+        :let [old-type (keyword (util/entity-type (:entity (meta old-entity))))]
         new-entity add
         :let [new-type (keyword (get new-entity "resourceType"))]
         :when (= old-type new-type)]
@@ -743,7 +743,7 @@
 
 (defn- upsert-contained-resource
   [context old-entity new-entity]
-  (let [type (keyword (util/resource-type old-entity))]
+  (let [type (keyword (util/entity-type old-entity))]
     (upsert context type old-entity (dissoc new-entity "id"))))
 
 
@@ -773,7 +773,7 @@
             (reduce
               (fn [res old-entity]
                 (let [old-entity (:entity (meta old-entity))
-                      type (util/resource-type old-entity)]
+                      type (util/entity-type old-entity)]
                   (-> res
                       (update
                         :tx-data
@@ -809,7 +809,7 @@
          (mapcat
            (fn [{resource-id :db/id :as resource}]
              (conj
-               (upsert context (keyword (util/resource-type resource)) resource
+               (upsert context (keyword (util/entity-type resource)) resource
                        nil)
                [:db/retract resource-id :local-id (:local-id resource)]
                [:db/retract container-id ident resource-id])))

@@ -250,6 +250,7 @@
             "ExceptEmptyListAndEmptyList"                   ; don't have a Except function
             "simpleSortAsc"                                 ; queries return distinct elements
             "simpleSortDesc"                                ; queries return distinct elements
+            "SortDatesAsc"                                  ; the order of duplicates like @2012-10-05 and @2012-10-05T10:00 is unspecified
             "SortDatesDesc"                                 ; the order of duplicates like @2012-10-05 and @2012-10-05T10:00 is unspecified
             "DistinctNullNullNull"                          ; should preserve multiple null's
             "DistinctANullANull"                            ; should preserve multiple null's

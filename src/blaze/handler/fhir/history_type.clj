@@ -34,7 +34,7 @@
   (let [db (d/entity-db transaction)]
     (eduction
       (map (fn [{:keys [v]}] v))
-      (filter #(= type (datomic-util/resource-type* db %)))
+      (filter #(= type (datomic-util/entity-type* db %)))
       (map (fn [eid] [transaction eid]))
       (d/datoms db :eavt (:db/id transaction) :tx/resources first-resource-eid))))
 

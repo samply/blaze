@@ -1,5 +1,6 @@
 (ns blaze.elm.util
   (:require
+    [blaze.elm.spec]
     [clojure.spec.alpha :as s]))
 
 
@@ -14,3 +15,39 @@
   [s]
   (let [[_ ns name] (re-matches #"\{(.+)\}(.+)" s)]
     [ns name]))
+
+
+(s/fdef named-type-specifier?
+  :args (s/cat :type-specifier :elm/type-specifier))
+
+(defn named-type-specifier?
+  {:arglists '([type-specifier])}
+  [{:keys [type]}]
+  (= "NamedTypeSpecifier" type))
+
+
+(s/fdef tuple-type-specifier?
+  :args (s/cat :type-specifier :elm/type-specifier))
+
+(defn tuple-type-specifier?
+  {:arglists '([type-specifier])}
+  [{:keys [type]}]
+  (= "TupleTypeSpecifier" type))
+
+
+(s/fdef choice-type-specifier?
+  :args (s/cat :type-specifier :elm/type-specifier))
+
+(defn choice-type-specifier?
+  {:arglists '([type-specifier])}
+  [{:keys [type]}]
+  (= "ChoiceTypeSpecifier" type))
+
+
+(s/fdef list-type-specifier?
+  :args (s/cat :type-specifier :elm/type-specifier))
+
+(defn list-type-specifier?
+  {:arglists '([type-specifier])}
+  [{:keys [type]}]
+  (= "ListTypeSpecifier" type))

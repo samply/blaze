@@ -8,7 +8,9 @@
   (str (str/upper-case (subs s 0 1)) (subs s 1)))
 
 
-(defn throw-anom [{::anom/keys [category message] :as x}]
+(defn throw-anom
+  {:arglists '([anomaly])}
+  [{::anom/keys [category message] :as x}]
   (if category
     (throw (ex-info (or message (name category)) x))
     x))

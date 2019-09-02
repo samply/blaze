@@ -393,7 +393,7 @@
   (s/keys :req-un [:elm/name]))
 
 
-(defmethod type-specifier :elm.spec.type/named-type-specifier [_]
+(defmethod type-specifier "NamedTypeSpecifier" [_]
   :elm/named-type-specifier)
 
 
@@ -402,8 +402,42 @@
   (s/keys :req-un [:elm/elementType]))
 
 
-(defmethod type-specifier :elm.spec.type/list-type-specifier [_]
+(defmethod type-specifier "ListTypeSpecifier" [_]
   :elm/list-type-specifier)
+
+
+;; 4.5. TupleTypeSpecifier
+(s/def :elm.tuple-element-definition/type
+  :elm/type-specifier)
+
+
+(s/def :elm/tuple-element-definition
+  (s/keys :req-un [:elm/name] :opt-un [:elm.tuple-element-definition/type :elm/elementType]))
+
+
+(s/def :elm.tuple-type-specifier/element
+  (s/coll-of :elm/tuple-element-definition))
+
+
+(s/def :elm/tuple-type-specifier
+  (s/keys :req-un [:elm.tuple-type-specifier/element]))
+
+
+(defmethod type-specifier "TupleTypeSpecifier" [_]
+  :elm/tuple-type-specifier)
+
+
+;; 4.6. ChoiceTypeSpecifier
+(s/def :elm.choice-type-specifier/choice
+  (s/coll-of :elm/type-specifier))
+
+
+(s/def :elm/choice-type-specifier
+  (s/keys :req-un [:elm.choice-type-specifier/choice]))
+
+
+(defmethod type-specifier "ChoiceTypeSpecifier" [_]
+  :elm/choice-type-specifier)
 
 
 

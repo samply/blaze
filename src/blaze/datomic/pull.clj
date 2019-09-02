@@ -83,7 +83,7 @@
 
 
 (defn- pull-reference [_ _ value]
-  (let [type (util/resource-type value)
+  (let [type (util/entity-type value)
         id-attr (util/resource-id-attr type)]
     (with-meta
       {"reference"
@@ -94,7 +94,7 @@
 
 
 (defn- pull-contained-resource [db resource]
-  (let [type (util/resource-type resource)]
+  (let [type (util/entity-type resource)]
     (-> (pull-non-primitive db (keyword type) resource)
         (assoc "resourceType" type
                "id" (:local-id resource)))))
