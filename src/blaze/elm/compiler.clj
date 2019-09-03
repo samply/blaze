@@ -1198,7 +1198,7 @@
               {:type :retrieve
                :context eval-context}))
 
-          (retrieve/context-expr eval-context data-type-name))))))
+          (retrieve/context-expr db eval-context data-type-name))))))
 
 
 

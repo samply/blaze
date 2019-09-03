@@ -5,16 +5,27 @@
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
-    [datomic-spec.core :as ds]))
+    [datomic-spec.core :as ds])
+  (:import
+    [datomic Datom]))
 
 
-(defrecord SingleCodeRetrieveExpression [attr-id]
+(defrecord AttrRetrieveExpression [attr]
   Expression
   (-eval [_ {:keys [db]} resource _]
     (transduce
-      (map #(d/entity db (:v %)))
+      (map #(d/entity db (.v ^Datom %)))
       conj
-      (d/datoms db :eavt (:db/id resource) attr-id))))
+      (d/datoms db :eavt (:db/id resource) attr))))
+
+
+(defrecord RevAttrRetrieveExpression [attr]
+  Expression
+  (-eval [_ {:keys [db]} resource _]
+    (transduce
+      (map #(d/entity db (.e ^Datom %)))
+      conj
+      (d/datoms db :vaet (:db/id resource) attr))))
 
 
 (defn code? [x]
@@ -39,7 +50,7 @@
   [db context data-type property {code-id :code/id}]
   (let [ns (format "%s.%s.%s" context data-type property)]
     (if-let [attr-id (d/entid db (keyword ns code-id))]
-      (->SingleCodeRetrieveExpression attr-id)
+      (->AttrRetrieveExpression attr-id)
       (throw-anom
         {::anom/category ::anom/fault
          ::anom/message (str "Missing Datomic attribute: " (keyword ns code-id))}))))
@@ -70,29 +81,17 @@
     (->MultipleCodeRetrieveExpression (map single-code-expr codes))))
 
 
-(defrecord CardOneRetrieveExpression [kw]
-  Expression
-  (-eval [_ _ resource _]
-    [(kw resource)]))
-
-
-(defrecord CardManyRetrieveExpression [kw]
-  Expression
-  (-eval [_ _ resource _]
-    (kw resource)))
-
-
 (s/fdef context-expr
-  :args (s/cat :eval-context string? :data-type-name string?))
+  :args (s/cat :db ::ds/db :eval-context string? :data-type-name string?))
 
 ;; TODO: use https://www.hl7.org/fhir/compartmentdefinition-patient.html
-(defn context-expr [eval-context data-type-name]
+(defn context-expr [db eval-context data-type-name]
   (case eval-context
     "Patient"
-    (->CardManyRetrieveExpression (keyword data-type-name "_subject"))
+    (->RevAttrRetrieveExpression (d/entid db (keyword data-type-name "subject")))
     "Specimen"
     (case data-type-name
       "Patient"
-      (->CardOneRetrieveExpression :Specimen/subject)
+      (->AttrRetrieveExpression (d/entid db :Specimen/subject))
       "Observation"
-      (->CardManyRetrieveExpression :Observation/_specimen))))
+      (->RevAttrRetrieveExpression (d/entid db :Observation/specimen)))))
