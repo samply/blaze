@@ -396,19 +396,17 @@
             (is (= [::patient] (-eval expr context ::patient nil))))))
 
       (testing "while retrieving observations"
-        ;; TODO: test also :Observation/_performer
+        (retrieve-test/stub-context-expr
+          ::db "Patient" "Observation" [::observation])
+
         (let [elm {:dataType "{http://hl7.org/fhir}Observation" :type "Retrieve"}
-              expr (compile (assoc context :eval-context "Patient") elm)
-              resource {:Observation/_subject [::observation]}]
+              expr (compile (assoc context :eval-context "Patient") elm)]
           (testing "the observations of the current patient are returned"
-            (is (= [::observation] (-eval expr {} resource nil))))))
+            (is (= [::observation] (-eval expr {} ::patient nil))))))
 
       (testing "while retrieving observations with one specific code"
         (retrieve-test/stub-single-code-expr
-          ::db "Patient" "Observation" "code" ::code
-          (reify Expression
-            (-eval [_ _ _ _]
-              [::observation])))
+          ::db "Patient" "Observation" "code" ::code [::observation])
 
         (let [elm {:dataType "{http://hl7.org/fhir}Observation"
                    :codeProperty "code"
@@ -423,10 +421,7 @@
 
       (testing "while retrieving conditions with one specific code"
         (retrieve-test/stub-single-code-expr
-          ::db "Patient" "Condition" "code" ::code
-          (reify Expression
-            (-eval [_ _ _ _]
-              [::condition])))
+          ::db "Patient" "Condition" "code" ::code [::condition])
 
         (let [elm {:dataType "{http://hl7.org/fhir}Condition"
                    :codeProperty "code"
@@ -434,10 +429,9 @@
                    :codes {:type "ToList"
                            :operand {:name "lens_0" :type "CodeRef"}}}
               expr (compile (assoc context :eval-context "Patient") elm)
-              context {:db ::db}
-              resource {:db/id ::patient-eid}]
+              context {:db ::db}]
           (testing "the conditions with that code of the current patient are returned"
-            (is (= [::condition] (-eval expr context resource nil)))))))
+            (is (= [::condition] (-eval expr context ::patient nil)))))))
 
     (testing "in Specimen eval context"
 
@@ -448,18 +442,17 @@
             (is (= [::specimen] (-eval expr {} ::specimen nil))))))
 
       (testing "while retrieving observations"
+        (retrieve-test/stub-context-expr
+          ::db "Specimen" "Observation" [::observation])
+
         (let [elm {:dataType "{http://hl7.org/fhir}Observation" :type "Retrieve"}
-              expr (compile (assoc context :eval-context "Specimen") elm)
-              resource {:Observation/_specimen [::observation]}]
+              expr (compile (assoc context :eval-context "Specimen") elm)]
           (testing "the observations of the current specimen are returned"
-            (is (= [::observation] (-eval expr {} resource nil))))))
+            (is (= [::observation] (-eval expr {} ::specimen nil))))))
 
       (testing "while retrieving observations with one specific code"
         (retrieve-test/stub-single-code-expr
-          ::db "Specimen" "Observation" "code" ::code
-          (reify Expression
-            (-eval [_ _ _ _]
-              [::observation])))
+          ::db "Specimen" "Observation" "code" ::code [::observation])
 
         (let [elm {:dataType "{http://hl7.org/fhir}Observation"
                    :codeProperty "code"
@@ -467,10 +460,9 @@
                    :codes {:type "ToList"
                            :operand {:name "lens_0" :type "CodeRef"}}}
               expr (compile (assoc context :eval-context "Specimen") elm)
-              context {:db ::db}
-              resource {:db/id ::specimen-eid}]
+              context {:db ::db}]
           (testing "the observations with that code of the current specimen are returned"
-            (is (= [::observation] (-eval expr context resource nil)))))))
+            (is (= [::observation] (-eval expr context ::specimen nil)))))))
 
     (testing "Unspecified Eval Context"
       (cql-test/stub-find-code ::db "life" "0" {:db/id ::code-eid})
