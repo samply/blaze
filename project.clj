@@ -13,7 +13,8 @@
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.9.0"]
    [com.cognitect/anomalies "0.1.12"]
-   [com.datomic/datomic-free "0.9.5697"]
+   [com.datomic/datomic-free "0.9.5697"
+    :exclusions [io.netty/netty-all]]
    [com.taoensso/timbre "4.10.0"]
    [info.cqframework/cql-to-elm "1.4.6"]
    [integrant "0.7.0"]

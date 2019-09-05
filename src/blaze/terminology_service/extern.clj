@@ -66,8 +66,14 @@
                    client-middleware/wrap-url
                    client-middleware/wrap-query-params
                    client')))))}
+
+      ;; It's important to disable DNS resolving when in proxy mode, because
+      ;; first it's not necessary and second domain names which are resolvable
+      ;; by the proxy might not resolvable locally. Can be removed when
+      ;; https://github.com/ztellman/aleph/issues/522 is solved.
       (seq proxy-options)
-      (assoc-in [:connection-options :proxy-options] proxy-options))))
+      (update :connection-options assoc :proxy-options
+              proxy-options :name-resolver :noop))))
 
 
 (defn- expand-value-set [base opts params]
