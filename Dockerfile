@@ -7,8 +7,8 @@ RUN lein uberjar
 
 FROM openjdk:8u222-jre
 
-COPY --from=build /build/target/blaze-0.6.2-beta.1-standalone.jar /app/
+COPY --from=build /build/target/blaze-0.6.2-standalone.jar /app/
 
 WORKDIR /app
 
-CMD ["/bin/bash", "-c", "java $JVM_OPTS -jar blaze-0.6.2-beta.1-standalone.jar"]
+CMD ["/bin/bash", "-c", "java $JVM_OPTS -jar blaze-0.6.2-standalone.jar"]
