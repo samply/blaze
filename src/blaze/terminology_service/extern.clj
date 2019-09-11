@@ -100,10 +100,10 @@
               value-set))))))
 
 
-(defn- opts [proxy-options]
+(defn- opts [proxy-options connection-timeout request-timeout]
   {:pool (connection-pool proxy-options)
-   :connection-timeout 2000
-   :request-timeout 10000})
+   :connection-timeout (or connection-timeout 5000)
+   :request-timeout (or request-timeout 30000)})
 
 
 (s/def :proxy-options/host
@@ -127,9 +127,15 @@
                    :proxy-options/user :proxy-options/password]))
 
 
+(s/def ::milli-second
+  pos-int?)
+
+
 (s/fdef term-service
-  :args (s/cat :base string? :proxy-options ::proxy-options)
+  :args (s/cat :base string? :proxy-options ::proxy-options
+               :connection-timeout (s/nilable ::milli-second)
+               :request-timeout (s/nilable ::milli-second))
   :ret term-service?)
 
-(defn term-service [base proxy-options]
-  (->TermService base (opts proxy-options)))
+(defn term-service [base proxy-options connection-timeout request-timeout]
+  (->TermService base (opts proxy-options connection-timeout request-timeout)))
