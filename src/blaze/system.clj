@@ -52,6 +52,7 @@
 (s/def :log/level
   #{"trace" "debug" "info" "warn" "error" "fatal" "report"
     "TRACE" "DEBUG" "INFO" "WARN" "ERROR" "FATAL" "REPORT"})
+(s/def ::milli-second pos-int?)
 (s/def :config/logging (s/keys :opt [:log/level]))
 (s/def :database/uri string?)
 (s/def :config/database-conn (s/keys :opt [:database/uri]))
@@ -60,12 +61,16 @@
 (s/def :term-service/proxy-port pos-int?)
 (s/def :term-service/proxy-user string?)
 (s/def :term-service/proxy-password string?)
+(s/def :term-service/connection-timeout ::milli-second)
+(s/def :term-service/request-timeout ::milli-second)
 (s/def :config/term-service
   (s/keys :opt-un [:term-service/uri
                    :term-service/proxy-host
                    :term-service/proxy-port
                    :term-service/proxy-user
-                   :term-service/proxy-password]))
+                   :term-service/proxy-password
+                   :term-service/connection-timeout
+                   :term-service/request-timeout]))
 (s/def :cache/threshold pos-int?)
 (s/def :config/base-url string?)
 (s/def :config/cache (s/keys :opt [:cache/threshold]))
@@ -259,7 +264,8 @@
 
 
 (defmethod ig/init-key :term-service
-  [_ {:keys [uri proxy-host proxy-port proxy-user proxy-password]}]
+  [_ {:keys [uri proxy-host proxy-port proxy-user proxy-password
+             connection-timeout request-timeout]}]
   (log/info
     (cond->
       (str "Init terminology server connection: " uri)
@@ -270,14 +276,19 @@
       proxy-user
       (str ", user " proxy-user)
       proxy-password
-      (str ", password ***")))
+      (str ", password ***")
+      connection-timeout
+      (str ", connection timeout " connection-timeout " ms")
+      request-timeout
+      (str ", request timeout " request-timeout " ms")))
   (ts/term-service
     uri
     (cond-> {}
       proxy-host (assoc :host proxy-host)
       proxy-port (assoc :port proxy-port)
       proxy-user (assoc :user proxy-user)
-      proxy-password (assoc :password proxy-password))))
+      proxy-password (assoc :password proxy-password))
+    connection-timeout request-timeout))
 
 
 (defmethod ig/init-key :cache

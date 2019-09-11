@@ -37,7 +37,7 @@
 
 
 (def term-service
-  (ts/term-service "http://tx.fhir.org/r4" {}))
+  (ts/term-service "http://tx.fhir.org/r4" {} nil nil))
 
 
 (defn- db-with [{:strs [entries]}]
