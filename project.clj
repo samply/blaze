@@ -9,27 +9,48 @@
   :pedantic? :abort
 
   :dependencies
-  [[aleph "0.4.7-alpha1"]
+  [[aleph "0.4.7-alpha1"
+    :exclusions
+    [io.netty/netty-codec
+     io.netty/netty-resolver
+     io.netty/netty-handler
+     io.netty/netty-transport
+     io.netty/netty-transport-native-epoll]]
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.9.0"]
    [com.cognitect/anomalies "0.1.12"]
    [com.datomic/datomic-free "0.9.5697"
     :exclusions [io.netty/netty-all]]
+   [com.h2database/h2 "1.4.199"]
    [com.taoensso/timbre "4.10.0"]
-   [info.cqframework/cql-to-elm "1.4.6"]
+   [info.cqframework/cql-to-elm "1.4.6"
+    :exclusions
+    [com.google.code.javaparser/javaparser
+     org.eclipse.persistence/eclipselink
+     info.cqframework/qdm
+     junit
+     xpp3
+     xpp3/xpp3_xpath]]
    [integrant "0.7.0"]
+   [io.netty/netty-codec-http "4.1.39.Final"]
+   [io.netty/netty-handler-proxy "4.1.39.Final"]
+   [io.netty/netty-resolver-dns "4.1.39.Final"]
+   [io.netty/netty-transport-native-epoll "4.1.39.Final"
+    :classifier "linux-x86_64"]
    [io.prometheus/simpleclient_hotspot "0.6.0"]
    [javax.measure/unit-api "1.0"]
    [metosin/reitit-ring "0.3.9"
     :exclusions [commons-codec]]
-   [org.apache.httpcomponents/httpcore "4.4.11"]
+   [org.apache.httpcomponents/httpcore "4.4.12"]
    [org.clojars.akiel/datomic-spec "0.5.2"]
    [org.clojars.akiel/datomic-tools "0.4"]
-   [org.clojars.akiel/env-tools "0.2.1"]
-   [org.clojars.akiel/spec-coerce "0.3.1"]
+   [org.clojars.akiel/env-tools "0.3.0"]
+   [org.clojars.akiel/spec-coerce "0.4.0"]
    [org.clojure/clojure "1.10.1"]
    [org.clojure/core.cache "0.8.1"]
    [org.clojure/tools.reader "1.3.2"]
+   [org.eclipse.persistence/org.eclipse.persistence.moxy "2.7.4"
+    :scope "runtime"]
    [phrase "0.3-alpha3"]
    [prom-metrics "0.5-alpha2"]
    [ring/ring-core "1.7.1"
@@ -39,11 +60,7 @@
    [systems.uom/systems-quantity "1.0"]
 
    ;; Needed to work with Java 11. Doesn't hurt Java 8.
-   [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]
-   [com.sun.xml.bind/jaxb-core "2.3.0.1"]
-   [com.sun.xml.bind/jaxb-impl "2.3.2"]]
-
-  :plugins [[lein-cloverage/lein-cloverage "1.1.1"]]
+   [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]]
 
   :profiles
   {:dev
