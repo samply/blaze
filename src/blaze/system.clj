@@ -254,13 +254,12 @@
 (defmethod ig/init-key :database-conn
   [_ {:database/keys [uri] :keys [structure-definitions]}]
   (if (d/create-database uri)
-    (log/info "Created database at:" uri)
+    (do
+      (log/info "Created database at:" uri)
+      (upsert-schema uri structure-definitions))
     (log/info "Use existing database at:" uri))
 
   (log/info "Connect with database:" uri)
-
-  (upsert-schema uri structure-definitions)
-
   (d/connect uri))
 
 
@@ -314,56 +313,67 @@
 
 (defmethod ig/init-key :fhir-capabilities-handler
   [_ {:keys [base-url version structure-definitions]}]
+  (log/debug "Init FHIR capabilities interaction handler")
   (fhir-capabilities-handler/handler base-url version structure-definitions))
 
 
 (defmethod ig/init-key :fhir-create-handler
   [_ {:database/keys [conn] :keys [term-service]}]
+  (log/debug "Init FHIR create interaction handler")
   (fhir-create-handler/handler conn term-service))
 
 
 (defmethod ig/init-key :fhir-delete-handler
   [_ {:database/keys [conn]}]
+  (log/debug "Init FHIR delete interaction handler")
   (fhir-delete-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-history-instance-handler
   [_ {:database/keys [conn]}]
+  (log/debug "Init FHIR history instance interaction handler")
   (fhir-history-instance-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-history-type-handler
   [_ {:database/keys [conn]}]
+  (log/debug "Init FHIR history type interaction handler")
   (fhir-history-type-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-history-system-handler
   [_ {:database/keys [conn]}]
+  (log/debug "Init FHIR history system interaction handler")
   (fhir-history-system-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-read-handler
   [_ {:database/keys [conn]}]
+  (log/debug "Init FHIR read interaction handler")
   (fhir-read-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-search-handler
   [_ {:database/keys [conn]}]
+  (log/debug "Init FHIR search interaction handler")
   (fhir-search-handler/handler conn))
 
 
 (defmethod ig/init-key :fhir-transaction-handler
   [_ {:database/keys [conn] :keys [term-service executor]}]
+  (log/debug "Init FHIR transaction interaction handler")
   (fhir-transaction-handler/handler conn term-service executor))
 
 
 (defmethod ig/init-key :fhir-update-handler
   [_ {:database/keys [conn] :keys [term-service]}]
+  (log/debug "Init FHIR update interaction handler")
   (fhir-update-handler/handler conn term-service))
 
 
 (defmethod ig/init-key :fhir-core-handler
   [_ {:keys [base-url handlers] :database/keys [conn]}]
+  (log/debug "Init FHIR handler")
   (fhir-core-handler/handler (str base-url "/fhir") conn handlers))
 
 
@@ -374,11 +384,13 @@
 
 (defmethod ig/init-key :fhir-operation-evaluate-measure-handler
   [_ {:keys [clock term-service executor] :database/keys [conn]}]
+  (log/debug "Init FHIR $evaluate-measure operation handler")
   (fhir-operation-evaluate-measure-handler/handler clock conn term-service executor))
 
 
 (defmethod ig/init-key :app-handler
   [_ {:keys [handlers]}]
+  (log/debug "Init app handler")
   (app-handler/handler handlers))
 
 
@@ -396,6 +408,7 @@
 (defmethod ig/init-key :metrics/registry
   [_ {:keys [server-executor transaction-interaction-executor
              evaluate-measure-operation-executor]}]
+  (log/debug "Init metrics registry")
   (doto (CollectorRegistry. true)
     (.register (StandardExports.))
     (.register (MemoryPoolsExports.))
@@ -425,6 +438,7 @@
 
 (defmethod ig/init-key :metrics-handler
   [_ {:keys [registry]}]
+  (log/debug "Init metrics handler")
   (metrics-handler/metrics-handler registry))
 
 
