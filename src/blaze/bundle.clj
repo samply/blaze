@@ -3,7 +3,6 @@
   (:require
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
-    [blaze.deferred :as bd]
     [blaze.terminology-service :refer [term-service?]]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds]
@@ -126,15 +125,14 @@
 
 (defn annotate-codes
   [term-service db entries]
-  (transduce
-    (bd/map
-      (fn [{:strs [resource] :as entry}]
-        (if resource
-          (-> (tx/annotate-codes term-service db resource)
-              (md/chain' #(assoc entry "resource" %)))
-          entry)))
-    conj
-    entries))
+  (md/loop [[entry & entries] entries
+            res []]
+    (if-let [{:strs [resource] :as entry} entry]
+      (if resource
+        (-> (tx/annotate-codes term-service db resource)
+            (md/chain' #(md/recur entries (conj res (assoc entry "resource" %)))))
+        (md/recur entries (conj res entry)))
+      res)))
 
 
 (defmulti entry-tx-data (fn [_ _ {{:strs [method]} "request"}] method))
