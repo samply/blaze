@@ -29,7 +29,7 @@
 
 
 (defn code? [x]
-  #(contains? x :code/id))
+  (contains? x :code/id))
 
 
 (s/fdef single-code-expr

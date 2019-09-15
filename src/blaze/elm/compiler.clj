@@ -869,7 +869,7 @@
         (reify Expression
           (-eval [_ {:keys [db]} _ _]
             (cql/list-resource-by-code
-              db data-type-name code-property-name (map :db/id codes)))
+              db data-type-name code-property-name (keep :db/id codes)))
           (-hash [_]
             {:type :retrieve
              :context eval-context
@@ -877,10 +877,16 @@
              :code-property-name code-property-name
              :codes (-hash codes)}))
 
-        (let [[code & more] codes]
-          (if (empty? more)
+        (let [[code & more] (remove nil? codes)]
+          (cond
+            (nil? code)
+            []
+
+            (empty? more)
             (retrieve/single-code-expr
               db eval-context data-type-name code-property-name code)
+
+            :else
             (retrieve/multiple-code-expr
               db eval-context data-type-name code-property-name codes))))
 

@@ -26,7 +26,9 @@
   :args (s/cat :db ::ds/db :system string? :code string?)
   :ret ::ds/entity)
 
-(defn find-code [db system code]
+(defn find-code
+  "Returns the code or nil if none is found."
+  [db system code]
   (some->>
     (d/q
       '[:find ?c .

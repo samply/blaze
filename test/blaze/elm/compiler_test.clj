@@ -164,17 +164,31 @@
 ;;
 ;; The Code type represents a literal code selector.
 (deftest compile-code-test
-  (cql-test/stub-find-code ::db "life" "0" ::code)
+  (testing "Found"
+    (cql-test/stub-find-code ::db "life" "0" #{::code})
 
-  (let [context
-        {:db ::db
-         :library
-         {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}}}
-        code
-        {:type "Code"
-         :system {:name "life"}
-         :code "0"}]
-    (is (= ::code (-eval (compile context code) {:db ::db} nil nil)))))
+    (let [context
+          {:db ::db
+           :library
+           {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}}}
+          code
+          {:type "Code"
+           :system {:name "life"}
+           :code "0"}]
+      (is (= ::code (-eval (compile context code) {:db ::db} nil nil)))))
+
+  (testing "Not found"
+    (cql-test/stub-find-code ::db "life" "0" nil?)
+
+    (let [context
+          {:db ::db
+           :library
+           {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}}}
+          code
+          {:type "Code"
+           :system {:name "life"}
+           :code "0"}]
+      (is (nil? (-eval (compile context code) {:db ::db} nil nil))))))
 
 
 ;; 3.3. CodeRef
@@ -182,21 +196,36 @@
 ;; The CodeRef expression allows a previously defined code to be referenced
 ;; within an expression.
 (deftest compile-code-ref-test
-  (cql-test/stub-find-code ::db "life" "0" ::code)
+  (testing "Found"
+    (cql-test/stub-find-code ::db "life" "0" #{::code})
+    (let [context
+          {:db ::db
+           :library
+           {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
+            :codes
+            {:def
+             [{:name "lens_0"
+               :id "0"
+               :accessLevel "Public"
+               :codeSystem {:name "life"}}]}}}]
+      (are [name result] (= result (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil nil))
+        "lens_0"
+        ::code)))
 
-  (let [context
-        {:db ::db
-         :library
-         {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
-          :codes
-          {:def
-           [{:name "lens_0"
-             :id "0"
-             :accessLevel "Public"
-             :codeSystem {:name "life"}}]}}}]
-    (are [name result] (= result (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil nil))
-      "lens_0"
-      ::code)))
+  (testing "Not found"
+    (cql-test/stub-find-code ::db "life" "0" nil?)
+    (let [context
+          {:db ::db
+           :library
+           {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
+            :codes
+            {:def
+             [{:name "lens_0"
+               :id "0"
+               :accessLevel "Public"
+               :codeSystem {:name "life"}}]}}}]
+      (are [name] (nil? (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil nil))
+        "lens_0"))))
 
 
 ;; 3.9. Quantity
@@ -425,7 +454,6 @@
              :codeSystem {:name "life"}}]}}}]
 
     (testing "in Patient eval context"
-      (cql-test/stub-find-code ::db "life" "0" ::code)
 
       (testing "while retrieving patients"
         (let [elm {:dataType "{http://hl7.org/fhir}Patient" :type "Retrieve"}
@@ -443,6 +471,7 @@
             (is (= [::observation] (-eval expr {} ::patient nil))))))
 
       (testing "while retrieving observations with one specific code"
+        (cql-test/stub-find-code ::db "life" "0" #{::code})
         (retrieve-test/stub-single-code-expr
           ::db "Patient" "Observation" "code" ::code [::observation])
 
@@ -457,7 +486,25 @@
           (testing "the observations with that code of the current patient are returned"
             (is (= [::observation] (-eval expr context resource nil))))))
 
+      (testing "while retrieving observations with one not existing code"
+        (cql-test/stub-find-code ::db "life" "1" nil?)
+        (let [elm {:dataType "{http://hl7.org/fhir}Observation"
+                   :codeProperty "code"
+                   :type "Retrieve"
+                   :codes
+                   {:type "ToList"
+                    :operand
+                    {:type "Code"
+                     :system {:name "life"}
+                     :code "1"}}}
+              expr (compile (assoc context :eval-context "Patient") elm)
+              context {:db ::db}
+              resource {:db/id ::patient-eid}]
+          (testing "the observations with that code of the current patient are returned"
+            (is (= [] (-eval expr context resource nil))))))
+
       (testing "while retrieving conditions with one specific code"
+        (cql-test/stub-find-code ::db "life" "0" #{::code})
         (retrieve-test/stub-single-code-expr
           ::db "Patient" "Condition" "code" ::code [::condition])
 
@@ -503,7 +550,7 @@
             (is (= [::observation] (-eval expr context ::specimen nil)))))))
 
     (testing "Unspecified Eval Context"
-      (cql-test/stub-find-code ::db "life" "0" {:db/id ::code-eid})
+      (cql-test/stub-find-code ::db "life" "0" #{{:db/id ::code-eid}})
 
       (testing "retrieving all patients"
         (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})

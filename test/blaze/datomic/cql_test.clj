@@ -5,12 +5,12 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer :all]))
 
-(defn stub-find-code [db system code res]
+(defn stub-find-code [db system code res-spec]
   (st/instrument
     `find-code
     {:spec
      {`find-code
       (s/fspec
         :args (s/cat :db #{db} :system #{system} :code #{code})
-        :ret #{res})}
+        :ret res-spec)}
      :stub #{`find-code}}))
