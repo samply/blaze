@@ -50,7 +50,7 @@
 
 ;; 19.5. Contains
 (extend-protocol p/Contains
-  PersistentVector
+  Iterable
   (contains [list x _]
     (when x
       (true? (some #(p/equal % x) list)))))

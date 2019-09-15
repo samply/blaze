@@ -8,24 +8,25 @@
     [java.util Date]))
 
 
-(s/fdef resource-type*
+(s/fdef entity-type*
   :args (s/cat :db ::ds/db :eid ::ds/entity-id)
   :ret string?)
 
-(defn resource-type*
+(defn entity-type*
   [db eid]
   (name (d/ident db (d/part eid))))
 
 
-(s/fdef resource-type
-  :args (s/cat :resource ::ds/entity)
+(s/fdef entity-type
+  :args (s/cat :entity ::ds/entity)
   :ret string?)
 
-(defn resource-type
-  "Returns the type of a `resource` like \"Patient\" or \"Observation\"."
+(defn entity-type
+  "Returns the type of a `resource` like \"Patient\" or \"Observation\" or the
+  type of a non-primitive type like \"CodeableConcept\"."
   {:arglists '([resource])}
   [{:db/keys [id] :as resource}]
-  (resource-type* (d/entity-db resource) id))
+  (entity-type* (d/entity-db resource) id))
 
 
 (defn resource-id-attr [type]
@@ -39,7 +40,7 @@
 (defn literal-reference
   "Returns a tuple of type and id of `resource`."
   [resource]
-  (let [type (resource-type resource)]
+  (let [type (entity-type resource)]
     [type ((resource-id-attr type) resource)]))
 
 
@@ -52,7 +53,7 @@
   {:arglists '([resource])}
   [{:db/keys [id] :as resource}]
   (let [db (d/entity-db resource)
-        id-attr (resource-id-attr (resource-type resource))]
+        id-attr (resource-id-attr (entity-type resource))]
     (d/entity db (:tx (first (d/datoms db :eavt id id-attr))))))
 
 

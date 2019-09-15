@@ -27,6 +27,7 @@
     [blaze.handler.fhir.update :as fhir-update-handler]
     [blaze.fhir.operation.evaluate-measure.handler
      :as fhir-operation-evaluate-measure-handler]
+    [blaze.fhir.operation.evaluate-measure.measure :as evaluate-measure]
     [blaze.handler.health :as health-handler]
     [blaze.handler.metrics :as metrics-handler]
     [blaze.metrics :as metrics]
@@ -413,6 +414,8 @@
     (.register bundle/tx-data-duration-seconds)
     (.register ts/errors-total)
     (.register ts/request-duration-seconds)
+    (.register evaluate-measure/compile-duration-seconds)
+    (.register evaluate-measure/evaluate-duration-seconds)
     (.register (metrics/thread-pool-executor-collector
                  [["server" server-executor]
                   ["transaction-interaction" transaction-interaction-executor]

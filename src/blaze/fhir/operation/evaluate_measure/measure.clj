@@ -27,7 +27,7 @@
   "$evaluate-measure evaluating latencies in seconds."
   {:namespace "fhir"
    :subsystem "evaluate_measure"}
-  (take 12 (iterate #(* 2 %) 0.001)))
+  (take 12 (iterate #(* 2 %) 0.04)))
 
 
 (def ^:private ^Charset utf-8 (Charset/forName "utf8"))

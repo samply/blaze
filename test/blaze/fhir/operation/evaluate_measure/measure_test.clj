@@ -194,7 +194,7 @@
     [{"contentType" "text/cql"
       "data" (b64-encode query)}]}
    "request"
-   {"method" "PUT",
+   {"method" "PUT"
     "url" "Library/0"}})
 
 
@@ -224,4 +224,13 @@
     "q5" 1
     "q6" 1
     "q7" 1
-    "q8" 1))
+    "q8" 1
+    "q9" 1
+    "q10" 1
+    "q11" 1
+    "q12" 1))
+
+(comment
+  (evaluate "q12")
+  (clojure.repl/pst)
+  )

@@ -17,8 +17,7 @@
     [blaze.elm.interval :refer [interval]]
     [blaze.elm.literals :as elm]
     [blaze.elm.quantity :refer [quantity]]
-    [blaze.test-util :refer [satisfies-prop]]
-    [blaze.datomic.value :as dv])
+    [blaze.test-util :refer [satisfies-prop]])
   (:import
     [blaze.elm.date_time Period]
     [clojure.core Eduction]
@@ -84,13 +83,18 @@
       #elm/int "0" 0
       #elm/int "1" 1)))
 
+
+
 ;; 2. Structured Values
 
 ;; 2.1. Tuple
 (deftest compile-tuple-test
-  (are [m res] (= res (-eval (compile {} (elm/tuple m)) {} nil nil))
-    {"id" #elm/int "1"} {:id 1}
-    {"id" #elm/int "1" "name" #elm/string "john"} {:id 1 :name "john"}))
+  (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+    #elm/tuple {"id" #elm/int "1"}
+    {:id 1}
+
+    #elm/tuple {"id" #elm/int "1" "name" #elm/string "john"}
+    {:id 1 :name "john"}))
 
 
 ;; 2.3. Property
@@ -131,7 +135,26 @@
        :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
        :life/source-type "{http://hl7.org/fhir}Patient"}
       {:Patient/gender "male"}
-      "male")))
+      "male"))
+
+  (testing "with Tuple source"
+    (are [elm result]
+      (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
+      {:resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
+       :path "id"
+       :type "Property"
+       :source
+       {:type "Tuple"
+        :resultTypeSpecifier
+        {:type "TupleTypeSpecifier"
+         :element
+         [{:name "id"
+           :type {:name "{urn:hl7-org:elm-types:r1}Integer" :type "NamedTypeSpecifier"}}
+          {:name "name"
+           :type {:name "{urn:hl7-org:elm-types:r1}String" :type "NamedTypeSpecifier"}}]}
+        :element
+        [{:name "id" :value #elm/int "1"}]}}
+      1)))
 
 
 
@@ -210,6 +233,7 @@
                       (#{BigDecimal Period} (type (-eval (compile {} period) {} nil nil)))))))
 
 
+
 ;; 9. Reusing Logic
 
 ;; 9.2. ExpressionRef
@@ -218,6 +242,17 @@
     (= res (-eval (compile {} elm) {:library-context {"foo" ::result}} nil nil))
     {:type "ExpressionRef" :name "foo"}
     ::result))
+
+
+;; 9.4. FunctionRef
+(deftest compile-expression-ref-test
+  (are [elm res]
+    (= res (-eval (compile {} elm) {} nil nil))
+    {:name "ToString"
+     :libraryName "FHIRHelpers"
+     :type "FunctionRef"
+     :operand [#elm/string "foo"]}
+    "foo"))
 
 
 
@@ -250,7 +285,7 @@
                    [{:alias "S"
                      :expression #elm/list [#elm/int "1" #elm/int "1"]}]}
             res (-eval (compile {:optimizations #{:first}} query) {} nil nil)]
-        (instance? Eduction res))))
+        (is (instance? Eduction res)))))
 
   (testing "Retrieve queries"
     (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
@@ -327,8 +362,9 @@
   (testing "Equiv With with two Observations comparing there subjects."
     (let [elm {:alias "O1"
                :type "WithEquiv"
-               :expression {:dataType "{http://hl7.org/fhir}Observation"
-                            :type "Retrieve"}
+               :expression
+               {:dataType "{http://hl7.org/fhir}Observation"
+                :type "Retrieve"}
                :equivOperand
                [{:path "subject"
                  :scope "O0"
@@ -352,15 +388,17 @@
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
     (let [elm {:alias "O"
                :type "WithEquiv"
-               :expression {:dataType "{http://hl7.org/fhir}Observation"
-                            :type "Retrieve"}
-               :equivOperand [{:name "P" :type "AliasRef" :life/scopes #{"P"}}
-                              {:path "subject"
-                               :scope "O"
-                               :type "Property"
-                               :resultTypeName "{http://hl7.org/fhir}Reference"
-                               :life/scopes #{"O"}
-                               :life/source-type "{http://hl7.org/fhir}Observation"}]}
+               :expression
+               {:dataType "{http://hl7.org/fhir}Observation"
+                :type "Retrieve"}
+               :equivOperand
+               [{:name "P" :type "AliasRef" :life/scopes #{"P"}}
+                {:path "subject"
+                 :scope "O"
+                 :type "Property"
+                 :resultTypeName "{http://hl7.org/fhir}Reference"
+                 :life/scopes #{"O"}
+                 :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context {:life/single-query-scope "P" :eval-context "Unspecified"}
           create-clause (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
@@ -3364,10 +3402,12 @@
   (testing "List"
     (are [list x res] (= res (-eval (compile {} (elm/contains [list x])) {} nil nil))
       #elm/list [] #elm/int "1" false
+
       #elm/list [#elm/int "1"] #elm/int "1" true
+      #elm/list [#elm/int "1"] #elm/int "2" false
+
       #elm/list [#elm/quantity [1 "m"]] #elm/quantity [100 "cm"] true
 
-      #elm/list [#elm/int "1"] #elm/int "2" false
       #elm/list [#elm/date "2019"] #elm/date "2019-01" false
 
       #elm/list [] {:type "Null"} nil)))
@@ -4644,62 +4684,51 @@
 ;; result is null. If the argument is not of the specified type and the strict
 ;; attribute is true an exception is thrown.
 (deftest compile-as-test
-  (are [elm input res] (= res (-eval (compile {} elm) {} nil {"I" input}))
-    {:asType "{http://hl7.org/fhir}Quantity"
-     :type "As"
-     :operand
-     {:path "value"
-      :scope "I"
-      :type "Property"
-      :resultTypeSpecifier
-      {:type "ChoiceTypeSpecifier"
-       :choice
-       [{:name "{http://hl7.org/fhir}Quantity",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}CodeableConcept",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}string",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}boolean",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}Range",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}Ratio",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}SampledData",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}Attachment",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}time",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}dateTime",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}Period",
-         :type "NamedTypeSpecifier"}]}
-      :life/source-type "{http://hl7.org/fhir}Observation"}}
-    {:Observation/valueQuantity (dv/write (quantity 1.0M "m"))}
-    (quantity 1.0M "m")
+  (testing "FHIR types"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+      #elm/as ["{http://hl7.org/fhir}boolean" #elm/boolean "true"]
+      true
 
-    {:asType "{http://hl7.org/fhir}dateTime"
-     :type "As"
-     :operand
-     {:path "effective"
-      :scope "I"
-      :type "Property"
-      :resultTypeSpecifier
-      {:type "ChoiceTypeSpecifier"
-       :choice
-       [{:name "{http://hl7.org/fhir}dateTime",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}Period",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}Timing",
-         :type "NamedTypeSpecifier"}
-        {:name "{http://hl7.org/fhir}instant",
-         :type "NamedTypeSpecifier"}]}
-      :life/source-type "{http://hl7.org/fhir}Observation"}}
-    {:Observation/effectiveDateTime (dv/write (Year/of 2012))}
-    (Year/of 2012)))
+      #elm/as ["{http://hl7.org/fhir}integer" #elm/int "1"]
+      1
+
+      #elm/as ["{http://hl7.org/fhir}string" #elm/string "a"]
+      "a"
+
+      #elm/as ["{http://hl7.org/fhir}decimal" #elm/dec "1.1"]
+      1.1M
+
+      #elm/as ["{http://hl7.org/fhir}uri" #elm/string "a"]
+      "a"
+
+      #elm/as ["{http://hl7.org/fhir}url" #elm/string "a"]
+      "a"
+
+      #elm/as ["{http://hl7.org/fhir}canonical" #elm/string "a"]
+      "a"
+
+      #elm/as ["{http://hl7.org/fhir}Quantity" #elm/quantity [1.0M "m"]]
+      (quantity 1.0M "m")
+
+      #elm/as ["{http://hl7.org/fhir}dateTime" #elm/date-time "2019-09-04"]
+      (LocalDate/of 2019 9 4)
+
+      #elm/as ["{http://hl7.org/fhir}Quantity" #elm/date-time "2019-09-04"]
+      nil))
+
+  (testing "ELM types"
+    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+      #elm/as ["{urn:hl7-org:elm-types:r1}Boolean" #elm/boolean "true"]
+      true
+
+      #elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/int "1"]
+      1
+
+      #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
+      nil
+
+      #elm/as ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2019-09-04"]
+      (LocalDate/of 2019 9 4))))
 
 
 ;; 22.16. Descendents

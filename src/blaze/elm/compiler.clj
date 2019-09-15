@@ -15,16 +15,17 @@
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [datomic-spec.core :as ds]
+    [blaze.elm.compiler.function :as function]
     [blaze.elm.compiler.protocols :refer [Expression -eval -hash]]
+    [blaze.elm.compiler.property :as property]
     [blaze.elm.compiler.retrieve :as retrieve]
     [blaze.elm.compiler.query :as query]
     [blaze.datomic.cql :as cql]
     [blaze.datomic.util :as datomic-util]
-    [blaze.datomic.value :as dv]
     [blaze.elm.aggregates :as aggregates]
     [blaze.elm.boolean]
     [blaze.elm.data-provider :as data-provider]
-    [blaze.elm.date-time :as date-time :refer [local-time]]
+    [blaze.elm.date-time :as date-time :refer [local-time temporal?]]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.deps-infer :refer [infer-library-deps]]
     [blaze.elm.equiv-relationships :refer [find-equiv-rels-library]]
@@ -34,17 +35,18 @@
     [blaze.elm.nil]
     [blaze.elm.normalizer :refer [normalize-library]]
     [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :refer [quantity]]
+    [blaze.elm.quantity :refer [quantity quantity?]]
     [blaze.elm.spec]
     [blaze.elm.string :as string]
     [blaze.elm.type-infer :refer [infer-library-types]]
     [blaze.elm.util :as elm-util]
-    [blaze.util :as u])
+    [blaze.util :as u :refer [throw-anom]])
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit Temporal]
     [javax.measure Quantity]
-    [java.util Comparator])
+    [java.util Comparator]
+    [datomic Entity])
   (:refer-clojure :exclude [comparator compile]))
 
 
@@ -240,20 +242,29 @@
 
 
 (defmacro defbinop
-  {:arglists '([name bindings & body])}
-  [name [op-1-binding op-2-binding] & body]
-  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
-     [context# {[operand-1# operand-2#] :operand}]
-     (let [operand-1# (compile context# operand-1#)
-           operand-2# (compile context# operand-2#)]
-       (reify Expression
+  {:arglists '([name attr-map? bindings & body])}
+  [name & more]
+  (let [attr-map (when (map? (first more)) (first more))
+        more (if (map? (first more)) (next more) more)
+        [[op-1-binding op-2-binding] & body] more]
+    `(do
+       (defrecord ~(symbol (record-name name)) [~'operand-1 ~'operand-2]
+         Expression
          (-eval [~'_ context# resource# scope#]
-           (let [~op-1-binding (-eval operand-1# context# resource# scope#)
-                 ~op-2-binding (-eval operand-2# context# resource# scope#)]
-             ~@body))
-         (-hash [_]
-           {:type ~(keyword (clojure.core/name name))
-            :operands [(-hash operand-1#) (-hash operand-2#)]})))))
+           (let [~op-1-binding (-eval ~'operand-1 context# resource# scope#)
+                 ~op-2-binding (-eval ~'operand-2 context# resource# scope#)]
+             ~@body)))
+
+       (defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+         [context# {[operand-1# operand-2#] :operand}]
+         (let [context# (merge context# ~attr-map)
+               operand-1# (compile context# operand-1#)
+               operand-2# (compile context# operand-2#)]
+           (if (and (static? operand-1#) (static? operand-2#))
+             (let [~op-1-binding operand-1#
+                   ~op-2-binding operand-2#]
+               ~@body)
+             (~(symbol (str "->" (record-name name))) operand-1# operand-2#)))))))
 
 
 (defmacro defternop
@@ -330,21 +341,33 @@
 
 
 (defmacro defbinopp
-  {:arglists '([name bindings & body])}
-  [name [op-1-binding op-2-binding precision-binding] & body]
-  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
-     [context# {[operand-1# operand-2#] :operand precision# :precision}]
-     (let [operand-1# (compile context# operand-1#)
-           operand-2# (compile context# operand-2#)
-           ~precision-binding (some-> precision# to-chrono-unit)]
-       (reify Expression
+  {:arglists '([name attr-map? bindings & body])}
+  [name & more]
+  (let [attr-map (when (map? (first more)) (first more))
+        more (if (map? (first more)) (next more) more)
+        [[op-1-binding op-2-binding precision-binding] & body] more]
+    `(do
+       (defrecord ~(symbol (record-name name)) [~'operand-1 ~'operand-2 ~'precision]
+         Expression
          (-eval [~'_ context# resource# scope#]
-           (let [~op-1-binding (-eval operand-1# context# resource# scope#)
-                 ~op-2-binding (-eval operand-2# context# resource# scope#)]
-             ~@body))
-         (-hash [_]
-           {:type ~(keyword (clojure.core/name name))
-            :operands [(-hash operand-1#) (-hash operand-2#)]})))))
+           (let [~op-1-binding (-eval ~'operand-1 context# resource# scope#)
+                 ~op-2-binding (-eval ~'operand-2 context# resource# scope#)
+                 ~precision-binding ~'precision]
+             ~@body)))
+
+       (defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+         [context# {[operand-1# operand-2#] :operand precision# :precision}]
+         (let [context# (merge context# ~attr-map)
+               operand-1# (compile context# operand-1#)
+               operand-2# (compile context# operand-2#)
+               precision# (some-> precision# to-chrono-unit)]
+           (if (and (static? operand-1#) (static? operand-2#))
+             (let [~op-1-binding operand-1#
+                   ~op-2-binding operand-2#
+                   ~precision-binding precision#]
+               ~@body)
+             (~(symbol (str "->" (record-name name)))
+               operand-1# operand-2# precision#)))))))
 
 
 (defmacro defunopp
@@ -403,241 +426,24 @@
 ;; 2. Structured Values
 
 ;; 2.1. Tuple
+(defrecord TupleExpression [elements]
+  Expression
+  (-eval [_ context resource scope]
+    (reduce-kv
+      (fn [r key value]
+        (assoc r key (-eval value context resource scope)))
+      {}
+      elements)))
+
+
 (defmethod compile* :elm.compiler.type/tuple
   [context {elements :element}]
-  (let [elements
-        (reduce
-          (fn [r {:keys [name value]}]
-            (assoc r name (compile context value)))
-          {}
-          elements)]
-    (reify Expression
-      (-eval [_ context resource scope]
-        (reduce-kv
-          (fn [r name value]
-            (assoc r (keyword name) (-eval value context resource scope)))
-          {}
-          elements))
-      (-hash [_]
-        {:type :tuple
-         :elements
-         (reduce-kv
-           (fn [r name value]
-             (assoc r name (-hash value)))
-           {}
-           elements)}))))
-
-
-(defn- source-property-expression
-  "Creates an Expression which returns the property of `attr-kw` from `source`."
-  [attr-kw source]
-  (reify Expression
-    (-eval [_ context resource scope]
-      (let [res (-eval source context resource scope)]
-        (attr-kw res)))
-    (-hash [_]
-      {:type :property
-       :attr-kw attr-kw
-       :source (-hash source)})))
-
-
-(defn- time-source-property-expression
-  "Creates an Expression which returns the property of `attr-kw` of type date,
-  dateTime or time from `source`. Such properties have to be deserialized from
-  byte array."
-  [attr-kw source]
-  (reify Expression
-    (-eval [_ context resource scope]
-      (dv/read (attr-kw (-eval source context resource scope))))
-    (-hash [_]
-      {:type :property
-       :attr-kw attr-kw
-       :source (-hash source)})))
-
-
-(defn- quantity-source-property-expression
-  "Creates an Expression which returns the property of `attr-kw` of type
-  Quantity from `source`. Such properties have to be deserialized from byte
-  array."
-  [attr-kw source]
-  (reify Expression
-    (-eval [_ context resource scope]
-      (dv/read (attr-kw (-eval source context resource scope))))
-    (-hash [_]
-      {:type :property
-       :attr-kw attr-kw
-       :source (-hash source)})))
-
-
-(defn- scope-property-expression
-  "Creates an Expression which returns the property of `attr-kw` from either
-  a direct supplied entity or an entity from query context by `scope`."
-  ([attr-kw]
-   (reify Expression
-     (-eval [_ _ _ entity]
-       (attr-kw entity))
-     (-hash [_]
-       {:type :property
-        :attr-kw attr-kw})))
-  ([attr-kw scope]
-   (reify Expression
-     (-eval [_ _ _ query-context]
-       (attr-kw (get query-context scope)))
-     (-hash [_]
-       {:type :property
-        :attr-kw attr-kw
-        :scope scope}))))
-
-
-(defn- time-scope-property-expression
-  "Creates an Expression which returns a property of `attr-kw` of type date,
-  dateTime or time from either a direct supplied entity or an entity from query
-  context by `scope`. Such properties have to be deserialized from byte array."
-  ([attr-kw]
-   (reify Expression
-     (-eval [_ _ _ entity]
-       (dv/read (attr-kw entity)))
-     (-hash [_]
-       {:type :property
-        :attr-kw attr-kw})))
-  ([attr-kw scope]
-   (reify Expression
-     (-eval [_ _ _ query-context]
-       (dv/read (attr-kw (get query-context scope))))
-     (-hash [_]
-       {:type :property
-        :attr-kw attr-kw
-        :scope scope}))))
-
-
-(defn- quantity-scope-property-expression
-  "Creates an Expression which returns a property of `attr-kw` of type Quantity
-  from either a direct supplied entity or an entity from query context by
-  `scope`. Such properties have to be deserialized from byte array."
-  ([attr-kw]
-   (reify Expression
-     (-eval [_ _ _ entity]
-       (dv/read (attr-kw entity)))
-     (-hash [_]
-       {:type :property
-        :attr-kw attr-kw})))
-  ([attr-kw scope]
-   (reify Expression
-     (-eval [_ _ _ query-context]
-       (dv/read (attr-kw (get query-context scope))))
-     (-hash [_]
-       {:type :property
-        :attr-kw attr-kw
-        :scope scope}))))
-
-
-(defn- tuple-type-specifier?
-  {:arglists '([type-specifier])}
-  [{:keys [type]}]
-  (= "TupleTypeSpecifier" type))
-
-
-(defn- choice-type-specifier?
-  {:arglists '([type-specifier])}
-  [{:keys [type]}]
-  (= "ChoiceTypeSpecifier" type))
-
-
-(defn- list-type-specifier?
-  {:arglists '([type-specifier])}
-  [{:keys [type]}]
-  (= "ListTypeSpecifier" type))
-
-
-(defn contains-choice-type?
-  {:arglists '([choice-type-specifier type])}
-  [{choices :choice} type]
-  (some #(and (= (:type type) (:type %))
-              (= (:name type) (:name %))) choices))
-
-
-(defn- extract-local-fhir-name [type-name]
-  (let [[ns name] (elm-util/parse-qualified-name type-name)]
-    (if (= "http://hl7.org/fhir" ns)
-      name
-      (throw (Exception. (str "Unsupported type namespace `"
-                              ns "` in `Property` expression."))))))
-
-
-(defn- first-lower-case [s]
-  (let [[^char ch & chs] s]
-    (if (Character/isUpperCase ch)
-      (apply str (cons (Character/toLowerCase ch) chs))
-      s)))
-
-
-(defn- attr-kw* [source-type-name path]
-  (let [[first-type-name & type-names] (str/split source-type-name #"\.")]
-    (keyword
-      (str/join "." (cons first-type-name (map first-lower-case type-names)))
-      path)))
-
-
-(defn attr-kw
-  {:arglists '([property-expression])}
-  [{:life/keys [source-type as-type] :keys [path source]
-    result-type-specifier :resultTypeSpecifier :as expr}]
-  (cond
-    source-type
-    (let [[source-type-ns source-type-name] (elm-util/parse-qualified-name source-type)]
-      (if (= "http://hl7.org/fhir" source-type-ns)
-        (if (choice-type-specifier? result-type-specifier)
-          (if (contains-choice-type? result-type-specifier as-type)
-            (attr-kw* source-type-name (str path (u/title-case (extract-local-fhir-name (:name as-type)))))
-            (throw (ex-info (str "Ambiguous choice type on property `"
-                                 source-type-name "/" path "`.") expr)))
-          (attr-kw* source-type-name path))
-        (throw (ex-info (str "Unsupported source type namespace `"
-                             source-type-ns "` in property expression.") expr))))
-    source
-    (let [{type-specifier :resultTypeSpecifier type-name :resultTypeName} source]
-      (cond
-        (tuple-type-specifier? type-specifier)
-        (keyword path)
-
-        type-name
-        (attr-kw (assoc expr :life/source-type type-name))
-
-        ;; TODO: HACK
-        (= "birthDate.value" path)
-        :Patient/birthDate
-
-        :else
-        (throw (ex-info "Unable to determine attr-kw on property expression." expr))))
-    :else
-    (throw (ex-info "Unable to determine attr-kw on property expression." expr))))
-
-
-(defn- property-result-type
-  {:arglists '([property-expression])}
-  [{result-type-name :resultTypeName
-    result-type-specifier :resultTypeSpecifier
-    :keys [path]
-    :life/keys [as-type]
-    :as expr}]
-  (cond
-    result-type-name
-    (elm-util/parse-qualified-name result-type-name)
-
-    (choice-type-specifier? result-type-specifier)
-    (if (contains-choice-type? result-type-specifier as-type)
-      (elm-util/parse-qualified-name (:name as-type))
-      (throw (ex-info "Ambiguous choice type on property." expr)))
-
-    (list-type-specifier? result-type-specifier)
-    (elm-util/parse-qualified-name (-> result-type-specifier :elementType :name))
-
-    ;; TODO: HACK
-    (= "birthDate.value" path)
-    ["http://hl7.org/fhir" "date"]
-
-    :else
-    (throw (ex-info "Undetermined result type on property." expr))))
+  (->TupleExpression
+    (reduce
+      (fn [r {:keys [name value]}]
+        (assoc r (keyword name) (compile context value)))
+      {}
+      elements)))
 
 
 ;; 2.3. Property
@@ -662,42 +468,54 @@
 ;; Property expressions can also be used to access the individual points and
 ;; closed indicators for interval types using the property names low, high,
 ;; lowClosed, and highClosed.
-(defmethod compile* :elm.compiler.type/property
-  [{:life/keys [single-query-scope] :as context}
-   {:keys [source scope] :as expression}]
-  (let [[result-type-ns result-type-name] (property-result-type expression)
-        attr-kw (attr-kw expression)
-        source (some->> source (compile context))]
-    (cond
-      ;; We evaluate the `source` to retrieve the entity.
-      source
-      (let [property-expression-fn
-            (case result-type-ns
-              "http://hl7.org/fhir"
-              (case result-type-name
-                ("date" "dateTime" "time")
-                time-source-property-expression
-                "Quantity"
-                quantity-source-property-expression
-                source-property-expression)
-              source-property-expression)]
-        (property-expression-fn attr-kw source))
+(defn- choice-type-expr
+  [{:life/keys [single-query-scope] :as context} source scope attr]
+  (cond
+    source
+    (property/source-choice-type-expr (compile context source) attr)
 
-      ;; We use the `scope` to retrieve the entity from `query-context`.
-      scope
-      (let [property-expression-fn
-            (case result-type-ns
-              "http://hl7.org/fhir"
-              (case result-type-name
-                ("date" "dateTime" "time")
-                time-scope-property-expression
-                "Quantity"
-                quantity-scope-property-expression
-                scope-property-expression)
-              scope-property-expression)]
-        (if (= single-query-scope scope)
-          (property-expression-fn attr-kw)
-          (property-expression-fn attr-kw scope))))))
+    scope
+    (if (= single-query-scope scope)
+      (property/single-scope-choice-type-expr attr)
+      (property/scope-choice-type-expr scope attr))))
+
+
+(defn- property-expr
+  [{:life/keys [single-query-scope] :as context} source scope attr]
+  (cond
+    source
+    (property/source-expr (compile context source) attr)
+
+    scope
+    (if (= single-query-scope scope)
+      (property/single-scope-expr attr)
+      (property/scope-expr scope attr))))
+
+
+(defn- runtime-type-property-expr
+  [{:life/keys [single-query-scope] :as context} source scope path]
+  (cond
+    source
+    (property/source-runtime-type-expr (compile context source) path)
+
+    scope
+    (if (= single-query-scope scope)
+      (property/single-scope-runtime-type-expr path)
+      (property/scope-runtime-type-expr scope path))))
+
+
+(defmethod compile* :elm.compiler.type/property
+  [context {:keys [source scope path] :as expression}]
+  (if (property/choice-result-type? expression)
+    (if-let [attr (property/attr expression)]
+      (choice-type-expr context source scope attr)
+      (throw-anom
+        {::anom/category ::anom/unsupported
+         ::anom/message "Unsupported choice-type, runtime-type expression."
+         :expression expression}))
+    (if-let [attr (property/attr expression)]
+      (property-expr context source scope attr)
+      (runtime-type-property-expr context source scope path))))
 
 
 
@@ -776,6 +594,15 @@
 ;; The ExpressionRef type defines an expression that references a previously
 ;; defined NamedExpression. The result of evaluating an ExpressionReference is
 ;; the result of evaluating the referenced NamedExpression.
+(defrecord ExpressionRef [name]
+  Expression
+  (-eval [_ {:keys [library-context] :as context} resource _]
+    (if-some [expression (get library-context name)]
+      (-eval expression context resource nil)
+      (throw (ex-info (str "Expression `" name "` not found.")
+                      {:context context})))))
+
+
 (defmethod compile* :elm.compiler.type/expression-ref
   [{:keys [eval-context]} {:keys [name] def-eval-context :life/eval-context}]
   ;; TODO: look into other libraries (:libraryName)
@@ -799,15 +626,7 @@
            :name name}))
 
       :else
-      (reify Expression
-        (-eval [_ {:keys [library-context] :as context} resource _]
-          (if-some [expression (get library-context name)]
-            (-eval expression context resource nil)
-            (throw (ex-info (str "Expression `" name "` not found.")
-                            {:context context}))))
-        (-hash [_]
-          {:type :expression-ref
-           :name name})))))
+      (->ExpressionRef name))))
 
 
 ;; 9.4. FunctionRef
@@ -817,55 +636,19 @@
   (let [operands (mapv #(compile context %) operands)]
     (case name
       "ToQuantity"
-      (let [operand (first operands)]
-        (reify Expression
-          (-eval [_ context resource scope]
-            (-eval operand context resource scope))
-          (-hash [_]
-            {:type :function-ref
-             :name name
-             :operand (-hash operand)})))
+      (first operands)
 
       "ToDate"
-      (let [operand (first operands)]
-        (reify Expression
-          (-eval [_ {:keys [now] :as context} resource scope]
-            (p/to-date (-eval operand context resource scope) now))
-          (-hash [_]
-            {:type :function-ref
-             :name name
-             :operand (-hash operand)})))
+      (function/->ToDateFunctionExpression (first operands))
 
       "ToDateTime"
-      (let [operand (first operands)]
-        (reify Expression
-          (-eval [_ {:keys [now] :as context} resource scope]
-            (p/to-date-time (-eval operand context resource scope) now))
-          (-hash [_]
-            {:type :function-ref
-             :name name
-             :operand (-hash operand)})))
+      (function/->ToDateTimeFunctionExpression (first operands))
 
       "ToString"
-      (let [operand (first operands)]
-        (reify Expression
-          (-eval [_ context resource scope]
-            (let [value (-eval operand context resource scope)]
-              (str (or (:code/code value) value))))
-          (-hash [_]
-            {:type :function-ref
-             :name name
-             :operand (-hash operand)})))
+      (function/->ToStringFunctionExpression (first operands))
 
       "ToCode"
-      (let [operand (first operands)]
-        (reify Expression
-          (-eval [_ context resource scope]
-            (:Coding/code (-eval operand context resource scope)))
-          (-hash [_]
-            {:type :function-ref
-             :name name
-             :operand (-hash operand)})))
+      (function/->ToCodeFunctionExpression (first operands))
 
       (throw (Exception. (str "Unsupported function `" name "` in `FunctionRef` expression."))))))
 
@@ -879,58 +662,6 @@
 ;; The Query operator represents a clause-based query. The result of the query
 ;; is determined by the type of sources included, as well as the clauses used in
 ;; the query.
-(defn- with-xform [with-clause]
-  (fn create-with-xform [context resource scope]
-    (let [with-clause (with-clause context resource scope)]
-      (filter #(with-clause context resource %)))))
-
-
-(defn- where-xform [alias where-expr]
-  (fn [context resource scope]
-    (filter #(-eval where-expr context resource (assoc scope alias %)))))
-
-
-(defn- return-xform [alias return-expr]
-  (fn [context resource scope]
-    (map #(-eval return-expr context resource (assoc scope alias %)))))
-
-
-(defn- comp-xforms [context resource scope xforms]
-  (transduce (map #(% context resource scope)) comp xforms))
-
-
-(defn- xform [with-xforms where-xform return-xform]
-  (if (some? where-xform)
-    (if (seq with-xforms)
-      (if (some? return-xform)
-        (fn [context resource scope]
-          (comp
-            (where-xform context resource scope)
-            (comp-xforms context resource scope with-xforms)
-            (return-xform context resource scope)))
-        (fn [context resource scope]
-          (comp
-            (where-xform context resource scope)
-            (comp-xforms context resource scope with-xforms))))
-      (if (some? return-xform)
-        (fn [context resource scope]
-          (comp
-            (where-xform context resource scope)
-            (return-xform context resource scope)))
-        where-xform))
-    (if (seq with-xforms)
-      (if (some? return-xform)
-        (fn [context resource scope]
-          (comp
-            (comp-xforms context resource scope with-xforms)
-            (return-xform context resource scope)))
-        (fn [context resource scope]
-          (comp-xforms context resource scope with-xforms)))
-      (if (some? return-xform)
-        return-xform
-        (fn [_ _ _] identity)))))
-
-
 (defmulti compile-sort-by-item (fn [_ {:keys [type]}] type))
 
 
@@ -1000,71 +731,40 @@
     {sort-by-items :by} :sort}]
   (if (= 1 (count sources))
     (let [{:keys [expression alias]} (first sources)
+          context (dissoc context :optimizations)
+          source (compile context expression)
+          context (assoc context :life/single-query-scope alias)
           with-equiv-clauses (filter #(= "WithEquiv" (:type %)) relationships)
           with-equiv-clauses (map #(compile-with-equiv-clause context %) with-equiv-clauses)
-          with-xforms (map with-xform with-equiv-clauses)
-          where-xform (some->> where (compile context) (where-xform alias))
-          return-xform (some->> return (compile context) (return-xform alias))
-          xform (xform with-xforms where-xform return-xform)
-          sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)
-          source (compile context expression)]
+          with-xforms (mapv query/with-xform with-equiv-clauses)
+          where-xform-expr (some->> where (compile context) (query/where-xform-expr))
+          distinct (if (contains? optimizations :non-distinct) false distinct)
+          return-xform-expr (query/return-xform-expr (some->> return (compile context)) distinct)
+          xform-expr (query/xform-expr with-xforms where-xform-expr return-xform-expr)
+          sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)]
       (if (empty? sort-by-items)
-        (if distinct
+        (if xform-expr
           (if (contains? optimizations :first)
-            (query/eduction-expr xform source)
-            (reify Expression
-              (-eval [_ context resource scope]
-                (vec (into #{} (xform context resource scope) (-eval source context resource scope))))
-              (-hash [_]
-                (cond->
-                  {:type :query
-                   :source (-hash source)
-                   :distinct true}
-                  (some? where) (assoc :where (-hash where))
-                  (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-                  (some? return) (assoc :return (-hash return))))))
-          (reify Expression
-            (-eval [_ context resource scope]
-              (into [] (xform context resource scope) (-eval source context resource scope)))
-            (-hash [_]
-              (cond->
-                {:type :query
-                 :source (-hash source)
-                 :distinct false}
-                (some? where) (assoc :where (-hash where))
-                (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-                (some? return) (assoc :return (-hash return))))))
-        (if distinct
+            (query/eduction-expr xform-expr source)
+            (query/into-vector-expr xform-expr source))
+          source)
+        (if xform-expr
           (reify Expression
             (-eval [_ context resource scope]
               ;; TODO: build a comparator of all sort by items
-              (->> (into #{} (xform context resource scope) (-eval source context resource scope))
+              (->> (into
+                     []
+                     (-eval xform-expr context resource scope)
+                     (-eval source context resource scope))
                    (sort-by identity (comparator (:direction (first sort-by-items))))
-                   (vec)))
-            (-hash [_]
-              (cond->
-                {:type :query
-                 :source (-hash source)
-                 :distinct true
-                 :sort-by-items (mapv hash-sort-by-item sort-by-items)}
-                (some? where) (assoc :where (-hash where))
-                (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-                (some? return) (assoc :return (-hash return)))))
+                   (vec))))
           (reify Expression
             (-eval [_ context resource scope]
+
               ;; TODO: build a comparator of all sort by items
-              (->> (into [] (xform context resource scope) (-eval source context resource scope))
+              (->> (-eval source context resource scope)
                    (sort-by identity (comparator (:direction (first sort-by-items))))
-                   (vec)))
-            (-hash [_]
-              (cond->
-                {:type :query
-                 :source (-hash source)
-                 :distinct false
-                 :sort-by-items (mapv hash-sort-by-item sort-by-items)}
-                (some? where) (assoc :where (-hash where))
-                (seq with-equiv-clauses) (assoc :with (-hash with-equiv-clauses))
-                (some? return) (assoc :return (-hash return))))))))
+                   (vec)))))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
 
@@ -1072,20 +772,23 @@
 ;;
 ;; The AliasRef expression allows for the reference of a specific source within
 ;; the context of a query.
+(defrecord AliasRefExpression [key]
+  Expression
+  (-eval [_ _ _ scopes]
+    (get scopes key)))
+
+
+(defrecord SingleScopeAliasRefExpression []
+  Expression
+  (-eval [_ _ _ scope]
+    scope))
+
+
 (defmethod compile* :elm.compiler.type/alias-ref
   [{:life/keys [single-query-scope]} {:keys [name]}]
   (if (= single-query-scope name)
-    (reify Expression
-      (-eval [_ _ _ entity]
-        entity)
-      (-hash [_]
-        {:type :alias-ref}))
-    (reify Expression
-      (-eval [_ _ _ query-context]
-        (get query-context name))
-      (-hash [_]
-        {:type :alias-ref
-         :name name}))))
+    (->SingleScopeAliasRefExpression)
+    (->AliasRefExpression name)))
 
 
 ;; 10.12. With
@@ -1191,13 +894,7 @@
              :data-type-name data-type-name}))
 
         (if (= data-type-name eval-context)
-          (reify Expression
-            (-eval [_ _ resource _]
-              [resource])
-            (-hash [_]
-              {:type :retrieve
-               :context eval-context}))
-
+          retrieve/resource-expr
           (retrieve/context-expr db eval-context data-type-name))))))
 
 
@@ -1243,22 +940,23 @@
 ;; 13. Logical Operators
 
 ;; 13.1. And
+(defrecord AndOperatorExpression [operand-1 operand-2]
+  Expression
+  (-eval [_ context resource scope]
+    (let [operand-1 (-eval operand-1 context resource scope)]
+      (if (false? operand-1)
+        false
+        (let [operand-2 (-eval operand-2 context resource scope)]
+          (cond
+            (false? operand-2) false
+            (and (true? operand-1) (true? operand-2)) true))))))
+
+
 (defmethod compile* :elm.compiler.type/and
   [context {[operand-1 operand-2] :operand}]
-  (let [operand-1 (compile context operand-1)
-        operand-2 (compile context operand-2)]
-    (reify Expression
-      (-eval [_ context resource scope]
-        (let [operand-1 (-eval operand-1 context resource scope)]
-          (if (false? operand-1)
-            false
-            (let [operand-2 (-eval operand-2 context resource scope)]
-              (cond
-                (false? operand-2) false
-                (and (true? operand-1) (true? operand-2)) true)))))
-      (-hash [_]
-        {:type :and
-         :operands [(-hash operand-1) (-hash operand-2)]}))))
+  (->AndOperatorExpression
+    (compile context operand-1)
+    (compile context operand-2)))
 
 
 ;; 13.2 Implies
@@ -1368,9 +1066,22 @@
   (true? operand))
 
 
+
 ;; 15. Conditional Operators
 
 ;; 15.1. Case
+(defrecord ComparandCaseExpression [comparand items else]
+  Expression
+  (-eval [_ context resource scope]
+    (let [comparand (-eval comparand context resource scope)]
+      (loop [[{:keys [when then]} & next-items] items]
+        (if (p/equal comparand (-eval when context resource scope))
+          (-eval then context resource scope)
+          (if (empty? next-items)
+            (-eval else context resource scope)
+            (recur next-items)))))))
+
+
 (defmethod compile* :elm.compiler.type/case
   [context {:keys [comparand else] items :caseItem}]
   (let [comparand (some->> comparand (compile context))
@@ -1379,22 +1090,7 @@
                     items)
         else (compile context else)]
     (if comparand
-      (reify Expression
-        (-eval [_ context resource scope]
-          (let [comparand (-eval comparand context resource scope)]
-            (loop [[{:keys [when then]} & next-items] items]
-              (if (p/equal comparand (-eval when context resource scope))
-                (-eval then context resource scope)
-                (if (empty? next-items)
-                  (-eval else context resource scope)
-                  (recur next-items))))))
-        (-hash [_]
-          (cond->
-            {:type :case
-             :items (mapv #(-> % (update :when -hash) (update :then -hash)) items)
-             :else (-hash else)}
-            comparand
-            (assoc :comparand (-hash comparand)))))
+      (->ComparandCaseExpression comparand items else)
       (reify Expression
         (-eval [_ context resource scope]
           (loop [[{:keys [when then]} & next-items] items]
@@ -1413,21 +1109,20 @@
 
 
 ;; 15.2. If
+(defrecord IfExpression [condition then else]
+  Expression
+  (-eval [_ context resource scope]
+    (if (-eval condition context resource scope)
+      (-eval then context resource scope)
+      (-eval else context resource scope))))
+
+
 (defmethod compile* :elm.compiler.type/if
   [context {:keys [condition then else]}]
   (let [condition (compile context condition)
         then (compile context then)
         else (compile context else)]
-    (reify Expression
-      (-eval [_ context resource scope]
-        (if (-eval condition context resource scope)
-          (-eval then context resource scope)
-          (-eval else context resource scope)))
-      (-hash [_]
-        {:type :if
-         :condition (-hash condition)
-         :then (-hash then)
-         :else (-hash else)}))))
+    (->IfExpression condition then else)))
 
 
 
@@ -1703,6 +1398,8 @@
               [string]
               (if-let [separator (-eval separator context resource scope)]
                 (condp = (count separator)
+                  0
+                  [string]
                   1
                   (loop [[char & more] string
                          result []
@@ -1715,7 +1412,7 @@
                         (recur more result (.append acc char))
                         (conj result (str (.append acc char))))))
                   ;; TODO: implement split with more than one char.
-                  (throw (Exception. "TODO: implement split with more than one char.")))
+                  (throw (Exception. "TODO: implement split with separators longer than one char.")))
                 [string]))))
         (-hash [_]
           {:type :combine
@@ -2229,7 +1926,9 @@
 
 
 ;; 19.5. Contains
-(defbinopp contains [list-or-interval x precision]
+(defbinopp contains
+  {:optimizations #{:first :non-distinct}}
+  [list-or-interval x precision]
   (p/contains list-or-interval x precision))
 
 
@@ -2361,15 +2060,18 @@
 ;; 20. List Operators
 
 ;; 20.1. List
+(defrecord ListOperatorExpression [elements]
+  Expression
+  (-eval [_ context resource scope]
+    (mapv #(-eval % context resource scope) elements)))
+
+
 (defmethod compile* :elm.compiler.type/list
   [context {elements :element}]
   (let [elements (mapv #(compile context %) elements)]
-    (reify Expression
-      (-eval [_ context resource scope]
-        (mapv #(-eval % context resource scope) elements))
-      (-hash [_]
-        {:type :list
-         :elements (mapv -hash elements)}))))
+    (if (every? static? elements)
+      elements
+      (->ListOperatorExpression elements))))
 
 
 ;; 20.3. Current
@@ -2405,7 +2107,7 @@
 
 ;; 20.8. Exists
 (defunop exists
-  {:optimizations #{:first}}
+  {:optimizations #{:first :non-distinct}}
   [list]
   (not (empty? list)))
 
@@ -2694,11 +2396,121 @@
 ;; the specified type, and the strict attribute is false (the default), the
 ;; result is null. If the argument is not of the specified type and the strict
 ;; attribute is true, an exception is thrown.
+(defrecord AsExpression [operand matches-type?]
+  Expression
+  (-eval [_ context resource scope]
+    (let [value (-eval operand context resource scope)]
+      (when (matches-type? value)
+        value))))
+
+
+(defn- matches-fhir-named-type-fn [type-name]
+  (cond
+    (= "Quantity" type-name)
+    quantity?
+
+    (Character/isUpperCase ^char (first type-name))
+    (fn matches-type? [x]
+      (and (instance? Entity x) (= type-name (datomic-util/entity-type x))))
+
+    (= "boolean" type-name)
+    boolean?
+
+    (#{"integer" "unsignedInt" "positiveInt"} type-name)
+    int?
+
+    (#{"string" "uri" "url" "canonical" "oid" "id" "markdown"} type-name)
+    string?
+
+    (= "base64Binary" type-name)
+    bytes?
+
+    (= "decimal" type-name)
+    decimal?
+
+    (#{"instant" "date" "dateTime" "time"} type-name)
+    temporal?
+
+    (= "code" type-name)
+    (fn matches-type? [x]
+      (and (instance? Entity x) (= "code" (datomic-util/entity-type x))))
+
+    (= "code" type-name)
+    uuid?
+
+    :else
+    (throw-anom
+      {::anom/category ::anom/unsupported
+       ::anom/message
+       (format "Unsupported FHIR type `%s` in As expression." type-name)
+       :type-name type-name})))
+
+
+(defn- matches-elm-named-type-fn [type-name]
+  (case type-name
+    "Boolean" boolean?
+    "Integer" int?
+    "DateTime" temporal?
+    "Quantity" quantity?
+    (throw-anom
+      {::anom/category ::anom/unsupported
+       ::anom/message
+       (format "Unsupported ELM type `%s` in As expression." type-name)
+       :type-name type-name})))
+
+
+(defn- matches-named-type-fn [type-name]
+  (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
+    (case type-ns
+      "http://hl7.org/fhir"
+      (matches-fhir-named-type-fn type-name)
+      "urn:hl7-org:elm-types:r1"
+      (matches-elm-named-type-fn type-name)
+      (throw-anom
+        {::anom/category ::anom/unsupported
+         ::anom/message
+         (format "Unsupported type namespace `%s` in As expression." type-ns)
+         :type-ns type-ns}))))
+
+
+(defn- matches-type-specifier-fn [as-type-specifier]
+  (case (:type as-type-specifier)
+    "NamedTypeSpecifier"
+    (matches-named-type-fn (:name as-type-specifier))
+
+    "ListTypeSpecifier"
+    (let [pred (matches-type-specifier-fn (:elementType as-type-specifier))]
+      (fn matches-type? [x]
+        (every? pred x)))
+
+    (throw-anom
+      {::anom/category ::anom/unsupported
+       ::anom/message
+       (format "Unsupported type specifier type `%s` in As expression." (:type as-type-specifier))
+       :type-specifier-type (:type as-type-specifier)})))
+
+
+(defn- matches-type-fn
+  [{as-type :asType as-type-specifier :asTypeSpecifier :as expression}]
+  (cond
+    as-type
+    (matches-named-type-fn as-type)
+
+    as-type-specifier
+    (matches-type-specifier-fn as-type-specifier)
+
+    :else
+    (throw-anom
+      {::anom/category ::anom/fault
+       ::anom/message "Invalid As expression without `as-type` and `as-type-specifier`."
+       :expression expression})))
+
+
 (defmethod compile* :elm.compiler.type/as
-  [context {:keys [operand] as-type :asType as-type-specifier :asTypeSpecifier}]
-  (let [as-type-specifier
-        (or as-type-specifier {:type "NamedTypeSpecifier" :name as-type})]
-    (compile context (assoc operand :life/as-type as-type-specifier))))
+  [context {:keys [operand] :as expression}]
+  (when-some [operand (compile context operand)]
+    (->AsExpression operand (matches-type-fn expression))))
+
 
 ;; 22.2. CanConvert
 
@@ -2762,15 +2574,15 @@
 
 
 ;; 22.22. ToDateTime
+(defrecord ToDateTimeOperatorExpression [operand]
+  Expression
+  (-eval [_ {:keys [now] :as context} resource scope]
+    (p/to-date-time (-eval operand context resource scope) now)))
+
+
 (defmethod compile* :elm.compiler.type/to-date-time
   [context {:keys [operand]}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ {:keys [now] :as context} resource scope]
-        (p/to-date-time (-eval operand context resource scope) now))
-      (-hash [_]
-        {:type :to-date-time
-         :operand (-hash operand)}))))
+  (->ToDateTimeOperatorExpression (compile context operand)))
 
 
 ;; 22.23. ToDecimal

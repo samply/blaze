@@ -336,28 +336,28 @@
      #{`util/resource-by}}))
 
 
-(defn stub-resource-type [resource type]
+(defn stub-entity-type [entity type]
   (st/instrument
-    [`util/resource-type]
+    [`util/entity-type]
     {:spec
-     {`util/resource-type
+     {`util/entity-type
       (s/fspec
-        :args (s/cat :resource #{resource})
+        :args (s/cat :resource #{entity})
         :ret #{type})}
      :stub
-     #{`util/resource-type}}))
+     #{`util/entity-type}}))
 
 
 (defn stub-resource-type* [db eid type]
   (st/instrument
-    [`util/resource-type*]
+    [`util/entity-type*]
     {:spec
-     {`util/resource-type*
+     {`util/entity-type*
       (s/fspec
         :args (s/cat :db #{db} :eid #{eid})
         :ret #{type})}
      :stub
-     #{`util/resource-type*}}))
+     #{`util/entity-type*}}))
 
 
 (defn stub-tx-instant [transaction result]

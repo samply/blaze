@@ -2,6 +2,7 @@
   (:require
     [blaze.datomic.util :as datomic-util]
     [blaze.elm.compiler.protocols :refer [-eval]]
+    [clojure.core.reducers :as r]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds])
   (:import
@@ -43,18 +44,12 @@
   [db now {expression-defs :life/compiled-expression-defs} subject
    expression-name]
   (let [context {:db db :now now}]
-    (transduce
-      (filter
-        (fn [resource]
-          (-> (evaluate-expression-1 context resource expression-defs)
-              :library-context
-              (get expression-name))))
-      (fn
-        ([sum]
-         sum)
-        ([count _]
-         (inc count)))
-      0
+    (r/fold
+      +
+      (fn [count resource]
+        (if (-> (evaluate-expression-1 context resource expression-defs)
+                :library-context
+                (get expression-name))
+          (inc count)
+          count))
       (list-resources db subject))))
-
-

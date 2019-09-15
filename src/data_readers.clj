@@ -21,4 +21,5 @@
  elm/time blaze.elm.literals/time
  elm/interval blaze.elm.literals/interval
  elm/current blaze.elm.literals/current
- elm/as blaze.elm.literals/as}
+ elm/as blaze.elm.literals/as
+ elm/tuple blaze.elm.literals/tuple}

@@ -95,3 +95,13 @@
       (->AttrRetrieveExpression (d/entid db :Specimen/subject))
       "Observation"
       (->RevAttrRetrieveExpression (d/entid db :Observation/specimen)))))
+
+
+(defrecord ResourceRetrieveExpression []
+  Expression
+  (-eval [_ _ resource _]
+    [resource]))
+
+
+(def resource-expr
+  (->ResourceRetrieveExpression))
