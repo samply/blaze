@@ -4,7 +4,6 @@
     [blaze.datomic.pull :as pull]
     [blaze.datomic.value :as value]
     [blaze.datomic.util :as util]
-    [blaze.deferred :as bd]
     [blaze.spec]
     [blaze.terminology-service :as ts :refer [term-service?]]
     [blaze.util :refer [throw-anom]]
@@ -1271,16 +1270,20 @@
   (if primitive?
     (if (= :db.cardinality/one cardinality)
       (annotate-code-primitive-element context element value)
-      (transduce
-        (bd/map #(annotate-code-primitive-element context element %))
-        conj
-        value))
+      (md/loop [[value & values] value
+                res []]
+        (if value
+          (-> (annotate-code-primitive-element context element value)
+              (md/chain' #(md/recur values (conj res %))))
+          res)))
     (if (= :db.cardinality/one cardinality)
       (annotate-codes-non-primitive-element context element value)
-      (transduce
-        (bd/map #(annotate-codes-non-primitive-element context element %))
-        conj
-        value))))
+      (md/loop [[value & values] value
+                res []]
+        (if value
+          (-> (annotate-codes-non-primitive-element context element value)
+              (md/chain' #(md/recur values (conj res %))))
+          res)))))
 
 
 (defn- type-ident [type k]
@@ -1292,16 +1295,14 @@
 (defn- annotate-codes*
   [{:keys [db] :as context} type entity]
   (let [type (if (= :Resource type) (keyword (get entity "resourceType")) type)]
-    (transduce
-      (bd/map
-        (fn [[k v]]
-          (if-let [element (util/cached-entity db (type-ident type k))]
-            (-> (annotate-codes-element context element v)
-                (md/chain' #(vector k %)))
-            [k v])))
-      conj
-      {}
-      entity)))
+    (md/loop [[[k v] & entity] entity
+              res {}]
+      (if k
+        (if-let [element (util/cached-entity db (type-ident type k))]
+          (-> (annotate-codes-element context element v)
+              (md/chain' #(md/recur entity (assoc res k %))))
+          (md/recur entity (assoc res k v)))
+        res))))
 
 
 
