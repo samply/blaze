@@ -101,9 +101,7 @@
 (def ^:private base-url "http://localhost:8080")
 
 (def ^:private default-config
-  {:logging {:log/level "info"}
-
-   :structure-definitions {}
+  {:structure-definitions {}
 
    :database-conn
    {:structure-definitions (ig/ref :structure-definitions)
@@ -214,13 +212,13 @@
 
 
 (s/fdef init!
-  :args (s/cat :config :system/config :keys (s/? (s/coll-of keyword?))))
+  :args (s/cat :config :system/config))
 
 (defn init!
-  ([config]
-   (ig/init (merge-with merge default-config config)))
-  ([config keys]
-   (ig/init (merge-with merge default-config config) keys)))
+  [{:log/keys [level] :or {level "info"} :as config}]
+  (log/info "Set log level to:" (str/lower-case level))
+  (log/merge-config! {:level (keyword (str/lower-case level))})
+  (ig/init (merge-with merge default-config config)))
 
 
 (defn shutdown! [system]
@@ -229,12 +227,6 @@
 
 
 ;; ---- Integrant Hooks -------------------------------------------------------
-
-(defmethod ig/init-key :logging
-  [_ {:log/keys [level]}]
-  (log/info "Set log level to:" (str/lower-case level))
-  (log/merge-config! {:level (keyword (str/lower-case level))}))
-
 
 (defmethod ig/init-key :structure-definitions
   [_ _]
