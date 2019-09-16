@@ -30,6 +30,16 @@
   expression)
 
 
+(defmethod find-equiv-rels :elm.normalizer.type/unary-expression
+  [expression]
+  (update expression :operand find-equiv-rels))
+
+
+(defmethod find-equiv-rels :elm.normalizer.type/multiary-expression
+  [expression]
+  (update expression :operand #(mapv find-equiv-rels %)))
+
+
 (defn split-by-first-equal-expression
   "Searches for the first Equal expression which is a mandatory condition
   (combined with And) and splits the expression tree into that and the rest.
@@ -81,3 +91,13 @@
 (defmethod find-equiv-rels :elm.normalizer.type/query
   [{relationships :relationship :as expression}]
   (assoc expression :relationship (mapv find-equiv-relationship relationships)))
+
+
+;; 20. List Operators
+
+;; 20.8. Exists
+(derive :elm.normalizer.type/exists :elm.normalizer.type/unary-expression)
+
+
+;; 20.25. SingletonFrom
+(derive :elm.normalizer.type/singleton-from :elm.normalizer.type/unary-expression)

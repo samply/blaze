@@ -728,7 +728,18 @@
     relationships :relationship
     :keys [where]
     {return :expression :keys [distinct] :or {distinct true}} :return
-    {sort-by-items :by} :sort}]
+    {sort-by-items :by} :sort
+    :as expr}]
+  (when (seq (filter #(= "With" (:type %)) relationships))
+    (throw-anom
+      {::anom/category ::anom/unsupported
+       ::anom/message "Unsupported With clause in query expression."
+       :expression expr}))
+  (when (seq (filter #(= "Without" (:type %)) relationships))
+    (throw-anom
+      {::anom/category ::anom/unsupported
+       ::anom/message "Unsupported Without clause in query expression."
+       :expression expr}))
   (if (= 1 (count sources))
     (let [{:keys [expression alias]} (first sources)
           context (dissoc context :optimizations)
@@ -736,11 +747,11 @@
           context (assoc context :life/single-query-scope alias)
           with-equiv-clauses (filter #(= "WithEquiv" (:type %)) relationships)
           with-equiv-clauses (map #(compile-with-equiv-clause context %) with-equiv-clauses)
-          with-xforms (mapv query/with-xform with-equiv-clauses)
+          with-xform-factories (mapv query/with-xform-factory with-equiv-clauses)
           where-xform-expr (some->> where (compile context) (query/where-xform-expr))
           distinct (if (contains? optimizations :non-distinct) false distinct)
           return-xform-expr (query/return-xform-expr (some->> return (compile context)) distinct)
-          xform-expr (query/xform-expr with-xforms where-xform-expr return-xform-expr)
+          xform-expr (query/xform-expr with-xform-factories where-xform-expr return-xform-expr)
           sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)]
       (if (empty? sort-by-items)
         (if xform-expr

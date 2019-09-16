@@ -6,7 +6,10 @@
     [clojure.core Eduction]))
 
 
-(defn with-xform [with-clause]
+(s/fdef with-xform-factory
+  :args (s/cat :with-clause fn?))
+
+(defn with-xform-factory [with-clause]
   (fn create-with-xform [context resource scope]
     (let [with-clause (with-clause context resource scope)]
       (filter #(with-clause context resource %)))))

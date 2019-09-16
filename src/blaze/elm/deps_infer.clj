@@ -8,7 +8,7 @@
 
 (defmulti infer-deps
   "Infers dependencies for `expression`s and annotate them with
-  `:life/deps`."
+  `:life/deps` and `:life/scopes`."
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
@@ -50,7 +50,9 @@
   (let [source (some-> source infer-deps)]
     (cond-> expression
       source
-      (assoc :source source :life/deps (:life/deps source))
+      (assoc :source source
+             :life/deps (:life/deps source)
+             :life/scopes (:life/scopes source))
       scope
       (assoc :life/scopes #{scope}))))
 
