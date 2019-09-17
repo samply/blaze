@@ -67,9 +67,10 @@
       (assoc :diagnostics message)
       stacktrace
       (assoc :diagnostics stacktrace)
-      (sequential? expression)
+      (coll? expression)
       (assoc :expression expression)
-      (some? expression)
+      (and (not (coll? expression))
+           (some? expression))
       (assoc :expression [expression]))]})
 
 

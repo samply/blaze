@@ -90,6 +90,75 @@
 
 
 (deftest handler-test
+  (testing "Returns Error on unknown method"
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"request"
+                {"method" "FOO"
+                 "url" "Patient/0"}}]}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "value" (-> body :issue first :code)))
+
+      (is (= "Bundle.entry[0].request.method"
+             (-> body :issue first :expression first)))
+
+      (is (= "Unknown method `FOO`."
+             (-> body :issue first :diagnostics)))))
+
+  (testing "Returns Error on unsupported method"
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"request"
+                {"method" "PATCH"
+                 "url" "Patient/0"}}]}})]
+
+      (is (= 422 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "not-supported" (-> body :issue first :code)))
+
+      (is (= "Bundle.entry[0].request.method"
+             (-> body :issue first :expression first)))
+
+      (is (= "Unsupported method `PATCH`."
+             (-> body :issue first :diagnostics)))))
+
+  (testing "Returns Error on missing type"
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"request"
+                {"method" "PUT"
+                 "url" ""}}]}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "value" (-> body :issue first :code)))
+
+      (is (= "Bundle.entry[0].request.url"
+             (-> body :issue first :expression first)))
+
+      (is (= "Can't parse type from `entry.request.url` ``."
+             (-> body :issue first :diagnostics)))))
+
   (testing "Returns Error on unknown type"
     (datomic-test-util/stub-cached-entity ::db-before #{:Foo} nil?)
 
@@ -109,7 +178,37 @@
 
       (is (= "value" (-> body :issue first :code)))
 
-      (is (= "Unknown type `Foo`." (-> body :issue first :diagnostics)))))
+      (is (= "Bundle.entry[0].request.url"
+             (-> body :issue first :expression first)))
+
+      (is (= "Unknown type `Foo` in bundle entry URL `Foo/0`."
+             (-> body :issue first :diagnostics)))))
+
+  (testing "Returns Error on invalid JSON type for resource"
+    (given-types-available "Patient")
+
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"resource" []
+                "request"
+                {"method" "PUT"
+                 "url" "Patient/0"}}]}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "structure" (-> body :issue first :code)))
+
+      (is (= "Bundle.entry[0].resource"
+             (-> body :issue first :expression first)))
+
+      (is (= "Expected resource of entry 0 to be a JSON Object."
+             (-> body :issue first :diagnostics)))))
 
 
   (testing "Returns Error on type mismatch of a update"
@@ -132,6 +231,12 @@
       (is (= "OperationOutcome" (:resourceType body)))
 
       (is (= "invariant" (-> body :issue first :code)))
+
+      (is (some #{"Bundle.entry[0].request.url"}
+                (-> body :issue first :expression)))
+
+      (is (some #{"Bundle.entry[0].resource.resourceType"}
+                (-> body :issue first :expression)))
 
       (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
              (-> body :issue first :details :coding first :system)))
@@ -161,6 +266,12 @@
       (is (= "OperationOutcome" (:resourceType body)))
 
       (is (= "invariant" (-> body :issue first :code)))
+
+      (is (some #{"Bundle.entry[0].request.url"}
+                (-> body :issue first :expression)))
+
+      (is (some #{"Bundle.entry[0].resource.id"}
+                (-> body :issue first :expression)))
 
       (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
              (-> body :issue first :details :coding first :system)))

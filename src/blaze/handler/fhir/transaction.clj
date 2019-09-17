@@ -26,38 +26,50 @@
 
 
 (defn- validate-entry
-  {:arglists '([db entry])}
-  [db {:strs [resource] {:strs [method url]} "request" :as entry}]
+  {:arglists '([db idx entry])}
+  [db idx {:strs [resource] {:strs [method url]} "request" :as entry}]
   (let [[type id] (bundle/match-url url)]
     (cond
       (not (#{"GET" "HEAD" "POST" "PUT" "DELETE" "PATCH"} method))
       {::anom/category ::anom/incorrect
        ::anom/message (str "Unknown method `" method "`.")
-       :fhir/issue "value"}
+       :fhir/issue "value"
+       :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx)}
 
       (not (#{"GET" "POST" "PUT" "DELETE"} method))
       {::anom/category ::anom/unsupported
        ::anom/message (str "Unsupported method `" method "`.")
-       :fhir/issue "not-supported"}
+       :fhir/issue "not-supported"
+       :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx)}
 
       (nil? type)
       {::anom/category ::anom/incorrect
-       ::anom/message "Can't parse type from `entry.request.url` `" url "`."
-       :fhir/issue "value"}
+       ::anom/message
+       (format "Can't parse type from `entry.request.url` `%s`." url)
+       :fhir/issue "value"
+       :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}
 
       (nil? (util/cached-entity db (keyword type)))
       {::anom/category ::anom/incorrect
-       ::anom/message (str "Unknown type `" type "`.")
-       :fhir/issue "value"}
+       ::anom/message
+       (format "Unknown type `%s` in bundle entry URL `%s`." type url)
+       :fhir/issue "value"
+       :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}
 
       (and (#{"POST" "PUT"} method) (not (map? resource)))
       {::anom/category ::anom/incorrect
+       ::anom/message
+       (format "Expected resource of entry %d to be a JSON Object." idx)
        :fhir/issue "structure"
+       :fhir.issue/expression (format "Bundle.entry[%d].resource" idx)
        :fhir/operation-outcome "MSG_JSON_OBJECT"}
 
       (and (#{"POST" "PUT"} method) (not= type (get resource "resourceType")))
       {::anom/category ::anom/incorrect
        :fhir/issue "invariant"
+       :fhir.issue/expression
+       [(format "Bundle.entry[%d].request.url" idx)
+        (format "Bundle.entry[%d].resource.resourceType" idx)]
        :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"}
 
       (and (= "PUT" method) (nil? id))
@@ -68,6 +80,9 @@
       (and (= "PUT" method) (not= id (get resource "id")))
       {::anom/category ::anom/incorrect
        :fhir/issue "invariant"
+       :fhir.issue/expression
+       [(format "Bundle.entry[%d].request.url" idx)
+        (format "Bundle.entry[%d].resource.id" idx)]
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"}
 
       :else
@@ -76,12 +91,14 @@
 
 (defn- validate-entries
   [db entries]
-  (reduce
-    (fn [res entry]
-      (let [entry (validate-entry db entry)]
-        (if (::anom/category entry)
-          (reduced entry)
-          (conj res entry))))
+  (transduce
+    (map-indexed vector)
+    (completing
+      (fn [res [idx entry]]
+        (let [entry (validate-entry db idx entry)]
+          (if (::anom/category entry)
+            (reduced entry)
+            (conj res entry)))))
     []
     entries))
 
