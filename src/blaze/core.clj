@@ -40,11 +40,23 @@
     sys))
 
 
+(defn shutdown-system! []
+  (when-let [sys system]
+    (system/shutdown! sys)
+    (alter-var-root #'system (constantly nil))
+    nil))
+
+
+(defn- add-shutdown-hook [f]
+  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable f)))
+
+
 (defn -main [& _]
   (let [config (env-tools/build-config :system/config)
         coerced-config (coerce :system/config config)]
     (if (s/valid? :system/config coerced-config)
       (do
+        (add-shutdown-hook shutdown-system!)
         (init-system! coerced-config)
         (log/info "JVM version:" (System/getProperty "java.version"))
         (log/info "Maximum available memory:" (max-memory) "MiB")
