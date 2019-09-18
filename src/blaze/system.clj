@@ -182,9 +182,7 @@
      (ig/ref :fhir-operation-evaluate-measure-handler)}}
 
    :app-handler
-   {:base-url base-url
-    :database/conn (ig/ref :database-conn)
-    :handlers
+   {:handlers
     {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
      :handler/health (ig/ref :health-handler)
      :handler.fhir/core (ig/ref :fhir-core-handler)}}
@@ -365,8 +363,9 @@
 
 (defmethod ig/init-key :fhir-core-handler
   [_ {:keys [base-url handlers] :database/keys [conn]}]
-  (log/debug "Init FHIR handler")
-  (fhir-core-handler/handler (str base-url "/fhir") conn handlers))
+  (let [fhir-base-url (str base-url "/fhir")]
+    (log/info "Init FHIR RESTful API with base URL:" fhir-base-url)
+    (fhir-core-handler/handler fhir-base-url conn handlers)))
 
 
 (defmethod ig/init-key :evaluate-measure-operation-executor
