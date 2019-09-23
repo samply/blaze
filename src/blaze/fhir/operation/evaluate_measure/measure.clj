@@ -48,7 +48,7 @@
      :fhir/issue "value"}))
 
 
-(defn- compiled-primary-library*
+(defn- compile-primary-library*
   [db measure]
   (if-let [library-ref (first (:Measure/library measure))]
     (if-let [library (datomic-util/resource-by db :Library/url library-ref)]
@@ -70,12 +70,12 @@
      :measure measure}))
 
 
-(defn- compiled-primary-library
+(defn- compile-primary-library
   "Returns the primary library from `measure` in compiled form or an anomaly
   on errors."
   [db measure]
   (with-open [_ (prom/timer compile-duration-seconds)]
-    (compiled-primary-library* db measure)))
+    (compile-primary-library* db measure)))
 
 
 (defn- evaluate-population
@@ -136,7 +136,7 @@
   in case of errors."
   {:arglists '([now db period measure])}
   [now db [start end] {groups :Measure/group :as measure}]
-  (let [library (compiled-primary-library db measure)]
+  (let [library (compile-primary-library db measure)]
     (if (::anom/category library)
       library
       (cond->
