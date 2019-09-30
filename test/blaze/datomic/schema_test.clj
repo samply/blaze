@@ -58,20 +58,37 @@
              :element/json-key "id"}
             [:db/add "Patient" :type/elements "Patient.id"]])))
 
-  (testing "Patient.active"
-    (is (= (element-definition-tx-data
-             (structure-definition "Patient")
-             (element-definition "Patient.active"))
-           [{:db/id "Patient.active"
-             :db/ident :Patient/active
-             :db/valueType :db.type/boolean
-             :db/cardinality :db.cardinality/one
-             :element/primitive? true
-             :element/choice-type? false
-             :ElementDefinition/isSummary true
-             :element/type-code "boolean"
-             :element/json-key "active"}
-            [:db/add "Patient" :type/elements "Patient.active"]])))
+  (testing "Primitive Single-Valued Single-Typed"
+    (testing "Patient.active"
+      (is (= (element-definition-tx-data
+               (structure-definition "Patient")
+               (element-definition "Patient.active"))
+             [{:db/id "Patient.active"
+               :db/ident :Patient/active
+               :db/valueType :db.type/boolean
+               :db/cardinality :db.cardinality/one
+               :element/primitive? true
+               :element/choice-type? false
+               :ElementDefinition/isSummary true
+               :element/type-code "boolean"
+               :element/json-key "active"}
+              [:db/add "Patient" :type/elements "Patient.active"]]))))
+
+  (testing "Primitive Multi-Valued Single-Typed"
+    (testing "ServiceRequest.instantiatesUri"
+      (is (= (element-definition-tx-data
+               (structure-definition "ServiceRequest")
+               (element-definition "ServiceRequest.instantiatesUri"))
+             [{:db/id "ServiceRequest.instantiatesUri"
+               :db/ident :ServiceRequest/instantiatesUri
+               :db/valueType :db.type/string
+               :db/cardinality :db.cardinality/many
+               :element/primitive? true
+               :element/choice-type? false
+               :ElementDefinition/isSummary true
+               :element/type-code "uri"
+               :element/json-key "instantiatesUri"}
+              [:db/add "ServiceRequest" :type/elements "ServiceRequest.instantiatesUri"]]))))
 
   (testing "Patient.gender"
     (is (= (element-definition-tx-data
@@ -104,37 +121,38 @@
              :element/json-key "birthDate"}
             [:db/add "Patient" :type/elements "Patient.birthDate"]])))
 
-  (testing "Patient.deceased[x]"
-    (is (= (element-definition-tx-data
-             (structure-definition "Patient")
-             (element-definition "Patient.deceased[x]"))
-           [{:db/id "Patient.deceased[x]"
-             :db/ident :Patient/deceased
-             :db/valueType :db.type/ref
-             :db/cardinality :db.cardinality/one
-             :element/choice-type? true
-             :ElementDefinition/isSummary true}
-            {:db/id "Patient.deceasedBoolean"
-             :db/ident :Patient/deceasedBoolean
-             :db/valueType :db.type/boolean
-             :db/cardinality :db.cardinality/one
-             :element/primitive? true
-             :element/part-of-choice-type? true
-             :element/type-attr-ident :Patient/deceased
-             :element/type-code "boolean"
-             :element/json-key "deceasedBoolean"}
-            [:db/add "Patient.deceased[x]" :element/type-choices "Patient.deceasedBoolean"]
-            {:db/id "Patient.deceasedDateTime"
-             :db/ident :Patient/deceasedDateTime
-             :db/valueType :db.type/bytes
-             :db/cardinality :db.cardinality/one
-             :element/primitive? true
-             :element/part-of-choice-type? true
-             :element/type-attr-ident :Patient/deceased
-             :element/type-code "dateTime"
-             :element/json-key "deceasedDateTime"}
-            [:db/add "Patient.deceased[x]" :element/type-choices "Patient.deceasedDateTime"]
-            [:db/add "Patient" :type/elements "Patient.deceased[x]"]])))
+  (testing "Choice-Typed"
+    (testing "Patient.deceased[x]"
+      (is (= (element-definition-tx-data
+               (structure-definition "Patient")
+               (element-definition "Patient.deceased[x]"))
+             [{:db/id "Patient.deceased[x]"
+               :db/ident :Patient/deceased
+               :db/valueType :db.type/ref
+               :db/cardinality :db.cardinality/one
+               :element/choice-type? true
+               :ElementDefinition/isSummary true}
+              {:db/id "Patient.deceasedBoolean"
+               :db/ident :Patient/deceasedBoolean
+               :db/valueType :db.type/boolean
+               :db/cardinality :db.cardinality/one
+               :element/primitive? true
+               :element/part-of-choice-type? true
+               :element/type-attr-ident :Patient/deceased
+               :element/type-code "boolean"
+               :element/json-key "deceasedBoolean"}
+              [:db/add "Patient.deceased[x]" :element/type-choices "Patient.deceasedBoolean"]
+              {:db/id "Patient.deceasedDateTime"
+               :db/ident :Patient/deceasedDateTime
+               :db/valueType :db.type/bytes
+               :db/cardinality :db.cardinality/one
+               :element/primitive? true
+               :element/part-of-choice-type? true
+               :element/type-attr-ident :Patient/deceased
+               :element/type-code "dateTime"
+               :element/json-key "deceasedDateTime"}
+              [:db/add "Patient.deceased[x]" :element/type-choices "Patient.deceasedDateTime"]
+              [:db/add "Patient" :type/elements "Patient.deceased[x]"]]))))
 
   (testing "Patient.telecom"
     (is (= (element-definition-tx-data
