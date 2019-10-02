@@ -24,10 +24,12 @@
     (catch Exception e
       (log/error
         (cond->
-          {:ex-data (ex-data e)
-           :msg (ex-message e)}
+          (str "Error while initializing Blaze `" (or (ex-message e) "unknown")
+               "`")
           (ex-cause e)
-          (assoc :cause-msg (ex-message (ex-cause e)))))
+          (str " cause `" (ex-message (ex-cause e)) "`")
+          (seq config)
+          (str " config: " config)))
       (System/exit 1))))
 
 
