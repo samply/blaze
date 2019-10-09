@@ -90,6 +90,66 @@
 
 
 (deftest handler-test
+  (testing "Returns Error on missing request"
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{}]}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "value" (-> body :issue first :code)))
+
+      (is (= "Bundle.entry[0]" (-> body :issue first :expression first)))
+
+      (is (= "Missing request." (-> body :issue first :diagnostics)))))
+
+  (testing "Returns Error on missing request url"
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"request" {}}]}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "value" (-> body :issue first :code)))
+
+      (is (= "Bundle.entry[0].request"
+             (-> body :issue first :expression first)))
+
+      (is (= "Missing url." (-> body :issue first :diagnostics)))))
+
+  (testing "Returns Error on missing request method"
+    (let [{:keys [status body]}
+          @((handler ::conn ::term-service executor)
+            {:body
+             {"resourceType" "Bundle"
+              "type" "transaction"
+              "entry"
+              [{"request"
+                {"url" "Patient/0"}}]}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "value" (-> body :issue first :code)))
+
+      (is (= "Bundle.entry[0].request"
+             (-> body :issue first :expression first)))
+
+      (is (= "Missing method." (-> body :issue first :diagnostics)))))
+
   (testing "Returns Error on unknown method"
     (let [{:keys [status body]}
           @((handler ::conn ::term-service executor)

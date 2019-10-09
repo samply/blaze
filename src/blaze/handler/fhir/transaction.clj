@@ -27,9 +27,28 @@
 
 (defn- validate-entry
   {:arglists '([db idx entry])}
-  [db idx {:strs [resource] {:strs [method url]} "request" :as entry}]
-  (let [[type id] (bundle/match-url url)]
+  [db idx
+   {:strs [resource] {:strs [method url] :as request} "request" :as entry}]
+  (let [[type id] (some-> url bundle/match-url)]
     (cond
+      (nil? request)
+      {::anom/category ::anom/incorrect
+       ::anom/message "Missing request."
+       :fhir/issue "value"
+       :fhir.issue/expression (format "Bundle.entry[%d]" idx)}
+
+      (nil? url)
+      {::anom/category ::anom/incorrect
+       ::anom/message "Missing url."
+       :fhir/issue "value"
+       :fhir.issue/expression (format "Bundle.entry[%d].request" idx)}
+
+      (nil? method)
+      {::anom/category ::anom/incorrect
+       ::anom/message "Missing method."
+       :fhir/issue "value"
+       :fhir.issue/expression (format "Bundle.entry[%d].request" idx)}
+
       (not (#{"GET" "HEAD" "POST" "PUT" "DELETE" "PATCH"} method))
       {::anom/category ::anom/incorrect
        ::anom/message (str "Unknown method `" method "`.")
