@@ -17,7 +17,7 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :handlers map?))}})
+        :args (s/cat :handlers map? :middleware map?))}})
   (log/with-merged-config {:level :fatal} (f))
   (st/unstrument))
 
@@ -31,8 +31,12 @@
    :handler.fhir/core (fn [_] ::fhir-core-handler)})
 
 
+(def ^:private middleware
+  {:middleware/authentication identity})
+
+
 (def ^:private test-handler
-  (reitit-ring/ring-handler (router handlers)))
+  (reitit-ring/ring-handler (router handlers middleware)))
 
 
 (defn- match [path request-method]
@@ -60,7 +64,7 @@
 
 (deftest exception-test
   (testing "Exceptions from handlers are converted to OperationOutcomes."
-    (given @((handler handlers-throwing)
+    (given @((handler handlers-throwing middleware)
              {:uri "/fhir"
               :request-method :get})
       :status := 500
