@@ -33,6 +33,8 @@
     [blaze.metrics :as metrics]
     [blaze.middleware.fhir.metrics :as fhir-metrics]
     [blaze.middleware.json :as json]
+    [blaze.middleware.authentication :as authentication]
+    [blaze.middleware.guard :as guard]
     [blaze.server :as server]
     [blaze.structure-definition :refer [read-structure-definitions]]
     [blaze.terminology-service.extern :as ts]
@@ -57,6 +59,8 @@
 (s/def :config/logging (s/keys :opt [:log/level]))
 (s/def :database/uri string?)
 (s/def :config/database-conn (s/keys :opt [:database/uri]))
+(s/def :openid-provider/url string?)
+(s/def :config/authentication (s/keys :opt [:openid-provider/url]))
 (s/def :term-service/uri string?)
 (s/def :term-service/proxy-host string?)
 (s/def :term-service/proxy-port pos-int?)
@@ -85,6 +89,7 @@
     :opt-un
     [:config/logging
      :config/database-conn
+     :config/authentication
      :config/term-service
      :config/cache
      :config/fhir-capabilities-handler
@@ -106,6 +111,11 @@
    :database-conn
    {:structure-definitions (ig/ref :structure-definitions)
     :database/uri "datomic:mem://dev"}
+
+   :authentication {}
+
+   :guard
+   {:authentication (ig/ref :authentication)}
 
    :term-service
    {:uri "http://tx.fhir.org/r4"}
@@ -179,13 +189,17 @@
      :handler.fhir/transaction (ig/ref :fhir-transaction-handler)
      :handler.fhir/update (ig/ref :fhir-update-handler)
      :handler.fhir.operation/evaluate-measure
-     (ig/ref :fhir-operation-evaluate-measure-handler)}}
+     (ig/ref :fhir-operation-evaluate-measure-handler)}
+    :middleware
+    {:middleware/guard (ig/ref :guard)}}
 
    :app-handler
    {:handlers
     {:handler/cql-evaluation (ig/ref :cql-evaluation-handler)
      :handler/health (ig/ref :health-handler)
-     :handler.fhir/core (ig/ref :fhir-core-handler)}}
+     :handler.fhir/core (ig/ref :fhir-core-handler)}
+    :middleware
+    {:middleware/authentication (ig/ref :authentication)}}
 
    :server-executor {}
 
@@ -251,6 +265,25 @@
 
   (log/info "Connect with database:" uri)
   (d/connect uri))
+
+
+(defmethod ig/init-key :authentication
+  [_ {:openid-provider/keys [url]}]
+  (if (str/blank? url)
+    identity
+    (do (log/info "Enabled authentication using OpenID provider:" url)
+        (-> url
+            authentication/jwks-json
+            authentication/public-key
+            authentication/wrap-authentication))))
+
+
+(defmethod ig/init-key :guard
+  [_ {:keys [authentication]}]
+  (if (= authentication identity)
+    identity
+    (do (log/info "Enable authentication guard")
+        guard/wrap-guard)))
 
 
 (defmethod ig/init-key :term-service
@@ -362,10 +395,10 @@
 
 
 (defmethod ig/init-key :fhir-core-handler
-  [_ {:keys [base-url handlers] :database/keys [conn]}]
+  [_ {:keys [base-url handlers middleware] :database/keys [conn]}]
   (let [fhir-base-url (str base-url "/fhir")]
     (log/info "Init FHIR RESTful API with base URL:" fhir-base-url)
-    (fhir-core-handler/handler fhir-base-url conn handlers)))
+    (fhir-core-handler/handler fhir-base-url conn handlers middleware)))
 
 
 (defmethod ig/init-key :evaluate-measure-operation-executor
@@ -380,9 +413,9 @@
 
 
 (defmethod ig/init-key :app-handler
-  [_ {:keys [handlers]}]
+  [_ {:keys [handlers middleware]}]
   (log/debug "Init app handler")
-  (app-handler/handler handlers))
+  (app-handler/handler handlers middleware))
 
 
 (defmethod ig/init-key :server-executor

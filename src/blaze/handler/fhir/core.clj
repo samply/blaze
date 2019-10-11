@@ -7,15 +7,18 @@
     [ring.util.response :as ring]))
 
 
-(defn router [base-url conn handlers]
+(defn router [base-url conn handlers middleware]
   (reitit-ring/router
     ["" {:blaze/base-url base-url}
-     ["" {:post (:handler.fhir/transaction handlers)}]
+     [""
+      {:middleware [(:middleware/guard middleware)]
+       :post (:handler.fhir/transaction handlers)}]
      ["metadata"
       {:get (:handler.fhir/capabilities handlers)}]
-     ["_history"
-      {:get (:handler.fhir/history-system handlers)}]
-     ["{type}" {:middleware [[wrap-type conn]]}
+    ["_history"
+      {:middleware [(:middleware/guard middleware)]
+       :get (:handler.fhir/history-system handlers)}]
+     ["{type}" {:middleware [(:middleware/guard middleware) [wrap-type conn]]}
       [""
        {:name :fhir/type
         :get (:handler.fhir/search handlers)
@@ -35,7 +38,8 @@
          {:name :fhir/versioned-instance
           :get (:handler.fhir/read handlers)}]]]]
      ["Measure/{id}/$evaluate-measure"
-      {:get
+      {:middleware [(:middleware/guard middleware)]
+       :get
        (:handler.fhir.operation/evaluate-measure handlers)
        :post
        (:handler.fhir.operation/evaluate-measure handlers)}]]
@@ -88,16 +92,21 @@
                 :handler.fhir.operation/evaluate-measure]))
 
 
+(s/def ::middleware
+  (s/keys :req [:middleware/guard]))
+
+
 (s/def :handler.fhir/core fn?)
 
 
 (s/fdef handler
-  :args (s/cat :base-url string? :conn ::ds/conn :handlers ::handlers)
+  :args (s/cat :base-url string? :conn ::ds/conn :handlers ::handlers :middleware ::middleware)
   :ret :handler.fhir/core)
+
 
 (defn handler
   "Whole app Ring handler."
-  [base-url conn handlers]
+  [base-url conn handlers middleware]
   (reitit-ring/ring-handler
-    (router base-url conn handlers)
+    (router base-url conn handlers middleware)
     default-handler))

@@ -17,7 +17,7 @@
     {:spec
      {`handler
       (s/fspec
-        :args (s/cat :base-url #{::base-url} :conn #{::conn} :handlers map?))}})
+        :args (s/cat :base-url #{::base-url} :conn #{::conn} :handlers map? :middleware map?))}})
   (st/instrument
     [`wrap-type]
     {:spec
@@ -50,8 +50,12 @@
    (fn [_] ::fhir-operation-evaluate-measure-handler)})
 
 
+(def ^:private middleware
+  {:middleware/guard identity})
+
+
 (defn test-handler []
-  (reitit-ring/ring-handler (router ::base-url ::conn handlers)))
+  (reitit-ring/ring-handler (router ::base-url ::conn handlers middleware)))
 
 
 (defn- match [path request-method]
@@ -74,7 +78,7 @@
 
 
 (deftest router-match-by-name-test
-  (let [router (router ::base-url ::conn handlers)]
+  (let [router (router ::base-url ::conn handlers middleware)]
     (are [name params path]
       (= (reitit/match->path (reitit/match-by-name router name params)) path)
 

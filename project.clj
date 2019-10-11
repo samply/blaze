@@ -16,6 +16,12 @@
      io.netty/netty-handler
      io.netty/netty-transport
      io.netty/netty-transport-native-epoll]]
+   [buddy/buddy-auth "2.2.0"
+    :exclusions
+    [com.google.guava/guava]
+    [com.google.errorprone/error_prone_annotations]
+    [com.google.code.findbugs/jsr305]]
+   [buddy/buddy-core "1.6.0"]
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.9.0"]
    [com.cognitect/anomalies "0.1.12"]
