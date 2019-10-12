@@ -9,3 +9,4 @@
 /cql-test
 /kube*
 /nginx.conf
+/.cpcache

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>life-research</groupId>
+    <artifactId>blaze</artifactId>
+    <version>0.7.0-alpha3</version>
+    <name>blaze</name>
+
+    <description>A FHIR Store with internal, fast CQL Evaluation Engine</description>
+    <url>https://github.com/life-research/blaze</url>
+    <licenses>
+        <license>
+            <name>Eclipse Public License</name>
+            <url>http://www.eclipse.org/legal/epl-v10.html</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Alexander Kiel</name>
+        </developer>
+    </developers>
+
+</project>

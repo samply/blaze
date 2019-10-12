@@ -6,8 +6,7 @@
     [blaze.system :as system]
     [phrase.alpha :refer [defphraser phrase-first]]
     [spec-coerce.alpha :refer [coerce]]
-    [taoensso.timbre :as log])
-  (:gen-class))
+    [taoensso.timbre :as log]))
 
 
 (defn- max-memory []

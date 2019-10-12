@@ -2,4 +2,6 @@
 !resources
 !src
 !Dockerfile
-!project.clj
+!deps.edn
+!uberjar.sh
+!pom.xml
