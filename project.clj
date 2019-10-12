@@ -17,16 +17,12 @@
      io.netty/netty-transport
      io.netty/netty-transport-native-epoll]]
    [buddy/buddy-auth "2.2.0"
-    :exclusions
-    [com.google.guava/guava]
-    [com.google.errorprone/error_prone_annotations]
-    [com.google.code.findbugs/jsr305]]
-   [buddy/buddy-core "1.6.0"]
+    :exclusions [org.clojure/clojurescript]]
    [camel-snake-kebab "0.4.0"]
    [cheshire "5.9.0"]
    [com.cognitect/anomalies "0.1.12"]
    [com.datomic/datomic-free "0.9.5697"
-    :exclusions [io.netty/netty-all]]
+    :exclusions [commons-codec io.netty/netty-all]]
    [com.h2database/h2 "1.4.199"]
    [com.taoensso/timbre "4.10.0"]
    [info.cqframework/cql-to-elm "1.4.6"
