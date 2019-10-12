@@ -1,5 +1,7 @@
 *
+!modules
 !resources
 !src
 !Dockerfile
-!project.clj
+!deps.edn
+!pom.xml

@@ -1,0 +1,107 @@
+{:base-config
+ {:blaze.terminology-service/extern
+  {:uri #blaze/cfg ["TERM_SERVICE_URI" string? "http://tx.fhir.org/r4"]
+   :proxy-host #blaze/cfg ["PROXY_HOST" string?]
+   :proxy-port #blaze/cfg ["PROXY_PORT" pos-int?]
+   :proxy-user #blaze/cfg ["PROXY_USER" string?]
+   :proxy-password #blaze/cfg ["PROXY_PASSWORD" string?]
+   :connection-timeout #blaze/cfg ["CONNECTION_TIMEOUT" pos-int?]
+   :request-timeout #blaze/cfg ["REQUEST_TIMEOUT" pos-int?]}
+
+  :blaze.terminology-service.extern/errors-total {}
+  :blaze.terminology-service.extern/request-duration-seconds {}
+
+  :blaze.interaction.history/system
+  {:database/conn #blaze/ref :blaze.datomic/conn}
+
+  :blaze.interaction.history/type
+  {:database/conn #blaze/ref :blaze.datomic/conn}
+
+  :blaze.interaction.history/instance
+  {:database/conn #blaze/ref :blaze.datomic/conn}
+
+  :blaze.interaction/create
+  {:database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
+   :database/conn #blaze/ref :blaze.datomic/conn
+   :term-service #blaze/ref :blaze/terminology-service}
+
+  :blaze.interaction/delete
+  {:database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
+   :database/conn #blaze/ref :blaze.datomic/conn}
+
+  :blaze.interaction/read
+  {:database/conn #blaze/ref :blaze.datomic/conn}
+
+  :blaze.interaction/search-type
+  {:database/conn #blaze/ref :blaze.datomic/conn}
+
+  :blaze.interaction.transaction/executor {}
+
+  :blaze.interaction.transaction/handler
+  {:database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
+   :database/conn #blaze/ref :blaze.datomic/conn
+   :term-service #blaze/ref :blaze/terminology-service
+   :executor #blaze/ref :blaze.interaction.transaction/executor}
+
+  :blaze.interaction/update
+  {:database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
+   :database/conn #blaze/ref :blaze.datomic/conn
+   :term-service #blaze/ref :blaze/terminology-service}
+
+  :blaze.fhir.operation.evaluate-measure/executor {}
+
+  :blaze.fhir.operation.evaluate-measure/handler
+  {:clock #blaze/ref :blaze/clock
+   :database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
+   :database/conn #blaze/ref :blaze.datomic/conn
+   :term-service #blaze/ref :blaze/terminology-service
+   :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor}
+
+  :blaze.fhir.operation.evaluate-measure/compile-duration-seconds {}
+  :blaze.fhir.operation.evaluate-measure/evaluate-duration-seconds {}
+
+  :blaze/rest-api
+  {:transaction-handler #blaze/ref :blaze.interaction.transaction/handler
+   :history-system-handler #blaze/ref :blaze.interaction.history/system
+   :resource-patterns
+   [#:blaze.rest-api.resource-pattern
+       {:type "Patient"
+        :interactions
+        {:read
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/read}
+         :vread
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/read}
+         :update
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/update}
+         :delete
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/delete}
+         :history-instance
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction.history/instance}
+         :history-type
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction.history/type}
+         :create
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/create}
+         :search-type
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/search-type}}}]
+   :operations
+   [#:blaze.rest-api.operation
+       {:code "evaluate-measure"
+        :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+        :resource-types ["Measure"]
+        :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
+        :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}]}}
+
+  :features
+ [{:name "OpenID Authentication"
+   :toggle "OPENID_PROVIDER_URL"
+   :config
+   {[:blaze.auth/backend :blaze.openid-auth/backend]
+    {:openid-provider/url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}}}]}

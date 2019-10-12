@@ -1,13 +1,9 @@
 (ns blaze.core
   (:require
-    [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [env-tools.alpha :as env-tools]
     [blaze.system :as system]
     [phrase.alpha :refer [defphraser phrase-first]]
-    [spec-coerce.alpha :refer [coerce]]
-    [taoensso.timbre :as log])
-  (:gen-class))
+    [taoensso.timbre :as log]))
 
 
 (defn- max-memory []
@@ -54,16 +50,11 @@
 
 
 (defn -main [& _]
-  (let [config (env-tools/build-config :system/config)
-        coerced-config (coerce :system/config config)]
-    (if (s/valid? :system/config coerced-config)
-      (do
-        (add-shutdown-hook shutdown-system!)
-        (init-system! coerced-config)
-        (log/info "JVM version:" (System/getProperty "java.version"))
-        (log/info "Maximum available memory:" (max-memory) "MiB")
-        (log/info "Number of available processors:" (available-processors)))
-      (log/error (phrase-first nil :system/config config)))))
+  (add-shutdown-hook shutdown-system!)
+  (init-system! (System/getenv))
+  (log/info "JVM version:" (System/getProperty "java.version"))
+  (log/info "Maximum available memory:" (max-memory) "MiB")
+  (log/info "Number of available processors:" (available-processors)))
 
 
 (defphraser #(contains? % key)

@@ -1,0 +1,11 @@
+{:deps
+ {blaze/datomic
+  {:local/root "../datomic"}
+
+  com.datomic/datomic-free
+  {:mvn/version "0.9.5697"
+   :exclusions
+   [io.netty/netty-all]}
+
+  org.clojars.akiel/datomic-tools
+  {:mvn/version "0.4"}}}
