@@ -13,4 +13,4 @@
 (deftest public-key-test
   (testing "Returns type PublicKey after parsing jwks-json string"
     (let [k (public-key jwks-json)]
-      (is (= (instance? PublicKey k))))))
+      (is (instance? PublicKey k)))))

@@ -18,4 +18,4 @@
 
 
 (deftest init-shutdown-test
-  (system/shutdown! (system/init! {})))
+  (is (nil? (system/shutdown! (system/init! {})))))

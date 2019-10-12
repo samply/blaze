@@ -14,8 +14,14 @@
     [java.util Base64]))
 
 
-(st/instrument)
-(dst/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (dst/instrument)
+  (f)
+  (st/unstrument))
+
+
+(use-fixtures :each fixture)
 
 
 (defonce db (d/db (st/with-instrument-disabled (connect))))
