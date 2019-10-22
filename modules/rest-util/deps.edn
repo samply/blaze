@@ -1,0 +1,41 @@
+{:deps
+ {blaze/datomic
+  {:local/root "../datomic"}
+
+  com.cognitect/anomalies
+  {:mvn/version "0.1.12"}
+
+  com.taoensso/timbre
+  {:mvn/version "4.10.0"}
+
+  org.apache.httpcomponents/httpcore
+  {:mvn/version "4.4.12"}
+
+  metosin/reitit-ring
+  {:mvn/version "0.3.9"}
+
+  ring/ring-core
+  {:mvn/version "1.7.1"
+   :exclusions
+   [clj-time
+    commons-fileupload
+    commons-io
+    crypto-equality
+    crypto-random]}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/datomic-test-util
+    {:local/root "../datomic-test-util"}
+
+    lambdaisland/kaocha
+    {:mvn/version "0.0-554"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}}}}

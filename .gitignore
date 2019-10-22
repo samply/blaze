@@ -6,7 +6,6 @@
 /fill-store.sh
 /load-test.sh
 /start-db.sh
-/cql-test
 /kube*
 /nginx.conf
-/.cpcache
+.cpcache

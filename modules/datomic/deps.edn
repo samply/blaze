@@ -1,0 +1,62 @@
+{:deps
+ {blaze/anomaly
+  {:local/root "../anomaly"}
+
+  blaze/structure-definition
+  {:local/root "../structure-definition"}
+
+  blaze/terminology-service
+  {:local/root "../terminology-service"}
+
+  com.datomic/datomic-free
+  {:mvn/version "0.9.5697"
+   :exclusions
+   [io.netty/netty-all]}
+
+  com.taoensso/timbre
+  {:mvn/version "4.10.0"}
+
+  funcool/cuerdas
+  {:mvn/version "2.2.0"
+   :exclusions [org.clojure/clojurescript]}
+
+  javax.measure/unit-api
+  {:mvn/version "1.0"}
+
+  org.clojars.akiel/datomic-spec
+  {:mvn/version "0.5.2"}
+
+  org.clojars.akiel/datomic-tools
+  {:mvn/version "0.4"}
+
+  prom-metrics
+  {:mvn/version "0.5-alpha2"}
+
+  systems.uom/systems-quantity
+  {:mvn/version "1.0"}
+
+  systems.uom/systems-ucum
+  {:mvn/version "0.9"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/datomic-test-util
+    {:local/root "../datomic-test-util"}
+
+    criterium
+    {:mvn/version "0.4.5"}
+
+    lambdaisland/kaocha
+    {:mvn/version "0.0-554"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/data.xml
+    {:mvn/version "0.0.8"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}}}}

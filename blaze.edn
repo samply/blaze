@@ -1,0 +1,51 @@
+{:config
+ {:blaze/structure-definition
+  {}
+
+  :blaze.database/conn
+  {:structure-definitions #ig/ref :blaze/structure-definition
+   :database/uri "datomic:mem://dev"}
+
+  [:blaze/terminology-service :blaze.terminology-service/extern]
+  {:uri "http://tx.fhir.org/r4"}
+
+  :blaze.interaction/read
+  {:database/conn #ig/ref :blaze.database/conn}
+
+  :blaze.interaction/search-type
+  {:database/conn #ig/ref :blaze.database/conn}
+
+  :blaze.fhir.operation.evaluate-measure/executor
+  {}
+
+  :blaze/clock
+  {}
+
+  :blaze.fhir.operation.evaluate-measure/handler
+  {:clock #ig/ref :blaze/clock
+   :term-service #ig/ref :blaze/terminology-service
+   :executor #ig/ref :blaze.fhir.operation.evaluate-measure/executor
+   :database/conn #ig/ref :blaze.database/conn}
+
+  :blaze/rest-api
+  {:base-url "http://localhost:8080"
+   :database/conn #ig/ref :blaze.database/conn
+   :structure-definitions #ig/ref :blaze/structure-definition
+   :config
+   #:blaze.rest-api
+       {:context-path "fhir"
+        :transaction-handler nil
+        :resource-patterns
+        [#:blaze.rest-api.resource-pattern
+            {:type "Patient"
+             :interactions
+             {:search-type
+              {:handler #ig/ref :blaze.interaction/search-type}
+              :read
+              {:handler #ig/ref :blaze.interaction/read}}}]
+        :operations
+        [#:blaze.rest-api.operation
+            {:code "evaluate-measure"
+             :resource-types ["Measure"]
+             :type-handler #ig/ref :blaze.fhir.operation.evaluate-measure/handler
+             :instance-handler #ig/ref :blaze.fhir.operation.evaluate-measure/handler}]}}}}

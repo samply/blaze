@@ -1,0 +1,18 @@
+{:deps
+ {blaze/fhir-client
+  {:local/root "../fhir-client"}
+
+  blaze/terminology-service
+  {:local/root "../terminology-service"}
+
+  com.taoensso/timbre
+  {:mvn/version "4.10.0"}
+
+  integrant
+  {:mvn/version "0.7.0"}
+
+  org.clojure/core.cache
+  {:mvn/version "0.8.1"}
+
+  prom-metrics
+  {:mvn/version "0.5-alpha2"}}}

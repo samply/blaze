@@ -3,7 +3,7 @@
    [blaze.middleware.authentication :refer [public-key]]
    [clojure.test :refer :all])
   (:import
-   (java.security PublicKey)))
+    [java.security PublicKey]))
 
 
 ;; The following json has been taken from https://samples.auth0.com/.well-known/jwks.json

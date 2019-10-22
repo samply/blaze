@@ -1,0 +1,55 @@
+{:paths ["src" "resources"]
+
+ :deps
+ {blaze/datomic
+  {:local/root "../datomic"}
+
+  camel-snake-kebab
+  {:mvn/version "0.4.0"}
+
+  info.cqframework/cql-to-elm
+  {:mvn/version "1.4.6"
+   :exclusions
+   [com.google.code.javaparser/javaparser
+    org.eclipse.persistence/eclipselink
+    info.cqframework/qdm
+    junit
+    xpp3
+    xpp3/xpp3_xpath
+    org.antlr/antlr4]}
+
+  javax.measure/unit-api
+  {:mvn/version "1.0"}
+
+  javax.xml.bind/jaxb-api
+  {:mvn/version "2.4.0-b180830.0359"}
+
+  org.antlr/antlr4-runtime
+  {:mvn/version "4.5"
+   :exclusions [org.abego.treelayout/org.abego.treelayout.core]}
+
+  org.eclipse.persistence/org.eclipse.persistence.moxy
+  {:mvn/version "2.7.4"}
+
+  systems.uom/systems-quantity
+  {:mvn/version "1.0"}
+
+  systems.uom/systems-ucum
+  {:mvn/version "0.9"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "0.0-554"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/data.xml
+    {:mvn/version "0.0.8"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}}}}

@@ -1,0 +1,38 @@
+{:deps
+ {blaze/executor
+  {:local/root "../executor"}
+
+  blaze/rest-util
+  {:local/root "../rest-util"}
+
+  blaze/spec
+  {:local/root "../spec"}
+
+  com.cognitect/anomalies
+  {:mvn/version "0.1.12"}
+
+  com.taoensso/timbre
+  {:mvn/version "4.10.0"}
+
+  integrant
+  {:mvn/version "0.7.0"}
+
+  metosin/reitit-ring
+  {:mvn/version "0.3.9"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/datomic-test-util
+    {:local/root "../datomic-test-util"}
+
+    lambdaisland/kaocha
+    {:mvn/version "0.0-554"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}}}}

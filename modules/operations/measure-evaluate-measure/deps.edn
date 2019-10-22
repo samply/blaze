@@ -1,0 +1,29 @@
+{:deps
+ {blaze/cql
+  {:local/root "../../cql"}
+
+  blaze/executor
+  {:local/root "../../executor"}
+
+  blaze/rest-util
+  {:local/root "../../rest-util"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/datomic-test-util
+    {:local/root "../../datomic-test-util"}
+
+    blaze/extern-terminology-service
+    {:local/root "../../extern-terminology-service"}
+
+    lambdaisland/kaocha
+    {:mvn/version "0.0-554"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}}}}
