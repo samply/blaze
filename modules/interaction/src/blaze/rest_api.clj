@@ -1,5 +1,6 @@
 (ns blaze.rest-api
   (:require
+    [blaze.middleware.json :refer [wrap-json]]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds]
     [integrant.core :as ig]
@@ -25,7 +26,7 @@
      (resolve-pattern resource-patterns structure-definition)]
     (into
       [name
-       {:middleware []}
+       {:middleware [wrap-json]}
        [""
         (cond-> {:name (keyword name "type")}
           (contains? interactions :search-type)
@@ -99,13 +100,13 @@
       [""
        {:blaze/base-url base-url}
        [""
-        (cond-> {:middleware []}
+        (cond-> {:middleware [wrap-json]}
           (some? transaction-handler)
           (assoc :post transaction-handler))]
        ["metadata"
         {:get capabilities-handler}]
        ["_history"
-        (cond-> {:middleware []}
+        (cond-> {:middleware [wrap-json]}
           (some? history-system-handler)
           (assoc :get history-system-handler))]]
       (comp
