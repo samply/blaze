@@ -1,0 +1,27 @@
+{:deps
+ {buddy/buddy-auth
+  {:git/url "https://github.com/alexanderkiel/buddy-auth.git"
+   :sha "56c0396a6d8640ebd588f2895e5e4583dc48b903"}
+
+  cheshire
+  {:mvn/version "5.9.0"}
+
+  com.taoensso/timbre
+  {:mvn/version "4.10.0"}
+
+  integrant
+  {:mvn/version "0.7.0"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "0.0-554"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}
+
+   :main-opts
+   ["-m" "kaocha.runner"]}}}

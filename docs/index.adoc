@@ -69,15 +69,15 @@ You can change the data dir in the properties file if you like to have it at a d
 ==== Install Blaze
 
 Blaze runs on the JVM and comes as single JAR file.
-Download the most recent version https://github.com/life-research/blaze/releases/tag/v0.7.0-alpha2[here].
-Look for `blaze-0.7.0-alpha3-standalone.jar`.
+Download the most recent version https://github.com/life-research/blaze/releases/tag/v0.7.0-alpha5[here].
+Look for `blaze-0.7.0-alpha5-standalone.jar`.
 In addition to the JAR file, Blaze needs a set of FHIR® structure definitions to build it's database schema.
 Please download and unpack the `fhir.zip` from the same location.
 
 After the download, you can start blaze with the following command (Linux, MacOS):
 
 ```
-DATABASE_URI=datomic:free://localhost:4334/db java -server -Xms2g -Xmx2g -XX:+UseG1GC -jar blaze-0.7.0-alpha3-standalone.jar
+DATABASE_URI=datomic:free://localhost:4334/db java -server -Xms2g -Xmx2g -XX:+UseG1GC -jar blaze-0.7.0-alpha5-standalone.jar
 ```
 
 Under Windows you need to set the Environment variables in the PowerShell before starting Blaze:

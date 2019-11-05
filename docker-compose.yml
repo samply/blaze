@@ -11,7 +11,7 @@ services:
     volumes:
     - "db-data:/data"
   store:
-    image: "liferesearch/blaze:0.7.0-alpha3"
+    image: "liferesearch/blaze:0.7.0-alpha5"
     environment:
       BASE_URL: "http://localhost:8080"
       DATABASE_URI: "datomic:free://db:4334/dev?password=datomic"

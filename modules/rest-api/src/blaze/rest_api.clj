@@ -1,0 +1,385 @@
+(ns blaze.rest-api
+  (:require
+    [blaze.bundle :as bundle]
+    [blaze.middleware.fhir.metrics :as metrics]
+    [blaze.module :refer [defcollector]]
+    [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
+    [blaze.rest-api.middleware.json :as json :refer [wrap-json]]
+    [blaze.rest-api.spec]
+    [blaze.spec]
+    [buddy.auth.middleware :refer [wrap-authentication]]
+    [buddy.auth.protocols :refer [IAuthentication]]
+    [clojure.spec.alpha :as s]
+    [integrant.core :as ig]
+    [reitit.ring]
+    [reitit.ring.spec]
+    [ring.util.response :as ring]
+    [taoensso.timbre :as log]))
+
+
+(defn resolve-pattern
+  "Tries to find a resource pattern in `resource-patterns` according to the
+  name of the `structure-definition`.
+
+  Falls back to the :default resource pattern if there is any."
+  {:arglists '([resource-patterns structure-definition])}
+  [resource-patterns {:keys [name]}]
+  (or
+    (some
+      #(when (= name (:blaze.rest-api.resource-pattern/type %)) %)
+      resource-patterns)
+    (some
+      #(when (= :default (:blaze.rest-api.resource-pattern/type %)) %)
+      resource-patterns)))
+
+
+(defn resource-route
+  "Builds routes for one resource according to `structure-definition`.
+
+  Returns nil if the resource has no match in `resource-patterns`.
+
+  Route data contains resource type."
+  {:arglists '([resource-patterns structure-definition])}
+  [auth-backends resource-patterns {:keys [name] :as structure-definition}]
+  (when-let
+    [{:blaze.rest-api.resource-pattern/keys [interactions]}
+     (resolve-pattern resource-patterns structure-definition)]
+    [(str "/" name)
+     {:middleware
+      (cond-> []
+        (seq auth-backends)
+        (conj wrap-auth-guard))
+      :fhir.resource/type name}
+     [""
+      (cond-> {:name (keyword name "type")}
+        (contains? interactions :search-type)
+        (assoc :get (-> interactions :search-type
+                        :blaze.rest-api.interaction/handler))
+        (contains? interactions :create)
+        (assoc :post (-> interactions :create
+                         :blaze.rest-api.interaction/handler)))]
+     ["/_history"
+      (cond-> {}
+        (contains? interactions :history-type)
+        (assoc :get (-> interactions :history-type
+                        :blaze.rest-api.interaction/handler)))]
+     ["/_search"
+      (cond-> {}
+        (contains? interactions :search-type)
+        (assoc :post (-> interactions :search-type
+                         :blaze.rest-api.interaction/handler)))]
+     ["/{id}"
+      [""
+       (cond-> {:name (keyword name "instance")}
+         (contains? interactions :read)
+         (assoc :get (-> interactions :read
+                         :blaze.rest-api.interaction/handler))
+         (contains? interactions :update)
+         (assoc :put (-> interactions :update
+                         :blaze.rest-api.interaction/handler))
+         (contains? interactions :delete)
+         (assoc :delete (-> interactions :delete
+                            :blaze.rest-api.interaction/handler)))]
+      ["/_history"
+       [""
+        (cond-> {:name (keyword name "history-instance")}
+          (contains? interactions :history-instance)
+          (assoc :get (-> interactions :history-instance
+                          :blaze.rest-api.interaction/handler)))]
+       ["/{vid}"
+        (cond-> {:name (keyword name "versioned-instance")}
+          (contains? interactions :vread)
+          (assoc :get (-> interactions :vread
+                          :blaze.rest-api.interaction/handler)))]]]]))
+
+
+(s/def ::structure-definitions
+  (s/coll-of :fhir.un/StructureDefinition))
+
+
+(defn router
+  {:arglists '([config capabilities-handler])}
+  [{:keys
+    [base-url
+     context-path
+     structure-definitions
+     auth-backends
+     transaction-handler
+     history-system-handler
+     resource-patterns
+     operations]
+    :or {context-path ""}}
+   capabilities-handler]
+  (reitit.ring/router
+    (-> [""
+         {:blaze/base-url (str base-url context-path)
+          :middleware
+          (cond-> []
+            (seq auth-backends)
+            (conj #(apply wrap-authentication % auth-backends)))}
+         [""
+          (cond->
+            {:middleware
+             (cond-> []
+               (seq auth-backends)
+               (conj wrap-auth-guard))}
+            (some? transaction-handler)
+            (assoc :post transaction-handler))]
+         ["/metadata"
+          {:get capabilities-handler}]
+         ["/_history"
+          (cond->
+            {:middleware
+             (cond-> []
+               (seq auth-backends)
+               (conj wrap-auth-guard))}
+            (some? history-system-handler)
+            (assoc :get history-system-handler))]]
+        (into
+          (comp
+            (filter #(= "resource" (:kind %)))
+            (remove :experimental)
+            (remove :abstract)
+            (map #(resource-route auth-backends resource-patterns %))
+            (remove nil?))
+          structure-definitions)
+        (into
+          (mapcat
+            (fn [{:blaze.rest-api.operation/keys
+                  [code system-handler]}]
+              (when system-handler
+                [(str "/$" code)
+                 {:middleware
+                  (cond-> []
+                    (seq auth-backends)
+                    (conj wrap-auth-guard))
+                  :get system-handler
+                  :post system-handler}])))
+          operations)
+        (into
+          (mapcat
+            (fn [{:blaze.rest-api.operation/keys
+                  [code resource-types type-handler]}]
+              (when type-handler
+                (map
+                  (fn [resource-type]
+                    [(str "/" resource-type "/$" code)
+                     {:middleware
+                      (cond-> []
+                        (seq auth-backends)
+                        (conj wrap-auth-guard))
+                      :get type-handler
+                      :post type-handler}])
+                  resource-types))))
+          operations)
+        (into
+          (mapcat
+            (fn [{:blaze.rest-api.operation/keys
+                  [code resource-types instance-handler]}]
+              (when instance-handler
+                (map
+                  (fn [resource-type]
+                    [(str "/" resource-type "/{id}/$" code)
+                     {:middleware
+                      (cond-> []
+                        (seq auth-backends)
+                        (conj wrap-auth-guard))
+                      :get instance-handler
+                      :post instance-handler}])
+                  resource-types))))
+          operations))
+    {:path context-path
+     :syntax :bracket
+     :conflicts nil
+     :validate reitit.ring.spec/validate
+     :reitit.ring/default-options-handler
+     (fn [_]
+       (-> (ring/response nil)
+           (ring/status 405)))}))
+
+
+(defn- capability-resource
+  {:arglists '([resource-patterns operations structure-definition])}
+  [resource-patterns operations {:keys [name] :as structure-definition}]
+  (when-let
+    [{:blaze.rest-api.resource-pattern/keys [interactions]}
+     (resolve-pattern resource-patterns structure-definition)]
+    (let [operations
+          (filter
+            #(some #{name} (:blaze.rest-api.operation/resource-types %))
+            operations)]
+      (cond->
+        {:type name
+         :interaction
+         (reduce
+           (fn [res code]
+             (if-let
+               [{:blaze.rest-api.interaction/keys [doc]} (get interactions code)]
+               (conj
+                 res
+                 (cond->
+                   {:code (clojure.core/name code)}
+                   doc
+                   (assoc :documentation doc)))
+               res))
+           []
+           [:read
+            :vread
+            :update
+            :delete
+            :history-instance
+            :history-type
+            :create
+            :search-type])
+         :versioning "versioned"
+         :readHistory true
+         :updateCreate true
+         :conditionalCreate false
+         :conditionalRead "not-supported"
+         :conditionalUpdate false
+         :conditionalDelete "not-supported"
+         :referencePolicy
+         ["literal"
+          "enforced"
+          "local"]
+         :searchParam
+         [{:name "identifier"
+           :definition (str "http://hl7.org/fhir/SearchParameter/" name "-identifier")
+           :type "token"}]}
+
+        (seq operations)
+        (assoc
+          :operation
+          (into
+            []
+            (mapcat
+              (fn [{:blaze.rest-api.operation/keys
+                    [code def-uri type-handler instance-handler]}]
+                (when (or type-handler instance-handler)
+                  [{:name code
+                    :definition def-uri}])))
+            operations))))))
+
+
+(defn capabilities-handler
+  [{:keys
+    [base-url
+     version
+     context-path
+     structure-definitions
+     transaction-handler
+     history-system-handler
+     resource-patterns
+     operations]
+    :or {context-path ""}}]
+  (let [capability-statement
+        {:resourceType "CapabilityStatement"
+         :status "active"
+         :kind "instance"
+         :date "2019-08-28T00:00:00Z"
+         :software
+         {:name "Blaze"
+          :version version}
+         :implementation
+         {:description (str "Blaze running at " base-url context-path)
+          :url (str base-url context-path)}
+         :fhirVersion "4.0.0"
+         :format ["application/fhir+json"]
+         :rest
+         [{:mode "server"
+           :resource
+           (into
+             []
+             (comp
+               (filter #(= "resource" (:kind %)))
+               (remove :experimental)
+               (remove :abstract)
+               (map #(capability-resource resource-patterns operations %))
+               (remove nil?))
+             structure-definitions)
+           :interaction
+           (cond-> []
+             (some? transaction-handler)
+             (conj {:code "transaction"} {:code "batch"})
+             (some? history-system-handler)
+             (conj {:code "history-system"}))}]}]
+    (fn [_]
+      (ring/response capability-statement))))
+
+
+(def default-handler
+  (reitit.ring/create-default-handler
+    {:not-found
+     (fn [_]
+       (ring/not-found
+         {:resourceType "OperationOutcome"
+          :issue
+          [{:severity "error"
+            :code "not-found"}]}))
+     :method-not-allowed
+     (fn [_]
+       (-> (ring/response
+             {:resourceType "OperationOutcome"
+              :issue
+              [{:severity "error"
+                :code "processing"}]})
+           (ring/status 405)))
+     :not-acceptable
+     (fn [_]
+       (-> (ring/response
+             {:resourceType "OperationOutcome"
+              :issue
+              [{:severity "error"
+                :code "structure"}]})
+           (ring/status 406)))}))
+
+
+(defn handler
+  "Whole app Ring handler."
+  [config]
+  (-> (reitit.ring/ring-handler
+        (router config (capabilities-handler config))
+        default-handler)
+      (wrap-json)))
+
+
+(defmethod ig/pre-init-spec :blaze/rest-api [_]
+  (s/keys
+    :req-un
+    [:blaze/base-url
+     ::version
+     ::structure-definitions]
+    :opt-un
+    [::context-path
+     ::auth-backends
+     ::transaction-handler
+     ::history-system-handler
+     ::resource-patterns
+     ::operations]))
+
+
+(defmethod ig/init-key :blaze/rest-api
+  [_ {:keys [base-url context-path] :as config}]
+  (log/info
+    "Init FHIR RESTful API with base URL:" (str base-url context-path))
+  (handler config))
+
+
+(defcollector requests-total [_]
+  metrics/requests-total)
+
+
+(defcollector request-duration-seconds [_]
+  metrics/request-duration-seconds)
+
+
+(defcollector parse-duration-seconds [_]
+  json/parse-duration-seconds)
+
+
+(defcollector generate-duration-seconds [_]
+  json/generate-duration-seconds)
+
+
+(defcollector tx-data-duration-seconds [_]
+  bundle/tx-data-duration-seconds)

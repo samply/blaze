@@ -1,11 +1,11 @@
 /target
 /.lein-*
-/.nrepl-port
+.nrepl-port
 /queries
 /generate-docs.sh
 /fill-store.sh
 /load-test.sh
 /start-db.sh
-/cql-test
 /kube*
 /nginx.conf
+.cpcache
