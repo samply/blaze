@@ -49,7 +49,7 @@
      :fhir/issue "value"}))
 
 
-(defn- compile-library [db {:keys [id] :as library}]
+(defn- compile-library [db {:Library/keys [id] :as library}]
   (log/debug "Compile library with ID:" id)
   (let [cql-code (extract-cql-code library)]
     (if (::anom/category cql-code)
