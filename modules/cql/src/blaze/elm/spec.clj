@@ -36,11 +36,13 @@
   string?)
 
 
-(s/def :elm/context
-  string?)
-
-
-(s/def :elm/dataType
+;; Execution context of an expression.
+;;
+;; Is used by the environment to determine whether or not to filter the data
+;; returned from retrieves based on the current context.
+;;
+;; Examples: Patient, Practitioner or Unfiltered
+(s/def :elm/expression-execution-context
   string?)
 
 
@@ -532,8 +534,17 @@
 ;; 9. Reusing Logic
 
 ;; 9.1. ExpressionDef
+(s/def :elm.expression-def/context
+  :elm/expression-execution-context)
+
+
 (s/def :elm/expression-def
-  (s/keys :opt-un [:elm/expression :elm/name :elm/context :elm/accessLevel]))
+  (s/keys
+    :opt-un
+    [:elm/expression
+     :elm/name
+     :elm.expression-def/context
+     :elm/accessLevel]))
 
 
 ;; 9.2. ExpressionRef
@@ -626,9 +637,38 @@
 ;; 11. External Data
 
 ;; 11.1. Retrieve
+(s/def :elm.retrieve/codes
+  :elm/expression)
+
+
+(s/def :elm.retrieve/dateRange
+  :elm/expression)
+
+
+;; An expression that, when evaluated, provides the context for the retrieve.
+;; The expression evaluates to the resource that will be used as the context
+;; for the retrieve.
+(s/def :elm.retrieve/context
+  :elm/expression)
+
+
+(s/def :elm.retrieve/dataType
+  string?)
+
+
+(s/def :elm.retrieve/codeProperty
+  string?)
+
+
 (defmethod expression :elm.spec.type/retrieve [_]
-  (s/keys :req-un [:elm/dataType]
-          :opt-un [:elm/scope]))
+  (s/keys
+    :req-un
+    [:elm.retrieve/dataType]
+    :opt-un
+    [:elm.retrieve/codes
+     :elm.retrieve/dateRange
+     :elm.retrieve/context
+     :elm.retrieve/codeProperty]))
 
 
 

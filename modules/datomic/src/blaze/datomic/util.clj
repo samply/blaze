@@ -22,11 +22,11 @@
   :ret string?)
 
 (defn entity-type
-  "Returns the type of a `resource` like \"Patient\" or \"Observation\" or the
-  type of a non-primitive type like \"CodeableConcept\"."
-  {:arglists '([resource])}
-  [{:db/keys [id] :as resource}]
-  (entity-type* (d/entity-db resource) id))
+  "Returns the type of a `entity` like a resource of \"Patient\" or
+  \"Observation\" or the type of a non-primitive type like \"CodeableConcept\"."
+  {:arglists '([entity])}
+  [{:db/keys [id] :as entity}]
+  (entity-type* (d/entity-db entity) id))
 
 
 (defn resource-id-attr [type]
