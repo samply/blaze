@@ -25,7 +25,8 @@
 
 (def router
   (rest-api/router
-    {:structure-definitions [{:kind "resource" :name "Patient"}]
+    {:base-url "base-url-111523"
+     :structure-definitions [{:kind "resource" :name "Patient"}]
      :resource-patterns
      [#:blaze.rest-api.resource-pattern
          {:type :default

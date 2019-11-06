@@ -65,7 +65,7 @@
    :history-system-handler #blaze/ref :blaze.interaction.history/system
    :resource-patterns
    [#:blaze.rest-api.resource-pattern
-       {:type "Patient"
+       {:type :default
         :interactions
         {:read
          #:blaze.rest-api.interaction
