@@ -9,7 +9,8 @@
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic-spec.core :as ds]
-    [prometheus.alpha :as prom])
+    [prometheus.alpha :as prom]
+    [taoensso.timbre :as log])
   (:import
     [java.nio.charset Charset]
     [java.time OffsetDateTime]
@@ -48,17 +49,22 @@
      :fhir/issue "value"}))
 
 
+(defn- compile-library [db {:keys [id] :as library}]
+  (log/debug "Compile library with ID:" id)
+  (let [cql-code (extract-cql-code library)]
+    (if (::anom/category cql-code)
+      cql-code
+      (let [library (cql-translator/translate cql-code :locators? true)]
+        (if (::anom/category library)
+          library
+          (compiler/compile-library db library {}))))))
+
+
 (defn- compile-primary-library*
   [db measure]
   (if-let [library-ref (first (:Measure/library measure))]
     (if-let [library (datomic-util/resource-by db :Library/url library-ref)]
-      (let [cql-code (extract-cql-code library)]
-        (if (::anom/category cql-code)
-          cql-code
-          (let [library (cql-translator/translate cql-code :locators? true)]
-            (if (::anom/category library)
-              library
-              (compiler/compile-library db library {})))))
+      (compile-library db library)
       {::anom/category ::anom/incorrect
        ::anom/message
        (str "Can't find the library with canonical URI `" library-ref "`.")
