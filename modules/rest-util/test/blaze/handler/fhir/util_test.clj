@@ -98,56 +98,54 @@
         :db-after := ::db))))
 
 
-(defn- stub-match-by-name [router name params match]
-  (st/instrument
-    [`reitit/match-by-name]
-    {:spec
-     {`reitit/match-by-name
-      (s/fspec
-        :args (s/cat :router #{router} :name #{name}
-                     :params #{params})
-        :ret #{match})}
-     :stub
-     #{`reitit/match-by-name}}))
+(defn- stub-match-by-name
+  ([router name match]
+   (st/instrument
+     [`reitit/match-by-name]
+     {:spec
+      {`reitit/match-by-name
+       (s/fspec
+         :args (s/cat :router #{router} :name #{name})
+         :ret #{match})}
+      :stub
+      #{`reitit/match-by-name}}))
+  ([router name params match]
+   (st/instrument
+     [`reitit/match-by-name]
+     {:spec
+      {`reitit/match-by-name
+       (s/fspec
+         :args (s/cat :router #{router} :name #{name}
+                      :params #{params})
+         :ret #{match})}
+      :stub
+      #{`reitit/match-by-name}})))
 
 
 (deftest type-url-test
-  (st/instrument
-    [`type-url]
-    {:spec
-     {`type-url
-      (s/fspec
-        :args (s/cat :router #{::router} :type #{::type}))}})
+  (st/unstrument `type-url)
   (stub-match-by-name
-    ::router :fhir/type {:type ::type}
-    {:data {:blaze/base-url "base-url"} :path "path"})
+    ::router :type-105536/type
+    {:data {:blaze/base-url "base-url"} :path "/path"})
 
-  (is (= "base-url/path" (type-url ::router ::type))))
+  (is (= "base-url/path" (type-url ::router "type-105536"))))
 
 
 (deftest instance-url-test
-  (st/instrument
-    [`instance-url]
-    {:spec
-     {`instance-url
-      (s/fspec
-        :args (s/cat :router #{::router} :type #{::type} :id #{::id}))}})
+  (st/unstrument `instance-url)
   (stub-match-by-name
-    ::router :fhir/instance {:type ::type :id ::id}
-    {:data {:blaze/base-url "base-url"} :path "path"})
+    ::router :type-105349/instance {:id ::id}
+    {:data {:blaze/base-url "base-url"} :path "/path"})
 
-  (is (= "base-url/path" (instance-url ::router ::type ::id))))
+  (is (= "base-url/path" (instance-url ::router "type-105349" ::id))))
 
 
 (deftest versioned-instance-url-test
-  (st/instrument
-    [`versioned-instance-url]
-    {:spec
-     {`versioned-instance-url
-      (s/fspec
-        :args (s/cat :router #{::router} :type #{::type} :id #{::id} :vid #{::vid}))}})
+  (st/unstrument `versioned-instance-url)
   (stub-match-by-name
-    ::router :fhir/versioned-instance {:type ::type :id ::id :vid ::vid}
-    {:data {:blaze/base-url "base-url"} :path "path"})
+    ::router :type-105253/versioned-instance {:id ::id :vid ::vid}
+    {:data {:blaze/base-url "base-url"} :path "/path"})
 
-  (is (= "base-url/path" (versioned-instance-url ::router ::type ::id ::vid))))
+  (is
+    (= "base-url/path"
+       (versioned-instance-url ::router "type-105253" ::id ::vid))))

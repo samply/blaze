@@ -112,7 +112,7 @@
    capabilities-handler]
   (reitit.ring/router
     (-> [""
-         {:blaze/base-url (str base-url context-path)
+         {:blaze/base-url base-url
           :middleware
           (cond-> []
             (seq auth-backends)

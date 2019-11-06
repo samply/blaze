@@ -161,8 +161,8 @@
   "Returns the URL of a resource type like `[base]/[type]`."
   [router type]
   (let [{:keys [path] {:blaze/keys [base-url]} :data}
-        (reitit/match-by-name router :fhir/type {:type type})]
-    (str base-url "/" path)))
+        (reitit/match-by-name router (keyword type "type"))]
+    (str base-url path)))
 
 
 (s/fdef instance-url
@@ -173,8 +173,8 @@
   "Returns the URL of a instance (resource) like `[base]/[type]/[id]`."
   [router type id]
   (let [{:keys [path] {:blaze/keys [base-url]} :data}
-        (reitit/match-by-name router :fhir/instance {:type type :id id})]
-    (str base-url "/" path)))
+        (reitit/match-by-name router (keyword type "instance") {:id id})]
+    (str base-url path)))
 
 
 (s/fdef versioned-instance-url
@@ -187,5 +187,5 @@
   [router type id vid]
   (let [{:keys [path] {:blaze/keys [base-url]} :data}
         (reitit/match-by-name
-          router :fhir/versioned-instance {:type type :id id :vid vid})]
-    (str base-url "/" path)))
+          router (keyword type "versioned-instance") {:id id :vid vid})]
+    (str base-url path)))

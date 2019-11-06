@@ -72,7 +72,7 @@
                match
                (cond-> (assoc query-params "t" t "page-t" page-t)
                  eid (assoc "page-eid" eid)))]
-    (str base-url "/" path)))
+    (str base-url path)))
 
 
 (defn- method [resource]
