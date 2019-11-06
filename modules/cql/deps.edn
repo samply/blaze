@@ -42,7 +42,10 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
+   {blaze/datomic-test-util
+    {:local/root "../datomic-test-util"}
+
+    lambdaisland/kaocha
     {:mvn/version "0.0-554"}
 
     org.clojars.akiel/iota

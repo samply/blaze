@@ -42,25 +42,10 @@
     [datomic-spec.core :as ds])
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
-    [java.time.temporal ChronoUnit Temporal]
-    [javax.measure Quantity]
+    [java.time.temporal ChronoUnit]
     [java.util Comparator]
     [datomic Entity])
   (:refer-clojure :exclude [comparator compile]))
-
-
-(extend-protocol Expression
-  nil
-  (-eval [this _ _ _]
-    this)
-  (-hash [this]
-    this)
-
-  Object
-  (-eval [this _ _ _]
-    this)
-  (-hash [this]
-    this))
 
 
 (extend-protocol p/Equal
@@ -155,11 +140,16 @@
     (try
       (assoc expression-def :life/expression (compile context expression))
       (catch Exception e
-        #::anom
-            {:category ::anom/fault
-             :message (ex-message e)
-             :_/e e
-             :elm/expression expression}))))
+        (let [ex-data (ex-data e)]
+          (if (::anom/category ex-data)
+            (assoc ex-data
+              :context context
+              :elm/expression expression)
+            {::anom/category ::anom/fault
+             ::anom/message (ex-message e)
+             :e e
+             :context context
+             :elm/expression expression}))))))
 
 
 (s/def :life/compiled-expression-defs
@@ -846,63 +836,26 @@
 ;; 11. External Data
 
 ;; 11.1. Retrieve
-;;
-;; Implementation Note:
-;;
-;; The compiler generates a function with takes a context map with a required
-;; :db and an optional :patient. The :db is the database from which the data
-;; will be retrieved.
-;;
-;; The :patient-id can be optionally populated with a patient identifier to
-;; retrieve only data from that patient. In case :patient is `nil`, data from
-;; all patients will be retrieved.
-;;
-;; The :patient-id will be set if the evaluation context is `"Patient"`. It'll
-;; be `nil` if the evaluation context is `"Unspecified"`.
 (defmethod compile* :elm.compiler.type/retrieve
   [{:keys [db eval-context] :as context}
-   {:keys [codes] code-property-name :codeProperty data-type :dataType
-    :or {code-property-name "code"}}]
-  (let [unspecified-eval-context? (= "Unspecified" eval-context)
-        [_ data-type-name] (elm-util/parse-qualified-name data-type)]
-    (if-let [codes (some->> codes (compile context))]
-      (if unspecified-eval-context?
-        (reify Expression
-          (-eval [_ {:keys [db]} _ _]
-            (cql/list-resource-by-code
-              db data-type-name code-property-name (keep :db/id codes)))
-          (-hash [_]
-            {:type :retrieve
-             :context eval-context
-             :data-type-name data-type-name
-             :code-property-name code-property-name
-             :codes (-hash codes)}))
-
-        (let [[code & more] (remove nil? codes)]
-          (cond
-            (nil? code)
-            []
-
-            (empty? more)
-            (retrieve/single-code-expr
-              db eval-context data-type-name code-property-name code)
-
-            :else
-            (retrieve/multiple-code-expr
-              db eval-context data-type-name code-property-name codes))))
-
-      (if unspecified-eval-context?
-        (reify Expression
-          (-eval [_ {:keys [db]} _ _]
-            (datomic-util/list-resources db data-type-name))
-          (-hash [_]
-            {:type :retrieve
-             :context eval-context
-             :data-type-name data-type-name}))
-
-        (if (= data-type-name eval-context)
-          retrieve/resource-expr
-          (retrieve/context-expr db eval-context data-type-name))))))
+   {context-expr :context
+    data-type :dataType
+    code-property :codeProperty
+    codes-expr :codes
+    :or {code-property "code"}}]
+  (let [[_ data-type] (elm-util/parse-qualified-name data-type)]
+    (if-let [related-context-expr (some->> context-expr (compile context))]
+      (retrieve/with-related-context-expr
+        related-context-expr
+        data-type
+        code-property
+        (some->> codes-expr (compile context)))
+      (retrieve/expr
+        eval-context
+        db
+        data-type
+        code-property
+        (some->> codes-expr (compile context))))))
 
 
 

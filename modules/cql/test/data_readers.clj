@@ -22,4 +22,5 @@
  elm/interval blaze.elm.literals/interval
  elm/current blaze.elm.literals/current
  elm/as blaze.elm.literals/as
- elm/tuple blaze.elm.literals/tuple}
+ elm/tuple blaze.elm.literals/tuple
+ elm/singleton-from blaze.elm.literals/singleton-from}
