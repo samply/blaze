@@ -1,8 +1,9 @@
 (ns blaze.cql-translator-test
   (:require
     [blaze.cql-translator :refer [translate]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [deftest testing]]
+    [clojure.test :refer [deftest is testing]]
     [juxt.iota :refer [given]]))
 
 
@@ -33,4 +34,13 @@
       [0 :expression :dataType] := "{http://hl7.org/fhir}Observation"
       [0 :expression :codes :type] := "ToList"
       [0 :expression :codes :operand :type] := "CodeRef"
-      [0 :expression :codes :operand :name] := "T0")))
+      [0 :expression :codes :operand :name] := "T0"))
+
+  (testing "Returns a valid :elm/library"
+    (is
+      (s/valid?
+        :elm/library
+        (translate
+          "library Test
+           using FHIR version '4.0.0'
+           define Patients: [Patient]")))))

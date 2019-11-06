@@ -444,7 +444,36 @@
 
 ;; 5. Libraries
 
+;; 5.3. VersionedIdentifier
+(s/def :elm.versioned-identifier/id
+  string?)
+
+
+(s/def :elm.versioned-identifier/system
+  string?)
+
+
+(s/def :elm.versioned-identifier/version
+  string?)
+
+
+(s/def :elm/versioned-identifier
+  (s/keys
+    :opt-un
+    [:elm.versioned-identifier/id
+     :elm.versioned-identifier/system
+     :elm.versioned-identifier/version]))
+
+
 ;; 5.1. Library
+(s/def :elm.library/identifier
+  :elm/versioned-identifier)
+
+
+(s/def :elm.library/schemaIdentifier
+  :elm/versioned-identifier)
+
+
 (s/def :elm.library.code-systems/def
   (s/coll-of :elm/code-system-def))
 
@@ -470,7 +499,7 @@
 
 
 (s/def :elm/library
-  (s/keys :req-un [:elm/identifier :elm/schemaIdentifier]
+  (s/keys :req-un [:elm.library/identifier :elm.library/schemaIdentifier]
           :opt-un [:elm.library/code-systems
                    :elm.library/codes
                    :elm.library/statements]))
