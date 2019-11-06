@@ -1,8 +1,6 @@
 (ns blaze.core
   (:require
-    [clojure.string :as str]
     [blaze.system :as system]
-    [phrase.alpha :refer [defphraser phrase-first]]
     [taoensso.timbre :as log]))
 
 
@@ -55,8 +53,3 @@
   (log/info "JVM version:" (System/getProperty "java.version"))
   (log/info "Maximum available memory:" (max-memory) "MiB")
   (log/info "Number of available processors:" (available-processors)))
-
-
-(defphraser #(contains? % key)
-  [_ _ key]
-  (str "Missing env var: " (str/replace (str/upper-case (name key)) \- \_)))

@@ -2,8 +2,7 @@
   (:require
     [blaze.interaction.history.util :as util]
     [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :refer :all]))
+    [clojure.spec.test.alpha :as st]))
 
 
 (defn stub-build-entry

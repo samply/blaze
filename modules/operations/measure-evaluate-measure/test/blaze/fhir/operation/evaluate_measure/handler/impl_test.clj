@@ -8,7 +8,7 @@
     [blaze.handler.fhir.util :as fhir-util]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer :all]
+    [clojure.test :as test :refer [deftest is testing]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
@@ -34,7 +34,7 @@
   (st/unstrument))
 
 
-(use-fixtures :each fixture)
+(test/use-fixtures :each fixture)
 
 
 (def base-uri "http://localhost:8080")

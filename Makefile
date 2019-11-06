@@ -3,6 +3,10 @@ VERSION = "0.7.0-alpha6"
 check:
 	clojure -A:check
 
+lint:
+	clojure -A:clj-kondo --lint modules
+	clojure -A:clj-kondo --lint src
+
 modules/cql/cql-test:
 	wget -P modules/cql/cql-test -q https://raw.githubusercontent.com/HL7/cql/v1.4-ballot/tests/cql/CqlAggregateFunctionsTest.xml
 	wget -P modules/cql/cql-test -q https://raw.githubusercontent.com/HL7/cql/v1.4-ballot/tests/cql/CqlArithmeticFunctionsTest.xml

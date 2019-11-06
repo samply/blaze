@@ -2,7 +2,7 @@
   (:require
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.interaction.history.util :refer [build-entry nav-url]]
+    [blaze.interaction.history.util :refer [build-entry]]
     [blaze.interaction.test-util :as test-util]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.spec.alpha :as s]

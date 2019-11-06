@@ -2,16 +2,16 @@
   "Finds relationships (with and without) in queries, that have an equals
   expression resulting in equiv semi-joins and semi-differences."
   (:require
-    [camel-snake-kebab.core :refer [->kebab-case-string]]
+    [blaze.elm.spec]
     [clojure.spec.alpha :as s]
-    [blaze.elm.spec]))
+    [cuerdas.core :as str]))
 
 
 (defmulti find-equiv-rels
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.normalizer.type" (->kebab-case-string type))))
+    (keyword "elm.normalizer.type" (str/kebab type))))
 
 
 (defn- update-expression-defs [expression-defs]

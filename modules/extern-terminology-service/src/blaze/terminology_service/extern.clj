@@ -3,7 +3,7 @@
     [aleph.http :as http]
     [aleph.http.client-middleware :as client-middleware]
     [blaze.fhir-client :as client]
-    [blaze.module :refer [defcollector]]
+    [blaze.module :refer [reg-collector]]
     [blaze.terminology-service :as ts :refer [term-service?]]
     [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
@@ -209,9 +209,9 @@
 (derive :blaze.terminology-service/extern :blaze/terminology-service)
 
 
-(defcollector errors-total [_]
+(reg-collector ::errors-total
   errors-total)
 
 
-(defcollector request-duration-seconds [_]
+(reg-collector ::request-duration-seconds
   request-duration-seconds)

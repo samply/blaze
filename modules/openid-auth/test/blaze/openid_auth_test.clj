@@ -1,7 +1,7 @@
 (ns blaze.openid-auth-test
   (:require
    [blaze.openid-auth :refer [public-key]]
-   [clojure.test :refer :all])
+   [clojure.test :refer [deftest is testing]])
   (:import
     [java.security PublicKey]))
 

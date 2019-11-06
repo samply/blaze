@@ -1,10 +1,10 @@
 (ns blaze.elm.spec
   (:require
-    [camel-snake-kebab.core :refer [->kebab-case-string]]
+    [blaze.elm.quantity :refer [print-unit]]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
-    [blaze.elm.quantity :refer [print-unit]])
+    [cuerdas.core :as str])
   (:import
     [java.time LocalDate]
     [javax.measure.spi ServiceProvider SystemOfUnits]
@@ -92,7 +92,7 @@
 
 (defn expression-dispatch [{:keys [type]}]
   (when type
-    (keyword "elm.spec.type" (->kebab-case-string type))))
+    (keyword "elm.spec.type" (str/kebab type))))
 
 
 (defmulti expression expression-dispatch)

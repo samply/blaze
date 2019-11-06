@@ -1,8 +1,7 @@
 (ns blaze.interaction.spec
   (:require
     [blaze.spec]
-    [clojure.spec.alpha :as s]
-    [integrant.core :as ig]))
+    [clojure.spec.alpha :as s]))
 
 
 (s/def :fhir.router.match/data

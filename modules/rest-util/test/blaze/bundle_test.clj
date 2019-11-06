@@ -1,6 +1,6 @@
 (ns blaze.bundle-test
   (:require
-    [blaze.bundle :refer [resolve-entry-links tx-data annotate-codes]]
+    [blaze.bundle :refer [resolve-entry-links tx-data]]
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.terminology-service :as ts]
     [clojure.spec.test.alpha :as st]
@@ -9,8 +9,7 @@
     [datomic.api :as d]
     [datomic-spec.test :as dst]
     [juxt.iota :refer [given]]
-    [manifold.deferred :as md]
-    [clojure.spec.alpha :as s]))
+    [manifold.deferred :as md]))
 
 
 (st/instrument)

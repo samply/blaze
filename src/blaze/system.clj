@@ -9,10 +9,7 @@
     [clojure.string :as str]
     [clojure.walk :refer [postwalk]]
     [blaze.executors :as ex]
-    [blaze.module :refer [defcollector]]
     [blaze.server :as server]
-    [blaze.thread-pool-executor-collector
-     :refer [thread-pool-executor-collector]]
     [clojure.tools.reader.edn :as edn]
     [integrant.core :as ig]
     [spec-coerce.alpha :refer [coerce]]
@@ -189,11 +186,6 @@
 
 
 (derive :blaze.server/executor :blaze.metrics/thread-pool-executor)
-
-
-(defcollector blaze.server.executor/collector
-  [{:keys [executor]}]
-  (thread-pool-executor-collector {"server" executor}))
 
 
 (defmethod ig/init-key :blaze/server

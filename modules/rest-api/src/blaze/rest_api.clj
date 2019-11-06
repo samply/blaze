@@ -2,13 +2,12 @@
   (:require
     [blaze.bundle :as bundle]
     [blaze.middleware.fhir.metrics :as metrics]
-    [blaze.module :refer [defcollector]]
+    [blaze.module :refer [reg-collector]]
     [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
     [blaze.rest-api.middleware.json :as json :refer [wrap-json]]
     [blaze.rest-api.spec]
     [blaze.spec]
     [buddy.auth.middleware :refer [wrap-authentication]]
-    [buddy.auth.protocols :refer [IAuthentication]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.ring]
@@ -365,21 +364,21 @@
   (handler config))
 
 
-(defcollector requests-total [_]
+(reg-collector ::requests-total
   metrics/requests-total)
 
 
-(defcollector request-duration-seconds [_]
+(reg-collector ::request-duration-seconds
   metrics/request-duration-seconds)
 
 
-(defcollector parse-duration-seconds [_]
+(reg-collector ::parse-duration-seconds
   json/parse-duration-seconds)
 
 
-(defcollector generate-duration-seconds [_]
+(reg-collector ::generate-duration-seconds
   json/generate-duration-seconds)
 
 
-(defcollector tx-data-duration-seconds [_]
+(reg-collector ::tx-data-duration-seconds
   bundle/tx-data-duration-seconds)

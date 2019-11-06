@@ -1,9 +1,9 @@
 (ns blaze.elm.deps-infer
   (:require
-    [camel-snake-kebab.core :refer [->kebab-case-string]]
+    [blaze.elm.spec]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
-    [blaze.elm.spec]))
+    [cuerdas.core :as str]))
 
 
 (defmulti infer-deps
@@ -12,7 +12,7 @@
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.deps.type" (->kebab-case-string type))))
+    (keyword "elm.deps.type" (str/kebab type))))
 
 
 (defn- update-expression-defs [expression-defs]
