@@ -1,15 +1,15 @@
 (ns blaze.elm.type-infer
   (:require
-    [camel-snake-kebab.core :refer [->kebab-case-string]]
+    [blaze.elm.spec]
     [clojure.spec.alpha :as s]
-    [blaze.elm.spec]))
+    [cuerdas.core :as str]))
 
 
 (defmulti infer-types*
   "Infers :life/source-type for expressions."
   {:arglists '([context expression])}
   (fn [_ {:keys [type]}]
-    (keyword "elm" (->kebab-case-string type))))
+    (keyword "elm" (str/kebab type))))
 
 
 (s/fdef infer-types

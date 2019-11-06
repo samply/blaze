@@ -17,9 +17,10 @@
   :ret (s/nilable #(instance? PublicKey %)))
 
 
-(defn public-key [jwks-json]
+(defn public-key
   "Take a the first jwk from jwks-json string and
    convert it into a PublicKey."
+  [jwks-json]
   (some-> jwks-json
           (json/parse-string keyword)
           :keys

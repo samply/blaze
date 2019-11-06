@@ -160,7 +160,8 @@
 
   (testing "On successful update of an existing resource"
     (let [resource {"resourceType" "Patient" "id" "0"}]
-      (datomic-test-util/stub-resource ::db-before #{"Patient"} #{"0"} some?)
+      (datomic-test-util/stub-resource
+        ::db-before #{"Patient"} #{"0"} #{::existing-resource})
       (test-util/stub-upsert-resource
         ::transaction-executor
         ::conn

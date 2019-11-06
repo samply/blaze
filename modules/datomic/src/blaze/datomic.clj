@@ -2,7 +2,7 @@
   (:require
     [blaze.datomic.schema :as schema]
     [blaze.datomic.transaction :as tx]
-    [blaze.module :refer [defcollector]]
+    [blaze.module :refer [reg-collector]]
     [datomic.api :as d]
     [datomic-tools.schema :as dts]
     [integrant.core :as ig]
@@ -38,17 +38,17 @@
 (derive ::tx/executor :blaze.metrics/thread-pool-executor)
 
 
-(defcollector resource-upsert-duration-seconds [_]
+(reg-collector ::resource-upsert-duration-seconds
   tx/resource-upsert-duration-seconds)
 
 
-(defcollector execution-duration-seconds [_]
+(reg-collector ::execution-duration-seconds
   tx/execution-duration-seconds)
 
 
-(defcollector resources-total [_]
+(reg-collector ::resources-total
   tx/resources-total)
 
 
-(defcollector datoms-total [_]
+(reg-collector ::datoms-total
   tx/datoms-total)

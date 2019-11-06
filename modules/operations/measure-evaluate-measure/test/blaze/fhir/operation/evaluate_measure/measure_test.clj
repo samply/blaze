@@ -6,13 +6,13 @@
     [blaze.datomic.value :as value]
     [blaze.elm.compiler :as compiler]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
-    [blaze.fhir.operation.evaluate-measure.measure :refer :all]
+    [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
     [blaze.terminology-service.extern :as ts]
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer :all]
+    [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [datomic.api :as d]
     [juxt.iota :refer [given]]
@@ -28,7 +28,7 @@
   (st/unstrument))
 
 
-(use-fixtures :each fixture)
+(test/use-fixtures :each fixture)
 
 
 (defn stub-cql-translate [code library]

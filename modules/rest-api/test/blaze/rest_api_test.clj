@@ -2,7 +2,7 @@
   (:require
     [blaze.rest-api :as rest-api]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
+    [clojure.test :as test :refer [are deftest testing]]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [reitit.ring]

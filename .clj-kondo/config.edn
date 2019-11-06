@@ -1,0 +1,26 @@
+{:lint-as
+ {blaze.elm.compiler/defunop clojure.core/defn
+  blaze.elm.compiler/defbinop clojure.core/defn
+  blaze.elm.compiler/defternop clojure.core/defn
+  blaze.elm.compiler/defnaryop clojure.core/defn
+  blaze.elm.compiler/defaggop clojure.core/defn
+  blaze.elm.compiler/defbinopp clojure.core/defn
+  blaze.elm.compiler/defunopp clojure.core/defn
+  clojure.test.check.properties/for-all clojure.core/let
+  datomic-tools.schema/defunc clojure.core/defn
+  manifold.deferred/loop clojure.core/loop
+  manifold.deferred/let-flow clojure.core/let
+  manifold.deferred/let-flow' clojure.core/let
+  prometheus.alpha/defcounter clojure.core/def
+  prometheus.alpha/defhistogram clojure.core/def}
+
+ :linters
+ {:unused-private-var
+  {:exclude
+   [blaze.datomic.value/string-short-len-code
+    blaze.datomic.value/string-int-len-code
+    blaze.datomic.value/boolean-code]}
+
+  ;; because of macros in modules/cql/src/blaze/elm/compiler.clj
+  :redefined-var
+  {:level :off}}}

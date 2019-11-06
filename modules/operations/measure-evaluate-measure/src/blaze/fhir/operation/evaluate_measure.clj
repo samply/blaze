@@ -7,10 +7,8 @@
     [blaze.fhir.operation.evaluate-measure.middleware.params
      :refer [wrap-coerce-params]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.module :refer [defcollector]]
+    [blaze.module :refer [reg-collector]]
     [blaze.terminology-service :refer [term-service?]]
-    [blaze.thread-pool-executor-collector
-     :refer [thread-pool-executor-collector]]
     [clojure.spec.alpha :as s]
     [datomic-spec.core :as ds]
     [integrant.core :as ig]
@@ -75,9 +73,9 @@
 (derive ::executor :blaze.metrics/thread-pool-executor)
 
 
-(defcollector compile-duration-seconds [_]
+(reg-collector ::compile-duration-seconds
   measure/compile-duration-seconds)
 
 
-(defcollector evaluate-duration-seconds [_]
+(reg-collector ::evaluate-duration-seconds
   measure/evaluate-duration-seconds)

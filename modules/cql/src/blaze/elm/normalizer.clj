@@ -1,15 +1,15 @@
 (ns blaze.elm.normalizer
   (:require
-    [camel-snake-kebab.core :refer [->kebab-case-string]]
+    [blaze.elm.spec]
     [clojure.spec.alpha :as s]
-    [blaze.elm.spec]))
+    [cuerdas.core :as str]))
 
 
 (defmulti normalize
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.normalizer.type" (->kebab-case-string type))))
+    (keyword "elm.normalizer.type" (str/kebab type))))
 
 
 (defn- update-expression-defs [expression-defs]
@@ -62,11 +62,11 @@
 
 ;; 10.1. Query
 (defmethod normalize :elm.normalizer.type/query
-  [{:keys [source let relationship where return] :as expression}]
+  [{:keys [source relationship where return] let' :let :as expression}]
   (cond-> (assoc expression
             :source (mapv #(update % :expression normalize) source))
-    let
-    (assoc :let (mapv #(update % :expression normalize) let))
+    let'
+    (assoc :let (mapv #(update % :expression normalize) let'))
 
     relationship
     (assoc :relationship (mapv #(update % :expression normalize) relationship))

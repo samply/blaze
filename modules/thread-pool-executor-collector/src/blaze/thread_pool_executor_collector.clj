@@ -1,6 +1,5 @@
 (ns blaze.thread-pool-executor-collector
   (:require
-    [blaze.module :refer [defcollector]]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
