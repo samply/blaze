@@ -44,3 +44,24 @@
           "library Test
            using FHIR version '4.0.0'
            define Patients: [Patient]")))))
+
+
+(comment
+  (translate
+    "library Retrieve
+    using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem icd10: 'http://hl7.org/fhir/sid/icd-10'
+    codesystem icd10gm: 'http://fhir.de/CodeSystem/dimdi/icd-10-gm'
+
+    context Specimen
+
+    define Patient:
+    singleton from ([Patient])
+
+
+    define InInitialPopulation:
+    exists([Patient -> Condition: Code 'Z77.6' from icd10]) or
+    exists([Patient -> Condition: Code 'Z77.6' from icd10gm])")
+  )

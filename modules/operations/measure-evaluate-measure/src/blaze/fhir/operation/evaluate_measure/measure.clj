@@ -6,12 +6,16 @@
     [blaze.cql-translator :as cql-translator]
     [blaze.elm.compiler :as compiler]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
+    [blaze.fhir.operation.evaluate-measure.spec :as spec]
+    [blaze.handler.fhir.util :as fhir-util]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [datomic-spec.core :as ds]
     [prometheus.alpha :as prom]
+    [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
+    [datomic Entity]
     [java.nio.charset Charset]
     [java.time OffsetDateTime]
     [java.time.temporal Temporal]))
@@ -55,8 +59,11 @@
     (if (::anom/category cql-code)
       cql-code
       (let [library (cql-translator/translate cql-code :locators? true)]
-        (if (::anom/category library)
-          library
+        (case (::anom/category library)
+          ::anom/incorrect
+          (assoc library
+            :fhir/issue "value"
+            :fhir.issue/expression "Measure.library")
           (compiler/compile-library db library {}))))))
 
 
@@ -69,10 +76,11 @@
        ::anom/message
        (str "Can't find the library with canonical URI `" library-ref "`.")
        :fhir/issue "value"
-       :fhir.issue/expression "library"})
+       :fhir.issue/expression "Measure.library"})
     {::anom/category ::anom/unsupported
      ::anom/message "Missing primary library. Currently only CQL expressions together with one primary library are supported."
      :fhir/issue "not-supported"
+     :fhir.issue/expression "Measure.library"
      :measure measure}))
 
 
@@ -85,32 +93,155 @@
 
 
 (defn- evaluate-population
-  {:arglists '([db now library subject population])}
-  [db now library subject
+  {:arglists '([db now library subject groupIdx populationIdx population])}
+  [db now library subject groupIdx populationIdx
    {{:Expression/keys [language expression]} :Measure.group.population/criteria
     :Measure.group.population/keys [code]}]
-  (if (= "text/cql" (:code/code language))
-    (cond->
-      {:count (cql/evaluate-expression db now library subject expression)}
-      code
-      (assoc :code (pull/pull-non-primitive db :CodeableConcept code)))
+  (cond
+    (not= "text/cql" (:code/code language))
     {::anom/category ::anom/unsupported
-     ::anom/message (str "Unsupported language `" language "`.")
-     :fhir/issue "not-supported"}))
+     ::anom/message (str "Unsupported language `" (:code/code language) "`.")
+     :fhir/issue "not-supported"
+     :fhir.issue/expression
+     (format "Measure.group[%d].population[%d].criteria.language"
+             groupIdx populationIdx)}
+
+    (nil? expression)
+    {::anom/category ::anom/incorrect
+     ::anom/message "Missing expression."
+     :fhir/issue "required"
+     :fhir.issue/expression
+     (format "Measure.group[%d].population[%d].criteria.expression"
+             groupIdx populationIdx)}
+
+    :else
+    (cond->
+      {"count" (cql/evaluate-expression db now library subject expression)}
+      code
+      (assoc "code" (pull/pull-non-primitive db :CodeableConcept code)))))
+
+
+(defn- code? [x]
+  (and (instance? Entity x) (= "code" (datomic-util/entity-type x))))
+
+
+(defn- pull [stratum-value]
+  (if (code? stratum-value)
+    (:code/code stratum-value)
+    (str stratum-value)))
+
+
+(defn- evaluate-stratifier
+  {:arglists
+   '([db now library subject groupIdx populations stratifierIdx stratifier])}
+  [db now library subject groupIdx populations stratifierIdx
+   {{:Expression/keys [language expression]} :Measure.group.stratifier/criteria
+    :Measure.group.stratifier/keys [code]}]
+  (cond
+    (not= "text/cql" (:code/code language))
+    {::anom/category ::anom/unsupported
+     ::anom/message (str "Unsupported language `" (:code/code language) "`.")
+     :fhir/issue "not-supported"
+     :fhir.issue/expression
+     (format "Measure.group[%d].stratifier[%d].criteria.language"
+             groupIdx stratifierIdx)}
+
+    (nil? expression)
+    {::anom/category ::anom/incorrect
+     ::anom/message "Missing expression."
+     :fhir/issue "required"
+     :fhir.issue/expression
+     (format "Measure.group[%d].stratifier[%d].criteria.expression"
+             groupIdx stratifierIdx)}
+
+    :else
+    (cond->
+      {"stratum"
+       (into
+         []
+         (map
+           (fn [[stratum-value count]]
+             {"value" {"text" (pull stratum-value)}
+              "population"
+              [{"code"
+                (pull/pull-non-primitive
+                  db :CodeableConcept
+                  (-> populations first :Measure.group.population/code))
+                "count" count}]}))
+         (->> (cql/calc-stratums
+                db now library subject
+                (-> populations first :Measure.group.population/criteria
+                    :Expression/expression)
+                expression)
+              (sort-by key)))}
+      code
+      (assoc "code" [(pull/pull-non-primitive db :CodeableConcept code)]))))
+
+
+(defn- evaluate-populations [db now library subject groupIdx populations]
+  (transduce
+    (map-indexed (partial evaluate-population db now library subject groupIdx))
+    (completing
+      (fn [res evaluated-population]
+        (if (::anom/category evaluated-population)
+          (reduced evaluated-population)
+          (conj res evaluated-population))))
+    []
+    populations))
+
+
+(defn- evaluate-stratifiers
+  [db now library subject groupIdx populations stratifiers]
+  (transduce
+    (map-indexed
+      (partial evaluate-stratifier db now library subject groupIdx populations))
+    (completing
+      (fn [res evaluated-stratifier]
+        (if (::anom/category evaluated-stratifier)
+          (reduced evaluated-stratifier)
+          (conj res evaluated-stratifier))))
+    []
+    stratifiers))
 
 
 (defn- evaluate-group
-  {:arglists '([db now library subject group])}
-  [db now library subject {:Measure.group/keys [code population]}]
-  (cond-> {}
-    code
-    (assoc :code code)
-    (seq population)
-    (assoc :population (mapv #(evaluate-population db now library subject %) population))))
+  {:arglists '([db now library subject groupIdx group])}
+  [db now library subject groupIdx
+   {:Measure.group/keys [code population stratifier]}]
+  (let [evaluated-populations
+        (evaluate-populations db now library subject groupIdx population)
+        evaluated-stratifiers
+        (evaluate-stratifiers
+          db now library subject groupIdx population stratifier)]
+    (cond
+      (::anom/category evaluated-populations)
+      evaluated-populations
+
+      (::anom/category evaluated-stratifiers)
+      evaluated-stratifiers
+
+      :else
+      (cond-> {}
+        code
+        (assoc "code" code)
+
+        (seq evaluated-populations)
+        (assoc "population" evaluated-populations)
+
+        (seq evaluated-stratifiers)
+        (assoc "stratifier" evaluated-stratifiers)))))
 
 
 (defn- evaluate-groups* [db now library subject groups]
-  (mapv #(evaluate-group db now library subject %) groups))
+  (transduce
+    (map-indexed (partial evaluate-group db now library subject))
+    (completing
+      (fn [res evaluated-group]
+        (if (::anom/category evaluated-group)
+          (reduced evaluated-group)
+          (conj res evaluated-group))))
+    []
+    groups))
 
 
 (defn- evaluate-groups [db now library subject groups]
@@ -118,8 +249,10 @@
     (evaluate-groups* db now library subject groups)))
 
 
-(defn- canonical [{:Measure/keys [url version]}]
-  (cond-> url version (str "|" version)))
+(defn- canonical [router {:Measure/keys [id url version]}]
+  (if url
+    (cond-> url version (str "|" version))
+    (fhir-util/instance-url router "Measure" id)))
 
 
 (defn- subject-code
@@ -132,29 +265,37 @@
 
 
 (s/fdef evaluate-measure
-  :args (s/cat :now #(instance? OffsetDateTime %) :db ::ds/db
-               :period (s/tuple temporal? temporal?) :measure ::ds/entity))
+  :args
+  (s/cat
+    :now #(instance? OffsetDateTime %)
+    :db ::ds/db
+    :router reitit/router?
+    :period (s/tuple temporal? temporal?)
+    :measure ::spec/measure-entity))
 
 (defn evaluate-measure
   "Evaluates `measure` inside `period` in `db` with evaluation time of `now`.
 
-  Returns an already complete MeasureReport which isn't persisted or an anomaly
+  Returns an already completed MeasureReport which isn't persisted or an anomaly
   in case of errors."
-  {:arglists '([now db period measure])}
-  [now db [start end] {groups :Measure/group :as measure}]
+  {:arglists '([now db router period measure])}
+  [now db router [start end] {groups :Measure/group :as measure}]
   (let [library (compile-primary-library db measure)]
     (if (::anom/category library)
       library
-      (cond->
-        {:resourceType "MeasureReport"
-         :status "complete"
-         :type "summary"
-         :measure (canonical measure)
-         :date (pull/to-json now)
-         :period
-         {:start (pull/to-json start)
-          :end (pull/to-json end)}}
-        (seq groups)
-        (assoc
-          :group
-          (evaluate-groups db now library (subject-code measure) groups))))))
+      (let [evaluated-groups
+            (evaluate-groups db now library (subject-code measure) groups)]
+        (if (::anom/category evaluated-groups)
+          evaluated-groups
+          (cond->
+            {"resourceType" "MeasureReport"
+             "status" "complete"
+             "type" "summary"
+             "measure" (canonical router measure)
+             "date" (pull/to-json now)
+             "period"
+             {"start" (pull/to-json start)
+              "end" (pull/to-json end)}}
+
+            (seq evaluated-groups)
+            (assoc "group" evaluated-groups)))))))
