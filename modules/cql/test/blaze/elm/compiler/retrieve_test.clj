@@ -13,7 +13,6 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
     [juxt.iota :refer [given]])
   (:import
     [datomic Datom]))
@@ -28,48 +27,13 @@
 (test/use-fixtures :each fixture)
 
 
-(defn stub-entid [db ident eid]
-  (st/instrument
-    [`d/entid]
-    {:spec
-     {`d/entid
-      (s/fspec
-        :args (s/cat :db #{db} :ident #{ident})
-        :ret #{eid})}
-     :stub
-     #{`d/entid}}))
-
-
-(defn stub-datoms [db index components-spec replace-fn]
-  (st/instrument
-    [`d/datoms]
-    {:spec
-     {`d/datoms
-      (s/fspec
-        :args (s/cat :db #{db} :index #{index} :components components-spec))}
-     :replace
-     {`d/datoms replace-fn}}))
-
-
-(defn stub-entity [db eid-spec entity-spec]
-  (st/instrument
-    [`d/entity]
-    {:spec
-     {`d/entity
-      (s/fspec
-        :args (s/cat :db #{db} :eid eid-spec)
-        :ret entity-spec)}
-     :stub
-     #{`d/entity}}))
-
-
 (deftest single-code-expr-test
   (st/unstrument `single-code-expr)
-  (stub-entid ::db :Patient.Observation.code/code-id 42)
-  (stub-datoms
+  (datomic-test-util/stub-entid ::db :Patient.Observation.code/code-id 42)
+  (datomic-test-util/stub-datoms
     ::db :eavt (s/cat :e #{::patient-eid} :a #{42})
     (constantly [(reify Datom (v [_] ::observation-eid))]))
-  (stub-entity ::db #{::observation-eid} #{::observation})
+  (datomic-test-util/stub-entity ::db #{::observation-eid} #{::observation})
 
   (is
     (=
@@ -136,11 +100,11 @@
   (st/unstrument `context-expr)
 
   (testing "Observation in Patient context"
-    (stub-entid ::db :Observation/subject 42)
-    (stub-datoms
+    (datomic-test-util/stub-entid ::db :Observation/subject 42)
+    (datomic-test-util/stub-datoms
       ::db :vaet (s/cat :v #{::patient-eid} :a #{42})
       (constantly [(reify Datom (e [_] ::observation-eid))]))
-    (stub-entity ::db #{::observation-eid} #{::observation})
+    (datomic-test-util/stub-entity ::db #{::observation-eid} #{::observation})
 
     (is
       (=
@@ -152,11 +116,11 @@
         [::observation])))
 
   (testing "Patient in Specimen context"
-    (stub-entid ::db :Specimen/subject 42)
-    (stub-datoms
+    (datomic-test-util/stub-entid ::db :Specimen/subject 42)
+    (datomic-test-util/stub-datoms
       ::db :eavt (s/cat :e #{::specimen-eid} :a #{42})
       (constantly [(reify Datom (v [_] ::patient-eid))]))
-    (stub-entity ::db #{::patient-eid} #{::patient})
+    (datomic-test-util/stub-entity ::db #{::patient-eid} #{::patient})
 
     (is
       (=
@@ -168,11 +132,11 @@
         [::patient])))
 
   (testing "Observation in Specimen context"
-    (stub-entid ::db :Observation/specimen 42)
-    (stub-datoms
+    (datomic-test-util/stub-entid ::db :Observation/specimen 42)
+    (datomic-test-util/stub-datoms
       ::db :vaet (s/cat :v #{::specimen-eid} :a #{42})
       (constantly [(reify Datom (e [_] ::observation-eid))]))
-    (stub-entity ::db #{::observation-eid} #{::observation})
+    (datomic-test-util/stub-entity ::db #{::observation-eid} #{::observation})
 
     (is
       (=
