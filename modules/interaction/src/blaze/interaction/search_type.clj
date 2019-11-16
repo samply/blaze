@@ -8,6 +8,7 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [integrant.core :as ig]
@@ -17,9 +18,15 @@
     [taoensso.timbre :as log]))
 
 
+(defn- normalize [s]
+  (-> s str/trim str/lower-case))
+
+
 ;; TODO: improve quick hack
-(defn- resource-pred [db type {:strs [identifier]}]
-  (when identifier
+(defn- resource-pred
+  [db type {:strs [identifier title title:contains measure]}]
+  (cond
+    identifier
     (let [attr (keyword type "identifier")
           {:db/keys [cardinality]} (util/cached-entity db attr)
           matches?
@@ -29,7 +36,24 @@
         (let [value (get resource attr)]
           (if (= :db.cardinality/many cardinality)
             (some matches? value)
-            (matches? value)))))))
+            (matches? value)))))
+
+    (and (#{"Library" "Measure"} type) title)
+    (let [title (normalize title)]
+      (fn [resource]
+        (when-let [value ((keyword type "title") resource)]
+          (str/starts-with? (normalize value) title))))
+
+    (and (#{"Library" "Measure"} type) title:contains)
+    (let [title (normalize title:contains)]
+      (fn [resource]
+        (when-let [value ((keyword type "title") resource)]
+          (str/includes? (normalize value) title))))
+
+    (and (#{"MeasureReport"} type) measure)
+    (fn [resource]
+      (when-let [value ((keyword type "measure") resource)]
+        (= value measure)))))
 
 
 (defn- entry
