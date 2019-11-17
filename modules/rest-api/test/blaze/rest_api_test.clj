@@ -54,11 +54,18 @@
                {:handler (fn [_] ::create)}
            :search-type
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::search-type)}}}]}
+               {:handler (fn [_] ::search-type)}}}]
+     :operations
+     [#:blaze.rest-api.operation
+         {:code "evaluate-measure"
+          :resource-types ["Measure"]
+          :type-handler (fn [_] ::evaluate-measure-type)
+          :instance-handler (fn [_] ::evaluate-measure-instance)}]}
     (fn [_])))
 
 
 (comment
+  (reitit/router-name router)
   (doseq [route (reitit/routes router)]
     (prn route)))
 
@@ -79,7 +86,11 @@
       "/Patient/0" :put ::update
       "/Patient/0" :delete ::delete
       "/Patient/0/_history" :get ::history-instance
-      "/Patient/0/_history/42" :get ::vread))
+      "/Patient/0/_history/42" :get ::vread
+      "/Measure/$evaluate-measure" :get ::evaluate-measure-type
+      "/Measure/$evaluate-measure" :post ::evaluate-measure-type
+      "/Measure/0/$evaluate-measure" :get ::evaluate-measure-instance
+      "/Measure/0/$evaluate-measure" :post ::evaluate-measure-instance))
 
   (testing "Patient instance POST is not allowed"
     (given ((reitit.ring/ring-handler router rest-api/default-handler)

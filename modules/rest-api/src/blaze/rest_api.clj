@@ -10,6 +10,8 @@
     [buddy.auth.middleware :refer [wrap-authentication]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
+    [reitit.core :as reitit]
+    [reitit.impl :as impl]
     [reitit.ring]
     [reitit.ring.spec]
     [ring.util.response :as ring]
@@ -96,6 +98,18 @@
   (s/coll-of :fhir.un/StructureDefinition))
 
 
+(defn- non-conflict-detecting-router
+  "Like reitit.core/router but without conflict detection."
+  ([raw-routes opts]
+   (let [{:keys [router] :as opts} (merge (reitit/default-router-options) opts)
+         routes (impl/resolve-routes raw-routes opts)
+         compiled-routes (impl/compile-routes routes opts)]
+
+     (when-let [validate (:validate opts)]
+       (validate compiled-routes opts))
+
+     (router compiled-routes opts))))
+
 (defn router
   {:arglists '([config capabilities-handler])}
   [{:keys
@@ -109,7 +123,7 @@
      operations]
     :or {context-path ""}}
    capabilities-handler]
-  (reitit.ring/router
+  (non-conflict-detecting-router
     (-> [""
          {:blaze/base-url base-url
           :middleware
@@ -189,8 +203,10 @@
           operations))
     {:path context-path
      :syntax :bracket
-     :conflicts nil
+     :router reitit/mixed-router
      :validate reitit.ring.spec/validate
+     :coerce reitit.ring/coerce-handler
+     :compile reitit.ring/compile-result
      :reitit.ring/default-options-handler
      (fn [_]
        (-> (ring/response nil)
