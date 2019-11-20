@@ -379,6 +379,7 @@
       (let [{:keys [status body]}
             @((handler ::transaction-executor ::conn ::term-service executor)
               {::reitit/router ::router
+               ::reitit/match {:data {:blaze/context-path ""}}
                :body
                {"resourceType" "Bundle"
                 "type" "transaction"
@@ -498,6 +499,7 @@
       (let [{:keys [status body]}
             @((handler ::transaction-executor ::conn ::term-service executor)
               {::reitit/router ::router
+               ::reitit/match {:data {:blaze/context-path ""}}
                :body
                {"resourceType" "Bundle"
                 "type" "transaction"
@@ -552,11 +554,12 @@
                   (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
                   (ring/header "ETag" "etag"))))]
       (stub-match-by-path
-        ::router "Patient" {:result {:post {:handler handler}}}))
+        ::router "/Patient" {:result {:post {:handler handler}}}))
 
     (let [{:keys [status body]}
           @((handler ::transaction-executor ::conn ::term-service executor)
             {::reitit/router ::router
+             ::reitit/match {:data {:blaze/context-path ""}}
              :body
              {"resourceType" "Bundle"
               "type" "batch"
@@ -589,11 +592,12 @@
             (md/success-deferred
               (ring/bad-request ::operation-outcome)))]
       (stub-match-by-path
-        ::router "Patient" {:result {:post {:handler handler}}}))
+        ::router "/Patient" {:result {:post {:handler handler}}}))
 
     (let [{:keys [status body]}
           @((handler ::transaction-executor ::conn ::term-service executor)
             {::reitit/router ::router
+             ::reitit/match {:data {:blaze/context-path ""}}
              :body
              {"resourceType" "Bundle"
               "type" "batch"
@@ -626,11 +630,12 @@
                   (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
                   (ring/header "ETag" "etag"))))]
       (stub-match-by-path
-        ::router "Patient/0" {:result {:get {:handler handler}}}))
+        ::router "/Patient/0" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
           @((handler ::transaction-executor ::conn ::term-service executor)
             {::reitit/router ::router
+             ::reitit/match {:data {:blaze/context-path ""}}
              :body
              {"resourceType" "Bundle"
               "type" "batch"
@@ -659,11 +664,12 @@
             (md/success-deferred
               (ring/bad-request ::operation-outcome)))]
       (stub-match-by-path
-        ::router "Patient/0" {:result {:get {:handler handler}}}))
+        ::router "/Patient/0" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
           @((handler ::transaction-executor ::conn ::term-service executor)
             {::reitit/router ::router
+             ::reitit/match {:data {:blaze/context-path ""}}
              :body
              {"resourceType" "Bundle"
               "type" "batch"
@@ -692,11 +698,12 @@
             (md/success-deferred
               (ring/response ::response-body)))]
       (stub-match-by-path
-        ::router "Patient" {:result {:get {:handler handler}}}))
+        ::router "/Patient" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
           @((handler ::transaction-executor ::conn ::term-service executor)
             {::reitit/router ::router
+             ::reitit/match {:data {:blaze/context-path ""}}
              :body
              {"resourceType" "Bundle"
               "type" "batch"
@@ -728,11 +735,12 @@
                   (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
                   (ring/header "ETag" "etag"))))]
       (stub-match-by-path
-        ::router "Patient/0" {:result {:put {:handler handler}}}))
+        ::router "/Patient/0" {:result {:put {:handler handler}}}))
 
     (let [{:keys [status body]}
           @((handler ::transaction-executor ::conn ::term-service executor)
             {::reitit/router ::router
+             ::reitit/match {:data {:blaze/context-path ""}}
              :body
              {"resourceType" "Bundle"
               "type" "batch"

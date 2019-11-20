@@ -235,7 +235,8 @@
 
 
 (defn- process-batch-entry
-  [{:keys [handler]} {{:strs [method url]} "request" :strs [resource]}]
+  [{:keys [handler] :blaze/keys [context-path]}
+   {{:strs [method url]} "request" :strs [resource]}]
   (let [url (strip-leading-slash (str/trim url))
         [url query-string] (str/split url #"\?")]
     (if (= "" url)
@@ -245,7 +246,8 @@
          :fhir/issue "value"})
       (let [request
             (cond->
-              {:uri url :request-method (keyword (str/lower-case method))}
+              {:uri (str context-path "/" url)
+               :request-method (keyword (str/lower-case method))}
 
               query-string
               (assoc :query-string query-string)
@@ -330,7 +332,8 @@
 
 
 (defn- handler-intern [transaction-executor conn term-service executor]
-  (fn [{{:strs [type] :as bundle} :body :keys [headers] ::reitit/keys [router]}]
+  (fn [{{:strs [type] :as bundle} :body :keys [headers]
+        ::reitit/keys [router match]}]
     (let [db (d/db conn)]
       (-> (md/future-with executor
             (validate-and-prepare-bundle db bundle))
@@ -338,6 +341,7 @@
             (let [context
                   {:router router
                    :handler (reitit.ring/ring-handler router)
+                   :blaze/context-path (-> match :data :blaze/context-path)
                    :executor transaction-executor
                    :conn conn
                    :term-service term-service

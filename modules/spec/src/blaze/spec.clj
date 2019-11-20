@@ -1,11 +1,25 @@
 (ns blaze.spec
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as sg]))
+    [clojure.spec.gen.alpha :as sg]
+    [clojure.string :as str]))
 
 
 (s/def :blaze/base-url
-  string?)
+  (s/and string?
+         #(not (str/ends-with? % "/"))))
+
+
+(s/def :blaze/context-path
+  (s/and
+    string?
+    (s/or
+      :empty str/blank?
+      :non-empty (s/and
+                   #(str/starts-with? % "/")
+                   #(not (str/ends-with? % "/"))))))
+
+
 
 ;; ---- FHIR ------------------------------------------------------------------
 

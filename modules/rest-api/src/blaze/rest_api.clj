@@ -126,6 +126,7 @@
   (non-conflict-detecting-router
     (-> [""
          {:blaze/base-url base-url
+          :blaze/context-path context-path
           :middleware
           (cond-> []
             (seq auth-backends)

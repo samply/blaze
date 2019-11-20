@@ -5,7 +5,7 @@
 
 
 (s/def :fhir.router.match/data
-  (s/keys :req [:blaze/base-url]))
+  (s/keys :req [:blaze/base-url :blaze/context-path]))
 
 
 (s/def :fhir.router/match
