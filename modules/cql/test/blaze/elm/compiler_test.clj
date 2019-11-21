@@ -5117,16 +5117,16 @@
 ;; 23. Clinical Operators
 
 ;; 23.4.
-;;;
-;;; Calculates the age in the specified precision of a person born on the first
-;;; Date or DateTime as of the second Date or DateTime.
-;;;
-;;; The CalculateAgeAt operator has two signatures: Date, Date DateTime, DateTime
-;;;
-;;; For the Date overload, precision must be one of year, month, week, or day.
-;;;
-;;; The result of the calculation is the number of whole calendar periods that
-;;; have elapsed between the first date/time and the second.
+;;
+;; Calculates the age in the specified precision of a person born on the first
+;; Date or DateTime as of the second Date or DateTime.
+;;
+;; The CalculateAgeAt operator has two signatures: Date, Date DateTime, DateTime
+;;
+;; For the Date overload, precision must be one of year, month, week, or day.
+;;
+;; The result of the calculation is the number of whole calendar periods that
+;; have elapsed between the first date/time and the second.
 (deftest compile-calculate-age-at-test
   (testing "Null"
     (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))

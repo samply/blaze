@@ -170,6 +170,98 @@
 
 
 
+;; 16. Arithmetic Operators
+
+;; 16.1. Abs
+(derive :elm.normalizer.type/abs :elm.normalizer.type/unary-expression)
+
+
+;; 16.2. Add
+(derive :elm.normalizer.type/add :elm.normalizer.type/multiary-expression)
+
+
+;; 16.3. Ceiling
+(derive :elm.normalizer.type/ceiling :elm.normalizer.type/unary-expression)
+
+
+;; 16.4. Divide
+(derive :elm.normalizer.type/divide :elm.normalizer.type/multiary-expression)
+
+
+;; 16.5. Exp
+(derive :elm.normalizer.type/exp :elm.normalizer.type/unary-expression)
+
+
+;; 16.6. Floor
+(derive :elm.normalizer.type/floor :elm.normalizer.type/unary-expression)
+
+
+;; 16.7. HighBoundary
+(derive :elm.normalizer.type/high-boundary :elm.normalizer.type/multiary-expression)
+
+
+;; 16.8. Log
+(derive :elm.normalizer.type/log :elm.normalizer.type/multiary-expression)
+
+
+;; 16.9. LowBoundary
+(derive :elm.normalizer.type/low-boundary :elm.normalizer.type/multiary-expression)
+
+
+;; 16.10. Ln
+(derive :elm.normalizer.type/ln :elm.normalizer.type/unary-expression)
+
+
+;; 16.13. Modulo
+(derive :elm.normalizer.type/modulo :elm.normalizer.type/multiary-expression)
+
+
+;; 16.14. Multiply
+(derive :elm.normalizer.type/multiply :elm.normalizer.type/multiary-expression)
+
+
+;; 16.15. Negate
+(derive :elm.normalizer.type/negate :elm.normalizer.type/unary-expression)
+
+
+;; 16.16. Power
+(derive :elm.normalizer.type/power :elm.normalizer.type/multiary-expression)
+
+
+;; 16.17. Precision
+(derive :elm.normalizer.type/precision :elm.normalizer.type/unary-expression)
+
+
+;; 16.18. Predecessor
+(derive :elm.normalizer.type/predecessor :elm.normalizer.type/unary-expression)
+
+
+;; 16.19. Round
+(defmethod normalize :elm.normalizer.type/round
+  [{operand :operand :keys [precision] :as expression}]
+  (cond->
+    (assoc expression :operand (normalize operand))
+    precision
+    (assoc :precision (normalize precision))))
+
+
+;; 16.20. Subtract
+(derive :elm.normalizer.type/subtract :elm.normalizer.type/multiary-expression)
+
+
+;; 16.21. Successor
+(derive :elm.normalizer.type/successor :elm.normalizer.type/unary-expression)
+
+
+;; 16.22. Truncate
+(derive :elm.normalizer.type/truncate :elm.normalizer.type/unary-expression)
+
+
+;; 16.23. TruncatedDivide
+(derive :elm.normalizer.type/truncated-divide :elm.normalizer.type/multiary-expression)
+
+
+
 ;; 19. Interval Operators
 
 ;; 19.12. In
