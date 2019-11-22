@@ -118,7 +118,7 @@
 
     (testing "as GET request"
       (measure-test/stub-evaluate-measure
-        now ::db "2014" "2015" ::measure ::measure-report)
+        now ::db ::router "2014" "2015" ::measure ::measure-report)
 
       (let [{:keys [status body]}
             @((handler clock transaction-executor ::conn ::term-service executor)
@@ -134,7 +134,8 @@
         (is (= ::measure-report body))))
 
     (testing "as POST request"
-      (measure-test/stub-evaluate-measure now ::db "2014" "2015" ::measure {})
+      (measure-test/stub-evaluate-measure
+        now ::db ::router "2014" "2015" ::measure {})
       (datomic-test-util/stub-squuid "0")
       (stub-upsert-resource
         ::conn ::term-service ::db :server-assigned-id {"id" "0"}

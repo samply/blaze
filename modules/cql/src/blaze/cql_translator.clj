@@ -43,13 +43,18 @@
   :args (s/cat :cql string? :opts (s/* some?))
   :ret :elm/library)
 
-(defn translate [cql & {:keys [locators?]}]
+(defn translate
+  "Translates `cql` library into am :elm/library.
+
+  Returns an anomaly with category :cognitect.anomalies/incorrect in case of
+  errors."
+  [cql & {:keys [locators?]}]
   (let [model-manager (ModelManager.)
         library-manager (LibraryManager. model-manager)
         _ (.registerProvider (.getLibrarySourceLoader library-manager) (FhirLibrarySourceProvider.))
         translator (CqlTranslator/fromText cql model-manager library-manager (options locators?))]
     (if-let [errors (seq (.getErrors translator))]
-      {::anom/category ::anom/invalid
+      {::anom/category ::anom/incorrect
        ::anom/message (apply str (map ex-message errors))
        :cql cql
        :errors errors}

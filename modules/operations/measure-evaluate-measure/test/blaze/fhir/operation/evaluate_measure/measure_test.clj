@@ -7,6 +7,7 @@
     [blaze.elm.compiler :as compiler]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
+    [blaze.handler.fhir.util :as fhir-util]
     [blaze.terminology-service.extern :as ts]
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
@@ -29,6 +30,18 @@
 
 
 (test/use-fixtures :each fixture)
+
+
+(defn stub-instance-url [router type id url]
+  (st/instrument
+    [`fhir-util/instance-url]
+    {:spec
+     {`fhir-util/instance-url
+      (s/fspec
+        :args (s/cat :router #{router} :type #{type} :id #{id})
+        :ret #{url})}
+     :stub
+     #{`fhir-util/instance-url}}))
 
 
 (defn stub-cql-translate [code library]
@@ -69,91 +82,262 @@
      #{`cql/evaluate-expression}}))
 
 
+(defn stub-calc-stratums
+  [db now library subject population-expression-name expression-name result]
+  (st/instrument
+    [`cql/calc-stratums]
+    {:spec
+     {`cql/calc-stratums
+      (s/fspec
+        :args (s/cat :db #{db} :now #{now} :library #{library}
+                     :subject #{subject}
+                     :population-expression-name #{population-expression-name}
+                     :expression-name #{expression-name})
+        :ret #{result})}
+     :stub
+     #{`cql/calc-stratums}}))
+
+
 (def now (OffsetDateTime/ofInstant Instant/EPOCH (ZoneOffset/ofHours 0)))
 
 
-(deftest evaluate-measure-test
-  (st/instrument
-    [`evaluate-measure]
-    {:spec
-     {`evaluate-measure
-      (s/fspec
-        :args (s/cat :now #{now} :db #{::db}
-                     :period (s/tuple #{::start} #{::end})
-                     :measure some?))}})
+(defn- scoring-concept [code]
+  {:CodeableConcept/coding
+   [{:Coding/code
+     {:code/system "http://terminology.hl7.org/CodeSystem/measure-scoring"
+      :code/code code}}]})
 
-  (testing "Missing Primary Library"
-    (given (evaluate-measure now ::db [::start ::end] {})
+
+(defn- population-concept [code]
+  {:CodeableConcept/coding
+   [{:Coding/code
+     {:code/system "http://terminology.hl7.org/CodeSystem/measure-population"
+      :code/code code}}]})
+
+
+(defn- attachment [content-type data]
+  {:Attachment/contentType content-type
+   :Attachment/data (value/write (.getBytes data "utf-8"))})
+
+
+(defn- cql-expression [expr]
+  {:Expression/language {:code/code "text/cql"}
+   :Expression/expression expr})
+
+
+(defn- fhirpath-expression [expr]
+  {:Expression/language {:code/code "text/fhirpath"}
+   :Expression/expression expr})
+
+
+(deftest evaluate-measure-test
+  (st/unstrument `evaluate-measure)
+
+  (testing "Missing primary library"
+    (given (evaluate-measure now ::db ::router [::start ::end] {})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Missing primary library. Currently only CQL expressions together with one primary library are supported."
-      :fhir/issue := "not-supported"))
+      :fhir/issue := "not-supported"
+      :fhir.issue/expression := "Measure.library"))
 
-
-  (testing "Success"
-    (let [population-code
-          {:CodeableConcept/coding
-           [{:Coding/code
-             {:code/system "http://terminology.hl7.org/CodeSystem/measure-population"
-              :code/code "initial-population"}}]}
+  (testing "Unsupported criteria language"
+    (let [population-concept (population-concept "initial-population")
           population
-          {:Measure.group.population/code population-code
-           :Measure.group.population/criteria
-           {:Expression/language {:code/code "text/cql"}
-            :Expression/expression "InInitialPopulation"}}
+          #:Measure.group.population
+              {:code population-concept
+               :criteria (fhirpath-expression "Patient.gender")}
           group
-          {:Measure.group/population [population]}
+          #:Measure.group{:population [population]}
           measure
-          {:Measure/id "0"
-           :Measure/url ::measure-url
-           :Measure/scoring
-           {:CodeableConcept/coding
-            [{:Coding/code
-              {:code/system "http://terminology.hl7.org/CodeSystem/measure-scoring"
-               :code/code "cohort"}}]}
-           :Measure/library ["http://foo"]
-           :Measure/group [group]}
-          library-content
-          {:Attachment/contentType "text/cql"
-           :Attachment/data (value/write (.getBytes "library-data" "utf-8"))}
+          #:Measure
+              {:library ["http://foo"]
+               :group [group]}
           library
-          {:Library/url "http://foo"
-           :Library/content [library-content]}]
-      (datomic-test-util/stub-resource-by ::db #{:Library/url} #{"http://foo"} #{library})
+          #:Library
+              {:url "http://foo"
+               :content [(attachment "text/cql" "library-data")]}]
+
+      (datomic-test-util/stub-resource-by
+        ::db #{:Library/url} #{"http://foo"} #{library})
+      (stub-cql-translate "library-data" ::elm-library)
+      (stub-compile-library ::db ::elm-library ::compiled-library)
+
+      (given (evaluate-measure now ::db ::router [::start ::end] measure)
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported language `text/fhirpath`."
+        :fhir/issue := "not-supported"
+        :fhir.issue/expression := "Measure.group[0].population[0].criteria.language")))
+
+  (testing "Missing criteria expression"
+    (let [population-concept (population-concept "initial-population")
+          population
+          #:Measure.group.population
+              {:code population-concept
+               :criteria (cql-expression nil)}
+          group
+          #:Measure.group{:population [population]}
+          measure
+          #:Measure
+              {:library ["http://foo"]
+               :group [group]}
+          library
+          #:Library
+              {:url "http://foo"
+               :content [(attachment "text/cql" "library-data")]}]
+
+      (datomic-test-util/stub-resource-by
+        ::db #{:Library/url} #{"http://foo"} #{library})
+      (stub-cql-translate "library-data" ::elm-library)
+      (stub-compile-library ::db ::elm-library ::compiled-library)
+
+      (given (evaluate-measure now ::db ::router [::start ::end] measure)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Missing expression."
+        :fhir/issue := "required"
+        :fhir.issue/expression := "Measure.group[0].population[0].criteria.expression")))
+
+
+  (testing "Cohort scoring"
+    (let [population-concept (population-concept "initial-population")
+          population
+          #:Measure.group.population
+              {:code population-concept
+               :criteria (cql-expression "InInitialPopulation")}
+          group
+          #:Measure.group{:population [population]}
+          measure
+          #:Measure
+              {:id "0"
+               :scoring (scoring-concept "cohort")
+               :library ["http://foo"]
+               :group [group]}
+          library
+          #:Library
+              {:url "http://foo"
+               :content [(attachment "text/cql" "library-data")]}]
+
+      (stub-instance-url ::router "Measure" "0" ::measure-url)
+      (datomic-test-util/stub-resource-by
+        ::db #{:Library/url} #{"http://foo"} #{library})
       (stub-cql-translate "library-data" ::elm-library)
       (stub-compile-library ::db ::elm-library ::compiled-library)
       (stub-evaluate-expression
         ::db now ::compiled-library "Patient" "InInitialPopulation" 1)
       (datomic-test-util/stub-pull-non-primitive
-        ::db :CodeableConcept population-code ::population-code)
+        ::db :CodeableConcept population-concept ::population-concept)
 
-      (let [measure-report (evaluate-measure now ::db [::start ::end] measure)]
+      (let [measure-report (evaluate-measure now ::db ::router [::start ::end] measure)]
 
-        (is (= "MeasureReport" (:resourceType measure-report)))
+        (is (= "MeasureReport" (get measure-report "resourceType")))
 
-        (is (= "complete" (:status measure-report)))
+        (is (= "complete" (get measure-report "status")))
 
-        (is (= "summary" (:type measure-report)))
+        (is (= "summary" (get measure-report "type")))
 
-        (is (= ::measure-url (:measure measure-report)))
+        (is (= ::measure-url (get measure-report "measure")))
 
-        (is (= "1970-01-01T00:00:00Z" (:date measure-report)))
+        (is (= "1970-01-01T00:00:00Z" (get measure-report "date")))
 
-        (is (= ::start (:start (:period measure-report))))
+        (is (= ::start (-> measure-report (get "period") (get "start"))))
 
-        (is (= ::end (:end (:period measure-report))))
+        (is (= ::end (-> measure-report (get "period") (get "end"))))
 
-        (is (= ::population-code (-> measure-report :group first :population first :code)))
+        (is (= ::population-concept
+               (-> measure-report
+                   (get "group") first
+                   (get "population") first
+                   (get "code"))))
 
-        (is (= 1 (-> measure-report :group first :population first :count)))))))
+        (is (= 1
+               (-> measure-report
+                   (get "group") first
+                   (get "population") first
+                   (get "count")))))))
+
+  (testing "Cohort scoring with stratifiers"
+    (let [population-concept (population-concept "initial-population")
+          population
+          #:Measure.group.population
+              {:code population-concept
+               :criteria (cql-expression "InInitialPopulation")}
+          stratifier-concept {:CodeableConcept/text "gender"}
+          stratifier
+          #:Measure.group.stratifier
+              {:code stratifier-concept
+               :criteria (cql-expression "Gender")}
+          group
+          #:Measure.group
+              {:population [population]
+               :stratifier [stratifier]}
+          measure
+          #:Measure
+              {:id "0"
+               :scoring (scoring-concept "cohort")
+               :library ["http://foo"]
+               :group [group]}
+          library
+          #:Library
+              {:url "http://foo"
+               :content [(attachment "text/cql" "library-data")]}]
+
+      (stub-instance-url ::router "Measure" "0" ::measure-url)
+      (datomic-test-util/stub-resource-by
+        ::db #{:Library/url} #{"http://foo"} #{library})
+      (stub-cql-translate "library-data" ::elm-library)
+      (stub-compile-library ::db ::elm-library ::compiled-library)
+      (stub-evaluate-expression
+        ::db now ::compiled-library "Patient" "InInitialPopulation" 1)
+      (stub-calc-stratums
+        ::db now ::compiled-library "Patient" "InInitialPopulation" "Gender"
+        {"male" 1})
+      (datomic-test-util/stub-pull-non-primitive'
+        ::db :CodeableConcept #{population-concept stratifier-concept}
+        (fn [_ _ value]
+          (condp = value
+            population-concept ::population-concept
+            stratifier-concept ::stratifier-concept)))
+
+      (let [measure-report (evaluate-measure now ::db ::router [::start ::end] measure)]
+        (is (= "MeasureReport" (get measure-report "resourceType")))
+
+        (is (= ::stratifier-concept
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "code") first)))
+
+        (is (= "male"
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "value")
+                   (get "text"))))
+
+        (is (= ::population-concept
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "population") first
+                   (get "code"))))
+
+        (is (= 1
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "population") first
+                   (get "count"))))))))
 
 
-(defn stub-evaluate-measure [now db period-start period-end measure measure-report]
+(defn stub-evaluate-measure [now db router period-start period-end measure measure-report]
   (st/instrument
     [`evaluate-measure]
     {:spec
      {`evaluate-measure
       (s/fspec
-        :args (s/cat :now #{now} :db #{db}
+        :args (s/cat :now #{now} :db #{db} :router #{router}
                      :period (s/tuple #{period-start} #{period-end})
                      :measure #{measure})
         :ret #{measure-report})}
@@ -208,15 +392,33 @@
 (defn- evaluate [name]
   (cql/clear-resource-cache!)
   (let [db (db-with (read-data name))
-        period [(Year/of 2000) (Year/of 2020)]
-        measure-report (evaluate-measure now db period (d/entity db [:Measure/id "0"]))]
-    (if (::anom/category measure-report)
-      measure-report
-      (-> measure-report :group first :population first :count))))
+        period [(Year/of 2000) (Year/of 2020)]]
+    (evaluate-measure now db ::router period (d/entity db [:Measure/id "0"]))))
+
+
+(defn- first-population-count [measure-report]
+  (if (::anom/category measure-report)
+    (prn measure-report)
+    (-> measure-report
+        (get "group") first
+        (get "population") first
+        (get "count"))))
+
+
+(defn- first-stratifier-stratums [measure-report]
+  (if (::anom/category measure-report)
+    (prn measure-report)
+    (-> measure-report
+        (get "group") first
+        (get "stratifier") first
+        (get "stratum"))))
 
 
 (deftest integration-test
-  (are [name count] (= count (evaluate name))
+  (st/unstrument `evaluate-measure)
+  (stub-instance-url ::router "Measure" "0" ::measure-url)
+
+  (are [name count] (= count (first-population-count (evaluate name)))
     "q1" 1
     "q2" 1
     "q3" 1
@@ -234,9 +436,29 @@
     "q15" 1
     "q16" 1
     "q17" 2
-    "q18" 1))
+    "q18" 1)
+
+  (given (first-stratifier-stratums (evaluate "q19-stratifier-ageclass"))
+    [0 "value" "text"] := "10"
+    [0 "population" 0 "count"] := 1
+    [1 "value" "text"] := "70"
+    [1 "population" 0 "count"] := 2)
+
+  (given (first-stratifier-stratums (evaluate "q20-stratifier-city"))
+    [0 "value" "text"] := "Gera"
+    [0 "population" 0 "count"] := 1
+    [1 "value" "text"] := "Jena"
+    [1 "population" 0 "count"] := 3
+    [2 "value" "text"] := "Leipzig"
+    [2 "population" 0 "count"] := 1)
+
+  (given (first-stratifier-stratums (evaluate "q21-stratifier-city-of-only-women"))
+    [0 "value" "text"] := "Gera"
+    [0 "population" 0 "count"] := 1
+    [1 "value" "text"] := "Jena"
+    [1 "population" 0 "count"] := 2))
 
 (comment
-  (evaluate "q16")
+  (evaluate "q20-stratifier-city")
   (clojure.repl/pst)
   )

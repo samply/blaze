@@ -434,6 +434,17 @@
      #{`pull/pull-non-primitive}}))
 
 
+(defn stub-pull-non-primitive' [db type-ident value-spec replace-fn]
+  (st/instrument
+    [`pull/pull-non-primitive]
+    {:spec
+     {`pull/pull-non-primitive
+      (s/fspec
+        :args (s/cat :db #{db} :type-ident #{type-ident} :value value-spec))}
+     :replace
+     {`pull/pull-non-primitive replace-fn}}))
+
+
 (defn stub-pull-resource [db type id resource-spec]
   (st/instrument
     [`pull/pull-resource]
