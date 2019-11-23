@@ -4,11 +4,13 @@
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
     [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
+    [blaze.rest-api.middleware.cors :refer [wrap-cors]]
     [blaze.rest-api.middleware.json :as json :refer [wrap-json]]
     [blaze.rest-api.spec]
     [blaze.spec]
     [buddy.auth.middleware :refer [wrap-authentication]]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [reitit.impl :as impl]
@@ -128,7 +130,7 @@
          {:blaze/base-url base-url
           :blaze/context-path context-path
           :middleware
-          (cond-> []
+          (cond-> [wrap-cors]
             (seq auth-backends)
             (conj #(apply wrap-authentication % auth-backends)))}
          [""
@@ -209,9 +211,13 @@
      :coerce reitit.ring/coerce-handler
      :compile reitit.ring/compile-result
      :reitit.ring/default-options-handler
-     (fn [_]
-       (-> (ring/response nil)
-           (ring/status 405)))}))
+     (fn [{::reitit/keys [match]}]
+       (let [methods (->> match :result (keep (fn [[k v]] (when v k))))
+             allowed-methods
+             (->> methods (map (comp str/upper-case name)) (str/join ","))]
+         (-> (ring/response {})
+             (ring/header "Access-Control-Allow-Methods" allowed-methods)
+             (ring/header "Access-Control-Allow-Headers" "content-type"))))}))
 
 
 (defn- capability-resource

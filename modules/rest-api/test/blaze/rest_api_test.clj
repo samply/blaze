@@ -33,34 +33,34 @@
           :interactions
           {:read
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::read)}
+               {:handler (fn [_] {::handler ::read})}
            :vread
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::vread)}
+               {:handler (fn [_] {::handler ::vread})}
            :update
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::update)}
+               {:handler (fn [_] {::handler ::update})}
            :delete
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::delete)}
+               {:handler (fn [_] {::handler ::delete})}
            :history-instance
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::history-instance)}
+               {:handler (fn [_] {::handler ::history-instance})}
            :history-type
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::history-type)}
+               {:handler (fn [_] {::handler ::history-type})}
            :create
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::create)}
+               {:handler (fn [_] {::handler ::create})}
            :search-type
            #:blaze.rest-api.interaction
-               {:handler (fn [_] ::search-type)}}}]
+               {:handler (fn [_] {::handler ::search-type})}}}]
      :operations
      [#:blaze.rest-api.operation
          {:code "evaluate-measure"
           :resource-types ["Measure"]
-          :type-handler (fn [_] ::evaluate-measure-type)
-          :instance-handler (fn [_] ::evaluate-measure-instance)}]}
+          :type-handler (fn [_] {::handler ::evaluate-measure-type})
+          :instance-handler (fn [_] {::handler ::evaluate-measure-instance})}]}
     (fn [_])))
 
 
@@ -74,10 +74,11 @@
   (testing "Patient matches"
     (are [path request-method handler]
       (= handler
-         ((get-in
-            (reitit/match-by-path router path)
-            [:result request-method :handler])
-          {}))
+         (::handler
+           @((get-in
+               (reitit/match-by-path router path)
+               [:result request-method :handler])
+             {})))
       "/Patient" :get ::search-type
       "/Patient" :post ::create
       "/Patient/_history" :get ::history-type
