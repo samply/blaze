@@ -8,4 +8,4 @@ define InInitialPopulation:
   true
 
 define City:
-  First(Patient.address.city)
+  Patient.address.city

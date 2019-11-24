@@ -98,6 +98,22 @@
      #{`cql/calc-stratums}}))
 
 
+(defn stub-calc-mult-component-stratums
+  [db now library subject population-expression-name expression-names result]
+  (st/instrument
+    [`cql/calc-mult-component-stratums]
+    {:spec
+     {`cql/calc-mult-component-stratums
+      (s/fspec
+        :args (s/cat :db #{db} :now #{now} :library #{library}
+                     :subject #{subject}
+                     :population-expression-name #{population-expression-name}
+                     :expression-names #{expression-names})
+        :ret #{result})}
+     :stub
+     #{`cql/calc-mult-component-stratums}}))
+
+
 (def now (OffsetDateTime/ofInstant Instant/EPOCH (ZoneOffset/ofHours 0)))
 
 
@@ -328,6 +344,120 @@
                    (get "stratifier") first
                    (get "stratum") first
                    (get "population") first
+                   (get "count")))))))
+
+  (testing "Cohort scoring with stratifiers with multiple components"
+    (let [population-concept (population-concept "initial-population")
+          population
+          #:Measure.group.population
+              {:code population-concept
+               :criteria (cql-expression "InInitialPopulation")}
+          stratifier-concept-gender {:CodeableConcept/text "gender"}
+          stratifier-concept-age {:CodeableConcept/text "age"}
+          stratifier-component-gender
+          #:Measure.group.stratifier.component
+              {:code stratifier-concept-gender
+               :criteria (cql-expression "Gender")}
+          stratifier-component-age
+          #:Measure.group.stratifier.component
+              {:code stratifier-concept-age
+               :criteria (cql-expression "Age")}
+          stratifier
+          #:Measure.group.stratifier
+              {:component
+               [stratifier-component-gender
+                stratifier-component-age]}
+          group
+          #:Measure.group
+              {:population [population]
+               :stratifier [stratifier]}
+          measure
+          #:Measure
+              {:id "0"
+               :scoring (scoring-concept "cohort")
+               :library ["http://foo"]
+               :group [group]}
+          library
+          #:Library
+              {:url "http://foo"
+               :content [(attachment "text/cql" "library-data")]}]
+
+      (stub-instance-url ::router "Measure" "0" ::measure-url)
+      (datomic-test-util/stub-resource-by
+        ::db #{:Library/url} #{"http://foo"} #{library})
+      (stub-cql-translate "library-data" ::elm-library)
+      (stub-compile-library ::db ::elm-library ::compiled-library)
+      (stub-evaluate-expression
+        ::db now ::compiled-library "Patient" "InInitialPopulation" 1)
+      (stub-calc-mult-component-stratums
+        ::db now ::compiled-library "Patient" "InInitialPopulation"
+        ["Gender" "Age"] {["male" 30] 1})
+      (datomic-test-util/stub-pull-non-primitive'
+        ::db :CodeableConcept
+        #{population-concept stratifier-concept-gender stratifier-concept-age}
+        (fn [_ _ value]
+          (condp = value
+            population-concept ::population-concept
+            stratifier-concept-gender ::stratifier-concept-gender
+            stratifier-concept-age ::stratifier-concept-age)))
+
+      (let [measure-report (evaluate-measure now ::db ::router [::start ::end] measure)]
+        (is (= "MeasureReport" (get measure-report "resourceType")))
+
+        (is (= [::stratifier-concept-gender ::stratifier-concept-age]
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "code"))))
+
+        (is (= ::stratifier-concept-gender
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "component") first
+                   (get "code"))))
+
+        (is (= "male"
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "component") first
+                   (get "value")
+                   (get "text"))))
+
+        (is (= ::stratifier-concept-age
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "component") second
+                   (get "code"))))
+
+        (is (= "30"
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "component") second
+                   (get "value")
+                   (get "text"))))
+
+        (is (= ::population-concept
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "population") first
+                   (get "code"))))
+
+        (is (= 1
+               (-> measure-report
+                   (get "group") first
+                   (get "stratifier") first
+                   (get "stratum") first
+                   (get "population") first
                    (get "count"))))))))
 
 
@@ -445,20 +575,32 @@
     [1 "population" 0 "count"] := 2)
 
   (given (first-stratifier-stratums (evaluate "q20-stratifier-city"))
-    [0 "value" "text"] := "Gera"
-    [0 "population" 0 "count"] := 1
-    [1 "value" "text"] := "Jena"
-    [1 "population" 0 "count"] := 3
-    [2 "value" "text"] := "Leipzig"
-    [2 "population" 0 "count"] := 1)
+    [0 "value" "text"] := "Jena"
+    [0 "population" 0 "count"] := 3
+    [1 "value" "text"] := "Leipzig"
+    [1 "population" 0 "count"] := 1)
 
   (given (first-stratifier-stratums (evaluate "q21-stratifier-city-of-only-women"))
-    [0 "value" "text"] := "Gera"
+    [0 "value" "text"] := "Jena"
+    [0 "population" 0 "count"] := 2)
+
+  (given
+    (->> (first-stratifier-stratums (evaluate "q23-stratifier-ageclass-and-gender"))
+         (map (fn [c] (update c "component" (fn [x] (sort-by #(get-in % ["code" "text"]) x)))))
+         (sort-by (fn [{:strs [component]}] (mapv #(get-in % ["value" "text"]) component))))
+    [0 "component" 0 "value" "text"] := "10"
+    [0 "component" 1 "value" "text"] := "male"
     [0 "population" 0 "count"] := 1
-    [1 "value" "text"] := "Jena"
-    [1 "population" 0 "count"] := 2))
+    [1 "component" 0 "value" "text"] := "70"
+    [1 "component" 1 "value" "text"] := "female"
+    [1 "population" 0 "count"] := 2
+    [2 "component" 0 "value" "text"] := "70"
+    [2 "component" 1 "value" "text"] := "male"
+    [2 "population" 0 "count"] := 1)
+
+  (is (= ::anom/incorrect (::anom/category (evaluate "q22-stratifier-multiple-cities-fail")))))
 
 (comment
-  (evaluate "q20-stratifier-city")
+  (evaluate "q22-stratifier-multiple-cities-fail")
   (clojure.repl/pst)
   )
