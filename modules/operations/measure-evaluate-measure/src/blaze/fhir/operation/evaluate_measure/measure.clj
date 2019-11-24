@@ -84,6 +84,10 @@
      :measure measure}))
 
 
+(defn- pull-codeable-concept [db concept]
+  (pull/pull-non-primitive db :CodeableConcept concept))
+
+
 (defn- compile-primary-library
   "Returns the primary library from `measure` in compiled form or an anomaly
   on errors."
@@ -118,7 +122,7 @@
     (cond->
       {"count" (cql/evaluate-expression db now library subject expression)}
       code
-      (assoc "code" (pull/pull-non-primitive db :CodeableConcept code)))))
+      (assoc "code" (pull-codeable-concept db code)))))
 
 
 (defn- code? [x]
@@ -131,7 +135,7 @@
     (str stratum-value)))
 
 
-(defn- evaluate-stratifier
+(defn- evaluate-single-stratifier
   {:arglists
    '([db now library subject groupIdx populations stratifierIdx stratifier])}
   [db now library subject groupIdx populations stratifierIdx
@@ -155,27 +159,135 @@
              groupIdx stratifierIdx)}
 
     :else
-    (cond->
-      {"stratum"
-       (into
-         []
-         (map
-           (fn [[stratum-value count]]
-             {"value" {"text" (pull stratum-value)}
-              "population"
-              [{"code"
-                (pull/pull-non-primitive
-                  db :CodeableConcept
-                  (-> populations first :Measure.group.population/code))
-                "count" count}]}))
-         (->> (cql/calc-stratums
-                db now library subject
-                (-> populations first :Measure.group.population/criteria
-                    :Expression/expression)
-                expression)
-              (sort-by key)))}
-      code
-      (assoc "code" [(pull/pull-non-primitive db :CodeableConcept code)]))))
+    (let [stratums (cql/calc-stratums
+                     db now library subject
+                     (-> populations first :Measure.group.population/criteria
+                         :Expression/expression)
+                     expression)]
+      (if (::anom/category stratums)
+        stratums
+        (cond->
+          {"stratum"
+           (->> stratums
+                (mapv
+                  (fn [[stratum-value count]]
+                    [(pull stratum-value) count]))
+                (sort-by first)
+                (mapv
+                  (fn [[stratum-value count]]
+                    {"value" {"text" stratum-value}
+                     "population"
+                     [{"code"
+                       (pull-codeable-concept
+                         db (-> populations first :Measure.group.population/code))
+                       "count" count}]})))}
+          code
+          (assoc "code" [(pull-codeable-concept db code)]))))))
+
+
+(defn- extract-stratifier-component
+  "Extracts code and expression-name from `stratifier-component`."
+  {:arglists '([groupIdx stratifierIdx componentIdx stratifier-component])}
+  [groupIdx stratifierIdx componentIdx
+   {{:Expression/keys [language expression]}
+    :Measure.group.stratifier.component/criteria
+    :Measure.group.stratifier.component/keys [code]}]
+  (cond
+    (nil? code)
+    {::anom/category ::anom/incorrect
+     ::anom/message "Missing code."
+     :fhir/issue "required"
+     :fhir.issue/expression
+     (format "Measure.group[%d].stratifier[%d].component[%d].code"
+             groupIdx stratifierIdx componentIdx)}
+
+    (not= "text/cql" (:code/code language))
+    {::anom/category ::anom/unsupported
+     ::anom/message (str "Unsupported language `" (:code/code language) "`.")
+     :fhir/issue "not-supported"
+     :fhir.issue/expression
+     (format "Measure.group[%d].stratifier[%d].component[%d].criteria.language"
+             groupIdx stratifierIdx componentIdx)}
+
+    (nil? expression)
+    {::anom/category ::anom/incorrect
+     ::anom/message "Missing expression."
+     :fhir/issue "required"
+     :fhir.issue/expression
+     (format "Measure.group[%d].stratifier[%d].component[%d].criteria.expression"
+             groupIdx stratifierIdx componentIdx)}
+
+    :else [code expression]))
+
+
+(defn- extract-stratifier-components
+  "Extracts code and expression-name from each of `stratifier-components`."
+  [groupIdx stratifierIdx stratifier-components]
+  (transduce
+    (map-indexed vector)
+    (completing
+      (fn [results [idx component]]
+        (let [result (extract-stratifier-component
+                       groupIdx stratifierIdx idx component)]
+          (if (::anom/category result)
+            (reduced result)
+            (let [[code expression-name] result]
+              (-> results
+                  (update :codes conj code)
+                  (update :expression-names conj expression-name)))))))
+    {:codes []
+     :expression-names []}
+    stratifier-components))
+
+
+(defn- evaluate-multi-component-stratifier
+  {:arglists
+   '([db now library subject groupIdx populations stratifierIdx stratifier])}
+  [db now library subject groupIdx populations stratifierIdx
+   {:Measure.group.stratifier/keys [component]}]
+  (let [results (extract-stratifier-components groupIdx stratifierIdx component)]
+    (if (::anom/category results)
+      results
+      (let [{:keys [codes expression-names]} results
+            stratums (cql/calc-mult-component-stratums
+                       db now library subject
+                       (-> populations first :Measure.group.population/criteria
+                           :Expression/expression)
+                       expression-names)]
+        (if (::anom/category stratums)
+          stratums
+          (let [codes (mapv #(pull-codeable-concept db %) codes)]
+            {"code" codes
+             "stratum"
+             (into
+               []
+               (map
+                 (fn [[stratum-values count]]
+                   {"component"
+                    (mapv
+                      (fn [code value]
+                        {"code" code
+                         "value" {"text" (pull value)}})
+                      codes
+                      stratum-values)
+                    "population"
+                    [{"code"
+                      (pull-codeable-concept
+                        db (-> populations first :Measure.group.population/code))
+                      "count" count}]}))
+               stratums)}))))))
+
+
+(defn- evaluate-stratifier
+  {:arglists
+   '([db now library subject groupIdx populations stratifierIdx stratifier])}
+  [db now library subject groupIdx populations stratifierIdx
+   {:Measure.group.stratifier/keys [component] :as stratifier}]
+  (if (seq component)
+    (evaluate-multi-component-stratifier
+      db now library subject groupIdx populations stratifierIdx stratifier)
+    (evaluate-single-stratifier
+      db now library subject groupIdx populations stratifierIdx stratifier)))
 
 
 (defn- evaluate-populations [db now library subject groupIdx populations]

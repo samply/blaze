@@ -7,5 +7,8 @@ context Patient
 define InInitialPopulation:
   true
 
-define City:
-  First(Patient.address.city)
+define AgeClass:
+  (AgeInYears() div 10) * 10
+
+define Gender:
+  Patient.gender

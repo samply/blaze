@@ -6,12 +6,8 @@
       "resource": {
         "resourceType": "Patient",
         "id": "0",
-        "gender": "female",
-        "address": [
-          {
-            "city": "Jena"
-          }
-        ]
+        "gender": "male",
+        "birthDate": "1960"
       },
       "request": {
         "method": "PUT",
@@ -23,11 +19,7 @@
         "resourceType": "Patient",
         "id": "1",
         "gender": "male",
-        "address": [
-          {
-            "city": "Leipzig"
-          }
-        ]
+        "birthDate": "1900"
       },
       "request": {
         "method": "PUT",
@@ -38,12 +30,8 @@
       "resource": {
         "resourceType": "Patient",
         "id": "2",
-        "gender": "male",
-        "address": [
-          {
-            "city": "Jena"
-          }
-        ]
+        "gender": "female",
+        "birthDate": "1900"
       },
       "request": {
         "method": "PUT",
@@ -55,11 +43,7 @@
         "resourceType": "Patient",
         "id": "3",
         "gender": "female",
-        "address": [
-          {
-            "city": "Jena"
-          }
-        ]
+        "birthDate": "1900"
       },
       "request": {
         "method": "PUT",
@@ -111,13 +95,26 @@
             ],
             "stratifier": [
               {
-                "code": {
-                  "text": "city"
-                },
-                "criteria": {
-                  "language": "text/cql",
-                  "expression": "City"
-                }
+                "component": [
+                  {
+                    "code": {
+                      "text": "age-class"
+                    },
+                    "criteria": {
+                      "language": "text/cql",
+                      "expression": "AgeClass"
+                    }
+                  },
+                  {
+                    "code": {
+                      "text": "gender"
+                    },
+                    "criteria": {
+                      "language": "text/cql",
+                      "expression": "Gender"
+                    }
+                  }
+                ]
               }
             ]
           }

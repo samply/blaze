@@ -6,7 +6,6 @@
       "resource": {
         "resourceType": "Patient",
         "id": "0",
-        "gender": "female",
         "address": [
           {
             "city": "Jena"
@@ -22,7 +21,6 @@
       "resource": {
         "resourceType": "Patient",
         "id": "1",
-        "gender": "male",
         "address": [
           {
             "city": "Leipzig"
@@ -38,7 +36,6 @@
       "resource": {
         "resourceType": "Patient",
         "id": "2",
-        "gender": "male",
         "address": [
           {
             "city": "Jena"
@@ -54,10 +51,12 @@
       "resource": {
         "resourceType": "Patient",
         "id": "3",
-        "gender": "female",
         "address": [
           {
             "city": "Jena"
+          },
+          {
+            "city": "Gera"
           }
         ]
       },

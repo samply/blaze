@@ -8,4 +8,4 @@ define InInitialPopulation:
   Patient.gender = 'female'
 
 define City:
-  Patient.address.city
+  First(Patient.address.city)
