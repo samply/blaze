@@ -566,7 +566,8 @@
     "q15" 1
     "q16" 1
     "q17" 2
-    "q18" 1)
+    "q18" 1
+    "q24" 1)
 
   (given (first-stratifier-stratums (evaluate "q19-stratifier-ageclass"))
     [0 "value" "text"] := "10"
@@ -601,6 +602,6 @@
   (is (= ::anom/incorrect (::anom/category (evaluate "q22-stratifier-multiple-cities-fail")))))
 
 (comment
-  (evaluate "q22-stratifier-multiple-cities-fail")
+  (evaluate "q24")
   (clojure.repl/pst)
   )
