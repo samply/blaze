@@ -47,9 +47,16 @@
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable f)))
 
 
+(defn- duration-s [start]
+  (format "%.1f" (/ (double (- (System/nanoTime) start)) 1e9)))
+
+
 (defn -main [& _]
   (add-shutdown-hook shutdown-system!)
-  (init-system! (System/getenv))
-  (log/info "JVM version:" (System/getProperty "java.version"))
-  (log/info "Maximum available memory:" (max-memory) "MiB")
-  (log/info "Number of available processors:" (available-processors)))
+  (let [start (System/nanoTime)
+        {:blaze/keys [version]} (init-system! (System/getenv))]
+    (log/info "JVM version:" (System/getProperty "java.version"))
+    (log/info "Maximum available memory:" (max-memory) "MiB")
+    (log/info "Number of available processors:" (available-processors))
+    (log/info "Successfully started Blaze version" version "in"
+              (duration-s start) "seconds")))
