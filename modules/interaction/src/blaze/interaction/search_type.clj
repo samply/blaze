@@ -24,7 +24,7 @@
 
 ;; TODO: improve quick hack
 (defn- resource-pred
-  [db type {:strs [identifier title title:contains measure]}]
+  [db type {:strs [identifier title title:contains measure url]}]
   (cond
     identifier
     (let [attr (keyword type "identifier")
@@ -53,7 +53,12 @@
     (and (#{"MeasureReport"} type) measure)
     (fn [resource]
       (when-let [value ((keyword type "measure") resource)]
-        (= value measure)))))
+        (= value measure)))
+
+    (and (#{"Library" "Measure"} type) url)
+    (fn [resource]
+      (when-let [value ((keyword type "url") resource)]
+        (= value url)))))
 
 
 (defn- entry
