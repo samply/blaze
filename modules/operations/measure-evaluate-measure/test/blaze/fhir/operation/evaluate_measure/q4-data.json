@@ -5,8 +5,7 @@
     {
       "resource": {
         "resourceType": "Patient",
-        "id": "0",
-        "gender": "male"
+        "id": "0"
       },
       "request": {
         "method": "PUT",
@@ -16,8 +15,7 @@
     {
       "resource": {
         "resourceType": "Patient",
-        "id": "1",
-        "gender": "female"
+        "id": "1"
       },
       "request": {
         "method": "PUT",
@@ -25,11 +23,9 @@
       }
     },
     {
-      "request": {
-        "method": "PUT",
-        "url": "Condition/0"
-      },
       "resource": {
+        "resourceType": "Condition",
+        "id": "0",
         "code": {
           "coding": [
             {
@@ -39,17 +35,35 @@
             }
           ]
         },
-        "id": "0",
-        "meta": {
-          "profile": [
-            "https://fhir.bbmri.de/StructureDefinition/Condition"
-          ]
-        },
-        "onsetDateTime": "2005-06-17",
-        "resourceType": "Condition",
         "subject": {
           "reference": "Patient/0"
         }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "1",
+        "code": {
+          "coding": [
+            {
+              "code": "Z88.8",
+              "system": "http://hl7.org/fhir/sid/icd-10",
+              "version": "2016"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/1"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/1"
       }
     },
     {

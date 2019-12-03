@@ -29,21 +29,30 @@
 
 (deftest single-code-expr-test
   (st/unstrument `single-code-expr)
-  (datomic-test-util/stub-entid ::db :Patient.Observation.code/code-id 42)
-  (datomic-test-util/stub-datoms
-    ::db :eavt (s/cat :e #{::patient-eid} :a #{42})
-    (constantly [(reify Datom (v [_] ::observation-eid))]))
-  (datomic-test-util/stub-entity ::db #{::observation-eid} #{::observation})
 
-  (is
-    (=
-      (-eval
+  (testing "evaluation with existing index"
+    (datomic-test-util/stub-entid ::db :Patient.Observation.code/s1|c1 #{42})
+    (datomic-test-util/stub-datoms
+      ::db :eavt (s/cat :e #{::patient-eid} :a #{42})
+      (constantly [(reify Datom (v [_] ::observation-eid))]))
+    (datomic-test-util/stub-entity ::db #{::observation-eid} #{::observation})
+
+    (is
+      (=
+        (-eval
+          (single-code-expr
+            ::db "Patient" "Observation" "code" {:system "s1" :code "c1"})
+          {:db ::db}
+          {:db/id ::patient-eid}
+          nil)
+        [::observation])))
+
+  (testing "non-existing index compiles to an empty list"
+    (datomic-test-util/stub-entid ::db :Patient.Observation.code/s1|c1 nil?)
+    (is
+      (empty?
         (single-code-expr
-          ::db "Patient" "Observation" "code" {:code/id "code-id"})
-        {:db ::db}
-        {:db/id ::patient-eid}
-        nil)
-      [::observation])))
+          ::db "Patient" "Observation" "code" {:system "s1" :code "c1"})))))
 
 
 (defn stub-single-code-expr [db context data-type property code expr]
@@ -100,7 +109,7 @@
   (st/unstrument `context-expr)
 
   (testing "Observation in Patient context"
-    (datomic-test-util/stub-entid ::db :Observation/subject 42)
+    (datomic-test-util/stub-entid ::db :Observation/subject #{42})
     (datomic-test-util/stub-datoms
       ::db :vaet (s/cat :v #{::patient-eid} :a #{42})
       (constantly [(reify Datom (e [_] ::observation-eid))]))
@@ -116,7 +125,7 @@
         [::observation])))
 
   (testing "Patient in Specimen context"
-    (datomic-test-util/stub-entid ::db :Specimen/subject 42)
+    (datomic-test-util/stub-entid ::db :Specimen/subject #{42})
     (datomic-test-util/stub-datoms
       ::db :eavt (s/cat :e #{::specimen-eid} :a #{42})
       (constantly [(reify Datom (v [_] ::patient-eid))]))
@@ -132,7 +141,7 @@
         [::patient])))
 
   (testing "Observation in Specimen context"
-    (datomic-test-util/stub-entid ::db :Observation/specimen 42)
+    (datomic-test-util/stub-entid ::db :Observation/specimen #{42})
     (datomic-test-util/stub-datoms
       ::db :vaet (s/cat :v #{::specimen-eid} :a #{42})
       (constantly [(reify Datom (e [_] ::observation-eid))]))
@@ -293,33 +302,30 @@
           (is (= ::result (-eval expr {:db ::db} ::context-resource nil))))))
 
     (testing "while retrieving resources of a different type as the context and one code"
-      (stub-single-code-expr
-        ::db ::context ::type ::code-property ::code
-        (reify Expression
-          (-eval [_ _ resource _]
-            (is (= ::context-resource resource))
-            ::result)))
+      (let [code {:code/id "0"}]
+        (stub-single-code-expr
+          ::db ::context ::type ::code-property code
+          (reify Expression
+            (-eval [_ _ resource _]
+              (is (= ::context-resource resource))
+              ::result)))
 
-      (let [expr (expr ::context ::db ::type ::code-property [::code])]
-        (testing "the observations with that code of the current patient are returned"
-          (is (= ::result (-eval expr {:db ::db} ::context-resource nil))))))
-
-    (testing "while retrieving resources of a different type as the context and one not existing code"
-      (let [expr (expr "Patient" ::db "Observation" "code" [nil])]
-        (testing "a static empty list is returned"
-          (is (= [] expr)))))
+        (let [expr (expr ::context ::db ::type ::code-property [code])]
+          (testing "the observations with that code of the current patient are returned"
+            (is (= ::result (-eval expr {:db ::db} ::context-resource nil)))))))
 
     (testing "while retrieving resources of a different type as the context and two codes"
-      (stub-multiple-codes-expr
-        ::db ::context ::type ::code-property [::code-1 ::code-2]
-        (reify Expression
-          (-eval [_ _ resource _]
-            (is (= ::context-resource resource))
-            ::result)))
+      (let [code-1 {:code/id "1"} code-2 {:code/id "2"}]
+        (stub-multiple-codes-expr
+          ::db ::context ::type ::code-property [code-1 code-2]
+          (reify Expression
+            (-eval [_ _ resource _]
+              (is (= ::context-resource resource))
+              ::result)))
 
-      (let [expr (expr ::context ::db ::type ::code-property [::code-1 ::code-2])]
-        (testing "the observations with that code of the current patient are returned"
-          (is (= ::result (-eval expr {:db ::db} ::context-resource nil))))))))
+        (let [expr (expr ::context ::db ::type ::code-property [code-1 code-2])]
+          (testing "the observations with that code of the current patient are returned"
+            (is (= ::result (-eval expr {:db ::db} ::context-resource nil)))))))))
 
 
 (defn stub-related-context-expr

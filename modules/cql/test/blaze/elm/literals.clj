@@ -6,6 +6,10 @@
   (:refer-clojure :exclude [boolean dec distinct flatten int list time]))
 
 
+;; 1. Simple Values
+
+;; 1.1. Literal
+
 (s/fdef boolean
   :args (s/cat :s string?)
   :ret :elm/expression)
@@ -50,6 +54,43 @@
    :value s})
 
 
+
+;; 2. Structured Values
+
+;; 2.1. Tuple
+
+(s/fdef tuple
+  :args (s/cat :arg (s/map-of string? :elm/expression))
+  :ret :elm/expression)
+
+(defn tuple [m]
+  {:type "Tuple"
+   :element (reduce #(conj %1 {:name (key %2) :value (val %2)}) [] m)})
+
+
+
+;; 3. Clinical Values
+
+;; 3.1 Code
+
+(s/fdef code
+  :args
+  (s/cat
+    :args
+    (s/spec (s/cat :system-name string? :code string? :display (s/? string?))))
+  :ret :elm/expression)
+
+(defn code [[system-name code display]]
+  (cond->
+    {:type "Code"
+     :system {:type "CodeSystemRef" :name system-name}
+     :code code}
+    display
+    (assoc :display display)))
+
+
+;; 3.9. Quantity
+
 (s/fdef quantity
   :args (s/cat :args (s/spec (s/cat :value number? :unit (s/? string?))))
   :ret :elm/expression)
@@ -60,15 +101,6 @@
      :value value}
     unit
     (assoc :unit unit)))
-
-
-(s/fdef tuple
-  :args (s/cat :arg (s/map-of string? :elm/expression))
-  :ret :elm/expression)
-
-(defn tuple [m]
-  {:type "Tuple"
-   :element (reduce #(conj %1 {:name (key %2) :value (val %2)}) [] m)})
 
 
 (s/fdef equal

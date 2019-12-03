@@ -548,7 +548,7 @@
                    {"reference" "Patient/0"}}))
               [[:db/add obs-id :Observation/subject pat-id]
                [:db/add :part/Coding :Coding/code code-id]
-               [:db/add pat-id (keyword "Patient.Observation.code" "http://loinc.org||39156-5") obs-id]
+               [:db/add pat-id (keyword "Patient.Observation.code" "http://loinc.org|39156-5") obs-id]
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
                [:db/add obs-id :Observation/code :part/CodeableConcept]
                [:db/add obs-id :Observation.index/code code-id]
@@ -1795,13 +1795,13 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender||male")
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender|male")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Condition.code" "http://hl7.org/fhir/administrative-gender||male")
+          {:db/ident (keyword "Patient.Condition.code" "http://hl7.org/fhir/administrative-gender|male")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -1825,13 +1825,13 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/allergy-intolerance-category||medication")
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/allergy-intolerance-category|medication")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Condition.code" "http://hl7.org/fhir/allergy-intolerance-category||medication")
+          {:db/ident (keyword "Patient.Condition.code" "http://hl7.org/fhir/allergy-intolerance-category|medication")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -1856,7 +1856,7 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://terminology.hl7.org/CodeSystem/v3-ActCode||AMB")
+          {:db/ident (keyword "Patient.Observation.code" "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -1881,7 +1881,7 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/filter-operator||=")
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/filter-operator|=")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -1909,7 +1909,7 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/sid/icd-10|2016|Q14")
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/sid/icd-10|Q14")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -1934,7 +1934,7 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender||male")
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender|male")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -1961,7 +1961,7 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender|4.0.0|male")
+          {:db/ident (keyword "Patient.Observation.code" "http://hl7.org/fhir/administrative-gender|male")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -1987,7 +1987,7 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://foo||bar")
+          {:db/ident (keyword "Patient.Observation.code" "http://foo|bar")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -2014,7 +2014,7 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "http://foo||bar")
+          {:db/ident (keyword "Patient.Observation.code" "http://foo|bar")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many}))))
 
@@ -2039,7 +2039,7 @@
       (is
         (contains?
           tx-data
-          {:db/ident (keyword "Patient.Observation.code" "||draft")
+          {:db/ident (keyword "Patient.Observation.code" "|draft")
            :db/valueType :db.type/ref
            :db/cardinality :db.cardinality/many})))))
 

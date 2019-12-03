@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler.function
   (:require
+    [blaze.elm.code :as code]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.protocols :as p]))
 
@@ -7,7 +8,9 @@
 (defrecord ToCodeFunctionExpression [operand]
   Expression
   (-eval [_ context resource scope]
-    (:Coding/code (-eval operand context resource scope))))
+    (let [coding (-eval operand context resource scope)
+          {{:code/keys [system version code]} :Coding/code} coding]
+      (code/to-code system version code))))
 
 
 (defrecord ToDateFunctionExpression [operand]

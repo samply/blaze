@@ -478,7 +478,7 @@
   (s/coll-of :elm/code-system-def))
 
 
-(s/def :elm.library/code-systems
+(s/def :elm.library/codeSystems
   (s/keys :req-un [:elm.library.code-systems/def]))
 
 
@@ -500,7 +500,7 @@
 
 (s/def :elm/library
   (s/keys :req-un [:elm.library/identifier :elm.library/schemaIdentifier]
-          :opt-un [:elm.library/code-systems
+          :opt-un [:elm.library/codeSystems
                    :elm.library/codes
                    :elm.library/statements]))
 

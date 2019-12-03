@@ -3,6 +3,7 @@
     [blaze.anomaly :refer [throw-anom]]
     [blaze.datomic.cql :as cql]
     [blaze.datomic.util :as datomic-util]
+    [blaze.elm.code :refer [code?]]
     [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]
@@ -31,8 +32,11 @@
       (d/datoms db :vaet (:db/id resource) attr))))
 
 
-(defn code? [x]
-  (contains? x :code/id))
+(defn- index-attr
+  "Index attribute like :Patient.Observation.code/system|code"
+  [context data-type property {:keys [system code]}]
+  (let [ns (format "%s.%s.%s" context data-type property)]
+    (keyword ns (str system "|" code))))
 
 
 (s/fdef single-code-expr
@@ -45,22 +49,17 @@
 
 (defn single-code-expr
   "Returns an expression which, when evaluated, returns all resources of type
-  `data-type` which have the `code` at `property` and are reachable through
-  `context`.
+  `data-type` which have a code equivalent to `code` at `property` and are
+  reachable through `context`.
 
   Example:
   * data-type - \"Observation\"
   * property - \"code\"
-  * code - {:code/id \"http://loinc.org||39156-5\"}"
+  * code - (code/to-code \"http://loinc.org\" nil \"39156-5\")"
   {:arglists '([db context data-type property code])}
-  [db context data-type property {code-id :code/id}]
-  (let [ns (format "%s.%s.%s" context data-type property)]
-    (if-let [attr-id (d/entid db (keyword ns code-id))]
-      (->AttrRetrieveExpression attr-id)
-      (throw-anom
-        ::anom/unsupported
-        (format "Unsupported retrieve of `%s` resources with code `%s` in property `%s` and context `%s`."
-                data-type code-id property context)))))
+  [db context data-type property code]
+  (when-let [attr-id (d/entid db (index-attr context data-type property code))]
+    (->AttrRetrieveExpression attr-id)))
 
 
 (defrecord MultipleCodeRetrieveExpression [exprs]
@@ -197,6 +196,11 @@
     (->WithRelatedContextRetrieveExpression related-context-expr data-type)))
 
 
+(defn- find-code [db {:keys [system version code]}]
+  (when (and system code)
+    (:db/id (cql/find-code db system version code))))
+
+
 (defn expr [eval-context db data-type code-property codes]
   (let [unspecified-eval-context? (= "Unspecified" eval-context)]
     (cond
@@ -205,18 +209,12 @@
         (reify Expression
           (-eval [_ {:keys [db]} _ _]
             (cql/list-resource-by-code
-              db data-type code-property (keep :db/id codes))))
+              db data-type code-property (keep #(find-code db %) codes))))
 
-        (let [[code & more] (remove nil? codes)]
-          (cond
-            (nil? code)
-            []
-
-            (empty? more)
+        (let [[code & more] codes]
+          (if (empty? more)
             (single-code-expr
               db eval-context data-type code-property code)
-
-            :else
             (multiple-code-expr
               db eval-context data-type code-property codes))))
 

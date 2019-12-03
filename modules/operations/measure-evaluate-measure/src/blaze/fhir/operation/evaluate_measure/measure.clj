@@ -4,6 +4,7 @@
     [blaze.datomic.util :as datomic-util]
     [blaze.datomic.value :as value]
     [blaze.cql-translator :as cql-translator]
+    [blaze.elm.code :refer [code?]]
     [blaze.elm.compiler :as compiler]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.spec :as spec]
@@ -125,13 +126,17 @@
       (assoc "code" (pull-codeable-concept db code)))))
 
 
-(defn- code? [x]
+(defn- fhir-code? [x]
   (and (instance? Entity x) (= "code" (datomic-util/entity-type x))))
 
 
 (defn- pull [stratum-value]
-  (if (code? stratum-value)
+  (cond
+    (code? stratum-value)
+    (:code stratum-value)
+    (fhir-code? stratum-value)
     (:code/code stratum-value)
+    :else
     (str stratum-value)))
 
 
