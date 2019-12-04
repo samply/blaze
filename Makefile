@@ -1,4 +1,4 @@
-VERSION = "0.7.0-fix-code.3"
+VERSION = "0.7.0-beta.3"
 
 check:
 	clojure -A:check
