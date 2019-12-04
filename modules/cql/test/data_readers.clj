@@ -2,6 +2,7 @@
  elm/dec blaze.elm.literals/dec
  elm/int blaze.elm.literals/int
  elm/string blaze.elm.literals/string
+ elm/code blaze.elm.literals/code
  elm/quantity blaze.elm.literals/quantity
  elm/equal blaze.elm.literals/equal
  elm/greater blaze.elm.literals/greater

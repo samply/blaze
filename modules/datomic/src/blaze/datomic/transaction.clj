@@ -213,9 +213,12 @@
 
 
 (defn- subject-index
-  [{{resource-type "resourceType" :as resource} :resource :keys [code-ident]
+  "Returns tx-data."
+  {:arglists '([context code-id])}
+  [{{resource-type "resourceType" :as resource} :resource
+    :keys [code-ident]
     :as context}
-   code-id]
+   system code]
   (when (supported-subject-indices code-ident)
     (when (= resource-type (namespace code-ident))
       (when-let [subject (get resource "subject")]
@@ -225,18 +228,19 @@
               (when-let [sub-eid (resolve-reference context type sub-id)]
                 [[:db/add sub-eid
                   (keyword (str "Patient." resource-type "." (name code-ident))
-                           code-id)
+                           (str system "|" code))
                   (resolve-reference context resource-type (get resource "id"))]]))))))))
 
 
 (defn- add-code
   "Returns tx-data for adding a code. All of `system`, `version` and `code` are
   optional."
+  {:arglists '([context element parent-id system version code])}
   [{:keys [db] :as context} {:db/keys [ident] :as element} parent-id system
    version code]
   (let [code-id (str system "|" version "|" code)]
     (if-let [{:db/keys [id]} (d/entity db [:code/id code-id])]
-      (into [[:db/add parent-id ident id]] (subject-index context code-id))
+      (into [[:db/add parent-id ident id]] (subject-index context system code))
       (throw-anom
         ::anom/fault
         (str "Can't find code with id `" code-id "`.")
@@ -1049,19 +1053,20 @@
 
 ;; ---- Create Codes ----------------------------------------------------------
 
-(defn- create-subject-index-attr [resource-type data-element-name code-id]
+(defn- create-subject-index-attr [resource-type data-element-name system code]
   {:db/ident
-   (keyword (format "Patient.%s.%s" resource-type data-element-name) code-id)
+   (keyword (format "Patient.%s.%s" resource-type data-element-name)
+            (str system "|" code))
    :db/valueType :db.type/ref
    :db/cardinality :db.cardinality/many})
 
 
-(defn- create-subject-index-attrs [code-id]
+(defn- create-subject-index-attrs [system code]
   (mapv
     (fn [subject-index]
       (let [resource-type (namespace subject-index)
             data-element-name (name subject-index)]
-        (create-subject-index-attr resource-type data-element-name code-id)))
+        (create-subject-index-attr resource-type data-element-name system code)))
     supported-subject-indices))
 
 
@@ -1073,7 +1078,7 @@
     (when-not (d/entity db [:code/id id])
       (let [tid (d/tempid :part/code)]
         (conj
-          (create-subject-index-attrs id)
+          (create-subject-index-attrs system code)
           (cond->
             {:db/id tid
              :code/id id}

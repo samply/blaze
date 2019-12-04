@@ -23,18 +23,11 @@
 
 
 (s/fdef find-code
-  :args (s/cat :db ::ds/db :system string? :code string?)
-  :ret ::ds/entity)
+  :args
+  (s/cat :db ::ds/db :system string? :version (s/nilable string?) :code string?)
+  :ret (s/nilable ::ds/entity))
 
 (defn find-code
   "Returns the code or nil if none is found."
-  [db system code]
-  (some->>
-    (d/q
-      '[:find ?c .
-        :in $ ?code ?system
-        :where
-        [?c :code/code ?code]
-        [?c :code/system ?system]]
-      db code system)
-    (d/entity db)))
+  [db system version code]
+  (d/entity db [:code/id (str system "|" version "|" code)]))

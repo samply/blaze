@@ -5,6 +5,7 @@
     [blaze.datomic.cql :as cql]
     [blaze.datomic.test-util :as datomic-test-util]
     [blaze.datomic.util :as datomic-util]
+    [blaze.elm.code :as code]
     [blaze.elm.compiler :refer [compile compile-with-equiv-clause]]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.compiler.retrieve-test :as retrieve-test]
@@ -169,46 +170,47 @@
 
 ;; 3. Clinical Values
 
-(defn stub-find-code [db system code res-spec]
+(defn stub-to-code [system version-spec code result]
   (st/instrument
-    `cql/find-code
+    [`code/to-code]
     {:spec
-     {`cql/find-code
+     {`code/to-code
       (s/fspec
-        :args (s/cat :db #{db} :system #{system} :code #{code})
-        :ret res-spec)}
-     :stub #{`cql/find-code}}))
-
+        :args
+        (s/cat :system #{system} :version version-spec :code #{code})
+        :ret #{result})}
+     :stub
+     #{`code/to-code}}))
 
 ;; 3.1. Code
 ;;
 ;; The Code type represents a literal code selector.
 (deftest compile-code-test
-  (testing "Found"
-    (stub-find-code ::db "life" "0" #{::code})
+  (testing "without version"
+    (stub-to-code "life" nil? "0" ::code)
 
     (let [context
           {:db ::db
            :library
-           {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}}}
+           {:codeSystems {:def [{:name "life" :id "life"}]}}}
           code
           {:type "Code"
            :system {:name "life"}
            :code "0"}]
       (is (= ::code (-eval (compile context code) {:db ::db} nil nil)))))
 
-  (testing "Not found"
-    (stub-find-code ::db "life" "0" nil?)
+  (testing "with-version"
+    (stub-to-code "life" #{"v1"} "0" ::code)
 
     (let [context
           {:db ::db
            :library
-           {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}}}
+           {:codeSystems {:def [{:name "life" :id "life" :version "v1"}]}}}
           code
           {:type "Code"
            :system {:name "life"}
            :code "0"}]
-      (is (nil? (-eval (compile context code) {:db ::db} nil nil))))))
+      (is (= ::code (-eval (compile context code) {:db ::db} nil nil))))))
 
 
 ;; 3.3. CodeRef
@@ -216,36 +218,31 @@
 ;; The CodeRef expression allows a previously defined code to be referenced
 ;; within an expression.
 (deftest compile-code-ref-test
-  (testing "Found"
-    (stub-find-code ::db "life" "0" #{::code})
+  (testing "without version"
+    (stub-to-code "life" nil? "0" ::code)
     (let [context
           {:db ::db
            :library
-           {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
+           {:codeSystems {:def [{:name "life" :id "life"}]}
             :codes
             {:def
-             [{:name "lens_0"
-               :id "0"
-               :accessLevel "Public"
-               :codeSystem {:name "life"}}]}}}]
+             [{:name "lens_0" :id "0" :codeSystem {:name "life"}}]}}}]
       (are [name result] (= result (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil nil))
         "lens_0"
         ::code)))
 
-  (testing "Not found"
-    (stub-find-code ::db "life" "0" nil?)
+  (testing "with version"
+    (stub-to-code "life" #{"v1"} "0" ::code)
     (let [context
           {:db ::db
            :library
-           {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
+           {:codeSystems {:def [{:name "life" :id "life" :version "v1"}]}
             :codes
             {:def
-             [{:name "lens_0"
-               :id "0"
-               :accessLevel "Public"
-               :codeSystem {:name "life"}}]}}}]
-      (are [name] (nil? (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil nil))
-        "lens_0"))))
+             [{:name "lens_0" :id "0" :codeSystem {:name "life"}}]}}}]
+      (are [name result] (= result (-eval (compile context {:type "CodeRef" :name name}) {:db ::db} nil nil))
+        "lens_0"
+        ::code))))
 
 
 ;; 3.9. Quantity
@@ -496,17 +493,15 @@
 ;; context, the data is returned for the entire source.
 (deftest compile-retrieve-test
   (stub-list-resources ::db "Patient" #{[::patient]})
+  (stub-to-code "life" nil? "0" ::code)
 
   (let [context
         {:db ::db
          :library
-         {:codeSystems {:def [{:name "life" :id "life" :accessLevel "Public"}]}
+         {:codeSystems {:def [{:name "life" :id "life"}]}
           :codes
           {:def
-           [{:name "lens_0"
-             :id "0"
-             :accessLevel "Public"
-             :codeSystem {:name "life"}}]}}}]
+           [{:name "lens_0" :id "0" :codeSystem {:name "life"}}]}}}]
 
     (testing "in Patient eval context"
       (testing "while retrieving patients"
@@ -530,7 +525,6 @@
             (is (= [::observation] (-eval expr context ::patient nil))))))
 
       (testing "while retrieving observations with one specific code"
-        (stub-find-code ::db "life" "0" #{::code})
         (retrieve-test/stub-single-code-expr
           ::db "Patient" "Observation" "code" ::code
           (reify Expression
@@ -548,23 +542,7 @@
           (testing "the observations with that code of the current patient are returned"
             (is (= [::observation] (-eval expr context ::patient nil))))))
 
-      (testing "while retrieving observations with one not existing code"
-        (stub-find-code ::db "life" "1" nil?)
-        (let [elm {:type "Retrieve"
-                   :dataType "{http://hl7.org/fhir}Observation"
-                   :codeProperty "code"
-                   :codes
-                   {:type "ToList"
-                    :operand
-                    {:type "Code"
-                     :system {:name "life"}
-                     :code "1"}}}
-              expr (compile (assoc context :eval-context "Patient") elm)]
-          (testing "a static empty list is returned"
-            (is (= [] expr)))))
-
       (testing "while retrieving conditions with one specific code"
-        (stub-find-code ::db "life" "0" #{::code})
         (retrieve-test/stub-single-code-expr
           ::db "Patient" "Condition" "code" ::code
           (reify Expression
@@ -638,8 +616,6 @@
               (is (= [::observation] (-eval expr context ::specimen nil))))))))
 
     (testing "in Unspecified eval context"
-      (stub-find-code ::db "life" "0" #{{:db/id ::code-eid}})
-
       (testing "retrieving all patients"
         (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
 
@@ -651,6 +627,9 @@
           [::patient]))
 
       (testing "retrieving all observations with a certain code"
+        (stub-to-code "life" nil? "0" {:system "s1" :code "c1"})
+        (datomic-test-util/stub-find-code
+          ::db "s1" nil? "c1" #{{:db/id ::code-eid}})
         (st/instrument
           `cql/list-resource-by-code
           {:spec
@@ -680,6 +659,7 @@
 ;; 12. Comparison Operators
 
 ;; 12.1. Equal
+;;
 ;; The Equal operator returns true if the arguments are equal; false if the
 ;; arguments are known unequal, and null otherwise. Equality semantics are
 ;; defined to be value-based.
@@ -856,7 +836,30 @@
       #elm/string "a" #elm/string "b" false
 
       {:type "Null"} #elm/string "a" nil
-      #elm/string "a" {:type "Null"} nil)))
+      #elm/string "a" {:type "Null"} nil))
+
+  (testing "Code"
+    (let [ctx
+          {:library
+           {:codeSystems
+            {:def
+             [{:name "life" :id "life"}
+              {:name "dktk" :id "dktk"}
+              {:name "life-2010" :id "life" :version "2010"}
+              {:name "life-2020" :id "life" :version "2020"}]}}}]
+      (are [a b res] (= res (-eval (compile ctx (elm/equal [a b])) {} nil nil))
+        #elm/code ["life" "0"] #elm/code ["life" "0"] true
+        #elm/code ["life" "0"] #elm/code ["life" "1"] false
+        #elm/code ["life" "0"] #elm/code ["dktk" "0"] false
+
+        #elm/code ["life" "0"] #elm/code ["life-2010" "0"] false
+        #elm/code ["life-2010" "0"] #elm/code ["life" "0"] false
+
+        #elm/code ["life-2010" "0"] #elm/code ["life-2020" "0"] false
+        #elm/code ["life-2020" "0"] #elm/code ["life-2010" "0"] false
+
+        {:type "Null"} #elm/code ["life" "0"] nil
+        #elm/code ["life" "0"] {:type "Null"} nil))))
 
 
 ;; 12.2. Equivalent
@@ -968,7 +971,30 @@
       #elm/list [#elm/date "2019"] #elm/list [#elm/date "2019-01"] false
 
       {:type "Null"} #elm/list [] false
-      #elm/list [] {:type "Null"} false)))
+      #elm/list [] {:type "Null"} false))
+
+  (testing "Code"
+    (let [ctx
+          {:library
+           {:codeSystems
+            {:def
+             [{:name "life" :id "life"}
+              {:name "dktk" :id "dktk"}
+              {:name "life-2010" :id "life" :version "2010"}
+              {:name "life-2020" :id "life" :version "2020"}]}}}]
+      (are [a b res] (= res (-eval (compile ctx (elm/equivalent [a b])) {} nil nil))
+        #elm/code ["life" "0"] #elm/code ["life" "0"] true
+        #elm/code ["life" "0"] #elm/code ["life" "1"] false
+        #elm/code ["life" "0"] #elm/code ["dktk" "0"] false
+
+        #elm/code ["life" "0"] #elm/code ["life-2010" "0"] true
+        #elm/code ["life-2010" "0"] #elm/code ["life" "0"] true
+
+        #elm/code ["life-2010" "0"] #elm/code ["life-2020" "0"] true
+        #elm/code ["life-2020" "0"] #elm/code ["life-2010" "0"] true
+
+        {:type "Null"} #elm/code ["life" "0"] false
+        #elm/code ["life" "0"] {:type "Null"} false))))
 
 
 ;; 12.3. Greater

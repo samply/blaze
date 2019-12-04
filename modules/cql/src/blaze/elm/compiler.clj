@@ -16,10 +16,10 @@
     [blaze.elm.compiler.property :as property]
     [blaze.elm.compiler.retrieve :as retrieve]
     [blaze.elm.compiler.query :as query]
-    [blaze.datomic.cql :as cql]
     [blaze.datomic.util :as datomic-util]
     [blaze.elm.aggregates :as aggregates]
     [blaze.elm.boolean]
+    [blaze.elm.code :as code]
     [blaze.elm.data-provider :as data-provider]
     [blaze.elm.date-time :as date-time :refer [local-time temporal?]]
     [blaze.elm.decimal :as decimal]
@@ -511,14 +511,19 @@
 
 ;; 3.1. Code
 (defmethod compile* :elm.compiler.type/code
-  [{:keys [library db] :as context}
+  [{:keys [library] :as context}
    {{system-name :name} :system :keys [code] :as expression}]
   ;; TODO: look into other libraries (:libraryName)
-  (if-let [{system :id} (find-code-system-def library system-name)]
-    (cql/find-code db system code)
+  (if-let [{system :id :keys [version]} (find-code-system-def library system-name)]
+    (code/to-code system version code)
     (throw (ex-info (format "Can't find the code system `%s`." system-name)
                     {:context context
                      :expression expression}))))
+
+
+;; 3.2. CodeDef
+;;
+;; Not needed because it's not an expression.
 
 
 ;; 3.3. CodeRef
@@ -529,18 +534,22 @@
   (some #(when (= name (:name %)) %) code-defs))
 
 (defmethod compile* :elm.compiler.type/code-ref
-  [{:keys [library db] :as context} {:keys [name] :as expression}]
+  [{:keys [library] :as context} {:keys [name] :as expression}]
   ;; TODO: look into other libraries (:libraryName)
   (when-let [{code-system-ref :codeSystem code :id :as code-def}
              (find-code-def library name)]
     (if code-system-ref
-      (when-let [{system :id} (compile context (assoc code-system-ref :type "CodeSystemRef"))]
-        ;; TODO: version
-        (cql/find-code db system code))
+      (when-let [{system :id :keys [version]} (compile context (assoc code-system-ref :type "CodeSystemRef"))]
+        (code/to-code system version code))
       (throw (ex-info "Can't handle code-defs without code-system-ref."
                       {:context context
                        :expression expression
                        :code-def code-def})))))
+
+
+;; 3.4. CodeSystemDef
+;;
+;; Not needed because it's not an expression.
 
 
 ;; 3.5. CodeSystemRef
@@ -548,6 +557,21 @@
   [{:keys [library]} {:keys [name]}]
   ;; TODO: look into other libraries (:libraryName)
   (find-code-system-def library name))
+
+
+;; 3.6. Concept
+;;
+;; TODO
+
+
+;; 3.7. ConceptDef
+;;
+;; Not needed because it's not an expression.
+
+
+;; 3.8. ConceptRef
+;;
+;; TODO
 
 
 ;; 3.9. Quantity
@@ -566,6 +590,18 @@
       (quantity value unit))
     value))
 
+
+;; 3.10. Ratio
+;;
+;; TODO
+
+;; 3.11. ValueSetDef
+;;
+;; Not needed because it's not an expression.
+
+;; 3.12. ValueSetRef
+;;
+;; TODO
 
 
 ;; 9. Reusing Logic
