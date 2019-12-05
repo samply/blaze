@@ -179,18 +179,20 @@
 (defn- fhir-type-code->db-type
   "http://hl7.org/fhir/datatypes.html"
   [code]
-  ;; TODO: the Extension StructureDefinition misses a value for `code`
-  (case (or code "string")
+  (case code
     "boolean" :db.type/boolean
     ("integer" "unsignedInt" "positiveInt") :db.type/long
     "code" :db.type/ref
-    ("string" "id" "markdown" "uri" "url" "canonical" "oid" "xhtml") :db.type/string
+    ("string" "id" "markdown" "uri" "url" "canonical" "oid" "xhtml"
+      "http://hl7.org/fhirpath/System.String") :db.type/string
     ("date" "dateTime" "time") :db.type/bytes
     "decimal" :db.type/bigdec
     "base64Binary" :db.type/bytes
     "instant" :db.type/instant
     "uuid" :db.type/uuid
-    "Quantity" :db.type/bytes
+    ;; TODO: Remove direct references to special Quantity types
+    ("Age" "Count" "Distance" "Duration"
+      "MoneyQuantity" "SimpleQuantity" "Quantity") :db.type/bytes
     :db.type/ref))
 
 
@@ -243,9 +245,12 @@
        (not (has-content-reference? element))))
 
 
-;; TODO: the Extension StructureDefinition misses a value for `code`
-(defn primitive? [{:keys [code] :or {code "string"}}]
-  (or (Character/isLowerCase ^char (first code)) (= "Quantity" code)))
+(defn primitive? [{:keys [code]}]
+  (or (Character/isLowerCase ^char (first code))
+      (some?
+        ;; TODO: Remove direct references to special Quantity types
+        (#{"Age" "Count" "Distance" "Duration"
+           "MoneyQuantity" "SimpleQuantity" "Quantity"} code))))
 
 
 (defn parent-path [path]

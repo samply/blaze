@@ -42,7 +42,7 @@
       (case url
         "http://hl7.org/fhir/ValueSet/administrative-gender"
         (case valueSetVersion
-          "4.0.0"
+          "4.0.1"
           (md/success-deferred
             {:expansion
              {:contains
@@ -52,7 +52,7 @@
                 :code "female"}]}}))
         "http://hl7.org/fhir/ValueSet/allergy-intolerance-category"
         (case valueSetVersion
-          "4.0.0"
+          "4.0.1"
           (md/success-deferred
             {:expansion
              {:contains
@@ -62,7 +62,7 @@
                 :code "food"}]}}))
         "http://hl7.org/fhir/ValueSet/filter-operator"
         (case valueSetVersion
-          "4.0.0"
+          "4.0.1"
           (md/success-deferred
             {:expansion
              {:contains
@@ -70,7 +70,7 @@
                 :code "="}]}}))
         "http://hl7.org/fhir/ValueSet/narrative-status"
         (case valueSetVersion
-          "4.0.0"
+          "4.0.1"
           (md/success-deferred
             {:expansion
              {:contains
@@ -574,7 +574,7 @@
 
 
     (testing "CodeSystem with version and code in concept"
-      (let [[db code-id] (test-util/with-code db "http://hl7.org/fhir/administrative-gender" "4.0.0" "male")
+      (let [[db code-id] (test-util/with-code db "http://hl7.org/fhir/administrative-gender" "4.0.1" "male")
             [db id] (test-util/with-resource db "CodeSystem" "0")]
         (is
           (=
@@ -584,10 +584,10 @@
                 {"id" "0"
                  "resourceType" "CodeSystem"
                  "url" "http://hl7.org/fhir/administrative-gender"
-                 "version" "4.0.0"
+                 "version" "4.0.1"
                  "concept"
                  [{"code" "male"}]}))
-            [[:db/add id :CodeSystem/version "4.0.0"]
+            [[:db/add id :CodeSystem/version "4.0.1"]
              [:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
              [:db/add :part/CodeSystem.concept :CodeSystem.concept/code code-id]
              [:db/add id :CodeSystem/concept :part/CodeSystem.concept]
@@ -604,11 +604,11 @@
               {"id" "0"
                "resourceType" "CodeSystem"
                "url" "http://hl7.org/fhir/administrative-gender"
-               "version" "4.0.0"
+               "version" "4.0.1"
                "content"
                (with-meta 'complete {:system "http://hl7.org/fhir/codesystem-content-mode"})})
             [[:db/add id :CodeSystem/content code-id]
-             [:db/add id :CodeSystem/version "4.0.0"]
+             [:db/add id :CodeSystem/version "4.0.1"]
              [:db/add id :CodeSystem/url "http://hl7.org/fhir/administrative-gender"]
              [:db.fn/cas id :instance/version -3 -7]]))))
 
@@ -741,6 +741,27 @@
             [[:db/add id :Observation/valueQuantity
               (quantity/custom-quantity 1 "a" nil nil)]
              [:db/add id :Observation/value :Observation/valueQuantity]
+             [:db.fn/cas id :instance/version -3 -7]]))))
+
+
+    (testing "special Age type"
+      (let [[db id] (test-util/with-resource db "ActivityDefinition" "0")]
+        (is
+          (=
+            (mapv
+              read-value
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "ActivityDefinition"
+                 "timingAge"
+                 {"value" 12
+                  "unit" "yr"
+                  "system" "http://unitsofmeasure.org"
+                  "code" "a"}}))
+            [[:db/add id :ActivityDefinition/timingAge
+              (quantity/ucum-quantity-with-different-unit 12 "yr" "a")]
+             [:db/add id :ActivityDefinition/timing :ActivityDefinition/timingAge]
              [:db.fn/cas id :instance/version -3 -7]]))))
 
 
@@ -2000,16 +2021,16 @@
                 {"id" "0"
                  "resourceType" "CodeSystem"
                  "url" "http://hl7.org/fhir/administrative-gender"
-                 "version" "4.0.0"
+                 "version" "4.0.1"
                  "concept"
                  [{"code" "male"}]})))]
       (is
         (contains?
           tx-data
           {:db/id :part/code
-           :code/id "http://hl7.org/fhir/administrative-gender|4.0.0|male"
+           :code/id "http://hl7.org/fhir/administrative-gender|4.0.1|male"
            :code/system "http://hl7.org/fhir/administrative-gender"
-           :code/version "4.0.0"
+           :code/version "4.0.1"
            :code/code "male"}))
       (is
         (contains?
