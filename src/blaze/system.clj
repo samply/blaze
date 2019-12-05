@@ -26,7 +26,12 @@
 (defrecord Cfg [env-var spec default])
 
 
-(defn- cfg [[env-var spec-form default]]
+(defn- cfg
+  "Creates a config entry which consists of the name of a environment variable,
+  a spec and a default value.
+
+  Config entries appear in blaze.edn files."
+  [[env-var spec-form default]]
   (let [spec
         (if (symbol? spec-form)
           (var-get (resolve spec-form))
@@ -45,11 +50,21 @@
       (log/warn "Problem while reading blaze.edn. Skipping it." e))))
 
 
-(defn resolve-config [config env]
+(defn- get-blank [m k default]
+  (let [v (get m k)]
+    (if (or (nil? v) (str/blank? v))
+      default
+      v)))
+
+
+(defn resolve-config
+  "Resolves config entries to there actual values with the help of an
+  environment."
+  [config env]
   (postwalk
     (fn [x]
       (if (instance? Cfg x)
-        (when-let [value (get env (:env-var x) (:default x))]
+        (when-let [value (get-blank env (:env-var x) (:default x))]
           (coerce (:spec x) value))
         x))
     config))
