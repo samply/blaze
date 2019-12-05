@@ -23,14 +23,14 @@ In order to run Blaze with an in-memory, volatile database, just execute the fol
 ### Docker
 
 ```bash
-docker run -p 8080:8080 liferesearch/blaze:0.7.0-beta.3
+docker run -p 8080:8080 liferesearch/blaze:0.7.0-rc.1
 ```
 
 ### Java
 
 ```bash
-wget https://github.com/life-research/blaze/releases/download/v0.7.0-beta.1/blaze-0.7.0-beta.3-standalone.jar
-java -jar blaze-0.7.0-beta.3-standalone.jar
+wget https://github.com/life-research/blaze/releases/download/v0.7.0-beta.1/blaze-0.7.0-rc.1-standalone.jar
+java -jar blaze-0.7.0-rc.1-standalone.jar
 ```
 
 Logging output should appear which prints the most important settings and system parameters like Java version and available memory.
