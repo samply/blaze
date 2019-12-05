@@ -69,7 +69,7 @@ You can change the data dir in the properties file if you like to have it at a d
 ==== Install Blaze
 
 Blaze runs on the JVM and comes as single JAR file.
-Download the most recent version https://github.com/life-research/blaze/releases/tag/v0.7.0-beta.1[here].
+Download the most recent version https://github.com/life-research/blaze/releases/tag/v0.7.0-rc.1[here].
 Look for `blaze-0.7.0-rc.1-standalone.jar`.
 In addition to the JAR file, Blaze needs a set of FHIR® structure definitions to build it's database schema.
 Please download and unpack the `fhir.zip` from the same location.

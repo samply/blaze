@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
-Latest release: [v0.7.0-beta.1][5]
+Latest release: [v0.7.0-rc.1][5]
 
 ## Quick Start
 
@@ -29,7 +29,7 @@ docker run -p 8080:8080 liferesearch/blaze:0.7.0-rc.1
 ### Java
 
 ```bash
-wget https://github.com/life-research/blaze/releases/download/v0.7.0-beta.1/blaze-0.7.0-rc.1-standalone.jar
+wget https://github.com/life-research/blaze/releases/download/v0.7.0-rc.1/blaze-0.7.0-rc.1-standalone.jar
 java -jar blaze-0.7.0-rc.1-standalone.jar
 ```
 
@@ -56,4 +56,4 @@ your option) any later version.
 [2]: <http://cql-runner.dataphoria.org/>
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/life-research/blaze/releases/tag/v0.7.0-beta.1>
+[5]: <https://github.com/life-research/blaze/releases/tag/v0.7.0-rc.1>
