@@ -6,7 +6,15 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds]
     [datomic-tools.schema :refer [defattr defunc defpart]]
+    [blaze.datomic.search-parameter]
     [blaze.datomic.element-definition]))
+
+
+(defattr :resource/search-parameter
+  "References to all search parameter of a resource."
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many
+  :db/isComponent true)
 
 
 (defattr :type/elements
@@ -384,12 +392,9 @@
          :db/cardinality :db.cardinality/many}))))
 
 
-(s/fdef structure-definition-tx-data
-  :args (s/cat :structure-definition :fhir.un/StructureDefinition)
-  :ret ::ds/tx-data)
-
 (defn structure-definition-tx-data
-  "Returns transaction data which can be used to upsert `structure-definition`."
+  "Returns transaction data which creates the Datomic schema of a resource or
+  a data-type."
   [{{elements :element} :snapshot :as structure-definition}]
   (into [] (mapcat #(element-definition-tx-data structure-definition %)) elements))
 
@@ -406,3 +411,45 @@
       (remove :experimental)
       (mapcat structure-definition-tx-data))
     structure-definitions))
+
+
+
+;; ---- Search Parameter ------------------------------------------------------
+
+(defn search-parameter-tx-data
+  "Returns transaction data of indices required to support a search parameter."
+  [{:keys [id base type code expression]}]
+  (when expression
+    (let [[_ json-key & more] (str/split expression ".")]
+      (when (and json-key (empty? more))
+        (condp = type
+          "string"
+          (let [db-id (str "SearchParameter." id)]
+            (into
+              [{:db/id db-id
+                :db/ident (keyword "SearchParameter" id)
+                :db/valueType :db.type/string
+                :db/cardinality :db.cardinality/one
+                :db/index true
+                :search-parameter/type :search-parameter.type/string
+                :search-parameter/code code
+                :search-parameter/json-key json-key}]
+              (map
+                (fn [base]
+                  [:db/add base :resource/search-parameter db-id]))
+              base))
+          nil)))))
+
+
+(s/fdef search-parameter-schemas
+  :args (s/cat :search-parameters (s/coll-of :fhir.un/SearchParameter))
+  :ret ::ds/tx-data)
+
+(defn search-parameter-schemas [search-parameters]
+  (into
+    []
+    (comp
+      (remove :experimental)
+      (filter (comp #{"Measure-title"} :id))
+      (mapcat search-parameter-tx-data))
+    search-parameters))

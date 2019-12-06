@@ -2,14 +2,15 @@
   (:require
     [blaze.datomic.cql :as cql]
     [blaze.datomic.pull :as pull]
+    [blaze.datomic.schema :as schema]
     [blaze.datomic.transaction :as tx]
     [blaze.datomic.util :as util]
-    [blaze.structure-definition :refer [read-structure-definitions]]
+    [blaze.structure-definition
+     :refer [read-structure-definitions read-search-parameters]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [datomic.api :as d]
-    [datomic-tools.schema :as dts]
-    [blaze.datomic.schema :as schema])
+    [datomic-tools.schema :as dts])
   (:import
     [java.util UUID]))
 
@@ -118,7 +119,7 @@
      #{`d/basis-t}}))
 
 
-(defn stub-datoms [db index components-spec replace-fn]
+(defn stub-datoms-fn [db index components-spec replace-fn]
   (st/instrument
     [`d/datoms]
     {:spec
@@ -163,6 +164,17 @@
         :ret entity-spec)}
      :stub
      #{`d/entity}}))
+
+
+(defn stub-entity-fn [db eid-spec replace-fn]
+  (st/instrument
+    [`d/entity]
+    {:spec
+     {`d/entity
+      (s/fspec
+        :args (s/cat :db #{db} :eid eid-spec))}
+     :replace
+     {`d/entity replace-fn}}))
 
 
 (defn stub-entity-db [entity-spec db]
@@ -286,6 +298,18 @@
         :ret resources-spec)}
      :stub
      #{`util/list-resources}}))
+
+
+(defn stub-list-resources-sorted-by [db type search-param resources-spec]
+  (st/instrument
+    `util/list-resources-sorted-by
+    {:spec
+     {`util/list-resources-sorted-by
+      (s/fspec
+        :args (s/cat :db #{db} :type #{type} :search-param #{search-param})
+        :ret resources-spec)}
+     :stub
+     #{`util/list-resources-sorted-by}}))
 
 
 (defn stub-literal-reference [resource result]
@@ -420,6 +444,19 @@
      #{`util/type-version}}))
 
 
+(defn stub-find-search-param-by-type-and-code [db type code result-spec]
+  (st/instrument
+    [`util/find-search-param-by-type-and-code]
+    {:spec
+     {`util/find-search-param-by-type-and-code
+      (s/fspec
+        :args
+        (s/cat :db #{db} :type #{type} :code #{code})
+        :ret result-spec)}
+     :stub
+     #{`util/find-search-param-by-type-and-code}}))
+
+
 
 ;; ---- blaze.datomic.pull stubs ----------------------------------------------
 
@@ -435,7 +472,7 @@
      #{`pull/pull-non-primitive}}))
 
 
-(defn stub-pull-non-primitive' [db type-ident value-spec replace-fn]
+(defn stub-pull-non-primitive-fn [db type-ident value-spec replace-fn]
   (st/instrument
     [`pull/pull-non-primitive]
     {:spec
@@ -468,6 +505,17 @@
         :ret resource-spec)}
      :stub
      #{`pull/pull-resource*}}))
+
+
+(defn stub-pull-resource*-fn [db type resource-spec replace-fn]
+  (st/instrument
+    [`pull/pull-resource*]
+    {:spec
+     {`pull/pull-resource*
+      (s/fspec
+        :args (s/cat :db #{db} :type #{type} :resource resource-spec))}
+     :replace
+     {`pull/pull-resource* replace-fn}}))
 
 
 
@@ -529,11 +577,19 @@
   (let [uri (str "datomic:mem://" (UUID/randomUUID))]
     (d/create-database uri)
     (let [structure-definitions (read-structure-definitions)
+          search-parameters (read-search-parameters)
+          tx-data
+          (into
+            (schema/structure-definition-schemas structure-definitions)
+            (schema/search-parameter-schemas search-parameters))
           conn (d/connect uri)]
       @(d/transact conn (dts/schema))
-      @(d/transact conn (schema/structure-definition-schemas structure-definitions))
+      @(d/transact conn tx-data)
       conn)))
 
+
+
+;; ---- blaze.datomic.cql stubs -----------------------------------------------
 
 (defn stub-find-code [db system version-spec code result-spec]
   (st/instrument

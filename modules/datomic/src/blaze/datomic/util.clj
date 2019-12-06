@@ -1,5 +1,6 @@
 (ns blaze.datomic.util
   (:require
+    [blaze.datomic.search-parameter]
     [clojure.spec.alpha :as s]
     [datomic.api :as d]
     [datomic-spec.core :as ds])
@@ -172,14 +173,33 @@
   :ret (s/coll-of ::ds/entity))
 
 (defn list-resources
-  "Returns a collection of all non-deleted resources of `type`."
+  "Returns a reducible collection of all non-deleted resources of `type`."
   [db type]
-  (into
-    []
-    (comp
-      (map (fn [{eid :e}] (d/entity db eid)))
-      (remove deleted?))
+  (eduction
+    (map (fn [{eid :e}] (d/entity db eid)))
+    (remove deleted?)
     (d/datoms db :aevt (resource-id-attr type))))
+
+
+(s/fdef list-resources-sorted-by
+  :args (s/cat :db ::ds/db :type string? :search-param :blaze/search-parameter)
+  :ret (s/coll-of ::ds/entity))
+
+(defn list-resources-sorted-by
+  "Returns a reducible collection of all resources of `type` sorted according
+  `search-param` in ascending order.
+
+  Resources without a value in `search-param` come last."
+  {:arglists '([db type search-param])}
+  [db type {:db/keys [ident]}]
+  (eduction
+    cat
+    [(eduction
+       (map #(d/entity db (:e %)))
+       (d/datoms db :avet ident))
+     (eduction
+       (remove ident)
+       (list-resources db type))]))
 
 
 (s/fdef instance-transaction-history
@@ -187,7 +207,7 @@
   :ret (s/coll-of ::ds/entity))
 
 (defn instance-transaction-history
-  "Returns a reducible coll of all transactions on resource with `eid`.
+  "Returns a reducible collection of all transactions on resource with `eid`.
   Newest first."
   [db eid]
   (eduction
@@ -213,7 +233,7 @@
   :ret (s/coll-of ::ds/entity))
 
 (defn type-transaction-history
-  "Returns a reducible coll of all transactions on `type`.
+  "Returns a reducible collection of all transactions on `type`.
   Newest first."
   [db type]
   (eduction
@@ -227,7 +247,7 @@
   :ret (s/coll-of ::ds/entity))
 
 (defn system-transaction-history
-  "Returns a reducible coll of all transactions in the whole system.
+  "Returns a reducible collection of all transactions in the whole system.
   Newest first."
   [db]
   (eduction
@@ -264,3 +284,14 @@
   "Returns the number of resource changes of `type`."
   [db type]
   (- (:type/version (d/entity db (keyword type)) 0)))
+
+
+(s/fdef find-search-param-by-type-and-code
+  :args (s/cat :db ::ds/db :type string? :code string?)
+  :ret (s/nilable :blaze/search-parameter))
+
+(defn find-search-param-by-type-and-code [db type code]
+  (->> (cached-entity db (keyword type))
+       :resource/search-parameter
+       (map #(cached-entity db %))
+       (some #(when (= code (:search-parameter/code %)) %))))

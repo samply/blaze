@@ -306,7 +306,7 @@
       (stub-calc-stratums
         ::db now ::compiled-library "Patient" "InInitialPopulation" "Gender"
         {"male" 1})
-      (datomic-test-util/stub-pull-non-primitive'
+      (datomic-test-util/stub-pull-non-primitive-fn
         ::db :CodeableConcept #{population-concept stratifier-concept}
         (fn [_ _ value]
           (condp = value
@@ -392,7 +392,7 @@
       (stub-calc-mult-component-stratums
         ::db now ::compiled-library "Patient" "InInitialPopulation"
         ["Gender" "Age"] {["male" 30] 1})
-      (datomic-test-util/stub-pull-non-primitive'
+      (datomic-test-util/stub-pull-non-primitive-fn
         ::db :CodeableConcept
         #{population-concept stratifier-concept-gender stratifier-concept-age}
         (fn [_ _ value]

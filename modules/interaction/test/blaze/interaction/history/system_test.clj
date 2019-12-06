@@ -74,7 +74,7 @@
       (test-util/stub-page-size ::query-params 50)
       (history-test-util/stub-page-eid ::query-params nil?)
       (datomic-test-util/stub-entity-db #{tx} ::db)
-      (datomic-test-util/stub-datoms
+      (datomic-test-util/stub-datoms-fn
         ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
         (constantly [{:v ::patient-eid}]))
       (datomic-test-util/stub-as-of-t ::db nil?)
@@ -119,7 +119,7 @@
       (test-util/stub-page-size ::query-params 50)
       (history-test-util/stub-page-eid ::query-params nil?)
       (datomic-test-util/stub-entity-db #{tx} ::db)
-      (datomic-test-util/stub-datoms
+      (datomic-test-util/stub-datoms-fn
         ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
         (constantly [{:v ::patient-1-eid} {:v ::patient-2-eid}]))
       (datomic-test-util/stub-as-of-t ::db nil?)
@@ -169,7 +169,7 @@
       (test-util/stub-page-size ::query-params 50)
       (history-test-util/stub-page-eid ::query-params nil?)
       (datomic-test-util/stub-entity-db #{tx-1 tx-2} ::db)
-      (datomic-test-util/stub-datoms
+      (datomic-test-util/stub-datoms-fn
         ::db :eavt (s/cat :e #{::tx-1-eid ::tx-2-eid} :a #{:tx/resources} :v nil?)
         (fn [_ _ tx-eid _ _]
           (case tx-eid
@@ -221,7 +221,7 @@
       (test-util/stub-page-size ::query-params 1)
       (history-test-util/stub-page-eid ::query-params nil?)
       (datomic-test-util/stub-entity-db #{tx} ::db)
-      (datomic-test-util/stub-datoms
+      (datomic-test-util/stub-datoms-fn
         ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
         (constantly [{:v ::patient-1-eid} {:v ::patient-2-eid}]))
       (datomic-test-util/stub-as-of-t ::db nil?)

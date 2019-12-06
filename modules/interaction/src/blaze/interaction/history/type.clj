@@ -30,7 +30,7 @@
 
 
 (defn- expand-resources
-  "Returns a reducible coll of tuples of `transaction` and resource eid of
+  "Returns a reducible collection of tuples of `transaction` and resource eid of
   resources of `type` changed in transaction starting possibly with the resource
   with `first-resource-eid`."
   [type transaction first-resource-eid]

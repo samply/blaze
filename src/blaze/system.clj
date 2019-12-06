@@ -83,10 +83,13 @@
 
    :blaze/structure-definition {}
 
+   :blaze/search-parameter {}
+
    :blaze.datomic.transaction/executor {}
 
    :blaze.datomic/conn
    {:structure-definitions (ig/ref :blaze/structure-definition)
+    :search-parameters (ig/ref :blaze/search-parameter)
     :database/uri (->Cfg "DATABASE_URI" string? "datomic:mem://dev")}
 
    :blaze.datomic/resource-upsert-duration-seconds {}

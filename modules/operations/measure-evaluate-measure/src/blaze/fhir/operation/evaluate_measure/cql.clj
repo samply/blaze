@@ -35,7 +35,7 @@
   (let [key [resource-type (datomic-util/type-version db resource-type)]]
     (if-let [resources (get @resource-cache key)]
       resources
-      (let [resources (datomic-util/list-resources db resource-type)]
+      (let [resources (into [] (datomic-util/list-resources db resource-type))]
         (vswap! resource-cache assoc key resources)
         resources))))
 

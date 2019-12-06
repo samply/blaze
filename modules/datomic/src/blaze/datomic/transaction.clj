@@ -3,6 +3,7 @@
     [blaze.anomaly :refer [throw-anom]]
     [blaze.datomic.quantity :as quantity]
     [blaze.datomic.pull :as pull]
+    [blaze.datomic.search-parameter :as search-parameter]
     [blaze.datomic.spec]
     [blaze.datomic.value :as value]
     [blaze.datomic.util :as util]
@@ -777,6 +778,32 @@
       (:type/elements (util/cached-entity db type-ident)))))
 
 
+(defn- upsert-search-parameter
+  [{:db/keys [ident] :as search-parameter} old-resource new-value]
+  (let [normalized-value (search-parameter/normalize search-parameter new-value)]
+    (when (not= normalized-value (ident old-resource))
+      [[:db/add (:db/id old-resource) ident normalized-value]])))
+
+
+(defn- retract-search-parameter [{:db/keys [ident]} old-resource]
+  (when-some [value (ident old-resource)]
+    [[:db/retract (:db/id old-resource) ident value]]))
+
+
+(defn- upsert-search-parameters
+  {:arglists '([context resource-type old-resource new-resource])}
+  [{:keys [db]} resource-type old-resource new-resource]
+  (into
+    []
+    (comp
+      (map #(util/cached-entity db %))
+      (mapcat
+        (fn [{:search-parameter/keys [json-key] :as search-parameter}]
+          (if-let [new-value (get new-resource json-key)]
+            (upsert-search-parameter search-parameter old-resource new-value)
+            (retract-search-parameter search-parameter old-resource)))))
+    (:resource/search-parameter (util/cached-entity db (keyword resource-type)))))
+
 (defn- upsert-contained-resource
   [context old-entity new-entity]
   (let [type (keyword (util/entity-type old-entity))]
@@ -861,7 +888,8 @@
           eids
           (assoc :contained-resource-eids eids))]
     (-> (or tx-data [])
-        (into (upsert context (keyword type) old-resource new-resource)))))
+        (into (upsert context (keyword type) old-resource new-resource))
+        (into (upsert-search-parameters context type old-resource new-resource)))))
 
 
 (defn- prepare-resource
@@ -990,15 +1018,20 @@
   [db type id]
   (when-let [resource (util/resource db type id)]
     (when-not (util/deleted? resource)
-      (into
-        [(version-decrement-delete resource)]
-        (comp
-          (map #(util/cached-entity db %))
-          contained-resource-element-remover
-          coding-system-version-remover
-          (resource-id-remover type)
-          (mapcat #(retract-element {:db db} % resource)))
-        (:type/elements (util/cached-entity db (keyword type)))))))
+      (-> [(version-decrement-delete resource)]
+          (into
+            (comp
+              (map #(util/cached-entity db %))
+              contained-resource-element-remover
+              coding-system-version-remover
+              (resource-id-remover type)
+              (mapcat #(retract-element {:db db} % resource)))
+            (:type/elements (util/cached-entity db (keyword type))))
+          (into
+            (comp
+              (map #(util/cached-entity db %))
+              (mapcat #(retract-search-parameter % resource)))
+            (:resource/search-parameter (util/cached-entity db (keyword type))))))))
 
 
 (defn- category [e]

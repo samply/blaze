@@ -1,7 +1,12 @@
 (ns blaze.datomic.schema-test
   (:require
-    [blaze.datomic.schema :refer [element-definition-tx-data path->ident]]
-    [blaze.structure-definition :refer [read-structure-definitions]]
+    [blaze.datomic.schema
+     :refer
+     [element-definition-tx-data
+      path->ident
+      search-parameter-tx-data]]
+    [blaze.structure-definition
+     :refer [read-structure-definitions read-search-parameters]]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
     [clojure.test :refer [are deftest is testing]]))
@@ -11,6 +16,7 @@
 
 
 (defonce structure-definitions (read-structure-definitions))
+(defonce search-parameters (read-search-parameters))
 
 
 (defn- structure-definition [id]
@@ -562,4 +568,44 @@
              :db/ident :ActivityDefinition/timingDuration,
              :element/primitive? true}
             [:db/add "ActivityDefinition.timing[x]" :element/type-choices "ActivityDefinition.timingDuration"]
-            [:db/add "ActivityDefinition" :type/elements "ActivityDefinition.timing[x]"]]))))
+            [:db/add "ActivityDefinition" :type/elements "ActivityDefinition.timing[x]"]])))
+
+  (testing "Measure.title"
+    (is (= (element-definition-tx-data
+             (structure-definition "Measure")
+             (element-definition "Measure.title"))
+           [{:db/id "Measure.title"
+             :db/ident :Measure/title
+             :db/valueType :db.type/string
+             :db/cardinality :db.cardinality/one
+             :element/primitive? true
+             :element/choice-type? false
+             :ElementDefinition/isSummary true
+             :element/type-code "string"
+             :element/json-key "title"}
+            [:db/add "Measure" :type/elements "Measure.title"]]))))
+
+
+(defn- search-parameter [id]
+  (some #(when (= id (:id %)) %) search-parameters))
+
+
+(deftest search-parameter-test
+  (testing "Measure.title"
+    (is (= (search-parameter-tx-data
+             (search-parameter "Measure-title"))
+           [{:db/id "SearchParameter.Measure-title"
+             :db/ident :SearchParameter/Measure-title
+             :db/valueType :db.type/string
+             :db/cardinality :db.cardinality/one
+             :db/index true
+             :search-parameter/type :search-parameter.type/string
+             :search-parameter/code "title"
+             :search-parameter/json-key "title"}
+            [:db/add "Measure" :resource/search-parameter "SearchParameter.Measure-title"]]))))
+
+(comment
+  (filter #(str/ends-with? % "address") (map :id search-parameters))
+  (search-parameter "individual-address")
+  (frequencies (map :code search-parameters))
+  )

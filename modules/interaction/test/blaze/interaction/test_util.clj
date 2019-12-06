@@ -18,6 +18,17 @@
      #{`fhir-util/instance-url}}))
 
 
+(defn stub-instance-url-fn [router type id-spec replace-fn]
+  (st/instrument
+    [`fhir-util/instance-url]
+    {:spec
+     {`fhir-util/instance-url
+      (s/fspec
+        :args (s/cat :router #{router} :type #{type} :id id-spec))}
+     :replace
+     {`fhir-util/instance-url replace-fn}}))
+
+
 (defn stub-page-size [query-params page-size]
   (st/instrument
     [`fhir-util/page-size]

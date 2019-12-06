@@ -222,7 +222,7 @@
       (if unspecified-eval-context?
         (reify Expression
           (-eval [_ {:keys [db]} _ _]
-            (datomic-util/list-resources db data-type)))
+            (into [] (datomic-util/list-resources db data-type))))
 
         (if (= data-type eval-context)
           resource-expr
