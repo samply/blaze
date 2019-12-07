@@ -4,10 +4,11 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.elm.protocols :as p]
     [clojure.spec.alpha :as s]
-    [blaze.elm.protocols :as p])
+    [cognitect.anomalies :as anom])
   (:import
-    [javax.measure Quantity UnconvertibleException]
+    [javax.measure Quantity UnconvertibleException Unit]
     [javax.measure.format UnitFormat]
     [javax.measure.spi ServiceProvider]
     [tec.units.indriya ComparableQuantity]
@@ -21,12 +22,38 @@
   (.getUnitFormat (.getUnitFormatService (ServiceProvider/current)) "UCUM"))
 
 
-(defn- parse-unit [unit]
+(defn- parse-unit* [s]
   (try
-    (.parse ucum-format unit)
+    (.parse ucum-format s)
     (catch Throwable t
-      (throw (ex-info (str "Problem while parsing the unit `" unit "`.")
-                      {:unit unit :cause-msg (ex-message t)})))))
+      (throw (ex-info (str "Problem while parsing the unit `" s "`.")
+                      (cond->
+                        {::anom/category ::anom/incorrect
+                         :unit s}
+                        (ex-message t)
+                        (assoc :cause-msg (ex-message t))))))))
+
+
+(let [mem (volatile! {})]
+  (defn- parse-unit [s]
+    (if-let [unit (get @mem s)]
+      unit
+      (let [unit (parse-unit* s)]
+        (vswap! mem assoc s unit)
+        unit))))
+
+
+(defn unit? [x]
+  (instance? Unit x))
+
+
+(s/fdef format-unit
+  :args (s/cat :unit unit?))
+
+(defn format-unit
+  "Formats the unit after UCUM so that it is parsable again."
+  [unit]
+  (.format ucum-format unit))
 
 
 (defn quantity? [x]
@@ -41,10 +68,6 @@
   [value unit]
   (->> (parse-unit unit)
        (Quantities/getQuantity value)))
-
-
-(defn print-unit [unit]
-  (.format ucum-format unit))
 
 
 (defprotocol QuantityDivide

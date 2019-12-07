@@ -1,14 +1,18 @@
 (ns blaze.datomic.value
   "Read/write for possibly polymorphic values."
   (:require
-    [blaze.datomic.quantity :refer [quantity format-unit]])
+    [blaze.datomic.quantity :as quantity])
   (:import
+    [blaze.datomic.quantity
+     UcumQuantityWithoutUnit
+     UcumQuantityWithSameUnit
+     UcumQuantityWithDifferentUnit
+     CustomQuantity]
     [java.nio ByteBuffer]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
                ZoneOffset]
     [java.lang.reflect Array]
-    [java.nio.charset Charset]
-    [javax.measure Quantity])
+    [java.nio.charset Charset])
   (:refer-clojure :exclude [read]))
 
 
@@ -37,12 +41,15 @@
 (def ^:private ^:const ^byte decimal-long-code (byte 9))
 (def ^:private ^:const ^byte decimal-big-int-code (byte 10))
 (def ^:private ^:const ^byte nil-code (byte 11))
-(def ^:private ^:const ^byte quantity-code (byte 12))
+(def ^:private ^:const ^byte ucum-quantity-without-unit-code (byte 12))
 (def ^:private ^:const ^byte string-byte-len-code (byte 13))
 (def ^:private ^:const ^byte string-short-len-code (byte 14))
 (def ^:private ^:const ^byte string-int-len-code (byte 15))
 (def ^:private ^:const ^byte boolean-code (byte 16))
 (def ^:private ^:const ^byte bytes-code (byte 17))
+(def ^:private ^:const ^byte ucum-quantity-with-same-unit-code (byte 18))
+(def ^:private ^:const ^byte ucum-quantity-with-different-unit-code (byte 19))
+(def ^:private ^:const ^byte custom-quantity-code (byte 20))
 
 (def ^:private ^Charset utf-8 (Charset/forName "utf8"))
 
@@ -91,7 +98,7 @@
     nil
 
     12
-    (quantity (read* bb) (read* bb))
+    (quantity/ucum-quantity-without-unit (read* bb) (read* bb))
 
     13
     (let [bytes (byte-array (.get bb))]
@@ -104,7 +111,16 @@
     17
     (let [bytes (byte-array (.getInt bb))]
       (.get bb bytes)
-      bytes)))
+      bytes)
+
+    18
+    (quantity/ucum-quantity-with-same-unit (read* bb) (read* bb))
+
+    19
+    (quantity/ucum-quantity-with-different-unit (read* bb) (read* bb) (read* bb))
+
+    20
+    (quantity/custom-quantity (read* bb) (read* bb) (read* bb) (read* bb))))
 
 
 (extend-type
@@ -228,14 +244,65 @@
   (write [_]
     (byte-array [nil-code]))
 
-  Quantity
+  UcumQuantityWithoutUnit
   (write [q]
-    (let [^bytes value-bytes (write (.getValue q))
-          ^bytes unit-bytes (write (format-unit (.getUnit q)))]
-      (-> (doto (ByteBuffer/allocate (+ (Array/getLength value-bytes) (Array/getLength unit-bytes) 1))
-            (.put quantity-code)
+    (let [^bytes value-bytes (write (quantity/value q))
+          ^bytes code-bytes (write (quantity/code q))]
+      (-> (doto (ByteBuffer/allocate
+                  (+ 1
+                     (Array/getLength value-bytes)
+                     (Array/getLength code-bytes)))
+            (.put ucum-quantity-without-unit-code)
             (.put value-bytes)
-            (.put unit-bytes))
+            (.put code-bytes))
+          (.array))))
+
+  UcumQuantityWithSameUnit
+  (write [q]
+    (let [^bytes value-bytes (write (quantity/value q))
+          ^bytes code-bytes (write (quantity/code q))]
+      (-> (doto (ByteBuffer/allocate
+                  (+ 1
+                     (Array/getLength value-bytes)
+                     (Array/getLength code-bytes)))
+            (.put ucum-quantity-with-same-unit-code)
+            (.put value-bytes)
+            (.put code-bytes))
+          (.array))))
+
+  UcumQuantityWithDifferentUnit
+  (write [q]
+    (let [^bytes value-bytes (write (quantity/value q))
+          ^bytes unit-bytes (write (quantity/unit q))
+          ^bytes code-bytes (write (quantity/code q))]
+      (-> (doto (ByteBuffer/allocate
+                  (+ 1
+                     (Array/getLength value-bytes)
+                     (Array/getLength unit-bytes)
+                     (Array/getLength code-bytes)))
+            (.put ucum-quantity-with-different-unit-code)
+            (.put value-bytes)
+            (.put unit-bytes)
+            (.put code-bytes))
+          (.array))))
+
+  CustomQuantity
+  (write [q]
+    (let [^bytes value-bytes (write (quantity/value q))
+          ^bytes unit-bytes (write (quantity/unit q))
+          ^bytes system-bytes (write (quantity/system q))
+          ^bytes code-bytes (write (quantity/code q))]
+      (-> (doto (ByteBuffer/allocate
+                  (+ 1
+                     (Array/getLength value-bytes)
+                     (Array/getLength unit-bytes)
+                     (Array/getLength system-bytes)
+                     (Array/getLength code-bytes)))
+            (.put custom-quantity-code)
+            (.put value-bytes)
+            (.put unit-bytes)
+            (.put system-bytes)
+            (.put code-bytes))
           (.array))))
 
   String
@@ -292,12 +359,12 @@
   (let [bytes (write 42.23M)]
     (criterium.core/bench (read bytes)))
 
-  (def bytes (write (quantity 1M "kg")))
-  (count bytes)
+  (count (write (quantity/ucum-quantity-without-unit 1M "kg")))
+  (count (write (quantity/ucum-quantity-with-same-unit 1M "kg")))
+  (count (write (quantity/ucum-quantity-with-different-unit 1M "kg" "kg")))
+  (count (write (quantity/custom-quantity 1M "foo" "bar" "baz")))
 
   (criterium.core/bench (read bytes))
-
-  (format-unit (.getUnit (quantity 1M "nm")))
 
   (read (write (Year/of 2012)))
   (read (write (YearMonth/of 2012 2)))

@@ -1,19 +1,22 @@
 (ns blaze.datomic.pull
   "Create Pull Patterns from FHIR Structure Definitions"
   (:require
-    [blaze.datomic.quantity :as quantity]
+    [blaze.datomic.quantity]
     [blaze.datomic.util :as util]
     [blaze.datomic.value :as value]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [datomic.api :as d]
     [datomic-spec.core :as ds])
   (:import
+    [blaze.datomic.quantity
+     UcumQuantityWithoutUnit
+     UcumQuantityWithSameUnit
+     UcumQuantityWithDifferentUnit
+     CustomQuantity]
     [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
                YearMonth]
     [java.time.format DateTimeFormatter]
-    [java.util Base64]
-    [javax.measure Quantity]))
+    [java.util Base64]))
 
 
 (set! *warn-on-reflection* true)
@@ -30,35 +33,63 @@
   (Class/forName "[B")
   (-to-json [bytes]
     (.encodeToString (Base64/getEncoder) ^bytes bytes))
+
   Year
   (-to-json [year]
     (str year))
+
   YearMonth
   (-to-json [year-month]
     (str year-month))
+
   LocalDate
   (-to-json [date]
     (.format (DateTimeFormatter/ISO_LOCAL_DATE) date))
+
   LocalDateTime
   (-to-json [date-time]
     (.format (DateTimeFormatter/ISO_LOCAL_DATE_TIME) date-time))
+
   LocalTime
   (-to-json [time]
     (.format (DateTimeFormatter/ISO_LOCAL_TIME) time))
+
   OffsetDateTime
   (-to-json [date-time]
     (.format (DateTimeFormatter/ISO_OFFSET_DATE_TIME) date-time))
+
   Instant
   (-to-json [instant]
     (str instant))
-  Quantity
+
+  UcumQuantityWithoutUnit
   (-to-json [q]
-    (let [unit (quantity/format-unit (.getUnit q))]
-      (cond->
-        {"value" (.getValue q)}
-        (not (str/blank? unit))
-        (assoc "system" "http://unitsofmeasure.org"
-               "code" unit))))
+    {"value" (.value q)
+     "system" "http://unitsofmeasure.org"
+     "code" (.code q)})
+
+  UcumQuantityWithSameUnit
+  (-to-json [q]
+    {"value" (.value q)
+     "unit" (.code q)
+     "system" "http://unitsofmeasure.org"
+     "code" (.code q)})
+
+  UcumQuantityWithDifferentUnit
+  (-to-json [q]
+    {"value" (.value q)
+     "unit" (.unit q)
+     "system" "http://unitsofmeasure.org"
+     "code" (.code q)})
+
+  CustomQuantity
+  (-to-json [q]
+    (cond->
+      {"value" (.value q)}
+      (.unit q) (assoc "unit" (.unit q))
+      (.system q) (assoc "system" (.system q))
+      (.code q) (assoc "code" (.code q))))
+
   Object
   (-to-json [x]
     x))
