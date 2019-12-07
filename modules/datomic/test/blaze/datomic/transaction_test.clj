@@ -721,7 +721,7 @@
                   "system" "http://unitsofmeasure.org"
                   "code" "m"}}))
             [[:db/add id :Observation/valueQuantity
-              (quantity/ucum-quantity-without-unit 1M "m")]
+              (quantity/ucum-quantity-without-unit 1 "m")]
              [:db/add id :Observation/value :Observation/valueQuantity]
              [:db.fn/cas id :instance/version -3 -7]]))))
 
@@ -739,7 +739,7 @@
                  "valueQuantity"
                  {"value" 1 "unit" "a"}}))
             [[:db/add id :Observation/valueQuantity
-              (quantity/custom-quantity 1M "a" nil nil)]
+              (quantity/custom-quantity 1 "a" nil nil)]
              [:db/add id :Observation/value :Observation/valueQuantity]
              [:db.fn/cas id :instance/version -3 -7]]))))
 
@@ -890,8 +890,11 @@
     (testing "Code typed extension"
       ;; TODO: resolve the value set binding here
       (let [[db draft-id] (test-util/with-code db "draft")
-            [db extension-id] (test-util/with-non-primitive db :Extension/url "http://foo")
-            [db id] (test-util/with-resource db "CodeSystem" "0" :CodeSystem/extension extension-id)]
+            [db extension-id]
+            (test-util/with-non-primitive db :Extension/url "http://foo")
+            [db id]
+            (test-util/with-resource
+              db "CodeSystem" "0" :CodeSystem/extension extension-id)]
         (is
           (=
             (resource-upsert
@@ -903,6 +906,27 @@
                  "valueCode" "draft"}]})
             [[:db/add extension-id :Extension/valueCode draft-id]
              [:db/add extension-id :Extension/value :Extension/valueCode]
+             [:db.fn/cas id :instance/version -3 -7]]))))
+
+    (testing "Reference typed extension"
+      (let [[db organization-id]
+            (test-util/with-resource db "Organization" "0")
+            [db extension-id]
+            (test-util/with-non-primitive db :Extension/url "http://foo")
+            [db id]
+            (test-util/with-resource
+              db "Specimen" "0" :Specimen/extension extension-id)]
+        (is
+          (=
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "Specimen"
+               "extension"
+               [{"url" "http://foo"
+                 "valueReference" {"reference" "Organization/0"}}]})
+            [[:db/add extension-id :Extension/valueReference organization-id]
+             [:db/add extension-id :Extension/value :Extension/valueReference]
              [:db.fn/cas id :instance/version -3 -7]]))))
 
 
@@ -1163,14 +1187,34 @@
             [db] (test-util/with-resource db "Schedule" "0" :Schedule/actor actor-id)]
         (is
           (empty?
-            (with-redefs [d/tempid (fn [partition] partition)]
-              (resource-upsert
-                db nil :server-assigned-id
-                {"id" "0"
-                 "resourceType" "Schedule"
-                 "actor"
-                 [{"reference" "Location/0"
-                   "display" "foo"}]})))))))
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "Schedule"
+               "actor"
+               [{"reference" "Location/0"
+                 "display" "foo"}]})))))
+
+    (testing "references in extensions"
+      (let [[db organization-id]
+            (test-util/with-resource db "Organization" "0")
+            [db extension-id]
+            (test-util/with-non-primitive
+              db :Extension/url "http://foo"
+              :Extension/value :Extension/valueReference
+              :Extension/valueReference organization-id)
+            [db]
+            (test-util/with-resource
+              db "Specimen" "0" :Specimen/extension extension-id)]
+        (is
+          (empty?
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "Specimen"
+               "extension"
+               [{"url" "http://foo"
+                 "valueReference" {"reference" "Organization/0"}}]}))))))
 
 
 

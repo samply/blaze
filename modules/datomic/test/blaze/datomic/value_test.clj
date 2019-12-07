@@ -56,7 +56,7 @@
 (deftest ucum-quantity-without-unit-test
   (are [x] (= x (read (write x)))
     (quantity/ucum-quantity-without-unit 1M "kg")
-    (quantity/ucum-quantity-without-unit 170M "cm")
+    (quantity/ucum-quantity-without-unit 170 "cm")
     (quantity/ucum-quantity-without-unit 1.1M "pl")
     (quantity/ucum-quantity-without-unit 25M "kg/m2")))
 

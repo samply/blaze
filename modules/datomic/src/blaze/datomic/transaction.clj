@@ -34,7 +34,7 @@
 (defn- coerce-decimal [{:db/keys [ident]} value]
   (cond
     (decimal? value) value
-    (int? value) (BigDecimal/valueOf ^long value)
+    (int? value) value
     :else
     (throw-anom
       ::anom/incorrect
@@ -352,7 +352,9 @@
         reference
         (if (str/starts-with? reference "#")
           (if-let [eid (resolve-local-reference context (subs reference 1))]
-            [[:db/add id ident eid]]
+            (cond-> [[:db/add id ident eid]]
+              part-of-choice-type?
+              (conj [:db/add id type-attr-ident ident]))
             (throw (ex-info (str "Local reference `" reference "` can't be resolved.")
                             {::anom/category ::anom/incorrect
                              :fhir/issue "value"
@@ -361,18 +363,22 @@
           (let [[type ref-id] (str/split reference #"/")]
             (if (util/cached-entity db (keyword type))
               (if-let [eid (resolve-reference context type ref-id)]
-                [[:db/add id ident eid]]
-                (throw (ex-info (str "Reference `" reference "` can't be resolved.")
-                                {::anom/category ::anom/incorrect
-                                 :fhir/issue "value"
-                                 :reference value
-                                 :fhir.issue/expression (ident->path ident)})))
-              (throw (ex-info (str "Invalid reference `" reference `". The type `"
-                                   type "` is unknown.")
-                              {::anom/category ::anom/incorrect
-                               :fhir/issue "value"
-                               :reference value
-                               :fhir.issue/expression (ident->path ident)})))))
+                (cond-> [[:db/add id ident eid]]
+                  part-of-choice-type?
+                  (conj [:db/add id type-attr-ident ident]))
+                (throw-anom
+                  ::anom/incorrect
+                  (format "Reference `%s` can't be resolved." reference)
+                  :fhir/issue "value"
+                  :reference value
+                  :fhir.issue/expression (ident->path ident)))
+              (throw-anom
+                ::anom/incorrect
+                (format "Invalid reference `%s`. The type `%s` is unknown."
+                        reference type)
+                :fhir/issue "value"
+                :reference value
+                :fhir.issue/expression (ident->path ident)))))
         identifier
         (do (log/warn (str "Unsupported logical reference in element `"
                            (ident->path ident) "`. Skip storing it."))
