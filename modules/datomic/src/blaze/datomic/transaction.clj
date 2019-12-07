@@ -79,15 +79,22 @@
         :fhir.issue/expression (ident->path ident)))))
 
 
-(defn- quantity [element {:strs [value code unit]}]
+(defn- quantity [element {:strs [value comparator unit system code]}]
+  (when (some? comparator)
+    (throw-anom
+      ::anom/unsupported
+      "Unsupported comparator on Quantity type."
+      :fhir/issue "not-supported"))
   (let [value (coerce-decimal element value)]
-    (try
-      (if code
-        (quantity/quantity value code)
-        (quantity/quantity value unit))
-      (catch Exception _
-        ;; TODO: find a better solution as to skip the unit
-        (quantity/quantity value "")))))
+    (if (= "http://unitsofmeasure.org" system)
+      (cond
+        (nil? unit)
+        (quantity/ucum-quantity-without-unit value code)
+        (= unit code)
+        (quantity/ucum-quantity-with-same-unit value code)
+        :else
+        (quantity/ucum-quantity-with-different-unit value unit code))
+      (quantity/custom-quantity value unit system code))))
 
 
 (defn coerce-value
@@ -915,12 +922,14 @@
     (let [resource (prepare-resource resource)]
       (if-let [old-resource (util/resource db type id)]
 
+        ;; update
         (let [tx-data (upsert-resource {:db db :tempids tempids} type
                                        old-resource resource)
               {:db/keys [id] :instance/keys [version]} old-resource]
           (when (or (seq tx-data) (util/deleted? old-resource))
             (conj tx-data (version-decrement-upsert id version))))
 
+        ;; create
         (let [tempid (get-in tempids [type id])]
           (assert tempid)
           (conj (upsert-resource {:db db :tempids tempids} type

@@ -4869,9 +4869,6 @@
       #elm/as ["{http://hl7.org/fhir}canonical" #elm/string "a"]
       "a"
 
-      #elm/as ["{http://hl7.org/fhir}Quantity" #elm/quantity [1.0M "m"]]
-      (quantity 1.0M "m")
-
       #elm/as ["{http://hl7.org/fhir}dateTime" #elm/date-time "2019-09-04"]
       (LocalDate/of 2019 9 4)
 

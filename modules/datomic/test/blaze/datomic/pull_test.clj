@@ -1,7 +1,7 @@
 (ns blaze.datomic.pull-test
   (:require
     [blaze.datomic.pull :refer [pull-resource]]
-    [blaze.datomic.quantity :refer [quantity]]
+    [blaze.datomic.quantity :as quantity]
     [blaze.datomic.test-util :as test-util]
     [blaze.datomic.value :as value]
     [clojure.spec.test.alpha :as st]
@@ -63,7 +63,7 @@
 
     (testing "with date type"
       (let [[db] (test-util/with-resource db "Patient" "0" :Patient/birthDate
-                                (value/write (Year/of 2000)))]
+                                          (value/write (Year/of 2000)))]
         (given (pull-resource db "Patient" "0")
           "birthDate" := "2000")))
 
@@ -86,14 +86,68 @@
             "code" "Q14"})))
 
 
-  (testing "Quantity"
+  (testing "UcumQuantityWithoutUnit"
     (let [[db]
           (test-util/with-resource
             db "Observation" "0"
-            :Observation/valueQuantity (value/write (quantity 1M "m"))
+            :Observation/valueQuantity
+            (value/write (quantity/ucum-quantity-without-unit 1M "m"))
             :Observation/value :Observation/valueQuantity)]
       (given (pull-resource db "Observation" "0")
-        "valueQuantity" := {"value" 1M "system" "http://unitsofmeasure.org" "code" "m"})))
+        ["valueQuantity" "value"] := 1M
+        ["valueQuantity" "unit"] :? nil?
+        ["valueQuantity" "system"] := "http://unitsofmeasure.org"
+        ["valueQuantity" "code"] := "m")))
+
+  (testing "UcumQuantityWithSameUnit"
+    (let [[db]
+          (test-util/with-resource
+            db "Observation" "0"
+            :Observation/valueQuantity
+            (value/write (quantity/ucum-quantity-with-same-unit 1M "m"))
+            :Observation/value :Observation/valueQuantity)]
+      (given (pull-resource db "Observation" "0")
+        ["valueQuantity" "value"] := 1M
+        ["valueQuantity" "unit"] := "m"
+        ["valueQuantity" "system"] := "http://unitsofmeasure.org"
+        ["valueQuantity" "code"] := "m")))
+
+  (testing "UcumQuantityWithDifferentUnit"
+    (let [[db]
+          (test-util/with-resource
+            db "Observation" "0"
+            :Observation/valueQuantity
+            (value/write (quantity/ucum-quantity-with-different-unit 1M "meter" "m"))
+            :Observation/value :Observation/valueQuantity)]
+      (given (pull-resource db "Observation" "0")
+        ["valueQuantity" "value"] := 1M
+        ["valueQuantity" "unit"] := "meter"
+        ["valueQuantity" "system"] := "http://unitsofmeasure.org"
+        ["valueQuantity" "code"] := "m")))
+
+  (testing "CustomQuantity"
+    (testing "all set"
+      (let [[db]
+            (test-util/with-resource
+              db "Observation" "0"
+              :Observation/valueQuantity
+              (value/write (quantity/custom-quantity 1M "foo" "bar" "baz"))
+              :Observation/value :Observation/valueQuantity)]
+        (given (pull-resource db "Observation" "0")
+          ["valueQuantity" "value"] := 1M
+          ["valueQuantity" "unit"] := "foo"
+          ["valueQuantity" "system"] := "bar"
+          ["valueQuantity" "code"] := "baz")))
+
+    (testing "all nil"
+      (let [[db]
+            (test-util/with-resource
+              db "Observation" "0"
+              :Observation/valueQuantity
+              (value/write (quantity/custom-quantity 1M nil nil nil))
+              :Observation/value :Observation/valueQuantity)]
+        (given (pull-resource db "Observation" "0")
+          ["valueQuantity"] := {"value" 1M}))))
 
 
   (testing "DateTime"
@@ -124,8 +178,8 @@
   (testing "Contained resource"
     (let [[db id] (test-util/with-non-primitive db :Patient/active true :local-id "1")
           [db] (test-util/with-resource db "Observation" "0"
-                              :Observation/contained id
-                              :Observation/subject id)]
+                                        :Observation/contained id
+                                        :Observation/subject id)]
       (given (pull-resource db "Observation" "0")
         ["contained" 0 "id"] := "1"
         ["subject" "reference"] := "#1"))))

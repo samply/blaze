@@ -16,6 +16,7 @@
     [blaze.elm.compiler.property :as property]
     [blaze.elm.compiler.retrieve :as retrieve]
     [blaze.elm.compiler.query :as query]
+    [blaze.datomic.quantity :as fhir-quantity]
     [blaze.datomic.util :as datomic-util]
     [blaze.elm.aggregates :as aggregates]
     [blaze.elm.boolean]
@@ -653,7 +654,7 @@
   (let [operands (mapv #(compile context %) operands)]
     (case name
       "ToQuantity"
-      (first operands)
+      (function/->ToQuantityFunctionExpression (first operands))
 
       "ToDate"
       (function/->ToDateFunctionExpression (first operands))
@@ -2403,7 +2404,7 @@
 (defn- matches-fhir-named-type-fn [type-name]
   (cond
     (= "Quantity" type-name)
-    quantity?
+    fhir-quantity/quantity?
 
     (Character/isUpperCase ^char (first type-name))
     (fn matches-type? [x]

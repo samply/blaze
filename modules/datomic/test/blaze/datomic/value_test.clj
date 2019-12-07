@@ -1,6 +1,6 @@
 (ns blaze.datomic.value-test
   (:require
-    [blaze.datomic.quantity :refer [quantity]]
+    [blaze.datomic.quantity :as quantity]
     [blaze.datomic.value :refer [read write]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer [are deftest is testing]]
@@ -53,12 +53,28 @@
       (dec (BigDecimal/valueOf Long/MIN_VALUE)) 11)))
 
 
-(deftest quantity-test
+(deftest ucum-quantity-without-unit-test
   (are [x] (= x (read (write x)))
-    (quantity 1M "kg")
-    (quantity 170M "cm")
-    (quantity 1.1M "pl")
-    (quantity 25M "kg/m2")))
+    (quantity/ucum-quantity-without-unit 1M "kg")
+    (quantity/ucum-quantity-without-unit 170M "cm")
+    (quantity/ucum-quantity-without-unit 1.1M "pl")
+    (quantity/ucum-quantity-without-unit 25M "kg/m2")))
+
+
+(deftest ucum-quantity-with-same-unit-test
+  (are [x] (= x (read (write x)))
+    (quantity/ucum-quantity-with-same-unit 1M "kg")))
+
+
+(deftest ucum-quantity-with-different-unit-test
+  (are [x] (= x (read (write x)))
+    (quantity/ucum-quantity-with-different-unit 1M "kilogram" "kg")
+    (quantity/ucum-quantity-with-different-unit 170M "centimeter" "cm")))
+
+
+(deftest custom-quantity-test
+  (are [x] (= x (read (write x)))
+    (quantity/custom-quantity 1M "Foo" "system" "foo")))
 
 
 (deftest bytes-test

@@ -1,56 +1,90 @@
 (ns blaze.datomic.quantity
   (:require
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom])
-  (:import
-    [javax.measure Unit]
-    [javax.measure.spi ServiceProvider]
-    [javax.measure.format UnitFormat]
-    [tec.units.indriya.quantity Quantities]))
+    [clojure.spec.alpha :as s]))
 
 
-(def ^:private ^UnitFormat ucum-format
-  (.getUnitFormat (.getUnitFormatService (ServiceProvider/current)) "UCUM"))
+(defprotocol Quantity
+  (value [_])
+  (unit [_])
+  (system [_])
+  (code [_]))
 
 
-(defn- parse-unit* [s]
-  (try
-    (.parse ucum-format s)
-    (catch Throwable t
-      (throw (ex-info (str "Problem while parsing the unit `" s "`.")
-                      (cond->
-                        {::anom/category ::anom/incorrect
-                         :unit s}
-                        (ex-message t)
-                        (assoc :cause-msg (ex-message t))))))))
+(defn quantity? [x]
+  (satisfies? Quantity x))
 
 
-(let [mem (volatile! {})]
-  (defn- parse-unit [s]
-    (if-let [unit (get @mem s)]
-      unit
-      (let [unit (parse-unit* s)]
-        (vswap! mem assoc s unit)
-        unit))))
+(defrecord UcumQuantityWithoutUnit [value code]
+  Quantity
+  (value [_] value)
+  (unit [_])
+  (system [_] "http://unitsofmeasure.org")
+  (code [_] code))
 
 
-(s/fdef quantity
-  :args (s/cat :value decimal? :unit (s/nilable string?)))
+(s/fdef ucum-quantity-without-unit
+  :args (s/cat :value decimal? :code string?))
 
-(defn quantity
-  "Creates a quantity with numerical value and string unit."
-  [value unit]
-  (Quantities/getQuantity value (parse-unit (or unit ""))))
-
-
-(defn unit? [x]
-  (instance? Unit x))
+(defn ucum-quantity-without-unit
+  "Creates a quantity with system `http://unitsofmeasure.org` and no
+  human-readable unit."
+  [value code]
+  (->UcumQuantityWithoutUnit value code))
 
 
-(s/fdef format-unit
-  :args (s/cat :unit unit?))
+(defrecord UcumQuantityWithSameUnit [value code]
+  Quantity
+  (value [_] value)
+  (unit [_] code)
+  (system [_] "http://unitsofmeasure.org")
+  (code [_] code))
 
-(defn format-unit
-  "Formats the unit after UCUM so that it is parsable again."
-  [unit]
-  (.format ucum-format unit))
+
+(s/fdef ucum-quantity-with-same-unit
+  :args (s/cat :value decimal? :code string?))
+
+(defn ucum-quantity-with-same-unit
+  "Creates a quantity with system `http://unitsofmeasure.org` and a
+  human-readable unit identical to code."
+  [value code]
+  (->UcumQuantityWithSameUnit value code))
+
+
+(defrecord UcumQuantityWithDifferentUnit [value unit code]
+  Quantity
+  (value [_] value)
+  (unit [_] unit)
+  (system [_] "http://unitsofmeasure.org")
+  (code [_] code))
+
+
+(s/fdef ucum-quantity-with-different-unit
+  :args (s/cat :value decimal? :unit string? :code string?))
+
+(defn ucum-quantity-with-different-unit
+  "Creates a quantity with system `http://unitsofmeasure.org` and a
+  human-readable unit different from code."
+  [value unit code]
+  (->UcumQuantityWithDifferentUnit value unit code))
+
+
+(defrecord CustomQuantity [value unit system code]
+  Quantity
+  (value [_] value)
+  (unit [_] unit)
+  (system [_] system)
+  (code [_] code))
+
+
+(s/fdef custom-quantity
+  :args
+  (s/cat
+    :value decimal?
+    :unit (s/nilable string?)
+    :system (s/nilable string?)
+    :code (s/nilable string?)))
+
+(defn custom-quantity
+  "Creates a quantity with custom unit, system and code."
+  [value unit system code]
+  (->CustomQuantity value unit system code))
