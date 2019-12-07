@@ -50,6 +50,8 @@
 (def ^:private ^:const ^byte ucum-quantity-with-same-unit-code (byte 18))
 (def ^:private ^:const ^byte ucum-quantity-with-different-unit-code (byte 19))
 (def ^:private ^:const ^byte custom-quantity-code (byte 20))
+(def ^:private ^:const ^byte int-code (byte 21))
+(def ^:private ^:const ^byte long-code (byte 22))
 
 (def ^:private ^Charset utf-8 (Charset/forName "utf8"))
 
@@ -120,7 +122,13 @@
     (quantity/ucum-quantity-with-different-unit (read* bb) (read* bb) (read* bb))
 
     20
-    (quantity/custom-quantity (read* bb) (read* bb) (read* bb) (read* bb))))
+    (quantity/custom-quantity (read* bb) (read* bb) (read* bb) (read* bb))
+
+    21
+    (.getInt bb)
+
+    22
+    (.getLong bb)))
 
 
 (extend-type
@@ -257,6 +265,25 @@
             (.put code-bytes))
           (.array))))
 
+  String
+  (write [s]
+    (let [bytes (.getBytes s utf-8)
+          length (Array/getLength bytes)]
+      (condp > length
+        128
+        (-> (doto (ByteBuffer/allocate (+ length 2))
+              (.put string-byte-len-code)
+              (.put (byte length))
+              (.put bytes))
+            (.array)))))
+
+  Boolean
+  (write [b]
+    (-> (doto (ByteBuffer/allocate 2)
+          (.put (byte boolean-code))
+          (.put (byte (if b 1 0))))
+        (.array)))
+
   UcumQuantityWithSameUnit
   (write [q]
     (let [^bytes value-bytes (write (quantity/value q))
@@ -305,23 +332,18 @@
             (.put code-bytes))
           (.array))))
 
-  String
-  (write [s]
-    (let [bytes (.getBytes s utf-8)
-          length (Array/getLength bytes)]
-      (condp > length
-        128
-        (-> (doto (ByteBuffer/allocate (+ length 2))
-              (.put string-byte-len-code)
-              (.put (byte length))
-              (.put bytes))
-            (.array)))))
+  Integer
+  (write [i]
+    (-> (doto (ByteBuffer/allocate 5)
+          (.put (byte int-code))
+          (.putInt i))
+        (.array)))
 
-  Boolean
-  (write [b]
-    (-> (doto (ByteBuffer/allocate 2)
-          (.put (byte 16))
-          (.put (byte (if b 1 0))))
+  Long
+  (write [l]
+    (-> (doto (ByteBuffer/allocate 9)
+          (.put (byte long-code))
+          (.putLong l))
         (.array))))
 
 
@@ -360,6 +382,7 @@
     (criterium.core/bench (read bytes)))
 
   (count (write (quantity/ucum-quantity-without-unit 1M "kg")))
+  (count (write (quantity/ucum-quantity-without-unit 1 "kg")))
   (count (write (quantity/ucum-quantity-with-same-unit 1M "kg")))
   (count (write (quantity/ucum-quantity-with-different-unit 1M "kg" "kg")))
   (count (write (quantity/custom-quantity 1M "foo" "bar" "baz")))

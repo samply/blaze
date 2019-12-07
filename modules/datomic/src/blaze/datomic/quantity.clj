@@ -23,7 +23,7 @@
 
 
 (s/fdef ucum-quantity-without-unit
-  :args (s/cat :value decimal? :code string?))
+  :args (s/cat :value number? :code string?))
 
 (defn ucum-quantity-without-unit
   "Creates a quantity with system `http://unitsofmeasure.org` and no
@@ -41,7 +41,7 @@
 
 
 (s/fdef ucum-quantity-with-same-unit
-  :args (s/cat :value decimal? :code string?))
+  :args (s/cat :value number? :code string?))
 
 (defn ucum-quantity-with-same-unit
   "Creates a quantity with system `http://unitsofmeasure.org` and a
@@ -59,7 +59,7 @@
 
 
 (s/fdef ucum-quantity-with-different-unit
-  :args (s/cat :value decimal? :unit string? :code string?))
+  :args (s/cat :value number? :unit string? :code string?))
 
 (defn ucum-quantity-with-different-unit
   "Creates a quantity with system `http://unitsofmeasure.org` and a
@@ -79,7 +79,7 @@
 (s/fdef custom-quantity
   :args
   (s/cat
-    :value decimal?
+    :value number?
     :unit (s/nilable string?)
     :system (s/nilable string?)
     :code (s/nilable string?)))
