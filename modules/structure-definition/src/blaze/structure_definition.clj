@@ -21,10 +21,6 @@
   string?)
 
 
-(s/def :ElementDefinition.type/_code
-  map?)
-
-
 (s/def :ElementDefinition/type
   (s/coll-of
     (s/keys :req [:ElementDefinition.type/code])))
@@ -36,8 +32,7 @@
 
 (s/def :ElementDefinition.un/type
   (s/coll-of
-    (s/keys :req-un [(or :ElementDefinition.type/code
-                         :ElementDefinition.type/_code)])))
+    (s/keys :req-un [:ElementDefinition.type/code])))
 
 
 (s/def :ElementDefinition.binding/strength

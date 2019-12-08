@@ -34,7 +34,7 @@
 (defn- coerce-decimal [{:db/keys [ident]} value]
   (cond
     (decimal? value) value
-    (int? value) value
+    (int? value) (BigDecimal/valueOf ^long value)
     :else
     (throw-anom
       ::anom/incorrect
@@ -42,6 +42,12 @@
       :fhir/issue "value"
       :fhir.issue/expression (ident->path ident)
       :value value)))
+
+
+(defn- coerce-decimal-for-quantity [element value]
+  (if (int? value)
+    value
+    (coerce-decimal element value)))
 
 
 (defn- coerce-date-time [^String value]
@@ -85,7 +91,7 @@
       ::anom/unsupported
       "Unsupported comparator on Quantity type."
       :fhir/issue "not-supported"))
-  (let [value (coerce-decimal element value)]
+  (let [value (coerce-decimal-for-quantity element value)]
     (if (= "http://unitsofmeasure.org" system)
       (cond
         (nil? unit)
@@ -112,7 +118,8 @@
       "markdown"
       "unsignedInt"
       "positiveInt"
-      "xhtml") value
+      "xhtml"
+      "http://hl7.org/fhirpath/System.String") value
     "decimal" (coerce-decimal element value)
     "instant" (Date/from (Instant/from (.parse DateTimeFormatter/ISO_DATE_TIME value)))
     "date" (coerce-date value)
@@ -120,7 +127,9 @@
     "time" (LocalTime/parse value)
     "base64Binary" (.decode (Base64/getDecoder) ^String value)
     "uuid" (uuid element value)
-    "Quantity" (quantity element value)))
+    ;; TODO: Remove direct references to special Quantity types
+    ("Age" "Count" "Distance" "Duration"
+      "MoneyQuantity" "SimpleQuantity" "Quantity") (quantity element value)))
 
 
 (defn- write
@@ -153,7 +162,12 @@
 
 (defn- check-primitive [{:element/keys [primitive? type-code] :db/keys [ident]} value]
   (when-not (= "code" type-code)
-    (if (and primitive? (not (= "Quantity" type-code)))
+    (if
+      (and
+        primitive?
+        ;; TODO: Remove direct references to special Quantity types
+        (not (#{"Age" "Count" "Distance" "Duration"
+                "MoneyQuantity" "SimpleQuantity" "Quantity"} type-code)))
       (when (map? value)
         (throw-anom
           ::anom/incorrect

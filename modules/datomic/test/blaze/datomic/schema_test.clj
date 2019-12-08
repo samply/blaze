@@ -53,7 +53,7 @@
              :element/primitive? true
              :element/choice-type? false
              :ElementDefinition/isSummary true
-             :element/type-code "id"
+             :element/type-code "http://hl7.org/fhirpath/System.String"
              :element/json-key "id"}
             [:db/add "Patient" :type/elements "Patient.id"]])))
 
@@ -102,7 +102,7 @@
              :ElementDefinition/isSummary true
              :element/type-code "code"
              :element/json-key "gender"
-             :element/value-set-binding "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.0"}
+             :element/value-set-binding "http://hl7.org/fhir/ValueSet/administrative-gender|4.0.1"}
             [:db/add "Patient" :type/elements "Patient.gender"]])))
 
   (testing "Patient.birthDate"
@@ -219,7 +219,7 @@
              :ElementDefinition/isSummary true
              :element/type-code "code"
              :element/json-key "type"
-             :element/value-set-binding "http://hl7.org/fhir/ValueSet/link-type|4.0.0"}
+             :element/value-set-binding "http://hl7.org/fhir/ValueSet/link-type|4.0.1"}
             [:db/add "Patient.link" :type/elements "Patient.link.type"]])))
 
   (testing "Patient.extension"
@@ -346,7 +346,7 @@
              :element/primitive? true
              :element/choice-type? false
              :ElementDefinition/isSummary true
-             :element/type-code "id"
+             :element/type-code "http://hl7.org/fhirpath/System.String"
              :element/json-key "id"}
             [:db/add "Bundle" :type/elements "Bundle.id"]])))
 
@@ -360,7 +360,7 @@
              :db/cardinality :db.cardinality/one
              :element/primitive? true
              :element/choice-type? false
-             :element/type-code "string"
+             :element/type-code "http://hl7.org/fhirpath/System.String"
              :element/json-key "id"}
             [:db/add "ElementDefinition" :type/elements "ElementDefinition.id"]])))
 
@@ -374,7 +374,7 @@
              :db/cardinality :db.cardinality/one
              :element/primitive? true
              :element/choice-type? false
-             :element/type-code "string"
+             :element/type-code "http://hl7.org/fhirpath/System.String"
              :element/json-key "id"}
             [:db/add "Money" :type/elements "Money.id"]])))
 
@@ -488,4 +488,78 @@
              :db/ident :ContactPoint}
             {:db/id "part.ContactPoint"
              :db/ident :part/ContactPoint}
-            [:db/add :db.part/db :db.install/partition "part.ContactPoint"]]))))
+            [:db/add :db.part/db :db.install/partition "part.ContactPoint"]])))
+
+  (testing "ActivityDefinition.timing"
+    (is (= (element-definition-tx-data
+             (structure-definition "ActivityDefinition")
+             (element-definition "ActivityDefinition.timing[x]"))
+           [{:db/id "ActivityDefinition.timing[x]",
+             :db/ident :ActivityDefinition/timing,
+             :db/cardinality :db.cardinality/one,
+             :element/choice-type? true,
+             :db/valueType :db.type/ref}
+            {:element/type-attr-ident :ActivityDefinition/timing,
+             :db/valueType :db.type/ref,
+             :element/type-code "Timing",
+             :element/json-key "timingTiming",
+             :element/part-of-choice-type? true,
+             :db/cardinality :db.cardinality/one,
+             :db/id "ActivityDefinition.timingTiming",
+             :db/ident :ActivityDefinition/timingTiming,
+             :element/primitive? false}
+            [:db/add "ActivityDefinition.timing[x]" :element/type-choices "ActivityDefinition.timingTiming"]
+            [:db/add "ActivityDefinition.timingTiming" :element/type "Timing"]
+            {:element/type-attr-ident :ActivityDefinition/timing,
+             :db/valueType :db.type/bytes,
+             :element/type-code "dateTime",
+             :element/json-key "timingDateTime",
+             :element/part-of-choice-type? true,
+             :db/cardinality :db.cardinality/one,
+             :db/id "ActivityDefinition.timingDateTime",
+             :db/ident :ActivityDefinition/timingDateTime,
+             :element/primitive? true}
+            [:db/add "ActivityDefinition.timing[x]" :element/type-choices "ActivityDefinition.timingDateTime"]
+            {:element/type-attr-ident :ActivityDefinition/timing,
+             :db/valueType :db.type/bytes,
+             :element/type-code "Age",
+             :element/json-key "timingAge",
+             :element/part-of-choice-type? true,
+             :db/cardinality :db.cardinality/one,
+             :db/id "ActivityDefinition.timingAge",
+             :db/ident :ActivityDefinition/timingAge,
+             :element/primitive? true}
+            [:db/add "ActivityDefinition.timing[x]" :element/type-choices "ActivityDefinition.timingAge"]
+            {:element/type-attr-ident :ActivityDefinition/timing,
+             :db/valueType :db.type/ref,
+             :element/type-code "Period",
+             :element/json-key "timingPeriod",
+             :element/part-of-choice-type? true,
+             :db/cardinality :db.cardinality/one,
+             :db/id "ActivityDefinition.timingPeriod",
+             :db/ident :ActivityDefinition/timingPeriod,
+             :element/primitive? false}
+            [:db/add "ActivityDefinition.timing[x]" :element/type-choices "ActivityDefinition.timingPeriod"]
+            [:db/add "ActivityDefinition.timingPeriod" :element/type "Period"]
+            {:element/type-attr-ident :ActivityDefinition/timing,
+             :db/valueType :db.type/ref,
+             :element/type-code "Range",
+             :element/json-key "timingRange",
+             :element/part-of-choice-type? true,
+             :db/cardinality :db.cardinality/one,
+             :db/id "ActivityDefinition.timingRange",
+             :db/ident :ActivityDefinition/timingRange,
+             :element/primitive? false}
+            [:db/add "ActivityDefinition.timing[x]" :element/type-choices "ActivityDefinition.timingRange"]
+            [:db/add "ActivityDefinition.timingRange" :element/type "Range"]
+            {:element/type-attr-ident :ActivityDefinition/timing,
+             :db/valueType :db.type/bytes,
+             :element/type-code "Duration",
+             :element/json-key "timingDuration",
+             :element/part-of-choice-type? true,
+             :db/cardinality :db.cardinality/one,
+             :db/id "ActivityDefinition.timingDuration",
+             :db/ident :ActivityDefinition/timingDuration,
+             :element/primitive? true}
+            [:db/add "ActivityDefinition.timing[x]" :element/type-choices "ActivityDefinition.timingDuration"]
+            [:db/add "ActivityDefinition" :type/elements "ActivityDefinition.timing[x]"]]))))
