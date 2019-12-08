@@ -142,7 +142,7 @@
     primitive?
     (to-json value)
     (= "BackboneElement" type-code)
-    (pull-backbone-element db element value)
+    (pull-backbone-element db (util/cached-entity db type) value)
     (= "Reference" type-code)
     (pull-reference db element value)
     (= "Resource" type-code)

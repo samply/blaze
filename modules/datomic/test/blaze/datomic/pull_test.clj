@@ -182,4 +182,12 @@
                                         :Observation/subject id)]
       (given (pull-resource db "Observation" "0")
         ["contained" 0 "id"] := "1"
-        ["subject" "reference"] := "#1"))))
+        ["subject" "reference"] := "#1")))
+
+  (testing "Recursive type "
+    (let [[db id] (test-util/with-non-primitive db :Questionnaire.item/linkId "foo")
+          [db id] (test-util/with-non-primitive db :Questionnaire.item/item id)
+          [db] (test-util/with-resource
+                 db "Questionnaire" "0" :Questionnaire/item id)]
+      (given (pull-resource db "Questionnaire" "0")
+        ["item" 0 "item" 0 "linkId"] := "foo"))))
