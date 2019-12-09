@@ -96,6 +96,14 @@
                           :blaze.rest-api.interaction/handler)))]]]]))
 
 
+(def structure-definition-filter
+  (comp
+    (filter (comp #{"resource"} :kind))
+    (remove (comp #{"Bundle"} :name))
+    (remove :experimental)
+    (remove :abstract)))
+
+
 (s/def ::structure-definitions
   (s/coll-of :fhir.un/StructureDefinition))
 
@@ -153,9 +161,7 @@
             (assoc :get history-system-handler))]]
         (into
           (comp
-            (filter #(= "resource" (:kind %)))
-            (remove :experimental)
-            (remove :abstract)
+            structure-definition-filter
             (map #(resource-route auth-backends resource-patterns %))
             (remove nil?))
           structure-definitions)
@@ -313,9 +319,7 @@
            (into
              []
              (comp
-               (filter #(= "resource" (:kind %)))
-               (remove :experimental)
-               (remove :abstract)
+               structure-definition-filter
                (map #(capability-resource resource-patterns operations %))
                (remove nil?))
              structure-definitions)

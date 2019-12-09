@@ -99,7 +99,7 @@
 
 ;; 9.2. ExpressionRef
 (defn- find-by-name [name coll]
-  (first (filter #(= name (:name %)) coll)))
+  (first (filter (comp #{name} :name) coll)))
 
 (defmethod infer-types* :elm/expression-ref
   [{{{expression-defs :def} :statements} :library}

@@ -120,7 +120,7 @@
         (fn [page]
           (d/let-flow' [put-success? (stream/put! pages page)]
             (when put-success?
-              (if-let [next (:url (first (filter #(= "next" (:relation %)) (:link page))))]
+              (if-let [next (:url (first (filter (comp #{"next"} :relation) (:link page))))]
                 (fetch-list* pages next opts)
                 (stream/close! pages))))))
       (d/catch'

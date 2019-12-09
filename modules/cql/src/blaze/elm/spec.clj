@@ -23,7 +23,7 @@
 
 (def defined-units
   "All defined units from ucum-service."
-  (into #{} (comp (remove #(= TransformedUnit (class %)))
+  (into #{} (comp (remove (comp #{TransformedUnit} class))
                   (map format-unit))
         (.getUnits ucum-service)))
 

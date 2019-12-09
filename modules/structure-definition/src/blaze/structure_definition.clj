@@ -115,7 +115,7 @@
     []
     (comp
       (map :resource)
-      (filter #(= kind (:kind %))))
+      (filter (comp #{kind} :kind)))
     (:entry bundle)))
 
 
@@ -125,7 +125,7 @@
       (extract "complex-type" (read-bundle (str package "/profiles-types.json")))
       (into
         []
-        (remove #(= "Parameters" (:name %)))
+        (remove (comp #{"Parameters"} :name))
         (extract "resource" (read-bundle (str package "/profiles-resources.json")))))))
 
 

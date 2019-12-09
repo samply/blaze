@@ -748,12 +748,12 @@
     {return :expression :keys [distinct] :or {distinct true}} :return
     {sort-by-items :by} :sort
     :as expr}]
-  (when (seq (filter #(= "With" (:type %)) relationships))
+  (when (seq (filter (comp #{"With"} :type) relationships))
     (throw-anom
       ::anom/unsupported
       "Unsupported With clause in query expression."
       :expression expr))
-  (when (seq (filter #(= "Without" (:type %)) relationships))
+  (when (seq (filter (comp #{"Without"} :type) relationships))
     (throw-anom
       ::anom/unsupported
       "Unsupported Without clause in query expression."
@@ -763,7 +763,7 @@
           context (dissoc context :optimizations)
           source (compile context expression)
           context (assoc context :life/single-query-scope alias)
-          with-equiv-clauses (filter #(= "WithEquiv" (:type %)) relationships)
+          with-equiv-clauses (filter (comp #{"WithEquiv"} :type) relationships)
           with-equiv-clauses (map #(compile-with-equiv-clause context %) with-equiv-clauses)
           with-xform-factories (mapv query/with-xform-factory with-equiv-clauses)
           where-xform-expr (some->> where (compile context) (query/where-xform-expr))

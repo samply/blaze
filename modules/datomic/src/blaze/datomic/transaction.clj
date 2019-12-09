@@ -502,7 +502,7 @@
      :new-entity new-entity
      :retract-count
      (transduce
-       (comp (filter #(= :db/retract (first %))) (map (constantly 1)))
+       (comp (filter (comp #{:db/retract} first)) (map (constantly 1)))
        +
        (upsert context type (:entity (meta old-entity)) new-entity))}))
 
@@ -517,7 +517,7 @@
      :new-entity new-entity
      :retract-count
      (transduce
-       (comp (filter #(= :db/retract (first %))) (map (constantly 1)))
+       (comp (filter (comp #{:db/retract} first)) (map (constantly 1)))
        +
        (upsert context new-type (:entity (meta old-entity)) new-entity))}))
 
