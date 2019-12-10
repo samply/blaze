@@ -25,6 +25,10 @@
   blaze/thread-pool-executor-collector
   {:local/root "modules/thread-pool-executor-collector"}
 
+  blaze-authorization-example
+  {:git/url "https://github.com/Breezeemr/blaze-authorization-example"
+   :sha "62286d49c15d34bc7c82cb442368a9757ce00ae3"}
+
   com.cognitect/anomalies
   {:mvn/version "0.1.12"}
 

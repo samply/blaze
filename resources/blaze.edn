@@ -66,6 +66,7 @@
    :resource-patterns
    [#:blaze.rest-api.resource-pattern
        {:type :default
+        :middleware #blaze/refset :blaze/middleware
         :interactions
         {:read
          #:blaze.rest-api.interaction
@@ -104,4 +105,9 @@
    :toggle "OPENID_PROVIDER_URL"
    :config
    {[:blaze.auth/backend :blaze.openid-auth/backend]
-    {:openid-provider/url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}}}]}
+    {:openid-provider/url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}}}
+  {:name "Authorization"
+   :toggle "AUTHORIZATION"
+   :config
+   {[:blaze/middleware :blaze-authorization-example/authorization]
+    {:database/conn #blaze/ref :blaze.datomic/conn}}}]}

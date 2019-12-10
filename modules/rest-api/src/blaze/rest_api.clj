@@ -45,13 +45,16 @@
   {:arglists '([resource-patterns structure-definition])}
   [auth-backends resource-patterns {:keys [name] :as structure-definition}]
   (when-let
-    [{:blaze.rest-api.resource-pattern/keys [interactions]}
+    [{:blaze.rest-api.resource-pattern/keys [interactions middleware]}
      (resolve-pattern resource-patterns structure-definition)]
     [(str "/" name)
      {:middleware
       (cond-> []
         (seq auth-backends)
-        (conj wrap-auth-guard))
+        (conj wrap-auth-guard)
+
+        (not-empty middleware)
+        (concat middleware))
       :fhir.resource/type name}
      [""
       (cond-> {:name (keyword name "type")}

@@ -44,7 +44,7 @@
   (try
     (with-open [rdr (PushbackReader. (io/reader (io/resource "blaze.edn")))]
       (edn/read
-        {:readers {'blaze/ref ig/ref 'blaze/cfg cfg}}
+        {:readers {'blaze/ref ig/ref 'blaze/refset ig/refset 'blaze/cfg cfg}}
         rdr))
     (catch Exception e
       (log/warn "Problem while reading blaze.edn. Skipping it." e))))
