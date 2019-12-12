@@ -68,6 +68,10 @@
   string?)
 
 
+(s/def :StructureDefinition/experimental
+  boolean?)
+
+
 (s/def :StructureDefinition/kind
   #{"primitive-type" "complex-type" "resource" "logical"})
 
@@ -97,7 +101,51 @@
 (s/def :fhir.un/StructureDefinition
   (s/keys :req-un [:StructureDefinition/name
                    :StructureDefinition/kind]
-          :opt-un [:StructureDefinition.un/snapshot]))
+          :opt-un [:StructureDefinition/experimental
+                   :StructureDefinition.un/snapshot]))
+
+
+
+;; ---- FHIR Search Parameter -------------------------------------------------
+
+(s/def :SearchParameter/name
+  string?)
+
+
+(s/def :SearchParameter/experimental
+  boolean?)
+
+
+(s/def :SearchParameter/code
+  string?)
+
+
+(s/def :SearchParameter/base
+  (s/coll-of string?))
+
+
+(s/def :SearchParameter/type
+  #{"number"
+    "date"
+    "string"
+    "token"
+    "reference"
+    "composite"
+    "quantity"
+    "uri"
+    "special"})
+
+
+(s/def :SearchParameter/expression
+  string?)
+
+
+(s/def :fhir.un/SearchParameter
+  (s/keys :req-un [:SearchParameter/code
+                   :SearchParameter/base
+                   :SearchParameter/type]
+          :opt-un [:SearchParameter/experimental
+                   :SearchParameter/expression]))
 
 
 
@@ -129,9 +177,24 @@
         (extract "resource" (read-bundle (str package "/profiles-resources.json")))))))
 
 
+(defn read-search-parameters []
+  (into
+    []
+    (map :resource)
+    (:entry (read-bundle "blaze/fhir/r4/search-parameters.json"))))
+
+
 (defmethod ig/init-key :blaze/structure-definition
   [_ _]
   (let [structure-definitions (read-structure-definitions)]
     (log/info "Read structure definitions resulting in:"
               (count structure-definitions) "structure definitions")
     structure-definitions))
+
+
+(defmethod ig/init-key :blaze/search-parameter
+  [_ _]
+  (let [search-parameters (read-search-parameters)]
+    (log/info "Read search-parameters resulting in:"
+              (count search-parameters) "search-parameters")
+    search-parameters))

@@ -11,19 +11,21 @@
     [java.util.concurrent ArrayBlockingQueue ThreadPoolExecutor TimeUnit]))
 
 
-(defn- upsert-schema [uri structure-definitions]
+(defn- upsert-schema [uri structure-definitions search-parameters]
   (let [conn (d/connect uri)
         _ @(d/transact-async conn (dts/schema))
-        {:keys [tx-data]} @(d/transact-async conn (schema/structure-definition-schemas structure-definitions))]
+        tx-data (into (schema/structure-definition-schemas structure-definitions)
+                      (schema/search-parameter-schemas search-parameters))
+        {:keys [tx-data]} @(d/transact-async conn tx-data)]
     (log/info "Upsert schema in database:" uri "creating" (count tx-data) "new facts")))
 
 
 (defmethod ig/init-key :blaze.datomic/conn
-  [_ {:database/keys [uri] :keys [structure-definitions]}]
+  [_ {:database/keys [uri] :keys [structure-definitions search-parameters]}]
   (if (d/create-database uri)
     (do
       (log/info "Created database at:" uri)
-      (upsert-schema uri structure-definitions))
+      (upsert-schema uri structure-definitions search-parameters))
     (log/info "Use existing database at:" uri))
 
   (log/info "Connect with database:" uri)

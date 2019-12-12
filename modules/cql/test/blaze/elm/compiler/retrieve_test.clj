@@ -32,7 +32,7 @@
 
   (testing "evaluation with existing index"
     (datomic-test-util/stub-entid ::db :Patient.Observation.code/s1|c1 #{42})
-    (datomic-test-util/stub-datoms
+    (datomic-test-util/stub-datoms-fn
       ::db :eavt (s/cat :e #{::patient-eid} :a #{42})
       (constantly [(reify Datom (v [_] ::observation-eid))]))
     (datomic-test-util/stub-entity ::db #{::observation-eid} #{::observation})
@@ -110,7 +110,7 @@
 
   (testing "Observation in Patient context"
     (datomic-test-util/stub-entid ::db :Observation/subject #{42})
-    (datomic-test-util/stub-datoms
+    (datomic-test-util/stub-datoms-fn
       ::db :vaet (s/cat :v #{::patient-eid} :a #{42})
       (constantly [(reify Datom (e [_] ::observation-eid))]))
     (datomic-test-util/stub-entity ::db #{::observation-eid} #{::observation})
@@ -126,7 +126,7 @@
 
   (testing "Patient in Specimen context"
     (datomic-test-util/stub-entid ::db :Specimen/subject #{42})
-    (datomic-test-util/stub-datoms
+    (datomic-test-util/stub-datoms-fn
       ::db :eavt (s/cat :e #{::specimen-eid} :a #{42})
       (constantly [(reify Datom (v [_] ::patient-eid))]))
     (datomic-test-util/stub-entity ::db #{::patient-eid} #{::patient})
@@ -142,7 +142,7 @@
 
   (testing "Observation in Specimen context"
     (datomic-test-util/stub-entid ::db :Observation/specimen #{42})
-    (datomic-test-util/stub-datoms
+    (datomic-test-util/stub-datoms-fn
       ::db :vaet (s/cat :v #{::specimen-eid} :a #{42})
       (constantly [(reify Datom (e [_] ::observation-eid))]))
     (datomic-test-util/stub-entity ::db #{::observation-eid} #{::observation})

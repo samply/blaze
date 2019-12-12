@@ -46,7 +46,7 @@
       (test-util/stub-page-size ::query-params 50)
       (history-test-util/stub-page-eid ::query-params nil?)
       (datomic-test-util/stub-entity-db #{tx} ::db)
-      (datomic-test-util/stub-datoms
+      (datomic-test-util/stub-datoms-fn
         ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
         (constantly [{:v ::patient-eid}]))
       (datomic-test-util/stub-as-of-t ::db nil?)

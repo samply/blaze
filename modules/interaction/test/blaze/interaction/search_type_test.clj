@@ -46,10 +46,7 @@
 (deftest handler-test
   (testing "Returns all existing resources of type"
     (let [patient {"resourceType" "Patient" "id" "0"}]
-      (datomic-test-util/stub-datoms
-        ::db :aevt (s/cat :a #{:Patient/id})
-        (constantly [{:e 143757}]))
-      (datomic-test-util/stub-entity ::db #{143757} #{::patient})
+      (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
       (datomic-test-util/stub-pull-resource* ::db "Patient" ::patient #{patient})
       (datomic-test-util/stub-type-total ::db "Patient" 1)
       (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
@@ -128,17 +125,10 @@
     (let [patient-0 {:Patient/identifier [{:Identifier/value "0"}]}
           patient-1 {:Patient/identifier [{:Identifier/value "1"}]}
           pulled-patient-0 {"resourceType" "Patient" "id" "0"}]
-      (datomic-test-util/stub-datoms
-        ::db :aevt (s/cat :a #{:Patient/id})
-        (constantly [{:e 143757} {:e 120052}]))
+      (datomic-test-util/stub-list-resources
+        ::db "Patient" #{[patient-0 patient-1]})
       (datomic-test-util/stub-cached-entity
         ::db #{:Patient/identifier} #{{:db/cardinality :db.cardinality/many}})
-      (stub-entity-replace
-        ::db #{143757 120052}
-        (fn [_ eid]
-          (case eid
-            143757 patient-0
-            120052 patient-1)))
       (datomic-test-util/stub-pull-resource*
         ::db "Patient" patient-0 #{pulled-patient-0})
       (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
@@ -170,17 +160,10 @@
     (let [library-0 {:Library/title "ab"}
           library-1 {:Library/title "b"}
           pulled-library-0 {"resourceType" "Library" "id" "0"}]
-      (datomic-test-util/stub-datoms
-        ::db :aevt (s/cat :a #{:Library/id})
-        (constantly [{:e 143757} {:e 120052}]))
+      (datomic-test-util/stub-list-resources
+        ::db "Library" #{[library-0 library-1]})
       (datomic-test-util/stub-cached-entity
         ::db #{:Library/title} #{{:db/cardinality :db.cardinality/one}})
-      (stub-entity-replace
-        ::db #{143757 120052}
-        (fn [_ eid]
-          (case eid
-            143757 library-0
-            120052 library-1)))
       (datomic-test-util/stub-pull-resource*
         ::db "Library" library-0 #{pulled-library-0})
       (test-util/stub-instance-url ::router "Library" "0" ::library-url)
@@ -212,17 +195,10 @@
     (let [library-0 {:Library/title "bab"}
           library-1 {:Library/title "b"}
           pulled-library-0 {"resourceType" "Library" "id" "0"}]
-      (datomic-test-util/stub-datoms
-        ::db :aevt (s/cat :a #{:Library/id})
-        (constantly [{:e 143757} {:e 120052}]))
+      (datomic-test-util/stub-list-resources
+        ::db "Library" #{[library-0 library-1]})
       (datomic-test-util/stub-cached-entity
         ::db #{:Library/title} #{{:db/cardinality :db.cardinality/one}})
-      (stub-entity-replace
-        ::db #{143757 120052}
-        (fn [_ eid]
-          (case eid
-            143757 library-0
-            120052 library-1)))
       (datomic-test-util/stub-pull-resource*
         ::db "Library" library-0 #{pulled-library-0})
       (test-util/stub-instance-url ::router "Library" "0" ::library-url)
@@ -254,17 +230,10 @@
     (let [report-0 {:MeasureReport/measure "http://server.com/Measure/0"}
           report-1 {:MeasureReport/measure "http://server.com/Measure/1"}
           pulled-report-0 {"resourceType" "MeasureReport" "id" "0"}]
-      (datomic-test-util/stub-datoms
-        ::db :aevt (s/cat :a #{:MeasureReport/id})
-        (constantly [{:e 143757} {:e 120052}]))
+      (datomic-test-util/stub-list-resources
+        ::db "MeasureReport" #{[report-0 report-1]})
       (datomic-test-util/stub-cached-entity
         ::db #{:MeasureReport/measure} #{{:db/cardinality :db.cardinality/one}})
-      (stub-entity-replace
-        ::db #{143757 120052}
-        (fn [_ eid]
-          (case eid
-            143757 report-0
-            120052 report-1)))
       (datomic-test-util/stub-pull-resource*
         ::db "MeasureReport" report-0 #{pulled-report-0})
       (test-util/stub-instance-url ::router "MeasureReport" "0" ::report-url)
@@ -290,4 +259,98 @@
           (is (= ::report-url (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
-          (is (= pulled-report-0 (-> body :entry first :resource))))))))
+          (is (= pulled-report-0 (-> body :entry first :resource)))))))
+
+  (testing "Measure title sort asc"
+    (let [measure-1 {"resourceType" "Measure" "id" "1"}
+          measure-2 {"resourceType" "Measure" "id" "2"}]
+      (datomic-test-util/stub-find-search-param-by-type-and-code
+        ::db "Measure" "title" #{::search-param})
+      (datomic-test-util/stub-list-resources-sorted-by
+        ::db "Measure" ::search-param #{[::measure-1 ::measure-2]})
+      (datomic-test-util/stub-pull-resource*-fn
+        ::db "Measure" #{::measure-1 ::measure-2}
+        (fn [_ _ r] (case r ::measure-1 measure-1 ::measure-2 measure-2)))
+      (datomic-test-util/stub-type-total ::db "Measure" 2)
+      (test-util/stub-instance-url-fn
+        ::router "Measure" #{"1" "2"}
+        (fn [_ _ id] (keyword (str "measure-url-" id))))
+
+      (let [{:keys [status body]}
+            @((handler ::conn)
+              {::reitit/router ::router
+               ::reitit/match {:data {:fhir.resource/type "Measure"}}
+               :params {"_sort" "title"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= "Bundle" (:resourceType body))))
+
+        (testing "the bundle type is searchset"
+          (is (= "searchset" (:type body))))
+
+        (testing "the total count is 2"
+          (is (= 2 (:total body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= :measure-url-1 (-> body :entry first :fullUrl))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= :measure-url-2 (-> body :entry second :fullUrl))))
+
+        (testing "the first entry has the right resource"
+          (is (= measure-1 (-> body :entry first :resource))))
+
+        (testing "the second entry has the right resource"
+          (is (= measure-2 (-> body :entry second :resource)))))))
+
+  (testing "Measure title sort desc"
+    (let [measure-1 {"resourceType" "Measure" "id" "1"}
+          measure-2 {"resourceType" "Measure" "id" "2"}]
+      (datomic-test-util/stub-find-search-param-by-type-and-code
+        ::db "Measure" "title" #{::search-param})
+      (datomic-test-util/stub-list-resources-sorted-by
+        ::db "Measure" ::search-param #{[::measure-1 ::measure-2]})
+      (datomic-test-util/stub-pull-resource*-fn
+        ::db "Measure" #{::measure-1 ::measure-2}
+        (fn [_ _ r] (case r ::measure-1 measure-1 ::measure-2 measure-2)))
+      (datomic-test-util/stub-type-total ::db "Measure" 2)
+      (test-util/stub-instance-url-fn
+        ::router "Measure" #{"1" "2"}
+        (fn [_ _ id] (keyword (str "measure-url-" id))))
+
+      (let [{:keys [status body]}
+            @((handler ::conn)
+              {::reitit/router ::router
+               ::reitit/match {:data {:fhir.resource/type "Measure"}}
+               :params {"_sort" "-title"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= "Bundle" (:resourceType body))))
+
+        (testing "the bundle type is searchset"
+          (is (= "searchset" (:type body))))
+
+        (testing "the total count is 2"
+          (is (= 2 (:total body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= :measure-url-2 (-> body :entry first :fullUrl))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= :measure-url-1 (-> body :entry second :fullUrl))))
+
+        (testing "the first entry has the right resource"
+          (is (= measure-2 (-> body :entry first :resource))))
+
+        (testing "the second entry has the right resource"
+          (is (= measure-1 (-> body :entry second :resource))))))))

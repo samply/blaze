@@ -966,6 +966,17 @@
             [[:db/add :part/ValueSet.compose.include :ValueSet.compose.include/system "http://loinc.org"]
              [:db/add :part/ValueSet.compose :ValueSet.compose/include :part/ValueSet.compose.include]
              [:db/add id :ValueSet/compose :part/ValueSet.compose]
+             [:db.fn/cas id :instance/version -3 -7]]))))
+
+    (testing "Measure.title"
+      (let [[db id] (test-util/with-resource db "Measure" "0")]
+        (is
+          (=
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0" "resourceType" "Measure" "title" "Foo"})
+            [[:db/add id :Measure/title "Foo"]
+             [:db/add id :SearchParameter/Measure-title "foo"]
              [:db.fn/cas id :instance/version -3 -7]])))))
 
 
@@ -1235,7 +1246,18 @@
                "resourceType" "Specimen"
                "extension"
                [{"url" "http://foo"
-                 "valueReference" {"reference" "Organization/0"}}]}))))))
+                 "valueReference" {"reference" "Organization/0"}}]})))))
+
+    (testing "Measure.title"
+      (let [[db] (test-util/with-resource
+                   db "Measure" "0"
+                   :Measure/title "Foo"
+                   :SearchParameter/Measure-title "foo")]
+        (is
+          (empty?
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0" "resourceType" "Measure" "title" "Foo"}))))))
 
 
 
@@ -1572,7 +1594,22 @@
                   [(with-meta 'food {:system "http://hl7.org/fhir/allergy-intolerance-category"})]}))
              [[:db/retract id :AllergyIntolerance/category medication-id]
               [:db/add id :AllergyIntolerance/category food-id]
-              [:db.fn/cas id :instance/version -3 -7]])))))
+              [:db.fn/cas id :instance/version -3 -7]]))))
+
+
+    (testing "Measure.title"
+      (let [[db id] (test-util/with-resource
+                      db "Measure" "0"
+                      :Measure/title "Foo"
+                      :SearchParameter/Measure-title "foo")]
+        (is
+          (=
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0" "resourceType" "Measure" "title" "Bar"})
+            [[:db/add id :Measure/title "Bar"]
+             [:db/add id :SearchParameter/Measure-title "bar"]
+             [:db.fn/cas id :instance/version -3 -7]])))))
 
 
   (testing "Retracts"
@@ -1741,7 +1778,22 @@
                 [:db/retract contained-2-id :Patient/active false]
                 [:db/retract contained-2-id :local-id "2"]
                 [:db/retract id :Patient/contained contained-2-id]
-                [:db.fn/cas id :instance/version -3 -7]}))))))
+                [:db.fn/cas id :instance/version -3 -7]})))))
+
+
+    (testing "Measure.title"
+      (let [[db id] (test-util/with-resource
+                      db "Measure" "0"
+                      :Measure/title "Foo"
+                      :SearchParameter/Measure-title "foo")]
+        (is
+          (=
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0" "resourceType" "Measure"})
+            [[:db/retract id :Measure/title "Foo"]
+             [:db/retract id :SearchParameter/Measure-title "foo"]
+             [:db.fn/cas id :instance/version -3 -7]])))))
 
 
 
@@ -1846,7 +1898,20 @@
             (resource-deletion db "Patient" "0")
             [[:db.fn/cas patient-id :instance/version -3 -5]
              [:db/retract name-id :HumanName/family "Doe"]
-             [:db/retract patient-id :Patient/name name-id]]))))))
+             [:db/retract patient-id :Patient/name name-id]]))))
+
+
+    (testing "Measure.title"
+      (let [[db id] (test-util/with-resource
+                      db "Measure" "0"
+                      :Measure/title "Foo"
+                      :SearchParameter/Measure-title "foo")]
+        (is
+          (=
+            (resource-deletion db "Measure" "0")
+            [[:db.fn/cas id :instance/version -3 -5]
+             [:db/retract id :Measure/title "Foo"]
+             [:db/retract id :SearchParameter/Measure-title "foo"]]))))))
 
 
 (deftest resource-codes-creation-test
