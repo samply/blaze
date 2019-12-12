@@ -216,6 +216,28 @@
 
 ;; ---- blaze.datomic.util stubs ----------------------------------------------
 
+(defn stub-last-transaction-fn [resource-spec replace-fn]
+  (st/instrument
+    [`util/last-transaction]
+    {:spec
+     {`util/last-transaction
+      (s/fspec
+        :args (s/cat :resource resource-spec))}
+     :replace
+     {`util/last-transaction replace-fn}}))
+
+
+(defn stub-tx-instant-fn [transaction-spec replace-fn]
+  (st/instrument
+    [`util/tx-instant]
+    {:spec
+     {`util/tx-instant
+      (s/fspec
+        :args (s/cat :transaction transaction-spec))}
+     :replace
+     {`util/tx-instant replace-fn}}))
+
+
 (defn stub-basis-transaction [db transaction]
   (st/instrument
     [`util/basis-transaction]

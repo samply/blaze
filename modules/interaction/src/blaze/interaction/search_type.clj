@@ -76,29 +76,31 @@
   (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 
 
-(defn- entries
-  [router db type {:keys [pred sort page-size]}]
+(defn- entries' [db type sort]
   (if (seq sort)
 
-    (let [[{:keys [search-param order]}] sort]
-      (into
-        []
-        (comp
-          (filter (or pred any?))
-          (map #(pull/pull-resource* db type %))
-          (take page-size)
-          (map #(entry router %)))
-        (cond-> (db/list-resources-sorted-by db type search-param)
-          (= :desc order) reverse)))
+    (let [[{:keys [code search-param order]}] sort]
+      (cond->
+        (case code
+          "_lastUpdated"
+          (sort-by (comp db/tx-instant db/last-transaction)
+                   (db/list-resources db type))
+          (db/list-resources-sorted-by db type search-param))
+        (= :desc order) reverse))
 
-    (into
-      []
-      (comp
-        (filter (or pred any?))
-        (map #(pull/pull-resource* db type %))
-        (take page-size)
-        (map #(entry router %)))
-      (db/list-resources db type))))
+    (db/list-resources db type)))
+
+
+(defn- entries
+  [router db type {:keys [pred sort page-size]}]
+  (into
+    []
+    (comp
+      (filter (or pred any?))
+      (map #(pull/pull-resource* db type %))
+      (take page-size)
+      (map #(entry router %)))
+    (entries' db type sort)))
 
 
 (defn- decode-sort-params [db type sort-params]
@@ -114,13 +116,15 @@
       (fn [res {:keys [code] :as sort-param}]
         (if-let [search-param (db/find-search-param-by-type-and-code db type code)]
           (conj res (assoc sort-param :search-param search-param))
-          (reduced
-            {::anom/category ::anom/incorrect
-             ::anom/message
-             (format "Unknown sort parameter with code `%s` on type `%s`."
-                     code type)
-             :fhir/issue "value"
-             :fhir/operation-outcome "MSG_SORT_UNKNOWN"}))))
+          (if (= "_lastUpdated" code)
+            (conj res sort-param)
+            (reduced
+              {::anom/category ::anom/incorrect
+               ::anom/message
+               (format "Unknown sort parameter with code `%s` on type `%s`."
+                       code type)
+               :fhir/issue "value"
+               :fhir/operation-outcome "MSG_SORT_UNKNOWN"})))))
     []
     (str/split sort-params #",")))
 

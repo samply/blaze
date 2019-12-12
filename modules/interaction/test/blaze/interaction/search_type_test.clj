@@ -12,7 +12,9 @@
     [datomic.api :as d]
     [datomic-spec.test :as dst]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
@@ -328,6 +330,118 @@
               {::reitit/router ::router
                ::reitit/match {:data {:fhir.resource/type "Measure"}}
                :params {"_sort" "-title"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= "Bundle" (:resourceType body))))
+
+        (testing "the bundle type is searchset"
+          (is (= "searchset" (:type body))))
+
+        (testing "the total count is 2"
+          (is (= 2 (:total body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= :measure-url-2 (-> body :entry first :fullUrl))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= :measure-url-1 (-> body :entry second :fullUrl))))
+
+        (testing "the first entry has the right resource"
+          (is (= measure-2 (-> body :entry first :resource))))
+
+        (testing "the second entry has the right resource"
+          (is (= measure-1 (-> body :entry second :resource)))))))
+
+  (testing "Measure _lastUpdated sort asc"
+    (let [measure-1 {"resourceType" "Measure" "id" "1"}
+          measure-2 {"resourceType" "Measure" "id" "2"}]
+      (datomic-test-util/stub-find-search-param-by-type-and-code
+        ::db "Measure" "_lastUpdated" nil?)
+      (datomic-test-util/stub-list-resources
+        ::db "Measure" #{[::measure-1 ::measure-2]})
+      (datomic-test-util/stub-last-transaction-fn
+        #{::measure-1 ::measure-2}
+        (fn [resource] (case resource ::measure-1 ::tx-1 ::measure-2 ::tx-2)))
+      (datomic-test-util/stub-tx-instant-fn
+        #{::tx-1 ::tx-2}
+        (fn [transaction]
+          (case transaction
+            ::tx-1 (Instant/ofEpochMilli 1)
+            ::tx-2 (Instant/ofEpochMilli 2))))
+      (datomic-test-util/stub-pull-resource*-fn
+        ::db "Measure" #{::measure-1 ::measure-2}
+        (fn [_ _ r] (case r ::measure-1 measure-1 ::measure-2 measure-2)))
+      (datomic-test-util/stub-type-total ::db "Measure" 2)
+      (test-util/stub-instance-url-fn
+        ::router "Measure" #{"1" "2"}
+        (fn [_ _ id] (keyword (str "measure-url-" id))))
+
+      (let [{:keys [status body]}
+            @((handler ::conn)
+              {::reitit/router ::router
+               ::reitit/match {:data {:fhir.resource/type "Measure"}}
+               :params {"_sort" "_lastUpdated"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= "Bundle" (:resourceType body))))
+
+        (testing "the bundle type is searchset"
+          (is (= "searchset" (:type body))))
+
+        (testing "the total count is 2"
+          (is (= 2 (:total body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= :measure-url-1 (-> body :entry first :fullUrl))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= :measure-url-2 (-> body :entry second :fullUrl))))
+
+        (testing "the first entry has the right resource"
+          (is (= measure-1 (-> body :entry first :resource))))
+
+        (testing "the second entry has the right resource"
+          (is (= measure-2 (-> body :entry second :resource)))))))
+
+  (testing "Measure _lastUpdated sort desc"
+    (let [measure-1 {"resourceType" "Measure" "id" "1"}
+          measure-2 {"resourceType" "Measure" "id" "2"}]
+      (datomic-test-util/stub-find-search-param-by-type-and-code
+        ::db "Measure" "_lastUpdated" nil?)
+      (datomic-test-util/stub-list-resources
+        ::db "Measure" #{[::measure-1 ::measure-2]})
+      (datomic-test-util/stub-last-transaction-fn
+        #{::measure-1 ::measure-2}
+        (fn [resource] (case resource ::measure-1 ::tx-1 ::measure-2 ::tx-2)))
+      (datomic-test-util/stub-tx-instant-fn
+        #{::tx-1 ::tx-2}
+        (fn [transaction]
+          (case transaction
+            ::tx-1 (Instant/ofEpochMilli 1)
+            ::tx-2 (Instant/ofEpochMilli 2))))
+      (datomic-test-util/stub-pull-resource*-fn
+        ::db "Measure" #{::measure-1 ::measure-2}
+        (fn [_ _ r] (case r ::measure-1 measure-1 ::measure-2 measure-2)))
+      (datomic-test-util/stub-type-total ::db "Measure" 2)
+      (test-util/stub-instance-url-fn
+        ::router "Measure" #{"1" "2"}
+        (fn [_ _ id] (keyword (str "measure-url-" id))))
+
+      (let [{:keys [status body]}
+            @((handler ::conn)
+              {::reitit/router ::router
+               ::reitit/match {:data {:fhir.resource/type "Measure"}}
+               :params {"_sort" "-_lastUpdated"}})]
 
         (is (= 200 status))
 
