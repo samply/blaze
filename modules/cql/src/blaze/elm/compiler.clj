@@ -462,6 +462,18 @@
       (property/scope-choice-type-expr scope attr))))
 
 
+(defn- runtime-choice-type-property-expr
+  [{:life/keys [single-query-scope] :as context} source scope path]
+  (cond
+    source
+    (property/source-runtime-choice-type-expr (compile context source) path)
+
+    scope
+    (if (= single-query-scope scope)
+      (property/single-scope-runtime-choice-type-expr path)
+      (property/scope-runtime-choice-type-expr scope path))))
+
+
 (defn- property-expr
   [{:life/keys [single-query-scope] :as context} source scope attr]
   (cond
@@ -491,10 +503,7 @@
   (if (property/choice-result-type? expression)
     (if-let [attr (property/attr expression)]
       (choice-type-expr context source scope attr)
-      (throw-anom
-        ::anom/unsupported
-        "Unsupported choice-type, runtime-type expression."
-        :expression expression))
+      (runtime-choice-type-property-expr context source scope path))
     (if-let [attr (property/attr expression)]
       (property-expr context source scope attr)
       (runtime-type-property-expr context source scope path))))
@@ -2405,6 +2414,10 @@
   (cond
     (= "Quantity" type-name)
     fhir-quantity/quantity?
+
+    (= "Reference" type-name)
+    (fn matches-type? [x]
+      (instance? Entity x))
 
     (Character/isUpperCase ^char (first type-name))
     (fn matches-type? [x]

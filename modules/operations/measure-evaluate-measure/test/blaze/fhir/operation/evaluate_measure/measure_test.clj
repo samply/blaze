@@ -585,6 +585,8 @@
     [0 "value" "text"] := "Jena"
     [0 "population" 0 "count"] := 2)
 
+  (is (= ::anom/incorrect (::anom/category (evaluate "q22-stratifier-multiple-cities-fail"))))
+
   (given
     (->> (first-stratifier-stratums (evaluate "q23-stratifier-ageclass-and-gender"))
          (map (fn [c] (update c "component" (fn [x] (sort-by #(get-in % ["code" "text"]) x)))))
@@ -599,9 +601,13 @@
     [2 "component" 1 "value" "text"] := "male"
     [2 "population" 0 "count"] := 1)
 
-  (is (= ::anom/incorrect (::anom/category (evaluate "q22-stratifier-multiple-cities-fail")))))
+  (given (first-stratifier-stratums (evaluate "q25-stratifier-collection"))
+    [0 "value" "text"] := "Organization/collection-0"
+    [0 "population" 0 "count"] := 1
+    [1 "value" "text"] := "Organization/collection-1"
+    [1 "population" 0 "count"] := 1))
 
 (comment
-  (evaluate "q24")
+  (evaluate "q25-stratifier-collection")
   (clojure.repl/pst)
   )
