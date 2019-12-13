@@ -15,12 +15,12 @@
 
 (defn- coerce-date [request param-name]
   (try
-    (update-in request [:query-params param-name] parse-date)
+    (update-in request [:params param-name] parse-date)
     (catch Exception _
       {::anom/category ::anom/incorrect
        ::anom/message
        (str "Invalid parameter " param-name " `"
-            (get-in request [:query-params param-name])
+            (get-in request [:params param-name])
             "`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD.")
        :fhir/issue "value"
        :fhir/operation-outcome "MSG_PARAM_INVALID"
