@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>life-research</groupId>
     <artifactId>blaze</artifactId>
-    <version>0.8.0-alpha.1</version>
+    <version>0.8.0-alpha.2</version>
     <name>blaze</name>
 
     <description>A FHIR Store with internal, fast CQL Evaluation Engine</description>
