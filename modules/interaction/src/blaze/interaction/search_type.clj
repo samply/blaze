@@ -26,8 +26,14 @@
 
 ;; TODO: improve quick hack
 (defn- resource-pred
-  [db type {:strs [identifier title title:contains measure url]}]
+  [db type {:strs [_id identifier title title:contains measure url]}]
   (cond
+    _id
+    (let [ids (set (str/split _id #","))
+          id-attr (keyword type "id")]
+      (fn [resource]
+        (ids (id-attr resource))))
+
     identifier
     (let [attr (keyword type "identifier")
           {:db/keys [cardinality]} (db/cached-entity db attr)

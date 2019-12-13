@@ -121,6 +121,89 @@
         (is (empty? (:entry body))))))
 
 
+  (testing "Id search"
+    (let [patient-0 {:Patient/id "0"}
+          patient-1 {:Patient/id "1"}
+          pulled-patient-0 {"resourceType" "Patient" "id" "0"}]
+      (datomic-test-util/stub-list-resources
+        ::db "Patient" #{[patient-0 patient-1]})
+      (datomic-test-util/stub-pull-resource*
+        ::db "Patient" patient-0 #{pulled-patient-0})
+      (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
+
+      (let [{:keys [status body]}
+            @((handler ::conn)
+              {::reitit/router ::router
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               :params {"_id" "0"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= "Bundle" (:resourceType body))))
+
+        (testing "the bundle type is searchset"
+          (is (= "searchset" (:type body))))
+
+        (testing "the bundle contains one entry"
+          (is (= 1 (count (:entry body)))))
+
+        (testing "the entry has the right fullUrl"
+          (is (= ::patient-url (-> body :entry first :fullUrl))))
+
+        (testing "the entry has the right resource"
+          (is (= pulled-patient-0 (-> body :entry first :resource)))))))
+
+  (testing "Multiple Id search"
+    (let [patient-0 {:Patient/id "0"}
+          patient-1 {:Patient/id "1"}
+          patient-2 {:Patient/id "2"}
+          pulled-patient-0 {"resourceType" "Patient" "id" "0"}
+          pulled-patient-2 {"resourceType" "Patient" "id" "2"}]
+      (datomic-test-util/stub-list-resources
+        ::db "Patient" #{[patient-0 patient-1 patient-2]})
+      (datomic-test-util/stub-pull-resource*-fn
+        ::db "Patient" #{patient-0 patient-2}
+        (fn [_ _ resource]
+          (condp = resource
+            patient-0 pulled-patient-0
+            patient-2 pulled-patient-2)))
+      (test-util/stub-instance-url-fn
+        ::router "Patient" #{"0" "2"}
+        (fn [_ _ resource]
+          (case resource
+            "0" ::patient-url-0
+            "2" ::patient-url-2)))
+
+      (let [{:keys [status body]}
+            @((handler ::conn)
+              {::reitit/router ::router
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               :params {"_id" "0,2"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= "Bundle" (:resourceType body))))
+
+        (testing "the bundle type is searchset"
+          (is (= "searchset" (:type body))))
+
+        (testing "the bundle contains one entry"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= ::patient-url-0 (-> body :entry first :fullUrl))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= ::patient-url-2 (-> body :entry second :fullUrl))))
+
+        (testing "the first entry has the right resource"
+          (is (= pulled-patient-0 (-> body :entry first :resource))))
+
+        (testing "the second entry has the right resource"
+          (is (= pulled-patient-2 (-> body :entry second :resource)))))))
+
   (testing "Identifier search"
     (let [patient-0 {:Patient/identifier [{:Identifier/value "0"}]}
           patient-1 {:Patient/identifier [{:Identifier/value "1"}]}
