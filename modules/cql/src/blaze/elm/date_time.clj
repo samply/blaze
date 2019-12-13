@@ -8,7 +8,7 @@
     [blaze.elm.protocols :as p])
   (:import
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
-    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor TemporalAmount]))
+    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 
 
 (set! *warn-on-reflection* true)

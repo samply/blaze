@@ -18,20 +18,11 @@
   cheshire
   {:mvn/version "5.9.0"}
 
-  com.taoensso/timbre
-  {:mvn/version "4.10.0"}
-
-  integrant
-  {:mvn/version "0.7.0"}
-
   manifold
   {:mvn/version "0.1.8"}
 
   org.clojars.akiel/datomic-spec
-  {:mvn/version "0.5.2"}
-
-  prom-metrics
-  {:mvn/version "0.5-alpha2"}}
+  {:mvn/version "0.5.2"}}
 
  :aliases
  {:test
@@ -42,7 +33,7 @@
     {:mvn/version "0.9.5697"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-554"}
+    {:mvn/version "0.0-565"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

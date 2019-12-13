@@ -2,21 +2,18 @@
  {blaze/datomic
   {:local/root "../datomic"}
 
-  com.cognitect/anomalies
-  {:mvn/version "0.1.12"}
-
-  com.taoensso/timbre
-  {:mvn/version "4.10.0"}
+  blaze/module-base
+  {:local/root "../module-base"}
 
   org.apache.httpcomponents/httpcore
   {:mvn/version "4.4.12"}
 
   metosin/reitit-ring
-  {:mvn/version "0.3.9"
+  {:mvn/version "0.3.10"
    :exclusions [ring/ring-core]}
 
   ring/ring-core
-  {:mvn/version "1.7.1"
+  {:mvn/version "1.8.0"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
@@ -32,7 +29,7 @@
     {:local/root "../datomic-test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-554"}
+    {:mvn/version "0.0-565"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

@@ -2,20 +2,14 @@
  {blaze/executor
   {:local/root "../executor"}
 
+  blaze/module-base
+  {:local/root "../module-base"}
+
   blaze/rest-util
   {:local/root "../rest-util"}
 
   blaze/spec
-  {:local/root "../spec"}
-
-  com.cognitect/anomalies
-  {:mvn/version "0.1.12"}
-
-  com.taoensso/timbre
-  {:mvn/version "4.10.0"}
-
-  integrant
-  {:mvn/version "0.7.0"}}
+  {:local/root "../spec"}}
 
  :aliases
  {:test
@@ -26,7 +20,7 @@
     {:local/root "../datomic-test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-554"}
+    {:mvn/version "0.0-565"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

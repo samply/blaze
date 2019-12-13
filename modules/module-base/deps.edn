@@ -1,6 +1,13 @@
 {:deps
- {com.taoensso/timbre
+ {blaze/anomaly
+  {:local/root "../anomaly"}
+
+  com.taoensso/timbre
   {:mvn/version "4.10.0"}
 
   integrant
-  {:mvn/version "0.7.0"}}}
+  {:git/url "https://github.com/alexanderkiel/integrant.git"
+   :sha "c673b85130e553feec6d4c5d2d1ec773a49c929c"}
+
+  prom-metrics
+  {:mvn/version "0.5-alpha.3"}}}

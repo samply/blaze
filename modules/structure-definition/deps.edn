@@ -1,11 +1,8 @@
 {:paths ["src" "resources"]
 
  :deps
- {cheshire
-  {:mvn/version "5.9.0"}
+ {blaze/module-base
+  {:local/root "../module-base"}
 
-  com.taoensso/timbre
-  {:mvn/version "4.10.0"}
-
-  integrant
-  {:mvn/version "0.7.0"}}}
+  cheshire
+  {:mvn/version "5.9.0"}}}
