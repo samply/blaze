@@ -1,6 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.handler.impl
   (:require
-    [blaze.datomic.util :as datomic-util]
+    [blaze.datomic.util :as db]
     [blaze.executors :refer [executor?]]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
     [blaze.fhir.response.create :as response]
@@ -25,7 +25,7 @@
 (defn- handle
   [clock transaction-executor conn term-service db executor
    {::reitit/keys [router] :keys [request-method headers]
-    {:strs [periodStart periodEnd]} :query-params}
+    {:strs [periodStart periodEnd]} :params}
    measure]
   (let [period [periodStart periodEnd]]
     (-> (md/future-with executor
@@ -54,6 +54,16 @@
                       (md/catch' handler-util/error-response))))))))))
 
 
+(defn- find-measure
+  [db {{:keys [id]} :path-params {:strs [measure]} :params}]
+  (cond
+    id
+    (db/resource db "Measure" id)
+
+    measure
+    (db/resource-by db :Measure/url measure)))
+
+
 (s/fdef handler
   :args
   (s/cat
@@ -64,10 +74,10 @@
     :executor executor?))
 
 (defn handler [clock transaction-executor conn term-service executor]
-  (fn [{{:keys [id]} :path-params :as request}]
+  (fn [request]
     (let [db (d/db conn)]
-      (if-let [measure (datomic-util/resource db "Measure" id)]
-        (if (datomic-util/deleted? measure)
+      (if-let [measure (find-measure db request)]
+        (if (db/deleted? measure)
           (-> (handler-util/operation-outcome
                 {:fhir/issue "deleted"})
               (ring/response)

@@ -80,19 +80,36 @@
 
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Measure"
-    (datomic-test-util/stub-resource ::db #{"Measure"} #{"0"} nil?)
+    (testing "on type endpoint"
+      (datomic-test-util/stub-resource ::db #{"Measure"} #{"0"} nil?)
 
-    (let [{:keys [status body]}
-          ((handler clock transaction-executor ::conn ::term-service executor)
-           {:path-params {:type "Measure" :id "0"}})]
+      (let [{:keys [status body]}
+            ((handler clock transaction-executor ::conn ::term-service executor)
+             {:path-params {:id "0"}})]
 
-      (is (= 404 status))
+        (is (= 404 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
+        (is (= "OperationOutcome" (:resourceType body)))
 
-      (is (= "error" (-> body :issue first :severity)))
+        (is (= "error" (-> body :issue first :severity)))
 
-      (is (= "not-found" (-> body :issue first :code)))))
+        (is (= "not-found" (-> body :issue first :code)))))
+
+    (testing "on instance endpoint"
+      (datomic-test-util/stub-resource-by
+        ::db #{:Measure/url} #{"url-181501"} nil?)
+
+      (let [{:keys [status body]}
+            ((handler clock transaction-executor ::conn ::term-service executor)
+             {:params {"measure" "url-181501"}})]
+
+        (is (= 404 status))
+
+        (is (= "OperationOutcome" (:resourceType body)))
+
+        (is (= "error" (-> body :issue first :severity)))
+
+        (is (= "not-found" (-> body :issue first :code))))))
 
 
   (testing "Returns Gone on Deleted Resource"
@@ -101,7 +118,7 @@
 
     (let [{:keys [status body]}
           ((handler clock transaction-executor ::conn ::term-service executor)
-           {:path-params {:type "Measure" :id "0"}})]
+           {:path-params {:id "0"}})]
 
       (is (= 410 status))
 
@@ -113,46 +130,95 @@
 
 
   (testing "Success"
-    (datomic-test-util/stub-resource ::db #{"Measure"} #{"0"} #{::measure})
-    (datomic-test-util/stub-deleted? ::measure false?)
+    (testing "on type endpoint"
+      (datomic-test-util/stub-resource-by
+        ::db #{:Measure/url} #{"url-181501"} #{::measure})
+      (datomic-test-util/stub-deleted? ::measure false?)
 
-    (testing "as GET request"
-      (measure-test/stub-evaluate-measure
-        now ::db ::router "2014" "2015" ::measure ::measure-report)
+      (testing "as GET request"
+        (measure-test/stub-evaluate-measure
+          now ::db ::router "2014" "2015" ::measure ::measure-report)
 
-      (let [{:keys [status body]}
-            @((handler clock transaction-executor ::conn ::term-service executor)
-              {::reitit/router ::router
-               :request-method :get
-               :path-params {:type "Measure" :id "0"}
-               :query-params
-               {"periodStart" "2014"
-                "periodEnd" "2015"}})]
+        (let [{:keys [status body]}
+              @((handler
+                  clock transaction-executor ::conn ::term-service executor)
+                {::reitit/router ::router
+                 :request-method :get
+                 :params
+                 {"measure" "url-181501"
+                  "periodStart" "2014"
+                  "periodEnd" "2015"}})]
 
-        (is (= 200 status))
+          (is (= 200 status))
 
-        (is (= ::measure-report body))))
+          (is (= ::measure-report body))))
 
-    (testing "as POST request"
-      (measure-test/stub-evaluate-measure
-        now ::db ::router "2014" "2015" ::measure {})
-      (datomic-test-util/stub-squuid "0")
-      (stub-upsert-resource
-        ::conn ::term-service ::db :server-assigned-id {"id" "0"}
-        {:db-after ::db-after})
-      (stub-build-created-response
-        ::router nil? ::db-after "MeasureReport" "0" ::response)
+      (testing "as POST request"
+        (measure-test/stub-evaluate-measure
+          now ::db ::router "2014" "2015" ::measure {})
+        (datomic-test-util/stub-squuid "0")
+        (stub-upsert-resource
+          ::conn ::term-service ::db :server-assigned-id {"id" "0"}
+          {:db-after ::db-after})
+        (stub-build-created-response
+          ::router nil? ::db-after "MeasureReport" "0" ::response)
 
-      (is (= ::response
-             @((handler
-                 clock
-                 transaction-executor
-                 ::conn
-                 ::term-service
-                 executor)
-               {::reitit/router ::router
-                :request-method :post
-                :path-params {:type "Measure" :id "0"}
-                :query-params
-                {"periodStart" "2014"
-                 "periodEnd" "2015"}}))))))
+        (is (= ::response
+               @((handler
+                   clock
+                   transaction-executor
+                   ::conn
+                   ::term-service
+                   executor)
+                 {::reitit/router ::router
+                  :request-method :post
+                  :params
+                  {"measure" "url-181501"
+                   "periodStart" "2014"
+                   "periodEnd" "2015"}})))))
+
+    (testing "on instance endpoint"
+      (datomic-test-util/stub-resource ::db #{"Measure"} #{"0"} #{::measure})
+      (datomic-test-util/stub-deleted? ::measure false?)
+
+      (testing "as GET request"
+        (measure-test/stub-evaluate-measure
+          now ::db ::router "2014" "2015" ::measure ::measure-report)
+
+        (let [{:keys [status body]}
+              @((handler
+                  clock transaction-executor ::conn ::term-service executor)
+                {::reitit/router ::router
+                 :request-method :get
+                 :path-params {:id "0"}
+                 :params
+                 {"periodStart" "2014"
+                  "periodEnd" "2015"}})]
+
+          (is (= 200 status))
+
+          (is (= ::measure-report body))))
+
+      (testing "as POST request"
+        (measure-test/stub-evaluate-measure
+          now ::db ::router "2014" "2015" ::measure {})
+        (datomic-test-util/stub-squuid "0")
+        (stub-upsert-resource
+          ::conn ::term-service ::db :server-assigned-id {"id" "0"}
+          {:db-after ::db-after})
+        (stub-build-created-response
+          ::router nil? ::db-after "MeasureReport" "0" ::response)
+
+        (is (= ::response
+               @((handler
+                   clock
+                   transaction-executor
+                   ::conn
+                   ::term-service
+                   executor)
+                 {::reitit/router ::router
+                  :request-method :post
+                  :path-params {:id "0"}
+                  :params
+                  {"periodStart" "2014"
+                   "periodEnd" "2015"}})))))))
