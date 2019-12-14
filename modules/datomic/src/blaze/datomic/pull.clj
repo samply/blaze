@@ -112,17 +112,6 @@
     (:type/elements element)))
 
 
-(defn- pull-reference [_ _ value]
-  (let [type (util/entity-type value)
-        id-attr (util/resource-id-attr type)]
-    (with-meta
-      {"reference"
-       (if-let [id (id-attr value)]
-         (str type "/" id)
-         (str "#" (:local-id value)))}
-      {:entity id-attr})))
-
-
 (defn- pull-contained-resource [db resource]
   (let [type (util/entity-type resource)]
     (-> (pull-non-primitive db (keyword type) resource)
@@ -130,28 +119,33 @@
                "id" (:local-id resource)))))
 
 
-(defn- pull-value
-  {:arglists '([db element value])}
-  [db {:element/keys [primitive? type type-code value-set-binding] :as element}
-   value]
-  (cond
-    (= "code" type-code)
+(defn- convert-value
+  "Converts `value` into it's JSON representation."
+  {:arglists '([db element entity value])}
+  [db {:element/keys [primitive? type type-code value-set-binding]} value]
+  (case type-code
+    "code"
     (if value-set-binding
       (symbol (:code/code value))
       (:code/code value))
-    primitive?
-    (to-json value)
-    (= "BackboneElement" type-code)
+    "BackboneElement"
     (pull-backbone-element db (util/cached-entity db type) value)
-    (= "Reference" type-code)
-    (pull-reference db element value)
-    (= "Resource" type-code)
+    "Resource"
     (pull-contained-resource db value)
-    :else
-    (pull-non-primitive db type value)))
+    (if primitive?
+      (to-json value)
+      (pull-non-primitive db type value))))
 
+
+(s/fdef pull-element
+  :args (s/cat :db ::ds/db :element :schema/element :entity any?)
+  :ret (s/tuple string? some?))
 
 (defn pull-element
+  "Pulls `element` from `entity` deep.
+
+  Returns a tuple of JSON key and the value which is either a map or a vector of
+  maps."
   {:arglists '([db element entity])}
   [db {:db/keys [ident cardinality]
        :element/keys [choice-type? json-key]
@@ -170,18 +164,18 @@
         [json-key
          (if (= :db.cardinality/many cardinality)
            (mapv
-             #(pull-value db element %)
+             #(convert-value db element %)
              value)
-           (pull-value db element value))]))))
+           (convert-value db element value))]))))
 
 
 (s/fdef pull-non-primitive
-  :args (s/cat :db ::ds/db :type-ident keyword? :value ::ds/entity))
+  :args (s/cat :db ::ds/db :type-ident keyword? :entity ::ds/entity))
 
-(defn pull-non-primitive [db type-ident value]
+(defn pull-non-primitive [db type-ident entity]
   (into
-    (with-meta {} {:entity value})
-    (map #(pull-element db (util/cached-entity db %) value))
+    (with-meta {} {:entity entity})
+    (map #(pull-element db (util/cached-entity db %) entity))
     (:type/elements (util/cached-entity db type-ident))))
 
 

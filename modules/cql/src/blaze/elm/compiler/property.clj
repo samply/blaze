@@ -1,7 +1,7 @@
 (ns blaze.elm.compiler.property
   (:require
     [blaze.anomaly :refer [throw-anom]]
-    [blaze.datomic.util :as datomic-util]
+    [blaze.datomic.util :as db]
     [blaze.datomic.value :as dv]
     [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
     [blaze.elm.spec]
@@ -33,12 +33,6 @@
       path)))
 
 
-(defn- resource-reference [resource]
-  (let [type (datomic-util/entity-type resource)
-        id ((datomic-util/resource-id-attr type) resource)]
-    (str type "/" id)))
-
-
 (s/fdef attr
   :args (s/cat :expression :elm/expression)
   :ret (s/nilable keyword?))
@@ -52,16 +46,7 @@
     source-type
     (let [[type-ns type-name] (elm-util/parse-qualified-name source-type)]
       (if (= "http://hl7.org/fhir" type-ns)
-        (case type-name
-          "Reference"
-          (case path
-            "reference"
-            resource-reference
-            (throw-anom
-              ::anom/unsupported
-              (format "Unsupported Reference property `%s`." path)
-              :expression expr))
-          (attr-kw type-name path))
+        (attr-kw type-name path)
         (throw-anom
           ::anom/unsupported
           (format
@@ -137,7 +122,7 @@
 
 
 (s/fdef source-expr
-  :args (s/cat :source expr? :attr ifn?))
+  :args (s/cat :source expr? :attr keyword?))
 
 (defn source-expr
   [source attr]
@@ -151,7 +136,7 @@
 
 
 (s/fdef scope-expr
-  :args (s/cat :scope string? :attr ifn?))
+  :args (s/cat :scope string? :attr keyword?))
 
 (defn scope-expr [scope attr]
   (->ScopePropertyExpression scope attr))
@@ -171,7 +156,7 @@
 
 
 (defn- navigate [value path]
-  (dv/read ((keyword (datomic-util/entity-type value) path) value)))
+  (dv/read ((keyword (db/entity-type value) path) value)))
 
 
 (defrecord SourceRuntimeTypePropertyExpression [source path]
@@ -220,7 +205,7 @@
 ;; ---- Runtime Choice Type ---------------------------------------------------
 
 (defn- navigate-choice-type [value path]
-  (let [type-attr (keyword (datomic-util/entity-type value) path)]
+  (let [type-attr (keyword (db/entity-type value) path)]
     (get-choice-typed-property value type-attr)))
 
 

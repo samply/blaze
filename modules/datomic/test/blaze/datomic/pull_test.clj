@@ -38,7 +38,7 @@
       (given (pull-resource db "Patient" "0")
         ;; this is the t of the last transaction. it could change if the
         ;; transactions before change
-        ["meta" "versionId"] := "9851")))
+        ["meta" "versionId"] := "10590")))
 
   (testing "meta.lastUpdated"
     (let [[db] (test-util/with-resource db "Patient" "0")]
@@ -166,23 +166,6 @@
           [db] (test-util/with-resource db "Patient" "0" :Patient/contact id)]
       (given (pull-resource db "Patient" "0")
         ["contact" first "name" "family"] := "Doe")))
-
-
-  (testing "Reference"
-    (let [[db id] (test-util/with-resource db "Organization" "0")
-          [db] (test-util/with-resource db "Patient" "0" :Patient/managingOrganization id)]
-      (given (pull-resource db "Patient" "0")
-        ["managingOrganization" "reference"] := "Organization/0")))
-
-
-  (testing "Contained resource"
-    (let [[db id] (test-util/with-non-primitive db :Patient/active true :local-id "1")
-          [db] (test-util/with-resource db "Observation" "0"
-                                        :Observation/contained id
-                                        :Observation/subject id)]
-      (given (pull-resource db "Observation" "0")
-        ["contained" 0 "id"] := "1"
-        ["subject" "reference"] := "#1")))
 
   (testing "Recursive type "
     (let [[db id] (test-util/with-non-primitive db :Questionnaire.item/linkId "foo")

@@ -228,7 +228,7 @@
   (if (= 1 (count type))
     (let [code (-> type first :code)]
       (and (= :db.type/ref (fhir-type-code->db-type code))
-           (not (#{"code" "Reference"} code))))
+           (not (#{"code"} code))))
     false))
 
 
@@ -286,6 +286,12 @@
        (some #(when (= (subs reference 1) (:id %)) %))))
 
 
+(defn direct-reference-attr
+  "Returns an attribute where its namespace is prefixed with `Reference.`."
+  [attr]
+  (keyword (str "Reference." (namespace attr)) (name attr)))
+
+
 (s/fdef element-definition-tx-data
   :args (s/cat :structure-definition :fhir.un/StructureDefinition
                :element-definition :fhir.un/ElementDefinition)
@@ -301,17 +307,18 @@
         ident (path->ident path)
         choice-type? (str/ends-with? path "[x]")
         content-element (some->> content-reference (resolve-element structure-definition))
-        type (if content-element (:type content-element) type)]
+        type (if content-element (:type content-element) type)
+        cardinality
+        (if (= "*" max)
+          :db.cardinality/many
+          :db.cardinality/one)]
     (cond->
       [(cond->
          (if type
            (cond->
              {:db/id path
               :db/ident ident
-              :db/cardinality
-              (if (= "*" max)
-                :db.cardinality/many
-                :db.cardinality/one)
+              :db/cardinality cardinality
               :element/choice-type? choice-type?}
 
              (and (not choice-type?) (component? type))
@@ -352,19 +359,24 @@
             [{:db/id (str/join "." choice-path)
               :db/ident (keyword ns name)
               :db/valueType (fhir-type-code->db-type code)
-              :db/cardinality
-              (if (= "*" max)
-                :db.cardinality/many
-                :db.cardinality/one)
+              :db/cardinality cardinality
               :element/primitive? (primitive? {:code code})
               :element/part-of-choice-type? true
               :element/type-attr-ident ident
               :element/type-code code
               :element/json-key name}
              [:db/add path :element/type-choices (str/join "." choice-path)]]
+
             (and (not (primitive? {:code code}))
                  (not (#{"BackboneElement" "Bundle"} code)))
-            (conj [:db/add (str/join "." choice-path) :element/type code]))))
+            (conj [:db/add (str/join "." choice-path) :element/type code])
+
+            ;; extra attribute consisting of direct references
+            (= "Reference" code)
+            (conj
+              {:db/ident (direct-reference-attr (keyword ns name))
+               :db/valueType :db.type/ref
+               :db/cardinality cardinality}))))
 
       (needs-partition? element)
       (conj
@@ -389,7 +401,14 @@
       (conj
         {:db/ident (keyword (str (namespace ident) ".index") (name ident))
          :db/valueType :db.type/ref
-         :db/cardinality :db.cardinality/many}))))
+         :db/cardinality :db.cardinality/many})
+
+      ;; extra attribute consisting of direct references
+      (and (not choice-type?) (= "Reference" (-> type first :code)))
+      (conj
+        {:db/ident (direct-reference-attr ident)
+         :db/valueType :db.type/ref
+         :db/cardinality cardinality}))))
 
 
 (defn structure-definition-tx-data
