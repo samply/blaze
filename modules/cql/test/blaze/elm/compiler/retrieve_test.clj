@@ -6,7 +6,7 @@
      :refer
      [context-expr
       expr
-      multiple-code-expr
+      multiple-codes-expr
       single-code-expr
       with-related-context-expr]]
     [clojure.spec.alpha :as s]
@@ -84,7 +84,7 @@
 
 
 (deftest multiple-code-expr-test
-  (st/unstrument `multiple-code-expr)
+  (st/unstrument `multiple-codes-expr)
   (replace-single-code-expr
     ::db #{"Patient"} #{"Observation"} #{"code"} #{::code-1 ::code-2}
     (fn [_ _ _ _ code]
@@ -95,7 +95,7 @@
   (is
     (=
       (-eval
-        (multiple-code-expr
+        (multiple-codes-expr
           ::db "Patient" "Observation" "code"
           [::code-1 ::code-2])
         {:db ::db}
@@ -109,7 +109,7 @@
   (st/unstrument `context-expr)
 
   (testing "Observation in Patient context"
-    (datomic-test-util/stub-entid ::db :Observation/subject #{42})
+    (datomic-test-util/stub-entid ::db :Reference.Observation/subject #{42})
     (datomic-test-util/stub-datoms-fn
       ::db :vaet (s/cat :v #{::patient-eid} :a #{42})
       (constantly [(reify Datom (e [_] ::observation-eid))]))
@@ -125,7 +125,7 @@
         [::observation])))
 
   (testing "Patient in Specimen context"
-    (datomic-test-util/stub-entid ::db :Specimen/subject #{42})
+    (datomic-test-util/stub-entid ::db :Reference.Specimen/subject #{42})
     (datomic-test-util/stub-datoms-fn
       ::db :eavt (s/cat :e #{::specimen-eid} :a #{42})
       (constantly [(reify Datom (v [_] ::patient-eid))]))
@@ -141,7 +141,7 @@
         [::patient])))
 
   (testing "Observation in Specimen context"
-    (datomic-test-util/stub-entid ::db :Observation/specimen #{42})
+    (datomic-test-util/stub-entid ::db :Reference.Observation/specimen #{42})
     (datomic-test-util/stub-datoms-fn
       ::db :vaet (s/cat :v #{::specimen-eid} :a #{42})
       (constantly [(reify Datom (e [_] ::observation-eid))]))
@@ -235,15 +235,15 @@
 
 (defn stub-multiple-codes-expr [db context data-type property codes expr]
   (st/instrument
-    [`multiple-code-expr]
+    [`multiple-codes-expr]
     {:spec
-     {`multiple-code-expr
+     {`multiple-codes-expr
       (s/fspec
         :args (s/cat :db #{db} :context #{context} :data-type #{data-type}
                      :property #{property} :codes #{codes})
         :ret #{expr})}
      :stub
-     #{`multiple-code-expr}}))
+     #{`multiple-codes-expr}}))
 
 
 (deftest related-context-expr-test-3
@@ -285,50 +285,46 @@
 
   (testing "in non-Unspecified eval context"
     (testing "while retrieving resources of the same type as the context"
-      (let [expr (expr "Patient" ::db "Patient" nil nil)]
+      (let [expr (expr ::type ::db ::type nil nil)]
         (testing "a singleton list of the current patient is returned"
-          (is (= [::patient] (-eval expr {:db ::db} ::patient nil))))))
+          (is (= [::instance] (-eval expr {:db ::db} ::instance nil))))))
 
     (testing "while retrieving resources of a different type as the context"
-      (stub-context-expr
-        ::db ::context ::type
-        (reify Expression
-          (-eval [_ _ resource _]
-            (is (= ::context-resource resource))
-            ::result)))
+      (testing "without codes"
+        (stub-context-expr
+          ::db ::context ::type
+          (reify Expression
+            (-eval [_ _ resource _]
+              (is (= ::context-resource resource))
+              ::result)))
 
-      (let [expr (expr ::context ::db ::type nil nil)]
-        (testing "the observations of the current patient are returned"
-          (is (= ::result (-eval expr {:db ::db} ::context-resource nil))))))
+        (let [expr (expr ::context ::db ::type nil nil)]
+          (is (= ::result (-eval expr {:db ::db} ::context-resource nil)))))
 
-    (testing "while retrieving resources of a different type as the context and one code"
-      (let [code {:code/id "0"}]
+      (testing "with one code"
         (stub-single-code-expr
-          ::db ::context ::type ::code-property code
+          ::db ::context ::type ::code-property ::code
           (reify Expression
             (-eval [_ _ resource _]
               (is (= ::context-resource resource))
               ::result)))
 
-        (let [expr (expr ::context ::db ::type ::code-property [code])]
-          (testing "the observations with that code of the current patient are returned"
-            (is (= ::result (-eval expr {:db ::db} ::context-resource nil)))))))
+        (let [expr (expr ::context ::db ::type ::code-property [::code])]
+          (is (= ::result (-eval expr {:db ::db} ::context-resource nil)))))
 
-    (testing "while retrieving resources of a different type as the context and two codes"
-      (let [code-1 {:code/id "1"} code-2 {:code/id "2"}]
+      (testing "with two codes"
         (stub-multiple-codes-expr
-          ::db ::context ::type ::code-property [code-1 code-2]
+          ::db ::context ::type ::code-property [::code-1 ::code-2]
           (reify Expression
             (-eval [_ _ resource _]
               (is (= ::context-resource resource))
               ::result)))
 
-        (let [expr (expr ::context ::db ::type ::code-property [code-1 code-2])]
-          (testing "the observations with that code of the current patient are returned"
-            (is (= ::result (-eval expr {:db ::db} ::context-resource nil)))))))))
+        (let [expr (expr ::context ::db ::type ::code-property [::code-1 ::code-2])]
+          (is (= ::result (-eval expr {:db ::db} ::context-resource nil))))))))
 
 
-(defn stub-related-context-expr
+(defn stub-with-related-context-expr
   [context-expr data-type code-property-name codes-spec res]
   (st/instrument
     [`with-related-context-expr]
@@ -342,3 +338,20 @@
         :ret #{res})}
      :stub
      #{`with-related-context-expr}}))
+
+
+(defn stub-expr
+  [eval-context db data-type code-property-name codes-spec res]
+  (st/instrument
+    [`expr]
+    {:spec
+     {`expr
+      (s/fspec
+        :args (s/cat :eval-context #{eval-context}
+                     :db #{db}
+                     :data-type #{data-type}
+                     :code-property-name #{code-property-name}
+                     :codes codes-spec)
+        :ret #{res})}
+     :stub
+     #{`expr}}))

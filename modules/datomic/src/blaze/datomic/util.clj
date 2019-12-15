@@ -5,6 +5,7 @@
     [datomic.api :as d]
     [datomic-spec.core :as ds])
   (:import
+    [datomic Entity]
     [java.time Instant]
     [java.util Date]))
 
@@ -32,6 +33,17 @@
 
 (defn resource-id-attr [type]
   (keyword type "id"))
+
+
+(defn non-primitive-data-type?
+  ([x]
+   (instance? Entity x))
+  ([type-name x]
+   (and (non-primitive-data-type? x) (= type-name (entity-type x)))))
+
+
+(defn resource? [x]
+  (and (instance? Entity x) ((resource-id-attr (entity-type x)) x)))
 
 
 (s/fdef literal-reference

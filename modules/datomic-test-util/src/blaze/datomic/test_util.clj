@@ -1,6 +1,5 @@
 (ns blaze.datomic.test-util
   (:require
-    [blaze.datomic.cql :as cql]
     [blaze.datomic.pull :as pull]
     [blaze.datomic.schema :as schema]
     [blaze.datomic.transaction :as tx]
@@ -586,19 +585,3 @@
       @(d/transact conn (dts/schema))
       @(d/transact conn tx-data)
       conn)))
-
-
-
-;; ---- blaze.datomic.cql stubs -----------------------------------------------
-
-(defn stub-find-code [db system version-spec code result-spec]
-  (st/instrument
-    [`cql/find-code]
-    {:spec
-     {`cql/find-code
-      (s/fspec
-        :args
-        (s/cat :db #{db} :system #{system} :version version-spec :code #{code})
-        :ret result-spec)}
-     :stub
-     #{`cql/find-code}}))

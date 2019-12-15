@@ -17,7 +17,7 @@
     [blaze.elm.compiler.retrieve :as retrieve]
     [blaze.elm.compiler.query :as query]
     [blaze.datomic.quantity :as fhir-quantity]
-    [blaze.datomic.util :as datomic-util]
+    [blaze.datomic.util :as db]
     [blaze.elm.aggregates :as aggregates]
     [blaze.elm.boolean]
     [blaze.elm.code :as code]
@@ -44,8 +44,7 @@
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit]
-    [java.util Comparator]
-    [datomic Entity])
+    [java.util Comparator])
   (:refer-clojure :exclude [comparator compile]))
 
 
@@ -626,8 +625,10 @@
   (-eval [_ {:keys [library-context] :as context} resource _]
     (if-some [expression (get library-context name)]
       (-eval expression context resource nil)
-      (throw (ex-info (str "Expression `" name "` not found.")
-                      {:context context})))))
+      (throw-anom
+        ::anom/incorrect
+        (str "Expression `" name "` not found.")
+        :context context))))
 
 
 (defmethod compile* :elm.compiler.type/expression-ref
@@ -644,9 +645,11 @@
           (if-some [expression (get library-context name)]
             (mapv
               #(-eval expression context % nil)
-              (datomic-util/list-resources db def-eval-context))
-            (throw (ex-info (str "Expression `" name "` not found.")
-                            {:context context}))))
+              (db/list-resources db def-eval-context))
+            (throw-anom
+              ::anom/incorrect
+              (str "Expression `" name "` not found.")
+              :context context)))
         (-hash [_]
           ;; TODO: the expression does something different here. should it have a different hash?
           {:type :expression-ref
@@ -889,19 +892,24 @@
     code-property :codeProperty
     codes-expr :codes
     :or {code-property "code"}}]
-  (let [[_ data-type] (elm-util/parse-qualified-name data-type)]
-    (if-let [related-context-expr (some->> context-expr (compile context))]
-      (retrieve/with-related-context-expr
-        related-context-expr
-        data-type
-        code-property
-        (some->> codes-expr (compile context)))
-      (retrieve/expr
-        eval-context
-        db
-        data-type
-        code-property
-        (some->> codes-expr (compile context))))))
+  (let [[type-ns data-type] (elm-util/parse-qualified-name data-type)]
+    (if (= "http://hl7.org/fhir" type-ns)
+      (if-let [related-context-expr (some->> context-expr (compile context))]
+        (retrieve/with-related-context-expr
+          related-context-expr
+          data-type
+          code-property
+          (some->> codes-expr (compile context)))
+        (retrieve/expr
+          eval-context
+          db
+          data-type
+          code-property
+          (some->> codes-expr (compile context))))
+      (throw-anom
+        ::anom/unsupported
+        (format "Unsupported type namespace `%s` in Retrieve expression." type-ns)
+        :type-ns type-ns))))
 
 
 
@@ -2415,13 +2423,9 @@
     (= "Quantity" type-name)
     fhir-quantity/quantity?
 
-    (= "Reference" type-name)
-    (fn matches-type? [x]
-      (instance? Entity x))
-
     (Character/isUpperCase ^char (first type-name))
     (fn matches-type? [x]
-      (and (instance? Entity x) (= type-name (datomic-util/entity-type x))))
+      (db/non-primitive-data-type? type-name x))
 
     (= "boolean" type-name)
     boolean?
@@ -2443,7 +2447,7 @@
 
     (= "code" type-name)
     (fn matches-type? [x]
-      (and (instance? Entity x) (= "code" (datomic-util/entity-type x))))
+      (= "code" (db/entity-type x)))
 
     (= "code" type-name)
     uuid?

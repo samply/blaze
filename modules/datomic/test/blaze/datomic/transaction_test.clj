@@ -2,6 +2,7 @@
   (:require
     [blaze.datomic.quantity :as quantity]
     [blaze.datomic.test-util :as test-util]
+    [blaze.datomic.pull :as pull]
     [blaze.datomic.transaction
      :refer [annotate-codes resource-upsert resource-deletion
              coerce-value transact-async resource-codes-creation]]
@@ -187,6 +188,7 @@
 
 
 (deftest resource-upsert-test
+  (st/unstrument `pull/pull-element)
 
   (testing "Version handling"
     (testing "Starts with initial version -3 at creation mode :server-assigned-id"
@@ -546,7 +548,9 @@
                       "code" "39156-5"}]}
                    "subject"
                    {"reference" "Patient/0"}}))
-              [[:db/add obs-id :Observation/subject pat-id]
+              [[:db/add :part/Reference :Reference/reference "Patient/0"]
+               [:db/add obs-id :Observation/subject :part/Reference]
+               [:db/add obs-id :Reference.Observation/subject pat-id]
                [:db/add :part/Coding :Coding/code code-id]
                [:db/add pat-id (keyword "Patient.Observation.code" "http://loinc.org|39156-5") obs-id]
                [:db/add :part/CodeableConcept :CodeableConcept/coding :part/Coding]
@@ -771,12 +775,15 @@
               [db observation-id] (test-util/with-resource db "Observation" "0")]
           (is
             (=
-              (resource-upsert
-                db nil :server-assigned-id
-                {"id" "0"
-                 "resourceType" "Observation"
-                 "subject" {"reference" "Patient/0"}})
-              [[:db/add observation-id :Observation/subject patient-id]
+              (with-redefs [d/tempid (fn [partition] partition)]
+                (resource-upsert
+                  db nil :server-assigned-id
+                  {"id" "0"
+                   "resourceType" "Observation"
+                   "subject" {"reference" "Patient/0"}}))
+              [[:db/add :part/Reference :Reference/reference "Patient/0"]
+               [:db/add observation-id :Observation/subject :part/Reference]
+               [:db/add observation-id :Reference.Observation/subject patient-id]
                [:db.fn/cas observation-id :instance/version -3 -7]]))))
 
       (testing "with resource resolvable in tempids"
@@ -784,12 +791,15 @@
               [db observation-id] (test-util/with-resource db "Observation" "0")]
           (is
             (=
-              (resource-upsert
-                db {"Patient" {"0" patient-id}} :server-assigned-id
-                {"id" "0"
-                 "resourceType" "Observation"
-                 "subject" {"reference" "Patient/0"}})
-              [[:db/add observation-id :Observation/subject patient-id]
+              (with-redefs [d/tempid (fn [partition] partition)]
+                (resource-upsert
+                  db {"Patient" {"0" patient-id}} :server-assigned-id
+                  {"id" "0"
+                   "resourceType" "Observation"
+                   "subject" {"reference" "Patient/0"}}))
+              [[:db/add :part/Reference :Reference/reference "Patient/0"]
+               [:db/add observation-id :Observation/subject :part/Reference]
+               [:db/add observation-id :Reference.Observation/subject patient-id]
                [:db.fn/cas observation-id :instance/version -3 -7]])))))
 
 
@@ -798,13 +808,16 @@
             [db patient-id] (test-util/with-resource db "Patient" "0")]
         (is
           (=
-            (resource-upsert
-              db nil :server-assigned-id
-              {"id" "0"
-               "resourceType" "Patient"
-               "generalPractitioner"
-               [{"reference" "Organization/0"}]})
-            [[:db/add patient-id :Patient/generalPractitioner organization-id]
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "Patient"
+                 "generalPractitioner"
+                 [{"reference" "Organization/0"}]}))
+            [[:db/add :part/Reference :Reference/reference "Organization/0"]
+             [:db/add patient-id :Patient/generalPractitioner :part/Reference]
+             [:db/add patient-id :Reference.Patient/generalPractitioner organization-id]
              [:db.fn/cas patient-id :instance/version -3 -7]]))))
 
 
@@ -842,7 +855,9 @@
             [[:db/add :part/Patient :Patient/active true]
              [:db/add :part/Patient :local-id "0"]
              [:db/add id :Observation/contained :part/Patient]
-             [:db/add id :Observation/subject :part/Patient]
+             [:db/add :part/Reference :Reference/reference "#0"]
+             [:db/add id :Observation/subject :part/Reference]
+             [:db/add id :Reference.Observation/subject :part/Patient]
              [:db.fn/cas id :instance/version -3 -7]]))))
 
 
@@ -939,15 +954,18 @@
               db "Specimen" "0" :Specimen/extension extension-id)]
         (is
           (=
-            (resource-upsert
-              db nil :server-assigned-id
-              {"id" "0"
-               "resourceType" "Specimen"
-               "extension"
-               [{"url" "http://foo"
-                 "valueReference" {"reference" "Organization/0"}}]})
-            [[:db/add extension-id :Extension/valueReference organization-id]
+            (with-redefs [d/tempid (fn [partition] partition)]
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "Specimen"
+                 "extension"
+                 [{"url" "http://foo"
+                   "valueReference" {"reference" "Organization/0"}}]}))
+            [[:db/add :part/Reference :Reference/reference "Organization/0"]
+             [:db/add extension-id :Extension/valueReference :part/Reference]
              [:db/add extension-id :Extension/value :Extension/valueReference]
+             [:db/add extension-id :Reference.Extension/valueReference organization-id]
              [:db.fn/cas id :instance/version -3 -7]]))))
 
 
@@ -1172,15 +1190,68 @@
 
 
     (testing "single-valued special Reference type"
-      (let [[db id] (test-util/with-resource db "Patient" "0")
-            [db] (test-util/with-resource db "Observation" "0" :Observation/subject id)]
+      (testing "with simple reference element"
+        (let [[db patient-id] (test-util/with-resource db "Patient" "0")
+              [db patient-ref]
+              (test-util/with-non-primitive db :Reference/reference "Patient/0")
+              [db]
+              (test-util/with-resource
+                db "Observation" "0"
+                :Observation/subject patient-ref
+                :Reference.Observation/subject patient-id)]
+          (is
+            (empty?
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "Observation"
+                 "subject" {"reference" "Patient/0"}})))))
+
+      (testing "with additional display element"
+        (let [[db patient-id] (test-util/with-resource db "Patient" "0")
+              [db patient-ref]
+              (test-util/with-non-primitive
+                db :Reference/reference "Patient/0" :Reference/display "foo")
+              [db]
+              (test-util/with-resource
+                db "Observation" "0"
+                :Observation/subject patient-ref
+                :Reference.Observation/subject patient-id)]
+          (is
+            (empty?
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "Observation"
+                 "subject"
+                 {"reference" "Patient/0"
+                  "display" "foo"}}))))))
+
+
+    (testing "references in extensions"
+      (let [[db organization-id]
+            (test-util/with-resource db "Organization" "0")
+            [db organization-ref]
+            (test-util/with-non-primitive
+              db :Reference/reference "Organization/0")
+            [db extension-id]
+            (test-util/with-non-primitive
+              db :Extension/url "http://foo"
+              :Extension/value :Extension/valueReference
+              :Extension/valueReference organization-ref
+              :Reference.Extension/valueReference organization-id)
+            [db]
+            (test-util/with-resource
+              db "Specimen" "0" :Specimen/extension extension-id)]
         (is
           (empty?
             (resource-upsert
               db nil :server-assigned-id
               {"id" "0"
-               "resourceType" "Observation"
-               "subject" {"reference" "Patient/0"}})))))
+               "resourceType" "Specimen"
+               "extension"
+               [{"url" "http://foo"
+                 "valueReference" {"reference" "Organization/0"}}]})))))
 
 
     (testing "CodeSystem with contact"
@@ -1212,41 +1283,6 @@
                [{"id" "0"
                  "resourceType" "Patient"
                  "active" true}]})))))
-
-
-    (testing "ignores display on Reference"
-      (let [[db actor-id] (test-util/with-resource db "Location" "0")
-            [db] (test-util/with-resource db "Schedule" "0" :Schedule/actor actor-id)]
-        (is
-          (empty?
-            (resource-upsert
-              db nil :server-assigned-id
-              {"id" "0"
-               "resourceType" "Schedule"
-               "actor"
-               [{"reference" "Location/0"
-                 "display" "foo"}]})))))
-
-    (testing "references in extensions"
-      (let [[db organization-id]
-            (test-util/with-resource db "Organization" "0")
-            [db extension-id]
-            (test-util/with-non-primitive
-              db :Extension/url "http://foo"
-              :Extension/value :Extension/valueReference
-              :Extension/valueReference organization-id)
-            [db]
-            (test-util/with-resource
-              db "Specimen" "0" :Specimen/extension extension-id)]
-        (is
-          (empty?
-            (resource-upsert
-              db nil :server-assigned-id
-              {"id" "0"
-               "resourceType" "Specimen"
-               "extension"
-               [{"url" "http://foo"
-                 "valueReference" {"reference" "Organization/0"}}]})))))
 
     (testing "Measure.title"
       (let [[db] (test-util/with-resource
@@ -1476,7 +1512,13 @@
     (testing "single-valued special Reference type"
       (let [[db patient-0-id] (test-util/with-resource db "Patient" "0")
             [db patient-1-id] (test-util/with-resource db "Patient" "1")
-            [db observation-id] (test-util/with-resource db "Observation" "0" :Observation/subject patient-0-id)]
+            [db reference-id]
+            (test-util/with-non-primitive db :Reference/reference "Patient/0")
+            [db observation-id]
+            (test-util/with-resource
+              db "Observation" "0"
+              :Observation/subject reference-id
+              :Reference.Observation/subject patient-0-id)]
         (is
           (=
             (resource-upsert
@@ -1484,17 +1526,24 @@
               {"id" "0"
                "resourceType" "Observation"
                "subject" {"reference" "Patient/1"}})
-            [[:db/add observation-id :Observation/subject patient-1-id]
+            [[:db/add reference-id :Reference/reference "Patient/1"]
+             [:db/add observation-id :Reference.Observation/subject patient-1-id]
              [:db.fn/cas observation-id :instance/version -3 -7]]))))
 
 
     (testing "Contained resources"
       (testing "with changes inside the contained resource"
-        (let [[db contained-id] (test-util/with-non-primitive db :Patient/active false
-                                                              :local-id "0")
-              [db id] (test-util/with-resource db "Observation" "0"
-                                               :Observation/contained contained-id
-                                               :Observation/subject contained-id)]
+        (let [[db contained-id]
+              (test-util/with-non-primitive
+                db :Patient/active false :local-id "0")
+              [db contained-ref]
+              (test-util/with-non-primitive db :Reference/reference "#0")
+              [db id]
+              (test-util/with-resource
+                db "Observation" "0"
+                :Observation/contained contained-id
+                :Observation/subject contained-ref
+                :Reference.Observation/subject contained-id)]
           (is
             (=
               (resource-upsert
@@ -1510,14 +1559,24 @@
                [:db.fn/cas id :instance/version -3 -7]]))))
 
       (testing "with changes inside the container resource"
-        (let [[db contained-id] (test-util/with-non-primitive db :Patient/active true
-                                                              :local-id "0")
-              [db preliminary-id] (test-util/with-code db "http://hl7.org/fhir/observation-status" "preliminary")
-              [db final-id] (test-util/with-code db "http://hl7.org/fhir/observation-status" "final")
-              [db id] (test-util/with-resource db "Observation" "0"
-                                               :Observation/status preliminary-id
-                                               :Observation/contained contained-id
-                                               :Observation/subject contained-id)]
+        (let [[db contained-id]
+              (test-util/with-non-primitive
+                db :Patient/active true :local-id "0")
+              [db contained-ref]
+              (test-util/with-non-primitive db :Reference/reference "#0")
+              [db preliminary-id]
+              (test-util/with-code
+                db "http://hl7.org/fhir/observation-status" "preliminary")
+              [db final-id]
+              (test-util/with-code
+                db "http://hl7.org/fhir/observation-status" "final")
+              [db id]
+              (test-util/with-resource
+                db "Observation" "0"
+                :Observation/status preliminary-id
+                :Observation/contained contained-id
+                :Observation/subject contained-ref
+                :Reference.Observation/subject contained-id)]
           (is
             (=
               (resource-upsert
@@ -1793,6 +1852,71 @@
               {"id" "0" "resourceType" "Measure"})
             [[:db/retract id :Measure/title "Foo"]
              [:db/retract id :SearchParameter/Measure-title "foo"]
+             [:db.fn/cas id :instance/version -3 -7]]))))
+
+
+    (testing "single-valued special Reference type"
+      (testing "with simple reference element"
+        (let [[db patient-id] (test-util/with-resource db "Patient" "0")
+              [db patient-ref]
+              (test-util/with-non-primitive db :Reference/reference "Patient/0")
+              [db id]
+              (test-util/with-resource
+                db "Observation" "0"
+                :Observation/subject patient-ref
+                :Reference.Observation/subject patient-id)]
+          (is
+            (=
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "Observation"})
+              [[:db/retract patient-ref :Reference/reference "Patient/0"]
+               [:db/retract id :Observation/subject patient-ref]
+               [:db/retract id :Reference.Observation/subject patient-id]
+               [:db.fn/cas id :instance/version -3 -7]]))))
+
+      (testing "with additional display element"
+        (let [[db patient-id] (test-util/with-resource db "Patient" "0")
+              [db patient-ref]
+              (test-util/with-non-primitive
+                db :Reference/reference "Patient/0" :Reference/display "foo")
+              [db id]
+              (test-util/with-resource
+                db "Observation" "0"
+                :Observation/subject patient-ref
+                :Reference.Observation/subject patient-id)]
+          (is
+            (=
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "Observation"})
+              [[:db/retract patient-ref :Reference/reference "Patient/0"]
+               [:db/retract patient-ref :Reference/display "foo"]
+               [:db/retract id :Observation/subject patient-ref]
+               [:db/retract id :Reference.Observation/subject patient-id]
+               [:db.fn/cas id :instance/version -3 -7]])))))
+
+
+    (testing "multi-valued special Reference type"
+      (let [[db practitioner-id] (test-util/with-resource db "Practitioner" "0")
+            [db practitioner-ref]
+            (test-util/with-non-primitive db :Reference/reference "Practitioner/0")
+            [db id]
+            (test-util/with-resource
+              db "Observation" "0"
+              :Observation/performer practitioner-ref
+              :Reference.Observation/performer practitioner-id)]
+        (is
+          (=
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "Observation"})
+            [[:db/retract practitioner-ref :Reference/reference "Practitioner/0"]
+             [:db/retract id :Observation/performer practitioner-ref]
+             [:db/retract id :Reference.Observation/performer practitioner-id]
              [:db.fn/cas id :instance/version -3 -7]])))))
 
 

@@ -2,9 +2,6 @@
   "Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.datomic.cql :as cql]
-    [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.datomic.util :as datomic-util]
     [blaze.elm.code :as code]
     [blaze.elm.compiler :refer [compile compile-with-equiv-clause]]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
@@ -304,19 +301,11 @@
 
 ;; 10. Queries
 
-(defn stub-list-resources [db type resources-spec]
-  (st/instrument
-    `datomic-util/list-resources
-    {:spec
-     {`datomic-util/list-resources
-      (s/fspec
-        :args (s/cat :db #{db} :type #{type})
-        :ret resources-spec)}
-     :stub
-     #{`datomic-util/list-resources}}))
-
-
 ;; 10.1. Query
+;;
+;; The Query operator represents a clause-based query. The result of the query
+;; is determined by the type of sources included, as well as the clauses used
+;; in the query.
 (deftest compile-query-test
   (testing "Non-retrieve queries"
     (testing "Sort"
@@ -346,7 +335,11 @@
         (is (instance? Eduction res)))))
 
   (testing "Retrieve queries"
-    (stub-list-resources ::db "Patient" #{[::patient]})
+    (retrieve-test/stub-expr
+      "Unspecified" ::db "Patient" "code" nil?
+      (reify Expression
+        (-eval [_ _ _ _]
+          [::patient])))
 
     (let [retrieve {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
           where {:type "Equal"
@@ -362,7 +355,9 @@
                   :type "Property"
                   :resultTypeName "{http://hl7.org/fhir}string"
                   :life/source-type "{http://hl7.org/fhir}Patient"}]
-      (are [query res] (= res (-eval (compile {:eval-context "Unspecified"} query) {:db ::db} nil nil))
+      (are [query res]
+        (= res (-eval (compile {:db ::db :eval-context "Unspecified"} query)
+                      {:db ::db} nil nil))
         {:type "Query"
          :source
          [{:alias "P"
@@ -414,8 +409,11 @@
      {`compile-with-equiv-clause
       (s/fspec
         :args (s/cat :context any? :with-equiv-clause :elm.query.life/with-equiv))}})
-  (stub-list-resources
-    ::db "Observation" #{[{:Observation/subject ::subject}]})
+  (retrieve-test/stub-expr
+    "Unspecified" ::db "Observation" "code" nil?
+    (reify Expression
+      (-eval [_ _ _ _]
+        [{:Observation/subject ::subject}])))
 
   (testing "Equiv With with two Observations comparing there subjects."
     (let [elm {:alias "O1"
@@ -436,7 +434,8 @@
                  :resultTypeName "{http://hl7.org/fhir}Reference"
                  :life/scopes #{"O1"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
-          compile-context {:life/single-query-scope "O0" :eval-context "Unspecified"}
+          compile-context
+          {:db ::db :life/single-query-scope "O0" :eval-context "Unspecified"}
           create-clause (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
           eval-clause (create-clause eval-context nil)
@@ -457,12 +456,14 @@
                  :resultTypeName "{http://hl7.org/fhir}Reference"
                  :life/scopes #{"O"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
-          compile-context {:life/single-query-scope "P" :eval-context "Unspecified"}
+          compile-context
+          {:db ::db :life/single-query-scope "P" :eval-context "Unspecified"}
           create-clause (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
           eval-clause (create-clause eval-context nil)
           lhs-entity ::subject]
       (is (true? (eval-clause eval-context nil lhs-entity))))))
+
 
 
 ;; 11. External Data
@@ -492,7 +493,6 @@
 ;; only, as defined by the evaluation environment. Whereas for the Unfiltered
 ;; context, the data is returned for the entire source.
 (deftest compile-retrieve-test
-  (stub-list-resources ::db "Patient" #{[::patient]})
   (stub-to-code "life" nil? "0" ::code)
 
   (let [context
@@ -503,156 +503,36 @@
           {:def
            [{:name "lens_0" :id "0" :codeSystem {:name "life"}}]}}}]
 
-    (testing "in Patient eval context"
-      (testing "while retrieving patients"
-        (let [elm {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
-              expr (compile (assoc context :eval-context "Patient") elm)]
-          (testing "a singleton list of the current patient is returned"
-            (is (= [::patient] (-eval expr context ::patient nil))))))
+    (testing "without related context"
+      (testing "without codes"
+        (retrieve-test/stub-expr ::eval-context ::db "Foo" "code" nil? ::expr)
 
-      (testing "while retrieving observations"
-        (retrieve-test/stub-context-expr
-          ::db "Patient" "Observation"
-          (reify Expression
-            (-eval [_ _ resource _]
-              (is (= ::patient resource))
-              [::observation])))
+        (let [elm {:type "Retrieve" :dataType "{http://hl7.org/fhir}Foo"}
+              expr (compile (assoc context :eval-context ::eval-context) elm)]
+          (is (= ::expr expr))))
+
+      (testing "with codes"
+        (retrieve-test/stub-expr
+          ::eval-context ::db "Foo" "code" #{[::code]} ::expr)
 
         (let [elm {:type "Retrieve"
-                   :dataType "{http://hl7.org/fhir}Observation"}
-              expr (compile (assoc context :eval-context "Patient") elm)]
-          (testing "the observations of the current patient are returned"
-            (is (= [::observation] (-eval expr context ::patient nil))))))
-
-      (testing "while retrieving observations with one specific code"
-        (retrieve-test/stub-single-code-expr
-          ::db "Patient" "Observation" "code" ::code
-          (reify Expression
-            (-eval [_ _ resource _]
-              (is (= ::patient resource))
-              [::observation])))
-
-        (let [elm {:type "Retrieve"
-                   :dataType "{http://hl7.org/fhir}Observation"
-                   :codeProperty "code"
+                   :dataType "{http://hl7.org/fhir}Foo"
                    :codes
                    {:type "ToList"
                     :operand {:name "lens_0" :type "CodeRef"}}}
-              expr (compile (assoc context :eval-context "Patient") elm)]
-          (testing "the observations with that code of the current patient are returned"
-            (is (= [::observation] (-eval expr context ::patient nil))))))
+              expr (compile (assoc context :eval-context ::eval-context) elm)]
+          (is (= ::expr expr)))))
 
-      (testing "while retrieving conditions with one specific code"
-        (retrieve-test/stub-single-code-expr
-          ::db "Patient" "Condition" "code" ::code
-          (reify Expression
-            (-eval [_ _ resource _]
-              (is (= ::patient resource))
-              [::condition])))
+    (testing "with related context"
+      (retrieve-test/stub-with-related-context-expr
+        "context-expr" "Foo" "code" nil?
+        ::expr)
 
-        (let [elm {:type "Retrieve"
-                   :dataType "{http://hl7.org/fhir}Condition"
-                   :codeProperty "code"
-                   :codes
-                   {:type "ToList"
-                    :operand {:name "lens_0" :type "CodeRef"}}}
-              expr (compile (assoc context :eval-context "Patient") elm)]
-          (testing "the conditions with that code of the current patient are returned"
-            (is (= [::condition] (-eval expr context ::patient nil)))))))
-
-    (testing "in Specimen eval context"
-      (testing "while retrieving specimens"
-        (let [elm {:type "Retrieve" :dataType "{http://hl7.org/fhir}Specimen"}
-              expr (compile (assoc context :eval-context "Specimen") elm)]
-          (testing "a singleton list of the current specimen is returned"
-            (is (= [::specimen] (-eval expr context ::specimen nil))))))
-
-      (testing "while retrieving observations"
-        (retrieve-test/stub-context-expr
-          ::db "Specimen" "Observation"
-          (reify Expression
-            (-eval [_ _ resource _]
-              (is (= ::specimen resource))
-              [::observation])))
-
-        (let [elm {:type "Retrieve"
-                   :dataType "{http://hl7.org/fhir}Observation"}
-              expr (compile (assoc context :eval-context "Specimen") elm)]
-          (testing "the observations of the current specimen are returned"
-            (is (= [::observation] (-eval expr context ::specimen nil))))))
-
-      (testing "while retrieving observations with one specific code"
-        (retrieve-test/stub-single-code-expr
-          ::db "Specimen" "Observation" "code" ::code
-          (reify Expression
-            (-eval [_ _ resource _]
-              (is (= ::specimen resource))
-              [::observation])))
-
-        (let [elm {:type "Retrieve"
-                   :dataType "{http://hl7.org/fhir}Observation"
-                   :codeProperty "code"
-                   :codes
-                   {:type "ToList"
-                    :operand {:name "lens_0" :type "CodeRef"}}}
-              expr (compile (assoc context :eval-context "Specimen") elm)]
-          (testing "the observations with that code of the current specimen are returned"
-            (is (= [::observation] (-eval expr context ::specimen nil))))))
-
-      (testing "while using Patient retrieve context"
-        (retrieve-test/stub-related-context-expr
-          "context-expr" "Observation" "code" nil?
-          (reify Expression
-            (-eval [_ _ resource _]
-              (is (= ::specimen resource))
-              [::observation])))
-
-        (testing "while retrieving observations"
-          (let [elm {:type "Retrieve"
-                     :dataType "{http://hl7.org/fhir}Observation"
-                     :context #elm/string "context-expr"}
-                expr (compile (assoc context :eval-context "Specimen") elm)]
-            (testing "the observations with that code of the current specimen are returned"
-              (is (= [::observation] (-eval expr context ::specimen nil))))))))
-
-    (testing "in Unspecified eval context"
-      (testing "retrieving all patients"
-        (datomic-test-util/stub-list-resources ::db "Patient" #{[::patient]})
-
-        (are [elm res]
-          (= res (-eval (compile (assoc context :eval-context "Unspecified") elm)
-                        {:db ::db} nil nil))
-
-          {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
-          [::patient]))
-
-      (testing "retrieving all observations with a certain code"
-        (stub-to-code "life" nil? "0" {:system "s1" :code "c1"})
-        (datomic-test-util/stub-find-code
-          ::db "s1" nil? "c1" #{{:db/id ::code-eid}})
-        (st/instrument
-          `cql/list-resource-by-code
-          {:spec
-           {`cql/list-resource-by-code
-            (s/fspec
-              :args (s/cat :db #{::db}
-                           :data-type-name #{"Observation"}
-                           :code-property-name #{"code"}
-                           :codes #{[::code-eid]})
-              :ret #{[::observation]})}
-           :stub #{`cql/list-resource-by-code}})
-
-        (are [elm res]
-          (= res (-eval (compile (assoc context :eval-context "Unspecified") elm)
-                        {:db ::db} nil nil))
-
-          {:type "Retrieve"
-           :dataType "{http://hl7.org/fhir}Observation"
-           :codeProperty "code"
-           :codes
-           {:type "ToList"
-            :operand {:name "lens_0" :type "CodeRef"}}}
-          [::observation])))))
+      (let [elm {:type "Retrieve"
+                 :dataType "{http://hl7.org/fhir}Foo"
+                 :context #elm/string "context-expr"}
+            expr (compile (assoc context :eval-context "Specimen") elm)]
+        (is (= ::expr expr))))))
 
 
 
@@ -4422,13 +4302,7 @@
     {:type "Null"} nil)
 
   (are [list] (thrown? Exception (-eval (compile {} (elm/singleton-from list)) {} nil nil))
-    #elm/list [#elm/int "1" #elm/int "1"])
-
-  (stub-list-resources ::db "Patient" #{[::patient]})
-
-  (are [list res] (= res (-eval (compile {:eval-context "Unspecified"} (elm/singleton-from list)) {:db ::db} nil nil))
-    {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
-    ::patient))
+    #elm/list [#elm/int "1" #elm/int "1"]))
 
 
 ;; 20.26. Slice
