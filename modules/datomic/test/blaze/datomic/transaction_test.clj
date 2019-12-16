@@ -769,7 +769,7 @@
              [:db.fn/cas id :instance/version -3 -7]]))))
 
 
-    (testing "single-valued special Reference type"
+    (testing "single-valued reference element"
       (testing "with resource resolvable in db"
         (let [[db patient-id] (test-util/with-resource db "Patient" "0")
               [db observation-id] (test-util/with-resource db "Observation" "0")]
@@ -803,7 +803,7 @@
                [:db.fn/cas observation-id :instance/version -3 -7]])))))
 
 
-    (testing "multi-valued special Reference type"
+    (testing "multi-valued reference element"
       (let [[db organization-id] (test-util/with-resource db "Organization" "0")
             [db patient-id] (test-util/with-resource db "Patient" "0")]
         (is
@@ -1189,7 +1189,7 @@
                 "code" "m"}})))))
 
 
-    (testing "single-valued special Reference type"
+    (testing "single-valued reference element"
       (testing "with simple reference element"
         (let [[db patient-id] (test-util/with-resource db "Patient" "0")
               [db patient-ref]
@@ -1509,7 +1509,7 @@
              [:db.fn/cas encounter-id :instance/version -3 -7]]))))
 
 
-    (testing "single-valued special Reference type"
+    (testing "single-valued reference element"
       (let [[db patient-0-id] (test-util/with-resource db "Patient" "0")
             [db patient-1-id] (test-util/with-resource db "Patient" "1")
             [db reference-id]
@@ -1529,6 +1529,33 @@
             [[:db/add reference-id :Reference/reference "Patient/1"]
              [:db/add observation-id :Reference.Observation/subject patient-1-id]
              [:db.fn/cas observation-id :instance/version -3 -7]]))))
+
+    (testing "single-valued choice-typed reference element"
+      (let [[db patient-id-0] (test-util/with-resource db "Patient" "0")
+            [db patient-id-1] (test-util/with-resource db "Patient" "1")
+            [db patient-ref]
+            (test-util/with-non-primitive db :Reference/reference "Patient/0")
+            [db info-id]
+            (test-util/with-non-primitive
+              db
+              :Claim.supportingInfo/value :Claim.supportingInfo/valueReference
+              :Claim.supportingInfo/valueReference patient-ref
+              :Reference.Claim.supportingInfo/valueReference patient-id-0)
+            [db id]
+            (test-util/with-resource
+              db "Claim" "0"
+              :Claim/supportingInfo info-id)]
+        (is
+          (=
+            (resource-upsert
+              db nil :server-assigned-id
+              {"id" "0"
+               "resourceType" "Claim"
+               "supportingInfo"
+               [{"valueReference" {"reference" "Patient/1"}}]})
+            [[:db/add patient-ref :Reference/reference "Patient/1"]
+             [:db/add info-id :Reference.Claim.supportingInfo/valueReference patient-id-1]
+             [:db.fn/cas id :instance/version -3 -7]]))))
 
 
     (testing "Contained resources"
@@ -1855,7 +1882,7 @@
              [:db.fn/cas id :instance/version -3 -7]]))))
 
 
-    (testing "single-valued special Reference type"
+    (testing "single-valued reference element"
       (testing "with simple reference element"
         (let [[db patient-id] (test-util/with-resource db "Patient" "0")
               [db patient-ref]
@@ -1896,10 +1923,32 @@
                [:db/retract patient-ref :Reference/display "foo"]
                [:db/retract id :Observation/subject patient-ref]
                [:db/retract id :Reference.Observation/subject patient-id]
+               [:db.fn/cas id :instance/version -3 -7]]))))
+
+      (testing "with logical reference"
+        (let [[db identifier-id]
+              (test-util/with-non-primitive
+                db :Identifier/system "foo" :Identifier/value "bar")
+              [db patient-ref]
+              (test-util/with-non-primitive
+                db :Reference/identifier identifier-id)
+              [db id]
+              (test-util/with-resource
+                db "Observation" "0" :Observation/subject patient-ref)]
+          (is
+            (=
+              (resource-upsert
+                db nil :server-assigned-id
+                {"id" "0"
+                 "resourceType" "Observation"})
+              [[:db/retract identifier-id :Identifier/value "bar"]
+               [:db/retract identifier-id :Identifier/system "foo"]
+               [:db/retract patient-ref :Reference/identifier identifier-id]
+               [:db/retract id :Observation/subject patient-ref]
                [:db.fn/cas id :instance/version -3 -7]])))))
 
 
-    (testing "multi-valued special Reference type"
+    (testing "multi-valued reference element"
       (let [[db practitioner-id] (test-util/with-resource db "Practitioner" "0")
             [db practitioner-ref]
             (test-util/with-non-primitive db :Reference/reference "Practitioner/0")
@@ -2024,12 +2073,56 @@
              [:db/retract name-id :HumanName/family "Doe"]
              [:db/retract patient-id :Patient/name name-id]]))))
 
+    (testing "single-valued reference element"
+      (let [[db patient-id] (test-util/with-resource db "Patient" "0")
+            [db patient-ref]
+            (test-util/with-non-primitive db :Reference/reference "Patient/0")
+            [db id]
+            (test-util/with-resource
+              db "Claim" "0"
+              :Claim/patient patient-ref
+              :Reference.Claim/patient patient-id)]
+        (is
+          (=
+            (resource-deletion db "Claim" "0")
+            [[:db.fn/cas id :instance/version -3 -5]
+             [:db/retract patient-ref :Reference/reference "Patient/0"]
+             [:db/retract id :Claim/patient patient-ref]
+             [:db/retract id :Reference.Claim/patient patient-id]]))))
+
+    (testing "single-valued choice-typed reference element"
+      (let [[db patient-id] (test-util/with-resource db "Patient" "0")
+            [db patient-ref]
+            (test-util/with-non-primitive db :Reference/reference "Patient/0")
+            [db info-id]
+            (test-util/with-non-primitive
+              db
+              :Claim.supportingInfo/value :Claim.supportingInfo/valueReference
+              :Claim.supportingInfo/valueReference patient-ref
+              :Reference.Claim.supportingInfo/valueReference patient-id)
+            [db id]
+            (test-util/with-resource
+              db "Claim" "0"
+              :Claim/supportingInfo info-id)]
+        (is
+          (=
+            (resource-deletion db "Claim" "0")
+            [[:db.fn/cas id :instance/version -3 -5]
+             [:db/retract patient-ref :Reference/reference "Patient/0"]
+             [:db/retract info-id :Claim.supportingInfo/valueReference
+              patient-ref]
+             [:db/retract info-id :Reference.Claim.supportingInfo/valueReference
+              patient-id]
+             [:db/retract info-id :Claim.supportingInfo/value
+              :Claim.supportingInfo/valueReference]
+             [:db/retract id :Claim/supportingInfo info-id]]))))
 
     (testing "Measure.title"
-      (let [[db id] (test-util/with-resource
-                      db "Measure" "0"
-                      :Measure/title "Foo"
-                      :SearchParameter/Measure-title "foo")]
+      (let [[db id]
+            (test-util/with-resource
+              db "Measure" "0"
+              :Measure/title "Foo"
+              :SearchParameter/Measure-title "foo")]
         (is
           (=
             (resource-deletion db "Measure" "0")

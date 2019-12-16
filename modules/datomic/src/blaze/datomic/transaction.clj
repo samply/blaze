@@ -648,7 +648,9 @@
 
 
 (defn- retract-card-one-direct-reference [tx-data entity attr]
-  (conj tx-data (retract-direct-reference entity attr (attr entity))))
+  (cond-> tx-data
+    (attr entity)
+    (conj (retract-direct-reference entity attr (attr entity)))))
 
 
 (defn- retract-non-primitive-card-one-element
