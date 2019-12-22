@@ -605,9 +605,16 @@
     [0 "value" "text"] := "Organization/collection-0"
     [0 "population" 0 "count"] := 1
     [1 "value" "text"] := "Organization/collection-1"
+    [1 "population" 0 "count"] := 1)
+
+  (given (first-stratifier-stratums (evaluate "q26-stratifier-bmi"))
+    [0 "value" "text"] := ""
+    [0 "population" 0 "count"] := 2
+    [1 "value" "text"] := "37"
     [1 "population" 0 "count"] := 1))
 
 (comment
-  (evaluate "q25-stratifier-collection")
+  (require 'hashp.core)
+  (evaluate "q26-stratifier-bmi")
   (clojure.repl/pst)
   )

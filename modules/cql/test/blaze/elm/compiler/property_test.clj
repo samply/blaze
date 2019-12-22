@@ -1,11 +1,10 @@
 (ns blaze.elm.compiler.property-test
   (:require
-    [blaze.datomic.util :as datomic-util]
+    [blaze.datomic.quantity :as datomic-quantity]
+    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.elm.compiler.property
      :refer [attr scope-expr scope-runtime-type-expr]]
     [blaze.elm.compiler.protocols :refer [-eval]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
     [clojure.test :refer [are deftest is]]))
 
 
@@ -34,7 +33,31 @@
       :type "Property"
       :life/scopes #{"S"}
       :life/source-type "{http://hl7.org/fhir}Specimen"}}
-    :Specimen.collection/collected))
+    :Specimen.collection/collected
+
+    {:resultTypeName "{http://hl7.org/fhir}decimal"
+     :path "value"
+     :type "Property"
+     :source {:resultTypeName "{http://hl7.org/fhir}Quantity"}}
+    datomic-quantity/value
+
+    {:resultTypeName "{http://hl7.org/fhir}decimal"
+     :path "unit"
+     :type "Property"
+     :source {:resultTypeName "{http://hl7.org/fhir}Quantity"}}
+    datomic-quantity/unit
+
+    {:resultTypeName "{http://hl7.org/fhir}decimal"
+     :path "system"
+     :type "Property"
+     :source {:resultTypeName "{http://hl7.org/fhir}Quantity"}}
+    datomic-quantity/system
+
+    {:resultTypeName "{http://hl7.org/fhir}decimal"
+     :path "code"
+     :type "Property"
+     :source {:resultTypeName "{http://hl7.org/fhir}Quantity"}}
+    datomic-quantity/code))
 
 
 (deftest scope-expr-test
@@ -48,21 +71,9 @@
       "foo")))
 
 
-(defn stub-entity-type [entity type]
-  (st/instrument
-    [`datomic-util/entity-type]
-    {:spec
-     {`datomic-util/entity-type
-      (s/fspec
-        :args (s/cat :resource #{entity})
-        :ret #{type})}
-     :stub
-     #{`datomic-util/entity-type}}))
-
-
 (deftest scope-runtime-type-expr-test
   (let [entity {:CodeableConcept/coding "foo"}]
-    (stub-entity-type entity "CodeableConcept")
+    (datomic-test-util/stub-entity-type entity "CodeableConcept")
     (is
       (=
         (-eval

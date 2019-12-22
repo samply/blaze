@@ -680,6 +680,9 @@
       "ToCode"
       (function/->ToCodeFunctionExpression (first operands))
 
+      "ToDecimal"
+      (first operands)
+
       (throw (Exception. (str "Unsupported function `" name "` in `FunctionRef` expression."))))))
 
 

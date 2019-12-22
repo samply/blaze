@@ -1,6 +1,7 @@
 (ns blaze.elm.compiler.property
   (:require
     [blaze.anomaly :refer [throw-anom]]
+    [blaze.datomic.quantity :as datomic-quantity]
     [blaze.datomic.util :as db]
     [blaze.datomic.value :as dv]
     [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
@@ -35,7 +36,7 @@
 
 (s/fdef attr
   :args (s/cat :expression :elm/expression)
-  :ret (s/nilable keyword?))
+  :ret (s/nilable ifn?))
 
 (defn attr
   "Returns the Datomic attribute which corresponds to the :path of the
@@ -46,7 +47,14 @@
     source-type
     (let [[type-ns type-name] (elm-util/parse-qualified-name source-type)]
       (if (= "http://hl7.org/fhir" type-ns)
-        (attr-kw type-name path)
+        (case type-name
+          "Quantity"
+          (case path
+            "value" datomic-quantity/value
+            "unit" datomic-quantity/unit
+            "system" datomic-quantity/system
+            "code" datomic-quantity/code)
+          (attr-kw type-name path))
         (throw-anom
           ::anom/unsupported
           (format
@@ -122,7 +130,7 @@
 
 
 (s/fdef source-expr
-  :args (s/cat :source expr? :attr keyword?))
+  :args (s/cat :source expr? :attr ifn?))
 
 (defn source-expr
   [source attr]
@@ -136,7 +144,7 @@
 
 
 (s/fdef scope-expr
-  :args (s/cat :scope string? :attr keyword?))
+  :args (s/cat :scope string? :attr ifn?))
 
 (defn scope-expr [scope attr]
   (->ScopePropertyExpression scope attr))
