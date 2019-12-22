@@ -270,6 +270,10 @@
 
 ;; 22.23. ToDecimal
 (extend-protocol p/ToDecimal
+  Integer
+  (to-decimal [x]
+    (BigDecimal/valueOf (long x)))
+
   Long
   (to-decimal [x]
     (BigDecimal/valueOf x))
