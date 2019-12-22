@@ -1,4 +1,4 @@
-VERSION = "0.8.0-alpha.6"
+VERSION = "0.8.0-alpha.7"
 
 check:
 	clojure -A:check
