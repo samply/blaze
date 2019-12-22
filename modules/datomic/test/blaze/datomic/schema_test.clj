@@ -1205,6 +1205,6 @@
 
 (comment
   (filter #(str/ends-with? % "address") (map :id search-parameters))
-  (search-parameter "individual-address")
+  (search-parameter "MeasureReport-measure")
   (frequencies (map :code search-parameters))
   )

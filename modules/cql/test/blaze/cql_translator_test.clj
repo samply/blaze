@@ -48,20 +48,5 @@
 
 (comment
   (translate
-    "library Retrieve
-     using FHIR version '4.0.0'
-     include FHIRHelpers version '4.0.0'
-
-     codesystem icd10: 'http://hl7.org/fhir/sid/icd-10'
-     codesystem icd10gm: 'http://fhir.de/CodeSystem/dimdi/icd-10-gm'
-
-     context Specimen
-
-     define Patient:
-     singleton from ([Patient])
-
-
-     define InInitialPopulation:
-     exists([Patient -> Condition: Code 'Z77.6' from icd10]) or
-     exists([Patient -> Condition: Code 'Z77.6' from icd10gm])")
+    "library Retrieve\nusing FHIR version '4.0.0'\ninclude FHIRHelpers version '4.0.0'\n\ncodesystem loinc: 'http://loinc.org'\n\ncontext Patient\n\ndefine InInitialPopulation:\n    true\n\ndefine Bmi:\n  First(from [Observation: Code '39156-5' from loinc] O\n    return (O.value as Quantity).value)")
   )
