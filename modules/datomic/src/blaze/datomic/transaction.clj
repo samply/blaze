@@ -1072,8 +1072,7 @@
   "Like `datomic.api/transact-async` but returns a deferred instead of a future
   and an error deferred with an anomaly in case of errors.
 
-  Uses an executor with a maximum parallelism of 20 and times out after 10
-  seconds."
+  Uses `executor` to carry out the transactions."
   [executor conn tx-data]
   (try
     (-> (md/future-with executor
