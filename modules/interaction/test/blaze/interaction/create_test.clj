@@ -5,32 +5,18 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.fhir.response.create :as response-create]
+    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.create :refer [handler]]
-    [blaze.interaction.test-util :as test-util]
-    [clojure.spec.alpha :as s]
+    [blaze.middleware.fhir.metrics-spec]
+    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [datomic-spec.test :as dst]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
 
 
 (defn fixture [f]
   (st/instrument)
-  (dst/instrument)
-  (st/instrument
-    [`handler]
-    {:spec
-     {`handler
-      (s/fspec
-        :args
-        (s/cat
-          :transaction-executor #{::transaction-executor}
-          :conn #{::conn}
-          :term-service #{::term-service}))}})
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
@@ -38,35 +24,28 @@
 (test/use-fixtures :each fixture)
 
 
-(defn stub-build-created-response
-  [router return-preference-spec db type id response]
-  (st/instrument
-    [`response-create/build-created-response]
-    {:spec
-     {`response-create/build-created-response
-      (s/fspec
-        :args
-        (s/cat
-          :router #{router}
-          :return-preference return-preference-spec
-          :db #{db}
-          :type #{type}
-          :id #{id})
-        :ret #{response})}
-     :stub
-     #{`response-create/build-created-response}}))
+(def router
+  (reitit/router
+    [["/Patient/{id}" {:name :Patient/instance}]]
+    {:syntax :bracket}))
+
+
+(defn handler-with [txs]
+  (handler (mem-node-with txs)))
 
 
 (deftest handler-test
   (testing "Returns Error on type mismatch"
     (let [{:keys [status body]}
-          @((handler ::transaction-executor ::conn ::term-service)
+          @((handler-with [])
             {::reitit/match {:data {:fhir.resource/type "Patient"}}
-             :body {"resourceType" "Observation"}})]
+             :body {:resourceType "Observation"}})]
 
       (is (= 400 status))
 
       (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "error" (-> body :issue first :severity)))
 
       (is (= "invariant" (-> body :issue first :code)))
 
@@ -76,59 +55,98 @@
       (is (= "MSG_RESOURCE_TYPE_MISMATCH"
              (-> body :issue first :details :coding first :code)))))
 
+  (testing "Returns Error on invalid resource"
+    (let [{:keys [status body]}
+          @((handler-with [])
+            {::reitit/match {:data {:fhir.resource/type "Patient"}}
+             :body {:resourceType "Patient" :gender {}}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "error" (-> body :issue first :severity)))
+
+      (is (= "invariant" (-> body :issue first :code)))
+
+      (is (= "Resource invalid." (-> body :issue first :diagnostics)))))
 
   (testing "On newly created resource"
-    (let [id #uuid "6f9c4f5e-a9b3-40fb-871c-7b0ccddb3c99"]
-      (datomic-test-util/stub-db ::conn ::db-before)
-      (datomic-test-util/stub-squuid id)
-      (test-util/stub-upsert-resource
-        ::transaction-executor
-        ::conn
-        ::term-service
-        ::db-before
-        :server-assigned-id
-        {"resourceType" "Patient" "id" (str id)}
-        (md/success-deferred {:db-after ::db-after}))
+    (testing "with no Prefer header"
+      (with-redefs
+        [random-uuid (constantly #uuid "22de9f47-626a-4fc3-bb69-7bc68401acf4")]
+        (let [{:keys [status headers body]}
+              @((handler-with [])
+                {::reitit/router router
+                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :body {:resourceType "Patient"}})]
 
-      (testing "with no Prefer header"
-        (stub-build-created-response
-          ::router nil? ::db-after "Patient" (str id) ::response)
+          (is (= 201 status))
 
-        (is (= ::response
-               @((handler ::transaction-executor ::conn ::term-service)
-                 {::reitit/router ::router
-                  ::reitit/match {:data {:fhir.resource/type "Patient"}}
-                  :body {"resourceType" "Patient"}}))))
+          (testing "Transaction time in Last-Modified header"
+            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-      (testing "with return=minimal Prefer header"
-        (stub-build-created-response
-          ::router #{"minimal"} ::db-after "Patient" (str id) ::response)
+          (testing "Version in ETag header"
+            ;; 1 is the T of the transaction of the resource creation
+            (is (= "W/\"1\"" (get headers "ETag"))))
 
-        (is (= ::response
-               @((handler ::transaction-executor ::conn ::term-service)
-                 {::reitit/router ::router
-                  ::reitit/match {:data {:fhir.resource/type "Patient"}}
-                  :headers {"prefer" "return=minimal"}
-                  :body {"resourceType" "Patient"}}))))
+          (is (= "Patient" (:resourceType body)))
 
-      (testing "with return=representation Prefer header"
-        (stub-build-created-response
-          ::router #{"representation"} ::db-after "Patient" (str id) ::response)
+          (is (= "22de9f47-626a-4fc3-bb69-7bc68401acf4" (:id body))))))
 
-        (is (= ::response
-               @((handler ::transaction-executor ::conn ::term-service)
-                 {::reitit/router ::router
-                  ::reitit/match {:data {:fhir.resource/type "Patient"}}
-                  :headers {"prefer" "return=representation"}
-                  :body {"resourceType" "Patient"}}))))
+    (testing "with return=minimal Prefer header"
+      (let [{:keys [status headers body]}
+            @((handler-with [])
+              {::reitit/router router
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               :headers {"prefer" "return=minimal"}
+               :body {:resourceType "Patient"}})]
 
-      (testing "with return=OperationOutcome Prefer header"
-        (stub-build-created-response
-          ::router #{"OperationOutcome"} ::db-after "Patient" (str id) ::response)
+        (is (= 201 status))
 
-        (is (= ::response
-               @((handler ::transaction-executor ::conn ::term-service)
-                 {::reitit/router ::router
-                  ::reitit/match {:data {:fhir.resource/type "Patient"}}
-                  :headers {"prefer" "return=OperationOutcome"}
-                  :body {"resourceType" "Patient"}})))))))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
+
+        (is (nil? body))))
+
+    (testing "with return=representation Prefer header"
+      (let [{:keys [status headers body]}
+            @((handler-with [])
+              {::reitit/router router
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               :headers {"prefer" "return=representation"}
+               :body {:resourceType "Patient"}})]
+
+        (is (= 201 status))
+
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
+
+        (is (= "Patient" (:resourceType body)))))
+
+    (testing "with return=OperationOutcome Prefer header"
+      (let [{:keys [status headers body]}
+            @((handler-with [])
+              {::reitit/router router
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               :headers {"prefer" "return=OperationOutcome"}
+               :body {:resourceType "Patient"}})]
+
+        (is (= 201 status))
+
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
+
+        (is (= "OperationOutcome" (:resourceType body)))))))

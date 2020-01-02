@@ -1,0 +1,36 @@
+{:deps
+ {blaze/fhir-structure
+  {:local/root "../fhir-structure"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  info.cqframework/cql
+  {:mvn/version "1.4.6"}
+
+  org.antlr/antlr4-runtime
+  {:mvn/version "4.5"
+   :exclusions [org.abego.treelayout/org.abego.treelayout.core]}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "0.0-590"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

@@ -198,3 +198,13 @@
     (log/info "Read search-parameters resulting in:"
               (count search-parameters) "search-parameters")
     search-parameters))
+
+
+(comment
+  (filter (comp #{"Specimen-bodysite"} :id) (read-search-parameters))
+  (filter (comp #{"SearchParameter-base"} :id) (read-search-parameters))
+  (filter (comp #{"clinical-date"} :id) (read-search-parameters))
+  (filter (comp #{"Observation-code-value-quantity"} :id) (read-search-parameters))
+
+  (map #(select-keys % [:id :base]) (filter (comp #{"code"} :code) (read-search-parameters)))
+  )

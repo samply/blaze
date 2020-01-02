@@ -15,10 +15,17 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "0.0-565"}
+    {:mvn/version "0.0-590"}
 
     org.clojure/test.check
     {:mvn/version "0.10.0"}}
 
    :main-opts
-   ["-m" "kaocha.runner"]}}}
+   ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

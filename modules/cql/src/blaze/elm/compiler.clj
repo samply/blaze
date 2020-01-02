@@ -10,14 +10,13 @@
     Every local (without time zone) date or time is meant relative to the time
     zone of the :now timestamp in the evaluation context."
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :refer [throw-anom when-ok]]
+    [blaze.db.api :as d]
+    [blaze.db.api-spec]
     [blaze.elm.compiler.function :as function]
     [blaze.elm.compiler.protocols :refer [Expression -eval -hash]]
-    [blaze.elm.compiler.property :as property]
     [blaze.elm.compiler.retrieve :as retrieve]
     [blaze.elm.compiler.query :as query]
-    [blaze.datomic.quantity :as fhir-quantity]
-    [blaze.datomic.util :as db]
     [blaze.elm.aggregates :as aggregates]
     [blaze.elm.boolean]
     [blaze.elm.code :as code]
@@ -37,14 +36,17 @@
     [blaze.elm.string :as string]
     [blaze.elm.type-infer :refer [infer-library-types]]
     [blaze.elm.util :as elm-util]
-    [clojure.spec.alpha :as s]
+    [blaze.fhir.spec :as fhir-spec]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as str]
-    [datomic-spec.core :as ds])
+    [cuerdas.core :as str])
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
-    [java.time.temporal ChronoUnit])
-  (:refer-clojure :exclude [compile]))
+    [java.time.temporal ChronoUnit]
+    [clojure.lang PersistentArrayMap])
+  (:refer-clojure :exclude [comparator compile]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (extend-protocol p/Equal
@@ -95,36 +97,8 @@
   (throw (Exception. (str "Unsupported ELM expression type: " (or type "<missing>")))))
 
 
-(s/def :life/expression
-  #(satisfies? Expression %))
-
-
-(s/def ::now
-  #(satisfies? OffsetDateTime %))
-
-
-(s/def ::library-context
-  (s/map-of string? some?))
-
-
-(s/def ::eval-context
-  (s/keys :req-un [::ds/db ::now] :opt-un [::library-context]))
-
-
-(s/def ::compile-context
-  (s/keys :req-un [:elm/library]))
-
-
-(s/fdef compile
-  :args (s/cat :context ::compile-context :expression :elm/expression)
-  :ret :life/expression)
-
 (defn compile [context expression]
   (compile* context expression))
-
-
-(s/def :life/compiled-expression-def
-  (s/merge :elm/expression-def (s/keys :req [:life/expression])))
 
 
 (defn- compile-expression-def
@@ -151,41 +125,28 @@
              :elm/expression expression}))))))
 
 
-(s/def :life/compiled-expression-defs
-  (s/coll-of :life/compiled-expression-def))
-
-
-(s/def :life/compiled-library
-  (s/keys :req [:life/compiled-expression-defs]))
-
-
-(s/fdef compile-library
-  :args (s/cat :db ::ds/db :library :elm/library :opts map?)
-  :ret (s/or :result :life/compiled-library
-             :anomaly ::anom/anomaly))
-
 (defn compile-library
-  "Compiles `library` using `db` to retrieve codes.
+  "Compiles `library` using `node`.
 
   There are currently no options."
-  [db library opts]
+  [node library opts]
   (let [library (-> library
                     normalize-library
                     find-equiv-rels-library
                     infer-library-deps
                     infer-library-types)
-        context (assoc opts :db db :library library)
-        expr-defs (transduce
-                    (map #(compile-expression-def context %))
-                    (completing
-                      (fn [r compiled-expression-def]
-                        (if (::anom/category compiled-expression-def)
-                          (reduced compiled-expression-def)
-                          (conj r compiled-expression-def))))
-                    []
-                    (-> library :statements :def))]
-    (if (::anom/category expr-defs)
-      expr-defs
+        context (assoc opts :node node :library library)]
+    (when-ok [expr-defs
+              (transduce
+                (map #(compile-expression-def context %))
+                (completing
+                  (fn [r {:keys [name] :life/keys [expression]
+                          :as compiled-expression-def}]
+                    (if (::anom/category compiled-expression-def)
+                      (reduced compiled-expression-def)
+                      (assoc r name expression))))
+                {}
+                (-> library :statements :def))]
       {:life/compiled-expression-defs expr-defs})))
 
 
@@ -416,6 +377,12 @@
       elements)))
 
 
+(extend-protocol p/StructuredType
+  PersistentArrayMap
+  (get [m key]
+    (.valAt m key)))
+
+
 (defmethod compile* :elm.compiler.type/tuple
   [context {elements :element}]
   (->TupleExpression
@@ -448,63 +415,78 @@
 ;; Property expressions can also be used to access the individual points and
 ;; closed indicators for interval types using the property names low, high,
 ;; lowClosed, and highClosed.
-(defn- choice-type-expr
-  [{:life/keys [single-query-scope] :as context} source scope attr]
+(defn- fhir-type? [type]
+  (and (keyword? type) (str/starts-with? (namespace type) "fhir")))
+
+
+(defn- with-spec [spec x]
+  (if (fhir-spec/primitive? spec)
+    x
+    (with-meta x {:type spec})))
+
+
+(defn- get-fhir-property [key x]
+  (if-let [child-spec (get (fhir-spec/child-specs (type x)) key)]
+    (cond
+      (fhir-spec/choice? child-spec)
+      (loop [[[key spec] & more] (fhir-spec/choices child-spec)]
+        (if-let [val (get x key)]
+          (with-spec spec val)
+          (some-> more recur)))
+
+      (= :many (fhir-spec/cardinality child-spec))
+      (mapv (partial with-spec (fhir-spec/type-spec child-spec)) (get x key))
+
+      :else
+      (when-let [val (get x key)]
+        (with-spec child-spec val)))
+    (throw-anom
+      ::anom/incorrect
+      (format "unknown FHIR data element `%s` in type `%s`" (name key) (name (type x))))))
+
+
+(defn- get-property [key value]
   (cond
-    source
-    (property/source-choice-type-expr (compile context source) attr)
+    (fhir-type? (type value))
+    (get-fhir-property key value)
 
-    scope
-    (if (= single-query-scope scope)
-      (property/single-scope-choice-type-expr attr)
-      (property/scope-choice-type-expr scope attr))))
+    :else
+    (p/get value key)))
 
 
-(defn- runtime-choice-type-property-expr
-  [{:life/keys [single-query-scope] :as context} source scope path]
-  (cond
-    source
-    (property/source-runtime-choice-type-expr (compile context source) path)
-
-    scope
-    (if (= single-query-scope scope)
-      (property/single-scope-runtime-choice-type-expr path)
-      (property/scope-runtime-choice-type-expr scope path))))
+(defrecord SourcePropertyExpression [source key]
+  Expression
+  (-eval [_ context resource scope]
+    (get-property key (-eval source context resource scope))))
 
 
-(defn- property-expr
-  [{:life/keys [single-query-scope] :as context} source scope attr]
-  (cond
-    source
-    (property/source-expr (compile context source) attr)
-
-    scope
-    (if (= single-query-scope scope)
-      (property/single-scope-expr attr)
-      (property/scope-expr scope attr))))
+(defrecord SingleScopePropertyExpression [key]
+  Expression
+  (-eval [_ _ _ value]
+    (get-property key value)))
 
 
-(defn- runtime-type-property-expr
-  [{:life/keys [single-query-scope] :as context} source scope path]
-  (cond
-    source
-    (property/source-runtime-type-expr (compile context source) path)
+(defrecord ScopePropertyExpression [scope-key key]
+  Expression
+  (-eval [_ _ _ scope]
+    (get-property key (get scope scope-key))))
 
-    scope
-    (if (= single-query-scope scope)
-      (property/single-scope-runtime-type-expr path)
-      (property/scope-runtime-type-expr scope path))))
+
+(defn- path->key [path]
+  (keyword (first (str/split path "."))))
 
 
 (defmethod compile* :elm.compiler.type/property
-  [context {:keys [source scope path] :as expression}]
-  (if (property/choice-result-type? expression)
-    (if-let [attr (property/attr expression)]
-      (choice-type-expr context source scope attr)
-      (runtime-choice-type-property-expr context source scope path))
-    (if-let [attr (property/attr expression)]
-      (property-expr context source scope attr)
-      (runtime-type-property-expr context source scope path))))
+  [{:life/keys [single-query-scope] :as context} {:keys [source scope path]}]
+  (let [key (path->key path)]
+    (cond
+      source
+      (->SourcePropertyExpression (compile context source) key)
+
+      scope
+      (if (= single-query-scope scope)
+        (->SingleScopePropertyExpression key)
+        (->ScopePropertyExpression scope key)))))
 
 
 
@@ -626,7 +608,7 @@
       (-eval (get library-context name) context resource nil)
       (throw-anom
         ::anom/incorrect
-        (str "Expression `" name "` not found.")
+        (format "Expression `%s` not found." name)
         :context context))))
 
 
@@ -644,15 +626,11 @@
           (if-some [expression (get library-context name)]
             (mapv
               #(-eval expression context % nil)
-              (db/list-resources db def-eval-context))
+              (d/list-resources db def-eval-context))
             (throw-anom
               ::anom/incorrect
-              (str "Expression `" name "` not found.")
-              :context context)))
-        (-hash [_]
-          ;; TODO: the expression does something different here. should it have a different hash?
-          {:type :expression-ref
-           :name name}))
+              (format "Expression `%s` not found." name)
+              :context context))))
 
       :else
       (->ExpressionRef name))))
@@ -764,10 +742,8 @@
 
 
 (defmethod compile* :elm.compiler.type/identifier-ref
-  [_ {:keys [name] :as expression}]
-  (if (property/choice-result-type? expression)
-    (property/single-scope-runtime-choice-type-expr name)
-    (property/single-scope-runtime-type-expr name)))
+  [_ {:keys [name]}]
+  (->SingleScopePropertyExpression (keyword name)))
 
 
 ;; 10.3. AliasRef
@@ -803,10 +779,6 @@
   [operands alias]
   (some #(when (= (:life/scopes %) #{alias}) %) operands))
 
-
-(s/fdef compile-with-equiv-clause
-  :args (s/cat :context ::compile-context :with-equiv-clause :elm.query.life/with-equiv)
-  :ret fn?)
 
 (defn compile-with-equiv-clause
   "We use the terms `lhs` and `rhs` for left-hand-side and right-hand-side of
@@ -847,7 +819,7 @@
 
 ;; 11.1. Retrieve
 (defmethod compile* :elm.compiler.type/retrieve
-  [{:keys [db eval-context] :as context}
+  [{:keys [node eval-context] :as context}
    {context-expr :context
     data-type :dataType
     code-property :codeProperty
@@ -862,8 +834,8 @@
           code-property
           (some->> codes-expr (compile context)))
         (retrieve/expr
+          node
           eval-context
-          db
           data-type
           code-property
           (some->> codes-expr (compile context))))
@@ -1801,24 +1773,36 @@
            :hour (-hash hour)})))))
 
 
+(defrecord TimeOfDayExpression []
+  Expression
+  (-eval [_ {:keys [now]} _ _]
+    (.toLocalTime ^OffsetDateTime now)))
+
+
+(def ^:private time-of-day-expr
+  (->TimeOfDayExpression))
+
+
 ;; 18.21. TimeOfDay
 (defmethod compile* :elm.compiler.type/time-of-day
   [_ _]
-  (reify Expression
-    (-eval [_ {:keys [now]} _ _]
-      (.toLocalTime ^OffsetDateTime now))
-    (-hash [_]
-      {:type :time-of-day})))
+  time-of-day-expr)
+
+
+(defrecord TodayExpression []
+  Expression
+  (-eval [_ {:keys [now]} _ _]
+    (.toLocalDate ^OffsetDateTime now)))
+
+
+(def ^:private today-expr
+  (->TodayExpression))
 
 
 ;; 18.22. Today
 (defmethod compile* :elm.compiler.type/today
   [_ _]
-  (reify Expression
-    (-eval [_ {:keys [now]} _ _]
-      (.toLocalDate ^OffsetDateTime now))
-    (-hash [_]
-      {:type :today})))
+  today-expr)
 
 
 
@@ -2120,15 +2104,18 @@
 ;; 20.10. First
 ;;
 ;; TODO: orderBy
+(defrecord FirstExpression [source]
+  Expression
+  (-eval [_ context resource scopes]
+    (first (-eval source context resource scopes))))
+
+
 (defmethod compile* :elm.compiler.type/first
   [context {:keys [source]}]
-  (let [source (compile context source)]
-    (reify Expression
-      (-eval [_ context resource scopes]
-        (first (-eval source context resource scopes)))
-      (-hash [_]
-        {:type :first
-         :source (-hash source)}))))
+  (let [source (compile (assoc context :optimizations #{:first :non-distinct}) source)]
+    (if (static? source)
+      (first source)
+      (->FirstExpression source))))
 
 
 ;; 20.11. Flatten
@@ -2379,47 +2366,6 @@
         value))))
 
 
-(defn- matches-fhir-named-type-fn [type-name]
-  (cond
-    (= "Quantity" type-name)
-    fhir-quantity/quantity?
-
-    (Character/isUpperCase ^char (first type-name))
-    (fn matches-type? [x]
-      (db/non-primitive-data-type? type-name x))
-
-    (= "boolean" type-name)
-    boolean?
-
-    (#{"integer" "unsignedInt" "positiveInt"} type-name)
-    int?
-
-    (#{"string" "uri" "url" "canonical" "oid" "id" "markdown"} type-name)
-    string?
-
-    (= "base64Binary" type-name)
-    bytes?
-
-    (= "decimal" type-name)
-    decimal?
-
-    (#{"instant" "date" "dateTime" "time"} type-name)
-    temporal?
-
-    (= "code" type-name)
-    (fn matches-type? [x]
-      (= "code" (db/entity-type x)))
-
-    (= "code" type-name)
-    uuid?
-
-    :else
-    (throw-anom
-      ::anom/unsupported
-      (format "Unsupported FHIR type `%s` in As expression." type-name)
-      :type-name type-name)))
-
-
 (defn- matches-elm-named-type-fn [type-name]
   (case type-name
     "Boolean" boolean?
@@ -2436,7 +2382,21 @@
   (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
     (case type-ns
       "http://hl7.org/fhir"
-      (matches-fhir-named-type-fn type-name)
+      (if (Character/isUpperCase ^char (first type-name))
+        (comp #(identical? (keyword "fhir" type-name) %) type)
+        (case type-name
+          "boolean" boolean?
+          "integer" int?
+          "string" string?
+          "decimal" number?
+          "uri" string?
+          "url" string?
+          "canonical" string?
+          "dateTime" string?
+          (throw-anom
+            ::anom/unsupported
+            (format "Unsupported FHIR type `%s` in As expression." type-name)
+            :type-name type-name)))
       "urn:hl7-org:elm-types:r1"
       (matches-elm-named-type-fn type-name)
       (throw-anom
@@ -2587,6 +2547,24 @@
 
 ;; 23. Clinical Operators
 
+;; 23.3. CalculateAge
+;;
+;; see normalizer.clj
+
+
 ;; 23.4. CalculateAgeAt
-(defbinopp calculate-age-at [birth-date date precision]
-  (p/duration-between birth-date date precision))
+(defrecord CalculateAgeAtExpression [birth-date date precision]
+  Expression
+  (-eval [_ {:keys [now] :as context} resource scope]
+    (p/duration-between
+      (p/to-date  (-eval birth-date context resource scope) now)
+      (-eval date context resource scope)
+      precision)))
+
+
+(defmethod compile* :elm.compiler.type/calculate-age-at
+  [context {[birth-date date] :operand precision :precision}]
+  (->CalculateAgeAtExpression
+    (compile context birth-date)
+    (compile context date)
+    (some-> precision to-chrono-unit)))

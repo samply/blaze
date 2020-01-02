@@ -1,9 +1,13 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params
   (:require
+    [blaze.anomaly :refer [when-ok]]
     [blaze.handler.util :as util]
     [cognitect.anomalies :as anom])
   (:import
     [java.time LocalDate Year YearMonth]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn- parse-date [date]
@@ -28,10 +32,8 @@
 
 
 (defn- params-request [request]
-  (let [request (coerce-date request "periodStart")]
-    (if (::anom/category request)
-      request
-      (coerce-date request "periodEnd"))))
+  (when-ok [request (coerce-date request "periodStart")]
+    (coerce-date request "periodEnd")))
 
 
 (defn wrap-coerce-params [handler]

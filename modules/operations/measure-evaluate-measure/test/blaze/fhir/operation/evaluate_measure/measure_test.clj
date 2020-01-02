@@ -1,23 +1,17 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-test
   (:require
     [blaze.bundle :as bundle]
-    [blaze.cql-translator :as cql-translator]
-    [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.datomic.value :as value]
-    [blaze.elm.compiler :as compiler]
-    [blaze.fhir.operation.evaluate-measure.cql :as cql]
+    [blaze.db.api :as d]
+    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
-    [blaze.handler.fhir.util :as fhir-util]
-    [blaze.terminology-service.extern :as ts]
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
-    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
+    [clojure.test :as test :refer [are deftest is]]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [clojure.java.io :as io])
   (:import
     [java.time Instant OffsetDateTime ZoneOffset Year]
     [java.util Base64]))
@@ -32,467 +26,15 @@
 (test/use-fixtures :each fixture)
 
 
-(defn stub-instance-url [router type id url]
-  (st/instrument
-    [`fhir-util/instance-url]
-    {:spec
-     {`fhir-util/instance-url
-      (s/fspec
-        :args (s/cat :router #{router} :type #{type} :id #{id})
-        :ret #{url})}
-     :stub
-     #{`fhir-util/instance-url}}))
-
-
-(defn stub-cql-translate [code library]
-  (st/instrument
-    [`cql-translator/translate]
-    {:spec
-     {`cql-translator/translate
-      (s/fspec
-        :args (s/cat :cql #{code} :opts (s/* some?))
-        :ret #{library})}
-     :stub
-     #{`cql-translator/translate}}))
-
-
-(defn stub-compile-library [db library compiled-library]
-  (st/instrument
-    [`compiler/compile-library]
-    {:spec
-     {`compiler/compile-library
-      (s/fspec
-        :args (s/cat :db #{db} :library #{library} :opts #{{}})
-        :ret #{compiled-library})}
-     :stub
-     #{`compiler/compile-library}}))
-
-
-(defn stub-evaluate-expression [db now library subject expression-name result]
-  (st/instrument
-    [`cql/evaluate-expression]
-    {:spec
-     {`cql/evaluate-expression
-      (s/fspec
-        :args (s/cat :db #{db} :now #{now} :library #{library}
-                     :subject #{subject}
-                     :expression-name #{expression-name})
-        :ret #{result})}
-     :stub
-     #{`cql/evaluate-expression}}))
-
-
-(defn stub-calc-stratums
-  [db now library subject population-expression-name expression-name result]
-  (st/instrument
-    [`cql/calc-stratums]
-    {:spec
-     {`cql/calc-stratums
-      (s/fspec
-        :args (s/cat :db #{db} :now #{now} :library #{library}
-                     :subject #{subject}
-                     :population-expression-name #{population-expression-name}
-                     :expression-name #{expression-name})
-        :ret #{result})}
-     :stub
-     #{`cql/calc-stratums}}))
-
-
-(defn stub-calc-mult-component-stratums
-  [db now library subject population-expression-name expression-names result]
-  (st/instrument
-    [`cql/calc-mult-component-stratums]
-    {:spec
-     {`cql/calc-mult-component-stratums
-      (s/fspec
-        :args (s/cat :db #{db} :now #{now} :library #{library}
-                     :subject #{subject}
-                     :population-expression-name #{population-expression-name}
-                     :expression-names #{expression-names})
-        :ret #{result})}
-     :stub
-     #{`cql/calc-mult-component-stratums}}))
-
-
 (def now (OffsetDateTime/ofInstant Instant/EPOCH (ZoneOffset/ofHours 0)))
 
 
-(defn- scoring-concept [code]
-  {:CodeableConcept/coding
-   [{:Coding/code
-     {:code/system "http://terminology.hl7.org/CodeSystem/measure-scoring"
-      :code/code code}}]})
-
-
-(defn- population-concept [code]
-  {:CodeableConcept/coding
-   [{:Coding/code
-     {:code/system "http://terminology.hl7.org/CodeSystem/measure-population"
-      :code/code code}}]})
-
-
-(defn- attachment [content-type data]
-  {:Attachment/contentType content-type
-   :Attachment/data (value/write (.getBytes data "utf-8"))})
-
-
-(defn- cql-expression [expr]
-  {:Expression/language {:code/code "text/cql"}
-   :Expression/expression expr})
-
-
-(defn- fhirpath-expression [expr]
-  {:Expression/language {:code/code "text/fhirpath"}
-   :Expression/expression expr})
-
-
-(deftest evaluate-measure-test
-  (st/unstrument `evaluate-measure)
-
-  (testing "Missing primary library"
-    (given (evaluate-measure now ::db ::router [::start ::end] {})
-      ::anom/category := ::anom/unsupported
-      ::anom/message := "Missing primary library. Currently only CQL expressions together with one primary library are supported."
-      :fhir/issue := "not-supported"
-      :fhir.issue/expression := "Measure.library"))
-
-  (testing "Unsupported criteria language"
-    (let [population-concept (population-concept "initial-population")
-          population
-          #:Measure.group.population
-              {:code population-concept
-               :criteria (fhirpath-expression "Patient.gender")}
-          group
-          #:Measure.group{:population [population]}
-          measure
-          #:Measure
-              {:library ["http://foo"]
-               :group [group]}
-          library
-          #:Library
-              {:url "http://foo"
-               :content [(attachment "text/cql" "library-data")]}]
-
-      (datomic-test-util/stub-resource-by
-        ::db #{:Library/url} #{"http://foo"} #{library})
-      (stub-cql-translate "library-data" ::elm-library)
-      (stub-compile-library ::db ::elm-library ::compiled-library)
-
-      (given (evaluate-measure now ::db ::router [::start ::end] measure)
-        ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported language `text/fhirpath`."
-        :fhir/issue := "not-supported"
-        :fhir.issue/expression := "Measure.group[0].population[0].criteria.language")))
-
-  (testing "Missing criteria expression"
-    (let [population-concept (population-concept "initial-population")
-          population
-          #:Measure.group.population
-              {:code population-concept
-               :criteria (cql-expression nil)}
-          group
-          #:Measure.group{:population [population]}
-          measure
-          #:Measure
-              {:library ["http://foo"]
-               :group [group]}
-          library
-          #:Library
-              {:url "http://foo"
-               :content [(attachment "text/cql" "library-data")]}]
-
-      (datomic-test-util/stub-resource-by
-        ::db #{:Library/url} #{"http://foo"} #{library})
-      (stub-cql-translate "library-data" ::elm-library)
-      (stub-compile-library ::db ::elm-library ::compiled-library)
-
-      (given (evaluate-measure now ::db ::router [::start ::end] measure)
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Missing expression."
-        :fhir/issue := "required"
-        :fhir.issue/expression := "Measure.group[0].population[0].criteria.expression")))
-
-
-  (testing "Cohort scoring"
-    (let [population-concept (population-concept "initial-population")
-          population
-          #:Measure.group.population
-              {:code population-concept
-               :criteria (cql-expression "InInitialPopulation")}
-          group
-          #:Measure.group{:population [population]}
-          measure
-          #:Measure
-              {:id "0"
-               :scoring (scoring-concept "cohort")
-               :library ["http://foo"]
-               :group [group]}
-          library
-          #:Library
-              {:url "http://foo"
-               :content [(attachment "text/cql" "library-data")]}]
-
-      (stub-instance-url ::router "Measure" "0" ::measure-url)
-      (datomic-test-util/stub-resource-by
-        ::db #{:Library/url} #{"http://foo"} #{library})
-      (stub-cql-translate "library-data" ::elm-library)
-      (stub-compile-library ::db ::elm-library ::compiled-library)
-      (stub-evaluate-expression
-        ::db now ::compiled-library "Patient" "InInitialPopulation" 1)
-      (datomic-test-util/stub-pull-non-primitive
-        ::db :CodeableConcept population-concept ::population-concept)
-
-      (let [measure-report (evaluate-measure now ::db ::router [::start ::end] measure)]
-
-        (is (= "MeasureReport" (get measure-report "resourceType")))
-
-        (is (= "complete" (get measure-report "status")))
-
-        (is (= "summary" (get measure-report "type")))
-
-        (is (= ::measure-url (get measure-report "measure")))
-
-        (is (= "1970-01-01T00:00:00Z" (get measure-report "date")))
-
-        (is (= ::start (-> measure-report (get "period") (get "start"))))
-
-        (is (= ::end (-> measure-report (get "period") (get "end"))))
-
-        (is (= ::population-concept
-               (-> measure-report
-                   (get "group") first
-                   (get "population") first
-                   (get "code"))))
-
-        (is (= 1
-               (-> measure-report
-                   (get "group") first
-                   (get "population") first
-                   (get "count")))))))
-
-  (testing "Cohort scoring with stratifiers"
-    (let [population-concept (population-concept "initial-population")
-          population
-          #:Measure.group.population
-              {:code population-concept
-               :criteria (cql-expression "InInitialPopulation")}
-          stratifier-concept {:CodeableConcept/text "gender"}
-          stratifier
-          #:Measure.group.stratifier
-              {:code stratifier-concept
-               :criteria (cql-expression "Gender")}
-          group
-          #:Measure.group
-              {:population [population]
-               :stratifier [stratifier]}
-          measure
-          #:Measure
-              {:id "0"
-               :scoring (scoring-concept "cohort")
-               :library ["http://foo"]
-               :group [group]}
-          library
-          #:Library
-              {:url "http://foo"
-               :content [(attachment "text/cql" "library-data")]}]
-
-      (stub-instance-url ::router "Measure" "0" ::measure-url)
-      (datomic-test-util/stub-resource-by
-        ::db #{:Library/url} #{"http://foo"} #{library})
-      (stub-cql-translate "library-data" ::elm-library)
-      (stub-compile-library ::db ::elm-library ::compiled-library)
-      (stub-evaluate-expression
-        ::db now ::compiled-library "Patient" "InInitialPopulation" 1)
-      (stub-calc-stratums
-        ::db now ::compiled-library "Patient" "InInitialPopulation" "Gender"
-        {"male" 1})
-      (datomic-test-util/stub-pull-non-primitive-fn
-        ::db :CodeableConcept #{population-concept stratifier-concept}
-        (fn [_ _ value]
-          (condp = value
-            population-concept ::population-concept
-            stratifier-concept ::stratifier-concept)))
-
-      (let [measure-report (evaluate-measure now ::db ::router [::start ::end] measure)]
-        (is (= "MeasureReport" (get measure-report "resourceType")))
-
-        (is (= ::stratifier-concept
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "code") first)))
-
-        (is (= "male"
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "value")
-                   (get "text"))))
-
-        (is (= ::population-concept
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "population") first
-                   (get "code"))))
-
-        (is (= 1
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "population") first
-                   (get "count")))))))
-
-  (testing "Cohort scoring with stratifiers with multiple components"
-    (let [population-concept (population-concept "initial-population")
-          population
-          #:Measure.group.population
-              {:code population-concept
-               :criteria (cql-expression "InInitialPopulation")}
-          stratifier-concept-gender {:CodeableConcept/text "gender"}
-          stratifier-concept-age {:CodeableConcept/text "age"}
-          stratifier-component-gender
-          #:Measure.group.stratifier.component
-              {:code stratifier-concept-gender
-               :criteria (cql-expression "Gender")}
-          stratifier-component-age
-          #:Measure.group.stratifier.component
-              {:code stratifier-concept-age
-               :criteria (cql-expression "Age")}
-          stratifier
-          #:Measure.group.stratifier
-              {:component
-               [stratifier-component-gender
-                stratifier-component-age]}
-          group
-          #:Measure.group
-              {:population [population]
-               :stratifier [stratifier]}
-          measure
-          #:Measure
-              {:id "0"
-               :scoring (scoring-concept "cohort")
-               :library ["http://foo"]
-               :group [group]}
-          library
-          #:Library
-              {:url "http://foo"
-               :content [(attachment "text/cql" "library-data")]}]
-
-      (stub-instance-url ::router "Measure" "0" ::measure-url)
-      (datomic-test-util/stub-resource-by
-        ::db #{:Library/url} #{"http://foo"} #{library})
-      (stub-cql-translate "library-data" ::elm-library)
-      (stub-compile-library ::db ::elm-library ::compiled-library)
-      (stub-evaluate-expression
-        ::db now ::compiled-library "Patient" "InInitialPopulation" 1)
-      (stub-calc-mult-component-stratums
-        ::db now ::compiled-library "Patient" "InInitialPopulation"
-        ["Gender" "Age"] {["male" 30] 1})
-      (datomic-test-util/stub-pull-non-primitive-fn
-        ::db :CodeableConcept
-        #{population-concept stratifier-concept-gender stratifier-concept-age}
-        (fn [_ _ value]
-          (condp = value
-            population-concept ::population-concept
-            stratifier-concept-gender ::stratifier-concept-gender
-            stratifier-concept-age ::stratifier-concept-age)))
-
-      (let [measure-report (evaluate-measure now ::db ::router [::start ::end] measure)]
-        (is (= "MeasureReport" (get measure-report "resourceType")))
-
-        (is (= [::stratifier-concept-gender ::stratifier-concept-age]
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "code"))))
-
-        (is (= ::stratifier-concept-gender
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "component") first
-                   (get "code"))))
-
-        (is (= "male"
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "component") first
-                   (get "value")
-                   (get "text"))))
-
-        (is (= ::stratifier-concept-age
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "component") second
-                   (get "code"))))
-
-        (is (= "30"
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "component") second
-                   (get "value")
-                   (get "text"))))
-
-        (is (= ::population-concept
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "population") first
-                   (get "code"))))
-
-        (is (= 1
-               (-> measure-report
-                   (get "group") first
-                   (get "stratifier") first
-                   (get "stratum") first
-                   (get "population") first
-                   (get "count"))))))))
-
-
-(defn stub-evaluate-measure [now db router period-start period-end measure measure-report]
-  (st/instrument
-    [`evaluate-measure]
-    {:spec
-     {`evaluate-measure
-      (s/fspec
-        :args (s/cat :now #{now} :db #{db} :router #{router}
-                     :period (s/tuple #{period-start} #{period-end})
-                     :measure #{measure})
-        :ret #{measure-report})}
-     :stub
-     #{`evaluate-measure}}))
-
-
-(defonce db (d/db (st/with-instrument-disabled (datomic-test-util/connect))))
-
-
-(def term-service
-  (ts/term-service "http://tx.fhir.org/r4" {} nil nil))
-
-
-(defn- db-with [{:strs [entry]}]
-  (let [entries @(bundle/annotate-codes term-service db entry)
-        {db :db-after} (d/with db (bundle/code-tx-data db entries))]
-    (:db-after (d/with db (bundle/tx-data db entries)))))
+(defn- node-with [{:keys [entry]}]
+  (mem-node-with [(bundle/tx-ops entry)]))
 
 
 (defn- slurp-resource [name]
-  (let [cl (.getContextClassLoader (Thread/currentThread))
-        name (str "blaze/fhir/operation/evaluate_measure/" name)
-        res (.getResource cl name)]
-    (slurp res)))
+  (slurp (io/resource (str "blaze/fhir/operation/evaluate_measure/" name))))
 
 
 (defn- b64-encode [s]
@@ -500,54 +42,51 @@
 
 
 (defn- library [query]
-  {"resource"
-   {"resourceType" "Library"
-    "id" "0"
-    "url" "0"
-    "content"
-    [{"contentType" "text/cql"
-      "data" (b64-encode query)}]}
-   "request"
-   {"method" "PUT"
-    "url" "Library/0"}})
+  {:resource
+   {:resourceType "Library"
+    :id "0"
+    :url "0"
+    :content
+    [{:contentType "text/cql"
+      :data (b64-encode query)}]}
+   :request
+   {:method "PUT"
+    :url "Library/0"}})
 
 
 (defn- read-data [name]
   (let [raw (slurp-resource (str name "-data.json"))
-        bundle (binding [*use-bigdecimals?* true] (json/parse-string raw))
+        bundle (binding [*use-bigdecimals?* true] (json/parse-string raw keyword))
         library (library (slurp-resource (str name "-query.cql")))]
-    (update bundle "entry" conj library)))
+    (update bundle :entry conj library)))
 
 
 (defn- evaluate [name]
-  (cql/clear-resource-cache!)
-  (let [db (db-with (read-data name))
+  (let [node (node-with (read-data name))
+        db (d/db node)
         period [(Year/of 2000) (Year/of 2020)]]
-    (evaluate-measure now db ::router period (d/entity db [:Measure/id "0"]))))
+    (evaluate-measure now node db ::router period (d/resource db "Measure" "0"))))
 
 
 (defn- first-population-count [measure-report]
   (if (::anom/category measure-report)
     (prn measure-report)
     (-> measure-report
-        (get "group") first
-        (get "population") first
-        (get "count"))))
+        :group first
+        :population first
+        :count)))
 
 
 (defn- first-stratifier-stratums [measure-report]
   (if (::anom/category measure-report)
     (prn measure-report)
     (-> measure-report
-        (get "group") first
-        (get "stratifier") first
-        (get "stratum"))))
+        :group first
+        :stratifier first
+        :stratum)))
 
 
 (deftest integration-test
-  (st/unstrument `evaluate-measure)
-  (stub-instance-url ::router "Measure" "0" ::measure-url)
-
   (are [name count] (= count (first-population-count (evaluate name)))
     "q1" 1
     "q2" 1
@@ -570,54 +109,54 @@
     "q24" 1)
 
   (given (first-stratifier-stratums (evaluate "q19-stratifier-ageclass"))
-    [0 "value" "text"] := "10"
-    [0 "population" 0 "count"] := 1
-    [1 "value" "text"] := "70"
-    [1 "population" 0 "count"] := 2)
+    [0 :value :text] := "10"
+    [0 :population 0 :count] := 1
+    [1 :value :text] := "70"
+    [1 :population 0 :count] := 2)
 
   (given (first-stratifier-stratums (evaluate "q20-stratifier-city"))
-    [0 "value" "text"] := "Jena"
-    [0 "population" 0 "count"] := 3
-    [1 "value" "text"] := "Leipzig"
-    [1 "population" 0 "count"] := 1)
+    [0 :value :text] := "Jena"
+    [0 :population 0 :count] := 3
+    [1 :value :text] := "Leipzig"
+    [1 :population 0 :count] := 1)
 
   (given (first-stratifier-stratums (evaluate "q21-stratifier-city-of-only-women"))
-    [0 "value" "text"] := "Jena"
-    [0 "population" 0 "count"] := 2)
+    [0 :value :text] := "Jena"
+    [0 :population 0 :count] := 2)
 
   (is (= ::anom/incorrect (::anom/category (evaluate "q22-stratifier-multiple-cities-fail"))))
 
   (given
     (->> (first-stratifier-stratums (evaluate "q23-stratifier-ageclass-and-gender"))
-         (map (fn [c] (update c "component" (fn [x] (sort-by #(get-in % ["code" "text"]) x)))))
-         (sort-by (fn [{:strs [component]}] (mapv #(get-in % ["value" "text"]) component))))
-    [0 "component" 0 "value" "text"] := "10"
-    [0 "component" 1 "value" "text"] := "male"
-    [0 "population" 0 "count"] := 1
-    [1 "component" 0 "value" "text"] := "70"
-    [1 "component" 1 "value" "text"] := "female"
-    [1 "population" 0 "count"] := 2
-    [2 "component" 0 "value" "text"] := "70"
-    [2 "component" 1 "value" "text"] := "male"
-    [2 "population" 0 "count"] := 1)
+         (map (fn [c] (update c :component (fn [x] (sort-by #(get-in % [:code :text]) x)))))
+         (sort-by (fn [{:keys [component]}] (mapv #(get-in % [:value :text]) component))))
+    [0 :component 0 :value :text] := "10"
+    [0 :component 1 :value :text] := "male"
+    [0 :population 0 :count] := 1
+    [1 :component 0 :value :text] := "70"
+    [1 :component 1 :value :text] := "female"
+    [1 :population 0 :count] := 2
+    [2 :component 0 :value :text] := "70"
+    [2 :component 1 :value :text] := "male"
+    [2 :population 0 :count] := 1)
 
   (given (first-stratifier-stratums (evaluate "q25-stratifier-collection"))
-    [0 "value" "text"] := "Organization/collection-0"
-    [0 "population" 0 "count"] := 1
-    [1 "value" "text"] := "Organization/collection-1"
-    [1 "population" 0 "count"] := 1)
+    [0 :value :text] := "Organization/collection-0"
+    [0 :population 0 :count] := 1
+    [1 :value :text] := "Organization/collection-1"
+    [1 :population 0 :count] := 1)
 
   (given (first-stratifier-stratums (evaluate "q26-stratifier-bmi"))
-    [0 "value" "text"] := ""
-    [0 "population" 0 "count"] := 2
-    [1 "value" "text"] := "37"
-    [1 "population" 0 "count"] := 1)
+    [0 :value :text] := "37"
+    [0 :population 0 :count] := 1
+    [1 :value :text] := "null"
+    [1 :population 0 :count] := 2)
 
   (given (first-stratifier-stratums (evaluate "q27-stratifier-calculated-bmi"))
-    [0 "value" "text"] := ""
-    [0 "population" 0 "count"] := 2
-    [1 "value" "text"] := "26.8"
-    [1 "population" 0 "count"] := 1))
+    [0 :value :text] := "26.8"
+    [0 :population 0 :count] := 1
+    [1 :value :text] := "null"
+    [1 :population 0 :count] := 2))
 
 (comment
   (evaluate "q27-stratifier-calculated-bmi")

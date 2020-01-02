@@ -1,35 +1,19 @@
 (ns blaze.fhir.operation.evaluate-measure.handler.impl-test
   (:require
-    [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.executors :as ex :refer [executor?]]
+    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure.handler.impl :refer [handler]]
-    [blaze.fhir.operation.evaluate-measure.measure-test :as measure-test]
-    [blaze.fhir.response.create :as fhir-response-create]
-    [blaze.handler.fhir.util :as fhir-util]
-    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock Instant ZoneOffset OffsetDateTime]))
+    [java.time Clock Instant ZoneOffset]))
 
 
 (defn- fixture [f]
   (st/instrument)
-  (st/instrument
-    [`handler]
-    {:spec
-     {`handler
-      (s/fspec
-        :args
-        (s/cat
-          :clock #(instance? Clock %)
-          :transaction-executor executor?
-          :conn #{::conn}
-          :term-service #{::term-service}
-          :executor executor?))}})
-  (datomic-test-util/stub-db ::conn ::db)
   (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
@@ -37,158 +21,356 @@
 (test/use-fixtures :each fixture)
 
 
-(def base-uri "http://localhost:8080")
-(def clock (Clock/fixed Instant/EPOCH (ZoneOffset/ofHours 0)))
-(def now (OffsetDateTime/ofInstant Instant/EPOCH (ZoneOffset/ofHours 0)))
-(defonce transaction-executor (ex/single-thread-executor))
+(def clock (Clock/fixed Instant/EPOCH (ZoneOffset/ofHours 1)))
 (defonce executor (ex/single-thread-executor))
 
-
-(defn stub-upsert-resource
-  [conn term-service db creation-mode resource tx-result]
-  (st/instrument
-    [`fhir-util/upsert-resource]
-    {:spec
-     {`fhir-util/upsert-resource
-      (s/fspec
-        :args
-        (s/cat
-          :transaction-executor #{transaction-executor}
-          :conn #{conn}
-          :term-service #{term-service}
-          :db #{db}
-          :creation-mode #{creation-mode}
-          :resource #{resource})
-        :ret #{tx-result})}
-     :stub
-     #{`fhir-util/upsert-resource}}))
+(def router
+  (reitit/router
+    [["/Patient/{id}" {:name :Patient/instance}]]
+    {:syntax :bracket}))
 
 
-(defn stub-build-created-response
-  [router return-preference-spec db type id response]
-  (st/instrument
-    [`fhir-response-create/build-created-response]
-    {:spec
-     {`fhir-response-create/build-created-response
-      (s/fspec
-        :args (s/cat :router #{router} :return-preference return-preference-spec
-                     :db #{db} :type #{type} :id #{id})
-        :ret #{response})}
-     :stub
-     #{`fhir-response-create/build-created-response}}))
+(defn handler-with [txs]
+  (handler clock (mem-node-with txs) executor))
+
+
+(defn- scoring-concept [code]
+  {:coding
+   [{:system "http://terminology.hl7.org/CodeSystem/measure-scoring"
+     :code code}]})
+
+
+(defn- population-concept [code]
+  {:coding
+   [{:system "http://terminology.hl7.org/CodeSystem/measure-population"
+     :code code}]})
+
+
+(defn- cql-expression [expr]
+  {:language "text/cql"
+   :expression expr})
 
 
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Measure"
     (testing "on type endpoint"
-      (datomic-test-util/stub-resource ::db #{"Measure"} #{"0"} nil?)
-
       (let [{:keys [status body]}
-            ((handler clock transaction-executor ::conn ::term-service executor)
+            ((handler-with [])
              {:path-params {:id "0"}})]
 
         (is (= 404 status))
 
         (is (= "OperationOutcome" (:resourceType body)))
 
-        (is (= "error" (-> body :issue first :severity)))
-
-        (is (= "not-found" (-> body :issue first :code)))))
+        (given (-> body :issue first)
+          :severity := "error"
+          :code := "not-found")))
 
     (testing "on instance endpoint"
-      (datomic-test-util/stub-resource-by
-        ::db #{:Measure/url} #{"url-181501"} nil?)
-
       (let [{:keys [status body]}
-            ((handler clock transaction-executor ::conn ::term-service executor)
+            ((handler-with [])
              {:params {"measure" "url-181501"}})]
 
         (is (= 404 status))
 
         (is (= "OperationOutcome" (:resourceType body)))
 
-        (is (= "error" (-> body :issue first :severity)))
-
-        (is (= "not-found" (-> body :issue first :code))))))
+        (given (-> body :issue first)
+          :severity := "error"
+          :code := "not-found"))))
 
 
   (testing "Returns Gone on Deleted Resource"
-    (datomic-test-util/stub-resource ::db #{"Measure"} #{"0"} #{::measure})
-    (datomic-test-util/stub-deleted? ::measure true?)
-
     (let [{:keys [status body]}
-          ((handler clock transaction-executor ::conn ::term-service executor)
+          ((handler-with [[[:put {:resourceType "Measure" :id "0"}]]
+                          [[:delete "Measure" "0"]]])
            {:path-params {:id "0"}})]
 
       (is (= 410 status))
 
       (is (= "OperationOutcome" (:resourceType body)))
 
-      (is (= "error" (-> body :issue first :severity)))
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "deleted")))
 
-      (is (= "deleted" (-> body :issue first :code)))))
+
+  (testing "measure without library"
+    (let [{:keys [status body]}
+          @((handler-with [[[:put {:resourceType "Measure" :id "0"
+                                   :url "url-181501"}]]])
+            {:params {"measure" "url-181501"}})]
+
+      (is (= 422 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "not-supported"
+        :diagnostics := "Missing primary library. Currently only CQL expressions together with one primary library are supported."
+        [:expression first] := "Measure.library")))
+
+
+  (testing "measure with non-existing library"
+    (let [{:keys [status body]}
+          @((handler-with [[[:put {:resourceType "Measure" :id "0"
+                                   :url "url-181501"
+                                   :library ["library-url-094115"]}]]])
+            {:params {"measure" "url-181501"}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "value"
+        :diagnostics := "Can't find the library with canonical URI `library-url-094115`."
+        [:expression first] := "Measure.library")))
+
+
+  (testing "missing content in library"
+    (let [{:keys [status body]}
+          @((handler-with [[[:put {:resourceType "Measure" :id "0"
+                                   :url "url-181501"
+                                   :library ["library-url-094115"]}]
+                            [:put {:resourceType "Library" :id "0"
+                                   :url "library-url-094115"}]]])
+            {:params {"measure" "url-181501"}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "value"
+        :diagnostics := "Missing content in library with id `0`."
+        [:expression first] := "Library.content")))
+
+
+  (testing "non text/cql content type"
+    (let [{:keys [status body]}
+          @((handler-with [[[:put {:resourceType "Measure" :id "0"
+                                   :url "url-181501"
+                                   :library ["library-url-094115"]}]
+                            [:put {:resourceType "Library" :id "0"
+                                   :url "library-url-094115"
+                                   :content
+                                   [{:contentType "text/plain"}]}]]])
+            {:params {"measure" "url-181501"}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "value"
+        :diagnostics := "Non `text/cql` content type of `text/plain` of first attachment in library with id `0`."
+        [:expression first] := "Library.content[0].contentType")))
+
+
+  (testing "missing data in library content"
+    (let [{:keys [status body]}
+          @((handler-with [[[:put {:resourceType "Measure" :id "0"
+                                   :url "url-181501"
+                                   :library ["library-url-094115"]}]
+                            [:put {:resourceType "Library" :id "0"
+                                   :url "library-url-094115"
+                                   :content
+                                   [{:contentType "text/cql"}]}]]])
+            {:params {"measure" "url-181501"}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "value"
+        :diagnostics := "Missing embedded data of first attachment in library with id `0`."
+        [:expression first] := "Library.content[0].data")))
 
 
   (testing "Success"
     (testing "on type endpoint"
-      (datomic-test-util/stub-resource-by
-        ::db #{:Measure/url} #{"url-181501"} #{::measure})
-      (datomic-test-util/stub-deleted? ::measure false?)
-
       (testing "as GET request"
-        (measure-test/stub-evaluate-measure
-          now ::db ::router "2014" "2015" ::measure ::measure-report)
+        (testing "with empty CQL library"
+          (let [{:keys [status body]}
+                @((handler-with
+                    [[[:put {:resourceType "Measure" :id "0"
+                             :url "url-181501"
+                             :library ["library-url-094115"]}]
+                      [:put {:resourceType "Library" :id "0"
+                             :url "library-url-094115"
+                             :content
+                             [{:contentType "text/cql"
+                               :data ""}]}]]])
+                  {:request-method :get
+                   :params
+                   {"measure" "url-181501"
+                    "periodStart" "2014"
+                    "periodEnd" "2015"}})]
 
+            (is (= 200 status))
+
+            (given body
+              :resourceType := "MeasureReport"
+              :status := "complete"
+              :type := "summary"
+              :measure := "url-181501"
+              :date := "1970-01-01T01:00:00+01:00"
+              [:period :start] := "2014"
+              [:period :end] := "2015")))
+
+        (testing "cohort scoring"
+          (let [{:keys [status body]}
+                @((handler-with
+                    [[[:put
+                       {:resourceType "Measure" :id "0"
+                        :url "url-181501"
+                        :library ["library-url-094115"]
+                        :scoring (scoring-concept "cohort")
+                        :group
+                        [{:population
+                          [{:code (population-concept "initial-population")
+                            :criteria (cql-expression "InInitialPopulation")}]}]}]
+                      [:put
+                       {:resourceType "Library" :id "0"
+                        :url "library-url-094115"
+                        :content
+                        [{:contentType "text/cql"
+                          :data "bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
+                      [:put
+                       {:resourceType "Patient"
+                        :id "0"
+                        :gender "male"}]]])
+                  {:request-method :get
+                   :params
+                   {"measure" "url-181501"
+                    "periodStart" "2014"
+                    "periodEnd" "2015"}})]
+
+            (is (= 200 status))
+
+            (given body
+              :resourceType := "MeasureReport"
+              :status := "complete"
+              :type := "summary"
+              :measure := "url-181501"
+              :date := "1970-01-01T01:00:00+01:00"
+              [:period :start] := "2014"
+              [:period :end] := "2015"
+              [:group 0 :population 0 :code :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/measure-population"
+              [:group 0 :population 0 :code :coding 0 :code] := "initial-population"
+              [:group 0 :population 0 :count] := 1)))
+
+        (testing "cohort scoring with stratifiers"
+          (let [{:keys [status body]}
+                @((handler-with
+                    [[[:put
+                       {:resourceType "Measure" :id "0"
+                        :url "url-181501"
+                        :library ["library-url-094115"]
+                        :scoring (scoring-concept "cohort")
+                        :group
+                        [{:population
+                          [{:code (population-concept "initial-population")
+                            :criteria (cql-expression "InInitialPopulation")}]
+                          :stratifier
+                          [{:code {:text "gender"}
+                            :criteria (cql-expression "Gender")}]}]}]
+                      [:put
+                       {:resourceType "Library" :id "0"
+                        :url "library-url-094115"
+                        :content
+                        [{:contentType "text/cql"
+                          :data "bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="}]}]
+                      [:put
+                       {:resourceType "Patient"
+                        :id "0"
+                        :gender "male"}]
+                      [:put
+                       {:resourceType "Patient"
+                        :id "1"
+                        :gender "female"}]
+                      [:put
+                       {:resourceType "Patient"
+                        :id "2"
+                        :gender "female"}]]])
+                  {:request-method :get
+                   :params
+                   {"measure" "url-181501"
+                    "periodStart" "2014"
+                    "periodEnd" "2015"}})]
+
+            (is (= 200 status))
+
+            (given body
+              :resourceType := "MeasureReport"
+              :status := "complete"
+              :type := "summary"
+              :measure := "url-181501"
+              :date := "1970-01-01T01:00:00+01:00"
+              [:period :start] := "2014"
+              [:period :end] := "2015"
+              [:group 0 :population 0 :code :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/measure-population"
+              [:group 0 :population 0 :code :coding 0 :code] := "initial-population"
+              [:group 0 :population 0 :count] := 3
+              [:group 0 :stratifier 0 :code 0 :text] := "gender"
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/measure-population"
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :code] := "initial-population"
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 2
+              [:group 0 :stratifier 0 :stratum 0 :value :text] := "female"
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/measure-population"
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :code] := "initial-population"
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 1
+              [:group 0 :stratifier 0 :stratum 1 :value :text] := "male"))))
+
+      (testing "as POST request"
         (let [{:keys [status body]}
-              @((handler
-                  clock transaction-executor ::conn ::term-service executor)
-                {::reitit/router ::router
-                 :request-method :get
+              @((handler-with
+                  [[[:put {:resourceType "Measure" :id "0"
+                           :url "url-181501"
+                           :library ["library-url-094115"]}]
+                    [:put {:resourceType "Library" :id "0"
+                           :url "library-url-094115"
+                           :content
+                           [{:contentType "text/cql"
+                             :data ""}]}]]])
+                {::reitit/router router
+                 :request-method :post
                  :params
                  {"measure" "url-181501"
                   "periodStart" "2014"
                   "periodEnd" "2015"}})]
 
-          (is (= 200 status))
+          (is (= 201 status))
 
-          (is (= ::measure-report body))))
-
-      (testing "as POST request"
-        (measure-test/stub-evaluate-measure
-          now ::db ::router "2014" "2015" ::measure {})
-        (datomic-test-util/stub-squuid "0")
-        (stub-upsert-resource
-          ::conn ::term-service ::db :server-assigned-id {"id" "0"}
-          {:db-after ::db-after})
-        (stub-build-created-response
-          ::router nil? ::db-after "MeasureReport" "0" ::response)
-
-        (is (= ::response
-               @((handler
-                   clock
-                   transaction-executor
-                   ::conn
-                   ::term-service
-                   executor)
-                 {::reitit/router ::router
-                  :request-method :post
-                  :params
-                  {"measure" "url-181501"
-                   "periodStart" "2014"
-                   "periodEnd" "2015"}})))))
+          (given body
+            :resourceType := "MeasureReport"
+            :status := "complete"
+            :type := "summary"
+            :measure := "url-181501"
+            :date := "1970-01-01T01:00:00+01:00"
+            [:period :start] := "2014"
+            [:period :end] := "2015"))))
 
     (testing "on instance endpoint"
-      (datomic-test-util/stub-resource ::db #{"Measure"} #{"0"} #{::measure})
-      (datomic-test-util/stub-deleted? ::measure false?)
-
       (testing "as GET request"
-        (measure-test/stub-evaluate-measure
-          now ::db ::router "2014" "2015" ::measure ::measure-report)
-
         (let [{:keys [status body]}
-              @((handler
-                  clock transaction-executor ::conn ::term-service executor)
-                {::reitit/router ::router
+              @((handler-with
+                  [[[:put {:resourceType "Measure" :id "0"
+                           :url "url-181501"
+                           :library ["library-url-094115"]}]
+                    [:put {:resourceType "Library" :id "0"
+                           :url "library-url-094115"
+                           :content
+                           [{:contentType "text/cql"
+                             :data ""}]}]]])
+                {::reitit/router router
                  :request-method :get
                  :path-params {:id "0"}
                  :params
@@ -197,28 +379,40 @@
 
           (is (= 200 status))
 
-          (is (= ::measure-report body))))
+          (given body
+            :resourceType := "MeasureReport"
+            :status := "complete"
+            :type := "summary"
+            :measure := "url-181501"
+            :date := "1970-01-01T01:00:00+01:00"
+            [:period :start] := "2014"
+            [:period :end] := "2015")))
 
       (testing "as POST request"
-        (measure-test/stub-evaluate-measure
-          now ::db ::router "2014" "2015" ::measure {})
-        (datomic-test-util/stub-squuid "0")
-        (stub-upsert-resource
-          ::conn ::term-service ::db :server-assigned-id {"id" "0"}
-          {:db-after ::db-after})
-        (stub-build-created-response
-          ::router nil? ::db-after "MeasureReport" "0" ::response)
+        (let [{:keys [status body]}
+              @((handler-with
+                  [[[:put {:resourceType "Measure" :id "0"
+                           :url "url-181501"
+                           :library ["library-url-094115"]}]
+                    [:put {:resourceType "Library" :id "0"
+                           :url "library-url-094115"
+                           :content
+                           [{:contentType "text/cql"
+                             :data ""}]}]]])
+                {::reitit/router router
+                 :request-method :post
+                 :path-params {:id "0"}
+                 :params
+                 {"periodStart" "2014"
+                  "periodEnd" "2015"}})]
 
-        (is (= ::response
-               @((handler
-                   clock
-                   transaction-executor
-                   ::conn
-                   ::term-service
-                   executor)
-                 {::reitit/router ::router
-                  :request-method :post
-                  :path-params {:id "0"}
-                  :params
-                  {"periodStart" "2014"
-                   "periodEnd" "2015"}})))))))
+          (is (= 201 status))
+
+          (given body
+            :resourceType := "MeasureReport"
+            :status := "complete"
+            :type := "summary"
+            :measure := "url-181501"
+            :date := "1970-01-01T01:00:00+01:00"
+            [:period :start] := "2014"
+            [:period :end] := "2015"))))))

@@ -1,15 +1,13 @@
 (ns blaze.handler.util
   "HTTP/REST Handler Utils"
   (:require
+    [blaze.db.api :as d]
     [clojure.core.protocols :refer [Datafiable]]
     [clojure.datafy :refer [datafy]]
-    [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
     [io.aviso.exception :as aviso]
-    [manifold.deferred :as md :refer [deferred?]]
+    [manifold.deferred :as md]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
@@ -38,10 +36,6 @@
            s BasicHeaderValueParser/INSTANCE)
          (into [] (map datafy)))))
 
-
-(s/fdef preference
-  :args (s/cat :headers (s/nilable map?) :name string?)
-  :ret (s/nilable string?))
 
 (defn preference
   "Returns the value of the preference with `name` from Ring `headers`."
@@ -161,16 +155,12 @@
     (bundle-error-response {::anom/category ::anom/fault})))
 
 
-(s/fdef db
-  :args (s/cat :conn ::ds/conn :t (s/nilable nat-int?))
-  :ret (s/or :deferred deferred? :db ::ds/db))
-
 (defn db
   "Retrieves a value of the database, optionally as of some point `t`.
 
   When `t` is non-nil, returns a deferred which will be realized when the
   database with `t` is available."
-  [conn t]
+  [node t]
   (if t
-    (-> (d/sync conn t) (md/chain #(d/as-of % t)))
-    (d/db conn)))
+    (-> (d/sync node t) (md/chain #(d/as-of % t)))
+    (d/db node)))

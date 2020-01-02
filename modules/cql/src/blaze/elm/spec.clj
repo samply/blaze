@@ -11,6 +11,9 @@
     [tec.units.indriya.unit TransformedUnit]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (def temporal-keywords
   "CQL temporal keywords as units for temporal quantities."
   (->> ["year" "month" "week" "day" "hour" "minute" "second" "millisecond"]

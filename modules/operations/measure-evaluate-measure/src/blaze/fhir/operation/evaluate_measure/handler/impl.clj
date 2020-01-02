@@ -1,16 +1,11 @@
 (ns blaze.fhir.operation.evaluate-measure.handler.impl
   (:require
-    [blaze.datomic.util :as db]
-    [blaze.executors :refer [executor?]]
+    [blaze.db.api :as d]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
     [blaze.fhir.response.create :as response]
-    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
-    [blaze.terminology-service :refer [term-service?]]
-    [clojure.spec.alpha :as s]
+    [blaze.uuid :refer [random-uuid]]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring])
@@ -18,20 +13,23 @@
     [java.time Clock OffsetDateTime]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn- now [clock]
   (OffsetDateTime/now ^Clock clock))
 
 
 (defn- handle
-  [clock transaction-executor conn term-service db executor
+  [clock node db executor
    {::reitit/keys [router] :keys [request-method headers]
     {:strs [periodStart periodEnd]} :params}
    measure]
   (let [period [periodStart periodEnd]]
     (-> (md/future-with executor
-          (evaluate-measure (now clock) db router period measure))
+          (evaluate-measure (now clock) node db router period measure))
         (md/chain'
-          (fn [result]
+          (fn process-result [result]
             (if (::anom/category result)
               (handler-util/error-response result)
               (cond
@@ -39,18 +37,12 @@
                 (ring/response result)
 
                 (= :post request-method)
-                (let [id (str (d/squuid))
+                (let [id (str (random-uuid))
                       return-preference (handler-util/preference headers "return")]
-                  (-> (fhir-util/upsert-resource
-                        transaction-executor
-                        conn
-                        term-service
-                        db
-                        :server-assigned-id
-                        (assoc result "id" id))
+                  (-> (d/submit-tx node [[:create (assoc result :id id)]])
                       (md/chain'
                         #(response/build-created-response
-                           router return-preference (:db-after %) "MeasureReport" id))
+                           router return-preference % "MeasureReport" id))
                       (md/catch' handler-util/error-response))))))))))
 
 
@@ -58,35 +50,24 @@
   [db {{:keys [id]} :path-params {:strs [measure]} :params}]
   (cond
     id
-    (db/resource db "Measure" id)
+    (d/resource db "Measure" id)
 
     measure
-    (db/resource-by db :Measure/url measure)))
+    (d/ri-first (d/type-query db "Measure" [["url" measure]]))))
 
 
-(s/fdef handler
-  :args
-  (s/cat
-    :clock #(instance? Clock %)
-    :transaction-executor executor?
-    :conn ::ds/conn
-    :term-service term-service?
-    :executor executor?))
-
-(defn handler [clock transaction-executor conn term-service executor]
+(defn handler [clock node executor]
   (fn [request]
-    (let [db (d/db conn)]
+    (let [db (d/db node)]
       (if-let [measure (find-measure db request)]
-        (if (db/deleted? measure)
+        (if (d/deleted? measure)
           (-> (handler-util/operation-outcome
                 {:fhir/issue "deleted"})
               (ring/response)
               (ring/status 410))
           (handle
             clock
-            transaction-executor
-            conn
-            term-service
+            node
             db
             executor
             request

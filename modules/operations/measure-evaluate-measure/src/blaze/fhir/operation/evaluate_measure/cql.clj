@@ -1,70 +1,69 @@
 (ns blaze.fhir.operation.evaluate-measure.cql
   (:require
-    [blaze.datomic.util :as datomic-util]
+    [blaze.anomaly :refer [when-ok]]
+    [blaze.db.api :as d]
     [blaze.elm.compiler.protocols :refer [-eval]]
     [clojure.core.reducers :as r]
-    [clojure.spec.alpha :as s]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom]
-    [datomic-spec.core :as ds])
-  (:import
-    [java.time OffsetDateTime]))
+    [cognitect.anomalies :as anom]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn- evaluate-expression-1
   [context resource {expression-defs :life/compiled-expression-defs}
    expression-name]
-  (-> (reduce
-        (fn [context {:keys [name] :life/keys [expression]}]
-          (let [res (-eval expression context resource nil)]
-            (update context :library-context assoc name res)))
-        context
-        expression-defs)
-      :library-context
-      (get expression-name)))
-
-
-(def ^:private resource-cache (volatile! {}))
-
-
-(defn clear-resource-cache! []
-  (vreset! resource-cache {}))
+  (try
+    (-eval
+      (get expression-defs expression-name)
+      (assoc context :library-context expression-defs)
+      resource
+      nil)
+    (catch Exception e
+      {::anom/category ::anom/fault
+       ::anom/message (ex-message e)
+       :fhir/issue "exception"
+       :expression-name expression-name})))
 
 
 (defn- list-resources [db resource-type]
-  (let [key [resource-type (datomic-util/type-version db resource-type)]]
-    (if-let [resources (get @resource-cache key)]
-      resources
-      (let [resources (into [] (datomic-util/list-resources db resource-type))]
-        (vswap! resource-cache assoc key resources)
-        resources))))
+  (into [] (d/list-resources db resource-type)))
 
 
-(s/fdef evaluate-expression
-  :args (s/cat :db ::ds/db :now #(instance? OffsetDateTime %)
-               :library :life/compiled-library :subject string?
-               :expression-name string?))
+(defn- combine
+  ([] 0)
+  ([a b]
+   (cond
+     (::anom/category a) a
+     (::anom/category b) b
+     :else (+ a b))))
+
 
 (defn evaluate-expression
-  [db now library subject expression-name]
+  "Evaluates the expression with `name` from `library` over all resources of
+  `subject-type` using `db` and `now`.
+
+  Returns the number of expressions evaluated to true or an anomaly."
+  [db now library subject-type name]
   (let [context {:db db :now now}]
     (r/fold
-      +
+      combine
       (fn [count resource]
-        (if (evaluate-expression-1 context resource library expression-name)
-          (inc count)
-          count))
-      (list-resources db subject))))
+        (when-ok [res (evaluate-expression-1 context resource library name)]
+          (if res
+            (inc count)
+            count)))
+      (list-resources db subject-type))))
 
 
 (defn- incorrect-stratum [resource expression-name]
   {::anom/category ::anom/incorrect
    ::anom/message
    (format "CQL expression `%s` returned more than one value for resource `%s`."
-           expression-name (str/join "/" (datomic-util/literal-reference resource)))})
+           expression-name (str (:resourceType resource) "/" (:id resource)))})
 
 
-(defn- combine
+(defn- stratum-combine
   ([] {})
   ([a b]
    (cond
@@ -73,57 +72,65 @@
      :else (merge-with + a b))))
 
 
-(s/fdef calc-stratums
-  :args (s/cat :db ::ds/db :now #(instance? OffsetDateTime %)
-               :library :life/compiled-library :subject string?
-               :population-expression-name string?
-               :expression-name string?))
-
 (defn calc-stratums
-  "Returns a map of stratum to count."
-  [db now library subject population-expression-name expression-name]
+  "Returns a map of stratum to count or an anomaly."
+  [db now library subject-type population-expression-name stratum-expression-name]
   (let [context {:db db :now now}]
     (r/fold
-      combine
+      stratum-combine
       (fn [stratums resource]
-        (if (evaluate-expression-1 context resource library
-                                   population-expression-name)
-          (let [stratum (evaluate-expression-1 context resource library
-                                               expression-name)]
-            (if (sequential? stratum)
-              (reduced (incorrect-stratum resource expression-name))
-              (update stratums stratum (fnil inc 0))))
-          stratums))
-      (list-resources db subject))))
+        (let [res (evaluate-expression-1 context resource library
+                                         population-expression-name)]
+          (cond
+            (::anom/category res)
+            (reduced res)
 
+            res
+            (let [stratum (evaluate-expression-1 context resource library
+                                                 stratum-expression-name)]
+              (cond
+                (::anom/category stratum)
+                (reduced stratum)
 
-(s/fdef calc-mult-component-stratums
-  :args (s/cat :db ::ds/db :now #(instance? OffsetDateTime %)
-               :library :life/compiled-library :subject string?
-               :population-expression-name string?
-               :expression-names (s/coll-of string?)))
+                (sequential? stratum)
+                (reduced (incorrect-stratum resource stratum-expression-name))
+
+                :else
+                (update stratums stratum (fnil inc 0))))
+
+            :else
+            stratums)))
+      (list-resources db subject-type))))
+
 
 (defn calc-mult-component-stratums
   "Returns a map of stratum to count."
-  [db now library subject population-expression-name expression-names]
+  [db now library subject-type population-expression-name expression-names]
   (let [context {:db db :now now}]
     (r/fold
-      combine
+      stratum-combine
       (fn [stratums resource]
-        (if (evaluate-expression-1 context resource library
-                                   population-expression-name)
-          (let [stratum-vector
-                (reduce
-                  (fn [stratum-vector expression-name]
-                    (let [stratum (evaluate-expression-1
-                                    context resource library expression-name)]
-                      (if (sequential? stratum)
-                        (reduced (incorrect-stratum resource expression-name))
-                        (conj stratum-vector stratum))))
-                  []
-                  expression-names)]
-            (if (::anom/category stratum-vector)
-              (reduced stratum-vector)
-              (update stratums stratum-vector (fnil inc 0))))
-          stratums))
-      (list-resources db subject))))
+        (when-ok [res (evaluate-expression-1 context resource library
+                                             population-expression-name)]
+          (if res
+            (let [stratum-vector
+                  (reduce
+                    (fn [stratum-vector expression-name]
+                      (let [stratum (evaluate-expression-1
+                                      context resource library expression-name)]
+                        (cond
+                          (::anom/category stratum)
+                          (reduced stratum)
+
+                          (sequential? stratum)
+                          (reduced (incorrect-stratum resource expression-name))
+
+                          :else
+                          (conj stratum-vector stratum))))
+                    []
+                    expression-names)]
+              (if (::anom/category stratum-vector)
+                (reduced stratum-vector)
+                (update stratums stratum-vector (fnil inc 0))))
+            stratums)))
+      (list-resources db subject-type))))

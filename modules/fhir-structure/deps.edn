@@ -1,0 +1,42 @@
+{:paths ["src" "resources"]
+
+ :deps
+ {blaze/module-base
+  {:local/root "../module-base"}
+
+  cheshire
+  {:mvn/version "5.9.0"}
+
+  funcool/cuerdas
+  {:mvn/version "2.2.1"}
+
+  org.clojure/alpha.spec
+  {:git/url "https://github.com/clojure/spec-alpha2.git"
+   :sha "b644e4d8c5553e10544d920306690fffe9b53e15"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {criterium
+    {:mvn/version "0.4.5"}
+
+    lambdaisland/kaocha
+    {:mvn/version "0.0-590"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}
+
+   :main-opts
+   ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

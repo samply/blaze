@@ -4,7 +4,7 @@
     [aleph.http.client-middleware :as client-middleware]
     [blaze.fhir-client :as client]
     [blaze.module :refer [reg-collector]]
-    [blaze.terminology-service :as ts :refer [term-service?]]
+    [blaze.terminology-service :as ts]
     [clojure.core.cache :as cache]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -89,8 +89,8 @@
     cache))
 
 
-(defrecord TermService [base opts]
-  ts/TermService
+(defrecord TerminologyService [base opts]
+  ts/TerminologyService
   (-expand-value-set [_ params]
     (if-let [res (get (swap! cache hit params) params)]
       res
@@ -107,6 +107,14 @@
    :request-timeout (or request-timeout 30000)})
 
 
+(defn terminology-service [base proxy-options connection-timeout request-timeout]
+  (->TerminologyService base (opts proxy-options connection-timeout request-timeout)))
+
+
+(s/def ::uri
+  string?)
+
+
 (s/def :proxy-options/host
   string?)
 
@@ -120,33 +128,6 @@
 
 
 (s/def :proxy-options/password
-  string?)
-
-
-(s/def ::proxy-options
-  (s/keys
-    :opt-un
-    [:proxy-options/host
-     :proxy-options/port
-     :proxy-options/user
-     :proxy-options/password]))
-
-
-(s/def ::milli-second
-  pos-int?)
-
-
-(s/fdef term-service
-  :args (s/cat :base string? :proxy-options ::proxy-options
-               :connection-timeout (s/nilable ::milli-second)
-               :request-timeout (s/nilable ::milli-second))
-  :ret term-service?)
-
-(defn term-service [base proxy-options connection-timeout request-timeout]
-  (->TermService base (opts proxy-options connection-timeout request-timeout)))
-
-
-(s/def ::uri
   string?)
 
 
@@ -196,7 +177,7 @@
       (str ", connection timeout " connection-timeout " ms")
       request-timeout
       (str ", request timeout " request-timeout " ms")))
-  (term-service
+  (terminology-service
     uri
     (cond-> {}
       proxy-host (assoc :host proxy-host)

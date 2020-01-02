@@ -3,14 +3,11 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
-    [blaze.datomic.util :as datomic-util]
-    [blaze.handler.util :as util]
+    [blaze.handler.util :as handler-util]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [clojure.spec.alpha :as s]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
+    [blaze.db.api :as d]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
@@ -19,58 +16,29 @@
     [taoensso.timbre :as log]))
 
 
-(defn- total
-  "Returns the total number of system history entries in `db`, optional since
-  some point in the past (`since-t`)."
-  [db since-t]
-  (let [total (datomic-util/system-version db)]
-    (if since-t
-      (- total (datomic-util/system-version (d/as-of db since-t)))
-      total)))
-
-
-(defn- expand-resources
-  "Returns a reducible collection of tuples of `transaction` and resource eid of
-  resources changed in transaction starting possibly with the resource with
-  `first-resource-eid`."
-  [transaction first-resource-eid]
-  (let [db (d/entity-db transaction)]
-    (eduction
-      (map (fn [{:keys [v]}] [transaction v]))
-      (d/datoms db :eavt (:db/id transaction) :tx/resources first-resource-eid))))
-
-
-(defn- entries [[first-transaction & more-transactions] first-resource-eid page-size]
-  (when first-transaction
-    (let [first-entries (into [] (take page-size) (expand-resources first-transaction first-resource-eid))]
-      (into
-        first-entries
-        (comp
-          (mapcat #(expand-resources % nil))
-          (take (- page-size (count first-entries))))
-        more-transactions))))
+(defn- resource-t [resource]
+  (-> resource meta :blaze.db/t))
 
 
 (defn- build-response
-  "The coll of `transactions` already starts at `page-t`."
-  [router match query-params db since-t transactions]
+  [router match query-params t total versions]
   (let [page-size (fhir-util/page-size query-params)
-        entries (entries transactions (history-util/page-eid query-params) (inc page-size))
-        more-entries-available? (< page-size (count entries))
-        t (or (d/as-of-t db) (d/basis-t db))
+        paged-versions (into [] (take (inc page-size)) versions)
         self-link
-        (fn [[transaction eid]]
+        (fn [resource]
           {:relation "self"
-           :url (history-util/nav-url match query-params t transaction eid)})
+           :url (history-util/nav-url match query-params t (resource-t resource)
+                                      (:resourceType resource) (:id resource))})
         next-link
-        (fn [[transaction eid]]
+        (fn [resource]
           {:relation "next"
-           :url (history-util/nav-url match query-params t transaction eid)})]
+           :url (history-util/nav-url match query-params t (resource-t resource)
+                                      (:resourceType resource) (:id resource))})]
     (ring/response
       (cond->
         {:resourceType "Bundle"
          :type "history"
-         :total (total db since-t)
+         :total total
          :link []
          :entry
          (into
@@ -78,46 +46,40 @@
            (comp
              ;; we need take here again because we take page-size + 1 above
              (take page-size)
-             (map (fn [[tx eid]] (history-util/build-entry router db tx eid))))
-           entries)}
+             (map (partial history-util/build-entry router)))
+           paged-versions)}
 
-        (first entries)
-        (update :link conj (self-link (first entries)))
+        (first paged-versions)
+        (update :link conj (self-link (first paged-versions)))
 
-        more-entries-available?
-        (update :link conj (next-link (peek entries)))))))
+        (< page-size (count paged-versions))
+        (update :link conj (next-link (peek paged-versions)))))))
 
 
 (defn- handle [router match query-params db]
-  (let [page-t (history-util/page-t query-params)
-        since-t (history-util/since-t db query-params)
-        tx-db (history-util/tx-db db since-t page-t)
-        transactions (datomic-util/system-transaction-history tx-db)]
-    (build-response router match query-params db since-t transactions)))
+  (let [t (or (d/as-of-t db) (d/basis-t db))
+        page-t (history-util/page-t query-params)
+        page-type (when page-t (history-util/page-type query-params))
+        page-id (when page-type (history-util/page-id query-params))
+        since-inst (history-util/since-inst query-params)
+        total (d/total-num-of-system-changes db since-inst)
+        versions (d/system-history db page-t page-type page-id since-inst)]
+    (build-response router match query-params t total versions)))
 
 
-(defn- handler-intern [conn]
+(defn- handler-intern [node]
   (fn [{::reitit/keys [router match] :keys [query-params]}]
-    (-> (util/db conn (fhir-util/t query-params))
+    (-> (handler-util/db node (fhir-util/t query-params))
         (md/chain' #(handle router match query-params %)))))
 
 
-(s/def :handler.fhir/history-system fn?)
-
-
-(s/fdef handler
-  :args (s/cat :conn ::ds/conn)
-  :ret :handler.fhir/history-system)
-
-(defn handler
-  ""
-  [conn]
-  (-> (handler-intern conn)
+(defn handler [node]
+  (-> (handler-intern node)
       (wrap-params)
       (wrap-observe-request-duration "history-system")))
 
 
 (defmethod ig/init-key :blaze.interaction.history/system
-  [_ {:database/keys [conn]}]
+  [_ {:keys [node]}]
   (log/info "Init FHIR history system interaction handler")
-  (handler conn))
+  (handler node))

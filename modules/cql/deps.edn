@@ -1,8 +1,8 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/datomic
-  {:local/root "../datomic"}
+ {blaze/db
+  {:local/root "../db"}
 
   info.cqframework/cql-to-elm
   {:mvn/version "1.4.6"
@@ -13,7 +13,9 @@
     junit
     xpp3
     xpp3/xpp3_xpath
-    org.antlr/antlr4]}
+    org.antlr/antlr4
+    org.slf4j/jcl-over-slf4j
+    org.slf4j/slf4j-api]}
 
   javax.measure/unit-api
   {:mvn/version "1.0"}
@@ -39,11 +41,11 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/datomic-test-util
-    {:local/root "../datomic-test-util"}
+   {blaze/db-stub
+    {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-565"}
+    {:mvn/version "0.0-590"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -55,4 +57,11 @@
     {:mvn/version "0.10.0"}}
 
    :main-opts
-   ["-m" "kaocha.runner"]}}}
+   ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

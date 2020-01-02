@@ -4,14 +4,17 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.anomaly :refer [throw-anom]]
+    [blaze.elm.protocols :as p]
     [clojure.spec.alpha :as s]
-    [blaze.elm.protocols :as p])
+    [cognitect.anomalies :as anom])
   (:import
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
     [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 
 
 (set! *warn-on-reflection* true)
+
 
 (def min-year (Year/of 1))
 (def min-year-month (YearMonth/of 1 1))
@@ -902,6 +905,41 @@
         (.toLocalDate))))
 
 
+(defn- parse-year [s]
+  (try
+    (Year/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect year `%s`." s)))))
+
+
+(defn- parse-year-month [s]
+  (try
+    (YearMonth/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect year-month `%s`." s)))))
+
+
+(defn- parse-date [s]
+  (try
+    (LocalDate/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect date `%s`." s)))))
+
+
+(defn- parse-date-time [s]
+  (try
+    (LocalDateTime/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect date-time `%s`." s)))))
+
+
+(defn- parse-offset-date-time [s]
+  (try
+    (OffsetDateTime/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect offset date-time `%s`." s)))))
+
+
 ;; 22.22. ToDateTime
 (extend-protocol p/ToDateTime
   nil
@@ -929,9 +967,18 @@
         (.toLocalDateTime)))
 
   String
-  (to-date-time [s _]
-    ;; TODO: implement
-    (throw (Exception. (str "Not implemented yet `ToDateTime('" s "')`.")))))
+  (to-date-time [s now]
+    (case (.length s)
+      4
+      (parse-year s)
+      7
+      (parse-year-month s)
+      10
+      (parse-date s)
+
+      (if (re-find #"(Z|[+-]\d{2}:)" s)
+        (p/to-date-time (parse-offset-date-time s) now)
+        (parse-date-time s)))))
 
 
 ;; 22.28. ToString

@@ -1,0 +1,62 @@
+{:paths ["src" "resources"]
+
+ :deps
+ {blaze/executor
+  {:local/root "../executor"}
+
+  blaze/fhir-path
+  {:local/root "../fhir-path"}
+
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  cheshire
+  {:mvn/version "5.9.0"}
+
+  clj-fuzzy
+  {:mvn/version "0.4.1"}
+
+  com.taoensso/nippy
+  {:mvn/version "2.14.0"}
+
+  com.google.guava/guava
+  {:mvn/version "28.2-jre"}
+
+  com.github.ben-manes.caffeine/caffeine
+  {:mvn/version "2.8.1"}
+
+  manifold
+  {:mvn/version "0.1.8"}}
+
+ :aliases
+ {:dev
+  {:extra-paths ["dev"]
+
+   :extra-deps
+   {criterium
+    {:mvn/version "0.4.5"}}}
+
+  :test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "0.0-590"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

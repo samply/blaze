@@ -1,7 +1,8 @@
 (ns blaze.anomaly
   (:require
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom])
+  (:refer-clojure :exclude [ensure-reduced]))
 
 
 (s/fdef throw-anom
@@ -21,3 +22,16 @@
       (assoc kvs
         ::anom/category category
         ::anom/message message))))
+
+
+(defmacro when-ok [[sym form] & body]
+  `(let [~sym ~form]
+     (if (::anom/category ~sym)
+       ~sym
+       (do ~@body))))
+
+
+(defn ensure-reduced [x]
+  (if (::anom/category x)
+    (reduced x)
+    x))

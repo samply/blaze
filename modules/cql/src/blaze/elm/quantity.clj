@@ -78,6 +78,15 @@
   (quantity-multiply [multiplier quantity]))
 
 
+;; 2.3. Property
+(extend-protocol p/StructuredType
+  Quantity
+  (get [quantity key]
+    (case key
+      :value (.getValue quantity)
+      :unit (format-unit (.getUnit quantity)))))
+
+
 ;; 12.1. Equal
 (extend-protocol p/Equal
   ComparableQuantity

@@ -1,60 +1,190 @@
 {:base-config
- {:blaze.terminology-service/extern
-  {:uri #blaze/cfg ["TERM_SERVICE_URI" string? "http://tx.fhir.org/r4"]
-   :proxy-host #blaze/cfg ["PROXY_HOST" string?]
-   :proxy-port #blaze/cfg ["PROXY_PORT" pos-int?]
-   :proxy-user #blaze/cfg ["PROXY_USER" string?]
-   :proxy-password #blaze/cfg ["PROXY_PASSWORD" string?]
-   :connection-timeout #blaze/cfg ["CONNECTION_TIMEOUT" pos-int?]
-   :request-timeout #blaze/cfg ["REQUEST_TIMEOUT" pos-int?]}
+ {:blaze.db.kv.rocksdb/block-cache
+  {:size-in-mb #blaze/cfg ["ROCKSDB_BLOCK_CACHE_SIZE" int? 128]}
 
-  :blaze.terminology-service.extern/errors-total {}
-  :blaze.terminology-service.extern/request-duration-seconds {}
+  [#_:blaze.db.kv/mem :blaze.db.kv/rocksdb :blaze.db/kv-store]
+  {:dir #blaze/cfg ["DB_DIR" string?]
+   :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
+   :opts
+   {:max-background-jobs
+    #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 6]
+    :max-background-compactions
+    #blaze/cfg ["DB_MAX_BACKGROUND_COMPACTIONS" int? 4]
+    :max-background-flushes
+    #blaze/cfg ["DB_MAX_BACKGROUND_FLUSHES" int? 2]
+    :compaction-readahead-size
+    #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
+   :column-families
+   {:search-param-value-index                               ; 110 GB
+    {:write-buffer-size-in-mb 128
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 256
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+     :bloom-filter? true}
+
+    :resource-value-index                                   ; 32 GB
+    {:write-buffer-size-in-mb 128
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 256
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+     :bloom-filter? true}
+
+    :compartment-search-param-value-index
+    {:write-buffer-size-in-mb 128
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 256
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+     :bloom-filter? true}
+
+    :compartment-resource-value-index
+    {:write-buffer-size-in-mb 128
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 256
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+     :bloom-filter? true}
+
+    :resource-type-index                                    ; 9 GB
+    {:write-buffer-size-in-mb 64
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 128
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :compartment-resource-type-index
+    {:write-buffer-size-in-mb 64
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 128
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :resource-index
+    {:write-buffer-size-in-mb 128
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :min-write-buffer-number-to-merge 2
+     :max-bytes-for-level-base-in-mb 256
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+     :bloom-filter? true}
+
+    :active-search-params
+    {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :tx-success-index                                       ; 2 MB
+    {:write-buffer-size-in-mb 4
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 8
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :tx-error-index
+    {:write-buffer-size-in-mb 4
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 8
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :t-by-instant-index                                     ; 2 MB
+    {:write-buffer-size-in-mb 4
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 8
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :resource-as-of-index                                   ; 30 GB
+    {:write-buffer-size-in-mb 128
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 256
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :type-as-of-index                                       ; 10 GB
+    {:write-buffer-size-in-mb 64
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 128
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :system-as-of-index                                     ; 10 GB
+    {:write-buffer-size-in-mb 64
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 128
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :type-stats-index                                       ; 10 MB
+    {:write-buffer-size-in-mb 4
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 8
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+    :system-stats-index
+    {:write-buffer-size-in-mb 4
+     :max-write-buffer-number 4
+     :level0-file-num-compaction-trigger 2
+     :max-bytes-for-level-base-in-mb 8
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+
+  :blaze.db.indexer.resource/executor
+  {:num-threads #blaze/cfg ["RESOURCE_INDEXER_THREADS" int? 4]}
+
+  :blaze.db.indexer/resource
+  {:search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :kv-store #blaze/ref :blaze.db/kv-store
+   :executor #blaze/ref :blaze.db.indexer.resource/executor}
+
+  :blaze.db.indexer.resource/duration-seconds {}
+
+  :blaze.db.indexer/tx
+  {:kv-store #blaze/ref :blaze.db/kv-store}
+
+  :blaze.db.indexer.tx/duration-seconds {}
+
+  :blaze.db.tx-log/local
+  {:resource-indexer #blaze/ref :blaze.db.indexer/resource
+   :resource-indexer-batch-size #blaze/cfg ["RESOURCE_INDEXER_BATCH_SIZE" int? 1]
+   :tx-indexer #blaze/ref :blaze.db.indexer/tx}
+
+  :blaze.db.tx-log.local/duration-seconds {}
 
   :blaze.interaction.history/system
-  {:database/conn #blaze/ref :blaze.datomic/conn}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction.history/type
-  {:database/conn #blaze/ref :blaze.datomic/conn}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction.history/instance
-  {:database/conn #blaze/ref :blaze.datomic/conn}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction/create
-  {:database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
-   :database/conn #blaze/ref :blaze.datomic/conn
-   :term-service #blaze/ref :blaze/terminology-service}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction/delete
-  {:database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
-   :database/conn #blaze/ref :blaze.datomic/conn}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction/read
-  {:database/conn #blaze/ref :blaze.datomic/conn}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction/search-type
-  {:database/conn #blaze/ref :blaze.datomic/conn}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction.transaction/executor {}
 
   :blaze.interaction.transaction/handler
-  {:database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
-   :database/conn #blaze/ref :blaze.datomic/conn
-   :term-service #blaze/ref :blaze/terminology-service
+  {:node #blaze/ref :blaze.db/node
    :executor #blaze/ref :blaze.interaction.transaction/executor}
 
   :blaze.interaction/update
-  {:database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
-   :database/conn #blaze/ref :blaze.datomic/conn
-   :term-service #blaze/ref :blaze/terminology-service}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.fhir.operation.evaluate-measure/executor {}
 
   :blaze.fhir.operation.evaluate-measure/handler
-  {:clock #blaze/ref :blaze/clock
-   :database/transaction-executor #blaze/ref :blaze.datomic.transaction/executor
-   :database/conn #blaze/ref :blaze.datomic/conn
-   :term-service #blaze/ref :blaze/terminology-service
+  {:node #blaze/ref :blaze.db/node
    :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor}
 
   :blaze.fhir.operation.evaluate-measure/compile-duration-seconds {}
@@ -99,7 +229,7 @@
         :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
         :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}]}}
 
-  :features
+ :features
  [{:name "OpenID Authentication"
    :toggle "OPENID_PROVIDER_URL"
    :config

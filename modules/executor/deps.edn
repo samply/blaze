@@ -1,1 +1,11 @@
-{:deps {}}
+{:deps
+ {manifold
+  {:mvn/version "0.1.8"}}
+
+ :aliases
+ {:clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

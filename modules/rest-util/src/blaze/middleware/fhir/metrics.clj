@@ -1,6 +1,5 @@
 (ns blaze.middleware.fhir.metrics
   (:require
-    [clojure.spec.alpha :as s]
     [manifold.deferred :as md]
     [prometheus.alpha :as prom]))
 
@@ -42,9 +41,6 @@
                    (name request-method)
                    (duration-s request-arrived))))
 
-
-(s/fdef wrap-observe-request-duration
-  :args (s/cat :handler fn? :interaction-name (s/? string?)))
 
 (defn wrap-observe-request-duration
   ([handler]
