@@ -9,4 +9,4 @@
 /kube*
 /nginx.conf
 .cpcache
-/.clj-kondo/.cache
+.cache
