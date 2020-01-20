@@ -1,14 +1,14 @@
-FROM clojure:lein-2.9.1 as build
+FROM clojure:openjdk-11-tools-deps as build
 
 COPY . /build/
 
 WORKDIR /build
-RUN lein uberjar
+RUN clojure -A:depstar -m hf.depstar.uberjar target/blaze-standalone.jar
 
-FROM openjdk:8u222-jre
+FROM openjdk:11.0.4-jre
 
-COPY --from=build /build/target/blaze-0.6.4-standalone.jar /app/
+COPY --from=build /build/target/blaze-standalone.jar /app/
 
 WORKDIR /app
 
-CMD ["/bin/bash", "-c", "java $JVM_OPTS -jar blaze-0.6.4-standalone.jar"]
+CMD ["/bin/bash", "-c", "java $JVM_OPTS -jar blaze-standalone.jar -m blaze.core"]

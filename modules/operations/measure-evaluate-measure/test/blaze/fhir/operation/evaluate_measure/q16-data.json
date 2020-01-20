@@ -1,0 +1,347 @@
+{
+  "entry": [
+    {
+      "fullUrl": "ae9bc152-dcd3-4041-9877-4e99c95a5ede",
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      },
+      "resource": {
+        "birthDate": "1989-11-18",
+        "gender": "male",
+        "id": "0",
+        "meta": {
+          "profile": [
+            "https://fhir.bbmri.de/StructureDefinition/Patient"
+          ]
+        },
+        "resourceType": "Patient"
+      }
+    },
+    {
+      "fullUrl": "2d4b66c4-4107-4382-9f2b-6b39351c39f0",
+      "request": {
+        "method": "PUT",
+        "url": "Observation/0-bmi"
+      },
+      "resource": {
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "vital-signs",
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "code": "39156-5",
+              "system": "http://loinc.org"
+            }
+          ]
+        },
+        "effectiveDateTime": "2005-06-17",
+        "id": "0-bmi",
+        "meta": {
+          "profile": [
+            "https://fhir.bbmri.de/StructureDefinition/Bmi"
+          ]
+        },
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "valueQuantity": {
+          "code": "kg/m2",
+          "system": "http://unitsofmeasure.org",
+          "unit": "kg/m2",
+          "value": 36.68645245341373
+        }
+      }
+    },
+    {
+      "fullUrl": "4e488e86-9160-4901-b51f-9de780ff18cb",
+      "request": {
+        "method": "PUT",
+        "url": "Observation/0-body-height"
+      },
+      "resource": {
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "vital-signs",
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "code": "8302-2",
+              "system": "http://loinc.org"
+            }
+          ]
+        },
+        "effectiveDateTime": "2005-06-17",
+        "id": "0-body-height",
+        "meta": {
+          "profile": [
+            "https://fhir.bbmri.de/StructureDefinition/BodyHeight"
+          ]
+        },
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "valueQuantity": {
+          "code": "cm",
+          "system": "http://unitsofmeasure.org",
+          "unit": "cm",
+          "value": 198.58090348834853
+        }
+      }
+    },
+    {
+      "fullUrl": "06df08da-6670-4a5b-a4e8-bd100205a4c5",
+      "request": {
+        "method": "PUT",
+        "url": "Observation/0-body-weight"
+      },
+      "resource": {
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "vital-signs",
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "code": "29463-7",
+              "system": "http://loinc.org"
+            }
+          ]
+        },
+        "effectiveDateTime": "2005-06-17",
+        "id": "0-body-weight",
+        "meta": {
+          "profile": [
+            "https://fhir.bbmri.de/StructureDefinition/BodyWeight"
+          ]
+        },
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "valueQuantity": {
+          "code": "kg",
+          "system": "http://unitsofmeasure.org",
+          "unit": "kg",
+          "value": 144.67073319145982
+        }
+      }
+    },
+    {
+      "fullUrl": "5cdada30-0afb-4a0e-8360-f28648672c40",
+      "request": {
+        "method": "PUT",
+        "url": "Condition/0-condition"
+      },
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "Z77.8",
+              "system": "http://hl7.org/fhir/sid/icd-10",
+              "version": "2016"
+            }
+          ]
+        },
+        "id": "0-condition",
+        "meta": {
+          "profile": [
+            "https://fhir.bbmri.de/StructureDefinition/Condition"
+          ]
+        },
+        "onsetDateTime": "2005-06-17",
+        "resourceType": "Condition",
+        "subject": {
+          "reference": "Patient/0"
+        }
+      }
+    },
+    {
+      "fullUrl": "968b8484-db59-4c12-96d0-a88bdc4bbb5e",
+      "request": {
+        "method": "PUT",
+        "url": "Observation/0-tobacco-use"
+      },
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "72166-2",
+              "system": "http://loinc.org"
+            }
+          ]
+        },
+        "effectiveDateTime": "2005-06-17",
+        "id": "0-tobacco-use",
+        "meta": {
+          "profile": [
+            "https://fhir.bbmri.de/StructureDefinition/TobaccoUse"
+          ]
+        },
+        "resourceType": "Observation",
+        "status": "final",
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "code": "LA18977-1",
+              "system": "http://loinc.org"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "9c535810-c70b-4d95-98a6-cd4b407c1a6f",
+      "request": {
+        "method": "PUT",
+        "url": "Specimen/0-specimen"
+      },
+      "resource": {
+        "collection": {
+          "bodySite": {
+            "coding": [
+              {
+                "code": "C26.1",
+                "system": "urn:oid:2.16.840.1.113883.6.43.1"
+              }
+            ]
+          },
+          "collectedDateTime": "2005-06-17",
+          "fastingStatusCodeableConcept": {
+            "coding": [
+              {
+                "code": "NF",
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0916"
+              }
+            ]
+          }
+        },
+        "extension": [
+          {
+            "url": "https://fhir.bbmri.de/StructureDefinition/StorageTemperature",
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "code": "temperature2to10",
+                  "system": "https://fhir.bbmri.de/CodeSystem/StorageTemperature"
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://fhir.bbmri.de/StructureDefinition/SampleDiagnosis",
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "code": "B59.8",
+                  "system": "http://hl7.org/fhir/sid/icd-10"
+                }
+              ]
+            }
+          }
+        ],
+        "id": "0-specimen",
+        "meta": {
+          "profile": [
+            "https://fhir.bbmri.de/StructureDefinition/Specimen"
+          ]
+        },
+        "resourceType": "Specimen",
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "type": {
+          "coding": [
+            {
+              "code": "whole-blood",
+              "system": "https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Specimen"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ],
+  "id": "13174b14-0167-4c59-8bc1-3ad1977d98bc",
+  "resourceType": "Bundle",
+  "type": "transaction"
+}

@@ -9,6 +9,14 @@ library() {
 cat <<END
 {
   "resourceType": "Library",
+  "status": "active",
+  "type" : {
+    "coding" : [
+      {
+        "code" : "logic-library"
+      }
+    ]
+  },
   "content": [
     {
       "contentType": "text/cql"

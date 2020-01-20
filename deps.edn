@@ -1,0 +1,123 @@
+{:paths ["src" "resources"]
+
+ :deps
+ {blaze/datomic
+  {:local/root "modules/datomic"}
+
+  blaze/extern-terminology-service
+  {:local/root "modules/extern-terminology-service"}
+
+  blaze/interaction
+  {:local/root "modules/interaction"}
+
+  blaze.operation/measure-evaluate-measure
+  {:local/root "modules/operations/measure-evaluate-measure"}
+
+  blaze/openid-auth
+  {:local/root "modules/openid-auth"}
+
+  blaze/rest-api
+  {:local/root "modules/rest-api"}
+
+  blaze/structure-definition
+  {:local/root "modules/structure-definition"}
+
+  blaze/thread-pool-executor-collector
+  {:local/root "modules/thread-pool-executor-collector"}
+
+  com.cognitect/anomalies
+  {:mvn/version "0.1.12"}
+
+  com.datomic/datomic-free
+  {:mvn/version "0.9.5697"
+   :exclusions
+   [io.netty/netty-all]}
+
+  com.h2database/h2
+  {:mvn/version "1.4.199"}
+
+  com.taoensso/timbre
+  {:mvn/version "4.10.0"}
+
+  integrant
+  {:git/url "https://github.com/alexanderkiel/integrant.git"
+   :sha "c673b85130e553feec6d4c5d2d1ec773a49c929c"}
+
+  io.netty/netty-codec-http
+  {:mvn/version "4.1.39.Final"}
+
+  io.netty/netty-handler-proxy
+  {:mvn/version "4.1.39.Final"}
+
+  io.netty/netty-resolver-dns
+  {:mvn/version "4.1.39.Final"}
+
+  io.netty/netty-transport-native-epoll$linux-x86_64
+  {:mvn/version "4.1.39.Final"}
+
+  io.prometheus/simpleclient_hotspot
+  {:mvn/version "0.6.0"}
+
+  org.clojars.akiel/datomic-spec
+  {:mvn/version "0.5.2"}
+
+  org.clojars.akiel/datomic-tools
+  {:mvn/version "0.4"}
+
+  org.clojars.akiel/spec-coerce
+  {:mvn/version "0.4.0"}
+
+  org.clojure/clojure
+  {:mvn/version "1.10.1"}
+
+  org.clojure/tools.reader
+  {:mvn/version "1.3.2"}
+
+  prom-metrics
+  {:mvn/version "0.5-alpha2"}}
+
+ :aliases
+ {:depstar
+  {:extra-deps
+   {seancorfield/depstar
+    {:mvn/version "0.3.3"}}}
+
+  :check
+  {:extra-deps
+   {athos/clj-check
+    {:git/url "https://github.com/athos/clj-check.git"
+     :sha "b48d4e7000586529f81c1e29069b503b57259514"}}
+   :main-opts
+   ["-m" "clj-check.check"]}
+
+  :test
+  {:extra-paths ["dev" "test"]
+
+   :extra-deps
+   {criterium
+    {:mvn/version "0.4.5"}
+
+    lambdaisland/kaocha
+    {:mvn/version "0.0-554"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/data.xml
+    {:mvn/version "0.0.8"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}
+
+    org.clojure/tools.namespace
+    {:mvn/version "0.3.1"}}
+
+   :main-opts
+   ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2019.11.03"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

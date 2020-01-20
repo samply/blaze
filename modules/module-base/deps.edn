@@ -1,0 +1,6 @@
+{:deps
+ {com.taoensso/timbre
+  {:mvn/version "4.10.0"}
+
+  integrant
+  {:mvn/version "0.7.0"}}}

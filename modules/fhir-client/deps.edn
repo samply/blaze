@@ -1,0 +1,27 @@
+{:deps
+ {aleph
+  {:mvn/version "0.4.7-alpha1"
+   :exclusions
+   [io.netty/netty-codec
+    io.netty/netty-resolver
+    io.netty/netty-handler
+    io.netty/netty-transport
+    io.netty/netty-transport-native-epoll]}
+
+  cheshire
+  {:mvn/version "5.9.0"}
+
+  com.cognitect/anomalies
+  {:mvn/version "0.1.12"}
+
+  io.netty/netty-codec-http
+  {:mvn/version "4.1.39.Final"}
+
+  io.netty/netty-handler-proxy
+  {:mvn/version "4.1.39.Final"}
+
+  io.netty/netty-resolver-dns
+  {:mvn/version "4.1.39.Final"}
+
+  io.netty/netty-transport-native-epoll$linux-x86_64
+  {:mvn/version "4.1.39.Final"}}}

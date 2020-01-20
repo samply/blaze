@@ -1,13 +1,7 @@
 (ns blaze.core
   (:require
-    [clojure.spec.alpha :as s]
-    [clojure.string :as str]
-    [env-tools.alpha :as env-tools]
     [blaze.system :as system]
-    [phrase.alpha :refer [defphraser phrase-first]]
-    [spec-coerce.alpha :refer [coerce]]
-    [taoensso.timbre :as log])
-  (:gen-class))
+    [taoensso.timbre :as log]))
 
 
 (defn- max-memory []
@@ -24,10 +18,12 @@
     (catch Exception e
       (log/error
         (cond->
-          {:ex-data (ex-data e)
-           :msg (ex-message e)}
+          (str "Error while initializing Blaze `" (or (ex-message e) "unknown")
+               "`")
           (ex-cause e)
-          (assoc :cause-msg (ex-message (ex-cause e)))))
+          (str " cause `" (ex-message (ex-cause e)) "`")
+          (seq config)
+          (str " config: " config)))
       (System/exit 1))))
 
 
@@ -40,18 +36,27 @@
     sys))
 
 
+(defn shutdown-system! []
+  (when-let [sys system]
+    (system/shutdown! sys)
+    (alter-var-root #'system (constantly nil))
+    nil))
+
+
+(defn- add-shutdown-hook [f]
+  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable f)))
+
+
+(defn- duration-s [start]
+  (format "%.1f" (/ (double (- (System/nanoTime) start)) 1e9)))
+
+
 (defn -main [& _]
-  (let [config (env-tools/build-config :system/config)
-        coerced-config (coerce :system/config config)]
-    (if (s/valid? :system/config coerced-config)
-      (do
-        (init-system! coerced-config)
-        (log/info "JVM version:" (System/getProperty "java.version"))
-        (log/info "Maximum available memory:" (max-memory) "MiB")
-        (log/info "Number of available processors:" (available-processors)))
-      (log/error (phrase-first nil :system/config config)))))
-
-
-(defphraser #(contains? % key)
-  [_ _ key]
-  (str "Missing env var: " (str/replace (str/upper-case (name key)) \- \_)))
+  (add-shutdown-hook shutdown-system!)
+  (let [start (System/nanoTime)
+        {:blaze/keys [version]} (init-system! (System/getenv))]
+    (log/info "JVM version:" (System/getProperty "java.version"))
+    (log/info "Maximum available memory:" (max-memory) "MiB")
+    (log/info "Number of available processors:" (available-processors))
+    (log/info "Successfully started Blaze version" version "in"
+              (duration-s start) "seconds")))

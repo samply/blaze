@@ -1,0 +1,128 @@
+{
+  "resourceType": "bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0",
+        "address": [
+          {
+            "city": "Jena"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1",
+        "address": [
+          {
+            "city": "Leipzig"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "2",
+        "address": [
+          {
+            "city": "Jena"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "3",
+        "address": [
+          {
+            "city": "Jena"
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Patient"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ],
+            "stratifier": [
+              {
+                "code": {
+                  "text": "city"
+                },
+                "criteria": {
+                  "language": "text/cql",
+                  "expression": "City"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ]
+}
