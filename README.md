@@ -1,8 +1,8 @@
 # Blaze
 
 [![Build Status](https://travis-ci.org/life-research/blaze.svg?branch=master)](https://travis-ci.org/life-research/blaze)
-[![Docker Pulls](https://img.shields.io/docker/pulls/liferesearch/blaze.svg)](https://hub.docker.com/r/liferesearch/blaze/)
-[![Image Layers](https://images.microbadger.com/badges/image/liferesearch/blaze.svg)](https://microbadger.com/images/liferesearch/blaze)
+[![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
+[![Image Layers](https://images.microbadger.com/badges/image/samply/blaze.svg)](https://microbadger.com/images/samply/blaze)
 
 A FHIR® Store with internal, fast CQL Evaluation Engine
 
@@ -23,7 +23,7 @@ In order to run Blaze with an in-memory, volatile database, just execute the fol
 ### Docker
 
 ```bash
-docker run -p 8080:8080 liferesearch/blaze:0.7.0
+docker run -p 8080:8080 samply/blaze:0.7.0
 ```
 
 ### Java
