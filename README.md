@@ -1,6 +1,6 @@
 # Blaze
 
-[![Build Status](https://travis-ci.org/life-research/blaze.svg?branch=master)](https://travis-ci.org/life-research/blaze)
+[![Build Status](https://travis-ci.org/samply/blaze.svg?branch=master)](https://travis-ci.org/samply/blaze)
 [![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
 [![Image Layers](https://images.microbadger.com/badges/image/samply/blaze.svg)](https://microbadger.com/images/samply/blaze)
 
