@@ -1,8 +1,8 @@
 # Blaze
 
-[![Build Status](https://travis-ci.org/life-research/blaze.svg?branch=master)](https://travis-ci.org/life-research/blaze)
-[![Docker Pulls](https://img.shields.io/docker/pulls/liferesearch/blaze.svg)](https://hub.docker.com/r/liferesearch/blaze/)
-[![Image Layers](https://images.microbadger.com/badges/image/liferesearch/blaze.svg)](https://microbadger.com/images/liferesearch/blaze)
+[![Build Status](https://travis-ci.org/samply/blaze.svg?branch=master)](https://travis-ci.org/samply/blaze)
+[![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
+[![Image Layers](https://images.microbadger.com/badges/image/samply/blaze.svg)](https://microbadger.com/images/samply/blaze)
 
 A FHIR® Store with internal, fast CQL Evaluation Engine
 
@@ -23,13 +23,13 @@ In order to run Blaze with an in-memory, volatile database, just execute the fol
 ### Docker
 
 ```bash
-docker run -p 8080:8080 liferesearch/blaze:0.8.0-alpha.7
+docker run -p 8080:8080 samply/blaze:0.8.0-alpha.7
 ```
 
 ### Java
 
 ```bash
-wget https://github.com/life-research/blaze/releases/download/v0.8.0-alpha.7/blaze-0.8.0-alpha.7-standalone.jar
+wget https://github.com/samply/blaze/releases/download/v0.8.0-alpha.7/blaze-0.8.0-alpha.7-standalone.jar
 java -jar blaze-0.8.0-alpha.7-standalone.jar
 ```
 
@@ -55,8 +55,8 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
-[1]: <https://github.com/life-research/life-fhir-gen>
-[2]: <http://cql-runner.dataphoria.org/>
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
 [5]: <https://github.com/samply/blaze/releases/tag/v0.8.0-alpha.7>
