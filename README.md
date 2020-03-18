@@ -45,6 +45,12 @@ curl http://localhost:8080/health
 
 In-deep deployment options of Blaze are described in the [Deployment Section][4] of the Blaze documentation.
 
+## YourKit Profiler
+
+![YourKit logo](https://www.yourkit.com/images/yklogo.png)
+
+The developers of Blaze uses the YourKit profiler to optimize performance. YourKit supports open source projects with innovative and intelligent tools for monitoring and profiling Java and .NET applications. YourKit is the creator of [YourKit Java Profiler][6], [YourKit .NET Profiler][7] and [YourKit YouMonitor][8].
+
 ## License
 
 Copyright 2019 The Samply Development Community
@@ -58,3 +64,6 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
 [5]: <https://github.com/samply/blaze/releases/tag/v0.7.0>
+[6]: <https://www.yourkit.com/java/profiler/>
+[7]: <https://www.yourkit.com/.net/profiler/>
+[8]: <https://www.yourkit.com/youmonitor/>
