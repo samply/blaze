@@ -225,6 +225,11 @@
   (union [a b]))
 
 
+;; 22.6. ConvertQuantity
+(defprotocol ConvertQuantity
+  (convert-quantity [x unit]))
+
+
 ;; 22.21. ToDate
 (defprotocol ToDate
   "Converts an object into something usable as Date relative to `now`.

@@ -4764,6 +4764,27 @@
       (LocalDate/of 2019 9 4))))
 
 
+;; 22.6. ConvertQuantity
+;;
+;; The ConvertQuantity operator converts a Quantity to an equivalent Quantity
+;; with the given unit. If the unit of the input quantity can be converted to
+;; the target unit, the result is an equivalent Quantity with the target unit.
+;; Otherwise, the result is null.
+;;
+;; Note that implementations are not required to support quantity conversion.
+;; Implementations that do support unit conversion shall do so according to the
+;; conversion specified by UCUM. Implementations that do not support unit
+;; conversion shall throw an error if an unsupported unit conversion is
+;; requested with this operation.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-convert-quantity-test
+  (are [argument unit res] (= res (-eval (compile {} {:type "ConvertQuantity" :operand [argument unit]}) {} nil nil))
+    #elm/quantity [5 "mg"] #elm/string "g" (quantity 0.005 "g")
+    #elm/quantity [5 "mg"] #elm/string "m" nil
+    {:type "Null"} {:type "Null"} nil))
+
+
 ;; 22.16. Descendents
 ;;
 ;; For structured types, the Descendents operator returns a list of all the

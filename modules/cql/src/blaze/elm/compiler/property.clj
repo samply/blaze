@@ -6,10 +6,13 @@
     [blaze.datomic.value :as dv]
     [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
     [blaze.elm.spec]
+    [blaze.elm.quantity :as quantity]
     [blaze.elm.util :as elm-util]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom])
+  (:import
+    [javax.measure Quantity]))
 
 
 (s/fdef choice-result-type?
@@ -46,7 +49,21 @@
   (cond
     source-type
     (let [[type-ns type-name] (elm-util/parse-qualified-name source-type)]
-      (if (= "http://hl7.org/fhir" type-ns)
+      (cond
+        (= "urn:hl7-org:elm-types:r1" type-ns)
+        (case type-name
+          "Quantity"
+          (case path
+            "value" #(some-> ^Quantity % (.getValue))
+            "unit" #(some-> ^Quantity % (.getUnit) quantity/format-unit))
+          (throw-anom
+            ::anom/unsupported
+            (format
+              "Unsupported type name `%s` in source type namespace `%s` in property expression with path `%s`."
+              type-name type-ns path)
+            :expression expr))
+
+        (= "http://hl7.org/fhir" type-ns)
         (case type-name
           "Quantity"
           (case path
@@ -55,6 +72,8 @@
             "system" datomic-quantity/system
             "code" datomic-quantity/code)
           (attr-kw type-name path))
+
+        :else
         (throw-anom
           ::anom/unsupported
           (format

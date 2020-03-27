@@ -623,8 +623,8 @@
 (defrecord ExpressionRef [name]
   Expression
   (-eval [_ {:keys [library-context] :as context} resource _]
-    (if-some [expression (get library-context name)]
-      (-eval expression context resource nil)
+    (if (contains? library-context name)
+      (-eval (get library-context name) context resource nil)
       (throw-anom
         ::anom/incorrect
         (str "Expression `" name "` not found.")
@@ -2535,6 +2535,8 @@
 ;; 22.5. Convert
 
 ;; 22.6. ConvertQuantity
+(defbinop convert-quantity [x unit]
+  (p/convert-quantity x unit))
 
 ;; 22.7. ConvertsToBoolean
 

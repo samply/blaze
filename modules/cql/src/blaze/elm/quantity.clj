@@ -187,6 +187,15 @@
     (.add x (Quantities/getQuantity 1E-8M (.getUnit x)))))
 
 
+;; 22.6. ConvertQuantity
+(extend-protocol p/ConvertQuantity
+  Quantity
+  (convert-quantity [x unit]
+    (try
+      (.to x (parse-unit unit))
+      (catch Exception _))))
+
+
 ;; 22.26. ToQuantity
 (extend-protocol p/ToQuantity
   Number
