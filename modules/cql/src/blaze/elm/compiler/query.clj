@@ -1,9 +1,12 @@
 (ns blaze.elm.compiler.query
   (:require
     [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
+    [blaze.elm.protocols :as p]
     [clojure.spec.alpha :as s])
   (:import
-    [clojure.core Eduction]))
+    [clojure.core Eduction]
+    [java.util Comparator])
+  (:refer-clojure :exclude [comparator]))
 
 
 (s/fdef with-xform-factory
@@ -126,3 +129,80 @@
 
 (defn into-vector-expr [xform-expr source]
   (->IntoVectorQueryExpression xform-expr source))
+
+
+(deftype AscComparator []
+  Comparator
+  (compare [_ x y]
+    (let [less (p/less x y)]
+      (cond
+        (true? less) -1
+        (false? less) 1
+        (nil? x) -1
+        (nil? y) 1
+        :else 0))))
+
+
+(def asc-comparator (->AscComparator))
+
+
+(deftype DescComparator []
+  Comparator
+  (compare [_ x y]
+    (let [less (p/less x y)]
+      (cond
+        (true? less) 1
+        (false? less) -1
+        (nil? x) 1
+        (nil? y) -1
+        :else 0))))
+
+
+(def ^:private desc-comparator (->DescComparator))
+
+
+(defn comparator [direction]
+  (if (#{"desc" "descending"} direction) desc-comparator asc-comparator))
+
+
+(defrecord SortQueryExpression [source sort-by-item]
+  Expression
+  (-eval [_ context resource scope]
+    ;; TODO: build a comparator of all sort by items
+    (->> (-eval source context resource scope)
+         (sort-by
+           (if-let [expr (:expression sort-by-item)]
+             #(-eval expr context resource %)
+             identity)
+           (comparator (:direction sort-by-item)))
+         (vec))))
+
+
+(s/fdef sort-expr
+  :args (s/cat :source expr? :sort-by-item some?))
+
+(defn sort-expr [source sort-by-item]
+  (->SortQueryExpression source sort-by-item))
+
+
+(defrecord XFormSortQueryExpression [xform-expr source sort-by-item]
+  Expression
+  (-eval [_ context resource scope]
+    ;; TODO: build a comparator of all sort by items
+    (->> (into
+           []
+           (-eval xform-expr context resource scope)
+           (-eval source context resource scope))
+         (sort-by
+           (if-let [expr (:expression sort-by-item)]
+             #(-eval expr context resource %)
+             identity)
+           (comparator (:direction sort-by-item)))
+         (vec))))
+
+
+(s/fdef xform-sort-expr
+  :args (s/cat :xform-expr expr? :source expr? :sort-by-item some?))
+
+(defn xform-sort-expr [xform-expr source sort-by-item]
+  (->XFormSortQueryExpression xform-expr source sort-by-item))

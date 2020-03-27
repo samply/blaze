@@ -586,6 +586,11 @@
   (s/keys :opt-un [:elm/name :elm/libraryName :elm.nary-expression/operand]))
 
 
+;; ?.? IdentifierRef
+(defmethod expression :elm.spec.type/identifier-ref [_]
+  (s/keys :opt-un [:elm/name]))
+
+
 
 ;; 10. Queries
 (s/def :elm.query/source

@@ -74,6 +74,35 @@
         "subject": {
           "reference": "Patient/0"
         },
+        "effectiveDateTime": "2020-01-01",
+        "valueQuantity": {
+          "value": 80,
+          "unit": "kg",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "2",
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "29463-7"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "effectiveDateTime": "2020-03-01",
         "valueQuantity": {
           "value": 85,
           "unit": "kg",
@@ -83,7 +112,7 @@
       },
       "request": {
         "method": "PUT",
-        "url": "Observation/1"
+        "url": "Observation/2"
       }
     },
     {

@@ -309,13 +309,35 @@
 (deftest compile-query-test
   (testing "Non-retrieve queries"
     (testing "Sort"
-      (are [query res] (= res (-eval (compile {} query) {} nil nil))
-        {:type "Query"
-         :source
-         [{:alias "S"
-           :expression #elm/list [#elm/int "2" #elm/int "1" #elm/int "1"]}]
-         :sort {:by [{:type "ByDirection" :direction "asc"}]}}
-        [1 2]))
+      (testing "ByDirection"
+        (are [query res] (= res (-eval (compile {} query) {} nil nil))
+          {:type "Query"
+           :source
+           [{:alias "S"
+             :expression #elm/list [#elm/int "2" #elm/int "1" #elm/int "1"]}]
+           :sort {:by [{:type "ByDirection" :direction "asc"}]}}
+          [1 2]))
+
+      (testing "ByExpression"
+        (are [query res] (= res (-eval (compile {} query) {} nil nil))
+          {:type "Query"
+           :source
+           [{:alias "S"
+             :expression
+             #elm/list
+                 [#elm/quantity [2 "m"]
+                  #elm/quantity [1 "m"]
+                  #elm/quantity [1 "m"]]}]
+           :sort
+           {:by
+            [{:type "ByExpression"
+              :direction "asc"
+              :expression
+              {:type "Property"
+               :path "value"
+               :scope "S"
+               :resultTypeName "{urn:hl7-org:elm-types:r1}decimal"}}]}}
+          [(quantity 1 "m") (quantity 2 "m")])))
 
     (testing "Return non-distinct"
       (are [query res] (= res (-eval (compile {} query) {} nil nil))
