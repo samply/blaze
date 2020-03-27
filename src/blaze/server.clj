@@ -24,18 +24,18 @@
 
 
 (s/fdef init!
-  :args (s/cat :port ::port :executor ex/executor? :handler fn?
-               :version string?))
+  :args (s/cat :port ::port :executor ex/executor? :handle fn?
+               :version string? :ssl-context any?))
 
 (defn init!
   "Creates a new HTTP server listening on `port` serving from `handler`.
 
   Call `shutdown!` on the returned server to stop listening and releasing its
   port."
-  [port executor handler version]
+  [port executor handler version ssl-context]
   (http/start-server
     (wrap-server handler (str "Blaze/" version))
-    {:port port :executor executor}))
+    {:port port :executor executor :ssl-context ssl-context}))
 
 
 (s/fdef shutdown!

@@ -104,4 +104,7 @@
    :toggle "OPENID_PROVIDER_URL"
    :config
    {[:blaze.auth/backend :blaze.openid-auth/backend]
-    {:openid-provider/url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}}}]}
+    {:openid-provider/url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}}}
+  {:name "SSL"
+   :toggle "SSL"
+   :config {:blaze.server/ssl-context {:ssl/option ::ssl/self-signed}}}]}
