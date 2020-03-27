@@ -212,8 +212,7 @@
 (defmethod ig/init-key :blaze.server/ssl-context
   [_ {:keys [ssl/option]}]
   (case option
-    :ssl/self-signed (netty/self-signed-ssl-context)
-    :else            {}))
+    :ssl/self-signed (netty/self-signed-ssl-context)))
 
 (defmethod ig/init-key :blaze/server
   [_ {:keys [port executor handler version ssl-context]}]
@@ -230,7 +229,7 @@
 (defmethod ig/init-key :blaze.metrics/server
   [_ {:keys [port handler version ssl-context]}]
   (log/info "Start metrics server on port" port )
-  (server/init! port (ex/single-thread-executor) handler version ssl-context))
+  (server/init! port (ex/single-thread-executor) handler version {:ssl-context ssl-context}))
 
 
 (defmethod ig/halt-key! :blaze.metrics/server
