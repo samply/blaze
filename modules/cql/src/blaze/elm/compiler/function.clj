@@ -42,7 +42,10 @@
   (-to-quantity [x]
     (throw-anom
       ::anom/fault
-      (format "Can't convert `%s` to quantity." x))))
+      (format "Can't convert `%s` to quantity." x)))
+
+  nil
+  (-to-quantity [_]))
 
 
 (defrecord ToQuantityFunctionExpression [operand]

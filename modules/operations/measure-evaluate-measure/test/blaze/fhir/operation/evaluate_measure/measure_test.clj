@@ -611,10 +611,15 @@
     [0 "value" "text"] := ""
     [0 "population" 0 "count"] := 2
     [1 "value" "text"] := "37"
+    [1 "population" 0 "count"] := 1)
+
+  (given (first-stratifier-stratums (evaluate "q27-stratifier-calculated-bmi"))
+    [0 "value" "text"] := ""
+    [0 "population" 0 "count"] := 2
+    [1 "value" "text"] := "26.8"
     [1 "population" 0 "count"] := 1))
 
 (comment
-  (require 'hashp.core)
-  (evaluate "q26-stratifier-bmi")
+  (evaluate "q27-stratifier-calculated-bmi")
   (clojure.repl/pst)
   )

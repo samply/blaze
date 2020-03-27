@@ -237,6 +237,12 @@
   (union [_ _]))
 
 
+;; 22.6. ConvertQuantity
+(extend-protocol p/ConvertQuantity
+  nil
+  (convert-quantity [_ _]))
+
+
 ;; 22.23. ToDecimal
 (extend-protocol p/ToDecimal
   nil

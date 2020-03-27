@@ -1567,6 +1567,10 @@
 (derive :elm.spec.type/can-convert-quantity :elm.spec.type/binary-expression)
 
 
+;; 22.6. ConvertQuantity
+(derive :elm.spec.type/convert-quantity :elm.spec.type/binary-expression)
+
+
 ;; 22.4. Children
 (defmethod expression :elm.spec.type/children [_]
   (s/keys :req-un [:elm/source]))
