@@ -11,11 +11,18 @@ context Patient
 define InInitialPopulation:
     true
 
-define BodyWeight:
-  First(from [Observation: body_weight] O return (O.value as Quantity))
+define MostRecentBodyWeight:
+  First(
+    from [Observation: body_weight] O
+    sort by FHIRHelpers.ToDateTime(effective as dateTime) desc)
 
-define BodyHeight:
-  First(from [Observation: body_height] O return convert (O.value as Quantity) to 'm')
+define MostRecentBodyHeight:
+  First(
+    from [Observation: body_height] O
+    sort by FHIRHelpers.ToDateTime(effective as dateTime) desc)
+
+define MostRecentBodyHeightInMeters:
+  convert MostRecentBodyHeight.value to 'm'
 
 define Bmi:
-  Round((BodyWeight / (BodyHeight * BodyHeight)).value, 1)
+  Round((MostRecentBodyWeight.value / (MostRecentBodyHeightInMeters * MostRecentBodyHeightInMeters)).value, 1)

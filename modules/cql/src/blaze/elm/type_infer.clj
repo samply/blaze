@@ -364,6 +364,12 @@
 (derive :elm/exists :elm/unary-expression)
 
 
+;; 20.10. First
+(defmethod infer-types* :elm/first
+  [context expression]
+  (update expression :source #(infer-types context %)))
+
+
 ;; 20.25. SingletonFrom
 (derive :elm/singleton-from :elm/unary-expression)
 

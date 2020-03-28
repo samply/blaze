@@ -12,7 +12,8 @@
     [clojure.string :as str]
     [cognitect.anomalies :as anom])
   (:import
-    [javax.measure Quantity]))
+    [javax.measure Quantity]
+    [datomic Entity]))
 
 
 (s/fdef choice-result-type?
@@ -183,7 +184,27 @@
 
 
 (defn- navigate [value path]
-  (dv/read ((keyword (db/entity-type value) path) value)))
+  (cond
+    (instance? Entity value)
+    (dv/read ((keyword (db/entity-type value) path) value))
+
+    (instance? Quantity value)
+    (case path
+      "value" (.getValue ^Quantity value)
+      "unit" (quantity/format-unit (.getUnit ^Quantity value))
+      (throw-anom
+        ::anom/incorrect
+        (format
+          "Invalid traversal with path `%s` on {urn:hl7-org:elm-types:r1}Quantity."
+          path)))
+
+    :else
+    (throw-anom
+      ::anom/unsupported
+      (format
+        "Unsupported traversal with path `%s` on type `%s`."
+        path
+        (type value)))))
 
 
 (defrecord SourceRuntimeTypePropertyExpression [source path]

@@ -1,9 +1,7 @@
 (ns blaze.elm.compiler.property-test
   (:require
     [blaze.datomic.quantity :as datomic-quantity]
-    [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.elm.compiler.property
-     :refer [attr scope-expr scope-runtime-type-expr]]
+    [blaze.elm.compiler.property :refer [attr scope-expr]]
     [blaze.elm.compiler.protocols :refer [-eval]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is]]))
@@ -91,16 +89,3 @@
         nil
         {"C" {:CodeableConcept/coding "foo"}})
       "foo")))
-
-
-(deftest scope-runtime-type-expr-test
-  (let [entity {:CodeableConcept/coding "foo"}]
-    (datomic-test-util/stub-entity-type entity "CodeableConcept")
-    (is
-      (=
-        (-eval
-          (scope-runtime-type-expr "C" "coding")
-          nil
-          nil
-          {"C" entity})
-        "foo"))))

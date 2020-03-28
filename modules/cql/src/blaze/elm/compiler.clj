@@ -43,9 +43,8 @@
     [datomic-spec.core :as ds])
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
-    [java.time.temporal ChronoUnit]
-    [java.util Comparator])
-  (:refer-clojure :exclude [comparator compile]))
+    [java.time.temporal ChronoUnit])
+  (:refer-clojure :exclude [compile]))
 
 
 (extend-protocol p/Equal
@@ -721,40 +720,6 @@
   sort-by-item)
 
 
-(deftype AscComparator []
-  Comparator
-  (compare [_ x y]
-    (let [less (p/less x y)]
-      (cond
-        (true? less) -1
-        (false? less) 1
-        (nil? x) -1
-        (nil? y) 1
-        :else 0))))
-
-
-(def ^:private asc-comparator (->AscComparator))
-
-
-(deftype DescComparator []
-  Comparator
-  (compare [_ x y]
-    (let [less (p/less x y)]
-      (cond
-        (true? less) 1
-        (false? less) -1
-        (nil? x) 1
-        (nil? y) -1
-        :else 0))))
-
-
-(def ^:private desc-comparator (->DescComparator))
-
-
-(defn- comparator [direction]
-  (if (#{"desc" "descending"} direction) desc-comparator asc-comparator))
-
-
 (defmethod compile* :elm.compiler.type/query
   [{:keys [optimizations] :as context}
    {sources :source
@@ -793,23 +758,16 @@
             (query/into-vector-expr xform-expr source))
           source)
         (if xform-expr
-          (reify Expression
-            (-eval [_ context resource scope]
-              ;; TODO: build a comparator of all sort by items
-              (->> (into
-                     []
-                     (-eval xform-expr context resource scope)
-                     (-eval source context resource scope))
-                   (sort-by identity (comparator (:direction (first sort-by-items))))
-                   (vec))))
-          (reify Expression
-            (-eval [_ context resource scope]
-
-              ;; TODO: build a comparator of all sort by items
-              (->> (-eval source context resource scope)
-                   (sort-by identity (comparator (:direction (first sort-by-items))))
-                   (vec)))))))
+          (query/xform-sort-expr xform-expr source (first sort-by-items))
+          (query/sort-expr source (first sort-by-items)))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
+
+
+(defmethod compile* :elm.compiler.type/identifier-ref
+  [_ {:keys [name] :as expression}]
+  (if (property/choice-result-type? expression)
+    (property/single-scope-runtime-choice-type-expr name)
+    (property/single-scope-runtime-type-expr name)))
 
 
 ;; 10.3. AliasRef
@@ -2304,7 +2262,7 @@
       (fn [source {:keys [type direction]}]
         (case type
           "ByDirection"
-          (let [comp (comparator direction)]
+          (let [comp (query/comparator direction)]
             (reify Expression
               (-eval [_ context resource scopes]
                 (when-let [source (-eval source context resource scopes)]
@@ -2357,7 +2315,7 @@
 
 ;; 21.8. Median
 (defaggop median [source]
-  (let [sorted (vec (sort-by identity asc-comparator (remove nil? source)))]
+  (let [sorted (vec (sort-by identity query/asc-comparator (remove nil? source)))]
     (when (seq sorted)
       (if (zero? (rem (count sorted) 2))
         (let [upper-idx (quot (count sorted) 2)]
