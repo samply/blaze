@@ -1,0 +1,6 @@
+{:lint-as
+ {blaze.anomaly/when-ok clojure.core/let
+  prometheus.alpha/defcounter clojure.core/def
+  prometheus.alpha/defhistogram clojure.core/def}
+
+ :skip-comments true}

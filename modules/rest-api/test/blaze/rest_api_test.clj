@@ -1,5 +1,6 @@
 (ns blaze.rest-api-test
   (:require
+    [blaze.db.search-param-registry :as sr]
     [blaze.rest-api :as rest-api]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
@@ -16,6 +17,9 @@
 
 
 (test/use-fixtures :each fixture)
+
+
+(def search-param-registry (sr/init-mem-search-param-registry))
 
 
 (def config
@@ -134,7 +138,8 @@
              {:base-url "base-url-131713"
               :version "version-131640"
               :structure-definitions
-              [{:kind "resource" :name "Patient"}]})
+              [{:kind "resource" :name "Patient"}]
+              :search-param-registry search-param-registry})
            {})
           :body)
       :resourceType := "CapabilityStatement"
@@ -143,7 +148,7 @@
       [:software :name] := "Blaze"
       [:software :version] := "version-131640"
       [:implementation :url] := "base-url-131713"
-      :fhirVersion := "4.0.0"
+      :fhirVersion := "4.0.1"
       :format := ["application/fhir+json"]))
 
   (testing "one interaction"
@@ -153,6 +158,7 @@
               :version "version-131640"
               :structure-definitions
               [{:kind "resource" :name "Patient"}]
+              :search-param-registry search-param-registry
               :resource-patterns
               [#:blaze.rest-api.resource-pattern
                   {:type "Patient"
@@ -173,6 +179,7 @@
               :version "version-131640"
               :structure-definitions
               [{:kind "resource" :name "Measure"}]
+              :search-param-registry search-param-registry
               :resource-patterns
               [#:blaze.rest-api.resource-pattern
                   {:type "Measure"

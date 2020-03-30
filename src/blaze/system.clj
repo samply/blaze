@@ -16,8 +16,7 @@
     [taoensso.timbre :as log]
     [clojure.java.io :as io])
   (:import
-    [java.io PushbackReader]
-    [java.time Clock]))
+    [java.io PushbackReader]))
 
 
 
@@ -79,23 +78,23 @@
 (def ^:private root-config
   {:blaze/version "0.8.0-alpha.9"
 
-   :blaze/clock {}
-
    :blaze/structure-definition {}
 
-   :blaze/search-parameter {}
+   :blaze.db/search-param-registry {}
 
-   :blaze.datomic.transaction/executor {}
+   :blaze.db/node
+   {:tx-log (ig/ref :blaze.db/tx-log)
+    :tx-indexer (ig/ref :blaze.db.indexer/tx)
+    :kv-store (ig/ref :blaze.db/kv-store)
+    :resource-cache (ig/ref :blaze.db/resource-cache)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)}
 
-   :blaze.datomic/conn
-   {:structure-definitions (ig/ref :blaze/structure-definition)
-    :search-parameters (ig/ref :blaze/search-parameter)
-    :database/uri (->Cfg "DATABASE_URI" string? "datomic:mem://dev")}
+   :blaze.db/resource-cache
+   {:kv-store (ig/ref :blaze.db/kv-store)
+    :max-size (->Cfg "RESOURCE_CACHE_SIZE" nat-int? 0)}
 
-   :blaze.datomic/resource-upsert-duration-seconds {}
-   :blaze.datomic/execution-duration-seconds {}
-   :blaze.datomic/resources-total {}
-   :blaze.datomic/datoms-total {}
+   :blaze.db.node/resource-cache-collector
+   {:cache (ig/ref :blaze.db/resource-cache)}
 
    :blaze.handler/health {}
 
@@ -103,14 +102,14 @@
    {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
     :version (ig/ref :blaze/version)
     :structure-definitions (ig/ref :blaze/structure-definition)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)
-    :context-path "/fhir"}
+    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")}
 
    :blaze.rest-api/requests-total {}
    :blaze.rest-api/request-duration-seconds {}
    :blaze.rest-api/parse-duration-seconds {}
    :blaze.rest-api/generate-duration-seconds {}
-   :blaze.rest-api/tx-data-duration-seconds {}
 
    :blaze.handler/app
    {:rest-api (ig/ref :blaze/rest-api)
@@ -166,7 +165,12 @@
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
-  (log/merge-config! {:level (keyword (str/lower-case level))})
+  (log/merge-config!
+    {:level (keyword (str/lower-case level))
+     :timestamp-opts
+     {:pattern :iso8601
+      :locale :jvm-default
+      :timezone :utc}})
   (let [config (merge-features (read-blaze-edn) env)
         config (-> (merge-with merge root-config config)
                    (resolve-config env))]
@@ -184,11 +188,6 @@
 (defmethod ig/init-key :blaze/version
   [_ version]
   version)
-
-
-(defmethod ig/init-key :blaze/clock
-  [_ _]
-  (Clock/systemDefaultZone))
 
 
 #_(defmethod ig/init-key :fhir-capabilities-handler

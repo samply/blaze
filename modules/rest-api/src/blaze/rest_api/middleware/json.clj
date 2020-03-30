@@ -39,7 +39,7 @@
               reader (io/reader body)]
     (binding [*use-bigdecimals?* true]
       (try
-        (json/parse-stream reader)
+        (json/parse-stream reader keyword)
         (catch Exception e
           (md/error-deferred
             #::anom{:category ::anom/incorrect

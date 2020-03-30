@@ -7,6 +7,11 @@
     [blaze.elm.protocols :as p]))
 
 
+(extend-protocol p/StructuredType
+  nil
+  (get [_ _]))
+
+
 (extend-protocol p/Equal
   nil
   (equal [_ _]))

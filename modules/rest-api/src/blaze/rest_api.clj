@@ -1,6 +1,7 @@
 (ns blaze.rest-api
   (:require
-    [blaze.bundle :as bundle]
+    [blaze.db.search-param-registry :as sr]
+    [blaze.db.search-param-registry-spec]
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
     [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
@@ -99,7 +100,6 @@
 (def structure-definition-filter
   (comp
     (filter (comp #{"resource"} :kind))
-    (remove (comp #{"Bundle"} :name))
     (remove :experimental)
     (remove :abstract)))
 
@@ -227,8 +227,9 @@
 
 
 (defn- capability-resource
-  {:arglists '([resource-patterns operations structure-definition])}
-  [resource-patterns operations {:keys [name] :as structure-definition}]
+  {:arglists '([resource-patterns operations search-param-registry structure-definition])}
+  [resource-patterns operations search-param-registry
+   {:keys [name] :as structure-definition}]
   (when-let
     [{:blaze.rest-api.resource-pattern/keys [interactions]}
      (resolve-pattern resource-patterns structure-definition)]
@@ -271,9 +272,14 @@
           "enforced"
           "local"]
          :searchParam
-         [{:name "identifier"
-           :definition (str "http://hl7.org/fhir/SearchParameter/" name "-identifier")
-           :type "token"}]}
+         (into
+           []
+           (map
+             (fn [{:keys [name url type]}]
+               {:name name
+                :definition url
+                :type type}))
+           (sr/list-by-type search-param-registry name))}
 
         (seq operations)
         (assoc
@@ -295,6 +301,7 @@
      version
      context-path
      structure-definitions
+     search-param-registry
      transaction-handler
      history-system-handler
      resource-patterns
@@ -304,14 +311,14 @@
         {:resourceType "CapabilityStatement"
          :status "active"
          :kind "instance"
-         :date "2019-12-15"
+         :date "2020-02-25"
          :software
          {:name "Blaze"
           :version version}
          :implementation
          {:description (str "Blaze running at " base-url context-path)
           :url (str base-url context-path)}
-         :fhirVersion "4.0.0"
+         :fhirVersion "4.0.1"
          :format ["application/fhir+json"]
          :rest
          [{:mode "server"
@@ -320,7 +327,7 @@
              []
              (comp
                structure-definition-filter
-               (map #(capability-resource resource-patterns operations %))
+               (map #(capability-resource resource-patterns operations search-param-registry %))
                (remove nil?))
              structure-definitions)
            :interaction
@@ -374,7 +381,8 @@
     :req-un
     [:blaze/base-url
      ::version
-     ::structure-definitions]
+     ::structure-definitions
+     :blaze.db/search-param-registry]
     :opt-un
     [::context-path
      ::auth-backends
@@ -405,7 +413,3 @@
 
 (reg-collector ::generate-duration-seconds
   json/generate-duration-seconds)
-
-
-(reg-collector ::tx-data-duration-seconds
-  bundle/tx-data-duration-seconds)

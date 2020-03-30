@@ -22,6 +22,6 @@
   :ret code?)
 
 (defn to-code
-  "Returns a CQL code with isn't the same as a FHIR code from Datomic."
+  "Returns a CQL code with isn't the same as a FHIR code from the database."
   [system version code]
   (->Code system version code))

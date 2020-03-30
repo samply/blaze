@@ -8,9 +8,7 @@
      :refer [wrap-coerce-params]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.module :refer [reg-collector]]
-    [blaze.terminology-service :refer [term-service?]]
     [clojure.spec.alpha :as s]
-    [datomic-spec.core :as ds]
     [integrant.core :as ig]
     [ring.middleware.params :refer [wrap-params]]
     [taoensso.timbre :as log])
@@ -18,34 +16,14 @@
     [java.time Clock]))
 
 
-(s/def :handler.fhir.operation/evaluate-measure fn?)
+(set! *warn-on-reflection* true)
 
 
-(s/fdef handler
-  :args
-  (s/cat
-    :clock #(instance? Clock %)
-    :transaction-executor executor?
-    :conn ::ds/conn
-    :term-service term-service?
-    :executor executor?)
-  :ret :handler.fhir.operation/evaluate-measure)
-
-(defn handler
-  ""
-  [clock transaction-executor conn term-service executor]
-  (-> (impl/handler clock transaction-executor conn term-service executor)
+(defn handler [clock conn executor]
+  (-> (impl/handler clock conn executor)
       (wrap-coerce-params)
       (wrap-params)
       (wrap-observe-request-duration "operation-evaluate-measure")))
-
-
-(s/def ::clock
-  #(instance? Clock %))
-
-
-(s/def ::term-service
-  term-service?)
 
 
 (s/def ::executor
@@ -53,15 +31,13 @@
 
 
 (defmethod ig/pre-init-spec ::handler [_]
-  (s/keys :req-un [::clock ::term-service ::executor]))
+  (s/keys :req-un [:blaze.db/node ::executor]))
 
 
 (defmethod ig/init-key ::handler
-  [_
-   {:database/keys [transaction-executor conn]
-    :keys [clock term-service executor]}]
+  [_ {:keys [node executor]}]
   (log/info "Init FHIR $evaluate-measure operation handler")
-  (handler clock transaction-executor conn term-service executor))
+  (handler (Clock/systemDefaultZone) node executor))
 
 
 (defmethod ig/init-key ::executor

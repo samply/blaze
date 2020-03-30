@@ -5,7 +5,7 @@ COPY . /build/
 WORKDIR /build
 RUN clojure -A:depstar -m hf.depstar.uberjar target/blaze-standalone.jar
 
-FROM openjdk:13.0.1-jdk-slim
+FROM openjdk:11.0.6-jre
 
 COPY --from=build /build/target/blaze-standalone.jar /app/
 

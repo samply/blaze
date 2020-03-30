@@ -1,6 +1,7 @@
 (ns blaze.executors
   (:require
-    [clojure.spec.alpha :as s])
+    [clojure.spec.alpha :as s]
+    [manifold.executor :as me])
   (:import
     [java.util.concurrent Executor Executors ThreadFactory]))
 
@@ -28,13 +29,17 @@
 
 (defn cpu-bound-pool
   "Returns a thread pool with a fixed number of threads which is the number of
-  available processors."
+  available processors.
+
+  Sets `manifold.executor/executor-thread-local` to this executor to ensure
+  deferreds are always executed on this executor."
   [name-template]
-  (Executors/newFixedThreadPool
-    (.availableProcessors (Runtime/getRuntime))
-    (reify ThreadFactory
-      (newThread [_ r]
-        (Thread. ^Runnable r ^String (thread-name name-template))))))
+  (let [ep (promise)
+        e (Executors/newFixedThreadPool
+            (.availableProcessors (Runtime/getRuntime))
+            (me/thread-factory #(thread-name name-template) ep))]
+    (deliver ep e)
+    e))
 
 
 (s/fdef io-pool
@@ -44,15 +49,22 @@
   "Returns a thread pool with a fixed number of threads which is suitable for
   I/O."
   [n name-template]
-  (Executors/newFixedThreadPool
-    n
-    (reify ThreadFactory
-      (newThread [_ r]
-        (Thread. ^Runnable r ^String (thread-name name-template))))))
+  (let [ep (promise)
+        e (Executors/newFixedThreadPool
+            n
+            (me/thread-factory #(thread-name name-template) ep))]
+    (deliver ep e)
+    e))
 
 
 (s/fdef single-thread-executor
-  :args (s/cat))
+  :args (s/cat :name (s/? string?)))
 
-(defn single-thread-executor []
-  (Executors/newSingleThreadExecutor))
+(defn single-thread-executor
+  ([]
+   (Executors/newSingleThreadExecutor))
+  ([name]
+   (Executors/newSingleThreadExecutor
+     (reify ThreadFactory
+       (newThread [_ r]
+         (Thread. ^Runnable r ^String name))))))

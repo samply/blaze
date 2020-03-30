@@ -7,6 +7,9 @@
     [buddy.auth.protocols IAuthentication]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (s/def :blaze.rest-api/auth-backends
   (s/coll-of #(satisfies? IAuthentication %)))
 

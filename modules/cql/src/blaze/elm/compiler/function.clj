@@ -1,18 +1,16 @@
 (ns blaze.elm.compiler.function
   (:require
     [blaze.anomaly :refer [throw-anom]]
-    [blaze.datomic.quantity]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as q]
     [cognitect.anomalies :as anom])
   (:import
-    [blaze.datomic.quantity
-     UcumQuantityWithoutUnit
-     UcumQuantityWithSameUnit
-     UcumQuantityWithDifferentUnit
-     CustomQuantity]))
+    [clojure.lang IPersistentMap]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defprotocol ToQuantity
@@ -20,23 +18,9 @@
 
 
 (extend-protocol ToQuantity
-  UcumQuantityWithoutUnit
+  IPersistentMap
   (-to-quantity [x]
-    (q/quantity (.value x) (.code x)))
-
-  UcumQuantityWithSameUnit
-  (-to-quantity [x]
-    (q/quantity (.value x) (.code x)))
-
-  UcumQuantityWithDifferentUnit
-  (-to-quantity [x]
-    (q/quantity (.value x) (.code x)))
-
-  CustomQuantity
-  (-to-quantity [x]
-    (throw-anom
-      ::anom/unsupported
-      (format "Unsupported non-UCUM quantity `%s`." (into {} x))))
+    (q/quantity (:value x) (:code x)))
 
   Object
   (-to-quantity [x]
@@ -57,8 +41,7 @@
 (defrecord ToCodeFunctionExpression [operand]
   Expression
   (-eval [_ context resource scope]
-    (let [coding (-eval operand context resource scope)
-          {{:code/keys [system version code]} :Coding/code} coding]
+    (let [{:keys [system version code]} (-eval operand context resource scope)]
       (code/to-code system version code))))
 
 
@@ -77,5 +60,4 @@
 (defrecord ToStringFunctionExpression [operand]
   Expression
   (-eval [_ context resource scope]
-    (let [value (-eval operand context resource scope)]
-      (str (or (:code/code value) value)))))
+    (str (-eval operand context resource scope))))

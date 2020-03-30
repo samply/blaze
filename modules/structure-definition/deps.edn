@@ -5,4 +5,12 @@
   {:local/root "../module-base"}
 
   cheshire
-  {:mvn/version "5.9.0"}}}
+  {:mvn/version "5.9.0"}}
+
+ :aliases
+ {:clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

@@ -1,6 +1,9 @@
 {:deps
- {blaze/datomic
-  {:local/root "../datomic"}
+ {blaze/db
+  {:local/root "../db"}
+
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
 
   blaze/module-base
   {:local/root "../module-base"}
@@ -25,11 +28,11 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/datomic-test-util
-    {:local/root "../datomic-test-util"}
+   {blaze/db-stub
+    {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-565"}
+    {:mvn/version "0.0-590"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -38,4 +41,11 @@
     {:mvn/version "0.10.0"}}
 
    :main-opts
-   ["-m" "kaocha.runner"]}}}
+   ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

@@ -9,8 +9,7 @@
   (:refer-clojure :exclude [comparator]))
 
 
-(s/fdef with-xform-factory
-  :args (s/cat :with-clause fn?))
+(set! *warn-on-reflection* true)
 
 (defn with-xform-factory [with-clause]
   (fn create-with-xform [context resource scope]

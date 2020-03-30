@@ -1,61 +1,43 @@
 (ns blaze.elm.compiler.retrieve
   "Retrieve specific functions.
 
-  These are Datomic specific.
-
   https://cql.hl7.org/04-logicalspecification.html#retrieve"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
-    [blaze.datomic.util :as datomic-util]
+    [blaze.anomaly :refer [when-ok]]
+    [blaze.db.api :as d]
+    [blaze.db.api-spec]
     [blaze.elm.code :refer [code?]]
     [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds])
-  (:import
-    [datomic Datom]))
+    [clojure.string :as str]
+    [cognitect.anomalies :as anom]))
 
 
-;; An expression which traverses `attr` from the resource in context.
-;;
-;; Returns a vector of resources reachable through `attr`.
-(defrecord AttrRetrieveExpression [attr]
+(set! *warn-on-reflection* true)
+
+
+(defrecord CompartmentListRetrieveExpression [context data-type]
   Expression
-  (-eval [_ {:keys [db]} resource _]
-    (transduce
-      (map #(d/entity db (.v ^Datom %)))
-      conj
-      (d/datoms db :eavt (:db/id resource) attr))))
+  (-eval [_ {:keys [db]} {:keys [id]} _]
+    (into [] (d/list-compartment-resources db context id data-type))))
 
 
-;; Like AttrRetrieveExpression but goes the attribute in reverse direction.
-(defrecord RevAttrRetrieveExpression [attr]
+(defrecord CompartmentQueryRetrieveExpression [batch-fn]
   Expression
-  (-eval [_ {:keys [db]} resource _]
-    (transduce
-      (map #(d/entity db (.e ^Datom %)))
-      conj
-      (d/datoms db :vaet (:db/id resource) attr))))
+  (-eval [_ {:keys [db]} {:keys [id]} _]
+    (into [] (batch-fn db id))))
 
 
-(defn- index-attr
-  "Index attribute like :Patient.Observation.code/system|code"
-  [context data-type property {:keys [system code]}]
-  (let [ns (format "%s.%s.%s" context data-type property)]
-    (keyword ns (str system "|" code))))
+(defn- code->clause-value [{:keys [system code]}]
+  (str system "|" code))
 
 
-(s/fdef single-code-expr
-  :args (s/cat :db ::ds/db
-               :context :elm/expression-execution-context
-               :data-type string?
-               :property string?
-               :code code?)
-  :ret expr?)
+(defn- codes->clause-value [codes]
+  (str/join "," (map code->clause-value codes)))
 
-(defn single-code-expr
+
+(defn- code-expr
   "Returns an expression which, when evaluated, returns all resources of type
   `data-type` which have a code equivalent to `code` at `property` and are
   reachable through `context`.
@@ -66,74 +48,41 @@
   * data-type - \"Observation\"
   * property - \"code\"
   * code - (code/to-code \"http://loinc.org\" nil \"39156-5\")"
-  [db context data-type property code]
-  (when-let [attr-id (d/entid db (index-attr context data-type property code))]
-    (->AttrRetrieveExpression attr-id)))
+  [node context data-type property codes]
+  (let [clauses [[property (codes->clause-value codes)]]
+        res (d/compartment-query-batch node context data-type clauses)]
+    (if (::anom/category res)
+      (throw (ex-info (::anom/message res) res))
+      (->CompartmentQueryRetrieveExpression res))))
 
 
-;; Concatenates retrieves from all `exprs` together into one vector.
-(defrecord RetrieveAllExpression [exprs]
+;; TODO: find a better solution than hard coding this case
+(defrecord SpecimenPatientExpression []
   Expression
-  (-eval [_ context resource _]
-    (transduce (mapcat #(-eval % context resource nil)) conj exprs)))
+  (-eval [_ {:keys [db]} {{:keys [reference]} :subject} _]
+    (when reference
+      (let [[type id] (str/split reference #"/" 2)]
+        (when (= "Patient" type)
+          (when (s/valid? :blaze.resource/id id)
+            (let [patient (d/resource db "Patient" id)]
+              (when-not (d/deleted? patient)
+                [patient]))))))))
 
 
-(s/fdef multiple-codes-expr
-  :args (s/cat :db ::ds/db
-               :context :elm/expression-execution-context
-               :data-type string?
-               :property string?
-               :codes (s/nilable (s/coll-of code?)))
-  :ret expr?)
-
-(defn multiple-codes-expr
-  "Returns an expression which, when evaluated, returns all resources of type
-  `data-type` which have a code equivalent on of the `codes` at `property` and
-  are reachable through `context`.
-
-  Uses special index attributes like :Patient.Observation.code/system|code.
-
-  Example:
-  * data-type - \"Observation\"
-  * property - \"code\"
-  * codes - [{:code/id \"http://loinc.org||39156-5\"}]"
-  [db context data-type property codes]
-  (let [single-code-expr #(single-code-expr db context data-type property %)]
-    (->RetrieveAllExpression (mapv single-code-expr codes))))
+(def ^:private specimen-patient-expr
+  (->SpecimenPatientExpression))
 
 
-(s/fdef context-expr
-  :args (s/cat :db ::ds/db
-               :context :elm/expression-execution-context
-               :data-type string?)
-  :ret expr?)
-
-;; TODO: use https://www.hl7.org/fhir/compartmentdefinition-patient.html
-(defn context-expr
+(defn- context-expr
   "Returns an expression which, when evaluated, returns all resources of type
   `data-type` related to the resource in execution `context`."
-  [db context data-type]
+  [context data-type]
   (case context
-    "Patient"
-    (->RevAttrRetrieveExpression
-      (d/entid db (keyword (str "Reference." data-type) "subject")))
     "Specimen"
     (case data-type
       "Patient"
-      (->AttrRetrieveExpression (d/entid db :Reference.Specimen/subject))
-      "Observation"
-      (->RevAttrRetrieveExpression (d/entid db :Reference.Observation/specimen))
-      (throw-anom
-        ::anom/unsupported
-        (format "Unsupported data type `%s` in context `%s`." data-type
-                context)
-        :elm/expression-execution-context context
-        :elm.retrieve/dataType data-type))
-    (throw-anom
-      ::anom/unsupported
-      (format "Unsupported execution context `%s`." context)
-      :elm/expression-execution-context context
-      :elm.retrieve/dataType data-type)))
+      specimen-patient-expr)
+    (->CompartmentListRetrieveExpression context data-type)))
 
 
 (defrecord ResourceRetrieveExpression []
@@ -149,41 +98,26 @@
 (defrecord WithRelatedContextRetrieveExpression
   [related-context-expr data-type]
   Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
+  (-eval [_ context resource scope]
     (when-let [context-resource (-eval related-context-expr context resource scope)]
       (-eval
-        (context-expr db (datomic-util/entity-type context-resource) data-type)
+        (context-expr (:resourceType context-resource) data-type)
         context
         context-resource
         scope))))
 
 
-(defrecord WithRelatedContextSingleCodeRetrieveExpression
-  [related-context-expr data-type code-property code]
-  Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [context-resource (-eval related-context-expr context resource scope)]
-      (-eval
-        (single-code-expr
-          db (datomic-util/entity-type context-resource) data-type
-          code-property code)
-        context
-        context-resource
-        scope))))
-
-
-(defrecord WithRelatedContextMultipleCodesRetrieveExpression
+(defrecord WithRelatedContextCodeRetrieveExpression
   [related-context-expr data-type code-property codes]
   Expression
   (-eval [_ {:keys [db] :as context} resource scope]
     (when-let [context-resource (-eval related-context-expr context resource scope)]
-      (-eval
-        (multiple-codes-expr
-          db (datomic-util/entity-type context-resource) data-type
-          code-property codes)
-        context
-        context-resource
-        scope))))
+      (when-ok [res (d/compartment-query
+                      db (:resourceType context-resource) (:id context-resource)
+                      data-type [[code-property (codes->clause-value codes)]])]
+        (if (::anom/category res)
+          (throw (ex-info (::anom/message res) res))
+          (into [] res))))))
 
 
 (s/fdef with-related-context-expr
@@ -196,70 +130,42 @@
 (defn with-related-context-expr
   [related-context-expr data-type code-property codes]
   (if (seq codes)
-    (let [[code & more] (remove nil? codes)]
-      (cond
-        (nil? code)
-        []
-
-        (empty? more)
-        (->WithRelatedContextSingleCodeRetrieveExpression
-          related-context-expr data-type code-property code)
-
-        :else
-        (->WithRelatedContextMultipleCodesRetrieveExpression
-          related-context-expr data-type code-property codes)))
+    (->WithRelatedContextCodeRetrieveExpression
+      related-context-expr data-type code-property codes)
     (->WithRelatedContextRetrieveExpression related-context-expr data-type)))
 
 
-(defn- find-code [db {:keys [system version code]}]
-  (when (and system code)
-    (:db/id (d/entity db [:code/id (str system "|" version "|" code)]))))
-
-
-(defn- list-resource-by-code
-  [db data-type-name code-property-name codes]
-  (let [code-index-attr (keyword (str data-type-name ".index") code-property-name)]
-    (into
-      []
-      (comp
-        (mapcat #(d/datoms db :vaet % code-index-attr))
-        (map (fn [[e]] (d/entity db e))))
-      codes)))
-
-
-(defn- unspecified-context-retrieve-expr [db data-type code-property codes]
+(defn- unspecified-context-retrieve-expr [data-type code-property codes]
   (if (empty? codes)
     (reify Expression
       (-eval [_ {:keys [db]} _ _]
-        (into [] (datomic-util/list-resources db data-type))))
-    (let [codes (keep #(find-code db %) codes)]
+        (into [] (d/list-resources db data-type))))
+    (let [clauses [[code-property codes]]]
       (reify Expression
         (-eval [_ {:keys [db]} _ _]
-          (list-resource-by-code db data-type code-property codes))))))
+          (let [res (d/type-query db data-type clauses)]
+            (if (::anom/category res)
+              (throw (ex-info (::anom/message res) res))
+              (into [] res))))))))
 
 
-(defn- retrieve-expr [db eval-context data-type code-property codes]
+(defn- retrieve-expr [node eval-context data-type code-property codes]
   (if (empty? codes)
     (if (= data-type eval-context)
       resource-expr
-      (context-expr db eval-context data-type))
-    (let [[code & more] codes]
-      (if (empty? more)
-        (single-code-expr
-          db eval-context data-type code-property code)
-        (multiple-codes-expr
-          db eval-context data-type code-property codes)))))
+      (context-expr eval-context data-type))
+    (code-expr node eval-context data-type code-property codes)))
 
 
 (s/fdef expr
-  :args (s/cat :eval-context string?
-               :db ::ds/db
+  :args (s/cat :node :blaze.db/node
+               :eval-context string?
                :data-type string?
                :code-property string?
                :codes (s/nilable (s/coll-of code?)))
   :ret expr?)
 
-(defn expr [eval-context db data-type code-property codes]
+(defn expr [node eval-context data-type code-property codes]
   (if (= "Unspecified" eval-context)
-    (unspecified-context-retrieve-expr db data-type code-property codes)
-    (retrieve-expr db eval-context data-type code-property codes)))
+    (unspecified-context-retrieve-expr data-type code-property codes)
+    (retrieve-expr node eval-context data-type code-property codes)))

@@ -1,24 +1,14 @@
 version: '3.2'
 services:
-  db:
-    image: "akiel/datomic-free:0.9.5703-2"
-    environment:
-      ALT_HOST: "db"
-      XMS: "-Xms1g"
-      XMX: "-Xmx1g"
-      ADMIN_PASSWORD: "admin"
-      DATOMIC_PASSWORD: "datomic"
-    volumes:
-    - "db-data:/data"
   store:
     image: "samply/blaze:0.8.0-alpha.9"
     environment:
       BASE_URL: "http://localhost:8080"
-      DATABASE_URI: "datomic:free://db:4334/dev?password=datomic"
+      DB_DIR: "/data"
       JVM_OPTS: "-server -Xms2g -Xmx2g -XX:+UseG1GC"
     ports:
     - "8080:8080"
-    depends_on:
-    - db
+    volumes:
+    - "db-data:/data"
 volumes:
   db-data:

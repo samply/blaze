@@ -1,18 +1,17 @@
 (ns blaze.interaction.history.util-test
   (:require
-    [blaze.datomic.test-util :as datomic-test-util]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.history.util :refer [build-entry]]
-    [blaze.interaction.test-util :as test-util]
-    [clojure.test :as test :refer [deftest is testing]]
+    [clojure.test :as test :refer [deftest testing]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [datomic-spec.test :as dst]))
+    [juxt.iota :refer [given]]
+    [reitit.core :as reitit])
+  (:import [java.time Instant]))
 
 
 (defn fixture [f]
   (st/instrument)
-  (dst/instrument)
   (f)
   (st/unstrument))
 
@@ -32,111 +31,91 @@
      #{`fhir-util/type-url}}))
 
 
-(def ^:private transaction {:db/id 0})
+(def router
+  (reitit/router
+    [["/Patient" {:name :Patient/type}]
+     ["/Patient/{id}" {:name :Patient/instance}]]
+    {:syntax :bracket}))
 
 
 (deftest build-entry-test
-  (st/unstrument `build-entry)
-
   (testing "Initial version with server assigned id"
-    (datomic-test-util/stub-as-of ::db 0 ::as-of-db)
-    (datomic-test-util/stub-entity ::as-of-db #{::resource-eid} #{::resource})
-    (datomic-test-util/stub-literal-reference ::resource ["Patient" "0"])
-    (datomic-test-util/stub-initial-version? ::resource true?)
-    (datomic-test-util/stub-initial-version-server-assigned-id? ::resource true?)
-    (datomic-test-util/stub-tx-instant transaction "last-modified")
-    (datomic-test-util/stub-deleted? ::resource false?)
-    (datomic-test-util/stub-pull-resource*
-      ::as-of-db "Patient" ::resource #{::pulled-resource})
-    (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
-    (stub-type-url ::router "Patient" ::patient-type-url)
-
-    (is
-      (=
-        (build-entry ::router ::db transaction ::resource-eid)
-        {:fullUrl ::patient-url
-         :request
-         {:method "POST"
-          :url ::patient-type-url}
-         :resource ::pulled-resource
-         :response
-         {:etag "W/\"0\""
-          :lastModified "last-modified"
-          :status "201"}})))
+    (given
+      (build-entry
+        router
+        (with-meta
+          {:resourceType "Patient"
+           :id "0"
+           :meta {:versionId "1"}}
+          {:blaze.db/op :create
+           :blaze.db/num-changes 1
+           :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
+      :fullUrl := "/Patient/0"
+      [:request :method] := "POST"
+      [:request :url] := "/Patient"
+      [:resource :resourceType] := "Patient"
+      [:resource :id] := "0"
+      [:response :status] := "201"
+      [:response :lastModified] := "1970-01-01T00:00:00Z"
+      [:response :etag] := "W/\"1\""))
 
 
   (testing "Initial version with client assigned id"
-    (datomic-test-util/stub-as-of ::db 0 ::as-of-db)
-    (datomic-test-util/stub-entity ::as-of-db #{::resource-eid} #{::resource})
-    (datomic-test-util/stub-literal-reference ::resource ["Patient" "0"])
-    (datomic-test-util/stub-initial-version? ::resource true?)
-    (datomic-test-util/stub-initial-version-server-assigned-id? ::resource false?)
-    (datomic-test-util/stub-tx-instant transaction "last-modified")
-    (datomic-test-util/stub-deleted? ::resource false?)
-    (datomic-test-util/stub-pull-resource*
-      ::as-of-db "Patient" ::resource #{::pulled-resource})
-    (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
-
-    (is
-      (=
-        (build-entry ::router ::db transaction ::resource-eid)
-        {:fullUrl ::patient-url
-         :request
-         {:method "PUT"
-          :url ::patient-url}
-         :resource ::pulled-resource
-         :response
-         {:etag "W/\"0\""
-          :lastModified "last-modified"
-          :status "201"}})))
+    (given
+      (build-entry
+        router
+        (with-meta
+          {:resourceType "Patient"
+           :id "0"
+           :meta {:versionId "1"}}
+          {:blaze.db/op :put
+           :blaze.db/num-changes 1
+           :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
+      :fullUrl := "/Patient/0"
+      [:request :method] := "PUT"
+      [:request :url] := "/Patient/0"
+      [:resource :resourceType] := "Patient"
+      [:resource :id] := "0"
+      [:response :status] := "201"
+      [:response :lastModified] := "1970-01-01T00:00:00Z"
+      [:response :etag] := "W/\"1\""))
 
 
   (testing "Non-initial version"
-    (datomic-test-util/stub-as-of ::db 0 ::as-of-db)
-    (datomic-test-util/stub-entity ::as-of-db #{::resource-eid} #{::resource})
-    (datomic-test-util/stub-literal-reference ::resource ["Patient" "0"])
-    (datomic-test-util/stub-initial-version? ::resource false?)
-    (datomic-test-util/stub-initial-version-server-assigned-id? ::resource false?)
-    (datomic-test-util/stub-tx-instant transaction "last-modified")
-    (datomic-test-util/stub-deleted? ::resource false?)
-    (datomic-test-util/stub-pull-resource*
-      ::as-of-db "Patient" ::resource #{::pulled-resource})
-    (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
-
-    (is
-      (=
-        (build-entry ::router ::db transaction ::resource-eid)
-        {:fullUrl ::patient-url
-         :request
-         {:method "PUT"
-          :url ::patient-url}
-         :resource ::pulled-resource
-         :response
-         {:etag "W/\"0\""
-          :lastModified "last-modified"
-          :status "200"}})))
+    (given
+      (build-entry
+        router
+        (with-meta
+          {:resourceType "Patient"
+           :id "0"
+           :meta {:versionId "2"}}
+          {:blaze.db/op :put
+           :blaze.db/num-changes 2
+           :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
+      :fullUrl := "/Patient/0"
+      [:request :method] := "PUT"
+      [:request :url] := "/Patient/0"
+      [:resource :resourceType] := "Patient"
+      [:resource :id] := "0"
+      [:response :status] := "200"
+      [:response :lastModified] := "1970-01-01T00:00:00Z"
+      [:response :etag] := "W/\"2\""))
 
 
   (testing "Deleted version"
-    (datomic-test-util/stub-as-of ::db 0 ::as-of-db)
-    (datomic-test-util/stub-entity ::as-of-db #{::resource-eid} #{::resource})
-    (datomic-test-util/stub-literal-reference ::resource ["Patient" "0"])
-    (datomic-test-util/stub-initial-version? ::resource false?)
-    (datomic-test-util/stub-initial-version-server-assigned-id? ::resource false?)
-    (datomic-test-util/stub-tx-instant transaction "last-modified")
-    (datomic-test-util/stub-deleted? ::resource true?)
-    (datomic-test-util/stub-pull-resource*
-      ::as-of-db "Patient" ::resource #{::pulled-resource})
-    (test-util/stub-instance-url ::router "Patient" "0" ::patient-url)
-
-    (is
-      (=
-        (build-entry ::router ::db transaction ::resource-eid)
-        {:fullUrl ::patient-url
-         :request
-         {:method "DELETE"
-          :url ::patient-url}
-         :response
-         {:etag "W/\"0\""
-          :lastModified "last-modified"
-          :status "204"}}))))
+    (given
+      (build-entry
+        router
+        (with-meta
+          {:resourceType "Patient"
+           :id "0"
+           :meta {:versionId "2"}}
+          {:blaze.db/op :delete
+           :blaze.db/num-changes 2
+           :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
+      :fullUrl := "/Patient/0"
+      [:request :method] := "DELETE"
+      [:request :url] := "/Patient/0"
+      [:response :status] := "204"
+      [:response :lastModified] := "1970-01-01T00:00:00Z"
+      [:response :etag] := "W/\"2\"")))

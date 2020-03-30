@@ -1,11 +1,14 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/datomic
-  {:local/root "modules/datomic"}
-
-  blaze/extern-terminology-service
-  {:local/root "modules/extern-terminology-service"}
+ {aleph
+  {:mvn/version "0.4.7-alpha1"
+   :exclusions
+   [io.netty/netty-codec
+    io.netty/netty-resolver
+    io.netty/netty-handler
+    io.netty/netty-transport
+    io.netty/netty-transport-native-epoll]}
 
   blaze/interaction
   {:local/root "modules/interaction"}
@@ -19,19 +22,14 @@
   blaze/rest-api
   {:local/root "modules/rest-api"}
 
+  blaze/rocksdb
+  {:local/root "modules/rocksdb"}
+
   blaze/structure-definition
   {:local/root "modules/structure-definition"}
 
   blaze/thread-pool-executor-collector
   {:local/root "modules/thread-pool-executor-collector"}
-
-  com.datomic/datomic-free
-  {:mvn/version "0.9.5697"
-   :exclusions
-   [io.netty/netty-all]}
-
-  com.h2database/h2
-  {:mvn/version "1.4.200"}
 
   io.netty/netty-codec-http
   {:mvn/version "4.1.43.Final"}
@@ -48,12 +46,6 @@
   io.prometheus/simpleclient_hotspot
   {:mvn/version "0.8.0"}
 
-  org.clojars.akiel/datomic-spec
-  {:mvn/version "0.5.2"}
-
-  org.clojars.akiel/datomic-tools
-  {:mvn/version "0.4"}
-
   org.clojars.akiel/spec-coerce
   {:mvn/version "0.4.0"}
 
@@ -67,7 +59,7 @@
  {:depstar
   {:extra-deps
    {seancorfield/depstar
-    {:mvn/version "0.3.3"}}}
+    {:mvn/version "0.5.2"}}}
 
   :check
   {:extra-deps
@@ -85,7 +77,7 @@
     {:mvn/version "0.4.5"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-565"}
+    {:mvn/version "0.0-590"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -105,6 +97,6 @@
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2019.11.07"}}
+    {:mvn/version "2020.02.28"}}
 
    :main-opts ["-m" "clj-kondo.main"]}}}

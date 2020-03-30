@@ -1,0 +1,11 @@
+{:deps
+ {blaze/db
+  {:local/root "../db"}}
+
+ :aliases
+ {:clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

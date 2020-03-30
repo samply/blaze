@@ -1,0 +1,30 @@
+{:deps
+ {blaze/db
+  {:local/root "../db"}
+
+  org.rocksdb/rocksdbjni
+  {:mvn/version "6.7.3"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {criterium
+    {:mvn/version "0.4.5"}
+
+    lambdaisland/kaocha
+    {:mvn/version "0.0-590"}
+
+    org.clojure/test.check
+    {:mvn/version "0.10.0"}}
+
+   :main-opts
+   ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

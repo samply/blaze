@@ -10,4 +10,12 @@
    :sha "c673b85130e553feec6d4c5d2d1ec773a49c929c"}
 
   prom-metrics
-  {:mvn/version "0.5-alpha.3"}}}
+  {:mvn/version "0.5-alpha.3"}}
+
+ :aliases
+ {:clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

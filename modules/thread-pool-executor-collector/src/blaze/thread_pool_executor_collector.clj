@@ -4,12 +4,15 @@
     [taoensso.timbre :as log])
   (:import
     [io.prometheus.client
-     Collector Collector$Describable GaugeMetricFamily CounterMetricFamily]
+     Collector GaugeMetricFamily CounterMetricFamily]
     [java.util.concurrent BlockingQueue ThreadPoolExecutor]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn thread-pool-executor-collector [executors]
-  (proxy [Collector Collector$Describable] []
+  (proxy [Collector] []
     (collect []
       [(let [mf (GaugeMetricFamily.
                   "thread_pool_executor_active_count"
@@ -59,10 +62,7 @@
                   ["name"])]
          (doseq [[name pool] executors]
            (.addMetric mf [name] (.size ^BlockingQueue (.getQueue ^ThreadPoolExecutor pool))))
-         mf)])
-
-    (describe []
-      (.collect ^Collector this))))
+         mf)])))
 
 
 (defmethod ig/init-key :blaze/thread-pool-executor-collector

@@ -19,21 +19,15 @@
   {:mvn/version "5.9.0"}
 
   manifold
-  {:mvn/version "0.1.8"}
-
-  org.clojars.akiel/datomic-spec
-  {:mvn/version "0.5.2"}}
+  {:mvn/version "0.1.8"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {com.datomic/datomic-free
-    {:mvn/version "0.9.5697"}
-
-    lambdaisland/kaocha
-    {:mvn/version "0.0-565"}
+   {lambdaisland/kaocha
+    {:mvn/version "0.0-590"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -42,4 +36,11 @@
     {:mvn/version "0.10.0"}}
 
    :main-opts
-   ["-m" "kaocha.runner"]}}}
+   ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.02.28"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

@@ -1,12 +1,14 @@
 (ns blaze.fhir.response.create-test
   (:require
-    [blaze.datomic.test-util :as datomic-test-util]
+    [blaze.db.api-stub :as api-stub]
     [blaze.fhir.response.create :refer [build-created-response]]
-    [blaze.handler.fhir.util :as fhir-util]
+    [blaze.handler.fhir.util-stub :as fhir-util-stub]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
@@ -25,55 +27,46 @@
 (test/use-fixtures :each fixture)
 
 
-(defn stub-versioned-instance-url [router type id vid url]
-  (st/instrument
-    [`fhir-util/versioned-instance-url]
-    {:spec
-     {`fhir-util/versioned-instance-url
-      (s/fspec
-        :args (s/cat :router #{router} :type #{type} :id #{id} :vid #{vid})
-        :ret #{url})}
-     :stub
-     #{`fhir-util/versioned-instance-url}}))
-
-
 (deftest build-created-response-test
-  (datomic-test-util/stub-basis-transaction
-    ::db {:db/txInstant #inst "2019-05-14T13:58:20.060-00:00"})
-  (datomic-test-util/stub-basis-t ::db 42)
-  (stub-versioned-instance-url ::router "Patient" "0" "42" ::location)
-  (datomic-test-util/stub-pull-resource ::db "Patient" "0" #{::resource})
+  (let [tx {:blaze.db.tx/instant (Instant/ofEpochMilli 0)}
+        resource (with-meta {:id "175947" :meta {:versionId "42"}} {:blaze.db/tx tx})]
 
-  (testing "with no Prefer header"
-    (let [{:keys [status headers body]}
-          (build-created-response ::router nil ::db "Patient" "0")]
+    (api-stub/resource ::db "Patient" "0" #{resource})
+    (fhir-util-stub/versioned-instance-url
+      ::router "Patient" "0" "42" ::location)
 
-      (testing "Returns 201"
-        (is (= 201 status)))
 
-      (testing "Transaction time in Last-Modified header"
-        (is (= "Tue, 14 May 2019 13:58:20 GMT" (get headers "Last-Modified"))))
+    (testing "with no Prefer header"
+      (let [{:keys [status headers body]}
+            (build-created-response ::router nil ::db "Patient" "0")]
 
-      (testing "Version in ETag header"
-        ;; 42 is the T of the transaction of the resource update
-        (is (= "W/\"42\"" (get headers "ETag"))))
+        (testing "Returns 201"
+          (is (= 201 status)))
 
-      (testing "Location header"
-        (is (= ::location (get headers "Location"))))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-      (testing "Contains the resource as body"
-        (is (= ::resource body)))))
+        (testing "Version in ETag header"
+          ;; 42 is the T of the transaction of the resource update
+          (is (= "W/\"42\"" (get headers "ETag"))))
 
-  (testing "with return=minimal Prefer header"
-    (let [{:keys [body]}
-          (build-created-response ::router "minimal" ::db "Patient" "0")]
+        (testing "Location header"
+          (is (= ::location (get headers "Location"))))
 
-      (testing "Contains no body"
-        (is (nil? body)))))
+        (testing "Contains the resource as body"
+          (is (= resource body)))))
 
-  (testing "with return=representation Prefer header"
-    (let [{:keys [body]}
-          (build-created-response ::router "representation" ::db "Patient" "0")]
+    (testing "with return=minimal Prefer header"
+      (let [{:keys [body]}
+            (build-created-response ::router "minimal" ::db "Patient" "0")]
 
-      (testing "Contains the resource as body"
-        (is (= ::resource body))))))
+        (testing "Contains no body"
+          (is (nil? body)))))
+
+
+    (testing "with return=representation Prefer header"
+      (let [{:keys [body]}
+            (build-created-response ::router "representation" ::db "Patient" "0")]
+
+        (testing "Contains the resource as body"
+          (is (= resource body)))))))

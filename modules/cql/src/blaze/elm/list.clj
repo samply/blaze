@@ -6,6 +6,9 @@
     [clojure.lang PersistentVector]))
 
 
+(set! *warn-on-reflection* true)
+
+
 ;; 12.1. Equal
 ;;
 ;; We can't use the Clojure equality semantics of lists because `(p/equal nil nil)` is `nil`.

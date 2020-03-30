@@ -18,9 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
+
 (defn- load-model-info [name]
   (let [res (io/resource name)
-        ^ModelInfo modelInfo (JAXB/unmarshal res, ^Class ModelInfo)
+        ^ModelInfo modelInfo (JAXB/unmarshal res ^Class ModelInfo)
         id (doto (VersionedIdentifier.)
              (.setId (.getName modelInfo))
              (.setVersion (.getVersion modelInfo)))

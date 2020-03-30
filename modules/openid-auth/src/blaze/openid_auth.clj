@@ -12,6 +12,9 @@
     [java.security PublicKey]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (s/fdef public-key
   :args (s/cat :jwks-json string?)
   :ret (s/nilable #(instance? PublicKey %)))

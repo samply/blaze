@@ -2,6 +2,8 @@
   "Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.db.api :as d]
+    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.code :as code]
     [blaze.elm.compiler :refer [compile compile-with-equiv-clause]]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
@@ -15,7 +17,8 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer [are deftest is testing use-fixtures]]
     [clojure.test.check :as tc]
-    [clojure.test.check.properties :as prop])
+    [clojure.test.check.properties :as prop]
+    [juxt.iota :refer [given]])
   (:import
     [blaze.elm.date_time Period]
     [clojure.core Eduction]
@@ -115,22 +118,28 @@
        :type "Property"
        :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
        :life/source-type "{http://hl7.org/fhir}Patient"}
-      {:Patient/gender "male"}
+      {:resourceType "Patient" :id "0" :gender "male"}
       "male"))
 
   (testing "with entity supplied directly"
     (are [elm entity result]
       (= result (-eval (compile {:eval-context "Unspecified"
-                                 :life/single-query-scope "P"}
+                                 :life/single-query-scope "R"}
                                 elm)
                        nil nil entity))
       {:path "gender"
-       :scope "P"
+       :scope "R"
        :type "Property"
        :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
        :life/source-type "{http://hl7.org/fhir}Patient"}
-      {:Patient/gender "male"}
-      "male"))
+      {:resourceType "Patient" :id "0" :gender "male"}
+      "male"
+
+      {:path "library"
+       :scope "R"
+       :type "Property"}
+      {:resourceType "Measure" :library ["a"]}
+      ["a"]))
 
   (testing "with source"
     (are [elm source result]
@@ -141,7 +150,7 @@
        :type "Property"
        :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
        :life/source-type "{http://hl7.org/fhir}Patient"}
-      {:Patient/gender "male"}
+      {:resourceType "Patient" :id "0" :gender "male"}
       "male"))
 
   (testing "with Tuple source"
@@ -161,7 +170,34 @@
            :type {:name "{urn:hl7-org:elm-types:r1}String" :type "NamedTypeSpecifier"}}]}
         :element
         [{:name "id" :value #elm/int "1"}]}}
-      1)))
+      1))
+
+  (testing "with Quantity source"
+    (testing "value"
+      (are [elm result]
+        (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
+        {:resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
+         :path "value"
+         :type "Property"
+         :source #elm/quantity [42 "m"]}
+        42))
+
+    (testing "unit"
+      (are [elm result]
+        (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
+        {:resultTypeName "{urn:hl7-org:elm-types:r1}String"
+         :path "unit"
+         :type "Property"
+         :source #elm/quantity [42 "m"]}
+        "m")))
+
+  (testing "with nil source"
+    (are [elm result]
+      (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
+      {:path "value"
+       :type "Property"
+       :source {:type "Null"}}
+      nil)))
 
 
 
@@ -187,7 +223,7 @@
     (stub-to-code "life" nil? "0" ::code)
 
     (let [context
-          {:db ::db
+          {:node ::node
            :library
            {:codeSystems {:def [{:name "life" :id "life"}]}}}
           code
@@ -200,7 +236,7 @@
     (stub-to-code "life" #{"v1"} "0" ::code)
 
     (let [context
-          {:db ::db
+          {:node ::node
            :library
            {:codeSystems {:def [{:name "life" :id "life" :version "v1"}]}}}
           code
@@ -218,7 +254,7 @@
   (testing "without version"
     (stub-to-code "life" nil? "0" ::code)
     (let [context
-          {:db ::db
+          {:node ::node
            :library
            {:codeSystems {:def [{:name "life" :id "life"}]}
             :codes
@@ -231,7 +267,7 @@
   (testing "with version"
     (stub-to-code "life" #{"v1"} "0" ::code)
     (let [context
-          {:db ::db
+          {:node ::node
            :library
            {:codeSystems {:def [{:name "life" :id "life" :version "v1"}]}
             :codes
@@ -357,63 +393,53 @@
         (is (instance? Eduction res)))))
 
   (testing "Retrieve queries"
-    (retrieve-test/stub-expr
-      "Unspecified" ::db "Patient" "code" nil?
-      (reify Expression
-        (-eval [_ _ _ _]
-          [::patient])))
-
-    (let [retrieve {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
+    (let [node (mem-node-with
+                 [[[:put {:resourceType "Patient" :id "0"}]]])
+          db (d/db node)
+          retrieve {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
           where {:type "Equal"
                  :operand
-                 [{:path "value"
+                 [{:path "gender"
                    :scope "P"
                    :type "Property"
                    :resultTypeName "{http://hl7.org/fhir}string"
                    :life/source-type "{http://hl7.org/fhir}Patient"}
                   #elm/int "2"]}
-          return {:path "value"
+          return {:path "gender"
                   :scope "P"
                   :type "Property"
                   :resultTypeName "{http://hl7.org/fhir}string"
                   :life/source-type "{http://hl7.org/fhir}Patient"}]
-      (are [query res]
-        (= res (-eval (compile {:db ::db :eval-context "Unspecified"} query)
-                      {:db ::db} nil nil))
-        {:type "Query"
-         :source
-         [{:alias "P"
-           :expression retrieve}]}
-        [::patient]
 
-        {:type "Query"
-         :source
-         [{:alias "P"
-           :expression retrieve}]
-         :where where}
-        []
+      (let [query {:type "Query"
+                   :source
+                   [{:alias "P"
+                     :expression retrieve}]}]
+        (given (-eval (compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)
+          [0 :resourceType] := "Patient"
+          [0 :id] := "0"))
 
-        {:type "Query"
-         :source
-         [{:alias "P"
-           :expression retrieve}]
-         :where #elm/boolean "false"}
-        []
+      (let [query {:type "Query"
+                   :source
+                   [{:alias "P"
+                     :expression retrieve}]
+                   :where where}]
+        (is (empty? (-eval (compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil))))
 
-        {:type "Query"
-         :source
-         [{:alias "P"
-           :expression retrieve}]
-         :return {:expression return}}
-        [nil]
+      (let [query {:type "Query"
+                   :source
+                   [{:alias "P"
+                     :expression retrieve}]
+                   :return {:expression return}}]
+        (is (nil? (first (-eval (compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)))))
 
-        {:type "Query"
-         :source
-         [{:alias "P"
-           :expression retrieve}]
-         :where where
-         :return {:expression return}}
-        []))))
+      (let [query {:type "Query"
+                   :source
+                   [{:alias "P"
+                     :expression retrieve}]
+                   :where where
+                   :return {:expression return}}]
+        (is (empty? (-eval (compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)))))))
 
 
 ;; 10.3. AliasRef
@@ -432,10 +458,10 @@
       (s/fspec
         :args (s/cat :context any? :with-equiv-clause :elm.query.life/with-equiv))}})
   (retrieve-test/stub-expr
-    "Unspecified" ::db "Observation" "code" nil?
+    ::node "Unspecified" "Observation" "code" nil?
     (reify Expression
       (-eval [_ _ _ _]
-        [{:Observation/subject ::subject}])))
+        [{:resourceType "Observation" :subject {:reference "Patient/0"}}])))
 
   (testing "Equiv With with two Observations comparing there subjects."
     (let [elm {:alias "O1"
@@ -457,11 +483,11 @@
                  :life/scopes #{"O1"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context
-          {:db ::db :life/single-query-scope "O0" :eval-context "Unspecified"}
+          {:node ::node :life/single-query-scope "O0" :eval-context "Unspecified"}
           create-clause (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
           eval-clause (create-clause eval-context nil)
-          lhs-entity {:Observation/subject ::subject}]
+          lhs-entity {:resourceType "Observation" :subject {:reference "Patient/0"}}]
       (is (true? (eval-clause eval-context nil lhs-entity)))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
@@ -479,11 +505,11 @@
                  :life/scopes #{"O"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context
-          {:db ::db :life/single-query-scope "P" :eval-context "Unspecified"}
+          {:node ::node :life/single-query-scope "P" :eval-context "Unspecified"}
           create-clause (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
           eval-clause (create-clause eval-context nil)
-          lhs-entity ::subject]
+          lhs-entity {:reference "Patient/0"}]
       (is (true? (eval-clause eval-context nil lhs-entity))))))
 
 
@@ -518,7 +544,7 @@
   (stub-to-code "life" nil? "0" ::code)
 
   (let [context
-        {:db ::db
+        {:node ::node
          :library
          {:codeSystems {:def [{:name "life" :id "life"}]}
           :codes
@@ -527,15 +553,14 @@
 
     (testing "without related context"
       (testing "without codes"
-        (retrieve-test/stub-expr ::eval-context ::db "Foo" "code" nil? ::expr)
+        (retrieve-test/stub-expr ::node ::eval-context "Foo" "code" nil? ::expr)
 
         (let [elm {:type "Retrieve" :dataType "{http://hl7.org/fhir}Foo"}
               expr (compile (assoc context :eval-context ::eval-context) elm)]
           (is (= ::expr expr))))
 
       (testing "with codes"
-        (retrieve-test/stub-expr
-          ::eval-context ::db "Foo" "code" #{[::code]} ::expr)
+        (retrieve-test/stub-expr ::node ::eval-context "Foo" "code" #{[::code]} ::expr)
 
         (let [elm {:type "Retrieve"
                    :dataType "{http://hl7.org/fhir}Foo"
@@ -4743,32 +4768,77 @@
 ;; attribute is true an exception is thrown.
 (deftest compile-as-test
   (testing "FHIR types"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
-      #elm/as ["{http://hl7.org/fhir}boolean" #elm/boolean "true"]
+    (are [elm resource res] (= res (-eval (compile {} elm) {} nil {"R" resource}))
+      #elm/as["{http://hl7.org/fhir}boolean"
+              {:path "deceased"
+               :scope "R"
+               :type "Property"}]
+      (with-meta
+        {:resourceType "Patient" :id "0" :deceasedBoolean true}
+        {:type :fhir/Patient})
       true
 
-      #elm/as ["{http://hl7.org/fhir}integer" #elm/int "1"]
+      #elm/as ["{http://hl7.org/fhir}integer"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      (with-meta
+        {:resourceType "Observation" :valueInteger 1}
+        {:type :fhir/Observation})
       1
 
-      #elm/as ["{http://hl7.org/fhir}string" #elm/string "a"]
+      #elm/as ["{http://hl7.org/fhir}string"
+               {:path "name"
+                :scope "R"
+                :type "Property"}]
+      (with-meta
+        {:resourceType "Account" :name "a"}
+        {:type :fhir/Account})
       "a"
 
-      #elm/as ["{http://hl7.org/fhir}decimal" #elm/dec "1.1"]
+      #elm/as ["{http://hl7.org/fhir}decimal"
+               {:path "duration"
+                :scope "R"
+                :type "Property"}]
+      (with-meta
+        {:resourceType "Media" :duration 1.1M}
+        {:type :fhir/Media})
       1.1M
 
-      #elm/as ["{http://hl7.org/fhir}uri" #elm/string "a"]
+      #elm/as ["{http://hl7.org/fhir}uri"
+               {:path "url"
+                :scope "R"
+                :type "Property"}]
+      (with-meta
+        {:resourceType "Measure" :url "a"}
+        {:type :fhir/Measure})
       "a"
 
-      #elm/as ["{http://hl7.org/fhir}url" #elm/string "a"]
+      #elm/as ["{http://hl7.org/fhir}url"
+               {:path "address"
+                :scope "R"
+                :type "Property"}]
+      (with-meta
+        {:resourceType "Endpoint" :address "a"}
+        {:type :fhir/Endpoint})
       "a"
 
-      #elm/as ["{http://hl7.org/fhir}canonical" #elm/string "a"]
-      "a"
+      #elm/as ["{http://hl7.org/fhir}dateTime"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      (with-meta
+        {:resourceType "Observation" :valueDateTime "2019-09-04"}
+        {:type :fhir/Observation})
+      "2019-09-04"
 
-      #elm/as ["{http://hl7.org/fhir}dateTime" #elm/date-time "2019-09-04"]
-      (LocalDate/of 2019 9 4)
-
-      #elm/as ["{http://hl7.org/fhir}Quantity" #elm/date-time "2019-09-04"]
+      #elm/as ["{http://hl7.org/fhir}Quantity"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      (with-meta
+        {:resourceType "Observation" :valueDateTime "2019-09-04"}
+        {:type :fhir/Observation})
       nil))
 
   (testing "ELM types"
@@ -4858,10 +4928,51 @@
 
 
 ;; 22.22. ToDateTime
+;;
+;; The ToDateTime operator converts the value of its argument to a DateTime
+;; value.
+;;
+;; For String values, the operator expects the string to be formatted using the
+;; ISO-8601 datetime representation:
+;;
+;; YYYY-MM-DDThh:mm:ss.fff(+|-)hh:mm footnote:formatting-strings[]
+;;
+;; In addition, the string must be interpretable as a valid DateTime value.
+;;
+;; If the input string is not formatted correctly, or does not represent a
+;; valid DateTime value, the result is null.
+;;
+;; As with Date and Time literals, DateTime values may be specified to any
+;; precision. If no timezone offset is supplied, the timezone offset of the
+;; evaluation request timestamp is assumed.
+;;
+;; For Date values, the result is a DateTime with the time components
+;; unspecified, except the timezone offset, which is set to the timezone offset
+;; of the evaluation request timestamp.
+;;
+;; If the argument is null, the result is null.
 (deftest compile-to-date-time-test
-  (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
-    {:type "ToDateTime" :operand #elm/date "2019"}
-    (Year/of 2019)))
+  (testing "string"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
+      {:type "ToDateTime" :operand #elm/string "2020"}
+      (Year/of 2020)
+
+      {:type "ToDateTime" :operand #elm/string "2020-03"}
+      (YearMonth/of 2020 3)
+
+      {:type "ToDateTime" :operand #elm/string "2020-03-08"}
+      (LocalDate/of 2020 3 8)
+
+      {:type "ToDateTime" :operand #elm/string "2020-03-08T12:54:00"}
+      (LocalDateTime/of 2020 3 8 12 54)
+
+      {:type "ToDateTime" :operand #elm/string "2020-03-08T12:54:00+00:00"}
+      (LocalDateTime/of 2020 3 8 12 54)))
+
+  (testing "ELM types"
+    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
+      {:type "ToDateTime" :operand #elm/date "2019"}
+      (Year/of 2019))))
 
 
 ;; 22.23. ToDecimal
