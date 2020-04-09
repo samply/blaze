@@ -64,29 +64,40 @@
 (defmethod infer-deps :elm.deps.type/unary-expression
   [{:keys [operand] :as expression}]
   (let [{:life/keys [deps scopes] :as operand} (infer-deps operand)]
-    (assoc expression
-      :operand operand
-      :life/deps deps
-      :life/scopes scopes)))
+    (cond->
+      (assoc expression :operand operand)
+      deps
+      (assoc :life/deps deps)
+      scopes
+      (assoc :life/scopes scopes))))
 
 
 ;; 8.4. BinaryExpression
 ;; 8.5. TernaryExpression
 ;; 8.6. NaryExpression
-(defmethod infer-deps :elm.deps.type/multiary-expression
+(defmethod infer-deps :elm.deps.type/nary-expression
   [{operands :operand :as expression}]
-  (let [operands (mapv infer-deps operands)]
-    (assoc expression
-      :operand operands
-      :life/deps (transduce (map :life/deps) set/union operands)
-      :life/scopes (transduce (map :life/scopes) set/union operands))))
+  (let [operands (mapv infer-deps operands)
+        deps (transduce (map :life/deps) set/union operands)
+        scopes (transduce (map :life/scopes) set/union operands)]
+    (cond->
+      (assoc expression :operand operands)
+      deps
+      (assoc :life/deps deps)
+      scopes
+      (assoc :life/scopes scopes))))
 
 
 ;; 8.7. AggregateExpression
 (defmethod infer-deps :elm.deps.type/aggregate-expression
   [{:keys [source] :as expression}]
-  (let [{:life/keys [deps] :as source} (infer-deps source)]
-    (assoc expression :source source :life/deps deps)))
+  (let [{:life/keys [deps scopes] :as source} (infer-deps source)]
+    (cond->
+      (assoc expression :source source)
+      deps
+      (assoc :life/deps deps)
+      scopes
+      (assoc :life/scopes scopes))))
 
 
 
@@ -113,8 +124,8 @@
 
 ;; 10.1. Query
 (defn- infer-source-deps [{:keys [expression] :as source}]
-  (let [{:life/keys [deps] :as expression} (infer-deps expression)]
-    (assoc source :expression expression :life/deps deps)))
+  (let [{:life/keys [deps scopes] :as expression} (infer-deps expression)]
+    (assoc source :expression expression :life/deps deps :life/scopes scopes)))
 
 
 (defn- infer-relationship-deps
@@ -140,7 +151,8 @@
         where (some-> where infer-deps)
         source-deps (transduce (map :life/deps) set/union sources)
         relationship-deps (transduce (map :life/deps) set/union relationships)
-        deps (set/union source-deps relationship-deps (:life/deps where))]
+        deps (set/union source-deps relationship-deps (:life/deps where))
+        scopes (transduce (map :life/scopes) set/union sources)]
     (cond->
       (assoc expression
         :source sources
@@ -148,7 +160,9 @@
       where
       (assoc :where where)
       (seq deps)
-      (assoc :life/deps deps))))
+      (assoc :life/deps deps)
+      (seq scopes)
+      (assoc :life/scopes scopes))))
 
 
 ;; 10.3. AliasRef
@@ -161,38 +175,38 @@
 ;; 12. Comparison Operators
 
 ;; 12.1. Equal
-(derive :elm.deps.type/equal :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/equal :elm.deps.type/nary-expression)
 
 
 ;; 12.2. Equivalent
-(derive :elm.deps.type/equivalent :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/equivalent :elm.deps.type/nary-expression)
 
 
 ;; 12.3. Greater
-(derive :elm.deps.type/greater :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/greater :elm.deps.type/nary-expression)
 
 
 ;; 12.4. GreaterOrEqual
-(derive :elm.deps.type/greater-or-equal :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/greater-or-equal :elm.deps.type/nary-expression)
 
 
 ;; 12.5. Less
-(derive :elm.deps.type/less :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/less :elm.deps.type/nary-expression)
 
 
 ;; 12.6. LessOrEqual
-(derive :elm.deps.type/less-or-equal :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/less-or-equal :elm.deps.type/nary-expression)
 
 
 
 ;; 13. Logical Operators
 
 ;; 13.1. And
-(derive :elm.deps.type/and :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/and :elm.deps.type/nary-expression)
 
 
 ;; 13.2. Implies
-(derive :elm.deps.type/implies :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/implies :elm.deps.type/nary-expression)
 
 
 ;; 13.3. Not
@@ -200,11 +214,11 @@
 
 
 ;; 13.4. Or
-(derive :elm.deps.type/or :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/or :elm.deps.type/nary-expression)
 
 
 ;; 13.4. Xor
-(derive :elm.deps.type/xor :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/xor :elm.deps.type/nary-expression)
 
 
 
@@ -251,7 +265,7 @@
 
 
 ;; 16.2. Add
-(derive :elm.deps.type/add :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/add :elm.deps.type/nary-expression)
 
 
 ;; 16.3. Ceiling
@@ -259,7 +273,7 @@
 
 
 ;; 16.4. Divide
-(derive :elm.deps.type/divide :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/divide :elm.deps.type/nary-expression)
 
 
 ;; 16.5. Exp
@@ -271,7 +285,7 @@
 
 
 ;; 16.7. Log
-(derive :elm.deps.type/log :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/log :elm.deps.type/nary-expression)
 
 
 ;; 16.8. Ln
@@ -279,11 +293,11 @@
 
 
 ;; 16.11. Modulo
-(derive :elm.deps.type/modulo :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/modulo :elm.deps.type/nary-expression)
 
 
 ;; 16.12. Multiply
-(derive :elm.deps.type/multiply :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/multiply :elm.deps.type/nary-expression)
 
 
 ;; 16.13. Negate
@@ -291,7 +305,7 @@
 
 
 ;; 16.14. Power
-(derive :elm.deps.type/power :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/power :elm.deps.type/nary-expression)
 
 
 ;; 16.15. Predecessor
@@ -303,7 +317,7 @@
 
 
 ;; 16.17. Subtract
-(derive :elm.deps.type/subtract :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/subtract :elm.deps.type/nary-expression)
 
 
 ;; 16.18. Successor
@@ -315,14 +329,161 @@
 
 
 ;; 16.20. TruncatedDivide
-(derive :elm.deps.type/truncated-divide :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/truncated-divide :elm.deps.type/nary-expression)
+
+
+
+;; 17. String Operators
+
+;; 17.1. Combine
+(defmethod infer-deps :elm.deps.type/combine
+  [{:keys [source separator] :as expression}]
+  (let [{source-deps :life/deps source-scopes :life/scopes :as source} (infer-deps source)
+        {separator-deps :life/deps separator-scopes :life/scopes :as separator} (some-> separator infer-deps)
+        deps (set/union source-deps separator-deps)
+        scopes (set/union source-scopes separator-scopes)]
+    (cond->
+      (assoc expression
+        :source source)
+      separator
+      (assoc :separator separator)
+      deps
+      (assoc :life/deps deps)
+      scopes
+      (assoc :life/scopes scopes))))
+
+
+;; 17.2. Concatenate
+(derive :elm.deps.type/concatenate :elm.deps.type/nary-expression)
+
+
+;; 17.3. EndsWith
+(derive :elm.deps.type/ends-with :elm.deps.type/nary-expression)
+
+
+;; 17.6. Indexer
+(derive :elm.deps.type/indexer :elm.deps.type/nary-expression)
+
+
+;; 17.7. LastPositionOf
+(defmethod infer-deps :elm.deps.type/last-position-of
+  [{:keys [pattern string] :as expression}]
+  (let [{pattern-deps :life/deps pattern-scopes :life/scopes :as source} (infer-deps pattern)
+        {string-deps :life/deps string-scopes :life/scopes :as separator} (infer-deps string)
+        deps (set/union pattern-deps string-deps)
+        scopes (set/union pattern-scopes string-scopes)]
+    (cond->
+      (assoc expression
+        :source source)
+      separator
+      (assoc :separator separator)
+      deps
+      (assoc :life/deps deps)
+      scopes
+      (assoc :life/scopes scopes))))
+
+
+;; 17.8. Length
+(derive :elm.deps.type/length :elm.deps.type/unary-expression)
+
+
+;; 17.9. Lower
+(derive :elm.deps.type/lower :elm.deps.type/unary-expression)
+
+
+;; 17.10. Matches
+(derive :elm.deps.type/matches :elm.deps.type/nary-expression)
+
+
+;; 17.12. PositionOf
+(defmethod infer-deps :elm.deps.type/position-of
+  [{:keys [pattern string] :as expression}]
+  (let [{pattern-deps :life/deps pattern-scopes :life/scopes :as source} (infer-deps pattern)
+        {string-deps :life/deps string-scopes :life/scopes :as string} (infer-deps string)
+        deps (set/union pattern-deps string-deps)
+        scopes (set/union pattern-scopes string-scopes)]
+    (cond->
+      (assoc expression
+        :source source
+        :string string)
+      deps
+      (assoc :life/deps deps)
+      scopes
+      (assoc :life/scopes scopes))))
+
+
+;; 17.13. ReplaceMatches
+(derive :elm.deps.type/replace-matches :elm.deps.type/nary-expression)
+
+
+;; 17.14. Split
+(defmethod infer-deps :elm.deps.type/split
+  [{source :stringToSplit :keys [separator] :as expression}]
+  (let [{source-deps :life/deps source-scopes :life/scopes :as source} (infer-deps source)
+        {separator-deps :life/deps separator-scopes :life/scopes :as separator} (some-> separator infer-deps)
+        deps (set/union source-deps separator-deps)
+        scopes (set/union source-scopes separator-scopes)]
+    (cond->
+      (assoc expression
+        :stringToSplit source)
+      separator
+      (assoc :separator separator)
+      deps
+      (assoc :life/deps deps)
+      scopes
+      (assoc :life/scopes scopes))))
+
+
+;; 17.15. SplitOnMatches
+(defmethod infer-deps :elm.deps.type/split-on-matches
+  [{source :stringToSplit separator :separatorPattern :as expression}]
+  (let [{source-deps :life/deps source-scopes :life/scopes :as source} (infer-deps source)
+        {separator-deps :life/deps separator-scopes :life/scopes :as separator} (infer-deps separator)
+        deps (set/union source-deps separator-deps)
+        scopes (set/union source-scopes separator-scopes)]
+    (cond->
+      (assoc expression
+        :stringToSplit source
+        :separatorPattern separator)
+      deps
+      (assoc :life/deps deps)
+      scopes
+      (assoc :life/scopes scopes))))
+
+
+;; 17.16. StartsWith
+(derive :elm.deps.type/starts-with :elm.deps.type/nary-expression)
+
+
+;; 17.17. Substring
+(defmethod infer-deps :elm.deps.type/substring
+  [{source :stringToSub start :startIndex :keys [length] :as expression}]
+  (let [{source-deps :life/deps source-scopes :life/scopes :as source} (infer-deps source)
+        {start-deps :life/deps start-scopes :life/scopes :as start} (infer-deps start)
+        {length-deps :life/deps length-scopes :life/scopes :as length} (some-> length infer-deps)
+        deps (set/union source-deps start-deps length-deps)
+        scopes (set/union source-scopes start-scopes length-scopes)]
+    (cond->
+      (assoc expression
+        :stringToSub source
+        :startIndex start)
+      deps
+      (assoc :life/deps deps)
+      length
+      (assoc :length length)
+      scopes
+      (assoc :life/scopes scopes))))
+
+
+;; 17.18. Upper
+(derive :elm.deps.type/upper :elm.deps.type/unary-expression)
 
 
 
 ;; 18. Date and Time Operators
 
 ;; 18.11. DurationBetween
-(derive :elm.deps.type/duration-between :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/duration-between :elm.deps.type/nary-expression)
 
 
 
@@ -354,11 +515,11 @@
 
 
 ;; 19.15. Intersect
-(derive :elm.deps.type/intersect :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/intersect :elm.deps.type/nary-expression)
 
 
 ;; 19.31. Union
-(derive :elm.deps.type/union :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/union :elm.deps.type/nary-expression)
 
 
 
@@ -367,6 +528,9 @@
 ;; 20.8. Exists
 (derive :elm.deps.type/exists :elm.deps.type/unary-expression)
 
+
+;; 20.25. SingletonFrom
+(derive :elm.deps.type/singleton-from :elm.deps.type/unary-expression)
 
 
 ;; 21. Aggregate Operators
@@ -458,4 +622,4 @@
 ;; 23. Clinical Operators
 
 ;; 23.4. CalculateAgeAt
-(derive :elm.deps.type/calculate-age-at :elm.deps.type/multiary-expression)
+(derive :elm.deps.type/calculate-age-at :elm.deps.type/nary-expression)

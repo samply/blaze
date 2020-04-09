@@ -20,4 +20,6 @@
   {:level :off}}
 
  :output
- {:exclude-files ["^test/data_readers.clj"]}}
+ {:exclude-files ["^test/data_readers.clj"]}
+
+ :skip-comments true}

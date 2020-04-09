@@ -96,6 +96,11 @@
         (.valAt content key not-found)
         (do (set! content (enhance-content (.get cache hash) t))
             (.valAt content key not-found)))))
+  (count [_]
+    (if content
+      (count content)
+      (do (set! content (enhance-content (.get cache hash) t))
+          (count content))))
 
   IMeta
   (meta [_]

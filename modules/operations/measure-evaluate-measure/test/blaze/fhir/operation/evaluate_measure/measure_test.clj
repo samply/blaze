@@ -106,7 +106,8 @@
     "q16" 1
     "q17" 2
     "q18" 1
-    "q24" 1)
+    "q24" 1
+    "q28-relationship-procedure-condition" 1)
 
   (given (first-stratifier-stratums (evaluate "q19-stratifier-ageclass"))
     [0 :value :text] := "10"
@@ -159,6 +160,6 @@
     [1 :population 0 :count] := 2))
 
 (comment
-  (evaluate "q27-stratifier-calculated-bmi")
+  (evaluate "q28-relationship-procedure-condition")
   (clojure.repl/pst)
   )
