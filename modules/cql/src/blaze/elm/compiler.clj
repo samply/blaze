@@ -14,7 +14,7 @@
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.elm.compiler.function :as function]
-    [blaze.elm.compiler.protocols :refer [Expression -eval -hash]]
+    [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.compiler.retrieve :as retrieve]
     [blaze.elm.compiler.query :as query]
     [blaze.elm.aggregates :as aggregates]
@@ -229,25 +229,23 @@
            (let [~op-1-binding (-eval operand-1# context# resource# scope#)
                  ~op-2-binding (-eval operand-2# context# resource# scope#)
                  ~op-3-binding (-eval operand-3# context# resource# scope#)]
-             ~@body))
-         (-hash [_]
-           {:type ~(keyword (clojure.core/name name))
-            :operands [(-hash operand-1#) (-hash operand-2#) (-hash operand-3#)]})))))
+             ~@body))))))
 
 
 (defmacro defnaryop
   {:arglists '([name bindings & body])}
   [name [operands-binding] & body]
-  `(defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
-     [context# {operands# :operand}]
-     (let [operands# (mapv #(compile context# %) operands#)]
-       (reify Expression
-         (-eval [~'_ context# resource# scope#]
-           (let [~operands-binding (mapv #(-eval % context# resource# scope#) operands#)]
-             ~@body))
-         (-hash [_]
-           {:type ~(keyword (clojure.core/name name))
-            :operands (mapv -hash operands#)})))))
+  `(do
+     (defrecord ~(symbol (record-name name)) [~'operands]
+       Expression
+       (-eval [~'_ context# resource# scope#]
+         (let [~operands-binding (mapv #(-eval % context# resource# scope#) ~'operands)]
+           ~@body)))
+
+     (defmethod compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+       [context# {~'operands :operand}]
+       (let [~'operands (mapv #(compile context# %) ~'operands)]
+         (~(symbol (str "->" (record-name name))) ~'operands)))))
 
 
 (defmacro defaggop
@@ -263,18 +261,11 @@
              (let [source# (-eval source# context# resource# scope#)
                    ~source-binding (data-provider/resolve-property
                                      data-provider# source# path#)]
-               ~@body))
-           (-hash [_]
-             {:type ~(keyword (clojure.core/name name))
-              :source (-hash source#)
-              :path path#}))
+               ~@body)))
          (reify Expression
            (-eval [~'_ context# resource# scope#]
              (let [~source-binding (-eval source# context# resource# scope#)]
-               ~@body))
-           (-hash [_]
-             {:type ~(keyword (clojure.core/name name))
-              :source (-hash source#)}))))))
+               ~@body)))))))
 
 
 (defn- to-chrono-unit [precision]
@@ -330,10 +321,7 @@
        (reify Expression
          (-eval [~'_ context# resource# scope#]
            (let [~operand-binding (-eval operand# context# resource# scope#)]
-             ~@body))
-         (-hash [_]
-           {:type ~(keyword (clojure.core/name name))
-            :operands (-hash operand#)})))))
+             ~@body))))))
 
 
 (defn- append-locator [msg locator]
@@ -685,19 +673,6 @@
   sort-by-item)
 
 
-(defmulti hash-sort-by-item :type)
-
-
-(defmethod hash-sort-by-item "ByExpression"
-  [sort-by-item]
-  (update sort-by-item :expression -hash))
-
-
-(defmethod hash-sort-by-item :default
-  [sort-by-item]
-  sort-by-item)
-
-
 (defmethod compile* :elm.compiler.type/query
   [{:keys [optimizations] :as context}
    {sources :source
@@ -722,21 +697,20 @@
           source (compile context expression)
           context (assoc context :life/single-query-scope alias)
           with-equiv-clauses (filter (comp #{"WithEquiv"} :type) relationships)
-          with-equiv-clauses (map #(compile-with-equiv-clause context %) with-equiv-clauses)
-          with-xform-factories (mapv query/with-xform-factory with-equiv-clauses)
-          where-xform-expr (some->> where (compile context) (query/where-xform-expr))
+          with-xform-factories (map #(compile-with-equiv-clause context %) with-equiv-clauses)
+          where-xform-factory (some->> where (compile context) (query/where-xform-factory))
           distinct (if (contains? optimizations :non-distinct) false distinct)
-          return-xform-expr (query/return-xform-expr (some->> return (compile context)) distinct)
-          xform-expr (query/xform-expr with-xform-factories where-xform-expr return-xform-expr)
+          return-xform-factory (query/return-xform-factory (some->> return (compile context)) distinct)
+          xform-factory (query/xform-factory with-xform-factories where-xform-factory return-xform-factory)
           sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)]
       (if (empty? sort-by-items)
-        (if xform-expr
+        (if xform-factory
           (if (contains? optimizations :first)
-            (query/eduction-expr xform-expr source)
-            (query/into-vector-expr xform-expr source))
+            (query/eduction-expr xform-factory source)
+            (query/into-vector-expr xform-factory source))
           source)
-        (if xform-expr
-          (query/xform-sort-expr xform-expr source (first sort-by-items))
+        (if xform-factory
+          (query/xform-sort-expr xform-factory source (first sort-by-items))
           (query/sort-expr source (first sort-by-items)))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
@@ -762,10 +736,13 @@
     scope))
 
 
+(def single-scope-alias-ref-expression (->SingleScopeAliasRefExpression))
+
+
 (defmethod compile* :elm.compiler.type/alias-ref
   [{:life/keys [single-query-scope]} {:keys [name]}]
   (if (= single-query-scope name)
-    (->SingleScopeAliasRefExpression)
+    single-scope-alias-ref-expression
     (->AliasRefExpression name)))
 
 
@@ -777,38 +754,38 @@
 (defn- find-operand-with-alias
   "Finds the operand in `expression` that accesses entities with `alias`."
   [operands alias]
-  (some #(when (= (:life/scopes %) #{alias}) %) operands))
+  (some #(when (contains? (:life/scopes %) alias) %) operands))
 
 
 (defn compile-with-equiv-clause
   "We use the terms `lhs` and `rhs` for left-hand-side and right-hand-side of
   the semi-join here.
 
-  Returns a function of `eval-context` and `resource`."
+  Returns an XformFactory."
   {:arglists '([context with-equiv-clause])}
   [context {:keys [alias] rhs :expression equiv-operands :equivOperand
             such-that :suchThat}]
   (if-let [single-query-scope (:life/single-query-scope context)]
     (if-let [rhs-operand (find-operand-with-alias equiv-operands alias)]
-      (if-let [lhs-operand (find-operand-with-alias equiv-operands single-query-scope)]
+      (if-let [lhs-operand (find-operand-with-alias equiv-operands
+                                                    single-query-scope)]
         (let [rhs (compile context rhs)
-              rhs-operand (compile (assoc context :life/single-query-scope alias) rhs-operand)
+              rhs-operand (compile (assoc context :life/single-query-scope alias)
+                                   rhs-operand)
               lhs-operand (compile context lhs-operand)
-              such-that (some->> such-that (compile (dissoc context :life/single-query-scope)))]
-          (fn create-with-clause [eval-context resource]
-            (let [rhs (-eval rhs eval-context resource nil)
-                  indexer #(-eval rhs-operand eval-context resource %)]
-              (if (some? such-that)
-                (let [index (group-by indexer rhs)]
-                  (fn eval-with-clause [eval-context resource lhs-entity]
-                    (when-let [rhs-entities (some->> (-eval lhs-operand eval-context resource lhs-entity) (get index))]
-                      (some #(-eval such-that eval-context resource {single-query-scope lhs-entity alias %}) rhs-entities))))
-                (let [index (into #{} (map indexer) rhs)]
-                  (fn eval-with-clause [eval-context resource lhs-entity]
-                    (some->> (-eval lhs-operand eval-context resource lhs-entity) (contains? index))))))))
-        (throw (Exception. "Unsupported call without left-hand-side operand.")))
-      (throw (Exception. "Unsupported call without right-hand-side operand.")))
-    (throw (Exception. "Unsupported call without single query scope."))))
+              such-that (some->> such-that
+                                 (compile (dissoc context :life/single-query-scope)))]
+          (query/->WithXformFactory rhs rhs-operand such-that lhs-operand
+                                    single-query-scope))
+        (throw-anom
+          ::anom/incorrect
+          (format "Unsupported call without left-hand-side operand.")))
+      (throw-anom
+        ::anom/incorrect
+        (format "Unsupported call without right-hand-side operand with alias `%s`." alias)))
+    (throw-anom
+      ::anom/incorrect
+      (format "Unsupported call without single query scope."))))
 
 
 ;; TODO 10.13. Without
@@ -932,10 +909,7 @@
             (let [operand-2 (-eval operand-2 context resource scope)]
               (cond
                 (true? operand-2) true
-                (and (false? operand-1) (false? operand-2)) false)))))
-      (-hash [_]
-        {:type :and
-         :operands [(-hash operand-1) (-hash operand-2)]}))))
+                (and (false? operand-1) (false? operand-2)) false))))))))
 
 
 ;; 13.5 Xor
@@ -972,17 +946,11 @@
                     (when (some? elem)
                       (reduced elem))))
                 nil
-                (-eval operand context resource scope)))
-            (-hash [_]
-              {:type :coalesce
-               :operands (mapv -hash operands)})))
+                (-eval operand context resource scope)))))
         (let [operand (compile context operand)]
           (reify Expression
             (-eval [_ context resource scope]
-              (-eval operand context resource scope))
-            (-hash [_]
-              {:type :coalesce
-               :operands (mapv -hash operands)})))))
+              (-eval operand context resource scope))))))
     (let [operands (mapv #(compile context %) operands)]
       (reify Expression
         (-eval [_ context resource scope]
@@ -992,10 +960,7 @@
                 (when (some? operand)
                   (reduced operand))))
             nil
-            operands))
-        (-hash [_]
-          {:type :coalesce
-           :operands (mapv -hash operands)})))))
+            operands))))))
 
 
 ;; 14.3. IsFalse
@@ -1045,14 +1010,7 @@
               (-eval then context resource scope)
               (if (empty? next-items)
                 (-eval else context resource scope)
-                (recur next-items)))))
-        (-hash [_]
-          (cond->
-            {:type :case
-             :items (mapv #(-> % (update :when -hash) (update :then -hash)) items)
-             :else (-hash else)}
-            comparand
-            (assoc :comparand (-hash comparand))))))))
+                (recur next-items)))))))))
 
 
 ;; 15.2. If
@@ -1191,29 +1149,18 @@
       (or (nil? precision) (and (number? precision) (zero? precision)))
       (reify Expression
         (-eval [_ context resource scope]
-          (p/round (-eval operand context resource scope) 0))
-        (-hash [_]
-          {:type :round
-           :operand (-hash operand)}))
+          (p/round (-eval operand context resource scope) 0)))
 
       (number? precision)
       (reify Expression
         (-eval [_ context resource scope]
-          (p/round (-eval operand context resource scope) precision))
-        (-hash [_]
-          {:type :round
-           :operand (-hash operand)
-           :precision (-hash precision)}))
+          (p/round (-eval operand context resource scope) precision)))
 
       :else
       (reify Expression
         (-eval [_ context resource scope]
           (p/round (-eval operand context resource scope)
-                   (-eval precision context resource scope)))
-        (-hash [_]
-          {:type :round
-           :operand (-hash operand)
-           :precision (-hash precision)})))))
+                   (-eval precision context resource scope)))))))
 
 
 ;; 16.17. Subtract
@@ -1248,18 +1195,11 @@
       (reify Expression
         (-eval [_ context resource scope]
           (when-let [source (-eval source context resource scope)]
-            (string/combine (-eval separator context resource scope) source)))
-        (-hash [_]
-          {:type :combine
-           :source (-hash source)
-           :separator (-hash separator)}))
+            (string/combine (-eval separator context resource scope) source))))
       (reify Expression
         (-eval [_ context resource scope]
           (when-let [source (-eval source context resource scope)]
-            (string/combine source)))
-        (-hash [_]
-          {:type :combine
-           :source (-hash source)})))))
+            (string/combine source)))))))
 
 
 ;; 17.2. Concatenate
@@ -1287,11 +1227,7 @@
       (-eval [_ context resource scope]
         (when-let [^String pattern (-eval pattern context resource scope)]
           (when-let [^String string (-eval string context resource scope)]
-            (.lastIndexOf string pattern))))
-      (-hash [_]
-        {:type :last-position-of
-         :pattern (-hash pattern)
-         :string (-hash string)}))))
+            (.lastIndexOf string pattern)))))))
 
 
 ;; 17.8. Length
@@ -1319,11 +1255,7 @@
       (-eval [_ context resource scope]
         (when-let [^String pattern (-eval pattern context resource scope)]
           (when-let [^String string (-eval string context resource scope)]
-            (.indexOf string pattern))))
-      (-hash [_]
-        {:type :last-position-of
-         :pattern (-hash pattern)
-         :string (-hash string)}))))
+            (.indexOf string pattern)))))))
 
 
 ;; 17.13. ReplaceMatches
@@ -1360,18 +1292,11 @@
                         (conj result (str (.append acc char))))))
                   ;; TODO: implement split with more than one char.
                   (throw (Exception. "TODO: implement split with separators longer than one char.")))
-                [string]))))
-        (-hash [_]
-          {:type :combine
-           :string (-hash string)
-           :separator (-hash separator)}))
+                [string])))))
       (reify Expression
         (-eval [_ context resource scope]
           (when-let [string (-eval string context resource scope)]
-            [string]))
-        (-hash [_]
-          {:type :combine
-           :string (-hash string)})))))
+            [string]))))))
 
 
 ;; 17.16. StartsWith
@@ -1393,22 +1318,13 @@
             (when-let [start-index (-eval start-index context resource scope)]
               (when (and (<= 0 start-index) (< start-index (count string)))
                 (subs string start-index (min (+ start-index length)
-                                              (count string)))))))
-        (-hash [_]
-          {:type :last-position-of
-           :string (-hash string)
-           :start-index (-hash start-index)
-           :length (-hash length)}))
+                                              (count string))))))))
       (reify Expression
         (-eval [_ context resource scope]
           (when-let [^String string (-eval string context resource scope)]
             (when-let [start-index (-eval start-index context resource scope)]
               (when (and (<= 0 start-index) (< start-index (count string)))
-                (subs string start-index)))))
-        (-hash [_]
-          {:type :last-position-of
-           :string (-hash string)
-           :start-index (-hash start-index)})))))
+                (subs string start-index)))))))))
 
 
 ;; 17.18. Upper
@@ -1474,12 +1390,7 @@
         (-eval [_ context resource scope]
           (to-day (-eval year context resource scope)
                   (-eval month context resource scope)
-                  (-eval day context resource scope)))
-        (-hash [_]
-          {:type :date
-           :year (-hash year)
-           :month (-hash month)
-           :day (-hash day)}))
+                  (-eval day context resource scope))))
 
       (and (int? month) (int? year))
       (to-month year month)
@@ -1488,11 +1399,7 @@
       (reify Expression
         (-eval [_ context resource scope]
           (to-month (-eval year context resource scope)
-                    (-eval month context resource scope)))
-        (-hash [_]
-          {:type :date
-           :year (-hash year)
-           :month (-hash month)}))
+                    (-eval month context resource scope))))
 
       (int? year)
       (some-> year to-year)
@@ -1500,10 +1407,7 @@
       :else
       (reify Expression
         (-eval [_ context resource scope]
-          (some-> (-eval year context resource scope) to-year))
-        (-hash [_]
-          {:type :date
-           :year (-hash year)})))))
+          (some-> (-eval year context resource scope) to-year))))))
 
 
 ;; 18.7. DateFrom
@@ -1532,17 +1436,7 @@
         (reify Expression
           (-eval [_ {:keys [now]} _ _]
             (to-local-date-time-with-offset
-              now year month day hour minute second millisecond timezone-offset))
-          (-hash [_]
-            {:type :date-time
-             :year (-hash year)
-             :month (-hash month)
-             :day (-hash day)
-             :hour (-hash hour)
-             :minute (-hash minute)
-             :second (-hash second)
-             :millisecond (-hash millisecond)
-             :timezone-offset (-hash timezone-offset)}))
+              now year month day hour minute second millisecond timezone-offset)))
 
         (some? hour)
         (reify Expression
@@ -1556,17 +1450,7 @@
               (or (-eval minute context resource scope) 0)
               (or (-eval second context resource scope) 0)
               (or (-eval millisecond context resource scope) 0)
-              timezone-offset))
-          (-hash [_]
-            {:type :date-time
-             :year (-hash year)
-             :month (-hash month)
-             :day (-hash day)
-             :hour (-hash hour)
-             :minute (-hash minute)
-             :second (-hash second)
-             :millisecond (-hash millisecond)
-             :timezone-offset (-hash timezone-offset)}))
+              timezone-offset)))
 
         :else
         (throw (ex-info "Need at least an hour if timezone offset is given."
@@ -1586,16 +1470,7 @@
               (or (-eval minute context resource scope) 0)
               (or (-eval second context resource scope) 0)
               (or (-eval millisecond context resource scope) 0)
-              (-eval timezone-offset context resource scope)))
-          (-hash [_]
-            {:type :date-time
-             :year (-hash year)
-             :month (-hash month)
-             :day (-hash day)
-             :hour (-hash hour)
-             :minute (-hash minute)
-             :second (-hash second)
-             :timezone-offset (-hash timezone-offset)}))
+              (-eval timezone-offset context resource scope))))
 
         :else
         (throw (ex-info "Need at least an hour if timezone offset is given."
@@ -1617,16 +1492,7 @@
               (-eval hour context resource scope)
               (or (-eval minute context resource scope) 0)
               (or (-eval second context resource scope) 0)
-              (or (-eval millisecond context resource scope) 0)))
-          (-hash [_]
-            {:type :date-time
-             :year (-hash year)
-             :month (-hash month)
-             :day (-hash day)
-             :hour (-hash hour)
-             :minute (-hash minute)
-             :second (-hash second)
-             :millisecond (-hash millisecond)}))
+              (or (-eval millisecond context resource scope) 0))))
 
         (and (int? day) (int? month) (int? year))
         (to-day year month day)
@@ -1636,12 +1502,7 @@
           (-eval [_ context resource scope]
             (to-day (-eval year context resource scope)
                     (-eval month context resource scope)
-                    (-eval day context resource scope)))
-          (-hash [_]
-            {:type :date
-             :year (-hash year)
-             :month (-hash month)
-             :day (-hash day)}))
+                    (-eval day context resource scope))))
 
         (and (int? month) (int? year))
         (to-month year month)
@@ -1650,11 +1511,7 @@
         (reify Expression
           (-eval [_ context resource scope]
             (to-month (-eval year context resource scope)
-                      (-eval month context resource scope)))
-          (-hash [_]
-            {:type :date
-             :year (-hash year)
-             :month (-hash month)}))
+                      (-eval month context resource scope))))
 
         (int? year)
         (some-> year to-year)
@@ -1662,10 +1519,7 @@
         :else
         (reify Expression
           (-eval [_ context resource scope]
-            (some-> (-eval year context resource scope) to-year))
-          (-hash [_]
-            {:type :date
-             :year (-hash year)}))))))
+            (some-> (-eval year context resource scope) to-year)))))))
 
 
 ;; 18.9. DateTimeComponentFrom
@@ -1684,13 +1538,17 @@
 
 
 ;; 18.13. Now
-(defmethod compile* :elm.compiler.type/now
-  [_ _]
-  (reify Expression
-    (-eval [_ {:keys [now]} _ _]
-      now)
-    (-hash [_]
-      {:type :now})))
+(defrecord NowExpression []
+  Expression
+  (-eval [_ {:keys [now]} _ _]
+    now))
+
+
+(def now-expression (->NowExpression))
+
+
+(defmethod compile* :elm.compiler.type/now [_ _]
+  now-expression)
 
 
 ;; 18.14. SameAs
@@ -1725,13 +1583,7 @@
           (local-time (-eval hour context resource scope)
                       (-eval minute context resource scope)
                       (-eval second context resource scope)
-                      (-eval millisecond context resource scope)))
-        (-hash [_]
-          {:type :time
-           :hour (-hash hour)
-           :minute (-hash minute)
-           :second (-hash second)
-           :millisecond (-hash millisecond)}))
+                      (-eval millisecond context resource scope))))
 
       (and (int? second) (int? minute) (int? hour))
       (local-time hour minute second)
@@ -1741,12 +1593,7 @@
         (-eval [_ context resource scope]
           (local-time (-eval hour context resource scope)
                       (-eval minute context resource scope)
-                      (-eval second context resource scope)))
-        (-hash [_]
-          {:type :time
-           :hour (-hash hour)
-           :minute (-hash minute)
-           :second (-hash second)}))
+                      (-eval second context resource scope))))
 
       (and (int? minute) (int? hour))
       (local-time hour minute)
@@ -1755,11 +1602,7 @@
       (reify Expression
         (-eval [_ context resource scope]
           (local-time (-eval hour context resource scope)
-                      (-eval minute context resource scope)))
-        (-hash [_]
-          {:type :time
-           :hour (-hash hour)
-           :minute (-hash minute)}))
+                      (-eval minute context resource scope))))
 
       (int? hour)
       (local-time hour)
@@ -1767,10 +1610,7 @@
       :else
       (reify Expression
         (-eval [_ context resource scope]
-          (local-time (-eval hour context resource scope)))
-        (-hash [_]
-          {:type :time
-           :hour (-hash hour)})))))
+          (local-time (-eval hour context resource scope)))))))
 
 
 (defrecord TimeOfDayExpression []
@@ -1841,22 +1681,7 @@
               (if (nil? high)
                 (max-value type)
                 high)
-              (p/predecessor high)))))
-      (-hash [_]
-        (cond->
-          {:type :interval}
-          low
-          (assoc :low (-hash low))
-          high
-          (assoc :high (-hash high))
-          low-closed-expression
-          (assoc :low-closed-expression (-hash low-closed-expression))
-          high-closed-expression
-          (assoc :high-closed-expression (-hash high-closed-expression))
-          low-closed
-          (assoc :low-closed low-closed)
-          high-closed
-          (assoc :high-closed high-closed))))))
+              (p/predecessor high))))))))
 
 
 ;; 19.2. After
@@ -2039,15 +1864,10 @@
   (if scope
     (reify Expression
       (-eval [_ _ _ scopes]
-        (get scopes scope))
-      (-hash [_]
-        {:type :current
-         :scope scope}))
+        (get scopes scope)))
     (reify Expression
       (-eval [_ _ _ scope]
-        scope)
-      (-hash [_]
-        {:type :current}))))
+        scope))))
 
 
 ;; 20.4. Distinct
@@ -2083,22 +1903,14 @@
             (filterv
               (fn [x]
                 (-eval condition context resource (assoc scopes scope x)))
-              source)))
-        (-hash [_]
-          {:type :filter
-           :source (-hash source)
-           :condition (-hash condition)}))
+              source))))
       (reify Expression
         (-eval [_ context resource scopes]
           (when-let [source (-eval source context resource scopes)]
             (filterv
               (fn [_]
                 (-eval condition context resource scopes))
-              source)))
-        (-hash [_]
-          {:type :filter
-           :source (-hash source)
-           :condition (-hash condition)})))))
+              source)))))))
 
 
 ;; 20.10. First
@@ -2144,22 +1956,14 @@
             (mapv
               (fn [x]
                 (-eval element context resource (assoc scopes scope x)))
-              source)))
-        (-hash [_]
-          {:type :filter
-           :source (-hash source)
-           :element (-hash element)}))
+              source))))
       (reify Expression
         (-eval [_ context resource scopes]
           (when-let [source (-eval source context resource scopes)]
             (mapv
               (fn [_]
                 (-eval element context resource scopes))
-              source)))
-        (-hash [_]
-          {:type :filter
-           :source (-hash source)
-           :element (-hash element)})))))
+              source)))))))
 
 
 ;; 20.16. IndexOf
@@ -2179,11 +1983,7 @@
                       (p/equal element x)
                       idx))
                   source))
-              -1))))
-      (-hash [_]
-        {:type :filter
-         :source (-hash source)
-         :element (-hash element)}))))
+              -1)))))))
 
 
 ;; 20.18. Last
@@ -2194,10 +1994,7 @@
   (let [source (compile context source)]
     (reify Expression
       (-eval [_ context resource scopes]
-        (peek (-eval source context resource scopes)))
-      (-hash [_]
-        {:type :last
-         :source (-hash source)}))))
+        (peek (-eval source context resource scopes))))))
 
 
 ;; 20.24. Repeat
@@ -2230,14 +2027,7 @@
               (subvec
                 source
                 start-index
-                end-index)))))
-      (-hash [_]
-        (cond->
-          {:type :filter
-           :source (-hash source)
-           :start-index (-hash start-index)}
-          end-index
-          (assoc :end-index (-hash end-index)))))))
+                end-index))))))))
 
 
 ;; 20.27. Sort
@@ -2253,11 +2043,7 @@
             (reify Expression
               (-eval [_ context resource scopes]
                 (when-let [source (-eval source context resource scopes)]
-                  (sort-by identity comp source)))
-              (-hash [_]
-                {:type :filter
-                 :source (-hash source)
-                 :sort-by-items (mapv hash-sort-by-item sort-by-items)})))))
+                  (sort-by identity comp source)))))))
       source
       sort-by-items)))
 
@@ -2477,14 +2263,11 @@
 ;; 22.16. Descendents
 (defmethod compile* :elm.compiler.type/descendents
   [context {:keys [source]}]
-  (let [source (compile context source)]
+  (let [_ (compile context source)]
     (reify Expression
       (-eval [_ context resource scopes]
         ;;TODO: implement
-        )
-      (-hash [_]
-        {:type :first
-         :source (-hash source)}))))
+        ))))
 
 
 ;; 22.17. Is
@@ -2501,10 +2284,7 @@
   (let [operand (compile context operand)]
     (reify Expression
       (-eval [_ {:keys [now] :as context} resource scope]
-        (p/to-date (-eval operand context resource scope) now))
-      (-hash [_]
-        {:type :to-date
-         :operand (-hash operand)}))))
+        (p/to-date (-eval operand context resource scope) now)))))
 
 
 ;; 22.22. ToDateTime
@@ -2557,7 +2337,7 @@
   Expression
   (-eval [_ {:keys [now] :as context} resource scope]
     (p/duration-between
-      (p/to-date  (-eval birth-date context resource scope) now)
+      (p/to-date (-eval birth-date context resource scope) now)
       (-eval date context resource scope)
       precision)))
 

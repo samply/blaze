@@ -2,13 +2,12 @@
   "https://cql.hl7.org/2019May/tests.html"
   (:require
     [clojure.data.xml :as xml]
-    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer [deftest is testing use-fixtures]]
     [cognitect.anomalies :as anom]
     [blaze.cql-translator :refer [translate]]
     [blaze.elm.compiler :refer [compile]]
-    [blaze.elm.compiler.protocols :refer [-eval]]
+    [blaze.elm.expression :as expr]
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
@@ -23,12 +22,7 @@
 
 (defn fixture [f]
   (st/instrument)
-  (st/instrument
-    `compile
-    {:spec
-     {`compile
-      (s/fspec
-        :args (s/cat :context any? :expression :elm/expression))}})
+  (st/unstrument [`compile `expr/eval])
   (f)
   (st/unstrument))
 
@@ -52,8 +46,10 @@
         :invalid? invalid?
         :output output})}))
 
+
 (defn to-source-elm [cql]
   (translate (str "define x: " cql)))
+
 
 (defn to-elm [cql]
   (let [elm (to-source-elm cql)]
@@ -66,11 +62,14 @@
           type-infer/infer-library-types
           :statements :def first :expression))))
 
+
 (defn eval-elm [now elm]
-  (-eval (compile {} elm) {:now now} nil nil))
+  (expr/eval (compile {} elm) {:now now} nil nil))
+
 
 (defn eval [now cql]
   (eval-elm now (to-elm cql)))
+
 
 (defn gen-tests [name file exclusions]
   `(deftest ~(symbol name)

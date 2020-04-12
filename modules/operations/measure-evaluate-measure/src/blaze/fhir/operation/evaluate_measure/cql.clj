@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.db.api :as d]
-    [blaze.elm.compiler.protocols :refer [-eval]]
+    [blaze.elm.expression :as expr]
     [clojure.core.reducers :as r]
     [cognitect.anomalies :as anom]))
 
@@ -14,7 +14,7 @@
   [context resource {expression-defs :life/compiled-expression-defs}
    expression-name]
   (try
-    (-eval
+    (expr/eval
       (get expression-defs expression-name)
       (assoc context :library-context expression-defs)
       resource

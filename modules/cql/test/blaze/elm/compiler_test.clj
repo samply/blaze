@@ -8,6 +8,7 @@
     [blaze.elm.compiler :refer [compile compile-with-equiv-clause]]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.compiler.retrieve-test :as retrieve-test]
+    [blaze.elm.compiler.query :as query]
     [blaze.elm.date-time :refer [local-time local-time? period]]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.interval :refer [interval]]
@@ -451,12 +452,6 @@
 
 ;; 10.12. With
 (deftest compile-with-clause-test
-  (st/instrument
-    `compile-with-equiv-clause
-    {:spec
-     {`compile-with-equiv-clause
-      (s/fspec
-        :args (s/cat :context any? :with-equiv-clause :elm.query.life/with-equiv))}})
   (retrieve-test/stub-expr
     ::node "Unspecified" "Observation" "code" nil?
     (reify Expression
@@ -484,11 +479,11 @@
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context
           {:node ::node :life/single-query-scope "O0" :eval-context "Unspecified"}
-          create-clause (compile-with-equiv-clause compile-context elm)
+          xform-factory (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
-          eval-clause (create-clause eval-context nil)
+          xform (query/-create xform-factory eval-context nil)
           lhs-entity {:resourceType "Observation" :subject {:reference "Patient/0"}}]
-      (is (true? (eval-clause eval-context nil lhs-entity)))))
+      (is (= [lhs-entity] (into [] xform [lhs-entity])))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
     (let [elm {:alias "O"
@@ -506,11 +501,11 @@
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context
           {:node ::node :life/single-query-scope "P" :eval-context "Unspecified"}
-          create-clause (compile-with-equiv-clause compile-context elm)
+          xform-factory (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
-          eval-clause (create-clause eval-context nil)
+          xform (query/-create xform-factory eval-context nil)
           lhs-entity {:reference "Patient/0"}]
-      (is (true? (eval-clause eval-context nil lhs-entity))))))
+      (is (= [lhs-entity] (into [] xform [lhs-entity]))))))
 
 
 

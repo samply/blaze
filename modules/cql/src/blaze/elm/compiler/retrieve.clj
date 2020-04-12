@@ -6,8 +6,7 @@
     [blaze.anomaly :refer [when-ok]]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
-    [blaze.elm.code :refer [code?]]
-    [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
+    [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -120,13 +119,6 @@
           (into [] res))))))
 
 
-(s/fdef with-related-context-expr
-  :args (s/cat :related-context-expr expr?
-               :data-type string?
-               :code-property string?
-               :codes (s/nilable (s/coll-of code?)))
-  :ret expr?)
-
 (defn with-related-context-expr
   [related-context-expr data-type code-property codes]
   (if (seq codes)
@@ -155,15 +147,6 @@
       resource-expr
       (context-expr eval-context data-type))
     (code-expr node eval-context data-type code-property codes)))
-
-
-(s/fdef expr
-  :args (s/cat :node :blaze.db/node
-               :eval-context string?
-               :data-type string?
-               :code-property string?
-               :codes (s/nilable (s/coll-of code?)))
-  :ret expr?)
 
 (defn expr [node eval-context data-type code-property codes]
   (if (= "Unspecified" eval-context)
