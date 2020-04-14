@@ -2,7 +2,7 @@
   (:require
     [blaze.elm.equiv-relationships
      :refer [split-by-first-equal-expression]]
-    [blaze.elm.literals]
+    [blaze.elm.literal]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer [are deftest]]))
 

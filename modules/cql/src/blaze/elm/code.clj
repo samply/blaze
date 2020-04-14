@@ -8,7 +8,15 @@
   p/Equivalent
   (equivalent [_ other]
     (and (= system (:system other))
-         (= code (:code other)))))
+         (= code (:code other))))
+
+  p/Children
+  (children [_]
+    [code nil system version])
+
+  p/Descendents
+  (descendents [_]
+    [code nil system version]))
 
 
 (defn to-code

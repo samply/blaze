@@ -88,7 +88,8 @@
 (defmulti compile*
   "Compiles `expression`."
   {:arglists '([context expression])}
-  (fn [_ {:keys [type]}]
+  (fn [_ {:keys [type] :as expr}]
+    (assert (string? type) (format "Missing :type in expression `%s`." (pr-str expr)))
     (keyword "elm.compiler.type" (str/kebab type))))
 
 
@@ -97,7 +98,11 @@
   (throw (Exception. (str "Unsupported ELM expression type: " (or type "<missing>")))))
 
 
-(defn compile [context expression]
+(defn compile
+  "Compiles `expression` in `context`.
+
+  Use `compile-library` to compile a whole library."
+  [context expression]
   (compile* context expression))
 
 
@@ -106,7 +111,7 @@
   resulting compiled expression under :life/expression to the `expression-def`
   which itself is returned.
 
-  In case compilation leads to an error, an anomaly is returned."
+  Returns an anomaly on errors."
   {:arglists '([context expression-def])}
   [context {:keys [expression] :as expression-def}]
   (let [context (assoc context :eval-context (:context expression-def))]
@@ -371,38 +376,31 @@
     (.valAt m key)))
 
 
+(defn- compile-elements [context elements]
+  (reduce
+    (fn [r {:keys [name value]}]
+      (assoc r (keyword name) (compile context value)))
+    {}
+    elements))
+
+
 (defmethod compile* :elm.compiler.type/tuple
   [context {elements :element}]
-  (->TupleExpression
-    (reduce
-      (fn [r {:keys [name value]}]
-        (assoc r (keyword name) (compile context value)))
-      {}
-      elements)))
+  (->TupleExpression (compile-elements context elements)))
+
+
+;; 2.2. Instance
+(defmethod compile* :elm.compiler.type/instance
+  [context {type :classType elements :element}]
+  (let [elements (compile-elements context elements)]
+    (when (every? static? (vals elements))
+      (case type
+        "{urn:hl7-org:elm-types:r1}Code"
+        (let [{:keys [system version code]} elements]
+          (code/to-code system version code))))))
 
 
 ;; 2.3. Property
-;;
-;; The Property operator returns the value of the property on source specified
-;; by the path attribute.
-;;
-;; If the result of evaluating source is null, the result is null.
-;;
-;; The path attribute may include qualifiers (.) and indexers ([x]). Indexers
-;; must be literal integer values.
-;;
-;; If the path attribute contains qualifiers or indexers, each qualifier or
-;; indexer is traversed to obtain the actual value. If the object of the
-;; property access at any point in traversing the path is null, the result is
-;; null.
-;;
-;; If a scope is specified, the name is used to resolve the scope in which the
-;; path will be resolved. Scopes can be named by operators such as Filter and
-;; ForEach.
-;;
-;; Property expressions can also be used to access the individual points and
-;; closed indicators for interval types using the property names low, high,
-;; lowClosed, and highClosed.
 (defn- fhir-type? [type]
   (and (keyword? type) (str/starts-with? (namespace type) "fhir")))
 
@@ -511,6 +509,7 @@
   [{{code-defs :def} :codes} name]
   (some #(when (= name (:name %)) %) code-defs))
 
+
 (defmethod compile* :elm.compiler.type/code-ref
   [{:keys [library] :as context} {:keys [name] :as expression}]
   ;; TODO: look into other libraries (:libraryName)
@@ -582,6 +581,7 @@
 ;; TODO
 
 
+
 ;; 9. Reusing Logic
 
 ;; 9.2. ExpressionRef
@@ -589,6 +589,13 @@
 ;; The ExpressionRef type defines an expression that references a previously
 ;; defined NamedExpression. The result of evaluating an ExpressionReference is
 ;; the result of evaluating the referenced NamedExpression.
+(defn- find-expression-def
+  "Returns the expression-def with `name` from `library` or nil if not found."
+  {:arglists '([library name])}
+  [{{expr-defs :def} :statements} name]
+  (some #(when (= name (:name %)) %) expr-defs))
+
+
 (defrecord ExpressionRef [name]
   Expression
   (-eval [_ {:keys [library-context] :as context} resource _]
@@ -601,27 +608,33 @@
 
 
 (defmethod compile* :elm.compiler.type/expression-ref
-  [{:keys [eval-context]} {:keys [name] def-eval-context :life/eval-context}]
+  [{:keys [library eval-context] :as context}
+   {:keys [name] def-eval-context :life/eval-context}]
   ;; TODO: look into other libraries (:libraryName)
   (when name
-    (cond
-      (and (= "Unspecified" eval-context) (not= "Unspecified" def-eval-context))
-      ;; The referenced expression has a concrete context but we are in the
-      ;; Unspecified context. So we map the referenced expression over all
-      ;; concrete resources.
-      (reify Expression
-        (-eval [_ {:keys [db library-context] :as context} _ _]
-          (if-some [expression (get library-context name)]
-            (mapv
-              #(-eval expression context % nil)
-              (d/list-resources db def-eval-context))
-            (throw-anom
-              ::anom/incorrect
-              (format "Expression `%s` not found." name)
-              :context context))))
+    (if (find-expression-def library name)
+      (cond
+        (and (= "Unspecified" eval-context) (not= "Unspecified" def-eval-context))
+        ;; The referenced expression has a concrete context but we are in the
+        ;; Unspecified context. So we map the referenced expression over all
+        ;; concrete resources.
+        (reify Expression
+          (-eval [_ {:keys [db library-context] :as context} _ _]
+            (if-some [expression (get library-context name)]
+              (mapv
+                #(-eval expression context % nil)
+                (d/list-resources db def-eval-context))
+              (throw-anom
+                ::anom/incorrect
+                (format "Expression `%s` not found." name)
+                :context context))))
 
-      :else
-      (->ExpressionRef name))))
+        :else
+        (->ExpressionRef name))
+      (throw-anom
+        ::anom/incorrect
+        (format "Expression `%s` not found." name)
+        :context context))))
 
 
 ;; 9.4. FunctionRef
@@ -861,26 +874,54 @@
   (throw (Exception. "Unsupported NotEqual expression. Please normalize the ELM tree before compiling.")))
 
 
+
 ;; 13. Logical Operators
 
 ;; 13.1. And
-(defrecord AndOperatorExpression [operand-1 operand-2]
+
+;; static-a is either true or nil but not false
+(defrecord StaticAndOperatorExpression [static-a b]
   Expression
   (-eval [_ context resource scope]
-    (let [operand-1 (-eval operand-1 context resource scope)]
-      (if (false? operand-1)
+    (let [b (-eval b context resource scope)]
+      (cond
+        (false? b) false
+        (and (true? static-a) (true? b)) true))))
+
+
+(defn- and-static [static-a b]
+  (if (static? b)
+    (cond
+      (false? b) false
+      (and (true? static-a) (true? b)) true)
+    (->StaticAndOperatorExpression static-a b)))
+
+
+(defrecord AndOperatorExpression [a b]
+  Expression
+  (-eval [_ context resource scope]
+    (let [a (-eval a context resource scope)]
+      (if (false? a)
         false
-        (let [operand-2 (-eval operand-2 context resource scope)]
+        (let [b (-eval b context resource scope)]
           (cond
-            (false? operand-2) false
-            (and (true? operand-1) (true? operand-2)) true))))))
+            (false? b) false
+            (and (true? a) (true? b)) true))))))
 
 
 (defmethod compile* :elm.compiler.type/and
-  [context {[operand-1 operand-2] :operand}]
-  (->AndOperatorExpression
-    (compile context operand-1)
-    (compile context operand-2)))
+  [context {[a b] :operand}]
+  (let [a (compile context a)]
+    (if (static? a)
+      (if (false? a)
+        false
+        (and-static a (compile context b)))
+      (let [b (compile context b)]
+        (if (static? b)
+          (if (false? b)
+            false
+            (and-static b a))
+          (->AndOperatorExpression a b))))))
 
 
 ;; 13.2 Implies
@@ -897,26 +938,95 @@
 
 
 ;; 13.4. Or
+
+;; static-a is either false or nil but not true
+(defrecord StaticOrOperatorExpression [static-a b]
+  Expression
+  (-eval [_ context resource scope]
+    (let [b (-eval b context resource scope)]
+      (cond
+        (true? b) true
+        (and (false? static-a) (false? b)) false))))
+
+
+(defn- or-static [static-a b]
+  (if (static? b)
+    (cond
+      (true? b) true
+      (and (false? static-a) (false? b)) false)
+    (->StaticOrOperatorExpression static-a b)))
+
+
+(defrecord OrOperatorExpression [a b]
+  Expression
+  (-eval [_ context resource scope]
+    (let [a (-eval a context resource scope)]
+      (if (true? a)
+        true
+        (let [b (-eval b context resource scope)]
+          (cond
+            (true? b) true
+            (and (false? a) (false? b)) false))))))
+
+
 (defmethod compile* :elm.compiler.type/or
-  [context {[operand-1 operand-2] :operand}]
-  (let [operand-1 (compile context operand-1)
-        operand-2 (compile context operand-2)]
-    (reify Expression
-      (-eval [_ context resource scope]
-        (let [operand-1 (-eval operand-1 context resource scope)]
-          (if (true? operand-1)
+  [context {[a b] :operand}]
+  (let [a (compile context a)]
+    (if (static? a)
+      (if (true? a)
+        true
+        (or-static a (compile context b)))
+      (let [operand-2 (compile context b)]
+        (if (static? operand-2)
+          (if (true? operand-2)
             true
-            (let [operand-2 (-eval operand-2 context resource scope)]
-              (cond
-                (true? operand-2) true
-                (and (false? operand-1) (false? operand-2)) false))))))))
+            (or-static operand-2 a))
+          (->OrOperatorExpression a operand-2))))))
 
 
 ;; 13.5 Xor
-(defbinop xor [a b]
-  (cond
-    (or (and (true? a) (true? b)) (and (false? a) (false? b))) false
-    (or (and (true? a) (false? b)) (and (false? a) (true? b))) true))
+(defrecord StaticXOrOperatorExpression [static-a b]
+  Expression
+  (-eval [_ context resource scope]
+    (let [b (-eval b context resource scope)]
+      (cond
+        (or (and (true? static-a) (true? b)) (and (false? static-a) (false? b))) false
+        (or (and (true? static-a) (false? b)) (and (false? static-a) (true? b))) true))))
+
+
+(defn- xor-static [static-a b]
+  (if (static? b)
+    (cond
+      (or (and (true? static-a) (true? b)) (and (false? static-a) (false? b))) false
+      (or (and (true? static-a) (false? b)) (and (false? static-a) (true? b))) true)
+    (->StaticXOrOperatorExpression static-a b)))
+
+
+(defrecord XOrOperatorExpression [a b]
+  Expression
+  (-eval [_ context resource scope]
+    (let [a (-eval a context resource scope)]
+      (if (nil? a)
+        nil
+        (let [b (-eval b context resource scope)]
+          (cond
+            (or (and (true? a) (true? b)) (and (false? a) (false? b))) false
+            (or (and (true? a) (false? b)) (and (false? a) (true? b))) true))))))
+
+
+(defmethod compile* :elm.compiler.type/xor
+  [context {[a b] :operand}]
+  (let [a (compile context a)]
+    (if (static? a)
+      (if (nil? a)
+        nil
+        (xor-static a (compile context b)))
+      (let [b (compile context b)]
+        (if (static? b)
+          (if (nil? b)
+            nil
+            (xor-static b a))
+          (->XOrOperatorExpression a b))))))
 
 
 
@@ -930,7 +1040,11 @@
 ;; 14.2. Coalesce
 ;;
 ;; The Coalesce operator returns the first non-null result in a list of
-;; arguments. If all arguments evaluate to null, the result is null.
+;; arguments. If all arguments evaluate to null, the result is null. The static
+;; type of the first argument determines the type of the result, and all
+;; subsequent arguments must be of that same type.
+;;
+;; TODO: The list type argument is missing in the doc.
 (defmethod compile* :elm.compiler.type/coalesce
   [context {operands :operand}]
   (condp = (count operands)
@@ -1024,10 +1138,11 @@
 
 (defmethod compile* :elm.compiler.type/if
   [context {:keys [condition then else]}]
-  (let [condition (compile context condition)
-        then (compile context then)
-        else (compile context else)]
-    (->IfExpression condition then else)))
+  (let [condition (compile context condition)]
+    (cond
+      (true? condition) (compile context then)
+      (or (false? condition) (nil? condition)) (compile context else)
+      :else (->IfExpression condition (compile context then) (compile context else)))))
 
 
 
@@ -1141,26 +1256,20 @@
 
 
 ;; 16.16. Round
+(defrecord RoundOperatorExpression [operand precision]
+  Expression
+  (-eval [_ context resource scope]
+    (p/round (-eval operand context resource scope)
+             (-eval precision context resource scope))))
+
+
 (defmethod compile* :elm.compiler.type/round
   [context {:keys [operand precision]}]
   (let [operand (compile context operand)
-        precision (some->> precision (compile context))]
-    (cond
-      (or (nil? precision) (and (number? precision) (zero? precision)))
-      (reify Expression
-        (-eval [_ context resource scope]
-          (p/round (-eval operand context resource scope) 0)))
-
-      (number? precision)
-      (reify Expression
-        (-eval [_ context resource scope]
-          (p/round (-eval operand context resource scope) precision)))
-
-      :else
-      (reify Expression
-        (-eval [_ context resource scope]
-          (p/round (-eval operand context resource scope)
-                   (-eval precision context resource scope)))))))
+        precision (or (some->> precision (compile context)) 0)]
+    (if (and (static? operand) (static? precision))
+      (p/round operand precision)
+      (->RoundOperatorExpression operand precision))))
 
 
 ;; 16.17. Subtract
@@ -1335,21 +1444,23 @@
 
 ;; 18. Date and Time Operators
 
-(defn- to-year [year]
+(defn- check-year-range [year]
   (when-not (< 0 year 10000)
-    (throw (Exception. (str "Year `" year "` out of range."))))
+    (throw-anom ::anom/incorrect (format "Year `%d` out of range." year))))
+
+
+(defn- to-year [year]
+  (check-year-range year)
   (Year/of year))
 
 
-(defn- to-month [year month]
-  (when-not (< 0 year 10000)
-    (throw (Exception. (str "Year `" year "` out of range."))))
+(defn- to-year-month [year month]
+  (check-year-range year)
   (YearMonth/of ^long year ^long month))
 
 
-(defn- to-day [year month day]
-  (when-not (< 0 year 10000)
-    (throw (Exception. (str "Year `" year "` out of range."))))
+(defn- to-local-date [year month day]
+  (check-year-range year)
   (LocalDate/of ^long year ^long month ^long day))
 
 
@@ -1375,6 +1486,32 @@
       (.toLocalDateTime)))
 
 
+(defrecord YearExpression [year]
+  Expression
+  (-eval [_ context resource scope]
+    (some-> (-eval year context resource scope) to-year)))
+
+
+(defrecord YearMonthExpression [year month]
+  Expression
+  (-eval [_ context resource scope]
+    (when-let [year (-eval year context resource scope)]
+      (if-let [month (-eval month context resource scope)]
+        (to-year-month year month)
+        (to-year year)))))
+
+
+(defrecord LocalDateExpression [year month day]
+  Expression
+  (-eval [_ context resource scope]
+    (when-let [year (-eval year context resource scope)]
+      (if-let [month (-eval month context resource scope)]
+        (if-let [day (-eval day context resource scope)]
+          (to-local-date year month day)
+          (to-year-month year month))
+        (to-year year)))))
+
+
 ;; 18.6. Date
 (defmethod compile* :elm.compiler.type/date
   [context {:keys [year month day]}]
@@ -1383,31 +1520,22 @@
         day (some->> day (compile context))]
     (cond
       (and (int? day) (int? month) (int? year))
-      (to-day year month day)
+      (to-local-date year month day)
 
       (some? day)
-      (reify Expression
-        (-eval [_ context resource scope]
-          (to-day (-eval year context resource scope)
-                  (-eval month context resource scope)
-                  (-eval day context resource scope))))
+      (->LocalDateExpression year month day)
 
       (and (int? month) (int? year))
-      (to-month year month)
+      (to-year-month year month)
 
       (some? month)
-      (reify Expression
-        (-eval [_ context resource scope]
-          (to-month (-eval year context resource scope)
-                    (-eval month context resource scope))))
+      (->YearMonthExpression year month)
 
       (int? year)
-      (some-> year to-year)
+      (to-year year)
 
       :else
-      (reify Expression
-        (-eval [_ context resource scope]
-          (some-> (-eval year context resource scope) to-year))))))
+      (some-> year ->YearExpression))))
 
 
 ;; 18.7. DateFrom
@@ -1495,31 +1623,22 @@
               (or (-eval millisecond context resource scope) 0))))
 
         (and (int? day) (int? month) (int? year))
-        (to-day year month day)
+        (to-local-date year month day)
 
         (some? day)
-        (reify Expression
-          (-eval [_ context resource scope]
-            (to-day (-eval year context resource scope)
-                    (-eval month context resource scope)
-                    (-eval day context resource scope))))
+        (->LocalDateExpression year month day)
 
         (and (int? month) (int? year))
-        (to-month year month)
+        (to-year-month year month)
 
         (some? month)
-        (reify Expression
-          (-eval [_ context resource scope]
-            (to-month (-eval year context resource scope)
-                      (-eval month context resource scope))))
+        (->YearMonthExpression year month)
 
         (int? year)
-        (some-> year to-year)
+        (to-year year)
 
         :else
-        (reify Expression
-          (-eval [_ context resource scope]
-            (some-> (-eval year context resource scope) to-year)))))))
+        (some-> year ->YearExpression)))))
 
 
 ;; 18.9. DateTimeComponentFrom
@@ -1652,6 +1771,28 @@
 (defn- determine-type [{:keys [resultTypeName asType]}]
   (or resultTypeName asType))
 
+
+(defrecord IntervalExpression
+  [type low high low-closed-expression high-closed-expression low-closed high-closed]
+  Expression
+  (-eval [_ context resource scope]
+    (let [low (-eval low context resource scope)
+          high (-eval high context resource scope)
+          low-closed (or (-eval low-closed-expression context resource scope) low-closed)
+          high-closed (or (-eval high-closed-expression context resource scope) high-closed)]
+      (interval
+        (if low-closed
+          (if (nil? low)
+            (min-value type)
+            low)
+          (p/successor low))
+        (if high-closed
+          (if (nil? high)
+            (max-value type)
+            high)
+          (p/predecessor high))))))
+
+
 (defmethod compile* :elm.compiler.type/interval
   [context {:keys [low high]
             low-closed-expression :lowClosedExpression
@@ -1665,23 +1806,25 @@
         low-closed-expression (some->> low-closed-expression (compile context))
         high-closed-expression (some->> high-closed-expression (compile context))]
     (assert (string? type) (prn-str low))
-    (reify Expression
-      (-eval [_ context resource scope]
-        (let [low (-eval low context resource scope)
-              high (-eval high context resource scope)
-              low-closed (or (-eval low-closed-expression context resource scope) low-closed)
-              high-closed (or (-eval high-closed-expression context resource scope) high-closed)]
-          (interval
-            (if low-closed
-              (if (nil? low)
-                (min-value type)
-                low)
-              (p/successor low))
-            (if high-closed
-              (if (nil? high)
-                (max-value type)
-                high)
-              (p/predecessor high))))))))
+    (if (and (static? low)
+             (static? high)
+             (static? low-closed-expression)
+             (static? high-closed-expression))
+      (let [low-closed (or low-closed-expression low-closed)
+            high-closed (or high-closed-expression high-closed)]
+        (interval
+          (if low-closed
+            (if (nil? low)
+              (min-value type)
+              low)
+            (p/successor low))
+          (if high-closed
+            (if (nil? high)
+              (max-value type)
+              high)
+            (p/predecessor high))))
+      (->IntervalExpression type low high low-closed-expression
+                            high-closed-expression low-closed high-closed))))
 
 
 ;; 19.2. After
@@ -2234,13 +2377,27 @@
 
 ;; 22.3. CanConvertQuantity
 
+
 ;; 22.4. Children
+(defrecord ChildrenOperatorExpression [source]
+  Expression
+  (-eval [_ context resource scope]
+    (p/children (-eval source context resource scope))))
+
+
+(defmethod compile* :elm.compiler.type/children
+  [context {:keys [source]}]
+  (when-let [source (compile context source)]
+    (->ChildrenOperatorExpression source)))
+
 
 ;; 22.5. Convert
+
 
 ;; 22.6. ConvertQuantity
 (defbinop convert-quantity [x unit]
   (p/convert-quantity x unit))
+
 
 ;; 22.7. ConvertsToBoolean
 
@@ -2261,13 +2418,16 @@
 ;; 22.15. ConvertsToTime
 
 ;; 22.16. Descendents
+(defrecord DescendentsOperatorExpression [source]
+  Expression
+  (-eval [_ context resource scope]
+    (p/descendents (-eval source context resource scope))))
+
+
 (defmethod compile* :elm.compiler.type/descendents
   [context {:keys [source]}]
-  (let [_ (compile context source)]
-    (reify Expression
-      (-eval [_ context resource scopes]
-        ;;TODO: implement
-        ))))
+  (when-let [source (compile context source)]
+    (->DescendentsOperatorExpression source)))
 
 
 ;; 22.17. Is
@@ -2279,12 +2439,16 @@
 ;; 22.20. ToConcept
 
 ;; 22.21. ToDate
+(defrecord ToDateOperatorExpression [operand]
+  Expression
+  (-eval [_ {:keys [now] :as context} resource scope]
+    (p/to-date (-eval operand context resource scope) now)))
+
+
 (defmethod compile* :elm.compiler.type/to-date
   [context {:keys [operand]}]
-  (let [operand (compile context operand)]
-    (reify Expression
-      (-eval [_ {:keys [now] :as context} resource scope]
-        (p/to-date (-eval operand context resource scope) now)))))
+  (when-let [operand (compile context operand)]
+    (->ToDateOperatorExpression operand)))
 
 
 ;; 22.22. ToDateTime
@@ -2296,7 +2460,8 @@
 
 (defmethod compile* :elm.compiler.type/to-date-time
   [context {:keys [operand]}]
-  (->ToDateTimeOperatorExpression (compile context operand)))
+  (when-let [operand (compile context operand)]
+    (->ToDateTimeOperatorExpression operand)))
 
 
 ;; 22.23. ToDecimal
@@ -2344,7 +2509,9 @@
 
 (defmethod compile* :elm.compiler.type/calculate-age-at
   [context {[birth-date date] :operand precision :precision}]
-  (->CalculateAgeAtExpression
-    (compile context birth-date)
-    (compile context date)
-    (some-> precision to-chrono-unit)))
+  (when-let [birth-date (compile context birth-date)]
+    (when-let [date (compile context date)]
+      (->CalculateAgeAtExpression
+        birth-date
+        date
+        (some-> precision to-chrono-unit)))))

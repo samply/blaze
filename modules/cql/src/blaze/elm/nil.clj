@@ -242,10 +242,25 @@
   (union [_ _]))
 
 
+
+;; 22. Type Operators
+
+;; 22.4. Children
+(extend-protocol p/Children
+  nil
+  (children [_]))
+
+
 ;; 22.6. ConvertQuantity
 (extend-protocol p/ConvertQuantity
   nil
   (convert-quantity [_ _]))
+
+
+;; 22.16. Descendents
+(extend-protocol p/Descendents
+  nil
+  (descendents [_]))
 
 
 ;; 22.23. ToDecimal

@@ -229,9 +229,22 @@
   (union [a b]))
 
 
+
+;; 22. Type Operators
+
+;; 22.4. Children
+(defprotocol Children
+  (children [source]))
+
+
 ;; 22.6. ConvertQuantity
 (defprotocol ConvertQuantity
   (convert-quantity [x unit]))
+
+
+;; 22.16. Descendents
+(defprotocol Descendents
+  (descendents [source]))
 
 
 ;; 22.21. ToDate

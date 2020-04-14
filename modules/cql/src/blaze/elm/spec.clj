@@ -235,6 +235,31 @@
   (s/keys :opt-un [:elm.tuple/element]))
 
 
+(s/def :elm.instance/classType
+  string?)
+
+
+(s/def :elm.instance/name
+  string?)
+
+
+(s/def :elm.instance/value
+  :elm/expression)
+
+
+(s/def :elm/instance-element
+  (s/keys :req-un [:elm.instance/name :elm.instance/value]))
+
+
+(s/def :elm.instance/element
+  (s/coll-of :elm/instance-element))
+
+
+;; 2.2. Instance
+(defmethod expression :elm.spec.type/instance [_]
+  (s/keys :req-un [:elm/classType] :opt-un [:elm.instance/element]))
+
+
 ;; 2.3. Property
 (defmethod expression :elm.spec.type/property [_]
   (s/keys :req-un [:elm/path] :opt-un [:elm/source :elm/scope]))
