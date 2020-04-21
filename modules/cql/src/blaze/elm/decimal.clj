@@ -8,7 +8,9 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.protocols :as p])
+    [blaze.anomaly :refer [throw-anom]]
+    [blaze.elm.protocols :as p]
+    [cognitect.anomalies :as anom])
   (:import
     [java.math RoundingMode])
   (:refer-clojure :exclude [min max]))
@@ -222,8 +224,9 @@
       (if (within-bounds? x)
         x
         ;; TODO: throwing an exception this is inconsistent with subtract
-        (throw (ex-info "Predecessor: argument is already the minimum value."
-                        {:x x}))))))
+        (throw-anom
+          ::anom/incorrect
+          (format "Predecessor: argument `%s` is already the minimum value." x))))))
 
 
 ;; 16.16. Round

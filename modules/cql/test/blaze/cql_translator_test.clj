@@ -48,5 +48,11 @@
 
 (comment
   (translate
-    "library Retrieve\nusing FHIR version '4.0.0'\ninclude FHIRHelpers version '4.0.0'\n\ncodesystem loinc: 'http://loinc.org'\n\ncontext Patient\n\ndefine InInitialPopulation:\n    true\n\ndefine Bmi:\n  First(from [Observation: Code '39156-5' from loinc] O\n    return (O.value as Quantity).value)")
+    "library Retrieve
+    using FHIR version '4.0.0'
+    include FHIRHelpers version '4.0.0'
+
+    context Patient
+
+    define Foo: Coalesce({'a', null, null})")
   )

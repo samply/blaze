@@ -373,36 +373,41 @@
   (predecessor [x]
     (if (.isAfter x min-year)
       (.minusYears x 1)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x}))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x))))
 
   YearMonth
   (predecessor [x]
     (if (.isAfter x min-year-month)
       (.minusMonths x 1)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x}))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x))))
 
   LocalDate
   (predecessor [x]
     (if (.isAfter x min-date)
       (.minusDays x 1)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x}))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x))))
 
   LocalDateTime
   (predecessor [x]
     (if (.isAfter x min-date-time)
       (.minusNanos x 1000000)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x}))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x))))
 
   PrecisionLocalTime
   (predecessor [{:keys [local-time p-num] :as x}]
     (if (p/greater x min-time)
       (->PrecisionLocalTime (.minus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x})))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x)))))
 
 
 ;; 16.17. Subtract

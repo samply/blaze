@@ -1,17 +1,17 @@
 (ns blaze.cql-test
   "https://cql.hl7.org/2019May/tests.html"
   (:require
-    [clojure.data.xml :as xml]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [deftest is testing use-fixtures]]
-    [cognitect.anomalies :as anom]
     [blaze.cql-translator :refer [translate]]
     [blaze.elm.compiler :refer [compile]]
-    [blaze.elm.expression :as expr]
-    [blaze.elm.type-infer :as type-infer]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
-    [blaze.elm.normalizer :as normalizer])
+    [blaze.elm.expression :as expr]
+    [blaze.elm.normalizer :as normalizer]
+    [blaze.elm.type-infer :as type-infer]
+    [clojure.data.xml :as xml]
+    [clojure.spec.test.alpha :as st]
+    [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom])
   (:import
     [java.time OffsetDateTime])
   (:refer-clojure :exclude [compile eval]))
@@ -27,7 +27,7 @@
   (st/unstrument))
 
 
-(use-fixtures :each fixture)
+(test/use-fixtures :each fixture)
 
 
 (defn tests [xml exclusions]

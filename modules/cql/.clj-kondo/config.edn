@@ -17,7 +17,12 @@
  :linters
  {;; because of macros in modules/cql/src/blaze/elm/compiler.clj
   :redefined-var
-  {:level :off}}
+  {:level :off}
+
+  :unresolved-symbol
+  {:exclude
+   [(clojure.test/is [thrown-anom?])
+    (clojure.test/are [thrown-anom?])]}}
 
  :output
  {:exclude-files ["^test/data_readers.clj"]}

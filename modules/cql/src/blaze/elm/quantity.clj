@@ -6,7 +6,8 @@
   (:require
     [blaze.elm.protocols :as p]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom])
+    [cognitect.anomalies :as anom]
+    [cuerdas.core :as str])
   (:import
     [javax.measure Quantity UnconvertibleException Unit]
     [javax.measure.format UnitFormat]
@@ -208,12 +209,15 @@
 ;; 22.26. ToQuantity
 (extend-protocol p/ToQuantity
   Number
-  (to-quantity [x] x)
+  (to-quantity [x]
+    (quantity x "1"))
 
   String
   (to-quantity [s]
-    ;; TODO: implement
-    (throw (Exception. (str "Not implemented yet `ToQuantity('" s "')`.")))))
+    ;; (+|-)?#0(.0#)?('<unit>')?
+    (let [[_ value unit] (re-matches #"(\d+(?:\.\d+)?)\s*('[^']+')?" s)]
+      (when value
+        (quantity (p/to-decimal value) (or (str/trim unit "'") "1"))))))
 
 
 ;; 22.28. ToString

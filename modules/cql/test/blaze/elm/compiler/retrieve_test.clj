@@ -101,6 +101,18 @@
 (deftest expr-test
   (testing "in non-Unspecified eval context"
     (testing "without codes"
+      (testing "Patient in Patient context"
+        (let [node (mem-node-with
+                     [[[:put {:resourceType "Patient" :id "0"}]]])]
+          (given
+            (-eval
+              (expr node "Patient" "Patient" "foo" [])
+              {:db (d/db node)}
+              {:resourceType "Patient" :id "0"}
+              nil)
+            [0 :resourceType] := "Patient"
+            [0 :id] := "0")))
+
       (testing "Observation in Patient context"
         (let [node (mem-node-with
                      [[[:put {:resourceType "Patient" :id "0"}]
