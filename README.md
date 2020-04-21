@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
-Latest release: [v0.8.0-alpha.10][5]
+Latest release: [v0.8.0-alpha.11][5]
 
 ## Quick Start
 
@@ -23,14 +23,14 @@ In order to run Blaze with an in-memory, volatile database, just execute the fol
 ### Docker
 
 ```bash
-docker run -p 8080:8080 samply/blaze:0.8.0-alpha.10
+docker run -p 8080:8080 samply/blaze:0.8.0-alpha.11
 ```
 
 ### Java
 
 ```bash
-wget https://github.com/samply/blaze/releases/download/v0.8.0-alpha.10/blaze-0.8.0-alpha.10-standalone.jar
-java -jar blaze-0.8.0-alpha.10-standalone.jar
+wget https://github.com/samply/blaze/releases/download/v0.8.0-alpha.11/blaze-0.8.0-alpha.11-standalone.jar
+java -jar blaze-0.8.0-alpha.11-standalone.jar
 ```
 
 Logging output should appear which prints the most important settings and system parameters like Java version and available memory.
@@ -63,7 +63,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.8.0-alpha.10>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.8.0-alpha.11>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
