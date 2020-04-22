@@ -43,6 +43,7 @@
  elm/date-time blaze.elm.literal/date-time
  elm/time blaze.elm.literal/time
  elm/interval blaze.elm.literal/interval
+ elm/intersect blaze.elm.literal/intersect
  elm/current blaze.elm.literal/current
  elm/singleton-from blaze.elm.literal/singleton-from
  elm/as blaze.elm.literal/as

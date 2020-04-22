@@ -157,9 +157,15 @@
     [0 :value :text] := "26.8"
     [0 :population 0 :count] := 1
     [1 :value :text] := "null"
-    [1 :population 0 :count] := 2))
+    [1 :population 0 :count] := 2)
+
+  (given (first-stratifier-stratums (evaluate "q29-stratifier-sample-material-type"))
+    [0 :value :text] := "liquid"
+    [0 :population 0 :count] := 1
+    [1 :value :text] := "tissue"
+    [1 :population 0 :count] := 1))
 
 (comment
-  (evaluate "q28-relationship-procedure-condition")
+  (evaluate "q29-stratifier-sample-material-type")
   (clojure.repl/pst)
   )

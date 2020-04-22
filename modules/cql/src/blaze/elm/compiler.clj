@@ -1108,23 +1108,30 @@
             (recur next-items)))))))
 
 
+(defrecord MultiConditionalCaseExpression [items else]
+  Expression
+  (-eval [_ context resource scope]
+    (loop [[{:keys [when then]} & next-items] items]
+      (if (-eval when context resource scope)
+        (-eval then context resource scope)
+        (if (empty? next-items)
+          (-eval else context resource scope)
+          (recur next-items))))))
+
+
 (defmethod compile* :elm.compiler.type/case
   [context {:keys [comparand else] items :caseItem}]
   (let [comparand (some->> comparand (compile context))
-        items (mapv #(-> % (update :when (partial compile context))
-                         (update :then (partial compile context)))
-                    items)
+        items
+        (mapv
+          (fn [{:keys [when then]}]
+            {:when (compile context when)
+             :then (compile context then)})
+          items)
         else (compile context else)]
     (if comparand
       (->ComparandCaseExpression comparand items else)
-      (reify Expression
-        (-eval [_ context resource scope]
-          (loop [[{:keys [when then]} & next-items] items]
-            (if (-eval when context resource scope)
-              (-eval then context resource scope)
-              (if (empty? next-items)
-                (-eval else context resource scope)
-                (recur next-items)))))))))
+      (->MultiConditionalCaseExpression items else))))
 
 
 ;; 15.2. If

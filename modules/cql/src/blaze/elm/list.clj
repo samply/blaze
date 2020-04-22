@@ -51,6 +51,8 @@
 
 
 ;; 19.5. Contains
+;;
+;; TODO: implementation is O(n)
 (extend-protocol p/Contains
   Iterable
   (contains [list x _]
@@ -91,13 +93,15 @@
   PersistentVector
   (intersect [a b]
     (when b
-      (reduce
-        (fn [result x]
-          (if (and (p/contains a x nil) (p/contains b x nil))
-            (conj result x)
-            result))
-        []
-        (p/union a b)))))
+      (if (<= (count a) (count b))
+        (reduce
+          (fn [result x]
+            (if (p/contains b x nil)
+              (conj result x)
+              result))
+          []
+          a)
+        (p/intersect b a)))))
 
 
 ;; 19.24. ProperContains

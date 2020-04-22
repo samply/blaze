@@ -4251,16 +4251,23 @@
 ;; TODO: only implemented as binary operator because it's binary in CQL.
 (deftest compile-intersect-test
   (testing "List"
-    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil nil))
+    (are [a b res] (= res (compile {} #elm/intersect [a b]))
       #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] []
       #elm/list [#elm/integer "1"] #elm/list [#elm/integer "1"] [1]
       #elm/list [#elm/integer "1"] #elm/list [#elm/integer "2"] []
-      #elm/list [#elm/integer "1"] #elm/list [#elm/integer "1" #elm/integer "2"] [1]
 
-      #elm/list [] {:type "Null"} nil))
+      #elm/list [#elm/integer "1"]
+      #elm/list [#elm/integer "1" #elm/integer "2"]
+      [1]
+
+      #elm/list [#elm/integer "1" #elm/integer "2"]
+      #elm/list [#elm/integer "1"]
+      [1])
+
+    (testing-binary-null elm/intersect #elm/list []))
 
   (testing "Interval"
-    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil nil))
+    (are [a b res] (= res (compile {} #elm/intersect [a b]))
       #elm/interval [#elm/integer "1" #elm/integer "2"]
       #elm/interval [#elm/integer "2" #elm/integer "3"]
       (interval 2 2)
@@ -4279,13 +4286,9 @@
 
       #elm/interval [#elm/integer "1" #elm/integer "2"]
       #elm/interval [#elm/integer "3" #elm/integer "4"]
-      nil
+      nil)
 
-      interval-zero {:type "Null"} nil))
-
-  (testing "Null"
-    (are [a b res] (= res (-eval (compile {} (elm/intersect [a b])) {} nil nil))
-      {:type "Null"} {:type "Null"} nil)))
+    (testing-binary-null elm/intersect interval-zero)))
 
 
 ;; 19.16. Meets
