@@ -3,10 +3,10 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
+    [blaze.db.api :as d]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [cognitect.anomalies :as anom]
-    [blaze.db.api :as d]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
@@ -42,6 +42,7 @@
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
+    (log/debug (format "DELETE [base]/%s/%s" type id))
     (if-let [{:blaze.db/keys [op tx]} (meta (d/resource (d/db node) type id))]
       (if (identical? :delete op)
         (build-response* tx)

@@ -4,12 +4,12 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [blaze.db.api :as d]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.middleware.params :refer [wrap-params]]
@@ -114,6 +114,12 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [params]
         ::reitit/keys [router]}]
+    (log/debug
+      (if params
+        (format "GET [base]/%s?%s" type
+                (->> (map (fn [[k v]] (format "%s=%s"k v)) params)
+                     (str/join "&")))
+        (format "GET [base]/%s" type)))
     (let [body (search router (d/db node) type params)]
       (if (::anom/category body)
         (handler-util/error-response body)
