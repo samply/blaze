@@ -13,7 +13,8 @@
     [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    [clojure.spec.alpha :as s])
   (:import
     [java.time ZonedDateTime ZoneId]
     [java.time.format DateTimeFormatter]))
@@ -49,6 +50,12 @@
       {::anom/category ::anom/incorrect
        :fhir/issue "required"
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"})
+
+    (not (s/valid? :blaze.resource/id (:id body)))
+    (md/error-deferred
+      {::anom/category ::anom/incorrect
+       :fhir/issue "value"
+       :fhir/operation-outcome "MSG_ID_INVALID"})
 
     (not= id (:id body))
     (md/error-deferred

@@ -11,6 +11,7 @@
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.uuid :refer [random-uuid]]
+    [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -102,6 +103,13 @@
        :fhir.issue/expression
        [(format "Bundle.entry[%d].resource.id" idx)]
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"}
+
+      (and (= "PUT" method) (not (s/valid? :blaze.resource/id (:id resource))))
+      {::anom/category ::anom/incorrect
+       :fhir/issue "value"
+       :fhir.issue/expression
+       [(format "Bundle.entry[%d].resource.id" idx)]
+       :fhir/operation-outcome "MSG_ID_INVALID"}
 
       (and (= "PUT" method) (not= id (:id resource)))
       {::anom/category ::anom/incorrect

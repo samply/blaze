@@ -78,6 +78,27 @@
       (is (= "MSG_RESOURCE_ID_MISSING"
              (-> body :issue first :details :coding first :code)))))
 
+  (testing "Returns Error on invalid id"
+    (let [{:keys [status body]}
+          @((handler-with [])
+            {:path-params {:id "0"}
+             ::reitit/match {:data {:fhir.resource/type "Patient"}}
+             :body {:resourceType "Patient" :id "A_B"}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (is (= "error" (-> body :issue first :severity)))
+
+      (is (= "value" (-> body :issue first :code)))
+
+      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
+             (-> body :issue first :details :coding first :system)))
+
+      (is (= "MSG_ID_INVALID"
+             (-> body :issue first :details :coding first :code)))))
+
 
   (testing "Returns Error on ID mismatch"
     (let [{:keys [status body]}
