@@ -149,6 +149,10 @@
    [:t-by-instant-index (codec/tx-by-instant-key tx-instant) (codec/encode-t t)]])
 
 
+(defn tx-error-entries [t anom]
+  [[:tx-error-index (codec/t-key t) (nippy/fast-freeze anom)]])
+
+
 (defn- resource*** [context k v]
   (mk-resource
     context
@@ -172,12 +176,10 @@
 
 
 (defn- state-t** [k v]
-  {:state (codec/resource-as-of-value->state v)
-   :t (codec/resource-as-of-key->t k)})
+  [(codec/resource-as-of-value->state v) (codec/resource-as-of-key->t k)])
 
 
-(defn- state-t*
-  [resource-as-of-iter target]
+(defn- state-t* [resource-as-of-iter target]
   (when-let [k (kv/seek resource-as-of-iter target)]
     ;; we have to check that we are still on target, because otherwise we would
     ;; find the next resource
@@ -185,7 +187,10 @@
       (state-t** k (kv/value resource-as-of-iter)))))
 
 
-(defn state-t [resource-as-of-iter tid id t]
+(defn state-t
+  "Returns a tuple of `state` and `t` of the resource with `tid` and `id` at or
+  before `t`."
+  [resource-as-of-iter tid id t]
   (state-t* resource-as-of-iter (codec/resource-as-of-key tid id t)))
 
 

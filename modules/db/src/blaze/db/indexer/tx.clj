@@ -28,12 +28,12 @@
 
 
 (defmulti verify-tx-cmd
-  "Verifies one transaction command. Returns index entries of the transaction
-  outcome.
+  "Verifies one transaction command. Returns index entries and statistics of the
+  transaction outcome.
 
-  Should either conj index entries or return a reduced value of an entry into
-  the :tx-error-index."
-  {:arglists '([resource-as-of-index instance-version-index t entries cmd])}
+  Should either update index entries and statistics or return a reduced value of
+  an entry into the :tx-error-index."
+  {:arglists '([resource-as-of-index t res cmd])}
   (fn [_ _ _ [op]] op))
 
 
@@ -45,10 +45,6 @@
     codec/empty-byte-array]
    [:system-as-of-index (codec/system-as-of-key t tid id)
     codec/empty-byte-array]])
-
-
-(defn- tx-error-entry [t anom]
-  [:tx-error-index (codec/t-key t) (nippy/fast-freeze anom)])
 
 
 (defmethod verify-tx-cmd :create
@@ -67,7 +63,7 @@
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-put")]
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)
-          {:keys [state] old-t :t} (index/state-t resource-as-of-iter tid id-bytes t)
+          [state old-t] (index/state-t resource-as-of-iter tid id-bytes t)
           num-changes (or (some-> state codec/state->num-changes) 0)]
       (if (or (nil? matches) (= matches old-t))
         (cond->
@@ -77,10 +73,10 @@
           (nil? old-t)
           (update-in [:stats type :total] (fnil inc 0)))
         (reduced
-          [(tx-error-entry
-             t
-             {::anom/category ::anom/conflict
-              ::anom/message (format "put mismatch for %s/%s" type id)})])))))
+          (index/tx-error-entries
+            t
+            {::anom/category ::anom/conflict
+             ::anom/message (format "put mismatch for %s/%s" type id)}))))))
 
 
 (defmethod verify-tx-cmd :delete
@@ -89,7 +85,7 @@
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-delete")]
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)
-          {:keys [state]} (index/state-t resource-as-of-iter tid id-bytes t)
+          [state] (index/state-t resource-as-of-iter tid id-bytes t)
           num-changes (or (some-> state codec/state->num-changes) 0)]
       (-> res
           (update :entries into (entries tid id-bytes t hash num-changes :delete))

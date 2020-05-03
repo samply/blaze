@@ -8,7 +8,8 @@
     [blaze.db.kv.mem :refer [init-mem-kv-store]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [clojure.walk :refer [postwalk]])
+    [clojure.walk :refer [postwalk]]
+    [cognitect.anomalies :as anom])
   (:import
     [com.github.benmanes.caffeine.cache LoadingCache]
     [java.time Instant]))
@@ -116,6 +117,29 @@
           (codec/system-stats-key 2)
           (codec/system-stats-value 1 2)]])))
 
+  (testing "adding a second version of a patient to a store containing it already incl. matcher"
+    (is-entries=
+      (tx/verify-tx-cmds
+        store-patient-0 2 now
+        [[:put "Patient" "0" (codec/hash patient-0) 1]])
+      (into
+        (index/tx-success-entries 2 now)
+        [[:resource-as-of-index
+          (codec/resource-as-of-key tid-patient (codec/id-bytes "0") 2)
+          (codec/resource-as-of-value (codec/hash patient-0) (codec/state 2 :put))]
+         [:type-as-of-index
+          (codec/type-as-of-key tid-patient 2 (codec/id-bytes "0"))
+          codec/empty-byte-array]
+         [:system-as-of-index
+          (codec/system-as-of-key 2 tid-patient (codec/id-bytes "0"))
+          codec/empty-byte-array]
+         [:type-stats-index
+          (codec/type-stats-key tid-patient 2)
+          (codec/type-stats-value 1 2)]
+         [:system-stats-index
+          (codec/system-stats-key 2)
+          (codec/system-stats-value 1 2)]])))
+
   (testing "deleting the existing patient"
     (is-entries=
       (tx/verify-tx-cmds
@@ -161,7 +185,17 @@
           (codec/type-stats-value 2 2)]
          [:system-stats-index
           (codec/system-stats-key 2)
-          (codec/system-stats-value 2 2)]]))))
+          (codec/system-stats-value 2 2)]])))
+
+  (testing "update conflict"
+    (is-entries=
+      (tx/verify-tx-cmds
+        store-patient-0 2 now
+        [[:put "Patient" "0" (codec/hash patient-1) 0]])
+      (index/tx-error-entries
+        2
+        {::anom/category ::anom/conflict
+         ::anom/message (format "put mismatch for %s/%s" "Patient" "0")}))))
 
 
 (comment

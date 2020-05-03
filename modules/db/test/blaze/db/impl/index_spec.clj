@@ -34,17 +34,25 @@
   :args (s/cat :kv-store :blaze.db/kv-store :hash :blaze.db/hash))
 
 
+(s/fdef index/state-t
+  :args (s/cat :resource-as-of-iter :blaze.db/kv-iterator
+               :tid :blaze.db/tid
+               :id :blaze.db/id-bytes
+               :t :blaze.db/t)
+  :ret (s/nilable (s/tuple :blaze.db/state :blaze.db/t)))
+
+
 (s/fdef index/resource
   :args (s/cat :context :blaze.db.index/context
                :tid :blaze.db/tid
-               :id bytes?
+               :id :blaze.db/id-bytes
                :t :blaze.db/t)
   :ret (s/nilable :blaze/resource))
 
 
 (s/fdef index/num-of-instance-changes
   :args (s/cat :context :blaze.db.index/context :tid :blaze.db/tid
-               :id bytes?
+               :id :blaze.db/id-bytes
                :start-t :blaze.db/t
                :since-t :blaze.db/t)
   :ret nat-int?)
@@ -90,7 +98,7 @@
 (s/fdef index/instance-history
   :args (s/cat :context :blaze.db.index/context
                :tid :blaze.db/tid
-               :id bytes?
+               :id :blaze.db/id-bytes
                :start-t :blaze.db/t
                :since-t :blaze.db/t)
   :ret (s/coll-of :blaze/resource))
