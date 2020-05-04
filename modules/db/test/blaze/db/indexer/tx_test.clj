@@ -51,6 +51,7 @@
 (def tid-patient (codec/tid "Patient"))
 
 (def patient-0 {:resourceType "Patient" :id "0"})
+(def patient-0-v2 {:resourceType "Patient" :id "0" :gender "male"})
 (def patient-1 {:resourceType "Patient" :id "1"})
 (def patient-2 {:resourceType "Patient" :id "2"})
 
@@ -98,12 +99,12 @@
     (is-entries=
       (tx/verify-tx-cmds
         store-patient-0 2 now
-        [[:put "Patient" "0" (codec/hash patient-0)]])
+        [[:put "Patient" "0" (codec/hash patient-0-v2)]])
       (into
         (index/tx-success-entries 2 now)
         [[:resource-as-of-index
           (codec/resource-as-of-key tid-patient (codec/id-bytes "0") 2)
-          (codec/resource-as-of-value (codec/hash patient-0) (codec/state 2 :put))]
+          (codec/resource-as-of-value (codec/hash patient-0-v2) (codec/state 2 :put))]
          [:type-as-of-index
           (codec/type-as-of-key tid-patient 2 (codec/id-bytes "0"))
           codec/empty-byte-array]
@@ -121,12 +122,12 @@
     (is-entries=
       (tx/verify-tx-cmds
         store-patient-0 2 now
-        [[:put "Patient" "0" (codec/hash patient-0) 1]])
+        [[:put "Patient" "0" (codec/hash patient-0-v2) 1]])
       (into
         (index/tx-success-entries 2 now)
         [[:resource-as-of-index
           (codec/resource-as-of-key tid-patient (codec/id-bytes "0") 2)
-          (codec/resource-as-of-value (codec/hash patient-0) (codec/state 2 :put))]
+          (codec/resource-as-of-value (codec/hash patient-0-v2) (codec/state 2 :put))]
          [:type-as-of-index
           (codec/type-as-of-key tid-patient 2 (codec/id-bytes "0"))
           codec/empty-byte-array]
@@ -139,6 +140,13 @@
          [:system-stats-index
           (codec/system-stats-key 2)
           (codec/system-stats-value 1 2)]])))
+
+  (testing "adding a second, identical version of a patient results in a no-op with only the transaction itself recorded"
+    (is-entries=
+      (tx/verify-tx-cmds
+        store-patient-0 2 now
+        [[:put "Patient" "0" (codec/hash patient-0)]])
+      (index/tx-success-entries 2 now)))
 
   (testing "deleting the existing patient"
     (is-entries=
@@ -206,6 +214,9 @@
               [:put "Patient" "1" (codec/hash patient-1)]
               [:put "Patient" "2" (codec/hash patient-2)]]]
     (bench (tx/verify-tx-cmds empty-store 1 now cmds)))
+
+  (vec (codec/hash patient-0))
+  (vec (codec/hash patient-0-v2))
 
   (clojure.repl/pst)
   )

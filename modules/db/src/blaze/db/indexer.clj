@@ -24,15 +24,22 @@
   (last-t [indexer]
     "Returns the last known `t`.")
 
-  (-submit-tx [indexer t tx-instant tx-cmds])
+  (-index-tx [indexer t tx-instant tx-cmds])
 
-  (tx-result [indexer t]
-    "Waits for the transaction with `t` to be indexed and returns a success
-     deferred with the requested `t` or an error deferred with an anomaly in
-     case the transaction errored."))
+  (-tx-result [indexer t]))
 
 
-(defn submit-tx
-  "Has to be run single threaded. Blocks."
+(defn index-tx
+  "Indices a transaction with `t` according to `tx-cmds`.
+
+  Has to be run single threaded. Blocks."
   [indexer t tx-instant tx-cmds]
-  (-submit-tx indexer t tx-instant tx-cmds))
+  (-index-tx indexer t tx-instant tx-cmds))
+
+
+(defn tx-result
+  "Waits for the transaction with `t` to be indexed and returns a success
+  deferred with the requested `t` or an error deferred with an anomaly in case
+  the transaction errored."
+  [indexer t]
+  (-tx-result indexer t))

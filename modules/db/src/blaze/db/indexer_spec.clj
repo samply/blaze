@@ -66,7 +66,7 @@
   :ret :blaze.db/t)
 
 
-(s/fdef indexer/submit-tx
+(s/fdef indexer/index-tx
   :args (s/cat :indexer ::indexer/tx
                :t :blaze.db/t
                :tx-instant :blaze.db.tx/instant

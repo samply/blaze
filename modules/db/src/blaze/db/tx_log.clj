@@ -14,8 +14,9 @@
 
 
 (defn submit
-  "Submits the transaction. Returns a deferred with the t of the potentially
-  valid transaction."
+  "Submits the transaction. Returns a deferred with the `t` of the potentially
+  valid transaction or the `t` of the last realized transaction if the
+  transaction resulted in a no-op."
   [tx-log tx-ops]
   (-submit tx-log tx-ops))
 

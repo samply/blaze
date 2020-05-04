@@ -1,5 +1,6 @@
 (ns blaze.db.indexer.tx
   (:require
+    [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
     [blaze.db.indexer :as indexer]
@@ -63,15 +64,18 @@
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-put")]
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)
-          [state old-t] (index/state-t resource-as-of-iter tid id-bytes t)
+          [old-hash state old-t] (index/hash-state-t resource-as-of-iter tid id-bytes t)
           num-changes (or (some-> state codec/state->num-changes) 0)]
       (if (or (nil? matches) (= matches old-t))
-        (cond->
-          (-> res
-              (update :entries into (entries tid id-bytes t new-hash num-changes :put))
-              (update-in [:stats type :num-changes] (fnil inc 0)))
-          (nil? old-t)
-          (update-in [:stats type :total] (fnil inc 0)))
+        (if (bytes/= old-hash new-hash)
+          ;; no change of the resource content results in a no-op
+          res
+          (cond->
+            (-> res
+                (update :entries into (entries tid id-bytes t new-hash num-changes :put))
+                (update-in [:stats type :num-changes] (fnil inc 0)))
+            (nil? old-t)
+            (update-in [:stats type :total] (fnil inc 0))))
         (reduced
           (index/tx-error-entries
             t
@@ -85,7 +89,7 @@
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-delete")]
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)
-          [state] (index/state-t resource-as-of-iter tid id-bytes t)
+          [_ state] (index/hash-state-t resource-as-of-iter tid id-bytes t)
           num-changes (or (some-> state codec/state->num-changes) 0)]
       (-> res
           (update :entries into (entries tid id-bytes t hash num-changes :delete))
@@ -152,8 +156,9 @@
 
 
 (defn- post-process-res [snapshot t {:keys [entries stats]}]
-  (-> (conj-type-stats entries snapshot t stats)
-      (conj (system-stats snapshot t stats))))
+  (cond-> (conj-type-stats entries snapshot t stats)
+    stats
+    (conj (system-stats snapshot t stats))))
 
 
 (defn verify-tx-cmds
@@ -185,11 +190,12 @@
                 i (kv/new-iterator snapshot :tx-success-index)]
       (or (some-> (kv/seek-to-first i) (codec/decode-t-key)) 0)))
 
-  (-submit-tx [_ t tx-instant tx-cmds]
+  (-index-tx [_ t tx-instant tx-cmds]
     (with-open [_ (prom/timer tx-indexer-duration-seconds "submit-tx")]
-      (kv/put kv-store (verify-tx-cmds kv-store t tx-instant tx-cmds))))
+      (when-let [entries (verify-tx-cmds kv-store t tx-instant tx-cmds)]
+        (kv/put kv-store entries))))
 
-  (tx-result [_ t]
+  (-tx-result [_ t]
     (md/loop [res (find-tx-result kv-store t)]
       (if res
         res

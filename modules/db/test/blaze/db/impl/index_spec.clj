@@ -34,12 +34,12 @@
   :args (s/cat :kv-store :blaze.db/kv-store :hash :blaze.db/hash))
 
 
-(s/fdef index/state-t
+(s/fdef index/hash-state-t
   :args (s/cat :resource-as-of-iter :blaze.db/kv-iterator
                :tid :blaze.db/tid
                :id :blaze.db/id-bytes
                :t :blaze.db/t)
-  :ret (s/nilable (s/tuple :blaze.db/state :blaze.db/t)))
+  :ret (s/nilable (s/tuple :blaze.resource/hash :blaze.db/state :blaze.db/t)))
 
 
 (s/fdef index/resource

@@ -175,23 +175,25 @@
   (resource** context resource-as-of-iter (codec/resource-as-of-key tid id t)))
 
 
-(defn- state-t** [k v]
-  [(codec/resource-as-of-value->state v) (codec/resource-as-of-key->t k)])
+(defn- hash-state-t** [k v]
+  [(codec/resource-as-of-value->hash v)
+   (codec/resource-as-of-value->state v)
+   (codec/resource-as-of-key->t k)])
 
 
-(defn- state-t* [resource-as-of-iter target]
+(defn- hash-state-t* [resource-as-of-iter target]
   (when-let [k (kv/seek resource-as-of-iter target)]
     ;; we have to check that we are still on target, because otherwise we would
     ;; find the next resource
     (when (codec/bytes-eq-without-t target k)
-      (state-t** k (kv/value resource-as-of-iter)))))
+      (hash-state-t** k (kv/value resource-as-of-iter)))))
 
 
-(defn state-t
-  "Returns a tuple of `state` and `t` of the resource with `tid` and `id` at or
-  before `t`."
+(defn hash-state-t
+  "Returns a triple of `hash`, `state` and `t` of the resource with `tid` and
+  `id` at or before `t`."
   [resource-as-of-iter tid id t]
-  (state-t* resource-as-of-iter (codec/resource-as-of-key tid id t)))
+  (hash-state-t* resource-as-of-iter (codec/resource-as-of-key tid id t)))
 
 
 (defn- resource-as-of-iter ^Closeable [snapshot]
