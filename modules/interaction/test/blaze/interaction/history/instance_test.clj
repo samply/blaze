@@ -141,8 +141,8 @@
   (testing "contains a next link on node with two versions and _count=1"
     (let [{:keys [body]}
           @((handler-with
-              [[[:put {:resourceType "Patient" :id "0"}]]
-               [[:put {:resourceType "Patient" :id "0"}]]])
+              [[[:put {:resourceType "Patient" :id "0" :gender "male"}]]
+               [[:put {:resourceType "Patient" :id "0" :gender "female"}]]])
             {::reitit/router router
              ::reitit/match match
              :path-params {:id "0"}

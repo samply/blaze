@@ -169,10 +169,11 @@
   (testing "On successful update of an existing resource"
     (testing "with no Prefer header"
       (let [{:keys [status headers body]}
-            @((handler-with [[[:create {:resourceType "Patient" :id "0"}]]])
+            @((handler-with
+                [[[:create {:resourceType "Patient" :id "0" :gender "male"}]]])
               {:path-params {:id "0"}
                ::reitit/match {:data {:fhir.resource/type "Patient"}}
-               :body {:resourceType "Patient" :id "0"}})]
+               :body {:resourceType "Patient" :id "0" :gender "female"}})]
 
         (testing "Returns 200"
           (is (= 200 status)))

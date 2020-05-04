@@ -132,7 +132,7 @@
                 (fn submit-tx [_]
                   (md/future-with executor
                     (let [t (vswap! t-counter inc)]
-                      (indexer/submit-tx tx-indexer t (Instant/now clock) cmds)
+                      (indexer/index-tx tx-indexer t (Instant/now clock) cmds)
                       (prom/observe-duration! timer)
                       t))))))))))
 

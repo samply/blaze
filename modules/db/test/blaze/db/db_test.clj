@@ -70,7 +70,7 @@
 
 (deftest tx
   (let [{:keys [db tx-i]} (init-db)]
-    (indexer/submit-tx tx-i t tx-instant [])
+    (indexer/index-tx tx-i t tx-instant [])
     (given (d/tx db t)
       :blaze.db.tx/instant := tx-instant)))
 
@@ -85,7 +85,7 @@
           hash (codec/hash resource)
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[hash resource]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:delete "Type_155302" "id-155253" hash]])
 
@@ -96,7 +96,7 @@
           hash (codec/hash resource)
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[hash resource]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "Type_155302" "id-155253" hash]])
 
@@ -113,7 +113,7 @@
           hash (codec/hash resource)
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[hash resource]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:delete "Type_155302" "id-155253" hash]])
 
@@ -128,7 +128,7 @@
           hash (codec/hash resource)
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[hash resource]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "Type_155302" "id-155253" hash]])
 
@@ -163,7 +163,7 @@
         @(indexer/index-resources r-i [[h1 r1]])
         @(indexer/index-resources r-i [[h2 r2]])
         @(indexer/index-resources r-i [[h3 r3]])
-        (indexer/submit-tx
+        (indexer/index-tx
           tx-i t (Instant/now)
           [[:put "Patient" "id-0" h0]
            [:put "Condition" "id-1" h1]
@@ -225,7 +225,7 @@
       @(indexer/index-resources r-i [[h0 p0]])
       @(indexer/index-resources r-i [[h1 p1]])
       @(indexer/index-resources r-i [[h2 p2]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "Patient" "id-0" h0]
          [:put "Patient" "id-1" h1]
@@ -390,7 +390,7 @@
           h0 (codec/hash p0)
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[h0 p0]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "Practitioner" "id-0" h0]])
 
@@ -426,7 +426,7 @@
           h0 (codec/hash s0)
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[h0 s0]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "Specimen" "id-0" h0]])
 
@@ -490,7 +490,7 @@
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[h0 a0]])
       @(indexer/index-resources r-i [[h1 a1]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "ActivityDefinition" "id-0" h0]
          [:put "ActivityDefinition" "id-1" h1]])
@@ -518,7 +518,7 @@
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[h0 a0]])
       @(indexer/index-resources r-i [[h1 a1]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "CodeSystem" "id-0" h0]
          [:put "CodeSystem" "id-1" h1]])
@@ -541,7 +541,7 @@
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[h0 a0]])
       @(indexer/index-resources r-i [[h1 a1]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "MedicationKnowledge" "id-0" h0]
          [:put "MedicationKnowledge" "id-1" h1]])
@@ -567,7 +567,7 @@
       @(indexer/index-resources r-i [[h0 r0]])
       @(indexer/index-resources r-i [[h1 r1]])
       @(indexer/index-resources r-i [[h2 r2]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "Patient" "id-0" h0]
          [:put "Condition" "id-0" h1]
@@ -607,7 +607,7 @@
         @(indexer/index-resources r-i [[h0 r0]])
         @(indexer/index-resources r-i [[h1 r1]])
         @(indexer/index-resources r-i [[h2 r2]])
-        (indexer/submit-tx
+        (indexer/index-tx
           tx-i t (Instant/now)
           [[:put "Patient" "id-0" h0]
            [:put "Condition" "id-1" h1]
@@ -628,7 +628,7 @@
           h0 (codec/hash r0)
           {:keys [db r-i tx-i]} (init-db)]
       @(indexer/index-resources r-i [[h0 r0]])
-      (indexer/submit-tx
+      (indexer/index-tx
         tx-i t (Instant/now)
         [[:put "Patient" "id-0" h0]])
 

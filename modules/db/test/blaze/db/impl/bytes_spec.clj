@@ -5,5 +5,5 @@
 
 
 (s/fdef bytes/=
-  :args (s/cat :a bytes? :b bytes?)
+  :args (s/cat :a (s/nilable bytes?) :b (s/nilable bytes?))
   :ret boolean?)
