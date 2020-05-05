@@ -30,7 +30,7 @@ docker run -p 8080:8080 samply/blaze:0.8.0-alpha.11
 
 ```bash
 wget https://github.com/samply/blaze/releases/download/v0.8.0-alpha.11/blaze-0.8.0-alpha.11-standalone.jar
-java -jar blaze-0.8.0-alpha.11-standalone.jar
+java -jar blaze-0.8.0-alpha.11-standalone.jar -m blaze.core
 ```
 
 Logging output should appear which prints the most important settings and system parameters like Java version and available memory.
