@@ -1,6 +1,7 @@
 (ns blaze.core
   (:require
     [blaze.system :as system]
+    [clojure.string :as str]
     [taoensso.timbre :as log]))
 
 
@@ -18,8 +19,9 @@
     (catch Exception e
       (log/error
         (cond->
-          (str "Error while initializing Blaze `" (or (ex-message e) "unknown")
-               "`")
+          (format "Error while initializing Blaze `%s`"
+                  (or (str/trim (str/replace (ex-message e) #"\s+" " "))
+                      "unknown"))
           (ex-cause e)
           (str " cause `" (ex-message (ex-cause e)) "`")
           (seq config)
