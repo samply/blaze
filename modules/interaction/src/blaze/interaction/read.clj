@@ -3,10 +3,10 @@
 
   https://www.hl7.org/fhir/http.html#read"
   (:require
+    [blaze.db.api :as d]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [cognitect.anomalies :as anom]
-    [blaze.db.api :as d]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
@@ -50,6 +50,10 @@
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id vid]} :path-params}]
+    (log/debug
+      (if vid
+        (format "GET [base]/%s/%s/_history/%s" type id vid)
+        (format "GET [base]/%s/%s" type id)))
     (-> (db node vid)
         (md/chain'
           (fn [db]

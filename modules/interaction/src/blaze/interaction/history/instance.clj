@@ -3,12 +3,13 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
+    [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [blaze.db.api :as d]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
@@ -72,6 +73,12 @@
   (fn [{::reitit/keys [router match] :keys [query-params]
         {{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
+    (log/debug
+      (if query-params
+        (format "GET [base]/%s/%s/_history?%s" type id
+                (->> (map (fn [[k v]] (format "%s=%s"k v)) query-params)
+                     (str/join "&")))
+        (format "GET [base]/%s/%s/_history" type id)))
     (-> (handler-util/db node (fhir-util/t query-params))
         (md/chain' #(handle router match query-params % type id)))))
 

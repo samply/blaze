@@ -101,6 +101,7 @@
         {:keys [id]} :path-params
         :keys [headers body]
         ::reitit/keys [router]}]
+    (log/debug (format "PUT [base]/%s/%s" type id))
     (let [db (d/db node)]
       (-> (validate-resource type id body)
           (md/chain' #(d/submit-tx node [[:put %]]))
