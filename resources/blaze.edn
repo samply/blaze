@@ -3,7 +3,7 @@
   {:size-in-mb #blaze/cfg ["ROCKSDB_BLOCK_CACHE_SIZE" int? 128]}
 
   [#_:blaze.db.kv/mem :blaze.db.kv/rocksdb :blaze.db/kv-store]
-  {:dir #blaze/cfg ["DB_DIR" string?]
+  {:dir #blaze/cfg ["DB_DIR" string? "db"]
    :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
    :opts
    {:max-background-jobs
