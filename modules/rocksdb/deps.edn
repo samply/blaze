@@ -3,7 +3,7 @@
   {:local/root "../db"}
 
   org.rocksdb/rocksdbjni
-  {:mvn/version "6.7.3"}}
+  {:mvn/version "6.8.1"}}
 
  :aliases
  {:test

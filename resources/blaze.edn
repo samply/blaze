@@ -7,11 +7,7 @@
    :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
    :opts
    {:max-background-jobs
-    #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 6]
-    :max-background-compactions
-    #blaze/cfg ["DB_MAX_BACKGROUND_COMPACTIONS" int? 4]
-    :max-background-flushes
-    #blaze/cfg ["DB_MAX_BACKGROUND_FLUSHES" int? 2]
+    #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
     :compaction-readahead-size
     #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
    :column-families

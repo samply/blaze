@@ -28,11 +28,11 @@
 (deftype RocksKvIterator [^RocksIterator i]
   kv/KvIterator
   (-seek [_ target]
-    (.seek i target)
+    (.seek i ^bytes target)
     (iterator->key i))
 
   (-seek-for-prev [_ target]
-    (.seekForPrev i target)
+    (.seekForPrev i ^bytes target)
     (iterator->key i))
 
   (seek-to-first [_]
@@ -99,8 +99,8 @@
     (with-open [wb (WriteBatch.)]
       (doseq [[column-family k v] entries]
         (if (keyword? column-family)
-          (.put wb (get-cfh cfhs column-family) k v)
-          (.put wb column-family k)))
+          (.put wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
+          (.put wb ^bytes column-family ^bytes k)))
       (.write db write-opts wb)))
 
   (-put [_ key value]
@@ -120,13 +120,13 @@
       (doseq [[op column-family k v] entries]
         (if (keyword? column-family)
           (case op
-            :put (.put wb (get-cfh cfhs column-family) k v)
-            :merge (.merge wb (get-cfh cfhs column-family) k v)
-            :delete (.delete wb (get-cfh cfhs column-family) k))
+            :put (.put wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
+            :merge (.merge wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
+            :delete (.delete wb (get-cfh cfhs column-family) ^bytes k))
           (case op
-            :put (.put wb column-family k)
-            :merge (.merge wb column-family k)
-            :delete (.delete wb column-family))))
+            :put (.put wb ^bytes column-family ^bytes k)
+            :merge (.merge wb ^bytes column-family ^bytes k)
+            :delete (.delete wb ^bytes column-family))))
       (.write db write-opts wb)))
 
   Closeable
@@ -206,12 +206,8 @@
    {:keys [sync?
            disable-wal?
            max-background-jobs
-           max-background-compactions
-           max-background-flushes
            compaction-readahead-size]
     :or {max-background-jobs 2
-         max-background-compactions 1
-         max-background-flushes 1
          compaction-readahead-size 0}}
    column-families]
   (let [opts (doto (DBOptions.)
@@ -219,8 +215,6 @@
                (.setStatsDumpPeriodSec 60)
                (.setStatistics (Statistics.))
                (.setMaxBackgroundJobs ^long max-background-jobs)
-               (.setMaxBackgroundCompactions ^long max-background-compactions)
-               (.setMaxBackgroundFlushes ^long max-background-flushes)
                (.setCompactionReadaheadSize ^long compaction-readahead-size)
                (.setBytesPerSync 1048576))
         cfds (map (partial column-family-descriptor block-cache) column-families)
@@ -261,9 +255,14 @@
   (.close ^AutoCloseable cache))
 
 
+(defn- init-log-msg [dir opts]
+  (format "Open RocksDB key-value store in `%s` with options: %s"
+          dir (pr-str opts)))
+
+
 (defmethod ig/init-key :blaze.db.kv/rocksdb
   [_ {:keys [dir block-cache opts column-families]}]
-  (log/info (format "Open RocksDB key-value store in `%s`" dir))
+  (log/info (init-log-msg dir opts))
   (when-not (.isDirectory (io/file dir))
     (create-rocksdb-kv-store dir (dissoc column-families :default)))
   (init-rocksdb-kv-store dir block-cache opts (merge {:default nil} column-families)))
