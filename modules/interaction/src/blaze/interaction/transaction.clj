@@ -199,8 +199,8 @@
    {{type :resourceType id :id} :resource}
    db]
   (let [resource (d/resource db type id)
-        vid (-> resource :meta :versionId)
-        {:blaze.db/keys [tx]} (meta resource)]
+        {:blaze.db/keys [tx]} (meta resource)
+        vid (str (:blaze.db/t tx))]
     (cond->
       {:response
        {:status "201"
@@ -218,8 +218,8 @@
    {{type :resourceType id :id} :resource :blaze/keys [resource-exists?]}
    db]
   (let [resource (d/resource db type id)
-        vid (-> resource :meta :versionId)
-        {:blaze.db/keys [tx]} (meta resource)]
+        {:blaze.db/keys [tx]} (meta resource)
+        vid (str (:blaze.db/t tx))]
     (cond->
       {:response
        (cond->
