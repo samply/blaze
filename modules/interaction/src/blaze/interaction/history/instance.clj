@@ -74,7 +74,7 @@
         {{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
     (log/debug
-      (if query-params
+      (if (seq query-params)
         (format "GET [base]/%s/%s/_history?%s" type id
                 (->> (map (fn [[k v]] (format "%s=%s"k v)) query-params)
                      (str/join "&")))

@@ -71,7 +71,7 @@
 (defn- handler-intern [node]
   (fn [{::reitit/keys [router match] :keys [query-params]}]
     (log/debug
-      (if query-params
+      (if (seq query-params)
         (format "GET [base]/_history?%s"
               (->> (map (fn [[k v]] (format "%s=%s"k v)) query-params)
                    (str/join "&")))

@@ -115,7 +115,7 @@
         :keys [params]
         ::reitit/keys [router]}]
     (log/debug
-      (if params
+      (if (seq params)
         (format "GET [base]/%s?%s" type
                 (->> (map (fn [[k v]] (format "%s=%s"k v)) params)
                      (str/join "&")))
