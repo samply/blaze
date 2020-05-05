@@ -3,18 +3,18 @@
     [blaze.anomaly :refer [throw-anom]]
     [blaze.db.kv :as kv]
     [clojure.java.io :as io]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
     [java.lang AutoCloseable]
     [java.io Closeable]
-    [org.rocksdb RocksDB RocksIterator WriteOptions WriteBatch
-                 Options ColumnFamilyHandle DBOptions
-                 ColumnFamilyDescriptor CompressionType ColumnFamilyOptions
-                 BlockBasedTableConfig Statistics LRUCache BloomFilter
-                 CompactRangeOptions]
-    [java.util ArrayList]))
+    [java.util ArrayList]
+    [org.rocksdb
+     RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
+     DBOptions ColumnFamilyDescriptor CompressionType ColumnFamilyOptions
+     BlockBasedTableConfig Statistics LRUCache BloomFilter CompactRangeOptions]))
 
 
 (set! *warn-on-reflection* true)
@@ -242,21 +242,29 @@
         (.close db)))))
 
 
-(defmethod ig/init-key :blaze.db.kv.rocksdb/block-cache
+(defmethod ig/init-key ::block-cache
   [_ {:keys [size-in-mb] :or {size-in-mb 128}}]
   (log/info (format "Init RocksDB block cache of %d MB" size-in-mb))
   (RocksDB/loadLibrary)
   (LRUCache. (bit-shift-left size-in-mb 20)))
 
 
-(defmethod ig/halt-key! :blaze.db.kv.rocksdb/block-cache
+(defmethod ig/halt-key! ::block-cache
   [_ cache]
   (log/info "Shutdown RocksDB block cache")
   (.close ^AutoCloseable cache))
 
 
+(s/def ::dir
+  string?)
+
+
+(defmethod ig/pre-init-spec :blaze.db.kv/rocksdb [_]
+  (s/keys :req-un [::dir]))
+
+
 (defn- init-log-msg [dir opts]
-  (format "Open RocksDB key-value store in `%s` with options: %s"
+  (format "Open RocksDB key-value store in directory `%s` with options: %s"
           dir (pr-str opts)))
 
 
@@ -272,32 +280,3 @@
   [_ store]
   (log/info "Close RocksDB key-value store")
   (.close ^Closeable store))
-
-
-(comment
-  (import [org.rocksdb ColumnFamilyDescriptor ColumnFamilyOptions])
-
-  (create-rocksdb-kv-store
-    "./data"
-    [(ColumnFamilyDescriptor.
-       (.getBytes "i")
-       (doto (ColumnFamilyOptions.)
-         (.setMergeOperatorName "uint64add")))])
-
-  (def kv
-    (init-rocksdb-kv-store
-      "./data"
-      {}
-      [(ColumnFamilyDescriptor.
-         RocksDB/DEFAULT_COLUMN_FAMILY)
-       (ColumnFamilyDescriptor.
-         (.getBytes "i")
-         (doto (ColumnFamilyOptions.)
-           (.setMergeOperatorName "uint64add")))]))
-
-  (.close kv)
-
-  (kv/write kv [[:merge :i (byte-array [1]) (byte-array [0 0 0 0 0 0 0 1])]])
-
-  (vec (kv/get kv :i (byte-array [1])))
-  )
