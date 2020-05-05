@@ -820,4 +820,4 @@
 
 (defmethod search-param :default
   [{:keys [url type]}]
-  (log/warn (format "Skip creating search parameter `%s` of type `%s` because the rule is missing." url type)))
+  (log/debug (format "Skip creating search parameter `%s` of type `%s` because the rule is missing." url type)))

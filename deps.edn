@@ -59,7 +59,7 @@
  {:depstar
   {:extra-deps
    {seancorfield/depstar
-    {:mvn/version "0.5.2"}}}
+    {:mvn/version "1.0.94"}}}
 
   :check
   {:extra-deps
