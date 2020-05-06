@@ -383,10 +383,15 @@
   (handler node executor))
 
 
+(defn- executor-init-msg []
+  (format "Init FHIR transaction interaction executor with %d threads"
+          (.availableProcessors (Runtime/getRuntime))))
+
+
 (defmethod ig/init-key ::executor
   [_ _]
-  (log/info "Init FHIR transaction interaction executor")
-  (ex/cpu-bound-pool "transaction-interaction-%d"))
+  (log/info (executor-init-msg))
+  (ex/cpu-bound-pool "blaze-transaction-interaction-%d"))
 
 
 (derive ::executor :blaze.metrics/thread-pool-executor)

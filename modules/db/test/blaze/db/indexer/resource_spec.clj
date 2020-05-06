@@ -6,6 +6,7 @@
     [blaze.db.indexer-spec]
     [blaze.db.kv-spec]
     [blaze.executors :as ex]
+    [blaze.executors_spec]
     [clojure.spec.alpha :as s]))
 
 

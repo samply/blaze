@@ -1,5 +1,6 @@
 (ns blaze.rest-api.spec
   (:require
+    [blaze.executors :as ex]
     [blaze.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig])
@@ -116,3 +117,7 @@
 
 (s/def :blaze.rest-api/operations
   (s/coll-of :blaze.rest-api/operation))
+
+
+(s/def :blaze.rest-api.json-parse/executor
+  ex/executor?)

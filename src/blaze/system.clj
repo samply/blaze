@@ -98,13 +98,16 @@
 
    :blaze.handler/health {}
 
+   :blaze.rest-api.json-parse/executor {}
+
    :blaze/rest-api
    {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
     :version (ig/ref :blaze/version)
     :structure-definitions (ig/ref :blaze/structure-definition)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)
-    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")}
+    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
+    :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)}
 
    :blaze.rest-api/requests-total {}
    :blaze.rest-api/request-duration-seconds {}
@@ -196,10 +199,15 @@
     (fhir-capabilities-handler/handler base-url version structure-definitions))
 
 
+(defn- executor-init-msg []
+  (format "Init server executor with %d threads"
+          (.availableProcessors (Runtime/getRuntime))))
+
+
 (defmethod ig/init-key :blaze.server/executor
   [_ _]
-  (log/info "Init server executor")
-  (ex/cpu-bound-pool "server-%d"))
+  (log/info (executor-init-msg))
+  (ex/cpu-bound-pool "blaze-server-%d"))
 
 
 (derive :blaze.server/executor :blaze.metrics/thread-pool-executor)
