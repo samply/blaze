@@ -2,6 +2,7 @@
   (:require
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry-spec]
+    [blaze.executors :as ex]
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
     [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
@@ -369,15 +370,31 @@
 
 (defn handler
   "Whole app Ring handler."
-  [config]
+  [{:blaze.rest-api.json-parse/keys [executor] :as config}]
   (-> (reitit.ring/ring-handler
         (router config (capabilities-handler config))
         default-handler)
-      (wrap-json)))
+      (wrap-json executor)))
+
+
+(defn- json-parse-executor-init-msg []
+  (format "Init JSON parse executor with %d threads"
+          (.availableProcessors (Runtime/getRuntime))))
+
+
+(defmethod ig/init-key :blaze.rest-api.json-parse/executor
+  [_ _]
+  (log/info (json-parse-executor-init-msg))
+  (ex/cpu-bound-dedicated-pool "blaze-json-parse-%d"))
+
+
+(derive :blaze.rest-api.json-parse/executor :blaze.metrics/thread-pool-executor)
 
 
 (defmethod ig/pre-init-spec :blaze/rest-api [_]
   (s/keys
+    :req
+    [:blaze.rest-api.json-parse/executor]
     :req-un
     [:blaze/base-url
      ::version

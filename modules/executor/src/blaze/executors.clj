@@ -1,6 +1,5 @@
 (ns blaze.executors
   (:require
-    [clojure.spec.alpha :as s]
     [manifold.executor :as me])
   (:import
     [java.util.concurrent Executor Executors ThreadFactory]))
@@ -24,9 +23,6 @@
   (format name-template (inc-and-get-thread-count name-template)))
 
 
-(s/fdef cpu-bound-pool
-  :args (s/cat :name-template string?))
-
 (defn cpu-bound-pool
   "Returns a thread pool with a fixed number of threads which is the number of
   available processors.
@@ -42,12 +38,26 @@
     e))
 
 
-(s/fdef io-pool
-  :args (s/cat :n pos-int? :name-template string?))
+(defn cpu-bound-dedicated-pool
+  "Returns a thread pool with a fixed number of threads which is the number of
+  available processors.
+
+  If used with `manifold.executor/future-with`, following deferreds from
+  chaining are executed on the outer thread pool not on this one."
+  [name-template]
+  (Executors/newFixedThreadPool
+    (.availableProcessors (Runtime/getRuntime))
+    (reify ThreadFactory
+      (newThread [_ r]
+        (Thread. ^Runnable r ^String (thread-name name-template))))))
+
 
 (defn io-pool
   "Returns a thread pool with a fixed number of threads which is suitable for
-  I/O."
+  I/O.
+
+  Sets `manifold.executor/executor-thread-local` to this executor to ensure
+  deferreds are always executed on this executor."
   [n name-template]
   (let [ep (promise)
         e (Executors/newFixedThreadPool
@@ -56,9 +66,6 @@
     (deliver ep e)
     e))
 
-
-(s/fdef single-thread-executor
-  :args (s/cat :name (s/? string?)))
 
 (defn single-thread-executor
   ([]
