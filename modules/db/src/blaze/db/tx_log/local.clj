@@ -151,10 +151,14 @@
     (volatile! (indexer/last-t tx-indexer))))
 
 
+(defn- init-msg [resource-indexer-batch-size]
+  (format "Open local transaction log with a resource indexer batch size of %d."
+          resource-indexer-batch-size))
+
 (defmethod ig/init-key :blaze.db.tx-log/local
   [_ {:keys [resource-indexer resource-indexer-batch-size tx-indexer]
       :or {resource-indexer-batch-size 1}}]
-  (log/info "Open local transaction log.")
+  (log/info (init-msg resource-indexer-batch-size))
   (init-local-tx-log resource-indexer resource-indexer-batch-size tx-indexer
                      (Clock/systemDefaultZone)))
 

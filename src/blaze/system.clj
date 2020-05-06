@@ -76,7 +76,7 @@
 
 
 (def ^:private root-config
-  {:blaze/version "0.8.0-alpha.11"
+  {:blaze/version "0.8.0-beta.1"
 
    :blaze/structure-definition {}
 
@@ -91,7 +91,7 @@
 
    :blaze.db/resource-cache
    {:kv-store (ig/ref :blaze.db/kv-store)
-    :max-size (->Cfg "RESOURCE_CACHE_SIZE" nat-int? 0)}
+    :max-size (->Cfg "DB_RESOURCE_CACHE_SIZE" nat-int? 10000)}
 
    :blaze.db.node/resource-cache-collector
    {:cache (ig/ref :blaze.db/resource-cache)}
