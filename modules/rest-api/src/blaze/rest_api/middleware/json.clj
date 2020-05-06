@@ -47,12 +47,12 @@
 
 
 (defn- handle-request
-  [{:keys [request-method body] {:strs [content-type]} :headers :as request}]
+  [executor {:keys [request-method body] {:strs [content-type]} :headers :as request}]
   (if (and (#{:put :post} request-method)
            content-type
            (or (str/starts-with? content-type "application/fhir+json")
                (str/starts-with? content-type "application/json")))
-    (-> (parse-json body)
+    (-> (md/future-with executor (parse-json body))
         (md/chain' #(assoc request :body %)))
     request))
 
@@ -81,9 +81,9 @@
 (defn wrap-json
   "Parses the request body as JSON, calls `handler` and generates JSON from the
   response."
-  [handler]
+  [handler executor]
   (fn [request]
-    (-> (handle-request request)
+    (-> (handle-request executor request)
         (md/chain' handler)
         (md/chain' handle-response)
         (md/catch' #(handle-response (handler-util/error-response %))))))
