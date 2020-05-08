@@ -342,7 +342,6 @@
 (defn- handler-intern [node executor]
   (fn [{{:keys [type] :as bundle} :body :keys [headers]
         ::reitit/keys [router match]}]
-    (log/debug "POST [base]")
     (let [db (d/db node)]
       (md/future-with executor
         (-> (validate-and-prepare-bundle db bundle)

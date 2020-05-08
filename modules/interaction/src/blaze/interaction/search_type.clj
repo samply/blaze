@@ -114,12 +114,6 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [params]
         ::reitit/keys [router]}]
-    (log/debug
-      (if (seq params)
-        (format "GET [base]/%s?%s" type
-                (->> (map (fn [[k v]] (format "%s=%s"k v)) params)
-                     (str/join "&")))
-        (format "GET [base]/%s" type)))
     (let [body (search router (d/db node) type params)]
       (if (::anom/category body)
         (handler-util/error-response body)

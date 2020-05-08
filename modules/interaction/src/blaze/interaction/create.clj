@@ -44,7 +44,6 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
         ::reitit/keys [router]}]
-    (log/debug (format "POST [base]/%s" type))
     (let [return-preference (handler-util/preference headers "return")
           id (str (random-uuid))]
       (-> (validate-resource type body)

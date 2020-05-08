@@ -42,7 +42,6 @@
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
-    (log/debug (format "DELETE [base]/%s/%s" type id))
     (if-let [{:blaze.db/keys [op tx]} (meta (d/resource (d/db node) type id))]
       (if (identical? :delete op)
         (build-response* tx)

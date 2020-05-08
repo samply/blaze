@@ -8,7 +8,6 @@
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.db.api :as d]
-    [clojure.string :as str]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
@@ -70,12 +69,6 @@
 
 (defn- handler-intern [node]
   (fn [{::reitit/keys [router match] :keys [query-params]}]
-    (log/debug
-      (if (seq query-params)
-        (format "GET [base]/_history?%s"
-              (->> (map (fn [[k v]] (format "%s=%s"k v)) query-params)
-                   (str/join "&")))
-        (format "GET [base]/_history")))
     (-> (handler-util/db node (fhir-util/t query-params))
         (md/chain' #(handle router match query-params %)))))
 
