@@ -1,6 +1,6 @@
 {:base-config
  {:blaze.db.kv.rocksdb/block-cache
-  {:size-in-mb #blaze/cfg ["ROCKSDB_BLOCK_CACHE_SIZE" int? 128]}
+  {:size-in-mb #blaze/cfg ["DB_BLOCK_CACHE_SIZE" int? 128]}
 
   [#_:blaze.db.kv/mem :blaze.db.kv/rocksdb :blaze.db/kv-store]
   {:dir #blaze/cfg ["DB_DIR" string? "db"]
@@ -126,7 +126,7 @@
      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
   :blaze.db.indexer.resource/executor
-  {:num-threads #blaze/cfg ["RESOURCE_INDEXER_THREADS" int? 4]}
+  {:num-threads #blaze/cfg ["DB_RESOURCE_INDEXER_THREADS" int? 4]}
 
   :blaze.db.indexer/resource
   {:search-param-registry #blaze/ref :blaze.db/search-param-registry
@@ -142,7 +142,7 @@
 
   :blaze.db.tx-log/local
   {:resource-indexer #blaze/ref :blaze.db.indexer/resource
-   :resource-indexer-batch-size #blaze/cfg ["RESOURCE_INDEXER_BATCH_SIZE" int? 1]
+   :resource-indexer-batch-size #blaze/cfg ["DB_RESOURCE_INDEXER_BATCH_SIZE" int? 1]
    :tx-indexer #blaze/ref :blaze.db.indexer/tx}
 
   :blaze.db.tx-log.local/duration-seconds {}

@@ -7,7 +7,8 @@
   info.cqframework/cql-to-elm
   {:mvn/version "1.4.6"
    :exclusions
-   [com.google.code.javaparser/javaparser
+   [com.fasterxml.jackson.core/jackson-databind
+    com.google.code.javaparser/javaparser
     org.eclipse.persistence/eclipselink
     info.cqframework/qdm
     junit
