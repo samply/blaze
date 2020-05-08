@@ -29,7 +29,8 @@
   "$evaluate-measure evaluating latencies in seconds."
   {:namespace "fhir"
    :subsystem "evaluate_measure"}
-  (take 22 (iterate #(* 1.4 %) 0.1)))
+  (take 22 (iterate #(* 1.4 %) 0.1))
+  "subject_type")
 
 
 
@@ -350,9 +351,15 @@
     groups))
 
 
-(defn- evaluate-groups [db now library subject-type groups]
-  (with-open [_ (prom/timer evaluate-duration-seconds)]
-    (evaluate-groups* db now library subject-type groups)))
+(defn- evaluate-groups [db now library id subject-type groups]
+  (let [timer (prom/timer evaluate-duration-seconds subject-type)]
+    (try
+      (evaluate-groups* db now library subject-type groups)
+      (finally
+        (let [duration (prom/observe-duration! timer)]
+          (log/debug
+            (format "Evaluated Measure with ID `%s` and subject type `%s` in %.0f ms."
+                    id subject-type (* duration 1e3))))))))
 
 
 (defn- canonical [router {:keys [id url version]}]
@@ -371,9 +378,10 @@
   Returns an already completed MeasureReport which isn't persisted or an anomaly
   in case of errors."
   {:arglists '([now db router period measure])}
-  [now node db router [start end] {groups :group :as measure}]
+  [now node db router [start end] {:keys [id] groups :group :as measure}]
   (when-ok [library (compile-primary-library node db measure)]
-    (when-ok [evaluated-groups (evaluate-groups db now library (subject-type measure) groups)]
+    (when-ok [evaluated-groups (evaluate-groups db now library id
+                                                (subject-type measure) groups)]
       (cond->
         {:resourceType "MeasureReport"
          :status "complete"
