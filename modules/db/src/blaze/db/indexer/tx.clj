@@ -43,9 +43,9 @@
   [[:resource-as-of-index (codec/resource-as-of-key tid id t)
     (codec/resource-as-of-value hash (codec/state (inc num-changes) op))]
    [:type-as-of-index (codec/type-as-of-key tid t id)
-    codec/empty-byte-array]
+    bytes/empty]
    [:system-as-of-index (codec/system-as-of-key t tid id)
-    codec/empty-byte-array]])
+    bytes/empty]])
 
 
 (defmethod verify-tx-cmd :create

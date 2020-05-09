@@ -102,11 +102,6 @@
   :ret :blaze/resource-value-key)
 
 
-(s/fdef codec/concat-v-hashes
-  :args (s/cat :v-hashes (s/coll-of bytes?))
-  :ret bytes?)
-
-
 (s/fdef codec/contains-v-hash?
   :args (s/cat :v-hashes bytes? :v-hash bytes?)
   :ret boolean?)

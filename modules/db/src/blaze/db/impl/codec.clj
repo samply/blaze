@@ -173,15 +173,6 @@
        (.array))))
 
 
-(defn concat-v-hashes [v-hashes]
-  (if (= 1 (count v-hashes))
-    (first v-hashes)
-    (let [bb (ByteBuffer/allocate (transduce (map #(alength ^bytes %)) + v-hashes))]
-      (doseq [^bytes b v-hashes]
-        (.put bb b))
-      (.array bb))))
-
-
 (defn contains-v-hash? [^bytes v-hashes ^bytes v-hash]
   (loop [idx 0]
     (if (Arrays/equals v-hashes idx (unchecked-add-int idx v-hash-size) v-hash 0 v-hash-size)

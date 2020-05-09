@@ -335,7 +335,7 @@
                     lb
                     id-bytes
                     hash)
-                  codec/empty-byte-array]
+                  bytes/empty]
                  [:search-param-value-index
                   (codec/search-param-value-key
                     c-hash
@@ -343,7 +343,7 @@
                     ub
                     id-bytes
                     hash)
-                  codec/empty-byte-array]
+                  bytes/empty]
                  [:resource-value-index
                   (codec/resource-value-key
                     tid
@@ -449,7 +449,7 @@
                       value-bytes
                       id-bytes
                       hash)
-                    codec/empty-byte-array]
+                    bytes/empty]
                    [:resource-value-index
                     (codec/resource-value-key
                       tid
@@ -457,7 +457,7 @@
                       hash
                       c-hash
                       value-bytes)
-                    codec/empty-byte-array]]))))
+                    bytes/empty]]))))
           values)))))
 
 
@@ -657,7 +657,7 @@
                         id-bytes
                         hash
                         c-hash)
-                      (codec/concat-v-hashes values)]]
+                      (bytes/concat values)]]
                     (map
                       (fn [{co-c-hash :c-hash co-res-id :res-id}]
                         [:compartment-resource-value-index
@@ -668,7 +668,7 @@
                            id-bytes
                            hash
                            c-hash)
-                         (codec/concat-v-hashes values)]))
+                         (bytes/concat values)]))
                     linked-compartments)
                   (mapcat
                     (fn [value]
@@ -680,7 +680,7 @@
                            value
                            id-bytes
                            hash)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         (map
                           (fn [{co-c-hash :c-hash co-res-id :res-id}]
                             [:compartment-search-param-value-index
@@ -692,7 +692,7 @@
                                value
                                id-bytes
                                hash)
-                             codec/empty-byte-array])
+                             bytes/empty])
                           linked-compartments))))
                   values))))
           values)))))
@@ -759,7 +759,7 @@
                     (codec/quantity value unit)
                     id-bytes
                     hash)
-                  codec/empty-byte-array]
+                  bytes/empty]
                  [:resource-value-index
                   (codec/resource-value-key
                     tid

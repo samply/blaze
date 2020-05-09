@@ -2,6 +2,7 @@
   (:require
     [blaze.db.indexer.tx :as tx]
     [blaze.db.indexer.tx-spec]
+    [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
     [blaze.db.kv :as kv]
@@ -84,10 +85,10 @@
           (codec/resource-as-of-value (codec/hash patient-0) (codec/state 1 :put))]
          [:type-as-of-index
           (codec/type-as-of-key tid-patient 1 (codec/id-bytes "0"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:system-as-of-index
           (codec/system-as-of-key 1 tid-patient (codec/id-bytes "0"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:type-stats-index
           (codec/type-stats-key tid-patient 1)
           (codec/type-stats-value 1 1)]
@@ -107,10 +108,10 @@
           (codec/resource-as-of-value (codec/hash patient-0-v2) (codec/state 2 :put))]
          [:type-as-of-index
           (codec/type-as-of-key tid-patient 2 (codec/id-bytes "0"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:system-as-of-index
           (codec/system-as-of-key 2 tid-patient (codec/id-bytes "0"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:type-stats-index
           (codec/type-stats-key tid-patient 2)
           (codec/type-stats-value 1 2)]
@@ -130,10 +131,10 @@
           (codec/resource-as-of-value (codec/hash patient-0-v2) (codec/state 2 :put))]
          [:type-as-of-index
           (codec/type-as-of-key tid-patient 2 (codec/id-bytes "0"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:system-as-of-index
           (codec/system-as-of-key 2 tid-patient (codec/id-bytes "0"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:type-stats-index
           (codec/type-stats-key tid-patient 2)
           (codec/type-stats-value 1 2)]
@@ -161,10 +162,10 @@
                                       (codec/state 2 :delete))]
          [:type-as-of-index
           (codec/type-as-of-key tid-patient 2 (codec/id-bytes "0"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:system-as-of-index
           (codec/system-as-of-key 2 tid-patient (codec/id-bytes "0"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:type-stats-index
           (codec/type-stats-key tid-patient 2)
           (codec/type-stats-value 0 2)]
@@ -184,10 +185,10 @@
           (codec/resource-as-of-value (codec/hash patient-1) (codec/state 1 :put))]
          [:type-as-of-index
           (codec/type-as-of-key tid-patient 2 (codec/id-bytes "1"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:system-as-of-index
           (codec/system-as-of-key 2 tid-patient (codec/id-bytes "1"))
-          codec/empty-byte-array]
+          bytes/empty]
          [:type-stats-index
           (codec/type-stats-key tid-patient 2)
           (codec/type-stats-value 2 2)]

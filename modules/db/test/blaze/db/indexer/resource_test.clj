@@ -94,7 +94,7 @@
         (testing "resource-value-index"
           (is
             (bytes/=
-              (codec/concat-v-hashes
+              (bytes/concat
                 [(codec/v-hash "code-204441")
                  (codec/v-hash "system-204435|")
                  (codec/v-hash "system-204435|code-204441")])
@@ -125,7 +125,7 @@
         (testing "resource-value-index"
           (is
             (bytes/=
-              (codec/concat-v-hashes
+              (bytes/concat
                 [(codec/v-hash "code-204441")
                  (codec/v-hash "system-204435|")
                  (codec/v-hash "system-204435|code-204441")])

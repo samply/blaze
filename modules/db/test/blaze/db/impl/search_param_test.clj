@@ -58,7 +58,7 @@
         (testing "resource-value-value"
           (is (bytes/=
                 v0
-                (codec/concat-v-hashes
+                (bytes/concat
                   [(codec/v-hash "code-171327")
                    (codec/v-hash "system-171339|")
                    (codec/v-hash "system-171339|code-171327")])))))
@@ -185,7 +185,7 @@
         (testing "resource-value-value"
           (is (bytes/=
                 v0
-                (codec/concat-v-hashes
+                (bytes/concat
                   [(codec/v-hash "value-123005")
                    (codec/v-hash "system-123000|")
                    (codec/v-hash "system-123000|value-123005")])))))
@@ -353,7 +353,7 @@
         (testing "resource-value-value"
           (is (bytes/=
                 v0
-                (codec/concat-v-hashes
+                (bytes/concat
                   [(codec/v-hash "code-103812")
                    (codec/v-hash "system-103824|")
                    (codec/v-hash "system-103824|code-103812")])))))
@@ -537,7 +537,7 @@
         (testing "resource-value-value"
           (is (bytes/=
                 v0
-                (codec/concat-v-hashes
+                (bytes/concat
                   [(codec/v-hash "AMB")
                    (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|")
                    (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")])))))

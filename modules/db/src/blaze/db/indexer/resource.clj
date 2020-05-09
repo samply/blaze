@@ -1,5 +1,6 @@
 (ns blaze.db.indexer.resource
   (:require
+    [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.search-param-registry :as sr]
@@ -30,13 +31,13 @@
 (defn- resource-type-entry [{type :resourceType id :id}]
   [:resource-type-index
    (codec/resource-type-key (codec/tid type) (codec/id-bytes id))
-   codec/empty-byte-array])
+   bytes/empty])
 
 
 (defn- compartment-resource-type-entry [{:keys [c-hash res-id]} {type :resourceType id :id}]
   [:compartment-resource-type-index
    (codec/compartment-resource-type-key c-hash res-id (codec/tid type) (codec/id-bytes id))
-   codec/empty-byte-array])
+   bytes/empty])
 
 
 (defn- index-entries [linked-compartments search-param hash resource]

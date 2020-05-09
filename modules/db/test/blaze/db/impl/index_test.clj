@@ -150,7 +150,7 @@
                            (codec/v-hash value)
                            id
                            hash)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         [:resource-as-of-index
                          (codec/resource-as-of-key tid id t)
                          (codec/resource-as-of-value hash (codec/state 1 :put))]])
@@ -191,7 +191,7 @@
                            (codec/v-hash value)
                            id-0
                            hash-0)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         [:search-param-value-index
                          (codec/search-param-value-key
                            (codec/c-hash code)
@@ -199,7 +199,7 @@
                            (codec/v-hash value)
                            id-1
                            hash-1)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         [:resource-as-of-index
                          (codec/resource-as-of-key tid id-0 t)
                          (codec/resource-as-of-value hash-0 (codec/state 1 :put))]
@@ -241,7 +241,7 @@
                            (codec/v-hash value)
                            id
                            hash-0)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         [:search-param-value-index
                          (codec/search-param-value-key
                            (codec/c-hash code)
@@ -249,7 +249,7 @@
                            (codec/v-hash value)
                            id
                            hash-1)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         [:resource-as-of-index
                          (codec/resource-as-of-key tid id old-t)
                          (codec/resource-as-of-value hash-0 (codec/state 1 :put))]
@@ -294,7 +294,7 @@
                            (codec/v-hash value-0)
                            id
                            hash)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         [:resource-value-index
                          (codec/resource-value-key
                            tid
@@ -340,7 +340,7 @@
                            (codec/quantity 23M "http://unitsofmeasure.org|kg")
                            id
                            hash)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         [:resource-as-of-index
                          (codec/resource-as-of-key tid id t)
                          (codec/resource-as-of-value hash (codec/state 1 :put))]])
@@ -382,7 +382,7 @@
                            (codec/quantity 23M "http://unitsofmeasure.org|kg")
                            id
                            hash)
-                         codec/empty-byte-array]
+                         bytes/empty]
                         [:resource-value-index
                          (codec/resource-value-key
                            tid
