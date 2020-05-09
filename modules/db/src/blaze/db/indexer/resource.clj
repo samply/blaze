@@ -28,13 +28,20 @@
   "op")
 
 
-(defn- resource-type-entry [{type :resourceType id :id}]
+(defn- resource-type-entry
+  "Returns an entry of `resource` into the :resource-type-index."
+  {:arglists '([resource])}
+  [{type :resourceType id :id}]
   [:resource-type-index
    (codec/resource-type-key (codec/tid type) (codec/id-bytes id))
    bytes/empty])
 
 
-(defn- compartment-resource-type-entry [{:keys [c-hash res-id]} {type :resourceType id :id}]
+(defn- compartment-resource-type-entry
+  "Returns an entry into the :compartment-resource-type-index where `resource`
+  is linked to `compartment`."
+  {:arglists '([compartment resource])}
+  [{:keys [c-hash res-id]} {type :resourceType id :id}]
   [:compartment-resource-type-index
    (codec/compartment-resource-type-key c-hash res-id (codec/tid type) (codec/id-bytes id))
    bytes/empty])

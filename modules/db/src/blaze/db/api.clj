@@ -127,10 +127,14 @@
 
 
 (defn list-compartment-resources
-  "Returns a reducible collection of all non-deleted resources linked to
-  `compartment` and of `type`.
+  "Returns a reducible collection of all non-deleted resources of `type` linked
+  to the compartment with `code` and `id`.
 
-  An optional `start-id` (inclusive) can be supplied."
+  An optional `start-id` (inclusive) can be supplied.
+
+  Example:
+
+    (list-compartment-resources db \"Patient\" \"0\" \"Observation\")"
   ([db code id type]
    (-list-compartment-resources db code id type))
   ([db code id type start-id]
@@ -173,5 +177,11 @@
 
 (defn ri-first
   "Like `first` for `IReduceInit` collections."
-  [^IReduceInit coll]
-  (.reduce coll (fn [_ x] (reduced x)) nil))
+  [coll]
+  (.reduce ^IReduceInit coll (fn [_ x] (reduced x)) nil))
+
+
+(defn ri-empty?
+  "Like `empty?` for `IReduceInit` collections."
+  [coll]
+  (nil? (ri-first coll)))

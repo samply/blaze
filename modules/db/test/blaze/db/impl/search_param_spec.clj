@@ -22,10 +22,6 @@
   :args (s/cat :iterator :blaze.db.search-param/iterator :current-id bytes?))
 
 
-(s/def :blaze.db/search-param
-  #(satisfies? search-param/SearchParam %))
-
-
 (s/def :blaze.db.compartment/c-hash
   :blaze.db/c-hash)
 

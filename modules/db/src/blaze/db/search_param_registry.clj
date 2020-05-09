@@ -13,7 +13,7 @@
 
 (defprotocol SearchParamRegistry
   (-get [_ code type])
-  (list-by-type [_ type])
+  (-list-by-type [_ type])
   (-linked-compartments [_ resource]))
 
 
@@ -21,7 +21,16 @@
   (-get search-param-registry code type))
 
 
-(defn linked-compartments [search-param-registry resource]
+(defn list-by-type [search-param-registry type]
+  (-list-by-type search-param-registry type))
+
+
+(defn linked-compartments
+  "Returns a list of compartments linked to `resource`.
+
+  For example an Observation may linked to the compartment `Patient/0` because
+  its subject points to this patient."
+  [search-param-registry resource]
   (-linked-compartments search-param-registry resource))
 
 
@@ -31,7 +40,7 @@
     (or (get-in index [type code])
         (get-in index ["Resource" code])))
 
-  (list-by-type [_ type]
+  (-list-by-type [_ type]
     (into (vec (vals (clojure.core/get index "Resource")))
           (vals (clojure.core/get index type))))
 
@@ -72,6 +81,7 @@
 
 
 (defn- index-compartment-def
+  "Returns a map from linked resource type to "
   {:arglists '([search-param-index compartment-def])}
   [search-param-index {def-code :code resource-defs :resource}]
   (into

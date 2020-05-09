@@ -1,7 +1,8 @@
 (ns blaze.db.search-param-registry-spec
   (:require
-    [blaze.fhir.spec]
+    [blaze.db.impl.search-param :as search-param]
     [blaze.db.search-param-registry :as sr]
+    [blaze.fhir.spec]
     [clojure.spec.alpha :as s]))
 
 
@@ -9,14 +10,22 @@
   #(satisfies? sr/SearchParamRegistry %))
 
 
-;; TODO: figure out how to include search-param-spec here
+(s/def :blaze.db/search-param
+  #(satisfies? search-param/SearchParam %))
+
+
 (s/fdef sr/get
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
                :code string? :type string?)
-  :ret (s/nilable some?))
+  :ret (s/nilable :blaze.db/search-param))
 
 
-;; TODO: figure out how to include search-param-spec here
+(s/fdef sr/list-by-type
+  :args (s/cat :search-param-registry :blaze.db/search-param-registry
+               :type string?)
+  :ret (s/coll-of :blaze.db/search-param))
+
+
 (s/fdef sr/linked-compartments
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
                :resource :blaze/resource)

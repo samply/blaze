@@ -216,7 +216,7 @@
 
 (deftest list-resources
   (testing "a new node has a empty list of resources"
-    (is (empty? (into [] (d/list-resources (d/db (new-node)) "Patient")))))
+    (is (d/ri-empty? (d/list-resources (d/db (new-node)) "Patient"))))
 
   (testing "a node contains one resource after a put transaction"
     (let [node (new-node)]
@@ -242,7 +242,7 @@
     (let [node (new-node)]
       @(d/submit-tx node [[:put {:resourceType "Patient" :id "0"}]])
       @(d/submit-tx node [[:delete "Patient" "0"]])
-      (is (empty? (into [] (d/list-resources (d/db node) "Patient"))))))
+      (is (d/ri-empty? (d/list-resources (d/db node) "Patient")))))
 
   (testing "a resource submitted after getting the db does not show up"
     (let [node (new-node)]
@@ -295,16 +295,15 @@
 
 (deftest list-compartment-resources
   (testing "a new node has a empty list of resources in the Patient/0 compartment"
-    (is (empty? (into [] (d/list-compartment-resources
-                           (d/db (new-node)) "Patient" "0" "Observation")))))
+    (let [db (d/db (new-node))]
+      (is (d/ri-empty? (d/list-compartment-resources db "Patient" "0" "Observation")))))
 
-  (testing "a node contains one resource in the Patient/0 compartment"
+  (testing "a node contains one Observation in the Patient/0 compartment"
     (let [node (new-node)]
       @(d/submit-tx node [[:put {:resourceType "Patient" :id "0"}]])
       @(d/submit-tx node [[:put {:resourceType "Observation" :id "0"
                                  :subject {:reference "Patient/0"}}]])
-      (given (d/ri-first (d/list-compartment-resources
-                           (d/db node) "Patient" "0" "Observation"))
+      (given (d/ri-first (d/list-compartment-resources (d/db node) "Patient" "0" "Observation"))
         :resourceType := "Observation"
         :id := "0"
         [:meta :versionId] := "2")))
@@ -316,8 +315,7 @@
                                  :subject {:reference "Patient/0"}}]])
       @(d/submit-tx node [[:put {:resourceType "Observation" :id "1"
                                  :subject {:reference "Patient/0"}}]])
-      (given (into [] (d/list-compartment-resources
-                        (d/db node) "Patient" "0" "Observation"))
+      (given (into [] (d/list-compartment-resources (d/db node) "Patient" "0" "Observation"))
         [0 :resourceType] := "Observation"
         [0 :id] := "0"
         [0 :meta :versionId] := "2"
@@ -331,8 +329,7 @@
       @(d/submit-tx node [[:put {:resourceType "Observation" :id "0"
                                  :subject {:reference "Patient/0"}}]])
       @(d/submit-tx node [[:delete "Observation" "0"]])
-      (is (empty? (into [] (d/list-compartment-resources
-                             (d/db node) "Patient" "0" "Observation"))))))
+      (is (d/ri-empty? (d/list-compartment-resources (d/db node) "Patient" "0" "Observation")))))
 
   (testing "it is possible to start at a later id"
     (let [node (new-node)]
@@ -356,8 +353,8 @@
 
 (deftest type-query
   (testing "a new node has a empty list of resources"
-    (is (empty? (into [] (d/type-query (d/db (new-node)) "Patient"
-                                       [["gender" "male"]])))))
+    (let [db (d/db (new-node))]
+      (is (d/ri-empty? (d/type-query db "Patient" [["gender" "male"]])))))
 
   (testing "finds the Patient"
     (let [node (new-node)]
@@ -394,8 +391,8 @@
 
 (deftest compartment-query
   (testing "a new node has a empty list of resources in the Patient/0 compartment"
-    (is (empty? (into [] (d/compartment-query (d/db (new-node)) "Patient" "0"
-                                              "Observation" [["code" "foo"]])))))
+    (let [db (d/db (new-node))]
+      (is (d/ri-empty? (d/compartment-query db "Patient" "0" "Observation" [["code" "foo"]])))))
 
   (testing "a node contains one resource in the Patient/0 compartment"
     (let [node (new-node)]
@@ -438,8 +435,9 @@
 
 (deftest instance-history
   (testing "a new node has a empty instance history"
-    (is (empty? (into [] (d/instance-history (d/db (new-node)) "Patient" "0" nil nil))))
-    (is (zero? (d/total-num-of-instance-changes (d/db (new-node)) "Patient" "0" nil))))
+    (let [db (d/db (new-node))]
+      (is (d/ri-empty? (d/instance-history db "Patient" "0" nil nil)))
+      (is (zero? (d/total-num-of-instance-changes db "Patient" "0" nil)))))
 
   (testing "a node with one resource shows it in the instance history"
     (let [node (new-node)]
@@ -472,8 +470,9 @@
 
 (deftest type-history
   (testing "a new node has a empty type history"
-    (is (empty? (into [] (d/type-history (d/db (new-node)) "Patient" nil nil nil))))
-    (is (zero? (d/total-num-of-type-changes (d/db (new-node)) "Patient"))))
+    (let [db (d/db (new-node))]
+      (is (d/ri-empty? (d/type-history db "Patient" nil nil nil)))
+      (is (zero? (d/total-num-of-type-changes db "Patient")))))
 
   (testing "a node with one resource shows it in the type history"
     (let [node (new-node)]
@@ -519,8 +518,9 @@
 
 (deftest system-history
   (testing "a new node has a empty system history"
-    (is (empty? (into [] (d/system-history (d/db (new-node)) nil nil nil nil))))
-    (is (zero? (d/total-num-of-system-changes (d/db (new-node)) nil))))
+    (let [db (d/db (new-node))]
+      (is (d/ri-empty? (d/system-history db nil nil nil nil)))
+      (is (zero? (d/total-num-of-system-changes db nil)))))
 
   (testing "a node with one resource shows it in the system history"
     (let [node (new-node)]
