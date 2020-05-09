@@ -7,5 +7,8 @@
 (defn wrap-log
   [handler]
   (fn [{:keys [request-method uri query-string] :as request}]
-    (log/debug (format "%s [base]%s%s" (str/upper-case (name request-method)) uri (or query-string "")))
+    (log/debug
+      (if query-string
+        (format "%s [base]%s?%s" (str/upper-case (name request-method)) uri query-string)
+        (format "%s [base]%s" (str/upper-case (name request-method)) uri)))
     (handler request)))
