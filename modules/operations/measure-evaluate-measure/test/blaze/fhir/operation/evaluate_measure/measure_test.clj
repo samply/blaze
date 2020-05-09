@@ -105,7 +105,7 @@
     "q15" 1
     "q16" 1
     "q17" 2
-    "q18" 1
+    "q18-specimen-bmi" 1
     "q24" 1
     "q28-relationship-procedure-condition" 1)
 
