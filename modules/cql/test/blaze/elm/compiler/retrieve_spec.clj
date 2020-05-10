@@ -3,11 +3,13 @@
     [blaze.elm.code-spec :refer [code?]]
     [blaze.elm.compiler.retrieve :as retrieve]
     [blaze.elm.expression :refer [expr?]]
+    [blaze.elm.util-spec]
     [clojure.spec.alpha :as s]))
 
 
 (s/fdef retrieve/with-related-context-expr
-  :args (s/cat :related-context-expr expr?
+  :args (s/cat :node :blaze.db/node
+               :related-context-expr expr?
                :data-type string?
                :code-property string?
                :codes (s/nilable (s/coll-of code?)))

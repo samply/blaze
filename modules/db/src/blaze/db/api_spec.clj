@@ -2,6 +2,8 @@
   (:require
     [blaze.db.api :as d]
     [blaze.db.impl.index]
+    [blaze.db.impl.protocols :as p]
+    [blaze.db.search-param-registry-spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -48,7 +50,7 @@
 
 
 (s/def :blaze.db/db
-  #(satisfies? d/Db %))
+  #(satisfies? p/Db %))
 
 
 (s/def :blaze.db/t
@@ -64,11 +66,15 @@
 
 
 (s/def :blaze.db/node
-  #(satisfies? d/Node %))
+  #(satisfies? p/Node %))
+
+
+(s/def :blaze.db/query
+  some?)
 
 
 (s/def :blaze.db.query/clause
-  (s/tuple string? string?))
+  (s/coll-of string? :min-count 2))
 
 
 (s/fdef d/db
@@ -86,10 +92,19 @@
   :ret deferred?)
 
 
-(s/fdef d/compartment-query-batch
-  :args (s/cat :node :blaze.db/node :code string? :type string?
+(s/fdef d/compile-type-query
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :type :blaze.resource/resourceType
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
-  :ret (s/or :fn fn? :anomaly ::anom/anomaly))
+  :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
+
+
+(s/fdef d/compile-compartment-query
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :code :blaze.db.compartment/code
+               :type :blaze.resource/resourceType
+               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+  :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
 
 (s/fdef d/tx
@@ -126,6 +141,11 @@
   :ret (s/coll-of :blaze/resource))
 
 
+(s/fdef d/execute-query
+  :args (s/cat :db :blaze.db/db :query :blaze.db/query :args (s/* some?))
+  :ret (s/coll-of :blaze/resource))
+
+
 (s/fdef d/type-query
   :args (s/cat :db :blaze.db/db :type :blaze.resource/resourceType
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
@@ -142,6 +162,11 @@
                :type :blaze.resource/resourceType
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
   :ret (s/or :result (s/coll-of :blaze/resource) :anomaly ::anom/anomaly))
+
+
+(s/fdef d/type-total
+  :args (s/cat :db :blaze.db/db :type :blaze.resource/resourceType)
+  :ret nat-int?)
 
 
 (s/fdef d/instance-history
@@ -191,5 +216,5 @@
 
 
 (s/fdef d/ri-first
-  :args (s/cat :coll #(instance? IReduceInit %))
+  :args (s/cat :coll (s/nilable #(instance? IReduceInit %)))
   :ret any?)

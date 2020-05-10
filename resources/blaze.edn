@@ -2,9 +2,16 @@
  {:blaze.db.kv.rocksdb/block-cache
   {:size-in-mb #blaze/cfg ["DB_BLOCK_CACHE_SIZE" int? 128]}
 
+  :blaze.db.kv.rocksdb/stats
+  {}
+
+  :blaze.db.kv.rocksdb/stats-collector
+  {:stats #blaze/ref :blaze.db.kv.rocksdb/stats}
+
   [#_:blaze.db.kv/mem :blaze.db.kv/rocksdb :blaze.db/kv-store]
   {:dir #blaze/cfg ["DB_DIR" string? "db"]
    :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
+   :stats #blaze/ref :blaze.db.kv.rocksdb/stats
    :opts
    {:max-background-jobs
     #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
@@ -16,32 +23,28 @@
      :max-write-buffer-number 4
      :level0-file-num-compaction-trigger 2
      :max-bytes-for-level-base-in-mb 256
-     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
-     :bloom-filter? true}
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
     :resource-value-index                                   ; 32 GB
     {:write-buffer-size-in-mb 128
      :max-write-buffer-number 4
      :level0-file-num-compaction-trigger 2
      :max-bytes-for-level-base-in-mb 256
-     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
-     :bloom-filter? true}
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
     :compartment-search-param-value-index
     {:write-buffer-size-in-mb 128
      :max-write-buffer-number 4
      :level0-file-num-compaction-trigger 2
      :max-bytes-for-level-base-in-mb 256
-     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
-     :bloom-filter? true}
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
     :compartment-resource-value-index
     {:write-buffer-size-in-mb 128
      :max-write-buffer-number 4
      :level0-file-num-compaction-trigger 2
      :max-bytes-for-level-base-in-mb 256
-     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
-     :bloom-filter? true}
+     :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
     :resource-type-index                                    ; 9 GB
     {:write-buffer-size-in-mb 64

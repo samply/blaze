@@ -11,52 +11,62 @@
 (set! *warn-on-reflection* true)
 
 
-(deftype MemKvIterator [db cursor]
+(deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
   kv/KvIterator
   (-seek [_ k]
+    (when closed? (throw (Exception. "closed")))
     (let [[x & xs] (subseq db >= k)]
       (some-> (reset! cursor {:first x :rest xs})
               :first
               (key))))
 
   (-seek-for-prev [_ k]
+    (when closed? (throw (Exception. "closed")))
     (let [[x & xs] (rsubseq db <= k)]
       (some-> (reset! cursor {:first x :rest xs})
               :first
               (key))))
 
   (seek-to-first [_]
+    (when closed? (throw (Exception. "closed")))
     (some-> (reset! cursor {:first (first db) :rest (rest db)})
             :first
             (key)))
 
   (seek-to-last [_]
+    (when closed? (throw (Exception. "closed")))
     (some-> (reset! cursor {:first (last db) :rest nil})
             :first
             (key)))
 
   (next [_]
+    (when closed? (throw (Exception. "closed")))
     (some-> (swap! cursor (fn [{[x & xs] :rest}]
                             {:first x :rest xs}))
             :first
             (key)))
 
   (prev [this]
+    (when closed? (throw (Exception. "closed")))
     (when-let [prev (first (rsubseq db < (key (:first @cursor))))]
       (kv/seek this (key prev))))
 
 
   (valid [_]
+    (when closed? (throw (Exception. "closed")))
     (some? (:first @cursor)))
 
   (key [_]
+    (when closed? (throw (Exception. "closed")))
     (some-> @cursor :first key))
 
   (value [_]
+    (when closed? (throw (Exception. "closed")))
     (some-> @cursor :first val))
 
   Closeable
-  (close [_]))
+  (close [_]
+    (set! closed? true)))
 
 
 (defn- column-family-unknown [column-family]
@@ -67,11 +77,11 @@
   kv/KvSnapshot
   (new-iterator [_]
     (let [db (:default db)]
-      (->MemKvIterator db (atom {:rest (seq db)}))))
+      (->MemKvIterator db (atom {:rest (seq db)}) false)))
 
   (new-iterator [_ column-family]
     (if-let [db (get db column-family)]
-      (->MemKvIterator db (atom {:rest (seq db)}))
+      (->MemKvIterator db (atom {:rest (seq db)}) false)
       (throw (column-family-unknown column-family))))
 
   (snapshot-get [_ k]

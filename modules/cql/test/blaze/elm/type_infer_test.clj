@@ -1,6 +1,7 @@
 (ns blaze.elm.type-infer-test
   (:require
     [blaze.elm.type-infer :refer [infer-types]]
+    [blaze.elm.type-infer-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer [deftest testing]]
     [juxt.iota :refer [given]]))
@@ -46,6 +47,7 @@
        :scope "P"
        :type "Property"}
       :life/source-type := "{http://hl7.org/fhir}Patient")))
+
 
 
 ;; 9. Reusing Logic

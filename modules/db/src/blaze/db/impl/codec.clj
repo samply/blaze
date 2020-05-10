@@ -5,6 +5,7 @@
     [taoensso.nippy :as nippy])
   (:import
     [clojure.lang Keyword]
+    [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
     [com.google.common.hash Hashing PrimitiveSink]
     [com.google.common.io BaseEncoding]
     [java.nio ByteBuffer]
@@ -509,12 +510,24 @@
 
 ;; ---- Other Functions -------------------------------------------------------
 
-(defn tid
+(defn- memoize-1 [f]
+  (let [mem
+        (-> (Caffeine/newBuilder)
+                (.build
+                  (reify CacheLoader
+                    (load [_ x]
+                      (f x)))))]
+    (fn [x]
+      (.get mem x))))
+
+
+(def tid
   "Internal type identifier.
 
   Returns an integer."
-  [type]
-  (.asInt (.hashBytes (Hashing/murmur3_32) (.getBytes ^String type iso-8859-1))))
+  (memoize-1
+    (fn [type]
+      (.asInt (.hashBytes (Hashing/murmur3_32) (.getBytes ^String type iso-8859-1))))))
 
 
 (defn c-hash [code]

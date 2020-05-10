@@ -68,7 +68,12 @@
 
 
 (defn- clauses [params]
-  (into [] (remove (fn [[k]] (and (str/starts-with? k "_") (not= k "_id")))) params))
+  (into
+    []
+    (comp
+      (remove (fn [[k]] (and (str/starts-with? k "_") (not= k "_id"))))
+      (map (fn [[k v]] (into [k] (str/split v #",")))))
+    params))
 
 
 (defn- decode-params

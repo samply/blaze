@@ -166,6 +166,6 @@
     [1 :population 0 :count] := 1))
 
 (comment
-  (evaluate "q29-stratifier-sample-material-type")
+  (evaluate "q28-relationship-procedure-condition")
   (clojure.repl/pst)
   )

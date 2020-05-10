@@ -1,7 +1,5 @@
 (ns blaze.elm.type-infer
   (:require
-    [blaze.elm.spec]
-    [clojure.spec.alpha :as s]
     [cuerdas.core :as str]))
 
 
@@ -12,17 +10,9 @@
     (keyword "elm" (str/kebab type))))
 
 
-(s/fdef infer-types
-  :args (s/cat :context any? :expression :elm/expression))
-
 (defn infer-types [context expression]
   (infer-types* context expression))
 
-
-(s/fdef update-expression-def
-  :args (s/cat :defs (s/coll-of :elm/expression-def)
-               :name :elm/name
-               :expression-def :elm/expression))
 
 (defn- update-expression-def [defs name expression]
   (mapv
@@ -32,10 +22,6 @@
         def))
     defs))
 
-
-(s/fdef infer-expression-def-types
-  :args (s/cat :context (s/keys :req-un [:elm/library])
-               :expression-def :elm/expression-def))
 
 (defn- infer-expression-def-types
   {:arglists '([context expression-def])}
@@ -53,22 +39,6 @@
 (defmethod infer-types* :default
   [_ expression]
   expression)
-
-
-(defn named-type-specifier [name]
-  {:type "NamedTypeSpecifier" :name name})
-
-
-(defn elm-type-specifier [elm-name]
-  (named-type-specifier (str "{urn:hl7-org:elm-types:r1}" elm-name)))
-
-
-(defn list-type-specifier [element-type]
-  {:type "ListTypeSpecifier" :elementType element-type})
-
-
-(defn named-list-type-specifier [name]
-  (list-type-specifier (named-type-specifier name)))
 
 
 

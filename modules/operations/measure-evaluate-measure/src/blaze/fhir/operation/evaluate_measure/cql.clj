@@ -1,10 +1,11 @@
 (ns blaze.fhir.operation.evaluate-measure.cql
   (:require
-    [blaze.anomaly :refer [when-ok]]
     [blaze.db.api :as d]
     [blaze.elm.expression :as expr]
     [clojure.core.reducers :as r]
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom]
+    [taoensso.timbre :as log])
+  (:import [java.io Closeable]))
 
 
 (set! *warn-on-reflection* true)
@@ -33,20 +34,53 @@
   (try
     (expr/eval (get library-context expression-name) context subject nil)
     (catch Exception e
+      (log/error (log/stacktrace e))
       {::anom/category ::anom/fault
        ::anom/message (ex-message e)
        :fhir/issue "exception"
        :expression-name expression-name})))
 
 
-(defn- combine
-  ([] 0)
-  ([x] x)
-  ([a b]
-   (cond
-     (::anom/category a) a
-     (::anom/category b) b
-     :else (+ a b))))
+(defn- close-batch-db! [{:keys [db]}]
+  (.close ^Closeable db))
+
+
+(defn- wrap-batch-db
+  "Wraps `combine-op`, so that when used with `r/fold`, a new batch database is
+  created in every single-threaded reduce step.
+
+  When called with no argument, it returns `context` where :db is replaced with
+  a new batch database and ::result will be initialized to `(combine-op)`.
+
+  When called with one context, it closes the batch database and returns the
+  result of calling `combine-op` with the value at ::result.
+
+  When called with two contexts, it closes the batch database from one context
+  and returns the other context with the value at ::result combined with
+  `combine-op`."
+  [combine-op context]
+  (fn batch-db-combine-op
+    ([]
+     (-> (update context :db d/new-batch-db)
+         (assoc ::result (combine-op))))
+    ([context]
+     (close-batch-db! context)
+     (combine-op (::result context)))
+    ([context-a context-b]
+     (close-batch-db! context-b)
+     (update context-a ::result (partial combine-op (::result context-b))))))
+
+
+(defn- wrap-anomaly
+  [combine-op]
+  (fn anomaly-combine-op
+    ([] (combine-op))
+    ([r] r)
+    ([a b]
+     (cond
+       (::anom/category a) a
+       (::anom/category b) b
+       :else (combine-op a b)))))
 
 
 (defn- evaluate-expression*
@@ -56,18 +90,18 @@
   [context name subjects]
   (r/fold
     eval-sequential-chunk-size
-    combine
-    (fn [count subject]
+    (-> + (wrap-anomaly) (wrap-batch-db context))
+    (fn [context subject]
       (let [res (evaluate-expression-1 context subject name)]
         (cond
           (::anom/category res)
-          (reduced res)
+          (reduced (assoc context ::result res))
 
           res
-          (inc count)
+          (update context ::result inc)
 
           :else
-          count)))
+          context)))
     subjects))
 
 
@@ -88,7 +122,7 @@
       (comp
         (partition-all eval-parallel-chunk-size)
         (map (partial evaluate-expression* context name)))
-      combine
+      (-> + (wrap-anomaly) (wrap-batch-db context))
       (d/list-resources db subject-type))))
 
 
@@ -99,43 +133,37 @@
            expression-name (str (:resourceType resource) "/" (:id resource)))})
 
 
-(defn- stratum-combine
-  ([] {})
-  ([x] x)
-  ([a b]
-   (cond
-     (::anom/category a) a
-     (::anom/category b) b
-     :else (merge-with + a b))))
+(defn- stratum-combine-op [context]
+  (-> (partial merge-with +) wrap-anomaly (wrap-batch-db context)))
 
 
 (defn calc-stratums*
   [context population-expression-name stratum-expression-name subjects]
   (r/fold
     eval-sequential-chunk-size
-    stratum-combine
-    (fn [stratums subject]
+    (stratum-combine-op context)
+    (fn [context subject]
       (let [res (evaluate-expression-1 context subject
                                        population-expression-name)]
         (cond
           (::anom/category res)
-          (reduced res)
+          (reduced (assoc context ::result res))
 
           res
           (let [stratum (evaluate-expression-1 context subject
                                                stratum-expression-name)]
             (cond
               (::anom/category stratum)
-              (reduced stratum)
+              (reduced (assoc context ::result stratum))
 
               (sequential? stratum)
-              (reduced (incorrect-stratum subject stratum-expression-name))
+              (reduced (assoc context ::result (incorrect-stratum subject stratum-expression-name)))
 
               :else
-              (update stratums stratum (fnil inc 0))))
+              (update-in context [::result stratum] (fnil inc 0))))
 
           :else
-          stratums)))
+          context)))
     subjects))
 
 
@@ -149,7 +177,7 @@
         (partition-all eval-parallel-chunk-size)
         (map (partial calc-stratums* context population-expression-name
                       stratum-expression-name)))
-      stratum-combine
+      (stratum-combine-op context)
       (d/list-resources db subject-type))))
 
 
@@ -157,11 +185,15 @@
   [context population-expression-name expression-names subjects]
   (r/fold
     eval-sequential-chunk-size
-    stratum-combine
-    (fn [stratums subject]
-      (when-ok [res (evaluate-expression-1 context subject
-                                           population-expression-name)]
-        (if res
+    (stratum-combine-op context)
+    (fn [context subject]
+      (let [res (evaluate-expression-1 context subject
+                                       population-expression-name)]
+        (cond
+          (::anom/category res)
+          (reduced (assoc context ::result res))
+
+          res
           (let [stratum-vector
                 (reduce
                   (fn [stratum-vector expression-name]
@@ -169,19 +201,22 @@
                                     context subject expression-name)]
                       (cond
                         (::anom/category stratum)
-                        (reduced stratum)
+                        (reduced (assoc context ::result stratum))
 
                         (sequential? stratum)
-                        (reduced (incorrect-stratum subject expression-name))
+                        (reduced (assoc context ::result (incorrect-stratum subject expression-name)))
 
                         :else
                         (conj stratum-vector stratum))))
                   []
                   expression-names)]
+
             (if (::anom/category stratum-vector)
-              (reduced stratum-vector)
-              (update stratums stratum-vector (fnil inc 0))))
-          stratums)))
+              (reduced (assoc context ::result stratum-vector))
+              (update-in context [::result stratum-vector] (fnil inc 0))))
+
+          :else
+          context)))
     subjects))
 
 
@@ -194,5 +229,5 @@
         (partition-all eval-parallel-chunk-size)
         (map (partial calc-mult-component-stratums* context
                       population-expression-name expression-names)))
-      stratum-combine
+      (stratum-combine-op context)
       (d/list-resources db subject-type))))

@@ -35,66 +35,77 @@
 (defprotocol SearchParam
   (-new-iterator [_ snapshot tid value])
   (-new-compartment-iterator [_ snapshot compartment tid value])
-  (-matches? [_ snapshot tid id hash value])
-  (-compartment-matches? [_ snapshot compartment tid id hash value])
+  (-matches? [_ snapshot tid id hash values])
+  (-compartment-matches? [_ snapshot compartment tid id hash values])
   (-compartment-ids [_ resolver resource])
   (-index-entries [_ resolver hash resource linked-compartments]))
 
 
-(defn new-iterator ^Closeable [search-param snapshot tid value]
-  (let [[value & values] (str/split value #",")]
-    (if (empty? values)
-      (-new-iterator search-param snapshot tid value)
-      (let [state (volatile! {:iter (-new-iterator search-param snapshot tid value)
-                              :values values})]
-        (reify
-          Iterator
-          (-first [_]
-            (-first (:iter @state)))
-          (-next [_ current-id]
-            (if-let [k (-next (:iter @state) current-id)]
-              k
-              (let [[value & values] (:values @state)]
-                (when value
-                  (.close ^Closeable (:iter @state))
-                  (vreset! state {:iter (-new-iterator search-param snapshot tid value)
-                                  :values values})
-                  (-first (:iter @state))))))
-          Closeable
-          (close [_]
-            (.close ^Closeable (:iter @state))))))))
+(deftype CompoundIterator
+  [^:volatile-mutable iter ^:volatile-mutable next-values new-iter-fn]
+  Iterator
+  (-first [this]
+    (if-let [k (-first iter)]
+      k
+      (let [[next-value & more] next-values]
+        (when next-value
+          (set! iter (new-iter-fn next-value))
+          (set! next-values more)
+          (-first this)))))
+
+  (-next [this current-id]
+    (if-let [k (-next iter current-id)]
+      k
+      (let [[next-value & more] next-values]
+        (when next-value
+          (set! iter (new-iter-fn next-value))
+          (set! next-values more)
+          (-first this))))))
 
 
-(defn new-compartment-iterator ^Closeable [search-param snapshot compartment tid value]
-  (let [[value & values] (str/split value #",")]
-    (if (empty? values)
-      (-new-compartment-iterator search-param snapshot compartment tid value)
-      (let [state (volatile! {:iter (-new-compartment-iterator search-param snapshot compartment tid value)
-                              :values values})]
-        (reify
-          Iterator
-          (-first [_]
-            (-first (:iter @state)))
-          (-next [_ current-id]
-            (if-let [k (-next (:iter @state) current-id)]
-              k
-              (let [[value & values] (:values @state)]
-                (when value
-                  (.close ^Closeable (:iter @state))
-                  (vreset! state {:iter (-new-compartment-iterator search-param snapshot compartment tid value)
-                                  :values values})
-                  (-first (:iter @state))))))
-          Closeable
-          (close [_]
-            (.close ^Closeable (:iter @state))))))))
+(defn new-iterator ^Closeable [search-param snapshot tid [value & values]]
+  (if (empty? values)
+    (-new-iterator search-param snapshot tid value)
+    (let [state (volatile! {:iter (-new-iterator search-param snapshot tid value)
+                            :values values})]
+      ;; TODO: doesn't work
+      (reify
+        Iterator
+        (-first [_]
+          (-first (:iter @state)))
+        (-next [_ current-id]
+          (if-let [k (-next (:iter @state) current-id)]
+            k
+            (let [[value & values] (:values @state)]
+              (when value
+                (.close ^Closeable (:iter @state))
+                (vreset! state {:iter (-new-iterator search-param snapshot tid value)
+                                :values values})
+                (-first (:iter @state))))))
+        Closeable
+        (close [_]
+          (.close ^Closeable (:iter @state)))))))
 
 
-(defn matches? [search-param snapshot tid id hash value]
-  (-matches? search-param snapshot tid id hash value))
+(defn new-compartment-iterator
+  "Creates an iterator for `search-param` based on the
+  :compartment-search-param-value-index iterator `cspvi`, the `compartment`,
+  the type (`tid`) and `values` to match.
+
+  Doesn't close the `cspvi`. The state of `cspvi` has to be managed upstream."
+  [search-param cspvi compartment tid [value & more]]
+  (CompoundIterator.
+    (-new-compartment-iterator search-param cspvi compartment tid value)
+    more
+    (partial -new-compartment-iterator search-param cspvi compartment tid)))
 
 
-(defn compartment-matches? [search-param snapshot compartment tid id hash value]
-  (-compartment-matches? search-param snapshot compartment tid id hash value))
+(defn matches? [search-param snapshot tid id hash values]
+  (-matches? search-param snapshot tid id hash values))
+
+
+(defn compartment-matches? [search-param snapshot compartment tid id hash values]
+  (-compartment-matches? search-param snapshot compartment tid id hash values))
 
 
 (s/def :blaze.db/local-ref
@@ -309,7 +320,8 @@
 
         (throw-anom ::anom/unsupported (format "Unsupported prefix `%s` in search parameter of type date." (clojure.core/name op))))))
 
-  (-matches? [_ snapshot tid id hash value]
+  (-matches? [_ snapshot tid id hash [value & _]]
+    ;; TODO: handle other values
     (when-let [v (get-value snapshot tid id hash c-hash)]
       (let [[op value] (separate-op value)]
         (case op
@@ -426,7 +438,8 @@
         (close [_]
           (.close iter)))))
 
-  (-matches? [_ snapshot tid id hash value]
+  (-matches? [_ snapshot tid id hash [value & _]]
+    ;; TODO: handle other values
     (seek-value snapshot tid id hash c-hash (codec/string (normalize-string value))))
 
   (-index-entries [_ resolver hash {type :resourceType id :id :as resource} linked-compartments]
@@ -593,9 +606,8 @@
         (close [_]
           (.close iter)))))
 
-  (-new-compartment-iterator [_ snapshot compartment tid value]
+  (-new-compartment-iterator [_ iter compartment tid value]
     (let [value (codec/v-hash value)
-          iter (kv/new-iterator snapshot :compartment-search-param-value-index)
           {co-c-hash :c-hash co-res-id :res-id} compartment
           start-key (codec/compartment-search-param-value-key
                       co-c-hash co-res-id c-hash tid value)]
@@ -609,16 +621,15 @@
               (if (= current-id (codec/compartment-search-param-value-key->id k))
                 ;; recur, because we are still on the same resource
                 (recur (kv/next iter))
-                k))))
-        Closeable
-        (close [_]
-          (.close iter)))))
+                k)))))))
 
-  (-matches? [_ snapshot tid id hash value]
+  (-matches? [_ snapshot tid id hash [value & _]]
+    ;; TODO: handle other values
     (when-let [v (get-value snapshot tid id hash c-hash)]
       (codec/contains-v-hash? v (codec/v-hash value))))
 
-  (-compartment-matches? [_ snapshot compartment tid id hash value]
+  (-compartment-matches? [_ snapshot compartment tid id hash [value & _]]
+    ;; TODO: handle other values
     (when-let [v (get-compartment-value snapshot compartment tid (codec/id-bytes id) hash c-hash)]
       (codec/contains-v-hash? v (codec/v-hash value))))
 
@@ -735,7 +746,8 @@
         (close [_]
           (.close iter)))))
 
-  (-matches? [_ snapshot tid id hash value]
+  (-matches? [_ snapshot tid id hash [value & _]]
+    ;; TODO: handle other values
     (let [[value unit] (str/split value #"\|" 2)]
       (when-let [v (get-value snapshot tid id hash c-hash)]
         (bytes/= (codec/quantity (BigDecimal. ^String value) unit) v))))
