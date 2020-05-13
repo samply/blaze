@@ -123,11 +123,13 @@
 
 
 (s/def :blaze.db.index.query/clause
-  (s/tuple :blaze.db/search-param string?))
+  (s/tuple :blaze.db/search-param (s/coll-of string?)))
 
 
 (s/fdef index/type-query
   :args (s/cat :context :blaze.db.index/context
+               :snapshot :blaze.db/kv-snapshot
+               :raoi :blaze.db/kv-iterator
                :tid :blaze.db/tid
                :clauses (s/coll-of :blaze.db.index.query/clause :min-count 1)
                :t :blaze.db/t)
@@ -136,6 +138,9 @@
 
 (s/fdef index/compartment-query
   :args (s/cat :context :blaze.db.index/context
+               :snapshot :blaze.db/kv-snapshot
+               :cspvi :blaze.db/kv-iterator
+               :raoi :blaze.db/kv-iterator
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :clauses (s/coll-of :blaze.db.index.query/clause :min-count 1)

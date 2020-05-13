@@ -3,9 +3,9 @@
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.expression-spec]
     [blaze.elm.protocols :as p]
+    [blaze.elm.util :as elm-util]
     [blaze.fhir.spec])
   (:import
-    [clojure.core Eduction]
     [java.util Comparator])
   (:refer-clojure :exclude [comparator]))
 
@@ -118,7 +118,7 @@
 (defrecord EductionQueryExpression [xform-factory source]
   Expression
   (-eval [_ context resource scope]
-    (Eduction.
+    (elm-util/eduction
       (-create xform-factory context resource)
       (-eval source context resource scope))))
 
@@ -178,7 +178,7 @@
   Expression
   (-eval [_ context resource scope]
     ;; TODO: build a comparator of all sort by items
-    (->> (-eval source context resource scope)
+    (->> (into [] (-eval source context resource scope))
          (sort-by
            (if-let [expr (:expression sort-by-item)]
              #(-eval expr context resource %)

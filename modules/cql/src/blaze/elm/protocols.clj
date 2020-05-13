@@ -275,6 +275,11 @@
   (to-integer [x]))
 
 
+;; 20.25. SingletonFrom
+(defprotocol SingletonFrom
+  (singleton-from [x]))
+
+
 ;; 22.26. ToQuantity
 (defprotocol ToQuantity
   (to-quantity [x]))

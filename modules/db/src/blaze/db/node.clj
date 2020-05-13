@@ -1,10 +1,16 @@
 (ns blaze.db.node
   (:require
+    [blaze.anomaly :refer [when-ok]]
     [blaze.db.api :as d]
-    [blaze.db.db :as db]
+    [blaze.db.impl.batch-db :as batch-db]
+    [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.db :as db]
     [blaze.db.impl.index :as index]
+    [blaze.db.impl.protocols :as p]
     [blaze.db.indexer :as indexer]
+    [blaze.db.search-param-registry :as sr]
     [blaze.db.tx-log :as tx-log]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [taoensso.timbre :as log])
@@ -17,22 +23,46 @@
 (set! *warn-on-reflection* true)
 
 
-(deftype Node [tx-log tx-indexer store resource-cache search-param-registry]
-  d/Node
-  (-db [_]
-    (db/db store resource-cache search-param-registry (indexer/last-t tx-indexer)))
+(defn- resolve-search-param [search-param-registry type code]
+  (if-let [search-param (sr/get search-param-registry code type)]
+    search-param
+    {::anom/category ::anom/not-found
+     ::anom/message (format "search-param with code `%s` and type `%s` not found" code type)}))
 
-  (sync [this t]
+
+(defn- resolve-search-params [search-param-registry type clauses]
+  (reduce
+    (fn [ret [code & values]]
+      (let [res (resolve-search-param search-param-registry type code)]
+        (if (::anom/category res)
+          (reduced res)
+          (conj ret [res values]))))
+    []
+    clauses))
+
+
+(deftype Node [tx-log tx-indexer store resource-cache search-param-registry]
+  p/Node
+  (-db [this]
+    (db/db store resource-cache this (indexer/last-t tx-indexer)))
+
+  (-sync [this t]
     (-> (indexer/tx-result tx-indexer t)
         (md/chain' (fn [_] (d/db this)))))
 
-  (-submit-tx [_ tx-ops]
+  (-submit-tx [this tx-ops]
     (-> (tx-log/submit tx-log tx-ops)
         (md/chain' #(indexer/tx-result tx-indexer %))
-        (md/chain' #(db/db store resource-cache search-param-registry %))))
+        (md/chain' #(db/db store resource-cache this %))))
 
-  (-compartment-query-batch [_ code type clauses]
-    (db/compartment-query-batch search-param-registry code type clauses)))
+  p/QueryCompiler
+  (-compile-type-query [_ type clauses]
+    (when-ok [clauses (resolve-search-params search-param-registry type clauses)]
+      (batch-db/->TypeQuery (codec/tid type) clauses)))
+
+  (-compile-compartment-query [_ code type clauses]
+    (when-ok [clauses (resolve-search-params search-param-registry type clauses)]
+      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type) clauses))))
 
 
 (defn resource-cache [kv-store max-size]

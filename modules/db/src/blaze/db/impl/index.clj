@@ -4,12 +4,13 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
+    [blaze.fhir.util :as fhir-util]
     [taoensso.nippy :as nippy])
   (:import
     [clojure.lang IMeta IPersistentMap IReduceInit]
     [com.github.benmanes.caffeine.cache LoadingCache]
     [java.io Closeable Writer]
-    [java.util Arrays])
+    [java.util Arrays HashMap Map])
   (:refer-clojure :exclude [hash]))
 
 
@@ -17,6 +18,18 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
+(def ^:private ^Map type-reg
+  (let [map (HashMap.)]
+    (doseq [{:keys [type]} (fhir-util/resources)]
+      (.put map (codec/tid type) type))
+    map))
+
+
+(defn- tid->type [tid]
+  (.get type-reg tid))
+
+
+;; Used as cache key. Implements equals on top of the byte array of a hash.
 (deftype Hash [hash]
   Object
   (equals [this other]
@@ -61,18 +74,19 @@
   (count [_] 5))
 
 
-(defn mk-meta [kv-store {:keys [resourceType]} state t]
-  (ResourceMeta. kv-store (keyword "fhir" resourceType) state t nil))
+(defn mk-meta [kv-store type state t]
+  (ResourceMeta. kv-store (keyword "fhir" type) state t nil))
 
 
 (deftype Resource
-  [kv-store ^LoadingCache cache id hash ^long state ^long t
+  [kv-store ^LoadingCache cache type id hash ^long state ^long t
    ^:volatile-mutable ^IPersistentMap content ^:volatile-mutable meta]
 
   IPersistentMap
   (containsKey [_ key]
     (case key
       :id true
+      :resourceType true
       (if content
         (.containsKey content key)
         (do (set! content (enhance-content (.get cache hash) t))
@@ -85,6 +99,7 @@
   (valAt [_ key]
     (case key
       :id id
+      :resourceType type
       (if content
         (.valAt content key)
         (do (set! content (enhance-content (.get cache hash) t))
@@ -92,6 +107,7 @@
   (valAt [_ key not-found]
     (case key
       :id id
+      :resourceType type
       (if content
         (.valAt content key not-found)
         (do (set! content (enhance-content (.get cache hash) t))
@@ -106,12 +122,8 @@
   (meta [_]
     (if meta
       meta
-      (if content
-        (do (set! meta (mk-meta kv-store content state t))
-            meta)
-        (do (set! content (enhance-content (.get cache hash) t))
-            (set! meta (mk-meta kv-store content state t))
-            meta))))
+      (do (set! meta (mk-meta kv-store type state t))
+          meta)))
 
   Object
   (equals [this other]
@@ -140,8 +152,8 @@
 
 
 (defn mk-resource
-  [{:blaze.db/keys [kv-store resource-cache]} id hash state t]
-  (Resource. kv-store resource-cache id (Hash. hash) state t nil nil))
+  [{:blaze.db/keys [kv-store resource-cache]} type id hash state t]
+  (Resource. kv-store resource-cache type id (Hash. hash) state t nil nil))
 
 
 (defn tx-success-entries [t tx-instant]
@@ -156,6 +168,7 @@
 (defn- resource*** [context k v]
   (mk-resource
     context
+    (tid->type (codec/resource-as-of-key->tid k))
     (codec/id (codec/resource-as-of-key->id k))
     (codec/resource-as-of-value->hash v)
     (codec/resource-as-of-value->state v)
@@ -171,8 +184,8 @@
       (resource*** context k (kv/value resource-as-of-iter)))))
 
 
-(defn resource* [context resource-as-of-iter tid id t]
-  (resource** context resource-as-of-iter (codec/resource-as-of-key tid id t)))
+(defn resource* [context raoi tid id t]
+  (resource** context raoi (codec/resource-as-of-key tid id t)))
 
 
 (defn- hash-state-t** [k v]
@@ -196,14 +209,14 @@
   (hash-state-t* resource-as-of-iter (codec/resource-as-of-key tid id t)))
 
 
-(defn- resource-as-of-iter ^Closeable [snapshot]
+(defn resource-as-of-iter ^Closeable [snapshot]
   (kv/new-iterator snapshot :resource-as-of-index))
 
 
 (defn resource [{:blaze.db/keys [kv-store] :as context} tid id t]
   (with-open [snapshot (kv/new-snapshot kv-store)
-              i (resource-as-of-iter snapshot)]
-    (resource* context i tid id t)))
+              raoi (resource-as-of-iter snapshot)]
+    (resource* context raoi tid id t)))
 
 
 (defn- resource-t**
@@ -380,8 +393,8 @@
 
 
 (defn compartment-list
-  "Returns a reducible collection of `HashStateT` records of all resources
-  linked to `compartment` and of type with `tid` ordered by resource id.
+  "Returns a reducible collection of all resources of type with `tid` linked to
+  `compartment` and ordered by resource id.
 
   The list starts at `start-id`.
 
@@ -417,15 +430,6 @@
        (< since-t ^long (codec/resource-as-of-key->t k))))
 
 
-(defn- instance-history-entry [context k v]
-  (mk-resource
-    context
-    (codec/id (codec/resource-as-of-key->id k))
-    (codec/resource-as-of-value->hash v)
-    (codec/resource-as-of-value->state v)
-    (codec/resource-as-of-key->t k)))
-
-
 (defn instance-history
   "Returns a reducible collection of `HashStateT` records of instance history
   entries.
@@ -440,7 +444,7 @@
           (loop [ret init
                  k (kv/seek i (codec/resource-as-of-key tid id start-t))]
             (if (some-> k key-still-valid?)
-              (let [ret (rf ret (instance-history-entry context k (kv/value i)))]
+              (let [ret (rf ret (resource*** context k (kv/value i)))]
                 (if (reduced? ret)
                   @ret
                   (recur ret (kv/next i))))
@@ -546,20 +550,18 @@
 
 (defn- spv-resource* [context snapshot k raoi tid id clauses t]
   (when-let [resource (spv-resource context snapshot k raoi tid id t)]
-    (loop [[[search-param value] & clauses] clauses]
+    (loop [[[search-param values] & clauses] clauses]
       (if search-param
-        (when (search-param/matches? search-param snapshot tid id (hash resource) value)
+        (when (search-param/matches? search-param snapshot tid id (hash resource) values)
           (recur clauses))
         resource))))
 
 
-(defn type-query [{:blaze.db/keys [kv-store] :as context} tid clauses t]
-  (let [[[search-param value] & clauses] clauses]
+(defn type-query [context snapshot raoi tid clauses t]
+  (let [[[search-param values] & clauses] clauses]
     (reify IReduceInit
       (reduce [_ rf init]
-        (with-open [snapshot (kv/new-snapshot kv-store)
-                    raoi (resource-as-of-iter snapshot)
-                    spi (search-param/new-iterator search-param snapshot tid value)]
+        (with-open [spi (search-param/new-iterator search-param snapshot tid values)]
           (loop [ret init
                  k (search-param/first spi)]
             (if k
@@ -590,32 +592,30 @@
 
 (defn- compartment-spv-resource* [context snapshot compartment k raoi tid id clauses t]
   (when-let [resource (compartment-spv-resource context snapshot k raoi tid id t)]
-    (loop [[[search-param value] & clauses] clauses]
+    (loop [[[search-param values] & clauses] clauses]
       (if search-param
-        (when (search-param/compartment-matches? search-param snapshot compartment tid id (hash resource) value)
+        (when (search-param/compartment-matches? search-param snapshot compartment tid id (hash resource) values)
           (recur clauses))
         resource))))
 
 
 (defn compartment-query
-  [{:blaze.db/keys [kv-store] :as context} compartment tid clauses t]
-  (let [[[search-param value] & clauses] clauses]
-    (reify IReduceInit
-      (reduce [_ rf init]
-        (with-open [snapshot (kv/new-snapshot kv-store)
-                    raoi (resource-as-of-iter snapshot)
-                    spi (search-param/new-compartment-iterator search-param snapshot compartment tid value)]
-          (loop [ret init
-                 k (search-param/first spi)]
-            (if k
-              (let [id (codec/compartment-search-param-value-key->id k)]
-                (if-let [resource (compartment-spv-resource* context snapshot compartment k raoi tid id clauses t)]
-                  (let [ret (rf ret resource)]
-                    (if (reduced? ret)
-                      @ret
-                      (recur ret (search-param/next spi id))))
-                  (recur ret (search-param/next spi id))))
-              ret)))))))
+  [context snapshot cspvi raoi compartment tid clauses t]
+  (reify IReduceInit
+    (reduce [_ rf init]
+      (let [[[search-param values] & clauses] clauses
+            spi (search-param/new-compartment-iterator search-param cspvi compartment tid values)]
+        (loop [ret init
+               k (search-param/first spi)]
+          (if k
+            (let [id (codec/compartment-search-param-value-key->id k)]
+              (if-let [resource (compartment-spv-resource* context snapshot compartment k raoi tid id clauses t)]
+                (let [ret (rf ret resource)]
+                  (if (reduced? ret)
+                    @ret
+                    (recur ret (search-param/next spi id))))
+                (recur ret (search-param/next spi id))))
+            ret))))))
 
 
 (defn- type-total* [i tid t]

@@ -1,96 +1,93 @@
 (ns blaze.db.api
-  "Public API"
+  "Public Database API
+
+  A Database node provides access a set of databases.
+
+  A Database is an immutable, indexed set of Resources at a certain point in
+  time."
+  (:require
+    [blaze.anomaly :refer [when-ok]]
+    [blaze.db.impl.protocols :as p])
   (:import
-    [clojure.lang IReduceInit])
+    [java.io Closeable])
   (:refer-clojure :exclude [sync]))
 
 
-(defprotocol Node
-  "A Database node provides access a set of databases."
+(defn db
+  "Returns the most recent database known to this node.
 
-  (-db [node]
-    "Returns the most recent database known to this node.
-
-    Does not block.")
-
-  (sync [node t]
-    "Returns a database with at least the `t` specified. Returns a deferred.")
-
-  (-submit-tx [node tx-ops])
-
-  (-compartment-query-batch [_ code type clauses]))
+  Does not block."
+  [node]
+  (p/-db node))
 
 
-(defn db [node]
-  (-db node))
+(defn sync
+  "Returns a database with at least the `t` specified.
+
+  Returns a deferred."
+  [node t]
+  (p/-sync node t))
 
 
 (defn submit-tx
-  "Submits `tx-ops` to the central transaction log. Returns a success deferred
-  with the database after the transaction or an error deferred with an anomaly."
+  "Submits `tx-ops` to the central transaction log.
+
+  Returns a success deferred with the database after the transaction or an
+  error deferred with an anomaly."
   [node tx-ops]
-  (-submit-tx node tx-ops))
+  (p/-submit-tx node tx-ops))
 
 
-(defn compartment-query-batch
-  "Returns a function taking a `db` and an `id` of a compartment. This is a
-  batch variant of `compartment-query`. The returned function closes over the
-  common arguments `code`, `type` and `clauses` and takes the remaining
-  arguments `db` and `id` through individual calls.
+(defn compile-type-query
+  "Compiles a query, which when executed, will return a collection of all
+  resources of `type` matching `clauses`.
+
+  A clause is a vector were the first element is a search param code and the
+  following elements are values which are combined with logical or.
+
+  Returns an anomaly if search parameters in clauses can't be resolved."
+  [node-or-db type clauses]
+  (p/-compile-type-query node-or-db type clauses))
+
+
+(defn compile-compartment-query
+  "Compiles a query, which when executed, will return a collection of all
+  resources of `type` matching `clauses` linked to the compartment with `code`
+  and an id from its first argument.
 
   The code is the code of the compartment not necessary the same as a resource
   type. One common compartment is `Patient`.
 
+  A clause is a vector were the first element is a search param code and the
+  following elements are values with are combined with logical or.
+
   Returns an anomaly if search parameters in clauses can't be resolved."
-  [node code type clauses]
-  (-compartment-query-batch node code type clauses))
+  [node-or-db code type clauses]
+  (p/-compile-compartment-query node-or-db code type clauses))
 
 
-(defprotocol Db
-  "A Database is an immutable, indexed set of Resources at a certain point in
-  time."
-
-  (as-of [db t]
-    "Returns the value of the database as of some point `t`, inclusive.")
-
-  (basis-t [db]
-    "Returns the t of the most recent transaction reachable via this db.")
-
-  (as-of-t [db]
-    "Returns the as-of point, or nil if none.")
-
-  (-tx [db t]
-    "Returns the transaction of `t`.")
-
-  (-resource-exists? [db type id])
-
-  (-resource [db type id])
-
-  (-list-resources [db type] [db type start-id])
-
-  (-list-compartment-resources [db code id type] [db code id type start-id])
-
-  (-type-query [db type clauses])
-
-  (-compartment-query [db code id type clauses])
-
-  (type-total [db type])
-
-  (-instance-history [db type id start-t since])
-
-  (total-num-of-instance-changes [_ type id since])
-
-  (type-history [db type start-t start-id since])
-
-  (-total-num-of-type-changes [_ type since])
-
-  (system-history [db start-t start-type start-id since])
-
-  (total-num-of-system-changes [_ since]))
+(defn as-of
+  "Returns the value of `db` as of some point `t`, inclusive."
+  [db t]
+  (p/-as-of db t))
 
 
-(defn tx [db t]
-  (-tx db t))
+(defn basis-t
+  "Returns the `t` of the most recent transaction reachable via `db`."
+  [db]
+  (p/-basis-t db))
+
+
+(defn as-of-t
+  "Returns the as-of point, or nil if none."
+  [db]
+  (p/-as-of-t db))
+
+
+(defn tx
+  "Returns the transaction of `t`."
+  [db t]
+  (p/-tx db t))
 
 
 (defn resource-exists?
@@ -99,7 +96,7 @@
 
   If the resource is deleted, it does not count as existence."
   [db type id]
-  (-resource-exists? db type id))
+  (p/-resource-exists? db type id))
 
 
 (defn resource
@@ -109,7 +106,7 @@
 
   Deleted resources can also be tested using `deleted?`."
   [db type id]
-  (-resource db type id))
+  (p/-resource db type id))
 
 
 (defn deleted? [resource]
@@ -121,14 +118,17 @@
 
   An optional `start-id` (inclusive) can be supplied."
   ([db type]
-   (-list-resources db type))
+   (p/-list-resources db type))
   ([db type start-id]
-   (-list-resources db type start-id)))
+   (p/-list-resources db type start-id)))
 
 
 (defn list-compartment-resources
-  "Returns a reducible collection of all non-deleted resources of `type` linked
-  to the compartment with `code` and `id`.
+  "Returns a reducible collection of all resources of `type` linked to the
+  compartment with `code` and `id`.
+
+  The code is the code of the compartment not necessary the same as a resource
+  type. One common compartment is `Patient`.
 
   An optional `start-id` (inclusive) can be supplied.
 
@@ -136,25 +136,52 @@
 
     (list-compartment-resources db \"Patient\" \"0\" \"Observation\")"
   ([db code id type]
-   (-list-compartment-resources db code id type))
+   (p/-list-compartment-resources db code id type))
   ([db code id type start-id]
-   (-list-compartment-resources db code id type start-id)))
+   (p/-list-compartment-resources db code id type start-id)))
 
 
-(defn type-query [db type clauses]
-  (-type-query db type clauses))
+(defn execute-query
+  "Executes a pre-compiled `query` with `args`.
+
+  Returns a reducible collection of all matching resources.
+
+  See:
+   * compile-type-query
+   * compile-compartment-query"
+  {:arglists '([db query & args])}
+  ([db query]
+   (p/-execute-query db query))
+  ([db query arg1]
+   (p/-execute-query db query arg1)))
+
+
+(defn type-query
+  "Returns a reducible collection of all resources of `type` matching `clauses`.
+
+  A clause is a vector were the first element is a search param code and the
+  following elements are values which are combined with logical or.
+
+  Returns an anomaly if search parameters in clauses can't be resolved."
+  [db type clauses]
+  (when-ok [query (p/-compile-type-query db type clauses)]
+    (p/-execute-query db query)))
 
 
 (defn compartment-query
-  "Searches for resources of `type` in compartment specified by `code` and `id`
-  with `clauses`.
+  "Returns a reducible collection of all resources of `type` matching `clauses`
+  linked to the compartment with `code` and `id`.
 
   The code is the code of the compartment not necessary the same as a resource
   type. One common compartment is `Patient`.
 
+  A clause is a vector were the first element is a search param code and the
+  following elements are values with are combined with logical or.
+
   Returns an anomaly if search parameters in clauses can't be resolved."
   [db code id type clauses]
-  (-compartment-query db code id type clauses))
+  (when-ok [query (p/-compile-compartment-query db code type clauses)]
+    (p/-execute-query db query id)))
 
 
 (defn instance-history
@@ -165,23 +192,58 @@
    * :start-t - t at which the history should start
    * :since   - instant"
   [db type id start-t since]
-  (-instance-history db type id start-t since))
+  (p/-instance-history db type id start-t since))
+
+
+(defn type-history [db type start-t start-id since]
+  (p/-type-history db type start-t start-id since))
+
+
+(defn type-total [db type]
+  (p/-type-total db type))
+
+
+(defn total-num-of-instance-changes
+  [db type id since]
+  (p/-total-num-of-instance-changes db type id since))
 
 
 (defn total-num-of-type-changes
   ([db type]
-   (-total-num-of-type-changes db type nil))
+   (p/-total-num-of-type-changes db type nil))
   ([db type since]
-   (-total-num-of-type-changes db type since)))
+   (p/-total-num-of-type-changes db type since)))
+
+
+(defn system-total [db]
+  (p/-system-total db))
+
+
+(defn system-history [db start-t start-type start-id since]
+  (p/-system-history db start-t start-type start-id since))
+
+
+(defn total-num-of-system-changes [db since]
+  (p/-total-num-of-system-changes db since))
+
+
+(defn new-batch-db
+  "Returns a variant of this `db` which is optimized for batch processing.
+
+  The batch DB has to be closed after usage, because it holds resources with
+  have to be freed."
+  ^Closeable
+  [db]
+  (p/-new-batch-db db))
 
 
 (defn ri-first
-  "Like `first` for `IReduceInit` collections."
+  "Like `first` but for reducible collections."
   [coll]
-  (.reduce ^IReduceInit coll (fn [_ x] (reduced x)) nil))
+  (reduce (fn [_ x] (reduced x)) nil coll))
 
 
 (defn ri-empty?
-  "Like `empty?` for `IReduceInit` collections."
+  "Like `empty?` but for reducible collections."
   [coll]
   (nil? (ri-first coll)))

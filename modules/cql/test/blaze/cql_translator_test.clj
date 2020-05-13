@@ -44,15 +44,3 @@
           "library Test
            using FHIR version '4.0.0'
            define Patients: [Patient]")))))
-
-
-(comment
-  (translate
-    "library Retrieve
-    using FHIR version '4.0.0'
-    include FHIRHelpers version '4.0.0'
-
-    context Patient
-
-    define Foo: Coalesce({'a', null, null})")
-  )

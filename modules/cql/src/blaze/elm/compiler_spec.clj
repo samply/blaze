@@ -15,7 +15,7 @@
 
 
 (s/def ::compile-context
-  (s/keys :req-un [:elm/library]))
+  (s/keys :req-un [:elm/library :blaze.db/node]))
 
 
 (s/fdef compiler/compile

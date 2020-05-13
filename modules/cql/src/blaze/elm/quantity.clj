@@ -85,7 +85,8 @@
   (get [quantity key]
     (case key
       :value (.getValue quantity)
-      :unit (format-unit (.getUnit quantity)))))
+      :unit (format-unit (.getUnit quantity))
+      nil)))
 
 
 ;; 12.1. Equal

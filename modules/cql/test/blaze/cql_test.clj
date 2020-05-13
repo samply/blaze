@@ -8,6 +8,7 @@
     [blaze.elm.expression :as expr]
     [blaze.elm.normalizer :as normalizer]
     [blaze.elm.type-infer :as type-infer]
+    [blaze.elm.type-infer-spec]
     [clojure.data.xml :as xml]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -286,6 +287,8 @@
             "NotEqualABCAnd123"                             ; new in v1.4.6
             "Equivalent123AndString123"                     ; new in v1.4.6
             "Equivalent123AndABC"                           ; new in v1.4.6
+
+            "ExistsListNull"                                ; the list contains one null element
             })
 
 

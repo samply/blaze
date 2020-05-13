@@ -4,7 +4,8 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.code :refer [to-code]]
     [blaze.elm.compiler.protocols :refer [-eval]]
-    [blaze.elm.compiler.retrieve :refer [expr with-related-context-expr]]
+    [blaze.elm.compiler.retrieve :refer [expr]]
+    [blaze.elm.compiler.retrieve-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
@@ -159,22 +160,6 @@
               nil)
             [0 :resourceType] := "Observation"
             [0 :id] := "1"))))))
-
-
-(defn stub-with-related-context-expr
-  [context-expr data-type code-property-name codes-spec res]
-  (st/instrument
-    [`with-related-context-expr]
-    {:spec
-     {`with-related-context-expr
-      (s/fspec
-        :args (s/cat :context-expr #{context-expr}
-                     :data-type #{data-type}
-                     :code-property-name #{code-property-name}
-                     :codes codes-spec)
-        :ret #{res})}
-     :stub
-     #{`with-related-context-expr}}))
 
 
 (defn stub-expr

@@ -23,18 +23,18 @@
     [blaze.elm.data-provider :as data-provider]
     [blaze.elm.date-time :as date-time :refer [local-time temporal?]]
     [blaze.elm.decimal :as decimal]
-    [blaze.elm.deps-infer :refer [infer-library-deps]]
-    [blaze.elm.equiv-relationships :refer [find-equiv-rels-library]]
+    [blaze.elm.deps-infer :as deps-infer]
+    [blaze.elm.equiv-relationships :as equiv-relationships]
     [blaze.elm.integer]
     [blaze.elm.interval :refer [interval]]
     [blaze.elm.list]
     [blaze.elm.nil]
-    [blaze.elm.normalizer :refer [normalize-library]]
+    [blaze.elm.normalizer :as normalizer]
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :refer [quantity quantity?]]
     [blaze.elm.spec]
     [blaze.elm.string :as string]
-    [blaze.elm.type-infer :refer [infer-library-types]]
+    [blaze.elm.type-infer :as type-infer]
     [blaze.elm.util :as elm-util]
     [blaze.fhir.spec :as fhir-spec]
     [cognitect.anomalies :as anom]
@@ -42,7 +42,7 @@
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit]
-    [clojure.lang PersistentArrayMap])
+    [clojure.lang PersistentArrayMap IObj])
   (:refer-clojure :exclude [comparator compile]))
 
 
@@ -136,10 +136,10 @@
   There are currently no options."
   [node library opts]
   (let [library (-> library
-                    normalize-library
-                    find-equiv-rels-library
-                    infer-library-deps
-                    infer-library-types)
+                    normalizer/normalize-library
+                    equiv-relationships/find-equiv-rels-library
+                    deps-infer/infer-library-deps
+                    type-infer/infer-library-types)
         context (assoc opts :node node :library library)]
     (when-ok [expr-defs
               (transduce
@@ -406,22 +406,26 @@
 
 
 (defn- with-spec [spec x]
-  (if (fhir-spec/primitive? spec)
-    x
-    (with-meta x {:type spec})))
+  (if (instance? IObj x)
+    (with-meta x {:type spec})
+    x))
+
+
+(defn- search-choice-property [choices x]
+  (loop [[[key spec] & more] choices]
+    (if-let [val (get x key)]
+      (with-spec spec val)
+      (some-> more recur))))
 
 
 (defn- get-fhir-property [key x]
   (if-let [child-spec (get (fhir-spec/child-specs (type x)) key)]
     (cond
       (fhir-spec/choice? child-spec)
-      (loop [[[key spec] & more] (fhir-spec/choices child-spec)]
-        (if-let [val (get x key)]
-          (with-spec spec val)
-          (some-> more recur)))
+      (search-choice-property (fhir-spec/choices child-spec) x)
 
       (= :many (fhir-spec/cardinality child-spec))
-      (mapv (partial with-spec (fhir-spec/type-spec child-spec)) (get x key))
+      (elm-util/eduction (map (partial with-spec (fhir-spec/type-spec child-spec))) (get x key))
 
       :else
       (when-let [val (get x key)]
@@ -446,10 +450,49 @@
     (get-property key (-eval source context resource scope))))
 
 
+(defrecord ChoiceFhirTypeSourcePropertyExpression [source key choices]
+  Expression
+  (-eval [_ context resource scope]
+    (search-choice-property choices (-eval source context resource scope))))
+
+
+(defrecord ManyFhirTypeSourcePropertyExpression [source key spec]
+  Expression
+  (-eval [_ context resource scope]
+    (->> (get (-eval source context resource scope) key)
+         (elm-util/eduction (map (partial with-spec spec))))))
+
+
+(defrecord OneFhirTypeSourcePropertyExpression [source key spec]
+  Expression
+  (-eval [_ context resource scope]
+    (when-let [val (get (-eval source context resource scope) key)]
+      (with-spec spec val))))
+
+
 (defrecord SingleScopePropertyExpression [key]
   Expression
   (-eval [_ _ _ value]
     (get-property key value)))
+
+
+(defrecord ChoiceFhirTypeSingleScopePropertyExpression [key choices]
+  Expression
+  (-eval [_ _ _ value]
+    (search-choice-property choices value)))
+
+
+(defrecord ManyFhirTypeSingleScopePropertyExpression [key spec]
+  Expression
+  (-eval [_ _ _ value]
+    (elm-util/eduction (map (partial with-spec spec)) (get value key))))
+
+
+(defrecord OneFhirTypeSingleScopePropertyExpression [key spec]
+  Expression
+  (-eval [_ _ _ value]
+    (when-let [val (get value key)]
+      (with-spec spec val))))
 
 
 (defrecord ScopePropertyExpression [scope-key key]
@@ -458,21 +501,108 @@
     (get-property key (get scope scope-key))))
 
 
-(defn- path->key [path]
-  (keyword (first (str/split path "."))))
+(defrecord ChoiceFhirTypeScopePropertyExpression [scope-key key choices]
+  Expression
+  (-eval [_ _ _ scope]
+    (search-choice-property choices (get scope scope-key))))
 
+
+(defrecord ManyFhirTypeScopePropertyExpression [scope-key key spec]
+  Expression
+  (-eval [_ _ _ scope]
+    (elm-util/eduction (map (partial with-spec spec)) (get (get scope scope-key) key))))
+
+
+(defrecord OneFhirTypeScopePropertyExpression [scope-key key spec]
+  Expression
+  (-eval [_ _ _ scope]
+    (when-let [val (get (get scope scope-key) key)]
+      (with-spec spec val))))
+
+
+(defn- path->key [path]
+  (let [[first-part & more-parts] (str/split path "." 2)]
+    (when (and more-parts (not= ["value"] more-parts))
+      (throw-anom ::anom/unsupported (format "Unsupported path `%s`with more than one part." path)))
+    (keyword first-part)))
+
+
+(defn- type-source-property-expr
+  "Creates a source-property-expression with known FHIR `type`."
+  [type source key]
+  (if-let [child-spec (get (fhir-spec/child-specs type) key)]
+    (cond
+      (fhir-spec/choice? child-spec)
+      (->ChoiceFhirTypeSourcePropertyExpression source key (fhir-spec/choices child-spec))
+
+      (= :many (fhir-spec/cardinality child-spec))
+      (->ManyFhirTypeSourcePropertyExpression source key (fhir-spec/type-spec child-spec))
+
+      :else
+      (->OneFhirTypeSourcePropertyExpression source key child-spec))
+    (->SourcePropertyExpression source key)))
+
+
+(defn- source-property-expr [source-type source key]
+  (let [[ns name] (elm-util/parse-qualified-name source-type)]
+    (if (= "http://hl7.org/fhir" ns)
+      (type-source-property-expr (keyword "fhir" name) source key)
+      (->SourcePropertyExpression source key))))
+
+
+(defn- type-single-scope-property-expr [type key]
+  (if-let [child-spec (get (fhir-spec/child-specs type) key)]
+    (cond
+      (fhir-spec/choice? child-spec)
+      (->ChoiceFhirTypeSingleScopePropertyExpression key (fhir-spec/choices child-spec))
+
+      (= :many (fhir-spec/cardinality child-spec))
+      (->ManyFhirTypeSingleScopePropertyExpression key (fhir-spec/type-spec child-spec))
+
+      :else
+      (->OneFhirTypeSingleScopePropertyExpression key child-spec))
+    (->SingleScopePropertyExpression key)))
+
+
+(defn- single-scope-property-expr [source-type key]
+  (let [[ns name] (elm-util/parse-qualified-name source-type)]
+    (if (= "http://hl7.org/fhir" ns)
+      (type-single-scope-property-expr (keyword "fhir" name) key)
+      (->SingleScopePropertyExpression key))))
+
+
+(defn- type-scope-property-expr [type scope key]
+  (if-let [child-spec (get (fhir-spec/child-specs type) key)]
+    (cond
+      (fhir-spec/choice? child-spec)
+      (->ChoiceFhirTypeScopePropertyExpression scope key (fhir-spec/choices child-spec))
+
+      (= :many (fhir-spec/cardinality child-spec))
+      (->ManyFhirTypeScopePropertyExpression scope key (fhir-spec/type-spec child-spec))
+
+      :else
+      (->OneFhirTypeScopePropertyExpression scope key child-spec))
+    (->ScopePropertyExpression scope key)))
+
+
+(defn- scope-property-expression [source-type scope key]
+  (let [[ns name] (elm-util/parse-qualified-name source-type)]
+    (if (= "http://hl7.org/fhir" ns)
+      (type-scope-property-expr (keyword "fhir" name) scope key)
+      (->ScopePropertyExpression scope key))))
 
 (defmethod compile* :elm.compiler.type/property
-  [{:life/keys [single-query-scope] :as context} {:keys [source scope path]}]
+  [{:life/keys [single-query-scope] :as context}
+   {:keys [source scope path] :life/keys [source-type]}]
   (let [key (path->key path)]
     (cond
       source
-      (->SourcePropertyExpression (compile context source) key)
+      (source-property-expr source-type (compile context source) key)
 
       scope
       (if (= single-query-scope scope)
-        (->SingleScopePropertyExpression key)
-        (->ScopePropertyExpression scope key)))))
+        (single-scope-property-expr source-type key)
+        (scope-property-expression source-type scope key)))))
 
 
 
@@ -599,12 +729,13 @@
 (defrecord ExpressionRef [name]
   Expression
   (-eval [_ {:keys [library-context] :as context} resource _]
-    (if (contains? library-context name)
-      (-eval (get library-context name) context resource nil)
-      (throw-anom
-        ::anom/incorrect
-        (format "Expression `%s` not found." name)
-        :context context))))
+    (let [expr (get library-context name ::not-found)]
+      (if-not (identical? ::not-found expr)
+        (-eval expr context resource nil)
+        (throw-anom
+          ::anom/incorrect
+          (format "Expression `%s` not found." name)
+          :context context)))))
 
 
 (defmethod compile* :elm.compiler.type/expression-ref
@@ -612,7 +743,7 @@
    {:keys [name] def-eval-context :life/eval-context}]
   ;; TODO: look into other libraries (:libraryName)
   (when name
-    (if (find-expression-def library name)
+    (if-let [def (find-expression-def library name)]
       (cond
         (and (= "Unspecified" eval-context) (not= "Unspecified" def-eval-context))
         ;; The referenced expression has a concrete context but we are in the
@@ -630,7 +761,9 @@
                 :context context))))
 
         :else
-        (->ExpressionRef name))
+        (if-let [result-type-name (:resultTypeName def)]
+          (vary-meta (->ExpressionRef name) assoc :result-type-name result-type-name)
+          (->ExpressionRef name)))
       (throw-anom
         ::anom/incorrect
         (format "Expression `%s` not found." name)
@@ -819,6 +952,7 @@
     (if (= "http://hl7.org/fhir" type-ns)
       (if-let [related-context-expr (some->> context-expr (compile context))]
         (retrieve/with-related-context-expr
+          node
           related-context-expr
           data-type
           code-property
@@ -2038,7 +2172,7 @@
 (defunop exists
   {:optimizations #{:first :non-distinct}}
   [list]
-  (not (empty? list)))
+  (not (d/ri-empty? list)))
 
 
 ;; 20.9. Filter
@@ -2069,7 +2203,7 @@
 (defrecord FirstExpression [source]
   Expression
   (-eval [_ context resource scopes]
-    (first (-eval source context resource scopes))))
+    (d/ri-first (-eval source context resource scopes))))
 
 
 (defmethod compile* :elm.compiler.type/first
@@ -2154,11 +2288,11 @@
 
 ;; 20.25. SingletonFrom
 (defunop singleton-from [list {{:keys [locator]} :operand :as expression}]
-  (cond
-    (empty? list) nil
-    (nil? (next list)) (first list)
-    :else (throw (ex-info (append-locator "More than one element in expression `SingletonFrom` at" locator)
-                          {:expression expression}))))
+  (try
+    (p/singleton-from list)
+    (catch Exception _
+      (throw (ex-info (append-locator "More than one element in expression `SingletonFrom` at" locator)
+                      {:expression expression})))))
 
 
 ;; 20.26. Slice

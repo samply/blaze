@@ -36,21 +36,21 @@
 
 (s/fdef search-param/new-iterator
   :args (s/cat :search-param :blaze.db/search-param :snapshot :blaze.db/kv-snapshot
-               :tid :blaze.db/tid :value string?)
+               :tid :blaze.db/tid :values (s/coll-of string? :min-count 1))
   :ret :blaze.db.search-param/iterator)
 
 
 (s/fdef search-param/new-compartment-iterator
-  :args (s/cat :search-param :blaze.db/search-param :snapshot :blaze.db/kv-snapshot
+  :args (s/cat :search-param :blaze.db/search-param :cspvi :blaze.db/kv-iterator
                :compartment :blaze.db/compartment
-               :tid :blaze.db/tid :value string?)
+               :tid :blaze.db/tid :values (s/coll-of string? :min-count 1))
   :ret :blaze.db.search-param/iterator)
 
 
 (s/fdef search-param/matches?
   :args (s/cat :search-param :blaze.db/search-param :snapshot :blaze.db/kv-snapshot
                :tid :blaze.db/tid :id bytes? :hash :blaze.resource/hash
-               :value string?)
+               :values (s/coll-of string? :min-count 1))
   :ret boolean?)
 
 
@@ -58,7 +58,7 @@
   :args (s/cat :search-param :blaze.db/search-param :snapshot :blaze.db/kv-snapshot
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid :id bytes? :hash :blaze.resource/hash
-               :value string?)
+               :values (s/coll-of string? :min-count 1))
   :ret boolean?)
 
 
