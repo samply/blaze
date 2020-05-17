@@ -163,7 +163,11 @@
     [0 :value :text] := "liquid"
     [0 :population 0 :count] := 1
     [1 :value :text] := "tissue"
-    [1 :population 0 :count] := 1))
+    [1 :population 0 :count] := 1)
+
+  (given (first-stratifier-stratums (evaluate "q30-stratifier-with-missing-expression"))
+    [0 :value :text] := "null"
+    [0 :population 0 :count] := 2))
 
 (comment
   (evaluate "q28-relationship-procedure-condition")
