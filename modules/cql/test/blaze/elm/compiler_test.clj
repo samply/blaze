@@ -2,6 +2,7 @@
   "Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :refer [compile compile-with-equiv-clause]]
@@ -279,7 +280,7 @@
                   elm)]
             (testing "property spec is pre-calculated"
               (is (= :fhir/Identifier (:spec expr))))
-            (let [result (d/ri-first (-eval expr nil nil {"R" entity}))]
+            (let [result (coll/first (-eval expr nil nil {"R" entity}))]
               (is (= identifier result))
               (is (= :fhir/Identifier (type result))))))
 
@@ -297,7 +298,7 @@
                 (compile
                   {:eval-context "Patient"}
                   elm)
-                result (d/ri-first (-eval expr nil nil {"R" entity}))]
+                result (coll/first (-eval expr nil nil {"R" entity}))]
               (is (= identifier result))
               (is (= :fhir/Identifier (type result))))))
 
@@ -389,7 +390,7 @@
                   elm)]
             (testing "property spec is pre-calculated"
               (is (= :fhir/Identifier (:spec expr))))
-            (let [result (d/ri-first (-eval expr nil nil entity))]
+            (let [result (coll/first (-eval expr nil nil entity))]
               (is (= identifier result))
               (is (= :fhir/Identifier (type result))))))
 
@@ -408,7 +409,7 @@
                   {:eval-context "Patient"
                    :life/single-query-scope "R"}
                   elm)
-                result (d/ri-first (-eval expr nil nil entity))]
+                result (coll/first (-eval expr nil nil entity))]
               (is (= identifier result))
               (is (= :fhir/Identifier (type result))))))
 
@@ -501,7 +502,7 @@
               expr (compile {:library library :eval-context "Patient"} elm)]
           (testing "property spec is pre-calculated"
             (is (= :fhir/Identifier (:spec expr))))
-          (let [result (d/ri-first (-eval expr {:library-context {"Patient" source}} nil nil))]
+          (let [result (coll/first (-eval expr {:library-context {"Patient" source}} nil nil))]
             (is (= identifier result))
             (is (= :fhir/Identifier (type result))))))
 
@@ -517,7 +518,7 @@
                 {:resourceType "Patient" :id "0" :identifier [identifier]}
                 assoc :type :fhir/Patient)
               expr (compile {:library library :eval-context "Patient"} elm)
-              result (d/ri-first (-eval expr {:library-context {"Patient" source}} nil nil))]
+              result (coll/first (-eval expr {:library-context {"Patient" source}} nil nil))]
             (is (= identifier result))
             (is (= :fhir/Identifier (type result))))))
 

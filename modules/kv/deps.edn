@@ -1,0 +1,27 @@
+{:deps
+ {blaze/module-base
+  {:local/root "../module-base"}}
+
+ :aliases
+ {:clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.05.09"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}
+
+  :unused-vars
+  {:extra-deps
+   {clj-kondo/tools
+    {:git/url "https://github.com/borkdude/clj-kondo"
+     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :deps/root "analysis"}}
+   :main-opts ["-m" "clj-kondo.tools.unused-vars"]}
+
+  :namespace-graph
+  {:extra-deps
+   {clj-kondo/tools
+    {:git/url "https://github.com/borkdude/clj-kondo"
+     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :deps/root "analysis"}}
+   :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}

@@ -1,6 +1,7 @@
 (ns blaze.system-test
   (:require
     [blaze.system :as system]
+    [blaze.system-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]

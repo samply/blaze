@@ -3,6 +3,7 @@
     [blaze.elm.compiler :as compiler]
     [blaze.elm.compiler.protocols :refer [expr?]]
     [blaze.elm.spec]
+    [blaze.fhir.spec-spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))
 

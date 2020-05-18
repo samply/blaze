@@ -1,10 +1,10 @@
 (ns blaze.db.indexer.resource-spec
   (:require
     [blaze.db.impl.index-spec]
-    [blaze.db.search-param-registry-spec]
-    [blaze.db.indexer.resource :as resource]
     [blaze.db.indexer-spec]
-    [blaze.db.kv-spec]
+    [blaze.db.indexer.resource :as resource]
+    [blaze.db.kv.spec]
+    [blaze.db.search-param-registry-spec]
     [blaze.executors :as ex]
     [blaze.executors_spec]
     [clojure.spec.alpha :as s]))

@@ -6,10 +6,6 @@
     [manifold.stream :refer [stream?]]))
 
 
-(s/def :blaze.db/tx-log
-  #(satisfies? tx-log/TxLog %))
-
-
 (s/fdef tx-log/submit
   :args (s/cat :tx-log :blaze.db/tx-log :tx-ops :blaze.db/tx-ops)
   :ret deferred?)

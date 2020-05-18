@@ -6,6 +6,9 @@ check:
 lint-anomaly:
 	cd modules/anomaly; clojure -A:clj-kondo --lint src
 
+lint-coll:
+	cd modules/coll; clojure -A:clj-kondo --lint src
+
 lint-cql:
 	cd modules/cql; clojure -A:clj-kondo --lint src test
 
@@ -33,6 +36,9 @@ lint-fhir-structure:
 lint-interaction:
 	cd modules/interaction; clojure -A:clj-kondo --lint src test
 
+lint-kv:
+	cd modules/kv; clojure -A:clj-kondo --lint src
+
 lint-module-base:
 	cd modules/module-base; clojure -A:clj-kondo --lint src
 
@@ -51,6 +57,9 @@ lint-rest-util:
 lint-rocksdb:
 	cd modules/rocksdb; clojure -A:clj-kondo --lint src
 
+lint-search-param-registry:
+	cd modules/search-param-registry; clojure -A:clj-kondo --lint src test
+
 lint-spec:
 	cd modules/spec; clojure -A:clj-kondo --lint src
 
@@ -63,7 +72,7 @@ lint-terminology-service:
 lint-thread-pool-executor-collector:
 	cd modules/thread-pool-executor-collector; clojure -A:clj-kondo --lint src
 
-lint: lint-anomaly lint-cql lint-db lint-db-stub lint-executor lint-interaction lint-extern-terminology-service lint-fhir-client lint-fhir-path lint-fhir-structure lint-interaction lint-module-base lint-openid-auth lint-operations-measure-evaluate-measure lint-rest-api lint-rest-util lint-rocksdb lint-spec lint-structure-definition lint-terminology-service lint-thread-pool-executor-collector
+lint: lint-anomaly lint-coll lint-cql lint-db lint-db-stub lint-executor lint-extern-terminology-service lint-fhir-client lint-fhir-path lint-fhir-structure lint-interaction lint-kv lint-module-base lint-openid-auth lint-operations-measure-evaluate-measure lint-rest-api lint-rest-util lint-rocksdb lint-search-param-registry lint-spec lint-structure-definition lint-terminology-service lint-thread-pool-executor-collector
 	clojure -A:clj-kondo --lint src test
 
 modules/cql/cql-test:
@@ -81,6 +90,9 @@ modules/cql/cql-test:
 	wget -P modules/cql/cql-test -q https://raw.githubusercontent.com/HL7/cql/v1.4-ballot/tests/cql/CqlTypeOperatorsTest.xml
 	wget -P modules/cql/cql-test -q https://raw.githubusercontent.com/HL7/cql/v1.4-ballot/tests/cql/CqlTypesTest.xml
 	wget -P modules/cql/cql-test -q https://raw.githubusercontent.com/HL7/cql/v1.4-ballot/tests/cql/ValueLiteralsAndSelectors.xml
+
+test-coll:
+	cd modules/coll;	clojure -A:test --profile :ci
 
 test-cql: modules/cql/cql-test
 	cd modules/cql;	clojure -A:test --profile :ci
@@ -106,7 +118,10 @@ test-rest-api:
 test-rest-util:
 	cd modules/rest-util; clojure -A:test --profile :ci
 
-test: test-cql test-db test-fhir-path test-interaction test-openid-auth test-operations-measure-evaluate-measure test-rest-api test-rest-util
+test-search-param-registry:
+	cd modules/search-param-registry; clojure -A:test --profile :ci
+
+test: test-cql test-db test-fhir-path test-interaction test-openid-auth test-operations-measure-evaluate-measure test-rest-api test-rest-util test-search-param-registry
 	clojure -A:test --profile :ci
 
 uberjar:

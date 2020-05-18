@@ -10,6 +10,7 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
@@ -151,9 +152,23 @@
     (volatile! (indexer/last-t tx-indexer))))
 
 
+(s/def ::resource-indexer-batch-size
+  nat-int?)
+
+
+(defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]
+  (s/keys
+    :req-un
+    [:blaze.db.indexer/resource-indexer
+     :blaze.db.indexer/tx-indexer]
+    :opt-un
+    [::resource-indexer-batch-size]))
+
+
 (defn- init-msg [resource-indexer-batch-size]
   (format "Open local transaction log with a resource indexer batch size of %d."
           resource-indexer-batch-size))
+
 
 (defmethod ig/init-key :blaze.db.tx-log/local
   [_ {:keys [resource-indexer resource-indexer-batch-size tx-indexer]

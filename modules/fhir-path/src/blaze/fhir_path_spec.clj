@@ -1,6 +1,7 @@
 (ns blaze.fhir-path-spec
   (:require
     [blaze.fhir.spec]
+    [blaze.fhir.spec-spec]
     [blaze.fhir-path :as fhir-path]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))

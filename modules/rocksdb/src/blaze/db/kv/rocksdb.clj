@@ -22,39 +22,40 @@
 (set! *warn-on-reflection* true)
 
 
-(defn- iterator->key [^RocksIterator i]
-  (when (.isValid i)
-    (.key i)))
-
-
 (deftype RocksKvIterator [^RocksIterator i]
   kv/KvIterator
+  (-valid [_]
+    (.isValid i))
+
+  (-seek-to-first [_]
+    (.seekToFirst i))
+
+  (-seek-to-last [_]
+    (.seekToLast i))
+
   (-seek [_ target]
-    (.seek i ^bytes target)
-    (iterator->key i))
+    (.seek i ^bytes target))
 
   (-seek-for-prev [_ target]
-    (.seekForPrev i ^bytes target)
-    (iterator->key i))
+    (.seekForPrev i ^bytes target))
 
-  (seek-to-first [_]
-    (.seekToFirst i)
-    (iterator->key i))
+  (-next [_]
+    (.next i))
 
-  (seek-to-last [_]
-    (.seekToLast i)
-    (iterator->key i))
+  (-prev [_]
+    (.prev i))
 
-  (next [_]
-    (.next i)
-    (iterator->key i))
+  (-key [_]
+    (.key i))
 
-  (prev [_]
-    (.prev i)
-    (iterator->key i))
+  (-key [_ buf]
+    (.key i buf))
 
-  (value [_]
+  (-value [_]
     (.value i))
+
+  (-value [_ buf]
+    (.value i buf))
 
   Closeable
   (close [_]
@@ -349,6 +350,9 @@
   [_ store]
   (log/info "Close RocksDB key-value store")
   (.close ^Closeable store))
+
+
+(derive :blaze.db.kv/rocksdb :blaze.db/kv-store)
 
 
 (defmethod ig/init-key ::stats

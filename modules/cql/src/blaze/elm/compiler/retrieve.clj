@@ -7,9 +7,9 @@
     [blaze.db.api-spec]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.spec]
+    [blaze.elm.util :as elm-util]
     [clojure.string :as str]
-    [cognitect.anomalies :as anom]
-    [blaze.elm.util :as elm-util]))
+    [cognitect.anomalies :as anom]))
 
 
 (set! *warn-on-reflection* true)

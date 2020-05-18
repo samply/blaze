@@ -2,6 +2,7 @@
   (:require
     [blaze.bundle :as bundle]
     [blaze.db.api-spec]
+    [blaze.fhir.spec-spec]
     [clojure.spec.alpha :as s]))
 
 

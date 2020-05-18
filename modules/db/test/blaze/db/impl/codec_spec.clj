@@ -1,15 +1,16 @@
 (ns blaze.db.impl.codec-spec
   (:require
     [blaze.db.api-spec]
-    [blaze.db.indexer-spec]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.bytes-spec]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.indexer-spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
     [clojure.test.check]
-    [clojure.test.check.generators :as gen2])
+    [clojure.test.check.generators :as gen2]
+    [cognitect.anomalies :as anom])
   (:import
     [java.time ZoneId]))
 
@@ -47,11 +48,6 @@
 
 
 ;; ---- Byte Array Functions --------------------------------------------------
-
-(s/fdef codec/concat
-  :args (s/cat :b0 bytes? :b1 bytes?)
-  :ret bytes?)
-
 
 (s/fdef codec/id-bytes
   :args (s/cat :id string?)
@@ -245,11 +241,6 @@
   :ret :blaze.db/id-bytes)
 
 
-(s/fdef codec/resource-as-of-key->t
-  :args (s/cat :k :blaze/resource-as-of-key)
-  :ret :blaze.db/t)
-
-
 (s/def :blaze.db/state
   nat-int?)
 
@@ -354,23 +345,6 @@
 
 
 
-;; ---- TypeStats Index -------------------------------------------------------
-
-(s/def :blaze.db/type-stats-key
-  bytes?)
-
-
-(s/fdef codec/type-stats-key
-  :args (s/cat :tid :blaze.db/tid :t :blaze.db/t)
-  :ret :blaze.db/type-stats-key)
-
-
-(s/fdef codec/type-stats-key->tid
-  :args (s/cat :k :blaze.db/type-stats-key)
-  :ret :blaze.db/tid)
-
-
-
 ;; ---- Other Functions -------------------------------------------------------
 
 (s/fdef codec/tid
@@ -398,6 +372,16 @@
   :ret bytes?)
 
 
+(s/fdef codec/date-lb?
+  :args (s/cat :b bytes? :offset nat-int?)
+  :ret boolean?)
+
+
+(s/fdef codec/date-ub?
+  :args (s/cat :b bytes? :offset nat-int?)
+  :ret boolean?)
+
+
 (s/fdef codec/date-ub
   :args (s/cat :zone-id #(instance? ZoneId %) :date-time string?)
   :ret bytes?)
@@ -414,7 +398,7 @@
 
 
 (s/fdef codec/quantity
-  :args (s/cat :value number? :unit string?)
+  :args (s/cat :value number? :unit (s/? (s/nilable string?)))
   :ret bytes?)
 
 
@@ -437,3 +421,11 @@
 (s/fdef codec/decode-tx
   :args (s/cat :bs bytes? :t :blaze.db/t)
   :ret :blaze.db/tx)
+
+
+(s/fdef codec/tx-success-entries
+  :args (s/cat :t :blaze.db/t :tx-instant inst?))
+
+
+(s/fdef codec/tx-error-entries
+  :args (s/cat :t :blaze.db/t :anomaly ::anom/anomaly))

@@ -21,12 +21,17 @@
   An indexer knows about all indexed transactions and their outcome.
   Transactions not already indexed are not visible to the node"
 
-  (last-t [indexer]
-    "Returns the last known `t`.")
+  (-last-t [indexer])
 
   (-index-tx [indexer t tx-instant tx-cmds])
 
   (-tx-result [indexer t]))
+
+
+(defn last-t
+  "Returns the last known `t`."
+  [indexer]
+  (-last-t indexer))
 
 
 (defn index-tx
