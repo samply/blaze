@@ -683,8 +683,8 @@
 
 ;; 3.9. Quantity
 (defmethod compile* :elm.compiler.type/quantity
-  [_ {:keys [value unit]}]
-  (if unit
+  [_ {:keys [value unit] :or {unit "1"}}]
+  (when value
     (case unit
       ("year" "years") (date-time/period value 0 0)
       ("month" "months") (date-time/period 0 value 0)
@@ -694,8 +694,7 @@
       ("minute" "minutes") (date-time/period 0 0 (* value 60000))
       ("second" "seconds") (date-time/period 0 0 (* value 1000))
       ("millisecond" "milliseconds") (date-time/period 0 0 value)
-      (quantity value unit))
-    value))
+      (quantity value unit))))
 
 
 ;; 3.10. Ratio

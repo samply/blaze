@@ -14,10 +14,12 @@
     [blaze.elm.interval :refer [interval]]
     [blaze.elm.literal :as elm]
     [blaze.elm.quantity :refer [quantity]]
+    [blaze.elm.quantity-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check :as tc]
+    [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]])
@@ -729,7 +731,8 @@
 (deftest compile-quantity-test
   (testing "Examples"
     (are [elm res] (= res (compile {} elm))
-      #elm/quantity [1] 1
+      {:type "Quantity"} nil
+      #elm/quantity [1] (quantity 1 "")
       #elm/quantity [1 "year"] (period 1 0 0)
       #elm/quantity [2 "years"] (period 2 0 0)
       #elm/quantity [1 "month"] (period 0 1 0)
@@ -780,13 +783,26 @@
 
 ;; 9.4. FunctionRef
 (deftest compile-function-ref-test
-  (are [elm res]
-    (= res (-eval (compile {} elm) {} nil nil))
-    {:name "ToString"
-     :libraryName "FHIRHelpers"
-     :type "FunctionRef"
-     :operand [#elm/string "foo"]}
-    "foo"))
+  (testing "ToString"
+    (are [elm res]
+      (= res (-eval (compile {} elm) {} nil nil))
+      {:type "FunctionRef"
+       :libraryName "FHIRHelpers"
+       :name "ToString"
+       :operand [#elm/string "foo"]}
+      "foo"))
+
+  (testing "ToQuantity"
+    (let [context {:eval-context "Patient" :node (mem-node-with [])}
+          elm {:type "FunctionRef"
+               :libraryName "FHIRHelpers"
+               :name "ToQuantity"
+               :operand [#elm/singleton-from patient-retrieve-elm]}]
+      (are [resource res]
+        (= res (-eval (compile context elm) {} resource nil))
+        {:value 23M :code "kg"} (quantity 23M "kg")
+        {:value 42M} (quantity 42M "1")
+        {} nil))))
 
 
 
@@ -2160,13 +2176,13 @@
     #elm/decimal "0" 0M
     #elm/decimal "1" 1M
 
-    #elm/quantity [-1] 1
-    #elm/quantity [0] 0
-    #elm/quantity [1] 1
+    #elm/quantity [-1] (quantity 1 "1")
+    #elm/quantity [0] (quantity 0 "1")
+    #elm/quantity [1] (quantity 1 "1")
 
-    #elm/quantity [-1M] 1M
-    #elm/quantity [0M] 0M
-    #elm/quantity [1M] 1M
+    #elm/quantity [-1M] (quantity 1M "1")
+    #elm/quantity [0M] (quantity 0M "1")
+    #elm/quantity [1M] (quantity 1M "1")
 
     #elm/quantity [-1 "m"] (quantity 1 "m")
     #elm/quantity [0 "m"] (quantity 0 "m")
@@ -2309,19 +2325,21 @@
        [1 "m"]  [1 "s"]))
 
   (testing "Adding identical quantities equals multiplying the same quantity with two"
-    (satisfies-prop 100
-                    (prop/for-all [quantity (s/gen :elm/quantity)]
-                      (let [elm (elm/equal [(elm/add [quantity quantity])
-                                            (elm/multiply [quantity #elm/integer "2"])])]
-                        (true? (-eval (compile {} elm) {} nil nil))))))
+    (satisfies-prop
+      100
+      (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
+        (let [elm (elm/equal [(elm/add [quantity quantity])
+                              (elm/multiply [quantity #elm/integer "2"])])]
+          (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding identical quantities and dividing by two results in the same quantity"
-    (satisfies-prop 100
-                    (prop/for-all [quantity (s/gen :elm/quantity)]
-                      (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
-                                                         #elm/integer "2"])
-                                            quantity])]
-                        (true? (-eval (compile {} elm) {} nil nil))))))
+    (satisfies-prop
+      100
+      (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
+        (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
+                                           #elm/integer "2"])
+                              quantity])]
+          (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Date + Quantity"
     (are [x y res] (= res (-eval (compile {} #elm/add [x y]) {} nil nil))
@@ -2694,7 +2712,7 @@
       "1" "2" 2
       "2" "2" 4)
 
-    (testing-binary-null elm/modulo #elm/integer "1"))
+    (testing-binary-null elm/multiply #elm/integer "1"))
 
   (testing "Decimal"
     (testing "Decimal"
@@ -2702,7 +2720,7 @@
         "1" "2" 2M
         "1.23456" "1.23456" 1.52413839M)
 
-      (testing-binary-null elm/modulo #elm/decimal "1.1"))
+      (testing-binary-null elm/multiply #elm/decimal "1.1"))
 
     (testing "Arithmetic overflow results in nil"
       (are [x y] (nil? (compile-binop elm/multiply elm/decimal x y))
@@ -2714,7 +2732,7 @@
       #elm/quantity [1 "m"] #elm/integer "2" (quantity 2 "m")
       #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity 2 "m2"))
 
-    (testing-binary-null elm/modulo #elm/quantity [1])))
+    (testing-binary-null elm/multiply #elm/quantity [1])))
 
 
 ;; 16.13. Negate
@@ -2737,8 +2755,8 @@
 
   (testing "Quantity"
     (are [x res] (= res (compile {} #elm/negate x))
-      #elm/quantity [1] -1
-      #elm/quantity [1M] -1M
+      #elm/quantity [1] (quantity -1 "1")
+      #elm/quantity [1M] (quantity -1M "1")
       #elm/quantity [1 "m"] (quantity -1 "m")
       #elm/quantity [1M "m"] (quantity -1M "m")))
 
@@ -2987,13 +3005,14 @@
       #elm/quantity [1 "m"] #elm/quantity [1 "s"]))
 
   (testing "Subtracting identical quantities results in zero"
-    (satisfies-prop 100
-                    (prop/for-all [quantity (s/gen :elm/quantity)]
-                      ;; Can't test for zero because can't extract value from quantity
-                      ;; so use negate trick
-                      (let [elm (elm/equal [(elm/negate (elm/subtract [quantity quantity]))
-                                            (elm/subtract [quantity quantity])])]
-                        (true? (-eval (compile {} elm) {} nil nil))))))
+    (satisfies-prop
+      100
+      (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
+        ;; Can't test for zero because can't extract value from quantity
+        ;; so use negate trick
+        (let [elm (elm/equal [(elm/negate (elm/subtract [quantity quantity]))
+                              (elm/subtract [quantity quantity])])]
+          (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Date - Quantity"
     (are [x y res] (= res (compile {} #elm/subtract [x y]))
