@@ -107,9 +107,13 @@
   (init-resource-indexer search-param-registry kv-store executor))
 
 
+(defn- executor-init-msg [num-threads]
+  (format "Init resource indexer executor with %d threads" num-threads))
+
+
 (defmethod ig/init-key ::executor
   [_ {:keys [num-threads] :or {num-threads 4}}]
-  (log/info "Init resource indexer executor with" num-threads "threads")
+  (log/info (executor-init-msg num-threads))
   (ex/io-pool num-threads "resource-indexer-%d"))
 
 

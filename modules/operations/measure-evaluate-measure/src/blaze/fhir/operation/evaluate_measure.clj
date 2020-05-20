@@ -40,15 +40,15 @@
   (handler (Clock/systemDefaultZone) node executor))
 
 
-(defn- executor-init-msg []
+(defn- executor-init-msg [num-threads]
   (format "Init FHIR $evaluate-measure operation executor with %d threads"
-          (.availableProcessors (Runtime/getRuntime))))
+          num-threads))
 
 
 (defmethod ig/init-key ::executor
-  [_ _]
-  (log/info (executor-init-msg))
-  (ex/cpu-bound-pool "blaze-evaluate-measure-operation-%d"))
+  [_ {:keys [num-threads] :or {num-threads 4}}]
+  (log/info (executor-init-msg num-threads))
+  (ex/io-pool num-threads "blaze-operation-evaluate-measure-%d"))
 
 
 (derive ::executor :blaze.metrics/thread-pool-executor)

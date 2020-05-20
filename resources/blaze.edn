@@ -180,7 +180,8 @@
   :blaze.interaction/update
   {:node #blaze/ref :blaze.db/node}
 
-  :blaze.fhir.operation.evaluate-measure/executor {}
+  :blaze.fhir.operation.evaluate-measure/executor
+  {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" int? 4]}
 
   :blaze.fhir.operation.evaluate-measure/handler
   {:node #blaze/ref :blaze.db/node
