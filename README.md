@@ -18,13 +18,15 @@ Latest release: [v0.8.0-beta.2][5]
 
 ## Quick Start
 
-In order to run Blaze with an in-memory, volatile database, just execute the following:
+In order to run Blaze just execute the following:
 
 ### Docker
 
 ```bash
-docker run -p 8080:8080 samply/blaze:0.8.0-beta.2
+docker run -p 8080:8080 -v <local-dir>:/data -e DB_DIR="/data/db" samply/blaze:0.8.0-beta.2
 ```
+
+Please replace `<local-dir>` with a directory in which Blaze should store it's database files. It's important to specify a `DB_DIR` which resides inside the mounted volume, because Blaze needs to create its database directory itself. Blaze will use any previously created database directory on subsequent starts.
 
 ### Java
 
@@ -32,6 +34,8 @@ docker run -p 8080:8080 samply/blaze:0.8.0-beta.2
 wget https://github.com/samply/blaze/releases/download/v0.8.0-beta.2/blaze-0.8.0-beta.2-standalone.jar
 java -jar blaze-0.8.0-beta.2-standalone.jar -m blaze.core
 ```
+
+This will create a directory called `db` inside the current working directory.
 
 Logging output should appear which prints the most important settings and system parameters like Java version and available memory.
 
