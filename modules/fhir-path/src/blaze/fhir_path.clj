@@ -114,7 +114,7 @@
             (fhir-spec/choice? child-spec)
             (reduce
               (fn [res [key spec]]
-                (if-let [val (get x key)]
+                (if-some [val (get x key)]
                   (reduced (conj res (with-spec spec val)))
                   res))
               res
@@ -124,7 +124,7 @@
             (into res (map (partial with-spec (fhir-spec/type-spec child-spec))) (get x key))
 
             :else
-            (if-let [val (get x key)]
+            (if-some [val (get x key)]
               (conj res (with-spec child-spec val))
               res))
           (throw-anom

@@ -3,9 +3,10 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir-path-spec]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
+    [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
+    [juxt.iota :refer [given]])
+  (:refer-clojure :exclude [eval]))
 
 
 (defn fixture [f]
@@ -16,10 +17,36 @@
 
 (test/use-fixtures :each fixture)
 
-(def resolver
+
+(def ^:private resolver
   (reify
     fhir-path/Resolver
     (-resolve [_ _])))
+
+
+(defn- eval [expr resource]
+  (fhir-path/eval resolver (fhir-path/compile expr) resource))
+
+
+;; See: http://hl7.org/fhirpath/index.html#path-selection
+(deftest path-selection
+  (testing "Patient.active"
+    (are [x]
+      (= x @(first (eval "Patient.active"
+                         {:resourceType "Patient"
+                          :id "foo"
+                          :active x})))
+      true
+      false))
+
+  (testing "(Observation.value as boolean)"
+    (are [x]
+      (= x @(first (eval "(Observation.value as boolean)"
+                         {:resourceType "Observation"
+                          :id "foo"
+                          :valueBoolean x})))
+      true
+      false)))
 
 
 ;; See: http://hl7.org/fhirpath/index.html#is-type-specifier
@@ -28,9 +55,8 @@
     (is
       (true?
         @(first
-           (fhir-path/eval
-             resolver
-             (fhir-path/compile "Patient.birthDate is date")
+           (eval
+             "Patient.birthDate is date"
              {:resourceType "Patient"
               :id "id-162953"
               :birthDate "2020"})))))
@@ -39,18 +65,16 @@
     (is
       (false?
         @(first
-           (fhir-path/eval
-             resolver
-             (fhir-path/compile "Patient.birthDate is string")
+           (eval
+             "Patient.birthDate is string"
              {:resourceType "Patient"
               :id "id-162953"
               :birthDate "2020"})))))
 
   (testing "multiple item returns an error"
     (given
-      (fhir-path/eval
-        resolver
-        (fhir-path/compile "Patient.identifier is string")
+      (eval
+        "Patient.identifier is string"
         {:resourceType "Patient"
          :id "id-162953"
          :identifier
@@ -64,9 +88,8 @@
 (deftest where-function
   (testing "returns matching item"
     (given
-      (fhir-path/eval
-        resolver
-        (fhir-path/compile "Patient.telecom.where(use = 'home')")
+      (eval
+        "Patient.telecom.where(use = 'home')"
         {:resourceType "Patient"
          :id "id-162953"
          :telecom
@@ -78,9 +101,8 @@
   (testing "returns empty collection on non-matching item"
     (is
       (empty?
-        (fhir-path/eval
-          resolver
-          (fhir-path/compile "Patient.telecom.where(use = 'work')")
+        (eval
+          "Patient.telecom.where(use = 'work')"
           {:resourceType "Patient"
            :id "id-162953"
            :telecom
@@ -90,9 +112,8 @@
   (testing "returns empty collection on empty input"
     (is
       (empty?
-        (fhir-path/eval
-          resolver
-          (fhir-path/compile "Patient.telecom.where(use = 'home')")
+        (eval
+          "Patient.telecom.where(use = 'home')"
           {:resourceType "Patient"
            :id "id-162953"})))))
 
@@ -121,18 +142,16 @@
   (is
     (false?
       @(first
-         (fhir-path/eval
-           resolver
-           (fhir-path/compile "Patient.deceased.exists()")
+         (eval
+           "Patient.deceased.exists()"
            {:resourceType "Patient"
             :id "id-182007"}))))
 
   (is
     (true?
       @(first
-         (fhir-path/eval
-           resolver
-           (fhir-path/compile "Patient.deceased.exists()")
+         (eval
+           "Patient.deceased.exists()"
            {:resourceType "Patient"
             :id "id-182007"
             :deceasedBoolean true})))))
