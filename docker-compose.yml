@@ -4,11 +4,11 @@ services:
     image: "samply/blaze:0.8.0-beta.2"
     environment:
       BASE_URL: "http://localhost:8080"
-      DB_DIR: "/data"
-      JVM_OPTS: "-server -Xms2g -Xmx2g -XX:+UseG1GC"
+      DB_DIR: "/app/data/db"
+      JAVA_TOOL_OPTIONS: "-Xms2g -Xmx2g -XX:+UseG1GC"
     ports:
     - "8080:8080"
     volumes:
-    - "db-data:/data"
+    - "db-data:/app/data"
 volumes:
   db-data:
