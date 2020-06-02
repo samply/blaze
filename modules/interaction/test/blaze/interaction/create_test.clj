@@ -53,7 +53,10 @@
              (-> body :issue first :details :coding first :system)))
 
       (is (= "MSG_RESOURCE_TYPE_MISMATCH"
-             (-> body :issue first :details :coding first :code)))))
+             (-> body :issue first :details :coding first :code)))
+
+      (is (= "Resource type `Observation` doesn't match the endpoint type `Patient`."
+             (-> body :issue first :diagnostics)))))
 
   (testing "Returns Error on invalid resource"
     (let [{:keys [status body]}
