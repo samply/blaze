@@ -15,6 +15,5 @@ COPY --from=build --chown=nonroot:nonroot /app ./
 COPY --from=build --chown=nonroot:nonroot /build/target/ ./
 
 USER nonroot
-EXPOSE 8080
 ENV DB_DIR="/app/data/db"
 CMD ["blaze-standalone.jar", "-m", "blaze.core"]
