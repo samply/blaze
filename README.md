@@ -38,7 +38,7 @@ docker run -p 8080:8080 -v ~/blaze-data:/data -e DB_DIR="/data/db" samply/blaze:
 ```
 
 If you use a Docker volume, mount it on `/app/data` and make sure `DB_DIR` is set to `/app/data/db` (the default value), because the non-root user only has write-permissions inside the `/app` directory.
-Using a Docker volume instead of a host directory mount makes it unnecassary to set the file permissions:
+Using a Docker volume instead of a host directory mount makes it unnecessary to set the file permissions:
 
 ```bash
 docker run -p 8080:8080 -v blaze-data-volume:/app/data -e DB_DIR="/app/data/db" samply/blaze:0.8.0-beta.2
