@@ -167,9 +167,15 @@
 
   (given (first-stratifier-stratums (evaluate "q30-stratifier-with-missing-expression"))
     [0 :value :text] := "null"
-    [0 :population 0 :count] := 2))
+    [0 :population 0 :count] := 2)
+
+  (given (first-stratifier-stratums (evaluate "q31-stratifier-storage-temperature"))
+    [0 :value :text] := "temperature2to10"
+    [0 :population 0 :count] := 1
+    [1 :value :text] := "temperatureGN"
+    [1 :population 0 :count] := 1))
 
 (comment
-  (evaluate "q28-relationship-procedure-condition")
+  (evaluate "q31-stratifier-storage-temperature")
   (clojure.repl/pst)
   )

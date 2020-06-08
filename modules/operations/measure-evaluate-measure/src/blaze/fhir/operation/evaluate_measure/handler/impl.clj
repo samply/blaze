@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.handler.impl
   (:require
+    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
     [blaze.fhir.response.create :as response]
@@ -53,7 +54,7 @@
     (d/resource db "Measure" id)
 
     measure
-    (d/ri-first (d/type-query db "Measure" [["url" measure]]))))
+    (coll/first (d/type-query db "Measure" [["url" measure]]))))
 
 
 (defn handler [clock node executor]

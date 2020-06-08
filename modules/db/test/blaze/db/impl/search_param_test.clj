@@ -1,12 +1,11 @@
 (ns blaze.db.impl.search-param-test
   (:require
     [blaze.db.impl.bytes :as bytes]
+    [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
-    [blaze.db.impl.codec :as codec]
     [clj-fuzzy.phonetics :as phonetics]
-    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
@@ -22,13 +21,7 @@
 (test/use-fixtures :each fixture)
 
 
-(def search-param-registry (sr/init-mem-search-param-registry))
-
-
-(deftest local-ref-spec
-  (is (= ["Patient" "0"] (s/conform :blaze.db/local-ref "Patient/0")))
-
-  (is (s/invalid? (s/conform :blaze.db/local-ref "Patient/0/1"))))
+(def search-param-registry (sr/init-search-param-registry))
 
 
 (deftest index-entries
@@ -218,6 +211,43 @@
                 (codec/tid "Patient")
                 (codec/v-hash "system-123000|value-123005")
                 (codec/id-bytes "id-122929")
+                hash))))))
+
+  (testing "Patient _profile"
+    (let [patient {:resourceType "Patient"
+                   :id "id-140855"
+                   :meta
+                   {:profile
+                    ["profile-uri-141443"]}}
+          hash (codec/hash patient)
+          [[_ k0 v0] [_ k1]]
+          (search-param/index-entries
+            (sr/get search-param-registry "_profile" "Patient")
+            hash patient [])]
+
+      (testing "the resource-value entry is"
+        (testing "resource-value-key"
+          (is (bytes/=
+                k0
+                (codec/resource-value-key
+                  (codec/tid "Patient")
+                  (codec/id-bytes "id-140855")
+                  hash
+                  (codec/c-hash "_profile")))))
+
+        (testing "resource-value-value"
+          (is (bytes/=
+                v0
+                (codec/v-hash "profile-uri-141443")))))
+
+      (testing "search-param-value-key is about the uri"
+        (is (bytes/=
+              k1
+              (codec/search-param-value-key
+                (codec/c-hash "_profile")
+                (codec/tid "Patient")
+                (codec/v-hash "profile-uri-141443")
+                (codec/id-bytes "id-140855")
                 hash))))))
 
   (testing "Patient phonetic"

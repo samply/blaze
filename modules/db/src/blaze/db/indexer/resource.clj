@@ -3,11 +3,14 @@
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
-    [blaze.db.search-param-registry :as sr]
     [blaze.db.indexer :as indexer]
     [blaze.db.kv :as kv]
+    [blaze.db.kv.spec]
+    [blaze.db.search-param-registry :as sr]
+    [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
@@ -28,22 +31,15 @@
   "op")
 
 
-(defn- resource-type-entry
-  "Returns an entry of `resource` into the :resource-type-index."
-  {:arglists '([resource])}
-  [{type :resourceType id :id}]
-  [:resource-type-index
-   (codec/resource-type-key (codec/tid type) (codec/id-bytes id))
-   bytes/empty])
-
-
 (defn- compartment-resource-type-entry
   "Returns an entry into the :compartment-resource-type-index where `resource`
   is linked to `compartment`."
   {:arglists '([compartment resource])}
-  [{:keys [c-hash res-id]} {type :resourceType id :id}]
+  [[comp-code comp-id] {type :resourceType id :id}]
   [:compartment-resource-type-index
-   (codec/compartment-resource-type-key c-hash res-id (codec/tid type) (codec/id-bytes id))
+   (codec/compartment-resource-type-key
+     (codec/c-hash comp-code) (codec/id-bytes comp-id)
+     (codec/tid type) (codec/id-bytes id))
    bytes/empty])
 
 
@@ -59,7 +55,7 @@
     (let [linked-compartments (sr/linked-compartments search-param-registry resource)]
       (into
         (into
-          [(resource-type-entry resource)]
+          []
           (map #(compartment-resource-type-entry % resource))
           linked-compartments)
         (mapcat #(index-entries linked-compartments % hash resource))
@@ -98,11 +94,20 @@
   (->ResourceIndexer search-param-registry store executor))
 
 
-(defmethod ig/init-key ::indexer/resource
+(s/def ::executor
+  ex/executor?)
+
+
+(defmethod ig/pre-init-spec ::indexer/resource-indexer [_]
+  (s/keys
+    :req-un
+    [:blaze.db/search-param-registry
+     :blaze.db/kv-store
+     ::executor]))
+
+
+(defmethod ig/init-key ::indexer/resource-indexer
   [_ {:keys [search-param-registry kv-store executor]}]
-  (assert search-param-registry)
-  (assert kv-store)
-  (assert executor)
   (log/info "Init resource indexer")
   (init-resource-indexer search-param-registry kv-store executor))
 

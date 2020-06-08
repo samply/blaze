@@ -1,9 +1,9 @@
 (ns blaze.elm.compiler.query
   (:require
+    [blaze.coll.core :as coll]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.expression-spec]
     [blaze.elm.protocols :as p]
-    [blaze.elm.util :as elm-util]
     [blaze.fhir.spec])
   (:import
     [java.util Comparator])
@@ -118,7 +118,7 @@
 (defrecord EductionQueryExpression [xform-factory source]
   Expression
   (-eval [_ context resource scope]
-    (elm-util/eduction
+    (coll/eduction
       (-create xform-factory context resource)
       (-eval source context resource scope))))
 

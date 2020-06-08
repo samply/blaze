@@ -482,42 +482,6 @@
             (is (nil? (-> body :entry first :resource))))))))
 
 
-  (testing "On no-op update of a resource in transaction"
-    (let [resource
-          {:resourceType "Patient"
-           :id "0"}
-          entries
-          [{:resource
-            resource
-            :request
-            {:method "PUT"
-             :url "Patient/0"}}]]
-
-      (testing "with no Prefer header"
-        (let [{:keys [status body]}
-              @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
-                {:body
-                 {:resourceType "Bundle"
-                  :type "transaction"
-                  :entry entries}})]
-
-          (is (= 200 status))
-
-          (is (= "Bundle" (:resourceType body)))
-
-          (is (= "transaction-response" (:type body)))
-
-          (is (= "200" (-> body :entry first :response :status)))
-
-          (is (= "W/\"1\"" (-> body :entry first :response :etag)))
-
-          (is (= "1970-01-01T00:00:00Z"
-                 (-> body :entry first :response :lastModified)))
-
-          (testing "there is no resource embedded in the entry"
-            (is (nil? (-> body :entry first :resource))))))))
-
-
   (testing "On created resource in transaction"
     (let [resource
           {:resourceType "Patient"

@@ -19,7 +19,7 @@
 (test/use-fixtures :each fixture)
 
 
-(def search-param-registry (sr/init-mem-search-param-registry))
+(def search-param-registry (sr/init-search-param-registry))
 
 
 (def config

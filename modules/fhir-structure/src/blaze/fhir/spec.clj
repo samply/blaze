@@ -2,7 +2,8 @@
   (:require
     [blaze.fhir.spec.impl]
     [clojure.alpha.spec :as s2]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [clojure.string :as str]))
 
 
 ;; ---- Specs -----------------------------------------------------------------
@@ -13,6 +14,12 @@
 
 (s/def :blaze.resource/id
   (s/and string? #(re-matches #"[A-Za-z0-9\-\.]{1,64}" %)))
+
+
+(s/def :blaze.fhir/local-ref
+  (s/and string?
+         (s/conformer #(str/split % #"/" 2))
+         (s/tuple :blaze.resource/resourceType :blaze.resource/id)))
 
 
 (s/def :blaze.resource.meta/versionId
@@ -70,13 +77,16 @@
     :one))
 
 
-(defn choice? [spec]
+(defn choice?
+  [spec]
   (and (sequential? spec) (= `s2/or (first spec))))
 
 
-(defn choices [spec]
-  (when (choice? spec)
-    (partition 2 (rest spec))))
+(defn choices
+  "Takes an or-spec form and returns its content."
+  [spec]
+  ;; fancy stuff to get an clojure.lang.PersistentList
+  (into (list) (map vec) (reverse (partition 2 (rest spec)))))
 
 
 (defn type-spec [spec]

@@ -9,30 +9,52 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defn = [^bytes a ^bytes b]
+(defn =
+  "Compares two byte arrays for equivalence."
+  {:arglists '([a b])}
+  [^bytes a ^bytes b]
   (Arrays/equals a b))
 
 
-(defn prefix= [^bytes a ^bytes b ^long size]
-  (Arrays/equals a 0 size b 0 size))
+(defn starts-with?
+  "Test whether `bs` start with `prefix`."
+  {:arglists '([bs prefix])}
+  [^bytes bs ^bytes prefix]
+  (let [prefix-length (alength prefix)]
+    (and (clojure.core/<= prefix-length (alength bs))
+         (Arrays/equals bs 0 prefix-length prefix 0 prefix-length))))
 
 
-(defn < [^bytes a ^bytes b]
+(defn <
+  "Compares two byte arrays lexicographically, numerically treating elements as
+  unsigned.
+
+  Returns non-nil if the first array is lexicographically less than the second
+  array, otherwise false."
+  {:arglists '([a b])}
+  [^bytes a ^bytes b]
   (clojure.core/< (Arrays/compareUnsigned a b) 0))
 
 
-(defn <= [^bytes a ^bytes b]
+(defn <=
+  "Compares two byte arrays lexicographically, numerically treating elements as
+  unsigned.
+
+  Returns non-nil if the first array is lexicographically less than or equal to
+  the second array, otherwise false."
+  {:arglists '([a b])}
+  [^bytes a ^bytes b]
   (clojure.core/<= (Arrays/compareUnsigned a b) 0))
 
 
-(defn starts-with? [^bytes b ^bytes sub]
-  (Arrays/equals b 0 (alength sub) sub 0 (alength sub)))
+(def empty
+  "Returns an empty byte array of length 0."
+  (byte-array 0))
 
 
-(def empty (byte-array 0))
-
-
-(defn concat [byte-arrays]
+(defn concat
+  "Concatenates a seq of byte arrays. Returns an empty byte array on empty seq."
+  [byte-arrays]
   (if (seq byte-arrays)
     (Bytes/concat (into-array byte-arrays))
     empty))

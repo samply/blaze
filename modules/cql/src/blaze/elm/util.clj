@@ -1,7 +1,4 @@
-(ns blaze.elm.util
-  (:import
-    [clojure.lang IReduceInit])
-  (:refer-clojure :exclude [eduction]))
+(ns blaze.elm.util)
 
 
 (defn parse-qualified-name
@@ -36,9 +33,3 @@
   {:arglists '([type-specifier])}
   [{:keys [type]}]
   (= "ListTypeSpecifier" type))
-
-
-(defn eduction [xform coll]
-  (reify IReduceInit
-    (reduce [_ f init]
-      (reduce (xform f) init coll))))

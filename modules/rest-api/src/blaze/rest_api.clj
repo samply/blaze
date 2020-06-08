@@ -1,7 +1,7 @@
 (ns blaze.rest-api
   (:require
     [blaze.db.search-param-registry :as sr]
-    [blaze.db.search-param-registry-spec]
+    [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]

@@ -11,6 +11,7 @@
     zone of the :now timestamp in the evaluation context."
   (:require
     [blaze.anomaly :refer [throw-anom when-ok]]
+    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.elm.compiler.function :as function]
@@ -42,7 +43,7 @@
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit]
-    [clojure.lang PersistentArrayMap IObj])
+    [clojure.lang ILookup IObj IReduceInit])
   (:refer-clojure :exclude [comparator compile]))
 
 
@@ -370,8 +371,17 @@
       elements)))
 
 
+(defn- invalid-structured-type-access-msg [key]
+  (format "Invalid structured type access with key `%s` on a collection." key))
+
+
 (extend-protocol p/StructuredType
-  PersistentArrayMap
+  IReduceInit
+  (get [coll key]
+    (throw-anom ::anom/fault (invalid-structured-type-access-msg key)
+                :key key
+                :first-elem (coll/first coll)))
+  ILookup
   (get [m key]
     (.valAt m key)))
 
@@ -425,7 +435,7 @@
       (search-choice-property (fhir-spec/choices child-spec) x)
 
       (= :many (fhir-spec/cardinality child-spec))
-      (elm-util/eduction (map (partial with-spec (fhir-spec/type-spec child-spec))) (get x key))
+      (coll/eduction (map (partial with-spec (fhir-spec/type-spec child-spec))) (get x key))
 
       :else
       (when-let [val (get x key)]
@@ -460,7 +470,7 @@
   Expression
   (-eval [_ context resource scope]
     (->> (get (-eval source context resource scope) key)
-         (elm-util/eduction (map (partial with-spec spec))))))
+         (coll/eduction (map (partial with-spec spec))))))
 
 
 (defrecord OneFhirTypeSourcePropertyExpression [source key spec]
@@ -485,7 +495,7 @@
 (defrecord ManyFhirTypeSingleScopePropertyExpression [key spec]
   Expression
   (-eval [_ _ _ value]
-    (elm-util/eduction (map (partial with-spec spec)) (get value key))))
+    (coll/eduction (map (partial with-spec spec)) (get value key))))
 
 
 (defrecord OneFhirTypeSingleScopePropertyExpression [key spec]
@@ -510,7 +520,7 @@
 (defrecord ManyFhirTypeScopePropertyExpression [scope-key key spec]
   Expression
   (-eval [_ _ _ scope]
-    (elm-util/eduction (map (partial with-spec spec)) (get (get scope scope-key) key))))
+    (coll/eduction (map (partial with-spec spec)) (get (get scope scope-key) key))))
 
 
 (defrecord OneFhirTypeScopePropertyExpression [scope-key key spec]
@@ -2171,7 +2181,7 @@
 (defunop exists
   {:optimizations #{:first :non-distinct}}
   [list]
-  (not (d/ri-empty? list)))
+  (not (coll/empty? list)))
 
 
 ;; 20.9. Filter
@@ -2202,7 +2212,7 @@
 (defrecord FirstExpression [source]
   Expression
   (-eval [_ context resource scopes]
-    (d/ri-first (-eval source context resource scopes))))
+    (coll/first (-eval source context resource scopes))))
 
 
 (defmethod compile* :elm.compiler.type/first

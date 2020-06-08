@@ -51,11 +51,10 @@ In Crux an entity can have multiple documents over time. Every time a new docume
 
 | Name | Key Parts | Value |
 |---|---|---|
-| SearchParamValue | c-hash tid value id hash-prefix | |
+| SVR | c-hash tid value id hash-prefix | - |
 | ResourceValue | tid id hash-prefix c-hash | values |
-| CompartmentSearchParamValue | co-c-hash co-res-id sp-c-hash tid value id hash-prefix | |
+| CSVR | co-c-hash co-res-id sp-c-hash tid value id hash-prefix | - |
 | CompartmentResourceValue | co-c-hash co-res-id tid id hash-prefix c-hash value? | value? |
-| ResourceType | tid id | - |
 | CompartmentResourceType | co-c-hash co-res-id tid id | - |
 | SearchParam | code tid | id |
 | ActiveSearchParams | id | - |
@@ -68,48 +67,52 @@ In Crux an entity can have multiple documents over time. Every time a new docume
 | TxError | t | anomaly |
 | TByInstant | inst-ms (desc) | t |
 | ResourceAsOf | tid id t | hash, state |
-| TypeAsOf | tid t id | - |
-| SystemAsOf | t tid id | - |
+| TypeAsOf | tid t id | hash, state |
+| SystemAsOf | t tid id | hash, state |
 | TypeStats | tid t | total, num-changes |
 | SystemStats | t | total, num-changes |
 
 We can make hashes in SearchParam indices shorter (4-bytes) because we only need to differentiate between the versions of a resource. The odds of a hash collision is 1 out of 10000 for about 1000 versions. In case of a hash collision we would produce a false positive query hit. So we would return more resources instead of less, which is considered fine in FHIR.
 
-### SearchParamValue
+### Search-param Value Resource (SVR)
 
 The key consists of:
 
-* c-hash - a 4-byte hash of the code of the search parameter
-* v-hash - a 4-byte hash of the value build from [token rules](https://www.hl7.org/fhir/search.html#token)
-* tid    - the 4-byte type id
-* id     - the id of the resource
-* hash   - the resource content hash
+* c-hash      - a 4-byte hash of the code of the search parameter
+* tid         - the 4-byte type id
+* value       - the value encoded depending on the search parameter
+* id          - the logical id of the resource
+* hash-prefix - a 4-byte prefix of the resource content hash
 
-The total size of the key is 4 + 4 + 4 + id-size + 32 = 44 + id-size bytes.
+The total size of the key is 4 + 4 + value-size + id-size + 4 = 12 + value-size + id-size bytes.
 
-The value consists of:
-
-* value - the value to double check in case of value hash collisions
+The value is empty.
 
 The key contains the id of the resource for two reasons, first we can skip to the next resource by seeking with max-hash, not having to test all versions of a resource against ResourceAsOf and second, going into ResourceAsOf will be local because it is sorted by id.
 
-The SearchParamValue index is comparable to the AVET index in Datomic.
+The SVR index is comparable to the AVET index in Datomic. Search parameters are the equivalent of indexed attributes in Datomic.
 
 ### ResourceValue
 
 The ResourceValue index is comparable to the EAVT index in Datomic although it's actually more like a ETAV index which doesn't exist in Datomic.
 
-### CompartmentResource
+### Compartment Search-param Value Resource (CSVR)
 
-Lists all resources part of a compartment. For example all resources of a certain patient in the [Patient compartment][1].
+Same as the SVR index but prefixed with a compartment the resource belongs to. This index is used in [variant searches][2] and in CQL evaluation within the Patient context. In the CQL Patient context all retrieves are relative to one patient. Using that patient as compartment in the CSVR index allows for efficient implementation of that retrieves.
 
-### ResourceType
+The key consists of:
 
-Lists all rids (resource ids) of a particular type. Is used to list all resources of a type.
+* co-c-hash   - a 4-byte hash of the code of the compartment
+* co-res-id   - the logical id of the resource of the compartment
+* c-hash      - a 4-byte hash of the code of the search parameter
+* tid         - the 4-byte type id
+* value       - the value encoded depending on the search parameter
+* id          - the logical id of the resource
+* hash-prefix - a 4-byte prefix of the resource content hash
 
-Assigns each resource a version at t. The version is incremented from the previous version at the previous t for the particular resource. The initial version is 0. The version is encoded as a signed long. The instance version is used to calculate the total number of instance history entries for all time or since a particular t.
+The total size of the key is 4 + co-res-id-size 4 + 4 + value-size + id-size + 4 = 16 + co-res-id-size 4 + value-size + id-size bytes.
 
-TODO: add prefix bloom here with tid and id
+The value is empty.
 
 ### TByInstant
 
@@ -144,3 +147,4 @@ By default the search is an equal search were the range of the search value have
 
 
 [1]: <https://www.hl7.org/fhir/compartmentdefinition-patient.html>
+[2]: <https://www.hl7.org/fhir/http.html#vsearch>

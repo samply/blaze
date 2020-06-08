@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.coll.core :as coll]
     [blaze.cql-translator :as cql-translator]
     [blaze.db.api :as d]
     [blaze.elm.compiler :as compiler]
@@ -82,7 +83,7 @@
 
 
 (defn- find-library [db library-ref]
-  (d/ri-first (d/type-query db "Library" [["url" library-ref]])))
+  (coll/first (d/type-query db "Library" [["url" library-ref]])))
 
 
 (defn- compile-primary-library*
@@ -285,14 +286,18 @@
       db now library subject-type groupIdx populations stratifierIdx stratifier)))
 
 
+(defn- conj-anom
+  ([x] x)
+  ([res x]
+   (if (::anom/category x)
+     (reduced x)
+     (conj res x))))
+
+
 (defn- evaluate-populations [db now library subject-type groupIdx populations]
   (transduce
-    (map-indexed (partial evaluate-population db now library subject-type groupIdx))
-    (completing
-      (fn [res evaluated-population]
-        (if (::anom/category evaluated-population)
-          (reduced evaluated-population)
-          (conj res evaluated-population))))
+    (map-indexed #(evaluate-population db now library subject-type groupIdx %1 %2))
+    conj-anom
     []
     populations))
 
@@ -302,11 +307,7 @@
   (transduce
     (map-indexed
       (partial evaluate-stratifier db now library subject-type groupIdx populations))
-    (completing
-      (fn [res evaluated-stratifier]
-        (if (::anom/category evaluated-stratifier)
-          (reduced evaluated-stratifier)
-          (conj res evaluated-stratifier))))
+    conj-anom
     []
     stratifiers))
 
@@ -341,12 +342,8 @@
 
 (defn- evaluate-groups* [db now library subject-type groups]
   (transduce
-    (map-indexed (partial evaluate-group db now library subject-type))
-    (completing
-      (fn [res evaluated-group]
-        (if (::anom/category evaluated-group)
-          (reduced evaluated-group)
-          (conj res evaluated-group))))
+    (map-indexed #(evaluate-group db now library subject-type %1 %2))
+    conj-anom
     []
     groups))
 

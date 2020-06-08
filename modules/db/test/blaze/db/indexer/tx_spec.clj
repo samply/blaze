@@ -2,7 +2,7 @@
   (:require
     [blaze.db.impl.index-spec]
     [blaze.db.indexer.tx :as tx]
-    [blaze.db.kv-spec]
+    [blaze.db.kv.spec]
     [clojure.spec.alpha :as s]))
 
 

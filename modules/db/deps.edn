@@ -1,7 +1,10 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/executor
+ {blaze/coll
+  {:local/root "../coll"}
+
+  blaze/executor
   {:local/root "../executor"}
 
   blaze/fhir-path
@@ -10,11 +13,14 @@
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
+  blaze/kv
+  {:local/root "../kv"}
+
   blaze/module-base
   {:local/root "../module-base"}
 
-  cheshire
-  {:mvn/version "5.9.0"}
+  blaze/search-param-registry
+  {:local/root "../search-param-registry"}
 
   clj-fuzzy
   {:mvn/version "0.4.1"}
@@ -32,14 +38,7 @@
   {:mvn/version "0.1.8"}}
 
  :aliases
- {:dev
-  {:extra-paths ["dev"]
-
-   :extra-deps
-   {criterium
-    {:mvn/version "0.4.5"}}}
-
-  :test
+ {:test
   {:extra-paths ["test"]
 
    :extra-deps
@@ -50,13 +49,32 @@
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}}
+    {:mvn/version "0.10.0"}
+
+    cheshire
+    {:mvn/version "5.9.0"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.04.05"}}
+    {:mvn/version "2020.05.09"}}
 
-   :main-opts ["-m" "clj-kondo.main"]}}}
+   :main-opts ["-m" "clj-kondo.main"]}
+
+  :unused-vars
+  {:extra-deps
+   {clj-kondo/tools
+    {:git/url "https://github.com/borkdude/clj-kondo"
+     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :deps/root "analysis"}}
+   :main-opts ["-m" "clj-kondo.tools.unused-vars"]}
+
+  :namespace-graph
+  {:extra-deps
+   {clj-kondo/tools
+    {:git/url "https://github.com/borkdude/clj-kondo"
+     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :deps/root "analysis"}}
+   :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}

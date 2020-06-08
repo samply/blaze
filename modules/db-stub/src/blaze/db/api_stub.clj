@@ -5,8 +5,9 @@
     [blaze.db.kv.mem :refer [init-mem-kv-store]]
     [blaze.db.indexer.resource :refer [init-resource-indexer]]
     [blaze.db.indexer.tx :refer [init-tx-indexer]]
-    [blaze.db.node :as node :refer [init-node]]
+    [blaze.db.node :as node :refer [new-node]]
     [blaze.db.node-spec]
+    [blaze.db.resource-cache :refer [new-resource-cache]]
     [blaze.db.search-param-registry :as sr]
     [blaze.db.tx-log.local :refer [init-local-tx-log]]
     [blaze.db.tx-log-spec]
@@ -18,7 +19,7 @@
     [java.time Clock Instant ZoneId]))
 
 
-(def search-param-registry (sr/init-mem-search-param-registry))
+(def search-param-registry (sr/init-search-param-registry))
 
 
 (defn mem-node []
@@ -28,7 +29,6 @@
            :resource-value-index nil
            :compartment-search-param-value-index nil
            :compartment-resource-value-index nil
-           :resource-type-index nil
            :compartment-resource-type-index nil
            :resource-index nil
            :active-search-params nil
@@ -45,8 +45,8 @@
         ti (init-tx-indexer kv-store)
         clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC"))
         tx-log (init-local-tx-log ri 1 ti clock)
-        resource-cache (node/resource-cache kv-store 0)]
-    (init-node tx-log ti kv-store resource-cache search-param-registry)))
+        resource-cache (new-resource-cache kv-store 0)]
+    (new-node tx-log ti kv-store resource-cache search-param-registry)))
 
 
 (defn- submit-txs [node txs]

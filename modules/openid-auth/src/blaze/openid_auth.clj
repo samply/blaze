@@ -57,3 +57,6 @@
     {:token-name "Bearer"
      :secret (-> url jwks-json public-key)
      :options {:alg :rs256}}))
+
+
+(derive :blaze.openid-auth/backend :blaze.auth/backend)

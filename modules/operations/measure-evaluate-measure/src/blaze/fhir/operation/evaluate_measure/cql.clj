@@ -5,7 +5,8 @@
     [clojure.core.reducers :as r]
     [cognitect.anomalies :as anom]
     [taoensso.timbre :as log])
-  (:import [java.io Closeable]))
+  (:import
+    [java.io Closeable]))
 
 
 (set! *warn-on-reflection* true)
@@ -121,7 +122,7 @@
     (transduce
       (comp
         (partition-all eval-parallel-chunk-size)
-        (map (partial evaluate-expression* context name)))
+        (map #(evaluate-expression* context name %)))
       (-> + (wrap-anomaly) (wrap-batch-db context))
       (d/list-resources db subject-type))))
 

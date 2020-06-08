@@ -1,117 +1,63 @@
 (ns blaze.db.impl.search-param
   (:require
     [blaze.anomaly :refer [throw-anom when-ok]]
+    [blaze.coll.core :as coll]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
+    [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
+    [blaze.fhir.spec]
     [clj-fuzzy.phonetics :as phonetics]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]
     [java.time ZoneId])
-  (:refer-clojure :exclude [first next]))
+  (:refer-clojure :exclude [first keys next]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defprotocol Iterator
-  (-first [_])
-  (-next [_ current-id]))
-
-
-(defn first [iterator]
-  (-first iterator))
-
-
-(defn next [iterator current-id]
-  (-next iterator current-id))
-
-
 (defprotocol SearchParam
-  (-new-iterator [_ snapshot tid value])
-  (-new-compartment-iterator [_ snapshot compartment tid value])
-  (-matches? [_ snapshot tid id hash values])
-  (-compartment-matches? [_ snapshot compartment tid id hash values])
+  (-compile-values [search-param values])
+  (-keys [search-param snapshot spvi tid compiled-value])
+  (-compartment-keys [search-param cspvi compartment tid compiled-value])
+  (-matches? [search-param snapshot tid id hash compiled-values])
+  (-compartment-matches? [search-param snapshot compartment tid id hash compiled-values])
   (-compartment-ids [_ resolver resource])
   (-index-entries [_ resolver hash resource linked-compartments]))
 
 
-(deftype CompoundIterator
-  [^:volatile-mutable iter ^:volatile-mutable next-values new-iter-fn]
-  Iterator
-  (-first [this]
-    (if-let [k (-first iter)]
-      k
-      (let [[next-value & more] next-values]
-        (when next-value
-          (set! iter (new-iter-fn next-value))
-          (set! next-values more)
-          (-first this)))))
-
-  (-next [this current-id]
-    (if-let [k (-next iter current-id)]
-      k
-      (let [[next-value & more] next-values]
-        (when next-value
-          (set! iter (new-iter-fn next-value))
-          (set! next-values more)
-          (-first this))))))
+(defn compile-values [search-param values]
+  (-compile-values search-param values))
 
 
-(defn new-iterator ^Closeable [search-param snapshot tid [value & values]]
-  (if (empty? values)
-    (-new-iterator search-param snapshot tid value)
-    (let [state (volatile! {:iter (-new-iterator search-param snapshot tid value)
-                            :values values})]
-      ;; TODO: doesn't work
-      (reify
-        Iterator
-        (-first [_]
-          (-first (:iter @state)))
-        (-next [_ current-id]
-          (if-let [k (-next (:iter @state) current-id)]
-            k
-            (let [[value & values] (:values @state)]
-              (when value
-                (.close ^Closeable (:iter @state))
-                (vreset! state {:iter (-new-iterator search-param snapshot tid value)
-                                :values values})
-                (-first (:iter @state))))))
-        Closeable
-        (close [_]
-          (.close ^Closeable (:iter @state)))))))
+(defn keys
+  "Returns a reducible collection of `[prefix id hash-prefix]` triples."
+  [search-param snapshot svri tid compiled-values]
+  (coll/eduction
+    (mapcat #(-keys search-param snapshot svri tid %))
+    compiled-values))
 
 
-(defn new-compartment-iterator
-  "Creates an iterator for `search-param` based on the
-  :compartment-search-param-value-index iterator `cspvi`, the `compartment`,
-  the type (`tid`) and `values` to match.
-
-  Doesn't close the `cspvi`. The state of `cspvi` has to be managed upstream."
-  [search-param cspvi compartment tid [value & more]]
-  (CompoundIterator.
-    (-new-compartment-iterator search-param cspvi compartment tid value)
-    more
-    (partial -new-compartment-iterator search-param cspvi compartment tid)))
+(defn compartment-keys
+  "Returns a reducible collection of `[prefix id hash-prefix]` triples."
+  [search-param csvri compartment tid compiled-values]
+  (coll/eduction
+    (mapcat #(-compartment-keys search-param csvri compartment tid %))
+    compiled-values))
 
 
-(defn matches? [search-param snapshot tid id hash values]
-  (-matches? search-param snapshot tid id hash values))
+(defn matches? [search-param snapshot tid id hash compiled-values]
+  (-matches? search-param snapshot tid id hash compiled-values))
 
 
-(defn compartment-matches? [search-param snapshot compartment tid id hash values]
-  (-compartment-matches? search-param snapshot compartment tid id hash values))
-
-
-(s/def :blaze.db/local-ref
-  (s/and string?
-         (s/conformer #(str/split % #"/" 2))
-         (s/tuple :blaze.resource/resourceType :blaze.resource/id)))
+(defn compartment-matches? [search-param snapshot compartment tid id hash compiled-values]
+  (-compartment-matches? search-param snapshot compartment tid id hash compiled-values))
 
 
 (def stub-resolver
@@ -120,7 +66,7 @@
   (reify
     fhir-path/Resolver
     (-resolve [_ uri]
-      (let [res (s/conform :blaze.db/local-ref uri)]
+      (let [res (s/conform :blaze.fhir/local-ref uri)]
         (when-not (s/invalid? res)
           (let [[type id] res]
             {:resourceType type
@@ -162,15 +108,12 @@
     (codec/resource-value-key tid id hash c-hash)))
 
 
-(defn- key-valid? [^bytes start-key ^bytes key]
-  (and (<= (alength start-key) (alength key))
-       (bytes/prefix= start-key key (alength start-key))))
-
-
 (defn- prefix-seek [iter key]
-  (when-let [k (kv/seek iter key)]
-    (when (key-valid? key k)
-      k)))
+  (kv/seek! iter key)
+  (when (kv/valid? iter)
+    (let [k (kv/key iter)]
+      (when (bytes/starts-with? k key)
+        k))))
 
 
 (defn- seek-value [snapshot tid id hash c-hash value]
@@ -178,17 +121,17 @@
     (prefix-seek iter (codec/resource-value-key tid id hash c-hash value))))
 
 
-(defn- get-value' [snapshot tid search-param-value-key c-hash]
-  (get-value
-    snapshot tid (codec/search-param-value-key->id search-param-value-key)
-    (codec/search-param-value-key->hash-prefix search-param-value-key) c-hash))
-
-
 (defn- get-compartment-value
   [snapshot {co-c-hash :c-hash co-res-id :res-id} tid id hash sp-c-hash]
   (kv/snapshot-get
     snapshot :compartment-resource-value-index
     (codec/compartment-resource-value-key co-c-hash co-res-id tid id hash sp-c-hash)))
+
+
+(defn- prefix-keys [iter start-key]
+  (coll/eduction
+    (take-while (fn [[prefix]] (bytes/starts-with? prefix start-key)))
+    (i/keys iter codec/decode-search-param-value-key start-key)))
 
 
 
@@ -239,84 +182,47 @@
   (+ codec/c-hash-size codec/tid-size))
 
 
-(defn- date-key-lb? [k]
-  (codec/date-lb? k date-key-offset))
+(defn- date-key-lb? [[prefix]]
+  (codec/date-lb? prefix date-key-offset))
 
 
-(defn- date-key-ub? [k]
-  (codec/date-ub? k date-key-offset))
+(defn- date-key-ub? [[prefix]]
+  (codec/date-ub? prefix date-key-offset))
 
 
-(defn- date-eq-key-valid? [c-hash snapshot tid ub k]
-  (and (date-key-lb? k)
-       (when-let [v (get-value' snapshot tid k c-hash)]
+(defn- date-eq-key-valid? [c-hash snapshot tid ub [prefix id hash-prefix]]
+  (and (date-key-lb? [prefix])
+       (when-let [v (get-value snapshot tid id hash-prefix c-hash)]
          (bytes/<= (codec/date-lb-ub->ub v) ub))))
 
 
-(defrecord SearchParamDate [name url type code c-hash expression]
+(defrecord SearchParamDate [name url type base code c-hash expression]
   SearchParam
-  (-new-iterator [_ snapshot tid value]
-    (let [[op value] (separate-op value)
-          iter (kv/new-iterator snapshot :search-param-value-index)]
+  (-compile-values [_ values]
+    (vec values))
+
+  (-keys [_ snapshot svri tid compiled-value]
+    (let [[op value] (separate-op compiled-value)]
       (case op
         :eq
         (let [start-key (codec/search-param-value-key c-hash tid (date-lb value))
               ub (date-ub value)
               date-eq-key-valid? #(date-eq-key-valid? c-hash snapshot tid ub %)]
-          (reify
-            Iterator
-            (-first [_]
-              (when-let [k (kv/seek iter start-key)]
-                (when (date-eq-key-valid? k)
-                  k)))
-            (-next [_ current-id]
-              (loop [k (kv/next iter)]
-                (when (some-> k date-eq-key-valid?)
-                  (if (bytes/= current-id (codec/search-param-value-key->id k))
-                    ;; recur, because we are still on the same resource
-                    (recur (kv/next iter))
-                    k))))
-            Closeable
-            (close [_]
-              (.close iter))))
+          (coll/eduction
+            (take-while date-eq-key-valid?)
+            (i/keys svri codec/decode-search-param-value-key start-key)))
 
         :ge
         (let [start-key (codec/search-param-value-key c-hash tid (date-lb value))]
-          (reify
-            Iterator
-            (-first [_]
-              (when-let [k (kv/seek iter start-key)]
-                (when (date-key-lb? k)
-                  k)))
-            (-next [_ current-id]
-              (loop [k (kv/next iter)]
-                (when (some-> k date-key-lb?)
-                  (if (bytes/= current-id (codec/search-param-value-key->id k))
-                    ;; recur, because we are still on the same resource
-                    (recur (kv/next iter))
-                    k))))
-            Closeable
-            (close [_]
-              (.close iter))))
+          (coll/eduction
+            (take-while date-key-lb?)
+            (i/keys svri codec/decode-search-param-value-key start-key)))
 
         :le
         (let [^bytes start-key (codec/search-param-value-key-for-prev c-hash tid (date-ub value))]
-          (reify
-            Iterator
-            (-first [_]
-              (when-let [^bytes k (kv/seek-for-prev iter start-key)]
-                (when (date-key-ub? k)
-                  k)))
-            (-next [_ current-id]
-              (loop [k (kv/prev iter)]
-                (when (some-> k date-key-ub?)
-                  (if (bytes/= current-id (codec/search-param-value-key->id k))
-                    ;; recur, because we are still on the same resource
-                    (recur (kv/prev iter))
-                    k))))
-            Closeable
-            (close [_]
-              (.close iter))))
+          (coll/eduction
+            (take-while date-key-ub?)
+            (i/keys-prev svri codec/decode-search-param-value-key start-key)))
 
         (throw-anom ::anom/unsupported (format "Unsupported prefix `%s` in search parameter of type date." (clojure.core/name op))))))
 
@@ -328,9 +234,10 @@
           :eq (and (bytes/<= (date-lb value) (codec/date-lb-ub->lb v))
                    (bytes/<= (codec/date-lb-ub->ub v) (date-ub value)))))))
 
-  (-index-entries [_ resolver hash {type :resourceType id :id :as resource} linked-compartments]
+  (-index-entries [_ resolver hash resource linked-compartments]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [tid (codec/tid type)
+      (let [{type :resourceType id :id} resource
+            tid (codec/tid type)
             id-bytes (codec/id-bytes id)]
         (into
           []
@@ -417,34 +324,28 @@
   (log/warn (format-skip-indexing-msg value url "string")))
 
 
-(defrecord SearchParamString [name url type code c-hash expression]
+(defrecord SearchParamString [name url type base code c-hash expression]
   SearchParam
-  (-new-iterator [_ snapshot tid value]
-    (let [value (normalize-string value)
-          iter (kv/new-iterator snapshot :search-param-value-index)
-          start-key (codec/search-param-value-key c-hash tid (codec/string value))]
-      (reify
-        Iterator
-        (-first [_]
-          (prefix-seek iter start-key))
-        (-next [_ current-id]
-          (loop [k (kv/next iter)]
-            (when (some->> k (key-valid? start-key))
-              (if (bytes/= current-id (codec/search-param-value-key->id k))
-                ;; recur, because we are still on the same resource
-                (recur (kv/next iter))
-                k))))
-        Closeable
-        (close [_]
-          (.close iter)))))
+  (-compile-values [_ values]
+    (mapv (comp codec/string normalize-string) values))
 
-  (-matches? [_ snapshot tid id hash [value & _]]
+  (-keys [_ _ svri tid compiled-value]
+    (prefix-keys svri (codec/search-param-value-key c-hash tid compiled-value)))
+
+  (-compartment-keys [_ csvri compartment tid compiled-value]
+    (let [{co-c-hash :c-hash co-res-id :res-id} compartment
+          start-key (codec/compartment-search-param-value-key
+                      co-c-hash co-res-id c-hash tid compiled-value)]
+      (prefix-keys csvri start-key)))
+
+  (-matches? [_ snapshot tid id hash [compiled-value & _]]
     ;; TODO: handle other values
-    (seek-value snapshot tid id hash c-hash (codec/string (normalize-string value))))
+    (seek-value snapshot tid id hash c-hash compiled-value))
 
-  (-index-entries [_ resolver hash {type :resourceType id :id :as resource} linked-compartments]
+  (-index-entries [_ resolver hash resource linked-compartments]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [tid (codec/tid type)
+      (let [{type :resourceType id :id} resource
+            tid (codec/tid type)
             id-bytes (codec/id-bytes id)]
         (into
           []
@@ -564,7 +465,7 @@
 (defmethod token-index-entries :fhir/Reference
   [_ entries-fn {:keys [reference]}]
   (when reference
-    (let [res (s/conform :blaze.db/local-ref reference)]
+    (let [res (s/conform :blaze.fhir/local-ref reference)]
       (if (s/invalid? res)
         (entries-fn
           [(codec/v-hash reference)])
@@ -585,53 +486,91 @@
   (log/warn (format-skip-indexing-msg value url "token")))
 
 
-(defrecord SearchParamToken [name url type code c-hash expression]
+(defn- index-token-entries
+  [url code c-hash hash resource linked-compartments values]
+  (let [{type :resourceType id :id} resource
+        tid (codec/tid type)
+        id-bytes (codec/id-bytes id)]
+    (into
+      []
+      (mapcat
+        (partial
+          token-index-entries
+          url
+          (fn search-param-token-entry [values]
+            (log/trace "search-param-value-entry" "token" code type id (codec/hex hash))
+            (into
+              (into
+                [[:resource-value-index
+                  (codec/resource-value-key
+                    tid
+                    id-bytes
+                    hash
+                    c-hash)
+                  (bytes/concat values)]]
+                (map
+                  (fn [[code id]]
+                    [:compartment-resource-value-index
+                     (codec/compartment-resource-value-key
+                       (codec/c-hash code)
+                       (codec/id-bytes id)
+                       tid
+                       id-bytes
+                       hash
+                       c-hash)
+                     (bytes/concat values)]))
+                linked-compartments)
+              (mapcat
+                (fn [value]
+                  (cons
+                    [:search-param-value-index
+                     (codec/search-param-value-key
+                       c-hash
+                       tid
+                       value
+                       id-bytes
+                       hash)
+                     bytes/empty]
+                    (map
+                      (fn [[code id]]
+                        [:compartment-search-param-value-index
+                         (codec/compartment-search-param-value-key
+                           (codec/c-hash code)
+                           (codec/id-bytes id)
+                           c-hash
+                           tid
+                           value
+                           id-bytes
+                           hash)
+                         bytes/empty])
+                      linked-compartments))))
+              values))))
+      values)))
+
+
+(defrecord SearchParamToken [name url type base code c-hash expression]
   SearchParam
-  (-new-iterator [_ snapshot tid value]
-    (let [value (codec/v-hash value)
-          iter (kv/new-iterator snapshot :search-param-value-index)
-          start-key (codec/search-param-value-key c-hash tid value)]
-      (reify
-        Iterator
-        (-first [_]
-          (prefix-seek iter start-key))
-        (-next [_ current-id]
-          (loop [k (kv/next iter)]
-            (when (some->> k (key-valid? start-key))
-              (if (bytes/= current-id (codec/search-param-value-key->id k))
-                ;; recur, because we are still on the same resource
-                (recur (kv/next iter))
-                k))))
-        Closeable
-        (close [_]
-          (.close iter)))))
+  (-compile-values [_ values]
+    (mapv codec/v-hash values))
 
-  (-new-compartment-iterator [_ iter compartment tid value]
-    (let [value (codec/v-hash value)
-          {co-c-hash :c-hash co-res-id :res-id} compartment
+  (-keys [_ _ svri tid compiled-value]
+    (prefix-keys svri (codec/search-param-value-key c-hash tid compiled-value)))
+
+  (-compartment-keys [_ csvri compartment tid compiled-value]
+    (let [{co-c-hash :c-hash co-res-id :res-id} compartment
           start-key (codec/compartment-search-param-value-key
-                      co-c-hash co-res-id c-hash tid value)]
-      (reify
-        Iterator
-        (-first [_]
-          (prefix-seek iter start-key))
-        (-next [_ current-id]
-          (loop [k (kv/next iter)]
-            (when (some->> k (key-valid? start-key))
-              (if (= current-id (codec/compartment-search-param-value-key->id k))
-                ;; recur, because we are still on the same resource
-                (recur (kv/next iter))
-                k)))))))
+                      co-c-hash co-res-id c-hash tid compiled-value)]
+      (prefix-keys csvri start-key)))
 
-  (-matches? [_ snapshot tid id hash [value & _]]
+  (-matches? [_ snapshot tid id hash [compiled-value & _]]
     ;; TODO: handle other values
     (when-let [v (get-value snapshot tid id hash c-hash)]
-      (codec/contains-v-hash? v (codec/v-hash value))))
+      (codec/contains-v-hash? v compiled-value)))
 
-  (-compartment-matches? [_ snapshot compartment tid id hash [value & _]]
+  (-compartment-matches? [_ snapshot compartment tid id hash [compiled-value & _]]
     ;; TODO: handle other values
     (when-let [v (get-compartment-value snapshot compartment tid (codec/id-bytes id) hash c-hash)]
-      (codec/contains-v-hash? v (codec/v-hash value))))
+      (codec/contains-v-hash? v (codec/v-hash compiled-value))))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -643,70 +582,15 @@
               :fhir/Reference
               (let [{:keys [reference]} value]
                 (when reference
-                  (let [res (s/conform :blaze.db/local-ref reference)]
+                  (let [res (s/conform :blaze.fhir/local-ref reference)]
                     (when-not (s/invalid? res)
                       (rest res))))))))
         values)))
 
-  (-index-entries [_ resolver hash {type :resourceType id :id :as resource} linked-compartments]
+  (-index-entries [_ resolver hash resource linked-compartments]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [tid (codec/tid type)
-            id-bytes (codec/id-bytes id)]
-        (into
-          []
-          (mapcat
-            (partial
-              token-index-entries
-              url
-              (fn search-param-token-entry [values]
-                (log/trace "search-param-value-entry" "token" code type id (codec/hex hash))
-                (into
-                  (into
-                    [[:resource-value-index
-                      (codec/resource-value-key
-                        tid
-                        id-bytes
-                        hash
-                        c-hash)
-                      (bytes/concat values)]]
-                    (map
-                      (fn [{co-c-hash :c-hash co-res-id :res-id}]
-                        [:compartment-resource-value-index
-                         (codec/compartment-resource-value-key
-                           co-c-hash
-                           co-res-id
-                           tid
-                           id-bytes
-                           hash
-                           c-hash)
-                         (bytes/concat values)]))
-                    linked-compartments)
-                  (mapcat
-                    (fn [value]
-                      (cons
-                        [:search-param-value-index
-                         (codec/search-param-value-key
-                           c-hash
-                           tid
-                           value
-                           id-bytes
-                           hash)
-                         bytes/empty]
-                        (map
-                          (fn [{co-c-hash :c-hash co-res-id :res-id}]
-                            [:compartment-search-param-value-index
-                             (codec/compartment-search-param-value-key
-                               co-c-hash
-                               co-res-id
-                               c-hash
-                               tid
-                               value
-                               id-bytes
-                               hash)
-                             bytes/empty])
-                          linked-compartments))))
-                  values))))
-          values)))))
+      (index-token-entries url code c-hash hash resource linked-compartments
+                           values))))
 
 
 
@@ -716,8 +600,14 @@
 
 
 (defmethod quantity-index-entries :fhir/Quantity
-  [_ entry-fn {:keys [value system code]}]
-  (into (entry-fn "" value) (entry-fn (str system "|" code) value)))
+  [_ entry-fn {:keys [value system code unit]}]
+  (cond-> (entry-fn "" value)
+    code
+    (into (entry-fn code value))
+    (and unit (not= unit code))
+    (into (entry-fn unit value))
+    (and system code)
+    (into (entry-fn (str system "|" code) value))))
 
 
 (defmethod quantity-index-entries :default
@@ -725,36 +615,33 @@
   (log/warn (format-skip-indexing-msg value url "quantity")))
 
 
-(defrecord SearchParamQuantity [name url type code c-hash expression]
+(defrecord SearchParamQuantity [name url type base code c-hash expression]
   SearchParam
-  (-new-iterator [_ snapshot tid value]
-    (let [[value unit] (str/split value #"\|" 2)
-          iter (kv/new-iterator snapshot :search-param-value-index)
-          start-key (codec/search-param-value-key c-hash tid (codec/quantity (BigDecimal. ^String value) unit))]
-      (reify
-        Iterator
-        (-first [_]
-          (prefix-seek iter start-key))
-        (-next [_ current-id]
-          (loop [k (kv/next iter)]
-            (when (some->> k (key-valid? start-key))
-              (if (bytes/= current-id (codec/search-param-value-key->id k))
-                ;; recur, because we are still on the same resource
-                (recur (kv/next iter))
-                k))))
-        Closeable
-        (close [_]
-          (.close iter)))))
+  (-compile-values [_ values]
+    (mapv
+      (fn [value]
+        (let [[value unit] (str/split value #"\|" 2)]
+          (codec/quantity (BigDecimal. ^String value) unit)))
+      values))
 
-  (-matches? [_ snapshot tid id hash [value & _]]
+  (-keys [_ _ svri tid compiled-value]
+    (prefix-keys svri (codec/search-param-value-key c-hash tid compiled-value)))
+
+  (-compartment-keys [_ csvri compartment tid compiled-value]
+    (let [{co-c-hash :c-hash co-res-id :res-id} compartment
+          start-key (codec/compartment-search-param-value-key
+                      co-c-hash co-res-id c-hash tid compiled-value)]
+      (prefix-keys csvri start-key)))
+
+  (-matches? [_ snapshot tid id hash [compiled-value & _]]
     ;; TODO: handle other values
-    (let [[value unit] (str/split value #"\|" 2)]
-      (when-let [v (get-value snapshot tid id hash c-hash)]
-        (bytes/= (codec/quantity (BigDecimal. ^String value) unit) v))))
+    (when-let [v (get-value snapshot tid id hash c-hash)]
+      (bytes/= compiled-value v)))
 
-  (-index-entries [_ resolver hash {type :resourceType id :id :as resource} linked-compartments]
+  (-index-entries [_ resolver hash resource linked-compartments]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [tid (codec/tid type)
+      (let [{type :resourceType id :id} resource
+            tid (codec/tid type)
             id-bytes (codec/id-bytes id)]
         (into
           []
@@ -782,54 +669,46 @@
           values)))))
 
 
-(defmulti search-param (fn [{:keys [type]}] type))
-
-
-(defmethod search-param "date"
-  [{:keys [name url type code expression]}]
+(defmethod sr/search-param "date"
+  [{:keys [name url type base code expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamDate name url type code (codec/c-hash code) expression))))
+      (->SearchParamDate name url type base code (codec/c-hash code) expression))))
 
 
-(defmethod search-param "string"
-  [{:keys [name url type code expression]}]
+(defmethod sr/search-param "string"
+  [{:keys [name url type base code expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamString name url type code (codec/c-hash code) expression))))
+      (->SearchParamString name url type base code (codec/c-hash code) expression))))
 
 
-(defmethod search-param "token"
-  [{:keys [name url type code expression]}]
+(defmethod sr/search-param "token"
+  [{:keys [name url type base code expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type code (codec/c-hash code) expression))))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))))
 
 
-(defmethod search-param "reference"
-  [{:keys [name url type code expression]}]
+(defmethod sr/search-param "reference"
+  [{:keys [name url type base code expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type code (codec/c-hash code) expression))))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))))
 
 
 ;; TODO: do we need to index composites?
-(defmethod search-param "composite" [_])
+(defmethod sr/search-param "composite" [_])
 
 
-(defmethod search-param "quantity"
-  [{:keys [name url type code expression]}]
+(defmethod sr/search-param "quantity"
+  [{:keys [name url type base code expression]}]
   (when-ok [expression (fhir-path/compile expression)]
-    (->SearchParamQuantity name url type code (codec/c-hash code) expression)))
+    (->SearchParamQuantity name url type base code (codec/c-hash code) expression)))
 
 
-(defmethod search-param "uri"
-  [{:keys [name url type code expression]}]
+(defmethod sr/search-param "uri"
+  [{:keys [name url type base code expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type code (codec/c-hash code) expression))))
-
-
-(defmethod search-param :default
-  [{:keys [url type]}]
-  (log/debug (format "Skip creating search parameter `%s` of type `%s` because the rule is missing." url type)))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))))

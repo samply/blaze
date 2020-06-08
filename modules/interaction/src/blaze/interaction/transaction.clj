@@ -144,13 +144,19 @@
     entries))
 
 
+(defn- resource-exists? [db type id]
+  (if-let [resource (d/resource db type id)]
+    (not (d/deleted? resource))
+    false))
+
+
 (defn- prepare-entry
   [db {{:keys [method]} :request :keys [resource] :as entry}]
   (log/trace "prepare-entry" method (:resourceType resource) (:id resource))
   (cond
     (= "PUT" method)
     (let [{type :resourceType id :id} resource]
-      (assoc entry :blaze/resource-exists? (d/resource-exists? db type id)))
+      (assoc entry :blaze/resource-exists? (resource-exists? db type id)))
 
     (= "POST" method)
     (assoc-in entry [:resource :id] (str (random-uuid)))
