@@ -21,11 +21,6 @@
   :ret (s/nilable :blaze.resource/resourceType))
 
 
-(s/fdef util/page-id
-  :args (s/cat :query-params (s/map-of string? string?))
-  :ret (s/nilable :blaze.resource/id))
-
-
 (s/fdef util/nav-url
   :args
   (s/cat

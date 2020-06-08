@@ -46,8 +46,12 @@
    :path "/MeasureReport"})
 
 
-(defn handler-with [txs]
+(defn- handler-with [txs]
   (handler (mem-node-with txs)))
+
+
+(defn- link-url [body link-relation]
+  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
 
 
 (deftest handler-test
@@ -79,7 +83,7 @@
           :resourceType := "Patient"
           :id := "0"))))
 
-  (testing "With param _summary equal to count"
+  (testing "with param _summary equal to count"
     (let [{:keys [status body]}
           @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {::reitit/router router
@@ -100,7 +104,7 @@
       (testing "the bundle contains no entries"
         (is (empty? (:entry body))))))
 
-  (testing "With param _count equal to zero"
+  (testing "with param _count equal to zero"
     (let [{:keys [status body]}
           @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {::reitit/router router
@@ -120,6 +124,134 @@
 
       (testing "the bundle contains no entries"
         (is (empty? (:entry body))))))
+
+  (testing "with two patients"
+    (let [node (mem-node-with
+                 [[[:put {:resourceType "Patient" :id "0"}]
+                   [:put {:resourceType "Patient" :id "1"}]]])]
+
+      (testing "search for all patients with _count=1"
+        (let [{:keys [body]}
+              @((handler node)
+                {::reitit/router router
+                 ::reitit/match patient-match
+                 :params {"_count" "1"}})]
+
+          (testing "the total count is 2"
+            (is (= 2 (:total body))))
+
+          (testing "has a self link"
+            (is (= "/Patient?_count=1&__t=1&__page-id=0" (link-url body "self"))))
+
+          (testing "has a next link"
+            (is (= "/Patient?_count=1&__t=1&__page-id=1" (link-url body "next"))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))))
+
+      (testing "following the self link"
+        (let [{:keys [body]}
+              @((handler node)
+                {::reitit/router router
+                 ::reitit/match patient-match
+                 :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
+
+          (testing "the total count is 2"
+            (is (= 2 (:total body))))
+
+          (testing "has a self link"
+            (is (= "/Patient?_count=1&__t=1&__page-id=0" (link-url body "self"))))
+
+          (testing "has a next link"
+            (is (= "/Patient?_count=1&__t=1&__page-id=1" (link-url body "next"))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))))
+
+      (testing "following the next link"
+        (let [{:keys [body]}
+              @((handler node)
+                {::reitit/router router
+                 ::reitit/match patient-match
+                 :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
+
+          (testing "the total count is 2"
+            (is (= 2 (:total body))))
+
+          (testing "has a self link"
+            (is (= "/Patient?_count=1&__t=1&__page-id=1" (link-url body "self"))))
+
+          (testing "has no next link"
+            (is (nil? (link-url body "next"))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))))))
+
+  (testing "with three patients"
+    (let [node (mem-node-with
+                 [[[:put {:resourceType "Patient" :id "0"}]
+                   [:put {:resourceType "Patient" :id "1" :active true}]
+                   [:put {:resourceType "Patient" :id "2" :active true}]]])]
+
+      (testing "search for active patients with _count=1"
+        (let [{:keys [body]}
+              @((handler node)
+                {::reitit/router router
+                 ::reitit/match patient-match
+                 :params {"active" "true" "_count" "1"}})]
+
+          (testing "their is no total count because we have clauses and we have
+                    more hits than page-size"
+            (is (nil? (:total body))))
+
+          (testing "has a self link"
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=0" (link-url body "self"))))
+
+          (testing "has a next link"
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=1" (link-url body "next"))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))))
+
+      (testing "following the self link"
+        (let [{:keys [body]}
+              @((handler node)
+                {::reitit/router router
+                 ::reitit/match patient-match
+                 :params {"active" "true" "_count" "1" "__t" "1" "__page-offset" "0"}})]
+
+          (testing "their is no total count because we have clauses and we have
+                    more hits than page-size"
+            (is (nil? (:total body))))
+
+          (testing "has a self link"
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=0" (link-url body "self"))))
+
+          (testing "has a next link"
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=1" (link-url body "next"))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))))
+
+      (testing "following the next link"
+        (let [{:keys [body]}
+              @((handler node)
+                {::reitit/router router
+                 ::reitit/match patient-match
+                 :params {"active" "true" "_count" "1" "__t" "1" "__page-offset" "1"}})]
+
+          (testing "their is no total count because we have clauses and we have
+                    more hits than page-size"
+            (is (nil? (:total body))))
+
+          (testing "has a self link"
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=1" (link-url body "self"))))
+
+          (testing "has no next link"
+            (is (nil? (link-url body "next"))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))))))
 
 
   (testing "Id search"
@@ -254,32 +386,32 @@
           :id := "0"))))
 
   #_(testing "Library title:contains search"
-    (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "Library" :id "0" :title "bab"}]
-                [:put {:resourceType "Library" :id "1" :title "b"}]]])
-            {::reitit/router router
-             ::reitit/match {:data {:fhir.resource/type "Library"}}
-             :params {"title:contains" "A"}})]
+      (let [{:keys [status body]}
+            @((handler-with
+                [[[:put {:resourceType "Library" :id "0" :title "bab"}]
+                  [:put {:resourceType "Library" :id "1" :title "b"}]]])
+              {::reitit/router router
+               ::reitit/match {:data {:fhir.resource/type "Library"}}
+               :params {"title:contains" "A"}})]
 
-      (is (= 200 status))
+        (is (= 200 status))
 
-      (testing "the body contains a bundle"
-        (is (= "Bundle" (:resourceType body))))
+        (testing "the body contains a bundle"
+          (is (= "Bundle" (:resourceType body))))
 
-      (testing "the bundle type is searchset"
-        (is (= "searchset" (:type body))))
+        (testing "the bundle type is searchset"
+          (is (= "searchset" (:type body))))
 
-      (testing "the bundle contains one entry"
-        (is (= 1 (count (:entry body)))))
+        (testing "the bundle contains one entry"
+          (is (= 1 (count (:entry body)))))
 
-      (testing "the entry has the right fullUrl"
-        (is (= "/Library/0" (-> body :entry first :fullUrl))))
+        (testing "the entry has the right fullUrl"
+          (is (= "/Library/0" (-> body :entry first :fullUrl))))
 
-      (testing "the entry has the right resource"
-        (given (-> body :entry first :resource)
-          :resourceType := "Library"
-          :id := "0"))))
+        (testing "the entry has the right resource"
+          (given (-> body :entry first :resource)
+            :resourceType := "Library"
+            :id := "0"))))
 
   (testing "MeasureReport measure search"
     (let [{:keys [status body]}
