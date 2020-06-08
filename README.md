@@ -28,6 +28,24 @@ docker run -p 8080:8080 -v <local-dir>:/data -e DB_DIR="/data/db" samply/blaze:0
 
 Please replace `<local-dir>` with a directory in which Blaze should store it's database files. It's important to specify a `DB_DIR` which resides inside the mounted volume, because Blaze needs to create its database directory itself. Blaze will use any previously created database directory on subsequent starts.
 
+For security reasons, the container is executed as a non-root user (65532:65532) by default. When mounting a folder from your host filesystem you will need to set the permissions accordingly, e.g.
+
+```bash
+# Use ~/blaze-data on your host to store the database files
+mkdir ~/blaze-data
+sudo chown -R 65532:65532 ~/blaze-data
+docker run -p 8080:8080 -v ~/blaze-data:/data -e DB_DIR="/data/db" samply/blaze:0.8.0-beta.2
+```
+
+If you use a Docker volume, mount it on `/app/data` and make sure `DB_DIR` is set to `/app/data/db` (the default value), because the non-root user only has write-permissions inside the `/app` directory.
+Using a Docker volume instead of a host directory mount makes it unnecessary to set the file permissions:
+
+```bash
+docker run -p 8080:8080 -v blaze-data-volume:/app/data -e DB_DIR="/app/data/db" samply/blaze:0.8.0-beta.2
+```
+
+Note that you can always revert back to running the container as root by specifying `-u root` for `docker run` or setting the `services[].user: root` in Docker compose.
+
 ### Java
 
 ```bash
