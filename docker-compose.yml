@@ -1,7 +1,7 @@
 version: '3.2'
 services:
   store:
-    image: "samply/blaze:0.9.0-alpha.3"
+    image: "samply/blaze:0.9.0-alpha.4"
     environment:
       BASE_URL: "http://localhost:8080"
       DB_DIR: "/app/data/db"
