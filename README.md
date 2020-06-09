@@ -88,7 +88,7 @@ The following table contains all of them:
 | SERVER\_PORT | 8080 |  | The port of the main HTTP server |
 | METRICS\_SERVER\_PORT | 8081 | v0.6 | The port of the Prometheus metrics server |
 | LOG\_LEVEL | info | v0.6 | one of trace, debug, info, warn or error |
-| JVM\_OPTS | — |  | JVM options \(Docker only\) |
+| JAVA\_TOOL\_OPTIONS | — |  | JVM options \(Docker only\) |
 | FHIR\_OPERATION\_EVALUATE\_MEASURE\_THREADS | 4 | v0.8 | The maximum number of parallel $evaluate-measure executions. Not the same as the number of threads used for measure evaluation which equal to the number of available processors. |
 
 ## Tuning Guide
