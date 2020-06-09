@@ -1,0 +1,10 @@
+{:lint-as
+ {manifold.deferred/loop clojure.core/loop}
+
+ :linters
+ {:unsorted-required-namespaces
+  {:level :error}
+  :single-key-in
+  {:level :error}}
+
+ :skip-comments true}

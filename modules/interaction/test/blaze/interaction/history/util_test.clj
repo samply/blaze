@@ -2,12 +2,13 @@
   (:require
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.history.util :refer [build-entry]]
-    [clojure.test :as test :refer [deftest testing]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit])
-  (:import [java.time Instant]))
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]

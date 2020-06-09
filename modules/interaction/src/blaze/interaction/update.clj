@@ -8,13 +8,13 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log]
-    [clojure.spec.alpha :as s])
+    [taoensso.timbre :as log])
   (:import
     [java.time ZonedDateTime ZoneId]
     [java.time.format DateTimeFormatter]))

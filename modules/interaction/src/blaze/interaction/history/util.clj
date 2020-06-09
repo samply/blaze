@@ -29,7 +29,7 @@
   "Returns the t (optional) to constrain the database in paging. Pages will
   start with a database as-of `page-t`."
   {:arglists '([query-params])}
-  [{:strs [page-t]}]
+  [{page-t "__page-t"}]
   (when (some->> page-t (re-matches #"\d+"))
     (Long/parseLong page-t)))
 
@@ -37,25 +37,18 @@
 (defn page-type
   "Returns the `page-type` query param in case it is a valid FHIR resource type."
   {:arglists '([query-params])}
-  [{:strs [page-type]}]
+  [{page-type "__page-type"}]
   (when (some->> page-type (s/valid? :blaze.resource/resourceType))
     page-type))
 
 
-(defn page-id
-  "Returns the `page-id` query param in case it is a valid FHIR id."
-  {:arglists '([query-params])}
-  [{:strs [page-id]}]
-  (when (some->> page-id (s/valid? :blaze.resource/id))
-    page-id))
-
-
 (defn nav-url
-  "Returns a nav URL with the entry of `transaction` and `eid` (optional) as
-  first entry of the page.
+  "Returns a nav URL which points to a page with it's first entry described by
+  the specified values.
 
   Uses `match` to generate a link based on the current path with appended
-  `query-params` and the extra paging params calculated from `t` and entry."
+  `query-params` and the extra paging params calculated from `t`, `page-t`,
+  `type` and `id`."
   {:arglists
    '([match query-params t page-t]
      [match query-params t page-t id]
@@ -63,11 +56,11 @@
   [{{:blaze/keys [base-url]} :data :as match} query-params t page-t & more]
   (let [path (reitit/match->path
                match
-               (cond-> (assoc query-params "t" t "page-t" page-t)
+               (cond-> (assoc query-params "__t" t "__page-t" page-t)
                  (= 1 (count more))
-                 (assoc "page-id" (first more))
+                 (assoc "__page-id" (first more))
                  (= 2 (count more))
-                 (assoc "page-type" (first more) "page-id" (second more))))]
+                 (assoc "__page-type" (first more) "__page-id" (second more))))]
     (str base-url path)))
 
 

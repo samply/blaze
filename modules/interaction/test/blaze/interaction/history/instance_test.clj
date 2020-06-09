@@ -80,7 +80,7 @@
 
       (is (= "self" (-> body :link first :relation)))
 
-      (is (= "/Patient/0/_history?t=1&page-t=1" (-> body :link first :url)))
+      (is (= "/Patient/0/_history?__t=1&__page-t=1" (-> body :link first :url)))
 
       (given (-> body :entry first)
         :fullUrl := "/Patient/0"
@@ -115,7 +115,7 @@
 
       (is (= "self" (-> body :link first :relation)))
 
-      (is (= "/Patient/0/_history?t=2&page-t=2" (-> body :link first :url)))
+      (is (= "/Patient/0/_history?__t=2&__page-t=2" (-> body :link first :url)))
 
       (testing "first entry"
         (given (-> body :entry first)
@@ -150,7 +150,7 @@
 
       (is (= "next" (-> body :link second :relation)))
 
-      (is (= "/Patient/0/_history?_count=1&t=2&page-t=1"
+      (is (= "/Patient/0/_history?_count=1&__t=2&__page-t=1"
              (-> body :link second :url)))))
 
   (testing "with two versions, calling the second page"
@@ -161,7 +161,7 @@
             {::reitit/router router
              ::reitit/match match
              :path-params {:id "0"}
-             :query-params {"_count" "1" "t" "2" "page-t" "1"}})]
+             :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
 
       (testing "the total count is still two"
         (is (= 2 (:total body))))

@@ -45,7 +45,7 @@
 
 (s/fdef d/list-resources
   :args (s/cat :db :blaze.db/db :type :blaze.resource/resourceType
-               :start-id (s/? :blaze.resource/id))
+               :start-id (s/? (s/nilable :blaze.resource/id)))
   :ret (s/coll-of :blaze/resource))
 
 
