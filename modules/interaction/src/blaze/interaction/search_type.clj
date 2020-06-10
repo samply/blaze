@@ -163,7 +163,7 @@
     (count entries)))
 
 
-(defn search* [router match db type params]
+(defn- search** [router match db type params]
   (let [t (or (d/as-of-t db) (d/basis-t db))]
     (when-ok [entries (entries router db type params)]
       (let [page-size (:page-size params)
@@ -183,6 +183,24 @@
 
           (not (:summary? params))
           (assoc :entry (take page-size entries)))))))
+
+
+(defn- summary-total [db type {:keys [clauses]}]
+  (if (empty? clauses)
+    (d/type-total db type)
+    (transduce (map (constantly 1)) + 0 (d/type-query db type clauses))))
+
+
+(defn- search-summary [db type params]
+  {:resourceType "Bundle"
+   :type "searchset"
+   :total (summary-total db type params)})
+
+
+(defn- search* [router match db type params]
+  (if (:summary? params)
+    (search-summary db type params)
+    (search** router match db type params)))
 
 
 (defn- search [router match db type params]

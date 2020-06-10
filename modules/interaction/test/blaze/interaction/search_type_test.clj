@@ -193,6 +193,16 @@
                    [:put {:resourceType "Patient" :id "1" :active true}]
                    [:put {:resourceType "Patient" :id "2" :active true}]]])]
 
+      (testing "search for active patients with _summary=count"
+        (let [{:keys [body]}
+              @((handler node)
+                {::reitit/router router
+                 ::reitit/match patient-match
+                 :params {"active" "true" "_summary" "count"}})]
+
+          (testing "their is a total count because we used _summary=count"
+            (is (= 2 (:total body))))))
+
       (testing "search for active patients with _count=1"
         (let [{:keys [body]}
               @((handler node)
