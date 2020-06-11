@@ -26,7 +26,8 @@
 
 (def router
   (reitit/router
-    [["/Patient/{id}" {:name :Patient/instance}]]
+    [["/Patient/{id}" {:name :Patient/instance}]
+     ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]
     {:syntax :bracket}))
 
 
@@ -86,6 +87,10 @@
 
           (is (= 201 status))
 
+          (testing "Location header"
+            (is (= "/Patient/22de9f47-626a-4fc3-bb69-7bc68401acf4/_history/1"
+                   (get headers "Location"))))
+
           (testing "Transaction time in Last-Modified header"
             (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
@@ -98,58 +103,76 @@
           (is (= "22de9f47-626a-4fc3-bb69-7bc68401acf4" (:id body))))))
 
     (testing "with return=minimal Prefer header"
-      (let [{:keys [status headers body]}
-            @((handler-with [])
-              {::reitit/router router
-               ::reitit/match {:data {:fhir.resource/type "Patient"}}
-               :headers {"prefer" "return=minimal"}
-               :body {:resourceType "Patient"}})]
+      (with-redefs
+        [random-uuid (constantly #uuid "3543b9e8-b237-4daa-9c81-9a99b208aa0d")]
+        (let [{:keys [status headers body]}
+              @((handler-with [])
+                {::reitit/router router
+                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :headers {"prefer" "return=minimal"}
+                 :body {:resourceType "Patient"}})]
 
-        (is (= 201 status))
+          (is (= 201 status))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+          (testing "Location header"
+            (is (= "/Patient/3543b9e8-b237-4daa-9c81-9a99b208aa0d/_history/1"
+                   (get headers "Location"))))
 
-        (testing "Version in ETag header"
-          ;; 1 is the T of the transaction of the resource creation
-          (is (= "W/\"1\"" (get headers "ETag"))))
+          (testing "Transaction time in Last-Modified header"
+            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (is (nil? body))))
+          (testing "Version in ETag header"
+            ;; 1 is the T of the transaction of the resource creation
+            (is (= "W/\"1\"" (get headers "ETag"))))
+
+          (is (nil? body)))))
 
     (testing "with return=representation Prefer header"
-      (let [{:keys [status headers body]}
-            @((handler-with [])
-              {::reitit/router router
-               ::reitit/match {:data {:fhir.resource/type "Patient"}}
-               :headers {"prefer" "return=representation"}
-               :body {:resourceType "Patient"}})]
+      (with-redefs
+        [random-uuid (constantly #uuid "d387d53f-358f-48d2-979e-96cb0052b7e2")]
+        (let [{:keys [status headers body]}
+              @((handler-with [])
+                {::reitit/router router
+                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :headers {"prefer" "return=representation"}
+                 :body {:resourceType "Patient"}})]
 
-        (is (= 201 status))
+          (is (= 201 status))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+          (testing "Location header"
+            (is (= "/Patient/d387d53f-358f-48d2-979e-96cb0052b7e2/_history/1"
+                   (get headers "Location"))))
 
-        (testing "Version in ETag header"
-          ;; 1 is the T of the transaction of the resource creation
-          (is (= "W/\"1\"" (get headers "ETag"))))
+          (testing "Transaction time in Last-Modified header"
+            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (is (= "Patient" (:resourceType body)))))
+          (testing "Version in ETag header"
+            ;; 1 is the T of the transaction of the resource creation
+            (is (= "W/\"1\"" (get headers "ETag"))))
+
+          (is (= "Patient" (:resourceType body))))))
 
     (testing "with return=OperationOutcome Prefer header"
-      (let [{:keys [status headers body]}
-            @((handler-with [])
-              {::reitit/router router
-               ::reitit/match {:data {:fhir.resource/type "Patient"}}
-               :headers {"prefer" "return=OperationOutcome"}
-               :body {:resourceType "Patient"}})]
+      (with-redefs
+        [random-uuid (constantly #uuid "62a30df4-a4b8-47ed-9203-2d222dd8cdad")]
+        (let [{:keys [status headers body]}
+              @((handler-with [])
+                {::reitit/router router
+                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :headers {"prefer" "return=OperationOutcome"}
+                 :body {:resourceType "Patient"}})]
 
-        (is (= 201 status))
+          (is (= 201 status))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+          (testing "Location header"
+            (is (= "/Patient/62a30df4-a4b8-47ed-9203-2d222dd8cdad/_history/1"
+                   (get headers "Location"))))
 
-        (testing "Version in ETag header"
-          ;; 1 is the T of the transaction of the resource creation
-          (is (= "W/\"1\"" (get headers "ETag"))))
+          (testing "Transaction time in Last-Modified header"
+            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (is (= "OperationOutcome" (:resourceType body)))))))
+          (testing "Version in ETag header"
+            ;; 1 is the T of the transaction of the resource creation
+            (is (= "W/\"1\"" (get headers "ETag"))))
+
+          (is (= "OperationOutcome" (:resourceType body))))))))

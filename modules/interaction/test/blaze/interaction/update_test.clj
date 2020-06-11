@@ -151,6 +151,9 @@
         (testing "Returns 201"
           (is (= 201 status)))
 
+        (testing "Location header"
+          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+
         (testing "Transaction time in Last-Modified header"
           (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 

@@ -3,6 +3,7 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure.handler.impl :refer [handler]]
+    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -26,7 +27,8 @@
 
 (def router
   (reitit/router
-    [["/Patient/{id}" {:name :Patient/instance}]]
+    [["/Patient/{id}" {:name :Patient/instance}]
+     ["/MeasureReport/{id}/_history/{vid}" {:name :MeasureReport/versioned-instance}]]
     {:syntax :bracket}))
 
 
@@ -330,33 +332,39 @@
               [:group 0 :stratifier 0 :stratum 1 :value :text] := "male"))))
 
       (testing "as POST request"
-        (let [{:keys [status body]}
-              @((handler-with
-                  [[[:put {:resourceType "Measure" :id "0"
-                           :url "url-181501"
-                           :library ["library-url-094115"]}]
-                    [:put {:resourceType "Library" :id "0"
-                           :url "library-url-094115"
-                           :content
-                           [{:contentType "text/cql"
-                             :data ""}]}]]])
-                {::reitit/router router
-                 :request-method :post
-                 :params
-                 {"measure" "url-181501"
-                  "periodStart" "2014"
-                  "periodEnd" "2015"}})]
+        (with-redefs
+          [random-uuid (constantly #uuid "29217af5-1f5b-4860-af2d-277af728fed2")]
+          (let [{:keys [status headers body]}
+                @((handler-with
+                    [[[:put {:resourceType "Measure" :id "0"
+                             :url "url-181501"
+                             :library ["library-url-094115"]}]
+                      [:put {:resourceType "Library" :id "0"
+                             :url "library-url-094115"
+                             :content
+                             [{:contentType "text/cql"
+                               :data ""}]}]]])
+                  {::reitit/router router
+                   :request-method :post
+                   :params
+                   {"measure" "url-181501"
+                    "periodStart" "2014"
+                    "periodEnd" "2015"}})]
 
-          (is (= 201 status))
+            (is (= 201 status))
 
-          (given body
-            :resourceType := "MeasureReport"
-            :status := "complete"
-            :type := "summary"
-            :measure := "url-181501"
-            :date := "1970-01-01T01:00:00+01:00"
-            [:period :start] := "2014"
-            [:period :end] := "2015"))))
+            (testing "Location header"
+              (is (= "/MeasureReport/29217af5-1f5b-4860-af2d-277af728fed2/_history/2"
+                     (get headers "Location"))))
+
+            (given body
+              :resourceType := "MeasureReport"
+              :status := "complete"
+              :type := "summary"
+              :measure := "url-181501"
+              :date := "1970-01-01T01:00:00+01:00"
+              [:period :start] := "2014"
+              [:period :end] := "2015")))))
 
     (testing "on instance endpoint"
       (testing "as GET request"
@@ -389,30 +397,36 @@
             [:period :end] := "2015")))
 
       (testing "as POST request"
-        (let [{:keys [status body]}
-              @((handler-with
-                  [[[:put {:resourceType "Measure" :id "0"
-                           :url "url-181501"
-                           :library ["library-url-094115"]}]
-                    [:put {:resourceType "Library" :id "0"
-                           :url "library-url-094115"
-                           :content
-                           [{:contentType "text/cql"
-                             :data ""}]}]]])
-                {::reitit/router router
-                 :request-method :post
-                 :path-params {:id "0"}
-                 :params
-                 {"periodStart" "2014"
-                  "periodEnd" "2015"}})]
+        (with-redefs
+          [random-uuid (constantly #uuid "33e62d8a-cc01-4d8f-af7e-3166c603b87d")]
+          (let [{:keys [status headers body]}
+                @((handler-with
+                    [[[:put {:resourceType "Measure" :id "0"
+                             :url "url-181501"
+                             :library ["library-url-094115"]}]
+                      [:put {:resourceType "Library" :id "0"
+                             :url "library-url-094115"
+                             :content
+                             [{:contentType "text/cql"
+                               :data ""}]}]]])
+                  {::reitit/router router
+                   :request-method :post
+                   :path-params {:id "0"}
+                   :params
+                   {"periodStart" "2014"
+                    "periodEnd" "2015"}})]
 
-          (is (= 201 status))
+            (is (= 201 status))
 
-          (given body
-            :resourceType := "MeasureReport"
-            :status := "complete"
-            :type := "summary"
-            :measure := "url-181501"
-            :date := "1970-01-01T01:00:00+01:00"
-            [:period :start] := "2014"
-            [:period :end] := "2015"))))))
+            (testing "Location header"
+              (is (= "/MeasureReport/33e62d8a-cc01-4d8f-af7e-3166c603b87d/_history/2"
+                     (get headers "Location"))))
+
+            (given body
+              :resourceType := "MeasureReport"
+              :status := "complete"
+              :type := "summary"
+              :measure := "url-181501"
+              :date := "1970-01-01T01:00:00+01:00"
+              [:period :start] := "2014"
+              [:period :end] := "2015")))))))
