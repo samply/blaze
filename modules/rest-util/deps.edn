@@ -46,6 +46,6 @@
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.05.09"}}
+    {:mvn/version "2020.06.12"}}
 
    :main-opts ["-m" "clj-kondo.main"]}}}

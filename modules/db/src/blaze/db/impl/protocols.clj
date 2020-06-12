@@ -1,4 +1,6 @@
-(ns blaze.db.impl.protocols)
+(ns blaze.db.impl.protocols
+  (:import
+    [clojure.lang IReduceInit]))
 
 
 (defprotocol Node
@@ -28,31 +30,31 @@
 
   (-resource [db type id])
 
-  (-list-resources ^clojure.lang.IReduceInit [db type start-id])
+  (-list-resources ^IReduceInit [db type start-id])
 
   (-type-total [db type])
 
-  (-system-list ^clojure.lang.IReduceInit [_ start-type start-id])
+  (-system-list ^IReduceInit [_ start-type start-id])
 
   (-system-total [db])
 
   (-list-compartment-resources
-    ^clojure.lang.IReduceInit [db code id type start-id])
+    ^IReduceInit [db code id type start-id])
 
   (-execute-query
-    ^clojure.lang.IReduceInit [db query]
-    ^clojure.lang.IReduceInit [db query arg1])
+    ^IReduceInit [db query]
+    ^IReduceInit [db query arg1])
 
-  (-instance-history ^clojure.lang.IReduceInit [db type id start-t since])
+  (-instance-history ^IReduceInit [db type id start-t since])
 
   (-total-num-of-instance-changes [_ type id since])
 
-  (-type-history ^clojure.lang.IReduceInit [db type start-t start-id since])
+  (-type-history ^IReduceInit [db type start-t start-id since])
 
   (-total-num-of-type-changes [db type since])
 
   (-system-history
-    ^clojure.lang.IReduceInit [db start-t start-type start-id since])
+    ^IReduceInit [db start-t start-type start-id since])
 
   (-total-num-of-system-changes [db since])
 
