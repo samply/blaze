@@ -98,11 +98,6 @@
   :ret :blaze/resource-value-key)
 
 
-(s/fdef codec/contains-v-hash?
-  :args (s/cat :v-hashes bytes? :v-hash bytes?)
-  :ret boolean?)
-
-
 
 ;; ---- CompartmentSearchParamValue Index -------------------------------------
 
@@ -359,6 +354,11 @@
 
 (s/fdef codec/v-hash
   :args (s/cat :value string?)
+  :ret bytes?)
+
+
+(s/fdef codec/tid-id
+  :args (s/cat :type :blaze.resource/resourceType :id :blaze.resource/id)
   :ret bytes?)
 
 

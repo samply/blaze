@@ -278,9 +278,9 @@
            []
            (map
              (fn [{:keys [name url type]}]
-               {:name name
-                :definition url
-                :type type}))
+               (cond-> {:name name :type type}
+                 url
+                 (assoc :definition url))))
            (sr/list-by-type search-param-registry name))}
 
         (seq operations)

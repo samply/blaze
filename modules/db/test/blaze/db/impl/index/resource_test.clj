@@ -41,7 +41,6 @@
       {:search-param-value-index nil
        :resource-value-index nil
        :compartment-search-param-value-index nil
-       :compartment-resource-value-index nil
        :resource-index nil
        :resource-as-of-index nil
        :tx-success-index nil

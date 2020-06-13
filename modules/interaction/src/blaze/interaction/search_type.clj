@@ -84,7 +84,7 @@
   (into
     []
     (comp
-      (remove (fn [[k]] (and (str/starts-with? k "_") (not= k "_id"))))
+      (remove (fn [[k]] (and (str/starts-with? k "_") (not (#{"_id" "_list"} k)))))
       (map (fn [[k v]] (into [k] (str/split v #",")))))
     params))
 

@@ -53,13 +53,13 @@
 (defn- calc-search-params [search-param-registry hash resource]
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
     (let [linked-compartments (sr/linked-compartments search-param-registry resource)]
-      (into
-        (into
-          []
-          (map #(compartment-resource-type-entry % resource))
-          linked-compartments)
-        (mapcat #(index-entries linked-compartments % hash resource))
-        (sr/list-by-type search-param-registry (:resourceType resource))))))
+      (-> (into
+            []
+            (map #(compartment-resource-type-entry % resource))
+            linked-compartments)
+          (into
+            (mapcat #(index-entries linked-compartments % hash resource))
+            (sr/list-by-type search-param-registry (:resourceType resource)))))))
 
 
 (defn- freeze [resource]

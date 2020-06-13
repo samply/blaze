@@ -271,13 +271,6 @@
        :max-bytes-for-level-base-in-mb 256
        :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
-      :compartment-resource-value-index
-      {:write-buffer-size-in-mb 128
-       :max-write-buffer-number 4
-       :level0-file-num-compaction-trigger 2
-       :max-bytes-for-level-base-in-mb 256
-       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
-
       :compartment-resource-type-index
       {:write-buffer-size-in-mb 64
        :max-write-buffer-number 4
@@ -377,7 +370,6 @@
      {:search-param-value-index nil
       :resource-value-index nil
       :compartment-search-param-value-index nil
-      :compartment-resource-value-index nil
       :compartment-resource-type-index nil
       :resource-index nil
       :active-search-params nil

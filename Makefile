@@ -15,6 +15,9 @@ lint-cql:
 lint-db:
 	cd modules/db; clojure -A:clj-kondo --lint src test
 
+lint-db-protocols:
+	cd modules/db-protocols; clojure -A:clj-kondo --lint src
+
 lint-db-stub:
 	cd modules/db-stub; clojure -A:clj-kondo --lint src
 
@@ -72,7 +75,7 @@ lint-terminology-service:
 lint-thread-pool-executor-collector:
 	cd modules/thread-pool-executor-collector; clojure -A:clj-kondo --lint src
 
-lint: lint-anomaly lint-coll lint-cql lint-db lint-db-stub lint-executor lint-extern-terminology-service lint-fhir-client lint-fhir-path lint-fhir-structure lint-interaction lint-kv lint-module-base lint-openid-auth lint-operations-measure-evaluate-measure lint-rest-api lint-rest-util lint-rocksdb lint-search-param-registry lint-spec lint-structure-definition lint-terminology-service lint-thread-pool-executor-collector
+lint: lint-anomaly lint-coll lint-cql lint-db lint-db-protocols lint-db-stub lint-executor lint-extern-terminology-service lint-fhir-client lint-fhir-path lint-fhir-structure lint-interaction lint-kv lint-module-base lint-openid-auth lint-operations-measure-evaluate-measure lint-rest-api lint-rest-util lint-rocksdb lint-search-param-registry lint-spec lint-structure-definition lint-terminology-service lint-thread-pool-executor-collector
 	clojure -A:clj-kondo --lint src test
 
 modules/cql/cql-test:

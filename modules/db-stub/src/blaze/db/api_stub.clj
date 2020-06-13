@@ -28,7 +28,6 @@
           {:search-param-value-index nil
            :resource-value-index nil
            :compartment-search-param-value-index nil
-           :compartment-resource-value-index nil
            :compartment-resource-type-index nil
            :resource-index nil
            :active-search-params nil

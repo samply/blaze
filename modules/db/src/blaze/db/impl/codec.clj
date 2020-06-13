@@ -142,17 +142,19 @@
 (defn resource-value-key
   {:arglists '([tid id hash c-hash] [tid id hash c-hash value])}
   ([tid ^bytes id ^bytes hash c-hash]
-   (-> (ByteBuffer/allocate (+ tid-size (alength id) hash-prefix-size
+   (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
                                c-hash-size))
        (.putInt tid)
+       (.put (byte (alength id)))
        (.put id)
        (.put hash 0 hash-prefix-size)
        (.putInt c-hash)
        (.array)))
   ([tid ^bytes id ^bytes hash c-hash ^bytes value]
-   (-> (ByteBuffer/allocate (+ tid-size (alength id) hash-prefix-size
+   (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
                                c-hash-size (alength value)))
        (.putInt tid)
+       (.put (byte (alength id)))
        (.put id)
        (.put hash 0 hash-prefix-size)
        (.putInt c-hash)
@@ -160,12 +162,13 @@
        (.array))))
 
 
-(defn contains-v-hash? [^bytes v-hashes ^bytes v-hash]
-  (loop [idx 0]
-    (if (Arrays/equals v-hashes idx (unchecked-add-int idx v-hash-size) v-hash 0 v-hash-size)
-      true
-      (when (< idx (unchecked-subtract-int (alength v-hashes) v-hash-size))
-        (recur (unchecked-add-int idx v-hash-size))))))
+(defn decode-resource-value-key [^ByteBuffer bb]
+  (let [id-size (.get bb (+ (.position bb) tid-size))
+        prefix (byte-array (+ tid-size 1 id-size hash-prefix-size c-hash-size))
+        value (byte-array (- (.remaining bb) (alength prefix)))]
+    (.get bb prefix)
+    (.get bb value)
+    [prefix value]))
 
 
 
@@ -513,6 +516,15 @@
 
 (defn v-hash [value]
   (.asBytes (.hashString (Hashing/murmur3_32) ^String value utf-8)))
+
+
+(defn tid-id
+  "Returns a byte array with tid from `type` followed by `id`."
+  [type ^String id]
+  (let [bb (ByteBuffer/allocate (+ tid-size (.length id)))]
+    (.putInt bb (tid type))
+    (.put bb (.getBytes id iso-8859-1))
+    (.array bb)))
 
 
 (defn string

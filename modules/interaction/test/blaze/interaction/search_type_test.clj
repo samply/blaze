@@ -335,6 +335,39 @@
           :resourceType := "Patient"
           :id := "2"))))
 
+  (testing "_list search"
+    (let [{:keys [status body]}
+          @((handler-with
+              [[[:put {:resourceType "Patient" :id "0"}]
+                [:put {:resourceType "Patient" :id "1"}]
+                [:put {:resourceType "List" :id "0"
+                       :entry [{:item {:reference "Patient/0"}}]}]]])
+            {::reitit/router router
+             ::reitit/match {:data {:fhir.resource/type "Patient"}}
+             :params {"_list" "0"}})]
+
+      (is (= 200 status))
+
+      (testing "the body contains a bundle"
+        (is (= "Bundle" (:resourceType body))))
+
+      (testing "the bundle type is searchset"
+        (is (= "searchset" (:type body))))
+
+      (testing "the total count is 1"
+        (is (= 1 (:total body))))
+
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (testing "the entry has the right fullUrl"
+        (is (= "/Patient/0" (-> body :entry first :fullUrl))))
+
+      (testing "the entry has the right resource"
+        (given (-> body :entry first :resource)
+          :resourceType := "Patient"
+          :id := "0"))))
+
   (testing "Identifier search"
     (let [{:keys [status body]}
           @((handler-with

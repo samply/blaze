@@ -21,7 +21,7 @@
 (set! *warn-on-reflection* true)
 
 
-(defrecord BatchDb [node snapshot raoi svri cri csvri t]
+(defrecord BatchDb [node snapshot raoi svri rsvi cri csvri t]
   p/Db
 
   ;; ---- Instance-Level Functions --------------------------------------------
@@ -67,10 +67,10 @@
   ;; ---- Common Query Functions ----------------------------------------------
 
   (-execute-query [_ query]
-    (p/-execute query node snapshot raoi svri csvri t))
+    (p/-execute query node snapshot raoi svri rsvi csvri t))
 
   (-execute-query [_ query arg1]
-    (p/-execute query node snapshot raoi svri csvri t arg1))
+    (p/-execute query node snapshot raoi svri rsvi csvri t arg1))
 
 
 
@@ -152,6 +152,7 @@
   (close [_]
     (.close ^Closeable raoi)
     (.close ^Closeable svri)
+    (.close ^Closeable rsvi)
     (.close ^Closeable cri)
     (.close ^Closeable csvri)
     (.close ^Closeable snapshot)))
@@ -163,19 +164,19 @@
 
 (defrecord TypeQuery [tid clauses]
   p/Query
-  (-execute [_ node snapshot raoi svri _ t]
-    (index/type-query node snapshot svri raoi tid clauses t)))
+  (-execute [_ node snapshot raoi svri rsvi _ t]
+    (index/type-query node snapshot svri rsvi raoi tid clauses t)))
 
 
 (defrecord SystemQuery [clauses]
   p/Query
-  (-execute [_ node snapshot raoi svri _ t]
-    (index/system-query node snapshot svri raoi clauses t)))
+  (-execute [_ node snapshot raoi svri rsvi _ t]
+    (index/system-query node snapshot svri rsvi raoi clauses t)))
 
 
 (defrecord CompartmentQuery [c-hash tid clauses]
   p/Query
-  (-execute [_ node snapshot raoi _ cspvi t arg1]
+  (-execute [_ node snapshot raoi _ _ cspvi t arg1]
     (let [compartment {:c-hash c-hash :res-id (codec/id-bytes arg1)}]
       (index/compartment-query node snapshot cspvi raoi compartment
                                tid clauses t))))
@@ -194,6 +195,7 @@
       node snapshot
       (kv/new-iterator snapshot :resource-as-of-index)
       (kv/new-iterator snapshot :search-param-value-index)
+      (kv/new-iterator snapshot :resource-value-index)
       (kv/new-iterator snapshot :compartment-resource-type-index)
       (kv/new-iterator snapshot :compartment-search-param-value-index)
       t)))
