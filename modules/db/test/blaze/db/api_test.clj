@@ -20,14 +20,15 @@
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]
-    [manifold.deferred :as md])
+    [manifold.deferred :as md]
+    [taoensso.timbre :as log])
   (:import
     [java.time Clock Instant ZoneId]))
 
 
 (defn fixture [f]
   (st/instrument)
-  (f)
+  (log/with-merged-config {:level :error} (f))
   (st/unstrument))
 
 
@@ -43,7 +44,6 @@
           {:search-param-value-index nil
            :resource-value-index nil
            :compartment-search-param-value-index nil
-           :compartment-resource-value-index nil
            :compartment-resource-type-index nil
            :resource-index nil
            :active-search-params nil
@@ -355,6 +355,28 @@
         [0 :resourceType] := "Patient"
         [0 :id] := "0"
         1 := nil)))
+
+  (testing "Special Search Parameter _list"
+    (let [node (new-node)]
+      @(d/submit-tx node [[:put {:resourceType "Patient" :id "0"}]
+                          [:put {:resourceType "Patient" :id "1"}]
+                          [:put {:resourceType "Observation" :id "0"}]
+                          [:put {:resourceType "List" :id "0"
+                                 :entry
+                                 [{:item {:reference "Patient/0"}}
+                                  {:item {:reference "Observation/0"}}]}]])
+
+      (testing "returns only the patient referenced in the list"
+        (given (into [] (d/type-query (d/db node) "Patient" [["_list" "0"]]))
+          [0 :resourceType] := "Patient"
+          [0 :id] := "0"
+          1 := nil))
+
+      (testing "returns only the observation referenced in the list"
+        (given (into [] (d/type-query (d/db node) "Observation" [["_list" "0"]]))
+          [0 :resourceType] := "Observation"
+          [0 :id] := "0"
+          1 := nil))))
 
   (testing "Patient"
     (let [node (new-node)]
@@ -722,32 +744,46 @@
          node
          [[:put {:resourceType "Observation"
                  :id "id-0"
+                 :status "final"
                  :valueQuantity
                  {:code "kg/m2"
                   :unit "kg/m²"
                   :system "http://unitsofmeasure.org"
                   :value 23.42M}}]])
 
-      (testing "without unit"
-        (let [clauses [["value-quantity" "23.42"]]]
+      (testing "value-quantity"
+        (testing "without unit"
+          (let [clauses [["value-quantity" "23.42"]]]
+            (given (into [] (d/type-query (d/db node) "Observation" clauses))
+              [0 :id] := "id-0"
+              1 := nil)))
+
+        (testing "with minimal unit"
+          (let [clauses [["value-quantity" "23.42|kg/m2"]]]
+            (given (into [] (d/type-query (d/db node) "Observation" clauses))
+              [0 :id] := "id-0"
+              1 := nil)))
+
+        (testing "with human unit"
+          (let [clauses [["value-quantity" "23.42|kg/m²"]]]
+            (given (into [] (d/type-query (d/db node) "Observation" clauses))
+              [0 :id] := "id-0"
+              1 := nil)))
+
+        (testing "with full unit"
+          (let [clauses [["value-quantity" "23.42|http://unitsofmeasure.org|kg/m2"]]]
+            (given (into [] (d/type-query (d/db node) "Observation" clauses))
+              [0 :id] := "id-0"
+              1 := nil))))
+
+      (testing "status and value-quantity"
+        (let [clauses [["status" "final"] ["value-quantity" "23.42|kg/m2"]]]
           (given (into [] (d/type-query (d/db node) "Observation" clauses))
             [0 :id] := "id-0"
             1 := nil)))
 
-      (testing "with minimal unit"
-        (let [clauses [["value-quantity" "23.42|kg/m2"]]]
-          (given (into [] (d/type-query (d/db node) "Observation" clauses))
-            [0 :id] := "id-0"
-            1 := nil)))
-
-      (testing "with human unit"
-        (let [clauses [["value-quantity" "23.42|kg/m²"]]]
-          (given (into [] (d/type-query (d/db node) "Observation" clauses))
-            [0 :id] := "id-0"
-            1 := nil)))
-
-      (testing "with full unit"
-        (let [clauses [["value-quantity" "23.42|http://unitsofmeasure.org|kg/m2"]]]
+      (testing "value-quantity and status"
+        (let [clauses [["value-quantity" "23.42|kg/m2"] ["status" "final"]]]
           (given (into [] (d/type-query (d/db node) "Observation" clauses))
             [0 :id] := "id-0"
             1 := nil)))))
@@ -1033,7 +1069,7 @@
         :resourceType := "Observation"
         :id := "0")))
 
-  (testing "returns nothing because of non-matching second criteria"
+  (testing "with one patient and one observation"
     (let [node (new-node)]
       @(d/submit-tx
          node
@@ -1049,11 +1085,22 @@
                   :unit "kg/m²"
                   :system "http://unitsofmeasure.org"
                   :value 42M}}]])
-      (is (coll/empty?
-            (d/compartment-query
-              (d/db node) "Patient" "0" "Observation"
-              [["code" "system-191514|code-191518"]
-               ["value-quantity" "23"]])))))
+
+      (testing "matches second criteria"
+        (given (coll/first
+                 (d/compartment-query
+                   (d/db node) "Patient" "0" "Observation"
+                   [["code" "system-191514|code-191518"]
+                    ["value-quantity" "42"]]))
+          :resourceType := "Observation"
+          :id := "0"))
+
+      (testing "returns nothing because of non-matching second criteria"
+        (is (coll/empty?
+              (d/compartment-query
+                (d/db node) "Patient" "0" "Observation"
+                [["code" "system-191514|code-191518"]
+                 ["value-quantity" "23"]]))))))
 
   (testing "returns an anomaly on unknown search param code"
     (given (d/compartment-query (d/db (new-node)) "Patient" "0" "Observation"

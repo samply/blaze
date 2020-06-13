@@ -52,9 +52,8 @@ In Crux an entity can have multiple documents over time. Every time a new docume
 | Name | Key Parts | Value |
 |---|---|---|
 | SVR | c-hash tid value id hash-prefix | - |
-| ResourceValue | tid id hash-prefix c-hash | values |
+| RSV | tid id hash-prefix c-hash value | - |
 | CSVR | co-c-hash co-res-id sp-c-hash tid value id hash-prefix | - |
-| CompartmentResourceValue | co-c-hash co-res-id tid id hash-prefix c-hash value? | value? |
 | CompartmentResourceType | co-c-hash co-res-id tid id | - |
 | SearchParam | code tid | id |
 | ActiveSearchParams | id | - |
@@ -74,7 +73,7 @@ In Crux an entity can have multiple documents over time. Every time a new docume
 
 We can make hashes in SearchParam indices shorter (4-bytes) because we only need to differentiate between the versions of a resource. The odds of a hash collision is 1 out of 10000 for about 1000 versions. In case of a hash collision we would produce a false positive query hit. So we would return more resources instead of less, which is considered fine in FHIR.
 
-### Search-param Value Resource (SVR)
+### Search param Value Resource version (SVR)
 
 The key consists of:
 
@@ -92,9 +91,9 @@ The key contains the id of the resource for two reasons, first we can skip to th
 
 The SVR index is comparable to the AVET index in Datomic. Search parameters are the equivalent of indexed attributes in Datomic.
 
-### ResourceValue
+### Resource version Search param Value (RSV)
 
-The ResourceValue index is comparable to the EAVT index in Datomic although it's actually more like a ETAV index which doesn't exist in Datomic.
+
 
 ### Compartment Search-param Value Resource (CSVR)
 

@@ -332,7 +332,7 @@
 
 (defn hash-state-t
   "Returns a triple of `hash`, `state` and `t` of the resource with `tid` and
-  `id` at or before `t`."
+  `id` at or before `t` if their is any."
   [raoi tid id t]
   (with-raoi-kv
     raoi (codec/resource-as-of-key tid id t)
@@ -343,7 +343,7 @@
 
 
 (defn resource
-  "Returns a resource with `tid` and `id` at or before `t`."
+  "Returns a resource with `tid` and `id` at or before `t` if their is any.."
   [node raoi tid id t]
   (with-raoi-kv
     raoi (codec/resource-as-of-key tid id t)

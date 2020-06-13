@@ -47,8 +47,20 @@
   :args (s/cat :node :blaze.db/node
                :snapshot :blaze.db/kv-snapshot
                :svri :blaze.db/kv-iterator
+               :rsvi  :blaze.db/kv-iterator
                :raoi :blaze.db/kv-iterator
                :tid :blaze.db/tid
+               :clauses :blaze.db.index.query/clauses
+               :t :blaze.db/t)
+  :ret (s/coll-of :blaze/resource))
+
+
+(s/fdef index/system-query
+  :args (s/cat :node :blaze.db/node
+               :snapshot :blaze.db/kv-snapshot
+               :svri :blaze.db/kv-iterator
+               :rsvi  :blaze.db/kv-iterator
+               :raoi :blaze.db/kv-iterator
                :clauses :blaze.db.index.query/clauses
                :t :blaze.db/t)
   :ret (s/coll-of :blaze/resource))

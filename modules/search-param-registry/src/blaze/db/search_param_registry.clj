@@ -95,9 +95,9 @@
   (-get [_ code]
     (get-in index ["Resource" code]))
 
-  (-get [_ code type]
+  (-get [this code type]
     (or (get-in index [type code])
-        (get-in index ["Resource" code])))
+        (-get this code)))
 
   (-list-by-type [_ type]
     (into (vec (vals (clojure.core/get index "Resource")))
@@ -162,13 +162,26 @@
        (index-compartment-def search-param-index)))
 
 
+(def ^:private list-search-param
+  {:type "special"
+   :code "_list"})
+
+
+(defn- add-special
+  "Add special search params to `index`.
+
+  See: https://www.hl7.org/fhir/search.html#special"
+  [index]
+  (assoc-in index ["Resource" "_list"] (search-param list-search-param)))
+
+
 (defn init-search-param-registry
   "Creates a new search param registry."
   []
   (let [bundle (read-bundle "blaze/db/search-parameters.json")]
     (when-ok [index (transduce (map :resource) (completing index-search-param)
                                {} (:entry bundle))]
-      (->MemSearchParamRegistry index (index-compartments index)))))
+      (->MemSearchParamRegistry (add-special index) (index-compartments index)))))
 
 
 (defmethod ig/init-key :blaze.db/search-param-registry

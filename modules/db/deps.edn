@@ -4,6 +4,9 @@
  {blaze/coll
   {:local/root "../coll"}
 
+  blaze/db-protocols
+  {:local/root "../db-protocols"}
+
   blaze/executor
   {:local/root "../executor"}
 

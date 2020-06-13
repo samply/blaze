@@ -30,7 +30,6 @@
     {:search-param-value-index nil
      :resource-value-index nil
      :compartment-search-param-value-index nil
-     :compartment-resource-value-index nil
      :compartment-resource-type-index nil
      :active-search-params nil
      :tx-success-index nil

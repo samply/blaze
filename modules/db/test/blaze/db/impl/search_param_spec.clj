@@ -23,12 +23,21 @@
   (s/keys :req-un [:blaze.db.compartment/c-hash :blaze.db.compartment/res-id]))
 
 
+(s/fdef search-param/compile-values
+  :args (s/cat :search-param :blaze.db/search-param
+               :values (s/coll-of some? :min-count 1))
+  :ret (s/coll-of some? :min-count 1))
+
+
 (s/fdef search-param/keys
   :args (s/cat :search-param :blaze.db/search-param
                :snapshot :blaze.db/kv-snapshot
                :svri :blaze.db/kv-iterator
+               :rsvi :blaze.db/kv-iterator
+               :raoi :blaze.db/kv-iterator
                :tid :blaze.db/tid
-               :compiled-values (s/coll-of some? :min-count 1))
+               :compiled-values (s/coll-of some? :min-count 1)
+               :t :blaze.db/t)
   :ret (s/coll-of (s/tuple bytes? bytes? bytes?)))
 
 
@@ -44,17 +53,6 @@
 (s/fdef search-param/matches?
   :args (s/cat :search-param :blaze.db/search-param
                :snapshot :blaze.db/kv-snapshot
-               :tid :blaze.db/tid
-               :id bytes?
-               :hash :blaze.resource/hash
-               :compiled-values (s/coll-of some? :min-count 1))
-  :ret boolean?)
-
-
-(s/fdef search-param/compartment-matches?
-  :args (s/cat :search-param :blaze.db/search-param
-               :snapshot :blaze.db/kv-snapshot
-               :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :id bytes?
                :hash :blaze.resource/hash
