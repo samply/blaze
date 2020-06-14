@@ -6,40 +6,41 @@
     [clojure.spec.alpha :as s]
     [reitit.core :as reitit])
   (:import
-    [java.time Instant]
+    [java.time Instant OffsetDateTime]
     [java.time.format DateTimeParseException]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn since-inst
+(defn since
   "Tries to parse a valid instant out of the `_since` query param.
 
   Returns nil on absent or invalid instant."
   {:arglists '([query-params])}
-  [{since "_since"}]
-  (when since
-    (try
-      (Instant/parse since)
-      (catch DateTimeParseException _))))
+  [{v "_since"}]
+  (some
+    #(try
+       (Instant/from (OffsetDateTime/parse %))
+       (catch DateTimeParseException _))
+    (fhir-util/to-seq v)))
 
 
 (defn page-t
   "Returns the t (optional) to constrain the database in paging. Pages will
   start with a database as-of `page-t`."
   {:arglists '([query-params])}
-  [{page-t "__page-t"}]
-  (when (some->> page-t (re-matches #"\d+"))
-    (Long/parseLong page-t)))
+  [{v "__page-t"}]
+  (when-let [t (some #(when (re-matches #"\d+" %) %) (fhir-util/to-seq v))]
+    (Long/parseLong t)))
 
 
 (defn page-type
   "Returns the `page-type` query param in case it is a valid FHIR resource type."
   {:arglists '([query-params])}
-  [{page-type "__page-type"}]
-  (when (some->> page-type (s/valid? :blaze.resource/resourceType))
-    page-type))
+  [{v "__page-type"}]
+  (some #(when (s/valid? :blaze.resource/resourceType %) %)
+        (fhir-util/to-seq v)))
 
 
 (defn nav-url

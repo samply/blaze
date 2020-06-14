@@ -368,7 +368,7 @@
           :resourceType := "Patient"
           :id := "0"))))
 
-  (testing "Identifier search"
+  (testing "Patient identifier search"
     (let [{:keys [status body]}
           @((handler-with
               [[[:put {:resourceType "Patient" :id "0"
@@ -399,6 +399,49 @@
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
           [:identifier 0 :value] := "0"))))
+
+  (testing "Patient language search"
+    (let [{:keys [status body]}
+          @((handler-with
+              [[[:put {:resourceType "Patient" :id "0"
+                       :communication
+                       [{:language
+                         {:coding
+                          [{:system "urn:ietf:bcp:47"
+                            :code "de"}]}}
+                        {:language
+                         {:coding
+                          [{:system "urn:ietf:bcp:47"
+                            :code "en"}]}}]}]
+                [:put {:resourceType "Patient" :id "1"
+                       :communication
+                       [{:language
+                         {:coding
+                          [{:system "urn:ietf:bcp:47"
+                            :code "de"}]}}]}]]])
+            {::reitit/router router
+             ::reitit/match patient-match
+             :params {"language" ["de" "en"]}})]
+
+      (is (= 200 status))
+
+      (testing "the body contains a bundle"
+        (is (= "Bundle" (:resourceType body))))
+
+      (testing "the bundle type is searchset"
+        (is (= "searchset" (:type body))))
+
+      (testing "the total count is 1"
+        (is (= 1 (:total body))))
+
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (testing "the entry has the right fullUrl"
+        (is (= "/Patient/0" (-> body :entry first :fullUrl))))
+
+      (testing "the entry has the right resource"
+        (is (= "0" (-> body :entry first :resource :id))))))
 
   (testing "Library title search"
     (let [{:keys [status body]}

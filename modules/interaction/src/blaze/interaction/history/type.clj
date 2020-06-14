@@ -55,9 +55,9 @@
   (let [t (or (d/as-of-t db) (d/basis-t db))
         page-t (history-util/page-t query-params)
         page-id (when page-t (fhir-util/page-id query-params))
-        since-inst (history-util/since-inst query-params)
-        total (d/total-num-of-type-changes db type since-inst)
-        versions (d/type-history db type page-t page-id since-inst)]
+        since (history-util/since query-params)
+        total (d/total-num-of-type-changes db type since)
+        versions (d/type-history db type page-t page-id since)]
     (build-response router match query-params t total versions)))
 
 

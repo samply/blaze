@@ -60,9 +60,9 @@
         page-t (history-util/page-t query-params)
         page-type (when page-t (history-util/page-type query-params))
         page-id (when page-type (fhir-util/page-id query-params))
-        since-inst (history-util/since-inst query-params)
-        total (d/total-num-of-system-changes db since-inst)
-        versions (d/system-history db page-t page-type page-id since-inst)]
+        since (history-util/since query-params)
+        total (d/total-num-of-system-changes db since)
+        versions (d/system-history db page-t page-type page-id since)]
     (build-response router match query-params t total versions)))
 
 

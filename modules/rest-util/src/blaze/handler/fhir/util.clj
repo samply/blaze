@@ -7,11 +7,18 @@
     [reitit.core :as reitit]))
 
 
+(defn to-seq [x]
+  (if (or (nil? x) (sequential? x)) x [x]))
+
+
 (defn t
-  "Returns the t (optional) of the database which should be stay stable."
+  "Returns the t (optional) of the database which should be stay stable.
+
+  Tries to read the t from the query param `__t` and returns the first valid one
+  if their is any."
   {:arglists '([query-params])}
-  [{t "__t"}]
-  (when (some->> t (re-matches #"\d+"))
+  [{v "__t"}]
+  (when-let [t (some #(when (re-matches #"\d+" %) %) (to-seq v))]
     (Long/parseLong t)))
 
 
@@ -22,29 +29,35 @@
 (defn page-size
   "Returns the page size taken from a possible `_count` query param.
 
-  The default page size is 50 and the maximum page size is 500."
+  Returns the value from the first valid `_count` query param or the default
+  value of 50. Limits values to 500."
   {:arglists '([query-params])}
-  [{count "_count"}]
-  (if (some->> count (re-matches #"\d+"))
+  [{v "_count"}]
+  (if-let [count (some #(when (re-matches #"\d+" %) %) (to-seq v))]
     (min (Long/parseLong count) max-page-size)
     default-page-size))
 
 
 (defn page-offset
-  "Returns the page offset taken from a possible `__page-offset` query param."
+  "Returns the page offset taken from a possible `__page-offset` query param.
+
+  Returns the value from the first valid `__page-offset` query param or the
+  default value of 0."
   {:arglists '([query-params])}
-  [{page-offset "__page-offset"}]
-  (if (some->> page-offset (re-matches #"\d+"))
+  [{v "__page-offset"}]
+  (if-let [page-offset (some #(when (re-matches #"\d+" %) %) (to-seq v))]
     (Long/parseLong page-offset)
     0))
 
 
 (defn page-id
-  "Returns the `__page-id` query param in case it is a valid FHIR id."
+  "Returns the value of the first valid `__page-id` query param or nil
+  otherwise.
+
+  Values have to be valid FHIR id's."
   {:arglists '([query-params])}
-  [{page-id "__page-id"}]
-  (when (some->> page-id (s/valid? :blaze.resource/id))
-    page-id))
+  [{v "__page-id"}]
+  (some #(when (s/valid? :blaze.resource/id %) %) (to-seq v)))
 
 
 (defn type-url
