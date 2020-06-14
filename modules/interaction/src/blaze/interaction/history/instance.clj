@@ -59,9 +59,9 @@
   (if (d/resource db type id)
     (let [t (or (d/as-of-t db) (d/basis-t db))
           page-t (history-util/page-t query-params)
-          since-inst (history-util/since-inst query-params)
-          total (d/total-num-of-instance-changes db type id since-inst)
-          versions (d/instance-history db type id page-t since-inst)]
+          since (history-util/since query-params)
+          total (d/total-num-of-instance-changes db type id since)
+          versions (d/instance-history db type id page-t since)]
       (build-response router match query-params t total versions))
     (handler-util/error-response
       {::anom/category ::anom/not-found

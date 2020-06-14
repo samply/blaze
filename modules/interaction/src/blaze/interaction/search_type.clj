@@ -85,7 +85,7 @@
     []
     (comp
       (remove (fn [[k]] (and (str/starts-with? k "_") (not (#{"_id" "_list"} k)))))
-      (map (fn [[k v]] (into [k] (str/split v #",")))))
+      (mapcat (fn [[k v]] (mapv #(into [k] (str/split % #",")) (fhir-util/to-seq v)))))
     params))
 
 

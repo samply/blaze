@@ -26,7 +26,10 @@
       ""))
 
   (testing "valid query param"
-    (is (= 1 (fhir-util/t {"__t" "1"})))))
+    (are [v t] (= t (fhir-util/t {"__t" v}))
+      "1" 1
+      ["<invalid>" "2"] 2
+      ["3" "4"] 3)))
 
 
 (deftest page-size
@@ -40,11 +43,13 @@
       ""))
 
   (testing "valid query param"
-    (are [size] (= size (fhir-util/page-size {"_count" (str size)}))
-      0
-      1
-      50
-      500))
+    (are [v size] (= size (fhir-util/page-size {"_count" v}))
+      "0" 0
+      "1" 1
+      "50" 50
+      "500" 500
+      ["<invalid>" "2"] 2
+      ["3" "4"] 3))
 
   (testing "500 is the maximum"
     (is (= 500 (fhir-util/page-size {"_count" "501"})))))
@@ -61,11 +66,14 @@
       ""))
 
   (testing "valid query param"
-    (are [offset] (= offset (fhir-util/page-offset {"__page-offset" (str offset)}))
-      0
-      1
-      50
-      500)))
+    (are [v offset] (= offset (fhir-util/page-offset {"__page-offset" v}))
+      "0" 0
+      "1" 1
+      "10" 10
+      "100" 100
+      "1000" 1000
+      ["<invalid>" "2"] 2
+      ["3" "4"] 3)))
 
 
 (deftest page-id
@@ -78,7 +86,10 @@
       ""))
 
   (testing "valid query param"
-    (is (= "0" (fhir-util/page-id {"__page-id" "0"})))))
+    (are [v id] (= id (fhir-util/page-id {"__page-id" v}))
+      "0" "0"
+      ["<invalid>" "a"] "a"
+      ["A" "b"] "A")))
 
 
 (def ^:private router
