@@ -30,6 +30,9 @@
 
 (deftype Db [node basis-t t]
   p/Db
+  (-node [_]
+    node)
+
   (-as-of [_ t]
     (assert (<= t basis-t))
     (Db. node basis-t t))

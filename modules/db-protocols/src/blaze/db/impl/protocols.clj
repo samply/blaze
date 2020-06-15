@@ -18,6 +18,8 @@
 
 
 (defprotocol Db
+  (-node [db])
+
   (-as-of [db t])
 
   (-basis-t [db])

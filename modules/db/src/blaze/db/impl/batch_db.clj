@@ -23,6 +23,8 @@
 
 (defrecord BatchDb [node snapshot raoi svri rsvi cri csvri t]
   p/Db
+  (-node [_]
+    node)
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
