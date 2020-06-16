@@ -5,7 +5,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.search-type :refer [handler]]
-    [blaze.middleware.fhir.metrics-spec]
+    [blaze.interaction.search-type-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -141,10 +141,12 @@
             (is (= 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "/Patient?_count=1&__t=1&__page-id=0" (link-url body "self"))))
+            (is (= "/Patient?_count=1&__t=1&__page-id=0"
+                   (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= "/Patient?_count=1&__t=1&__page-id=1" (link-url body "next"))))
+            (is (= "/Patient?_count=1&__t=1&__page-id=1"
+                   (link-url body "next"))))
 
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))))
@@ -160,7 +162,8 @@
             (is (= 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "/Patient?_count=1&__t=1&__page-id=0" (link-url body "self"))))
+            (is (= "/Patient?_count=1&__t=1&__page-id=0"
+                   (link-url body "self"))))
 
           (testing "has a next link"
             (is (= "/Patient?_count=1&__t=1&__page-id=1" (link-url body "next"))))
@@ -179,7 +182,8 @@
             (is (= 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "/Patient?_count=1&__t=1&__page-id=1" (link-url body "self"))))
+            (is (= "/Patient?_count=1&__t=1&__page-id=1"
+                   (link-url body "self"))))
 
           (testing "has no next link"
             (is (nil? (link-url body "next"))))
@@ -215,7 +219,8 @@
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=0" (link-url body "self"))))
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=0"
+                   (link-url body "self"))))
 
           (testing "has a next link"
             (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=1" (link-url body "next"))))
@@ -235,10 +240,12 @@
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=0" (link-url body "self"))))
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=0"
+                   (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=1" (link-url body "next"))))
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=1"
+                   (link-url body "next"))))
 
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))))
@@ -255,7 +262,8 @@
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=1" (link-url body "self"))))
+            (is (= "/Patient?active=true&_count=1&__t=1&__page-offset=1"
+                   (link-url body "self"))))
 
           (testing "has no next link"
             (is (nil? (link-url body "next"))))

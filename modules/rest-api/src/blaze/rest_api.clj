@@ -99,6 +99,19 @@
                           :blaze.rest-api.interaction/handler)))]]]]))
 
 
+(defn- compartment-route
+  {:arglists '([auth-backends compartment])}
+  [auth-backends {:blaze.rest-api.compartment/keys [code search-handler]}]
+  [(format "/%s/{id}/{type}" code)
+   {:name (keyword code "compartment")
+    :fhir.compartment/code code
+    :middleware
+    (cond-> []
+      (seq auth-backends)
+      (conj wrap-auth-guard))
+    :get search-handler}])
+
+
 (def structure-definition-filter
   (comp
     (filter (comp #{"resource"} :kind))
@@ -132,6 +145,7 @@
      transaction-handler
      history-system-handler
      resource-patterns
+     compartments
      operations]
     :or {context-path ""}}
    capabilities-handler]
@@ -161,6 +175,9 @@
                (conj wrap-auth-guard))}
             (some? history-system-handler)
             (assoc :get history-system-handler))]]
+        (into
+          (map #(compartment-route auth-backends %))
+          compartments)
         (into
           (comp
             structure-definition-filter

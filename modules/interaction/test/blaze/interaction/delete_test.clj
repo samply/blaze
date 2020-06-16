@@ -5,9 +5,10 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.delete :refer [handler]]
-    [blaze.middleware.fhir.metrics-spec]
+    [blaze.interaction.delete-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
 
@@ -34,11 +35,10 @@
 
       (is (= 404 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "not-found")))
 
 
   (testing "Returns No Content on successful deletion"
@@ -50,7 +50,7 @@
       (is (= 204 status))
 
       (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
       (testing "Version in ETag header"
         ;; 2 is the T of the transaction of the resource update
@@ -70,7 +70,7 @@
       (is (= 204 status))
 
       (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
       (testing "Version in ETag header"
         ;; 2 is the T of the transaction of the resource update

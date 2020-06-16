@@ -8,7 +8,7 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [clojure.spec.alpha :as s]
+    [clojure.alpha.spec :as s2]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
@@ -51,7 +51,7 @@
        :fhir/issue "required"
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"})
 
-    (not (s/valid? :blaze.resource/id (:id body)))
+    (not (s2/valid? :fhir/id (:id body)))
     (md/error-deferred
       {::anom/category ::anom/incorrect
        :fhir/issue "value"

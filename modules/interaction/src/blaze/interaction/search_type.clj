@@ -17,8 +17,9 @@
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as util]
+    [blaze.interaction.search.nav :as nav]
+    [blaze.interaction.search.params :as params]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
@@ -33,12 +34,6 @@
   {:fullUrl (fhir-util/instance-url router type id)
    :resource resource
    :search {:mode "match"}})
-
-
-(defn- summary?
-  "Returns true iff a summary result is requested."
-  [{summary "_summary" :as query-params}]
-  (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 
 
 (defn- entries
@@ -56,75 +51,6 @@
       entries)))
 
 
-#_(defn- decode-sort-params [db type sort-params]
-    (transduce
-      (map
-        (fn [sort-param]
-          (if (str/starts-with? sort-param "-")
-            {:order :desc
-             :code (subs sort-param 1)}
-            {:order :asc
-             :code sort-param})))
-      (completing
-        (fn [res {:keys [code] :as sort-param}]
-          (if-let [search-param (db/find-search-param-by-type-and-code db type code)]
-            (conj res (assoc sort-param :search-param search-param))
-            (reduced
-              {::anom/category ::anom/incorrect
-               ::anom/message
-               (format "Unknown sort parameter with code `%s` on type `%s`."
-                       code type)
-               :fhir/issue "value"
-               :fhir/operation-outcome "MSG_SORT_UNKNOWN"}))))
-      []
-      (str/split sort-params #",")))
-
-
-(defn- clauses [params]
-  (into
-    []
-    (comp
-      (remove (fn [[k]] (and (str/starts-with? k "_") (not (#{"_id" "_list"} k)))))
-      (mapcat (fn [[k v]] (mapv #(into [k] (str/split % #",")) (fhir-util/to-seq v)))))
-    params))
-
-
-(defn- decode-params
-  [_ _ params]
-  {:clauses (clauses params)
-   :summary? (summary? params)
-   :page-size (fhir-util/page-size params)
-   :page-id (fhir-util/page-id params)
-   :page-offset (fhir-util/page-offset params)}
-  #_(let [sort (some->> sort-params (decode-sort-params db type))]
-      (if (::anom/category sort)
-        sort
-        {:pred (resource-pred db type params)
-         :sort sort
-         :summary? (summary? params)
-         :page-size (fhir-util/page-size params)})))
-
-
-(defn- clauses->query-params [clauses]
-  (reduce
-    (fn [ret [param & values]]
-      (assoc ret param (str/join "," values)))
-    {}
-    clauses))
-
-
-(defn- query-params [{:keys [clauses page-size]}]
-  (cond-> (clauses->query-params clauses)
-    page-size (assoc "_count" page-size)))
-
-
-(defn- nav-url
-  [{{:blaze/keys [base-url]} :data :as match} params t offset]
-  (let [query-params (-> (query-params params) (assoc "__t" t) (merge offset))
-        path (reitit/match->path match query-params)]
-    (str base-url path)))
-
-
 (defn- self-link-offset [{:keys [clauses page-offset]} entries]
   (if (seq clauses)
     {"__page-offset" page-offset}
@@ -133,7 +59,7 @@
 
 (defn- self-link [match params t entries]
   {:relation "self"
-   :url (nav-url match params t (self-link-offset params entries))})
+   :url (nav/url match params t (self-link-offset params entries))})
 
 
 (defn- next-link-offset [{:keys [clauses page-offset]} entries]
@@ -144,7 +70,7 @@
 
 (defn- next-link [match params t entries]
   {:relation "next"
-   :url (nav-url match params t (next-link-offset params entries))})
+   :url (nav/url match params t (next-link-offset params entries))})
 
 
 (defn- total
@@ -170,7 +96,8 @@
             total (total db type params entries)]
         (cond->
           {:resourceType "Bundle"
-           :type "searchset"}
+           :type "searchset"
+           :entry (take page-size entries)}
 
           total
           (assoc :total total)
@@ -179,10 +106,7 @@
           (update :link (fnil conj []) (self-link match params t entries))
 
           (< page-size (count entries))
-          (update :link (fnil conj []) (next-link match params t entries))
-
-          (not (:summary? params))
-          (assoc :entry (take page-size entries)))))))
+          (update :link (fnil conj []) (next-link match params t entries)))))))
 
 
 (defn- summary-total [db type {:keys [clauses]}]
@@ -204,11 +128,11 @@
 
 
 (defn- search [router match db type params]
-  (when-ok [params (decode-params db type params)]
+  (when-ok [params (params/decode params)]
     (search* router match db type params)))
 
 
-(defn- handle [router match params db type]
+(defn- handle [router match db type params]
   (let [body (search router match db type params)]
     (if (::anom/category body)
       (util/error-response body)
@@ -220,7 +144,7 @@
         :keys [params]
         ::reitit/keys [router]}]
     (-> (util/db node (fhir-util/t params))
-        (md/chain' #(handle router match params % type)))))
+        (md/chain' #(handle router match % type params)))))
 
 
 (defn handler [node]

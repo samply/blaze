@@ -7,7 +7,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.history.type :refer [handler]]
-    [blaze.middleware.fhir.metrics-spec]
+    [blaze.interaction.history.type-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]

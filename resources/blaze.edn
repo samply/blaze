@@ -58,6 +58,10 @@
          :search-type
          #:blaze.rest-api.interaction
              {:handler #blaze/ref :blaze.interaction/search-type}}}]
+   :compartments
+   [#:blaze.rest-api.compartment
+       {:code "Patient"
+        :search-handler #blaze/ref :blaze.interaction/search-compartment}]
    :operations
    [#:blaze.rest-api.operation
        {:code "evaluate-measure"
@@ -93,6 +97,9 @@
   {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction/search-type
+  {:node #blaze/ref :blaze.db/node}
+
+  :blaze.interaction/search-compartment
   {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction.transaction/handler
