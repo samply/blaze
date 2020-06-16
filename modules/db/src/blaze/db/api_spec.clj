@@ -25,6 +25,11 @@
   :ret deferred?)
 
 
+(s/fdef d/node
+  :args (s/cat :db :blaze.db/db)
+  :ret :blaze.db/node)
+
+
 (s/fdef d/tx
   :args (s/cat :db :blaze.db/db :t :blaze.db/t)
   :ret (s/nilable :blaze.db/tx))

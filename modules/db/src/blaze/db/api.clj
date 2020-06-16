@@ -38,6 +38,12 @@
   (p/-submit-tx node tx-ops))
 
 
+(defn node
+  "Returns the node of `db`."
+  [db]
+  (p/-node db))
+
+
 (defn as-of
   "Returns the value of `db` as of some point `t`, inclusive."
   [db t]

@@ -100,6 +100,11 @@
         ::anom/message := "Duplicate resource `Patient/0`."))))
 
 
+(deftest node
+  (let [node (new-node)]
+    (is (= node (d/node (d/db node))))))
+
+
 (deftest tx
   (let [node (new-node)]
     @(d/submit-tx node [[:put {:resourceType "Patient" :id "id-142136"}]])

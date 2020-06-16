@@ -7,6 +7,7 @@
     [blaze.elm.compiler :as compiler]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.handler.fhir.util :as fhir-util]
+    [blaze.uuid :refer [random-uuid]]
     [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom]
     [taoensso.timbre :as log])
@@ -94,10 +95,10 @@
   compilation.
 
   Returns an anomaly on errors."
-  [node db measure]
+  [db measure]
   (if-let [library-ref (first (:library measure))]
     (if-let [library (find-library db library-ref)]
-      (compile-library node library)
+      (compile-library (d/node db) library)
       {::anom/category ::anom/incorrect
        ::anom/message
        (str "Can't find the library with canonical URI `" library-ref "`.")
@@ -112,17 +113,52 @@
 
 (defn- compile-primary-library
   "Same as `compile-primary-library*` with added metrics collection."
-  [node db measure]
+  [db measure]
   (with-open [_ (prom/timer compile-duration-seconds)]
-    (compile-primary-library* node db measure)))
+    (compile-primary-library* db measure)))
 
 
 
 ;; ---- Evaluation ------------------------------------------------------------
 
+
+(defn- population-tx-ops [{:keys [subject-type]} list-id result]
+  [[:create
+    {:resourceType "List"
+     :id list-id
+     :status "current"
+     :mode "working"
+     :entry
+     (mapv
+       (fn [subject-id]
+         {:item {:reference (str subject-type "/" subject-id)}})
+       result)}]])
+
+
+(defn- population
+  [{:keys [report-type] :as context} code result]
+  (case report-type
+    "population"
+    {:result
+     (cond->
+       {:count result}
+       code
+       (assoc :code code))}
+    "subject-list"
+    (let [list-id (str (random-uuid))]
+      {:result
+       (cond->
+         {:count (count result)
+          :subjectResults {:reference (str "List/" list-id)}}
+         code
+         (assoc :code code))
+       :tx-ops
+       (population-tx-ops context list-id result)})))
+
+
 (defn- evaluate-population
-  {:arglists '([db now library subject-type groupIdx populationIdx population])}
-  [db now library subject-type groupIdx populationIdx
+  {:arglists '([context groupIdx populationIdx population])}
+  [context groupIdx populationIdx
    {:keys [code] {:keys [language expression]} :criteria}]
   (cond
     (not= "text/cql" language)
@@ -142,16 +178,48 @@
              groupIdx populationIdx)}
 
     :else
-    (when-ok [count (cql/evaluate-expression db now library subject-type expression)]
-      (cond-> {:count count}
-        code
-        (assoc :code code)))))
+    (when-ok [result (cql/evaluate-expression context expression)]
+      (population context code result))))
+
+
+(defn- value-concept [value]
+  {:text (str (or value "null"))})
+
+
+(defn- stratum* [population value]
+  {:value (value-concept value)
+   :population [population]})
+
+
+(defn- stratum [context population-code [value result]]
+  (-> (population context population-code result)
+      (update :result stratum* value)))
+
+
+(defn- reduce-op
+  ([] {:result [] :tx-ops []})
+  ([x] x)
+  ([res x]
+   (if (::anom/category x)
+     (reduced x)
+     (-> (update res :result conj (:result x))
+         (update :tx-ops into (:tx-ops x))))))
+
+
+(defn- stratifier* [strata code]
+  (cond-> {:stratum (sort-by (comp :text :value) strata)}
+    code
+    (assoc :code [code])))
+
+
+(defn- stratifier [context code population-code strata]
+  (-> (transduce (map #(stratum context population-code %)) reduce-op strata)
+      (update :result stratifier* code)))
 
 
 (defn- evaluate-single-stratifier
-  {:arglists
-   '([db now library subject-type groupIdx populations stratifierIdx stratifier])}
-  [db now library subject-type groupIdx populations stratifierIdx
+  {:arglists '([context groupIdx populations stratifierIdx stratifier])}
+  [context groupIdx populations stratifierIdx
    {:keys [code] {:keys [language expression]} :criteria}]
   (cond
     (not= "text/cql" language)
@@ -171,25 +239,11 @@
              groupIdx stratifierIdx)}
 
     :else
-    (when-ok [stratums (cql/calc-stratums
-                         db now library subject-type
-                         (-> populations first :criteria :expression)
-                         expression)]
-      (cond->
-        {:stratum
-         (->> stratums
-              (mapv
-                (fn [[stratum-value count]]
-                  [(str (or stratum-value "null")) count]))
-              (sort-by first)
-              (mapv
-                (fn [[stratum-value count]]
-                  {:value {:text stratum-value}
-                   :population
-                   [{:code (-> populations first :code)
-                     :count count}]})))}
-        code
-        (assoc :code [code])))))
+    (when-ok [strata (cql/calc-strata
+                       context
+                       (-> populations first :criteria :expression)
+                       expression)]
+      (stratifier context code (-> populations first :code) strata))))
 
 
 (defn- extract-stratifier-component
@@ -245,82 +299,77 @@
     stratifier-components))
 
 
+(defn- multi-component-stratum* [population codes values]
+  {:component
+   (mapv
+     (fn [code value]
+       {:code code
+        :value (value-concept value)})
+     codes
+     values)
+   :population [population]})
+
+
+(defn- multi-component-stratum [context codes population-code [values result]]
+  (-> (population context population-code result)
+      (update :result multi-component-stratum* codes values)))
+
+
+(defn- multi-component-stratifier* [strata codes]
+  {:code codes
+   :stratum (sort-by (comp #(mapv (comp :text :value) %) :component) strata)})
+
+
+(defn- multi-component-stratifier [context codes population-code strata]
+  (-> (transduce (map #(multi-component-stratum context codes population-code %))
+                 reduce-op
+                 strata)
+      (update :result multi-component-stratifier* codes)))
+
+
 (defn- evaluate-multi-component-stratifier
-  {:arglists
-   '([db now library subject-type groupIdx populations stratifierIdx stratifier])}
-  [db now library subject-type groupIdx populations stratifierIdx {:keys [component]}]
+  {:arglists '([context groupIdx populations stratifierIdx stratifier])}
+  [context groupIdx populations stratifierIdx {:keys [component]}]
   (when-ok [results (extract-stratifier-components groupIdx stratifierIdx component)]
     (let [{:keys [codes expression-names]} results]
-      (when-ok [stratums (cql/calc-mult-component-stratums
-                           db now library subject-type
-                           (-> populations first :criteria :expression)
-                           expression-names)]
-        {:code codes
-         :stratum
-         (into
-           []
-           (map
-             (fn [[stratum-values count]]
-               {:component
-                (mapv
-                  (fn [code value]
-                    {:code code
-                     :value {:text (str value)}})
-                  codes
-                  stratum-values)
-                :population
-                [{:code (-> populations first :code)
-                  :count count}]}))
-           stratums)}))))
+      (when-ok [strata (cql/calc-mult-component-strata
+                         context
+                         (-> populations first :criteria :expression)
+                         expression-names)]
+        (multi-component-stratifier context codes (-> populations first :code)
+                                    strata)))))
 
 
 (defn- evaluate-stratifier
-  {:arglists
-   '([db now library subject-type groupIdx populations stratifierIdx stratifier])}
-  [db now library subject-type groupIdx populations stratifierIdx
-   {:keys [component] :as stratifier}]
+  {:arglists '([context groupIdx populations stratifierIdx stratifier])}
+  [context groupIdx populations stratifierIdx {:keys [component] :as stratifier}]
   (if (seq component)
     (evaluate-multi-component-stratifier
-      db now library subject-type groupIdx populations stratifierIdx stratifier)
+      context groupIdx populations stratifierIdx stratifier)
     (evaluate-single-stratifier
-      db now library subject-type groupIdx populations stratifierIdx stratifier)))
+      context groupIdx populations stratifierIdx stratifier)))
 
 
-(defn- conj-anom
-  ([x] x)
-  ([res x]
-   (if (::anom/category x)
-     (reduced x)
-     (conj res x))))
-
-
-(defn- evaluate-populations [db now library subject-type groupIdx populations]
+(defn- evaluate-populations [context groupIdx populations]
   (transduce
-    (map-indexed #(evaluate-population db now library subject-type groupIdx %1 %2))
-    conj-anom
-    []
+    (map-indexed #(evaluate-population context groupIdx %1 %2))
+    reduce-op
     populations))
 
 
-(defn- evaluate-stratifiers
-  [db now library subject-type groupIdx populations stratifiers]
+(defn- evaluate-stratifiers [context groupIdx populations stratifiers]
   (transduce
-    (map-indexed
-      (partial evaluate-stratifier db now library subject-type groupIdx populations))
-    conj-anom
-    []
+    (map-indexed #(evaluate-stratifier context groupIdx populations %1 %2))
+    reduce-op
     stratifiers))
 
 
 (defn- evaluate-group
-  {:arglists '([db now library subject-type groupIdx group])}
-  [db now library subject-type groupIdx
-   {:keys [code population stratifier]}]
-  (let [evaluated-populations
-        (evaluate-populations db now library subject-type groupIdx population)
-        evaluated-stratifiers
-        (evaluate-stratifiers
-          db now library subject-type groupIdx population stratifier)]
+  {:arglists '([context groupIdx group])}
+  [context groupIdx {:keys [code population stratifier]}]
+  (let [evaluated-populations (evaluate-populations context groupIdx population)
+        evaluated-stratifiers (evaluate-stratifiers context groupIdx population
+                                                    stratifier)]
     (cond
       (::anom/category evaluated-populations)
       evaluated-populations
@@ -329,29 +378,32 @@
       evaluated-stratifiers
 
       :else
-      (cond-> {}
-        code
-        (assoc :code code)
+      {:result
+       (cond-> {}
+         code
+         (assoc :code code)
 
-        (seq evaluated-populations)
-        (assoc :population evaluated-populations)
+         (seq (:result evaluated-populations))
+         (assoc :population (:result evaluated-populations))
 
-        (seq evaluated-stratifiers)
-        (assoc :stratifier evaluated-stratifiers)))))
+         (seq (:result evaluated-stratifiers))
+         (assoc :stratifier (:result evaluated-stratifiers)))
+       :tx-ops
+       (into (:tx-ops evaluated-populations)
+             (:tx-ops evaluated-stratifiers))})))
 
 
-(defn- evaluate-groups* [db now library subject-type groups]
+(defn- evaluate-groups* [context groups]
   (transduce
-    (map-indexed #(evaluate-group db now library subject-type %1 %2))
-    conj-anom
-    []
+    (map-indexed #(evaluate-group context %1 %2))
+    reduce-op
     groups))
 
 
-(defn- evaluate-groups [db now library id subject-type groups]
+(defn- evaluate-groups [{:keys [subject-type] :as context} id groups]
   (let [timer (prom/timer evaluate-duration-seconds subject-type)]
     (try
-      (evaluate-groups* db now library subject-type groups)
+      (evaluate-groups* context groups)
       (finally
         (let [duration (prom/observe-duration! timer)]
           (log/debug
@@ -368,26 +420,31 @@
 (defn- subject-type [{{:keys [coding]} :subjectCodeableConcept}]
   (or (-> coding first :code) "Patient"))
 
-;;TODO: put db, now and library into a context to save args
+
 (defn evaluate-measure
   "Evaluates `measure` inside `period` in `db` with evaluation time of `now`.
 
   Returns an already completed MeasureReport which isn't persisted or an anomaly
   in case of errors."
-  {:arglists '([now db router period measure])}
-  [now node db router [start end] {:keys [id] groups :group :as measure}]
-  (when-ok [library (compile-primary-library node db measure)]
-    (when-ok [evaluated-groups (evaluate-groups db now library id
-                                                (subject-type measure) groups)]
-      (cond->
-        {:resourceType "MeasureReport"
-         :status "complete"
-         :type "summary"
-         :measure (canonical router measure)
-         :date (.format DateTimeFormatter/ISO_DATE_TIME now)
-         :period
-         {:start (str start)
-          :end (str end)}}
+  {:arglists '([now db router measure params])}
+  [now db router {:keys [id] groups :group :as measure}
+   {:keys [report-type] [start end] :period}]
+  (when-ok [library (compile-primary-library db measure)]
+    (let [context {:db db :now now :library library
+                   :subject-type (subject-type measure)
+                   :report-type report-type}]
+      (when-ok [result (evaluate-groups context id groups)]
+        {:resource
+         (cond->
+           {:resourceType "MeasureReport"
+            :status "complete"
+            :type (if (= "subject-list" report-type) "subject-list" "summary")
+            :measure (canonical router measure)
+            :date (.format DateTimeFormatter/ISO_DATE_TIME now)
+            :period
+            {:start (str start)
+             :end (str end)}}
 
-        (seq evaluated-groups)
-        (assoc :group evaluated-groups)))))
+           (seq (:result result))
+           (assoc :group (:result result)))
+         :tx-ops (:tx-ops result)}))))

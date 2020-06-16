@@ -10,7 +10,7 @@
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock Instant ZoneOffset]))
+    [java.time Clock Instant Year ZoneOffset]))
 
 
 (defn- fixture [f]
@@ -100,8 +100,12 @@
   (testing "measure without library"
     (let [{:keys [status body]}
           @((handler-with [[[:put {:resourceType "Measure" :id "0"
-                                   :url "url-181501"}]]])
-            {:params {"measure" "url-181501"}})]
+                                   :url "url-182126"}]]])
+            {::reitit/router router
+             :params
+             {"measure" "url-182126"
+              "periodStart" (Year/of 2014)
+              "periodEnd" (Year/of 2015)}})]
 
       (is (= 422 status))
 
@@ -119,7 +123,11 @@
           @((handler-with [[[:put {:resourceType "Measure" :id "0"
                                    :url "url-181501"
                                    :library ["library-url-094115"]}]]])
-            {:params {"measure" "url-181501"}})]
+            {::reitit/router router
+             :params
+             {"measure" "url-181501"
+              "periodStart" (Year/of 2014)
+              "periodEnd" (Year/of 2015)}})]
 
       (is (= 400 status))
 
@@ -135,11 +143,15 @@
   (testing "missing content in library"
     (let [{:keys [status body]}
           @((handler-with [[[:put {:resourceType "Measure" :id "0"
-                                   :url "url-181501"
+                                   :url "url-182104"
                                    :library ["library-url-094115"]}]
                             [:put {:resourceType "Library" :id "0"
                                    :url "library-url-094115"}]]])
-            {:params {"measure" "url-181501"}})]
+            {::reitit/router router
+             :params
+             {"measure" "url-182104"
+              "periodStart" (Year/of 2014)
+              "periodEnd" (Year/of 2015)}})]
 
       (is (= 400 status))
 
@@ -155,13 +167,17 @@
   (testing "non text/cql content type"
     (let [{:keys [status body]}
           @((handler-with [[[:put {:resourceType "Measure" :id "0"
-                                   :url "url-181501"
+                                   :url "url-182051"
                                    :library ["library-url-094115"]}]
                             [:put {:resourceType "Library" :id "0"
                                    :url "library-url-094115"
                                    :content
                                    [{:contentType "text/plain"}]}]]])
-            {:params {"measure" "url-181501"}})]
+            {::reitit/router router
+             :params
+             {"measure" "url-182051"
+              "periodStart" (Year/of 2014)
+              "periodEnd" (Year/of 2015)}})]
 
       (is (= 400 status))
 
@@ -177,13 +193,17 @@
   (testing "missing data in library content"
     (let [{:keys [status body]}
           @((handler-with [[[:put {:resourceType "Measure" :id "0"
-                                   :url "url-181501"
+                                   :url "url-182039"
                                    :library ["library-url-094115"]}]
                             [:put {:resourceType "Library" :id "0"
                                    :url "library-url-094115"
                                    :content
                                    [{:contentType "text/cql"}]}]]])
-            {:params {"measure" "url-181501"}})]
+            {::reitit/router router
+             :params
+             {"measure" "url-182039"
+              "periodStart" (Year/of 2014)
+              "periodEnd" (Year/of 2015)}})]
 
       (is (= 400 status))
 
@@ -195,6 +215,56 @@
         :diagnostics := "Missing embedded data of first attachment in library with id `0`."
         [:expression first] := "Library.content[0].data")))
 
+  (testing "invalid report type"
+    (let [{:keys [status body]}
+          ((handler-with
+             [[[:put {:resourceType "Measure" :id "0"
+                      :url "url-181501"
+                      :library ["library-url-094115"]}]
+               [:put {:resourceType "Library" :id "0"
+                      :url "library-url-094115"
+                      :content
+                      [{:contentType "text/cql"
+                        :data ""}]}]]])
+           {:request-method :get
+            :params
+            {"measure" "url-181501"
+             "reportType" "<invalid>"}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "value"
+        :diagnostics := "The reportType `<invalid>` is invalid. Please use one of `subject`, `subject-list` or `population`.")))
+
+  (testing "report type of subject-list is not possible with a GET request"
+    (let [{:keys [status body]}
+          ((handler-with
+             [[[:put {:resourceType "Measure" :id "0"
+                      :url "url-181501"
+                      :library ["library-url-094115"]}]
+               [:put {:resourceType "Library" :id "0"
+                      :url "library-url-094115"
+                      :content
+                      [{:contentType "text/cql"
+                        :data ""}]}]]])
+           {:request-method :get
+            :params
+            {"measure" "url-181501"
+             "reportType" "subject-list"}})]
+
+      (is (= 422 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "not-supported"
+        :diagnostics := "The reportType `subject-list` is not supported for GET requests. Please use POST.")))
+
 
   (testing "Success"
     (testing "on type endpoint"
@@ -203,18 +273,19 @@
           (let [{:keys [status body]}
                 @((handler-with
                     [[[:put {:resourceType "Measure" :id "0"
-                             :url "url-181501"
+                             :url "url-181407"
                              :library ["library-url-094115"]}]
                       [:put {:resourceType "Library" :id "0"
                              :url "library-url-094115"
                              :content
                              [{:contentType "text/cql"
                                :data ""}]}]]])
-                  {:request-method :get
+                  {::reitit/router router
+                   :request-method :get
                    :params
-                   {"measure" "url-181501"
-                    "periodStart" "2014"
-                    "periodEnd" "2015"}})]
+                   {"measure" "url-181407"
+                    "periodStart" (Year/of 2014)
+                    "periodEnd" (Year/of 2015)}})]
 
             (is (= 200 status))
 
@@ -222,7 +293,7 @@
               :resourceType := "MeasureReport"
               :status := "complete"
               :type := "summary"
-              :measure := "url-181501"
+              :measure := "url-181407"
               :date := "1970-01-01T01:00:00+01:00"
               [:period :start] := "2014"
               [:period :end] := "2015")))
@@ -249,11 +320,12 @@
                        {:resourceType "Patient"
                         :id "0"
                         :gender "male"}]]])
-                  {:request-method :get
+                  {::reitit/router router
+                   :request-method :get
                    :params
                    {"measure" "url-181501"
-                    "periodStart" "2014"
-                    "periodEnd" "2015"}})]
+                    "periodStart" (Year/of 2014)
+                    "periodEnd" (Year/of 2015)}})]
 
             (is (= 200 status))
 
@@ -302,11 +374,12 @@
                        {:resourceType "Patient"
                         :id "2"
                         :gender "female"}]]])
-                  {:request-method :get
+                  {::reitit/router router
+                   :request-method :get
                    :params
                    {"measure" "url-181501"
-                    "periodStart" "2014"
-                    "periodEnd" "2015"}})]
+                    "periodStart" (Year/of 2014)
+                    "periodEnd" (Year/of 2015)}})]
 
             (is (= 200 status))
 
@@ -348,8 +421,8 @@
                    :request-method :post
                    :params
                    {"measure" "url-181501"
-                    "periodStart" "2014"
-                    "periodEnd" "2015"}})]
+                    "periodStart" (Year/of 2014)
+                    "periodEnd" (Year/of 2015)}})]
 
             (is (= 201 status))
 
@@ -382,8 +455,8 @@
                  :request-method :get
                  :path-params {:id "0"}
                  :params
-                 {"periodStart" "2014"
-                  "periodEnd" "2015"}})]
+                 {"periodStart" (Year/of 2014)
+                  "periodEnd" (Year/of 2015)}})]
 
           (is (= 200 status))
 
@@ -413,8 +486,8 @@
                    :request-method :post
                    :path-params {:id "0"}
                    :params
-                   {"periodStart" "2014"
-                    "periodEnd" "2015"}})]
+                   {"periodStart" (Year/of 2014)
+                    "periodEnd" (Year/of 2015)}})]
 
             (is (= 201 status))
 

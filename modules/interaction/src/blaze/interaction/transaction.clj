@@ -370,10 +370,11 @@
 
 (defn- wrap-interaction-name [handler]
   (fn [{{:keys [type]} :body :as request}]
-    (-> (handler request)
-        (md/chain'
-          (fn [response]
-            (assoc response :fhir/interaction-name type))))))
+    (cond-> (handler request)
+      (string? type)
+      (md/chain'
+        (fn [response]
+          (assoc response :fhir/interaction-name type))))))
 
 
 (defn handler [node executor]

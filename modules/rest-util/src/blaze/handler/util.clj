@@ -44,6 +44,15 @@
        (some #(when (= name (:name %)) (:value %)))))
 
 
+(defn- issue-code [category]
+  (case category
+    ::anom/busy "timeout"
+    ::anom/incorrect "invalid"
+    ::anom/not-found "not-found"
+    ::anom/unsupported "not-supported"
+    "exception"))
+
+
 (defn operation-outcome
   [{:fhir/keys [issue operation-outcome]
     :fhir.issue/keys [expression]
@@ -53,7 +62,7 @@
    :issue
    [(cond->
       {:severity "error"
-       :code (or issue (when (= ::anom/busy category) "timeout") "exception")}
+       :code (or issue (issue-code category))}
       operation-outcome
       (assoc
         :details

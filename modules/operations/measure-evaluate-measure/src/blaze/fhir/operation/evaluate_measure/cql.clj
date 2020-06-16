@@ -84,46 +84,68 @@
        :else (combine-op a b)))))
 
 
+(defn- expression-result-combine-op [{:keys [report-type]}]
+  (case report-type
+    "population" +
+    "subject-list" into))
+
+
+(defn- expression-result-reduce-op [{:keys [report-type]}]
+  (case report-type
+    "population" (fn [result _] (inc result))
+    "subject-list" (fn [result {:keys [id]}] (conj result id))))
+
+
+(defn- expression-combine-op [context]
+  (-> (expression-result-combine-op context)
+      (wrap-anomaly)
+      (wrap-batch-db context)))
+
+
 (defn- evaluate-expression*
   "Evaluates the expression with `name` over `subjects` parallel.
 
   Subjects have to be a vector in order ro ensure parallel execution."
   [context name subjects]
-  (r/fold
-    eval-sequential-chunk-size
-    (-> + (wrap-anomaly) (wrap-batch-db context))
-    (fn [context subject]
-      (let [res (evaluate-expression-1 context subject name)]
-        (cond
-          (::anom/category res)
-          (reduced (assoc context ::result res))
+  (let [reduce-result-op (expression-result-reduce-op context)]
+    (r/fold
+      eval-sequential-chunk-size
+      (expression-combine-op context)
+      (fn [context subject]
+        (let [res (evaluate-expression-1 context subject name)]
+          (cond
+            (::anom/category res)
+            (reduced (assoc context ::result res))
 
-          res
-          (update context ::result inc)
+            res
+            (update context ::result reduce-result-op subject)
 
-          :else
-          context)))
-    subjects))
+            :else
+            context)))
+      subjects)))
 
 
-(defn- create-context
-  {:arglists '([db now library])}
-  [db now {expression-defs :life/compiled-expression-defs}]
-  {:db db :now now :library-context expression-defs})
+(defn- unwrap-library-context
+  {:arglists '([context])}
+  [{{expression-defs :life/compiled-expression-defs} :library :as context}]
+  (assoc context :library-context expression-defs))
 
 
 (defn evaluate-expression
-  "Evaluates the expression with `name` from `library` over all resources of
-  `subject-type` using `db` and `now`.
+  "Evaluates the expression with `name` according to `context`.
 
-  Returns the number of expressions evaluated to true or an anomaly."
-  [db now library subject-type name]
-  (let [context (create-context db now library)]
+  Depending on :report-type of `context`, returns either the number of or a
+  vector of the actual subject id's of expressions evaluated to true.
+
+  Returns an anomaly in case of errors."
+  {:arglists '([context name])}
+  [{:keys [db subject-type] :as context} name]
+  (let [context (unwrap-library-context context)]
     (transduce
       (comp
         (partition-all eval-parallel-chunk-size)
         (map #(evaluate-expression* context name %)))
-      (-> + (wrap-anomaly) (wrap-batch-db context))
+      (expression-combine-op context)
       (d/list-resources db subject-type))))
 
 
@@ -134,101 +156,122 @@
            expression-name (str (:resourceType resource) "/" (:id resource)))})
 
 
+(defn- stratum-result-combine-op [{:keys [report-type]}]
+  (case report-type
+    "population" (partial merge-with +)
+    "subject-list" (partial merge-with into)))
+
+
+(defn- stratum-result-reduce-op [{:keys [report-type]}]
+  (case report-type
+    "population"
+    (fn [result stratum _] (update result stratum (fnil inc 0)))
+    "subject-list"
+    (fn [result stratum {:keys [id]}] (update result stratum (fnil conj []) id))))
+
+
 (defn- stratum-combine-op [context]
-  (-> (partial merge-with +) wrap-anomaly (wrap-batch-db context)))
+  (-> (stratum-result-combine-op context)
+      (wrap-anomaly)
+      (wrap-batch-db context)))
 
 
-(defn calc-stratums*
+(defn- evaluate-stratum-expression [context subject name]
+  (let [result (evaluate-expression-1 context subject name)]
+    (if (sequential? result)
+      (incorrect-stratum subject name)
+      result)))
+
+
+(defn calc-strata*
   [context population-expression-name stratum-expression-name subjects]
-  (r/fold
-    eval-sequential-chunk-size
-    (stratum-combine-op context)
-    (fn [context subject]
-      (let [res (evaluate-expression-1 context subject
-                                       population-expression-name)]
-        (cond
-          (::anom/category res)
-          (reduced (assoc context ::result res))
+  (let [stratum-result-reduce-op (stratum-result-reduce-op context)]
+    (r/fold
+      eval-sequential-chunk-size
+      (stratum-combine-op context)
+      (fn [context subject]
+        (let [res (evaluate-expression-1 context subject
+                                         population-expression-name)]
+          (cond
+            (::anom/category res)
+            (reduced (assoc context ::result res))
 
-          res
-          (let [stratum (evaluate-expression-1 context subject
-                                               stratum-expression-name)]
-            (cond
-              (::anom/category stratum)
-              (reduced (assoc context ::result stratum))
+            res
+            (let [stratum (evaluate-stratum-expression
+                            context subject stratum-expression-name)]
+              (if (::anom/category stratum)
+                (reduced (assoc context ::result stratum))
+                (update context ::result stratum-result-reduce-op stratum subject)))
 
-              (sequential? stratum)
-              (reduced (assoc context ::result (incorrect-stratum subject stratum-expression-name)))
-
-              :else
-              (update-in context [::result stratum] (fnil inc 0))))
-
-          :else
-          context)))
-    subjects))
+            :else
+            context)))
+      subjects)))
 
 
-(defn calc-stratums
+(defn calc-strata
   "Returns a map of stratum to count or an anomaly."
-  [db now library subject-type population-expression-name
+  {:arglists '([[context population-expression-name stratum-expression-name]])}
+  [{:keys [db subject-type] :as context} population-expression-name
    stratum-expression-name]
-  (let [context (create-context db now library)]
+  (let [context (unwrap-library-context context)]
     (transduce
       (comp
         (partition-all eval-parallel-chunk-size)
-        (map (partial calc-stratums* context population-expression-name
+        (map (partial calc-strata* context population-expression-name
                       stratum-expression-name)))
       (stratum-combine-op context)
       (d/list-resources db subject-type))))
 
 
-(defn calc-mult-component-stratums*
-  [context population-expression-name expression-names subjects]
-  (r/fold
-    eval-sequential-chunk-size
-    (stratum-combine-op context)
-    (fn [context subject]
-      (let [res (evaluate-expression-1 context subject
-                                       population-expression-name)]
-        (cond
-          (::anom/category res)
-          (reduced (assoc context ::result res))
-
-          res
-          (let [stratum-vector
-                (reduce
-                  (fn [stratum-vector expression-name]
-                    (let [stratum (evaluate-expression-1
-                                    context subject expression-name)]
-                      (cond
-                        (::anom/category stratum)
-                        (reduced (assoc context ::result stratum))
-
-                        (sequential? stratum)
-                        (reduced (assoc context ::result (incorrect-stratum subject expression-name)))
-
-                        :else
-                        (conj stratum-vector stratum))))
-                  []
-                  expression-names)]
-
-            (if (::anom/category stratum-vector)
-              (reduced (assoc context ::result stratum-vector))
-              (update-in context [::result stratum-vector] (fnil inc 0))))
-
-          :else
-          context)))
-    subjects))
+(defn- anom-conj
+  ([] [])
+  ([r] r)
+  ([r x] (if (::anom/category x) (reduced x) (conj r x))))
 
 
-(defn calc-mult-component-stratums
-  "Returns a map of stratum to count."
-  [db now library subject-type population-expression-name expression-names]
-  (let [context (create-context db now library)]
+(defn- evaluate-mult-component-stratum-expression [context subject names]
+  (transduce
+    (map #(evaluate-stratum-expression context subject %))
+    anom-conj
+    names))
+
+
+(defn calc-mult-component-strata*
+  [context population-expression-name stratum-expression-names subjects]
+  (let [stratum-result-reduce-op (stratum-result-reduce-op context)]
+    (r/fold
+      eval-sequential-chunk-size
+      (stratum-combine-op context)
+      (fn [context subject]
+        (let [res (evaluate-expression-1 context subject
+                                         population-expression-name)]
+          (cond
+            (::anom/category res)
+            (reduced (assoc context ::result res))
+
+            res
+            (let [stratum (evaluate-mult-component-stratum-expression
+                            context subject stratum-expression-names)]
+
+              (if (::anom/category stratum)
+                (reduced (assoc context ::result stratum))
+                (update context ::result stratum-result-reduce-op stratum subject)))
+
+            :else
+            context)))
+      subjects)))
+
+
+(defn calc-mult-component-strata
+  "Returns a map of stratum to count or an anomaly."
+  {:arglists '([[context population-expression-name expression-names]])}
+  [{:keys [db subject-type] :as context} population-expression-name
+   stratum-expression-names]
+  (let [context (unwrap-library-context context)]
     (transduce
       (comp
         (partition-all eval-parallel-chunk-size)
-        (map (partial calc-mult-component-stratums* context
-                      population-expression-name expression-names)))
+        (map (partial calc-mult-component-strata* context
+                      population-expression-name stratum-expression-names)))
       (stratum-combine-op context)
       (d/list-resources db subject-type))))
