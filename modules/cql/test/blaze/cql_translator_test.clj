@@ -1,6 +1,7 @@
 (ns blaze.cql-translator-test
   (:require
     [blaze.cql-translator :refer [translate]]
+    [blaze.cql-translator-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer [deftest is testing]]

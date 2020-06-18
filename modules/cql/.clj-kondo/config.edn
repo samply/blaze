@@ -22,7 +22,13 @@
   :unresolved-symbol
   {:exclude
    [(clojure.test/is [thrown-anom?])
-    (clojure.test/are [thrown-anom?])]}}
+    (clojure.test/are [thrown-anom?])]}
+
+  :unsorted-required-namespaces
+  {:level :error}
+
+  :single-key-in
+  {:level :error}}
 
  :output
  {:exclude-files ["^test/data_readers.clj"]}

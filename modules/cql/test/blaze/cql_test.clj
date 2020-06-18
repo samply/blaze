@@ -2,6 +2,7 @@
   "https://cql.hl7.org/2019May/tests.html"
   (:require
     [blaze.cql-translator :refer [translate]]
+    [blaze.cql-translator-spec]
     [blaze.elm.compiler :refer [compile]]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]

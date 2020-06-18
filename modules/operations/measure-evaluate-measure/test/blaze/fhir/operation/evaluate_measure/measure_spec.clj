@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-spec
   (:require
+    [blaze.cql-translator-spec]
     [blaze.db.spec]
     [blaze.fhir.operation.evaluate-measure.measure :as measure]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
