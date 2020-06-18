@@ -264,9 +264,15 @@
     [0 :value :text] := "temperature2to10"
     [0 :population 0 :count] := 1
     [1 :value :text] := "temperatureGN"
+    [1 :population 0 :count] := 1)
+
+  (given (first-stratifier-strata (evaluate "q32-stratifier-underweight"))
+    [0 :value :text] := "false"
+    [0 :population 0 :count] := 2
+    [1 :value :text] := "true"
     [1 :population 0 :count] := 1))
 
 (comment
-  (evaluate "q31-stratifier-storage-temperature")
+  (evaluate "q32-stratifier-underweight")
   (clojure.repl/pst)
   )

@@ -217,8 +217,8 @@
     (transduce
       (comp
         (partition-all eval-parallel-chunk-size)
-        (map (partial calc-strata* context population-expression-name
-                      stratum-expression-name)))
+        (map #(calc-strata* context population-expression-name
+                            stratum-expression-name %)))
       (stratum-combine-op context)
       (d/list-resources db subject-type))))
 
@@ -271,7 +271,7 @@
     (transduce
       (comp
         (partition-all eval-parallel-chunk-size)
-        (map (partial calc-mult-component-strata* context
-                      population-expression-name stratum-expression-names)))
+        (map #(calc-mult-component-strata* context population-expression-name
+                                           stratum-expression-names %)))
       (stratum-combine-op context)
       (d/list-resources db subject-type))))

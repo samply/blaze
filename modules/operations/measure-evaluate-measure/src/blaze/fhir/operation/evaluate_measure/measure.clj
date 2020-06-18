@@ -183,7 +183,7 @@
 
 
 (defn- value-concept [value]
-  {:text (str (or value "null"))})
+  {:text (str (if (nil? value) "null" value))})
 
 
 (defn- stratum* [population value]
