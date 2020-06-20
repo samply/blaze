@@ -72,7 +72,14 @@
 
 
 (defn- with-spec [spec x]
-  (let [x (if (fhir-spec/primitive? spec) (->PrimitiveWrapper x) x)]
+  (cond
+    (fhir-spec/primitive? spec)
+    (with-meta (->PrimitiveWrapper x) {:type spec})
+
+    (fhir-spec/system? spec)
+    x
+
+    :else
     (with-meta x {:type spec})))
 
 

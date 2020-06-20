@@ -5,9 +5,35 @@
     [cuerdas.core :as str]))
 
 
-(defn type->spec [{:keys [code]}]
+(defn- find-fhir-type [{:keys [extension]}]
+  (some
+    #(when (= "http://hl7.org/fhir/StructureDefinition/structuredefinition-fhir-type" (:url %))
+       (:valueUrl %))
+    extension))
+
+
+(defn- find-regex [{:keys [extension]}]
+  (some
+    #(when (= "http://hl7.org/fhir/StructureDefinition/regex" (:url %))
+       (re-pattern (:valueString %)))
+    extension))
+
+
+(defn- type-regex [type]
+  (or (find-regex type)
+      (when (= "id" (find-fhir-type type))
+        #"[A-Za-z0-9\-\.]{1,64}")))
+
+
+(defn- string-spec [type]
+  (if-let [regex (type-regex type)]
+    `(s/and string? #(re-matches ~regex %))
+    `string?))
+
+
+(defn- type->spec [{:keys [code] :as type}]
   (case code
-    "http://hl7.org/fhirpath/System.String" `string?
+    "http://hl7.org/fhirpath/System.String" (string-spec type)
     "http://hl7.org/fhirpath/System.Time" `string?
     "http://hl7.org/fhirpath/System.Date" `string?
     "http://hl7.org/fhirpath/System.DateTime" `string?
@@ -18,27 +44,27 @@
 
 
 
-(defn split-path [path]
+(defn- split-path [path]
   (str/split path #"\."))
 
 
-(defn key-name [last-path-part {:keys [code]}]
+(defn- key-name [last-path-part {:keys [code]}]
   (if (str/ends-with? last-path-part "[x]")
     (str/replace last-path-part "[x]" (str/capital code))
     last-path-part))
 
 
-(defn path-parts->key [path-parts type]
+(defn- path-parts->key [path-parts type]
   (keyword
     (str/join "." (cons "fhir" (butlast path-parts)))
     (key-name (last path-parts) type)))
 
 
-(defn path->key [path type]
+(defn- path->key [path type]
   (path-parts->key (split-path path) type))
 
 
-(defn elem-def->spec-def [{:keys [path min max] [_ & more :as types] :type}]
+(defn- elem-def->spec-def [{:keys [path min max] [_ & more :as types] :type}]
   ;; TODO: handle :contentReference
   (into
     (if more
@@ -60,7 +86,28 @@
   (keyword (str/join "." (cons "fhir" parent-path-parts)) path-part))
 
 
-(defn build-specs [parent-path-parts indexed-elem-defs]
+(defn- fix-fhir-type-extension* [extensions]
+  (mapv
+    (fn [{:keys [url] :as extension}]
+      (cond-> extension
+        (= "http://hl7.org/fhir/StructureDefinition/structuredefinition-fhir-type" url)
+        (assoc :valueUrl "id")))
+    extensions))
+
+
+(defn- fix-fhir-type-extension [types]
+  (mapv #(update % :extension fix-fhir-type-extension*) types))
+
+
+(defn- fix-fhir-25274
+  "https://jira.hl7.org/browse/FHIR-25274"
+  [{{base-path :path} :base :as elem-def}]
+  (if (= "Resource.id" base-path)
+    (update elem-def :type fix-fhir-type-extension)
+    elem-def))
+
+
+(defn- build-specs [parent-path-parts indexed-elem-defs]
   (into
     []
     (comp
@@ -68,7 +115,7 @@
       (mapcat
         (fn [[path-part {:keys [elem-def] :as more}]]
           (if (= 1 (count (keys more)))
-            (elem-def->spec-def elem-def)
+            (elem-def->spec-def (fix-fhir-25274 elem-def))
             (let [child-spec-defs
                   (build-specs (conj parent-path-parts path-part) more)
                   schema-spec-form
@@ -80,7 +127,7 @@
                           (map
                             (fn [{:keys [key max spec-form]}]
                               (let [child-spec
-                                    (if (or (ident? spec-form) (= `s/or (first spec-form)))
+                                    (if (or (ident? spec-form) (#{`s/and `s/or} (first spec-form)))
                                       spec-form
                                       key)]
                                 [(keyword (name key))
@@ -96,7 +143,7 @@
     indexed-elem-defs))
 
 
-(defn index-by-path [elem-defs]
+(defn- index-by-path [elem-defs]
   (reduce
     (fn [res {:keys [path] :as elem-def}]
       (assoc-in res (split-path path) {:elem-def elem-def}))
@@ -104,16 +151,15 @@
     elem-defs))
 
 
-(defn struct-def->spec-def [{{elem-defs :element} :snapshot}]
-  #_(index-by-path elem-defs)
+(defn- struct-def->spec-def [{{elem-defs :element} :snapshot}]
   (flatten (build-specs [] (index-by-path elem-defs))))
 
 
-(defn to-predefine-spec-def [spec-def]
+(defn- to-predefine-spec-def [spec-def]
   (some #(when (= "fhir" (namespace (:key %))) {:key (:key %) :spec-form `any?}) spec-def))
 
 
-(defn select-primitive-value
+(defn- select-primitive-value
   "Selects the value out of primitive data-type specs."
   [data]
   (some
@@ -123,7 +169,7 @@
     data))
 
 
-(defn fix-known-issues
+(defn- fix-known-issues
   "See: https://chat.fhir.org/#narrow/stream/179177-conformance/topic/Int.20type.20question.20in.20R4.20StructureDef"
   [primitive-types]
   (mapv
@@ -134,7 +180,7 @@
     primitive-types))
 
 
-(defn register
+(defn- register
   "Registers `spec-defs`"
   [spec-defs]
   (doseq [{:keys [key spec-form]} spec-defs]

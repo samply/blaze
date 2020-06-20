@@ -38,7 +38,7 @@
       (assoc value :reference (resolve-link index reference))
       value)
 
-    (fhir-spec/primitive? spec)
+    (or (fhir-spec/primitive? spec) (fhir-spec/system? spec))
     value
 
     (identical? :fhir/Resource spec)

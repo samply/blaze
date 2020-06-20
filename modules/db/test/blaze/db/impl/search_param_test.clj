@@ -25,6 +25,35 @@
 
 
 (deftest index-entries
+  (testing "Observation _id"
+    (let [observation {:resourceType "Observation"
+                       :id "id-161849"}
+          hash (codec/hash observation)
+          [[_ k0] [_ k1]]
+          (search-param/index-entries
+            (sr/get search-param-registry "_id" "Observation")
+            hash observation [])]
+
+      (testing "search-param-value-key"
+        (is (bytes/=
+              k0
+              (codec/search-param-value-key
+                (codec/c-hash "_id")
+                (codec/tid "Observation")
+                (codec/v-hash "id-161849")
+                (codec/id-bytes "id-161849")
+                hash))))
+
+      (testing "resource-value-key"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "Observation")
+                (codec/id-bytes "id-161849")
+                hash
+                (codec/c-hash "_id")
+                (codec/v-hash "id-161849")))))))
+
   (testing "Observation code"
     (let [observation {:resourceType "Observation"
                        :id "id-183201"

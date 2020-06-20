@@ -192,6 +192,18 @@
             (codec/id-bytes "id-204446")
             hash))))
 
+    (testing "_id `id-204446` entry"
+      (is
+        (kv/get
+          kv-store
+          :search-param-value-index
+          (codec/search-param-value-key
+            (codec/c-hash "_id")
+            (codec/tid "Condition")
+            (codec/v-hash "id-204446")
+            (codec/id-bytes "id-204446")
+            hash))))
+
     (testing "_profile `https://fhir.bbmri.de/StructureDefinition/Condition` entry"
       (is
         (kv/get

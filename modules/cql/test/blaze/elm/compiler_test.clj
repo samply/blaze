@@ -6,6 +6,7 @@
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :refer [compile compile-with-equiv-clause]]
+    [blaze.elm.compiler-spec]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.compiler.query :as query]
     [blaze.elm.compiler.retrieve-spec]
