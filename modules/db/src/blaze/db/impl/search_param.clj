@@ -429,9 +429,9 @@
   (fn [_ _ value] (type value)))
 
 
-(defmethod token-index-entries `string?
+(defmethod token-index-entries String
   [_ entries-fn s]
-  (entries-fn (codec/v-hash @s)))
+  (entries-fn (codec/v-hash s)))
 
 
 (defmethod token-index-entries :fhir/id

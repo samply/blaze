@@ -21,3 +21,13 @@
 (s/fdef fhir-spec/choices
   :args (s/cat :spec :blaze.fhir.spec/choices-spec)
   :ret (s/coll-of (s/tuple keyword? some?)))
+
+
+(s/fdef fhir-spec/primitive?
+  :args (s/cat :spec any?)
+  :ret boolean?)
+
+
+(s/fdef fhir-spec/system?
+  :args (s/cat :spec any?)
+  :ret boolean?)

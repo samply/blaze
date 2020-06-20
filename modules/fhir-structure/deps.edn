@@ -1,10 +1,7 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/module-base
-  {:local/root "../module-base"}
-
-  cheshire
+ {cheshire
   {:mvn/version "5.9.0"}
 
   funcool/cuerdas
@@ -12,7 +9,7 @@
 
   org.clojure/alpha.spec
   {:git/url "https://github.com/clojure/spec-alpha2.git"
-   :sha "b644e4d8c5553e10544d920306690fffe9b53e15"}}
+   :sha "b67a00e5de4b5cde3bc9d7ef4f7c08f77c829ddd"}}
 
  :aliases
  {:test

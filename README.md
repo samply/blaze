@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
-Latest release: [v0.9.0-alpha.5][5]
+Latest release: [v0.9.0-alpha.6][5]
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ In order to run Blaze just execute the following:
 ### Docker
 
 ```bash
-docker run -p 8080:8080 -v <local-dir>:/data -e DB_DIR="/data/db" samply/blaze:0.9.0-alpha.5
+docker run -p 8080:8080 -v <local-dir>:/data -e DB_DIR="/data/db" samply/blaze:0.9.0-alpha.6
 ```
 
 Please replace `<local-dir>` with a directory in which Blaze should store it's database files. It's important to specify a `DB_DIR` which resides inside the mounted volume, because Blaze needs to create its database directory itself. Blaze will use any previously created database directory on subsequent starts.
@@ -34,14 +34,14 @@ For security reasons, the container is executed as a non-root user (65532:65532)
 # Use ~/blaze-data on your host to store the database files
 mkdir ~/blaze-data
 sudo chown -R 65532:65532 ~/blaze-data
-docker run -p 8080:8080 -v ~/blaze-data:/data -e DB_DIR="/data/db" samply/blaze:0.9.0-alpha.5
+docker run -p 8080:8080 -v ~/blaze-data:/data -e DB_DIR="/data/db" samply/blaze:0.9.0-alpha.6
 ```
 
 If you use a Docker volume, mount it on `/app/data` and make sure `DB_DIR` is set to `/app/data/db` (the default value), because the non-root user only has write-permissions inside the `/app` directory.
 Using a Docker volume instead of a host directory mount makes it unnecessary to set the file permissions:
 
 ```bash
-docker run -p 8080:8080 -v blaze-data-volume:/app/data -e DB_DIR="/app/data/db" samply/blaze:0.9.0-alpha.5
+docker run -p 8080:8080 -v blaze-data-volume:/app/data -e DB_DIR="/app/data/db" samply/blaze:0.9.0-alpha.6
 ```
 
 Note that you can always revert back to running the container as root by specifying `-u root` for `docker run` or setting the `services[].user: root` in Docker compose.
@@ -49,8 +49,8 @@ Note that you can always revert back to running the container as root by specify
 ### Java
 
 ```bash
-wget https://github.com/samply/blaze/releases/download/v0.9.0-alpha.5/blaze-0.9.0-alpha.5-standalone.jar
-java -jar blaze-0.9.0-alpha.5-standalone.jar -m blaze.core
+wget https://github.com/samply/blaze/releases/download/v0.9.0-alpha.6/blaze-0.9.0-alpha.6-standalone.jar
+java -jar blaze-0.9.0-alpha.6-standalone.jar -m blaze.core
 ```
 
 This will create a directory called `db` inside the current working directory.
@@ -147,7 +147,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.9.0-alpha.5>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.9.0-alpha.6>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>

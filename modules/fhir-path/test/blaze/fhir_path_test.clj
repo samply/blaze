@@ -30,14 +30,32 @@
 
 ;; See: http://hl7.org/fhirpath/index.html#path-selection
 (deftest path-selection
-  (testing "Patient.active"
+  (testing "Patient.id"
     (are [x]
-      (= x @(first (eval "Patient.active"
-                         {:resourceType "Patient"
-                          :id "foo"
-                          :active x})))
-      true
-      false))
+      (= x (first (eval "Patient.id"
+                        {:resourceType "Patient"
+                         :id x})))
+      "id-161533"
+      "id-161537"))
+
+  (testing "Patient.active"
+    (testing "value"
+      (are [x]
+        (= x @(first (eval "Patient.active"
+                           {:resourceType "Patient"
+                            :id "foo"
+                            :active x})))
+        true
+        false))
+    (testing "type"
+      (are [x]
+        (= :fhir/boolean
+           (type (first (eval "Patient.active"
+                              {:resourceType "Patient"
+                               :id "foo"
+                               :active x}))))
+        true
+        false)))
 
   (testing "(Observation.value as boolean)"
     (are [x]

@@ -13,7 +13,7 @@
 
 
 (s/def :blaze.resource/id
-  (s/and string? #(re-matches #"[A-Za-z0-9\-\.]{1,64}" %)))
+  #(s2/valid? :fhir/id %))
 
 
 (s/def :blaze.fhir/local-ref
@@ -95,11 +95,19 @@
     spec))
 
 
-(defn primitive? [spec]
+(defn primitive?
+  "Primitive FHIR type like `id`."
+  [spec]
+  (and (keyword? spec)
+       (= "fhir" (namespace spec))
+       (Character/isLowerCase ^char (first (name spec)))))
+
+
+(defn system?
+  "System FHIR Type like `http://hl7.org/fhirpath/System.String`."
+  [spec]
   (or (symbol? spec)
-      (and (keyword? spec)
-           (= "fhir" (namespace spec))
-           (Character/isLowerCase ^char (first (name spec))))))
+      (and (sequential? spec) (= `s2/and (first spec)))))
 
 
 (defn form [spec]
@@ -120,6 +128,8 @@
   (type-spec :fhir/Annotation)
   (type-spec `(s2/coll-of :fhir/Extension))
 
+  (primitive? :fhir/id)
+  (primitive? :fhir.Patient/id)
   (primitive? :fhir/code)
   (primitive? :fhir/Annotation)
   (primitive? `string?)
@@ -127,9 +137,11 @@
   (type-exists? "Annotation")
   (type-exists? "Annotatio")
 
+  (s2/form :fhir/id)
   (s2/form :fhir/string)
   (s2/form :fhir/Observation)
   (s2/form :fhir/Patient)
+  (primitive? (:id (child-specs :fhir/Patient)))
   (s2/valid? :fhir/Observation {:focus ""})
   (s2/schema)
   )

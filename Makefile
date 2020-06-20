@@ -1,4 +1,4 @@
-VERSION = "0.9.0-alpha.5"
+VERSION = "0.9.0-alpha.6"
 
 check:
 	clojure -A:check
@@ -34,7 +34,7 @@ lint-fhir-path:
 	cd modules/fhir-path; clojure -A:clj-kondo --lint src test
 
 lint-fhir-structure:
-	cd modules/fhir-structure; clojure -A:clj-kondo --lint src
+	cd modules/fhir-structure; clojure -A:clj-kondo --lint src test
 
 lint-interaction:
 	cd modules/interaction; clojure -A:clj-kondo --lint src test
@@ -106,6 +106,9 @@ test-db:
 test-fhir-path:
 	cd modules/fhir-path; clojure -A:test --profile :ci
 
+test-fhir-structure:
+	cd modules/fhir-structure; clojure -A:test --profile :ci
+
 test-interaction:
 	cd modules/interaction;	clojure -A:test --profile :ci
 
@@ -124,7 +127,7 @@ test-rest-util:
 test-search-param-registry:
 	cd modules/search-param-registry; clojure -A:test --profile :ci
 
-test: test-cql test-db test-fhir-path test-interaction test-openid-auth test-operations-measure-evaluate-measure test-rest-api test-rest-util test-search-param-registry
+test: test-cql test-db test-fhir-path test-fhir-structure test-interaction test-openid-auth test-operations-measure-evaluate-measure test-rest-api test-rest-util test-search-param-registry
 	clojure -A:test --profile :ci
 
 uberjar:

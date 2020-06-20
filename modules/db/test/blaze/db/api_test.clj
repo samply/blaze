@@ -427,6 +427,11 @@
                  :name
                  [{:family "Schmidt"}]}]])
 
+      (testing "_id"
+        (given (into [] (d/type-query (d/db node) "Patient" [["_id" "id-1"]]))
+          [0 :id] := "id-1"
+          1 := nil))
+
       (testing "_profile"
         (given (into [] (d/type-query (d/db node) "Patient"
                                       [["_profile" "profile-uri-145024"]]))
