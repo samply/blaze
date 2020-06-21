@@ -96,14 +96,21 @@
         "Location" (fhir-util/versioned-instance-url router type id vid)))))
 
 
+(defn- tx-op [resource if-match-t]
+  (cond-> [:put resource]
+    if-match-t
+    (conj if-match-t)))
+
+
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params
-        :keys [headers body]
+        :keys [body]
+        {:strs [if-match] :as headers} :headers
         ::reitit/keys [router]}]
     (let [db (d/db node)]
       (-> (validate-resource type id body)
-          (md/chain' #(d/submit-tx node [[:put %]]))
+          (md/chain' #(d/submit-tx node [(tx-op % (fhir-util/etag->t if-match))]))
           (md/chain'
             #(build-response
                router headers type id (d/resource db type id) %))

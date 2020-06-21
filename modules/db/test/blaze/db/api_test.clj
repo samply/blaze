@@ -137,6 +137,16 @@
   (testing "a new node does not contain a resource"
     (is (nil? (d/resource (d/db (new-node)) "Patient" "foo"))))
 
+  (testing "a node contains a resource after a create transaction"
+    (let [node (new-node)]
+      @(d/submit-tx node [[:create {:resourceType "Patient" :id "0"}]])
+      (given (d/resource (d/db node) "Patient" "0")
+        :resourceType := "Patient"
+        :id := "0"
+        [:meta :versionId] := "1"
+        [meta :blaze.db/tx :blaze.db/t] := 1
+        [meta :blaze.db/num-changes] := 1)))
+
   (testing "a node contains a resource after a put transaction"
     (let [node (new-node)]
       @(d/submit-tx node [[:put {:resourceType "Patient" :id "0"}]])
@@ -144,7 +154,8 @@
         :resourceType := "Patient"
         :id := "0"
         [:meta :versionId] := "1"
-        [meta :blaze.db/tx :blaze.db/t] := 1)))
+        [meta :blaze.db/tx :blaze.db/t] := 1
+        [meta :blaze.db/num-changes] := 1)))
 
   (testing "a deleted resource is flagged"
     (let [node (new-node)]

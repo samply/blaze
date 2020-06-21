@@ -29,17 +29,21 @@
 (test/use-fixtures :each fixture)
 
 
-(def router
+(def ^:private router
   (reitit/router
     [["/Patient/{id}" {:name :Patient/instance}]
      ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]
     {:syntax :bracket}))
 
 
+(def ^:private operation-outcome
+  "http://terminology.hl7.org/CodeSystem/operation-outcome")
+
+
 (defonce executor (ex/single-thread-executor))
 
 
-(defn handler-with [txs]
+(defn- handler-with [txs]
   (handler (mem-node-with txs) executor))
 
 
@@ -220,7 +224,7 @@
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
         [:issue 0 :code] := "invariant"
-        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :system] := operation-outcome
         [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_TYPE_MISMATCH"
         [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
         [:issue 0 :expression 1] := "Bundle.entry[0].resource.resourceType")))
@@ -245,7 +249,7 @@
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
         [:issue 0 :code] := "required"
-        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :system] := operation-outcome
         [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_ID_MISSING"
         [:issue 0 :expression 0] := "Bundle.entry[0].resource.id")))
 
@@ -270,7 +274,7 @@
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
         [:issue 0 :code] := "value"
-        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :system] := operation-outcome
         [:issue 0 :details :coding 0 :code] := "MSG_ID_INVALID"
         [:issue 0 :expression 0] := "Bundle.entry[0].resource.id")))
 
@@ -295,10 +299,34 @@
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
         [:issue 0 :code] := "invariant"
-        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :system] := operation-outcome
         [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_ID_MISMATCH"
         [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
         [:issue 0 :expression 1] := "Bundle.entry[0].resource.id")))
+
+  (testing "Returns Error on Optimistic Locking Failure of a update"
+    (let [{:keys [status body]}
+          @((handler-with [[[:create {:resourceType "Patient" :id "0"}]]
+                           [[:put {:resourceType "Patient" :id "0"}]]])
+            {:body
+             {:resourceType "Bundle"
+              :type "transaction"
+              :entry
+              [{:resource
+                {:resourceType "Patient"
+                 :id "0"}
+                :request
+                {:method "PUT"
+                 :url "Patient/0"
+                 :ifMatch "W/\"1\""}}]}})]
+
+      (is (= 412 status))
+
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "conflict"
+        [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))
 
 
   (testing "Returns Error on invalid resource"

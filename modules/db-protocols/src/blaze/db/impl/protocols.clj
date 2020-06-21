@@ -28,8 +28,6 @@
 
   (-tx [db t])
 
-  (-resource-exists? [db type id])
-
   (-resource [db type id])
 
   (-list-resources ^IReduceInit [db type start-id])

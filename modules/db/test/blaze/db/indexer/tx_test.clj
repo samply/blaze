@@ -180,4 +180,5 @@
       (codec/tx-error-entries
         2
         {::anom/category ::anom/conflict
-         ::anom/message (format "put mismatch for %s/%s" "Patient" "0")}))))
+         ::anom/message (format "Precondition `W/\"0\"` failed on `Patient/0`.")
+         :http/status 412}))))

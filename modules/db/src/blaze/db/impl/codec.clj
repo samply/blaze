@@ -349,7 +349,9 @@
     (identical? :delete op) (bit-set 0)))
 
 
-(defn state->num-changes [state]
+(defn state->num-changes
+  "A resource is new if num-changes is 1."
+  [state]
   (bit-shift-right ^long state 8))
 
 

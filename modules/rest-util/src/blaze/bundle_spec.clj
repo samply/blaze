@@ -7,9 +7,9 @@
 
 
 (s/fdef bundle/resolve-entry-links
-  :args (s/cat :entries coll?))
+  :args (s/cat :entries (s/coll-of map?)))
 
 
 (s/fdef bundle/tx-ops
-  :args (s/cat :entries coll?)
+  :args (s/cat :entries (s/coll-of map?))
   :ret :blaze.db/tx-ops)
