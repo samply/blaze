@@ -388,7 +388,7 @@
                 (codec/c-hash "deceased")
                 (codec/v-hash "false")))))))
 
-  (testing "Specimen patient will not indexed because we don not support resolving in FHIRPath"
+  (testing "Specimen patient will not indexed because we don't support resolving in FHIRPath"
     (let [specimen {:resourceType "Specimen"
                     :id "id-150810"
                     :subject {:reference "reference-150829"}}
@@ -788,4 +788,150 @@
                 (codec/id-bytes "id-111846")
                 hash
                 (codec/c-hash "version")
-                (codec/v-hash "version-122621"))))))))
+                (codec/v-hash "version-122621")))))))
+
+  (testing "List item"
+    (testing "with literal reference"
+      (let [resource {:resourceType "List"
+                      :id "id-121825"
+                      :entry
+                      [{:item {:reference "Patient/0"}}]}
+            hash (codec/hash resource)
+            [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
+            (search-param/index-entries
+              (sr/get search-param-registry "item" "List")
+              hash resource [])]
+
+        (testing "first search-param-value-key is about `id`"
+          (is (bytes/=
+                k0
+                (codec/search-param-value-key
+                  (codec/c-hash "item")
+                  (codec/tid "List")
+                  (codec/v-hash "0")
+                  (codec/id-bytes "id-121825")
+                  hash))))
+
+        (testing "first resource-value-key is about `id`"
+          (is (bytes/=
+                k1
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-121825")
+                  hash
+                  (codec/c-hash "item")
+                  (codec/v-hash "0")))))
+
+        (testing "second search-param-value-key is about `type/id`"
+          (is (bytes/=
+                k2
+                (codec/search-param-value-key
+                  (codec/c-hash "item")
+                  (codec/tid "List")
+                  (codec/v-hash "Patient/0")
+                  (codec/id-bytes "id-121825")
+                  hash))))
+
+        (testing "second resource-value-key is about `type/id`"
+          (is (bytes/=
+                k3
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-121825")
+                  hash
+                  (codec/c-hash "item")
+                  (codec/v-hash "Patient/0")))))
+
+        (testing "third search-param-value-key is about `tid` and `id`"
+          (is (bytes/=
+                k4
+                (codec/search-param-value-key
+                  (codec/c-hash "item")
+                  (codec/tid "List")
+                  (codec/tid-id "Patient" "0")
+                  (codec/id-bytes "id-121825")
+                  hash))))
+
+        (testing "third resource-value-key is about `tid` and `id`"
+          (is (bytes/=
+                k5
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-121825")
+                  hash
+                  (codec/c-hash "item")
+                  (codec/tid-id "Patient" "0")))))))
+
+    (testing "with identifier reference"
+      (let [resource {:resourceType "List"
+                      :id "id-123058"
+                      :entry
+                      [{:item
+                        {:identifier
+                         {:system "system-122917"
+                          :value "value-122931"}}}]}
+            hash (codec/hash resource)
+            [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
+            (search-param/index-entries
+              (sr/get search-param-registry "item" "List")
+              hash resource [])]
+
+        (testing "first search-param-value-key is about `value`"
+          (is (bytes/=
+                k0
+                (codec/search-param-value-key
+                  (codec/c-hash "item:identifier")
+                  (codec/tid "List")
+                  (codec/v-hash "value-122931")
+                  (codec/id-bytes "id-123058")
+                  hash))))
+
+        (testing "first resource-value-key is about `value`"
+          (is (bytes/=
+                k1
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-123058")
+                  hash
+                  (codec/c-hash "item:identifier")
+                  (codec/v-hash "value-122931")))))
+
+        (testing "second search-param-value-key is about `system|`"
+          (is (bytes/=
+                k2
+                (codec/search-param-value-key
+                  (codec/c-hash "item:identifier")
+                  (codec/tid "List")
+                  (codec/v-hash "system-122917|")
+                  (codec/id-bytes "id-123058")
+                  hash))))
+
+        (testing "second resource-value-key is about `system|`"
+          (is (bytes/=
+                k3
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-123058")
+                  hash
+                  (codec/c-hash "item:identifier")
+                  (codec/v-hash "system-122917|")))))
+
+        (testing "third search-param-value-key is about `system|value`"
+          (is (bytes/=
+                k4
+                (codec/search-param-value-key
+                  (codec/c-hash "item:identifier")
+                  (codec/tid "List")
+                  (codec/v-hash "system-122917|value-122931")
+                  (codec/id-bytes "id-123058")
+                  hash))))
+
+        (testing "third resource-value-key is about `system|value`"
+          (is (bytes/=
+                k5
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-123058")
+                  hash
+                  (codec/c-hash "item:identifier")
+                  (codec/v-hash "system-122917|value-122931")))))))))
