@@ -13,6 +13,7 @@
     [blaze.db.search-param-registry.spec]
     [blaze.db.tx-log :as tx-log]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
@@ -29,10 +30,11 @@
 (defn- resolve-search-params [search-param-registry type clauses]
   (reduce
     (fn [ret [code & values]]
-      (let [res (resolve-search-param search-param-registry type code)]
+      (let [[code modifier] (str/split code #":" 2)
+            res (resolve-search-param search-param-registry type code)]
         (if (::anom/category res)
           (reduced res)
-          (conj ret [res (search-param/compile-values res values)]))))
+          (conj ret [res modifier (search-param/compile-values res values)]))))
     []
     clauses))
 

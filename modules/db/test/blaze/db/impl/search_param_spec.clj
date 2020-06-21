@@ -29,16 +29,18 @@
   :ret (s/coll-of some? :min-count 1))
 
 
-(s/fdef search-param/keys
+(s/fdef search-param/resources
   :args (s/cat :search-param :blaze.db/search-param
+               :node :blaze.db/node
                :snapshot :blaze.db/kv-snapshot
                :svri :blaze.db/kv-iterator
                :rsvi :blaze.db/kv-iterator
                :raoi :blaze.db/kv-iterator
                :tid :blaze.db/tid
+               :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
                :t :blaze.db/t)
-  :ret (s/coll-of (s/tuple bytes? bytes? bytes?)))
+  :ret (s/coll-of :blaze/resource))
 
 
 (s/fdef search-param/compartment-keys
@@ -56,6 +58,7 @@
                :tid :blaze.db/tid
                :id bytes?
                :hash :blaze.resource/hash
+               :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))
   :ret boolean?)
 

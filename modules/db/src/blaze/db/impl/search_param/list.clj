@@ -54,7 +54,7 @@
   (-compile-values [_ values]
     (map codec/id-bytes values))
 
-  (-resources [_ node _ _ rsvi raoi tid list-id t]
+  (-resources [_ node _ _ rsvi raoi tid _ list-id t]
     (when-let [[list-hash state] (list-hash-state-t raoi list-id t)]
       (when-not (codec/deleted? state)
         (coll/eduction

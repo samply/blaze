@@ -11,3 +11,7 @@
 
 (s/def :blaze.db/search-param
   #(satisfies? p/SearchParam %))
+
+
+(s/def :blaze.db.search-param/modifier
+  string?)

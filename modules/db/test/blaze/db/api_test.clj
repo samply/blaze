@@ -800,13 +800,95 @@
 
   (testing "MeasureReport"
     (let [node (new-node)]
-      @(d/submit-tx node [[:put {:resourceType "MeasureReport"
-                                 :id "foo"
-                                 :measure "measure-url-181106"}]])
+      @(d/submit-tx
+         node
+         [[:put {:resourceType "MeasureReport"
+                 :id "id-144132"
+                 :measure "measure-url-181106"}]])
 
       (testing "measure"
         (let [clauses [["measure" "measure-url-181106"]]]
-          (is (= 1 (count (into [] (d/type-query (d/db node) "MeasureReport" clauses))))))))))
+          (given (into [] (d/type-query (d/db node) "MeasureReport" clauses))
+            [0 :id] := "id-144132"
+            1 := nil)))))
+
+  (testing "List"
+    (testing "item"
+      (testing "with no modifier"
+        (let [node (new-node)]
+          @(d/submit-tx
+             node
+             [[:put {:resourceType "List"
+                     :id "id-150545"
+                     :entry
+                     [{:item {:reference "Patient/0"}}]}]
+              [:put {:resourceType "List"
+                     :id "id-143814"
+                     :entry
+                     [{:item {:reference "Patient/1"}}]}]])
+
+          (let [clauses [["item" "Patient/1"]]]
+            (given (into [] (d/type-query (d/db node) "List" clauses))
+              [0 :id] := "id-143814"
+              1 := nil))))
+
+      (testing "with identifier modifier"
+        (let [node (new-node)]
+          @(d/submit-tx
+             node
+             [[:put {:resourceType "List"
+                     :id "id-123058"
+                     :entry
+                     [{:item
+                       {:identifier
+                        {:system "system-122917"
+                         :value "value-122931"}}}]}]
+              [:put {:resourceType "List"
+                     :id "id-143814"
+                     :entry
+                     [{:item
+                       {:identifier
+                        {:system "system-122917"
+                         :value "value-143818"}}}]}]])
+
+          (let [clauses [["item:identifier" "system-122917|value-122931"]]]
+            (given (into [] (d/type-query (d/db node) "List" clauses))
+              [0 :id] := "id-123058"
+              1 := nil)))))
+
+    (testing "code and item"
+      (testing "with identifier modifier"
+        (let [node (new-node)]
+          @(d/submit-tx
+             node
+             [[:put {:resourceType "List"
+                     :id "id-123058"
+                     :code
+                     {:coding
+                      [{:system "system-152812"
+                        :code "code-152819"}]}
+                     :entry
+                     [{:item
+                       {:identifier
+                        {:system "system-122917"
+                         :value "value-122931"}}}]}]
+              [:put {:resourceType "List"
+                     :id "id-143814"
+                     :code
+                     {:coding
+                      [{:system "system-152812"
+                        :code "code-152819"}]}
+                     :entry
+                     [{:item
+                       {:identifier
+                        {:system "system-122917"
+                         :value "value-143818"}}}]}]])
+
+          (let [clauses [["code" "system-152812|code-152819"]
+                         ["item:identifier" "system-122917|value-143818"]]]
+            (given (into [] (d/type-query (d/db node) "List" clauses))
+              [0 :id] := "id-143814"
+              1 := nil)))))))
 
 
 

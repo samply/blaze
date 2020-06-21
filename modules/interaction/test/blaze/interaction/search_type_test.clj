@@ -22,15 +22,16 @@
 (test/use-fixtures :each fixture)
 
 
-(def router
+(def ^:private router
   (reitit/router
     [["/Patient/{id}" {:name :Patient/instance}]
      ["/MeasureReport/{id}" {:name :MeasureReport/instance}]
-     ["/Library/{id}" {:name :Library/instance}]]
+     ["/Library/{id}" {:name :Library/instance}]
+     ["/List/{id}" {:name :List/instance}]]
     {:syntax :bracket}))
 
 
-(def patient-match
+(def ^:private patient-match
   {:data
    {:blaze/base-url ""
     :blaze/context-path ""
@@ -38,12 +39,20 @@
    :path "/Patient"})
 
 
-(def measure-report-match
+(def ^:private measure-report-match
   {:data
    {:blaze/base-url ""
     :blaze/context-path ""
     :fhir.resource/type "MeasureReport"}
    :path "/MeasureReport"})
+
+
+(def ^:private list-report-match
+  {:data
+   {:blaze/base-url ""
+    :blaze/context-path ""
+    :fhir.resource/type "List"}
+   :path "/List"})
 
 
 (defn- handler-with [txs]
@@ -631,4 +640,46 @@
             (is (= measure-2 (-> body :entry first :resource))))
 
           (testing "the second entry has the right resource"
-            (is (= measure-1 (-> body :entry second :resource))))))))
+            (is (= measure-1 (-> body :entry second :resource)))))))
+
+  (testing "List item search"
+    (let [{:keys [status body]}
+          @((handler-with
+              [[[:put {:resourceType "List"
+                       :id "id-123058"
+                       :entry
+                       [{:item
+                         {:identifier
+                          {:system "system-122917"
+                           :value "value-122931"}}}]}]
+                [:put {:resourceType "List"
+                       :id "id-143814"
+                       :entry
+                       [{:item
+                         {:identifier
+                          {:system "system-122917"
+                           :value "value-143818"}}}]}]]])
+            {::reitit/router router
+             ::reitit/match list-report-match
+             :params {"item:identifier" "system-122917|value-143818"}})]
+
+      (is (= 200 status))
+
+      (testing "the body contains a bundle"
+        (is (= "Bundle" (:resourceType body))))
+
+      (testing "the bundle type is searchset"
+        (is (= "searchset" (:type body))))
+
+      (testing "the total count is 1"
+        (is (= 1 (:total body))))
+
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (testing "the entry has the right fullUrl"
+        (is (= "/List/id-143814" (-> body :entry first :fullUrl))))
+
+      (testing "the entry has the right resource"
+        (given (-> body :entry first :resource)
+          :id := "id-143814")))))
