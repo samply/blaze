@@ -3,9 +3,11 @@
     [blaze.handler.fhir.util-spec]
     [blaze.interaction.history.instance :as instance]
     [blaze.interaction.history.util-spec]
-    [clojure.spec.alpha :as s]))
+    [blaze.middleware.fhir.metrics-spec]
+    [clojure.spec.alpha :as s]
+    [ring.core.spec]))
 
 
 (s/fdef instance/handler
   :args (s/cat :node :blaze.db/node)
-  :ret fn?)
+  :ret :ring/handler)

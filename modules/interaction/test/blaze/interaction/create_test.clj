@@ -7,10 +7,11 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.create :refer [handler]]
-    [blaze.middleware.fhir.metrics-spec]
+    [blaze.interaction.create-spec]
     [blaze.uuid :refer [random-uuid]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
 
@@ -44,20 +45,13 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "invariant" (-> body :issue first :code)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_RESOURCE_TYPE_MISMATCH"
-             (-> body :issue first :details :coding first :code)))
-
-      (is (= "Resource type `Observation` doesn't match the endpoint type `Patient`."
-             (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_TYPE_MISMATCH"
+        [:issue 0 :diagnostics] := "Resource type `Observation` doesn't match the endpoint type `Patient`.")))
 
   (testing "Returns Error on invalid resource"
     (let [{:keys [status body]}
@@ -67,13 +61,11 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "invariant" (-> body :issue first :code)))
-
-      (is (= "Resource invalid." (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :diagnostics] := "Resource invalid.")))
 
   (testing "On newly created resource"
     (testing "with no Prefer header"

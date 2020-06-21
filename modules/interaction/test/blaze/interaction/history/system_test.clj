@@ -8,7 +8,6 @@
     [blaze.db.api-stub :refer [mem-node mem-node-with]]
     [blaze.interaction.history.system :refer [handler]]
     [blaze.interaction.history.system-spec]
-    [blaze.middleware.fhir.metrics-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]

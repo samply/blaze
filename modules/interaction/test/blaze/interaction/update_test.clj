@@ -7,7 +7,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.update :refer [handler]]
-    [blaze.middleware.fhir.metrics-spec]
+    [blaze.interaction.update-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -45,17 +45,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "invariant" (-> body :issue first :code)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_RESOURCE_TYPE_MISMATCH"
-             (-> body :issue first :details :coding first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_TYPE_MISMATCH")))
 
   (testing "Returns Error on missing id"
     (let [{:keys [status body]}
@@ -66,17 +61,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "required" (-> body :issue first :code)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_RESOURCE_ID_MISSING"
-             (-> body :issue first :details :coding first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "required"
+        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_ID_MISSING")))
 
   (testing "Returns Error on invalid id"
     (let [{:keys [status body]}
@@ -87,17 +77,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "value" (-> body :issue first :code)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_ID_INVALID"
-             (-> body :issue first :details :coding first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "value"
+        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :code] := "MSG_ID_INVALID")))
 
 
   (testing "Returns Error on ID mismatch"
@@ -109,17 +94,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "invariant" (-> body :issue first :code)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_RESOURCE_ID_MISMATCH"
-             (-> body :issue first :details :coding first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_ID_MISMATCH")))
 
   (testing "Returns Error on invalid resource"
     (let [{:keys [status body]}
@@ -130,13 +110,11 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "invariant" (-> body :issue first :code)))
-
-      (is (= "Resource invalid." (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :diagnostics] := "Resource invalid.")))
 
 
   (testing "On newly created resource"

@@ -8,7 +8,6 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.history.instance :refer [handler]]
     [blaze.interaction.history.instance-spec]
-    [blaze.middleware.fhir.metrics-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -53,11 +52,10 @@
 
       (is (= 404 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "not-found")))
 
   (testing "returns history with one patient"
     (let [{:keys [status body]}
