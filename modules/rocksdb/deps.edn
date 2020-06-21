@@ -14,10 +14,10 @@
     {:mvn/version "0.4.5"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-590"}
+    {:mvn/version "1.0.632"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}}
+    {:mvn/version "1.0.0"}}
 
    :main-opts
    ["-m" "kaocha.runner"]}

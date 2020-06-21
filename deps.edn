@@ -77,7 +77,7 @@
     {:mvn/version "0.4.5"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-590"}
+    {:mvn/version "1.0.632"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -86,7 +86,7 @@
     {:mvn/version "0.0.8"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}
+    {:mvn/version "1.0.0"}
 
     org.clojure/tools.namespace
     {:mvn/version "0.3.1"}}
