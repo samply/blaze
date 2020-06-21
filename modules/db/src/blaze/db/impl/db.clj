@@ -4,7 +4,6 @@
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
-    [blaze.db.impl.index.resource :as resource]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
     [blaze.db.impl.protocols :as p]
     [blaze.db.kv :as kv])
@@ -49,11 +48,6 @@
 
 
   ;; ---- Instance-Level Functions --------------------------------------------
-
-  (-resource-exists? [this type id]
-    (if-let [resource (p/-resource this type id)]
-      (not (resource/deleted? resource))
-      false))
 
   (-resource [_ type id]
     (with-open [snapshot (kv/new-snapshot (:kv-store node))

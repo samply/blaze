@@ -32,7 +32,7 @@
     {:syntax :bracket}))
 
 
-(defn handler-with [txs]
+(defn- handler-with [txs]
   (handler (mem-node-with txs)))
 
 

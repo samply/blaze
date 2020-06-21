@@ -102,14 +102,28 @@
     {:syntax :bracket}))
 
 
-(deftest type-url-test
+(deftest type-url
   (is (= "base-url/Patient" (fhir-util/type-url router "Patient"))))
 
 
-(deftest instance-url-test
+(deftest instance-url
   (is (= "base-url/Patient/0" (fhir-util/instance-url router "Patient" "0"))))
 
 
-(deftest versioned-instance-url-test
+(deftest versioned-instance-url
   (is (= "base-url/Patient/0/1"
          (fhir-util/versioned-instance-url router "Patient" "0" "1"))))
+
+
+(deftest etag->t
+  (testing "accepts nil"
+    (is (nil? (fhir-util/etag->t nil))))
+
+  (testing "valid ETag"
+    (is (= 1 (fhir-util/etag->t "W/\"1\""))))
+
+  (testing "invalid ETag"
+    (are [s] (nil? (fhir-util/etag->t s))
+      "foo"
+      "W/1"
+      "W/\"a\"")))

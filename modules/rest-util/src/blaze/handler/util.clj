@@ -50,6 +50,7 @@
     ::anom/incorrect "invalid"
     ::anom/not-found "not-found"
     ::anom/unsupported "not-supported"
+    ::anom/conflict "conflict"
     "exception"))
 
 
@@ -80,7 +81,7 @@
       (assoc :expression [expression]))]})
 
 
-(defn- status [category]
+(defn- category->status [category]
   (case category
     ::anom/incorrect 400
     ::anom/not-found 404
@@ -102,7 +103,7 @@
         http://terminology.hl7.org/CodeSystem/operation-outcome
   * :fhir.issue/expression - will go into `OperationOutcome.issue.expression`"
   {:arglists '([error])}
-  [{::anom/keys [category] :as error}]
+  [{::anom/keys [category] :http/keys [status] :as error}]
   (cond
     category
     (do
@@ -112,7 +113,7 @@
           (log/error error)
           (log/warn error)))
       (-> (ring/response (operation-outcome error))
-          (ring/status (status category))))
+          (ring/status (or status (category->status category)))))
 
     (instance? Throwable error)
     (if (::anom/category (ex-data error))
@@ -144,7 +145,7 @@
           ::anom/fault
           (log/error error)
           (log/warn error)))
-      {:status (str (status category))
+      {:status (str (category->status category))
        :outcome (operation-outcome error)})
 
     (instance? Throwable error)

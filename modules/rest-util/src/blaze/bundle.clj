@@ -2,6 +2,7 @@
   "FHIR Bundle specific stuff."
   (:require
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.handler.fhir.util :as fhir-util]
     [reitit.core :as reitit]))
 
 
@@ -97,8 +98,9 @@
 
 
 (defmethod entry-tx-op "PUT"
-  [{:keys [resource]}]
-  [:put resource])
+  [{{if-match :ifMatch} :request :keys [resource]}]
+  (let [t (fhir-util/etag->t if-match)]
+    (cond-> [:put resource] t (conj t))))
 
 
 (defmethod entry-tx-op "DELETE"

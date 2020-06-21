@@ -49,7 +49,7 @@
 
 (defmethod verify-tx-cmd :create
   [_ t res [_ type id hash]]
-  (log/trace "verify-tx-cmd :create" type id)
+  (log/trace "verify-tx-cmd :create" (str type "/" id))
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-create")]
     (let [tid (codec/tid type)]
       (-> res
@@ -58,9 +58,15 @@
           (update-in [:stats tid :total] (fnil inc 0))))))
 
 
+(defn- verify-tx-cmd-put-msg [type id matches]
+  (if matches
+    (format "verify-tx-cmd :put %s/%s matches-t: %d" type id matches)
+    (format "verify-tx-cmd :put %s/%s" type id)))
+
+
 (defmethod verify-tx-cmd :put
   [resource-as-of-iter t res [_ type id new-hash matches]]
-  (log/trace "verify-tx-cmd :put" type id)
+  (log/trace (verify-tx-cmd-put-msg type id matches))
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-put")]
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)
@@ -77,12 +83,13 @@
           (codec/tx-error-entries
             t
             {::anom/category ::anom/conflict
-             ::anom/message (format "put mismatch for %s/%s" type id)}))))))
+             ::anom/message (format "Precondition `W/\"%d\"` failed on `%s/%s`." matches type id)
+             :http/status 412}))))))
 
 
 (defmethod verify-tx-cmd :delete
   [resource-as-of-iter t res [_ type id hash]]
-  (log/trace "verify-tx-cmd :delete" type id)
+  (log/trace "verify-tx-cmd :delete" (str type "/" id))
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-delete")]
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)

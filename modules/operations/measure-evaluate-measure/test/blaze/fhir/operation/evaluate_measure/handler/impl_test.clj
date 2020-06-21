@@ -32,7 +32,7 @@
     {:syntax :bracket}))
 
 
-(defn handler-with [txs]
+(defn- handler-with [txs]
   (handler clock (mem-node-with txs) executor))
 
 

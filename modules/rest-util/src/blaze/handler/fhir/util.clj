@@ -84,3 +84,10 @@
         (reitit/match-by-name
           router (keyword type "versioned-instance") {:id id :vid vid})]
     (str base-url path)))
+
+
+(defn etag->t [etag]
+  (when etag
+    (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
+      (when t
+        (Long/parseLong t)))))

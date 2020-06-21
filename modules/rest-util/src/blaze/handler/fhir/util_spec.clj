@@ -42,3 +42,13 @@
   :args (s/cat :router reitit/router? :type :blaze.resource/resourceType
                :id :blaze.resource/id)
   :ret string?)
+
+
+(s/fdef util/versioned-instance-url
+  :args (s/cat :router reitit/router? :type string? :id string? :vid string?)
+  :ret string?)
+
+
+(s/fdef util/etag->t
+  :args (s/cat :etag (s/nilable string?))
+  :ret (s/nilable :blaze.db/t))
