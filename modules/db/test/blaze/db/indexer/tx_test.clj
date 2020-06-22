@@ -75,7 +75,7 @@
     (is-entries=
       (tx/verify-tx-cmds
         empty-store 1 now
-        [[:put "Patient" "0" (codec/hash patient-0)]])
+        [[:put "Patient" "0" (codec/hash patient-0) []]])
       (into
         (codec/tx-success-entries 1 now)
         (let [value (codec/resource-as-of-value (codec/hash patient-0) (codec/state 1 :put))]
@@ -95,7 +95,7 @@
     (is-entries=
       (tx/verify-tx-cmds
         store-patient-0 2 now
-        [[:put "Patient" "0" (codec/hash patient-0-v2)]])
+        [[:put "Patient" "0" (codec/hash patient-0-v2) []]])
       (into
         (codec/tx-success-entries 2 now)
         (let [value (codec/resource-as-of-value (codec/hash patient-0-v2) (codec/state 2 :put))]
@@ -115,7 +115,7 @@
     (is-entries=
       (tx/verify-tx-cmds
         store-patient-0 2 now
-        [[:put "Patient" "0" (codec/hash patient-0-v2) 1]])
+        [[:put "Patient" "0" (codec/hash patient-0-v2) [] 1]])
       (into
         (codec/tx-success-entries 2 now)
         (let [value (codec/resource-as-of-value (codec/hash patient-0-v2) (codec/state 2 :put))]
@@ -156,7 +156,7 @@
     (is-entries=
       (tx/verify-tx-cmds
         store-patient-0 2 now
-        [[:put "Patient" "1" (codec/hash patient-1)]])
+        [[:put "Patient" "1" (codec/hash patient-1) []]])
       (into
         (codec/tx-success-entries 2 now)
         (let [value (codec/resource-as-of-value (codec/hash patient-1) (codec/state 1 :put))]
@@ -176,7 +176,7 @@
     (is-entries=
       (tx/verify-tx-cmds
         store-patient-0 2 now
-        [[:put "Patient" "0" (codec/hash patient-1) 0]])
+        [[:put "Patient" "0" (codec/hash patient-1) [] 0]])
       (codec/tx-error-entries
         2
         {::anom/category ::anom/conflict

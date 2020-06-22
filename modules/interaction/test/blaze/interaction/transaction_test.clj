@@ -383,6 +383,29 @@
         [:issue 0 :diagnostics] := "Duplicate resource `Patient/0`.")))
 
 
+  (testing "Returns Error violated referential integrity"
+    (let [{:keys [status body]}
+          @((handler-with [])
+            {:body
+             {:resourceType "Bundle"
+              :type "transaction"
+              :entry
+              [{:resource
+                {:resourceType "Observation" :id "0"
+                 :subject {:reference "Patient/0"}}
+                :request
+                {:method "POST"
+                 :url "Observation"}}]}})]
+
+      (is (= 409 status))
+
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "conflict"
+        [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
+
+
   (testing "On newly created resource of a update in transaction"
     (let [resource
           {:resourceType "Patient"

@@ -1,11 +1,10 @@
 (ns blaze.db.tx-log.local-spec
   (:require
-    [blaze.db.api-spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.indexer-spec]
-    [blaze.db.indexer.tx-spec]
     [blaze.db.spec]
     [blaze.db.tx-log.local :as tx-log]
+    [blaze.db.tx-log.local.references-spec]
     [clojure.spec.alpha :as s])
   (:import
     [java.time Clock]))

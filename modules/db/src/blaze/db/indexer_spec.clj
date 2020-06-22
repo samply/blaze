@@ -26,7 +26,8 @@
   (s/cat :cmd #{:create}
          :type :blaze.resource/resourceType
          :id :blaze.resource/id
-         :hash :blaze.resource/hash))
+         :hash :blaze.resource/hash
+         :references (s/coll-of :blaze.db/local-ref)))
 
 
 (defmethod tx-cmd :put
@@ -35,6 +36,7 @@
          :type :blaze.resource/resourceType
          :id :blaze.resource/id
          :hash :blaze.resource/hash
+         :references (s/coll-of :blaze.db/local-ref)
          :matches (s/? :blaze.db/t)))
 
 

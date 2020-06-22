@@ -67,6 +67,21 @@
         [:issue 0 :code] := "invariant"
         [:issue 0 :diagnostics] := "Resource invalid.")))
 
+  (testing "Returns Error violated referential integrity"
+    (let [{:keys [status body]}
+          @((handler-with [])
+            {::reitit/match {:data {:fhir.resource/type "Observation"}}
+             :body {:resourceType "Observation" :id "0"
+                    :subject {:reference "Patient/0"}}})]
+
+      (is (= 409 status))
+
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "conflict"
+        [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
+
   (testing "On newly created resource"
     (testing "with no Prefer header"
       (with-redefs
