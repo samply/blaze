@@ -67,37 +67,174 @@
 
 (deftest submit-tx
   (testing "create"
-    (let [node (new-node)]
-      @(d/submit-tx node [[:create {:resourceType "Patient" :id "0"}]])
-      (given (d/resource (d/db node) "Patient" "0")
-        :resourceType := "Patient"
-        :id := "0"
-        [:meta :versionId] := "1"
-        [meta :blaze.db/op] := :create)))
+    (testing "one Patient"
+      (let [node (new-node)]
+        @(d/submit-tx node [[:create {:resourceType "Patient" :id "0"}]])
+
+        (given (d/resource (d/db node) "Patient" "0")
+          :resourceType := "Patient"
+          :id := "0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :create)))
+
+    (testing "one Patient with one Observation"
+      (let [node (new-node)]
+        @(d/submit-tx
+           node
+           ;; the create ops are purposely disordered in order to test the
+           ;; reference dependency ordering algorithm
+           [[:create {:resourceType "Observation" :id "0"
+                      :subject {:reference "Patient/0"}}]
+            [:create {:resourceType "Patient" :id "0"}]])
+
+        (given (d/resource (d/db node) "Patient" "0")
+          :resourceType := "Patient"
+          :id := "0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :create)
+
+        (given (d/resource (d/db node) "Observation" "0")
+          :resourceType := "Observation"
+          :id := "0"
+          [:subject :reference] := "Patient/0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :create))))
 
   (testing "put"
-    (let [node (new-node)]
-      @(d/submit-tx node [[:put {:resourceType "Patient" :id "0"}]])
-      (given (d/resource (d/db node) "Patient" "0")
-        :resourceType := "Patient"
-        :id := "0"
-        [:meta :versionId] := "1"
-        [meta :blaze.db/op] := :put)))
+    (testing "one Patient"
+      (let [node (new-node)]
+        @(d/submit-tx node [[:put {:resourceType "Patient" :id "0"}]])
+
+        (given (d/resource (d/db node) "Patient" "0")
+          :resourceType := "Patient"
+          :id := "0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :put)))
+
+    (testing "one Patient with one Observation"
+      (let [node (new-node)]
+        @(d/submit-tx
+           node
+           ;; the create ops are purposely disordered in order to test the
+           ;; reference dependency ordering algorithm
+           [[:put {:resourceType "Observation" :id "0"
+                   :subject {:reference "Patient/0"}}]
+            [:put {:resourceType "Patient" :id "0"}]])
+
+        (given (d/resource (d/db node) "Patient" "0")
+          :resourceType := "Patient"
+          :id := "0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :put)
+
+        (given (d/resource (d/db node) "Observation" "0")
+          :resourceType := "Observation"
+          :id := "0"
+          [:subject :reference] := "Patient/0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :put)))
+
+    (testing "Diamond Reference Dependencies"
+      (let [node (new-node)]
+        @(d/submit-tx
+           node
+           ;; the create ops are purposely disordered in order to test the
+           ;; reference dependency ordering algorithm
+           [[:put {:resourceType "List" :id "0"
+                   :entry
+                   [{:item {:reference "Observation/0"}}
+                    {:item {:reference "Observation/1"}}]}]
+            [:put {:resourceType "Observation" :id "0"
+                   :subject {:reference "Patient/0"}}]
+            [:put {:resourceType "Observation" :id "1"
+                   :subject {:reference "Patient/0"}}]
+            [:put {:resourceType "Patient" :id "0"}]])
+
+        (given (d/resource (d/db node) "Patient" "0")
+          :resourceType := "Patient"
+          :id := "0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :put)
+
+        (given (d/resource (d/db node) "Observation" "0")
+          :resourceType := "Observation"
+          :id := "0"
+          [:subject :reference] := "Patient/0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :put)
+
+        (given (d/resource (d/db node) "Observation" "1")
+          :resourceType := "Observation"
+          :id := "1"
+          [:subject :reference] := "Patient/0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :put)
+
+        (given (d/resource (d/db node) "List" "0")
+          :resourceType := "List"
+          :id := "0"
+          [:entry 0 :item :reference] := "Observation/0"
+          [:entry 1 :item :reference] := "Observation/1"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/op] := :put))))
 
   (testing "a transaction with duplicate resources fails"
     (testing "two puts"
-      (given @(-> (d/submit-tx (new-node) [[:put {:resourceType "Patient" :id "0"}]
-                                           [:put {:resourceType "Patient" :id "0"}]])
+      (given @(-> (d/submit-tx
+                    (new-node)
+                    [[:put {:resourceType "Patient" :id "0"}]
+                     [:put {:resourceType "Patient" :id "0"}]])
                   (md/catch' identity))
         ::anom/category := ::anom/incorrect
         ::anom/message := "Duplicate resource `Patient/0`."))
 
     (testing "one put and one delete"
-      (given @(-> (d/submit-tx (new-node) [[:put {:resourceType "Patient" :id "0"}]
-                                           [:delete "Patient" "0"]])
+      (given @(-> (d/submit-tx
+                    (new-node)
+                    [[:put {:resourceType "Patient" :id "0"}]
+                     [:delete "Patient" "0"]])
                   (md/catch' identity))
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Duplicate resource `Patient/0`."))))
+        ::anom/message := "Duplicate resource `Patient/0`.")))
+
+  (testing "a transaction violating referential integrity fails"
+    (testing "creating an Observation were the subject doesn't exist"
+      (testing "create"
+        (given @(-> (d/submit-tx
+                      (new-node)
+                      [[:create {:resourceType "Observation" :id "0"
+                                 :subject {:reference "Patient/0"}}]])
+                    (md/catch' identity))
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))
+
+      (testing "put"
+        (given @(-> (d/submit-tx
+                      (new-node)
+                      [[:put {:resourceType "Observation" :id "0"
+                              :subject {:reference "Patient/0"}}]])
+                    (md/catch' identity))
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
+
+    (testing "creating a List were the entry item will be deleted in the same transaction"
+      (let [node (new-node)]
+        @(d/submit-tx
+           node
+           [[:create {:resourceType "Observation" :id "0"}]
+            [:create {:resourceType "Observation" :id "1"}]])
+
+        (given @(-> (d/submit-tx
+                      node
+                      [[:create
+                        {:resourceType "List" :id "0"
+                         :entry
+                         [{:item {:reference "Observation/0"}}
+                          {:item {:reference "Observation/1"}}]}]
+                       [:delete "Observation" "1"]])
+                    (md/catch' identity))
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`.")))))
 
 
 (deftest node
@@ -827,6 +964,10 @@
     (testing "item"
       (testing "with no modifier"
         (let [node (new-node)]
+          @(d/submit-tx
+             node
+             [[:put {:resourceType "Patient" :id "0"}]
+              [:put {:resourceType "Patient" :id "1"}]])
           @(d/submit-tx
              node
              [[:put {:resourceType "List"

@@ -8,6 +8,7 @@
     [blaze.db.kv :as kv]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
@@ -40,6 +41,39 @@
   (fn [_ _ _ [op]] op))
 
 
+(defn- resource-exists? [raoi type id t]
+  (let [[_ state] (resource-as-of/hash-state-t raoi (codec/tid type) (codec/id-bytes id) t)]
+    (and (some? state) (not (identical? :delete (codec/state->op state))))))
+
+
+(defn- referential-integrity-anomaly-delete [[src-type src-id] type id]
+  {::anom/category ::anom/conflict
+   ::anom/message (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`." type id src-type src-id)})
+
+
+(defn- referential-integrity-anomaly [type id]
+  {::anom/category ::anom/conflict
+   ::anom/message (format "Referential integrity violated. Resource `%s/%s` doesn't exist." type id)})
+
+
+(defn- check-referential-integrity
+  [raoi t {:keys [new-resources del-resources]} source references]
+  (reduce
+    (fn [ret [type id :as reference]]
+      (cond
+        (contains? del-resources reference)
+        (reduced (referential-integrity-anomaly-delete source type id))
+
+        (or (contains? new-resources reference)
+            (resource-exists? raoi type id t))
+        ret
+
+        :else
+        (reduced (referential-integrity-anomaly type id))))
+    nil
+    references))
+
+
 (defn- entries [tid id t hash num-changes op]
   (let [value (codec/resource-as-of-value hash (codec/state (inc num-changes) op))]
     [[:resource-as-of-index (codec/resource-as-of-key tid id t) value]
@@ -47,15 +81,32 @@
      [:system-as-of-index (codec/system-as-of-key t tid id) value]]))
 
 
+(defn- format-references [references]
+  (->> references
+       (map (fn [[type id]] (format "%s/%s" type id)))
+       (str/join ", ")))
+
+
+(defn- verify-tx-cmd-create-msg [type id references]
+  (if (seq references)
+    (format "verify-tx-cmd :create %s/%s references: %s" type id
+            (format-references references))
+    (format "verify-tx-cmd :create %s/%s" type id)))
+
+
 (defmethod verify-tx-cmd :create
-  [_ t res [_ type id hash]]
-  (log/trace "verify-tx-cmd :create" (str type "/" id))
+  [raoi t res [_ type id hash references]]
+  (log/trace (verify-tx-cmd-create-msg type id references))
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-create")]
-    (let [tid (codec/tid type)]
-      (-> res
-          (update :entries into (entries (codec/tid type) (codec/id-bytes id) t hash 0 :create))
-          (update-in [:stats tid :num-changes] (fnil inc 0))
-          (update-in [:stats tid :total] (fnil inc 0))))))
+    (let [check-res (check-referential-integrity raoi t res [type id] references)]
+      (if (::anom/category check-res)
+        (reduced (codec/tx-error-entries t check-res))
+        (let [tid (codec/tid type)]
+          (-> res
+              (update :entries into (entries (codec/tid type) (codec/id-bytes id) t hash 0 :create))
+              (update :new-resources conj [type id])
+              (update-in [:stats tid :num-changes] (fnil inc 0))
+              (update-in [:stats tid :total] (fnil inc 0))))))))
 
 
 (defn- verify-tx-cmd-put-msg [type id matches]
@@ -65,51 +116,58 @@
 
 
 (defmethod verify-tx-cmd :put
-  [resource-as-of-iter t res [_ type id new-hash matches]]
+  [raoi t res [_ type id new-hash references matches]]
   (log/trace (verify-tx-cmd-put-msg type id matches))
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-put")]
-    (let [tid (codec/tid type)
-          id-bytes (codec/id-bytes id)
-          [_ state old-t] (resource-as-of/hash-state-t resource-as-of-iter tid id-bytes t)
-          num-changes (or (some-> state codec/state->num-changes) 0)]
-      (if (or (nil? matches) (= matches old-t))
-        (cond->
-          (-> res
-              (update :entries into (entries tid id-bytes t new-hash num-changes :put))
-              (update-in [:stats tid :num-changes] (fnil inc 0)))
-          (nil? old-t)
-          (update-in [:stats tid :total] (fnil inc 0)))
-        (reduced
-          (codec/tx-error-entries
-            t
-            {::anom/category ::anom/conflict
-             ::anom/message (format "Precondition `W/\"%d\"` failed on `%s/%s`." matches type id)
-             :http/status 412}))))))
+    (let [check-res (check-referential-integrity raoi t res [type id] references)]
+      (if (::anom/category check-res)
+        (reduced (codec/tx-error-entries t check-res))
+        (let [tid (codec/tid type)
+              id-bytes (codec/id-bytes id)
+              [_ state old-t] (resource-as-of/hash-state-t raoi tid id-bytes t)
+              num-changes (or (some-> state codec/state->num-changes) 0)]
+          (if (or (nil? matches) (= matches old-t))
+            (cond->
+              (-> res
+                  (update :entries into (entries tid id-bytes t new-hash num-changes :put))
+                  (update :new-resources conj [type id])
+                  (update-in [:stats tid :num-changes] (fnil inc 0)))
+              (nil? old-t)
+              (update-in [:stats tid :total] (fnil inc 0)))
+            (reduced
+              (codec/tx-error-entries
+                t
+                {::anom/category ::anom/conflict
+                 ::anom/message (format "Precondition `W/\"%d\"` failed on `%s/%s`." matches type id)
+                 :http/status 412}))))))))
 
 
 (defmethod verify-tx-cmd :delete
-  [resource-as-of-iter t res [_ type id hash]]
+  [raoi t res [_ type id hash]]
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
   (with-open [_ (prom/timer tx-indexer-duration-seconds "verify-tx-cmd-delete")]
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)
-          [_ state] (resource-as-of/hash-state-t resource-as-of-iter tid id-bytes t)
+          [_ state] (resource-as-of/hash-state-t raoi tid id-bytes t)
           num-changes (or (some-> state codec/state->num-changes) 0)]
       (-> res
           (update :entries into (entries tid id-bytes t hash num-changes :delete))
+          (update :del-resources conj [type id])
           (update-in [:stats tid :num-changes] (fnil inc 0))
           (update-in [:stats tid :total] (fnil dec 0))))))
 
 
-(defn- resource-as-of-iter ^Closeable [snapshot]
+(defn- raoi ^Closeable [snapshot]
   (kv/new-iterator snapshot :resource-as-of-index))
 
 
 (defn- verify-tx-cmds* [snapshot t tx-instant tx-cmds]
-  (with-open [iter (resource-as-of-iter snapshot)]
+  (with-open [raoi (raoi snapshot)]
     (reduce
-      (partial verify-tx-cmd iter t)
-      {:entries (codec/tx-success-entries t tx-instant)}
+      (partial verify-tx-cmd raoi t)
+      {:entries (codec/tx-success-entries t tx-instant)
+       :new-resources #{}
+       :del-resources #{}}
       tx-cmds)))
 
 

@@ -1,7 +1,10 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/coll
+ {aysylu/loom
+  {:mvn/version "1.0.2"}
+
+  blaze/coll
   {:local/root "../coll"}
 
   blaze/db-protocols

@@ -71,7 +71,9 @@
   (let [[_ [m]] (s2/form spec)] m))
 
 
-(defn cardinality [spec]
+(defn cardinality
+  "Returns either :many or :one."
+  [spec]
   (if (and (sequential? spec) (= `s2/coll-of (first spec)))
     :many
     :one))

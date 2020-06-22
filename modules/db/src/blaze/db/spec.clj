@@ -85,3 +85,7 @@
 
 (s/def :blaze.db.query/clause
   (s/coll-of string? :min-count 2))
+
+
+(s/def :blaze.db/local-ref
+  (s/tuple :blaze.resource/resourceType :blaze.resource/id))
