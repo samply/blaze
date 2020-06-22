@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
-Latest release: [v0.9.0-alpha.9][5]
+Latest release: [v0.8.0-beta.3][5]
 
 ## Quick Start
 
@@ -23,7 +23,7 @@ In order to run Blaze just execute the following:
 ### Docker
 
 ```bash
-docker run -p 8080:8080 -v <local-dir>:/data -e DB_DIR="/data/db" samply/blaze:0.9.0-alpha.9
+docker run -p 8080:8080 -v <local-dir>:/data -e DB_DIR="/data/db" samply/blaze:0.8.0-beta.3
 ```
 
 Please replace `<local-dir>` with a directory in which Blaze should store it's database files. It's important to specify a `DB_DIR` which resides inside the mounted volume, because Blaze needs to create its database directory itself. Blaze will use any previously created database directory on subsequent starts.
@@ -34,14 +34,14 @@ For security reasons, the container is executed as a non-root user (65532:65532)
 # Use ~/blaze-data on your host to store the database files
 mkdir ~/blaze-data
 sudo chown -R 65532:65532 ~/blaze-data
-docker run -p 8080:8080 -v ~/blaze-data:/data -e DB_DIR="/data/db" samply/blaze:0.9.0-alpha.9
+docker run -p 8080:8080 -v ~/blaze-data:/data -e DB_DIR="/data/db" samply/blaze:0.8.0-beta.3
 ```
 
 If you use a Docker volume, mount it on `/app/data` and make sure `DB_DIR` is set to `/app/data/db` (the default value), because the non-root user only has write-permissions inside the `/app` directory.
 Using a Docker volume instead of a host directory mount makes it unnecessary to set the file permissions:
 
 ```bash
-docker run -p 8080:8080 -v blaze-data-volume:/app/data -e DB_DIR="/app/data/db" samply/blaze:0.9.0-alpha.9
+docker run -p 8080:8080 -v blaze-data-volume:/app/data -e DB_DIR="/app/data/db" samply/blaze:0.8.0-beta.3
 ```
 
 Note that you can always revert back to running the container as root by specifying `-u root` for `docker run` or setting the `services[].user: root` in Docker compose.
@@ -49,8 +49,8 @@ Note that you can always revert back to running the container as root by specify
 ### Java
 
 ```bash
-wget https://github.com/samply/blaze/releases/download/v0.9.0-alpha.9/blaze-0.9.0-alpha.9-standalone.jar
-java -jar blaze-0.9.0-alpha.9-standalone.jar -m blaze.core
+wget https://github.com/samply/blaze/releases/download/v0.8.0-beta.3/blaze-0.8.0-beta.3-standalone.jar
+java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
 ```
 
 This will create a directory called `db` inside the current working directory.
@@ -71,7 +71,7 @@ The following table contains all of them:
 
 | Name | Default | Since | Description |
 | :--- | :--- | :--- | :--- |
-| DB\_DIR | db | v0.8 | The directory were the database files are stored. |
+| DB\_DIR | db | v0.8 | The directory were the database files are stored. This directory must not exist on the first start of Blaze and will be created by Blaze. However the parent directory has to exist. |
 | DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
 | DB\_RESOURCE\_CACHE\_SIZE | 10000 | v0.8 | The size of the resource cache of the DB in number of resources. |
 | DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
@@ -147,7 +147,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.9.0-alpha.9>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.8.0-beta.3>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
