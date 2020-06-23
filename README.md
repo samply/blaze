@@ -30,10 +30,29 @@ docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.8.0-beta.3
 Blaze will create the directory `db` inside the `blaze-data` volume on its first start and use the same database directory on subsequent starts.
 
 
-### Java
+### Standalone Java without Docker
+
+In case Docker isn't available, Blaze can be run on a machine having OpenJDK 11 installed. Blaze is tested with [AdoptOpenJDK][11].
 
 ```bash
 wget https://github.com/samply/blaze/releases/download/v0.8.0-beta.3/blaze-0.8.0-beta.3-standalone.jar
+java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
+```
+
+Blaze will run with an in-memory, volatile database for testing and demo purposes.
+
+Running Blaze with durable storage requires to set `DB_DIR`. 
+
+Under Linux/macOS:
+
+```bash
+DB_DIR=db java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
+```
+
+Under Windows:
+ 
+```bash
+$Env:DB_DIR="db"
 java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
 ```
 
@@ -55,7 +74,7 @@ The following table contains all of them:
 
 | Name | Default | Since | Description |
 | :--- | :--- | :--- | :--- |
-| DB\_DIR | db | v0.8 | The directory were the database files are stored. This directory must not exist on the first start of Blaze and will be created by Blaze. However the parent directory has to exist. |
+| DB\_DIR | – | v0.8 | The directory were the database files are stored. This directory must not exist on the first start of Blaze and will be created by Blaze. However the parent directory has to exist. The default is to use an in-memory, volatile database.|
 | DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
 | DB\_RESOURCE\_CACHE\_SIZE | 10000 | v0.8 | The size of the resource cache of the DB in number of resources. |
 | DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
@@ -137,3 +156,4 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [8]: <https://www.yourkit.com/youmonitor/>
 [9]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [10]: <https://github.com/facebook/rocksdb/wiki/RocksDB-Basics#multi-threaded-compactions>
+[11]: <https://adoptopenjdk.net>
