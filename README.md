@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
-Latest release: [v0.8.0-beta.3][5]
+Latest release: [v0.9.0-alpha.9][5]
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ In order to run Blaze just execute the following:
 
 ```bash
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.8.0-beta.3
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.9.0-alpha.9
 ```
 
 Blaze will create the directory `db` inside the `blaze-data` volume on its first start and use the same database directory on subsequent starts.
@@ -35,8 +35,8 @@ Blaze will create the directory `db` inside the `blaze-data` volume on its first
 In case Docker isn't available, Blaze can be run on a machine having OpenJDK 11 installed. Blaze is tested with [AdoptOpenJDK][11].
 
 ```bash
-wget https://github.com/samply/blaze/releases/download/v0.8.0-beta.3/blaze-0.8.0-beta.3-standalone.jar
-java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
+wget https://github.com/samply/blaze/releases/download/v0.9.0-alpha.9/blaze-0.9.0-alpha.9-standalone.jar
+java -jar blaze-0.9.0-alpha.9-standalone.jar -m blaze.core
 ```
 
 Blaze will run with an in-memory, volatile database for testing and demo purposes.
@@ -46,14 +46,14 @@ Running Blaze with durable storage requires to set `DB_DIR`.
 Under Linux/macOS:
 
 ```bash
-DB_DIR=db java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
+DB_DIR=db java -jar blaze-0.9.0-alpha.9-standalone.jar -m blaze.core
 ```
 
 Under Windows:
  
 ```bash
 $Env:DB_DIR="db"
-java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
+java -jar blaze-0.9.0-alpha.9-standalone.jar -m blaze.core
 ```
 
 This will create a directory called `db` inside the current working directory.
@@ -150,7 +150,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.8.0-beta.3>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.9.0-alpha.9>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
