@@ -23,7 +23,7 @@
   (format name-template (inc-and-get-thread-count name-template)))
 
 
-(defn cpu-bound-pool
+(defn manifold-cpu-bound-pool
   "Returns a thread pool with a fixed number of threads which is the number of
   available processors.
 
@@ -38,12 +38,9 @@
     e))
 
 
-(defn cpu-bound-dedicated-pool
+(defn cpu-bound-pool
   "Returns a thread pool with a fixed number of threads which is the number of
-  available processors.
-
-  If used with `manifold.executor/future-with`, following deferreds from
-  chaining are executed on the outer thread pool not on this one."
+  available processors."
   [name-template]
   (Executors/newFixedThreadPool
     (.availableProcessors (Runtime/getRuntime))
@@ -54,17 +51,13 @@
 
 (defn io-pool
   "Returns a thread pool with a fixed number of threads which is suitable for
-  I/O.
-
-  Sets `manifold.executor/executor-thread-local` to this executor to ensure
-  deferreds are always executed on this executor."
+  I/O."
   [n name-template]
-  (let [ep (promise)
-        e (Executors/newFixedThreadPool
-            n
-            (me/thread-factory #(thread-name name-template) ep))]
-    (deliver ep e)
-    e))
+  (Executors/newFixedThreadPool
+    n
+    (reify ThreadFactory
+      (newThread [_ r]
+        (Thread. ^Runnable r ^String (thread-name name-template))))))
 
 
 (defn single-thread-executor

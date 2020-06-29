@@ -1,7 +1,7 @@
 (ns blaze.db.tx-log.local.references-spec
   (:require
-    [blaze.db.spec]
     [blaze.db.tx-log.local.references :as references]
+    [blaze.db.tx-log.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]))
 

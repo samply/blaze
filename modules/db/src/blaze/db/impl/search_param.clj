@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :refer [throw-anom when-ok]]
     [blaze.coll.core :as coll]
+    [blaze.db.hash :as hash]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource :as resource]
@@ -20,8 +21,7 @@
     [taoensso.timbre :as log])
   (:import
     [java.time ZoneId]
-    [java.nio ByteBuffer])
-  (:refer-clojure :exclude [keys]))
+    [java.nio ByteBuffer]))
 
 
 (set! *warn-on-reflection* true)
@@ -66,8 +66,9 @@
 (def ^:private matches-hash-prefixes-filter
   (mapcat
     (fn [[resource hash-prefixes]]
-      (when (some #(bytes/starts-with? (resource/hash resource) %) hash-prefixes)
-        [resource]))))
+      (let [hash (hash/encode (resource/hash resource))]
+        (when (some #(bytes/starts-with? hash %) hash-prefixes)
+          [resource])))))
 
 
 (defn compartment-keys
@@ -283,7 +284,7 @@
               date-index-entries
               url
               (fn search-param-date-entry [lb ub]
-                (log/trace "search-param-value-entry" "date" code type id (codec/hex hash))
+                (log/trace "search-param-value-entry" "date" code type id hash)
                 [[:search-param-value-index
                   (codec/search-param-value-key
                     c-hash
@@ -396,7 +397,7 @@
               string-index-entries
               url
               (fn search-param-string-entry [value]
-                (log/trace "search-param-value-entry" "string" code value type id (codec/hex hash))
+                (log/trace "search-param-value-entry" "string" code value type id hash)
                 (let [value-bytes (codec/string value)]
                   [[:search-param-value-index
                     (codec/search-param-value-key
@@ -563,7 +564,7 @@
           url
           (fn search-param-token-entry [modifier value]
             (log/trace "search-param-value-entry" "token" code type id
-                       (codec/hex hash) (codec/hex value))
+                       hash (codec/hex value))
             (let [c-hash (c-hash-w-modifier c-hash code modifier)]
               (into
                 [[:search-param-value-index
@@ -716,7 +717,7 @@
               quantity-index-entries
               url
               (fn search-param-quantity-entry [unit value]
-                (log/trace "search-param-value-entry" "quantity" code unit value type id (codec/hex hash))
+                (log/trace "search-param-value-entry" "quantity" code unit value type id hash)
                 [[:search-param-value-index
                   (codec/search-param-value-key
                     c-hash

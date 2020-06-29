@@ -3,6 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
+    [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
@@ -10,7 +11,6 @@
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
@@ -73,7 +73,7 @@
         {{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
     (-> (handler-util/db node (fhir-util/t query-params))
-        (md/chain' #(handle router match query-params % type id)))))
+        (ac/then-apply #(handle router match query-params % type id)))))
 
 
 (defn handler [node]

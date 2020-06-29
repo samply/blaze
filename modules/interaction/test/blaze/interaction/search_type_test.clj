@@ -15,7 +15,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -56,7 +57,9 @@
 
 
 (defn- handler-with [txs]
-  (handler (mem-node-with txs)))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
 
 
 (defn- link-url [body link-relation]
@@ -66,9 +69,9 @@
 (deftest handler-test
   (testing "Returns all existing resources of type"
     (let [{:keys [status body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
-            {::reitit/router router
-             ::reitit/match patient-match})]
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+           {::reitit/router router
+            ::reitit/match patient-match})]
 
       (is (= 200 status))
 
@@ -94,10 +97,10 @@
 
   (testing "with param _summary equal to count"
     (let [{:keys [status body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
-            {::reitit/router router
-             ::reitit/match patient-match
-             :params {"_summary" "count"}})]
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+           {::reitit/router router
+            ::reitit/match patient-match
+            :params {"_summary" "count"}})]
 
       (is (= 200 status))
 
@@ -115,10 +118,10 @@
 
   (testing "with param _count equal to zero"
     (let [{:keys [status body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
-            {::reitit/router router
-             ::reitit/match patient-match
-             :params {"_count" "0"}})]
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+           {::reitit/router router
+            ::reitit/match patient-match
+            :params {"_count" "0"}})]
 
       (is (= 200 status))
 
@@ -135,9 +138,9 @@
         (is (empty? (:entry body))))))
 
   (testing "with two patients"
-    (let [node (mem-node-with
-                 [[[:put {:resourceType "Patient" :id "0"}]
-                   [:put {:resourceType "Patient" :id "1"}]]])]
+    (with-open [node (mem-node-with
+                       [[[:put {:resourceType "Patient" :id "0"}]
+                         [:put {:resourceType "Patient" :id "1"}]]])]
 
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
@@ -201,10 +204,10 @@
             (is (= 1 (count (:entry body)))))))))
 
   (testing "with three patients"
-    (let [node (mem-node-with
-                 [[[:put {:resourceType "Patient" :id "0"}]
-                   [:put {:resourceType "Patient" :id "1" :active true}]
-                   [:put {:resourceType "Patient" :id "2" :active true}]]])]
+    (with-open [node (mem-node-with
+                       [[[:put {:resourceType "Patient" :id "0"}]
+                         [:put {:resourceType "Patient" :id "1" :active true}]
+                         [:put {:resourceType "Patient" :id "2" :active true}]]])]
 
       (testing "search for active patients with _summary=count"
         (let [{:keys [body]}
@@ -283,12 +286,12 @@
 
   (testing "Id search"
     (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "Patient" :id "0"}]
-                [:put {:resourceType "Patient" :id "1"}]]])
-            {::reitit/router router
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}
-             :params {"_id" "0"}})]
+          ((handler-with
+             [[[:put {:resourceType "Patient" :id "0"}]
+               [:put {:resourceType "Patient" :id "1"}]]])
+           {::reitit/router router
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :params {"_id" "0"}})]
 
       (is (= 200 status))
 
@@ -314,13 +317,13 @@
 
   (testing "Multiple Id search"
     (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "Patient" :id "0"}]
-                [:put {:resourceType "Patient" :id "1"}]
-                [:put {:resourceType "Patient" :id "2"}]]])
-            {::reitit/router router
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}
-             :params {"_id" "0,2"}})]
+          ((handler-with
+             [[[:put {:resourceType "Patient" :id "0"}]
+               [:put {:resourceType "Patient" :id "1"}]
+               [:put {:resourceType "Patient" :id "2"}]]])
+           {::reitit/router router
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :params {"_id" "0,2"}})]
 
       (is (= 200 status))
 
@@ -354,14 +357,14 @@
 
   (testing "_list search"
     (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "Patient" :id "0"}]
-                [:put {:resourceType "Patient" :id "1"}]
-                [:put {:resourceType "List" :id "0"
-                       :entry [{:item {:reference "Patient/0"}}]}]]])
-            {::reitit/router router
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}
-             :params {"_list" "0"}})]
+          ((handler-with
+             [[[:put {:resourceType "Patient" :id "0"}]
+               [:put {:resourceType "Patient" :id "1"}]
+               [:put {:resourceType "List" :id "0"
+                      :entry [{:item {:reference "Patient/0"}}]}]]])
+           {::reitit/router router
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :params {"_list" "0"}})]
 
       (is (= 200 status))
 
@@ -387,14 +390,14 @@
 
   (testing "Patient identifier search"
     (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "Patient" :id "0"
-                       :identifier [{:value "0"}]}]
-                [:put {:resourceType "Patient" :id "1"
-                       :identifier [{:value "1"}]}]]])
-            {::reitit/router router
-             ::reitit/match patient-match
-             :params {"identifier" "0"}})]
+          ((handler-with
+             [[[:put {:resourceType "Patient" :id "0"
+                      :identifier [{:value "0"}]}]
+               [:put {:resourceType "Patient" :id "1"
+                      :identifier [{:value "1"}]}]]])
+           {::reitit/router router
+            ::reitit/match patient-match
+            :params {"identifier" "0"}})]
 
       (is (= 200 status))
 
@@ -419,26 +422,26 @@
 
   (testing "Patient language search"
     (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "Patient" :id "0"
-                       :communication
-                       [{:language
-                         {:coding
-                          [{:system "urn:ietf:bcp:47"
-                            :code "de"}]}}
-                        {:language
-                         {:coding
-                          [{:system "urn:ietf:bcp:47"
-                            :code "en"}]}}]}]
-                [:put {:resourceType "Patient" :id "1"
-                       :communication
-                       [{:language
-                         {:coding
-                          [{:system "urn:ietf:bcp:47"
-                            :code "de"}]}}]}]]])
-            {::reitit/router router
-             ::reitit/match patient-match
-             :params {"language" ["de" "en"]}})]
+          ((handler-with
+             [[[:put {:resourceType "Patient" :id "0"
+                      :communication
+                      [{:language
+                        {:coding
+                         [{:system "urn:ietf:bcp:47"
+                           :code "de"}]}}
+                       {:language
+                        {:coding
+                         [{:system "urn:ietf:bcp:47"
+                           :code "en"}]}}]}]
+               [:put {:resourceType "Patient" :id "1"
+                      :communication
+                      [{:language
+                        {:coding
+                         [{:system "urn:ietf:bcp:47"
+                           :code "de"}]}}]}]]])
+           {::reitit/router router
+            ::reitit/match patient-match
+            :params {"language" ["de" "en"]}})]
 
       (is (= 200 status))
 
@@ -462,12 +465,12 @@
 
   (testing "Library title search"
     (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "Library" :id "0" :title "ab"}]
-                [:put {:resourceType "Library" :id "1" :title "b"}]]])
-            {::reitit/router router
-             ::reitit/match {:data {:fhir.resource/type "Library"}}
-             :params {"title" "A"}})]
+          ((handler-with
+             [[[:put {:resourceType "Library" :id "0" :title "ab"}]
+               [:put {:resourceType "Library" :id "1" :title "b"}]]])
+           {::reitit/router router
+            ::reitit/match {:data {:fhir.resource/type "Library"}}
+            :params {"title" "A"}})]
 
       (is (= 200 status))
 
@@ -490,12 +493,12 @@
 
   #_(testing "Library title:contains search"
       (let [{:keys [status body]}
-            @((handler-with
-                [[[:put {:resourceType "Library" :id "0" :title "bab"}]
-                  [:put {:resourceType "Library" :id "1" :title "b"}]]])
-              {::reitit/router router
-               ::reitit/match {:data {:fhir.resource/type "Library"}}
-               :params {"title:contains" "A"}})]
+            ((handler-with
+               [[[:put {:resourceType "Library" :id "0" :title "bab"}]
+                 [:put {:resourceType "Library" :id "1" :title "b"}]]])
+             {::reitit/router router
+              ::reitit/match {:data {:fhir.resource/type "Library"}}
+              :params {"title:contains" "A"}})]
 
         (is (= 200 status))
 
@@ -518,14 +521,14 @@
 
   (testing "MeasureReport measure search"
     (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "MeasureReport" :id "0"
-                       :measure "http://server.com/Measure/0"}]]
-               [[:put {:resourceType "MeasureReport" :id "1"
-                       :measure "http://server.com/Measure/1"}]]])
-            {::reitit/router router
-             ::reitit/match measure-report-match
-             :params {"measure" "http://server.com/Measure/0"}})]
+          ((handler-with
+             [[[:put {:resourceType "MeasureReport" :id "0"
+                      :measure "http://server.com/Measure/0"}]]
+              [[:put {:resourceType "MeasureReport" :id "1"
+                      :measure "http://server.com/Measure/1"}]]])
+           {::reitit/router router
+            ::reitit/match measure-report-match
+            :params {"measure" "http://server.com/Measure/0"}})]
 
       (is (= 200 status))
 
@@ -644,24 +647,24 @@
 
   (testing "List item search"
     (let [{:keys [status body]}
-          @((handler-with
-              [[[:put {:resourceType "List"
-                       :id "id-123058"
-                       :entry
-                       [{:item
-                         {:identifier
-                          {:system "system-122917"
-                           :value "value-122931"}}}]}]
-                [:put {:resourceType "List"
-                       :id "id-143814"
-                       :entry
-                       [{:item
-                         {:identifier
-                          {:system "system-122917"
-                           :value "value-143818"}}}]}]]])
-            {::reitit/router router
-             ::reitit/match list-report-match
-             :params {"item:identifier" "system-122917|value-143818"}})]
+          ((handler-with
+             [[[:put {:resourceType "List"
+                      :id "id-123058"
+                      :entry
+                      [{:item
+                        {:identifier
+                         {:system "system-122917"
+                          :value "value-122931"}}}]}]
+               [:put {:resourceType "List"
+                      :id "id-143814"
+                      :entry
+                      [{:item
+                        {:identifier
+                         {:system "system-122917"
+                          :value "value-143818"}}}]}]]])
+           {::reitit/router router
+            ::reitit/match list-report-match
+            :params {"item:identifier" "system-122917|value-143818"}})]
 
       (is (= 200 status))
 

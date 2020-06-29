@@ -7,10 +7,8 @@
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
     [blaze.db.impl.iterators :as i]
     [blaze.db.impl.search-param :as search-param]
-    [blaze.db.kv :as kv]
-    [taoensso.nippy :as nippy])
+    [blaze.db.kv :as kv])
   (:import
-    [blaze.db.impl.index.resource Hash]
     [clojure.lang IReduceInit]))
 
 
@@ -20,10 +18,6 @@
 
 (defn tx [kv-store t]
   (resource/tx kv-store t))
-
-
-(defn load-resource-content [kv-store ^Hash hash]
-  (some-> (kv/get kv-store :resource-index (.hash hash)) (nippy/fast-thaw)))
 
 
 (defn- t-by-instant*

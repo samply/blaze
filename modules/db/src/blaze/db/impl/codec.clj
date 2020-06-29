@@ -1,19 +1,18 @@
 (ns blaze.db.impl.codec
   (:require
     [blaze.anomaly :refer [throw-anom]]
-    [cognitect.anomalies :as anom]
-    [taoensso.nippy :as nippy])
+    [blaze.db.hash :as hash]
+    [cheshire.core :as cheshire]
+    [cognitect.anomalies :as anom])
   (:import
-    [clojure.lang Keyword]
     [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
-    [com.google.common.hash Hashing PrimitiveSink]
+    [com.google.common.hash HashCode Hashing]
     [com.google.common.io BaseEncoding]
     [java.nio ByteBuffer]
     [java.nio.charset Charset StandardCharsets]
     [java.time Instant LocalDate LocalDateTime OffsetDateTime Year YearMonth
                ZoneId ZoneOffset]
-    [java.util Arrays List Map])
-  (:refer-clojure :exclude [hash]))
+    [java.util Arrays]))
 
 
 (set! *warn-on-reflection* true)
@@ -88,6 +87,12 @@
 
 ;; ---- SearchParamValue Index ------------------------------------------------
 
+(defn- hash-prefix ^bytes [^HashCode hash]
+  (let [bs (byte-array hash-prefix-size)]
+    (.writeBytesTo hash bs 0 hash-prefix-size)
+    bs))
+
+
 (defn search-param-value-key
   {:arglists '([c-hash tid value] [c-hash tid value id hash])}
   ([c-hash tid ^bytes value]
@@ -105,7 +110,7 @@
        (.put (byte 0))
        (.put id)
        (.put (byte (alength id)))
-       (.put hash 0 hash-prefix-size)
+       (.put (hash-prefix hash))
        (.array))))
 
 
@@ -123,17 +128,19 @@
              (+ 1 max-id-size 1 hash-prefix-size)))
 
 
-(defn decode-search-param-value-key [^ByteBuffer bb]
-  (let [id-size (.get bb (dec (- (.limit bb) hash-prefix-size)))
-        prefix (byte-array (- (.remaining bb) id-size 2 hash-prefix-size))
-        id (byte-array id-size)
-        hash-prefix (byte-array hash-prefix-size)]
-    (.get bb prefix)
-    (.get bb)
-    (.get bb id)
-    (.get bb)
-    (.get bb hash-prefix)
-    [prefix id hash-prefix]))
+(defn decode-search-param-value-key
+  ([] (ByteBuffer/allocateDirect 1024))
+  ([^ByteBuffer bb]
+   (let [id-size (.get bb (dec (- (.limit bb) hash-prefix-size)))
+         prefix (byte-array (- (.remaining bb) id-size 2 hash-prefix-size))
+         id (byte-array id-size)
+         hash-prefix (byte-array hash-prefix-size)]
+     (.get bb prefix)
+     (.get bb)
+     (.get bb id)
+     (.get bb)
+     (.get bb hash-prefix)
+     [prefix id hash-prefix])))
 
 
 
@@ -141,34 +148,36 @@
 
 (defn resource-value-key
   {:arglists '([tid id hash c-hash] [tid id hash c-hash value])}
-  ([tid ^bytes id ^bytes hash c-hash]
+  ([tid ^bytes id hash c-hash]
    (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
                                c-hash-size))
        (.putInt tid)
        (.put (byte (alength id)))
        (.put id)
-       (.put hash 0 hash-prefix-size)
+       (.put (if (bytes? hash) ^bytes hash (hash-prefix hash)))
        (.putInt c-hash)
        (.array)))
-  ([tid ^bytes id ^bytes hash c-hash ^bytes value]
+  ([tid ^bytes id hash c-hash ^bytes value]
    (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
                                c-hash-size (alength value)))
        (.putInt tid)
        (.put (byte (alength id)))
        (.put id)
-       (.put hash 0 hash-prefix-size)
+       (.put (if (bytes? hash) ^bytes hash (hash-prefix hash)))
        (.putInt c-hash)
        (.put value)
        (.array))))
 
 
-(defn decode-resource-value-key [^ByteBuffer bb]
-  (let [id-size (.get bb (+ (.position bb) tid-size))
-        prefix (byte-array (+ tid-size 1 id-size hash-prefix-size c-hash-size))
-        value (byte-array (- (.remaining bb) (alength prefix)))]
-    (.get bb prefix)
-    (.get bb value)
-    [prefix value]))
+(defn decode-resource-value-key
+  ([] (ByteBuffer/allocateDirect 1024))
+  ([^ByteBuffer bb]
+   (let [id-size (.get bb (+ (.position bb) tid-size))
+         prefix (byte-array (+ tid-size 1 id-size hash-prefix-size c-hash-size))
+         value (byte-array (- (.remaining bb) (alength prefix)))]
+     (.get bb prefix)
+     (.get bb value)
+     [prefix value])))
 
 
 
@@ -199,7 +208,7 @@
        (.put (byte 0))
        (.put id)
        (.put (byte (alength id)))
-       (.put hash 0 hash-prefix-size)
+       (.put (hash-prefix hash))
        (.array))))
 
 
@@ -218,7 +227,7 @@
        (.put co-res-id)
        (.putInt tid)
        (.put id)
-       (.put hash 0 hash-prefix-size)
+       (.put (hash-prefix hash))
        (.putInt sp-c-hash)
        (.array)))
   ([co-c-hash ^bytes co-res-id tid ^bytes id ^bytes hash sp-c-hash ^bytes value]
@@ -229,7 +238,7 @@
        (.put co-res-id)
        (.putInt tid)
        (.put id)
-       (.put hash 0 hash-prefix-size)
+       (.put (hash-prefix hash))
        (.putInt sp-c-hash)
        (.put value)
        (.array))))
@@ -297,7 +306,7 @@
     (.getInt bb (+ c-hash-size 1 co-res-id-size))))
 
 
-(def ^:const ^long compartment-resource-type-key-id-from
+(def ^:const ^int compartment-resource-type-key-id-from
   (+ (unchecked-inc-int c-hash-size) tid-size))
 
 
@@ -306,13 +315,20 @@
     (Arrays/copyOfRange k (unchecked-add-int compartment-resource-type-key-id-from co-res-id-size) (alength k))))
 
 
-(defn decode-compartment-resource-type-key [^ByteBuffer bb]
-  (let [co-res-id-size (.get bb c-hash-size)
-        prefix (byte-array (+ c-hash-size 1 co-res-id-size tid-size))
-        id (byte-array (- (.remaining bb) (alength prefix)))]
-    (.get bb prefix)
-    (.get bb id)
-    [prefix id]))
+(def ^:private ^:const ^int max-compartment-resource-type-key-size
+  (+ c-hash-size 1 max-id-size tid-size max-id-size))
+
+
+(defn decode-compartment-resource-type-key
+  ([]
+   (ByteBuffer/allocateDirect max-compartment-resource-type-key-size))
+  ([^ByteBuffer bb]
+   (let [co-res-id-size (.get bb c-hash-size)
+         prefix (byte-array (+ c-hash-size 1 co-res-id-size tid-size))
+         id (byte-array (- (.remaining bb) (alength prefix)))]
+     (.get bb prefix)
+     (.get bb id)
+     [prefix id])))
 
 
 ;; ---- ResourceAsOf Index ----------------------------------------------------
@@ -366,15 +382,19 @@
   (= 1 (bit-and state 1)))
 
 
+(def ^:private ^:const ^int resource-as-of-value-size
+  (+ hash-size state-size))
+
+
 (defn resource-as-of-value [hash state]
-  (-> (ByteBuffer/allocate (+ hash-size state-size))
-      (.put ^bytes hash)
+  (-> (ByteBuffer/allocate resource-as-of-value-size)
+      (.put (hash/encode hash))
       (.putLong state)
       (.array)))
 
 
 (defn resource-as-of-value->hash [^bytes v]
-  (Arrays/copyOfRange v 0 hash-size))
+  (HashCode/fromBytes (Arrays/copyOfRange v 0 hash-size)))
 
 
 (defn resource-as-of-value->state [v]
@@ -395,11 +415,15 @@
 (defn get-hash! [^ByteBuffer buf]
   (let [hash (byte-array hash-size)]
     (.get buf hash)
-    hash))
+    (HashCode/fromBytes hash)))
 
 
 (defn get-state! ^long [^ByteBuffer buf]
   (.getLong buf))
+
+
+(def ^:private ^:const ^int max-resource-as-of-key-size
+  (+ tid-size max-id-size t-size))
 
 
 (defn resource-as-of-kv-decoder
@@ -417,15 +441,19 @@
   after decoding."
   []
   (let [ib (byte-array max-id-size)]
-    (fn [^ByteBuffer kb ^ByteBuffer vb]
-      (ResourceAsOfKV.
-        (.getInt kb)
-        (let [id-size (- (.remaining kb) t-size)]
-          (.get kb ib 0 id-size)
-          (String. ib 0 id-size iso-8859-1))
-        (get-t! kb)
-        (get-hash! vb)
-        (get-state! vb)))))
+    (fn
+      ([]
+       [(ByteBuffer/allocateDirect max-resource-as-of-key-size)
+        (ByteBuffer/allocateDirect resource-as-of-value-size)])
+      ([^ByteBuffer kb ^ByteBuffer vb]
+       (ResourceAsOfKV.
+         (.getInt kb)
+         (let [id-size (- (.remaining kb) t-size)]
+           (.get kb ib 0 id-size)
+           (String. ib 0 id-size iso-8859-1))
+         (get-t! kb)
+         (get-hash! vb)
+         (get-state! vb))))))
 
 
 ;; ---- TypeAsOf Index --------------------------------------------------------
@@ -793,74 +821,6 @@
 
 
 
-;; ---- Hashing ---------------------------------------------------------------
-
-(defprotocol Hashable
-  (hash-into [_ sink]))
-
-(extend-protocol Hashable
-  nil
-  (hash-into [_ ^PrimitiveSink sink]
-    (.putByte sink (byte 0))
-    (.putByte sink (byte 0)))
-  String
-  (hash-into [s ^PrimitiveSink sink]
-    (.putByte sink (byte 1))
-    (.putString sink s utf-8))
-  Keyword
-  (hash-into [k ^PrimitiveSink sink]
-    (.putByte sink (byte 2))
-    (.putString sink (str k) utf-8))
-  Byte
-  (hash-into [b ^PrimitiveSink sink]
-    (.putByte sink (byte 3))
-    (.putByte sink b))
-  Short
-  (hash-into [s ^PrimitiveSink sink]
-    (.putByte sink (byte 4))
-    (.putShort sink s))
-  Integer
-  (hash-into [i ^PrimitiveSink sink]
-    (.putByte sink (byte 5))
-    (.putInt sink i))
-  Long
-  (hash-into [l ^PrimitiveSink sink]
-    (.putByte sink (byte 6))
-    (.putLong sink l))
-  BigDecimal
-  (hash-into [l ^PrimitiveSink sink]
-    (.putByte sink (byte 7))
-    (.putLong sink l))
-  Boolean
-  (hash-into [b ^PrimitiveSink sink]
-    (.putByte sink (byte 8))
-    (.putBoolean sink b))
-  List
-  (hash-into [xs ^PrimitiveSink sink]
-    (.putByte sink (byte 9))
-    (doseq [x xs]
-      (hash-into x sink)))
-  Map
-  (hash-into [m ^PrimitiveSink sink]
-    (.putByte sink (byte 10))
-    (doseq [[k v] (into (sorted-map) m)]
-      (hash-into k sink)
-      (hash-into v sink))))
-
-
-(defn hash
-  "Calculates a SHA256 hash for `resource`.
-
-  The hash need to be cryptographic because otherwise it would be possible to
-  introduce a resource into Blaze which has the same hash as the target
-  resource, overwriting it."
-  [resource]
-  (let [hasher (.newHasher (Hashing/sha256))]
-    (hash-into resource hasher)
-    (.asBytes (.hash hasher))))
-
-
-
 ;; ---- Transaction -----------------------------------------------------------
 ;; TODO: encode nanoseconds here?
 
@@ -881,11 +841,11 @@
 
 
 (defn encode-tx [{tx-instant :blaze.db.tx/instant}]
-  (nippy/fast-freeze {:inst (inst-ms tx-instant)}))
+  (cheshire/generate-cbor {:inst (inst-ms tx-instant)}))
 
 
-(defn decode-tx [bs t]
-  (let [{:keys [inst]} (nippy/fast-thaw bs)]
+(defn decode-tx [bytes t]
+  (let [{:keys [inst]} (cheshire/parse-cbor bytes keyword)]
     {:blaze.db/t t
      :blaze.db.tx/instant (Instant/ofEpochMilli inst)}))
 
@@ -895,5 +855,21 @@
    [:t-by-instant-index (tx-by-instant-key tx-instant) (encode-t t)]])
 
 
+(defn encode-tx-error [{::anom/keys [category message] :http/keys [status]}]
+  (cheshire/generate-cbor
+    {:category (name category) :message message :http-status status}))
+
+
+(defn decode-tx-error
+  "Returns an anomaly."
+  [bytes]
+  (let [{:keys [category message http-status]} (cheshire/parse-cbor bytes keyword)]
+    (cond->
+      {::anom/category (keyword "cognitect.anomalies" category)
+       ::anom/message message}
+      http-status
+      (assoc :http/status http-status))))
+
+
 (defn tx-error-entries [t anomaly]
-  [[:tx-error-index (t-key t) (nippy/fast-freeze anomaly)]])
+  [[:tx-error-index (t-key t) (encode-tx-error anomaly)]])

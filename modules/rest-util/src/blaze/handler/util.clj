@@ -1,18 +1,19 @@
 (ns blaze.handler.util
   "HTTP/REST Handler Utils"
   (:require
+    [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [clojure.core.protocols :refer [Datafiable]]
     [clojure.datafy :refer [datafy]]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [io.aviso.exception :as aviso]
-    [manifold.deferred :as md]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
     [org.apache.http HeaderElement]
-    [org.apache.http.message BasicHeaderValueParser]))
+    [org.apache.http.message BasicHeaderValueParser]
+    [java.util.concurrent CompletionException]))
 
 
 (set! *warn-on-reflection* true)
@@ -115,6 +116,9 @@
       (-> (ring/response (operation-outcome error))
           (ring/status (or status (category->status category)))))
 
+    (instance? CompletionException error)
+    (error-response (ex-cause error))
+
     (instance? Throwable error)
     (if (::anom/category (ex-data error))
       (error-response
@@ -166,11 +170,9 @@
 
 
 (defn db
-  "Retrieves a value of the database, optionally as of some point `t`.
-
-  When `t` is non-nil, returns a deferred which will be realized when the
-  database with `t` is available."
+  "Returns a CompletableFuture that will complete with the value of the
+  database, optionally as of some point in time `t`."
   [node t]
   (if t
-    (-> (d/sync node t) (md/chain #(d/as-of % t)))
-    (d/db node)))
+    (-> (d/sync node t) (ac/then-apply #(d/as-of % t)))
+    (ac/completed-future (d/db node))))

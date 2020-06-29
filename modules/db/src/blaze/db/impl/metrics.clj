@@ -1,6 +1,6 @@
 (ns blaze.db.impl.metrics
   (:import
-    [com.github.benmanes.caffeine.cache Cache]
+    [com.github.benmanes.caffeine.cache AsyncCache]
     [com.github.benmanes.caffeine.cache.stats CacheStats]
     [io.prometheus.client Collector CounterMetricFamily]))
 
@@ -10,10 +10,10 @@
 
 (defn cache-collector
   "Creates a cache collector with `name` from `cache`."
-  [name ^Cache cache]
+  [name ^AsyncCache cache]
   (proxy [Collector] []
     (collect []
-      (let [^CacheStats stats (.stats cache)]
+      (let [^CacheStats stats (.stats (.synchronous cache))]
         [(let [mf (CounterMetricFamily.
                     "blaze_db_cache_hit_count"
                     "Returns the number of times Cache lookup methods have returned a cached value."

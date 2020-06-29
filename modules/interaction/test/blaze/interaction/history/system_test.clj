@@ -5,7 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.db.api-stub :refer [mem-node mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.history.system :refer [handler]]
     [blaze.interaction.history.system-spec]
     [clojure.spec.test.alpha :as st]
@@ -17,7 +17,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -38,7 +39,9 @@
 
 
 (defn- handler-with [txs]
-  (handler (mem-node-with txs)))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
 
 
 (defn- link-url [body link-relation]
@@ -49,7 +52,7 @@
   (testing "returns empty history on empty node"
 
     (let [{:keys [status body]}
-          @((handler (mem-node))
+          ((handler-with [])
             {::reitit/router router
              ::reitit/match match})]
 
@@ -65,7 +68,7 @@
 
   (testing "with one patient"
     (let [{:keys [status body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {::reitit/router router
              ::reitit/match match})]
 
@@ -97,7 +100,7 @@
   (testing "with two patients in one transaction"
     (testing "contains a next link with t = page-t"
       (let [{:keys [body]}
-            @((handler-with
+            ((handler-with
                 [[[:put {:resourceType "Patient" :id "0"}]
                   [:put {:resourceType "Patient" :id "1"}]]])
               {::reitit/router router
@@ -110,7 +113,7 @@
 
     (testing "calling the second page shows the patient with the higher id"
       (let [{:keys [body]}
-            @((handler-with
+            ((handler-with
                 [[[:put {:resourceType "Patient" :id "0"}]
                   [:put {:resourceType "Patient" :id "1"}]]])
               {::reitit/router router
@@ -124,7 +127,7 @@
 
     (testing "a call with `page-id` but missing `page-type` just ignores `page-id`"
       (let [{:keys [body]}
-            @((handler-with
+            ((handler-with
                 [[[:put {:resourceType "Patient" :id "0"}]
                   [:put {:resourceType "Patient" :id "1"}]]])
               {::reitit/router router
@@ -138,7 +141,7 @@
   (testing "two patients in two transactions"
     (testing "contains a next link with page-t going to the first transaction"
       (let [{:keys [body]}
-            @((handler-with
+            ((handler-with
                 [[[:put {:resourceType "Patient" :id "0"}]]
                  [[:put {:resourceType "Patient" :id "1"}]]])
               {::reitit/router router
@@ -152,7 +155,7 @@
 
     (testing "calling the second page shows the patient from the first transaction"
       (let [{:keys [body]}
-            @((handler-with
+            ((handler-with
                 [[[:put {:resourceType "Patient" :id "0"}]]
                  [[:put {:resourceType "Patient" :id "1"}]]])
               {::reitit/router router

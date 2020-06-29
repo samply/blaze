@@ -4,11 +4,11 @@
     [clojure.spec.alpha :as s]))
 
 
-(s/fdef ex/cpu-bound-pool
+(s/fdef ex/manifold-cpu-bound-pool
   :args (s/cat :name-template string?))
 
 
-(s/fdef ex/cpu-bound-dedicated-pool
+(s/fdef ex/cpu-bound-pool
   :args (s/cat :name-template string?))
 
 

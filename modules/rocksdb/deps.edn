@@ -10,11 +10,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {criterium
-    {:mvn/version "0.4.5"}
-
-    lambdaisland/kaocha
-    {:mvn/version "1.0.632"}
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.641"}
 
     org.clojure/test.check
     {:mvn/version "1.0.0"}}
@@ -25,7 +22,7 @@
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.06.12"}}
+    {:mvn/version "2020.06.21"}}
 
    :main-opts ["-m" "clj-kondo.main"]}
 

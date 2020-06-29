@@ -1,226 +1,246 @@
 (ns blaze.db.tx-log.local
-  "A a transaction log which is suitable only for single node setups.
+  "A transaction log which is suitable only for standalone (single node) setups.
 
-  The transaction log only contains the transaction commands indexed by t. The
-  resources are passed directly to the resource-indexer. So restoring the
-  database from the transaction logs key-value store alone is not possible."
+  Uses an exclusive key-value store to persist the transaction log using the
+  default column family. The single key-value index is populated were keys are
+  the point in time `t` of the transaction and the values are transaction
+  commands and instants.
+
+  Uses a single thread names `local-tx-log` to increment the point in time `t`,
+  store the transaction and transfers it to listening queues."
   (:require
+    [blaze.async-comp :as ac]
+    [blaze.db.hash :as hash]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.indexer :as indexer]
+    [blaze.db.impl.iterators :as i]
+    [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log.local.references :as references]
+    [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
+    [cheshire.core :as cheshire]
+    [cheshire.generate :refer [JSONable]]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
+    [clojure.string :as str]
     [integrant.core :as ig]
-    [loom.alg]
-    [loom.graph]
-    [manifold.deferred :as md]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock Instant]))
+    [java.io Closeable]
+    [java.nio ByteBuffer]
+    [java.time Clock Duration Instant]
+    [java.util.concurrent
+     ArrayBlockingQueue BlockingQueue ExecutorService TimeUnit]
+    [com.fasterxml.jackson.core JsonGenerator]
+    [com.google.common.hash HashCode$BytesHashCode]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defhistogram tx-log-indexer-duration-seconds
+(defhistogram duration-seconds
   "Durations in transaction log."
   {:namespace "blaze"
-   :subsystem "db"}
+   :subsystem "db"
+   :name "tx_log_duration_seconds"}
   (mapcat #(list % (* 2.5 %) (* 5 %) (* 7.5 %)) (take 6 (iterate #(* 10 %) 0.00001)))
   "op")
 
 
-(defmulti extract-type-id first)
+(extend-protocol JSONable
+  HashCode$BytesHashCode
+  (to-json [hash-code jg]
+    (.writeBinary ^JsonGenerator jg (.asBytes hash-code)))
+  Instant
+  (to-json [instant jg]
+    (.writeNumber ^JsonGenerator jg (.toEpochMilli instant))))
 
 
-(defmethod extract-type-id :create
-  [[_ {:keys [resourceType id]}]]
-  [resourceType id])
+(defn- parse-cbor [value t]
+  (try
+    (cheshire/parse-cbor value keyword)
+    (catch Exception e
+      (log/warn (format "Skip transaction with point in time of %d because their was an error while parsing tx-data: %s" t (ex-message e))))))
 
 
-(defmethod extract-type-id :put
-  [[_ {:keys [resourceType id]}]]
-  [resourceType id])
+(defn- decode-hash [tx-cmd]
+  (update tx-cmd :hash hash/decode))
 
 
-(defmethod extract-type-id :delete
-  [[_ type id]]
-  [type id])
+(defn- decode-instant [x]
+  (when (int? x)
+    (Instant/ofEpochMilli x)))
 
 
-(defn- duplicate-resource-anomaly [[type id]]
-  {::anom/category ::anom/incorrect
-   ::anom/message (format "Duplicate resource `%s/%s`." type id)
-   :fhir/issue "invariant"})
+(defn- decode-tx-data
+  ([]
+   [(ByteBuffer/allocateDirect codec/t-size)
+    ;; TODO: transaction cmds can get arbitrarily big
+    (ByteBuffer/allocateDirect (* 1024 1024))])
+  ([^ByteBuffer kb ^ByteBuffer vb]
+   (let [t (.getLong kb)
+         value (byte-array (.remaining vb))]
+     (.get vb value)
+     (-> (parse-cbor value t)
+         (update :tx-cmds #(mapv decode-hash %))
+         (update :instant decode-instant)
+         (assoc :t t)))))
 
 
-(defn- validate-ops
-  "Validates transactions operators for any duplicate resource.
-
-  Returns an anomaly if their is any duplicate resource."
-  [tx-ops]
-  (transduce
-    (map extract-type-id)
-    (completing
-      (fn [index type-id]
-        (if (contains? index type-id)
-          (reduced (duplicate-resource-anomaly type-id))
-          (conj index type-id))))
-    #{}
-    tx-ops))
+(defn encode-t [t]
+  (-> (ByteBuffer/allocate Long/BYTES)
+      (.putLong t)
+      (.array)))
 
 
-(defmulti prepare-op first)
+(defn encode-tx-data [instant tx-cmds]
+  (cheshire/generate-cbor
+    {:instant instant
+     :tx-cmds tx-cmds}))
 
 
-(defmethod prepare-op :create
-  [[op resource]]
-  (let [hash (codec/hash resource)]
-    {:hash-and-resource
-     [hash resource]
-     :blaze.db/tx-cmd
-     [op
-      (:resourceType resource)
-      (:id resource)
-      hash
-      (references/extract-references resource)]}))
+(def ^:private ^:const max-poll-size 50)
 
 
-(defmethod prepare-op :put
-  [[op resource matches]]
-  (let [hash (codec/hash resource)]
-    {:hash-and-resource
-     [hash resource]
-     :blaze.db/tx-cmd
-     (cond->
-       [op
-        (:resourceType resource)
-        (:id resource)
-        hash
-        (references/extract-references resource)]
-       matches
-       (conj matches))}))
+(defn- invalid-tx-data-msg [t cause]
+  (format "Skip transaction with point in time of %d because tx-data is invalid: %s"
+          t (str/replace cause #"\s" " ")))
 
 
-(defmethod prepare-op :delete
-  [[_ type id :as cmd]]
-  (let [resource (codec/deleted-resource type id)
-        hash (codec/hash resource)]
-    {:hash-and-resource
-     [hash resource]
-     :blaze.db/tx-cmd
-     (conj cmd hash)}))
+(def ^:private remove-invalid-tx-data
+  (filter
+    (fn [{:keys [t] :as tx-data}]
+      (if (s/valid? :blaze.db/tx-data tx-data)
+        true
+        (log/warn (invalid-tx-data-msg t (s/explain-str :blaze.db/tx-data tx-data)))))))
 
 
-(defn- prepare-ops
-  "Splits each transaction operator into an :hash-and-resource tuple and
-  a :blaze.db/tx-cmd."
-  [tx-ops]
-  (mapv prepare-op tx-ops))
+(defn- tx-data [kv-store offset]
+  (log/trace "fetch tx-data from storage offset =" offset)
+  (with-open [snapshot (kv/new-snapshot kv-store)
+              iter (kv/new-iterator snapshot)]
+    (into []
+          (comp (take max-poll-size)
+                remove-invalid-tx-data)
+          (i/kvs iter decode-tx-data (encode-t offset)))))
 
 
-(defn- index-resources [resource-indexer batch-size hash-and-resources]
-  (->> (partition-all batch-size hash-and-resources)
-       (map (partial indexer/index-resources resource-indexer))
-       (apply md/zip')))
+(defn- poll [^BlockingQueue queue ^Duration timeout]
+  (log/trace "poll in-memory queue with timeout =" timeout)
+  (.poll queue (.toMillis timeout) TimeUnit/MILLISECONDS))
 
 
-(defn- reference-graph [cmds]
-  (loom.graph/digraph
-    (into
-      {}
-      (map
-        (fn [[_ type id _ references]]
-          [[type id] references]))
-      cmds)))
+(deftype LocalQueue [kv-store offset queue queue-start unsubscribe!]
+  tx-log/Queue
+  (-poll [_ timeout]
+    (let [current-offset @offset]
+      (if (< current-offset queue-start)
+        (let [tx-data (tx-data kv-store current-offset)]
+          (when-let [tx-data (last tx-data)]
+            (vreset! offset (inc (:t tx-data))))
+          tx-data)
+        (poll queue timeout))))
+
+  Closeable
+  (close [_]
+    (log/trace "close queue")
+    (unsubscribe!)))
 
 
-(defn- reference-order
-  "Returns a seq of `[type id]` tuples of `cmds` in reference dependency order."
-  [cmds]
-  (reverse (loom.alg/topsort (reference-graph cmds))))
+(defn- store-tx-data [kv-store {:keys [t instant tx-cmds]}]
+  (log/trace "store transaction data with t =" t)
+  (kv/put kv-store (encode-t t) (encode-tx-data instant tx-cmds)))
 
 
-(defn- index-by-type-id
-  "Returns a map from `[type id]` tuples to commands."
-  [cmds]
-  (into {} (map (fn [[_ type id :as cmd]] [[type id] cmd])) cmds))
+(defn- transfer-tx-data [queues tx-data]
+  (log/trace "transfer transaction data to" (count queues) "queue(s)")
+  (doseq [^BlockingQueue queue queues]
+    (.put queue tx-data)))
 
 
-(defn- sort-by-references [cmds]
-  (let [index (index-by-type-id cmds)
-        order (reference-order cmds)]
-    (into [] (comp (map index) (remove nil?)) order)))
+(defn- submit
+  "Stores `tx-cmds` and transfers them to pollers on queues.
+
+  Uses `state` to increment the point in time `t`. Stores transaction data
+  consisting of the new `t`, the current time and `tx-cmds`. Has to be run in a
+  single thread in order to deliver transaction data in order."
+  [kv-store clock state tx-cmds]
+  (log/trace "submit" (count tx-cmds) "tx-cmds")
+  (let [{:keys [t queues]} (swap! state update :t inc)
+        instant (Instant/now clock)
+        tx-data {:t t :instant instant :tx-cmds tx-cmds}]
+    (store-tx-data kv-store tx-data)
+    (transfer-tx-data (vals queues) [tx-data])
+    t))
 
 
-(deftype LocalTxLog [resource-indexer resource-indexer-batch-size tx-indexer
-                     ^Clock clock executor t-counter]
+;; The state contains the following keys:
+;;  * :t - the current point in time
+;;  * :queues - a map of queues created through `new-queue`
+(deftype LocalTxLog [kv-store clock executor state]
   tx-log/TxLog
-  (-submit [_ tx-ops]
-    (let [timer (prom/timer tx-log-indexer-duration-seconds "submit")
-          res (validate-ops tx-ops)]
-      (if (::anom/category res)
-        (md/error-deferred res)
-        (let [ops (prepare-ops tx-ops)
-              cmds (mapv :blaze.db/tx-cmd ops)
-              cmds (sort-by-references cmds)]
-          (-> (index-resources resource-indexer resource-indexer-batch-size
-                               (mapv :hash-and-resource ops))
-              (md/chain'
-                (fn submit-tx [_]
-                  (md/future-with executor
-                    (let [t (vswap! t-counter inc)]
-                      (indexer/index-tx tx-indexer t (Instant/now clock) cmds)
-                      (prom/observe-duration! timer)
-                      t))))))))))
+  (-submit [_ tx-cmds]
+    ;; ensures that the submit function is executed in a single thread
+    (ac/supply-async
+      #(with-open [_ (prom/timer duration-seconds "submit")]
+         (submit kv-store clock state tx-cmds))
+      executor))
+
+  (-new-queue [_ offset]
+    (let [key (Object.)
+          queue (ArrayBlockingQueue. 10)
+          queue-start (inc (:t (swap! state update :queues assoc key queue)))]
+      (log/trace "new-queue offset =" offset ", queue-start =" queue-start)
+      (->LocalQueue kv-store (volatile! offset) queue queue-start
+                    #(swap! state update :queues dissoc key)))))
 
 
-(defn init-local-tx-log
-  "Returns a transaction log which is suitable only for single node setups.
+(defn- last-t
+  "Returns the last (newest) point in time, the transaction log has persisted
+  in `kv-store` ot nil if the log is empty."
+  [kv-store]
+  (with-open [snapshot (kv/new-snapshot kv-store)
+              iter (kv/new-iterator snapshot)]
+    (kv/seek-to-last! iter)
+    (let [kb (ByteBuffer/allocateDirect Long/BYTES)]
+      (when (kv/valid? iter)
+        (kv/key iter kb)
+        (when (<= Long/BYTES (.remaining kb))
+          (.getLong kb))))))
 
-  Note: The key-value store has to be exclusive for this transaction log."
-  [resource-indexer resource-indexer-batch-size tx-indexer clock]
-  (->LocalTxLog
-    resource-indexer
-    resource-indexer-batch-size
-    tx-indexer
-    clock
-    (ex/single-thread-executor "transactor")
-    (volatile! (indexer/last-t tx-indexer))))
 
-
-(s/def ::resource-indexer-batch-size
-  nat-int?)
+(defn new-local-tx-log
+  "Returns a transaction log which is suitable only for single node setups."
+  [kv-store clock executor]
+  (->LocalTxLog kv-store clock executor (atom {:t (or (last-t kv-store) 0)})))
 
 
 (defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]
-  (s/keys
-    :req-un
-    [:blaze.db.indexer/resource-indexer
-     :blaze.db.indexer/tx-indexer]
-    :opt-un
-    [::resource-indexer-batch-size]))
-
-
-(defn- init-msg [resource-indexer-batch-size]
-  (format "Open local transaction log with a resource indexer batch size of %d."
-          resource-indexer-batch-size))
+  (s/keys :req-un [:blaze.db/kv-store]))
 
 
 (defmethod ig/init-key :blaze.db.tx-log/local
-  [_ {:keys [resource-indexer resource-indexer-batch-size tx-indexer]
-      :or {resource-indexer-batch-size 1}}]
-  (log/info (init-msg resource-indexer-batch-size))
-  (init-local-tx-log resource-indexer resource-indexer-batch-size tx-indexer
-                     (Clock/systemDefaultZone)))
+  [_ {:keys [kv-store]}]
+  (log/info "Open local transaction log")
+  (new-local-tx-log
+    kv-store
+    (Clock/systemDefaultZone)
+    ;; it's important to have a single thread executor here. See docs of submit
+    ;; function.
+    (ex/single-thread-executor "local-tx-log")))
+
+
+(defmethod ig/halt-key! :blaze.db.tx-log/local
+  [_ tx-log]
+  (log/info "Start closing local transaction log")
+  (let [executor (.executor ^LocalTxLog tx-log)]
+    (.shutdown ^ExecutorService executor)
+    (.awaitTermination ^ExecutorService executor 10 TimeUnit/SECONDS))
+  (log/info "Done closing local transaction log"))
 
 
 (derive :blaze.db.tx-log/local :blaze.db/tx-log)
 
 
 (reg-collector ::duration-seconds
-  tx-log-indexer-duration-seconds)
+  duration-seconds)

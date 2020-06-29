@@ -2,7 +2,8 @@
   (:require
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
-    [ring.util.response :as ring])
+    [ring.util.response :as ring]
+    [taoensso.timbre :as log])
   (:import
     [java.time ZonedDateTime ZoneId]
     [java.time.format DateTimeFormatter]))
@@ -19,6 +20,10 @@
        (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
 
 
+(defn- build-created-response-msg [type id vid]
+  (format "build-created-response of %s/%s with vid = %s" type id vid))
+
+
 (defn build-created-response
   "Builds a 201 Created response of resource with `type` and `id` from `db`.
 
@@ -28,6 +33,7 @@
   (let [resource (d/resource db type id)
         {:blaze.db/keys [tx]} (meta resource)
         vid (-> resource :meta :versionId)]
+    (log/trace (build-created-response-msg type id vid))
     (-> (ring/created
           (fhir-util/versioned-instance-url router type id vid)
           (cond

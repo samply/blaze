@@ -1,7 +1,4 @@
-{:lint-as
- {manifold.deferred/loop clojure.core/loop}
-
- :linters
+{:linters
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in

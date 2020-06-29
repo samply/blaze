@@ -1,11 +1,11 @@
 (ns blaze.db.impl.index.resource-as-of-spec
   (:require
+    [blaze.db.hash.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
     [blaze.db.impl.index.resource-spec]
-    [blaze.db.impl.index.spec]
     [blaze.db.impl.iterators-spec]
-    [blaze.db.kv.spec]
+    [blaze.db.kv-spec]
     [blaze.db.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]))
@@ -44,7 +44,7 @@
                :tid :blaze.db/tid
                :id :blaze.db/id-bytes
                :t :blaze.db/t)
-  :ret (s/nilable (s/tuple :blaze.resource/hash :blaze.db/state :blaze.db/t)))
+  :ret (s/nilable (s/tuple :blaze.db.resource/hash :blaze.db/state :blaze.db/t)))
 
 
 (s/fdef resource-as-of/resource

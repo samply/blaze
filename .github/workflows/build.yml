@@ -1,0 +1,36 @@
+name: Build
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+        java-package: jdk
+
+    - name: Print Java version
+      run: java -version
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@2.0
+      with:
+        tools-deps: '1.10.1.469'
+
+    - name: Setup clj-kondo
+      uses: DeLaGuardo/setup-clj-kondo@v1
+      with:
+        version: '2020.06.21'
+
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Lint
+      run: make lint
+
+    - name: Test
+      run: make test

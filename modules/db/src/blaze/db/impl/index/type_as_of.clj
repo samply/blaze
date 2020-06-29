@@ -42,15 +42,19 @@
   after decoding."
   []
   (let [ib (byte-array codec/max-id-size)]
-    (fn [^ByteBuffer kb ^ByteBuffer vb]
-      (TypeAsOfKV.
-        (codec/get-tid! kb)
-        (codec/get-t! kb)
-        (let [id-size (.remaining kb)]
-          (.get kb ib 0 id-size)
-          (String. ib 0 id-size codec/iso-8859-1))
-        (codec/get-hash! vb)
-        (codec/get-state! vb)))))
+    (fn
+      ([]
+       [(ByteBuffer/allocateDirect (+ codec/tid-size codec/t-size codec/max-id-size))
+        (ByteBuffer/allocateDirect (+ codec/hash-size codec/state-size))])
+      ([^ByteBuffer kb ^ByteBuffer vb]
+       (TypeAsOfKV.
+         (codec/get-tid! kb)
+         (codec/get-t! kb)
+         (let [id-size (.remaining kb)]
+           (.get kb ib 0 id-size)
+           (String. ib 0 id-size codec/iso-8859-1))
+         (codec/get-hash! vb)
+         (codec/get-state! vb))))))
 
 
 (defn- start-key [tid start-t start-id]

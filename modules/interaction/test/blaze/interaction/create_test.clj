@@ -6,6 +6,7 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.executors :as ex]
     [blaze.interaction.create :refer [handler]]
     [blaze.interaction.create-spec]
     [blaze.uuid :refer [random-uuid]]
@@ -18,11 +19,15 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
+
+
+(def executor (ex/single-thread-executor))
 
 
 (def router
@@ -33,13 +38,15 @@
 
 
 (defn- handler-with [txs]
-  (handler (mem-node-with txs)))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node executor) request))))
 
 
 (deftest handler-test
   (testing "Returns Error on type mismatch"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {::reitit/match {:data {:fhir.resource/type "Patient"}}
              :body {:resourceType "Observation"}})]
 
@@ -55,7 +62,7 @@
 
   (testing "Returns Error on invalid resource"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {::reitit/match {:data {:fhir.resource/type "Patient"}}
              :body {:resourceType "Patient" :gender {}}})]
 
@@ -69,7 +76,7 @@
 
   (testing "Returns Error violated referential integrity"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {::reitit/match {:data {:fhir.resource/type "Observation"}}
              :body {:resourceType "Observation" :id "0"
                     :subject {:reference "Patient/0"}}})]
@@ -87,7 +94,7 @@
       (with-redefs
         [random-uuid (constantly #uuid "22de9f47-626a-4fc3-bb69-7bc68401acf4")]
         (let [{:keys [status headers body]}
-              @((handler-with [])
+              ((handler-with [])
                 {::reitit/router router
                  ::reitit/match {:data {:fhir.resource/type "Patient"}}
                  :body {:resourceType "Patient"}})]
@@ -113,7 +120,7 @@
       (with-redefs
         [random-uuid (constantly #uuid "3543b9e8-b237-4daa-9c81-9a99b208aa0d")]
         (let [{:keys [status headers body]}
-              @((handler-with [])
+              ((handler-with [])
                 {::reitit/router router
                  ::reitit/match {:data {:fhir.resource/type "Patient"}}
                  :headers {"prefer" "return=minimal"}
@@ -138,7 +145,7 @@
       (with-redefs
         [random-uuid (constantly #uuid "d387d53f-358f-48d2-979e-96cb0052b7e2")]
         (let [{:keys [status headers body]}
-              @((handler-with [])
+              ((handler-with [])
                 {::reitit/router router
                  ::reitit/match {:data {:fhir.resource/type "Patient"}}
                  :headers {"prefer" "return=representation"}
@@ -163,7 +170,7 @@
       (with-redefs
         [random-uuid (constantly #uuid "62a30df4-a4b8-47ed-9203-2d222dd8cdad")]
         (let [{:keys [status headers body]}
-              @((handler-with [])
+              ((handler-with [])
                 {::reitit/router router
                  ::reitit/match {:data {:fhir.resource/type "Patient"}}
                  :headers {"prefer" "return=OperationOutcome"}

@@ -1,10 +1,10 @@
 (ns blaze.db.impl.codec-spec
   (:require
     [blaze.db.api-spec]
+    [blaze.db.hash.spec]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.bytes-spec]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.indexer-spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
@@ -74,7 +74,7 @@
                :tid :blaze.db/tid
                :value bytes?
                :id (s/? :blaze.db/id-bytes)
-               :hash (s/? :blaze.resource/hash))
+               :hash (s/? :blaze.db.resource/hash))
   :ret :blaze.db/search-param-value-key)
 
 
@@ -92,7 +92,7 @@
 (s/fdef codec/resource-value-key
   :args (s/cat :tid :blaze.db/tid
                :id :blaze.db/id-bytes
-               :hash (s/alt :hash :blaze.resource/hash :hash-prefix :blaze.db/hash-prefix)
+               :hash (s/alt :hash :blaze.db.resource/hash :hash-prefix :blaze.db/hash-prefix)
                :c-hash :blaze.db/c-hash
                :value (s/? bytes?))
   :ret :blaze/resource-value-key)
@@ -113,7 +113,7 @@
                :tid :blaze.db/tid
                :value bytes?
                :id (s/? :blaze.db/id-bytes)
-               :hash (s/? :blaze.resource/hash))
+               :hash (s/? :blaze.db.resource/hash))
   :ret :blaze.db/compartment-search-param-value-key)
 
 
@@ -129,7 +129,7 @@
                :co-res-id :blaze.db/id-bytes
                :tid :blaze.db/tid
                :id :blaze.db/id-bytes
-               :hash (s/alt :hash :blaze.resource/hash :hash-prefix :blaze.db/hash-prefix)
+               :hash (s/alt :hash :blaze.db.resource/hash :hash-prefix :blaze.db/hash-prefix)
                :sp-c-hash :blaze.db/c-hash
                :value (s/? bytes?))
   :ret :blaze.db/compartment-resource-value-key)
@@ -260,17 +260,17 @@
 
 
 (s/fdef codec/resource-as-of-value
-  :args (s/cat :hash :blaze.resource/hash :state :blaze.db/state)
+  :args (s/cat :hash :blaze.db.resource/hash :state :blaze.db/state)
   :ret :blaze/resource-as-of-value
   :fn #(let [hash (codec/resource-as-of-value->hash (:ret %))
              state (codec/resource-as-of-value->state (:ret %))]
-         (and (bytes/= hash (-> % :args :hash))
+         (and (= hash (-> % :args :hash))
               (= state (-> % :args :state)))))
 
 
 (s/fdef codec/resource-as-of-value->hash
   :args (s/cat :value :blaze/resource-as-of-value)
-  :ret (s/nilable :blaze.resource/hash))
+  :ret (s/nilable :blaze.db.resource/hash))
 
 
 (s/fdef codec/resource-as-of-value->state
@@ -400,14 +400,6 @@
 (s/fdef codec/quantity
   :args (s/cat :value number? :unit (s/? (s/nilable string?)))
   :ret bytes?)
-
-
-
-;; ---- Hashing ---------------------------------------------------------------
-
-(s/fdef codec/hash
-  :args (s/cat :resource :blaze/resource)
-  :ret :blaze.resource/hash)
 
 
 

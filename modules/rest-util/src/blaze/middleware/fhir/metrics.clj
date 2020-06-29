@@ -1,6 +1,6 @@
 (ns blaze.middleware.fhir.metrics
   (:require
-    [manifold.deferred :as md]
+    [blaze.async-comp :as ac]
     [prometheus.alpha :as prom]))
 
 
@@ -46,7 +46,7 @@
   ([handler]
    (fn [request]
      (-> (handler request)
-         (md/chain'
+         (ac/then-apply
            (fn [{:fhir/keys [interaction-name] :as response}]
              (when (string? interaction-name)
                (inc-requests-total! interaction-name request response)
@@ -55,7 +55,7 @@
   ([handler interaction-name]
    (fn [request]
      (-> (handler request)
-         (md/chain'
+         (ac/then-apply
            (fn [response]
              (inc-requests-total! interaction-name request response)
              (observe-request-duration-seconds! request interaction-name)

@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
-Latest release: [v0.9.0-alpha.9][5]
+Latest release: [v0.9.0-alpha.10][5]
 
 ## Quick Start
 
@@ -24,10 +24,10 @@ In order to run Blaze just execute the following:
 
 ```bash
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.9.0-alpha.9
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.9.0-alpha.10
 ```
 
-Blaze will create the directory `db` inside the `blaze-data` volume on its first start and use the same database directory on subsequent starts.
+Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
 
 
 ### Standalone Java without Docker
@@ -35,28 +35,28 @@ Blaze will create the directory `db` inside the `blaze-data` volume on its first
 In case Docker isn't available, Blaze can be run on a machine having OpenJDK 11 installed. Blaze is tested with [AdoptOpenJDK][11].
 
 ```bash
-wget https://github.com/samply/blaze/releases/download/v0.9.0-alpha.9/blaze-0.9.0-alpha.9-standalone.jar
-java -jar blaze-0.9.0-alpha.9-standalone.jar -m blaze.core
+wget https://github.com/samply/blaze/releases/download/v0.9.0-alpha.10/blaze-0.9.0-alpha.10-standalone.jar
+java -jar blaze-0.9.0-alpha.10-standalone.jar -m blaze.core
 ```
 
 Blaze will run with an in-memory, volatile database for testing and demo purposes.
 
-Running Blaze with durable storage requires to set `DB_DIR`. 
+Blaze can be run with durable storage by setting the environment variables `STORAGE` to `standalone`. 
 
 Under Linux/macOS:
 
 ```bash
-DB_DIR=db java -jar blaze-0.9.0-alpha.9-standalone.jar -m blaze.core
+STORAGE=standalone java -jar blaze-0.9.0-alpha.10-standalone.jar -m blaze.core
 ```
 
 Under Windows:
  
 ```bash
-$Env:DB_DIR="db"
-java -jar blaze-0.9.0-alpha.9-standalone.jar -m blaze.core
+$Env:STORAGE="standalone"
+java -jar blaze-0.9.0-alpha.10-standalone.jar -m blaze.core
 ```
 
-This will create a directory called `db` inside the current working directory.
+This will create three directories called `index`, `transaction` and `resource` inside the current working directory, one for each database part used.
 
 Logging output should appear which prints the most important settings and system parameters like Java version and available memory.
 
@@ -68,18 +68,55 @@ curl http://localhost:8080/health
 
 ## Configuration
 
-Blaze is configured solely through environment variables. There is a default for every variable. So all are optional.
+Blaze is configured solely through environment variables. There is a default for every variable. So all are optional. 
 
-The following table contains all of them:
+A part of the environment variables depends on the storage variant chosen. The storage variant can be set through the `STORAGE` env var. The default is `in-memory` for the JAR and `standalone` for the Docker image. The third setting is `distributed`. The following tables list the database relavant environment variables by storage variant.
+
+### In-memory
 
 | Name | Default | Since | Description |
 | :--- | :--- | :--- | :--- |
-| DB\_DIR | – | v0.8 | The directory were the database files are stored. This directory must not exist on the first start of Blaze and will be created by Blaze. However the parent directory has to exist. The default is to use an in-memory, volatile database.|
+| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
+
+### Standalone
+
+The three database directories must not exist on the first start of Blaze and will be created by Blaze itself. It's possible to put this three directories on different disks in order to improve performance.
+
+| Name | Default | Since | Description |
+| :--- | :--- | :--- | :--- |
+| INDEX\_DB\_DIR | – | v0.8 | The directory were the index database files are stored.  |
+| TRANSACTION\_DB\_DIR | – | v0.8 | The directory were the transaction log files are stored. This directory must not exist on the first start of Blaze and will be created by Blaze. |
+| RESOURCE\_DB\_DIR | – | v0.8 | The directory were the resource files are stored. This directory must not exist on the first start of Blaze and will be created by 
+| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
 | DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
 | DB\_RESOURCE\_CACHE\_SIZE | 10000 | v0.8 | The size of the resource cache of the DB in number of resources. |
 | DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
 | DB\_RESOURCE\_INDEXER\_THREADS | 4 | v0.8 | The number threads used for indexing resources. |
 | DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
+ 
+### Distributed
+
+The distributed storage variant only uses the index database locally. 
+
+| Name | Default | Since | Description |
+| :--- | :--- | :--- | :--- |
+| INDEX\_DB\_DIR | – | v0.8 | The directory were the index database files are stored.  |
+| DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
+| DB\_RESOURCE\_CACHE\_SIZE | 10000 | v0.8 | The size of the resource cache of the DB in number of resources. |
+| DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
+| DB\_RESOURCE\_INDEXER\_THREADS | 4 | v0.8 | The number threads used for indexing resources. |
+| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
+| DB\_KAFKA\_BOOTSTRAP\_SERVERS | localhost:9092 | v0.8 | A comma separated list of bootstrap servers for the Kafka transaction log. |
+| DB\_KAFKA\_MAX\_REQUEST\_SIZE | 1048576 | v0.8 | The maximum size of a encoded transaction able to send to the Kafka transaction log in bytes. |
+| DB\_CASSANDRA\_CONTACT\_POINTS | localhost:9042 | v0.8 | A comma separated list of contact points for the Cassandra resource store. |
+| DB\_CASSANDRA\_KEY\_SPACE | blaze | v0.8 | The Cassandra key space were the `resources` table is located. |
+| DB\_CASSANDRA\_PUT\_CONSISTENCY\_LEVEL | TWO | v0.8 | Cassandra consistency level for resource put (insert) operations. Has to be set to `ONE` on a non-replicated keyspace. |
+
+
+### Other Environment Variables
+
+| Name | Default | Since | Description |
+| :--- | :--- | :--- | :--- |
 | PROXY\_HOST | — | v0.6 | The hostname of the proxy server for outbound HTTP requests |
 | PROXY\_PORT | — | v0.6 | Port of the proxy server |
 | PROXY\_USER | — | v0.6.1 | Proxy server user, if authentication is needed. |
@@ -93,6 +130,50 @@ The following table contains all of them:
 | LOG\_LEVEL | info | v0.6 | one of trace, debug, info, warn or error |
 | JAVA\_TOOL\_OPTIONS | — |  | JVM options \(Docker only\) |
 | FHIR\_OPERATION\_EVALUATE\_MEASURE\_THREADS | 4 | v0.8 | The maximum number of parallel $evaluate-measure executions. Not the same as the number of threads used for measure evaluation which equal to the number of available processors. |
+
+## Storage Variants
+
+### Distributed
+
+#### Kafka
+
+List all topics:
+
+```bash
+docker run -it --rm --network kafka_default bitnami/kafka:2-debian-10 kafka-topics.sh --zookeeper zookeeper:2181 --list
+```
+
+Create the tx topic:
+
+```bash
+docker run -it --rm --network kafka_default bitnami/kafka kafka-topics.sh --zookeeper zookeeper:2181 --create --topic tx --partitions 1 --replication-factor 1 --config message.timestamp.type=LogAppendTime --config retention.ms=-1
+```
+
+Describe the tx topic:
+
+```bash
+docker run -it --rm --network kafka_default bitnami/kafka kafka-topics.sh --zookeeper zookeeper:2181 --describe tx
+```
+
+#### Cassandra
+
+Cassandra can be used as resource storage. You have to create a keyspace and one table for Blaze. You can use the Cassandra Query Language Shell via Docker running the following command:
+
+```bash
+docker run -it --rm --network cassandra_default cassandra:3 cqlsh cassandra
+```
+
+##### Keyspace
+
+```
+create keyspace blaze WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 3};
+```
+
+##### Table
+
+```
+CREATE TABLE blaze.resources (hash text PRIMARY KEY, content blob);
+```
 
 ## Tuning Guide
 
@@ -150,7 +231,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.9.0-alpha.9>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.9.0-alpha.10>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>

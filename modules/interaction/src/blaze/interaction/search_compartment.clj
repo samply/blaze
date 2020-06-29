@@ -1,6 +1,7 @@
 (ns blaze.interaction.search-compartment
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as util]
@@ -11,7 +12,6 @@
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
@@ -97,20 +97,22 @@
         ::reitit/keys [router]}]
     (cond
       (not (s2/valid? :fhir/id id))
-      (util/error-response
-        {::anom/category ::anom/incorrect
-         ::anom/message (format "The identifier `%s` is invalid." id)
-         :fhir/issue "value"})
+      (ac/completed-future
+        (util/error-response
+          {::anom/category ::anom/incorrect
+           ::anom/message (format "The identifier `%s` is invalid." id)
+           :fhir/issue "value"}))
 
       (not (s/valid? :blaze.resource/resourceType type))
-      (util/error-response
-        {::anom/category ::anom/incorrect
-         ::anom/message (format "The type `%s` is invalid." type)
-         :fhir/issue "value"})
+      (ac/completed-future
+        (util/error-response
+          {::anom/category ::anom/incorrect
+           ::anom/message (format "The type `%s` is invalid." type)
+           :fhir/issue "value"}))
 
       :else
       (-> (util/db node (fhir-util/t params))
-          (md/chain' #(handle router match % code id type params))))))
+          (ac/then-apply #(handle router match % code id type params))))))
 
 
 (defn handler [node]

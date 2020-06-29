@@ -1,12 +1,14 @@
 (ns blaze.fhir.util
   (:require
     [cheshire.core :as json]
-    [clojure.java.io :as io]))
+    [clojure.java.io :as io]
+    [taoensso.timbre :as log]))
 
 
 (defn read-bundle
   "Reads a bundle from classpath named `resource-name`."
   [resource-name]
+  (log/trace (format "Read FHIR bundle `%s`." resource-name))
   (with-open [rdr (io/reader (io/resource resource-name))]
     (json/parse-stream rdr keyword)))
 

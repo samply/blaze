@@ -17,7 +17,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -39,7 +40,9 @@
 
 
 (defn- handler-with [txs]
-  (handler (mem-node-with txs)))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
 
 
 (defn- link-url [body link-relation]
@@ -49,7 +52,7 @@
 (deftest handler-test
   (testing "with one patient"
     (let [{:keys [status body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {::reitit/router router
              ::reitit/match match})]
 

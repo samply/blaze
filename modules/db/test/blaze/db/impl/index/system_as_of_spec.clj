@@ -2,10 +2,9 @@
   (:require
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-spec]
-    [blaze.db.impl.index.spec]
     [blaze.db.impl.index.system-as-of :as system-as-of]
     [blaze.db.impl.iterators-spec]
-    [blaze.db.kv.spec]
+    [blaze.db.kv-spec]
     [blaze.db.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]))

@@ -8,7 +8,9 @@
 
   (-sync [node t])
 
-  (-submit-tx [node tx-ops]))
+  (-submit-tx [node tx-ops])
+
+  (-tx-result [node t]))
 
 
 (defprotocol ResourceContentLookup

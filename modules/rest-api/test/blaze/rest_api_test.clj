@@ -1,5 +1,6 @@
 (ns blaze.rest-api-test
   (:require
+    [blaze.async-comp :as ac]
     [blaze.db.search-param-registry :as sr]
     [blaze.rest-api :as rest-api]
     [clojure.spec.test.alpha :as st]
@@ -27,6 +28,10 @@
       {})
 
 
+(defn handler [key]
+  (fn [_] (ac/completed-future {::handler key})))
+
+
 (def router
   (rest-api/router
     {:base-url "base-url-111523"
@@ -37,38 +42,38 @@
           :interactions
           {:read
            #:blaze.rest-api.interaction
-               {:handler (fn [_] {::handler ::read})}
+               {:handler (handler ::read)}
            :vread
            #:blaze.rest-api.interaction
-               {:handler (fn [_] {::handler ::vread})}
+               {:handler (handler ::vread)}
            :update
            #:blaze.rest-api.interaction
-               {:handler (fn [_] {::handler ::update})}
+               {:handler (handler ::update)}
            :delete
            #:blaze.rest-api.interaction
-               {:handler (fn [_] {::handler ::delete})}
+               {:handler (handler ::delete)}
            :history-instance
            #:blaze.rest-api.interaction
-               {:handler (fn [_] {::handler ::history-instance})}
+               {:handler (handler ::history-instance)}
            :history-type
            #:blaze.rest-api.interaction
-               {:handler (fn [_] {::handler ::history-type})}
+               {:handler (handler ::history-type)}
            :create
            #:blaze.rest-api.interaction
-               {:handler (fn [_] {::handler ::create})}
+               {:handler (handler ::create)}
            :search-type
            #:blaze.rest-api.interaction
-               {:handler (fn [_] {::handler ::search-type})}}}]
+               {:handler (handler ::search-type)}}}]
      :compartments
      [#:blaze.rest-api.compartment
-      {:code "Patient"
-       :search-handler (fn [_] {::handler ::search-patient-compartment})}]
+         {:code "Patient"
+          :search-handler (handler ::search-patient-compartment)}]
      :operations
      [#:blaze.rest-api.operation
          {:code "evaluate-measure"
           :resource-types ["Measure"]
-          :type-handler (fn [_] {::handler ::evaluate-measure-type})
-          :instance-handler (fn [_] {::handler ::evaluate-measure-instance})}]}
+          :type-handler (handler ::evaluate-measure-type)
+          :instance-handler (handler ::evaluate-measure-instance)}]}
     (fn [_])))
 
 
@@ -104,8 +109,8 @@
       "/Measure/0/$evaluate-measure" :post ::evaluate-measure-instance))
 
   (testing "Patient instance POST is not allowed"
-    (given ((reitit.ring/ring-handler router rest-api/default-handler)
-            {:uri "/Patient/0" :request-method :post})
+    (given @((reitit.ring/ring-handler router rest-api/default-handler)
+             {:uri "/Patient/0" :request-method :post})
       :status := 405
       [:body :resourceType] := "OperationOutcome"
       [:body :issue 0 :severity] := "error"
@@ -113,8 +118,8 @@
       [:body :issue 0 :diagnostics] := "Method POST not allowed on `/Patient/0` endpoint."))
 
   (testing "Patient type PUT is not allowed"
-    (given ((reitit.ring/ring-handler router rest-api/default-handler)
-            {:uri "/Patient" :request-method :put})
+    (given @((reitit.ring/ring-handler router rest-api/default-handler)
+             {:uri "/Patient" :request-method :put})
       :status := 405
       [:body :resourceType] := "OperationOutcome"
       [:body :issue 0 :severity] := "error"
@@ -122,8 +127,8 @@
       [:body :issue 0 :diagnostics] := "Method PUT not allowed on `/Patient` endpoint."))
 
   (testing "Observations are not found"
-    (given ((reitit.ring/ring-handler router rest-api/default-handler)
-            {:uri "/Observation" :request-method :get})
+    (given @((reitit.ring/ring-handler router rest-api/default-handler)
+             {:uri "/Observation" :request-method :get})
       :status := 404
       [:body :resourceType] := "OperationOutcome"
       [:body :issue 0 :severity] := "error"
@@ -150,13 +155,13 @@
 (deftest capabilities-handler-test
   (testing "minimal config"
     (given
-      (-> ((rest-api/capabilities-handler
-             {:base-url "base-url-131713"
-              :version "version-131640"
-              :structure-definitions
-              [{:kind "resource" :name "Patient"}]
-              :search-param-registry search-param-registry})
-           {})
+      (-> @((rest-api/capabilities-handler
+              {:base-url "base-url-131713"
+               :version "version-131640"
+               :structure-definitions
+               [{:kind "resource" :name "Patient"}]
+               :search-param-registry search-param-registry})
+            {})
           :body)
       :resourceType := "CapabilityStatement"
       :status := "active"
@@ -169,20 +174,20 @@
 
   (testing "one interaction"
     (given
-      (-> ((rest-api/capabilities-handler
-             {:base-url "base-url-131713"
-              :version "version-131640"
-              :structure-definitions
-              [{:kind "resource" :name "Patient"}]
-              :search-param-registry search-param-registry
-              :resource-patterns
-              [#:blaze.rest-api.resource-pattern
-                  {:type "Patient"
-                   :interactions
-                   {:read
-                    #:blaze.rest-api.interaction
-                        {:handler (fn [_])}}}]})
-           {})
+      (-> @((rest-api/capabilities-handler
+              {:base-url "base-url-131713"
+               :version "version-131640"
+               :structure-definitions
+               [{:kind "resource" :name "Patient"}]
+               :search-param-registry search-param-registry
+               :resource-patterns
+               [#:blaze.rest-api.resource-pattern
+                   {:type "Patient"
+                    :interactions
+                    {:read
+                     #:blaze.rest-api.interaction
+                         {:handler (fn [_])}}}]})
+            {})
           :body)
       :resourceType := "CapabilityStatement"
       [:rest 0 :resource 0 :type] := "Patient"
@@ -190,28 +195,28 @@
 
   (testing "one operation"
     (given
-      (-> ((rest-api/capabilities-handler
-             {:base-url "base-url-131713"
-              :version "version-131640"
-              :structure-definitions
-              [{:kind "resource" :name "Measure"}]
-              :search-param-registry search-param-registry
-              :resource-patterns
-              [#:blaze.rest-api.resource-pattern
-                  {:type "Measure"
-                   :interactions
-                   {:read
-                    #:blaze.rest-api.interaction
-                        {:handler (fn [_])}}}]
-              :operations
-              [#:blaze.rest-api.operation
-                  {:code "evaluate-measure"
-                   :def-uri
-                   "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
-                   :resource-types ["Measure"]
-                   :type-handler (fn [_])
-                   :instance-handler (fn [_])}]})
-           {})
+      (-> @((rest-api/capabilities-handler
+              {:base-url "base-url-131713"
+               :version "version-131640"
+               :structure-definitions
+               [{:kind "resource" :name "Measure"}]
+               :search-param-registry search-param-registry
+               :resource-patterns
+               [#:blaze.rest-api.resource-pattern
+                   {:type "Measure"
+                    :interactions
+                    {:read
+                     #:blaze.rest-api.interaction
+                         {:handler (fn [_])}}}]
+               :operations
+               [#:blaze.rest-api.operation
+                   {:code "evaluate-measure"
+                    :def-uri
+                    "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+                    :resource-types ["Measure"]
+                    :type-handler (fn [_])
+                    :instance-handler (fn [_])}]})
+            {})
           :body)
       :resourceType := "CapabilityStatement"
       [:rest 0 :resource 0 :type] := "Measure"

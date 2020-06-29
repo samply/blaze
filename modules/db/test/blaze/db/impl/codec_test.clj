@@ -8,6 +8,7 @@
     [clojure.test.check]
     [clojure.test.check.generators :as gen])
   (:import
+    [com.google.common.hash HashCode]
     [java.time ZoneOffset])
   (:refer-clojure :exclude [hash]))
 
@@ -21,8 +22,8 @@
 (test/use-fixtures :each fixture)
 
 
-(defn byte-array-gen [size]
-  #(gen/fmap byte-array (gen/vector gen/byte size)))
+(defn hash-gen [size]
+  #(gen/fmap (fn [bs] (HashCode/fromBytes bs)) (gen/fmap byte-array (gen/vector gen/byte size))))
 
 
 (defmacro check
@@ -63,7 +64,7 @@
 (deftest resource-as-of-value
   (check
     `codec/resource-as-of-value
-    {:gen {:blaze.resource/hash (byte-array-gen codec/hash-size)}}))
+    {:gen {:blaze.db.resource/hash (hash-gen codec/hash-size)}}))
 
 
 
@@ -249,7 +250,3 @@
       576460752303423488 "C00800000000000000"
       576460752303423489 "C00800000000000001"
       Long/MAX_VALUE "C07FFFFFFFFFFFFFFF")))
-
-(deftest hash
-  (testing "bit length is 256"
-    (is (= 32 (count (vec (codec/hash {:resourceType "Patient" :id "0"})))))))

@@ -5,12 +5,14 @@
   The specs at the beginning of the namespace describe the config which has to
   be given to `init!``. The server port has a default of `8080`."
   (:require
+    [blaze.executors :as ex]
+    [blaze.log]
+    [blaze.server :as server]
+    [blaze.server.spec]
     [clojure.java.io :as io]
     [clojure.string :as str]
-    [clojure.walk :refer [postwalk]]
-    [blaze.executors :as ex]
-    [blaze.server :as server]
     [clojure.tools.reader.edn :as edn]
+    [clojure.walk :refer [postwalk]]
     [integrant.core :as ig]
     [spec-coerce.alpha :refer [coerce]]
     [taoensso.timbre :as log])
@@ -69,13 +71,13 @@
 
 
 (defn- load-namespaces [config]
-  (log/info "Loading namespaces ...")
+  (log/info "Loading namespaces (can take up to 20 seconds) ...")
   (let [loaded-ns (ig/load-namespaces config)]
     (log/info "Loaded the following namespaces:" (str/join ", " loaded-ns))))
 
 
 (def ^:private root-config
-  {:blaze/version "0.9.0-alpha.9"
+  {:blaze/version "0.9.0-alpha.10"
 
    :blaze/structure-definition {}
 
@@ -137,6 +139,13 @@
     (if inverse? (not res) res)))
 
 
+(defn- merge-storage
+  [{:keys [storage] :as config} env]
+  (let [key (get env "STORAGE" "in-memory")]
+    (log/info "Use storage variant" key)
+    (update config :base-config merge (get storage (keyword key)))))
+
+
 (defn- merge-features
   "Merges feature config portions of enabled features into `base-config`."
   {:arglists '([blaze-edn env])}
@@ -155,13 +164,10 @@
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
-  (log/merge-config!
-    {:level (keyword (str/lower-case level))
-     :timestamp-opts
-     {:pattern :iso8601
-      :locale :jvm-default
-      :timezone :utc}})
-  (let [config (merge-features (read-blaze-edn) env)
+  (log/set-level! (keyword (str/lower-case level)))
+  (let [config (-> (read-blaze-edn)
+                   (merge-storage env)
+                   (merge-features env))
         config (-> (merge-with merge root-config config)
                    (resolve-config env))]
     (load-namespaces config)
@@ -194,7 +200,7 @@
 (defmethod ig/init-key :blaze.server/executor
   [_ _]
   (log/info (executor-init-msg))
-  (ex/cpu-bound-pool "blaze-server-%d"))
+  (ex/manifold-cpu-bound-pool "server-%d"))
 
 
 (derive :blaze.server/executor :blaze.metrics/thread-pool-executor)

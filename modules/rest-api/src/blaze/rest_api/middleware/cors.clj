@@ -1,6 +1,6 @@
 (ns blaze.rest-api.middleware.cors
   (:require
-    [manifold.deferred :as md]
+    [blaze.async-comp :as ac]
     [ring.util.response :as ring]))
 
 
@@ -8,4 +8,4 @@
   [handler]
   (fn [request]
     (-> (handler request)
-        (md/chain' #(ring/header % "Access-Control-Allow-Origin" "*")))))
+        (ac/then-apply #(ring/header % "Access-Control-Allow-Origin" "*")))))

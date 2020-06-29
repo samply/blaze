@@ -4,9 +4,13 @@
   A Database node provides access to a set of databases.
 
   A Database is an immutable, indexed set of Resources at a certain point in
-  time."
+  time.
+
+
+  Instance-level, Type-level, system-level, compatment"
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.async-comp :as ac]
     [blaze.db.impl.protocols :as p])
   (:import
     [java.io Closeable])
@@ -22,20 +26,25 @@
 
 
 (defn sync
-  "Returns a database with at least the `t` specified.
+  "Returns a CompletionStage that completes when the database with at least the
+  point in time `t` is available.
 
-  Returns a deferred."
+  The database could be of a newer point in time. Please use `as-of` afterwards
+  if you want a database with exactly `t`."
   [node t]
   (p/-sync node t))
 
 
-(defn submit-tx
-  "Submits `tx-ops` to the central transaction log.
+(defn transact
+  "Submits `tx-ops` to the central transaction log and waits for the transaction
+  to commit on `node`.
 
-  Returns a success deferred with the database after the transaction or an
-  error deferred with an anomaly."
+  Returns a CompletableFuture that completes with the database after the
+  transaction in case of success or completes exceptionally with an anomaly in
+  case of a transaction error or other errors."
   [node tx-ops]
-  (p/-submit-tx node tx-ops))
+  (-> (p/-submit-tx node tx-ops)
+      (ac/then-compose #(p/-tx-result node %))))
 
 
 (defn node

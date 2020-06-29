@@ -121,8 +121,9 @@
 
   (new-snapshot ^java.io.Closeable [store])
 
-  (get [store key] [store column-family key]
-    "Returns the value if there is any.")
+  (-get [store key] [store column-family key])
+
+  (-multi-get [store keys])
 
   (-put [store entries] [store key value])
 
@@ -138,9 +139,25 @@
     Writes are atomic. Blocks."))
 
 
+(defn get
+  "Returns the value if there is any."
+  ([store key]
+   (-get store key))
+  ([store column-family key]
+   (-get store column-family key)))
+
+
+(defn multi-get
+  "Returns a map of key to value of all found entries."
+  ([store keys]
+   (-multi-get store keys)))
+
+
 (defn put
   "Entries are either tuples of key and value or triples of column-family, key
-  and value. Puts are atomic. Blocks."
+  and value.
+
+  Puts are atomic. Blocks. Returns nil."
   ([store entries]
    (-put store entries))
   ([store key value]

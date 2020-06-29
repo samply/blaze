@@ -1,0 +1,32 @@
+{:deps
+ {blaze/db-hash
+  {:local/root "../db-hash"}
+
+  blaze/executor
+  {:local/root "../executor"}
+
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
+
+  blaze/kv
+  {:local/root "../kv"}
+
+  blaze/module-base
+  {:local/root "../module-base"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.641"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.06.21"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

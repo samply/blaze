@@ -1,9 +1,10 @@
 (ns blaze.handler.util-spec
   (:require
+    [blaze.async-comp :as ac]
+    [blaze.async-comp-spec]
     [blaze.db.spec]
     [blaze.handler.util :as util]
-    [clojure.spec.alpha :as s]
-    [manifold.deferred :refer [deferred?]]))
+    [clojure.spec.alpha :as s]))
 
 
 (s/fdef util/preference
@@ -13,5 +14,5 @@
 
 (s/fdef util/db
   :args (s/cat :node :blaze.db/node :t (s/nilable :blaze.db/t))
-  :ret (s/or :deferred deferred? :db :blaze.db/db))
+  :ret (s/or :future ac/completable-future? :db :blaze.db/db))
 
