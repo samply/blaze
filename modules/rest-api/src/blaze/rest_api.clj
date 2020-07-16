@@ -369,12 +369,14 @@
           [{:severity "error"
             :code "not-found"}]}))
      :method-not-allowed
-     (fn [_]
+     (fn [{:keys [uri request-method]}]
        (-> (ring/response
              {:resourceType "OperationOutcome"
               :issue
               [{:severity "error"
-                :code "processing"}]})
+                :code "processing"
+                :diagnostics (format "Method %s not allowed on `%s` endpoint."
+                                     (str/upper-case (name request-method)) uri)}]})
            (ring/status 405)))
      :not-acceptable
      (fn [_]
