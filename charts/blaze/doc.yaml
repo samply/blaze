@@ -8,6 +8,8 @@ chart:
   name: blaze
   values: "-- generate from values file --"
   valuesExample: "-- generate from values file --"
+repository:
+  name: charts
 prerequisites:
   - "Kubernetes v1.16+"
   - "Helm v3"

@@ -5,8 +5,6 @@
 ## TL;DR;
 
 ```console
-$ helm repo add {{ .Repository.Name }} {{ .Repository.URL }}
-$ helm repo update
 $ helm install {{ .Release.Name }} {{ .Repository.Name }}/{{ .Chart.Name }} -n {{ .Release.Namespace }}{{ with .Chart.Version }} --version={{.}}{{ end }}
 ```
 

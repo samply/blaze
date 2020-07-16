@@ -5,9 +5,7 @@
 ## TL;DR;
 
 ```console
-$ helm repo add samply https://samply.github.io/charts
-$ helm repo update
-$ helm install blaze-store samply/blaze -n blaze
+$ helm install blaze-store charts/blaze -n blaze
 ```
 
 ## Introduction
@@ -24,7 +22,7 @@ This chart deploys Blaze on a [Kubernetes](http://kubernetes.io) cluster using t
 To install the chart with the release name `blaze-store`:
 
 ```console
-$ helm install blaze-store samply/blaze -n blaze
+$ helm install blaze-store charts/blaze -n blaze
 ```
 
 The command deploys Blaze on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
@@ -101,14 +99,14 @@ The following table lists the configurable parameters of the `blaze` chart and t
 Specify each parameter using the `--set key=value[,key=value]` argument to `helm install`. For example:
 
 ```console
-$ helm install blaze-store samply/blaze -n blaze --set image.pullPolicy=Always
+$ helm install blaze-store charts/blaze -n blaze --set image.pullPolicy=Always
 ```
 
 Alternatively, a YAML file that specifies the values for the parameters can be provided while
 installing the chart. For example:
 
 ```console
-$ helm install blaze-store samply/blaze -n blaze --values values.yaml
+$ helm install blaze-store charts/blaze -n blaze --values values.yaml
 ```
 
 ### Production
