@@ -1,0 +1,17 @@
+{{- if .Values.metrics.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "blaze.fullname" . }}-metrics
+  labels:
+    {{- include "blaze.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.metrics.service.type }}
+  ports:
+    - name: http-metrics
+      port: {{ .Values.metrics.service.port }}
+      targetPort: http-metrics
+      protocol: TCP
+  selector:
+    {{- include "blaze.selectorLabels" . | nindent 4 }}
+{{- end }}

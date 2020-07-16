@@ -1,0 +1,121 @@
+# Default values for blaze.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  pullPolicy: Always
+  registry: docker.io
+  repository: samply/blaze
+  tag: 0.9.0-alpha.179.27
+
+jvmOpts: "-Xms2g -Xmx2g -XX:+UseG1GC"
+
+# the server base URL is set to the ingress host and path or, if not set, the service name.
+# this value allows for manually overriding the URL.
+baseUrlOverride: ""
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 5
+  successThreshold: 1
+
+metrics:
+  enabled: false
+  service:
+    type: ClusterIP
+    port: 8081
+  serviceMonitor:
+    enabled: false
+    additionalLabels: {}
+    interval: 10s
+    scrapeTimeout: 10s
+    # namespace: monitoring
+
+# Add extra environment variables as name-value-tuples
+extraEnv: []
+
+updateStrategy:
+  # updateStrategy for Blaze store StatefulSet
+  # ref: <https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies>
+  type: RollingUpdate
+
+persistence:
+  enabled: false
+  # The path the volume will be mounted at
+  mountPath: /app/data
+  accessModes:
+    - ReadWriteOnce
+  # the requested size of the persistent volume claim
+  size: 32Gi
+  annotations: {}
+  # storageClassName: ""
+
+volumePermissions:
+  enabled: false
+  image:
+    registry: docker.io
+    repository: busybox
+    tag: 1.32.0
+    pullPolicy: Always
+    ## Optionally specify an array of imagePullSecrets.
+    ## Secrets must be manually created in the namespace.
+    ## ref: <https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/>
+    # pullSecrets:
+    #   - myRegistryKeySecretName
+  ## Init container Security Context
+  ## Note: the chown of the data folder is done to securityContext.runAsUser
+  ## and not the below volumePermissions.securityContext.runAsUser
+  ## When runAsUser is set to special value "auto", init container will try to chwon the
+  ## data folder to autodetermined user&group, using commands: `id -u`:`id -G | cut -d" " -f2`
+  ## "auto" is especially useful for OpenShift which has scc with dynamic userids (and 0 is not allowed).
+  ## You may want to use this volumePermissions.securityContext.runAsUser="auto" in combination with
+  ## pod securityContext.enabled=false
+  securityContext:
+    runAsUser: 0
+
+securityContext:
+  enabled: true
+  privileged: false
+  fsGroup: 65532
+  runAsUser: 65532
+  runAsGroup: 65532
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+  # readOnlyRootFilesystem: true
+
+service:
+  type: ClusterIP
+  port: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  annotations:
+    {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths: []
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+podAnnotations: {}

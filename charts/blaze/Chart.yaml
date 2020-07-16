@@ -1,0 +1,13 @@
+apiVersion: v2
+description: Helm chart for deploying Samply Blaze - A FHIR® server with internal, fast CQL Evaluation Engine
+home: https://alexanderkiel.gitbook.io/blaze/
+keywords:
+  - fhir
+  - fhir-server
+maintainers:
+  - name: alexanderkiel
+name: blaze
+sources:
+  - https://github.com/samply/blaze
+type: application
+version: 0.1.0

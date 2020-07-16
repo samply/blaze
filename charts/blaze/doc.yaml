@@ -1,0 +1,16 @@
+project:
+  name: Samply Blaze FHIR® Store
+  shortName: blaze
+  url: https://alexanderkiel.gitbook.io/blaze/
+  description: A FHIR® server with internal, fast CQL Evaluation Engine.
+  app: Blaze
+chart:
+  name: blaze
+  values: "-- generate from values file --"
+  valuesExample: "-- generate from values file --"
+prerequisites:
+  - "Kubernetes v1.16+"
+  - "Helm v3"
+release:
+  name: blaze-store
+  namespace: blaze

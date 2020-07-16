@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "blaze.fullname" . }}
+  labels:
+    {{- include "blaze.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http-fhir
+      protocol: TCP
+  selector:
+    {{- include "blaze.selectorLabels" . | nindent 4 }}
