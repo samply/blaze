@@ -275,6 +275,12 @@
   (to-integer [_]))
 
 
+;; 20.25. SingletonFrom
+(extend-protocol p/SingletonFrom
+  nil
+  (singleton-from [_]))
+
+
 ;; 22.26. ToQuantity
 (extend-protocol p/ToQuantity
   nil

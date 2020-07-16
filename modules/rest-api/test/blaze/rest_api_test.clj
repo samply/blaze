@@ -19,7 +19,7 @@
 (test/use-fixtures :each fixture)
 
 
-(def search-param-registry (sr/init-mem-search-param-registry))
+(def search-param-registry (sr/init-search-param-registry))
 
 
 (def config
@@ -59,6 +59,10 @@
            :search-type
            #:blaze.rest-api.interaction
                {:handler (fn [_] {::handler ::search-type})}}}]
+     :compartments
+     [#:blaze.rest-api.compartment
+      {:code "Patient"
+       :search-handler (fn [_] {::handler ::search-patient-compartment})}]
      :operations
      [#:blaze.rest-api.operation
          {:code "evaluate-measure"
@@ -92,6 +96,8 @@
       "/Patient/0" :delete ::delete
       "/Patient/0/_history" :get ::history-instance
       "/Patient/0/_history/42" :get ::vread
+      "/Patient/0/Condition" :get ::search-patient-compartment
+      "/Patient/0/Observation" :get ::search-patient-compartment
       "/Measure/$evaluate-measure" :get ::evaluate-measure-type
       "/Measure/$evaluate-measure" :post ::evaluate-measure-type
       "/Measure/0/$evaluate-measure" :get ::evaluate-measure-instance

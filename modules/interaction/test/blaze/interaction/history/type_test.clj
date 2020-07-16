@@ -7,7 +7,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.history.type :refer [handler]]
-    [blaze.middleware.fhir.metrics-spec]
+    [blaze.interaction.history.type-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -38,12 +38,16 @@
    :path "/Patient/_history"})
 
 
-(defn handler-with [txs]
+(defn- handler-with [txs]
   (handler (mem-node-with txs)))
 
 
+(defn- link-url [body link-relation]
+  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
+
+
 (deftest handler-test
-  (testing "returns history with one patient"
+  (testing "with one patient"
     (let [{:keys [status body]}
           @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {::reitit/router router
@@ -57,13 +61,11 @@
 
       (is (= 1 (:total body)))
 
-      (is (= 1 (count (:entry body))))
+      (testing "has self link"
+        (is (= "/Patient/_history?__t=1&__page-t=1&__page-id=0" (link-url body "self"))))
 
-      (is (= 1 (count (:link body))))
-
-      (is (= "self" (-> body :link first :relation)))
-
-      (is (= "/Patient/_history?t=1&page-t=1&page-id=0" (-> body :link first :url)))
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
 
       (given (-> body :entry first)
         :fullUrl := "/Patient/0"

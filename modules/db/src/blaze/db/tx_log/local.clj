@@ -8,10 +8,14 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.indexer :as indexer]
     [blaze.db.tx-log :as tx-log]
+    [blaze.db.tx-log.local.references :as references]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
+    [loom.alg]
+    [loom.graph]
     [manifold.deferred :as md]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
@@ -54,7 +58,11 @@
    :fhir/issue "invariant"})
 
 
-(defn- validate-ops [tx-ops]
+(defn- validate-ops
+  "Validates transactions operators for any duplicate resource.
+
+  Returns an anomaly if their is any duplicate resource."
+  [tx-ops]
   (transduce
     (map extract-type-id)
     (completing
@@ -74,11 +82,12 @@
   (let [hash (codec/hash resource)]
     {:hash-and-resource
      [hash resource]
-     :cmd
+     :blaze.db/tx-cmd
      [op
       (:resourceType resource)
       (:id resource)
-      hash]}))
+      hash
+      (references/extract-references resource)]}))
 
 
 (defmethod prepare-op :put
@@ -86,12 +95,13 @@
   (let [hash (codec/hash resource)]
     {:hash-and-resource
      [hash resource]
-     :cmd
+     :blaze.db/tx-cmd
      (cond->
        [op
         (:resourceType resource)
         (:id resource)
-        hash]
+        hash
+        (references/extract-references resource)]
        matches
        (conj matches))}))
 
@@ -102,11 +112,14 @@
         hash (codec/hash resource)]
     {:hash-and-resource
      [hash resource]
-     :cmd
+     :blaze.db/tx-cmd
      (conj cmd hash)}))
 
 
-(defn- prepare-ops [tx-ops]
+(defn- prepare-ops
+  "Splits each transaction operator into an :hash-and-resource tuple and
+  a :blaze.db/tx-cmd."
+  [tx-ops]
   (mapv prepare-op tx-ops))
 
 
@@ -114,6 +127,34 @@
   (->> (partition-all batch-size hash-and-resources)
        (map (partial indexer/index-resources resource-indexer))
        (apply md/zip')))
+
+
+(defn- reference-graph [cmds]
+  (loom.graph/digraph
+    (into
+      {}
+      (map
+        (fn [[_ type id _ references]]
+          [[type id] references]))
+      cmds)))
+
+
+(defn- reference-order
+  "Returns a seq of `[type id]` tuples of `cmds` in reference dependency order."
+  [cmds]
+  (reverse (loom.alg/topsort (reference-graph cmds))))
+
+
+(defn- index-by-type-id
+  "Returns a map from `[type id]` tuples to commands."
+  [cmds]
+  (into {} (map (fn [[_ type id :as cmd]] [[type id] cmd])) cmds))
+
+
+(defn- sort-by-references [cmds]
+  (let [index (index-by-type-id cmds)
+        order (reference-order cmds)]
+    (into [] (comp (map index) (remove nil?)) order)))
 
 
 (deftype LocalTxLog [resource-indexer resource-indexer-batch-size tx-indexer
@@ -125,7 +166,8 @@
       (if (::anom/category res)
         (md/error-deferred res)
         (let [ops (prepare-ops tx-ops)
-              cmds (mapv :cmd ops)]
+              cmds (mapv :blaze.db/tx-cmd ops)
+              cmds (sort-by-references cmds)]
           (-> (index-resources resource-indexer resource-indexer-batch-size
                                (mapv :hash-and-resource ops))
               (md/chain'
@@ -151,9 +193,23 @@
     (volatile! (indexer/last-t tx-indexer))))
 
 
+(s/def ::resource-indexer-batch-size
+  nat-int?)
+
+
+(defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]
+  (s/keys
+    :req-un
+    [:blaze.db.indexer/resource-indexer
+     :blaze.db.indexer/tx-indexer]
+    :opt-un
+    [::resource-indexer-batch-size]))
+
+
 (defn- init-msg [resource-indexer-batch-size]
   (format "Open local transaction log with a resource indexer batch size of %d."
           resource-indexer-batch-size))
+
 
 (defmethod ig/init-key :blaze.db.tx-log/local
   [_ {:keys [resource-indexer resource-indexer-batch-size tx-indexer]

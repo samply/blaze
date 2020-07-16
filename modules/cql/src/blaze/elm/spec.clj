@@ -330,8 +330,8 @@
 
 
 (s/def :elm/quantity
-  (s/keys :req-un [:elm.quantity/type :elm.quantity/value]
-          :opt-un [:elm.quantity/unit]))
+  (s/keys :req-un [:elm.quantity/type]
+          :opt-un [:elm.quantity/value :elm.quantity/unit]))
 
 
 (defmethod expression :elm.spec.type/quantity [_]

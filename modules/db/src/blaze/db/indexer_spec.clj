@@ -1,14 +1,11 @@
 (ns blaze.db.indexer-spec
   (:require
-    [blaze.fhir.spec]
     [blaze.db.impl.codec :as codec]
     [blaze.db.indexer :as indexer]
+    [blaze.db.spec]
+    [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [manifold.deferred :refer [deferred?]]))
-
-
-(s/def ::indexer/resource
-  #(satisfies? indexer/Resource %))
 
 
 (s/def :blaze.resource/hash
@@ -16,13 +13,9 @@
 
 
 (s/fdef indexer/index-resources
-  :args (s/cat :indexer ::indexer/resource
+  :args (s/cat :indexer ::indexer/resource-indexer
                :hash-and-resources (s/coll-of (s/tuple :blaze.resource/hash :blaze/resource)))
   :ret deferred?)
-
-
-(s/def ::indexer/tx
-  #(satisfies? indexer/Tx %))
 
 
 (defmulti tx-cmd first)
@@ -33,7 +26,8 @@
   (s/cat :cmd #{:create}
          :type :blaze.resource/resourceType
          :id :blaze.resource/id
-         :hash :blaze.resource/hash))
+         :hash :blaze.resource/hash
+         :references (s/coll-of :blaze.db/local-ref)))
 
 
 (defmethod tx-cmd :put
@@ -42,6 +36,7 @@
          :type :blaze.resource/resourceType
          :id :blaze.resource/id
          :hash :blaze.resource/hash
+         :references (s/coll-of :blaze.db/local-ref)
          :matches (s/? :blaze.db/t)))
 
 
@@ -62,12 +57,12 @@
 
 
 (s/fdef indexer/last-t
-  :args (s/cat :indexer ::indexer/tx)
+  :args (s/cat :indexer ::indexer/tx-indexer)
   :ret :blaze.db/t)
 
 
 (s/fdef indexer/index-tx
-  :args (s/cat :indexer ::indexer/tx
+  :args (s/cat :indexer ::indexer/tx-indexer
                :t :blaze.db/t
                :tx-instant :blaze.db.tx/instant
                :tx-cmds :blaze.db/tx-cmds))

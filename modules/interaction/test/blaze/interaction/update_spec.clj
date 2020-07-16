@@ -1,9 +1,12 @@
 (ns blaze.interaction.update-spec
   (:require
+    [blaze.db.spec]
     [blaze.interaction.update :as update]
-    [clojure.spec.alpha :as s]))
+    [blaze.middleware.fhir.metrics-spec]
+    [clojure.spec.alpha :as s]
+    [ring.core.spec]))
 
 
 (s/fdef update/handler
   :args (s/cat :node :blaze.db/node)
-  :ret fn?)
+  :ret :ring/handler)

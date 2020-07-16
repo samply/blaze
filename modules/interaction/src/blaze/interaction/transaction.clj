@@ -11,7 +11,7 @@
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.uuid :refer [random-uuid]]
-    [clojure.spec.alpha :as s]
+    [clojure.alpha.spec :as s2]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -104,7 +104,7 @@
        [(format "Bundle.entry[%d].resource.id" idx)]
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"}
 
-      (and (= "PUT" method) (not (s/valid? :blaze.resource/id (:id resource))))
+      (and (= "PUT" method) (not (s2/valid? :fhir/id (:id resource))))
       {::anom/category ::anom/incorrect
        :fhir/issue "value"
        :fhir.issue/expression
@@ -145,13 +145,9 @@
 
 
 (defn- prepare-entry
-  [db {{:keys [method]} :request :keys [resource] :as entry}]
+  [{{:keys [method]} :request :keys [resource] :as entry}]
   (log/trace "prepare-entry" method (:resourceType resource) (:id resource))
   (cond
-    (= "PUT" method)
-    (let [{type :resourceType id :id} resource]
-      (assoc entry :blaze/resource-exists? (d/resource-exists? db type id)))
-
     (= "POST" method)
     (assoc-in entry [:resource :id] (str (random-uuid)))
 
@@ -160,7 +156,7 @@
 
 
 (defn- validate-and-prepare-bundle
-  [db {:keys [resourceType type] entries :entry}]
+  [{:keys [resourceType type] entries :entry}]
   (cond
     (not= "Bundle" resourceType)
     (md/error-deferred
@@ -180,14 +176,14 @@
       (let [entries (validate-entries entries)]
         (if (::anom/category entries)
           (md/error-deferred entries)
-          (mapv #(prepare-entry db %) entries)))
+          (mapv prepare-entry entries)))
       entries)))
 
 
 (defmulti build-response-entry
   "Builds the response entry."
-  {:arglists '([context request-entry db])}
-  (fn [_ {{:keys [method]} :request} _] method))
+  {:arglists '([context db request-entry])}
+  (fn [_ _ {{:keys [method]} :request}] method))
 
 
 (defn- last-modified [{:blaze.db.tx/keys [instant]}]
@@ -196,8 +192,8 @@
 
 (defmethod build-response-entry "POST"
   [{:keys [router return-preference]}
-   {{type :resourceType id :id} :resource}
-   db]
+   db
+   {{type :resourceType id :id} :resource}]
   (let [resource (d/resource db type id)
         {:blaze.db/keys [tx]} (meta resource)
         vid (str (:blaze.db/t tx))]
@@ -214,19 +210,17 @@
 
 
 (defmethod build-response-entry "PUT"
-  [{:keys [router return-preference]}
-   {{type :resourceType id :id} :resource :blaze/keys [resource-exists?]}
-   db]
+  [{:keys [router return-preference]} db {{type :resourceType id :id} :resource}]
   (let [resource (d/resource db type id)
-        {:blaze.db/keys [tx]} (meta resource)
+        {:blaze.db/keys [tx num-changes]} (meta resource)
         vid (str (:blaze.db/t tx))]
     (cond->
       {:response
        (cond->
-         {:status (if resource-exists? "200" "201")
+         {:status (if (= 1 num-changes) "201" "200")
           :etag (str "W/\"" vid "\"")
           :lastModified (last-modified tx)}
-         (not resource-exists?)
+         (= 1 num-changes)
          (assoc
            :location
            (fhir-util/versioned-instance-url router type id vid)))}
@@ -236,7 +230,7 @@
 
 
 (defmethod build-response-entry "DELETE"
-  [_ _ db]
+  [_ db _]
   {:response
    {:status "204"
     :lastModified (last-modified (d/tx db (d/basis-t db)))}})
@@ -334,41 +328,38 @@
   (-> (d/submit-tx node (bundle/tx-ops request-entries))
       (md/chain'
         (fn [db]
-          (mapv
-            #(build-response-entry context % db)
-            request-entries)))))
+          (mapv #(build-response-entry context db %) request-entries)))))
 
 
 (defn- handler-intern [node executor]
   (fn [{{:keys [type] :as bundle} :body :keys [headers]
         ::reitit/keys [router match]}]
-    (log/debug "POST [base]")
-    (let [db (d/db node)]
-      (md/future-with executor
-        (-> (validate-and-prepare-bundle db bundle)
-            (md/chain'
-              (let [context
-                    {:router router
-                     :handler (reitit.ring/ring-handler router)
-                     :blaze/context-path (-> match :data :blaze/context-path)
-                     :node node
-                     :return-preference (handler-util/preference headers "return")}]
-                #(process context type %)))
-            (md/chain'
-              (fn [response-entries]
-                (ring/response
-                  {:resourceType "Bundle"
-                   :type (str type "-response")
-                   :entry response-entries})))
-            (md/catch' handler-util/error-response))))))
+    (md/future-with executor
+      (-> (validate-and-prepare-bundle bundle)
+          (md/chain'
+            (let [context
+                  {:router router
+                   :handler (reitit.ring/ring-handler router)
+                   :blaze/context-path (-> match :data :blaze/context-path)
+                   :node node
+                   :return-preference (handler-util/preference headers "return")}]
+              #(process context type %)))
+          (md/chain'
+            (fn [response-entries]
+              (ring/response
+                {:resourceType "Bundle"
+                 :type (str type "-response")
+                 :entry response-entries})))
+          (md/catch' handler-util/error-response)))))
 
 
 (defn- wrap-interaction-name [handler]
   (fn [{{:keys [type]} :body :as request}]
-    (-> (handler request)
-        (md/chain'
-          (fn [response]
-            (assoc response :fhir/interaction-name type))))))
+    (cond-> (handler request)
+      (string? type)
+      (md/chain'
+        (fn [response]
+          (assoc response :fhir/interaction-name type))))))
 
 
 (defn handler [node executor]

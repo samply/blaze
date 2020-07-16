@@ -4,7 +4,6 @@
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
-    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom])
   (:import
     [org.cqframework.cql.cql2elm
@@ -39,10 +38,6 @@
 ;; Our special model info with Specimen context
 (load-model-info "blaze/fhir-modelinfo-4.0.0.xml")
 
-
-(s/fdef translate
-  :args (s/cat :cql string? :opts (s/* some?))
-  :ret :elm/library)
 
 (defn translate
   "Translates `cql` library into am :elm/library.

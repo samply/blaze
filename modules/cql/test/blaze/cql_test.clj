@@ -2,12 +2,14 @@
   "https://cql.hl7.org/2019May/tests.html"
   (:require
     [blaze.cql-translator :refer [translate]]
+    [blaze.cql-translator-spec]
     [blaze.elm.compiler :refer [compile]]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
     [blaze.elm.expression :as expr]
     [blaze.elm.normalizer :as normalizer]
     [blaze.elm.type-infer :as type-infer]
+    [blaze.elm.type-infer-spec]
     [clojure.data.xml :as xml]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -286,6 +288,8 @@
             "NotEqualABCAnd123"                             ; new in v1.4.6
             "Equivalent123AndString123"                     ; new in v1.4.6
             "Equivalent123AndABC"                           ; new in v1.4.6
+
+            "ExistsListNull"                                ; the list contains one null element
             })
 
 

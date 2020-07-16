@@ -1,12 +1,11 @@
 (ns blaze.db.impl.search-param-test
   (:require
     [blaze.db.impl.bytes :as bytes]
+    [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
-    [blaze.db.impl.codec :as codec]
     [clj-fuzzy.phonetics :as phonetics]
-    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
@@ -22,16 +21,39 @@
 (test/use-fixtures :each fixture)
 
 
-(def search-param-registry (sr/init-mem-search-param-registry))
-
-
-(deftest local-ref-spec
-  (is (= ["Patient" "0"] (s/conform :blaze.db/local-ref "Patient/0")))
-
-  (is (s/invalid? (s/conform :blaze.db/local-ref "Patient/0/1"))))
+(def search-param-registry (sr/init-search-param-registry))
 
 
 (deftest index-entries
+  (testing "Observation _id"
+    (let [observation {:resourceType "Observation"
+                       :id "id-161849"}
+          hash (codec/hash observation)
+          [[_ k0] [_ k1]]
+          (search-param/index-entries
+            (sr/get search-param-registry "_id" "Observation")
+            hash observation [])]
+
+      (testing "search-param-value-key"
+        (is (bytes/=
+              k0
+              (codec/search-param-value-key
+                (codec/c-hash "_id")
+                (codec/tid "Observation")
+                (codec/v-hash "id-161849")
+                (codec/id-bytes "id-161849")
+                hash))))
+
+      (testing "resource-value-key"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "Observation")
+                (codec/id-bytes "id-161849")
+                hash
+                (codec/c-hash "_id")
+                (codec/v-hash "id-161849")))))))
+
   (testing "Observation code"
     (let [observation {:resourceType "Observation"
                        :id "id-183201"
@@ -40,38 +62,30 @@
                         [{:system "system-171339"
                           :code "code-171327"}]}}
           hash (codec/hash observation)
-          [[_ k0 v0] [_ k1] [_ k2] [_ k3]]
+          [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "code" "Observation")
             hash observation [])]
 
-      (testing "the resource-value entry is"
-        (testing "resource-value-key"
-          (is (bytes/=
-                k0
-                (codec/resource-value-key
-                  (codec/tid "Observation")
-                  (codec/id-bytes "id-183201")
-                  hash
-                  (codec/c-hash "code")))))
-
-        (testing "resource-value-value"
-          (is (bytes/=
-                v0
-                (codec/concat-v-hashes
-                  [(codec/v-hash "code-171327")
-                   (codec/v-hash "system-171339|")
-                   (codec/v-hash "system-171339|code-171327")])))))
-
       (testing "first search-param-value-key is about `code`"
         (is (bytes/=
-              k1
+              k0
               (codec/search-param-value-key
                 (codec/c-hash "code")
                 (codec/tid "Observation")
                 (codec/v-hash "code-171327")
                 (codec/id-bytes "id-183201")
                 hash))))
+
+      (testing "first resource-value-key is about `code`"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "Observation")
+                (codec/id-bytes "id-183201")
+                hash
+                (codec/c-hash "code")
+                (codec/v-hash "code-171327")))))
 
       (testing "second search-param-value-key is about `system|`"
         (is (bytes/=
@@ -83,15 +97,35 @@
                 (codec/id-bytes "id-183201")
                 hash))))
 
-      (testing "third search-param-value-key is about `system|code`"
+      (testing "second resource-value-key is about `system|`"
         (is (bytes/=
               k3
+              (codec/resource-value-key
+                (codec/tid "Observation")
+                (codec/id-bytes "id-183201")
+                hash
+                (codec/c-hash "code")
+                (codec/v-hash "system-171339|")))))
+
+      (testing "third search-param-value-key is about `system|code`"
+        (is (bytes/=
+              k4
               (codec/search-param-value-key
                 (codec/c-hash "code")
                 (codec/tid "Observation")
                 (codec/v-hash "system-171339|code-171327")
                 (codec/id-bytes "id-183201")
-                hash))))))
+                hash))))
+
+      (testing "third resource-value-key is about `system|code`"
+        (is (bytes/=
+              k5
+              (codec/resource-value-key
+                (codec/tid "Observation")
+                (codec/id-bytes "id-183201")
+                hash
+                (codec/c-hash "code")
+                (codec/v-hash "system-171339|code-171327")))))))
 
 
   (testing "Patient phonetic"
@@ -167,38 +201,30 @@
                    [{:system "system-123000"
                      :value "value-123005"}]}
           hash (codec/hash patient)
-          [[_ k0 v0] [_ k1] [_ k2] [_ k3]]
+          [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "identifier" "Patient")
             hash patient [])]
 
-      (testing "the resource-value entry is"
-        (testing "resource-value-key"
-          (is (bytes/=
-                k0
-                (codec/resource-value-key
-                  (codec/tid "Patient")
-                  (codec/id-bytes "id-122929")
-                  hash
-                  (codec/c-hash "identifier")))))
-
-        (testing "resource-value-value"
-          (is (bytes/=
-                v0
-                (codec/concat-v-hashes
-                  [(codec/v-hash "value-123005")
-                   (codec/v-hash "system-123000|")
-                   (codec/v-hash "system-123000|value-123005")])))))
-
       (testing "first search-param-value-key is about `value`"
         (is (bytes/=
-              k1
+              k0
               (codec/search-param-value-key
                 (codec/c-hash "identifier")
                 (codec/tid "Patient")
                 (codec/v-hash "value-123005")
                 (codec/id-bytes "id-122929")
                 hash))))
+
+      (testing "first resource-value-key is about `value`"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "Patient")
+                (codec/id-bytes "id-122929")
+                hash
+                (codec/c-hash "identifier")
+                (codec/v-hash "value-123005")))))
 
       (testing "second search-param-value-key is about `system|`"
         (is (bytes/=
@@ -210,15 +236,67 @@
                 (codec/id-bytes "id-122929")
                 hash))))
 
-      (testing "third search-param-value-key is about `system|value`"
+      (testing "second resource-value-key is about `system|`"
         (is (bytes/=
               k3
+              (codec/resource-value-key
+                (codec/tid "Patient")
+                (codec/id-bytes "id-122929")
+                hash
+                (codec/c-hash "identifier")
+                (codec/v-hash "system-123000|")))))
+
+      (testing "third search-param-value-key is about `system|value`"
+        (is (bytes/=
+              k4
               (codec/search-param-value-key
                 (codec/c-hash "identifier")
                 (codec/tid "Patient")
                 (codec/v-hash "system-123000|value-123005")
                 (codec/id-bytes "id-122929")
-                hash))))))
+                hash))))
+
+      (testing "third resource-value-key is about `system|value`"
+        (is (bytes/=
+              k5
+              (codec/resource-value-key
+                (codec/tid "Patient")
+                (codec/id-bytes "id-122929")
+                hash
+                (codec/c-hash "identifier")
+                (codec/v-hash "system-123000|value-123005")))))))
+
+  (testing "Patient _profile"
+    (let [patient {:resourceType "Patient"
+                   :id "id-140855"
+                   :meta
+                   {:profile
+                    ["profile-uri-141443"]}}
+          hash (codec/hash patient)
+          [[_ k0] [_ k1]]
+          (search-param/index-entries
+            (sr/get search-param-registry "_profile" "Patient")
+            hash patient [])]
+
+      (testing "search-param-value-key"
+        (is (bytes/=
+              k0
+              (codec/search-param-value-key
+                (codec/c-hash "_profile")
+                (codec/tid "Patient")
+                (codec/v-hash "profile-uri-141443")
+                (codec/id-bytes "id-140855")
+                hash))))
+
+      (testing "resource-value-key"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "Patient")
+                (codec/id-bytes "id-140855")
+                hash
+                (codec/c-hash "_profile")
+                (codec/v-hash "profile-uri-141443")))))))
 
   (testing "Patient phonetic"
     (let [patient {:resourceType "Patient"
@@ -285,37 +363,32 @@
     (let [patient {:resourceType "Patient"
                    :id "id-142629"}
           hash (codec/hash patient)
-          [[_ k0 v0] [_ k1]]
+          [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "deceased" "Patient")
             hash patient [])]
 
-      (testing "the resource-value entry is"
-        (testing "resource-value-key"
-          (is (bytes/=
-                k0
-                (codec/resource-value-key
-                  (codec/tid "Patient")
-                  (codec/id-bytes "id-142629")
-                  hash
-                  (codec/c-hash "deceased")))))
-
-        (testing "resource-value-value"
-          (is (bytes/=
-                v0
-                (codec/v-hash "false")))))
-
-      (testing "the search-param-value-key is about `false`"
+      (testing "search-param-value-key"
         (is (bytes/=
-              k1
+              k0
               (codec/search-param-value-key
                 (codec/c-hash "deceased")
                 (codec/tid "Patient")
                 (codec/v-hash "false")
                 (codec/id-bytes "id-142629")
-                hash))))))
+                hash))))
 
-  (testing "Specimen patient will not indexed because we don not support resolving in FHIRPath"
+      (testing "resource-value-key"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "Patient")
+                (codec/id-bytes "id-142629")
+                hash
+                (codec/c-hash "deceased")
+                (codec/v-hash "false")))))))
+
+  (testing "Specimen patient will not indexed because we don't support resolving in FHIRPath"
     (let [specimen {:resourceType "Specimen"
                     :id "id-150810"
                     :subject {:reference "reference-150829"}}
@@ -335,38 +408,30 @@
                       [{:system "system-103824"
                         :code "code-103812"}]}}}
           hash (codec/hash specimen)
-          [[_ k0 v0] [_ k1] [_ k2] [_ k3]]
+          [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "bodysite" "Specimen")
             hash specimen [])]
 
-      (testing "the resource-value entry is"
-        (testing "resource-value-key"
-          (is (bytes/=
-                k0
-                (codec/resource-value-key
-                  (codec/tid "Specimen")
-                  (codec/id-bytes "id-105153")
-                  hash
-                  (codec/c-hash "bodysite")))))
-
-        (testing "resource-value-value"
-          (is (bytes/=
-                v0
-                (codec/concat-v-hashes
-                  [(codec/v-hash "code-103812")
-                   (codec/v-hash "system-103824|")
-                   (codec/v-hash "system-103824|code-103812")])))))
-
       (testing "first search-param-value-key is about `code`"
         (is (bytes/=
-              k1
+              k0
               (codec/search-param-value-key
                 (codec/c-hash "bodysite")
                 (codec/tid "Specimen")
                 (codec/v-hash "code-103812")
                 (codec/id-bytes "id-105153")
                 hash))))
+
+      (testing "first resource-value-key is about `code`"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "Specimen")
+                (codec/id-bytes "id-105153")
+                hash
+                (codec/c-hash "bodysite")
+                (codec/v-hash "code-103812")))))
 
       (testing "second search-param-value-key is about `system|`"
         (is (bytes/=
@@ -378,15 +443,35 @@
                 (codec/id-bytes "id-105153")
                 hash))))
 
-      (testing "third search-param-value-key is about `system|code`"
+      (testing "second resource-value-key is about `system|`"
         (is (bytes/=
               k3
+              (codec/resource-value-key
+                (codec/tid "Specimen")
+                (codec/id-bytes "id-105153")
+                hash
+                (codec/c-hash "bodysite")
+                (codec/v-hash "system-103824|")))))
+
+      (testing "third search-param-value-key is about `system|code`"
+        (is (bytes/=
+              k4
               (codec/search-param-value-key
                 (codec/c-hash "bodysite")
                 (codec/tid "Specimen")
                 (codec/v-hash "system-103824|code-103812")
                 (codec/id-bytes "id-105153")
-                hash))))))
+                hash))))
+
+      (testing "third resource-value-key is about `system|code`"
+        (is (bytes/=
+              k5
+              (codec/resource-value-key
+                (codec/tid "Specimen")
+                (codec/id-bytes "id-105153")
+                hash
+                (codec/c-hash "bodysite")
+                (codec/v-hash "system-103824|code-103812")))))))
 
   (testing "DiagnosticReport issued"
     (let [patient {:resourceType "DiagnosticReport"
@@ -519,38 +604,30 @@
                     {:system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
                      :code "AMB"}}
           hash (codec/hash specimen)
-          [[_ k0 v0] [_ k1] [_ k2] [_ k3]]
+          [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "class" "Encounter")
             hash specimen [])]
 
-      (testing "the resource-value entry is"
-        (testing "resource-value-key"
-          (is (bytes/=
-                k0
-                (codec/resource-value-key
-                  (codec/tid "Encounter")
-                  (codec/id-bytes "id-105153")
-                  hash
-                  (codec/c-hash "class")))))
-
-        (testing "resource-value-value"
-          (is (bytes/=
-                v0
-                (codec/concat-v-hashes
-                  [(codec/v-hash "AMB")
-                   (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|")
-                   (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")])))))
-
       (testing "first search-param-value-key is about `code`"
         (is (bytes/=
-              k1
+              k0
               (codec/search-param-value-key
                 (codec/c-hash "class")
                 (codec/tid "Encounter")
                 (codec/v-hash "AMB")
                 (codec/id-bytes "id-105153")
                 hash))))
+
+      (testing "first resource-value-key is about `code`"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "Encounter")
+                (codec/id-bytes "id-105153")
+                hash
+                (codec/c-hash "class")
+                (codec/v-hash "AMB")))))
 
       (testing "second search-param-value-key is about `system|`"
         (is (bytes/=
@@ -562,15 +639,35 @@
                 (codec/id-bytes "id-105153")
                 hash))))
 
-      (testing "third search-param-value-key is about `system|code`"
+      (testing "second resource-value-key is about `system|`"
         (is (bytes/=
               k3
+              (codec/resource-value-key
+                (codec/tid "Encounter")
+                (codec/id-bytes "id-105153")
+                hash
+                (codec/c-hash "class")
+                (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|")))))
+
+      (testing "third search-param-value-key is about `system|code`"
+        (is (bytes/=
+              k4
               (codec/search-param-value-key
                 (codec/c-hash "class")
                 (codec/tid "Encounter")
                 (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")
                 (codec/id-bytes "id-105153")
-                hash))))))
+                hash))))
+
+      (testing "third resource-value-key is about `system|code`"
+        (is (bytes/=
+              k5
+              (codec/resource-value-key
+                (codec/tid "Encounter")
+                (codec/id-bytes "id-105153")
+                hash
+                (codec/c-hash "class")
+                (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")))))))
 
   (testing "ImagingStudy series"
     (let [specimen {:resourceType "ImagingStudy"
@@ -578,70 +675,60 @@
                     :series
                     [{:uid "1.2.840.99999999.1.59354388.1582528879516"}]}
           hash (codec/hash specimen)
-          [[_ k0 v0] [_ k1]]
+          [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "series" "ImagingStudy")
             hash specimen [])]
 
-      (testing "the resource-value entry is"
-        (testing "resource-value-key"
-          (is (bytes/=
-                k0
-                (codec/resource-value-key
-                  (codec/tid "ImagingStudy")
-                  (codec/id-bytes "id-105153")
-                  hash
-                  (codec/c-hash "series")))))
-
-        (testing "resource-value-value"
-          (is (bytes/=
-                v0
-                (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")))))
-
       (testing "search-param-value-key is about `id`"
         (is (bytes/=
-              k1
+              k0
               (codec/search-param-value-key
                 (codec/c-hash "series")
                 (codec/tid "ImagingStudy")
                 (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")
                 (codec/id-bytes "id-105153")
-                hash))))))
+                hash))))
+
+      (testing "resource-value-key"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "ImagingStudy")
+                (codec/id-bytes "id-105153")
+                hash
+                (codec/c-hash "series")
+                (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")))))))
 
   (testing "ActivityDefinition url"
     (let [resource {:resourceType "ActivityDefinition"
                     :id "id-111846"
                     :url "url-111854"}
           hash (codec/hash resource)
-          [[_ k0 v0] [_ k1]]
+          [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "url" "ActivityDefinition")
             hash resource [])]
 
-      (testing "the resource-value entry is"
-        (testing "resource-value-key"
-          (is (bytes/=
-                k0
-                (codec/resource-value-key
-                  (codec/tid "ActivityDefinition")
-                  (codec/id-bytes "id-111846")
-                  hash
-                  (codec/c-hash "url")))))
-
-        (testing "resource-value-value"
-          (is (bytes/=
-                v0
-                (codec/v-hash "url-111854")))))
-
       (testing "search-param-value-key"
         (is (bytes/=
-              k1
+              k0
               (codec/search-param-value-key
                 (codec/c-hash "url")
                 (codec/tid "ActivityDefinition")
                 (codec/v-hash "url-111854")
                 (codec/id-bytes "id-111846")
-                hash))))))
+                hash))))
+
+      (testing "resource-value-key"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "ActivityDefinition")
+                (codec/id-bytes "id-111846")
+                hash
+                (codec/c-hash "url")
+                (codec/v-hash "url-111854")))))))
 
   (testing "ActivityDefinition description"
     (let [resource {:resourceType "ActivityDefinition"
@@ -678,32 +765,173 @@
                     :id "id-111846"
                     :version "version-122621"}
           hash (codec/hash resource)
-          [[_ k0 v0] [_ k1]]
+          [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "version" "CodeSystem")
             hash resource [])]
 
-      (testing "the resource-value entry is"
-        (testing "resource-value-key"
-          (is (bytes/=
-                k0
-                (codec/resource-value-key
-                  (codec/tid "CodeSystem")
-                  (codec/id-bytes "id-111846")
-                  hash
-                  (codec/c-hash "version")))))
-
-        (testing "resource-value-value"
-          (is (bytes/=
-                v0
-                (codec/v-hash "version-122621")))))
-
       (testing "search-param-value-key"
         (is (bytes/=
-              k1
+              k0
               (codec/search-param-value-key
                 (codec/c-hash "version")
                 (codec/tid "CodeSystem")
                 (codec/v-hash "version-122621")
                 (codec/id-bytes "id-111846")
-                hash)))))))
+                hash))))
+
+      (testing "resource-value-key"
+        (is (bytes/=
+              k1
+              (codec/resource-value-key
+                (codec/tid "CodeSystem")
+                (codec/id-bytes "id-111846")
+                hash
+                (codec/c-hash "version")
+                (codec/v-hash "version-122621")))))))
+
+  (testing "List item"
+    (testing "with literal reference"
+      (let [resource {:resourceType "List"
+                      :id "id-121825"
+                      :entry
+                      [{:item {:reference "Patient/0"}}]}
+            hash (codec/hash resource)
+            [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
+            (search-param/index-entries
+              (sr/get search-param-registry "item" "List")
+              hash resource [])]
+
+        (testing "first search-param-value-key is about `id`"
+          (is (bytes/=
+                k0
+                (codec/search-param-value-key
+                  (codec/c-hash "item")
+                  (codec/tid "List")
+                  (codec/v-hash "0")
+                  (codec/id-bytes "id-121825")
+                  hash))))
+
+        (testing "first resource-value-key is about `id`"
+          (is (bytes/=
+                k1
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-121825")
+                  hash
+                  (codec/c-hash "item")
+                  (codec/v-hash "0")))))
+
+        (testing "second search-param-value-key is about `type/id`"
+          (is (bytes/=
+                k2
+                (codec/search-param-value-key
+                  (codec/c-hash "item")
+                  (codec/tid "List")
+                  (codec/v-hash "Patient/0")
+                  (codec/id-bytes "id-121825")
+                  hash))))
+
+        (testing "second resource-value-key is about `type/id`"
+          (is (bytes/=
+                k3
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-121825")
+                  hash
+                  (codec/c-hash "item")
+                  (codec/v-hash "Patient/0")))))
+
+        (testing "third search-param-value-key is about `tid` and `id`"
+          (is (bytes/=
+                k4
+                (codec/search-param-value-key
+                  (codec/c-hash "item")
+                  (codec/tid "List")
+                  (codec/tid-id "Patient" "0")
+                  (codec/id-bytes "id-121825")
+                  hash))))
+
+        (testing "third resource-value-key is about `tid` and `id`"
+          (is (bytes/=
+                k5
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-121825")
+                  hash
+                  (codec/c-hash "item")
+                  (codec/tid-id "Patient" "0")))))))
+
+    (testing "with identifier reference"
+      (let [resource {:resourceType "List"
+                      :id "id-123058"
+                      :entry
+                      [{:item
+                        {:identifier
+                         {:system "system-122917"
+                          :value "value-122931"}}}]}
+            hash (codec/hash resource)
+            [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
+            (search-param/index-entries
+              (sr/get search-param-registry "item" "List")
+              hash resource [])]
+
+        (testing "first search-param-value-key is about `value`"
+          (is (bytes/=
+                k0
+                (codec/search-param-value-key
+                  (codec/c-hash "item:identifier")
+                  (codec/tid "List")
+                  (codec/v-hash "value-122931")
+                  (codec/id-bytes "id-123058")
+                  hash))))
+
+        (testing "first resource-value-key is about `value`"
+          (is (bytes/=
+                k1
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-123058")
+                  hash
+                  (codec/c-hash "item:identifier")
+                  (codec/v-hash "value-122931")))))
+
+        (testing "second search-param-value-key is about `system|`"
+          (is (bytes/=
+                k2
+                (codec/search-param-value-key
+                  (codec/c-hash "item:identifier")
+                  (codec/tid "List")
+                  (codec/v-hash "system-122917|")
+                  (codec/id-bytes "id-123058")
+                  hash))))
+
+        (testing "second resource-value-key is about `system|`"
+          (is (bytes/=
+                k3
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-123058")
+                  hash
+                  (codec/c-hash "item:identifier")
+                  (codec/v-hash "system-122917|")))))
+
+        (testing "third search-param-value-key is about `system|value`"
+          (is (bytes/=
+                k4
+                (codec/search-param-value-key
+                  (codec/c-hash "item:identifier")
+                  (codec/tid "List")
+                  (codec/v-hash "system-122917|value-122931")
+                  (codec/id-bytes "id-123058")
+                  hash))))
+
+        (testing "third resource-value-key is about `system|value`"
+          (is (bytes/=
+                k5
+                (codec/resource-value-key
+                  (codec/tid "List")
+                  (codec/id-bytes "id-123058")
+                  hash
+                  (codec/c-hash "item:identifier")
+                  (codec/v-hash "system-122917|value-122931")))))))))

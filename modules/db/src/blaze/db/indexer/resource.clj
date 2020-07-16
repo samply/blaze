@@ -1,12 +1,16 @@
 (ns blaze.db.indexer.resource
   (:require
+    [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
-    [blaze.db.search-param-registry :as sr]
     [blaze.db.indexer :as indexer]
     [blaze.db.kv :as kv]
+    [blaze.db.kv.spec]
+    [blaze.db.search-param-registry :as sr]
+    [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
@@ -27,16 +31,16 @@
   "op")
 
 
-(defn- resource-type-entry [{type :resourceType id :id}]
-  [:resource-type-index
-   (codec/resource-type-key (codec/tid type) (codec/id-bytes id))
-   codec/empty-byte-array])
-
-
-(defn- compartment-resource-type-entry [{:keys [c-hash res-id]} {type :resourceType id :id}]
+(defn- compartment-resource-type-entry
+  "Returns an entry into the :compartment-resource-type-index where `resource`
+  is linked to `compartment`."
+  {:arglists '([compartment resource])}
+  [[comp-code comp-id] {type :resourceType id :id}]
   [:compartment-resource-type-index
-   (codec/compartment-resource-type-key c-hash res-id (codec/tid type) (codec/id-bytes id))
-   codec/empty-byte-array])
+   (codec/compartment-resource-type-key
+     (codec/c-hash comp-code) (codec/id-bytes comp-id)
+     (codec/tid type) (codec/id-bytes id))
+   bytes/empty])
 
 
 (defn- index-entries [linked-compartments search-param hash resource]
@@ -49,13 +53,13 @@
 (defn- calc-search-params [search-param-registry hash resource]
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
     (let [linked-compartments (sr/linked-compartments search-param-registry resource)]
-      (into
-        (into
-          [(resource-type-entry resource)]
-          (map #(compartment-resource-type-entry % resource))
-          linked-compartments)
-        (mapcat #(index-entries linked-compartments % hash resource))
-        (sr/list-by-type search-param-registry (:resourceType resource))))))
+      (-> (into
+            []
+            (map #(compartment-resource-type-entry % resource))
+            linked-compartments)
+          (into
+            (mapcat #(index-entries linked-compartments % hash resource))
+            (sr/list-by-type search-param-registry (:resourceType resource)))))))
 
 
 (defn- freeze [resource]
@@ -90,18 +94,31 @@
   (->ResourceIndexer search-param-registry store executor))
 
 
-(defmethod ig/init-key ::indexer/resource
+(s/def ::executor
+  ex/executor?)
+
+
+(defmethod ig/pre-init-spec ::indexer/resource-indexer [_]
+  (s/keys
+    :req-un
+    [:blaze.db/search-param-registry
+     :blaze.db/kv-store
+     ::executor]))
+
+
+(defmethod ig/init-key ::indexer/resource-indexer
   [_ {:keys [search-param-registry kv-store executor]}]
-  (assert search-param-registry)
-  (assert kv-store)
-  (assert executor)
   (log/info "Init resource indexer")
   (init-resource-indexer search-param-registry kv-store executor))
 
 
+(defn- executor-init-msg [num-threads]
+  (format "Init resource indexer executor with %d threads" num-threads))
+
+
 (defmethod ig/init-key ::executor
   [_ {:keys [num-threads] :or {num-threads 4}}]
-  (log/info "Init resource indexer executor with" num-threads "threads")
+  (log/info (executor-init-msg num-threads))
   (ex/io-pool num-threads "resource-indexer-%d"))
 
 

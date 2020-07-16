@@ -5,7 +5,7 @@
   The specs at the beginning of the namespace describe the config which has to
   be given to `init!``. The server port has a default of `8080`."
   (:require
-    [clojure.spec.alpha :as s]
+    [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.walk :refer [postwalk]]
     [blaze.executors :as ex]
@@ -13,8 +13,7 @@
     [clojure.tools.reader.edn :as edn]
     [integrant.core :as ig]
     [spec-coerce.alpha :refer [coerce]]
-    [taoensso.timbre :as log]
-    [clojure.java.io :as io])
+    [taoensso.timbre :as log])
   (:import
     [java.io PushbackReader]))
 
@@ -76,25 +75,9 @@
 
 
 (def ^:private root-config
-  {:blaze/version "0.8.0-beta.2"
+  {:blaze/version "0.8.0-beta.3"
 
    :blaze/structure-definition {}
-
-   :blaze.db/search-param-registry {}
-
-   :blaze.db/node
-   {:tx-log (ig/ref :blaze.db/tx-log)
-    :tx-indexer (ig/ref :blaze.db.indexer/tx)
-    :kv-store (ig/ref :blaze.db/kv-store)
-    :resource-cache (ig/ref :blaze.db/resource-cache)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)}
-
-   :blaze.db/resource-cache
-   {:kv-store (ig/ref :blaze.db/kv-store)
-    :max-size (->Cfg "DB_RESOURCE_CACHE_SIZE" nat-int? 10000)}
-
-   :blaze.db.node/resource-cache-collector
-   {:cache (ig/ref :blaze.db/resource-cache)}
 
    :blaze.handler/health {}
 
@@ -142,13 +125,20 @@
 
 
 (defn- feature-enabled?
+  "Determines whether a feature is enabled or not.
+
+  Each feature has an environment variable name specified under :toggle. The
+  value of the environment variable is read here and checked to be truthy or
+  not. It is truthy if it is not blank and is not the word `false`."
   {:arglists '([env feature])}
-  [env {:keys [toggle]}]
-  (let [value (get env toggle)]
-    (and (not (str/blank? value)) (not= "false" (some-> value str/trim)))))
+  [env {:keys [toggle inverse?]}]
+  (let [value (get env toggle)
+        res (and (not (str/blank? value)) (not= "false" (some-> value str/trim)))]
+    (if inverse? (not res) res)))
 
 
 (defn- merge-features
+  "Merges feature config portions of enabled features into `base-config`."
   {:arglists '([blaze-edn env])}
   [{:keys [base-config features]} env]
   (reduce
@@ -161,9 +151,6 @@
     base-config
     features))
 
-
-(s/fdef init!
-  :args (s/cat :env any?))
 
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]

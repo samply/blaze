@@ -3,12 +3,11 @@
 
   https://cql.hl7.org/04-logicalspecification.html#retrieve"
   (:require
-    [blaze.anomaly :refer [when-ok]]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.spec]
-    [clojure.spec.alpha :as s]
+    [blaze.elm.util :as elm-util]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]))
 
@@ -19,21 +18,17 @@
 (defrecord CompartmentListRetrieveExpression [context data-type]
   Expression
   (-eval [_ {:keys [db]} {:keys [id]} _]
-    (into [] (d/list-compartment-resources db context id data-type))))
+    (d/list-compartment-resources db context id data-type)))
 
 
-(defrecord CompartmentQueryRetrieveExpression [batch-fn]
+(defrecord CompartmentQueryRetrieveExpression [query]
   Expression
   (-eval [_ {:keys [db]} {:keys [id]} _]
-    (into [] (batch-fn db id))))
+    (d/execute-query db query id)))
 
 
 (defn- code->clause-value [{:keys [system code]}]
   (str system "|" code))
-
-
-(defn- codes->clause-value [codes]
-  (str/join "," (map code->clause-value codes)))
 
 
 (defn- code-expr
@@ -48,11 +43,14 @@
   * property - \"code\"
   * code - (code/to-code \"http://loinc.org\" nil \"39156-5\")"
   [node context data-type property codes]
-  (let [clauses [[property (codes->clause-value codes)]]
-        res (d/compartment-query-batch node context data-type clauses)]
-    (if (::anom/category res)
-      (throw (ex-info (::anom/message res) res))
-      (->CompartmentQueryRetrieveExpression res))))
+  (let [clauses [(cons property (map code->clause-value codes))]
+        query (d/compile-compartment-query node context data-type clauses)]
+    (->CompartmentQueryRetrieveExpression query)))
+
+
+(defn- split-reference [s]
+  (when-let [idx (str/index-of s \/)]
+    [(subs s 0 idx) (subs s (inc idx))]))
 
 
 ;; TODO: find a better solution than hard coding this case
@@ -60,12 +58,11 @@
   Expression
   (-eval [_ {:keys [db]} {{:keys [reference]} :subject} _]
     (when reference
-      (let [[type id] (str/split reference #"/" 2)]
-        (when (= "Patient" type)
-          (when (s/valid? :blaze.resource/id id)
-            (let [patient (d/resource db "Patient" id)]
-              (when-not (d/deleted? patient)
-                [patient]))))))))
+      (when-let [[type id] (split-reference reference)]
+        (when (and (= "Patient" type) (string? id))
+          (let [patient (d/resource db "Patient" id)]
+            (when-not (d/deleted? patient)
+              [patient])))))))
 
 
 (def ^:private specimen-patient-expr
@@ -106,39 +103,63 @@
         scope))))
 
 
-(defrecord WithRelatedContextCodeRetrieveExpression
-  [related-context-expr data-type code-property codes]
+(defrecord WithRelatedContextQueryRetrieveExpression
+  [context-expr query]
   Expression
   (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [context-resource (-eval related-context-expr context resource scope)]
-      (when-ok [res (d/compartment-query
-                      db (:resourceType context-resource) (:id context-resource)
-                      data-type [[code-property (codes->clause-value codes)]])]
-        (if (::anom/category res)
-          (throw (ex-info (::anom/message res) res))
-          (into [] res))))))
+    (when-let [{:keys [id]} (-eval context-expr context resource scope)]
+      (when (string? id)
+        (d/execute-query db query id)))))
+
+
+(defn- compartment-query [db code id type clauses]
+  (let [res (d/compartment-query db code id type clauses)]
+    (if (::anom/category res)
+      (throw (ex-info (::anom/message res) res))
+      res)))
+
+
+(defrecord WithRelatedContextCodeRetrieveExpression
+  [context-expr data-type clauses]
+  Expression
+  (-eval [_ {:keys [db] :as context} resource scope]
+    (when-let [{type :resourceType :keys [id]} (-eval context-expr context resource scope)]
+      (when (and (string? type) (string? id))
+        (compartment-query db type id data-type clauses)))))
 
 
 (defn with-related-context-expr
-  [related-context-expr data-type code-property codes]
+  [node context-expr data-type code-property codes]
   (if (seq codes)
-    (->WithRelatedContextCodeRetrieveExpression
-      related-context-expr data-type code-property codes)
-    (->WithRelatedContextRetrieveExpression related-context-expr data-type)))
+    (if-let [result-type-name (:result-type-name (meta context-expr))]
+      (let [[value-type-ns context-type] (elm-util/parse-qualified-name result-type-name)]
+        (if (= "http://hl7.org/fhir" value-type-ns)
+          (let [clauses [(cons code-property (map code->clause-value codes))]
+                query (d/compile-compartment-query node context-type data-type clauses)]
+            (if (::anom/category query)
+              (throw (ex-info (::anom/message query) query))
+              (->WithRelatedContextQueryRetrieveExpression context-expr query)))
+
+          (->WithRelatedContextCodeRetrieveExpression
+            context-expr data-type
+            [(cons code-property (map code->clause-value codes))])))
+      (->WithRelatedContextCodeRetrieveExpression
+        context-expr data-type
+        [(cons code-property (map code->clause-value codes))]))
+    (->WithRelatedContextRetrieveExpression context-expr data-type)))
 
 
-(defn- unspecified-context-retrieve-expr [data-type code-property codes]
+(defn- unspecified-context-retrieve-expr [node data-type code-property codes]
   (if (empty? codes)
     (reify Expression
       (-eval [_ {:keys [db]} _ _]
         (into [] (d/list-resources db data-type))))
-    (let [clauses [[code-property codes]]]
-      (reify Expression
-        (-eval [_ {:keys [db]} _ _]
-          (let [res (d/type-query db data-type clauses)]
-            (if (::anom/category res)
-              (throw (ex-info (::anom/message res) res))
-              (into [] res))))))))
+    (let [query (d/compile-type-query node data-type [[code-property codes]])]
+      (if (::anom/category query)
+        (throw (ex-info (::anom/message query) query))
+        (reify Expression
+          (-eval [_ {:keys [db]} _ _]
+            (into [] (d/execute-query db query))))))))
 
 
 (defn- retrieve-expr [node eval-context data-type code-property codes]
@@ -151,5 +172,5 @@
 
 (defn expr [node eval-context data-type code-property codes]
   (if (= "Unspecified" eval-context)
-    (unspecified-context-retrieve-expr data-type code-property codes)
+    (unspecified-context-retrieve-expr node data-type code-property codes)
     (retrieve-expr node eval-context data-type code-property codes)))

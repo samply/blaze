@@ -1,13 +1,12 @@
 (ns blaze.interaction.history.util-test
   (:require
-    [blaze.handler.fhir.util :as fhir-util]
-    [blaze.interaction.history.util :refer [build-entry]]
-    [clojure.test :as test :refer [deftest testing]]
-    [clojure.spec.alpha :as s]
+    [blaze.interaction.history.util :as history-util]
     [clojure.spec.test.alpha :as st]
+    [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit])
-  (:import [java.time Instant]))
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
@@ -19,19 +18,57 @@
 (test/use-fixtures :each fixture)
 
 
-(defn stub-type-url [router type url]
-  (st/instrument
-    [`fhir-util/type-url]
-    {:spec
-     {`fhir-util/type-url
-      (s/fspec
-        :args (s/cat :router #{router} :type #{type})
-        :ret #{url})}
-     :stub
-     #{`fhir-util/type-url}}))
+(deftest since
+  (testing "no query param"
+    (is (nil? (history-util/since {}))))
+
+  (testing "invalid query param"
+    (are [t] (nil? (history-util/since {"_since" t}))
+      "<invalid>"
+      "-1"
+      ""))
+
+  (testing "valid query param"
+    (are [v t] (= t (history-util/since {"_since" v}))
+      "2015-02-07T13:28:17+02:00" (Instant/ofEpochSecond 1423308497)
+      ["<invalid>" "2015-02-07T13:28:17+02:00"] (Instant/ofEpochSecond 1423308497)
+      ["2015-02-07T13:28:17+02:00" "2015-02-07T13:28:17Z"] (Instant/ofEpochSecond 1423308497))))
 
 
-(def router
+(deftest page-t
+  (testing "no query param"
+    (is (nil? (history-util/page-t {}))))
+
+  (testing "invalid query param"
+    (are [t] (nil? (history-util/page-t {"__page-t" t}))
+      "<invalid>"
+      "-1"
+      ""))
+
+  (testing "valid query param"
+    (are [v t] (= t (history-util/page-t {"__page-t" v}))
+      "1" 1
+      ["<invalid>" "2"] 2
+      ["3" "4"] 3)))
+
+
+(deftest page-type
+  (testing "no query param"
+    (is (nil? (history-util/page-type {}))))
+
+  (testing "invalid query param"
+    (are [type] (nil? (history-util/page-type {"__page-type" type}))
+      "<invalid>"
+      ""))
+
+  (testing "valid query param"
+    (are [v type] (= type (history-util/page-type {"__page-type" v}))
+      "A" "A"
+      ["<invalid>" "A"] "A"
+      ["A" "B"] "A")))
+
+
+(def ^:private router
   (reitit/router
     [["/Patient" {:name :Patient/type}]
      ["/Patient/{id}" {:name :Patient/instance}]]
@@ -41,7 +78,7 @@
 (deftest build-entry-test
   (testing "Initial version with server assigned id"
     (given
-      (build-entry
+      (history-util/build-entry
         router
         (with-meta
           {:resourceType "Patient"
@@ -62,7 +99,7 @@
 
   (testing "Initial version with client assigned id"
     (given
-      (build-entry
+      (history-util/build-entry
         router
         (with-meta
           {:resourceType "Patient"
@@ -83,7 +120,7 @@
 
   (testing "Non-initial version"
     (given
-      (build-entry
+      (history-util/build-entry
         router
         (with-meta
           {:resourceType "Patient"
@@ -104,7 +141,7 @@
 
   (testing "Deleted version"
     (given
-      (build-entry
+      (history-util/build-entry
         router
         (with-meta
           {:resourceType "Patient"

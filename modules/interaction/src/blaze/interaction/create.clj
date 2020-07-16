@@ -16,17 +16,24 @@
     [taoensso.timbre :as log]))
 
 
+(defn- resource-type-mismatch-msg [type body]
+  (format "Resource type `%s` doesn't match the endpoint type `%s`."
+          (get body :resourceType) type))
+
+
 (defn- validate-resource [type body]
   (cond
     (not (map? body))
     (md/error-deferred
       {::anom/category ::anom/incorrect
+       ::anom/message "Expect a JSON object."
        :fhir/issue "structure"
        :fhir/operation-outcome "MSG_JSON_OBJECT"})
 
     (not= type (get body :resourceType))
     (md/error-deferred
       {::anom/category ::anom/incorrect
+       ::anom/message (resource-type-mismatch-msg type body)
        :fhir/issue "invariant"
        :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"})
 
@@ -44,7 +51,6 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
         ::reitit/keys [router]}]
-    (log/debug (format "POST [base]/%s" type))
     (let [return-preference (handler-util/preference headers "return")
           id (str (random-uuid))]
       (-> (validate-resource type body)

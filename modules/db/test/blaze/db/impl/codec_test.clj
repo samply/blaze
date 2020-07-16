@@ -35,58 +35,6 @@
 
 ;; ---- ResourceValue Index ---------------------------------------------------
 
-(deftest concat-v-hashes
-  (testing "concatenating a single v-hash is equal to the v-hash"
-    (is
-      (bytes/=
-        (codec/concat-v-hashes
-          [(codec/v-hash "value-142048")])
-        (codec/v-hash "value-142048")))))
-
-
-(deftest contains-v-hash?
-  (testing "contains"
-    (testing "one v-hash"
-      (is
-        (codec/contains-v-hash?
-          (codec/concat-v-hashes
-            [(codec/v-hash "value-141131")])
-          (codec/v-hash "value-141131"))))
-
-    (testing "two v-hashes"
-      (is
-        (codec/contains-v-hash?
-          (codec/concat-v-hashes
-            [(codec/v-hash "value-141131")
-             (codec/v-hash "value-141412")])
-          (codec/v-hash "value-141131"))))
-
-    (testing "v-hash at position two"
-      (is
-        (codec/contains-v-hash?
-          (codec/concat-v-hashes
-            [(codec/v-hash "value-141131")
-             (codec/v-hash "value-141412")])
-          (codec/v-hash "value-141412")))))
-
-  (testing "not contains"
-    (testing "one v-hash"
-      (is
-        (not
-          (codec/contains-v-hash?
-            (codec/concat-v-hashes
-              [(codec/v-hash "value-141131")])
-            (codec/v-hash "value-141529")))))
-
-    (testing "two v-hashes"
-      (is
-        (not
-          (codec/contains-v-hash?
-            (codec/concat-v-hashes
-              [(codec/v-hash "value-141131")
-               (codec/v-hash "value-141635")])
-            (codec/v-hash "value-141529")))))))
-
 
 
 ;; ---- ResourceType Index ----------------------------------------------------

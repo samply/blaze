@@ -8,7 +8,6 @@
     [blaze.db.api-stub :refer [mem-node mem-node-with]]
     [blaze.interaction.history.system :refer [handler]]
     [blaze.interaction.history.system-spec]
-    [blaze.middleware.fhir.metrics-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -38,8 +37,12 @@
    :path "/_history"})
 
 
-(defn handler-with [txs]
+(defn- handler-with [txs]
   (handler (mem-node-with txs)))
+
+
+(defn- link-url [body link-relation]
+  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
 
 
 (deftest handler-test
@@ -60,7 +63,7 @@
 
       (is (empty? (:entry body)))))
 
-  (testing "returns history with one patient"
+  (testing "with one patient"
     (let [{:keys [status body]}
           @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {::reitit/router router
@@ -74,11 +77,11 @@
 
       (is (= 1 (:total body)))
 
-      (is (= 1 (count (:entry body))))
+      (testing "has a self link"
+        (is (= "/_history?__t=1&__page-t=1&__page-type=Patient&__page-id=0" (link-url body "self"))))
 
-      (is (= "self" (-> body :link first :relation)))
-
-      (is (= "/_history?t=1&page-t=1&page-type=Patient&page-id=0" (-> body :link first :url)))
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
 
       (given (-> body :entry first)
         :fullUrl := "/Patient/0"
@@ -91,7 +94,7 @@
         [:response :etag] := "W/\"1\""
         [:response :lastModified] := "1970-01-01T00:00:00Z")))
 
-  (testing "two patients in one transactions"
+  (testing "with two patients in one transaction"
     (testing "contains a next link with t = page-t"
       (let [{:keys [body]}
             @((handler-with
@@ -101,10 +104,9 @@
                ::reitit/match match
                :query-params {"_count" "1"}})]
 
-        (is (= "next" (-> body :link second :relation)))
-
-        (is (= "/_history?_count=1&t=1&page-t=1&page-type=Patient&page-id=1"
-               (-> body :link second :url)))))
+        (testing "hash next link"
+          (is (= "/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1"
+                 (link-url body "next"))))))
 
     (testing "calling the second page shows the patient with the higher id"
       (let [{:keys [body]}
@@ -114,8 +116,8 @@
               {::reitit/router router
                ::reitit/match match
                :path-params {:id "0"}
-               :query-params {"_count" "1" "t" "1" "page-t" "1"
-                              "page-type" "Patient" "page-id" "1"}})]
+               :query-params {"_count" "1" "__t" "1" "__page-t" "1"
+                              "__page-type" "Patient" "__page-id" "1"}})]
 
         (given (-> body :entry first)
           [:resource :id] := "1")))
@@ -128,7 +130,7 @@
               {::reitit/router router
                ::reitit/match match
                :path-params {:id "0"}
-               :query-params {"_count" "1" "t" "1" "page-t" "1" "page-id" "1"}})]
+               :query-params {"_count" "1" "__t" "1" "__page-t" "1" "__page-id" "1"}})]
 
         (given (-> body :entry first)
           [:resource :id] := "0"))))
@@ -145,7 +147,7 @@
 
         (is (= "next" (-> body :link second :relation)))
 
-        (is (= "/_history?_count=1&t=2&page-t=1&page-type=Patient&page-id=0"
+        (is (= "/_history?_count=1&__t=2&__page-t=1&__page-type=Patient&__page-id=0"
                (-> body :link second :url)))))
 
     (testing "calling the second page shows the patient from the first transaction"
@@ -156,8 +158,8 @@
               {::reitit/router router
                ::reitit/match match
                :path-params {:id "0"}
-               :query-params {"_count" "1" "t" "2" "page-t" "1"
-                              "page-type" "Patient" "page-id" "0"}})]
+               :query-params {"_count" "1" "__t" "2" "__page-t" "1"
+                              "__page-type" "Patient" "__page-id" "0"}})]
 
         (testing "the total count is still two"
           (is (= 2 (:total body))))

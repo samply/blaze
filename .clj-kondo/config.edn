@@ -15,4 +15,4 @@
 
   ;; because of macros in modules/cql/src/blaze/elm/compiler.clj
   :redefined-var
-  {:level :off}}}
+  {:level :off}}

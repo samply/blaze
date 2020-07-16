@@ -1,13 +1,14 @@
 (ns blaze.rest-api
   (:require
     [blaze.db.search-param-registry :as sr]
-    [blaze.db.search-param-registry-spec]
+    [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
     [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
     [blaze.rest-api.middleware.cors :refer [wrap-cors]]
     [blaze.rest-api.middleware.json :as json :refer [wrap-json]]
+    [blaze.rest-api.middleware.log :refer [wrap-log]]
     [blaze.rest-api.spec]
     [blaze.spec]
     [buddy.auth.middleware :refer [wrap-authentication]]
@@ -98,6 +99,19 @@
                           :blaze.rest-api.interaction/handler)))]]]]))
 
 
+(defn- compartment-route
+  {:arglists '([auth-backends compartment])}
+  [auth-backends {:blaze.rest-api.compartment/keys [code search-handler]}]
+  [(format "/%s/{id}/{type}" code)
+   {:name (keyword code "compartment")
+    :fhir.compartment/code code
+    :middleware
+    (cond-> []
+      (seq auth-backends)
+      (conj wrap-auth-guard))
+    :get search-handler}])
+
+
 (def structure-definition-filter
   (comp
     (filter (comp #{"resource"} :kind))
@@ -131,6 +145,7 @@
      transaction-handler
      history-system-handler
      resource-patterns
+     compartments
      operations]
     :or {context-path ""}}
    capabilities-handler]
@@ -139,7 +154,7 @@
          {:blaze/base-url base-url
           :blaze/context-path context-path
           :middleware
-          (cond-> [wrap-cors]
+          (cond-> [wrap-cors wrap-log]
             (seq auth-backends)
             (conj #(apply wrap-authentication % auth-backends)))}
          [""
@@ -160,6 +175,9 @@
                (conj wrap-auth-guard))}
             (some? history-system-handler)
             (assoc :get history-system-handler))]]
+        (into
+          (map #(compartment-route auth-backends %))
+          compartments)
         (into
           (comp
             structure-definition-filter
@@ -277,9 +295,9 @@
            []
            (map
              (fn [{:keys [name url type]}]
-               {:name name
-                :definition url
-                :type type}))
+               (cond-> {:name name :type type}
+                 url
+                 (assoc :definition url))))
            (sr/list-by-type search-param-registry name))}
 
         (seq operations)

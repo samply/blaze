@@ -5,14 +5,15 @@
     [taoensso.nippy :as nippy])
   (:import
     [clojure.lang Keyword]
+    [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
     [com.google.common.hash Hashing PrimitiveSink]
     [com.google.common.io BaseEncoding]
     [java.nio ByteBuffer]
-    [java.nio.charset Charset]
+    [java.nio.charset Charset StandardCharsets]
     [java.time Instant LocalDate LocalDateTime OffsetDateTime Year YearMonth
                ZoneId ZoneOffset]
     [java.util Arrays List Map])
-  (:refer-clojure :exclude [concat hash]))
+  (:refer-clojure :exclude [hash]))
 
 
 (set! *warn-on-reflection* true)
@@ -22,31 +23,23 @@
 
 ;; ---- Sizes of Byte Arrays --------------------------------------------------
 
-(def ^:const ^long hash-size 32)
-(def ^:const ^long hash-prefix-size 4)
-(def ^:const ^long c-hash-size 4)
-(def ^:const ^long v-hash-size 4)
-(def ^:const ^long unit-hash-size 4)
-(def ^:const ^long cid-size 4)
-(def ^:const ^long tid-size 4)
-(def ^:const ^long t-size 8)
-(def ^:const ^long state-size 8)
-(def ^:const ^long tx-time-size 8)
-(def ^:const ^long max-id-size 64)
+(def ^:const ^int hash-size 32)
+(def ^:const ^int hash-prefix-size 4)
+(def ^:const ^int c-hash-size Integer/BYTES)
+(def ^:const ^int v-hash-size Integer/BYTES)
+(def ^:const ^int tid-size Integer/BYTES)
+(def ^:const ^int t-size Long/BYTES)
+(def ^:const ^int state-size Long/BYTES)
+(def ^:const ^int tx-time-size Long/BYTES)
+(def ^:const ^int max-id-size 64)
 
 
 
 ;; ---- Instances -------------------------------------------------------------
 
-(def ^:private ^Charset iso-8859-1 (Charset/forName "ISO-8859-1"))
+(def ^Charset iso-8859-1 StandardCharsets/ISO_8859_1)
 
-(def ^:private ^Charset utf-8 (Charset/forName "utf-8"))
-
-
-
-;; ---- Special Byte Arrays ---------------------------------------------------
-
-(def empty-byte-array (byte-array 0))
+(def ^Charset utf-8 StandardCharsets/UTF_8)
 
 
 
@@ -62,25 +55,21 @@
   (.encode (BaseEncoding/base16) bs))
 
 
-(defn concat [^bytes b0 ^bytes b1]
-  (let [b (byte-array (+ (alength b0) (alength b1)))]
-    (System/arraycopy b0 0 b 0 (alength b0))
-    (System/arraycopy b1 0 b (alength b0) (alength b1))
-    b))
-
-
 (defn id-bytes [^String id]
   (.getBytes id iso-8859-1))
 
 
-(defn id [^bytes id-bytes]
-  (String. id-bytes iso-8859-1))
+(defn id
+  ([^bytes id-bytes]
+   (String. id-bytes iso-8859-1))
+  ([^bytes id-bytes ^long offset ^long length]
+   (String. id-bytes offset length iso-8859-1)))
 
 
 
 ;; ---- Key Functions ---------------------------------------------------------
 
-(defn- descending-long
+(defn descending-long
   "Descends from Long/MAX_VALUE."
   ^long [^long l]
   (bit-xor (bit-not l) Long/MIN_VALUE))
@@ -134,19 +123,17 @@
              (+ 1 max-id-size 1 hash-prefix-size)))
 
 
-(defn search-param-value-key->id [^bytes k]
-  (let [to (unchecked-dec-int (unchecked-subtract-int (alength k) hash-prefix-size))
-        length (aget k to)]
-    (Arrays/copyOfRange k (unchecked-subtract-int to length) to)))
-
-
-(defn search-param-value-key->hash-prefix [^bytes k]
-  (let [to (alength k)]
-    (Arrays/copyOfRange k (unchecked-subtract-int to hash-prefix-size) to)))
-
-
-(defn hash->search-param-value-key! [^bytes hash ^bytes k]
-  (System/arraycopy hash 0 k (unchecked-subtract-int (alength k) hash-prefix-size) hash-prefix-size))
+(defn decode-search-param-value-key [^ByteBuffer bb]
+  (let [id-size (.get bb (dec (- (.limit bb) hash-prefix-size)))
+        prefix (byte-array (- (.remaining bb) id-size 2 hash-prefix-size))
+        id (byte-array id-size)
+        hash-prefix (byte-array hash-prefix-size)]
+    (.get bb prefix)
+    (.get bb)
+    (.get bb id)
+    (.get bb)
+    (.get bb hash-prefix)
+    [prefix id hash-prefix]))
 
 
 
@@ -155,17 +142,19 @@
 (defn resource-value-key
   {:arglists '([tid id hash c-hash] [tid id hash c-hash value])}
   ([tid ^bytes id ^bytes hash c-hash]
-   (-> (ByteBuffer/allocate (+ tid-size (alength id) hash-prefix-size
+   (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
                                c-hash-size))
        (.putInt tid)
+       (.put (byte (alength id)))
        (.put id)
        (.put hash 0 hash-prefix-size)
        (.putInt c-hash)
        (.array)))
   ([tid ^bytes id ^bytes hash c-hash ^bytes value]
-   (-> (ByteBuffer/allocate (+ tid-size (alength id) hash-prefix-size
+   (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
                                c-hash-size (alength value)))
        (.putInt tid)
+       (.put (byte (alength id)))
        (.put id)
        (.put hash 0 hash-prefix-size)
        (.putInt c-hash)
@@ -173,21 +162,13 @@
        (.array))))
 
 
-(defn concat-v-hashes [v-hashes]
-  (if (= 1 (count v-hashes))
-    (first v-hashes)
-    (let [bb (ByteBuffer/allocate (transduce (map #(alength ^bytes %)) + v-hashes))]
-      (doseq [^bytes b v-hashes]
-        (.put bb b))
-      (.array bb))))
-
-
-(defn contains-v-hash? [^bytes v-hashes ^bytes v-hash]
-  (loop [idx 0]
-    (if (Arrays/equals v-hashes idx (unchecked-add-int idx v-hash-size) v-hash 0 v-hash-size)
-      true
-      (when (< idx (unchecked-subtract-int (alength v-hashes) v-hash-size))
-        (recur (unchecked-add-int idx v-hash-size))))))
+(defn decode-resource-value-key [^ByteBuffer bb]
+  (let [id-size (.get bb (+ (.position bb) tid-size))
+        prefix (byte-array (+ tid-size 1 id-size hash-prefix-size c-hash-size))
+        value (byte-array (- (.remaining bb) (alength prefix)))]
+    (.get bb prefix)
+    (.get bb value)
+    [prefix value]))
 
 
 
@@ -220,16 +201,6 @@
        (.put (byte (alength id)))
        (.put hash 0 hash-prefix-size)
        (.array))))
-
-
-(defn compartment-search-param-value-key->id [^bytes k]
-  (let [to (unchecked-dec-int (unchecked-subtract-int (alength k) hash-prefix-size))
-        length (aget k to)]
-    (Arrays/copyOfRange k (unchecked-subtract-int to length) to)))
-
-
-(defn hash->compartment-search-param-value-key! [^bytes hash ^bytes k]
-  (System/arraycopy hash 0 k (- (alength k) hash-prefix-size) hash-prefix-size))
 
 
 
@@ -335,6 +306,14 @@
     (Arrays/copyOfRange k (unchecked-add-int compartment-resource-type-key-id-from co-res-id-size) (alength k))))
 
 
+(defn decode-compartment-resource-type-key [^ByteBuffer bb]
+  (let [co-res-id-size (.get bb c-hash-size)
+        prefix (byte-array (+ c-hash-size 1 co-res-id-size tid-size))
+        id (byte-array (- (.remaining bb) (alength prefix)))]
+    (.get bb prefix)
+    (.get bb id)
+    [prefix id]))
+
 
 ;; ---- ResourceAsOf Index ----------------------------------------------------
 
@@ -360,7 +339,7 @@
   (Arrays/copyOfRange k tid-size (- (alength k) t-size)))
 
 
-(defn resource-as-of-key->t [^bytes k]
+(defn resource-as-of-key->t ^long [^bytes k]
   (descending-long (.getLong (ByteBuffer/wrap k) (- (alength k) t-size))))
 
 
@@ -370,7 +349,9 @@
     (identical? :delete op) (bit-set 0)))
 
 
-(defn state->num-changes [state]
+(defn state->num-changes
+  "A resource is new if num-changes is 1."
+  [state]
   (bit-shift-right ^long state 8))
 
 
@@ -399,6 +380,52 @@
 (defn resource-as-of-value->state [v]
   (.getLong (ByteBuffer/wrap v) hash-size))
 
+
+(defrecord ResourceAsOfKV [^int tid id ^long t hash ^long state])
+
+
+(defn get-tid! ^long [^ByteBuffer buf]
+  (.getInt buf))
+
+
+(defn get-t! ^long [^ByteBuffer buf]
+  (descending-long (.getLong buf)))
+
+
+(defn get-hash! [^ByteBuffer buf]
+  (let [hash (byte-array hash-size)]
+    (.get buf hash)
+    hash))
+
+
+(defn get-state! ^long [^ByteBuffer buf]
+  (.getLong buf))
+
+
+(defn resource-as-of-kv-decoder
+  "Returns a function which decodes an `ResourceAsOfKV` out of a key and a value
+  ByteBuffer from the resource-as-of index.
+
+  Closes over a shared byte array for id decoding, because the String
+  constructor creates a copy of the id bytes anyway. Can only be used from one
+  thread.
+
+  The decode function creates only four objects, the ResourceAsOfKV, the String
+  for the id, the byte array inside the string and the byte array for the hash.
+
+  Both ByteBuffers are changed during decoding and have to be reset accordingly
+  after decoding."
+  []
+  (let [ib (byte-array max-id-size)]
+    (fn [^ByteBuffer kb ^ByteBuffer vb]
+      (ResourceAsOfKV.
+        (.getInt kb)
+        (let [id-size (- (.remaining kb) t-size)]
+          (.get kb ib 0 id-size)
+          (String. ib 0 id-size iso-8859-1))
+        (get-t! kb)
+        (get-hash! vb)
+        (get-state! vb)))))
 
 
 ;; ---- TypeAsOf Index --------------------------------------------------------
@@ -463,75 +490,43 @@
 
 
 
-;; ---- TypeStats Index -------------------------------------------------------
-
-(defn type-stats-key [tid t]
-  (-> (ByteBuffer/allocate (+ tid-size t-size))
-      (.putInt tid)
-      (.putLong (descending-long t))
-      (.array)))
-
-
-(defn type-stats-key->tid [k]
-  (.getInt (ByteBuffer/wrap k)))
-
-
-(defn type-stats-value [total num-changes]
-  (-> (ByteBuffer/allocate 16)
-      (.putLong total)
-      (.putLong num-changes)
-      (.array)))
-
-
-(defn type-stats-value->total [v]
-  (.getLong (ByteBuffer/wrap v)))
-
-
-(defn type-stats-value->num-changes [v]
-  (.getLong (ByteBuffer/wrap v) 8))
-
-
-
-;; ---- SystemStats Index -------------------------------------------------------
-
-(defn system-stats-key [t]
-  (-> (ByteBuffer/allocate t-size)
-      (.putLong (descending-long t))
-      (.array)))
-
-
-(defn system-stats-value [total num-changes]
-  (-> (ByteBuffer/allocate 16)
-      (.putLong total)
-      (.putLong num-changes)
-      (.array)))
-
-
-(defn system-stats-value->total [v]
-  (.getLong (ByteBuffer/wrap v)))
-
-
-(defn system-stats-value->num-changes [v]
-  (.getLong (ByteBuffer/wrap v) 8))
-
-
-
 ;; ---- Other Functions -------------------------------------------------------
 
-(defn tid
+(defn- memoize-1 [f]
+  (let [mem
+        (-> (Caffeine/newBuilder)
+            (.build
+              (reify CacheLoader
+                (load [_ x]
+                  (f x)))))]
+    (fn [x]
+      (.get mem x))))
+
+
+(def tid
   "Internal type identifier.
 
   Returns an integer."
-  [type]
-  (.asInt (.hashBytes (Hashing/murmur3_32) (.getBytes ^String type iso-8859-1))))
+  (memoize-1
+    (fn [type]
+      (.asInt (.hashBytes (Hashing/murmur3_32) (.getBytes ^String type iso-8859-1))))))
 
 
 (defn c-hash [code]
-  (.asInt (.hashBytes (Hashing/murmur3_32) (.getBytes ^String code utf-8))))
+  (.asInt (.hashString (Hashing/murmur3_32) ^String code utf-8)))
 
 
 (defn v-hash [value]
-  (.asBytes (.hashBytes (Hashing/murmur3_32) (.getBytes ^String value utf-8))))
+  (.asBytes (.hashString (Hashing/murmur3_32) ^String value utf-8)))
+
+
+(defn tid-id
+  "Returns a byte array with tid from `type` followed by `id`."
+  [type ^String id]
+  (let [bb (ByteBuffer/allocate (+ tid-size (.length id)))]
+    (.putInt bb (tid type))
+    (.put bb (.getBytes id iso-8859-1))
+    (.array bb)))
 
 
 (defn string
@@ -781,13 +776,16 @@
   (Arrays/copyOfRange lb-ub (inc (aget lb-ub 0)) (alength lb-ub)))
 
 
-(defn quantity [value unit]
-  (let [unit-hash (v-hash (or unit ""))
-        ^bytes number (number value)
-        value (byte-array (+ v-hash-size (alength number)))]
-    (System/arraycopy unit-hash 0 value 0 v-hash-size)
-    (System/arraycopy number 0 value v-hash-size (alength number))
-    value))
+(defn quantity
+  ([value]
+   (quantity value nil))
+  ([value unit]
+   (let [unit-hash (v-hash (or unit ""))
+         ^bytes number (number value)
+         value (byte-array (+ v-hash-size (alength number)))]
+     (System/arraycopy unit-hash 0 value 0 v-hash-size)
+     (System/arraycopy number 0 value v-hash-size (alength number))
+     value)))
 
 
 (defn deleted-resource [type id]
@@ -862,11 +860,6 @@
     (.asBytes (.hash hasher))))
 
 
-(def max-hash
-  "The maximum hash value. A byte array with all bits set to 1."
-  (byte-array (repeat hash-size 255)))
-
-
 
 ;; ---- Transaction -----------------------------------------------------------
 ;; TODO: encode nanoseconds here?
@@ -895,3 +888,12 @@
   (let [{:keys [inst]} (nippy/fast-thaw bs)]
     {:blaze.db/t t
      :blaze.db.tx/instant (Instant/ofEpochMilli inst)}))
+
+
+(defn tx-success-entries [t tx-instant]
+  [[:tx-success-index (t-key t) (encode-tx {:blaze.db.tx/instant tx-instant})]
+   [:t-by-instant-index (tx-by-instant-key tx-instant) (encode-t t)]])
+
+
+(defn tx-error-entries [t anomaly]
+  [[:tx-error-index (t-key t) (nippy/fast-freeze anomaly)]])

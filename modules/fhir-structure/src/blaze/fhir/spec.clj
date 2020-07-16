@@ -2,7 +2,8 @@
   (:require
     [blaze.fhir.spec.impl]
     [clojure.alpha.spec :as s2]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [clojure.string :as str]))
 
 
 ;; ---- Specs -----------------------------------------------------------------
@@ -12,7 +13,13 @@
 
 
 (s/def :blaze.resource/id
-  (s/and string? #(re-matches #"[A-Za-z0-9\-\.]{1,64}" %)))
+  #(s2/valid? :fhir/id %))
+
+
+(s/def :blaze.fhir/local-ref
+  (s/and string?
+         (s/conformer #(str/split % #"/" 2))
+         (s/tuple :blaze.resource/resourceType :blaze.resource/id)))
 
 
 (s/def :blaze.resource.meta/versionId
@@ -64,19 +71,24 @@
   (let [[_ [m]] (s2/form spec)] m))
 
 
-(defn cardinality [spec]
+(defn cardinality
+  "Returns either :many or :one."
+  [spec]
   (if (and (sequential? spec) (= `s2/coll-of (first spec)))
     :many
     :one))
 
 
-(defn choice? [spec]
+(defn choice?
+  [spec]
   (and (sequential? spec) (= `s2/or (first spec))))
 
 
-(defn choices [spec]
-  (when (choice? spec)
-    (partition 2 (rest spec))))
+(defn choices
+  "Takes an or-spec form and returns its content."
+  [spec]
+  ;; fancy stuff to get an clojure.lang.PersistentList
+  (into (list) (map vec) (reverse (partition 2 (rest spec)))))
 
 
 (defn type-spec [spec]
@@ -85,11 +97,19 @@
     spec))
 
 
-(defn primitive? [spec]
+(defn primitive?
+  "Primitive FHIR type like `id`."
+  [spec]
+  (and (keyword? spec)
+       (= "fhir" (namespace spec))
+       (Character/isLowerCase ^char (first (name spec)))))
+
+
+(defn system?
+  "System FHIR Type like `http://hl7.org/fhirpath/System.String`."
+  [spec]
   (or (symbol? spec)
-      (and (keyword? spec)
-           (= "fhir" (namespace spec))
-           (Character/isLowerCase ^char (first (name spec))))))
+      (and (sequential? spec) (= `s2/and (first spec)))))
 
 
 (defn form [spec]
@@ -110,6 +130,8 @@
   (type-spec :fhir/Annotation)
   (type-spec `(s2/coll-of :fhir/Extension))
 
+  (primitive? :fhir/id)
+  (primitive? :fhir.Patient/id)
   (primitive? :fhir/code)
   (primitive? :fhir/Annotation)
   (primitive? `string?)
@@ -117,9 +139,11 @@
   (type-exists? "Annotation")
   (type-exists? "Annotatio")
 
+  (s2/form :fhir/id)
   (s2/form :fhir/string)
   (s2/form :fhir/Observation)
   (s2/form :fhir/Patient)
+  (primitive? (:id (child-specs :fhir/Patient)))
   (s2/valid? :fhir/Observation {:focus ""})
   (s2/schema)
   )

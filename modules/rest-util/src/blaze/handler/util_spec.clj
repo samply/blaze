@@ -1,6 +1,6 @@
 (ns blaze.handler.util-spec
   (:require
-    [blaze.db.api-spec]
+    [blaze.db.spec]
     [blaze.handler.util :as util]
     [clojure.spec.alpha :as s]
     [manifold.deferred :refer [deferred?]]))

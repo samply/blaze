@@ -1,0 +1,10 @@
+{:linters
+ {:missing-docstring
+  {:level :warning
+   :exclude [".*test$"]}
+  :unsorted-required-namespaces
+  {:level :error}
+  :single-key-in
+  {:level :error}}
+
+ :skip-comments true}

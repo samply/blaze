@@ -2,33 +2,40 @@
   "Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :refer [compile compile-with-equiv-clause]]
+    [blaze.elm.compiler-spec]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
-    [blaze.elm.compiler.retrieve-test :as retrieve-test]
     [blaze.elm.compiler.query :as query]
+    [blaze.elm.compiler.retrieve-spec]
+    [blaze.elm.compiler.retrieve-test :as retrieve-test]
     [blaze.elm.date-time :refer [local-time local-time? period]]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.interval :refer [interval]]
+    [blaze.elm.interval-spec]
     [blaze.elm.literal :as elm]
     [blaze.elm.quantity :refer [quantity]]
+    [blaze.elm.quantity-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check :as tc]
+    [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]])
   (:import
+    [blaze.elm.code Code]
+    [blaze.elm.compiler.retrieve WithRelatedContextQueryRetrieveExpression]
     [blaze.elm.date_time Period]
-    [clojure.core Eduction]
     [java.math BigDecimal]
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth
                ZoneOffset]
     [java.time.temporal Temporal]
     [javax.measure UnconvertibleException]
-    [blaze.elm.code Code])
+    [clojure.lang IPersistentCollection])
   (:refer-clojure :exclude [compile]))
 
 
@@ -89,8 +96,9 @@
 
 (defmacro testing-unary-dynamic-null [elm-constructor]
   `(testing "Dynamic Null"
-     (let [elm# (~elm-constructor #elm/singleton-from patient-retrieve-elm)
-           expr# (compile {:eval-context "Patient"} elm#)]
+     (let [context# {:eval-context "Patient" :node (mem-node-with [])}
+           elm# (~elm-constructor #elm/singleton-from patient-retrieve-elm)
+           expr# (compile context# elm#)]
        (is (nil? (-eval expr# {} nil nil))))))
 
 
@@ -108,22 +116,23 @@
 
 
 (defmacro testing-binary-dynamic-null [elm-constructor non-null-op-1 non-null-op-2]
-  `(testing "Dynamic Null"
-     (let [elm# (~elm-constructor
-                  [#elm/singleton-from patient-retrieve-elm
-                   #elm/singleton-from patient-retrieve-elm])
-           expr# (compile {:eval-context "Patient"} elm#)]
-       (is (nil? (-eval expr# {} nil nil))))
-     (let [elm# (~elm-constructor
-                  [~non-null-op-1
-                   #elm/singleton-from patient-retrieve-elm])
-           expr# (compile {:eval-context "Patient"} elm#)]
-       (is (nil? (-eval expr# {} nil nil))))
-     (let [elm# (~elm-constructor
-                  [#elm/singleton-from patient-retrieve-elm
-                   ~non-null-op-2])
-           expr# (compile {:eval-context "Patient"} elm#)]
-       (is (nil? (-eval expr# {} nil nil))))))
+  `(let [context# {:eval-context "Patient" :node (mem-node-with [])}]
+     (testing "Dynamic Null"
+       (let [elm# (~elm-constructor
+                    [#elm/singleton-from patient-retrieve-elm
+                     #elm/singleton-from patient-retrieve-elm])
+             expr# (compile context# elm#)]
+         (is (nil? (-eval expr# {} nil nil))))
+       (let [elm# (~elm-constructor
+                    [~non-null-op-1
+                     #elm/singleton-from patient-retrieve-elm])
+             expr# (compile context# elm#)]
+         (is (nil? (-eval expr# {} nil nil))))
+       (let [elm# (~elm-constructor
+                    [#elm/singleton-from patient-retrieve-elm
+                     ~non-null-op-2])
+             expr# (compile context# elm#)]
+         (is (nil? (-eval expr# {} nil nil)))))))
 
 
 (defmacro testing-binary-null
@@ -253,95 +262,373 @@
 ;; closed indicators for interval types using the property names low, high,
 ;; lowClosed, and highClosed.
 (deftest compile-property-test
-  (testing "with entity supplied over query context"
-    (are [elm entity result]
-      (= result (-eval (compile {:eval-context "Unspecified"} elm)
-                       nil nil {"P" entity}))
-      {:path "gender"
-       :scope "P"
-       :type "Property"
-       :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
-       :life/source-type "{http://hl7.org/fhir}Patient"}
-      {:resourceType "Patient" :id "0" :gender "male"}
-      "male"))
+  (testing "with scope"
+    (testing "with entity supplied over query context"
+      (testing "Patient.identifier"
+        (testing "with source-type"
+          (let [elm
+                {:path "identifier"
+                 :scope "R"
+                 :type "Property"
+                 :life/source-type "{http://hl7.org/fhir}Patient"}
+                identifier {:system "foo" :value "bar"}
+                entity
+                (vary-meta
+                  {:resourceType "Patient" :id "0" :identifier [identifier]}
+                  assoc :type :fhir/Patient)
+                expr
+                (compile
+                  {:eval-context "Patient"}
+                  elm)]
+            (testing "property spec is pre-calculated"
+              (is (= :fhir/Identifier (:spec expr))))
+            (let [result (coll/first (-eval expr nil nil {"R" entity}))]
+              (is (= identifier result))
+              (is (= :fhir/Identifier (type result))))))
 
-  (testing "with entity supplied directly"
-    (are [elm entity result]
-      (= result (-eval (compile {:eval-context "Unspecified"
-                                 :life/single-query-scope "R"}
-                                elm)
-                       nil nil entity))
-      {:path "gender"
-       :scope "R"
-       :type "Property"
-       :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
-       :life/source-type "{http://hl7.org/fhir}Patient"}
-      {:resourceType "Patient" :id "0" :gender "male"}
-      "male"
+        (testing "without source-type"
+          (let [elm
+                {:path "identifier"
+                 :scope "R"
+                 :type "Property"}
+                identifier {:system "foo" :value "bar"}
+                entity
+                (vary-meta
+                  {:resourceType "Patient" :id "0" :identifier [identifier]}
+                  assoc :type :fhir/Patient)
+                expr
+                (compile
+                  {:eval-context "Patient"}
+                  elm)
+                result (coll/first (-eval expr nil nil {"R" entity}))]
+              (is (= identifier result))
+              (is (= :fhir/Identifier (type result))))))
 
-      {:path "library"
-       :scope "R"
-       :type "Property"}
-      {:resourceType "Measure" :library ["a"]}
-      ["a"]))
+      (testing "Patient.gender"
+        (testing "with source-type"
+          (let [elm
+                {:path "gender"
+                 :scope "R"
+                 :type "Property"
+                 :life/source-type "{http://hl7.org/fhir}Patient"}
+                entity
+                (vary-meta
+                  {:resourceType "Patient" :id "0" :gender "male"}
+                  assoc :type :fhir/Patient)
+                expr
+                (compile
+                  {:eval-context "Patient"}
+                  elm)]
+            (testing "property spec is pre-calculated"
+              (is (= :fhir/code (:spec expr))))
+            (is (= "male" (-eval expr nil nil {"R" entity})))))
+
+        (testing "without source-type"
+          (let [elm
+                {:path "gender"
+                 :scope "R"
+                 :type "Property"}
+                entity
+                (vary-meta
+                  {:resourceType "Patient" :id "0" :gender "male"}
+                  assoc :type :fhir/Patient)
+                expr
+                (compile
+                  {:eval-context "Patient"}
+                  elm)]
+            (is (= "male" (-eval expr nil nil {"R" entity}))))))
+
+      (testing "Observation.value"
+        (testing "with source-type"
+          (let [elm
+                {:path "value"
+                 :scope "R"
+                 :type "Property"
+                 :life/source-type "{http://hl7.org/fhir}Observation"}
+                entity
+                (vary-meta
+                  {:resourceType "Observation" :id "0" :valueString "value-114318"}
+                  assoc :type :fhir/Observation)
+                expr
+                (compile
+                  {:eval-context "Patient"}
+                  elm)]
+            (testing "choices are pre-calculated"
+              (is (coll? (:choices expr))))
+            (is (= "value-114318" (-eval expr nil nil {"R" entity})))))
+
+        (testing "without source-type"
+          (let [elm
+                {:path "value"
+                 :scope "R"
+                 :type "Property"}
+                entity
+                (vary-meta
+                  {:resourceType "Observation" :id "0" :valueString "value-114318"}
+                  assoc :type :fhir/Observation)
+                expr
+                (compile
+                  {:eval-context "Patient"}
+                  elm)]
+            (is (= "value-114318" (-eval expr nil nil {"R" entity})))))))
+
+    (testing "with entity supplied directly"
+      (testing "Patient.identifier"
+        (testing "with source-type"
+          (let [elm
+                {:path "identifier"
+                 :scope "R"
+                 :type "Property"
+                 :life/source-type "{http://hl7.org/fhir}Patient"}
+                identifier {:system "foo" :value "bar"}
+                entity
+                (vary-meta
+                  {:resourceType "Patient" :id "0" :identifier [identifier]}
+                  assoc :type :fhir/Patient)
+                expr
+                (compile
+                  {:eval-context "Patient"
+                   :life/single-query-scope "R"}
+                  elm)]
+            (testing "property spec is pre-calculated"
+              (is (= :fhir/Identifier (:spec expr))))
+            (let [result (coll/first (-eval expr nil nil entity))]
+              (is (= identifier result))
+              (is (= :fhir/Identifier (type result))))))
+
+        (testing "without source-type"
+          (let [elm
+                {:path "identifier"
+                 :scope "R"
+                 :type "Property"}
+                identifier {:system "foo" :value "bar"}
+                entity
+                (vary-meta
+                  {:resourceType "Patient" :id "0" :identifier [identifier]}
+                  assoc :type :fhir/Patient)
+                expr
+                (compile
+                  {:eval-context "Patient"
+                   :life/single-query-scope "R"}
+                  elm)
+                result (coll/first (-eval expr nil nil entity))]
+              (is (= identifier result))
+              (is (= :fhir/Identifier (type result))))))
+
+      (testing "Patient.gender"
+        (testing "with source-type"
+          (let [elm
+                {:path "gender"
+                 :scope "R"
+                 :type "Property"
+                 :life/source-type "{http://hl7.org/fhir}Patient"}
+                entity
+                (vary-meta
+                  {:resourceType "Patient" :id "0" :gender "male"}
+                  assoc :type :fhir/Patient)
+                expr
+                (compile
+                  {:eval-context "Patient"
+                   :life/single-query-scope "R"}
+                  elm)]
+            (testing "property spec is pre-calculated"
+              (is (= :fhir/code (:spec expr))))
+            (is (= "male" (-eval expr nil nil entity)))))
+
+        (testing "without source-type"
+          (let [elm
+                {:path "gender"
+                 :scope "R"
+                 :type "Property"}
+                entity
+                (vary-meta
+                  {:resourceType "Patient" :id "0" :gender "male"}
+                  assoc :type :fhir/Patient)
+                expr
+                (compile
+                  {:eval-context "Patient"
+                   :life/single-query-scope "R"}
+                  elm)]
+            (is (= "male" (-eval expr nil nil entity))))))
+
+      (testing "Observation.value"
+        (testing "with source-type"
+          (let [elm
+                {:path "value"
+                 :scope "R"
+                 :type "Property"
+                 :life/source-type "{http://hl7.org/fhir}Observation"}
+                entity
+                (vary-meta
+                  {:resourceType "Observation" :id "0" :valueString "value-114318"}
+                  assoc :type :fhir/Observation)
+                expr
+                (compile
+                  {:eval-context "Patient"
+                   :life/single-query-scope "R"}
+                  elm)]
+            (testing "choices are pre-calculated"
+              (is (coll? (:choices expr))))
+            (is (= "value-114318" (-eval expr nil nil entity)))))
+
+        (testing "without source-type"
+          (let [elm
+                {:path "value"
+                 :scope "R"
+                 :type "Property"}
+                entity
+                (vary-meta
+                  {:resourceType "Observation" :id "0" :valueString "value-114318"}
+                  assoc :type :fhir/Observation)
+                expr
+                (compile
+                  {:eval-context "Patient"
+                   :life/single-query-scope "R"}
+                  elm)]
+            (is (= "value-114318" (-eval expr nil nil entity))))))))
 
   (testing "with source"
-    (let [library {:statements {:def [{:name "Patient"}]}}
-          elm
-          {:path "gender"
-           :source #elm/expression-ref "Patient"
+    (testing "Patient.identifier"
+      (testing "with source-type"
+        (let [library {:statements {:def [{:name "Patient"}]}}
+              elm
+              {:path "identifier"
+               :source #elm/expression-ref "Patient"
+               :type "Property"
+               :life/source-type "{http://hl7.org/fhir}Patient"}
+              identifier {:system "foo" :value "bar"}
+              source
+              (vary-meta
+                {:resourceType "Patient" :id "0" :identifier [identifier]}
+                assoc :type :fhir/Patient)
+              expr (compile {:library library :eval-context "Patient"} elm)]
+          (testing "property spec is pre-calculated"
+            (is (= :fhir/Identifier (:spec expr))))
+          (let [result (coll/first (-eval expr {:library-context {"Patient" source}} nil nil))]
+            (is (= identifier result))
+            (is (= :fhir/Identifier (type result))))))
+
+      (testing "without source-type"
+        (let [library {:statements {:def [{:name "Patient"}]}}
+              elm
+              {:path "identifier"
+               :source #elm/expression-ref "Patient"
+               :type "Property"}
+              identifier {:system "foo" :value "bar"}
+              source
+              (vary-meta
+                {:resourceType "Patient" :id "0" :identifier [identifier]}
+                assoc :type :fhir/Patient)
+              expr (compile {:library library :eval-context "Patient"} elm)
+              result (coll/first (-eval expr {:library-context {"Patient" source}} nil nil))]
+            (is (= identifier result))
+            (is (= :fhir/Identifier (type result))))))
+
+    (testing "Patient.gender"
+      (testing "with source-type"
+        (let [library {:statements {:def [{:name "Patient"}]}}
+              elm
+              {:path "gender"
+               :source #elm/expression-ref "Patient"
+               :type "Property"
+               :life/source-type "{http://hl7.org/fhir}Patient"}
+              source
+              (vary-meta
+                {:resourceType "Patient" :id "0" :gender "male"}
+                assoc :type :fhir/Patient)
+              expr (compile {:library library :eval-context "Patient"} elm)]
+          (testing "property spec is pre-calculated"
+            (is (= :fhir/code (:spec expr))))
+          (is (= "male" (-eval expr {:library-context {"Patient" source}} nil nil)))))
+
+      (testing "without source-type"
+        (let [library {:statements {:def [{:name "Patient"}]}}
+              elm
+              {:path "gender"
+               :source #elm/expression-ref "Patient"
+               :type "Property"}
+              source
+              (vary-meta
+                {:resourceType "Patient" :id "0" :gender "male"}
+                assoc :type :fhir/Patient)
+              expr (compile {:library library :eval-context "Patient"} elm)]
+          (is (= "male" (-eval expr {:library-context {"Patient" source}} nil nil))))))
+
+    (testing "Observation.value"
+      (testing "with source-type"
+        (let [library {:statements {:def [{:name "Observation"}]}}
+              elm
+              {:path "value"
+               :source #elm/expression-ref "Observation"
+               :type "Property"
+               :life/source-type "{http://hl7.org/fhir}Observation"}
+              source
+              (vary-meta
+                {:resourceType "Observation" :id "0" :valueString "value-114318"}
+                assoc :type :fhir/Observation)
+              expr (compile {:library library :eval-context "Patient"} elm)]
+          (testing "choices are pre-calculated"
+            (is (coll? (:choices expr))))
+          (is (= "value-114318" (-eval expr {:library-context {"Observation" source}} nil nil)))))
+
+      (testing "without source-type"
+        (let [library {:statements {:def [{:name "Observation"}]}}
+              elm
+              {:path "value"
+               :source #elm/expression-ref "Observation"
+               :type "Property"}
+              source
+              (vary-meta
+                {:resourceType "Observation" :id "0" :valueString "value-114318"}
+                assoc :type :fhir/Observation)
+              expr (compile {:library library :eval-context "Patient"} elm)]
+          (is (= "value-114318" (-eval expr {:library-context {"Observation" source}} nil nil))))))
+
+    (testing "Tuple"
+      (are [elm result]
+        (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
+        {:resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
+         :path "id"
+         :type "Property"
+         :source
+         {:type "Tuple"
+          :resultTypeSpecifier
+          {:type "TupleTypeSpecifier"
+           :element
+           [{:name "id"
+             :type {:name "{urn:hl7-org:elm-types:r1}Integer" :type "NamedTypeSpecifier"}}
+            {:name "name"
+             :type {:name "{urn:hl7-org:elm-types:r1}String" :type "NamedTypeSpecifier"}}]}
+          :element
+          [{:name "id" :value #elm/integer "1"}]}}
+        1))
+
+    (testing "Quantity"
+      (testing "value"
+        (are [elm result]
+          (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
+          {:resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
+           :path "value"
            :type "Property"
-           :resultTypeName "{http://hl7.org/fhir}AdministrativeGender"
-           :life/source-type "{http://hl7.org/fhir}Patient"}
-          source {:resourceType "Patient" :id "0" :gender "male"}
-          expr (compile {:library library :eval-context "Patient"} elm)]
-      (is (= "male" (-eval expr {:library-context {"Patient" source}} nil nil)))))
+           :source #elm/quantity [42 "m"]}
+          42))
 
-  (testing "with Tuple source"
-    (are [elm result]
-      (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
-      {:resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
-       :path "id"
-       :type "Property"
-       :source
-       {:type "Tuple"
-        :resultTypeSpecifier
-        {:type "TupleTypeSpecifier"
-         :element
-         [{:name "id"
-           :type {:name "{urn:hl7-org:elm-types:r1}Integer" :type "NamedTypeSpecifier"}}
-          {:name "name"
-           :type {:name "{urn:hl7-org:elm-types:r1}String" :type "NamedTypeSpecifier"}}]}
-        :element
-        [{:name "id" :value #elm/integer "1"}]}}
-      1))
+      (testing "unit"
+        (are [elm result]
+          (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
+          {:resultTypeName "{urn:hl7-org:elm-types:r1}String"
+           :path "unit"
+           :type "Property"
+           :source #elm/quantity [42 "m"]}
+          "m")))
 
-  (testing "with Quantity source"
-    (testing "value"
+    (testing "nil"
       (are [elm result]
         (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
-        {:resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
-         :path "value"
+        {:path "value"
          :type "Property"
-         :source #elm/quantity [42 "m"]}
-        42))
-
-    (testing "unit"
-      (are [elm result]
-        (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
-        {:resultTypeName "{urn:hl7-org:elm-types:r1}String"
-         :path "unit"
-         :type "Property"
-         :source #elm/quantity [42 "m"]}
-        "m")))
-
-  (testing "with nil source"
-    (are [elm result]
-      (= result (-eval (compile {:eval-context "Unspecified"} elm) {} nil nil))
-      {:path "value"
-       :type "Property"
-       :source {:type "Null"}}
-      nil)))
+         :source {:type "Null"}}
+        nil))))
 
 
 
@@ -447,7 +734,8 @@
 (deftest compile-quantity-test
   (testing "Examples"
     (are [elm res] (= res (compile {} elm))
-      #elm/quantity [1] 1
+      {:type "Quantity"} nil
+      #elm/quantity [1] (quantity 1 "")
       #elm/quantity [1 "year"] (period 1 0 0)
       #elm/quantity [2 "years"] (period 2 0 0)
       #elm/quantity [1 "month"] (period 0 1 0)
@@ -485,6 +773,11 @@
   (testing "Throws error on missing expression"
     (is (thrown-anom? ::anom/incorrect (compile {} #elm/expression-ref "name-170312"))))
 
+  (testing "Result Type"
+    (let [library {:statements {:def [{:name "name-170312" :resultTypeName "result-type-name-173029"}]}}
+          expr (compile {:library library} #elm/expression-ref "name-170312")]
+      (is (= "result-type-name-173029" (:result-type-name (meta expr))))))
+
   (testing "Eval"
     (let [library {:statements {:def [{:name "name-170312"}]}}
           expr (compile {:library library} #elm/expression-ref "name-170312")]
@@ -493,13 +786,26 @@
 
 ;; 9.4. FunctionRef
 (deftest compile-function-ref-test
-  (are [elm res]
-    (= res (-eval (compile {} elm) {} nil nil))
-    {:name "ToString"
-     :libraryName "FHIRHelpers"
-     :type "FunctionRef"
-     :operand [#elm/string "foo"]}
-    "foo"))
+  (testing "ToString"
+    (are [elm res]
+      (= res (-eval (compile {} elm) {} nil nil))
+      {:type "FunctionRef"
+       :libraryName "FHIRHelpers"
+       :name "ToString"
+       :operand [#elm/string "foo"]}
+      "foo"))
+
+  (testing "ToQuantity"
+    (let [context {:eval-context "Patient" :node (mem-node-with [])}
+          elm {:type "FunctionRef"
+               :libraryName "FHIRHelpers"
+               :name "ToQuantity"
+               :operand [#elm/singleton-from patient-retrieve-elm]}]
+      (are [resource res]
+        (= res (-eval (compile context elm) {} resource nil))
+        {:value 23M :code "kg"} (quantity 23M "kg")
+        {:value 42M} (quantity 42M "1")
+        {} nil))))
 
 
 
@@ -558,7 +864,7 @@
                    [{:alias "S"
                      :expression #elm/list [#elm/integer "1" #elm/integer "1"]}]}
             res (-eval (compile {:optimizations #{:first}} query) {} nil nil)]
-        (is (instance? Eduction res)))))
+        (is (not (instance? IPersistentCollection res))))))
 
   (testing "Retrieve queries"
     (let [node (mem-node-with
@@ -766,15 +1072,21 @@
           [0 :id] := "1"))))
 
   (testing "with related context"
-    (retrieve-test/stub-with-related-context-expr
-      "context-expr" "Foo" "code" nil?
-      ::expr)
-
-    (let [elm {:type "Retrieve"
-               :dataType "{http://hl7.org/fhir}Foo"
-               :context #elm/string "context-expr"}
-          expr (compile {} elm)]
-      (is (= ::expr expr)))))
+    (testing "with pre-compiled database query"
+      (let [node (mem-node-with [])
+            library {:codeSystems
+                     {:def [{:name "sys-def-174848" :id "system-174915"}]}
+                     :statements
+                     {:def
+                      [{:name "name-174207"
+                        :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
+            elm {:type "Retrieve"
+                 :dataType "{http://hl7.org/fhir}Observation"
+                 :context #elm/expression-ref "name-174207"
+                 :codes #elm/list [#elm/code ["sys-def-174848" "code-174911"]]}
+            expr (compile {:library library :node node} elm)]
+        (given expr
+          type := WithRelatedContextQueryRetrieveExpression)))))
 
 
 
@@ -1509,35 +1821,35 @@
 
       {:type "Null"} #elm/boolean "true" nil
       {:type "Null"} #elm/boolean "false" false
-      {:type "Null"} {:type "Null"} nil
+      {:type "Null"} {:type "Null"} nil))
 
-      #elm/boolean "false" dynamic-resource false
-      dynamic-resource #elm/boolean "false" false))
+  (let [context {:eval-context "Patient" :node (mem-node-with [])}]
+    (testing "Dynamic"
+      ;; dynamic-resource will evaluate to true
+      (are [a b res] (= res (-eval (compile context #elm/and [a b]) {} true nil))
+        #elm/boolean "true" dynamic-resource true
+        dynamic-resource #elm/boolean "true" true
+        dynamic-resource dynamic-resource true
 
-  (testing "Dynamic"
-    ;; dynamic-resource will evaluate to true
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/and [a b]) {} true nil))
-      #elm/boolean "true" dynamic-resource true
-      dynamic-resource #elm/boolean "true" true
-      dynamic-resource dynamic-resource true
+        dynamic-resource {:type "Null"} nil
+        {:type "Null"} dynamic-resource nil)
 
-      dynamic-resource {:type "Null"} nil
-      {:type "Null"} dynamic-resource nil)
+      ;; dynamic-resource will evaluate to false
+      (are [a b res] (= res (-eval (compile context #elm/and [a b]) {} false nil))
+        #elm/boolean "true" dynamic-resource false
+        dynamic-resource #elm/boolean "true" false
+        dynamic-resource dynamic-resource false
 
-    ;; dynamic-resource will evaluate to false
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/and [a b]) {} false nil))
-      #elm/boolean "true" dynamic-resource false
-      dynamic-resource #elm/boolean "true" false
-      dynamic-resource dynamic-resource false
+        dynamic-resource {:type "Null"} false
+        {:type "Null"} dynamic-resource false)
 
-      dynamic-resource {:type "Null"} false
-      {:type "Null"} dynamic-resource false)
-
-    ;; dynamic-resource will evaluate to nil
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/and [a b]) {} nil nil))
-      #elm/boolean "true" dynamic-resource nil
-      dynamic-resource #elm/boolean "true" nil
-      dynamic-resource dynamic-resource nil)))
+      ;; dynamic-resource will evaluate to nil
+      (are [a b res] (= res (-eval (compile context #elm/and [a b]) {} nil nil))
+        #elm/boolean "false" dynamic-resource false
+        dynamic-resource #elm/boolean "false" false
+        #elm/boolean "true" dynamic-resource nil
+        dynamic-resource #elm/boolean "true" nil
+        dynamic-resource dynamic-resource nil))))
 
 
 ;; 13.2. Implies
@@ -1578,18 +1890,19 @@
       #elm/boolean "false" true
       {:type "Null"} nil))
 
-  (testing "Dynamic"
-    ;; dynamic-resource will evaluate to true
-    (are [a res] (= res (-eval (compile {:eval-context "Patient"} #elm/not a) {} true nil))
-      dynamic-resource false)
+  (let [context {:eval-context "Patient" :node (mem-node-with [])}]
+    (testing "Dynamic"
+      ;; dynamic-resource will evaluate to true
+      (are [a res] (= res (-eval (compile context #elm/not a) {} true nil))
+        dynamic-resource false)
 
-    ;; dynamic-resource will evaluate to false
-    (are [a res] (= res (-eval (compile {:eval-context "Patient"} #elm/not a) {} false nil))
-      dynamic-resource true)
+      ;; dynamic-resource will evaluate to false
+      (are [a res] (= res (-eval (compile context #elm/not a) {} false nil))
+        dynamic-resource true)
 
-    ;; dynamic-resource will evaluate to nil
-    (are [a res] (= res (-eval (compile {:eval-context "Patient"} #elm/not a) {} nil nil))
-      dynamic-resource nil)))
+      ;; dynamic-resource will evaluate to nil
+      (are [a res] (= res (-eval (compile context #elm/not a) {} nil nil))
+        dynamic-resource nil))))
 
 
 ;; 13.4. Or
@@ -1612,35 +1925,35 @@
 
       {:type "Null"} #elm/boolean "true" true
       {:type "Null"} #elm/boolean "false" nil
-      {:type "Null"} {:type "Null"} nil
+      {:type "Null"} {:type "Null"} nil))
 
-      #elm/boolean "true" dynamic-resource true
-      dynamic-resource #elm/boolean "true" true))
+  (let [context {:eval-context "Patient" :node (mem-node-with [])}]
+    (testing "Dynamic"
+      ;; dynamic-resource will evaluate to true
+      (are [a b res] (= res (-eval (compile context #elm/or [a b]) {} true nil))
+        #elm/boolean "false" dynamic-resource true
+        dynamic-resource #elm/boolean "false" true
+        dynamic-resource dynamic-resource true
 
-  (testing "Dynamic"
-    ;; dynamic-resource will evaluate to true
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/or [a b]) {} true nil))
-      #elm/boolean "false" dynamic-resource true
-      dynamic-resource #elm/boolean "false" true
-      dynamic-resource dynamic-resource true
+        dynamic-resource {:type "Null"} true
+        {:type "Null"} dynamic-resource true)
 
-      dynamic-resource {:type "Null"} true
-      {:type "Null"} dynamic-resource true)
+      ;; dynamic-resource will evaluate to false
+      (are [a b res] (= res (-eval (compile context #elm/or [a b]) {} false nil))
+        #elm/boolean "false" dynamic-resource false
+        dynamic-resource #elm/boolean "false" false
+        dynamic-resource dynamic-resource false
 
-    ;; dynamic-resource will evaluate to false
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/or [a b]) {} false nil))
-      #elm/boolean "false" dynamic-resource false
-      dynamic-resource #elm/boolean "false" false
-      dynamic-resource dynamic-resource false
+        dynamic-resource {:type "Null"} nil
+        {:type "Null"} dynamic-resource nil)
 
-      dynamic-resource {:type "Null"} nil
-      {:type "Null"} dynamic-resource nil)
-
-    ;; dynamic-resource will evaluate to nil
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/or [a b]) {} nil nil))
-      #elm/boolean "false" dynamic-resource nil
-      dynamic-resource #elm/boolean "false" nil
-      dynamic-resource dynamic-resource nil)))
+      ;; dynamic-resource will evaluate to nil
+      (are [a b res] (= res (-eval (compile context #elm/or [a b]) {} nil nil))
+        #elm/boolean "true" dynamic-resource true
+        dynamic-resource #elm/boolean "true" true
+        #elm/boolean "false" dynamic-resource nil
+        dynamic-resource #elm/boolean "false" nil
+        dynamic-resource dynamic-resource nil))))
 
 
 ;; 13.5. Xor
@@ -1664,41 +1977,42 @@
 
       {:type "Null"} #elm/boolean "true" nil
       {:type "Null"} #elm/boolean "false" nil
-      {:type "Null"} {:type "Null"} nil
+      {:type "Null"} {:type "Null"} nil))
 
-      {:type "Null"} dynamic-resource nil
-      dynamic-resource {:type "Null"} nil))
+  (let [context {:eval-context "Patient":node (mem-node-with [])}]
+    (testing "Dynamic"
+      ;; dynamic-resource will evaluate to true
+      (are [a b res] (= res (-eval (compile context #elm/xor [a b]) {} true nil))
+        #elm/boolean "true" dynamic-resource false
+        dynamic-resource #elm/boolean "true" false
 
-  (testing "Dynamic"
-    ;; dynamic-resource will evaluate to true
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/xor [a b]) {} true nil))
-      #elm/boolean "true" dynamic-resource false
-      dynamic-resource #elm/boolean "true" false
+        #elm/boolean "false" dynamic-resource true
+        dynamic-resource #elm/boolean "false" true
 
-      #elm/boolean "false" dynamic-resource true
-      dynamic-resource #elm/boolean "false" true
+        dynamic-resource dynamic-resource false)
 
-      dynamic-resource dynamic-resource false)
+      ;; dynamic-resource will evaluate to false
+      (are [a b res] (= res (-eval (compile context #elm/xor [a b]) {} false nil))
+        #elm/boolean "true" dynamic-resource true
+        dynamic-resource #elm/boolean "true" true
 
-    ;; dynamic-resource will evaluate to false
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/xor [a b]) {} false nil))
-      #elm/boolean "true" dynamic-resource true
-      dynamic-resource #elm/boolean "true" true
+        #elm/boolean "false" dynamic-resource false
+        dynamic-resource #elm/boolean "false" false
 
-      #elm/boolean "false" dynamic-resource false
-      dynamic-resource #elm/boolean "false" false
+        dynamic-resource dynamic-resource false)
 
-      dynamic-resource dynamic-resource false)
+      ;; dynamic-resource will evaluate to nil
+      (are [a b res] (= res (-eval (compile context #elm/xor [a b]) {} nil nil))
+        #elm/boolean "true" dynamic-resource nil
+        dynamic-resource #elm/boolean "true" nil
 
-    ;; dynamic-resource will evaluate to nil
-    (are [a b res] (= res (-eval (compile {:eval-context "Patient"} #elm/xor [a b]) {} nil nil))
-      #elm/boolean "true" dynamic-resource nil
-      dynamic-resource #elm/boolean "true" nil
+        #elm/boolean "false" dynamic-resource nil
+        dynamic-resource #elm/boolean "false" nil
 
-      #elm/boolean "false" dynamic-resource nil
-      dynamic-resource #elm/boolean "false" nil
+        {:type "Null"} dynamic-resource nil
+        dynamic-resource {:type "Null"} nil
 
-      dynamic-resource dynamic-resource nil)))
+        dynamic-resource dynamic-resource nil))))
 
 
 
@@ -1742,18 +2056,19 @@
       #elm/boolean "false" true
       {:type "Null"} false))
 
-  (testing "Dynamic"
-    ;; dynamic-resource will evaluate to true
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-false x) {} true nil))
-      dynamic-resource false)
+  (let [context {:eval-context "Patient":node (mem-node-with [])}]
+    (testing "Dynamic"
+      ;; dynamic-resource will evaluate to true
+      (are [x res] (= res (-eval (compile context #elm/is-false x) {} true nil))
+        dynamic-resource false)
 
-    ;; dynamic-resource will evaluate to false
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-false x) {} false nil))
-      dynamic-resource true)
+      ;; dynamic-resource will evaluate to false
+      (are [x res] (= res (-eval (compile context #elm/is-false x) {} false nil))
+        dynamic-resource true)
 
-    ;; dynamic-resource will evaluate to nil
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-false x) {} nil nil))
-      dynamic-resource false)))
+      ;; dynamic-resource will evaluate to nil
+      (are [x res] (= res (-eval (compile context #elm/is-false x) {} nil nil))
+        dynamic-resource false))))
 
 
 ;; 14.4. IsNull
@@ -1768,18 +2083,19 @@
       #elm/boolean "false" false
       {:type "Null"} true))
 
-  (testing "Dynamic"
-    ;; dynamic-resource will evaluate to true
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-null x) {} true nil))
-      dynamic-resource false)
+  (let [context {:eval-context "Patient":node (mem-node-with [])}]
+    (testing "Dynamic"
+      ;; dynamic-resource will evaluate to true
+      (are [x res] (= res (-eval (compile context #elm/is-null x) {} true nil))
+        dynamic-resource false)
 
-    ;; dynamic-resource will evaluate to false
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-null x) {} false nil))
-      dynamic-resource false)
+      ;; dynamic-resource will evaluate to false
+      (are [x res] (= res (-eval (compile context #elm/is-null x) {} false nil))
+        dynamic-resource false)
 
-    ;; dynamic-resource will evaluate to nil
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-null x) {} nil nil))
-      dynamic-resource true)))
+      ;; dynamic-resource will evaluate to nil
+      (are [x res] (= res (-eval (compile context #elm/is-null x) {} nil nil))
+        dynamic-resource true))))
 
 
 ;; 14.5. IsTrue
@@ -1794,18 +2110,19 @@
       #elm/boolean "false" false
       {:type "Null"} false))
 
-  (testing "Dynamic"
-    ;; dynamic-resource will evaluate to true
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-true x) {} true nil))
-      dynamic-resource true)
+  (let [context {:eval-context "Patient":node (mem-node-with [])}]
+    (testing "Dynamic"
+      ;; dynamic-resource will evaluate to true
+      (are [x res] (= res (-eval (compile context #elm/is-true x) {} true nil))
+        dynamic-resource true)
 
-    ;; dynamic-resource will evaluate to false
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-true x) {} false nil))
-      dynamic-resource false)
+      ;; dynamic-resource will evaluate to false
+      (are [x res] (= res (-eval (compile context #elm/is-true x) {} false nil))
+        dynamic-resource false)
 
-    ;; dynamic-resource will evaluate to nil
-    (are [x res] (= res (-eval (compile {:eval-context "Patient"} #elm/is-true x) {} nil nil))
-      dynamic-resource false)))
+      ;; dynamic-resource will evaluate to nil
+      (are [x res] (= res (-eval (compile context #elm/is-true x) {} nil nil))
+        dynamic-resource false))))
 
 
 
@@ -1825,18 +2142,19 @@
       #elm/if [#elm/boolean "false" #elm/integer "1" #elm/integer "2"] 2
       #elm/if [{:type "Null"} #elm/integer "1" #elm/integer "2"] 2))
 
-  (testing "Dynamic"
-    ;; dynamic-resource will evaluate to true
-    (are [elm res] (= res (-eval (compile {:eval-context "Patient"} elm) {} true nil))
-      #elm/if [dynamic-resource #elm/integer "1" #elm/integer "2"] 1)
+  (let [context {:eval-context "Patient":node (mem-node-with [])}]
+    (testing "Dynamic"
+      ;; dynamic-resource will evaluate to true
+      (are [elm res] (= res (-eval (compile context elm) {} true nil))
+        #elm/if [dynamic-resource #elm/integer "1" #elm/integer "2"] 1)
 
-    ;; dynamic-resource will evaluate to false
-    (are [elm res] (= res (-eval (compile {:eval-context "Patient"} elm) {} false nil))
-      #elm/if [dynamic-resource #elm/integer "1" #elm/integer "2"] 2)
+      ;; dynamic-resource will evaluate to false
+      (are [elm res] (= res (-eval (compile context elm) {} false nil))
+        #elm/if [dynamic-resource #elm/integer "1" #elm/integer "2"] 2)
 
-    ;; dynamic-resource will evaluate to nil
-    (are [elm res] (= res (-eval (compile {:eval-context "Patient"} elm) {} nil nil))
-      #elm/if [dynamic-resource #elm/integer "1" #elm/integer "2"] 2)))
+      ;; dynamic-resource will evaluate to nil
+      (are [elm res] (= res (-eval (compile context elm) {} nil nil))
+        #elm/if [dynamic-resource #elm/integer "1" #elm/integer "2"] 2))))
 
 
 
@@ -1861,13 +2179,13 @@
     #elm/decimal "0" 0M
     #elm/decimal "1" 1M
 
-    #elm/quantity [-1] 1
-    #elm/quantity [0] 0
-    #elm/quantity [1] 1
+    #elm/quantity [-1] (quantity 1 "1")
+    #elm/quantity [0] (quantity 0 "1")
+    #elm/quantity [1] (quantity 1 "1")
 
-    #elm/quantity [-1M] 1M
-    #elm/quantity [0M] 0M
-    #elm/quantity [1M] 1M
+    #elm/quantity [-1M] (quantity 1M "1")
+    #elm/quantity [0M] (quantity 0M "1")
+    #elm/quantity [1M] (quantity 1M "1")
 
     #elm/quantity [-1 "m"] (quantity 1 "m")
     #elm/quantity [0 "m"] (quantity 0 "m")
@@ -2010,19 +2328,21 @@
        [1 "m"]  [1 "s"]))
 
   (testing "Adding identical quantities equals multiplying the same quantity with two"
-    (satisfies-prop 100
-                    (prop/for-all [quantity (s/gen :elm/quantity)]
-                      (let [elm (elm/equal [(elm/add [quantity quantity])
-                                            (elm/multiply [quantity #elm/integer "2"])])]
-                        (true? (-eval (compile {} elm) {} nil nil))))))
+    (satisfies-prop
+      100
+      (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
+        (let [elm (elm/equal [(elm/add [quantity quantity])
+                              (elm/multiply [quantity #elm/integer "2"])])]
+          (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Adding identical quantities and dividing by two results in the same quantity"
-    (satisfies-prop 100
-                    (prop/for-all [quantity (s/gen :elm/quantity)]
-                      (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
-                                                         #elm/integer "2"])
-                                            quantity])]
-                        (true? (-eval (compile {} elm) {} nil nil))))))
+    (satisfies-prop
+      100
+      (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
+        (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
+                                           #elm/integer "2"])
+                              quantity])]
+          (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Date + Quantity"
     (are [x y res] (= res (-eval (compile {} #elm/add [x y]) {} nil nil))
@@ -2395,7 +2715,7 @@
       "1" "2" 2
       "2" "2" 4)
 
-    (testing-binary-null elm/modulo #elm/integer "1"))
+    (testing-binary-null elm/multiply #elm/integer "1"))
 
   (testing "Decimal"
     (testing "Decimal"
@@ -2403,7 +2723,7 @@
         "1" "2" 2M
         "1.23456" "1.23456" 1.52413839M)
 
-      (testing-binary-null elm/modulo #elm/decimal "1.1"))
+      (testing-binary-null elm/multiply #elm/decimal "1.1"))
 
     (testing "Arithmetic overflow results in nil"
       (are [x y] (nil? (compile-binop elm/multiply elm/decimal x y))
@@ -2415,7 +2735,7 @@
       #elm/quantity [1 "m"] #elm/integer "2" (quantity 2 "m")
       #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity 2 "m2"))
 
-    (testing-binary-null elm/modulo #elm/quantity [1])))
+    (testing-binary-null elm/multiply #elm/quantity [1])))
 
 
 ;; 16.13. Negate
@@ -2438,8 +2758,8 @@
 
   (testing "Quantity"
     (are [x res] (= res (compile {} #elm/negate x))
-      #elm/quantity [1] -1
-      #elm/quantity [1M] -1M
+      #elm/quantity [1] (quantity -1 "1")
+      #elm/quantity [1M] (quantity -1M "1")
       #elm/quantity [1 "m"] (quantity -1 "m")
       #elm/quantity [1M "m"] (quantity -1M "m")))
 
@@ -2557,36 +2877,37 @@
 ;; Precision determines the decimal place at which the rounding will occur. If
 ;; precision is not specified or null, 0 is assumed.
 (deftest compile-round-test
-  (testing "Without precision"
-    (testing "Static"
-      (are [x res] (= res (compile {} #elm/round [x]))
-        #elm/integer "1" 1M
-        #elm/decimal "1" 1M
-        #elm/decimal "0.5" 1M
-        #elm/decimal "0.4" 0M
-        #elm/decimal "-0.4" 0M
-        #elm/decimal "-0.5" -1M
-        #elm/decimal "-0.6" -1M
-        #elm/decimal "-1.1" -1M
-        #elm/decimal "-1.5" -2M
-        #elm/decimal "-1.6" -2M
-        {:type "Null"} nil))
+  (let [context {:eval-context "Patient":node (mem-node-with [])}]
+    (testing "Without precision"
+      (testing "Static"
+        (are [x res] (= res (compile {} #elm/round [x]))
+          #elm/integer "1" 1M
+          #elm/decimal "1" 1M
+          #elm/decimal "0.5" 1M
+          #elm/decimal "0.4" 0M
+          #elm/decimal "-0.4" 0M
+          #elm/decimal "-0.5" -1M
+          #elm/decimal "-0.6" -1M
+          #elm/decimal "-1.1" -1M
+          #elm/decimal "-1.5" -2M
+          #elm/decimal "-1.6" -2M
+          {:type "Null"} nil))
 
-    (testing "Dynamic Null"
-      (let [elm #elm/round [#elm/singleton-from patient-retrieve-elm]
-            expr (compile {:eval-context "Patient"} elm)]
-        (is (nil? (-eval expr {} nil nil))))))
+      (testing "Dynamic Null"
+        (let [elm #elm/round [#elm/singleton-from patient-retrieve-elm]
+              expr (compile context elm)]
+          (is (nil? (-eval expr {} nil nil))))))
 
-  (testing "With precision"
-    (testing "Static"
-      (are [x precision res] (= res (compile {} #elm/round [x precision]))
-        #elm/decimal "3.14159" #elm/integer "3" 3.142M
-        {:type "Null"} #elm/integer "3" nil))
+    (testing "With precision"
+      (testing "Static"
+        (are [x precision res] (= res (compile {} #elm/round [x precision]))
+          #elm/decimal "3.14159" #elm/integer "3" 3.142M
+          {:type "Null"} #elm/integer "3" nil))
 
-    (testing "Dynamic Null"
-      (let [elm #elm/round [#elm/singleton-from patient-retrieve-elm #elm/integer "3"]
-            expr (compile {:eval-context "Patient"} elm)]
-        (is (nil? (-eval expr {} nil nil)))))))
+      (testing "Dynamic Null"
+        (let [elm #elm/round [#elm/singleton-from patient-retrieve-elm #elm/integer "3"]
+              expr (compile context elm)]
+          (is (nil? (-eval expr {} nil nil))))))))
 
 
 ;; 16.17. Subtract
@@ -2687,13 +3008,14 @@
       #elm/quantity [1 "m"] #elm/quantity [1 "s"]))
 
   (testing "Subtracting identical quantities results in zero"
-    (satisfies-prop 100
-                    (prop/for-all [quantity (s/gen :elm/quantity)]
-                      ;; Can't test for zero because can't extract value from quantity
-                      ;; so use negate trick
-                      (let [elm (elm/equal [(elm/negate (elm/subtract [quantity quantity]))
-                                            (elm/subtract [quantity quantity])])]
-                        (true? (-eval (compile {} elm) {} nil nil))))))
+    (satisfies-prop
+      100
+      (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
+        ;; Can't test for zero because can't extract value from quantity
+        ;; so use negate trick
+        (let [elm (elm/equal [(elm/negate (elm/subtract [quantity quantity]))
+                              (elm/subtract [quantity quantity])])]
+          (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "Date - Quantity"
     (are [x y res] (= res (compile {} #elm/subtract [x y]))
@@ -3252,80 +3574,81 @@
 ;; at a precision below an unspecified precision. For example, month may be
 ;; null, but if it is, day must be null as well.
 (deftest compile-date-test
-  (testing "Static Null year"
-    (is (nil? (compile {} #elm/date [{:type "null"}]))))
+  (let [context {:eval-context "Patient":node (mem-node-with [])}]
+    (testing "Static Null year"
+      (is (nil? (compile {} #elm/date [{:type "null"}]))))
 
-  (testing "Static year"
-    (is (= (Year/of 2019) (compile {} #elm/date "2019"))))
+    (testing "Static year"
+      (is (= (Year/of 2019) (compile {} #elm/date "2019"))))
 
-  (testing "Static year over 10.000"
-    (is (thrown-anom? ::anom/incorrect (compile {} #elm/date "10001"))))
+    (testing "Static year over 10.000"
+      (is (thrown-anom? ::anom/incorrect (compile {} #elm/date "10001"))))
 
-  (testing "Dynamic Null year"
-    (let [elm #elm/date [#elm/singleton-from patient-retrieve-elm]
-          expr (compile {:eval-context "Patient"} elm)]
-      (is (nil? (-eval expr {} nil nil)))))
+    (testing "Dynamic Null year"
+      (let [elm #elm/date [#elm/singleton-from patient-retrieve-elm]
+            expr (compile context elm)]
+        (is (nil? (-eval expr {} nil nil)))))
 
-  (testing "Dynamic year"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
-      #elm/date [#elm/add [#elm/integer "2018" #elm/integer "1"]]
-      (Year/of 2019)))
+    (testing "Dynamic year"
+      (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+        #elm/date [#elm/add [#elm/integer "2018" #elm/integer "1"]]
+        (Year/of 2019)))
 
-  (testing "Dynamic Null month"
-    (let [elm #elm/date [#elm/integer "2018"
-                         #elm/singleton-from patient-retrieve-elm]
-          expr (compile {:eval-context "Patient"} elm)]
-      (is (= (Year/of 2018) (-eval expr {} nil nil)))))
+    (testing "Dynamic Null month"
+      (let [elm #elm/date [#elm/integer "2018"
+                           #elm/singleton-from patient-retrieve-elm]
+            expr (compile context elm)]
+        (is (= (Year/of 2018) (-eval expr {} nil nil)))))
 
-  (testing "Static year-month"
-    (are [elm res] (= res (compile {} elm))
-      #elm/date "2019-03"
-      (YearMonth/of 2019 3)))
+    (testing "Static year-month"
+      (are [elm res] (= res (compile {} elm))
+        #elm/date "2019-03"
+        (YearMonth/of 2019 3)))
 
-  (testing "Dynamic year-month"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
-      #elm/date [#elm/integer "2019" #elm/add [#elm/integer "2" #elm/integer "1"]]
-      (YearMonth/of 2019 3)))
+    (testing "Dynamic year-month"
+      (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+        #elm/date [#elm/integer "2019" #elm/add [#elm/integer "2" #elm/integer "1"]]
+        (YearMonth/of 2019 3)))
 
-  (testing "Dynamic Null month and day"
-    (let [elm #elm/date [#elm/integer "2020"
-                         #elm/singleton-from patient-retrieve-elm
-                         #elm/singleton-from patient-retrieve-elm]
-          expr (compile {:eval-context "Patient"} elm)]
-      (is (= (Year/of 2020) (-eval expr {} nil nil)))))
+    (testing "Dynamic Null month and day"
+      (let [elm #elm/date [#elm/integer "2020"
+                           #elm/singleton-from patient-retrieve-elm
+                           #elm/singleton-from patient-retrieve-elm]
+            expr (compile context elm)]
+        (is (= (Year/of 2020) (-eval expr {} nil nil)))))
 
-  (testing "Dynamic Null day"
-    (let [elm #elm/date [#elm/integer "2018"
-                         #elm/integer "5"
-                         #elm/singleton-from patient-retrieve-elm]
-          expr (compile {:eval-context "Patient"} elm)]
-      (is (= (YearMonth/of 2018 5) (-eval expr {} nil nil)))))
+    (testing "Dynamic Null day"
+      (let [elm #elm/date [#elm/integer "2018"
+                           #elm/integer "5"
+                           #elm/singleton-from patient-retrieve-elm]
+            expr (compile context elm)]
+        (is (= (YearMonth/of 2018 5) (-eval expr {} nil nil)))))
 
-  (testing "Static date"
-    (are [elm res] (= res (compile {} elm))
-      #elm/date "2019-03-23"
-      (LocalDate/of 2019 3 23)))
+    (testing "Static date"
+      (are [elm res] (= res (compile {} elm))
+        #elm/date "2019-03-23"
+        (LocalDate/of 2019 3 23)))
 
-  (testing "Dynamic date"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
-      #elm/date [#elm/integer "2019" #elm/integer "3"
-                 #elm/add [#elm/integer "22" #elm/integer "1"]]
-      (LocalDate/of 2019 3 23)))
+    (testing "Dynamic date"
+      (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+        #elm/date [#elm/integer "2019" #elm/integer "3"
+                   #elm/add [#elm/integer "22" #elm/integer "1"]]
+        (LocalDate/of 2019 3 23)))
 
-  (testing "an ELM year (only literals) always compiles to a Year"
-    (satisfies-prop 100
-                    (prop/for-all [year (s/gen :elm/literal-year)]
-                      (instance? Year (compile {} year)))))
+    (testing "an ELM year (only literals) always compiles to a Year"
+      (satisfies-prop 100
+                      (prop/for-all [year (s/gen :elm/literal-year)]
+                        (instance? Year (compile {} year)))))
 
-  (testing "an ELM year-month (only literals) always compiles to a YearMonth"
-    (satisfies-prop 100
-                    (prop/for-all [year-month (s/gen :elm/literal-year-month)]
-                      (instance? YearMonth (compile {} year-month)))))
+    (testing "an ELM year-month (only literals) always compiles to a YearMonth"
+      (satisfies-prop 100
+                      (prop/for-all [year-month (s/gen :elm/literal-year-month)]
+                        (instance? YearMonth (compile {} year-month)))))
 
-  (testing "an ELM date (only literals) always compiles to something implementing Temporal"
-    (satisfies-prop 100
-                    (prop/for-all [date (s/gen :elm/literal-date)]
-                      (instance? Temporal (compile {} date))))))
+    (testing "an ELM date (only literals) always compiles to something implementing Temporal"
+      (satisfies-prop 100
+                      (prop/for-all [date (s/gen :elm/literal-date)]
+                        (instance? Temporal (compile {} date)))))))
 
 
 ;; 18.7. DateFrom
@@ -3354,136 +3677,137 @@
 ;; If timezoneOffset is not specified, it is defaulted to the timezone offset of
 ;; the evaluation request.
 (deftest compile-date-time-test
-  (testing "Static Null year"
-    (is (nil? (compile {} #elm/date-time [{:type "null"}]))))
+  (let [context {:eval-context "Patient" :node (mem-node-with [])}]
+    (testing "Static Null year"
+      (is (nil? (compile {} #elm/date-time [{:type "null"}]))))
 
-  (testing "Static year"
-    (is (= (Year/of 2019) (compile {} #elm/date-time "2019"))))
+    (testing "Static year"
+      (is (= (Year/of 2019) (compile {} #elm/date-time "2019"))))
 
-  (testing "Dynamic Null year"
-    (let [elm #elm/date-time [#elm/singleton-from patient-retrieve-elm]
-          expr (compile {:eval-context "Patient"} elm)]
-      (is (nil? (-eval expr {} nil nil)))))
+    (testing "Dynamic Null year"
+      (let [elm #elm/date-time [#elm/singleton-from patient-retrieve-elm]
+            expr (compile context elm)]
+        (is (nil? (-eval expr {} nil nil)))))
 
-  (testing "Dynamic year"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
-      #elm/date-time [#elm/add [#elm/integer "2018" #elm/integer "1"]]
-      (Year/of 2019)))
+    (testing "Dynamic year"
+      (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+        #elm/date-time [#elm/add [#elm/integer "2018" #elm/integer "1"]]
+        (Year/of 2019)))
 
-  (testing "Dynamic Null month"
-    (let [elm #elm/date-time [#elm/integer "2018"
-                              #elm/singleton-from patient-retrieve-elm]
-          expr (compile {:eval-context "Patient"} elm)]
-      (is (= (Year/of 2018) (-eval expr {} nil nil)))))
+    (testing "Dynamic Null month"
+      (let [elm #elm/date-time [#elm/integer "2018"
+                                #elm/singleton-from patient-retrieve-elm]
+            expr (compile context elm)]
+        (is (= (Year/of 2018) (-eval expr {} nil nil)))))
 
-  (testing "Static year-month"
-    (are [elm res] (= res (compile {} elm))
-      #elm/date-time "2019-03"
-      (YearMonth/of 2019 3)))
+    (testing "Static year-month"
+      (are [elm res] (= res (compile {} elm))
+        #elm/date-time "2019-03"
+        (YearMonth/of 2019 3)))
 
-  (testing "Dynamic year-month"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
-      #elm/date-time [#elm/integer "2019" #elm/add [#elm/integer "2" #elm/integer "1"]]
-      (YearMonth/of 2019 3)))
+    (testing "Dynamic year-month"
+      (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+        #elm/date-time [#elm/integer "2019" #elm/add [#elm/integer "2" #elm/integer "1"]]
+        (YearMonth/of 2019 3)))
 
-  (testing "Dynamic Null month and day"
-    (let [elm #elm/date-time [#elm/integer "2020"
-                              #elm/singleton-from patient-retrieve-elm
-                              #elm/singleton-from patient-retrieve-elm]
-          expr (compile {:eval-context "Patient"} elm)]
-      (is (= (Year/of 2020) (-eval expr {} nil nil)))))
+    (testing "Dynamic Null month and day"
+      (let [elm #elm/date-time [#elm/integer "2020"
+                                #elm/singleton-from patient-retrieve-elm
+                                #elm/singleton-from patient-retrieve-elm]
+            expr (compile context elm)]
+        (is (= (Year/of 2020) (-eval expr {} nil nil)))))
 
-  (testing "Dynamic Null day"
-    (let [elm #elm/date-time [#elm/integer "2018"
-                              #elm/integer "5"
-                              #elm/singleton-from patient-retrieve-elm]
-          expr (compile {:eval-context "Patient"} elm)]
-      (is (= (YearMonth/of 2018 5) (-eval expr {} nil nil)))))
+    (testing "Dynamic Null day"
+      (let [elm #elm/date-time [#elm/integer "2018"
+                                #elm/integer "5"
+                                #elm/singleton-from patient-retrieve-elm]
+            expr (compile context elm)]
+        (is (= (YearMonth/of 2018 5) (-eval expr {} nil nil)))))
 
-  (testing "Static date"
-    (are [elm res] (= res (compile {} elm))
-      #elm/date-time "2019-03-23"
-      (LocalDate/of 2019 3 23)))
+    (testing "Static date"
+      (are [elm res] (= res (compile {} elm))
+        #elm/date-time "2019-03-23"
+        (LocalDate/of 2019 3 23)))
 
-  (testing "Dynamic date"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
-      #elm/date-time [#elm/integer "2019" #elm/integer "3"
-                      #elm/add [#elm/integer "22" #elm/integer "1"]]
-      (LocalDate/of 2019 3 23)))
+    (testing "Dynamic date"
+      (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+        #elm/date-time [#elm/integer "2019" #elm/integer "3"
+                        #elm/add [#elm/integer "22" #elm/integer "1"]]
+        (LocalDate/of 2019 3 23)))
 
-  (testing "Static hour"
-    (are [elm res] (= res (compile {} elm))
-      #elm/date-time "2019-03-23T12"
-      (LocalDateTime/of 2019 3 23 12 0 0)))
+    (testing "Static hour"
+      (are [elm res] (= res (compile {} elm))
+        #elm/date-time "2019-03-23T12"
+        (LocalDateTime/of 2019 3 23 12 0 0)))
 
-  (testing "Dynamic hour"
-    (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
-      #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                      #elm/add [#elm/integer "11" #elm/integer "1"]]
-      (LocalDateTime/of 2019 3 23 12 0 0)))
+    (testing "Dynamic hour"
+      (are [elm res] (= res (-eval (compile {} elm) {} nil nil))
+        #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
+                        #elm/add [#elm/integer "11" #elm/integer "1"]]
+        (LocalDateTime/of 2019 3 23 12 0 0)))
 
-  (testing "minute"
-    (are [elm res] (= res (compile {} elm))
-      #elm/date-time "2019-03-23T12:13"
-      (LocalDateTime/of 2019 3 23 12 13 0)))
+    (testing "minute"
+      (are [elm res] (= res (compile {} elm))
+        #elm/date-time "2019-03-23T12:13"
+        (LocalDateTime/of 2019 3 23 12 13 0)))
 
-  (testing "second"
-    (are [elm res] (= res (compile {} elm))
-      #elm/date-time "2019-03-23T12:13:14"
-      (LocalDateTime/of 2019 3 23 12 13 14)))
+    (testing "second"
+      (are [elm res] (= res (compile {} elm))
+        #elm/date-time "2019-03-23T12:13:14"
+        (LocalDateTime/of 2019 3 23 12 13 14)))
 
-  (testing "millisecond"
-    (are [elm res] (= res (compile {} elm))
-      #elm/date-time "2019-03-23T12:13:14.1"
-      (LocalDateTime/of 2019 3 23 12 13 14 1000000)))
+    (testing "millisecond"
+      (are [elm res] (= res (compile {} elm))
+        #elm/date-time "2019-03-23T12:13:14.1"
+        (LocalDateTime/of 2019 3 23 12 13 14 1000000)))
 
-  (testing "Invalid DateTime above max value"
-    (are [elm] (thrown? Exception (compile {} elm))
-      #elm/date-time "10000-12-31T23:59:59.999"))
+    (testing "Invalid DateTime above max value"
+      (are [elm] (thrown? Exception (compile {} elm))
+        #elm/date-time "10000-12-31T23:59:59.999"))
 
-  (testing "with offset"
-    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
-      #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
-                      #elm/decimal "-2"]
-      (LocalDateTime/of 2019 3 23 14 13 14)
+    (testing "with offset"
+      (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
+        #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
+                        #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
+                        #elm/decimal "-2"]
+        (LocalDateTime/of 2019 3 23 14 13 14)
 
-      #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
-                      #elm/decimal "-1"]
-      (LocalDateTime/of 2019 3 23 13 13 14)
+        #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
+                        #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
+                        #elm/decimal "-1"]
+        (LocalDateTime/of 2019 3 23 13 13 14)
 
-      #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
-                      #elm/decimal "0"]
-      (LocalDateTime/of 2019 3 23 12 13 14)
+        #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
+                        #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
+                        #elm/decimal "0"]
+        (LocalDateTime/of 2019 3 23 12 13 14)
 
-      #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
-                      #elm/decimal "1"]
-      (LocalDateTime/of 2019 3 23 11 13 14)
+        #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
+                        #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
+                        #elm/decimal "1"]
+        (LocalDateTime/of 2019 3 23 11 13 14)
 
-      #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
-                      #elm/decimal "2"]
-      (LocalDateTime/of 2019 3 23 10 13 14)
+        #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
+                        #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
+                        #elm/decimal "2"]
+        (LocalDateTime/of 2019 3 23 10 13 14)
 
-      #elm/date-time [#elm/integer "2012" #elm/integer "3" #elm/integer "10"
-                      #elm/integer "10" #elm/integer "20" #elm/integer "0" #elm/integer "999"
-                      #elm/decimal "7"]
-      (LocalDateTime/of 2012 3 10 3 20 0 999000000)))
+        #elm/date-time [#elm/integer "2012" #elm/integer "3" #elm/integer "10"
+                        #elm/integer "10" #elm/integer "20" #elm/integer "0" #elm/integer "999"
+                        #elm/decimal "7"]
+        (LocalDateTime/of 2012 3 10 3 20 0 999000000)))
 
-  (testing "with decimal offset"
-    (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
-      #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
-                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
-                      #elm/decimal "1.5"]
-      (LocalDateTime/of 2019 3 23 10 43 14)))
+    (testing "with decimal offset"
+      (are [elm res] (= res (-eval (compile {} elm) {:now now} nil nil))
+        #elm/date-time [#elm/integer "2019" #elm/integer "3" #elm/integer "23"
+                        #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
+                        #elm/decimal "1.5"]
+        (LocalDateTime/of 2019 3 23 10 43 14)))
 
-  (testing "an ELM date-time (only literals) always evaluates to something implementing Temporal"
-    (satisfies-prop 100
-                    (prop/for-all [date-time (s/gen :elm/literal-date-time)]
-                      (instance? Temporal (-eval (compile {} date-time) {:now now} nil nil))))))
+    (testing "an ELM date-time (only literals) always evaluates to something implementing Temporal"
+      (satisfies-prop 100
+                      (prop/for-all [date-time (s/gen :elm/literal-date-time)]
+                        (instance? Temporal (-eval (compile {} date-time) {:now now} nil nil)))))))
 
 
 ;; 18.9. DateTimeComponentFrom
@@ -3782,15 +4106,16 @@
       #elm/interval [#elm/integer "1" #elm/integer "2" :>] (interval 1 1)
       #elm/interval [:< #elm/integer "1" #elm/integer "3" :>] (interval 2 2)))
 
-  (testing "Dynamic"
-    (are [elm res] (= res (-eval (compile {:eval-context "Patient"} elm) {} nil nil))
-      (elm/interval [:< (elm/as ["{urn:hl7-org:elm-types:r1}Integer" (elm/singleton-from patient-retrieve-elm)])
-                     #elm/integer "1"])
-      (interval nil 1)
+  (let [context {:eval-context "Patient" :node (mem-node-with [])}]
+    (testing "Dynamic"
+      (are [elm res] (= res (-eval (compile context elm) {} nil nil))
+        (elm/interval [:< (elm/as ["{urn:hl7-org:elm-types:r1}Integer" (elm/singleton-from patient-retrieve-elm)])
+                       #elm/integer "1"])
+        (interval nil 1)
 
-      (elm/interval [#elm/integer "1"
-                     (elm/as ["{urn:hl7-org:elm-types:r1}Integer" (elm/singleton-from patient-retrieve-elm)]) :>])
-      (interval 1 nil)))
+        (elm/interval [#elm/integer "1"
+                       (elm/as ["{urn:hl7-org:elm-types:r1}Integer" (elm/singleton-from patient-retrieve-elm)]) :>])
+        (interval 1 nil))))
 
   (testing "Invalid interval"
     (are [elm] (thrown? Exception (-eval (compile {} elm) {} nil nil))

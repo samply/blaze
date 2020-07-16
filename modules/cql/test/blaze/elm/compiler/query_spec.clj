@@ -1,7 +1,7 @@
 (ns blaze.elm.compiler.query-spec
   (:require
-    [blaze.elm.compiler.query :as query]
     [blaze.elm.compiler.protocols :refer [XformFactory]]
+    [blaze.elm.compiler.query :as query]
     [blaze.elm.expression :refer [expr?]]
     [clojure.spec.alpha :as s]))
 

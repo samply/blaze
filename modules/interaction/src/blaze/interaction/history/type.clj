@@ -3,12 +3,11 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
-    [blaze.handler.util :as util]
+    [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
+    [blaze.handler.util :as util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.db.api :as d]
-    [clojure.string :as str]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
@@ -21,26 +20,21 @@
   (-> resource meta :blaze.db/t))
 
 
+(defn- link [match query-params t relation resource]
+  {:relation relation
+   :url (history-util/nav-url match query-params t (resource-t resource)
+                              (:id resource))})
+
+
 (defn- build-response
   [router match query-params t total versions]
   (let [page-size (fhir-util/page-size query-params)
-        paged-versions (into [] (take (inc page-size)) versions)
-        self-link
-        (fn [resource]
-          {:relation "self"
-           :url (history-util/nav-url match query-params t (resource-t resource)
-                                      (:id resource))})
-        next-link
-        (fn [resource]
-          {:relation "next"
-           :url (history-util/nav-url match query-params t (resource-t resource)
-                                      (:id resource))})]
+        paged-versions (into [] (take (inc page-size)) versions)]
     (ring/response
       (cond->
         {:resourceType "Bundle"
          :type "history"
          :total total
-         :link []
          :entry
          (into
            []
@@ -50,32 +44,26 @@
              (map (partial history-util/build-entry router)))
            paged-versions)}
 
-        (first paged-versions)
-        (update :link conj (self-link (first paged-versions)))
+        (seq paged-versions)
+        (update :link (fnil conj []) (link match query-params t "self" (first paged-versions)))
 
         (< page-size (count paged-versions))
-        (update :link conj (next-link (peek paged-versions)))))))
+        (update :link (fnil conj []) (link match query-params t "next" (peek paged-versions)))))))
 
 
 (defn- handle [router match query-params db type]
   (let [t (or (d/as-of-t db) (d/basis-t db))
         page-t (history-util/page-t query-params)
-        page-id (when page-t (history-util/page-id query-params))
-        since-inst (history-util/since-inst query-params)
-        total (d/total-num-of-type-changes db type since-inst)
-        versions (d/type-history db type page-t page-id since-inst)]
+        page-id (when page-t (fhir-util/page-id query-params))
+        since (history-util/since query-params)
+        total (d/total-num-of-type-changes db type since)
+        versions (d/type-history db type page-t page-id since)]
     (build-response router match query-params t total versions)))
 
 
 (defn- handler-intern [node]
   (fn [{::reitit/keys [router match] :keys [query-params]
         {{:fhir.resource/keys [type]} :data} ::reitit/match}]
-    (log/debug
-      (if (seq query-params)
-        (format "GET [base]/%s/_history?%s" type
-                (->> (map (fn [[k v]] (format "%s=%s"k v)) query-params)
-                     (str/join "&")))
-        (format "GET [base]/%s/_history" type)))
     (-> (util/db node (fhir-util/t query-params))
         (md/chain' #(handle router match query-params % type)))))
 

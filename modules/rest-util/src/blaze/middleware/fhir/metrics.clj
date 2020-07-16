@@ -48,7 +48,7 @@
      (-> (handler request)
          (md/chain'
            (fn [{:fhir/keys [interaction-name] :as response}]
-             (when interaction-name
+             (when (string? interaction-name)
                (inc-requests-total! interaction-name request response)
                (observe-request-duration-seconds! request interaction-name))
              response)))))

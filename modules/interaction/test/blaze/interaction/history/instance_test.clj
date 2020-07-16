@@ -8,7 +8,6 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.history.instance :refer [handler]]
     [blaze.interaction.history.instance-spec]
-    [blaze.middleware.fhir.metrics-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -39,7 +38,7 @@
    :path "/Patient/0/_history"})
 
 
-(defn handler-with [txs]
+(defn- handler-with [txs]
   (handler (mem-node-with txs)))
 
 
@@ -53,11 +52,10 @@
 
       (is (= 404 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "not-found")))
 
   (testing "returns history with one patient"
     (let [{:keys [status body]}
@@ -80,7 +78,7 @@
 
       (is (= "self" (-> body :link first :relation)))
 
-      (is (= "/Patient/0/_history?t=1&page-t=1" (-> body :link first :url)))
+      (is (= "/Patient/0/_history?__t=1&__page-t=1" (-> body :link first :url)))
 
       (given (-> body :entry first)
         :fullUrl := "/Patient/0"
@@ -115,7 +113,7 @@
 
       (is (= "self" (-> body :link first :relation)))
 
-      (is (= "/Patient/0/_history?t=2&page-t=2" (-> body :link first :url)))
+      (is (= "/Patient/0/_history?__t=2&__page-t=2" (-> body :link first :url)))
 
       (testing "first entry"
         (given (-> body :entry first)
@@ -150,7 +148,7 @@
 
       (is (= "next" (-> body :link second :relation)))
 
-      (is (= "/Patient/0/_history?_count=1&t=2&page-t=1"
+      (is (= "/Patient/0/_history?_count=1&__t=2&__page-t=1"
              (-> body :link second :url)))))
 
   (testing "with two versions, calling the second page"
@@ -161,7 +159,7 @@
             {::reitit/router router
              ::reitit/match match
              :path-params {:id "0"}
-             :query-params {"_count" "1" "t" "2" "page-t" "1"}})]
+             :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
 
       (testing "the total count is still two"
         (is (= 2 (:total body))))

@@ -1,6 +1,6 @@
 {:deps
- {blaze/db
-  {:local/root "../db"}
+ {blaze/kv
+  {:local/root "../kv"}
 
   org.rocksdb/rocksdbjni
   {:mvn/version "6.8.1"}}
@@ -14,10 +14,10 @@
     {:mvn/version "0.4.5"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-590"}
+    {:mvn/version "1.0.632"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}}
+    {:mvn/version "1.0.0"}}
 
    :main-opts
    ["-m" "kaocha.runner"]}
@@ -25,6 +25,14 @@
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.04.05"}}
+    {:mvn/version "2020.06.12"}}
 
-   :main-opts ["-m" "clj-kondo.main"]}}}
+   :main-opts ["-m" "clj-kondo.main"]}
+
+  :namespace-graph
+  {:extra-deps
+   {clj-kondo/tools
+    {:git/url "https://github.com/borkdude/clj-kondo"
+     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :deps/root "analysis"}}
+   :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}

@@ -1,6 +1,7 @@
 (ns blaze.cql-translator-test
   (:require
     [blaze.cql-translator :refer [translate]]
+    [blaze.cql-translator-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer [deftest is testing]]
@@ -44,15 +45,3 @@
           "library Test
            using FHIR version '4.0.0'
            define Patients: [Patient]")))))
-
-
-(comment
-  (translate
-    "library Retrieve
-    using FHIR version '4.0.0'
-    include FHIRHelpers version '4.0.0'
-
-    context Patient
-
-    define Foo: Coalesce({'a', null, null})")
-  )

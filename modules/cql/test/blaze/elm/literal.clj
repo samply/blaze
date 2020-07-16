@@ -1,7 +1,7 @@
 (ns blaze.elm.literal
   (:require
-    [clojure.spec.alpha :as s]
     [blaze.elm.spec]
+    [clojure.spec.alpha :as s]
     [clojure.string :as str])
   (:refer-clojure :exclude [and boolean distinct flatten list not or time]))
 

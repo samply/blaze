@@ -8,11 +8,12 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
     [blaze.interaction.transaction :refer [handler]]
-    [blaze.middleware.fhir.metrics-spec]
+    [blaze.interaction.transaction-spec]
     [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [juxt.iota :refer [given]]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -28,17 +29,21 @@
 (test/use-fixtures :each fixture)
 
 
-(def router
+(def ^:private router
   (reitit/router
     [["/Patient/{id}" {:name :Patient/instance}]
      ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]
     {:syntax :bracket}))
 
 
+(def ^:private operation-outcome
+  "http://terminology.hl7.org/CodeSystem/operation-outcome")
+
+
 (defonce executor (ex/single-thread-executor))
 
 
-(defn handler-with [txs]
+(defn- handler-with [txs]
   (handler (mem-node-with txs) executor))
 
 
@@ -54,13 +59,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "value" (-> body :issue first :code)))
-
-      (is (= "Bundle.entry[0]" (-> body :issue first :expression first)))
-
-      (is (= "Missing request." (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "value"
+        [:issue 0 :expression 0] := "Bundle.entry[0]"
+        [:issue 0 :diagnostics] := "Missing request.")))
 
   (testing "Returns Error on missing request url"
     (let [{:keys [status body]}
@@ -73,14 +77,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "value" (-> body :issue first :code)))
-
-      (is (= "Bundle.entry[0].request"
-             (-> body :issue first :expression first)))
-
-      (is (= "Missing url." (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "value"
+        [:issue 0 :expression 0] := "Bundle.entry[0].request"
+        [:issue 0 :diagnostics] := "Missing url.")))
 
   (testing "Returns Error on missing request method"
     (let [{:keys [status body]}
@@ -94,14 +96,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "value" (-> body :issue first :code)))
-
-      (is (= "Bundle.entry[0].request"
-             (-> body :issue first :expression first)))
-
-      (is (= "Missing method." (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "value"
+        [:issue 0 :expression 0] := "Bundle.entry[0].request"
+        [:issue 0 :diagnostics] := "Missing method.")))
 
   (testing "Returns Error on unknown method"
     (let [{:keys [status body]}
@@ -116,15 +116,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "value" (-> body :issue first :code)))
-
-      (is (= "Bundle.entry[0].request.method"
-             (-> body :issue first :expression first)))
-
-      (is (= "Unknown method `FOO`."
-             (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "value"
+        [:issue 0 :expression 0] := "Bundle.entry[0].request.method"
+        [:issue 0 :diagnostics] := "Unknown method `FOO`.")))
 
   (testing "Returns Error on unsupported method"
     (let [{:keys [status body]}
@@ -139,15 +136,12 @@
 
       (is (= 422 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "not-supported" (-> body :issue first :code)))
-
-      (is (= "Bundle.entry[0].request.method"
-             (-> body :issue first :expression first)))
-
-      (is (= "Unsupported method `PATCH`."
-             (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "not-supported"
+        [:issue 0 :expression 0] := "Bundle.entry[0].request.method"
+        [:issue 0 :diagnostics] := "Unsupported method `PATCH`.")))
 
   (testing "Returns Error on missing type"
     (let [{:keys [status body]}
@@ -162,15 +156,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "value" (-> body :issue first :code)))
-
-      (is (= "Bundle.entry[0].request.url"
-             (-> body :issue first :expression first)))
-
-      (is (= "Can't parse type from `entry.request.url` ``."
-             (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "value"
+        [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
+        [:issue 0 :diagnostics] := "Can't parse type from `entry.request.url` ``.")))
 
   (testing "Returns Error on unknown type"
     (let [{:keys [status body]}
@@ -185,15 +176,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "value" (-> body :issue first :code)))
-
-      (is (= "Bundle.entry[0].request.url"
-             (-> body :issue first :expression first)))
-
-      (is (= "Unknown type `Foo` in bundle entry URL `Foo/0`."
-             (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "value"
+        [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
+        [:issue 0 :diagnostics] := "Unknown type `Foo` in bundle entry URL `Foo/0`.")))
 
   (testing "Returns Error on invalid JSON type for resource"
     (let [{:keys [status body]}
@@ -209,15 +197,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "structure" (-> body :issue first :code)))
-
-      (is (= "Bundle.entry[0].resource"
-             (-> body :issue first :expression first)))
-
-      (is (= "Expected resource of entry 0 to be a JSON Object."
-             (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "structure"
+        [:issue 0 :expression 0] := "Bundle.entry[0].resource"
+        [:issue 0 :diagnostics] := "Expected resource of entry 0 to be a JSON Object.")))
 
 
   (testing "Returns Error on type mismatch of a update"
@@ -235,21 +220,14 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "invariant" (-> body :issue first :code)))
-
-      (is (some #{"Bundle.entry[0].request.url"}
-                (-> body :issue first :expression)))
-
-      (is (some #{"Bundle.entry[0].resource.resourceType"}
-                (-> body :issue first :expression)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_RESOURCE_TYPE_MISMATCH"
-             (-> body :issue first :details :coding first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :details :coding 0 :system] := operation-outcome
+        [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_TYPE_MISMATCH"
+        [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
+        [:issue 0 :expression 1] := "Bundle.entry[0].resource.resourceType")))
 
 
   (testing "Returns Error on missing ID of a update"
@@ -267,20 +245,13 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "required" (-> body :issue first :code)))
-
-      (is (some #{"Bundle.entry[0].resource.id"}
-                (-> body :issue first :expression)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_RESOURCE_ID_MISSING"
-             (-> body :issue first :details :coding first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "required"
+        [:issue 0 :details :coding 0 :system] := operation-outcome
+        [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_ID_MISSING"
+        [:issue 0 :expression 0] := "Bundle.entry[0].resource.id")))
 
 
   (testing "Returns Error on invalid ID of a update"
@@ -299,20 +270,13 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "value" (-> body :issue first :code)))
-
-      (is (some #{"Bundle.entry[0].resource.id"}
-                (-> body :issue first :expression)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_ID_INVALID"
-             (-> body :issue first :details :coding first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "value"
+        [:issue 0 :details :coding 0 :system] := operation-outcome
+        [:issue 0 :details :coding 0 :code] := "MSG_ID_INVALID"
+        [:issue 0 :expression 0] := "Bundle.entry[0].resource.id")))
 
 
   (testing "Returns Error on ID mismatch of a update"
@@ -331,23 +295,38 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :details :coding 0 :system] := operation-outcome
+        [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_ID_MISMATCH"
+        [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
+        [:issue 0 :expression 1] := "Bundle.entry[0].resource.id")))
 
-      (is (= "error" (-> body :issue first :severity)))
+  (testing "Returns Error on Optimistic Locking Failure of a update"
+    (let [{:keys [status body]}
+          @((handler-with [[[:create {:resourceType "Patient" :id "0"}]]
+                           [[:put {:resourceType "Patient" :id "0"}]]])
+            {:body
+             {:resourceType "Bundle"
+              :type "transaction"
+              :entry
+              [{:resource
+                {:resourceType "Patient"
+                 :id "0"}
+                :request
+                {:method "PUT"
+                 :url "Patient/0"
+                 :ifMatch "W/\"1\""}}]}})]
 
-      (is (= "invariant" (-> body :issue first :code)))
+      (is (= 412 status))
 
-      (is (some #{"Bundle.entry[0].request.url"}
-                (-> body :issue first :expression)))
-
-      (is (some #{"Bundle.entry[0].resource.id"}
-                (-> body :issue first :expression)))
-
-      (is (= "http://terminology.hl7.org/CodeSystem/operation-outcome"
-             (-> body :issue first :details :coding first :system)))
-
-      (is (= "MSG_RESOURCE_ID_MISMATCH"
-             (-> body :issue first :details :coding first :code)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "conflict"
+        [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))
 
 
   (testing "Returns Error on invalid resource"
@@ -367,16 +346,12 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "invariant" (-> body :issue first :code)))
-
-      (is (some #{"Bundle.entry[0].resource"}
-                (-> body :issue first :expression)))
-
-      (is (= "Resource invalid." (-> body :issue first :diagnostics)))))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :expression 0] := "Bundle.entry[0].resource"
+        [:issue 0 :diagnostics] := "Resource invalid.")))
 
 
   (testing "Returns Error on duplicate resources"
@@ -401,13 +376,34 @@
 
       (is (= 400 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :diagnostics] := "Duplicate resource `Patient/0`.")))
 
-      (is (= "error" (-> body :issue first :severity)))
 
-      (is (= "invariant" (-> body :issue first :code)))
+  (testing "Returns Error violated referential integrity"
+    (let [{:keys [status body]}
+          @((handler-with [])
+            {:body
+             {:resourceType "Bundle"
+              :type "transaction"
+              :entry
+              [{:resource
+                {:resourceType "Observation" :id "0"
+                 :subject {:reference "Patient/0"}}
+                :request
+                {:method "POST"
+                 :url "Observation"}}]}})]
 
-      (is (= "Duplicate resource `Patient/0`." (-> body :issue first :diagnostics)))))
+      (is (= 409 status))
+
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "conflict"
+        [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
 
 
   (testing "On newly created resource of a update in transaction"
@@ -474,42 +470,6 @@
           (is (= "200" (-> body :entry first :response :status)))
 
           (is (= "W/\"2\"" (-> body :entry first :response :etag)))
-
-          (is (= "1970-01-01T00:00:00Z"
-                 (-> body :entry first :response :lastModified)))
-
-          (testing "there is no resource embedded in the entry"
-            (is (nil? (-> body :entry first :resource))))))))
-
-
-  (testing "On no-op update of a resource in transaction"
-    (let [resource
-          {:resourceType "Patient"
-           :id "0"}
-          entries
-          [{:resource
-            resource
-            :request
-            {:method "PUT"
-             :url "Patient/0"}}]]
-
-      (testing "with no Prefer header"
-        (let [{:keys [status body]}
-              @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
-                {:body
-                 {:resourceType "Bundle"
-                  :type "transaction"
-                  :entry entries}})]
-
-          (is (= 200 status))
-
-          (is (= "Bundle" (:resourceType body)))
-
-          (is (= "transaction-response" (:type body)))
-
-          (is (= "200" (-> body :entry first :response :status)))
-
-          (is (= "W/\"1\"" (-> body :entry first :response :etag)))
 
           (is (= "1970-01-01T00:00:00Z"
                  (-> body :entry first :response :lastModified)))

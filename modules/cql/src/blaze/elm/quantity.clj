@@ -5,15 +5,14 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.protocols :as p]
-    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [cuerdas.core :as str])
   (:import
-    [javax.measure Quantity UnconvertibleException Unit]
+    [javax.measure Quantity UnconvertibleException]
     [javax.measure.format UnitFormat]
     [javax.measure.spi ServiceProvider]
     [tec.units.indriya ComparableQuantity]
-    [tec.units.indriya.quantity DecimalQuantity NumberQuantity Quantities]))
+    [tec.units.indriya.quantity Quantities]))
 
 
 (set! *warn-on-reflection* true)
@@ -44,13 +43,6 @@
         unit))))
 
 
-(defn unit? [x]
-  (instance? Unit x))
-
-
-(s/fdef format-unit
-  :args (s/cat :unit unit?))
-
 (defn format-unit
   "Formats the unit after UCUM so that it is parsable again."
   [unit]
@@ -61,14 +53,10 @@
   (instance? Quantity x))
 
 
-(s/fdef quantity
-  :args (s/cat :value number? :unit string?))
-
 (defn quantity
   "Creates a quantity with numerical value and string unit."
   [value unit]
-  (->> (parse-unit unit)
-       (Quantities/getQuantity value)))
+  (Quantities/getQuantity value (parse-unit unit)))
 
 
 (defprotocol QuantityDivide
@@ -85,7 +73,8 @@
   (get [quantity key]
     (case key
       :value (.getValue quantity)
-      :unit (format-unit (.getUnit quantity)))))
+      :unit (format-unit (.getUnit quantity))
+      nil)))
 
 
 ;; 12.1. Equal
@@ -170,13 +159,9 @@
 
 ;; 16.15. Predecessor
 (extend-protocol p/Predecessor
-  NumberQuantity
+  Quantity
   (predecessor [x]
-    (.subtract x (Quantities/getQuantity 1 (.getUnit x))))
-
-  DecimalQuantity
-  (predecessor [x]
-    (.subtract x (Quantities/getQuantity 1E-8M (.getUnit x)))))
+    (Quantities/getQuantity (p/predecessor (.getValue x)) (.getUnit x))))
 
 
 ;; 16.17. Subtract
@@ -188,13 +173,9 @@
 
 ;; 16.18. Successor
 (extend-protocol p/Successor
-  NumberQuantity
+  Quantity
   (successor [x]
-    (.add x (Quantities/getQuantity 1 (.getUnit x))))
-
-  DecimalQuantity
-  (successor [x]
-    (.add x (Quantities/getQuantity 1E-8M (.getUnit x)))))
+    (Quantities/getQuantity (p/successor (.getValue x)) (.getUnit x))))
 
 
 ;; 22.6. ConvertQuantity

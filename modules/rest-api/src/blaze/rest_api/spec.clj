@@ -71,6 +71,21 @@
   (s/coll-of :blaze.rest-api/resource-pattern))
 
 
+(s/def :blaze.rest-api.compartment/search-handler
+  (s/or :ref ig/ref? :handler fn?))
+
+
+(s/def :blaze.rest-api/compartment
+  (s/keys
+    :req
+    [:blaze.rest-api.compartment/code
+     :blaze.rest-api.compartment/search-handler]))
+
+
+(s/def :blaze.rest-api/compartments
+  (s/coll-of :blaze.rest-api/compartment))
+
+
 (s/def :blaze.rest-api/version
   string?)
 

@@ -11,48 +11,51 @@
     [java.lang AutoCloseable]
     [java.io Closeable]
     [java.util ArrayList]
+    [io.prometheus.client Collector CounterMetricFamily]
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
      DBOptions ColumnFamilyDescriptor CompressionType ColumnFamilyOptions
-     BlockBasedTableConfig Statistics LRUCache BloomFilter CompactRangeOptions]))
+     BlockBasedTableConfig Statistics LRUCache BloomFilter CompactRangeOptions
+     TickerType Snapshot ReadOptions]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn- iterator->key [^RocksIterator i]
-  (when (.isValid i)
-    (.key i)))
-
-
 (deftype RocksKvIterator [^RocksIterator i]
   kv/KvIterator
+  (-valid [_]
+    (.isValid i))
+
+  (-seek-to-first [_]
+    (.seekToFirst i))
+
+  (-seek-to-last [_]
+    (.seekToLast i))
+
   (-seek [_ target]
-    (.seek i ^bytes target)
-    (iterator->key i))
+    (.seek i ^bytes target))
 
   (-seek-for-prev [_ target]
-    (.seekForPrev i ^bytes target)
-    (iterator->key i))
+    (.seekForPrev i ^bytes target))
 
-  (seek-to-first [_]
-    (.seekToFirst i)
-    (iterator->key i))
+  (-next [_]
+    (.next i))
 
-  (seek-to-last [_]
-    (.seekToLast i)
-    (iterator->key i))
+  (-prev [_]
+    (.prev i))
 
-  (next [_]
-    (.next i)
-    (iterator->key i))
+  (-key [_]
+    (.key i))
 
-  (prev [_]
-    (.prev i)
-    (iterator->key i))
+  (-key [_ buf]
+    (.key i buf))
 
-  (value [_]
+  (-value [_]
     (.value i))
+
+  (-value [_ buf]
+    (.value i buf))
 
   Closeable
   (close [_]
@@ -66,28 +69,32 @@
         (format "column family `%s` not found" (name column-family)))))
 
 
-(deftype RocksKvSnapshot [^RocksDB db cfhs]
+(deftype RocksKvSnapshot
+  [^RocksDB db ^Snapshot snapshot ^ReadOptions read-opts cfhs]
   kv/KvSnapshot
   (new-iterator [_]
-    (->RocksKvIterator (.newIterator db)))
+    (->RocksKvIterator (.newIterator db read-opts)))
 
   (new-iterator [_ column-family]
-    (->RocksKvIterator (.newIterator db (get-cfh cfhs column-family))))
+    (->RocksKvIterator (.newIterator db (get-cfh cfhs column-family) read-opts)))
 
   (snapshot-get [_ k]
-    (.get db ^bytes k))
+    (.get db read-opts ^bytes k))
 
   (snapshot-get [_ column-family k]
-    (.get db (get-cfh cfhs column-family) ^bytes k))
+    (.get db (get-cfh cfhs column-family) read-opts ^bytes k))
 
   Closeable
-  (close [_]))
+  (close [_]
+    (.close read-opts)
+    (.releaseSnapshot db snapshot)))
 
 
 (deftype RocksKvStore [^RocksDB db ^Options opts ^WriteOptions write-opts cfhs]
   kv/KvStore
   (new-snapshot [_]
-    (->RocksKvSnapshot db cfhs))
+    (let [snapshot (.getSnapshot db)]
+      (->RocksKvSnapshot db snapshot (.setSnapshot (ReadOptions.) snapshot) cfhs)))
 
   (get [_ k]
     (.get db k))
@@ -203,6 +210,7 @@
 (defn init-rocksdb-kv-store
   [dir
    block-cache
+   stats
    {:keys [sync?
            disable-wal?
            max-background-jobs
@@ -213,7 +221,7 @@
   (let [opts (doto (DBOptions.)
                (.setCreateIfMissing true)
                (.setStatsDumpPeriodSec 60)
-               (.setStatistics (Statistics.))
+               (.setStatistics ^Statistics stats)
                (.setMaxBackgroundJobs ^long max-background-jobs)
                (.setCompactionReadaheadSize ^long compaction-readahead-size)
                (.setBytesPerSync 1048576))
@@ -223,6 +231,7 @@
              (RocksDB/open opts dir cfds cfhs)
              (finally (.close opts)))
         write-opts (WriteOptions.)]
+
     (when sync?
       (.setSync write-opts true))
     (when disable-wal?
@@ -240,6 +249,67 @@
       (.createColumnFamilies db (map column-family-descriptor column-families))
       (finally
         (.close db)))))
+
+
+(defn- stats-collector [^Statistics stats]
+  (proxy [Collector] []
+    (collect []
+      [(CounterMetricFamily.
+         "blaze_rocksdb_block_cache_miss_total"
+         "blaze_rocksdb_block_cache_miss_total"
+         (double (.getTickerCount stats TickerType/BLOCK_CACHE_MISS)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_block_cache_hit_total"
+         "blaze_rocksdb_block_cache_hit_total"
+         (double (.getTickerCount stats TickerType/BLOCK_CACHE_HIT)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_keys_read_total"
+         "blaze_rocksdb_keys_read_total"
+         (double (.getTickerCount stats TickerType/NUMBER_KEYS_READ)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_keys_written_total"
+         "blaze_rocksdb_keys_written_total"
+         (double (.getTickerCount stats TickerType/NUMBER_KEYS_WRITTEN)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_keys_updated_total"
+         "blaze_rocksdb_keys_updated_total"
+         (double (.getTickerCount stats TickerType/NUMBER_KEYS_UPDATED)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_seek_total"
+         "blaze_rocksdb_seek_total"
+         (double (.getTickerCount stats TickerType/NUMBER_DB_SEEK)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_next_total"
+         "blaze_rocksdb_next_total"
+         (double (.getTickerCount stats TickerType/NUMBER_DB_NEXT)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_prev_total"
+         "blaze_rocksdb_prev_total"
+         (double (.getTickerCount stats TickerType/NUMBER_DB_PREV)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_file_open_total"
+         "blaze_rocksdb_file_open_total"
+         (double (.getTickerCount stats TickerType/NO_FILE_OPENS)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_file_close_total"
+         "blaze_rocksdb_file_close_total"
+         (double (.getTickerCount stats TickerType/NO_FILE_CLOSES)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_file_error_total"
+         "blaze_rocksdb_file_error_total"
+         (double (.getTickerCount stats TickerType/NO_FILE_ERRORS)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_bloom_filter_useful_total"
+         "Number of times bloom filter has avoided file reads."
+         (double (.getTickerCount stats TickerType/BLOOM_FILTER_USEFUL)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_bloom_filter_full_positive_total"
+         "Number of times bloom FullFilter has not avoided the reads."
+         (double (.getTickerCount stats TickerType/BLOOM_FILTER_FULL_POSITIVE)))
+       (CounterMetricFamily.
+         "blaze_rocksdb_bloom_filter_full_true_positive_total"
+         "Number of times bloom FullFilter has not avoided the reads and data actually exist."
+         (double (.getTickerCount stats TickerType/BLOOM_FILTER_FULL_TRUE_POSITIVE)))])))
 
 
 (defmethod ig/init-key ::block-cache
@@ -269,14 +339,36 @@
 
 
 (defmethod ig/init-key :blaze.db.kv/rocksdb
-  [_ {:keys [dir block-cache opts column-families]}]
+  [_ {:keys [dir block-cache stats opts column-families]}]
   (log/info (init-log-msg dir opts))
   (when-not (.isDirectory (io/file dir))
     (create-rocksdb-kv-store dir (dissoc column-families :default)))
-  (init-rocksdb-kv-store dir block-cache opts (merge {:default nil} column-families)))
+  (init-rocksdb-kv-store dir block-cache stats opts (merge {:default nil} column-families)))
 
 
 (defmethod ig/halt-key! :blaze.db.kv/rocksdb
   [_ store]
   (log/info "Close RocksDB key-value store")
   (.close ^Closeable store))
+
+
+(derive :blaze.db.kv/rocksdb :blaze.db/kv-store)
+
+
+(defmethod ig/init-key ::stats
+  [_ _]
+  (log/info "Init RocksDB statistics")
+  (Statistics.))
+
+
+(defmethod ig/halt-key! ::stats
+  [_ stats]
+  (log/info "Shutdown RocksDB statistics")
+  (.close ^AutoCloseable stats))
+
+
+(defmethod ig/init-key ::stats-collector
+  [_ {:keys [stats]}]
+  (stats-collector stats))
+
+(derive ::stats-collector :blaze.metrics/collector)

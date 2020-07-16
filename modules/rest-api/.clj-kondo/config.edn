@@ -1,0 +1,10 @@
+{:lint-as
+ {prometheus.alpha/defhistogram clojure.core/def}
+
+ :linters
+ {:unsorted-required-namespaces
+  {:level :error}
+  :single-key-in
+  {:level :error}}
+
+ :skip-comments true}

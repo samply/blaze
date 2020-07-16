@@ -50,10 +50,6 @@
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id vid]} :path-params}]
-    (log/debug
-      (if vid
-        (format "GET [base]/%s/%s/_history/%s" type id vid)
-        (format "GET [base]/%s/%s" type id)))
     (-> (db node vid)
         (md/chain'
           (fn [db]

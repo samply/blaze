@@ -8,13 +8,13 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [clojure.alpha.spec :as s2]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log]
-    [clojure.spec.alpha :as s])
+    [taoensso.timbre :as log])
   (:import
     [java.time ZonedDateTime ZoneId]
     [java.time.format DateTimeFormatter]))
@@ -51,7 +51,7 @@
        :fhir/issue "required"
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"})
 
-    (not (s/valid? :blaze.resource/id (:id body)))
+    (not (s2/valid? :fhir/id (:id body)))
     (md/error-deferred
       {::anom/category ::anom/incorrect
        :fhir/issue "value"
@@ -96,15 +96,21 @@
         "Location" (fhir-util/versioned-instance-url router type id vid)))))
 
 
+(defn- tx-op [resource if-match-t]
+  (cond-> [:put resource]
+    if-match-t
+    (conj if-match-t)))
+
+
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params
-        :keys [headers body]
+        :keys [body]
+        {:strs [if-match] :as headers} :headers
         ::reitit/keys [router]}]
-    (log/debug (format "PUT [base]/%s/%s" type id))
     (let [db (d/db node)]
       (-> (validate-resource type id body)
-          (md/chain' #(d/submit-tx node [[:put %]]))
+          (md/chain' #(d/submit-tx node [(tx-op % (fhir-util/etag->t if-match))]))
           (md/chain'
             #(build-response
                router headers type id (d/resource db type id) %))

@@ -72,7 +72,14 @@
 
 
 (defn- with-spec [spec x]
-  (let [x (if (fhir-spec/primitive? spec) (->PrimitiveWrapper x) x)]
+  (cond
+    (fhir-spec/primitive? spec)
+    (with-meta (->PrimitiveWrapper x) {:type spec})
+
+    (fhir-spec/system? spec)
+    x
+
+    :else
     (with-meta x {:type spec})))
 
 
@@ -114,7 +121,7 @@
             (fhir-spec/choice? child-spec)
             (reduce
               (fn [res [key spec]]
-                (if-let [val (get x key)]
+                (if-some [val (get x key)]
                   (reduced (conj res (with-spec spec val)))
                   res))
               res
@@ -124,7 +131,7 @@
             (into res (map (partial with-spec (fhir-spec/type-spec child-spec))) (get x key))
 
             :else
-            (if-let [val (get x key)]
+            (if-some [val (get x key)]
               (conj res (with-spec child-spec val))
               res))
           (throw-anom

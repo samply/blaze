@@ -19,8 +19,9 @@
 
 (extend-protocol ToQuantity
   IPersistentMap
-  (-to-quantity [x]
-    (q/quantity (:value x) (:code x)))
+  (-to-quantity [m]
+    (when-let [value (:value m)]
+      (q/quantity value (:code m "1"))))
 
   Object
   (-to-quantity [x]

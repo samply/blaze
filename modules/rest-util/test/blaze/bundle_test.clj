@@ -1,6 +1,7 @@
 (ns blaze.bundle-test
   (:require
     [blaze.bundle :refer [resolve-entry-links]]
+    [blaze.bundle-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]

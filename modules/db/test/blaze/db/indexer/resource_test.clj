@@ -1,19 +1,19 @@
 (ns blaze.db.indexer.resource-test
   (:require
-    [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.search-param-registry :as sr]
     [blaze.db.indexer :as i]
-    [blaze.db.indexer_spec]
+    [blaze.db.indexer-spec]
     [blaze.db.indexer.resource :refer [init-resource-indexer]]
     [blaze.db.indexer.resource-spec]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [init-mem-kv-store]]
+    [blaze.db.search-param-registry :as sr]
     [blaze.executors :as ex]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [taoensso.nippy :as nippy])
-  (:import [java.time ZoneId]))
+  (:import
+    [java.time ZoneId]))
 
 
 (defn fixture [f]
@@ -25,7 +25,7 @@
 (test/use-fixtures :each fixture)
 
 
-(def search-param-registry (sr/init-mem-search-param-registry))
+(def search-param-registry (sr/init-search-param-registry))
 
 
 (defn init-kv-store []
@@ -33,8 +33,6 @@
     {:search-param-value-index nil
      :resource-value-index nil
      :compartment-search-param-value-index nil
-     :compartment-resource-value-index nil
-     :resource-type-index nil
      :compartment-resource-type-index nil
      :resource-index nil
      :active-search-params nil}))
@@ -61,13 +59,6 @@
     (testing "resource"
       (is (= resource (nippy/fast-thaw (kv/get kv-store :resource-index hash)))))
 
-    (testing "resource-type"
-      (is
-        (kv/get
-          kv-store
-          :resource-type-index
-          (codec/resource-type-key (codec/tid "Condition") (codec/id-bytes "id-204446")))))
-
     (testing "compartment-resource-type"
       (is
         (kv/get
@@ -93,19 +84,35 @@
 
         (testing "resource-value-index"
           (is
-            (bytes/=
-              (codec/concat-v-hashes
-                [(codec/v-hash "code-204441")
-                 (codec/v-hash "system-204435|")
-                 (codec/v-hash "system-204435|code-204441")])
-              (kv/get
-                kv-store
-                :resource-value-index
-                (codec/resource-value-key
-                  (codec/tid "Condition")
-                  (codec/id-bytes "id-204446")
-                  hash
-                  (codec/c-hash "code")))))))
+            (kv/get
+              kv-store
+              :resource-value-index
+              (codec/resource-value-key
+                (codec/tid "Condition")
+                (codec/id-bytes "id-204446")
+                hash
+                (codec/c-hash "code")
+                (codec/v-hash "code-204441"))))
+          (is
+            (kv/get
+              kv-store
+              :resource-value-index
+              (codec/resource-value-key
+                (codec/tid "Condition")
+                (codec/id-bytes "id-204446")
+                hash
+                (codec/c-hash "code")
+                (codec/v-hash "system-204435|"))))
+          (is
+            (kv/get
+              kv-store
+              :resource-value-index
+              (codec/resource-value-key
+                (codec/tid "Condition")
+                (codec/id-bytes "id-204446")
+                hash
+                (codec/c-hash "code")
+                (codec/v-hash "system-204435|code-204441"))))))
 
       (testing "Patient compartment"
         (testing "search-param-value-index"
@@ -120,25 +127,7 @@
                 (codec/tid "Condition")
                 (codec/v-hash "code-204441")
                 (codec/id-bytes "id-204446")
-                hash))))
-
-        (testing "resource-value-index"
-          (is
-            (bytes/=
-              (codec/concat-v-hashes
-                [(codec/v-hash "code-204441")
-                 (codec/v-hash "system-204435|")
-                 (codec/v-hash "system-204435|code-204441")])
-              (kv/get
-                kv-store
-                :compartment-resource-value-index
-                (codec/compartment-resource-value-key
-                  (codec/c-hash "Patient")
-                  (codec/id-bytes "id-145552")
-                  (codec/tid "Condition")
-                  (codec/id-bytes "id-204446")
-                  hash
-                  (codec/c-hash "code"))))))))
+                hash))))))
 
     (testing "code `system-204435|code-204441` entry"
       (testing "standalone"
@@ -200,6 +189,18 @@
             (codec/c-hash "subject")
             (codec/tid "Condition")
             (codec/v-hash "Patient/id-145552")
+            (codec/id-bytes "id-204446")
+            hash))))
+
+    (testing "_id `id-204446` entry"
+      (is
+        (kv/get
+          kv-store
+          :search-param-value-index
+          (codec/search-param-value-key
+            (codec/c-hash "_id")
+            (codec/tid "Condition")
+            (codec/v-hash "id-204446")
             (codec/id-bytes "id-204446")
             hash))))
 
@@ -319,7 +320,7 @@
           (codec/search-param-value-key
             (codec/c-hash "value-quantity")
             (codec/tid "Observation")
-            (codec/quantity 23.42M "")
+            (codec/quantity 23.42M)
             (codec/id-bytes "id-192702")
             hash))))
 

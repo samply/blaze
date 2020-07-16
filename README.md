@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 The project is currently under active development. Essentially all official [CQL Tests][3] pass. Please report any issues you encounter during evaluation.
 
-Latest release: [v0.8.0-beta.2][5]
+Latest release: [v0.8.0-beta.3][5]
 
 ## Quick Start
 
@@ -23,34 +23,37 @@ In order to run Blaze just execute the following:
 ### Docker
 
 ```bash
-docker run -p 8080:8080 -v <local-dir>:/data -e DB_DIR="/data/db" samply/blaze:0.8.0-beta.2
+docker volume create blaze-data
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.8.0-beta.3
 ```
 
-Please replace `<local-dir>` with a directory in which Blaze should store it's database files. It's important to specify a `DB_DIR` which resides inside the mounted volume, because Blaze needs to create its database directory itself. Blaze will use any previously created database directory on subsequent starts.
+Blaze will create the directory `db` inside the `blaze-data` volume on its first start and use the same database directory on subsequent starts.
 
-For security reasons, the container is executed as a non-root user (65532:65532) by default. When mounting a folder from your host filesystem you will need to set the permissions accordingly, e.g.
+
+### Standalone Java without Docker
+
+In case Docker isn't available, Blaze can be run on a machine having OpenJDK 11 installed. Blaze is tested with [AdoptOpenJDK][11].
 
 ```bash
-# Use ~/blaze-data on your host to store the database files
-mkdir ~/blaze-data
-sudo chown -R 65532:65532 ~/blaze-data
-docker run -p 8080:8080 -v ~/blaze-data:/data -e DB_DIR="/data/db" samply/blaze:0.8.0-beta.2
+wget https://github.com/samply/blaze/releases/download/v0.8.0-beta.3/blaze-0.8.0-beta.3-standalone.jar
+java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
 ```
 
-If you use a Docker volume, mount it on `/app/data` and make sure `DB_DIR` is set to `/app/data/db` (the default value), because the non-root user only has write-permissions inside the `/app` directory.
-Using a Docker volume instead of a host directory mount makes it unnecessary to set the file permissions:
+Blaze will run with an in-memory, volatile database for testing and demo purposes.
+
+Running Blaze with durable storage requires to set `DB_DIR`. 
+
+Under Linux/macOS:
 
 ```bash
-docker run -p 8080:8080 -v blaze-data-volume:/app/data -e DB_DIR="/app/data/db" samply/blaze:0.8.0-beta.2
+DB_DIR=db java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
 ```
 
-Note that you can always revert back to running the container as root by specifying `-u root` for `docker run` or setting the `services[].user: root` in Docker compose.
-
-### Java
-
+Under Windows:
+ 
 ```bash
-wget https://github.com/samply/blaze/releases/download/v0.8.0-beta.2/blaze-0.8.0-beta.2-standalone.jar
-java -jar blaze-0.8.0-beta.2-standalone.jar -m blaze.core
+$Env:DB_DIR="db"
+java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
 ```
 
 This will create a directory called `db` inside the current working directory.
@@ -71,7 +74,7 @@ The following table contains all of them:
 
 | Name | Default | Since | Description |
 | :--- | :--- | :--- | :--- |
-| DB\_DIR | db | v0.8 | The directory were the database files are stored. |
+| DB\_DIR | – | v0.8 | The directory were the database files are stored. This directory must not exist on the first start of Blaze and will be created by Blaze. However the parent directory has to exist. The default is to use an in-memory, volatile database.|
 | DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
 | DB\_RESOURCE\_CACHE\_SIZE | 10000 | v0.8 | The size of the resource cache of the DB in number of resources. |
 | DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
@@ -88,7 +91,8 @@ The following table contains all of them:
 | SERVER\_PORT | 8080 |  | The port of the main HTTP server |
 | METRICS\_SERVER\_PORT | 8081 | v0.6 | The port of the Prometheus metrics server |
 | LOG\_LEVEL | info | v0.6 | one of trace, debug, info, warn or error |
-| JVM\_OPTS | — |  | JVM options \(Docker only\) |
+| JAVA\_TOOL\_OPTIONS | — |  | JVM options \(Docker only\) |
+| FHIR\_OPERATION\_EVALUATE\_MEASURE\_THREADS | 4 | v0.8 | The maximum number of parallel $evaluate-measure executions. Not the same as the number of threads used for measure evaluation which equal to the number of available processors. |
 
 ## Tuning Guide
 
@@ -146,9 +150,10 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.8.0-beta.2>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.8.0-beta.3>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
 [9]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [10]: <https://github.com/facebook/rocksdb/wiki/RocksDB-Basics#multi-threaded-compactions>
+[11]: <https://adoptopenjdk.net>

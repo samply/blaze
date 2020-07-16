@@ -46,7 +46,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-590"}
+    {:mvn/version "1.0.632"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -55,7 +55,7 @@
     {:mvn/version "0.0.8"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}}
+    {:mvn/version "1.0.0"}}
 
    :main-opts
    ["-m" "kaocha.runner"]}
@@ -63,6 +63,6 @@
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.04.05"}}
+    {:mvn/version "2020.06.12"}}
 
    :main-opts ["-m" "clj-kondo.main"]}}}

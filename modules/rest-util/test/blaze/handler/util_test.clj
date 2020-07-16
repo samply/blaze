@@ -1,8 +1,8 @@
 (ns blaze.handler.util-test
   (:require
     [blaze.handler.util :refer [preference]]
-    [clojure.test :refer [deftest is]]
-    [clojure.spec.test.alpha :as st]))
+    [clojure.spec.test.alpha :as st]
+    [clojure.test :refer [deftest is]]))
 
 
 (st/instrument)
