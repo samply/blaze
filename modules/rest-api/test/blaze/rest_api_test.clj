@@ -109,7 +109,17 @@
       :status := 405
       [:body :resourceType] := "OperationOutcome"
       [:body :issue 0 :severity] := "error"
-      [:body :issue 0 :code] := "processing"))
+      [:body :issue 0 :code] := "processing"
+      [:body :issue 0 :diagnostics] := "Method POST not allowed on `/Patient/0` endpoint."))
+
+  (testing "Patient type PUT is not allowed"
+    (given ((reitit.ring/ring-handler router rest-api/default-handler)
+            {:uri "/Patient" :request-method :put})
+      :status := 405
+      [:body :resourceType] := "OperationOutcome"
+      [:body :issue 0 :severity] := "error"
+      [:body :issue 0 :code] := "processing"
+      [:body :issue 0 :diagnostics] := "Method PUT not allowed on `/Patient` endpoint."))
 
   (testing "Observations are not found"
     (given ((reitit.ring/ring-handler router rest-api/default-handler)
