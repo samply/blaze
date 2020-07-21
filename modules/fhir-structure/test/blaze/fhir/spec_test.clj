@@ -60,6 +60,7 @@
 
   (testing "invalid resources"
     (are [resource] (not (fhir-spec/valid? resource))
+      {}
       {:resourceType "Patient"
        :id ""}
       {:resourceType "Patient"

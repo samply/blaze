@@ -46,8 +46,10 @@
   "Determines whether the resource is valid."
   {:arglists '([resource])}
   [{type :resourceType :as resource}]
-  (if-let [spec (s2/get-spec (keyword "fhir" type))]
-    (s2/valid? spec resource)
+  (if type
+    (if-let [spec (s2/get-spec (keyword "fhir" type))]
+      (s2/valid? spec resource)
+      false)
     false))
 
 
