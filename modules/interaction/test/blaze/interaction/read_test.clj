@@ -44,7 +44,8 @@
       (given body
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "not-found")))
+        [:issue 0 :code] := "not-found"
+        [:issue 0 :diagnostics] := "Resource `/Patient/0` not found")))
 
 
   (testing "Returns Not Found on Invalid Version ID"
@@ -58,7 +59,8 @@
       (given body
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "not-found")))
+        [:issue 0 :code] := "not-found"
+        [:issue 0 :diagnostics] := "Resource `/Patient/0` with versionId `a` was not found.")))
 
 
   (testing "Returns Gone on Deleted Resource"

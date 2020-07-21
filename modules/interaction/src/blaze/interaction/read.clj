@@ -32,7 +32,7 @@
   (str "W/\"" (-> resource :meta :versionId) "\""))
 
 
-(defn- db [node vid]
+(defn- db [node vid type id]
   (cond
     (and vid (re-matches #"\d+" vid))
     (let [vid (Long/parseLong vid)]
@@ -41,6 +41,7 @@
     vid
     (md/error-deferred
       {::anom/category ::anom/not-found
+       ::anom/message (format "Resource `/%s/%s` with versionId `%s` was not found." type id vid)
        :fhir/issue "not-found"})
 
     :else
@@ -50,7 +51,7 @@
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id vid]} :path-params}]
-    (-> (db node vid)
+    (-> (db node vid type id)
         (md/chain'
           (fn [db]
             (if-let [resource (d/resource db type id)]
@@ -66,7 +67,8 @@
                     (ring/header "ETag" (etag resource))))
               (handler-util/error-response
                 {::anom/category ::anom/not-found
-                 :fhir/issue "not-found"}))))
+                 :fhir/issue "not-found"
+                 ::anom/message (format "Resource `/%s/%s` not found" type id)}))))
         (md/catch' handler-util/error-response))))
 
 
