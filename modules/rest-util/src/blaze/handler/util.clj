@@ -55,31 +55,56 @@
     "exception"))
 
 
-(defn operation-outcome
+(defn- operation-outcome-issues [issues category]
+  (mapv (fn [{:fhir.issues/keys [severity code diagnostics expression]}]
+          (cond->
+            {:severity "error"
+             :code (or code (issue-code category))}
+            severity
+            (assoc :severity severity)
+            diagnostics
+            (assoc :diagnostics diagnostics)
+            (coll? expression)
+            (assoc :expression expression)
+            (and (not (coll? expression))
+                 (some? expression))
+            (assoc :expression [expression])))
+        issues))
+
+
+(defn- operation-outcome-issue
   [{:fhir/keys [issue operation-outcome]
     :fhir.issue/keys [expression]
     :blaze/keys [stacktrace]
     ::anom/keys [category message]}]
-  {:resourceType "OperationOutcome"
-   :issue
-   [(cond->
-      {:severity "error"
-       :code (or issue (issue-code category))}
-      operation-outcome
-      (assoc
-        :details
-        {:coding
-         [{:system "http://terminology.hl7.org/CodeSystem/operation-outcome"
-           :code operation-outcome}]})
-      message
-      (assoc :diagnostics message)
-      stacktrace
-      (assoc :diagnostics stacktrace)
-      (coll? expression)
-      (assoc :expression expression)
-      (and (not (coll? expression))
-           (some? expression))
-      (assoc :expression [expression]))]})
+  (cond->
+    {:severity "error"
+     :code (or issue (issue-code category))}
+    operation-outcome
+    (assoc
+      :details
+      {:coding
+       [{:system "http://terminology.hl7.org/CodeSystem/operation-outcome"
+         :code operation-outcome}]})
+    message
+    (assoc :diagnostics message)
+    stacktrace
+    (assoc :diagnostics stacktrace)
+    (coll? expression)
+    (assoc :expression expression)
+    (and (not (coll? expression))
+         (some? expression))
+    (assoc :expression [expression])))
+
+
+(defn operation-outcome
+  [{:fhir/keys [issues]
+    ::anom/keys [category] :as data}]
+  (if issues
+    {:resourceType "OperationOutcome"
+     :issue (operation-outcome-issues issues category)}
+    {:resourceType "OperationOutcome"
+     :issue [(operation-outcome-issue data)]}))
 
 
 (defn- category->status [category]

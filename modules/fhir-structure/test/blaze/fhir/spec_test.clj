@@ -5,7 +5,8 @@
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
+    [clojure.test :as test :refer [are deftest is testing]]
+    [juxt.iota :refer [given]]))
 
 
 (defn fixture [f]
@@ -60,10 +61,93 @@
 
   (testing "invalid resources"
     (are [resource] (not (fhir-spec/valid? resource))
+      {}
       {:resourceType "Patient"
        :id ""}
       {:resourceType "Patient"
        :id "/"})))
+
+
+(deftest fhir-path
+  (testing "key and number in vector"
+    (let [result (fhir-spec/fhir-path [:contact 2] {:resourceType "Patient"
+                                                    :contact [2]})]
+      (is (= result "contact[0]"))))
+
+  (testing "key and number in vector"
+    (let [result (fhir-spec/fhir-path [:contact 2] {:resourceType "Patient"
+                                                    :contact [{} 2 {}]})]
+      (is (= result "contact[1]"))))
+
+  (testing "keys and map in vector"
+    (let [result (fhir-spec/fhir-path [:name {:text []} :text] {:resourceType "Patient"
+                                                                :name [{:text []}]})]
+      (is (= result "name[0].text")))))
+
+
+(deftest explain-data
+  (testing "valid resources"
+    (are [resource] (nil? (fhir-spec/explain-data resource))
+      {:resourceType "Patient" :id "."}
+      {:resourceType "Patient" :id "0"}))
+
+
+  (testing "empty resource"
+    (given (fhir-spec/explain-data {})
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "value"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Given resource does not contain `resourceType` key!"))
+
+  (testing "invalid resource"
+    (given (fhir-spec/explain-data {:resourceType "Patient"
+                                    :name [{:use "" :text []}]})
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Error on value ``. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      [:fhir/issues 0 :fhir.issues/expression] := "name[0].use"
+      [:fhir/issues 1 :fhir.issues/severity] := "error"
+      [:fhir/issues 1 :fhir.issues/code] := "invariant"
+      [:fhir/issues 1 :fhir.issues/diagnostics] :=
+      "Error on value `[]`. Expected type is `string`."
+      [:fhir/issues 1 :fhir.issues/expression] := "name[0].text"))
+
+  (testing "invalid backbone-element"
+    (given (fhir-spec/explain-data {:resourceType "Patient"
+                                    :contact ""})
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Error on value ``. Expected type is `JSON array`."
+      [:fhir/issues 0 :fhir.issues/expression] := "contact"))
+
+  (testing "invalid non-primitive element"
+    (given (fhir-spec/explain-data {:resourceType "Patient"
+                                    :name ""})
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Error on value ``. Expected type is `JSON array`."
+      [:fhir/issues 0 :fhir.issues/expression] := "name"))
+
+  (testing "Include namespace part if more than fhir"
+    (given (fhir-spec/explain-data {:resourceType "Patient"
+                                    :contact [2]})
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Error on value `2`. Expected type is `Patient.contact`."
+      [:fhir/issues 0 :fhir.issues/expression] := "contact[0]"))
+
+  (testing "invalid non-primitive element and wrong type in list"
+    (given (fhir-spec/explain-data {:resourceType "Patient"
+                                    :name [1]})
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Error on value `1`. Expected type is `HumanName`."
+      [:fhir/issues 0 :fhir.issues/expression] := "name[0]")))
 
 
 (deftest choices

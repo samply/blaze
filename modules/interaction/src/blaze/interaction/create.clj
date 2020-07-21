@@ -47,7 +47,7 @@
       (ex-anom
         {::anom/category ::anom/incorrect
          ::anom/message "Resource invalid."
-         :fhir/issue "invariant"}))
+         :fhir/issues (:fhir/issues (fhir-spec/explain-data body))}))
 
     :else
     body))

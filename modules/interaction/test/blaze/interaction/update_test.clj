@@ -116,9 +116,9 @@
   (testing "Returns Error on invalid resource"
     (let [{:keys [status body]}
           ((handler-with [])
-            {:path-params {:id "0"}
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}
-             :body {:resourceType "Patient" :id "0" :gender {}}})]
+           {:path-params {:id "0"}
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :body {:resourceType "Patient" :id "0" :gender {}}})]
 
       (is (= 400 status))
 
@@ -126,16 +126,39 @@
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
         [:issue 0 :code] := "invariant"
-        [:issue 0 :diagnostics] := "Resource invalid.")))
+        [:issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`."
+        [:issue 0 :expression] := ["gender"])))
+
+  (testing "Returns Error on invalid resource - two errors"
+    (let [{:keys [status body]}
+          ((handler-with [])
+           {:path-params {:id "1"}
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :body {:resourceType "Patient" :id "1"
+                   :contact [0 {:name {:use "  " :text "name2text1"}}]}})]
+
+      (is (= 400 status))
+
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :diagnostics] := "Error on value `0`. Expected type is `Patient.contact`."
+        [:issue 0 :expression] := ["contact[0]"]
+        [:issue 1 :severity] := "error"
+        [:issue 1 :code] := "invariant"
+        [:issue 1 :diagnostics] :=
+        "Error on value `  `. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+        [:issue 1 :expression] := ["contact[1].name.use"])))
 
   (testing "Returns Error on Optimistic Locking Failure"
     (let [{:keys [status body]}
           ((handler-with [[[:create {:resourceType "Patient" :id "0"}]]
-                           [[:put {:resourceType "Patient" :id "0"}]]])
-            {:path-params {:id "0"}
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}
-             :headers {"if-match" "W/\"1\""}
-             :body {:resourceType "Patient" :id "0"}})]
+                          [[:put {:resourceType "Patient" :id "0"}]]])
+           {:path-params {:id "0"}
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :headers {"if-match" "W/\"1\""}
+            :body {:resourceType "Patient" :id "0"}})]
 
       (is (= 412 status))
 

@@ -28,6 +28,10 @@
 (set! *warn-on-reflection* true)
 
 
+(defn- prefix-expression [prefix issue]
+  (update issue :fhir.issues/expression #(str prefix "." %)))
+
+
 (defn- validate-entry
   {:arglists '([db idx entry])}
   [idx {:keys [resource] {:keys [method url] :as request} :request :as entry}]
@@ -121,11 +125,12 @@
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"}
 
       (not (fhir-spec/valid? resource))
-      {::anom/category ::anom/incorrect
-       ::anom/message "Resource invalid."
-       :fhir/issue "invariant"
-       :fhir.issue/expression
-       [(format "Bundle.entry[%d].resource" idx)]}
+      (let [{:fhir/keys [issues]} (fhir-spec/explain-data resource)
+            prefix (format "Bundle.entry[%d].resource" idx)]
+        {::anom/category ::anom/incorrect
+         ::anom/message "Resource invalid."
+         :fhir/issues (mapv #(prefix-expression prefix %) issues)})
+
 
       :else
       (assoc entry :blaze/type type :blaze/id id))))
