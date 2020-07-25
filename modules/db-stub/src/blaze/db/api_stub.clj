@@ -2,34 +2,46 @@
   (:require
     [blaze.db.api :as d]
     [blaze.db.api-spec]
-    [blaze.db.kv.mem :refer [init-mem-kv-store]]
-    [blaze.db.indexer.resource :refer [init-resource-indexer]]
-    [blaze.db.indexer.tx :refer [init-tx-indexer]]
-    [blaze.db.node :as node :refer [new-node]]
-    [blaze.db.node-spec]
-    [blaze.db.resource-cache :refer [new-resource-cache]]
+    [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.node :refer [new-node]]
+    [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
     [blaze.db.search-param-registry :as sr]
-    [blaze.db.tx-log.local :refer [init-local-tx-log]]
     [blaze.db.tx-log-spec]
+    [blaze.db.tx-log.local :refer [new-local-tx-log]]
     [blaze.executors :as ex]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st])
   (:refer-clojure :exclude [sync])
   (:import
-    [java.time Clock Instant ZoneId]))
+    [java.time Clock Instant ZoneId Duration]))
 
 
-(def search-param-registry (sr/init-search-param-registry))
+(def ^:private search-param-registry (sr/init-search-param-registry))
 
+
+(def ^:private resource-indexer-executor
+  (ex/cpu-bound-pool "resource-indexer-%d"))
+
+
+;; TODO: with this shared executor, it's not possible to run test in parallel
+(def ^:private local-tx-log-executor
+  (ex/single-thread-executor "local-tx-log"))
+
+
+;; TODO: with this shared executor, it's not possible to run test in parallel
+(def ^:private indexer-executor
+  (ex/single-thread-executor "indexer"))
+
+
+(def ^:private clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
 (defn mem-node []
-  (let [kv-store
-        (init-mem-kv-store
+  (let [index-kv-store
+        (new-mem-kv-store
           {:search-param-value-index nil
            :resource-value-index nil
            :compartment-search-param-value-index nil
            :compartment-resource-type-index nil
-           :resource-index nil
            :active-search-params nil
            :tx-success-index nil
            :tx-error-index nil
@@ -39,18 +51,16 @@
            :system-as-of-index nil
            :type-stats-index nil
            :system-stats-index nil})
-        ri (init-resource-indexer search-param-registry kv-store
-                                  (ex/cpu-bound-pool "resource-indexer-%d"))
-        ti (init-tx-indexer kv-store)
-        clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC"))
-        tx-log (init-local-tx-log ri 1 ti clock)
-        resource-cache (new-resource-cache kv-store 0)]
-    (new-node tx-log ti kv-store resource-cache search-param-registry)))
+        resource-store (new-kv-resource-store (new-mem-kv-store))
+        tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)]
+    (new-node tx-log resource-indexer-executor 1 indexer-executor
+              index-kv-store resource-store search-param-registry
+              (Duration/ofMillis 10))))
 
 
 (defn- submit-txs [node txs]
   (doseq [tx-ops txs]
-    @(d/submit-tx node tx-ops)))
+    @(d/transact node tx-ops)))
 
 
 (defn mem-node-with [txs]

@@ -11,16 +11,13 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(def ^:const ^:private ^long buffer-size 1024)
-
-
 (defn- read-key! [iter ^ByteBuffer bb]
-  (when (< buffer-size ^long (kv/key iter (.clear bb)))
+  (when (< (.capacity bb) ^long (kv/key iter (.clear bb)))
     (throw (BufferOverflowException.))))
 
 
 (defn- reduce-keys! [iter decode dir rf init]
-  (let [kb (ByteBuffer/allocateDirect buffer-size)]
+  (let [kb (decode)]
     (loop [ret init]
       (if (kv/valid? iter)
         (do
@@ -56,13 +53,12 @@
 
 
 (defn- read-value! [iter ^ByteBuffer bb]
-  (when (< buffer-size ^long (kv/value iter (.clear bb)))
+  (when (< (.capacity bb) ^long (kv/value iter (.clear bb)))
     (throw (BufferOverflowException.))))
 
 
 (defn- reduce-kvs! [iter decode dir rf init]
-  (let [kb (ByteBuffer/allocateDirect buffer-size)
-        vb (ByteBuffer/allocateDirect buffer-size)]
+  (let [[kb vb] (decode)]
     (loop [ret init]
       (if (kv/valid? iter)
         (do

@@ -5,16 +5,17 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.async-comp :as ac]
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
     [blaze.interaction.transaction :refer [handler]]
     [blaze.interaction.transaction-spec]
+    [blaze.log]
     [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
@@ -22,7 +23,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -44,18 +46,20 @@
 
 
 (defn- handler-with [txs]
-  (handler (mem-node-with txs) executor))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node executor) request))))
 
 
 (deftest handler-test
   (testing "Returns Error on missing request"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{}]}})]
 
       (is (= 400 status))
 
@@ -68,12 +72,12 @@
 
   (testing "Returns Error on missing request url"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:request {}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:request {}}]}})]
 
       (is (= 400 status))
 
@@ -86,13 +90,13 @@
 
   (testing "Returns Error on missing request method"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:request
-                {:url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:request
+               {:url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -105,14 +109,14 @@
 
   (testing "Returns Error on unknown method"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:request
-                {:method "FOO"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:request
+               {:method "FOO"
+                :url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -125,14 +129,14 @@
 
   (testing "Returns Error on unsupported method"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:request
-                {:method "PATCH"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:request
+               {:method "PATCH"
+                :url "Patient/0"}}]}})]
 
       (is (= 422 status))
 
@@ -145,14 +149,14 @@
 
   (testing "Returns Error on missing type"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:request
-                {:method "PUT"
-                 :url ""}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:request
+               {:method "PUT"
+                :url ""}}]}})]
 
       (is (= 400 status))
 
@@ -165,14 +169,14 @@
 
   (testing "Returns Error on unknown type"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:request
-                {:method "PUT"
-                 :url "Foo/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:request
+               {:method "PUT"
+                :url "Foo/0"}}]}})]
 
       (is (= 400 status))
 
@@ -185,15 +189,15 @@
 
   (testing "Returns Error on invalid JSON type for resource"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource []
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource []
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -207,16 +211,16 @@
 
   (testing "Returns Error on type mismatch of a update"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource
-                {:resourceType "Observation"}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource
+               {:resourceType "Observation"}
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -232,16 +236,16 @@
 
   (testing "Returns Error on missing ID of a update"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource
-                {:resourceType "Patient"}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource
+               {:resourceType "Patient"}
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -256,17 +260,17 @@
 
   (testing "Returns Error on invalid ID of a update"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource
-                {:resourceType "Patient"
-                 :id "A_B"}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource
+               {:resourceType "Patient"
+                :id "A_B"}
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -281,17 +285,17 @@
 
   (testing "Returns Error on ID mismatch of a update"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource
-                {:resourceType "Patient"
-                 :id "1"}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource
+               {:resourceType "Patient"
+                :id "1"}
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -306,19 +310,19 @@
 
   (testing "Returns Error on Optimistic Locking Failure of a update"
     (let [{:keys [status body]}
-          @((handler-with [[[:create {:resourceType "Patient" :id "0"}]]
-                           [[:put {:resourceType "Patient" :id "0"}]]])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource
-                {:resourceType "Patient"
-                 :id "0"}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"
-                 :ifMatch "W/\"1\""}}]}})]
+          ((handler-with [[[:create {:resourceType "Patient" :id "0"}]]
+                          [[:put {:resourceType "Patient" :id "0"}]]])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource
+               {:resourceType "Patient"
+                :id "0"}
+               :request
+               {:method "PUT"
+                :url "Patient/0"
+                :ifMatch "W/\"1\""}}]}})]
 
       (is (= 412 status))
 
@@ -331,18 +335,18 @@
 
   (testing "Returns Error on invalid resource"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource
-                {:resourceType "Patient"
-                 :id "0"
-                 :gender {}}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource
+               {:resourceType "Patient"
+                :id "0"
+                :gender {}}
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -356,23 +360,23 @@
 
   (testing "Returns Error on duplicate resources"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource
-                {:resourceType "Patient"
-                 :id "0"}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}
-               {:resource
-                {:resourceType "Patient"
-                 :id "0"}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource
+               {:resourceType "Patient"
+                :id "0"}
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}
+              {:resource
+               {:resourceType "Patient"
+                :id "0"}
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}]}})]
 
       (is (= 400 status))
 
@@ -385,17 +389,17 @@
 
   (testing "Returns Error violated referential integrity"
     (let [{:keys [status body]}
-          @((handler-with [])
-            {:body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry
-              [{:resource
-                {:resourceType "Observation" :id "0"
-                 :subject {:reference "Patient/0"}}
-                :request
-                {:method "POST"
-                 :url "Observation"}}]}})]
+          ((handler-with [])
+           {:body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry
+             [{:resource
+               {:resourceType "Observation" :id "0"
+                :subject {:reference "Patient/0"}}
+               :request
+               {:method "POST"
+                :url "Observation"}}]}})]
 
       (is (= 409 status))
 
@@ -418,13 +422,13 @@
              :url "Patient/0"}}]
 
           {:keys [status body]}
-          @((handler-with [])
-            {::reitit/router router
-             ::reitit/match {:data {:blaze/context-path ""}}
-             :body
-             {:resourceType "Bundle"
-              :type "transaction"
-              :entry entries}})]
+          ((handler-with [])
+           {::reitit/router router
+            ::reitit/match {:data {:blaze/context-path ""}}
+            :body
+            {:resourceType "Bundle"
+             :type "transaction"
+             :entry entries}})]
 
       (is (= 200 status))
 
@@ -454,12 +458,12 @@
 
       (testing "with no Prefer header"
         (let [{:keys [status body]}
-              @((handler-with
-                  [[[:put {:resourceType "Patient" :id "0" :gender "female"}]]])
-                {:body
-                 {:resourceType "Bundle"
-                  :type "transaction"
-                  :entry entries}})]
+              ((handler-with
+                 [[[:put {:resourceType "Patient" :id "0" :gender "female"}]]])
+               {:body
+                {:resourceType "Bundle"
+                 :type "transaction"
+                 :entry entries}})]
 
           (is (= 200 status))
 
@@ -493,13 +497,13 @@
         (with-redefs
           [random-uuid (constantly #uuid "b11daf6d-4c7b-4f81-980e-8c599bb6bf2d")]
           (let [{:keys [status body]}
-                @((handler-with [])
-                  {::reitit/router router
-                   ::reitit/match {:data {:blaze/context-path ""}}
-                   :body
-                   {:resourceType "Bundle"
-                    :type "transaction"
-                    :entry entries}})]
+                ((handler-with [])
+                 {::reitit/router router
+                  ::reitit/match {:data {:blaze/context-path ""}}
+                  :body
+                  {:resourceType "Bundle"
+                   :type "transaction"
+                   :entry entries}})]
 
             (is (= 200 status))
 
@@ -537,7 +541,7 @@
     (let [handler
           (fn [{:keys [body]}]
             (is (= {:resourceType "Patient"} body))
-            (md/success-deferred
+            (ac/completed-future
               (-> (ring/created "location" ::response-body)
                   (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
                   (ring/header "ETag" "etag"))))]
@@ -545,18 +549,18 @@
         ::router "/Patient" {:result {:post {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler-with [])
-            {::reitit/router ::router
-             ::reitit/match {:data {:blaze/context-path ""}}
-             :body
-             {:resourceType "Bundle"
-              :type "batch"
-              :entry
-              [{:resource
-                {:resourceType "Patient"}
-                :request
-                {:method "POST"
-                 :url "Patient"}}]}})]
+          ((handler-with [])
+           {::reitit/router ::router
+            ::reitit/match {:data {:blaze/context-path ""}}
+            :body
+            {:resourceType "Bundle"
+             :type "batch"
+             :entry
+             [{:resource
+               {:resourceType "Patient"}
+               :request
+               {:method "POST"
+                :url "Patient"}}]}})]
 
       (is (= 200 status))
 
@@ -577,24 +581,24 @@
   (testing "Failing"
     (let [handler
           (fn [_]
-            (md/success-deferred
+            (ac/completed-future
               (ring/bad-request ::operation-outcome)))]
       (stub-match-by-path
         ::router "/Patient" {:result {:post {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler-with [])
-            {::reitit/router ::router
-             ::reitit/match {:data {:blaze/context-path ""}}
-             :body
-             {:resourceType "Bundle"
-              :type "batch"
-              :entry
-              [{:resource
-                {:resourceType "Patient"}
-                :request
-                {:method "POST"
-                 :url "Patient"}}]}})]
+          ((handler-with [])
+           {::reitit/router ::router
+            ::reitit/match {:data {:blaze/context-path ""}}
+            :body
+            {:resourceType "Bundle"
+             :type "batch"
+             :entry
+             [{:resource
+               {:resourceType "Patient"}
+               :request
+               {:method "POST"
+                :url "Patient"}}]}})]
 
       (is (= 200 status))
 
@@ -611,7 +615,7 @@
   (testing "Successful"
     (let [handler
           (fn [_]
-            (md/success-deferred
+            (ac/completed-future
               (-> (ring/response ::response-body)
                   (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
                   (ring/header "ETag" "etag"))))]
@@ -619,16 +623,16 @@
         ::router "/Patient/0" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler-with [])
-            {::reitit/router ::router
-             ::reitit/match {:data {:blaze/context-path ""}}
-             :body
-             {:resourceType "Bundle"
-              :type "batch"
-              :entry
-              [{:request
-                {:method "GET"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {::reitit/router ::router
+            ::reitit/match {:data {:blaze/context-path ""}}
+            :body
+            {:resourceType "Bundle"
+             :type "batch"
+             :entry
+             [{:request
+               {:method "GET"
+                :url "Patient/0"}}]}})]
 
       (is (= 200 status))
 
@@ -647,22 +651,22 @@
   (testing "Failing"
     (let [handler
           (fn [_]
-            (md/success-deferred
+            (ac/completed-future
               (ring/bad-request ::operation-outcome)))]
       (stub-match-by-path
         ::router "/Patient/0" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler-with [])
-            {::reitit/router ::router
-             ::reitit/match {:data {:blaze/context-path ""}}
-             :body
-             {:resourceType "Bundle"
-              :type "batch"
-              :entry
-              [{:request
-                {:method "GET"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {::reitit/router ::router
+            ::reitit/match {:data {:blaze/context-path ""}}
+            :body
+            {:resourceType "Bundle"
+             :type "batch"
+             :entry
+             [{:request
+               {:method "GET"
+                :url "Patient/0"}}]}})]
 
       (is (= 200 status))
 
@@ -679,22 +683,22 @@
   (testing "Successful"
     (let [handler
           (fn [_]
-            (md/success-deferred
+            (ac/completed-future
               (ring/response ::response-body)))]
       (stub-match-by-path
         ::router "/Patient" {:result {:get {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler-with [])
-            {::reitit/router ::router
-             ::reitit/match {:data {:blaze/context-path ""}}
-             :body
-             {:resourceType "Bundle"
-              :type "batch"
-              :entry
-              [{:request
-                {:method "GET"
-                 :url "Patient"}}]}})]
+          ((handler-with [])
+           {::reitit/router ::router
+            ::reitit/match {:data {:blaze/context-path ""}}
+            :body
+            {:resourceType "Bundle"
+             :type "batch"
+             :entry
+             [{:request
+               {:method "GET"
+                :url "Patient"}}]}})]
 
       (is (= 200 status))
 
@@ -712,7 +716,7 @@
     (let [handler
           (fn [{:keys [body]}]
             (is (= {:resourceType "Patient"} body))
-            (md/success-deferred
+            (ac/completed-future
               (-> (ring/response ::response-body)
                   (ring/header "Last-Modified" "Mon, 24 Jun 2019 09:54:26 GMT")
                   (ring/header "ETag" "etag"))))]
@@ -720,18 +724,18 @@
         ::router "/Patient/0" {:result {:put {:handler handler}}}))
 
     (let [{:keys [status body]}
-          @((handler-with [])
-            {::reitit/router ::router
-             ::reitit/match {:data {:blaze/context-path ""}}
-             :body
-             {:resourceType "Bundle"
-              :type "batch"
-              :entry
-              [{:resource
-                {:resourceType "Patient"}
-                :request
-                {:method "PUT"
-                 :url "Patient/0"}}]}})]
+          ((handler-with [])
+           {::reitit/router ::router
+            ::reitit/match {:data {:blaze/context-path ""}}
+            :body
+            {:resourceType "Bundle"
+             :type "batch"
+             :entry
+             [{:resource
+               {:resourceType "Patient"}
+               :request
+               {:method "PUT"
+                :url "Patient/0"}}]}})]
 
       (is (= 200 status))
 

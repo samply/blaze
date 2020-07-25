@@ -2,8 +2,8 @@
   "Implementation of a resource which lazily loads its content when needed."
   (:require
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.protocols :as p]
     [blaze.db.kv :as kv]
+    [blaze.db.resource-store :as rs]
     [blaze.fhir.util :as fhir-util])
   (:import
     [clojure.lang IMeta IPersistentMap ILookup]
@@ -13,19 +13,6 @@
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
-
-;; Used as cache key. Implements equals on top of the byte array of a hash.
-(deftype Hash [^bytes hash]
-  Object
-  (equals [this other]
-    (if (identical? this other)
-      true
-      (if (or (nil? other) (not= Hash (class other)))
-        false
-        (Arrays/equals ^bytes hash ^bytes (.hash ^Hash other)))))
-  (hashCode [_]
-    (Arrays/hashCode ^bytes hash)))
 
 
 (defn tx [kv-store t]
@@ -71,7 +58,7 @@
       :versionId (str t)
       (if meta
         (.valAt meta key)
-        (do (set! meta (.valAt ^ILookup (p/-get-content node hash) :meta {}))
+        (do (set! meta (.valAt ^ILookup @(rs/get node hash) :meta {}))
             (.valAt meta key))))))
 
 
@@ -88,13 +75,13 @@
       :meta true
       (if content
         (.containsKey content key)
-        (do (set! content (p/-get-content node hash))
+        (do (set! content @(rs/get node hash))
             (.containsKey content key)))))
 
   (seq [_]
     (if content
       (.seq (enhance-content content t))
-      (do (set! content (p/-get-content node hash))
+      (do (set! content @(rs/get node hash))
           (.seq (enhance-content content t)))))
 
   (valAt [_ key]
@@ -104,7 +91,7 @@
       :meta content-meta
       (if content
         (.valAt content key)
-        (do (set! content (p/-get-content node hash))
+        (do (set! content @(rs/get node hash))
             (.valAt content key)))))
 
   (valAt [_ key not-found]
@@ -114,13 +101,13 @@
       :meta content-meta
       (if content
         (.valAt content key not-found)
-        (do (set! content (p/-get-content node hash))
+        (do (set! content @(rs/get node hash))
             (.valAt content key not-found)))))
 
   (count [_]
     (if content
       (count (enhance-content content t))
-      (do (set! content (p/-get-content node hash))
+      (do (set! content @(rs/get node hash))
           (count (enhance-content content t)))))
 
   (equiv [this other]
@@ -148,9 +135,9 @@
 
 
 (defn hash
-  "returns the hash of the resource as byte-array."
-  [^Resource resource]
-  (.hash ^Hash (.hash resource)))
+  "Returns the hash of the resource."
+  [resource]
+  (.hash ^Resource resource))
 
 
 (defn deleted? [^Resource resource]
@@ -173,6 +160,6 @@
 
   The `node` will be used to lazily load the resource content."
   [node tid id hash state t]
-  (Resource. node (tid->type tid) id (Hash. hash) state t
+  (Resource. node (tid->type tid) id hash state t
              (ResourceContentMeta. node hash t nil)
              nil nil))

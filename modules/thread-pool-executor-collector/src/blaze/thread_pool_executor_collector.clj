@@ -71,7 +71,7 @@
   (->> executors
        (map
          (fn [[key executor]]
-           [(namespace key) executor]))
+           [(str (namespace key) "." (name key)) executor]))
        (thread-pool-executor-collector)))
 
 

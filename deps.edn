@@ -10,11 +10,17 @@
     io.netty/netty-transport
     io.netty/netty-transport-native-epoll]}
 
+  blaze/db-resource-store-cassandra
+  {:local/root "modules/db-resource-store-cassandra"}
+
+  blaze/db-tx-log-kafka
+  {:local/root "modules/db-tx-log-kafka"}
+
   blaze/interaction
   {:local/root "modules/interaction"}
 
   blaze.operation/measure-evaluate-measure
-  {:local/root "modules/operations/measure-evaluate-measure"}
+  {:local/root "modules/operation-measure-evaluate-measure"}
 
   blaze/openid-auth
   {:local/root "modules/openid-auth"}
@@ -77,7 +83,7 @@
     {:mvn/version "0.4.5"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.632"}
+    {:mvn/version "1.0.641"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -97,6 +103,6 @@
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.06.12"}}
+    {:mvn/version "2020.06.21"}}
 
    :main-opts ["-m" "clj-kondo.main"]}}}

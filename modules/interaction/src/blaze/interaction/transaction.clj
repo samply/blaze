@@ -3,6 +3,8 @@
 
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
+    [blaze.anomaly :refer [ex-anom]]
+    [blaze.async-comp :as ac]
     [blaze.bundle :as bundle]
     [blaze.db.api :as d]
     [blaze.executors :as ex]
@@ -15,7 +17,6 @@
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [reitit.ring]
     [ring.util.response :as ring]
@@ -159,23 +160,25 @@
   [{:keys [resourceType type] entries :entry}]
   (cond
     (not= "Bundle" resourceType)
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       ::anom/message (str "Expected a Bundle but was `" resourceType "`.")
-       :fhir/issue "value"})
+    (throw
+      (ex-anom
+        {::anom/category ::anom/incorrect
+         ::anom/message (str "Expected a Bundle but was `" resourceType "`.")
+         :fhir/issue "value"}))
 
     (not (#{"batch" "transaction"} type))
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (str "Expected a Bundle type of batch or transaction but was `" type "`.")
-       :fhir/issue "value"})
+    (throw
+      (ex-anom
+        {::anom/category ::anom/incorrect
+         ::anom/message
+         (str "Expected a Bundle type of batch or transaction but was `" type "`.")
+         :fhir/issue "value"}))
 
     :else
     (if (= "transaction" type)
       (let [entries (validate-entries entries)]
         (if (::anom/category entries)
-          (md/error-deferred entries)
+          (throw (ex-anom entries))
           (mapv prepare-entry entries)))
       entries)))
 
@@ -256,10 +259,11 @@
   (let [url (strip-leading-slash (str/trim url))
         [url query-string] (str/split url #"\?")]
     (if (= "" url)
-      (handler-util/bundle-error-response
-        {::anom/category ::anom/incorrect
-         ::anom/message (format "Invalid URL `%s` in bundle request." url)
-         :fhir/issue "value"})
+      (ac/completed-future
+        (handler-util/bundle-error-response
+          {::anom/category ::anom/incorrect
+           ::anom/message (format "Invalid URL `%s` in bundle request." url)
+           :fhir/issue "value"}))
       (let [request
             (cond->
               {:uri (str context-path "/" url)
@@ -271,7 +275,7 @@
               resource
               (assoc :body resource))]
         (-> (handler request)
-            (md/chain'
+            (ac/then-apply
               (fn [{:keys [status body]
                     {etag "ETag"
                      last-modified "Last-Modified"
@@ -295,7 +299,8 @@
                   (assoc :resource body)
 
                   (<= 400 status)
-                  (update :response assoc :outcome body)))))))))
+                  (update :response assoc :outcome body))))
+            (ac/exceptionally handler-util/bundle-error-response))))))
 
 
 (defmulti process
@@ -307,59 +312,51 @@
 
 (defmethod process "batch"
   [context _ request-entries]
-  (md/loop [[request-entry & request-entries] request-entries
-            response-entries []]
-    (if request-entry
-      (if (:response request-entry)
-        (md/recur request-entries (conj response-entries request-entry))
-        (-> (process-batch-entry context request-entry)
-            (md/chain'
-              (fn [response-entry]
-                (md/recur request-entries (conj response-entries response-entry))))
-            (md/catch'
-              (fn [error]
-                (let [response (handler-util/bundle-error-response error)]
-                  (md/recur request-entries (conj response-entries {:response response})))))))
-      response-entries)))
+  (let [futures (map #(process-batch-entry context %) request-entries)]
+    (-> (ac/all-of futures)
+        (ac/then-apply
+          (fn [_]
+            (mapv ac/join futures))))))
 
 
 (defmethod process "transaction"
-  [{:keys [node] :as context} _ request-entries]
-  (-> (d/submit-tx node (bundle/tx-ops request-entries))
-      (md/chain'
+  [{:keys [node executor] :as context} _ request-entries]
+  (-> (d/transact node (bundle/tx-ops request-entries))
+      ;; it's important to switch to the transaction executor here, because
+      ;; otherwise the central indexing thread would execute response building.
+      (ac/then-apply-async
         (fn [db]
-          (mapv #(build-response-entry context db %) request-entries)))))
+          (mapv #(build-response-entry context db %) request-entries))
+        executor)))
 
 
 (defn- handler-intern [node executor]
   (fn [{{:keys [type] :as bundle} :body :keys [headers]
         ::reitit/keys [router match]}]
-    (md/future-with executor
-      (-> (validate-and-prepare-bundle bundle)
-          (md/chain'
-            (let [context
-                  {:router router
-                   :handler (reitit.ring/ring-handler router)
-                   :blaze/context-path (-> match :data :blaze/context-path)
-                   :node node
-                   :return-preference (handler-util/preference headers "return")}]
-              #(process context type %)))
-          (md/chain'
-            (fn [response-entries]
-              (ring/response
-                {:resourceType "Bundle"
-                 :type (str type "-response")
-                 :entry response-entries})))
-          (md/catch' handler-util/error-response)))))
+    (-> (ac/supply-async #(validate-and-prepare-bundle bundle) executor)
+        (ac/then-compose
+          (let [context
+                {:router router
+                 :handler (reitit.ring/ring-handler router)
+                 :blaze/context-path (-> match :data :blaze/context-path)
+                 :node node
+                 :executor executor
+                 :return-preference (handler-util/preference headers "return")}]
+            #(process context type %)))
+        (ac/then-apply
+          (fn [response-entries]
+            (ring/response
+              {:resourceType "Bundle"
+               :type (str type "-response")
+               :entry response-entries})))
+        (ac/exceptionally handler-util/error-response))))
 
 
 (defn- wrap-interaction-name [handler]
   (fn [{{:keys [type]} :body :as request}]
     (cond-> (handler request)
       (string? type)
-      (md/chain'
-        (fn [response]
-          (assoc response :fhir/interaction-name type))))))
+      (ac/then-apply #(assoc % :fhir/interaction-name type)))))
 
 
 (defn handler [node executor]

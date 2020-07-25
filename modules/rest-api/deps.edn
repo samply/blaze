@@ -16,10 +16,7 @@
    :sha "56c0396a6d8640ebd588f2895e5e4583dc48b903"}
 
   cheshire
-  {:mvn/version "5.9.0"}
-
-  manifold
-  {:mvn/version "0.1.8"}}
+  {:mvn/version "5.9.0"}}
 
  :aliases
  {:test
@@ -27,7 +24,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.632"}
+    {:mvn/version "1.0.641"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -41,6 +38,6 @@
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.06.12"}}
+    {:mvn/version "2020.06.21"}}
 
    :main-opts ["-m" "clj-kondo.main"]}}}

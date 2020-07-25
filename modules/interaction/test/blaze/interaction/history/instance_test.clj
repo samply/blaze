@@ -17,7 +17,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -39,13 +40,15 @@
 
 
 (defn- handler-with [txs]
-  (handler (mem-node-with txs)))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
 
 
 (deftest handler-test
   (testing "returns not found on empty node"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {::reitit/router router
              ::reitit/match match
              :path-params {:id "0"}})]
@@ -59,7 +62,7 @@
 
   (testing "returns history with one patient"
     (let [{:keys [status body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {::reitit/router router
              ::reitit/match match
              :path-params {:id "0"}})]
@@ -93,7 +96,7 @@
 
   (testing "returns history with one currently deleted patient"
     (let [{:keys [status body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]
                            [[:delete "Patient" "0"]]])
             {::reitit/router router
              ::reitit/match match
@@ -138,7 +141,7 @@
 
   (testing "contains a next link on node with two versions and _count=1"
     (let [{:keys [body]}
-          @((handler-with
+          ((handler-with
               [[[:put {:resourceType "Patient" :id "0" :gender "male"}]]
                [[:put {:resourceType "Patient" :id "0" :gender "female"}]]])
             {::reitit/router router
@@ -153,7 +156,7 @@
 
   (testing "with two versions, calling the second page"
     (let [{:keys [body]}
-          @((handler-with
+          ((handler-with
               [[[:put {:resourceType "Patient" :id "0" :gender "male"}]]
                [[:put {:resourceType "Patient" :id "0" :gender "female"}]]])
             {::reitit/router router

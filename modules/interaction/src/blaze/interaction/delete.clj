@@ -3,12 +3,14 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
+    [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.util :as handler-util]
+    [blaze.interaction.delete.spec]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
@@ -39,25 +41,33 @@
   (build-response* (d/tx db (d/basis-t db))))
 
 
-(defn- handler-intern [node]
+(defn- handler-intern [node executor]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
     (if-let [{:blaze.db/keys [op tx]} (meta (d/resource (d/db node) type id))]
       (if (identical? :delete op)
-        (build-response* tx)
-        (-> (d/submit-tx node [[:delete type id]])
-            (md/chain' build-response)))
-      (handler-util/error-response
-        {::anom/category ::anom/not-found
-         :fhir/issue "not-found"}))))
+        (ac/completed-future (build-response* tx))
+        (-> (d/transact node [[:delete type id]])
+            ;; it's important to switch to the transaction executor here,
+            ;; because otherwise the central indexing thread would execute
+            ;; response building.
+            (ac/then-apply-async build-response executor)))
+      (ac/completed-future
+        (handler-util/error-response
+          {::anom/category ::anom/not-found
+           :fhir/issue "not-found"})))))
 
 
-(defn handler [node]
-  (-> (handler-intern node)
+(defn handler [node executor]
+  (-> (handler-intern node executor)
       (wrap-observe-request-duration "delete")))
 
 
+(defmethod ig/pre-init-spec :blaze.interaction/delete [_]
+  (s/keys :req-un [:blaze.db/node ::executor]))
+
+
 (defmethod ig/init-key :blaze.interaction/delete
-  [_ {:keys [node]}]
+  [_ {:keys [node executor]}]
   (log/info "Init FHIR delete interaction handler")
-  (handler node))
+  (handler node executor))

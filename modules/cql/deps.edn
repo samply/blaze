@@ -46,7 +46,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.632"}
+    {:mvn/version "1.0.641"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -63,6 +63,6 @@
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.06.12"}}
+    {:mvn/version "2020.06.21"}}
 
    :main-opts ["-m" "clj-kondo.main"]}}}

@@ -1,5 +1,6 @@
 (ns blaze.rest-api
   (:require
+    [blaze.async-comp :as ac]
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
@@ -356,18 +357,19 @@
              (some? history-system-handler)
              (conj {:code "history-system"}))}]}]
     (fn [_]
-      (ring/response capability-statement))))
+      (ac/completed-future (ring/response capability-statement)))))
 
 
 (def default-handler
   (reitit.ring/create-default-handler
     {:not-found
      (fn [_]
-       (ring/not-found
-         {:resourceType "OperationOutcome"
-          :issue
-          [{:severity "error"
-            :code "not-found"}]}))
+       (ac/completed-future
+         (ring/not-found
+           {:resourceType "OperationOutcome"
+            :issue
+            [{:severity "error"
+              :code "not-found"}]})))
      :method-not-allowed
      (fn [{:keys [uri request-method]}]
        (-> (ring/response
@@ -377,7 +379,8 @@
                 :code "processing"
                 :diagnostics (format "Method %s not allowed on `%s` endpoint."
                                      (str/upper-case (name request-method)) uri)}]})
-           (ring/status 405)))
+           (ring/status 405)
+           (ac/completed-future)))
      :not-acceptable
      (fn [_]
        (-> (ring/response
@@ -385,7 +388,8 @@
               :issue
               [{:severity "error"
                 :code "structure"}]})
-           (ring/status 406)))}))
+           (ring/status 406)
+           (ac/completed-future)))}))
 
 
 (defn handler
@@ -405,7 +409,7 @@
 (defmethod ig/init-key :blaze.rest-api.json-parse/executor
   [_ _]
   (log/info (json-parse-executor-init-msg))
-  (ex/cpu-bound-dedicated-pool "blaze-json-parse-%d"))
+  (ex/cpu-bound-pool "blaze-json-parse-%d"))
 
 
 (derive :blaze.rest-api.json-parse/executor :blaze.metrics/thread-pool-executor)

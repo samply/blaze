@@ -1,5 +1,6 @@
 (ns blaze.interaction.delete-spec
   (:require
+    [blaze.async-comp-spec]
     [blaze.db.spec]
     [blaze.interaction.delete :as delete]
     [blaze.middleware.fhir.metrics-spec]
@@ -8,5 +9,5 @@
 
 
 (s/fdef delete/handler
-  :args (s/cat :node :blaze.db/node)
+  :args (s/cat :node :blaze.db/node :executor ::delete/executor)
   :ret :ring/handler)

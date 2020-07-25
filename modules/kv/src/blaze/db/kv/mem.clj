@@ -142,11 +142,21 @@
   (new-snapshot [_]
     (->MemKvSnapshot @db))
 
-  (get [_ k]
+  (-get [_ k]
     (kv/snapshot-get (->MemKvSnapshot @db) k))
 
-  (get [_ column-family k]
+  (-get [_ column-family k]
     (kv/snapshot-get (->MemKvSnapshot @db) column-family k))
+
+  (-multi-get [_ ks]
+    (with-open [snapshot ^Closeable (->MemKvSnapshot @db)]
+      (reduce
+        (fn [r k]
+          (if-let [v (kv/snapshot-get snapshot k)]
+            (assoc r k v)
+            r))
+        {}
+        ks)))
 
   (-put [_ entries]
     (swap! db put-entries entries)
@@ -175,18 +185,15 @@
   (into {} (map (fn [cf] [cf (sorted-map-by bytes-cmp)])) column-families))
 
 
-(defn init-mem-kv-store
+(defn new-mem-kv-store
   "Initializes an in-memory key-value store with optional column families."
   ([]
-   (init-mem-kv-store {}))
+   (new-mem-kv-store {}))
   ([column-families]
-   (->MemKvStore (atom (init-db (conj (keys column-families) :default))))))
+   (->MemKvStore (atom (init-db (conj (set (keys column-families)) :default))))))
 
 
 (defmethod ig/init-key :blaze.db.kv/mem
   [_ {:keys [column-families]}]
   (log/info "Open volatile, in-memory key-value store")
-  (init-mem-kv-store column-families))
-
-
-(derive :blaze.db.kv/mem :blaze.db/kv-store)
+  (new-mem-kv-store column-families))

@@ -3,12 +3,13 @@
 
   https://www.hl7.org/fhir/http.html#read"
   (:require
+    [blaze.anomaly :refer [ex-anom]]
+    [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
@@ -36,23 +37,24 @@
   (cond
     (and vid (re-matches #"\d+" vid))
     (let [vid (Long/parseLong vid)]
-      (-> (d/sync node vid) (md/chain #(d/as-of % vid))))
+      (-> (d/sync node vid) (ac/then-apply #(d/as-of % vid))))
 
     vid
-    (md/error-deferred
-      {::anom/category ::anom/not-found
-       ::anom/message (format "Resource `/%s/%s` with versionId `%s` was not found." type id vid)
-       :fhir/issue "not-found"})
+    (ac/failed-future
+      (ex-anom
+        {::anom/category ::anom/not-found
+         ::anom/message (format "Resource `/%s/%s` with versionId `%s` was not found." type id vid)
+         :fhir/issue "not-found"}))
 
     :else
-    (d/db node)))
+    (ac/completed-future (d/db node))))
 
 
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id vid]} :path-params}]
     (-> (db node vid type id)
-        (md/chain'
+        (ac/then-apply
           (fn [db]
             (if-let [resource (d/resource db type id)]
               (if (d/deleted? resource)
@@ -69,15 +71,13 @@
                 {::anom/category ::anom/not-found
                  :fhir/issue "not-found"
                  ::anom/message (format "Resource `/%s/%s` not found" type id)}))))
-        (md/catch' handler-util/error-response))))
+        (ac/exceptionally handler-util/error-response))))
 
 
 (defn wrap-interaction-name [handler]
   (fn [{{:keys [vid]} :path-params :as request}]
     (-> (handler request)
-        (md/chain'
-          (fn [response]
-            (assoc response :fhir/interaction-name (if vid "vread" "read")))))))
+        (ac/then-apply #(assoc % :fhir/interaction-name (if vid "vread" "read"))))))
 
 
 (defn handler [node]

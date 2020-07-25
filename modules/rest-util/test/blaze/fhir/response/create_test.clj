@@ -20,7 +20,8 @@
       (s/fspec
         :args (s/cat :router #{::router} :return-preference (s/nilable string?)
                      :db #{::db} :type string? :id string?))}})
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 

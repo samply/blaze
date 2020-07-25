@@ -9,7 +9,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 

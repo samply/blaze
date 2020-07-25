@@ -15,5 +15,8 @@ COPY --from=build --chown=nonroot:nonroot /app ./
 COPY --from=build --chown=nonroot:nonroot /build/target/ ./
 
 USER nonroot
-ENV DB_DIR="/app/data/db"
+ENV STORAGE="standalone"
+ENV INDEX_DB_DIR="/app/data/index"
+ENV TRANSACTION_DB_DIR="/app/data/transaction"
+ENV RESOURCE_DB_DIR="/app/data/resource"
 CMD ["blaze-standalone.jar", "-m", "blaze.core"]

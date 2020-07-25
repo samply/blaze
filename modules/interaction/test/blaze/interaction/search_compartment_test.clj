@@ -15,7 +15,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -38,7 +39,9 @@
 
 
 (defn- handler-with [txs]
-  (handler (mem-node-with txs)))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
 
 
 (defn- link-url [body link-relation]
@@ -48,7 +51,7 @@
 (deftest handler-test
   (testing "Returns an Error on Invalid Id"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "<invalid>" :type "Observation"}
              ::reitit/router router
              ::reitit/match match})]
@@ -63,7 +66,7 @@
 
   (testing "Returns an Error on Invalid Type"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0" :type "<invalid>"}
              ::reitit/router router
              ::reitit/match match})]
@@ -78,7 +81,7 @@
 
   (testing "Returns an empty Bundle on Non-Existing Compartment"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0" :type "Observation"}
              ::reitit/router router
              ::reitit/match match})]
@@ -107,7 +110,7 @@
 
       (testing "with _summary=count"
         (let [{:keys [status body]}
-              @(handler (assoc-in request [:params "_summary"] "count"))]
+              (handler (assoc-in request [:params "_summary"] "count"))]
 
           (is (= 200 status))
 
@@ -125,7 +128,7 @@
 
       (testing "with _summary=count and status=final"
         (let [{:keys [status body]}
-              @(handler (-> (assoc-in request [:params "_summary"] "count")
+              (handler (-> (assoc-in request [:params "_summary"] "count")
                             (assoc-in [:params "status"] "final")))]
 
           (is (= 200 status))
@@ -143,7 +146,7 @@
             (is (empty? (:entry body))))))
 
       (testing "with no query param"
-        (let [{:keys [status body]} @(handler request)]
+        (let [{:keys [status body]} (handler request)]
 
           (is (= 200 status))
 

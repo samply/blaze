@@ -1,5 +1,7 @@
 (ns blaze.interaction.create-spec
   (:require
+    [blaze.anomaly-spec]
+    [blaze.async-comp-spec]
     [blaze.db.spec]
     [blaze.interaction.create :as create]
     [blaze.middleware.fhir.metrics-spec]
@@ -8,5 +10,5 @@
 
 
 (s/fdef create/handler
-  :args (s/cat :node :blaze.db/node)
+  :args (s/cat :node :blaze.db/node :executor ::create/executor)
   :ret :ring/handler)

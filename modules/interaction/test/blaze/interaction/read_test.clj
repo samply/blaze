@@ -17,7 +17,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -25,7 +26,9 @@
 
 
 (defn- handler-with [txs]
-  (handler (mem-node-with txs)))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
 
 
 (def ^:private match
@@ -35,7 +38,7 @@
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Resource"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0"}
              ::reitit/match match})]
 
@@ -50,7 +53,7 @@
 
   (testing "Returns Not Found on Invalid Version ID"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0" :vid "a"}
              ::reitit/match match})]
 
@@ -65,7 +68,7 @@
 
   (testing "Returns Gone on Deleted Resource"
     (let [{:keys [status body headers]}
-          @((handler-with
+          ((handler-with
               [[[:put {:resourceType "Patient" :id "0"}]]
                [[:delete "Patient" "0"]]])
             {:path-params {:id "0"}
@@ -84,7 +87,7 @@
 
   (testing "Returns Existing Resource"
     (let [{:keys [status headers body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {:path-params {:id "0"}
              ::reitit/match match})]
 
@@ -103,7 +106,7 @@
 
   (testing "Returns Existing Resource on versioned read"
     (let [{:keys [status headers body]}
-          @((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
             {:path-params {:id "0" :vid "1"}
              ::reitit/match match})]
 

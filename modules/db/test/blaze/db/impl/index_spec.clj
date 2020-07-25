@@ -2,20 +2,15 @@
   (:require
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index :as index]
-    [blaze.db.impl.index.spec]
     [blaze.db.impl.iterators-spec]
     [blaze.db.impl.search-param-spec]
-    [blaze.db.kv.spec]
+    [blaze.db.kv-spec]
     [clojure.spec.alpha :as s]))
 
 
 (s/fdef index/tx
   :args (s/cat :kv-store :blaze.db/kv-store :t :blaze.db/t)
   :ret (s/nilable :blaze.db/tx))
-
-
-(s/fdef index/load-resource-content
-  :args (s/cat :kv-store :blaze.db/kv-store :hash :blaze.db/hash))
 
 
 (s/fdef index/t-by-instant

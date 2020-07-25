@@ -9,6 +9,7 @@
   (:import
     [blaze.db.impl.codec ResourceAsOfKV]
     [clojure.lang IReduceInit]
+    [com.google.common.hash HashCode]
     [java.nio ByteBuffer]))
 
 
@@ -109,7 +110,7 @@
     tid
     (codec/id (.array ib) 0 (.remaining ib))
     t
-    (let [hash (byte-array codec/hash-size)] (.get vb hash) hash)
+    (let [bs (byte-array codec/hash-size)] (.get vb bs) (HashCode/fromBytes bs))
     (.getLong vb)))
 
 

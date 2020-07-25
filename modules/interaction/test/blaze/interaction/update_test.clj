@@ -6,8 +6,10 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.executors :as ex]
     [blaze.interaction.update :refer [handler]]
     [blaze.interaction.update-spec]
+    [blaze.log]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -17,15 +19,21 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :trace} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
 
 
+(def executor (ex/single-thread-executor))
+
+
 (defn- handler-with [txs]
-  (handler (mem-node-with txs)))
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node executor) request))))
 
 
 (def ^:private router
@@ -42,7 +50,7 @@
 (deftest handler-test
   (testing "Returns Error on type mismatch"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Patient"}}
              :body {:resourceType "Observation"}})]
@@ -58,7 +66,7 @@
 
   (testing "Returns Error on missing id"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Patient"}}
              :body {:resourceType "Patient"}})]
@@ -74,7 +82,7 @@
 
   (testing "Returns Error on invalid id"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Patient"}}
              :body {:resourceType "Patient" :id "A_B"}})]
@@ -91,7 +99,7 @@
 
   (testing "Returns Error on ID mismatch"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Patient"}}
              :body {:resourceType "Patient" :id "1"}})]
@@ -107,7 +115,7 @@
 
   (testing "Returns Error on invalid resource"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Patient"}}
              :body {:resourceType "Patient" :id "0" :gender {}}})]
@@ -122,7 +130,7 @@
 
   (testing "Returns Error on Optimistic Locking Failure"
     (let [{:keys [status body]}
-          @((handler-with [[[:create {:resourceType "Patient" :id "0"}]]
+          ((handler-with [[[:create {:resourceType "Patient" :id "0"}]]
                            [[:put {:resourceType "Patient" :id "0"}]]])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Patient"}}
@@ -139,7 +147,7 @@
 
   (testing "Returns Error violated referential integrity"
     (let [{:keys [status body]}
-          @((handler-with [])
+          ((handler-with [])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Observation"}}
              :body {:resourceType "Observation" :id "0"
@@ -156,7 +164,7 @@
   (testing "On newly created resource"
     (testing "with no Prefer header"
       (let [{:keys [status headers body]}
-            @((handler-with [])
+            ((handler-with [])
               {::reitit/router router
                :path-params {:id "0"}
                ::reitit/match {:data {:fhir.resource/type "Patient"}}
@@ -187,7 +195,7 @@
   (testing "On successful update of an existing resource"
     (testing "with no Prefer header"
       (let [{:keys [status headers body]}
-            @((handler-with
+            ((handler-with
                 [[[:create {:resourceType "Patient" :id "0"}]]])
               {:path-params {:id "0"}
                ::reitit/match {:data {:fhir.resource/type "Patient"}}

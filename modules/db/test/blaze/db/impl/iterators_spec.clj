@@ -1,7 +1,7 @@
 (ns blaze.db.impl.iterators-spec
   (:require
     [blaze.db.impl.iterators :as i]
-    [blaze.db.kv.spec]
+    [blaze.db.kv-spec]
     [clojure.spec.alpha :as s]))
 
 

@@ -2,13 +2,17 @@
 
  :deps
  {aysylu/loom
-  {:mvn/version "1.0.2"}
+  {:mvn/version "1.0.2"
+   :exclusions [org.clojure/clojurescript]}
 
   blaze/coll
   {:local/root "../coll"}
 
   blaze/db-protocols
   {:local/root "../db-protocols"}
+
+  blaze/db-tx-log
+  {:local/root "../db-tx-log"}
 
   blaze/executor
   {:local/root "../executor"}
@@ -25,47 +29,41 @@
   blaze/module-base
   {:local/root "../module-base"}
 
+  blaze/db-resource-store
+  {:local/root "../db-resource-store"}
+
   blaze/search-param-registry
   {:local/root "../search-param-registry"}
 
   clj-fuzzy
   {:mvn/version "0.4.1"}
 
-  com.taoensso/nippy
-  {:mvn/version "2.14.0"}
-
-  com.google.guava/guava
-  {:mvn/version "28.2-jre"}
-
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "2.8.1"}
-
-  manifold
-  {:mvn/version "0.1.8"}}
+  {:mvn/version "2.8.1"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
-    {:mvn/version "1.0.632"}
+   {cheshire
+    {:mvn/version "5.9.0"}
+
+    lambdaisland/kaocha
+    {:mvn/version "1.0.641"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}
-
-    cheshire
-    {:mvn/version "5.9.0"}}
+    {:mvn/version "1.0.0"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
   :clj-kondo
   {:extra-deps
    {clj-kondo
-    {:mvn/version "2020.06.12"}}
+    {:mvn/version "2020.06.21"}}
 
    :main-opts ["-m" "clj-kondo.main"]}
 

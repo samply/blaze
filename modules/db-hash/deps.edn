@@ -1,0 +1,23 @@
+{:deps
+ {blaze/fhir-structure
+  {:local/root "../fhir-structure"}
+
+  com.google.guava/guava
+  {:mvn/version "29.0-jre"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.641"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :clj-kondo
+  {:extra-deps
+   {clj-kondo
+    {:mvn/version "2020.06.21"}}
+
+   :main-opts ["-m" "clj-kondo.main"]}}}

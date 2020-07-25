@@ -14,6 +14,7 @@
   `d/type-query`."
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as util]
@@ -22,7 +23,6 @@
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
@@ -144,7 +144,7 @@
         :keys [params]
         ::reitit/keys [router]}]
     (-> (util/db node (fhir-util/t params))
-        (md/chain' #(handle router match % type params)))))
+        (ac/then-apply #(handle router match % type params)))))
 
 
 (defn handler [node]

@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param-test
   (:require
+    [blaze.db.hash :as hash]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
@@ -28,7 +29,7 @@
   (testing "Observation _id"
     (let [observation {:resourceType "Observation"
                        :id "id-161849"}
-          hash (codec/hash observation)
+          hash (hash/generate observation)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "_id" "Observation")
@@ -61,7 +62,7 @@
                        {:coding
                         [{:system "system-171339"
                           :code "code-171327"}]}}
-          hash (codec/hash observation)
+          hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "code" "Observation")
@@ -133,7 +134,7 @@
       (let [patient {:resourceType "Patient"
                      :id "id-164114"
                      :name [{}]}
-            hash (codec/hash patient)]
+            hash (hash/generate patient)]
 
         (is (empty? (search-param/index-entries
                       (sr/get search-param-registry "phonetic" "Patient")
@@ -146,7 +147,7 @@
                    :address
                    [{:line ["line-120252"]
                      :city "city-105431"}]}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1] [_ k2] [_ k3]]
           (search-param/index-entries
             (sr/get search-param-registry "address" "Patient")
@@ -200,7 +201,7 @@
                    :identifier
                    [{:system "system-123000"
                      :value "value-123005"}]}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "identifier" "Patient")
@@ -272,7 +273,7 @@
                    :meta
                    {:profile
                     ["profile-uri-141443"]}}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "_profile" "Patient")
@@ -303,7 +304,7 @@
                    :id "id-122929"
                    :name
                    [{:family "family-102508"}]}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "phonetic" "Patient")
@@ -333,7 +334,7 @@
     (let [patient {:resourceType "Patient"
                    :id "id-142629"
                    :birthDate "2020-02-04"}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "birthdate" "Patient")
@@ -362,7 +363,7 @@
   (testing "Patient deceased"
     (let [patient {:resourceType "Patient"
                    :id "id-142629"}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "deceased" "Patient")
@@ -392,7 +393,7 @@
     (let [specimen {:resourceType "Specimen"
                     :id "id-150810"
                     :subject {:reference "reference-150829"}}
-          hash (codec/hash specimen)]
+          hash (hash/generate specimen)]
       (is
         (empty?
           (search-param/index-entries
@@ -407,7 +408,7 @@
                      {:coding
                       [{:system "system-103824"
                         :code "code-103812"}]}}}
-          hash (codec/hash specimen)
+          hash (hash/generate specimen)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "bodysite" "Specimen")
@@ -477,7 +478,7 @@
     (let [patient {:resourceType "DiagnosticReport"
                    :id "id-155607"
                    :issued "2019-11-17T00:14:29.917+01:00"}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "issued" "DiagnosticReport")
@@ -509,7 +510,7 @@
                    :period
                    {:start "2019-11-17T00:14:29+01:00"
                     :end "2019-11-17T00:44:29+01:00"}}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "date" "Encounter")
@@ -540,7 +541,7 @@
                    :id "id-160224"
                    :period
                    {:end "2019-11-17"}}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "date" "Encounter")
@@ -571,7 +572,7 @@
                    :id "id-160224"
                    :period
                    {:start "2019-11-17T00:14:29+01:00"}}
-          hash (codec/hash patient)
+          hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "date" "Encounter")
@@ -603,7 +604,7 @@
                     :class
                     {:system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
                      :code "AMB"}}
-          hash (codec/hash specimen)
+          hash (hash/generate specimen)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "class" "Encounter")
@@ -674,7 +675,7 @@
                     :id "id-105153"
                     :series
                     [{:uid "1.2.840.99999999.1.59354388.1582528879516"}]}
-          hash (codec/hash specimen)
+          hash (hash/generate specimen)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "series" "ImagingStudy")
@@ -704,7 +705,7 @@
     (let [resource {:resourceType "ActivityDefinition"
                     :id "id-111846"
                     :url "url-111854"}
-          hash (codec/hash resource)
+          hash (hash/generate resource)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "url" "ActivityDefinition")
@@ -734,7 +735,7 @@
     (let [resource {:resourceType "ActivityDefinition"
                     :id "id-121344"
                     :description "desc-121328"}
-          hash (codec/hash resource)
+          hash (hash/generate resource)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "description" "ActivityDefinition")
@@ -764,7 +765,7 @@
     (let [resource {:resourceType "CodeSystem"
                     :id "id-111846"
                     :version "version-122621"}
-          hash (codec/hash resource)
+          hash (hash/generate resource)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "version" "CodeSystem")
@@ -796,7 +797,7 @@
                       :id "id-121825"
                       :entry
                       [{:item {:reference "Patient/0"}}]}
-            hash (codec/hash resource)
+            hash (hash/generate resource)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "item" "List")
@@ -870,7 +871,7 @@
                         {:identifier
                          {:system "system-122917"
                           :value "value-122931"}}}]}
-            hash (codec/hash resource)
+            hash (hash/generate resource)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "item" "List")

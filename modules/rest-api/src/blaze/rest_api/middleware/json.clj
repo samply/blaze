@@ -1,12 +1,13 @@
 (ns blaze.rest-api.middleware.json
   (:require
+    [blaze.anomaly :refer [ex-anom]]
+    [blaze.async-comp :as ac]
     [blaze.handler.util :as handler-util]
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [manifold.deferred :as md]
     [prometheus.alpha :as prom]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
@@ -41,20 +42,19 @@
       (try
         (json/parse-stream reader keyword)
         (catch Exception e
-          (md/error-deferred
-            #::anom{:category ::anom/incorrect
-                    :message (ex-message e)}))))))
+          (throw (ex-anom #::anom{:category ::anom/incorrect
+                                  :message (ex-message e)})))))))
 
 
 (defn- handle-request
-  [executor {:keys [request-method body] {:strs [content-type]} :headers :as request}]
+  [{:keys [request-method body] {:strs [content-type]} :headers :as request}
+   executor]
   (if (and (#{:put :post} request-method)
            content-type
            (or (str/starts-with? content-type "application/fhir+json")
                (str/starts-with? content-type "application/json")))
-    (-> (md/future-with executor (parse-json body))
-        (md/chain' #(assoc request :body %)))
-    request))
+    (ac/supply-async #(assoc request :body (parse-json body)) executor)
+    (ac/completed-future request)))
 
 
 (defn- generate-json [body]
@@ -83,7 +83,7 @@
   response."
   [handler executor]
   (fn [request]
-    (-> (handle-request executor request)
-        (md/chain' handler)
-        (md/chain' handle-response)
-        (md/catch' #(handle-response (handler-util/error-response %))))))
+    (-> (handle-request request executor)
+        (ac/then-compose handler)
+        (ac/then-apply handle-response)
+        (ac/exceptionally #(handle-response (handler-util/error-response %))))))

@@ -1,5 +1,6 @@
 (ns blaze.interaction.search-type-spec
   (:require
+    [blaze.async-comp-spec]
     [blaze.db.spec]
     [blaze.interaction.search-type :as search-type]
     [blaze.interaction.search.nav-spec]

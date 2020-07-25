@@ -96,11 +96,21 @@
     (let [snapshot (.getSnapshot db)]
       (->RocksKvSnapshot db snapshot (.setSnapshot (ReadOptions.) snapshot) cfhs)))
 
-  (get [_ k]
+  (-get [_ k]
     (.get db k))
 
-  (get [_ column-family k]
+  (-get [_ column-family k]
     (.get db ^ColumnFamilyHandle (get-cfh cfhs column-family) ^bytes k))
+
+  (-multi-get [_ keys]
+    (loop [[k & ks] keys
+           [v & vs] (.multiGetAsList db keys)
+           res {}]
+      (if k
+        (if v
+          (recur ks vs (assoc res k v))
+          (recur ks vs res))
+        res)))
 
   (-put [_ entries]
     (with-open [wb (WriteBatch.)]
@@ -166,26 +176,27 @@
 
 
 (defn- column-family-descriptor
-  ([[kw]]
+  {:arglists '([[key]] [block-cache [key opts]])}
+  ([[key]]
    (ColumnFamilyDescriptor.
-     (.getBytes (name kw))))
+     (.getBytes (name key))))
   ([block-cache
-    [kw {:keys [write-buffer-size-in-mb
-                max-write-buffer-number
-                level0-file-num-compaction-trigger
-                min-write-buffer-number-to-merge
-                max-bytes-for-level-base-in-mb
-                block-size
-                bloom-filter?]
-         :or {write-buffer-size-in-mb 4
-              max-write-buffer-number 2
-              level0-file-num-compaction-trigger 4
-              min-write-buffer-number-to-merge 1
-              max-bytes-for-level-base-in-mb 10
-              block-size (bit-shift-left 4 10)
-              bloom-filter? false}}]]
+    [key {:keys [write-buffer-size-in-mb
+                 max-write-buffer-number
+                 level0-file-num-compaction-trigger
+                 min-write-buffer-number-to-merge
+                 max-bytes-for-level-base-in-mb
+                 block-size
+                 bloom-filter?]
+          :or {write-buffer-size-in-mb 4
+               max-write-buffer-number 2
+               level0-file-num-compaction-trigger 4
+               min-write-buffer-number-to-merge 1
+               max-bytes-for-level-base-in-mb 10
+               block-size (bit-shift-left 4 10)
+               bloom-filter? false}}]]
    (ColumnFamilyDescriptor.
-     (.getBytes (name kw))
+     (.getBytes (name key))
      (doto (ColumnFamilyOptions.)
        (.setLevelCompactionDynamicLevelBytes true)
        (.setCompressionType CompressionType/LZ4_COMPRESSION)
@@ -219,7 +230,6 @@
          compaction-readahead-size 0}}
    column-families]
   (let [opts (doto (DBOptions.)
-               (.setCreateIfMissing true)
                (.setStatsDumpPeriodSec 60)
                (.setStatistics ^Statistics stats)
                (.setMaxBackgroundJobs ^long max-background-jobs)
@@ -334,7 +344,7 @@
 
 
 (defn- init-log-msg [dir opts]
-  (format "Open RocksDB key-value store in directory `%s` with options: %s"
+  (format "Open RocksDB key-value store in directory `%s` with options: %s. This can take up to several minutes due to forced compaction."
           dir (pr-str opts)))
 
 
@@ -350,9 +360,6 @@
   [_ store]
   (log/info "Close RocksDB key-value store")
   (.close ^Closeable store))
-
-
-(derive :blaze.db.kv/rocksdb :blaze.db/kv-store)
 
 
 (defmethod ig/init-key ::stats

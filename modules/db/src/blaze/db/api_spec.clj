@@ -1,13 +1,14 @@
 (ns blaze.db.api-spec
   (:require
+    [blaze.async-comp :as ac]
+    [blaze.async-comp-spec]
     [blaze.db.api :as d]
     [blaze.db.impl.index]
     [blaze.db.search-param-registry-spec]
     [blaze.db.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
-    [manifold.deferred :refer [deferred?]]))
+    [cognitect.anomalies :as anom]))
 
 
 (s/fdef d/db
@@ -17,12 +18,12 @@
 
 (s/fdef d/sync
   :args (s/cat :node :blaze.db/node :t :blaze.db/t)
-  :ret deferred?)
+  :ret ac/completable-future?)
 
 
-(s/fdef d/submit-tx
+(s/fdef d/transact
   :args (s/cat :node :blaze.db/node :tx-ops :blaze.db/tx-ops)
-  :ret deferred?)
+  :ret ac/completable-future?)
 
 
 (s/fdef d/node

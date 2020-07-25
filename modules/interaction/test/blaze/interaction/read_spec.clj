@@ -1,5 +1,7 @@
 (ns blaze.interaction.read-spec
   (:require
+    [blaze.anomaly-spec]
+    [blaze.async-comp-spec]
     [blaze.db.spec]
     [blaze.interaction.read :as read]
     [blaze.middleware.fhir.metrics-spec]
