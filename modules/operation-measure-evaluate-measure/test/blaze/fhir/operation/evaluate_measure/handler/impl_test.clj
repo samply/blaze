@@ -101,6 +101,42 @@
         :code := "deleted")))
 
 
+  (testing "invalid report type"
+    (let [{:keys [status body]}
+          ((handler-with [])
+           {:request-method :get
+            :params
+            {"measure" "url-181501"
+             "reportType" "<invalid>"}})]
+
+      (is (= 400 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "value"
+        :diagnostics := "The reportType `<invalid>` is invalid. Please use one of `subject`, `subject-list` or `population`.")))
+
+
+  (testing "report type of subject-list is not possible with a GET request"
+    (let [{:keys [status body]}
+          ((handler-with [])
+           {:request-method :get
+            :params
+            {"measure" "url-181501"
+             "reportType" "subject-list"}})]
+
+      (is (= 422 status))
+
+      (is (= "OperationOutcome" (:resourceType body)))
+
+      (given (-> body :issue first)
+        :severity := "error"
+        :code := "not-supported"
+        :diagnostics := "The reportType `subject-list` is not supported for GET requests. Please use POST.")))
+
+
   (testing "measure without library"
     (let [{:keys [status body]}
           ((handler-with [[[:put {:resourceType "Measure" :id "0"
@@ -218,56 +254,6 @@
         :code := "value"
         :diagnostics := "Missing embedded data of first attachment in library with id `0`."
         [:expression first] := "Library.content[0].data")))
-
-  (testing "invalid report type"
-    (let [{:keys [status body]}
-          ((handler-with
-             [[[:put {:resourceType "Measure" :id "0"
-                      :url "url-181501"
-                      :library ["library-url-094115"]}]
-               [:put {:resourceType "Library" :id "0"
-                      :url "library-url-094115"
-                      :content
-                      [{:contentType "text/cql"
-                        :data ""}]}]]])
-           {:request-method :get
-            :params
-            {"measure" "url-181501"
-             "reportType" "<invalid>"}})]
-
-      (is (= 400 status))
-
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (given (-> body :issue first)
-        :severity := "error"
-        :code := "value"
-        :diagnostics := "The reportType `<invalid>` is invalid. Please use one of `subject`, `subject-list` or `population`.")))
-
-  (testing "report type of subject-list is not possible with a GET request"
-    (let [{:keys [status body]}
-          ((handler-with
-             [[[:put {:resourceType "Measure" :id "0"
-                      :url "url-181501"
-                      :library ["library-url-094115"]}]
-               [:put {:resourceType "Library" :id "0"
-                      :url "library-url-094115"
-                      :content
-                      [{:contentType "text/cql"
-                        :data ""}]}]]])
-           {:request-method :get
-            :params
-            {"measure" "url-181501"
-             "reportType" "subject-list"}})]
-
-      (is (= 422 status))
-
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (given (-> body :issue first)
-        :severity := "error"
-        :code := "not-supported"
-        :diagnostics := "The reportType `subject-list` is not supported for GET requests. Please use POST.")))
 
 
   (testing "Success"

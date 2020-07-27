@@ -37,50 +37,31 @@
 
 (defn- handle
   [clock node db executor
-   {::reitit/keys [router] :keys [request-method headers]
-    {:strs [subject periodStart periodEnd reportType]} :params}
-   measure]
-  (let [report-type (or reportType (if subject "subject" "population"))]
-    (cond
-      (not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type report-type))
-      (ac/completed-future
-        (handler-util/error-response
-          {::anom/category ::anom/incorrect
-           ::anom/message (invalid-report-type-msg report-type)
-           :fhir/issue "value"}))
+   {::reitit/keys [router] :keys [request-method headers]}
+   params measure]
+  (-> (ac/supply-async
+        #(evaluate-measure (now clock) db router measure params)
+        executor)
+      (ac/then-compose
+        (fn process-result [result]
+          (if (::anom/category result)
+            (ac/completed-future (handler-util/error-response result))
+            (cond
+              (= :get request-method)
+              (ac/completed-future (ring/response (:resource result)))
 
-      (and (= :get request-method) (= "subject-list" report-type))
-      (ac/completed-future
-        (handler-util/error-response
-          {::anom/category ::anom/unsupported
-           ::anom/message no-subject-list-on-get-msg}))
-
-      :else
-      (let [period [periodStart periodEnd]
-            params {:period period :report-type report-type}]
-        (-> (ac/supply-async
-              #(evaluate-measure (now clock) db router measure params)
-              executor)
-            (ac/then-compose
-              (fn process-result [result]
-                (if (::anom/category result)
-                  (ac/completed-future (handler-util/error-response result))
-                  (cond
-                    (= :get request-method)
-                    (ac/completed-future (ring/response (:resource result)))
-
-                    (= :post request-method)
-                    (let [id (str (random-uuid))
-                          return-preference (handler-util/preference headers "return")]
-                      (-> (d/transact node (tx-ops result id))
-                          ;; it's important to switch to the transaction
-                          ;; executor here, because otherwise the central
-                          ;; indexing thread would execute response building.
-                          (ac/then-apply-async
-                            #(response/build-created-response
-                               router return-preference % "MeasureReport" id)
-                            executor)
-                          (ac/exceptionally handler-util/error-response))))))))))))
+              (= :post request-method)
+              (let [id (str (random-uuid))
+                    return-preference (handler-util/preference headers "return")]
+                (-> (d/transact node (tx-ops result id))
+                    ;; it's important to switch to the transaction
+                    ;; executor here, because otherwise the central
+                    ;; indexing thread would execute response building.
+                    (ac/then-apply-async
+                      #(response/build-created-response
+                         router return-preference % "MeasureReport" id)
+                      executor)
+                    (ac/exceptionally handler-util/error-response)))))))))
 
 
 (defn- find-measure
@@ -93,24 +74,47 @@
     (coll/first (d/type-query db "Measure" [["url" measure]]))))
 
 
+(defn- conform-params
+  [{:keys [request-method]
+    {:strs [subject periodStart periodEnd reportType]} :params}]
+  (let [report-type (or reportType (if subject "subject" "population"))]
+    (cond
+      (not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type report-type))
+      {::anom/category ::anom/incorrect
+       ::anom/message (invalid-report-type-msg report-type)
+       :fhir/issue "value"}
+
+      (and (= :get request-method) (= "subject-list" report-type))
+      {::anom/category ::anom/unsupported
+       ::anom/message no-subject-list-on-get-msg}
+
+      :else
+      (let [period [periodStart periodEnd]]
+        {:period period :report-type report-type}))))
+
+
 (defn handler [clock node executor]
   (fn [request]
-    (let [db (d/db node)]
-      (if-let [measure (find-measure db request)]
-        (if (d/deleted? measure)
-          (-> (handler-util/operation-outcome
-                {:fhir/issue "deleted"})
-              (ring/response)
-              (ring/status 410)
-              (ac/completed-future))
-          (handle
-            clock
-            node
-            db
-            executor
-            request
-            measure))
-        (ac/completed-future
-          (handler-util/error-response
-            {::anom/category ::anom/not-found
-             :fhir/issue "not-found"}))))))
+    (let [result (conform-params request)]
+      (if (::anom/category result)
+        (ac/completed-future (handler-util/error-response result))
+        (let [db (d/db node)]
+          (if-let [measure (find-measure db request)]
+            (if (d/deleted? measure)
+              (-> (handler-util/operation-outcome
+                    {:fhir/issue "deleted"})
+                  (ring/response)
+                  (ring/status 410)
+                  (ac/completed-future))
+              (handle
+                clock
+                node
+                db
+                executor
+                request
+                result
+                measure))
+            (ac/completed-future
+              (handler-util/error-response
+                {::anom/category ::anom/not-found
+                 :fhir/issue "not-found"}))))))))
