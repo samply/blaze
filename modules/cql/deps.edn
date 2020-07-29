@@ -11,8 +11,8 @@
     com.google.code.javaparser/javaparser
     org.eclipse.persistence/eclipselink
     info.cqframework/qdm
-    junit
-    xpp3
+    junit/junit
+    xpp3/xpp3
     xpp3/xpp3_xpath
     org.antlr/antlr4
     org.slf4j/jcl-over-slf4j
@@ -58,11 +58,4 @@
     {:mvn/version "1.0.0"}}
 
    :main-opts
-   ["-m" "kaocha.runner"]}
-
-  :clj-kondo
-  {:extra-deps
-   {clj-kondo
-    {:mvn/version "2020.06.21"}}
-
-   :main-opts ["-m" "clj-kondo.main"]}}}
+   ["-m" "kaocha.runner"]}}}

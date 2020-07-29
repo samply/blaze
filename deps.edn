@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
 
  :deps
- {aleph
+ {aleph/aleph
   {:mvn/version "0.4.7-alpha1"
    :exclusions
    [io.netty/netty-codec
@@ -79,7 +79,7 @@
   {:extra-paths ["dev" "test"]
 
    :extra-deps
-   {criterium
+   {criterium/criterium
     {:mvn/version "0.4.5"}
 
     lambdaisland/kaocha
@@ -98,11 +98,4 @@
     {:mvn/version "0.3.1"}}
 
    :main-opts
-   ["-m" "kaocha.runner"]}
-
-  :clj-kondo
-  {:extra-deps
-   {clj-kondo
-    {:mvn/version "2020.06.21"}}
-
-   :main-opts ["-m" "clj-kondo.main"]}}}
+   ["-m" "kaocha.runner"]}}}

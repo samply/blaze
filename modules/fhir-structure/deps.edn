@@ -1,7 +1,7 @@
 {:paths ["src" "resources"]
 
  :deps
- {cheshire
+ {cheshire/cheshire
   {:mvn/version "5.9.0"}
 
   com.taoensso/timbre
@@ -29,11 +29,4 @@
     {:mvn/version "1.0.0"}}
 
    :main-opts
-   ["-m" "kaocha.runner"]}
-
-  :clj-kondo
-  {:extra-deps
-   {clj-kondo
-    {:mvn/version "2020.06.21"}}
-
-   :main-opts ["-m" "clj-kondo.main"]}}}
+   ["-m" "kaocha.runner"]}}}

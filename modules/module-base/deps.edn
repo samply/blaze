@@ -5,17 +5,9 @@
   com.taoensso/timbre
   {:mvn/version "4.10.0"}
 
-  integrant
+  integrant/integrant
   {:git/url "https://github.com/alexanderkiel/integrant.git"
    :sha "c673b85130e553feec6d4c5d2d1ec773a49c929c"}
 
-  prom-metrics
-  {:mvn/version "0.5-alpha.3"}}
-
- :aliases
- {:clj-kondo
-  {:extra-deps
-   {clj-kondo
-    {:mvn/version "2020.06.21"}}
-
-   :main-opts ["-m" "clj-kondo.main"]}}}
+  prom-metrics/prom-metrics
+  {:mvn/version "0.5-alpha.3"}}}

@@ -1,5 +1,5 @@
 {:deps
- {manifold
+ {manifold/manifold
   {:mvn/version "0.1.8"}}
 
  :aliases
@@ -13,11 +13,4 @@
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}
 
-   :main-opts ["-m" "kaocha.runner"]}
-
-  :clj-kondo
-  {:extra-deps
-   {clj-kondo
-    {:mvn/version "2020.06.21"}}
-
-   :main-opts ["-m" "clj-kondo.main"]}}}
+   :main-opts ["-m" "kaocha.runner"]}}}

@@ -34,3 +34,32 @@ jobs:
 
     - name: Test
       run: make test
+
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v1
+      with:
+        repository: samply/blaze/main
+        registry: docker.pkg.github.com
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        tag_with_ref: true
+
+  load-test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Build Run Blaze Action
+      run: cd .github/actions/run-blaze && npm i && npm run build
+
+    - name: Run Blaze
+      uses: ./.github/actions/run-blaze
+      with:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Run
+      run: curl -s http://localhost:8080/fhir/metadata
