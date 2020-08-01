@@ -19,13 +19,6 @@
    :main-opts
    ["-m" "kaocha.runner"]}
 
-  :clj-kondo
-  {:extra-deps
-   {clj-kondo
-    {:mvn/version "2020.06.21"}}
-
-   :main-opts ["-m" "clj-kondo.main"]}
-
   :namespace-graph
   {:extra-deps
    {clj-kondo/tools

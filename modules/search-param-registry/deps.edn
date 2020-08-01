@@ -11,10 +11,7 @@
   {:local/root "../fhir-structure"}
 
   blaze/module-base
-  {:local/root "../module-base"}
-
-  cheshire
-  {:mvn/version "5.9.0"}}
+  {:local/root "../module-base"}}
 
  :aliases
  {:test
@@ -28,13 +25,6 @@
     {:mvn/version "0.1"}}
 
    :main-opts ["-m" "kaocha.runner"]}
-
-  :clj-kondo
-  {:extra-deps
-   {clj-kondo
-    {:mvn/version "2020.06.21"}}
-
-   :main-opts ["-m" "clj-kondo.main"]}
 
   :namespace-graph
   {:extra-deps

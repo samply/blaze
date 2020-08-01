@@ -9,12 +9,4 @@
   {:local/root "../terminology-service"}
 
   org.clojure/core.cache
-  {:mvn/version "0.8.2"}}
-
- :aliases
- {:clj-kondo
-  {:extra-deps
-   {clj-kondo
-    {:mvn/version "2020.06.21"}}
-
-   :main-opts ["-m" "clj-kondo.main"]}}}
+  {:mvn/version "0.8.2"}}}

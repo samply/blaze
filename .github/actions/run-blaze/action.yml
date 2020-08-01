@@ -1,0 +1,12 @@
+name: run-blaze
+description: 'Runs Blaze as Docker container'
+inputs:
+  username:
+    description: 'Docker username'
+    required: true
+  password:
+    description: 'Docker password'
+    required: true
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
