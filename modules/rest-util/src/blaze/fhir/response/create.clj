@@ -1,5 +1,6 @@
 (ns blaze.fhir.response.create
   (:require
+    [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [ring.util.response :as ring]
@@ -30,18 +31,21 @@
   The `router` is used to generate the absolute URL of the Location header and
   `return-preference` is used to decide which type of body is returned."
   [router return-preference db type id]
-  (let [resource (d/resource db type id)
-        {:blaze.db/keys [tx]} (meta resource)
-        vid (-> resource :meta :versionId)]
+  (let [handle (d/resource-handle db type id)
+        tx (d/tx db (d/last-updated-t handle))
+        vid (str (:blaze.db/t tx))]
     (log/trace (build-created-response-msg type id vid))
-    (-> (ring/created
-          (fhir-util/versioned-instance-url router type id vid)
-          (cond
-            (= "minimal" return-preference)
-            nil
-            (= "OperationOutcome" return-preference)
-            {:resourceType "OperationOutcome"}
-            :else
-            resource))
-        (ring/header "Last-Modified" (last-modified tx))
-        (ring/header "ETag" (str "W/\"" vid "\"")))))
+    (-> (cond
+          (= "minimal" return-preference)
+          (ac/completed-future nil)
+          (= "OperationOutcome" return-preference)
+          (ac/completed-future {:resourceType "OperationOutcome"})
+          :else
+          (d/pull db handle))
+        (ac/then-apply
+          (fn [body]
+            (-> (ring/created
+                  (fhir-util/versioned-instance-url router type id vid)
+                  body)
+                (ring/header "Last-Modified" (last-modified tx))
+                (ring/header "ETag" (str "W/\"" vid "\""))))))))

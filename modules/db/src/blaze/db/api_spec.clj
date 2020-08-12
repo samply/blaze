@@ -32,27 +32,43 @@
 
 
 (s/fdef d/tx
-  :args (s/cat :db :blaze.db/db :t :blaze.db/t)
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :t :blaze.db/t)
   :ret (s/nilable :blaze.db/tx))
 
 
-(s/fdef d/resource
+(s/fdef d/resource-handle
   :args (s/cat :db :blaze.db/db :type :blaze.resource/resourceType :id :blaze.resource/id)
-  :ret (s/nilable :blaze/resource))
+  :ret (s/nilable :blaze.db/resource-handle))
+
+
+(s/fdef d/resource-handle?
+  :args (s/cat :x any?)
+  :ret boolean?)
 
 
 (s/fdef d/deleted?
-  :args (s/cat :resource :blaze/resource)
+  :args (s/cat :resource :blaze.db/resource-handle)
   :ret boolean?)
+
+
+(s/fdef d/last-updated-t
+  :args (s/cat :resource :blaze.db/resource-handle)
+  :ret :blaze.db/t)
+
+
+(s/fdef d/num-changes
+  :args (s/cat :resource-handle :blaze.db/resource-handle)
+  :ret pos-int?)
 
 
 
 ;; ---- Type-Level Functions --------------------------------------------------
 
-(s/fdef d/list-resources
+(s/fdef d/list-resource-handles
   :args (s/cat :db :blaze.db/db :type :blaze.resource/resourceType
                :start-id (s/? (s/nilable :blaze.resource/id)))
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef d/type-total
@@ -63,7 +79,7 @@
 (s/fdef d/type-query
   :args (s/cat :db :blaze.db/db :type :blaze.resource/resourceType
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
-  :ret (s/or :result (s/coll-of :blaze/resource) :anomaly ::anom/anomaly))
+  :ret (s/or :result (s/coll-of :blaze.db/resource-handle) :anomaly ::anom/anomaly))
 
 
 (s/fdef d/compile-type-query
@@ -82,7 +98,7 @@
           :more (s/? (s/cat
                        :start-type (s/nilable :blaze.resource/resourceType)
                        :start-id (s/? (s/nilable :blaze.resource/id)))))
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef d/system-total
@@ -93,7 +109,7 @@
 (s/fdef d/system-query
   :args (s/cat :db :blaze.db/db
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
-  :ret (s/or :result (s/coll-of :blaze/resource) :anomaly ::anom/anomaly))
+  :ret (s/or :result (s/coll-of :blaze.db/resource-handle) :anomaly ::anom/anomaly))
 
 
 (s/fdef d/compile-system-query
@@ -105,12 +121,12 @@
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
-(s/fdef d/list-compartment-resources
+(s/fdef d/list-compartment-resource-handles
   :args (s/cat :db :blaze.db/db
                :code :blaze.db.compartment/code :id :blaze.resource/id
                :type :blaze.resource/resourceType
                :start-id (s/? :blaze.resource/id))
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/def :blaze.db.compartment/code
@@ -122,7 +138,7 @@
                :code :blaze.db.compartment/code :id :blaze.resource/id
                :type :blaze.resource/resourceType
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
-  :ret (s/or :result (s/coll-of :blaze/resource) :anomaly ::anom/anomaly))
+  :ret (s/or :result (s/coll-of :blaze.db/resource-handle) :anomaly ::anom/anomaly))
 
 
 (s/fdef d/compile-compartment-query
@@ -138,7 +154,7 @@
 
 (s/fdef d/execute-query
   :args (s/cat :db :blaze.db/db :query :blaze.db/query :args (s/* some?))
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 
@@ -150,7 +166,7 @@
                :id :blaze.resource/id
                :start-t (s/? (s/nilable :blaze.db/t))
                :since (s/? (s/nilable inst?)))
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef d/total-num-of-instance-changes
@@ -170,7 +186,7 @@
                :start-t (s/? (s/nilable :blaze.db/t))
                :start-id (s/? (s/nilable :blaze.resource/id))
                :since (s/? (s/nilable inst?)))
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef d/total-num-of-type-changes
@@ -196,7 +212,7 @@
                         (s/? (s/cat
                                :start-id (s/nilable :blaze.resource/id)
                                :since (s/? (s/nilable inst?)))))))))
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef d/total-num-of-system-changes
@@ -210,3 +226,24 @@
 (s/fdef d/new-batch-db
   :args (s/cat :db :blaze.db/db)
   :ret :blaze.db/db)
+
+
+
+;; ---- Pull ------------------------------------------------------------------
+
+(s/fdef d/pull
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :resource-handle :blaze.db/resource-handle)
+  :ret ac/completable-future?)
+
+
+(s/fdef d/pull-content
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :resource-handle :blaze.db/resource-handle)
+  :ret ac/completable-future?)
+
+
+(s/fdef d/pull-many
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :resource-handles (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret ac/completable-future?)

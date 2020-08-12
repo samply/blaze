@@ -7,6 +7,7 @@
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
     [blaze.elm.expression :as expr]
+    [blaze.elm.expression-spec]
     [blaze.elm.normalizer :as normalizer]
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.type-infer-spec]

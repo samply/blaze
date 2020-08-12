@@ -67,9 +67,9 @@
   (def node (:blaze.db/node system))
   (def db (d/db node))
 
-  (into [] (map :id) (d/list-resources db "Patient"))
+  (into [] (map :id) (d/list-resource-handles db "Patient"))
 
-  (.hash (d/resource db "Patient" "01f5d727-e75c-4662-aecd-df2ffccd2e27"))
+  (.hash (d/resource-handle db "Patient" "01f5d727-e75c-4662-aecd-df2ffccd2e27"))
 
   @(blaze.db.node/load-tx-result node (:kv-store node) 21228)
 

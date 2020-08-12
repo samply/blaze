@@ -7,10 +7,11 @@
   time.
 
 
-  Instance-level, Type-level, system-level, compatment"
+  Instance-level, Type-level, system-level, compartment-level."
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.async-comp :as ac]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p])
   (:import
     [java.io Closeable])
@@ -73,42 +74,62 @@
 
 (defn tx
   "Returns the transaction of `t`."
-  [db t]
-  (p/-tx db t))
+  [node-or-db t]
+  (p/-tx node-or-db t))
 
 
 
 ;; ---- Instance-Level Functions ----------------------------------------------
 
-(defn resource
-  "Returns the resource with the given `type` and `id` or a resource stub with
-  :blaze.db/op set to :delete in metadata if it is known to be deleted or nil
-  if it never existed.
+(defn resource-handle
+  "Returns the resource handle with the given `type` and `id` or nil
+  if its resource never existed.
 
-  Deleted resources can also be tested using `deleted?`."
+  Handles of deleted resources can also be tested using `deleted?`.
+
+  Please use `pull` to obtain the full resource."
   [db type id]
-  (p/-resource db type id))
+  (p/-resource-handle db type id))
+
+
+(defn resource-handle? [x]
+  (rh/resource-handle? x))
 
 
 (defn deleted?
-  "Checks whether `resource` is deleted.
+  "Checks whether the resource of the handle is deleted.
 
-  Please note that the `resource` function can return deleted resources."
-  [resource]
-  (identical? :delete (:blaze.db/op (meta resource))))
+  Please note that the `resource-handle` function can return handles of deleted
+  resources."
+  [resource-handle]
+  (rh/deleted? resource-handle))
+
+
+(defn last-updated-t
+  "Returns the t of the last update of the resource of the handle."
+  [resource-handle]
+  (rh/t resource-handle))
+
+
+(defn num-changes
+  "Returns the number of changes of the resource of the handle."
+  [resource-handle]
+  (rh/num-changes resource-handle))
 
 
 
 ;; ---- Type-Level Functions --------------------------------------------------
 
-(defn list-resources
-  "Returns a reducible collection of all resources of `type` in `db`.
+(defn list-resource-handles
+  "Returns a reducible collection of all resource handles of `type` in `db`.
 
-  An optional `start-id` (inclusive) can be supplied."
+  An optional `start-id` (inclusive) can be supplied.
+
+  Please use `pull-many` to obtain the full resources."
   ([db type]
-   (p/-list-resources db type nil))
+   (p/-list-resource-handles db type nil))
   ([db type start-id]
-   (p/-list-resources db type start-id)))
+   (p/-list-resource-handles db type start-id)))
 
 
 (defn type-total
@@ -121,13 +142,15 @@
 
 
 (defn type-query
-  "Returns a reducible collection of all resources of `type` in `db` matching
-  `clauses`.
+  "Returns a reducible collection of all resource handles of `type` in `db`
+  matching `clauses`.
 
   A clause is a vector were the first element is a search param code and the
   following elements are values which are combined with logical or.
 
-  Returns an anomaly if search parameters in clauses can't be resolved."
+  Returns an anomaly if search parameters in clauses can't be resolved.
+
+  Please use `pull-many` to obtain the full resources."
   [db type clauses]
   (when-ok [query (p/-compile-type-query db type clauses)]
     (p/-execute-query db query)))
@@ -146,10 +169,12 @@
 ;; ---- System-Level Functions ------------------------------------------------
 
 (defn system-list
-  "Returns a reducible collection of all resources in `db`.
+  "Returns a reducible collection of all resource handles in `db`.
 
   An optional `start-type` (inclusive) and `start-id` (inclusive) can be
-  supplied."
+  supplied.
+
+  Please use `pull-many` to obtain the full resources."
   ([db]
    (p/-system-list db nil nil))
   ([db start-type]
@@ -165,12 +190,14 @@
 
 
 (defn system-query
-  "Returns a reducible collection of all resources in `db` matching `clauses`.
+  "Returns a reducible collection of all resource handles in `db` matching `clauses`.
 
   A clause is a vector were the first element is a search param code and the
   following elements are values which are combined with logical or.
 
-  Returns an anomaly if search parameters in clauses can't be resolved."
+  Returns an anomaly if search parameters in clauses can't be resolved.
+
+  Please use `pull-many` to obtain the full resources."
   [db clauses]
   (when-ok [query (p/-compile-system-query db clauses)]
     (p/-execute-query db query)))
@@ -188,9 +215,9 @@
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
-(defn list-compartment-resources
-  "Returns a reducible collection of all resources of `type` in `db` linked to
-  the compartment with `code` and `id`.
+(defn list-compartment-resource-handles
+  "Returns a reducible collection of all resource handles of `type` in `db`
+  linked to the compartment with `code` and `id`.
 
   The code is the code of the compartment not necessary the same as a resource
   type. One common compartment is `Patient`.
@@ -199,16 +226,18 @@
 
   Example:
 
-    (list-compartment-resources db \"Patient\" \"0\" \"Observation\")"
+    (list-compartment-resource-handles db \"Patient\" \"0\" \"Observation\")
+
+  Please use `pull-many` to obtain the full resources."
   ([db code id type]
-   (p/-list-compartment-resources db code id type nil))
+   (p/-list-compartment-resource-handles db code id type nil))
   ([db code id type start-id]
-   (p/-list-compartment-resources db code id type start-id)))
+   (p/-list-compartment-resource-handles db code id type start-id)))
 
 
 (defn compartment-query
-  "Returns a reducible collection of all resources of `type` in `db` matching
-  `clauses` linked to the compartment with `code` and `id`.
+  "Returns a reducible collection of all resource handles of `type` in `db`
+  matching `clauses` linked to the compartment with `code` and `id`.
 
   The code is the code of the compartment not necessary the same as a resource
   type. One common compartment is `Patient`.
@@ -216,7 +245,9 @@
   A clause is a vector were the first element is a search param code and the
   following elements are values with are combined with logical or.
 
-  Returns an anomaly if search parameters in clauses can't be resolved."
+  Returns an anomaly if search parameters in clauses can't be resolved.
+
+  Please use `pull-many` to obtain the full resources."
   [db code id type clauses]
   (when-ok [query (p/-compile-compartment-query db code type clauses)]
     (p/-execute-query db query id)))
@@ -238,11 +269,13 @@
 (defn execute-query
   "Executes a pre-compiled `query` with `args`.
 
-  Returns a reducible collection of all matching resources.
+  Returns a reducible collection of all matching resource handles.
 
   See:
    * compile-type-query
-   * compile-compartment-query"
+   * compile-compartment-query
+
+  Please use `pull-many` to obtain the full resources."
   {:arglists '([db query & args])}
   ([db query]
    (p/-execute-query db query))
@@ -259,7 +292,10 @@
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
   Additionally a `since` instant can be given to define a point in the past
-  where the history should start into the present."
+  where the history should start into the present.
+
+  History entries are resource handles. Please use `pull-many` to obtain the
+  full resources."
   ([db type id]
    (p/-instance-history db type id nil nil))
   ([db type id start-t]
@@ -289,7 +325,10 @@
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
   Additionally a `since` instant can be given to define a point in the past
-  where the history should start into the present."
+  where the history should start into the present.
+
+  History entries are resource handles. Please use `pull-many` to obtain the
+  full resources."
   ([db type]
    (p/-type-history db type nil nil nil))
   ([db type start-t]
@@ -321,7 +360,10 @@
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
   Additionally a `since` instant can be given to define a point in the past
-  where the history should start into the present."
+  where the history should start into the present.
+
+  History entries are resource handles. Please use `pull-many` to obtain the
+  full resources."
   ([db]
    (p/-system-history db nil nil nil nil))
   ([db start-t]
@@ -357,3 +399,35 @@
   ^Closeable
   [db]
   (p/-new-batch-db db))
+
+
+
+;; ---- Pull ------------------------------------------------------------------
+
+(defn pull
+  "Returns a CompletableFuture that will complete with the resource of
+  `resource-handle`."
+  [node-or-db resource-handle]
+  (p/-pull node-or-db resource-handle))
+
+
+(defn pull-content
+  "Returns a CompletableFuture that will complete with the resource content of
+  `resource-handle`.
+
+  Compared to `pull`, the resource content doesn't contain :versionId and
+  :lastUpdated in :meta and also not :blaze.db/t, :blaze.db/num-changes,
+  :blaze.db/op and :blaze.db/tx in metadata."
+  [node-or-db resource-handle]
+  (p/-pull-content node-or-db resource-handle))
+
+
+(defn pull-many
+  "Returns a CompletableFuture that will complete with a vector of all resources
+  of all `resource-handles`.
+
+  Returns a failed CompletableFuture if one pull fails."
+  [node-or-db resource-handles]
+  (let [futures (mapv #(pull node-or-db %) resource-handles)]
+    (-> (ac/all-of futures)
+        (ac/then-apply (fn [_] (mapv deref futures))))))

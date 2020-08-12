@@ -8,10 +8,7 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local :refer [new-local-tx-log]]
-    [blaze.executors :as ex]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st])
-  (:refer-clojure :exclude [sync])
+    [blaze.executors :as ex])
   (:import
     [java.time Clock Instant ZoneId Duration]))
 
@@ -66,15 +63,3 @@
 (defn mem-node-with [txs]
   (doto (mem-node)
     (submit-txs txs)))
-
-
-(defn resource [db type id res-spec]
-  (st/instrument
-    [`d/resource]
-    {:spec
-     {`d/resource
-      (s/fspec
-        :args (s/cat :db #{db} :type #{type} :id #{id})
-        :ret res-spec)}
-     :stub
-     #{`d/resource}}))

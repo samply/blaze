@@ -28,15 +28,15 @@
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
-  (-resource [_ type id]
-    (resource-as-of/resource node raoi (codec/tid type) (codec/id-bytes id) t))
+  (-resource-handle [_ type id]
+    (resource-as-of/resource-handle raoi (codec/tid type) (codec/id-bytes id) t))
 
 
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
-  (-list-resources [_ type start-id]
-    (resource-as-of/type-list node raoi (codec/tid type)
+  (-list-resource-handles [_ type start-id]
+    (resource-as-of/type-list raoi (codec/tid type)
                               (some-> start-id codec/id-bytes) t))
 
   (-type-total [_ type]
@@ -48,7 +48,7 @@
   ;; ---- System-Level Functions ----------------------------------------------
 
   (-system-list [_ start-type start-id]
-    (resource-as-of/system-list node raoi (some-> start-type codec/tid)
+    (resource-as-of/system-list raoi (some-> start-type codec/tid)
                                 (some-> start-id codec/id-bytes) t))
 
   (-system-total [_]
@@ -59,9 +59,9 @@
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
-  (-list-compartment-resources [_ code id type start-id]
+  (-list-compartment-resource-handles [_ code id type start-id]
     (let [compartment {:c-hash (codec/c-hash code) :res-id (codec/id-bytes id)}]
-      (index/compartment-list node cri raoi compartment (codec/tid type)
+      (index/compartment-list cri raoi compartment (codec/tid type)
                               (some-> start-id codec/id-bytes) t)))
 
 
@@ -81,8 +81,7 @@
   (-instance-history [_ type id start-t since]
     (let [start-t (if (some-> start-t (<= t)) start-t t)
           end-t (or (some->> since (index/t-by-instant snapshot)) 0)]
-      (resource-as-of/instance-history node raoi (codec/tid type)
-                                       id start-t end-t)))
+      (resource-as-of/instance-history raoi (codec/tid type) id start-t end-t)))
 
   (-total-num-of-instance-changes [_ type id since]
     (let [end-t (or (some->> since (index/t-by-instant snapshot)) 0)]
@@ -101,8 +100,7 @@
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [taoi (kv/new-iterator snapshot :type-as-of-index)]
-            (.reduce (type-as-of/type-history node taoi tid start-t start-id
-                                              end-t)
+            (.reduce (type-as-of/type-history taoi tid start-t start-id end-t)
                      rf init))))))
 
   (-total-num-of-type-changes [_ type since]
@@ -125,7 +123,7 @@
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [saoi (kv/new-iterator snapshot :system-as-of-index)]
-            (.reduce (system-as-of/system-history node saoi start-t start-tid
+            (.reduce (system-as-of/system-history saoi start-t start-tid
                                                   start-id end-t)
                      rf init))))))
 
@@ -135,6 +133,14 @@
                   iter (system-stats/new-iterator snapshot)]
         (- (:num-changes (system-stats/get! iter t) 0)
            (:num-changes (some->> end-t (system-stats/get! iter)) 0)))))
+
+
+
+  ;; ---- Transaction ---------------------------------------------------------
+
+  p/Tx
+  (-tx [_ t]
+    (p/-tx node t))
 
 
 
@@ -149,6 +155,17 @@
 
   (-compile-compartment-query [_ code type clauses]
     (p/-compile-compartment-query node code type clauses))
+
+
+
+  ;; ---- Pull ----------------------------------------------------------------
+
+  p/Pull
+  (-pull [_ resource-handle]
+    (p/-pull node resource-handle))
+
+  (-pull-content [_ resource-handle]
+    (p/-pull-content node resource-handle))
 
   Closeable
   (close [_]
@@ -167,7 +184,7 @@
 (defrecord TypeQuery [tid clauses]
   p/Query
   (-execute [_ node snapshot raoi svri rsvi _ t]
-    (index/type-query node snapshot svri rsvi raoi tid clauses t)))
+    (index/type-query snapshot svri rsvi raoi tid clauses t)))
 
 
 (defrecord SystemQuery [clauses]
@@ -180,8 +197,7 @@
   p/Query
   (-execute [_ node snapshot raoi _ _ cspvi t arg1]
     (let [compartment {:c-hash c-hash :res-id (codec/id-bytes arg1)}]
-      (index/compartment-query node snapshot cspvi raoi compartment
-                               tid clauses t))))
+      (index/compartment-query snapshot cspvi raoi compartment tid clauses t))))
 
 
 (defn new-batch-db

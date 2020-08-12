@@ -25,11 +25,11 @@
    :search {:mode "match"}})
 
 
-(defn- resources [db code id type {:keys [clauses]}]
+(defn- resource-handles [db code id type {:keys [clauses]}]
   (if (empty? clauses)
-    (into [] (d/list-compartment-resources db code id type))
-    (when-ok [resources (d/compartment-query db code id type clauses)]
-      (into [] resources))))
+    (into [] (d/list-compartment-resource-handles db code id type))
+    (when-ok [handles (d/compartment-query db code id type clauses)]
+      (into [] handles))))
 
 
 (defn- entries [router {:keys [page-offset page-size]} resources]
@@ -59,23 +59,27 @@
 (defn- search*
   [router match db code id type {:keys [summary? page-size] :as params}]
   (let [t (or (d/as-of-t db) (d/basis-t db))]
-    (when-ok [resources (resources db code id type params)]
+    (when-ok [handles (resource-handles db code id type params)]
       (if summary?
-        {:resourceType "Bundle"
-         :type "searchset"
-         :total (count resources)}
-        (let [entries (entries router params resources)]
-          (cond->
-            {:resourceType "Bundle"
-             :type "searchset"
-             :total (count resources)
-             :entry (take page-size entries)}
+        (ac/completed-future
+          {:resourceType "Bundle"
+           :type "searchset"
+           :total (count handles)})
+        (-> (d/pull-many db handles)
+            (ac/then-apply
+              (fn [resources]
+                (let [entries (entries router params resources)]
+                  (cond->
+                    {:resourceType "Bundle"
+                     :type "searchset"
+                     :total (count handles)
+                     :entry (take page-size entries)}
 
-            (seq entries)
-            (update :link (fnil conj []) (self-link match params t))
+                    (seq entries)
+                    (update :link (fnil conj []) (self-link match params t))
 
-            (< page-size (count entries))
-            (update :link (fnil conj []) (next-link match params t entries))))))))
+                    (< page-size (count entries))
+                    (update :link (fnil conj []) (next-link match params t entries)))))))))))
 
 
 (defn- search [router match db code id type params]
@@ -86,8 +90,8 @@
 (defn- handle [router match db code id type params]
   (let [body (search router match db code id type params)]
     (if (::anom/category body)
-      (util/error-response body)
-      (ring/response body))))
+      (ac/completed-future (util/error-response body))
+      (ac/then-apply body ring/response))))
 
 
 (defn- handler-intern [node]
@@ -112,7 +116,7 @@
 
       :else
       (-> (util/db node (fhir-util/t params))
-          (ac/then-apply #(handle router match % code id type params))))))
+          (ac/then-compose #(handle router match % code id type params))))))
 
 
 (defn handler [node]

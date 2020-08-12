@@ -125,7 +125,7 @@
               {:db (d/db node)}
               {:resourceType "Patient" :id "0"}
               nil)
-            [0 :resourceType] := "Observation"
+            [0 type name] := "Observation"
             [0 :id] := "1"))))
 
     (testing "with one code"
@@ -141,7 +141,7 @@
               {:db (d/db node)}
               {:resourceType "Patient" :id "0"}
               nil)
-            [0 :resourceType] := "Observation"
+            [0 type name] := "Observation"
             [0 :id] := "1"))))
 
     (testing "with two codes"
@@ -158,7 +158,7 @@
               {:db (d/db node)}
               {:resourceType "Patient" :id "0"}
               nil)
-            [0 :resourceType] := "Observation"
+            [0 type name] := "Observation"
             [0 :id] := "1"))))))
 
 

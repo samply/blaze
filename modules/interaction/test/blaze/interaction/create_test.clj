@@ -136,9 +136,11 @@
             ;; 1 is the T of the transaction of the resource creation
             (is (= "W/\"1\"" (get headers "ETag"))))
 
-          (is (= "Patient" (:resourceType body)))
-
-          (is (= "22de9f47-626a-4fc3-bb69-7bc68401acf4" (:id body))))))
+          (given body
+            :resourceType := "Patient"
+            :id := "22de9f47-626a-4fc3-bb69-7bc68401acf4"
+            [:meta :versionId] := "1"
+            [:meta :lastUpdated] := "1970-01-01T00:00:00Z"))))
 
     (testing "with return=minimal Prefer header"
       (with-redefs
@@ -188,7 +190,11 @@
             ;; 1 is the T of the transaction of the resource creation
             (is (= "W/\"1\"" (get headers "ETag"))))
 
-          (is (= "Patient" (:resourceType body))))))
+          (given body
+            :resourceType := "Patient"
+            :id := "d387d53f-358f-48d2-979e-96cb0052b7e2"
+            [:meta :versionId] := "1"
+            [:meta :lastUpdated] := "1970-01-01T00:00:00Z"))))
 
     (testing "with return=OperationOutcome Prefer header"
       (with-redefs

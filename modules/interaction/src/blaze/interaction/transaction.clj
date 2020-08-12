@@ -202,46 +202,48 @@
   [{:keys [router return-preference]}
    db
    {{type :resourceType id :id} :resource}]
-  (let [resource (d/resource db type id)
-        {:blaze.db/keys [tx]} (meta resource)
-        vid (str (:blaze.db/t tx))]
-    (cond->
-      {:response
-       {:status "201"
-        :etag (str "W/\"" vid "\"")
-        :lastModified (last-modified tx)
-        :location
-        (fhir-util/versioned-instance-url router type id vid)}}
-
-      (= "representation" return-preference)
-      (assoc :resource resource))))
+  (let [handle (d/resource-handle db type id)
+        tx (d/tx db (d/last-updated-t handle))
+        vid (str (:blaze.db/t tx))
+        entry {:response
+               {:status "201"
+                :etag (str "W/\"" vid "\"")
+                :lastModified (last-modified tx)
+                :location
+                (fhir-util/versioned-instance-url router type id vid)}}]
+    (if (= "representation" return-preference)
+      (-> (d/pull db handle)
+          (ac/then-apply #(assoc entry :resource %)))
+      (ac/completed-future entry))))
 
 
 (defmethod build-response-entry "PUT"
   [{:keys [router return-preference]} db {{type :resourceType id :id} :resource}]
-  (let [resource (d/resource db type id)
-        {:blaze.db/keys [tx num-changes]} (meta resource)
-        vid (str (:blaze.db/t tx))]
-    (cond->
-      {:response
-       (cond->
-         {:status (if (= 1 num-changes) "201" "200")
-          :etag (str "W/\"" vid "\"")
-          :lastModified (last-modified tx)}
-         (= 1 num-changes)
-         (assoc
-           :location
-           (fhir-util/versioned-instance-url router type id vid)))}
-
-      (= "representation" return-preference)
-      (assoc :resource resource))))
+  (let [handle (d/resource-handle db type id)
+        tx (d/tx db (d/last-updated-t handle))
+        num-changes (d/num-changes handle)
+        vid (str (:blaze.db/t tx))
+        entry {:response
+               (cond->
+                 {:status (if (= 1 num-changes) "201" "200")
+                  :etag (str "W/\"" vid "\"")
+                  :lastModified (last-modified tx)}
+                 (= 1 num-changes)
+                 (assoc
+                   :location
+                   (fhir-util/versioned-instance-url router type id vid)))}]
+    (if (= "representation" return-preference)
+      (-> (d/pull db handle)
+          (ac/then-apply #(assoc entry :resource %)))
+      (ac/completed-future entry))))
 
 
 (defmethod build-response-entry "DELETE"
   [_ db _]
-  {:response
-   {:status "204"
-    :lastModified (last-modified (d/tx db (d/basis-t db)))}})
+  (ac/completed-future
+    {:response
+     {:status "204"
+      :lastModified (last-modified (d/tx db (d/basis-t db)))}}))
 
 
 (defn- strip-leading-slash [s]
@@ -329,10 +331,14 @@
   (-> (d/transact node (bundle/tx-ops request-entries))
       ;; it's important to switch to the transaction executor here, because
       ;; otherwise the central indexing thread would execute response building.
-      (ac/then-apply-async
+      (ac/then-apply-async identity executor)
+      (ac/then-compose
         (fn [db]
-          (mapv #(build-response-entry context db %) request-entries))
-        executor)))
+          (let [futures (mapv #(build-response-entry context db %) request-entries)]
+            (-> (ac/all-of futures)
+                (ac/then-apply
+                  (fn [_]
+                    (mapv ac/join futures)))))))))
 
 
 (defn- handler-intern [node executor]

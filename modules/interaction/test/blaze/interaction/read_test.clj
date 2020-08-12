@@ -101,7 +101,10 @@
         (is (= "W/\"1\"" (get headers "ETag"))))
 
       (given body
-        [:meta :versionId] := "1")))
+        :resourceType := "Patient"
+        :id := "0"
+        [:meta :versionId] := "1"
+        [:meta :lastUpdated] := "1970-01-01T00:00:00Z")))
 
 
   (testing "Returns Existing Resource on versioned read"
@@ -120,4 +123,7 @@
         (is (= "W/\"1\"" (get headers "ETag"))))
 
       (given body
-        [:meta :versionId] := "1"))))
+        :resourceType := "Patient"
+        :id := "0"
+        [:meta :versionId] := "1"
+        [:meta :lastUpdated] := "1970-01-01T00:00:00Z"))))

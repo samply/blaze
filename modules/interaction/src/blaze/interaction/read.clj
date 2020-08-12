@@ -24,13 +24,13 @@
 (def ^:private gmt (ZoneId/of "GMT"))
 
 
-(defn- last-modified [{{:blaze.db.tx/keys [instant]} :blaze.db/tx}]
+(defn- last-modified [{:blaze.db.tx/keys [instant]}]
   (->> (ZonedDateTime/ofInstant instant gmt)
        (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
 
 
-(defn- etag [resource]
-  (str "W/\"" (-> resource :meta :versionId) "\""))
+(defn- etag [{:blaze.db/keys [t]}]
+  (str "W/\"" t "\""))
 
 
 (defn- db [node vid type id]
@@ -54,23 +54,30 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id vid]} :path-params}]
     (-> (db node vid type id)
-        (ac/then-apply
+        (ac/then-compose
           (fn [db]
-            (if-let [resource (d/resource db type id)]
-              (if (d/deleted? resource)
-                (-> (handler-util/operation-outcome
-                      {:fhir/issue "deleted"})
-                    (ring/response)
-                    (ring/status 410)
-                    (ring/header "Last-Modified" (last-modified (meta resource)))
-                    (ring/header "ETag" (etag resource)))
-                (-> (ring/response resource)
-                    (ring/header "Last-Modified" (last-modified (meta resource)))
-                    (ring/header "ETag" (etag resource))))
-              (handler-util/error-response
-                {::anom/category ::anom/not-found
-                 :fhir/issue "not-found"
-                 ::anom/message (format "Resource `/%s/%s` not found" type id)}))))
+            (if-let [handle (d/resource-handle db type id)]
+              (if (d/deleted? handle)
+                (let [tx (d/tx db (d/last-updated-t handle))]
+                  (-> (handler-util/operation-outcome
+                        {:fhir/issue "deleted"})
+                      (ring/response)
+                      (ring/status 410)
+                      (ring/header "Last-Modified" (last-modified tx))
+                      (ring/header "ETag" (etag tx))
+                      (ac/completed-future)))
+                (-> (d/pull node handle)
+                    (ac/then-apply
+                      (fn [resource]
+                        (let [{:blaze.db/keys [tx]} (meta resource)]
+                          (-> (ring/response resource)
+                              (ring/header "Last-Modified" (last-modified tx))
+                              (ring/header "ETag" (etag tx))))))))
+              (-> (handler-util/error-response
+                    {::anom/category ::anom/not-found
+                     :fhir/issue "not-found"
+                     ::anom/message (format "Resource `/%s/%s` not found" type id)})
+                  (ac/completed-future)))))
         (ac/exceptionally handler-util/error-response))))
 
 

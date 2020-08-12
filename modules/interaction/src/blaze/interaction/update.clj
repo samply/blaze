@@ -83,27 +83,30 @@
 
 
 (defn- build-response
-  [router headers type id old-resource db]
-  (let [new-resource (d/resource db type id)
+  [router headers type id old-handle db]
+  (let [new-handle (d/resource-handle db type id)
         return-preference (handler-util/preference headers "return")
-        vid (-> new-resource :meta :versionId)
-        {:blaze.db/keys [tx]} (meta new-resource)]
+        tx (d/tx db (d/last-updated-t new-handle))
+        vid (str (:blaze.db/t tx))
+        created (or (nil? old-handle) (d/deleted? old-handle))]
     (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
-    (cond->
-      (-> (cond
-            (= "minimal" return-preference)
-            nil
-            (= "OperationOutcome" return-preference)
-            {:resourceType "OperationOutcome"}
-            :else
-            new-resource)
-          (ring/response)
-          (ring/status (if old-resource 200 201))
-          (ring/header "Last-Modified" (last-modified tx))
-          (ring/header "ETag" (str "W/\"" vid "\"")))
-      (nil? old-resource)
-      (ring/header
-        "Location" (fhir-util/versioned-instance-url router type id vid)))))
+    (-> (cond
+          (= "minimal" return-preference)
+          (ac/completed-future nil)
+          (= "OperationOutcome" return-preference)
+          (ac/completed-future {:resourceType "OperationOutcome"})
+          :else
+          (d/pull db new-handle))
+        (ac/then-apply
+          (fn [body]
+            (cond->
+              (-> (ring/response body)
+                  (ring/status (if created 201 200))
+                  (ring/header "Last-Modified" (last-modified tx))
+                  (ring/header "ETag" (str "W/\"" vid "\"")))
+              created
+              (ring/header
+                "Location" (fhir-util/versioned-instance-url router type id vid))))))))
 
 
 (defn- tx-op [resource if-match-t]
@@ -125,10 +128,10 @@
           ;; it's important to switch to the transaction executor here, because
           ;; otherwise the central indexing thread would execute response
           ;; building.
-          (ac/then-apply-async
+          (ac/then-apply-async identity executor)
+          (ac/then-compose
             #(build-response
-               router headers type id (d/resource db type id) %)
-            executor)
+               router headers type id (d/resource-handle db type id) %))
           (ac/exceptionally handler-util/error-response)))))
 
 

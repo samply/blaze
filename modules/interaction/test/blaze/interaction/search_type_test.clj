@@ -93,7 +93,9 @@
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
           :resourceType := "Patient"
-          :id := "0"))))
+          :id := "0"
+          [:meta :versionId] := "1"
+          [:meta :lastUpdated] := "1970-01-01T00:00:00Z"))))
 
   (testing "with param _summary equal to count"
     (let [{:keys [status body]}

@@ -382,7 +382,7 @@
   (= 1 (bit-and state 1)))
 
 
-(def ^:private ^:const ^int resource-as-of-value-size
+(def ^:const ^int resource-as-of-value-size
   (+ hash-size state-size))
 
 
@@ -399,9 +399,6 @@
 
 (defn resource-as-of-value->state [v]
   (.getLong (ByteBuffer/wrap v) hash-size))
-
-
-(defrecord ResourceAsOfKV [^int tid id ^long t hash ^long state])
 
 
 (defn get-tid! ^long [^ByteBuffer buf]
@@ -421,39 +418,6 @@
 (defn get-state! ^long [^ByteBuffer buf]
   (.getLong buf))
 
-
-(def ^:private ^:const ^int max-resource-as-of-key-size
-  (+ tid-size max-id-size t-size))
-
-
-(defn resource-as-of-kv-decoder
-  "Returns a function which decodes an `ResourceAsOfKV` out of a key and a value
-  ByteBuffer from the resource-as-of index.
-
-  Closes over a shared byte array for id decoding, because the String
-  constructor creates a copy of the id bytes anyway. Can only be used from one
-  thread.
-
-  The decode function creates only four objects, the ResourceAsOfKV, the String
-  for the id, the byte array inside the string and the byte array for the hash.
-
-  Both ByteBuffers are changed during decoding and have to be reset accordingly
-  after decoding."
-  []
-  (let [ib (byte-array max-id-size)]
-    (fn
-      ([]
-       [(ByteBuffer/allocateDirect max-resource-as-of-key-size)
-        (ByteBuffer/allocateDirect resource-as-of-value-size)])
-      ([^ByteBuffer kb ^ByteBuffer vb]
-       (ResourceAsOfKV.
-         (.getInt kb)
-         (let [id-size (- (.remaining kb) t-size)]
-           (.get kb ib 0 id-size)
-           (String. ib 0 id-size iso-8859-1))
-         (get-t! kb)
-         (get-hash! vb)
-         (get-state! vb))))))
 
 
 ;; ---- TypeAsOf Index --------------------------------------------------------

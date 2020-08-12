@@ -111,7 +111,7 @@
       (with-open [node (new-node)]
         @(d/transact node [[:create {:resourceType "Patient" :id "0"}]])
 
-        (given (d/resource (d/db node) "Patient" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :resourceType := "Patient"
           :id := "0"
           [:meta :versionId] := "1"
@@ -127,13 +127,13 @@
                       :subject {:reference "Patient/0"}}]
             [:create {:resourceType "Patient" :id "0"}]])
 
-        (given (d/resource (d/db node) "Patient" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :resourceType := "Patient"
           :id := "0"
           [:meta :versionId] := "1"
           [meta :blaze.db/op] := :create)
 
-        (given (d/resource (d/db node) "Observation" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
           :resourceType := "Observation"
           :id := "0"
           [:subject :reference] := "Patient/0"
@@ -145,7 +145,7 @@
       (with-open [node (new-node)]
         @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
 
-        (given (d/resource (d/db node) "Patient" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :resourceType := "Patient"
           :id := "0"
           [:meta :versionId] := "1"
@@ -161,13 +161,13 @@
                    :subject {:reference "Patient/0"}}]
             [:put {:resourceType "Patient" :id "0"}]])
 
-        (given (d/resource (d/db node) "Patient" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :resourceType := "Patient"
           :id := "0"
           [:meta :versionId] := "1"
           [meta :blaze.db/op] := :put)
 
-        (given (d/resource (d/db node) "Observation" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
           :resourceType := "Observation"
           :id := "0"
           [:subject :reference] := "Patient/0"
@@ -190,27 +190,27 @@
                    :subject {:reference "Patient/0"}}]
             [:put {:resourceType "Patient" :id "0"}]])
 
-        (given (d/resource (d/db node) "Patient" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :resourceType := "Patient"
           :id := "0"
           [:meta :versionId] := "1"
           [meta :blaze.db/op] := :put)
 
-        (given (d/resource (d/db node) "Observation" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
           :resourceType := "Observation"
           :id := "0"
           [:subject :reference] := "Patient/0"
           [:meta :versionId] := "1"
           [meta :blaze.db/op] := :put)
 
-        (given (d/resource (d/db node) "Observation" "1")
+        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "1"))
           :resourceType := "Observation"
           :id := "1"
           [:subject :reference] := "Patient/0"
           [:meta :versionId] := "1"
           [meta :blaze.db/op] := :put)
 
-        (given (d/resource (d/db node) "List" "0")
+        (given @(d/pull node (d/resource-handle (d/db node) "List" "0"))
           :resourceType := "List"
           :id := "0"
           [:entry 0 :item :reference] := "Observation/0"
@@ -330,7 +330,7 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "id-142136"}]])
 
       (testing "deleted returns false"
-        (is (false? (d/deleted? (d/resource (d/db node) "Patient" "id-142136")))))))
+        (is (false? (d/deleted? (d/resource-handle (d/db node) "Patient" "id-142136")))))))
 
   (testing "a node with a deleted patient"
     (with-open [node (new-node)]
@@ -338,30 +338,38 @@
       @(d/transact node [[:delete "Patient" "id-141820"]])
 
       (testing "deleted returns true"
-        (is (true? (d/deleted? (d/resource (d/db node) "Patient" "id-141820"))))))))
+        (is (true? (d/deleted? (d/resource-handle (d/db node) "Patient" "id-141820"))))))))
 
 
 (deftest resource
   (testing "a new node does not contain a resource"
     (with-open [node (new-node)]
-      (is (nil? (d/resource (d/db node) "Patient" "foo")))))
+      (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
 
   (testing "a node contains a resource after a create transaction"
     (with-open [node (new-node)]
       @(d/transact node [[:create {:resourceType "Patient" :id "0"}]])
 
-      (given (d/resource (d/db node) "Patient" "0")
-        :resourceType := "Patient"
-        :id := "0"
-        [:meta :versionId] := "1"
-        [meta :blaze.db/tx :blaze.db/t] := 1
-        [meta :blaze.db/num-changes] := 1)))
+      (testing "pull"
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+          type := :fhir/Patient
+          :resourceType := "Patient"
+          :id := "0"
+          [:meta :versionId] := "1"
+          [meta :blaze.db/tx :blaze.db/t] := 1
+          [meta :blaze.db/num-changes] := 1))
+
+      (testing "pull-content"
+        (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
+          type := :fhir/Patient
+          :resourceType := "Patient"
+          :id := "0"))))
 
   (testing "a node contains a resource after a put transaction"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
 
-      (given (d/resource (d/db node) "Patient" "0")
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
         :resourceType := "Patient"
         :id := "0"
         [:meta :versionId] := "1"
@@ -373,7 +381,7 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
-      (given (d/resource (d/db node) "Patient" "0")
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
         :resourceType := "Patient"
         :id := "0"
         [:meta :versionId] := "2"
@@ -387,7 +395,7 @@
 (deftest list-resources-and-type-total
   (testing "a new node has no patients"
     (with-open [node (new-node)]
-      (is (coll/empty? (d/list-resources (d/db node) "Patient")))
+      (is (coll/empty? (d/list-resource-handles (d/db node) "Patient")))
       (is (zero? (d/type-total (d/db node) "Patient")))))
 
   (testing "a node with one patient"
@@ -395,11 +403,11 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
 
       (testing "has one list entry"
-        (is (= 1 (count (into [] (d/list-resources (d/db node) "Patient")))))
+        (is (= 1 (count (d/list-resource-handles (d/db node) "Patient"))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains that patient"
-        (given (into [] (d/list-resources (d/db node) "Patient"))
+        (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"))))
@@ -410,7 +418,7 @@
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "doesn't contain it in the list"
-        (is (coll/empty? (d/list-resources (d/db node) "Patient")))
+        (is (coll/empty? (d/list-resource-handles (d/db node) "Patient")))
         (is (zero? (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with two patients in two transactions"
@@ -419,11 +427,11 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "1"}]])
 
       (testing "has two list entries"
-        (is (= 2 (count (into [] (d/list-resources (d/db node) "Patient")))))
+        (is (= 2 (count (d/list-resource-handles (d/db node) "Patient"))))
         (is (= 2 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains both patients in id order"
-        (given (into [] (d/list-resources (d/db node) "Patient"))
+        (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"
@@ -432,13 +440,13 @@
           [1 :meta :versionId] := "2"))
 
       (testing "it is possible to start with the second patient"
-        (given (into [] (d/list-resources (d/db node) "Patient" "1"))
+        (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient" "1"))
           [0 :resourceType] := "Patient"
           [0 :id] := "1"
           [0 :meta :versionId] := "2"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (coll/empty? (d/list-resources (d/db node) "Patient" "2"))))))
+        (is (coll/empty? (d/list-resource-handles (d/db node) "Patient" "2"))))))
 
   (testing "a node with two patients in one transaction"
     (with-open [node (new-node)]
@@ -446,11 +454,11 @@
                          [:put {:resourceType "Patient" :id "1"}]])
 
       (testing "has two list entries"
-        (is (= 2 (count (into [] (d/list-resources (d/db node) "Patient")))))
+        (is (= 2 (count (d/list-resource-handles (d/db node) "Patient"))))
         (is (= 2 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains both patients in id order"
-        (given (into [] (d/list-resources (d/db node) "Patient"))
+        (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"
@@ -459,13 +467,13 @@
           [1 :meta :versionId] := "1"))
 
       (testing "it is possible to start with the second patient"
-        (given (into [] (d/list-resources (d/db node) "Patient" "1"))
+        (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient" "1"))
           [0 :resourceType] := "Patient"
           [0 :id] := "1"
           [0 :meta :versionId] := "1"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (coll/empty? (d/list-resources (d/db node) "Patient" "2"))))))
+        (is (coll/empty? (d/list-resource-handles (d/db node) "Patient" "2"))))))
 
   (testing "a node with one updated patient"
     (with-open [node (new-node)]
@@ -473,11 +481,11 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
 
       (testing "has one list entry"
-        (is (= 1 (count (into [] (d/list-resources (d/db node) "Patient")))))
+        (is (= 1 (count (d/list-resource-handles (d/db node) "Patient"))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains the updated patient"
-        (given (into [] (d/list-resources (d/db node) "Patient"))
+        (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :active] := true
@@ -489,11 +497,11 @@
       @(d/transact node [[:put {:resourceType "Observation" :id "0"}]])
 
       (testing "has one patient list entry"
-        (is (= 1 (count (into [] (d/list-resources (d/db node) "Patient")))))
+        (is (= 1 (count (d/list-resource-handles (d/db node) "Patient"))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "has one observation list entry"
-        (is (= 1 (count (into [] (d/list-resources (d/db node) "Observation")))))
+        (is (= 1 (count (d/list-resource-handles (d/db node) "Observation"))))
         (is (= 1 (d/type-total (d/db node) "Observation"))))))
 
   (testing "the database is immutable"
@@ -506,11 +514,11 @@
 
           (testing "the original database"
             (testing "has still only one list entry"
-              (is (= 1 (count (into [] (d/list-resources db "Patient")))))
+              (is (= 1 (count (d/list-resource-handles db "Patient"))))
               (is (= 1 (d/type-total db "Patient"))))
 
             (testing "contains still the original patient"
-              (given (into [] (d/list-resources db "Patient"))
+              (given @(d/pull-many node (d/list-resource-handles db "Patient"))
                 [0 :resourceType] := "Patient"
                 [0 :id] := "0"
                 [0 :active] := false
@@ -525,14 +533,18 @@
 
           (testing "the original database"
             (testing "has still only one list entry"
-              (is (= 1 (count (into [] (d/list-resources db "Patient")))))
+              (is (= 1 (count (d/list-resource-handles db "Patient"))))
               (is (= 1 (d/type-total db "Patient"))))
 
             (testing "contains still the first patient"
-              (given (into [] (d/list-resources db "Patient"))
+              (given @(d/pull-many node (d/list-resource-handles db "Patient"))
                 [0 :resourceType] := "Patient"
                 [0 :id] := "0"
                 [0 :meta :versionId] := "1"))))))))
+
+
+(defn- pull-type-query [node type clauses]
+  (d/pull-many node (d/type-query (d/db node) type clauses)))
 
 
 (deftest type-query
@@ -545,7 +557,7 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
 
       (testing "the patient can be found"
-        (given (into [] (d/type-query (d/db node) "Patient" [["active" "true"]]))
+        (given @(pull-type-query node "Patient" [["active" "true"]])
           [0 :resourceType] := "Patient"
           [0 :id] := "0"))))
 
@@ -555,19 +567,19 @@
                          [:put {:resourceType "Patient" :id "1" :active false}]])
 
       (testing "only the active patient will be found"
-        (given (into [] (d/type-query (d/db node) "Patient" [["active" "true"]]))
+        (given @(pull-type-query node "Patient" [["active" "true"]])
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           1 := nil))
 
       (testing "only the non-active patient will be found"
-        (given (into [] (d/type-query (d/db node) "Patient" [["active" "false"]]))
+        (given @(pull-type-query node "Patient" [["active" "false"]])
           [0 :resourceType] := "Patient"
           [0 :id] := "1"
           1 := nil))
 
       (testing "both patients will be found"
-        (given (into [] (d/type-query (d/db node) "Patient" [["active" "true" "false"]]))
+        (given @(pull-type-query node "Patient" [["active" "true" "false"]])
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [1 :resourceType] := "Patient"
@@ -579,7 +591,7 @@
                          [:put {:resourceType "Patient" :id "1" :active true}]])
       @(d/transact node [[:delete "Patient" "1"]])
 
-      (given (into [] (d/type-query (d/db node) "Patient" [["active" "true"]]))
+      (given @(pull-type-query node "Patient" [["active" "true"]])
         [0 :resourceType] := "Patient"
         [0 :id] := "0"
         1 := nil)))
@@ -595,13 +607,13 @@
                                  {:item {:reference "Observation/0"}}]}]])
 
       (testing "returns only the patient referenced in the list"
-        (given (into [] (d/type-query (d/db node) "Patient" [["_list" "0"]]))
+        (given @(pull-type-query node "Patient" [["_list" "0"]])
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           1 := nil))
 
       (testing "returns only the observation referenced in the list"
-        (given (into [] (d/type-query (d/db node) "Observation" [["_list" "0"]]))
+        (given @(pull-type-query node "Observation" [["_list" "0"]])
           [0 :resourceType] := "Observation"
           [0 :id] := "0"
           1 := nil))))
@@ -651,108 +663,106 @@
                  [{:family "Schmidt"}]}]])
 
       (testing "_id"
-        (given (into [] (d/type-query (d/db node) "Patient" [["_id" "id-1"]]))
+        (given @(pull-type-query node "Patient" [["_id" "id-1"]])
           [0 :id] := "id-1"
           1 := nil))
 
       (testing "_profile"
-        (given (into [] (d/type-query (d/db node) "Patient"
-                                      [["_profile" "profile-uri-145024"]]))
+        (given @(pull-type-query node "Patient" [["_profile" "profile-uri-145024"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "active"
-        (given (into [] (d/type-query (d/db node) "Patient" [["active" "true"]]))
+        (given @(pull-type-query node "Patient" [["active" "true"]])
           [0 :id] := "id-1"
           1 := nil))
 
       (testing "address with line"
         (testing "in first position"
-          (given (into [] (d/type-query (d/db node) "Patient"
-                                        [["address" "Liebigstraße"]]))
+          (given @(pull-type-query node "Patient" [["address" "Liebigstraße"]])
             [0 :id] := "id-2"
             1 := nil))
 
         (testing "in second position"
-          (given (into [] (d/type-query (d/db node) "Patient" [["gender" "female"]
-                                                               ["address" "Liebigstraße"]]))
+          (given @(pull-type-query node "Patient" [["gender" "female"]
+                                                   ["address" "Liebigstraße"]])
             [0 :id] := "id-2"
             1 := nil)))
 
       (testing "address with city"
-        (given (into [] (d/type-query (d/db node) "Patient" [["address" "Leipzig"]]))
+        (given @(pull-type-query node "Patient" [["address" "Leipzig"]])
           [0 :id] := "id-0"
           [1 :id] := "id-2"
           2 := nil))
 
       (testing "address-city full"
-        (given (into [] (d/type-query (d/db node) "Patient" [["address-city" "Leipzig"]]))
+        (given @(pull-type-query node "Patient" [["address-city" "Leipzig"]])
           [0 :id] := "id-0"
           [1 :id] := "id-2"
           2 := nil))
 
       (testing "address-city prefix"
-        (given (into [] (d/type-query (d/db node) "Patient" [["address-city" "Leip"]]))
+        (given @(pull-type-query node "Patient" [["address-city" "Leip"]])
           [0 :id] := "id-0"
           [1 :id] := "id-2"
           2 := nil))
 
       (testing "address-city and family prefix"
-        (given (into [] (d/type-query (d/db node) "Patient" [["address-city" "Leip"]
-                                                             ["family" "Sch"]]))
+        (given @(pull-type-query node "Patient" [["address-city" "Leip"]
+                                                 ["family" "Sch"]])
           [0 :id] := "id-2"
           1 := nil))
 
       (testing "address-city and gender"
-        (given (into [] (d/type-query (d/db node) "Patient" [["address-city" "Leipzig"]
-                                                             ["gender" "female"]]))
+        (given @(pull-type-query node "Patient" [["address-city" "Leipzig"]
+                                                 ["gender" "female"]])
           [0 :id] := "id-2"
           1 := nil))
 
       (testing "birthdate YYYYMMDD"
-        (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "2020-02-08"]]))
+        (given @(pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "birthdate YYYYMM"
-        (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "2020-02"]]))
+        (given @(pull-type-query node "Patient" [["birthdate" "2020-02"]])
           [0 :id] := "id-1"
           [1 :id] := "id-0"
           2 := nil))
 
       (testing "birthdate YYYY"
-        (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "2020"]]))
+        (given @(pull-type-query node "Patient" [["birthdate" "2020"]])
           [0 :id] := "id-2"
           [1 :id] := "id-1"
           [2 :id] := "id-0"))
 
       (testing "birthdate with `eq` prefix"
-        (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "eq2020-02-08"]]))
+        (given @(pull-type-query node "Patient" [["birthdate" "eq2020-02-08"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "birthdate with `ne` prefix is unsupported"
         (try
-          (into [] (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]]))
+          @(pull-type-query node "Patient" [["birthdate" "ne2020-02-08"]])
           (catch Exception e
             (given (ex-data e)
               ::anom/category := ::anom/unsupported))))
 
       (testing "birthdate with `ge` prefix"
         (testing "finds equal date"
-          (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "ge2020-02-08"]]))
+          (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]])
             [0 :id] := "id-0"
             [0 :birthDate] := "2020-02-08"
             1 := nil))
 
         (testing "finds greater date"
-          (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "ge2020-02-07"]]))
+          (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02-07"]])
             [0 :id] := "id-0"
             [0 :birthDate] := "2020-02-08"
             1 := nil))
 
         (testing "finds more precise dates"
-          (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "ge2020-02"]]))
+          (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02"]])
             [0 :id] := "id-1"
             [0 :birthDate] := "2020-02"
             [1 :id] := "id-0"
@@ -761,19 +771,19 @@
 
       (testing "birthdate with `le` prefix"
         (testing "finds equal date"
-          (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "le2020-02-08"]]))
+          (given @(pull-type-query node "Patient" [["birthdate" "le2020-02-08"]])
             [0 :id] := "id-0"
             [0 :birthDate] := "2020-02-08"
             1 := nil))
 
         (testing "finds less date"
-          (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "le2020-02-09"]]))
+          (given @(pull-type-query node "Patient" [["birthdate" "le2020-02-09"]])
             [0 :id] := "id-0"
             [0 :birthDate] := "2020-02-08"
             1 := nil))
 
         (testing "finds more precise dates"
-          (given (into [] (d/type-query (d/db node) "Patient" [["birthdate" "le2020-03"]]))
+          (given @(pull-type-query node "Patient" [["birthdate" "le2020-03"]])
             [0 :id] := "id-1"
             [0 :birthDate] := "2020-02"
             [1 :id] := "id-0"
@@ -781,33 +791,33 @@
             2 := nil)))
 
       (testing "deceased"
-        (given (into [] (d/type-query (d/db node) "Patient" [["deceased" "true"]]))
+        (given @(pull-type-query node "Patient" [["deceased" "true"]])
           [0 :id] := "id-0"
           [1 :id] := "id-2"
           2 := nil))
 
       (testing "email"
-        (given (into [] (d/type-query (d/db node) "Patient" [["email" "foo@bar.baz"]]))
+        (given @(pull-type-query node "Patient" [["email" "foo@bar.baz"]])
           [0 :id] := "id-1"
           1 := nil))
 
       (testing "family lower-case"
-        (given (into [] (d/type-query (d/db node) "Patient" [["family" "schmidt"]]))
+        (given @(pull-type-query node "Patient" [["family" "schmidt"]])
           [0 :id] := "id-2"
           1 := nil))
 
       (testing "gender"
-        (given (into [] (d/type-query (d/db node) "Patient" [["gender" "male"]]))
+        (given @(pull-type-query node "Patient" [["gender" "male"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "identifier"
-        (given (into [] (d/type-query (d/db node) "Patient" [["identifier" "0"]]))
+        (given @(pull-type-query node "Patient" [["identifier" "0"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "telecom"
-        (given (into [] (d/type-query (d/db node) "Patient" [["telecom" "0815"]]))
+        (given @(pull-type-query node "Patient" [["telecom" "0815"]])
           [0 :id] := "id-1"
           1 := nil))))
 
@@ -823,17 +833,17 @@
 
       (testing "name"
         (testing "using family"
-          (given (into [] (d/type-query (d/db node) "Practitioner" [["name" "müller"]]))
+          (given @(pull-type-query node "Practitioner" [["name" "müller"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using first given"
-          (given (into [] (d/type-query (d/db node) "Practitioner" [["name" "hans"]]))
+          (given @(pull-type-query node "Practitioner" [["name" "hans"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using second given"
-          (given (into [] (d/type-query (d/db node) "Practitioner" [["name" "martin"]]))
+          (given @(pull-type-query node "Practitioner" [["name" "martin"]])
             [0 :id] := "id-0"
             1 := nil)))))
 
@@ -855,48 +865,48 @@
 
       (testing "bodysite"
         (testing "using system|code"
-          (given (into [] (d/type-query (d/db node) "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]]))
+          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using code"
-          (given (into [] (d/type-query (d/db node) "Specimen" [["bodysite" "C77.4"]]))
+          (given @(pull-type-query node "Specimen" [["bodysite" "C77.4"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using system|"
-          (given (into [] (d/type-query (d/db node) "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|"]]))
+          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|"]])
             [0 :id] := "id-0"
             1 := nil)))
 
       (testing "type"
-        (given (into [] (d/type-query (d/db node) "Specimen" [["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]]))
+        (given @(pull-type-query node "Specimen" [["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "bodysite and type"
         (testing "using system|code"
-          (given (into [] (d/type-query (d/db node) "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
-                                                                ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]]))
+          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
+                                                    ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using code"
-          (given (into [] (d/type-query (d/db node) "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
-                                                                ["type" "dna"]]))
+          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
+                                                    ["type" "dna"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using system|"
-          (given (into [] (d/type-query (d/db node) "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
-                                                                ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|"]]))
+          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
+                                                    ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "does not match"
           (testing "using system|code"
-            (given (into [] (d/type-query (d/db node) "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
-                                                                  ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|urine"]]))
+            (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
+                                                      ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|urine"]])
               0 := nil))))))
 
   (testing "ActivityDefinition"
@@ -912,12 +922,12 @@
                  :url "url-111721"}]])
 
       (testing "url"
-        (given (into [] (d/type-query (d/db node) "ActivityDefinition" [["url" "url-111619"]]))
+        (given @(pull-type-query node "ActivityDefinition" [["url" "url-111619"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "description"
-        (given (into [] (d/type-query (d/db node) "ActivityDefinition" [["description" "desc-121208"]]))
+        (given @(pull-type-query node "ActivityDefinition" [["description" "desc-121208"]])
           [0 :id] := "id-0"
           1 := nil))))
 
@@ -933,7 +943,7 @@
                  :version "version-122456"}]])
 
       (testing "version"
-        (given (into [] (d/type-query (d/db node) "CodeSystem" [["version" "version-122443"]]))
+        (given @(pull-type-query node "CodeSystem" [["version" "version-122443"]])
           [0 :id] := "id-0"
           1 := nil))))
 
@@ -949,7 +959,7 @@
                  :id "id-1"}]])
 
       (testing "monitoring-program-name"
-        (given (into [] (d/type-query (d/db node) "MedicationKnowledge" [["monitoring-program-name" "name-123124"]]))
+        (given @(pull-type-query node "MedicationKnowledge" [["monitoring-program-name" "name-123124"]])
           [0 :id] := "id-0"
           1 := nil))))
 
@@ -967,7 +977,7 @@
                  :id "id-1"}]])
 
       (testing "patient"
-        (given (into [] (d/type-query (d/db node) "Condition" [["patient" "id-0"]]))
+        (given @(pull-type-query node "Condition" [["patient" "id-0"]])
           [0 :id] := "id-0"
           1 := nil))))
 
@@ -987,37 +997,37 @@
       (testing "value-quantity"
         (testing "without unit"
           (let [clauses [["value-quantity" "23.42"]]]
-            (given (into [] (d/type-query (d/db node) "Observation" clauses))
+            (given @(pull-type-query node "Observation" clauses)
               [0 :id] := "id-0"
               1 := nil)))
 
         (testing "with minimal unit"
           (let [clauses [["value-quantity" "23.42|kg/m2"]]]
-            (given (into [] (d/type-query (d/db node) "Observation" clauses))
+            (given @(pull-type-query node "Observation" clauses)
               [0 :id] := "id-0"
               1 := nil)))
 
         (testing "with human unit"
           (let [clauses [["value-quantity" "23.42|kg/m²"]]]
-            (given (into [] (d/type-query (d/db node) "Observation" clauses))
+            (given @(pull-type-query node "Observation" clauses)
               [0 :id] := "id-0"
               1 := nil)))
 
         (testing "with full unit"
           (let [clauses [["value-quantity" "23.42|http://unitsofmeasure.org|kg/m2"]]]
-            (given (into [] (d/type-query (d/db node) "Observation" clauses))
+            (given @(pull-type-query node "Observation" clauses)
               [0 :id] := "id-0"
               1 := nil))))
 
       (testing "status and value-quantity"
         (let [clauses [["status" "final"] ["value-quantity" "23.42|kg/m2"]]]
-          (given (into [] (d/type-query (d/db node) "Observation" clauses))
+          (given @(pull-type-query node "Observation" clauses)
             [0 :id] := "id-0"
             1 := nil)))
 
       (testing "value-quantity and status"
         (let [clauses [["value-quantity" "23.42|kg/m2"] ["status" "final"]]]
-          (given (into [] (d/type-query (d/db node) "Observation" clauses))
+          (given @(pull-type-query node "Observation" clauses)
             [0 :id] := "id-0"
             1 := nil)))))
 
@@ -1031,7 +1041,7 @@
 
       (testing "measure"
         (let [clauses [["measure" "measure-url-181106"]]]
-          (given (into [] (d/type-query (d/db node) "MeasureReport" clauses))
+          (given @(pull-type-query node "MeasureReport" clauses)
             [0 :id] := "id-144132"
             1 := nil)))))
 
@@ -1055,7 +1065,7 @@
                      [{:item {:reference "Patient/1"}}]}]])
 
           (let [clauses [["item" "Patient/1"]]]
-            (given (into [] (d/type-query (d/db node) "List" clauses))
+            (given @(pull-type-query node "List" clauses)
               [0 :id] := "id-143814"
               1 := nil))))
 
@@ -1079,7 +1089,7 @@
                          :value "value-143818"}}}]}]])
 
           (let [clauses [["item:identifier" "system-122917|value-122931"]]]
-            (given (into [] (d/type-query (d/db node) "List" clauses))
+            (given @(pull-type-query node "List" clauses)
               [0 :id] := "id-123058"
               1 := nil)))))
 
@@ -1113,7 +1123,7 @@
 
           (let [clauses [["code" "system-152812|code-152819"]
                          ["item:identifier" "system-122917|value-143818"]]]
-            (given (into [] (d/type-query (d/db node) "List" clauses))
+            (given @(pull-type-query node "List" clauses)
               [0 :id] := "id-143814"
               1 := nil)))))))
 
@@ -1131,11 +1141,11 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
 
       (testing "has one list entry"
-        (is (= 1 (count (into [] (d/system-list (d/db node))))))
+        (is (= 1 (count (d/system-list (d/db node)))))
         (is (= 1 (d/system-total (d/db node)))))
 
       (testing "contains that patient"
-        (given (into [] (d/system-list (d/db node)))
+        (given @(d/pull-many node (d/system-list (d/db node)))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"))))
@@ -1155,11 +1165,11 @@
       @(d/transact node [[:put {:resourceType "Observation" :id "0"}]])
 
       (testing "has two list entries"
-        (is (= 2 (count (into [] (d/system-list (d/db node))))))
+        (is (= 2 (count (d/system-list (d/db node)))))
         (is (= 2 (d/system-total (d/db node)))))
 
       (testing "contains both resources in the order of their type hashes"
-        (given (into [] (d/system-list (d/db node)))
+        (given @(d/pull-many node (d/system-list (d/db node)))
           [0 :resourceType] := "Observation"
           [0 :id] := "0"
           [0 :meta :versionId] := "2"
@@ -1168,7 +1178,7 @@
           [1 :meta :versionId] := "1"))
 
       (testing "it is possible to start with the patient"
-        (given (into [] (d/system-list (d/db node) "Patient"))
+        (given @(d/pull-many node (d/system-list (d/db node) "Patient"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"))
@@ -1176,7 +1186,7 @@
       (testing "starting with Measure also returns the patient,
                 because in type hash order, Measure comes before
                 Patient but after Observation"
-        (given (into [] (d/system-list (d/db node) "Measure"))
+        (given @(d/pull-many node (d/system-list (d/db node) "Measure"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"))
@@ -1191,17 +1201,19 @@
 (deftest list-compartment-resources
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-open [node (new-node)]
-      (is (coll/empty? (d/list-compartment-resources (d/db node) "Patient" "0" "Observation")))))
+      (is (coll/empty? (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation")))))
 
   (testing "a node contains one Observation in the Patient/0 compartment"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
       @(d/transact node [[:put {:resourceType "Observation" :id "0"
                                 :subject {:reference "Patient/0"}}]])
-      (given (coll/first (d/list-compartment-resources (d/db node) "Patient" "0" "Observation"))
-        :resourceType := "Observation"
-        :id := "0"
-        [:meta :versionId] := "2")))
+
+      (given @(d/pull-many node (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation"))
+        [0 :resourceType] := "Observation"
+        [0 :id] := "0"
+        [0 :meta :versionId] := "2"
+        1 := nil)))
 
   (testing "a node contains two resources in the Patient/0 compartment"
     (with-open [node (new-node)]
@@ -1210,7 +1222,8 @@
                                 :subject {:reference "Patient/0"}}]])
       @(d/transact node [[:put {:resourceType "Observation" :id "1"
                                 :subject {:reference "Patient/0"}}]])
-      (given (into [] (d/list-compartment-resources (d/db node) "Patient" "0" "Observation"))
+
+      (given @(d/pull-many node (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation"))
         [0 :resourceType] := "Observation"
         [0 :id] := "0"
         [0 :meta :versionId] := "2"
@@ -1224,7 +1237,7 @@
       @(d/transact node [[:put {:resourceType "Observation" :id "0"
                                 :subject {:reference "Patient/0"}}]])
       @(d/transact node [[:delete "Observation" "0"]])
-      (is (coll/empty? (d/list-compartment-resources (d/db node) "Patient" "0" "Observation")))))
+      (is (coll/empty? (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation")))))
 
   (testing "it is possible to start at a later id"
     (with-open [node (new-node)]
@@ -1235,8 +1248,8 @@
                                 :subject {:reference "Patient/0"}}]])
       @(d/transact node [[:put {:resourceType "Observation" :id "2"
                                 :subject {:reference "Patient/0"}}]])
-      (given (into [] (d/list-compartment-resources
-                        (d/db node) "Patient" "0" "Observation" "1"))
+
+      (given @(d/pull-many node (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation" "1"))
         [0 :resourceType] := "Observation"
         [0 :id] := "1"
         [0 :meta :versionId] := "3"
@@ -1247,7 +1260,7 @@
 
   (testing "Unknown compartment is not a problem"
     (with-open [node (new-node)]
-      (is (coll/empty? (d/list-compartment-resources (d/db node) "foo" "bar" "Condition"))))))
+      (is (coll/empty? (d/list-compartment-resource-handles (d/db node) "foo" "bar" "Condition"))))))
 
 
 (deftest compartment-query
@@ -1266,11 +1279,14 @@
                  {:coding
                   [{:system "system-191514"
                     :code "code-191518"}]}}]])
-      (given (coll/first (d/compartment-query
-                           (d/db node) "Patient" "0" "Observation"
-                           [["code" "system-191514|code-191518"]]))
-        :resourceType := "Observation"
-        :id := "0")))
+
+      (given @(d/pull-many node
+                           (d/compartment-query
+                             (d/db node) "Patient" "0" "Observation"
+                             [["code" "system-191514|code-191518"]]))
+        [0 :resourceType] := "Observation"
+        [0 :id] := "0"
+        1 := nil)))
 
   (testing "returns only the matching Observation in the Patient/0 compartment"
     (let [observation
@@ -1289,9 +1305,10 @@
             [:put (observation "1" "code-2")]
             [:put (observation "2" "code-3")]])
 
-        (given (into [] (d/compartment-query
-                          (d/db node) "Patient" "0" "Observation"
-                          [["code" "system|code-2"]]))
+        (given @(d/pull-many node
+                             (d/compartment-query
+                               (d/db node) "Patient" "0" "Observation"
+                               [["code" "system|code-2"]]))
           [0 :resourceType] := "Observation"
           [0 :id] := "1"
           1 := nil))))
@@ -1319,9 +1336,10 @@
             [:put (observation "1" "code-1")]
             [:put (observation "3" "code-2")]])
 
-        (given (into [] (d/compartment-query
-                          (d/db node) "Patient" "0" "Observation"
-                          [["code" "system|code-2"]]))
+        (given @(d/pull-many node
+                             (d/compartment-query
+                               (d/db node) "Patient" "0" "Observation"
+                               [["code" "system|code-2"]]))
           [0 :resourceType] := "Observation"
           [0 :id] := "0"
           [0 :meta :versionId] := "2"
@@ -1369,9 +1387,10 @@
            node
            [[:delete "Observation" "0"]])
 
-        (given (into [] (d/compartment-query
-                          (d/db node) "Patient" "0" "Observation"
-                          [["code" "system|code"]]))
+        (given @(d/pull-many node
+                             (d/compartment-query
+                               (d/db node) "Patient" "0" "Observation"
+                               [["code" "system|code"]]))
           [0 :resourceType] := "Observation"
           [0 :id] := "1"
           1 := nil))))
@@ -1387,11 +1406,14 @@
                  {:coding
                   [{:system "system-191514"
                     :code "code-191518"}]}}]])
-      (given (coll/first (d/compartment-query
-                           (d/db node) "Patient" "0" "Observation"
-                           [["code" "foo|bar" "system-191514|code-191518"]]))
-        :resourceType := "Observation"
-        :id := "0")))
+
+      (given @(d/pull-many node
+                           (d/compartment-query
+                             (d/db node) "Patient" "0" "Observation"
+                             [["code" "foo|bar" "system-191514|code-191518"]]))
+        [0 :resourceType] := "Observation"
+        [0 :id] := "0"
+        1 := nil)))
 
   (testing "with one patient and one observation"
     (with-open [node (new-node)]
@@ -1411,13 +1433,14 @@
                   :value 42M}}]])
 
       (testing "matches second criteria"
-        (given (coll/first
-                 (d/compartment-query
-                   (d/db node) "Patient" "0" "Observation"
-                   [["code" "system-191514|code-191518"]
-                    ["value-quantity" "42"]]))
-          :resourceType := "Observation"
-          :id := "0"))
+        (given @(d/pull-many node
+                             (d/compartment-query
+                               (d/db node) "Patient" "0" "Observation"
+                               [["code" "system-191514|code-191518"]
+                                ["value-quantity" "42"]]))
+          [0 :resourceType] := "Observation"
+          [0 :id] := "0"
+          1 := nil))
 
       (testing "returns nothing because of non-matching second criteria"
         (is (coll/empty?
@@ -1491,11 +1514,11 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
 
       (testing "has one history entry"
-        (is (= 1 (count (into [] (d/instance-history (d/db node) "Patient" "0")))))
+        (is (= 1 (count (d/instance-history (d/db node) "Patient" "0"))))
         (is (= 1 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
       (testing "contains that patient"
-        (given (into [] (d/instance-history (d/db node) "Patient" "0"))
+        (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"))
@@ -1510,18 +1533,18 @@
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/instance-history (d/db node) "Patient" "0")))))
+        (is (= 2 (count (d/instance-history (d/db node) "Patient" "0"))))
         (is (= 2 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
       (testing "the first history entry is the patient marked as deleted"
-        (given (into [] (d/instance-history (d/db node) "Patient" "0"))
+        (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "2"
           [0 meta :blaze.db/op] := :delete))
 
       (testing "the second history entry is the patient marked as created"
-        (given (into [] (d/instance-history (d/db node) "Patient" "0"))
+        (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
           [1 :resourceType] := "Patient"
           [1 :id] := "0"
           [1 :meta :versionId] := "1"
@@ -1533,16 +1556,16 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0" :active false}]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/instance-history (d/db node) "Patient" "0")))))
+        (is (= 2 (count (d/instance-history (d/db node) "Patient" "0"))))
         (is (= 2 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
       (testing "contains both versions in reverse transaction order"
-        (given (into [] (d/instance-history (d/db node) "Patient" "0"))
+        (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
           [0 :active] := false
           [1 :active] := true))
 
       (testing "it is possible to start with the older transaction"
-        (given (into [] (d/instance-history (d/db node) "Patient" "0" 1))
+        (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0" 1))
           [0 :active] := true))
 
       (testing "overshooting the start-t returns an empty collection"
@@ -1558,11 +1581,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (into [] (d/instance-history db "Patient" "0")))))
+              (is (= 1 (count (d/instance-history db "Patient" "0"))))
               (is (= 1 (d/total-num-of-instance-changes db "Patient" "0"))))
 
             (testing "contains still the original patient"
-              (given (into [] (d/instance-history db "Patient" "0"))
+              (given @(d/pull-many node (d/instance-history db "Patient" "0"))
                 [0 :resourceType] := "Patient"
                 [0 :id] := "0"
                 [0 :active] := false
@@ -1583,11 +1606,11 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
 
       (testing "has one history entry"
-        (is (= 1 (count (into [] (d/type-history (d/db node) "Patient")))))
+        (is (= 1 (count (d/type-history (d/db node) "Patient"))))
         (is (= 1 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "contains that patient"
-        (given (into [] (d/type-history (d/db node) "Patient"))
+        (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"))
@@ -1602,18 +1625,18 @@
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/type-history (d/db node) "Patient")))))
+        (is (= 2 (count (d/type-history (d/db node) "Patient"))))
         (is (= 2 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "the first history entry is the patient marked as deleted"
-        (given (into [] (d/type-history (d/db node) "Patient"))
+        (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "2"
           [0 meta :blaze.db/op] := :delete))
 
       (testing "the second history entry is the patient marked as created"
-        (given (into [] (d/type-history (d/db node) "Patient"))
+        (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
           [1 :resourceType] := "Patient"
           [1 :id] := "0"
           [1 :meta :versionId] := "1"
@@ -1625,7 +1648,7 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "1"}]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/type-history (d/db node) "Patient")))))
+        (is (= 2 (count (d/type-history (d/db node) "Patient"))))
         (is (= 2 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "contains both patients in reverse transaction order"
@@ -1646,16 +1669,16 @@
                          [:put {:resourceType "Patient" :id "1"}]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/type-history (d/db node) "Patient")))))
+        (is (= 2 (count (d/type-history (d/db node) "Patient"))))
         (is (= 2 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "contains both patients in the order of their ids"
-        (given (into [] (d/type-history (d/db node) "Patient"))
+        (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
           [0 :id] := "0"
           [1 :id] := "1"))
 
       (testing "it is possible to start with the second patient"
-        (given (into [] (d/type-history (d/db node) "Patient" 1 "1"))
+        (given @(d/pull-many node (d/type-history (d/db node) "Patient" 1 "1"))
           [0 :id] := "1"))))
 
   (testing "the database is immutable"
@@ -1668,11 +1691,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (into [] (d/type-history db "Patient")))))
+              (is (= 1 (count (d/type-history db "Patient"))))
               (is (= 1 (d/total-num-of-type-changes db "Patient"))))
 
             (testing "contains still the original patient"
-              (given (into [] (d/type-history db "Patient"))
+              (given @(d/pull-many node (d/type-history db "Patient"))
                 [0 :resourceType] := "Patient"
                 [0 :id] := "0"
                 [0 :active] := false
@@ -1687,11 +1710,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (into [] (d/type-history db "Patient")))))
+              (is (= 1 (count (d/type-history db "Patient"))))
               (is (= 1 (d/total-num-of-type-changes db "Patient"))))
 
             (testing "contains still the first patient"
-              (given (into [] (d/type-history db "Patient"))
+              (given @(d/pull-many node (d/type-history db "Patient"))
                 [0 :resourceType] := "Patient"
                 [0 :id] := "0"
                 [0 :meta :versionId] := "1"))))))))
@@ -1711,11 +1734,11 @@
       @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
 
       (testing "has one history entry"
-        (is (= 1 (count (into [] (d/system-history (d/db node))))))
+        (is (= 1 (count (d/system-history (d/db node)))))
         (is (= 1 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains that patient"
-        (given (into [] (d/system-history (d/db node)))
+        (given @(d/pull-many node (d/system-history (d/db node)))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "1"))))
@@ -1726,18 +1749,18 @@
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/system-history (d/db node))))))
+        (is (= 2 (count (d/system-history (d/db node)))))
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "the first history entry is the patient marked as deleted"
-        (given (into [] (d/system-history (d/db node)))
+        (given @(d/pull-many node (d/system-history (d/db node)))
           [0 :resourceType] := "Patient"
           [0 :id] := "0"
           [0 :meta :versionId] := "2"
           [0 meta :blaze.db/op] := :delete))
 
       (testing "the second history entry is the patient marked as created"
-        (given (into [] (d/system-history (d/db node)))
+        (given @(d/pull-many node (d/system-history (d/db node)))
           [1 :resourceType] := "Patient"
           [1 :id] := "0"
           [1 :meta :versionId] := "1"
@@ -1749,16 +1772,16 @@
       @(d/transact node [[:put {:resourceType "Observation" :id "0"}]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/system-history (d/db node))))))
+        (is (= 2 (count (d/system-history (d/db node)))))
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains both resources in reverse transaction order"
-        (given (into [] (d/system-history (d/db node)))
+        (given @(d/pull-many node (d/system-history (d/db node)))
           [0 :resourceType] := "Observation"
           [1 :resourceType] := "Patient"))
 
       (testing "it is possible to start with the older transaction"
-        (given (into [] (d/system-history (d/db node) 1))
+        (given @(d/pull-many node (d/system-history (d/db node) 1))
           [0 :resourceType] := "Patient"))))
 
   (testing "a node with one patient and one observation in one transaction"
@@ -1767,16 +1790,16 @@
                          [:put {:resourceType "Observation" :id "0"}]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/system-history (d/db node))))))
+        (is (= 2 (count (d/system-history (d/db node)))))
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains both resources in the order of their type hashes"
-        (given (into [] (d/system-history (d/db node)))
+        (given @(d/pull-many node (d/system-history (d/db node)))
           [0 :resourceType] := "Observation"
           [1 :resourceType] := "Patient"))
 
       (testing "it is possible to start with the patient"
-        (given (into [] (d/system-history (d/db node) 1 "Patient"))
+        (given @(d/pull-many node (d/system-history (d/db node) 1 "Patient"))
           [0 :resourceType] := "Patient"))))
 
   (testing "a node with two patients in one transaction"
@@ -1785,11 +1808,11 @@
                          [:put {:resourceType "Patient" :id "1"}]])
 
       (testing "has two history entries"
-        (is (= 2 (count (into [] (d/system-history (d/db node))))))
+        (is (= 2 (count (d/system-history (d/db node)))))
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "it is possible to start with the second patient"
-        (given (into [] (d/system-history (d/db node) 1 "Patient" "1"))
+        (given @(d/pull-many node (d/system-history (d/db node) 1 "Patient" "1"))
           [0 :id] := "1"))))
 
   (testing "the database is immutable"
@@ -1802,11 +1825,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (into [] (d/system-history db)))))
+              (is (= 1 (count (d/system-history db))))
               (is (= 1 (d/total-num-of-system-changes db))))
 
             (testing "contains still the original patient"
-              (given (into [] (d/system-history db))
+              (given @(d/pull-many node (d/system-history db))
                 [0 :resourceType] := "Patient"
                 [0 :id] := "0"
                 [0 :active] := false
@@ -1821,11 +1844,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (into [] (d/system-history db)))))
+              (is (= 1 (count (d/system-history db))))
               (is (= 1 (d/total-num-of-system-changes db))))
 
             (testing "contains still the first patient"
-              (given (into [] (d/system-history db))
+              (given @(d/pull-many node (d/system-history db))
                 [0 :resourceType] := "Patient"
                 [0 :id] := "0"
                 [0 :meta :versionId] := "1"))))))))

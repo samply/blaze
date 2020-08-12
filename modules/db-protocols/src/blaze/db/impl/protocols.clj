@@ -13,12 +13,6 @@
   (-tx-result [node t]))
 
 
-(defprotocol ResourceContentLookup
-  "Resource content access by content-hash."
-
-  (-get-content [rs hash]))
-
-
 (defprotocol Db
   (-node [db])
 
@@ -28,11 +22,9 @@
 
   (-as-of-t [db])
 
-  (-tx [db t])
+  (-resource-handle [db type id])
 
-  (-resource [db type id])
-
-  (-list-resources ^IReduceInit [db type start-id])
+  (-list-resource-handles ^IReduceInit [db type start-id])
 
   (-type-total [db type])
 
@@ -40,7 +32,7 @@
 
   (-system-total [db])
 
-  (-list-compartment-resources
+  (-list-compartment-resource-handles
     ^IReduceInit [db code id type start-id])
 
   (-execute-query
@@ -63,6 +55,10 @@
   (-new-batch-db [db]))
 
 
+(defprotocol Tx
+  (-tx [tx t]))
+
+
 (defprotocol QueryCompiler
   (-compile-type-query [compiler type clauses])
 
@@ -79,8 +75,14 @@
 
 (defprotocol SearchParam
   (-compile-values [search-param values])
-  (-resources [search-param node snapshot spvi rsvi raoi tid modifier compiled-value t])
+  (-resource-handles [search-param snapshot spvi rsvi raoi tid modifier compiled-value t])
   (-compartment-keys [search-param cspvi compartment tid compiled-value])
   (-matches? [search-param snapshot tid id hash modifier compiled-values])
   (-compartment-ids [_ resolver resource])
   (-index-entries [_ resolver hash resource linked-compartments]))
+
+
+(defprotocol Pull
+  (-pull [pull resource-handle])
+
+  (-pull-content [pull resource-handle]))

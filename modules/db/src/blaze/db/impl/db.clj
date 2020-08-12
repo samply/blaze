@@ -3,12 +3,11 @@
   (:require
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index :as index]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
     [blaze.db.impl.protocols :as p]
     [blaze.db.kv :as kv])
   (:import
-    [clojure.lang IReduceInit Sequential]
+    [clojure.lang IReduceInit Sequential Seqable Counted]
     [java.io Writer]))
 
 
@@ -24,7 +23,13 @@
      IReduceInit
      (reduce [_ rf# init#]
        (with-open ~bindings
-         (.reduce ~coll rf# init#)))))
+         (.reduce ~coll rf# init#)))
+     Seqable
+     (seq [this#]
+       (.seq ^Seqable (persistent! (.reduce this# conj! (transient [])))))
+     Counted
+     (count [this#]
+       (.reduce this# (fn [sum# ~'_] (inc sum#)) 0))))
 
 
 (deftype Db [node basis-t t]
@@ -42,25 +47,22 @@
   (-as-of-t [_]
     (when (not= basis-t t) t))
 
-  (-tx [_ t]
-    (index/tx (:kv-store node) t))
-
 
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
-  (-resource [_ type id]
+  (-resource-handle [_ type id]
     (with-open [snapshot (kv/new-snapshot (:kv-store node))
                 raoi (kv/new-iterator snapshot :resource-as-of-index)]
-      (resource-as-of/resource node raoi (codec/tid type) (codec/id-bytes id) t)))
+      (resource-as-of/resource-handle raoi (codec/tid type) (codec/id-bytes id) t)))
 
 
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
-  (-list-resources [_ type start-id]
+  (-list-resource-handles [_ type start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
-      (p/-list-resources batch-db type start-id)))
+      (p/-list-resource-handles batch-db type start-id)))
 
   (-type-total [_ type]
     (with-open [batch-db (batch-db/new-batch-db node t)]
@@ -82,9 +84,9 @@
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
-  (-list-compartment-resources [_ code id type start-id]
+  (-list-compartment-resource-handles [_ code id type start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
-      (p/-list-compartment-resources batch-db code id type start-id)))
+      (p/-list-compartment-resource-handles batch-db code id type start-id)))
 
 
 
@@ -143,6 +145,13 @@
 
 
 
+  ;; ---- Transaction ---------------------------------------------------------
+
+  p/Tx
+  (-tx [_ t]
+    (p/-tx node t))
+
+
   ;; ---- QueryCompiler -------------------------------------------------------
 
   p/QueryCompiler
@@ -153,7 +162,18 @@
     (p/-compile-system-query node clauses))
 
   (-compile-compartment-query [_ code type clauses]
-    (p/-compile-compartment-query node code type clauses)))
+    (p/-compile-compartment-query node code type clauses))
+
+
+
+  ;; ---- Pull ----------------------------------------------------------------
+
+  p/Pull
+  (-pull [_ resource-handle]
+    (p/-pull node resource-handle))
+
+  (-pull-content [_ resource-handle]
+    (p/-pull-content node resource-handle)))
 
 
 (defmethod print-method Db [^Db db ^Writer w]

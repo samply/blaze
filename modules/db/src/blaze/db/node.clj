@@ -7,6 +7,7 @@
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db :as db]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
@@ -162,6 +163,31 @@
     (max t error-t)))
 
 
+(defn- enhance-meta [meta t {:blaze.db.tx/keys [instant]}]
+  (-> (assoc meta :versionId (str t))
+      (assoc :lastUpdated (str instant))))
+
+
+(defn- mk-meta [meta state t tx]
+  (-> meta
+      (assoc :blaze.db/t t)
+      (assoc :blaze.db/num-changes (codec/state->num-changes state))
+      (assoc :blaze.db/op (codec/state->op state))
+      (assoc :blaze.db/tx tx)))
+
+
+(defn- tx [kv-store t]
+  (some-> (kv/get kv-store :tx-success-index (codec/t-key t))
+          (codec/decode-tx t)))
+
+
+(defn- enhance-resource [kv-store handle resource]
+  (let [t (rh/t handle)
+        tx (tx kv-store t)]
+    (-> (update resource :meta enhance-meta t tx)
+        (with-meta (mk-meta (meta handle) (rh/state handle) t tx)))))
+
+
 (defrecord Node [tx-log kv-store resource-store search-param-registry
                  resource-indexer state run? poll-timeout finished]
   p/Node
@@ -192,6 +218,10 @@
             (load-tx-result this kv-store t))
         (ac/then-compose watcher (fn [_] (load-tx-result this kv-store t))))))
 
+  p/Tx
+  (-tx [_ t]
+    (tx kv-store t))
+
   rs/ResourceLookup
   (-get [_ hash]
     (rs/-get resource-store hash))
@@ -210,6 +240,15 @@
     (when-ok [clauses (resolve-search-params search-param-registry type clauses)]
       (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
                                    (seq clauses))))
+
+  p/Pull
+  (-pull [_ resource-handle]
+    (-> (rs/-get resource-store (rh/hash resource-handle))
+        (ac/then-apply #(enhance-resource kv-store resource-handle %))))
+
+  (-pull-content [_ resource-handle]
+    (-> (rs/-get resource-store (rh/hash resource-handle))
+        (ac/then-apply #(with-meta % (meta resource-handle)))))
 
   Runnable
   (run [_]
