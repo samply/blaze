@@ -3,7 +3,10 @@
     [blaze.fhir.spec.impl]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]))
+    [clojure.string :as str]
+    [clojure.walk :as walk])
+  (:import
+    [java.util.regex Pattern]))
 
 
 ;; ---- Specs -----------------------------------------------------------------
@@ -46,16 +49,116 @@
   "Determines whether the resource is valid."
   {:arglists '([resource])}
   [{type :resourceType :as resource}]
-  (if-let [spec (s2/get-spec (keyword "fhir" type))]
-    (s2/valid? spec resource)
+  (if type
+    (if-let [spec (s2/get-spec (keyword "fhir" type))]
+      (s2/valid? spec resource)
+      false)
     false))
 
 
+(defn- fhir-path-data
+  "Given a vector `path` and some `data` structure containing maps and vectors,
+  for which the entries in elem correspond to the keys and vector entries of the
+  given data, returns a vector of the same length as path with all vector entries
+  from data replaced by their indices."
+  {:arglists '([path data])}
+  [[elem & elems] data]
+  (if (vector? data)
+    (cons (first (keep-indexed #(when (= %2 elem) %1) data))
+          (when elems (fhir-path-data elems elem)))
+    (cons elem (if elems (fhir-path-data elems (get data elem)) []))))
+
+
+(defn fhir-path
+  "Given a vector `path` and a `resource`, returns the fhir-path as string for
+  the given path."
+  [path resource]
+  (->> (fhir-path-data path resource)
+       (reduce (fn [list elem] (if (keyword? elem)
+                                 (conj list (name elem))
+                                 (update list
+                                         (dec (count list))
+                                         str
+                                         (format "[%d]" elem))))
+               [])
+       (str/join ".")))
+
+
+(defn- get-regex
+  "Returns the first regex pattern in `form`."
+  [form]
+  (walk/postwalk
+    #(if (sequential? %)
+       (some identity %)
+       (when (= (type %) Pattern) %))
+    form))
+
+
+(defn- fhir-data-type
+  "Returns the following namespace parts and name of `key` if the namespace of
+  `key` is more than fhir. Otherwise returns just the name of `key`."
+  [key]
+  (if (str/starts-with? (namespace key) "fhir")
+    (->> (rest (conj (str/split (namespace key) #"\.") (name key)))
+         (str/join "." ))
+    (name key)))
+
+
+(defn- diagnostics-from-problem
+  "Returns a diagnostics message from the given arguments `pred`, `val` and `via`.
+
+  `pred`: A Function to evaluate the given `val`.
+  `val`: Error Value.
+  `via`: Vector-path of fhir types to the given error.
+
+  If `pred` contains regex-patterns to check, the first one is included in
+  diagnostics message."
+  [pred val via]
+  (if-let [regex (get-regex pred)]
+    (format "Error on value `%s`. Expected type is `%s`, regex `%s`."
+            val (name (last via)) regex)
+    (if (= `coll? pred)
+      (format "Error on value `%s`. Expected type is `JSON array`."
+              val)
+      (->> (fhir-data-type (last via))
+           (format "Error on value `%s`. Expected type is `%s`."
+                   val)))))
+
+
+(defn- generate-issue
+  "Returns an issue of type map for the given arguments."
+  {:arglists '([resource problem])}
+  [resource {:keys [val via in pred]}]
+  {:fhir.issues/severity "error"
+   :fhir.issues/code "invariant"
+   :fhir.issues/diagnostics (diagnostics-from-problem pred val via)
+   :fhir.issues/expression (fhir-path in resource)})
+
+
 (defn explain-data
+  "Given a resource, which includes :resourceType key, returns nil
+  if the resource is conform to the spec :fhir/resourceType,
+  else a map with at least the keys :fhir/issues who's value is a collection of
+  issue-maps to build a OperationsOutcome and ::problems whose value is a
+  collection of problem-maps, where problem-map has at least :path :pred and
+  :val keys describing the predicate and the value that failed at that path."
   {:arglists '([resource])}
-  [{type :resourceType :as resource}]
-  (when-let [spec (s2/get-spec (keyword "fhir" type))]
-    (s2/explain-data spec resource)))
+  ([{type :resourceType :as resource}]
+   (if type
+     (when-let
+       [spec-error (when-let
+                     [spec (s2/get-spec (keyword "fhir" type))]
+                     (s2/explain-data spec resource))]
+       (assoc
+         spec-error
+         :fhir/issues
+         (mapv #(generate-issue resource %)
+               (::s/problems spec-error))))
+     {:fhir/issues
+      [{:fhir.issues/severity "error"
+        :fhir.issues/code "value"
+        :fhir.issues/diagnostics
+        "Given resource does not contain `resourceType` key!"}]})))
 
 
 (defn child-specs

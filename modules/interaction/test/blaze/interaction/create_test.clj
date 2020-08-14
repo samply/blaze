@@ -72,14 +72,37 @@
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
         [:issue 0 :code] := "invariant"
-        [:issue 0 :diagnostics] := "Resource invalid.")))
+        [:issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`."
+        [:issue 0 :expression] := ["gender"])))
+
+  (testing "Returns Error on invalid resource - two errors"
+    (let [{:keys [status body]}
+          ((handler-with [])
+           {::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :body {:resourceType "Patient" :id "1"
+                   :contact [{:name {:use [] :text "name1text1"}}
+                             {:name {:use "  " :text "name2text1"}}]}})]
+
+      (is (= 400 status))
+
+      (given body
+        :resourceType := "OperationOutcome"
+        [:issue 0 :severity] := "error"
+        [:issue 0 :code] := "invariant"
+        [:issue 0 :diagnostics] := "Error on value `[]`. Expected type is `code`."
+        [:issue 0 :expression] := ["contact[0].name.use"]
+        [:issue 1 :severity] := "error"
+        [:issue 1 :code] := "invariant"
+        [:issue 1 :diagnostics] :=
+        "Error on value `  `. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+        [:issue 1 :expression] := ["contact[1].name.use"])))
 
   (testing "Returns Error violated referential integrity"
     (let [{:keys [status body]}
           ((handler-with [])
-            {::reitit/match {:data {:fhir.resource/type "Observation"}}
-             :body {:resourceType "Observation" :id "0"
-                    :subject {:reference "Patient/0"}}})]
+           {::reitit/match {:data {:fhir.resource/type "Observation"}}
+            :body {:resourceType "Observation" :id "0"
+                   :subject {:reference "Patient/0"}}})]
 
       (is (= 409 status))
 
@@ -87,7 +110,8 @@
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
         [:issue 0 :code] := "conflict"
-        [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
+        [:issue 0 :diagnostics] :=
+        "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
 
   (testing "On newly created resource"
     (testing "with no Prefer header"

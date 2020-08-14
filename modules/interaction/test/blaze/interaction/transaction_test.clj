@@ -354,8 +354,8 @@
         :resourceType := "OperationOutcome"
         [:issue 0 :severity] := "error"
         [:issue 0 :code] := "invariant"
-        [:issue 0 :expression 0] := "Bundle.entry[0].resource"
-        [:issue 0 :diagnostics] := "Resource invalid.")))
+        [:issue 0 :expression 0] := "Bundle.entry[0].resource.gender"
+        [:issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`.")))
 
 
   (testing "Returns Error on duplicate resources"
