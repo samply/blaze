@@ -38,8 +38,9 @@
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.util :as elm-util]
     [blaze.fhir.spec :as fhir-spec]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as str])
+    [cuerdas.core :as cuerdas])
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit]
@@ -91,7 +92,7 @@
   {:arglists '([context expression])}
   (fn [_ {:keys [type] :as expr}]
     (assert (string? type) (format "Missing :type in expression `%s`." (pr-str expr)))
-    (keyword "elm.compiler.type" (str/kebab type))))
+    (keyword "elm.compiler.type" (cuerdas/kebab type))))
 
 
 (defmethod compile* :default
@@ -161,7 +162,7 @@
 
 
 (defn- record-name [s]
-  (str (str/capital (str/camel (name s))) "OperatorExpression"))
+  (str (cuerdas/capital (cuerdas/camel (name s))) "OperatorExpression"))
 
 
 (defmacro defunop
@@ -275,7 +276,7 @@
 
 
 (defn- to-chrono-unit [precision]
-  (case (str/lower precision)
+  (case (str/lower-case precision)
     "year" ChronoUnit/YEARS
     "month" ChronoUnit/MONTHS
     "week" ChronoUnit/WEEKS
@@ -445,76 +446,82 @@
       (format "unknown FHIR data element `%s` in type `%s`" (name key) (name (type x))))))
 
 
-(defn- get-property [key value]
+(defn- pull [db x]
+  (if (d/resource-handle? x)
+    @(d/pull-content db x)
+    x))
+
+
+(defn- get-property [db key x]
   (cond
-    (fhir-type? (type value))
-    (get-fhir-property key value)
+    (fhir-type? (type x))
+    (get-fhir-property key (pull db x))
 
     :else
-    (p/get value key)))
+    (p/get x key)))
 
 
 (defrecord SourcePropertyExpression [source key]
   Expression
-  (-eval [_ context resource scope]
-    (get-property key (-eval source context resource scope))))
+  (-eval [_ {:keys [db] :as context} resource scope]
+    (get-property db key (-eval source context resource scope))))
 
 
 (defrecord ChoiceFhirTypeSourcePropertyExpression [source key choices]
   Expression
-  (-eval [_ context resource scope]
-    (search-choice-property choices (-eval source context resource scope))))
+  (-eval [_ {:keys [db] :as context} resource scope]
+    (search-choice-property choices (pull db (-eval source context resource scope)))))
 
 
 (defrecord ManyFhirTypeSourcePropertyExpression [source key spec]
   Expression
-  (-eval [_ context resource scope]
-    (->> (get (-eval source context resource scope) key)
+  (-eval [_ {:keys [db] :as context} resource scope]
+    (->> (get (pull db (-eval source context resource scope)) key)
          (coll/eduction (map (partial with-spec spec))))))
 
 
 (defrecord OneFhirTypeSourcePropertyExpression [source key spec]
   Expression
-  (-eval [_ context resource scope]
-    (when-let [val (get (-eval source context resource scope) key)]
+  (-eval [_ {:keys [db] :as context} resource scope]
+    (when-let [val (get (pull db (-eval source context resource scope)) key)]
       (with-spec spec val))))
 
 
 (defrecord SingleScopePropertyExpression [key]
   Expression
-  (-eval [_ _ _ value]
-    (get-property key value)))
+  (-eval [_ {:keys [db]} _ value]
+    (get-property db key value)))
 
 
-(defrecord ChoiceFhirTypeSingleScopePropertyExpression [key choices]
+(defrecord ChoiceFhirTypeSingleScopePropertyExpression [choices]
   Expression
-  (-eval [_ _ _ value]
-    (search-choice-property choices value)))
+  (-eval [_ {:keys [db]} _ value]
+    (search-choice-property choices (pull db value))))
 
 
 (defrecord ManyFhirTypeSingleScopePropertyExpression [key spec]
   Expression
-  (-eval [_ _ _ value]
-    (coll/eduction (map (partial with-spec spec)) (get value key))))
+  (-eval [_ {:keys [db]} _ value]
+    (coll/eduction (map (partial with-spec spec)) (get (pull db value) key))))
 
 
 (defrecord OneFhirTypeSingleScopePropertyExpression [key spec]
   Expression
-  (-eval [_ _ _ value]
-    (when-let [val (get value key)]
+  (-eval [_ {:keys [db]} _ value]
+    (when-let [val (get (pull db value) key)]
       (with-spec spec val))))
 
 
 (defrecord ScopePropertyExpression [scope-key key]
   Expression
-  (-eval [_ _ _ scope]
-    (get-property key (get scope scope-key))))
+  (-eval [_ {:keys [db]} _ scope]
+    (get-property db key (get scope scope-key))))
 
 
 (defrecord ChoiceFhirTypeScopePropertyExpression [scope-key key choices]
   Expression
-  (-eval [_ _ _ scope]
-    (search-choice-property choices (get scope scope-key))))
+  (-eval [_ {:keys [db]} _ scope]
+    (search-choice-property choices (pull db (get scope scope-key)))))
 
 
 (defrecord ManyFhirTypeScopePropertyExpression [scope-key key spec]
@@ -531,7 +538,7 @@
 
 
 (defn- path->key [path]
-  (let [[first-part & more-parts] (str/split path "." 2)]
+  (let [[first-part & more-parts] (str/split path #"\." 2)]
     (when (and more-parts (not= ["value"] more-parts))
       (throw-anom ::anom/unsupported (format "Unsupported path `%s`with more than one part." path)))
     (keyword first-part)))
@@ -564,7 +571,7 @@
   (if-let [child-spec (get (fhir-spec/child-specs type) key)]
     (cond
       (fhir-spec/choice? child-spec)
-      (->ChoiceFhirTypeSingleScopePropertyExpression key (fhir-spec/choices child-spec))
+      (->ChoiceFhirTypeSingleScopePropertyExpression (fhir-spec/choices child-spec))
 
       (= :many (fhir-spec/cardinality child-spec))
       (->ManyFhirTypeSingleScopePropertyExpression key (fhir-spec/type-spec child-spec))
@@ -763,7 +770,7 @@
             (if-some [expression (get library-context name)]
               (mapv
                 #(-eval expression context % nil)
-                (d/list-resources db def-eval-context))
+                (d/list-resource-handles db def-eval-context))
               (throw-anom
                 ::anom/incorrect
                 (format "Expression `%s` not found." name)
@@ -1496,7 +1503,7 @@
 
 ;; 17.9. Lower
 (defunop lower [s]
-  (str/lower s))
+  (some-> s str/lower-case))
 
 
 ;; 17.10. Matches
@@ -1588,7 +1595,7 @@
 
 ;; 17.18. Upper
 (defunop upper [s]
-  (str/upper s))
+  (some-> s str/upper-case))
 
 
 

@@ -8,25 +8,19 @@
     [clojure.spec.alpha :as s]))
 
 
-(s/fdef index/tx
-  :args (s/cat :kv-store :blaze.db/kv-store :t :blaze.db/t)
-  :ret (s/nilable :blaze.db/tx))
-
-
 (s/fdef index/t-by-instant
   :args (s/cat :snapshot :blaze.db/kv-snapshot :instant inst?)
   :ret (s/nilable :blaze.db/t))
 
 
 (s/fdef index/compartment-list
-  :args (s/cat :node :blaze.db/node
-               :cri :blaze.db/kv-iterator
+  :args (s/cat :cri :blaze.db/kv-iterator
                :raoi :blaze.db/kv-iterator
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :start-id (s/nilable bytes?)
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/def :blaze.db.index.query/clause
@@ -39,15 +33,14 @@
 
 
 (s/fdef index/type-query
-  :args (s/cat :node :blaze.db/node
-               :snapshot :blaze.db/kv-snapshot
+  :args (s/cat :snapshot :blaze.db/kv-snapshot
                :svri :blaze.db/kv-iterator
                :rsvi  :blaze.db/kv-iterator
                :raoi :blaze.db/kv-iterator
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef index/system-query
@@ -58,16 +51,15 @@
                :raoi :blaze.db/kv-iterator
                :clauses :blaze.db.index.query/clauses
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef index/compartment-query
-  :args (s/cat :node :blaze.db/node
-               :snapshot :blaze.db/kv-snapshot
+  :args (s/cat :snapshot :blaze.db/kv-snapshot
                :csvri :blaze.db/kv-iterator
                :raoi :blaze.db/kv-iterator
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle))

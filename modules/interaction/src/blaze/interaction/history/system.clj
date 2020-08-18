@@ -16,43 +16,40 @@
     [taoensso.timbre :as log]))
 
 
-(defn- resource-t [resource]
-  (-> resource meta :blaze.db/t))
-
-
 (defn- build-response
-  [router match query-params t total versions]
+  [router match db query-params t total version-handles]
   (let [page-size (fhir-util/page-size query-params)
-        paged-versions (into [] (take (inc page-size)) versions)
+        paged-version-handles (into [] (take (inc page-size)) version-handles)
         self-link
-        (fn [resource]
+        (fn [resource-handle]
           {:relation "self"
-           :url (history-util/nav-url match query-params t (resource-t resource)
-                                      (:resourceType resource) (:id resource))})
+           :url (history-util/nav-url match query-params t
+                                      (d/last-updated-t resource-handle)
+                                      (-> resource-handle type name)
+                                      (:id resource-handle))})
         next-link
-        (fn [resource]
+        (fn [resource-handle]
           {:relation "next"
-           :url (history-util/nav-url match query-params t (resource-t resource)
-                                      (:resourceType resource) (:id resource))})]
-    (ring/response
-      (cond->
-        {:resourceType "Bundle"
-         :type "history"
-         :total total
-         :entry
-         (into
-           []
-           (comp
-             ;; we need take here again because we take page-size + 1 above
-             (take page-size)
-             (map (partial history-util/build-entry router)))
-           paged-versions)}
+           :url (history-util/nav-url match query-params t
+                                      (d/last-updated-t resource-handle)
+                                      (-> resource-handle type name)
+                                      (:id resource-handle))})]
+    ;; we need take here again because we take page-size + 1 above
+    (-> (d/pull-many db (take page-size paged-version-handles))
+        (ac/then-apply
+          (fn [pages-versions]
+            (ring/response
+              (cond->
+                {:resourceType "Bundle"
+                 :type "history"
+                 :total total
+                 :entry (mapv #(history-util/build-entry router %) pages-versions)}
 
-        (first paged-versions)
-        (update :link (fnil conj []) (self-link (first paged-versions)))
+                (first paged-version-handles)
+                (update :link (fnil conj []) (self-link (first paged-version-handles)))
 
-        (< page-size (count paged-versions))
-        (update :link (fnil conj []) (next-link (peek paged-versions)))))))
+                (< page-size (count paged-version-handles))
+                (update :link (fnil conj []) (next-link (peek paged-version-handles))))))))))
 
 
 (defn- handle [router match query-params db]
@@ -62,14 +59,14 @@
         page-id (when page-type (fhir-util/page-id query-params))
         since (history-util/since query-params)
         total (d/total-num-of-system-changes db since)
-        versions (d/system-history db page-t page-type page-id since)]
-    (build-response router match query-params t total versions)))
+        version-handles (d/system-history db page-t page-type page-id since)]
+    (build-response router match db query-params t total version-handles)))
 
 
 (defn- handler-intern [node]
   (fn [{::reitit/keys [router match] :keys [query-params]}]
     (-> (handler-util/db node (fhir-util/t query-params))
-        (ac/then-apply #(handle router match query-params %)))))
+        (ac/then-compose #(handle router match query-params %)))))
 
 
 (defn handler [node]

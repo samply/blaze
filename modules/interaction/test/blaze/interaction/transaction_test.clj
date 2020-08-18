@@ -479,7 +479,38 @@
                  (-> body :entry first :response :lastModified)))
 
           (testing "there is no resource embedded in the entry"
-            (is (nil? (-> body :entry first :resource))))))))
+            (is (nil? (-> body :entry first :resource))))))
+
+
+      (testing "with return=representation Prefer header"
+        (let [{:keys [status body]}
+              ((handler-with
+                 [[[:put {:resourceType "Patient" :id "0" :gender "female"}]]])
+               {:headers {"prefer" "return=representation"}
+                :body
+                {:resourceType "Bundle"
+                 :type "transaction"
+                 :entry entries}})]
+
+          (is (= 200 status))
+
+          (is (= "Bundle" (:resourceType body)))
+
+          (is (= "transaction-response" (:type body)))
+
+          (is (= "200" (-> body :entry first :response :status)))
+
+          (is (= "W/\"2\"" (-> body :entry first :response :etag)))
+
+          (is (= "1970-01-01T00:00:00Z"
+                 (-> body :entry first :response :lastModified)))
+
+          (given (-> body :entry first :resource)
+            :resourceType := "Patient"
+            :id := "0"
+            :gender := "male"
+            [:meta :versionId] := "2"
+            [:meta :lastUpdated] := "1970-01-01T00:00:00Z")))))
 
 
   (testing "On created resource in transaction"

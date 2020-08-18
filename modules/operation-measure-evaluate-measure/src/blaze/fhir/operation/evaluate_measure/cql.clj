@@ -31,9 +31,9 @@
 
 
 (defn- evaluate-expression-1
-  [{:keys [library-context] :as context} subject expression-name]
+  [{:keys [library-context] :as context} subject-handle expression-name]
   (try
-    (expr/eval (get library-context expression-name) context subject nil)
+    (expr/eval (get library-context expression-name) context subject-handle nil)
     (catch Exception e
       (log/error (log/stacktrace e))
       {::anom/category ::anom/fault
@@ -103,26 +103,26 @@
 
 
 (defn- evaluate-expression*
-  "Evaluates the expression with `name` over `subjects` parallel.
+  "Evaluates the expression with `name` over `subject-handles` parallel.
 
-  Subjects have to be a vector in order ro ensure parallel execution."
-  [context name subjects]
+  Subject handles have to be a vector in order to ensure parallel execution."
+  [context name subject-handles]
   (let [reduce-result-op (expression-result-reduce-op context)]
     (r/fold
       eval-sequential-chunk-size
       (expression-combine-op context)
-      (fn [context subject]
-        (let [res (evaluate-expression-1 context subject name)]
+      (fn [context subject-handle]
+        (let [res (evaluate-expression-1 context subject-handle name)]
           (cond
             (::anom/category res)
             (reduced (assoc context ::result res))
 
             res
-            (update context ::result reduce-result-op subject)
+            (update context ::result reduce-result-op subject-handle)
 
             :else
             context)))
-      subjects)))
+      subject-handles)))
 
 
 (defn- unwrap-library-context
@@ -146,7 +146,7 @@
         (partition-all eval-parallel-chunk-size)
         (map #(evaluate-expression* context name %)))
       (expression-combine-op context)
-      (d/list-resources db subject-type))))
+      (d/list-resource-handles db subject-type))))
 
 
 (defn- incorrect-stratum [resource expression-name]
@@ -176,21 +176,21 @@
       (wrap-batch-db context)))
 
 
-(defn- evaluate-stratum-expression [context subject name]
-  (let [result (evaluate-expression-1 context subject name)]
+(defn- evaluate-stratum-expression [context subject-handle name]
+  (let [result (evaluate-expression-1 context subject-handle name)]
     (if (sequential? result)
-      (incorrect-stratum subject name)
+      (incorrect-stratum subject-handle name)
       result)))
 
 
 (defn calc-strata*
-  [context population-expression-name stratum-expression-name subjects]
+  [context population-expression-name stratum-expression-name subject-handles]
   (let [stratum-result-reduce-op (stratum-result-reduce-op context)]
     (r/fold
       eval-sequential-chunk-size
       (stratum-combine-op context)
-      (fn [context subject]
-        (let [res (evaluate-expression-1 context subject
+      (fn [context subject-handle]
+        (let [res (evaluate-expression-1 context subject-handle
                                          population-expression-name)]
           (cond
             (::anom/category res)
@@ -198,14 +198,14 @@
 
             res
             (let [stratum (evaluate-stratum-expression
-                            context subject stratum-expression-name)]
+                            context subject-handle stratum-expression-name)]
               (if (::anom/category stratum)
                 (reduced (assoc context ::result stratum))
-                (update context ::result stratum-result-reduce-op stratum subject)))
+                (update context ::result stratum-result-reduce-op stratum subject-handle)))
 
             :else
             context)))
-      subjects)))
+      subject-handles)))
 
 
 (defn calc-strata
@@ -220,7 +220,7 @@
         (map #(calc-strata* context population-expression-name
                             stratum-expression-name %)))
       (stratum-combine-op context)
-      (d/list-resources db subject-type))))
+      (d/list-resource-handles db subject-type))))
 
 
 (defn- anom-conj
@@ -229,21 +229,21 @@
   ([r x] (if (::anom/category x) (reduced x) (conj r x))))
 
 
-(defn- evaluate-mult-component-stratum-expression [context subject names]
+(defn- evaluate-mult-component-stratum-expression [context subject-handle names]
   (transduce
-    (map #(evaluate-stratum-expression context subject %))
+    (map #(evaluate-stratum-expression context subject-handle %))
     anom-conj
     names))
 
 
 (defn calc-mult-component-strata*
-  [context population-expression-name stratum-expression-names subjects]
+  [context population-expression-name stratum-expression-names subject-handles]
   (let [stratum-result-reduce-op (stratum-result-reduce-op context)]
     (r/fold
       eval-sequential-chunk-size
       (stratum-combine-op context)
-      (fn [context subject]
-        (let [res (evaluate-expression-1 context subject
+      (fn [context subject-handle]
+        (let [res (evaluate-expression-1 context subject-handle
                                          population-expression-name)]
           (cond
             (::anom/category res)
@@ -251,15 +251,15 @@
 
             res
             (let [stratum (evaluate-mult-component-stratum-expression
-                            context subject stratum-expression-names)]
+                            context subject-handle stratum-expression-names)]
 
               (if (::anom/category stratum)
                 (reduced (assoc context ::result stratum))
-                (update context ::result stratum-result-reduce-op stratum subject)))
+                (update context ::result stratum-result-reduce-op stratum subject-handle)))
 
             :else
             context)))
-      subjects)))
+      subject-handles)))
 
 
 (defn calc-mult-component-strata
@@ -274,4 +274,4 @@
         (map #(calc-mult-component-strata* context population-expression-name
                                            stratum-expression-names %)))
       (stratum-combine-op context)
-      (d/list-resources db subject-type))))
+      (d/list-resource-handles db subject-type))))

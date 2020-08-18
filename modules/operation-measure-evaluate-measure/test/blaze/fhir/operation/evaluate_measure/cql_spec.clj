@@ -2,8 +2,8 @@
   (:require
     [blaze.db.spec]
     [blaze.elm.compiler-spec]
+    [blaze.elm.expression-spec]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
-    [blaze.fhir.operation.evaluate-measure.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom])

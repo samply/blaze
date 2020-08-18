@@ -80,7 +80,8 @@
    (with-open [node (node-with (read-data name))]
      (let [db (d/db node)
            period [(Year/of 2000) (Year/of 2020)]]
-       (evaluate-measure now db router (d/resource db "Measure" "0")
+       (evaluate-measure now db router
+                         @(d/pull node (d/resource-handle db "Measure" "0"))
                          {:period period :report-type report-type})))))
 
 

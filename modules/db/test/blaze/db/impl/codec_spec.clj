@@ -5,6 +5,7 @@
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.bytes-spec]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.codec.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
@@ -234,10 +235,6 @@
 (s/fdef codec/resource-as-of-key->id
   :args (s/cat :k :blaze/resource-as-of-key)
   :ret :blaze.db/id-bytes)
-
-
-(s/def :blaze.db/state
-  nat-int?)
 
 
 (s/fdef codec/state

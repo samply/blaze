@@ -2,7 +2,7 @@
   (:require
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource :as resource]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i])
   (:import
     [clojure.lang IReduceInit]
@@ -13,29 +13,20 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defrecord SystemAsOfKV [^long t ^long tid id hash ^long state])
-
-
 (defn- key-valid? [^long end-t]
-  (fn [^SystemAsOfKV kv]
-    (< end-t (.t kv))))
-
-
-(defn- new-resource [node]
-  (fn [^SystemAsOfKV entry]
-    (resource/new-resource node (.tid entry) (.id entry) (.hash entry) (.state entry)
-                           (.t entry))))
+  (fn [handle]
+    (< end-t ^long (rh/t handle))))
 
 
 (defn- decoder
-  "Returns a function which decodes an `SystemAsOfKV` out of a key and a value
+  "Returns a function which decodes an resource handle out of a key and a value
   ByteBuffer from the resource-as-of index.
 
   Closes over a shared byte array for id decoding, because the String
   constructor creates a copy of the id bytes anyway. Can only be used from one
   thread.
 
-  The decode function creates only four objects, the SystemAsOfKV, the String
+  The decode function creates only four objects, the resource handle, the String
   for the id, the byte array inside the string and the byte array for the hash.
 
   Both ByteBuffers are changed during decoding and have to be reset accordingly
@@ -47,14 +38,15 @@
        [(ByteBuffer/allocateDirect (+ codec/t-size codec/tid-size codec/max-id-size))
         (ByteBuffer/allocateDirect (+ codec/hash-size codec/state-size))])
       ([^ByteBuffer kb ^ByteBuffer vb]
-       (SystemAsOfKV.
-        (codec/get-t! kb)
-        (codec/get-tid! kb)
-        (let [id-size (.remaining kb)]
-          (.get kb ib 0 id-size)
-          (String. ib 0 id-size codec/iso-8859-1))
-        (codec/get-hash! vb)
-        (codec/get-state! vb))))))
+       (let [t (codec/get-t! kb)]
+         (rh/resource-handle
+           (codec/get-tid! kb)
+           (let [id-size (.remaining kb)]
+             (.get kb ib 0 id-size)
+             (String. ib 0 id-size codec/iso-8859-1))
+           t
+           (codec/get-hash! vb)
+           (codec/get-state! vb)))))))
 
 
 (defn- start-key [start-t start-tid start-id]
@@ -69,11 +61,9 @@
   `start-tid` (optional, inclusive), `start-id` (optional, inclusive) and
   `end-t` (inclusive) of all resources.
 
-  Versions are resources itself."
+  Versions are resource handles."
   ^IReduceInit
-  [node saoi start-t start-tid start-id end-t]
+  [saoi start-t start-tid start-id end-t]
   (coll/eduction
-    (comp
-      (take-while (key-valid? end-t))
-      (map (new-resource node)))
+    (take-while (key-valid? end-t))
     (i/kvs saoi (decoder) (start-key start-t start-tid start-id))))

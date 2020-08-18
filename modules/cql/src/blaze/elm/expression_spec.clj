@@ -27,5 +27,5 @@
 (s/fdef expr/eval
   :args (s/cat :expression expr/expr?
                :context :blaze.elm.expression/context
-               :resource :blaze/resource
-               :scope :blaze.elm.expression/scope))
+               :resource (s/nilable (s/or :resource :blaze/resource :resource-handle :blaze.db/resource-handle))
+               :scope (s/nilable :blaze.elm.expression/scope)))

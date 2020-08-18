@@ -44,18 +44,20 @@
 (defn- handler-intern [node executor]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
-    (if-let [{:blaze.db/keys [op tx]} (meta (d/resource (d/db node) type id))]
-      (if (identical? :delete op)
-        (ac/completed-future (build-response* tx))
-        (-> (d/transact node [[:delete type id]])
-            ;; it's important to switch to the transaction executor here,
-            ;; because otherwise the central indexing thread would execute
-            ;; response building.
-            (ac/then-apply-async build-response executor)))
-      (ac/completed-future
-        (handler-util/error-response
-          {::anom/category ::anom/not-found
-           :fhir/issue "not-found"})))))
+    (let [db (d/db node)]
+      (if-let [handle (d/resource-handle db type id)]
+        (if (d/deleted? handle)
+          (-> (build-response* (d/tx db (d/last-updated-t handle)))
+              (ac/completed-future))
+          (-> (d/transact node [[:delete type id]])
+              ;; it's important to switch to the transaction executor here,
+              ;; because otherwise the central indexing thread would execute
+              ;; response building.
+              (ac/then-apply-async build-response executor)))
+        (ac/completed-future
+          (handler-util/error-response
+            {::anom/category ::anom/not-found
+             :fhir/issue "not-found"}))))))
 
 
 (defn handler [node executor]

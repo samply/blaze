@@ -18,7 +18,7 @@
 (defrecord CompartmentListRetrieveExpression [context data-type]
   Expression
   (-eval [_ {:keys [db]} {:keys [id]} _]
-    (d/list-compartment-resources db context id data-type)))
+    (d/list-compartment-resource-handles db context id data-type)))
 
 
 (defrecord CompartmentQueryRetrieveExpression [query]
@@ -53,16 +53,23 @@
     [(subs s 0 idx) (subs s (inc idx))]))
 
 
+(defn- pull [db x]
+  (if (d/resource-handle? x)
+    @(d/pull-content db x)
+    x))
+
+
 ;; TODO: find a better solution than hard coding this case
 (defrecord SpecimenPatientExpression []
   Expression
-  (-eval [_ {:keys [db]} {{:keys [reference]} :subject} _]
-    (when reference
-      (when-let [[type id] (split-reference reference)]
-        (when (and (= "Patient" type) (string? id))
-          (let [patient (d/resource db "Patient" id)]
-            (when-not (d/deleted? patient)
-              [patient])))))))
+  (-eval [_ {:keys [db]} resource-or-handle _]
+    (let [{{:keys [reference]} :subject} (pull db resource-or-handle)]
+      (when reference
+        (when-let [[type id] (split-reference reference)]
+          (when (and (= "Patient" type) (string? id))
+            (let [handle (d/resource-handle db "Patient" id)]
+              (when-not (d/deleted? handle)
+                [@(d/pull-content db handle)]))))))))
 
 
 (def ^:private specimen-patient-expr
@@ -153,7 +160,7 @@
   (if (empty? codes)
     (reify Expression
       (-eval [_ {:keys [db]} _ _]
-        (into [] (d/list-resources db data-type))))
+        (into [] (d/list-resource-handles db data-type))))
     (let [query (d/compile-type-query node data-type [[code-property codes]])]
       (if (::anom/category query)
         (throw (ex-info (::anom/message query) query))

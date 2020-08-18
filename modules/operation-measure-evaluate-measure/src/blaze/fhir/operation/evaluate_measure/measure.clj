@@ -84,7 +84,8 @@
 
 
 (defn- find-library [db library-ref]
-  (coll/first (d/type-query db "Library" [["url" library-ref]])))
+  (when-let [handle (coll/first (d/type-query db "Library" [["url" library-ref]]))]
+    @(d/pull db handle)))
 
 
 (defn- compile-primary-library*

@@ -4,8 +4,8 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource :as resource]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.special :as special]
@@ -54,15 +54,15 @@
   (-compile-values [_ values]
     (map codec/id-bytes values))
 
-  (-resources [_ node _ _ rsvi raoi tid _ list-id t]
+  (-resource-handles [_ _ _ rsvi raoi tid _ list-id t]
     (when-let [[list-hash state] (list-hash-state-t raoi list-id t)]
       (when-not (codec/deleted? state)
         (coll/eduction
           (mapcat
             (fn [id]
-              (when-let [resource (resource-as-of/resource node raoi tid id t)]
-                (when-not (resource/deleted? resource)
-                  [resource]))))
+              (when-let [handle (resource-as-of/resource-handle raoi tid id t)]
+                (when-not (rh/deleted? handle)
+                  [handle]))))
           (ids rsvi (start-key list-id list-hash) tid)))))
 
   (-index-entries [_ _ _ _ _]

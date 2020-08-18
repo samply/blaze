@@ -81,7 +81,9 @@
 
 (defmacro supply
   "Returns a CompletableFuture that is synchronously completed by executing
-  `body` on the current thread."
+  `body` on the current thread.
+
+  Returns a failed future if `body` throws an exception."
   [& body]
   `(try
      (completed-future (do ~@body))

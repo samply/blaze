@@ -2,6 +2,7 @@
   (:require
     [blaze.cql-translator-spec]
     [blaze.db.spec]
+    [blaze.fhir.operation.evaluate-measure.cql-spec]
     [blaze.fhir.operation.evaluate-measure.measure :as measure]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
     [blaze.fhir.spec]

@@ -65,10 +65,10 @@
           ;; it's important to switch to the transaction executor here, because
           ;; otherwise the central indexing thread would execute response
           ;; building.
-          (ac/then-apply-async
+          (ac/then-apply-async identity executor)
+          (ac/then-compose
             #(response/build-created-response
-               router return-preference % type id)
-            executor)
+               router return-preference % type id))
           (ac/exceptionally handler-util/error-response)))))
 
 

@@ -1,5 +1,6 @@
 (ns blaze.db.spec
   (:require
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p]
     [blaze.db.resource-store.spec]
     [blaze.db.tx-log.spec]
@@ -32,6 +33,10 @@
 
 (s/def :blaze.db/tx
   (s/keys :req [:blaze.db/t :blaze.db.tx/instant]))
+
+
+(s/def :blaze.db/resource-handle
+  rh/resource-handle?)
 
 
 (s/def :blaze.db/query

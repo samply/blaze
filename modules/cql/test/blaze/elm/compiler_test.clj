@@ -892,7 +892,7 @@
                      [{:alias "P"
                        :expression retrieve}]}]
           (given (-eval (compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)
-            [0 :resourceType] := "Patient"
+            [0 type name] := "Patient"
             [0 :id] := "0"))
 
         (let [query {:type "Query"
@@ -1037,7 +1037,7 @@
                 elm {:type "Retrieve" :dataType "{http://hl7.org/fhir}Observation"}
                 expr (compile context elm)]
             (given (-eval expr {:db (d/db node)} patient nil)
-              [0 :resourceType] := "Observation"
+              [0 type name] := "Observation"
               [0 :id] := "1")))))
 
     (testing "with codes"
@@ -1070,7 +1070,7 @@
                      :codes #elm/to-list #elm/code-ref "code-def-133853"}
                 expr (compile context elm)]
             (given (-eval expr {:db (d/db node)} patient nil)
-              [0 :resourceType] := "Observation"
+              [0 type name] := "Observation"
               [0 :id] := "1"))))))
 
   (testing "with related context"

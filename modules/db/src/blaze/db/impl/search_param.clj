@@ -5,8 +5,8 @@
     [blaze.db.hash :as hash]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource :as resource]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.list]
@@ -31,12 +31,12 @@
   (p/-compile-values search-param values))
 
 
-(defn resources
-  "Returns a reducible collection of resources."
-  [search-param node snapshot svri rsvi raoi tid modifier compiled-values t]
+(defn resource-handles
+  "Returns a reducible collection of resource handles."
+  [search-param snapshot svri rsvi raoi tid modifier compiled-values t]
   (coll/eduction
-    (mapcat #(p/-resources search-param node snapshot svri rsvi raoi tid
-                           modifier % t))
+    (mapcat #(p/-resource-handles search-param snapshot svri rsvi raoi tid
+                                  modifier % t))
     compiled-values))
 
 
@@ -50,25 +50,25 @@
         [id (cons hash-prefix (map #(nth % 2) more))]))))
 
 
-(defn- non-deleted-resource [node raoi tid id t]
-  (when-let [resource (resource-as-of/resource node raoi tid id t)]
-    (when-not (resource/deleted? resource)
-      resource)))
+(defn- non-deleted-resource-handle [raoi tid id t]
+  (when-let [handle (resource-as-of/resource-handle raoi tid id t)]
+    (when-not (rh/deleted? handle)
+      handle)))
 
 
-(defn- resource-mapper [node raoi tid t]
+(defn- resource-handle-mapper [raoi tid t]
   (mapcat
     (fn [[id hash-prefixes]]
-      (when-let [resource (non-deleted-resource node raoi tid id t)]
-        [[resource hash-prefixes]]))))
+      (when-let [resource-handle (non-deleted-resource-handle raoi tid id t)]
+        [[resource-handle hash-prefixes]]))))
 
 
 (def ^:private matches-hash-prefixes-filter
   (mapcat
-    (fn [[resource hash-prefixes]]
-      (let [hash (hash/encode (resource/hash resource))]
+    (fn [[resource-handle hash-prefixes]]
+      (let [hash (hash/encode (rh/hash resource-handle))]
         (when (some #(bytes/starts-with? hash %) hash-prefixes)
-          [resource])))))
+          [resource-handle])))))
 
 
 (defn compartment-keys
@@ -80,11 +80,11 @@
 
 
 (defn compartment-resources
-  [node search-param csvri raoi compartment tid compiled-values t]
+  [search-param csvri raoi compartment tid compiled-values t]
   (coll/eduction
     (comp
       by-id-grouper
-      (resource-mapper node raoi tid t)
+      (resource-handle-mapper raoi tid t)
       matches-hash-prefixes-filter)
     (compartment-keys search-param csvri compartment tid compiled-values)))
 
@@ -227,7 +227,7 @@
   (-compile-values [_ values]
     (vec values))
 
-  (-resources [_ node snapshot svri _ raoi tid _ compiled-value t]
+  (-resource-handles [_ snapshot svri _ raoi tid _ compiled-value t]
     (let [[op value] (separate-op compiled-value)]
       (case op
         :eq
@@ -238,7 +238,7 @@
             (comp
               (take-while date-eq-key-valid?)
               by-id-grouper
-              (resource-mapper node raoi tid t)
+              (resource-handle-mapper raoi tid t)
               matches-hash-prefixes-filter)
             (i/keys svri codec/decode-search-param-value-key start-key)))
 
@@ -248,7 +248,7 @@
             (comp
               (take-while date-key-lb?)
               by-id-grouper
-              (resource-mapper node raoi tid t)
+              (resource-handle-mapper raoi tid t)
               matches-hash-prefixes-filter)
             (i/keys svri codec/decode-search-param-value-key start-key)))
 
@@ -258,7 +258,7 @@
             (comp
               (take-while date-key-ub?)
               by-id-grouper
-              (resource-mapper node raoi tid t)
+              (resource-handle-mapper raoi tid t)
               matches-hash-prefixes-filter)
             (i/keys-prev svri codec/decode-search-param-value-key start-key)))
 
@@ -367,11 +367,11 @@
   (-compile-values [_ values]
     (mapv (comp codec/string normalize-string) values))
 
-  (-resources [_ node _ svri _ raoi tid _ compiled-value t]
+  (-resource-handles [_ _ svri _ raoi tid _ compiled-value t]
     (coll/eduction
       (comp
         by-id-grouper
-        (resource-mapper node raoi tid t)
+        (resource-handle-mapper raoi tid t)
         matches-hash-prefixes-filter)
       (prefix-keys svri (codec/search-param-value-key c-hash tid compiled-value))))
 
@@ -604,11 +604,11 @@
   (-compile-values [_ values]
     (mapv codec/v-hash values))
 
-  (-resources [_ node _ svri _ raoi tid modifier compiled-value t]
+  (-resource-handles [_ _ svri _ raoi tid modifier compiled-value t]
     (coll/eduction
       (comp
         by-id-grouper
-        (resource-mapper node raoi tid t)
+        (resource-handle-mapper raoi tid t)
         matches-hash-prefixes-filter)
       (prefix-keys
         svri
@@ -687,11 +687,11 @@
           (codec/quantity (BigDecimal. ^String value) unit)))
       values))
 
-  (-resources [_ node _ svri _ raoi tid _ compiled-value t]
+  (-resource-handles [_ _ svri _ raoi tid _ compiled-value t]
     (coll/eduction
       (comp
         by-id-grouper
-        (resource-mapper node raoi tid t)
+        (resource-handle-mapper raoi tid t)
         matches-hash-prefixes-filter)
       (prefix-keys svri (codec/search-param-value-key c-hash tid compiled-value))))
 

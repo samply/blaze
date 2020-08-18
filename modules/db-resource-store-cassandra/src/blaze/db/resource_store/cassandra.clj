@@ -275,25 +275,3 @@
 
 (reg-collector ::resource-bytes
   resource-bytes)
-
-
-(comment
-  (def store (new-cassandra-resource-store "localhost:9042" "blaze"
-                                           DefaultConsistencyLevel/ONE))
-  (.close store)
-
-  @(rs/get store "1")
-
-  (time
-    (dotimes [_ 1000]
-      @(rs/get store "1")))
-
-  (time
-    (dotimes [_ 10]
-      @(rs/multi-get store ["1" "3"])))
-
-  (rs/put store {"1" {:resourceType "Patient" :id "1"}
-                 "3" {:resourceType "Patient" :id "3"}})
-  (deref *1)
-  (clojure.repl/pst)
-  )

@@ -57,18 +57,18 @@
                     ;; it's important to switch to the transaction
                     ;; executor here, because otherwise the central
                     ;; indexing thread would execute response building.
-                    (ac/then-apply-async
+                    (ac/then-apply-async identity executor)
+                    (ac/then-compose
                       #(response/build-created-response
-                         router return-preference % "MeasureReport" id)
-                      executor)
+                         router return-preference % "MeasureReport" id))
                     (ac/exceptionally handler-util/error-response)))))))))
 
 
-(defn- find-measure
+(defn- find-measure-handle
   [db {{:keys [id]} :path-params {:strs [measure]} :params}]
   (cond
     id
-    (d/resource db "Measure" id)
+    (d/resource-handle db "Measure" id)
 
     measure
     (coll/first (d/type-query db "Measure" [["url" measure]]))))
@@ -99,21 +99,23 @@
       (if (::anom/category result)
         (ac/completed-future (handler-util/error-response result))
         (let [db (d/db node)]
-          (if-let [measure (find-measure db request)]
-            (if (d/deleted? measure)
+          (if-let [measure-handle (find-measure-handle db request)]
+            (if (d/deleted? measure-handle)
               (-> (handler-util/operation-outcome
                     {:fhir/issue "deleted"})
                   (ring/response)
                   (ring/status 410)
                   (ac/completed-future))
-              (handle
-                clock
-                node
-                db
-                executor
-                request
-                result
-                measure))
+              (-> (d/pull db measure-handle)
+                  (ac/then-compose
+                    #(handle
+                       clock
+                       node
+                       db
+                       executor
+                       request
+                       result
+                       %))))
             (ac/completed-future
               (handler-util/error-response
                 {::anom/category ::anom/not-found
