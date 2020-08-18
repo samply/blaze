@@ -1,4 +1,4 @@
-/target
+target
 /.lein-*
 .nrepl-port
 /queries

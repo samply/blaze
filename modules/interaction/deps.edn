@@ -31,5 +31,25 @@
     ring/ring-spec
     {:mvn/version "0.0.4"}}
 
-   :main-opts
-   ["-m" "kaocha.runner"]}}}
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}
+
+    cloverage/cloverage
+    {:mvn/version "1.2.0"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.0.0"}
+
+    ring/ring-spec
+    {:mvn/version "0.0.4"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

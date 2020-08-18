@@ -4,4 +4,7 @@ lint:
 test:
 	clojure -A:test --profile :ci
 
-.PHONY: lint test
+test-coverage:
+	clojure -A:test-coverage
+
+.PHONY: lint test test-coverage

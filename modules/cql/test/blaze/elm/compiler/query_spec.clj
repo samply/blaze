@@ -1,6 +1,5 @@
 (ns blaze.elm.compiler.query-spec
   (:require
-    [blaze.elm.compiler.protocols :refer [XformFactory]]
     [blaze.elm.compiler.query :as query]
     [blaze.elm.expression :refer [expr?]]
     [clojure.spec.alpha :as s]))
@@ -26,13 +25,13 @@
 
 
 (defn xform-factory? [x]
-  (satisfies? XformFactory x))
+  (satisfies? query/XformFactory x))
 
 
 (s/fdef query/xform-factory
   :args (s/cat :with-xform-factories (s/coll-of xform-factory?)
-               :where-xform-expr xform-factory?
-               :return-xform-expr xform-factory?))
+               :where-xform-factory (s/nilable xform-factory?)
+               :return-xform-factory (s/nilable xform-factory?)))
 
 
 (s/fdef query/eduction-expr

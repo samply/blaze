@@ -4,4 +4,7 @@ lint:
 test:
 	true
 
-.PHONY: lint test
+test-coverage:
+	true
+
+.PHONY: lint test test-coverage

@@ -14,7 +14,9 @@ test-root:
 
 test: $(MODULES)
 
+test-coverage: $(MODULES)
+
 uberjar:
 	clojure -Sforce -A:depstar -m hf.depstar.uberjar target/blaze-${VERSION}-standalone.jar
 
-.PHONY: $(MODULES) lint-root lint test-root test uberjar
+.PHONY: $(MODULES) lint-root lint test-root test test-coverage uberjar
