@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.com/samply/blaze.svg?branch=release-0.8)](https://travis-ci.com/samply/blaze)
 [![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
 [![Image Layers](https://images.microbadger.com/badges/image/samply/blaze.svg)](https://microbadger.com/images/samply/blaze)
+[![codecov](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
 
 A FHIR® Store with internal, fast CQL Evaluation Engine
 
