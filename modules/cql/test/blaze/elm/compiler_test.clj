@@ -9,6 +9,7 @@
     [blaze.elm.compiler-spec]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.compiler.query :as query]
+    [blaze.elm.compiler.query-spec]
     [blaze.elm.compiler.retrieve-spec]
     [blaze.elm.compiler.retrieve-test :as retrieve-test]
     [blaze.elm.date-time :refer [local-time local-time? period]]

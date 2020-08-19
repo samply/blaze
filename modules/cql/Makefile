@@ -20,7 +20,10 @@ cql-test:
 test: cql-test
 	clojure -A:test --profile :ci
 
+test-coverage:
+	clojure -A:test-coverage
+
 clean:
 	rm -r cql-test
 
-.PHONY: lint test clean
+.PHONY: lint test test-coverage clean
