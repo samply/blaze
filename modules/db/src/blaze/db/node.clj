@@ -159,7 +159,7 @@
 
 
 (defn- max-t [state]
-  (let [{:keys [t error-t]} @state]
+  (let [{:keys [t error-t]} state]
     (max t error-t)))
 
 
@@ -211,11 +211,19 @@
 
   (-tx-result [this t]
     (let [watcher (create-watcher! state t)
-          current-t (max-t state)]
+          current-state @state
+          current-t (max-t current-state)]
       (log/trace "call tx-result: t =" t "current-t =" current-t)
-      (if (<= t current-t)
+      (cond
+        (<= t current-t)
         (do (remove-watch state watcher)
             (load-tx-result this kv-store t))
+
+        (:e current-state)
+        (do (remove-watch state watcher)
+            (ac/failed-future (:e current-state)))
+
+        :else
         (ac/then-compose watcher (fn [_] (load-tx-result this kv-store t))))))
 
   p/Tx
