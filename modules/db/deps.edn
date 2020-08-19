@@ -70,7 +70,7 @@
     org.clojure/test.check
     {:mvn/version "1.0.0"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-p" "../fhir-path/src" "-s" "test"
                "-e" "blaze.db.impl.codec"]}
 
   :unused-vars
