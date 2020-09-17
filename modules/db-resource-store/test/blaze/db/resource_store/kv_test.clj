@@ -1,11 +1,13 @@
 (ns blaze.db.resource-store.kv-test
   (:require
-    [blaze.db.hash :as hash]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store-spec]
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
     [blaze.db.resource-store.kv-spec]
+    [blaze.fhir.hash :as hash]
+    [blaze.fhir.spec :as fhir-spec]
     [cheshire.core :as cheshire]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -37,13 +39,17 @@
   (byte-array [0xA1]))
 
 
+(defn encode-resource [resource]
+  (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))
+
+
 (deftest get-test
   (testing "success"
-    (let [content {:resourceType "Patient" :id "0"}
+    (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put kv-store (hash/encode hash) (cheshire/generate-cbor content))
+      (kv/put kv-store (hash/encode hash) (encode-resource content))
 
       (is (= content @(rs/get store hash)))))
 
@@ -82,23 +88,23 @@
 
 (deftest multi-get-test
   (testing "success with one hash"
-    (let [content {:resourceType "Patient" :id "0"}
+    (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put kv-store (hash/encode hash) (cheshire/generate-cbor content))
+      (kv/put kv-store (hash/encode hash) (encode-resource content))
 
       (is (= {hash content} @(rs/multi-get store [hash])))))
 
   (testing "success with two hashes"
-    (let [content-0 {:resourceType "Patient" :id "0"}
+    (let [content-0 {:fhir/type :fhir/Patient :id "0"}
           hash-0 (hash/generate content-0)
-          content-1 {:resourceType "Patient" :id "1"}
+          content-1 {:fhir/type :fhir/Patient :id "1"}
           hash-1 (hash/generate content-1)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put kv-store (hash/encode hash-0) (cheshire/generate-cbor content-0))
-      (kv/put kv-store (hash/encode hash-1) (cheshire/generate-cbor content-1))
+      (kv/put kv-store (hash/encode hash-0) (encode-resource content-0))
+      (kv/put kv-store (hash/encode hash-1) (encode-resource content-1))
 
       (is (= {hash-0 content-0 hash-1 content-1}
              @(rs/multi-get store [hash-0 hash-1])))))
@@ -134,3 +140,13 @@
         @(rs/multi-get store [hash])
         (catch Exception e
           (is (= "msg-154826" (ex-message (ex-cause e)))))))))
+
+
+(deftest put-test
+  (let [content {:fhir/type :fhir/Patient :id "0"}
+        hash (hash/generate content)
+        kv-store (new-mem-kv-store)
+        store (new-kv-resource-store kv-store)]
+    (rs/put store {hash content})
+
+    (is (= content @(rs/get store hash)))))

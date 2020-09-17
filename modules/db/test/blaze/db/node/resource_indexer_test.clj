@@ -1,7 +1,6 @@
 (ns blaze.db.node.resource-indexer-test
   (:require
     [blaze.async-comp :as ac]
-    [blaze.db.hash :as hash]
     [blaze.db.impl.codec :as codec]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
@@ -10,10 +9,11 @@
     [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
     [blaze.executors :as ex]
+    [blaze.fhir.hash :as hash]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [java.time ZoneId]))
+    [java.time ZoneId LocalDate]))
 
 
 (defn fixture [f]
@@ -38,22 +38,27 @@
 
 
 (deftest index-condition-resource
-  (let [resource {:resourceType "Condition" :id "id-204446"
+  (let [resource {:fhir/type :fhir/Condition :id "id-204446"
                   :code
-                  {:coding
-                   [{:system "system-204435"
-                     :code "code-204441"}]}
-                  :onsetDateTime "2020-01-30"
-                  :subject {:reference "Patient/id-145552"}
+                  {:fhir/type :fhir/CodeableConcept
+                   :coding
+                   [{:fhir/type :fhir/Coding
+                     :system #fhir/uri"system-204435"
+                     :code #fhir/code"code-204441"}]}
+                  :onset #fhir/dateTime"2020-01-30"
+                  :subject
+                  {:fhir/type :fhir/Reference
+                   :reference "Patient/id-145552"}
                   :meta
-                  {:versionId "1"
+                  {:fhir/type :fhir/Meta
+                   :versionId #fhir/id"1"
                    :profile
-                   ["https://fhir.bbmri.de/StructureDefinition/Condition"]}}
+                   [#fhir/canonical"https://fhir.bbmri.de/StructureDefinition/Condition"]}}
         hash (hash/generate resource)
         rl (reify
-              rs/ResourceLookup
-              (-multi-get [_ _]
-                (ac/completed-future {hash resource})))
+             rs/ResourceLookup
+             (-multi-get [_ _]
+               (ac/completed-future {hash resource})))
         kv-store (init-kv-store)
         i (new-resource-indexer rl search-param-registry kv-store
                                 (ex/single-thread-executor) 1)]
@@ -164,7 +169,7 @@
           (codec/search-param-value-key
             (codec/c-hash "onset-date")
             (codec/tid "Condition")
-            (codec/date-lb (ZoneId/systemDefault) "2020-01-30")
+            (codec/date-lb (ZoneId/systemDefault) (LocalDate/of 2020 1 30))
             (codec/id-bytes "id-204446")
             hash))))
 
@@ -176,7 +181,7 @@
           (codec/search-param-value-key
             (codec/c-hash "onset-date")
             (codec/tid "Condition")
-            (codec/date-ub (ZoneId/systemDefault) "2020-01-30")
+            (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2020 1 30))
             (codec/id-bytes "id-204446")
             hash))))
 
@@ -218,27 +223,34 @@
 
 
 (deftest index-observation-resource
-  (let [resource {:resourceType "Observation" :id "id-192702"
-                  :status "status-193613"
+  (let [resource {:fhir/type :fhir/Observation :id "id-192702"
+                  :status #fhir/code"status-193613"
                   :category
-                  [{:coding
-                    [{:system "system-193558"
-                      :code "code-193603"}]}]
+                  [{:fhir/type :fhir/CodeableConcept
+                    :coding
+                    [{:fhir/type :fhir/Coding
+                      :system #fhir/uri"system-193558"
+                      :code #fhir/code"code-193603"}]}]
                   :code
-                  {:coding
-                   [{:system "system-193821"
-                     :code "code-193824"}]}
-                  :subject {:reference "reference-193945"}
-                  :effectiveDateTime "2005-06-17"
-                  :valueQuantity
-                  {:code "kg/m2"
-                   :system "http://unitsofmeasure.org"
+                  {:fhir/type :fhir/CodeableConcept
+                   :coding
+                   [{:fhir/type :fhir/Coding
+                     :system #fhir/uri"system-193821"
+                     :code #fhir/code"code-193824"}]}
+                  :subject
+                  {:fhir/type :fhir/Reference
+                   :reference "reference-193945"}
+                  :effective #fhir/dateTime"2005-06-17"
+                  :value
+                  {:fhir/type :fhir/Quantity
+                   :code #fhir/code"kg/m2"
+                   :system #fhir/uri"http://unitsofmeasure.org"
                    :value 23.42M}}
         hash (hash/generate resource)
         rl (reify
-              rs/ResourceLookup
-              (-multi-get [_ _]
-                (ac/completed-future {hash resource})))
+             rs/ResourceLookup
+             (-multi-get [_ _]
+               (ac/completed-future {hash resource})))
         kv-store (init-kv-store)
         i (new-resource-indexer rl search-param-registry kv-store
                                 (ex/single-thread-executor) 1)]
@@ -300,7 +312,7 @@
           (codec/search-param-value-key
             (codec/c-hash "date")
             (codec/tid "Observation")
-            (codec/date-lb (ZoneId/systemDefault) "2005-06-17")
+            (codec/date-lb (ZoneId/systemDefault) (LocalDate/of 2005 6 17))
             (codec/id-bytes "id-192702")
             hash))))
 
@@ -312,7 +324,7 @@
           (codec/search-param-value-key
             (codec/c-hash "date")
             (codec/tid "Observation")
-            (codec/date-ub (ZoneId/systemDefault) "2005-06-17")
+            (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2005 6 17))
             (codec/id-bytes "id-192702")
             hash))))
 

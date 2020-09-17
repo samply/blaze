@@ -5,11 +5,14 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
     [blaze.fhir.operation.evaluate-measure.measure-spec]
+    [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.log]
     [blaze.uuid :refer [random-uuid]]
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -53,23 +56,28 @@
   (.encodeToString (Base64/getEncoder) (.getBytes s)))
 
 
-(defn- library [query]
+(defn- library-entry [query]
   {:resource
-   {:resourceType "Library"
+   {:fhir/type :fhir/Library
     :id "0"
-    :url "0"
+    :url #fhir/uri"0"
     :content
-    [{:contentType "text/cql"
-      :data (b64-encode query)}]}
+    [{:fhir/type :fhir/Attachment
+      :contentType #fhir/code"text/cql"
+      :data (type/->Base64Binary (b64-encode query))}]}
    :request
-   {:method "PUT"
-    :url "Library/0"}})
+   {:method #fhir/code"PUT"
+    :url #fhir/uri"Library/0"}})
+
+
+(defn- parse-json [s]
+  (binding [*use-bigdecimals?* true] (json/parse-string s keyword)))
 
 
 (defn- read-data [name]
   (let [raw (slurp-resource (str name "-data.json"))
-        bundle (binding [*use-bigdecimals?* true] (json/parse-string raw keyword))
-        library (library (slurp-resource (str name "-query.cql")))]
+        bundle (fhir-spec/conform-json (parse-json raw))
+        library (library-entry (slurp-resource (str name "-query.cql")))]
     (update bundle :entry conj library)))
 
 
@@ -137,18 +145,24 @@
 
   (with-redefs [random-uuid (take-from! (new-ids))]
     (let [result (evaluate "q1" "subject-list")]
+      (testing "MeasureReport is valid"
+        (is (s/valid? :blaze/resource (:resource result))))
+
       (given (first-population result)
         :count := 1
         [:subjectResults :reference] := "List/0")
 
       (given (second (first (:tx-ops result)))
-        :resourceType := "List"
+        :fhir/type := :fhir/List
         :id := "0"
         [:entry 0 :item :reference] := "Patient/0")))
 
   (let [result (evaluate "q19-stratifier-ageclass")]
+    (testing "MeasureReport is valid"
+      (is (s/valid? :blaze/resource (:resource result))))
+
     (testing "MeasureReport type is `summary`"
-      (is (= "summary" (-> result :resource :type))))
+      (is (= #fhir/code"summary" (-> result :resource :type))))
 
     (given (first-stratifier-strata result)
       [0 :value :text] := "10"
@@ -158,8 +172,11 @@
 
   (with-redefs [random-uuid (take-from! (new-ids))]
     (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
+      (testing "MeasureReport is valid"
+        (is (s/valid? :blaze/resource (:resource result))))
+
       (testing "MeasureReport type is `subject-list`"
-        (is (= "subject-list" (-> result :resource :type))))
+        (is (= #fhir/code"subject-list" (-> result :resource :type))))
 
       (given (first-stratifier-strata result)
         [0 :value :text] := "10"
@@ -170,12 +187,12 @@
         [1 :population 0 :subjectResults :reference] := "List/2")
 
       (given (:tx-ops result)
-        [1 1 :resourceType] := "List"
+        [1 1 :fhir/type] := :fhir/List
         [1 1 :id] := "1"
-        [1 1 :status] := "current"
-        [1 1 :mode] := "working"
+        [1 1 :status] := #fhir/code"current"
+        [1 1 :mode] := #fhir/code"working"
         [1 1 :entry 0 :item :reference] := "Patient/0"
-        [2 1 :resourceType] := "List"
+        [2 1 :fhir/type] := :fhir/List
         [2 1 :id] := "2"
         [2 1 :entry 0 :item :reference] := "Patient/1"
         [2 1 :entry 1 :item :reference] := "Patient/2")))
@@ -207,6 +224,9 @@
 
   (with-redefs [random-uuid (take-from! (new-ids))]
     (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
+      (testing "MeasureReport is valid"
+        (is (s/valid? :blaze/resource (:resource result))))
+
       (given (first-stratifier-strata result)
         [0 :component 0 :code :text] := "age-class"
         [0 :component 0 :value :text] := "10"
@@ -224,13 +244,13 @@
         [2 :population 0 :subjectResults :reference] := "List/2")
 
       (given (:tx-ops result)
-        [1 1 :resourceType] := "List"
+        [1 1 :fhir/type] := :fhir/List
         [1 1 :id] := "1"
         [1 1 :entry 0 :item :reference] := "Patient/0"
-        [2 1 :resourceType] := "List"
+        [2 1 :fhir/type] := :fhir/List
         [2 1 :id] := "2"
         [2 1 :entry 0 :item :reference] := "Patient/1"
-        [3 1 :resourceType] := "List"
+        [3 1 :fhir/type] := :fhir/List
         [3 1 :id] := "3"
         [3 1 :entry 0 :item :reference] := "Patient/2"
         [3 1 :entry 1 :item :reference] := "Patient/3")))
@@ -278,5 +298,4 @@
 (comment
   (log/set-level! :trace)
   (evaluate "q32-stratifier-underweight")
-  (clojure.repl/pst)
   )

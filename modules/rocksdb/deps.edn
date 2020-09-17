@@ -14,7 +14,7 @@
     {:mvn/version "1.0.641"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}}
+    {:mvn/version "1.1.0"}}
 
    :main-opts
    ["-m" "kaocha.runner"]}

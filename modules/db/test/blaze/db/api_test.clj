@@ -109,12 +109,12 @@
   (testing "create"
     (testing "one Patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:create {:resourceType "Patient" :id "0"}]])
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :resourceType := "Patient"
+          :fhir/type := :fhir/Patient
           :id := "0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :create)))
 
     (testing "one Patient with one Observation"
@@ -123,32 +123,35 @@
            node
            ;; the create ops are purposely disordered in order to test the
            ;; reference dependency ordering algorithm
-           [[:create {:resourceType "Observation" :id "0"
-                      :subject {:reference "Patient/0"}}]
-            [:create {:resourceType "Patient" :id "0"}]])
+           [[:create
+             {:fhir/type :fhir/Observation :id "0"
+              :subject
+              {:fhir/type :fhir/Reference
+               :reference "Patient/0"}}]
+            [:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :resourceType := "Patient"
+          :fhir/type := :fhir/Patient
           :id := "0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :create)
 
         (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
-          :resourceType := "Observation"
+          :fhir/type := :fhir/Observation
           :id := "0"
           [:subject :reference] := "Patient/0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :create))))
 
   (testing "put"
     (testing "one Patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :resourceType := "Patient"
+          :fhir/type := :fhir/Patient
           :id := "0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put)))
 
     (testing "one Patient with one Observation"
@@ -157,21 +160,21 @@
            node
            ;; the create ops are purposely disordered in order to test the
            ;; reference dependency ordering algorithm
-           [[:put {:resourceType "Observation" :id "0"
-                   :subject {:reference "Patient/0"}}]
-            [:put {:resourceType "Patient" :id "0"}]])
+           [[:put {:fhir/type :fhir/Observation :id "0"
+                   :subject {:fhir/type :fhir/Reference :reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :resourceType := "Patient"
+          :fhir/type := :fhir/Patient
           :id := "0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put)
 
         (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
-          :resourceType := "Observation"
+          :fhir/type := :fhir/Observation
           :id := "0"
           [:subject :reference] := "Patient/0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put)))
 
     (testing "Diamond Reference Dependencies"
@@ -180,42 +183,49 @@
            node
            ;; the create ops are purposely disordered in order to test the
            ;; reference dependency ordering algorithm
-           [[:put {:resourceType "List" :id "0"
+           [[:put {:fhir/type :fhir/List
+                   :id "0"
                    :entry
-                   [{:item {:reference "Observation/0"}}
-                    {:item {:reference "Observation/1"}}]}]
-            [:put {:resourceType "Observation" :id "0"
-                   :subject {:reference "Patient/0"}}]
-            [:put {:resourceType "Observation" :id "1"
-                   :subject {:reference "Patient/0"}}]
-            [:put {:resourceType "Patient" :id "0"}]])
+                   [{:fhir/type :fhir.List/entry
+                     :item
+                     {:fhir/type :fhir/Reference
+                      :reference "Observation/0"}}
+                    {:fhir/type :fhir.List/entry
+                     :item
+                     {:fhir/type :fhir/Reference
+                      :reference "Observation/1"}}]}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject {:fhir/type :fhir/Reference :reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "1"
+                   :subject {:fhir/type :fhir/Reference :reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :resourceType := "Patient"
+          :fhir/type := :fhir/Patient
           :id := "0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put)
 
         (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
-          :resourceType := "Observation"
+          :fhir/type := :fhir/Observation
           :id := "0"
           [:subject :reference] := "Patient/0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put)
 
         (given @(d/pull node (d/resource-handle (d/db node) "Observation" "1"))
-          :resourceType := "Observation"
+          :fhir/type := :fhir/Observation
           :id := "1"
           [:subject :reference] := "Patient/0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put)
 
         (given @(d/pull node (d/resource-handle (d/db node) "List" "0"))
-          :resourceType := "List"
+          :fhir/type := :fhir/List
           :id := "0"
           [:entry 0 :item :reference] := "Observation/0"
           [:entry 1 :item :reference] := "Observation/1"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put))))
 
   (testing "a transaction with duplicate resources fails"
@@ -224,8 +234,8 @@
         (try
           @(d/transact
              node
-             [[:put {:resourceType "Patient" :id "0"}]
-              [:put {:resourceType "Patient" :id "0"}]])
+             [[:put {:fhir/type :fhir/Patient :id "0"}]
+              [:put {:fhir/type :fhir/Patient :id "0"}]])
           (catch Exception e
             (given (ex-data (ex-cause e))
               ::anom/category := ::anom/incorrect
@@ -236,7 +246,7 @@
         (try
           @(d/transact
              node
-             [[:put {:resourceType "Patient" :id "0"}]
+             [[:put {:fhir/type :fhir/Patient :id "0"}]
               [:delete "Patient" "0"]])
           (catch Exception e
             (given (ex-data (ex-cause e))
@@ -250,8 +260,10 @@
           (try
             @(d/transact
                node
-               [[:create {:resourceType "Observation" :id "0"
-                          :subject {:reference "Patient/0"}}]])
+               [[:create {:fhir/type :fhir/Observation :id "0"
+                          :subject
+                          {:fhir/type :fhir/Reference
+                           :reference "Patient/0"}}]])
             (catch Exception e
               (given (ex-data (ex-cause e))
                 ::anom/category := ::anom/conflict
@@ -262,8 +274,10 @@
           (try
             @(d/transact
                node
-               [[:put {:resourceType "Observation" :id "0"
-                       :subject {:reference "Patient/0"}}]])
+               [[:put {:fhir/type :fhir/Observation :id "0"
+                       :subject
+                       {:fhir/type :fhir/Reference
+                        :reference "Patient/0"}}]])
             (catch Exception e
               (given (ex-data (ex-cause e))
                 ::anom/category := ::anom/conflict
@@ -273,17 +287,23 @@
       (with-open [node (new-node)]
         @(d/transact
            node
-           [[:create {:resourceType "Observation" :id "0"}]
-            [:create {:resourceType "Observation" :id "1"}]])
+           [[:create {:fhir/type :fhir/Observation :id "0"}]
+            [:create {:fhir/type :fhir/Observation :id "1"}]])
 
         (try
           @(d/transact
              node
              [[:create
-               {:resourceType "List" :id "0"
+               {:fhir/type :fhir/List :id "0"
                 :entry
-                [{:item {:reference "Observation/0"}}
-                 {:item {:reference "Observation/1"}}]}]
+                [{:fhir/type :fhir.List/entry
+                  :item
+                  {:fhir/type :fhir/Reference
+                   :reference "Observation/0"}}
+                 {:fhir/type :fhir.List/entry
+                  :item
+                  {:fhir/type :fhir/Reference
+                   :reference "Observation/1"}}]}]
               [:delete "Observation" "1"]])
           (catch Exception e
             (given (ex-data (ex-cause e))
@@ -296,7 +316,7 @@
                          {:resource-store (new-resource-store-failing-on-put)})]
 
         (try
-          @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
           (catch Exception e
             (given (ex-data (ex-cause e))
               ::anom/category := ::anom/fault)))))
@@ -306,7 +326,7 @@
                          {:resource-store (new-resource-store-failing-on-get)})]
 
         (try
-          @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
           (catch Exception e
             (given (ex-data (ex-cause e))
               ::anom/category := ::anom/fault)))))))
@@ -314,7 +334,7 @@
 
 (deftest tx
   (with-open [node (new-node)]
-    @(d/transact node [[:put {:resourceType "Patient" :id "id-142136"}]])
+    @(d/transact node [[:put {:fhir/type :fhir/Patient :id "id-142136"}]])
 
     (let [db (d/db node)]
       (given (d/tx db (d/basis-t db))
@@ -327,14 +347,14 @@
 (deftest deleted?
   (testing "a node with a patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "id-142136"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "id-142136"}]])
 
       (testing "deleted returns false"
         (is (false? (d/deleted? (d/resource-handle (d/db node) "Patient" "id-142136")))))))
 
   (testing "a node with a deleted patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "id-141820"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "id-141820"}]])
       @(d/transact node [[:delete "Patient" "id-141820"]])
 
       (testing "deleted returns true"
@@ -348,43 +368,41 @@
 
   (testing "a node contains a resource after a create transaction"
     (with-open [node (new-node)]
-      @(d/transact node [[:create {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "pull"
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          type := :fhir/Patient
-          :resourceType := "Patient"
+          :fhir/type := :fhir/Patient
           :id := "0"
-          [:meta :versionId] := "1"
+          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/tx :blaze.db/t] := 1
           [meta :blaze.db/num-changes] := 1))
 
       (testing "pull-content"
         (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
-          type := :fhir/Patient
-          :resourceType := "Patient"
+          :fhir/type := :fhir/Patient
           :id := "0"))))
 
   (testing "a node contains a resource after a put transaction"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-        :resourceType := "Patient"
+        :fhir/type := :fhir/Patient
         :id := "0"
-        [:meta :versionId] := "1"
+        [:meta :versionId] := #fhir/id"1"
         [meta :blaze.db/tx :blaze.db/t] := 1
         [meta :blaze.db/num-changes] := 1)))
 
   (testing "a deleted resource is flagged"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
       (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-        :resourceType := "Patient"
+        :fhir/type := :fhir/Patient
         :id := "0"
-        [:meta :versionId] := "2"
+        [:meta :versionId] := #fhir/id"2"
         [meta :blaze.db/op] := :delete
         [meta :blaze.db/tx :blaze.db/t] := 2))))
 
@@ -400,7 +418,7 @@
 
   (testing "a node with one patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one list entry"
         (is (= 1 (count (d/list-resource-handles (d/db node) "Patient"))))
@@ -408,13 +426,15 @@
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"))))
+          [0 :meta :fhir/type] := :fhir/Meta
+          [0 :meta :versionId] := #fhir/id"1"
+          [0 :meta :lastUpdated] := Instant/EPOCH))))
 
   (testing "a node with one deleted patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "doesn't contain it in the list"
@@ -423,8 +443,8 @@
 
   (testing "a node with two patients in two transactions"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Patient" :id "1"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
 
       (testing "has two list entries"
         (is (= 2 (count (d/list-resource-handles (d/db node) "Patient"))))
@@ -432,26 +452,26 @@
 
       (testing "contains both patients in id order"
         (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"
-          [1 :resourceType] := "Patient"
+          [0 :meta :versionId] := #fhir/id"1"
+          [1 :fhir/type] := :fhir/Patient
           [1 :id] := "1"
-          [1 :meta :versionId] := "2"))
+          [1 :meta :versionId] := #fhir/id"2"))
 
       (testing "it is possible to start with the second patient"
         (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient" "1"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
-          [0 :meta :versionId] := "2"))
+          [0 :meta :versionId] := #fhir/id"2"))
 
       (testing "overshooting the start-id returns an empty collection"
         (is (coll/empty? (d/list-resource-handles (d/db node) "Patient" "2"))))))
 
   (testing "a node with two patients in one transaction"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]
-                         [:put {:resourceType "Patient" :id "1"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                         [:put {:fhir/type :fhir/Patient :id "1"}]])
 
       (testing "has two list entries"
         (is (= 2 (count (d/list-resource-handles (d/db node) "Patient"))))
@@ -459,26 +479,26 @@
 
       (testing "contains both patients in id order"
         (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"
-          [1 :resourceType] := "Patient"
+          [0 :meta :versionId] := #fhir/id"1"
+          [1 :fhir/type] := :fhir/Patient
           [1 :id] := "1"
-          [1 :meta :versionId] := "1"))
+          [1 :meta :versionId] := #fhir/id"1"))
 
       (testing "it is possible to start with the second patient"
         (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient" "1"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
-          [0 :meta :versionId] := "1"))
+          [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "overshooting the start-id returns an empty collection"
         (is (coll/empty? (d/list-resource-handles (d/db node) "Patient" "2"))))))
 
   (testing "a node with one updated patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0" :active false}]])
-      @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (testing "has one list entry"
         (is (= 1 (count (d/list-resource-handles (d/db node) "Patient"))))
@@ -486,15 +506,15 @@
 
       (testing "contains the updated patient"
         (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :active] := true
-          [0 :meta :versionId] := "2"))))
+          [0 :meta :versionId] := #fhir/id"2"))))
 
   (testing "a node with resources of different types"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
 
       (testing "has one patient list entry"
         (is (= 1 (count (d/list-resource-handles (d/db node) "Patient"))))
@@ -507,10 +527,10 @@
   (testing "the database is immutable"
     (testing "while updating a patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:put {:resourceType "Patient" :id "0" :active false}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
         (let [db (d/db node)]
-          @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
           (testing "the original database"
             (testing "has still only one list entry"
@@ -519,17 +539,17 @@
 
             (testing "contains still the original patient"
               (given @(d/pull-many node (d/list-resource-handles db "Patient"))
-                [0 :resourceType] := "Patient"
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := false
-                [0 :meta :versionId] := "1"))))))
+                [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (let [db (d/db node)]
-          @(d/transact node [[:put {:resourceType "Patient" :id "1"}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
 
           (testing "the original database"
             (testing "has still only one list entry"
@@ -538,9 +558,9 @@
 
             (testing "contains still the first patient"
               (given @(d/pull-many node (d/list-resource-handles db "Patient"))
-                [0 :resourceType] := "Patient"
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
-                [0 :meta :versionId] := "1"))))))))
+                [0 :meta :versionId] := #fhir/id"1"))))))))
 
 
 (defn- pull-type-query [node type clauses]
@@ -554,67 +574,73 @@
 
   (testing "a node with one patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (testing "the patient can be found"
         (given @(pull-type-query node "Patient" [["active" "true"]])
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"))))
 
   (testing "a node with two patients in one transaction"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]
-                         [:put {:resourceType "Patient" :id "1" :active false}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+                         [:put {:fhir/type :fhir/Patient :id "1" :active false}]])
 
       (testing "only the active patient will be found"
         (given @(pull-type-query node "Patient" [["active" "true"]])
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           1 := nil))
 
       (testing "only the non-active patient will be found"
         (given @(pull-type-query node "Patient" [["active" "false"]])
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
           1 := nil))
 
       (testing "both patients will be found"
         (given @(pull-type-query node "Patient" [["active" "true" "false"]])
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [1 :resourceType] := "Patient"
+          [1 :fhir/type] := :fhir/Patient
           [1 :id] := "1"))))
 
   (testing "does not find the deleted male patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]
-                         [:put {:resourceType "Patient" :id "1" :active true}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+                         [:put {:fhir/type :fhir/Patient :id "1" :active true}]])
       @(d/transact node [[:delete "Patient" "1"]])
 
       (given @(pull-type-query node "Patient" [["active" "true"]])
-        [0 :resourceType] := "Patient"
+        [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"
         1 := nil)))
 
   (testing "Special Search Parameter _list"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]
-                         [:put {:resourceType "Patient" :id "1"}]
-                         [:put {:resourceType "Observation" :id "0"}]
-                         [:put {:resourceType "List" :id "0"
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                         [:put {:fhir/type :fhir/Patient :id "1"}]
+                         [:put {:fhir/type :fhir/Observation :id "0"}]
+                         [:put {:fhir/type :fhir/List :id "0"
                                 :entry
-                                [{:item {:reference "Patient/0"}}
-                                 {:item {:reference "Observation/0"}}]}]])
+                                [{:fhir/type :fhir.List/entry
+                                  :item
+                                  {:fhir/type :fhir/Reference
+                                   :reference "Patient/0"}}
+                                 {:fhir/type :fhir.List/entry
+                                  :item
+                                  {:fhir/type :fhir/Reference
+                                   :reference "Observation/0"}}]}]])
 
       (testing "returns only the patient referenced in the list"
         (given @(pull-type-query node "Patient" [["_list" "0"]])
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           1 := nil))
 
       (testing "returns only the observation referenced in the list"
         (given @(pull-type-query node "Observation" [["_list" "0"]])
-          [0 :resourceType] := "Observation"
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
           1 := nil))))
 
@@ -622,45 +648,52 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Patient"
+         [[:put {:fhir/type :fhir/Patient
                  :id "id-0"
                  :meta
-                 {:profile
-                  ["profile-uri-145024"]}
+                 {:fhir/type :fhir/Meta
+                  :profile [#fhir/canonical"profile-uri-145024"]}
                  :identifier
-                 [{:value "0"}]
+                 [{:fhir/type :fhir/Identifier :value "0"}]
                  :active false
-                 :gender "male"
-                 :birthDate "2020-02-08"
-                 :deceasedBoolean true
+                 :gender #fhir/code"male"
+                 :birthDate #fhir/date"2020-02-08"
+                 :deceased true
                  :address
-                 [{:line ["Philipp-Rosenthal-Straße 27"]
+                 [{:fhir/type :fhir/Address
+                   :line ["Philipp-Rosenthal-Straße 27"]
                    :city "Leipzig"}]
                  :name
-                 [{:family "Müller"}]}]
-          [:put {:resourceType "Patient"
+                 [{:fhir/type :fhir/HumanName
+                   :family "Müller"}]}]
+          [:put {:fhir/type :fhir/Patient
                  :id "id-1"
                  :active true
-                 :gender "female"
-                 :birthDate "2020-02"
+                 :gender #fhir/code"female"
+                 :birthDate #fhir/date"2020-02"
                  :address
-                 [{:city "Berlin"}]
+                 [{:fhir/type :fhir/Address
+                   :city "Berlin"}]
                  :telecom
-                 [{:system "email"
+                 [{:fhir/type :fhir/ContactPoint
+                   :system #fhir/code"email"
                    :value "foo@bar.baz"}
-                  {:system "phone"
+                  {:fhir/type :fhir/ContactPoint
+                   :system #fhir/code"phone"
                    :value "0815"}]}]
-          [:put {:resourceType "Patient"
+          [:put {:fhir/type :fhir/Patient
                  :id "id-2"
                  :active false
-                 :gender "female"
-                 :birthDate "2020"
-                 :deceasedDateTime "2020-03"
+                 :gender #fhir/code"female"
+                 :birthDate #fhir/date"2020"
+                 :deceased #fhir/dateTime"2020-03"
                  :address
-                 [{:line ["Liebigstraße 20a"]
+                 [{:fhir/type :fhir/Address
+                   :line ["Liebigstraße 20a"]
                    :city "Leipzig"}]
                  :name
-                 [{:family "Schmidt"}]}]])
+                 [{:fhir/type :fhir/HumanName
+                   :family "Schmidt"}]}]])
 
       (testing "_id"
         (given @(pull-type-query node "Patient" [["_id" "id-1"]])
@@ -752,42 +785,42 @@
         (testing "finds equal date"
           (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]])
             [0 :id] := "id-0"
-            [0 :birthDate] := "2020-02-08"
+            [0 :birthDate] := #fhir/date"2020-02-08"
             1 := nil))
 
         (testing "finds greater date"
           (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02-07"]])
             [0 :id] := "id-0"
-            [0 :birthDate] := "2020-02-08"
+            [0 :birthDate] := #fhir/date"2020-02-08"
             1 := nil))
 
         (testing "finds more precise dates"
           (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02"]])
             [0 :id] := "id-1"
-            [0 :birthDate] := "2020-02"
+            [0 :birthDate] := #fhir/date"2020-02"
             [1 :id] := "id-0"
-            [1 :birthDate] := "2020-02-08"
+            [1 :birthDate] := #fhir/date"2020-02-08"
             2 := nil)))
 
       (testing "birthdate with `le` prefix"
         (testing "finds equal date"
           (given @(pull-type-query node "Patient" [["birthdate" "le2020-02-08"]])
             [0 :id] := "id-0"
-            [0 :birthDate] := "2020-02-08"
+            [0 :birthDate] := #fhir/date"2020-02-08"
             1 := nil))
 
         (testing "finds less date"
           (given @(pull-type-query node "Patient" [["birthdate" "le2020-02-09"]])
             [0 :id] := "id-0"
-            [0 :birthDate] := "2020-02-08"
+            [0 :birthDate] := #fhir/date"2020-02-08"
             1 := nil))
 
         (testing "finds more precise dates"
           (given @(pull-type-query node "Patient" [["birthdate" "le2020-03"]])
             [0 :id] := "id-1"
-            [0 :birthDate] := "2020-02"
+            [0 :birthDate] := #fhir/date"2020-02"
             [1 :id] := "id-0"
-            [1 :birthDate] := "2020-02-08"
+            [1 :birthDate] := #fhir/date"2020-02-08"
             2 := nil)))
 
       (testing "deceased"
@@ -825,10 +858,11 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Practitioner"
+         [[:put {:fhir/type :fhir/Practitioner
                  :id "id-0"
                  :name
-                 [{:family "Müller"
+                 [{:fhir/type :fhir/HumanName
+                   :family "Müller"
                    :given ["Hans" "Martin"]}]}]])
 
       (testing "name"
@@ -851,17 +885,22 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Specimen"
+         [[:put {:fhir/type :fhir/Specimen
                  :id "id-0"
                  :type
-                 {:coding
-                  [{:system "https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
-                    :code "dna"}]}
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
+                    :code #fhir/code"dna"}]}
                  :collection
-                 {:bodySite
-                  {:coding
-                   [{:system "urn:oid:2.16.840.1.113883.6.43.1"
-                     :code "C77.4"}]}}}]])
+                 {:fhir/type :fhir.Specimen/collection
+                  :bodySite
+                  {:fhir/type :fhir/CodeableConcept
+                   :coding
+                   [{:fhir/type :fhir/Coding
+                     :system #fhir/uri"urn:oid:2.16.840.1.113883.6.43.1"
+                     :code #fhir/code"C77.4"}]}}}]])
 
       (testing "bodysite"
         (testing "using system|code"
@@ -913,13 +952,13 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "ActivityDefinition"
+         [[:put {:fhir/type :fhir/ActivityDefinition
                  :id "id-0"
-                 :url "url-111619"
-                 :description "desc-121208"}]
-          [:put {:resourceType "ActivityDefinition"
+                 :url #fhir/uri"url-111619"
+                 :description #fhir/markdown"desc-121208"}]
+          [:put {:fhir/type :fhir/ActivityDefinition
                  :id "id-1"
-                 :url "url-111721"}]])
+                 :url #fhir/uri"url-111721"}]])
 
       (testing "url"
         (given @(pull-type-query node "ActivityDefinition" [["url" "url-111619"]])
@@ -935,10 +974,10 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "CodeSystem"
+         [[:put {:fhir/type :fhir/CodeSystem
                  :id "id-0"
                  :version "version-122443"}]
-          [:put {:resourceType "CodeSystem"
+          [:put {:fhir/type :fhir/CodeSystem
                  :id "id-1"
                  :version "version-122456"}]])
 
@@ -951,11 +990,12 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "MedicationKnowledge"
+         [[:put {:fhir/type :fhir/MedicationKnowledge
                  :id "id-0"
                  :monitoringProgram
-                 [{:name "name-123124"}]}]
-          [:put {:resourceType "MedicationKnowledge"
+                 [{:fhir/type :fhir.MedicationKnowledge/monitoringProgram
+                   :name "name-123124"}]}]
+          [:put {:fhir/type :fhir/MedicationKnowledge
                  :id "id-1"}]])
 
       (testing "monitoring-program-name"
@@ -967,13 +1007,14 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Patient"
+         [[:put {:fhir/type :fhir/Patient
                  :id "id-0"}]
-          [:put {:resourceType "Condition"
+          [:put {:fhir/type :fhir/Condition
                  :id "id-0"
                  :subject
-                 {:reference "Patient/id-0"}}]
-          [:put {:resourceType "Condition"
+                 {:fhir/type :fhir/Reference
+                  :reference "Patient/id-0"}}]
+          [:put {:fhir/type :fhir/Condition
                  :id "id-1"}]])
 
       (testing "patient"
@@ -985,14 +1026,15 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Observation"
+         [[:put {:fhir/type :fhir/Observation
                  :id "id-0"
-                 :status "final"
-                 :valueQuantity
-                 {:code "kg/m2"
+                 :status #fhir/code"final"
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 23.42M
                   :unit "kg/m²"
-                  :system "http://unitsofmeasure.org"
-                  :value 23.42M}}]])
+                  :code #fhir/code"kg/m2"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "value-quantity"
         (testing "without unit"
@@ -1035,9 +1077,9 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "MeasureReport"
+         [[:put {:fhir/type :fhir/MeasureReport
                  :id "id-144132"
-                 :measure "measure-url-181106"}]])
+                 :measure #fhir/canonical"measure-url-181106"}]])
 
       (testing "measure"
         (let [clauses [["measure" "measure-url-181106"]]]
@@ -1051,18 +1093,24 @@
         (with-open [node (new-node)]
           @(d/transact
              node
-             [[:put {:resourceType "Patient" :id "0"}]
-              [:put {:resourceType "Patient" :id "1"}]])
+             [[:put {:fhir/type :fhir/Patient :id "0"}]
+              [:put {:fhir/type :fhir/Patient :id "1"}]])
           @(d/transact
              node
-             [[:put {:resourceType "List"
+             [[:put {:fhir/type :fhir/List
                      :id "id-150545"
                      :entry
-                     [{:item {:reference "Patient/0"}}]}]
-              [:put {:resourceType "List"
+                     [{:fhir/type :fhir.List/entry
+                       :item
+                       {:fhir/type :fhir/Reference
+                        :reference "Patient/0"}}]}]
+              [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :entry
-                     [{:item {:reference "Patient/1"}}]}]])
+                     [{:fhir/type :fhir.List/entry
+                       :item
+                       {:fhir/type :fhir/Reference
+                        :reference "Patient/1"}}]}]])
 
           (let [clauses [["item" "Patient/1"]]]
             (given @(pull-type-query node "List" clauses)
@@ -1073,19 +1121,25 @@
         (with-open [node (new-node)]
           @(d/transact
              node
-             [[:put {:resourceType "List"
+             [[:put {:fhir/type :fhir/List
                      :id "id-123058"
                      :entry
-                     [{:item
-                       {:identifier
-                        {:system "system-122917"
+                     [{:fhir/type :fhir.List/entry
+                       :item
+                       {:fhir/type :fhir/Reference
+                        :identifier
+                        {:fhir/type :fhir/Identifier
+                         :system #fhir/uri"system-122917"
                          :value "value-122931"}}}]}]
-              [:put {:resourceType "List"
+              [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :entry
-                     [{:item
-                       {:identifier
-                        {:system "system-122917"
+                     [{:fhir/type :fhir.List/entry
+                       :item
+                       {:fhir/type :fhir/Reference
+                        :identifier
+                        {:fhir/type :fhir/Identifier
+                         :system #fhir/uri"system-122917"
                          :value "value-143818"}}}]}]])
 
           (let [clauses [["item:identifier" "system-122917|value-122931"]]]
@@ -1098,27 +1152,37 @@
         (with-open [node (new-node)]
           @(d/transact
              node
-             [[:put {:resourceType "List"
+             [[:put {:fhir/type :fhir/List
                      :id "id-123058"
                      :code
-                     {:coding
-                      [{:system "system-152812"
-                        :code "code-152819"}]}
+                     {:fhir/type :fhir/CodeableConcept
+                      :coding
+                      [{:fhir/type :fhir/Coding
+                        :system #fhir/uri"system-152812"
+                        :code #fhir/code"code-152819"}]}
                      :entry
-                     [{:item
-                       {:identifier
-                        {:system "system-122917"
+                     [{:fhir/type :fhir.List/entry
+                       :item
+                       {:fhir/type :fhir/Reference
+                        :identifier
+                        {:fhir/type :fhir/Identifier
+                         :system #fhir/uri"system-122917"
                          :value "value-122931"}}}]}]
-              [:put {:resourceType "List"
+              [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :code
-                     {:coding
-                      [{:system "system-152812"
-                        :code "code-152819"}]}
+                     {:fhir/type :fhir/CodeableConcept
+                      :coding
+                      [{:fhir/type :fhir/Coding
+                        :system #fhir/uri"system-152812"
+                        :code #fhir/code"code-152819"}]}
                      :entry
-                     [{:item
-                       {:identifier
-                        {:system "system-122917"
+                     [{:fhir/type :fhir.List/entry
+                       :item
+                       {:fhir/type :fhir/Reference
+                        :identifier
+                        {:fhir/type :fhir/Identifier
+                         :system #fhir/uri"system-122917"
                          :value "value-143818"}}}]}]])
 
           (let [clauses [["code" "system-152812|code-152819"]
@@ -1138,7 +1202,7 @@
 
   (testing "a node with one patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one list entry"
         (is (= 1 (count (d/system-list (d/db node)))))
@@ -1146,13 +1210,13 @@
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/system-list (d/db node)))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"))))
+          [0 :meta :versionId] := #fhir/id"1"))))
 
   (testing "a node with one deleted patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "doesn't contain it in the list"
@@ -1161,8 +1225,8 @@
 
   (testing "a node with two resources in two transactions"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
 
       (testing "has two list entries"
         (is (= 2 (count (d/system-list (d/db node)))))
@@ -1170,26 +1234,26 @@
 
       (testing "contains both resources in the order of their type hashes"
         (given @(d/pull-many node (d/system-list (d/db node)))
-          [0 :resourceType] := "Observation"
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
-          [0 :meta :versionId] := "2"
-          [1 :resourceType] := "Patient"
+          [0 :meta :versionId] := #fhir/id"2"
+          [1 :fhir/type] := :fhir/Patient
           [1 :id] := "0"
-          [1 :meta :versionId] := "1"))
+          [1 :meta :versionId] := #fhir/id"1"))
 
       (testing "it is possible to start with the patient"
         (given @(d/pull-many node (d/system-list (d/db node) "Patient"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"))
+          [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "starting with Measure also returns the patient,
                 because in type hash order, Measure comes before
                 Patient but after Observation"
         (given @(d/pull-many node (d/system-list (d/db node) "Measure"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"))
+          [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "overshooting the start-id returns an empty collection"
         (is (coll/empty? (d/system-list (d/db node) "Patient" "1")))))))
@@ -1205,57 +1269,71 @@
 
   (testing "a node contains one Observation in the Patient/0 compartment"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "0"
-                                :subject {:reference "Patient/0"}}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}}]])
 
       (given @(d/pull-many node (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation"))
-        [0 :resourceType] := "Observation"
+        [0 :fhir/type] := :fhir/Observation
         [0 :id] := "0"
-        [0 :meta :versionId] := "2"
+        [0 :meta :versionId] := #fhir/id"2"
         1 := nil)))
 
   (testing "a node contains two resources in the Patient/0 compartment"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "0"
-                                :subject {:reference "Patient/0"}}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "1"
-                                :subject {:reference "Patient/0"}}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}}]])
 
       (given @(d/pull-many node (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation"))
-        [0 :resourceType] := "Observation"
+        [0 :fhir/type] := :fhir/Observation
         [0 :id] := "0"
-        [0 :meta :versionId] := "2"
-        [1 :resourceType] := "Observation"
+        [0 :meta :versionId] := #fhir/id"2"
+        [1 :fhir/type] := :fhir/Observation
         [1 :id] := "1"
-        [1 :meta :versionId] := "3")))
+        [1 :meta :versionId] := #fhir/id"3")))
 
   (testing "a deleted resource does not show up"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "0"
-                                :subject {:reference "Patient/0"}}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}}]])
       @(d/transact node [[:delete "Observation" "0"]])
       (is (coll/empty? (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation")))))
 
   (testing "it is possible to start at a later id"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "0"
-                                :subject {:reference "Patient/0"}}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "1"
-                                :subject {:reference "Patient/0"}}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "2"
-                                :subject {:reference "Patient/0"}}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "2"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}}]])
 
       (given @(d/pull-many node (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation" "1"))
-        [0 :resourceType] := "Observation"
+        [0 :fhir/type] := :fhir/Observation
         [0 :id] := "1"
-        [0 :meta :versionId] := "3"
-        [1 :resourceType] := "Observation"
+        [0 :meta :versionId] := #fhir/id"3"
+        [1 :fhir/type] := :fhir/Observation
         [1 :id] := "2"
-        [1 :meta :versionId] := "4"
+        [1 :meta :versionId] := #fhir/id"4"
         2 := nil)))
 
   (testing "Unknown compartment is not a problem"
@@ -1272,95 +1350,111 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Patient" :id "0"}]
-          [:put {:resourceType "Observation" :id "0"
-                 :subject {:reference "Patient/0"}
+         [[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 {:fhir/type :fhir/Reference
+                  :reference "Patient/0"}
                  :code
-                 {:coding
-                  [{:system "system-191514"
-                    :code "code-191518"}]}}]])
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"system-191514"
+                    :code #fhir/code"code-191518"}]}}]])
 
       (given @(d/pull-many node
                            (d/compartment-query
                              (d/db node) "Patient" "0" "Observation"
                              [["code" "system-191514|code-191518"]]))
-        [0 :resourceType] := "Observation"
+        [0 :fhir/type] := :fhir/Observation
         [0 :id] := "0"
         1 := nil)))
 
   (testing "returns only the matching Observation in the Patient/0 compartment"
     (let [observation
           (fn [id code]
-            {:resourceType "Observation" :id id
-             :subject {:reference "Patient/0"}
+            {:fhir/type :fhir/Observation :id id
+             :subject
+             {:fhir/type :fhir/Reference
+              :reference "Patient/0"}
              :code
-             {:coding
-              [{:system "system"
+             {:fhir/type :fhir/CodeableConcept
+              :coding
+              [{:fhir/type :fhir/Coding
+                :system #fhir/uri"system"
                 :code code}]}})]
       (with-open [node (new-node)]
         @(d/transact
            node
-           [[:put {:resourceType "Patient" :id "0"}]
-            [:put (observation "0" "code-1")]
-            [:put (observation "1" "code-2")]
-            [:put (observation "2" "code-3")]])
+           [[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put (observation "0" #fhir/code"code-1")]
+            [:put (observation "1" #fhir/code"code-2")]
+            [:put (observation "2" #fhir/code"code-3")]])
 
         (given @(d/pull-many node
                              (d/compartment-query
                                (d/db node) "Patient" "0" "Observation"
                                [["code" "system|code-2"]]))
-          [0 :resourceType] := "Observation"
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "1"
           1 := nil))))
 
   (testing "returns only the matching versions"
     (let [observation
           (fn [id code]
-            {:resourceType "Observation" :id id
-             :subject {:reference "Patient/0"}
+            {:fhir/type :fhir/Observation :id id
+             :subject
+             {:fhir/type :fhir/Reference
+              :reference "Patient/0"}
              :code
-             {:coding
-              [{:system "system"
+             {:fhir/type :fhir/CodeableConcept
+              :coding
+              [{:fhir/type :fhir/Coding
+                :system #fhir/uri"system"
                 :code code}]}})]
       (with-open [node (new-node)]
         @(d/transact
            node
-           [[:put {:resourceType "Patient" :id "0"}]
-            [:put (observation "0" "code-1")]
-            [:put (observation "1" "code-2")]
-            [:put (observation "2" "code-2")]
-            [:put (observation "3" "code-2")]])
+           [[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put (observation "0" #fhir/code"code-1")]
+            [:put (observation "1" #fhir/code"code-2")]
+            [:put (observation "2" #fhir/code"code-2")]
+            [:put (observation "3" #fhir/code"code-2")]])
         @(d/transact
            node
-           [[:put (observation "0" "code-2")]
-            [:put (observation "1" "code-1")]
-            [:put (observation "3" "code-2")]])
+           [[:put (observation "0" #fhir/code"code-2")]
+            [:put (observation "1" #fhir/code"code-1")]
+            [:put (observation "3" #fhir/code"code-2")]])
 
         (given @(d/pull-many node
                              (d/compartment-query
                                (d/db node) "Patient" "0" "Observation"
                                [["code" "system|code-2"]]))
-          [0 :resourceType] := "Observation"
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
-          [0 :meta :versionId] := "2"
-          [1 :resourceType] := "Observation"
+          [0 :meta :versionId] := #fhir/id"2"
+          [1 :fhir/type] := :fhir/Observation
           [1 :id] := "2"
-          [1 :meta :versionId] := "1"
+          [1 :meta :versionId] := #fhir/id"1"
           [2 :id] := "3"
-          [2 :meta :versionId] := "2"
+          [2 :meta :versionId] := #fhir/id"2"
           3 := nil))))
 
   (testing "doesn't return deleted resources"
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Patient" :id "0"}]
-          [:put {:resourceType "Observation" :id "0"
-                 :subject {:reference "Patient/0"}
+         [[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 {:fhir/type :fhir/Reference
+                  :reference "Patient/0"}
                  :code
-                 {:coding
-                  [{:system "system"
-                    :code "code"}]}}]])
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"system"
+                    :code #fhir/code"code"}]}}]])
       @(d/transact
          node
          [[:delete "Observation" "0"]])
@@ -1371,18 +1465,22 @@
   (testing "finds resources after deleted ones"
     (let [observation
           (fn [id code]
-            {:resourceType "Observation" :id id
-             :subject {:reference "Patient/0"}
+            {:fhir/type :fhir/Observation :id id
+             :subject
+             {:fhir/type :fhir/Reference
+              :reference "Patient/0"}
              :code
-             {:coding
-              [{:system "system"
+             {:fhir/type :fhir/CodeableConcept
+              :coding
+              [{:fhir/type :fhir/Coding
+                :system #fhir/uri"system"
                 :code code}]}})]
       (with-open [node (new-node)]
         @(d/transact
            node
-           [[:put {:resourceType "Patient" :id "0"}]
-            [:put (observation "0" "code")]
-            [:put (observation "1" "code")]])
+           [[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put (observation "0" #fhir/code"code")]
+            [:put (observation "1" #fhir/code"code")]])
         @(d/transact
            node
            [[:delete "Observation" "0"]])
@@ -1391,7 +1489,7 @@
                              (d/compartment-query
                                (d/db node) "Patient" "0" "Observation"
                                [["code" "system|code"]]))
-          [0 :resourceType] := "Observation"
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "1"
           1 := nil))))
 
@@ -1399,19 +1497,23 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Patient" :id "0"}]
-          [:put {:resourceType "Observation" :id "0"
-                 :subject {:reference "Patient/0"}
+         [[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 {:fhir/type :fhir/Reference
+                  :reference "Patient/0"}
                  :code
-                 {:coding
-                  [{:system "system-191514"
-                    :code "code-191518"}]}}]])
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"system-191514"
+                    :code #fhir/code"code-191518"}]}}]])
 
       (given @(d/pull-many node
                            (d/compartment-query
                              (d/db node) "Patient" "0" "Observation"
                              [["code" "foo|bar" "system-191514|code-191518"]]))
-        [0 :resourceType] := "Observation"
+        [0 :fhir/type] := :fhir/Observation
         [0 :id] := "0"
         1 := nil)))
 
@@ -1419,17 +1521,22 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Patient" :id "0"}]
-          [:put {:resourceType "Observation" :id "0"
-                 :subject {:reference "Patient/0"}
+         [[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 {:fhir/type :fhir/Reference
+                  :reference "Patient/0"}
                  :code
-                 {:coding
-                  [{:system "system-191514"
-                    :code "code-191518"}]}
-                 :valueQuantity
-                 {:code "kg/m2"
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"system-191514"
+                    :code #fhir/code"code-191518"}]}
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :code #fhir/code"kg/m2"
                   :unit "kg/m²"
-                  :system "http://unitsofmeasure.org"
+                  :system #fhir/uri"http://unitsofmeasure.org"
                   :value 42M}}]])
 
       (testing "matches second criteria"
@@ -1438,7 +1545,7 @@
                                (d/db node) "Patient" "0" "Observation"
                                [["code" "system-191514|code-191518"]
                                 ["value-quantity" "42"]]))
-          [0 :resourceType] := "Observation"
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
           1 := nil))
 
@@ -1463,7 +1570,7 @@
     (with-open [node (new-node)]
       @(d/transact
          node
-         [[:put {:resourceType "Patient"
+         [[:put {:fhir/type :fhir/Patient
                  :id "id-0"}]])
 
       (given (d/compartment-query (d/db node) "Patient" "id-0" "Foo" [["code" "baz"]])
@@ -1475,24 +1582,30 @@
       (with-open [node (new-node)]
         @(d/transact
            node
-           [[:put {:resourceType "Patient"
+           [[:put {:fhir/type :fhir/Patient
                    :id "id-0"}]
-            [:put {:resourceType "Condition"
+            [:put {:fhir/type :fhir/Condition
                    :id "id-1"
                    :code
-                   {:coding
-                    [{:system "system-a-122701"
-                      :code "code-a-122652"}]}
+                   {:fhir/type :fhir/CodeableConcept
+                    :coding
+                    [{:fhir/type :fhir/Coding
+                      :system #fhir/uri"system-a-122701"
+                      :code #fhir/code"code-a-122652"}]}
                    :subject
-                   {:reference "Patient/id-0"}}]
-            [:put {:resourceType "Condition"
+                   {:fhir/type :fhir/Reference
+                    :reference "Patient/id-0"}}]
+            [:put {:fhir/type :fhir/Condition
                    :id "id-2"
                    :code
-                   {:coding
-                    [{:system "system-b-122747"
-                      :code "code-b-122750"}]}
+                   {:fhir/type :fhir/CodeableConcept
+                    :coding
+                    [{:fhir/type :fhir/Coding
+                      :system #fhir/uri"system-b-122747"
+                      :code #fhir/code"code-b-122750"}]}
                    :subject
-                   {:reference "Patient/id-0"}}]])
+                   {:fhir/type :fhir/Reference
+                    :reference "Patient/id-0"}}]])
 
         (testing "code"
           (given (into [] (d/compartment-query (d/db node) "Patient" "id-0" "Condition" [["code" "system-a-122701|code-a-122652"]]))
@@ -1511,7 +1624,7 @@
 
   (testing "a node with one patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one history entry"
         (is (= 1 (count (d/instance-history (d/db node) "Patient" "0"))))
@@ -1519,9 +1632,9 @@
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"))
+          [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "has an empty history on another patient"
         (is (coll/empty? (d/instance-history (d/db node) "Patient" "1")))
@@ -1529,7 +1642,7 @@
 
   (testing "a node with one deleted patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "has two history entries"
@@ -1538,22 +1651,22 @@
 
       (testing "the first history entry is the patient marked as deleted"
         (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "2"
+          [0 :meta :versionId] := #fhir/id"2"
           [0 meta :blaze.db/op] := :delete))
 
       (testing "the second history entry is the patient marked as created"
         (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
-          [1 :resourceType] := "Patient"
+          [1 :fhir/type] := :fhir/Patient
           [1 :id] := "0"
-          [1 :meta :versionId] := "1"
+          [1 :meta :versionId] := #fhir/id"1"
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with two versions"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
-      @(d/transact node [[:put {:resourceType "Patient" :id "0" :active false}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
       (testing "has two history entries"
         (is (= 2 (count (d/instance-history (d/db node) "Patient" "0"))))
@@ -1574,10 +1687,10 @@
   (testing "the database is immutable"
     (testing "while updating a patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:put {:resourceType "Patient" :id "0" :active false}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
         (let [db (d/db node)]
-          @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
           (testing "the original database"
             (testing "has still only one history entry"
@@ -1586,10 +1699,10 @@
 
             (testing "contains still the original patient"
               (given @(d/pull-many node (d/instance-history db "Patient" "0"))
-                [0 :resourceType] := "Patient"
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := false
-                [0 :meta :versionId] := "1"))))))))
+                [0 :meta :versionId] := #fhir/id"1"))))))))
 
 
 
@@ -1603,7 +1716,7 @@
 
   (testing "a node with one patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one history entry"
         (is (= 1 (count (d/type-history (d/db node) "Patient"))))
@@ -1611,9 +1724,9 @@
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"))
+          [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "has an empty observation history"
         (is (coll/empty? (d/type-history (d/db node) "Observation")))
@@ -1621,7 +1734,7 @@
 
   (testing "a node with one deleted patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "has two history entries"
@@ -1630,22 +1743,22 @@
 
       (testing "the first history entry is the patient marked as deleted"
         (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "2"
+          [0 :meta :versionId] := #fhir/id"2"
           [0 meta :blaze.db/op] := :delete))
 
       (testing "the second history entry is the patient marked as created"
         (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
-          [1 :resourceType] := "Patient"
+          [1 :fhir/type] := :fhir/Patient
           [1 :id] := "0"
-          [1 :meta :versionId] := "1"
+          [1 :meta :versionId] := #fhir/id"1"
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with two patients in two transactions"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Patient" :id "1"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
 
       (testing "has two history entries"
         (is (= 2 (count (d/type-history (d/db node) "Patient"))))
@@ -1665,8 +1778,8 @@
 
   (testing "a node with two patients in one transaction"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]
-                         [:put {:resourceType "Patient" :id "1"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                         [:put {:fhir/type :fhir/Patient :id "1"}]])
 
       (testing "has two history entries"
         (is (= 2 (count (d/type-history (d/db node) "Patient"))))
@@ -1684,10 +1797,10 @@
   (testing "the database is immutable"
     (testing "while updating a patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:put {:resourceType "Patient" :id "0" :active false}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
         (let [db (d/db node)]
-          @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
           (testing "the original database"
             (testing "has still only one history entry"
@@ -1696,17 +1809,17 @@
 
             (testing "contains still the original patient"
               (given @(d/pull-many node (d/type-history db "Patient"))
-                [0 :resourceType] := "Patient"
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := false
-                [0 :meta :versionId] := "1"))))))
+                [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (let [db (d/db node)]
-          @(d/transact node [[:put {:resourceType "Patient" :id "1"}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
 
           (testing "the original database"
             (testing "has still only one history entry"
@@ -1715,9 +1828,9 @@
 
             (testing "contains still the first patient"
               (given @(d/pull-many node (d/type-history db "Patient"))
-                [0 :resourceType] := "Patient"
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
-                [0 :meta :versionId] := "1"))))))))
+                [0 :meta :versionId] := #fhir/id"1"))))))))
 
 
 
@@ -1731,7 +1844,7 @@
 
   (testing "a node with one patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one history entry"
         (is (= 1 (count (d/system-history (d/db node)))))
@@ -1739,13 +1852,13 @@
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/system-history (d/db node)))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "1"))))
+          [0 :meta :versionId] := #fhir/id"1"))))
 
   (testing "a node with one deleted patient"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
       (testing "has two history entries"
@@ -1754,22 +1867,22 @@
 
       (testing "the first history entry is the patient marked as deleted"
         (given @(d/pull-many node (d/system-history (d/db node)))
-          [0 :resourceType] := "Patient"
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :versionId] := "2"
+          [0 :meta :versionId] := #fhir/id"2"
           [0 meta :blaze.db/op] := :delete))
 
       (testing "the second history entry is the patient marked as created"
         (given @(d/pull-many node (d/system-history (d/db node)))
-          [1 :resourceType] := "Patient"
+          [1 :fhir/type] := :fhir/Patient
           [1 :id] := "0"
-          [1 :meta :versionId] := "1"
+          [1 :meta :versionId] := #fhir/id"1"
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with one patient and one observation in two transactions"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
-      @(d/transact node [[:put {:resourceType "Observation" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
 
       (testing "has two history entries"
         (is (= 2 (count (d/system-history (d/db node)))))
@@ -1777,17 +1890,17 @@
 
       (testing "contains both resources in reverse transaction order"
         (given @(d/pull-many node (d/system-history (d/db node)))
-          [0 :resourceType] := "Observation"
-          [1 :resourceType] := "Patient"))
+          [0 :fhir/type] := :fhir/Observation
+          [1 :fhir/type] := :fhir/Patient))
 
       (testing "it is possible to start with the older transaction"
         (given @(d/pull-many node (d/system-history (d/db node) 1))
-          [0 :resourceType] := "Patient"))))
+          [0 :fhir/type] := :fhir/Patient))))
 
   (testing "a node with one patient and one observation in one transaction"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]
-                         [:put {:resourceType "Observation" :id "0"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                         [:put {:fhir/type :fhir/Observation :id "0"}]])
 
       (testing "has two history entries"
         (is (= 2 (count (d/system-history (d/db node)))))
@@ -1795,17 +1908,17 @@
 
       (testing "contains both resources in the order of their type hashes"
         (given @(d/pull-many node (d/system-history (d/db node)))
-          [0 :resourceType] := "Observation"
-          [1 :resourceType] := "Patient"))
+          [0 :fhir/type] := :fhir/Observation
+          [1 :fhir/type] := :fhir/Patient))
 
       (testing "it is possible to start with the patient"
         (given @(d/pull-many node (d/system-history (d/db node) 1 "Patient"))
-          [0 :resourceType] := "Patient"))))
+          [0 :fhir/type] := :fhir/Patient))))
 
   (testing "a node with two patients in one transaction"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:resourceType "Patient" :id "0"}]
-                         [:put {:resourceType "Patient" :id "1"}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                         [:put {:fhir/type :fhir/Patient :id "1"}]])
 
       (testing "has two history entries"
         (is (= 2 (count (d/system-history (d/db node)))))
@@ -1818,10 +1931,10 @@
   (testing "the database is immutable"
     (testing "while updating a patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:put {:resourceType "Patient" :id "0" :active false}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
         (let [db (d/db node)]
-          @(d/transact node [[:put {:resourceType "Patient" :id "0" :active true}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
           (testing "the original database"
             (testing "has still only one history entry"
@@ -1830,17 +1943,17 @@
 
             (testing "contains still the original patient"
               (given @(d/pull-many node (d/system-history db))
-                [0 :resourceType] := "Patient"
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := false
-                [0 :meta :versionId] := "1"))))))
+                [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
       (with-open [node (new-node)]
-        @(d/transact node [[:put {:resourceType "Patient" :id "0"}]])
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (let [db (d/db node)]
-          @(d/transact node [[:put {:resourceType "Patient" :id "1"}]])
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
 
           (testing "the original database"
             (testing "has still only one history entry"
@@ -1849,6 +1962,6 @@
 
             (testing "contains still the first patient"
               (given @(d/pull-many node (d/system-history db))
-                [0 :resourceType] := "Patient"
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
-                [0 :meta :versionId] := "1"))))))))
+                [0 :meta :versionId] := #fhir/id"1"))))))))

@@ -12,7 +12,9 @@
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
@@ -52,31 +54,32 @@
 (deftest handler-test
   (testing "with one patient"
     (let [{:keys [status body]}
-          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
             {::reitit/router router
              ::reitit/match match})]
 
       (is (= 200 status))
 
-      (is (= "Bundle" (:resourceType body)))
+      (is (= :fhir/Bundle (:fhir/type body)))
 
-      (is (= "history" (:type body)))
+      (is (= #fhir/code"history" (:type body)))
 
-      (is (= 1 (:total body)))
+      (is (= #fhir/unsignedInt 1 (:total body)))
 
       (testing "has self link"
-        (is (= "/Patient/_history?__t=1&__page-t=1&__page-id=0" (link-url body "self"))))
+        (is (= #fhir/uri"/Patient/_history?__t=1&__page-t=1&__page-id=0"
+               (link-url body "self"))))
 
       (testing "the bundle contains one entry"
         (is (= 1 (count (:entry body)))))
 
       (given (-> body :entry first)
-        :fullUrl := "/Patient/0"
-        [:request :method] := "PUT"
-        [:request :url] := "/Patient/0"
+        :fullUrl := #fhir/uri"/Patient/0"
+        [:request :method] := #fhir/code"PUT"
+        [:request :url] := #fhir/uri"/Patient/0"
         [:resource :id] := "0"
-        [:resource :resourceType] := "Patient"
-        [:resource :meta :versionId] := "1"
+        [:resource :fhir/type] := :fhir/Patient
+        [:resource :meta :versionId] := #fhir/id"1"
         [:response :status] := "201"
         [:response :etag] := "W/\"1\""
-        [:response :lastModified] := "1970-01-01T00:00:00Z"))))
+        [:response :lastModified] := Instant/EPOCH))))

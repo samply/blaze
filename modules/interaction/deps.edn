@@ -26,7 +26,7 @@
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}
+    {:mvn/version "1.1.0"}
 
     ring/ring-spec
     {:mvn/version "0.0.4"}}
@@ -41,13 +41,13 @@
     {:local/root "../db-stub"}
 
     cloverage/cloverage
-    {:mvn/version "1.2.0"}
+    {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}
+    {:mvn/version "1.1.0"}
 
     ring/ring-spec
     {:mvn/version "0.0.4"}}

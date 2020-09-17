@@ -16,4 +16,4 @@
                :start-tid (s/nilable :blaze.db/tid)
                :start-id (s/nilable bytes?)
                :end-t :blaze.db/t)
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))

@@ -11,7 +11,10 @@
     {:mvn/version "1.0.641"}
 
     org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -20,7 +23,7 @@
 
    :extra-deps
    {cloverage/cloverage
-    {:mvn/version "1.2.0"}
+    {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}

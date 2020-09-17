@@ -1,5 +1,6 @@
 (ns blaze.rest-api.middleware.auth-guard
   (:require
+    [blaze.fhir.spec.type]
     [buddy.auth :refer [authenticated?]]
     [ring.util.response :as ring]))
 
@@ -11,12 +12,15 @@
     (if (authenticated? request)
       (handler request)
       (-> (ring/response
-            {:resourceType "OperationOutcome"
+            {:fhir/type :fhir/OperationOutcome
              :issue
-             [{:severity "error"
-               :code "login"
+             [{:fhir/type :fhir.OperationOutcome/issue
+               :severity #fhir/code"error"
+               :code #fhir/code"login"
                :details
-               {:coding
-                [{:system "http://terminology.hl7.org/CodeSystem/operation-outcome"
-                  :code "MSG_AUTH_REQUIRED"}]}}]})
+               {:fhir/type :fhir/CodeableConcept
+                :coding
+                [{:fhir/type :fhir/Coding
+                  :system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+                  :code #fhir/code"MSG_AUTH_REQUIRED"}]}}]})
           (ring/status 401)))))

@@ -14,7 +14,9 @@
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
@@ -44,72 +46,50 @@
 
 
 (deftest handler-test
+  (testing "Returns Error on missing body"
+    (let [{:keys [status body]}
+          ((handler-with [])
+           {::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+
+      (is (= 400 status))
+
+      (given body
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"invalid"
+        [:issue 0 :diagnostics] := "Missing HTTP body.")))
+
   (testing "Returns Error on type mismatch"
     (let [{:keys [status body]}
           ((handler-with [])
-            {::reitit/match {:data {:fhir.resource/type "Patient"}}
-             :body {:resourceType "Observation"}})]
-
-      (is (= 400 status))
-
-      (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "invariant"
-        [:issue 0 :details :coding 0 :system] := "http://terminology.hl7.org/CodeSystem/operation-outcome"
-        [:issue 0 :details :coding 0 :code] := "MSG_RESOURCE_TYPE_MISMATCH"
-        [:issue 0 :diagnostics] := "Resource type `Observation` doesn't match the endpoint type `Patient`.")))
-
-  (testing "Returns Error on invalid resource"
-    (let [{:keys [status body]}
-          ((handler-with [])
-            {::reitit/match {:data {:fhir.resource/type "Patient"}}
-             :body {:resourceType "Patient" :gender {}}})]
-
-      (is (= 400 status))
-
-      (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "invariant"
-        [:issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`."
-        [:issue 0 :expression] := ["gender"])))
-
-  (testing "Returns Error on invalid resource - two errors"
-    (let [{:keys [status body]}
-          ((handler-with [])
            {::reitit/match {:data {:fhir.resource/type "Patient"}}
-            :body {:resourceType "Patient" :id "1"
-                   :contact [{:name {:use [] :text "name1text1"}}
-                             {:name {:use "  " :text "name2text1"}}]}})]
+            :body {:fhir/type :fhir/Observation}})]
 
       (is (= 400 status))
 
       (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "invariant"
-        [:issue 0 :diagnostics] := "Error on value `[]`. Expected type is `code`."
-        [:issue 0 :expression] := ["contact[0].name.use"]
-        [:issue 1 :severity] := "error"
-        [:issue 1 :code] := "invariant"
-        [:issue 1 :diagnostics] :=
-        "Error on value `  `. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
-        [:issue 1 :expression] := ["contact[1].name.use"])))
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"invariant"
+        [:issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+        [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
+        [:issue 0 :diagnostics] := "Resource type `Observation` doesn't match the endpoint type `Patient`.")))
 
   (testing "Returns Error violated referential integrity"
     (let [{:keys [status body]}
           ((handler-with [])
            {::reitit/match {:data {:fhir.resource/type "Observation"}}
-            :body {:resourceType "Observation" :id "0"
-                   :subject {:reference "Patient/0"}}})]
+            :body {:fhir/type :fhir/Observation :id "0"
+                   :subject
+                   {:fhir/type :fhir/Reference
+                    :reference "Patient/0"}}})]
 
       (is (= 409 status))
 
       (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "conflict"
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"conflict"
         [:issue 0 :diagnostics] :=
         "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
 
@@ -119,9 +99,9 @@
         [random-uuid (constantly #uuid "22de9f47-626a-4fc3-bb69-7bc68401acf4")]
         (let [{:keys [status headers body]}
               ((handler-with [])
-                {::reitit/router router
-                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :body {:resourceType "Patient"}})]
+               {::reitit/router router
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -137,20 +117,20 @@
             (is (= "W/\"1\"" (get headers "ETag"))))
 
           (given body
-            :resourceType := "Patient"
+            :fhir/type := :fhir/Patient
             :id := "22de9f47-626a-4fc3-bb69-7bc68401acf4"
-            [:meta :versionId] := "1"
-            [:meta :lastUpdated] := "1970-01-01T00:00:00Z"))))
+            [:meta :versionId] := #fhir/id"1"
+            [:meta :lastUpdated] := Instant/EPOCH))))
 
     (testing "with return=minimal Prefer header"
       (with-redefs
         [random-uuid (constantly #uuid "3543b9e8-b237-4daa-9c81-9a99b208aa0d")]
         (let [{:keys [status headers body]}
               ((handler-with [])
-                {::reitit/router router
-                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :headers {"prefer" "return=minimal"}
-                 :body {:resourceType "Patient"}})]
+               {::reitit/router router
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                :headers {"prefer" "return=minimal"}
+                :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -172,10 +152,10 @@
         [random-uuid (constantly #uuid "d387d53f-358f-48d2-979e-96cb0052b7e2")]
         (let [{:keys [status headers body]}
               ((handler-with [])
-                {::reitit/router router
-                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :headers {"prefer" "return=representation"}
-                 :body {:resourceType "Patient"}})]
+               {::reitit/router router
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                :headers {"prefer" "return=representation"}
+                :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -191,20 +171,20 @@
             (is (= "W/\"1\"" (get headers "ETag"))))
 
           (given body
-            :resourceType := "Patient"
+            :fhir/type := :fhir/Patient
             :id := "d387d53f-358f-48d2-979e-96cb0052b7e2"
-            [:meta :versionId] := "1"
-            [:meta :lastUpdated] := "1970-01-01T00:00:00Z"))))
+            [:meta :versionId] := #fhir/id"1"
+            [:meta :lastUpdated] := Instant/EPOCH))))
 
     (testing "with return=OperationOutcome Prefer header"
       (with-redefs
         [random-uuid (constantly #uuid "62a30df4-a4b8-47ed-9203-2d222dd8cdad")]
         (let [{:keys [status headers body]}
               ((handler-with [])
-                {::reitit/router router
-                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :headers {"prefer" "return=OperationOutcome"}
-                 :body {:resourceType "Patient"}})]
+               {::reitit/router router
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                :headers {"prefer" "return=OperationOutcome"}
+                :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -219,4 +199,4 @@
             ;; 1 is the T of the transaction of the resource creation
             (is (= "W/\"1\"" (get headers "ETag"))))
 
-          (is (= "OperationOutcome" (:resourceType body))))))))
+          (is (= :fhir/OperationOutcome (:fhir/type body))))))))

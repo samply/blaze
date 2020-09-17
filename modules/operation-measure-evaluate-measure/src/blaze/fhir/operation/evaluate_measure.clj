@@ -10,7 +10,6 @@
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [ring.middleware.params :refer [wrap-params]]
     [taoensso.timbre :as log])
   (:import
     [java.time Clock]))
@@ -22,7 +21,6 @@
 (defn handler [clock conn executor]
   (-> (impl/handler clock conn executor)
       (wrap-coerce-params)
-      (wrap-params)
       (wrap-observe-request-duration "operation-evaluate-measure")))
 
 

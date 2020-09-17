@@ -21,6 +21,7 @@
     [blaze.db.search-param-registry.spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.executors :as ex]
+    [blaze.fhir.spec.type :refer [->Id]]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -164,8 +165,9 @@
 
 
 (defn- enhance-meta [meta t {:blaze.db.tx/keys [instant]}]
-  (-> (assoc meta :versionId (str t))
-      (assoc :lastUpdated (str instant))))
+  (-> (or meta {:fhir/type :fhir/Meta})
+      (assoc :versionId (->Id (str t)))
+      (assoc :lastUpdated instant)))
 
 
 (defn- mk-meta [meta state t tx]

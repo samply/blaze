@@ -1,6 +1,5 @@
 (ns blaze.db.impl.index.resource-handle-spec
   (:require
-    [blaze.db.hash.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.kv-spec]
@@ -12,7 +11,7 @@
 
 (s/fdef rh/resource-handle
   :args (s/cat :tid :blaze.db/tid :id :blaze.resource/id
-               :t :blaze.db/t :hash :blaze.db.resource/hash
+               :t :blaze.db/t :hash :blaze.resource/hash
                :state :blaze.db/state)
   :ret :blaze.db/resource-handle)
 
@@ -29,7 +28,7 @@
 
 (s/fdef rh/hash
   :args (s/cat :resource-handle :blaze.db/resource-handle)
-  :ret :blaze.db.resource/hash)
+  :ret :blaze.resource/hash)
 
 
 (s/fdef rh/state

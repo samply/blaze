@@ -1,8 +1,17 @@
 {:paths ["src" "resources"]
 
  :deps
- {cheshire/cheshire
+ {blaze/anomaly
+  {:local/root "../anomaly"}
+
+  cheshire/cheshire
   {:mvn/version "5.10.0"}
+
+  com.github.ben-manes.caffeine/caffeine
+  {:mvn/version "2.8.1"}
+
+  com.google.guava/guava
+  {:mvn/version "29.0-jre"}
 
   com.taoensso/timbre
   {:mvn/version "4.10.0"}
@@ -12,7 +21,10 @@
 
   org.clojure/alpha.spec
   {:git/url "https://github.com/clojure/spec-alpha2.git"
-   :sha "b67a00e5de4b5cde3bc9d7ef4f7c08f77c829ddd"}}
+   :sha "b67a00e5de4b5cde3bc9d7ef4f7c08f77c829ddd"}
+
+  org.clojure/data.xml
+  {:mvn/version "0.2.0-alpha6"}}
 
  :aliases
  {:test
@@ -26,7 +38,13 @@
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}}
+    {:mvn/version "1.1.0"}
+
+    org.openjdk.jol/jol-core
+    {:mvn/version "0.13"}
+
+    criterium/criterium
+    {:mvn/version "0.4.5"}}
 
    :main-opts
    ["-m" "kaocha.runner"]}
@@ -36,12 +54,15 @@
 
    :extra-deps
    {cloverage/cloverage
-    {:mvn/version "1.2.0"}
+    {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}}
+    {:mvn/version "1.1.0"}
+
+    org.openjdk.jol/jol-core
+    {:mvn/version "0.13"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

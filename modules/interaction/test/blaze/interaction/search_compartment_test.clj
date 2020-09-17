@@ -52,57 +52,61 @@
   (testing "Returns an Error on Invalid Id"
     (let [{:keys [status body]}
           ((handler-with [])
-            {:path-params {:id "<invalid>" :type "Observation"}
-             ::reitit/router router
-             ::reitit/match match})]
+           {:path-params {:id "<invalid>" :type "Observation"}
+            ::reitit/router router
+            ::reitit/match match})]
 
       (is (= 400 status))
 
       (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "value"
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"value"
         [:issue 0 :diagnostics] := "The identifier `<invalid>` is invalid.")))
 
   (testing "Returns an Error on Invalid Type"
     (let [{:keys [status body]}
           ((handler-with [])
-            {:path-params {:id "0" :type "<invalid>"}
-             ::reitit/router router
-             ::reitit/match match})]
+           {:path-params {:id "0" :type "<invalid>"}
+            ::reitit/router router
+            ::reitit/match match})]
 
       (is (= 400 status))
 
       (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "value"
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"value"
         [:issue 0 :diagnostics] := "The type `<invalid>` is invalid.")))
 
   (testing "Returns an empty Bundle on Non-Existing Compartment"
     (let [{:keys [status body]}
           ((handler-with [])
-            {:path-params {:id "0" :type "Observation"}
-             ::reitit/router router
-             ::reitit/match match})]
+           {:path-params {:id "0" :type "Observation"}
+            ::reitit/router router
+            ::reitit/match match})]
 
       (is (= 200 status))
 
       (given body
-        :resourceType := "Bundle"
-        :type := "searchset"
-        :total := 0)))
+        :fhir/type := :fhir/Bundle
+        :type := #fhir/code"searchset"
+        :total := #fhir/unsignedInt 0)))
 
   (testing "with one Observation"
     (let [handler
           (handler-with
-            [[[:put {:resourceType "Patient" :id "0"}]
-              [:put {:resourceType "Observation" :id "0"
-                     :status "final"
-                     :subject {:reference "Patient/0"}}]
-              [:put {:resourceType "Observation" :id "1"
-                     :status "preliminary"
-                     :subject {:reference "Patient/0"}}]]])
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]
+              [:put {:fhir/type :fhir/Observation :id "0"
+                     :status #fhir/code"final"
+                     :subject
+                     {:fhir/type :fhir/Reference
+                      :reference "Patient/0"}}]
+              [:put {:fhir/type :fhir/Observation :id "1"
+                     :status #fhir/code"preliminary"
+                     :subject
+                     {:fhir/type :fhir/Reference
+                      :reference "Patient/0"}}]]])
           request
           {:path-params {:id "0" :type "Observation"}
            ::reitit/router router
@@ -115,13 +119,13 @@
           (is (= 200 status))
 
           (testing "the body contains a bundle"
-            (is (= "Bundle" (:resourceType body))))
+            (is (= :fhir/Bundle (:fhir/type body))))
 
           (testing "the bundle type is searchset"
-            (is (= "searchset" (:type body))))
+            (is (= #fhir/code"searchset" (:type body))))
 
           (testing "the total count is 2"
-            (is (= 2 (:total body))))
+            (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "the bundle contains no entries"
             (is (empty? (:entry body))))))
@@ -129,18 +133,18 @@
       (testing "with _summary=count and status=final"
         (let [{:keys [status body]}
               (handler (-> (assoc-in request [:params "_summary"] "count")
-                            (assoc-in [:params "status"] "final")))]
+                           (assoc-in [:params "status"] "final")))]
 
           (is (= 200 status))
 
           (testing "the body contains a bundle"
-            (is (= "Bundle" (:resourceType body))))
+            (is (= :fhir/Bundle (:fhir/type body))))
 
           (testing "the bundle type is searchset"
-            (is (= "searchset" (:type body))))
+            (is (= #fhir/code"searchset" (:type body))))
 
           (testing "the total count is 1"
-            (is (= 1 (:total body))))
+            (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "the bundle contains no entries"
             (is (empty? (:entry body))))))
@@ -151,16 +155,16 @@
           (is (= 200 status))
 
           (testing "the body contains a bundle"
-            (is (= "Bundle" (:resourceType body))))
+            (is (= :fhir/Bundle (:fhir/type body))))
 
           (testing "the bundle type is searchset"
-            (is (= "searchset" (:type body))))
+            (is (= #fhir/code"searchset" (:type body))))
 
           (testing "the total count is 2"
-            (is (= 2 (:total body))))
+            (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+            (is (= #fhir/uri"/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
                    (link-url body "self"))))
 
           (testing "the bundle contains two entries"
@@ -168,12 +172,12 @@
 
           (testing "the first entry"
             (given (-> body :entry first)
-              :fullUrl := "/Observation/0"
-              [:resource :resourceType] := "Observation"
+              :fullUrl := #fhir/uri"/Observation/0"
+              [:resource :fhir/type] := :fhir/Observation
               [:resource :id] := "0"))
 
           (testing "the second entry"
             (given (-> body :entry second)
-              :fullUrl := "/Observation/1"
-              [:resource :resourceType] := "Observation"
+              :fullUrl := #fhir/uri"/Observation/1"
+              [:resource :fhir/type] := :fhir/Observation
               [:resource :id] := "1")))))))

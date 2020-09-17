@@ -1,6 +1,5 @@
 (ns blaze.db.impl.search-param-spec
   (:require
-    [blaze.db.hash.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.iterators-spec]
     [blaze.db.impl.search-param :as search-param]
@@ -40,7 +39,7 @@
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef search-param/compartment-keys
@@ -57,7 +56,7 @@
                :snapshot :blaze.db/kv-snapshot
                :tid :blaze.db/tid
                :id bytes?
-               :hash :blaze.db.resource/hash
+               :hash :blaze.resource/hash
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))
   :ret boolean?)
@@ -71,7 +70,7 @@
 
 (s/fdef search-param/index-entries
   :args (s/cat :search-param :blaze.db/search-param
-               :hash :blaze.db.resource/hash
+               :hash :blaze.resource/hash
                :resource :blaze/resource
                :linked-compartments (s/coll-of (s/tuple string? string?)))
   :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry-w-cf)

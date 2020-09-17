@@ -44,7 +44,7 @@
   (:import
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.temporal ChronoUnit]
-    [clojure.lang ILookup IObj IReduceInit])
+    [clojure.lang ILookup IReduceInit])
   (:refer-clojure :exclude [comparator compile]))
 
 
@@ -412,40 +412,6 @@
 
 
 ;; 2.3. Property
-(defn- fhir-type? [type]
-  (and (keyword? type) (str/starts-with? (namespace type) "fhir")))
-
-
-(defn- with-spec [spec x]
-  (if (instance? IObj x)
-    (with-meta x {:type spec})
-    x))
-
-
-(defn- search-choice-property [choices x]
-  (loop [[[key spec] & more] choices]
-    (if-let [val (get x key)]
-      (with-spec spec val)
-      (some-> more recur))))
-
-
-(defn- get-fhir-property [key x]
-  (if-let [child-spec (get (fhir-spec/child-specs (type x)) key)]
-    (cond
-      (fhir-spec/choice? child-spec)
-      (search-choice-property (fhir-spec/choices child-spec) x)
-
-      (= :many (fhir-spec/cardinality child-spec))
-      (coll/eduction (map (partial with-spec (fhir-spec/type-spec child-spec))) (get x key))
-
-      :else
-      (when-let [val (get x key)]
-        (with-spec child-spec val)))
-    (throw-anom
-      ::anom/incorrect
-      (format "unknown FHIR data element `%s` in type `%s`" (name key) (name (type x))))))
-
-
 (defn- pull [db x]
   (if (d/resource-handle? x)
     @(d/pull-content db x)
@@ -453,11 +419,8 @@
 
 
 (defn- get-property [db key x]
-  (cond
-    (fhir-type? (type x))
-    (get-fhir-property key (pull db x))
-
-    :else
+  (if (fhir-spec/fhir-type x)
+    (get (pull db x) key)
     (p/get x key)))
 
 
@@ -467,74 +430,16 @@
     (get-property db key (-eval source context resource scope))))
 
 
-(defrecord ChoiceFhirTypeSourcePropertyExpression [source key choices]
-  Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
-    (search-choice-property choices (pull db (-eval source context resource scope)))))
-
-
-(defrecord ManyFhirTypeSourcePropertyExpression [source key spec]
-  Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
-    (->> (get (pull db (-eval source context resource scope)) key)
-         (coll/eduction (map (partial with-spec spec))))))
-
-
-(defrecord OneFhirTypeSourcePropertyExpression [source key spec]
-  Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [val (get (pull db (-eval source context resource scope)) key)]
-      (with-spec spec val))))
-
-
 (defrecord SingleScopePropertyExpression [key]
   Expression
   (-eval [_ {:keys [db]} _ value]
     (get-property db key value)))
 
 
-(defrecord ChoiceFhirTypeSingleScopePropertyExpression [choices]
-  Expression
-  (-eval [_ {:keys [db]} _ value]
-    (search-choice-property choices (pull db value))))
-
-
-(defrecord ManyFhirTypeSingleScopePropertyExpression [key spec]
-  Expression
-  (-eval [_ {:keys [db]} _ value]
-    (coll/eduction (map (partial with-spec spec)) (get (pull db value) key))))
-
-
-(defrecord OneFhirTypeSingleScopePropertyExpression [key spec]
-  Expression
-  (-eval [_ {:keys [db]} _ value]
-    (when-let [val (get (pull db value) key)]
-      (with-spec spec val))))
-
-
 (defrecord ScopePropertyExpression [scope-key key]
   Expression
   (-eval [_ {:keys [db]} _ scope]
     (get-property db key (get scope scope-key))))
-
-
-(defrecord ChoiceFhirTypeScopePropertyExpression [scope-key key choices]
-  Expression
-  (-eval [_ {:keys [db]} _ scope]
-    (search-choice-property choices (pull db (get scope scope-key)))))
-
-
-(defrecord ManyFhirTypeScopePropertyExpression [scope-key key spec]
-  Expression
-  (-eval [_ _ _ scope]
-    (coll/eduction (map (partial with-spec spec)) (get (get scope scope-key) key))))
-
-
-(defrecord OneFhirTypeScopePropertyExpression [scope-key key spec]
-  Expression
-  (-eval [_ _ _ scope]
-    (when-let [val (get (get scope scope-key) key)]
-      (with-spec spec val))))
 
 
 (defn- path->key [path]
@@ -544,82 +449,17 @@
     (keyword first-part)))
 
 
-(defn- type-source-property-expr
-  "Creates a source-property-expression with known FHIR `type`."
-  [type source key]
-  (if-let [child-spec (get (fhir-spec/child-specs type) key)]
-    (cond
-      (fhir-spec/choice? child-spec)
-      (->ChoiceFhirTypeSourcePropertyExpression source key (fhir-spec/choices child-spec))
-
-      (= :many (fhir-spec/cardinality child-spec))
-      (->ManyFhirTypeSourcePropertyExpression source key (fhir-spec/type-spec child-spec))
-
-      :else
-      (->OneFhirTypeSourcePropertyExpression source key child-spec))
-    (->SourcePropertyExpression source key)))
-
-
-(defn- source-property-expr [source-type source key]
-  (let [[ns name] (elm-util/parse-qualified-name source-type)]
-    (if (= "http://hl7.org/fhir" ns)
-      (type-source-property-expr (keyword "fhir" name) source key)
-      (->SourcePropertyExpression source key))))
-
-
-(defn- type-single-scope-property-expr [type key]
-  (if-let [child-spec (get (fhir-spec/child-specs type) key)]
-    (cond
-      (fhir-spec/choice? child-spec)
-      (->ChoiceFhirTypeSingleScopePropertyExpression (fhir-spec/choices child-spec))
-
-      (= :many (fhir-spec/cardinality child-spec))
-      (->ManyFhirTypeSingleScopePropertyExpression key (fhir-spec/type-spec child-spec))
-
-      :else
-      (->OneFhirTypeSingleScopePropertyExpression key child-spec))
-    (->SingleScopePropertyExpression key)))
-
-
-(defn- single-scope-property-expr [source-type key]
-  (let [[ns name] (elm-util/parse-qualified-name source-type)]
-    (if (= "http://hl7.org/fhir" ns)
-      (type-single-scope-property-expr (keyword "fhir" name) key)
-      (->SingleScopePropertyExpression key))))
-
-
-(defn- type-scope-property-expr [type scope key]
-  (if-let [child-spec (get (fhir-spec/child-specs type) key)]
-    (cond
-      (fhir-spec/choice? child-spec)
-      (->ChoiceFhirTypeScopePropertyExpression scope key (fhir-spec/choices child-spec))
-
-      (= :many (fhir-spec/cardinality child-spec))
-      (->ManyFhirTypeScopePropertyExpression scope key (fhir-spec/type-spec child-spec))
-
-      :else
-      (->OneFhirTypeScopePropertyExpression scope key child-spec))
-    (->ScopePropertyExpression scope key)))
-
-
-(defn- scope-property-expression [source-type scope key]
-  (let [[ns name] (elm-util/parse-qualified-name source-type)]
-    (if (= "http://hl7.org/fhir" ns)
-      (type-scope-property-expr (keyword "fhir" name) scope key)
-      (->ScopePropertyExpression scope key))))
-
 (defmethod compile* :elm.compiler.type/property
-  [{:life/keys [single-query-scope] :as context}
-   {:keys [source scope path] :life/keys [source-type]}]
+  [{:life/keys [single-query-scope] :as context} {:keys [source scope path]}]
   (let [key (path->key path)]
     (cond
       source
-      (source-property-expr source-type (compile context source) key)
+      (->SourcePropertyExpression (compile context source) key)
 
       scope
       (if (= single-query-scope scope)
-        (single-scope-property-expr source-type key)
-        (scope-property-expression source-type scope key)))))
+        (->SingleScopePropertyExpression key)
+        (->ScopePropertyExpression scope key)))))
 
 
 
@@ -2468,21 +2308,7 @@
   (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
     (case type-ns
       "http://hl7.org/fhir"
-      (if (Character/isUpperCase ^char (first type-name))
-        (comp #(identical? (keyword "fhir" type-name) %) type)
-        (case type-name
-          "boolean" boolean?
-          "integer" int?
-          "string" string?
-          "decimal" number?
-          "uri" string?
-          "url" string?
-          "canonical" string?
-          "dateTime" string?
-          (throw-anom
-            ::anom/unsupported
-            (format "Unsupported FHIR type `%s` in As expression." type-name)
-            :type-name type-name)))
+      (comp #{(keyword "fhir" type-name)} fhir-spec/fhir-type)
       "urn:hl7-org:elm-types:r1"
       (matches-elm-named-type-fn type-name)
       (throw-anom

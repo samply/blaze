@@ -81,19 +81,21 @@
       (history-util/build-entry
         router
         (with-meta
-          {:resourceType "Patient"
+          {:fhir/type :fhir/Patient
            :id "0"
-           :meta {:versionId "1"}}
+           :meta
+           {:fhir/type :fhir/Meta
+            :versionId #fhir/id"1"}}
           {:blaze.db/op :create
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := "/Patient/0"
-      [:request :method] := "POST"
-      [:request :url] := "/Patient"
-      [:resource :resourceType] := "Patient"
+      :fullUrl := #fhir/uri"/Patient/0"
+      [:request :method] := #fhir/code"POST"
+      [:request :url] := #fhir/uri"/Patient"
+      [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "201"
-      [:response :lastModified] := "1970-01-01T00:00:00Z"
+      [:response :lastModified] := Instant/EPOCH
       [:response :etag] := "W/\"1\""))
 
 
@@ -102,19 +104,21 @@
       (history-util/build-entry
         router
         (with-meta
-          {:resourceType "Patient"
+          {:fhir/type :fhir/Patient
            :id "0"
-           :meta {:versionId "1"}}
+           :meta
+           {:fhir/type :fhir/Meta
+            :versionId #fhir/id"1"}}
           {:blaze.db/op :put
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := "/Patient/0"
-      [:request :method] := "PUT"
-      [:request :url] := "/Patient/0"
-      [:resource :resourceType] := "Patient"
+      :fullUrl := #fhir/uri"/Patient/0"
+      [:request :method] := #fhir/code"PUT"
+      [:request :url] := #fhir/uri"/Patient/0"
+      [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "201"
-      [:response :lastModified] := "1970-01-01T00:00:00Z"
+      [:response :lastModified] := Instant/EPOCH
       [:response :etag] := "W/\"1\""))
 
 
@@ -123,19 +127,21 @@
       (history-util/build-entry
         router
         (with-meta
-          {:resourceType "Patient"
+          {:fhir/type :fhir/Patient
            :id "0"
-           :meta {:versionId "2"}}
+           :meta
+           {:fhir/type :fhir/Meta
+            :versionId #fhir/id"2"}}
           {:blaze.db/op :put
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := "/Patient/0"
-      [:request :method] := "PUT"
-      [:request :url] := "/Patient/0"
-      [:resource :resourceType] := "Patient"
+      :fullUrl := #fhir/uri"/Patient/0"
+      [:request :method] := #fhir/code"PUT"
+      [:request :url] := #fhir/uri"/Patient/0"
+      [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "200"
-      [:response :lastModified] := "1970-01-01T00:00:00Z"
+      [:response :lastModified] := Instant/EPOCH
       [:response :etag] := "W/\"2\""))
 
 
@@ -144,15 +150,17 @@
       (history-util/build-entry
         router
         (with-meta
-          {:resourceType "Patient"
+          {:fhir/type :fhir/Patient
            :id "0"
-           :meta {:versionId "2"}}
+           :meta
+           {:fhir/type :fhir/Meta
+            :versionId #fhir/id"2"}}
           {:blaze.db/op :delete
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := "/Patient/0"
-      [:request :method] := "DELETE"
-      [:request :url] := "/Patient/0"
+      :fullUrl := #fhir/uri"/Patient/0"
+      [:request :method] := #fhir/code"DELETE"
+      [:request :url] := #fhir/uri"/Patient/0"
       [:response :status] := "204"
-      [:response :lastModified] := "1970-01-01T00:00:00Z"
+      [:response :lastModified] := Instant/EPOCH
       [:response :etag] := "W/\"2\"")))

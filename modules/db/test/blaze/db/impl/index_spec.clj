@@ -20,7 +20,7 @@
                :tid :blaze.db/tid
                :start-id (s/nilable bytes?)
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/def :blaze.db.index.query/clause
@@ -40,7 +40,7 @@
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef index/system-query
@@ -51,7 +51,7 @@
                :raoi :blaze.db/kv-iterator
                :clauses :blaze.db.index.query/clauses
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef index/compartment-query
@@ -62,4 +62,4 @@
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))

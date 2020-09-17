@@ -9,18 +9,9 @@
   :args (s/cat :type string?))
 
 
-(s/fdef fhir-spec/child-specs
-  :args (s/cat :spec keyword?))
-
-
 (s/def :blaze.fhir.spec/choices-spec
   (s/spec (s/cat :op #(= `s2/or %)
                  :choices (s/* (s/cat :key keyword? :spec some?)))))
-
-
-(s/fdef fhir-spec/choices
-  :args (s/cat :spec :blaze.fhir.spec/choices-spec)
-  :ret (s/coll-of (s/tuple keyword? some?)))
 
 
 (s/fdef fhir-spec/primitive?
@@ -28,6 +19,9 @@
   :ret boolean?)
 
 
-(s/fdef fhir-spec/system?
-  :args (s/cat :spec any?)
-  :ret boolean?)
+(s/fdef fhir-spec/unform-json
+  :args (s/cat :resource :blaze/resource))
+
+
+(s/fdef fhir-spec/unform-xml
+  :args (s/cat :resource :blaze/resource))

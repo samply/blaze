@@ -4,12 +4,14 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
+    [blaze.fhir.spec.type :as type]
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
     [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
-    [blaze.rest-api.middleware.cors :refer [wrap-cors]]
-    [blaze.rest-api.middleware.json :as json :refer [wrap-json]]
+    [blaze.rest-api.middleware.cors :as cors]
     [blaze.rest-api.middleware.log :refer [wrap-log]]
+    [blaze.rest-api.middleware.output :as output :refer [wrap-output]]
+    [blaze.rest-api.middleware.resource :as resource]
     [blaze.rest-api.spec]
     [blaze.spec]
     [buddy.auth.middleware :refer [wrap-authentication]]
@@ -20,8 +22,19 @@
     [reitit.impl :as impl]
     [reitit.ring]
     [reitit.ring.spec]
+    [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
+
+
+(def ^:private wrap-cors
+  {:name :cors
+   :wrap cors/wrap-cors})
+
+
+(def ^:private wrap-resource
+  {:name :resource
+   :wrap resource/wrap-resource})
 
 
 (defn resolve-pattern
@@ -46,8 +59,8 @@
   Returns nil if the resource has no match in `resource-patterns`.
 
   Route data contains resource type."
-  {:arglists '([resource-patterns structure-definition])}
-  [auth-backends resource-patterns {:keys [name] :as structure-definition}]
+  {:arglists '([auth-backends parse-executor resource-patterns structure-definition])}
+  [auth-backends parse-executor resource-patterns {:keys [name] :as structure-definition}]
   (when-let
     [{:blaze.rest-api.resource-pattern/keys [interactions]}
      (resolve-pattern resource-patterns structure-definition)]
@@ -63,8 +76,9 @@
         (assoc :get (-> interactions :search-type
                         :blaze.rest-api.interaction/handler))
         (contains? interactions :create)
-        (assoc :post (-> interactions :create
-                         :blaze.rest-api.interaction/handler)))]
+        (assoc :post {:middleware [[wrap-resource parse-executor]]
+                      :handler (-> interactions :create
+                                   :blaze.rest-api.interaction/handler)}))]
      ["/_history"
       (cond-> {}
         (contains? interactions :history-type)
@@ -82,8 +96,9 @@
          (assoc :get (-> interactions :read
                          :blaze.rest-api.interaction/handler))
          (contains? interactions :update)
-         (assoc :put (-> interactions :update
-                         :blaze.rest-api.interaction/handler))
+         (assoc :put {:middleware [[wrap-resource parse-executor]]
+                      :handler (-> interactions :update
+                                   :blaze.rest-api.interaction/handler)})
          (contains? interactions :delete)
          (assoc :delete (-> interactions :delete
                             :blaze.rest-api.interaction/handler)))]
@@ -148,6 +163,7 @@
      resource-patterns
      compartments
      operations]
+    :blaze.rest-api.json-parse/keys [executor]
     :or {context-path ""}}
    capabilities-handler]
   (non-conflict-detecting-router
@@ -155,7 +171,7 @@
          {:blaze/base-url base-url
           :blaze/context-path context-path
           :middleware
-          (cond-> [wrap-cors wrap-log]
+          (cond-> [wrap-cors]
             (seq auth-backends)
             (conj #(apply wrap-authentication % auth-backends)))}
          [""
@@ -165,7 +181,8 @@
                (seq auth-backends)
                (conj wrap-auth-guard))}
             (some? transaction-handler)
-            (assoc :post transaction-handler))]
+            (assoc :post {:middleware [[wrap-resource executor]]
+                          :handler transaction-handler}))]
          ["/metadata"
           {:get capabilities-handler}]
          ["/_history"
@@ -182,7 +199,7 @@
         (into
           (comp
             structure-definition-filter
-            (map #(resource-route auth-backends resource-patterns %))
+            (map #(resource-route auth-backends executor resource-patterns %))
             (remove nil?))
           structure-definitions)
         (into
@@ -258,7 +275,7 @@
             #(some #{name} (:blaze.rest-api.operation/resource-types %))
             operations)]
       (cond->
-        {:type name
+        {:type (type/->Code name)
          :interaction
          (reduce
            (fn [res code]
@@ -267,9 +284,9 @@
                (conj
                  res
                  (cond->
-                   {:code (clojure.core/name code)}
+                   {:code (type/->Code (clojure.core/name code))}
                    doc
-                   (assoc :documentation doc)))
+                   (assoc :documentation (type/->Markdown doc))))
                res))
            []
            [:read
@@ -280,25 +297,25 @@
             :history-type
             :create
             :search-type])
-         :versioning "versioned"
+         :versioning #fhir/code"versioned"
          :readHistory true
          :updateCreate true
          :conditionalCreate false
-         :conditionalRead "not-supported"
+         :conditionalRead #fhir/code"not-supported"
          :conditionalUpdate false
-         :conditionalDelete "not-supported"
+         :conditionalDelete #fhir/code"not-supported"
          :referencePolicy
-         ["literal"
-          "enforced"
-          "local"]
+         [#fhir/code"literal"
+          #fhir/code"enforced"
+          #fhir/code"local"]
          :searchParam
          (into
            []
            (map
              (fn [{:keys [name url type]}]
-               (cond-> {:name name :type type}
+               (cond-> {:name name :type (type/->Code type)}
                  url
-                 (assoc :definition url))))
+                 (assoc :definition (type/->Canonical url)))))
            (sr/list-by-type search-param-registry name))}
 
         (seq operations)
@@ -311,8 +328,12 @@
                     [code def-uri type-handler instance-handler]}]
                 (when (or type-handler instance-handler)
                   [{:name code
-                    :definition def-uri}])))
+                    :definition (type/->Canonical def-uri)}])))
             operations))))))
+
+
+(def copyright
+  #fhir/markdown"Copyright 2019 The Samply Development Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
 
 
 (defn capabilities-handler
@@ -328,20 +349,24 @@
      operations]
     :or {context-path ""}}]
   (let [capability-statement
-        {:resourceType "CapabilityStatement"
-         :status "active"
-         :kind "instance"
-         :date "2020-02-25"
+        {:fhir/type :fhir/CapabilityStatement
+         :status #fhir/code"active"
+         :experimental false
+         :publisher "The Samply Development Community"
+         :copyright copyright
+         :kind #fhir/code"instance"
+         :date #fhir/dateTime"2020-10-06"
          :software
          {:name "Blaze"
           :version version}
          :implementation
          {:description (str "Blaze running at " base-url context-path)
-          :url (str base-url context-path)}
-         :fhirVersion "4.0.1"
-         :format ["application/fhir+json"]
+          :url (type/->Url (str base-url context-path))}
+         :fhirVersion #fhir/code"4.0.1"
+         :format [#fhir/code"application/fhir+json"
+                  #fhir/code"application/xml+json"]
          :rest
-         [{:mode "server"
+         [{:mode #fhir/code"server"
            :resource
            (into
              []
@@ -353,9 +378,9 @@
            :interaction
            (cond-> []
              (some? transaction-handler)
-             (conj {:code "transaction"} {:code "batch"})
+             (conj {:code #fhir/code"transaction"} {:code #fhir/code"batch"})
              (some? history-system-handler)
-             (conj {:code "history-system"}))}]}]
+             (conj {:code #fhir/code"history-system"}))}]}]
     (fn [_]
       (ac/completed-future (ring/response capability-statement)))))
 
@@ -366,17 +391,17 @@
      (fn [_]
        (ac/completed-future
          (ring/not-found
-           {:resourceType "OperationOutcome"
+           {:fhir/type :fhir/OperationOutcome
             :issue
-            [{:severity "error"
-              :code "not-found"}]})))
+            [{:severity #fhir/code"error"
+              :code #fhir/code"not-found"}]})))
      :method-not-allowed
      (fn [{:keys [uri request-method]}]
        (-> (ring/response
-             {:resourceType "OperationOutcome"
+             {:fhir/type :fhir/OperationOutcome
               :issue
-              [{:severity "error"
-                :code "processing"
+              [{:severity #fhir/code"error"
+                :code #fhir/code"processing"
                 :diagnostics (format "Method %s not allowed on `%s` endpoint."
                                      (str/upper-case (name request-method)) uri)}]})
            (ring/status 405)
@@ -384,21 +409,23 @@
      :not-acceptable
      (fn [_]
        (-> (ring/response
-             {:resourceType "OperationOutcome"
+             {:fhir/type :fhir/OperationOutcome
               :issue
-              [{:severity "error"
-                :code "structure"}]})
+              [{:severity #fhir/code"error"
+                :code #fhir/code"structure"}]})
            (ring/status 406)
            (ac/completed-future)))}))
 
 
 (defn handler
   "Whole app Ring handler."
-  [{:blaze.rest-api.json-parse/keys [executor] :as config}]
+  [config]
   (-> (reitit.ring/ring-handler
         (router config (capabilities-handler config))
         default-handler)
-      (wrap-json executor)))
+      (wrap-output)
+      (wrap-params)
+      (wrap-log)))
 
 
 (defn- json-parse-executor-init-msg []
@@ -449,8 +476,8 @@
 
 
 (reg-collector ::parse-duration-seconds
-  json/parse-duration-seconds)
+  resource/parse-duration-seconds)
 
 
 (reg-collector ::generate-duration-seconds
-  json/generate-duration-seconds)
+  output/generate-duration-seconds)

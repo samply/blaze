@@ -21,11 +21,11 @@
   (testing "missing periodStart"
     (given @((params/wrap-coerce-params identity) {})
       :status := 400
-      [:body :resourceType] := "OperationOutcome"
+      [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :diagnostics] := "Missing required parameter `periodStart`."))
 
   (testing "invalid periodStart"
     (given @((params/wrap-coerce-params identity) {:params {"periodStart" "a"}})
       :status := 400
-      [:body :resourceType] := "OperationOutcome"
+      [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :diagnostics] := "Invalid parameter periodStart: `a`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD.")))

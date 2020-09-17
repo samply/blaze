@@ -3,13 +3,14 @@
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec-spec]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check]
     [clojure.test.check.generators :as gen])
   (:import
     [com.google.common.hash HashCode]
-    [java.time ZoneOffset])
+    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset])
   (:refer-clojure :exclude [hash]))
 
 
@@ -64,7 +65,7 @@
 (deftest resource-as-of-value
   (check
     `codec/resource-as-of-value
-    {:gen {:blaze.db.resource/hash (hash-gen codec/hash-size)}}))
+    {:gen {:blaze.resource/hash (hash-gen codec/hash-size)}}))
 
 
 
@@ -85,110 +86,88 @@
 (deftest date-lb
   (testing "year"
     (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
-      "1970" "80"))
+      (Year/of 1970) "80"
+      (system/->DateTimeYear 1970) "80"))
 
   (testing "year-month"
     (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
-      "1970-01" "80"))
+      (YearMonth/of 1970 1) "80"
+      (system/->DateTimeYearMonth 1970 1) "80"))
 
-  (testing "date"
+  (testing "local-date"
     (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
-      "1970-01-01" "80"))
+      (LocalDate/of 1970 1 1) "80"
+      (system/->DateTimeYearMonthDay 1970 1 1) "80"))
 
-  (testing "date-time"
+  (testing "local-date-time"
     (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
-      "1970-01-01T00:00:00" "80"))
+      (LocalDateTime/of 1970 1 1 0 0) "80"))
 
-  (testing "date-time with milliseconds"
+  (testing "offset-date-time"
     (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
-      "1970-01-01T00:00:00.000" "80"))
-
-  (testing "date-time with timezone"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
-      "1970-01-01T00:00:00Z" "80"
-      "1970-01-01T00:00:00+00:00" "80"
-      "1970-01-01T00:00:00+02:00" "6FE3E0"
-      "1970-01-01T00:00:00+01:00" "6FF1F0"
-      "1970-01-01T00:00:00-01:00" "900E10"
-      "1970-01-01T00:00:00-02:00" "901C20"))
-
-  (testing "date-time with milliseconds and timezone"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
-      "1970-01-01T00:00:00.000Z" "80"
-      "1970-01-01T00:00:00.000+00:00" "80"
-      "1970-01-01T00:00:00.000+02:00" "6FE3E0"
-      "1970-01-01T00:00:00.000+01:00" "6FF1F0"
-      "1970-01-01T00:00:00.000-01:00" "900E10"
-      "1970-01-01T00:00:00.000-02:00" "901C20")))
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC) "80"
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) "6FE3E0"
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 1)) "6FF1F0"
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -1)) "900E10"
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -2)) "901C20")))
 
 
 (deftest date-ub
   (testing "year"
     (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
-      "1969" "B00EFFFFFFFFFF"))
+      (Year/of 1969) "B00EFFFFFFFFFF"
+      (system/->DateTimeYear 1969) "B00EFFFFFFFFFF"))
 
   (testing "year-month"
     (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
-      "1969-12" "B00EFFFFFFFFFF"))
+      (YearMonth/of 1969 12) "B00EFFFFFFFFFF"
+      (system/->DateTimeYearMonth 1969 12) "B00EFFFFFFFFFF"))
 
-  (testing "date"
+  (testing "local-date"
     (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
-      "1969-12-31" "B00EFFFFFFFFFF"))
+      (LocalDate/of 1969 12 31) "B00EFFFFFFFFFF"
+      (system/->DateTimeYearMonthDay 1969 12 31) "B00EFFFFFFFFFF"))
 
-  (testing "date-time"
+  (testing "local-date-time"
     (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
-      "1969-12-31T23:59:59" "B00EFFFFFFFFFF"))
+      (LocalDateTime/of 1969 12 31 23 59 59) "B00EFFFFFFFFFF"))
 
-  (testing "date-time with milliseconds"
+  (testing "offset-date-time"
     (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
-      "1969-12-31T23:59:59.000" "B00EFFFFFFFFFF"))
-
-  (testing "date-time with timezone"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
-      "1969-12-31T23:59:59Z" "B00EFFFFFFFFFF"
-      "1969-12-31T23:59:59+00:00" "B00EFFFFFFFFFF"
-      "1969-12-31T23:59:59+02:00" "B00EFFFFFFE3DF"
-      "1969-12-31T23:59:59+01:00" "B00EFFFFFFF1EF"
-      "1969-12-31T23:59:59-01:00" "B00F0000000E0F"
-      "1969-12-31T23:59:59-02:00" "B00F0000001C1F"))
-
-  (testing "date-time with milliseconds and timezone"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
-      "1969-12-31T23:59:59.000Z" "B00EFFFFFFFFFF"
-      "1969-12-31T23:59:59.000+00:00" "B00EFFFFFFFFFF"
-      "1969-12-31T23:59:59.000+02:00" "B00EFFFFFFE3DF"
-      "1969-12-31T23:59:59.000+01:00" "B00EFFFFFFF1EF"
-      "1969-12-31T23:59:59.000-01:00" "B00F0000000E0F"
-      "1969-12-31T23:59:59.000-02:00" "B00F0000001C1F")))
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 ZoneOffset/UTC) "B00EFFFFFFFFFF"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) "B00EFFFFFFE3DF"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) "B00EFFFFFFF1EF"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -1)) "B00F0000000E0F"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "B00F0000001C1F")))
 
 
 (deftest date
   (testing "upper bounds are always bigger than lower bounds"
-    (is (bytes/< (codec/date-lb zo "9999") (codec/date-ub zo "0001")))))
+    (is (bytes/< (codec/date-lb zo (Year/of 9999)) (codec/date-ub zo (Year/of 1))))))
 
 
 (deftest date-lb-ub
   (testing "extract lower bound"
     (is (bytes/=
           (codec/date-lb-ub->lb
-            (codec/date-lb-ub (codec/date-lb zo "2020") (codec/date-ub zo "2020")))
-          (codec/date-lb zo "2020"))))
+            (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
+          (codec/date-lb zo (Year/of 2020)))))
 
   (testing "extract upper bound"
     (is (bytes/=
           (codec/date-lb-ub->ub
-            (codec/date-lb-ub (codec/date-lb zo "2020") (codec/date-ub zo "2020")))
-          (codec/date-ub zo "2020")))))
+            (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
+          (codec/date-ub zo (Year/of 2020))))))
 
 
 (deftest date-lb?
-  (is (codec/date-lb? (codec/date-lb zo "9999") 0))
-  (is (not (codec/date-lb? (codec/date-ub zo "0001") 0))))
+  (is (codec/date-lb? (codec/date-lb zo (Year/of 9999)) 0))
+  (is (not (codec/date-lb? (codec/date-ub zo (Year/of 1)) 0))))
 
 
 (deftest date-ub?
-  (is (codec/date-ub? (codec/date-ub zo "0001") 0))
-  (is (not (codec/date-ub? (codec/date-lb zo "9999") 0))))
+  (is (codec/date-ub? (codec/date-ub zo (Year/of 1)) 0))
+  (is (not (codec/date-ub? (codec/date-lb zo (Year/of 9999)) 0))))
 
 
 (deftest number

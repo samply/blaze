@@ -13,7 +13,10 @@
 
   buddy/buddy-auth
   {:git/url "https://github.com/alexanderkiel/buddy-auth.git"
-   :sha "56c0396a6d8640ebd588f2895e5e4583dc48b903"}}
+   :sha "56c0396a6d8640ebd588f2895e5e4583dc48b903"}
+
+  org.clojure/data.xml
+  {:mvn/version "0.2.0-alpha6"}}
 
  :aliases
  {:test
@@ -27,7 +30,7 @@
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}}
+    {:mvn/version "1.1.0"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -36,12 +39,12 @@
 
    :extra-deps
    {cloverage/cloverage
-    {:mvn/version "1.2.0"}
+    {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}}
+    {:mvn/version "1.1.0"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

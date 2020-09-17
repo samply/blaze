@@ -3,17 +3,18 @@
 
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :refer [throw-anom ex-anom]]
     [blaze.async-comp :as ac]
     [blaze.bundle :as bundle]
     [blaze.db.api :as d]
     [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.uuid :refer [random-uuid]]
-    [clojure.alpha.spec :as s2]
+    [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -22,20 +23,19 @@
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
-    [java.time.format DateTimeFormatter]))
+    [java.time.format DateTimeFormatter]
+    [java.time Instant]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn- prefix-expression [prefix issue]
-  (update issue :fhir.issues/expression #(str prefix "." %)))
-
-
 (defn- validate-entry
   {:arglists '([db idx entry])}
   [idx {:keys [resource] {:keys [method url] :as request} :request :as entry}]
-  (let [[type id] (some-> url bundle/match-url)]
+  (let [method (type/value method)
+        url (type/value url)
+        [type id] (some-> url bundle/match-url)]
     (cond
       (nil? request)
       {::anom/category ::anom/incorrect
@@ -81,15 +81,7 @@
        :fhir/issue "value"
        :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}
 
-      (and (#{"POST" "PUT"} method) (not (map? resource)))
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (format "Expected resource of entry %d to be a JSON Object." idx)
-       :fhir/issue "structure"
-       :fhir.issue/expression (format "Bundle.entry[%d].resource" idx)
-       :fhir/operation-outcome "MSG_JSON_OBJECT"}
-
-      (and (#{"POST" "PUT"} method) (not= type (:resourceType resource)))
+      (and (#{"POST" "PUT"} method) (not= type (some-> resource :fhir/type name)))
       {::anom/category ::anom/incorrect
        :fhir/issue "invariant"
        :fhir.issue/expression
@@ -109,7 +101,7 @@
        [(format "Bundle.entry[%d].resource.id" idx)]
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"}
 
-      (and (= "PUT" method) (not (s2/valid? :fhir/id (:id resource))))
+      (and (= "PUT" method) (not (s/valid? :blaze.resource/id (:id resource))))
       {::anom/category ::anom/incorrect
        :fhir/issue "value"
        :fhir.issue/expression
@@ -123,14 +115,6 @@
        [(format "Bundle.entry[%d].request.url" idx)
         (format "Bundle.entry[%d].resource.id" idx)]
        :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"}
-
-      (not (fhir-spec/valid? resource))
-      (let [{:fhir/keys [issues]} (fhir-spec/explain-data resource)
-            prefix (format "Bundle.entry[%d].resource" idx)]
-        {::anom/category ::anom/incorrect
-         ::anom/message "Resource invalid."
-         :fhir/issues (mapv #(prefix-expression prefix %) issues)})
-
 
       :else
       (assoc entry :blaze/type type :blaze/id id))))
@@ -152,65 +136,69 @@
 
 (defn- prepare-entry
   [{{:keys [method]} :request :keys [resource] :as entry}]
-  (log/trace "prepare-entry" method (:resourceType resource) (:id resource))
-  (cond
-    (= "POST" method)
-    (assoc-in entry [:resource :id] (str (random-uuid)))
+  (let [method (type/value method)]
+    (log/trace "prepare-entry" method (some-> resource :fhir/type name) (:id resource))
+    (cond
+      (= "POST" method)
+      (assoc-in entry [:resource :id] (str (random-uuid)))
 
-    :else
-    entry))
+      :else
+      entry)))
 
 
 (defn- validate-and-prepare-bundle
-  [{:keys [resourceType type] entries :entry}]
-  (cond
-    (not= "Bundle" resourceType)
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         ::anom/message (str "Expected a Bundle but was `" resourceType "`.")
-         :fhir/issue "value"}))
+  [{resource-type :fhir/type :keys [type] entries :entry :as bundle}]
+  (let [type (type/value type)]
+    (cond
+      (nil? bundle)
+      (throw-anom
+        ::anom/incorrect
+        "Missing Bundle."
+        :fhir/issue "invalid")
 
-    (not (#{"batch" "transaction"} type))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         ::anom/message
-         (str "Expected a Bundle type of batch or transaction but was `" type "`.")
-         :fhir/issue "value"}))
+      (not= :fhir/Bundle resource-type)
+      (throw-anom
+        ::anom/incorrect
+        (format "Expected a Bundle resource but got a %s resource."
+                (some-> resource-type name))
+        :fhir/issue "value")
 
-    :else
-    (if (= "transaction" type)
-      (let [entries (validate-entries entries)]
-        (if (::anom/category entries)
-          (throw (ex-anom entries))
-          (mapv prepare-entry entries)))
-      entries)))
+      (not (#{"batch" "transaction"} type))
+      (throw-anom
+        ::anom/incorrect
+        (format "Expected a Bundle type of batch or transaction but was `%s`." type)
+        :fhir/issue "value")
+
+      :else
+      (if (= "transaction" type)
+        (let [entries (validate-entries entries)]
+          (if (::anom/category entries)
+            (throw (ex-anom entries))
+            (mapv prepare-entry entries)))
+        entries))))
 
 
 (defmulti build-response-entry
   "Builds the response entry."
   {:arglists '([context db request-entry])}
-  (fn [_ _ {{:keys [method]} :request}] method))
-
-
-(defn- last-modified [{:blaze.db.tx/keys [instant]}]
-  (str instant))
+  (fn [_ _ {{:keys [method]} :request}] (type/value method)))
 
 
 (defmethod build-response-entry "POST"
   [{:keys [router return-preference]}
    db
-   {{type :resourceType id :id} :resource}]
-  (let [handle (d/resource-handle db type id)
+   {{:fhir/keys [type] :keys [id]} :resource}]
+  (let [handle (d/resource-handle db (name type) id)
         tx (d/tx db (d/last-updated-t handle))
         vid (str (:blaze.db/t tx))
-        entry {:response
-               {:status "201"
+        entry {:fhir/type :fhir.Bundle/entry
+               :response
+               {:fhir/type :fhir.Bundle.entry/response
+                :status "201"
                 :etag (str "W/\"" vid "\"")
-                :lastModified (last-modified tx)
+                :lastModified (:blaze.db.tx/instant tx)
                 :location
-                (fhir-util/versioned-instance-url router type id vid)}}]
+                (type/->Uri (fhir-util/versioned-instance-url router (name type) id vid))}}]
     (if (= "representation" return-preference)
       (-> (d/pull db handle)
           (ac/then-apply #(assoc entry :resource %)))
@@ -218,20 +206,24 @@
 
 
 (defmethod build-response-entry "PUT"
-  [{:keys [router return-preference]} db {{type :resourceType id :id} :resource}]
-  (let [handle (d/resource-handle db type id)
+  [{:keys [router return-preference]}
+   db
+   {{:fhir/keys [type] :keys [id]} :resource}]
+  (let [handle (d/resource-handle db (name type) id)
         tx (d/tx db (d/last-updated-t handle))
         num-changes (d/num-changes handle)
         vid (str (:blaze.db/t tx))
-        entry {:response
+        entry {:fhir/type :fhir.Bundle/entry
+               :response
                (cond->
-                 {:status (if (= 1 num-changes) "201" "200")
+                 {:fhir/type :fhir.Bundle.entry/response
+                  :status (if (= 1 num-changes) "201" "200")
                   :etag (str "W/\"" vid "\"")
-                  :lastModified (last-modified tx)}
+                  :lastModified (:blaze.db.tx/instant tx)}
                  (= 1 num-changes)
                  (assoc
                    :location
-                   (fhir-util/versioned-instance-url router type id vid)))}]
+                   (type/->Uri (fhir-util/versioned-instance-url router (name type) id vid))))}]
     (if (= "representation" return-preference)
       (-> (d/pull db handle)
           (ac/then-apply #(assoc entry :resource %)))
@@ -241,9 +233,11 @@
 (defmethod build-response-entry "DELETE"
   [_ db _]
   (ac/completed-future
-    {:response
-     {:status "204"
-      :lastModified (last-modified (d/tx db (d/basis-t db)))}}))
+    {:fhir/type :fhir.Bundle/entry
+     :response
+     {:fhir/type :fhir.Bundle.entry/response
+      :status "204"
+      :lastModified (:blaze.db.tx/instant (d/tx db (d/basis-t db)))}}))
 
 
 (defn- strip-leading-slash [s]
@@ -253,17 +247,15 @@
 
 
 (defn- convert-http-date
-  "Converts string `s` representing a HTTP date into a FHIR instant formatted
-  string."
+  "Converts string `s` representing a HTTP date into a FHIR instant."
   [s]
-  (->> (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)
-       (.format DateTimeFormatter/ISO_INSTANT)))
+  (Instant/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)))
 
 
 (defn- process-batch-entry
   [{:keys [handler] :blaze/keys [context-path]}
    {{:keys [method url]} :request :keys [resource]}]
-  (let [url (strip-leading-slash (str/trim url))
+  (let [url (strip-leading-slash (str/trim (type/value url)))
         [url query-string] (str/split url #"\?")]
     (if (= "" url)
       (ac/completed-future
@@ -274,7 +266,7 @@
       (let [request
             (cond->
               {:uri (str context-path "/" url)
-               :request-method (keyword (str/lower-case method))}
+               :request-method (keyword (str/lower-case (type/value method)))}
 
               query-string
               (assoc :query-string query-string)
@@ -289,9 +281,11 @@
                      location "Location"}
                     :headers}]
                 (cond->
-                  {:response
+                  {:fhir/type :fhir.Bundle/entry
+                   :response
                    (cond->
-                     {:status (str status)}
+                     {:fhir/type :fhir.Bundle.entry/response
+                      :status (str status)}
 
                      etag
                      (assoc :etag etag)
@@ -300,7 +294,7 @@
                      (assoc :lastModified (convert-http-date last-modified))
 
                      location
-                     (assoc :location location))}
+                     (assoc :location (type/->Uri location)))}
 
                   (and (#{200 201} status) body)
                   (assoc :resource body)
@@ -353,12 +347,12 @@
                  :node node
                  :executor executor
                  :return-preference (handler-util/preference headers "return")}]
-            #(process context type %)))
+            #(process context (type/value type) %)))
         (ac/then-apply
           (fn [response-entries]
             (ring/response
-              {:resourceType "Bundle"
-               :type (str type "-response")
+              {:fhir/type :fhir/Bundle
+               :type (type/->Code (str (type/value type) "-response"))
                :entry response-entries})))
         (ac/exceptionally handler-util/error-response))))
 

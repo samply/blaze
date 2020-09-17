@@ -3,6 +3,7 @@
   (:require
     [blaze.async-comp :as ac]
     [blaze.db.api :as d]
+    [blaze.fhir.spec.type :as type]
     [clojure.core.protocols :refer [Datafiable]]
     [clojure.datafy :refer [datafy]]
     [clojure.string :as str]
@@ -47,21 +48,22 @@
 
 (defn- issue-code [category]
   (case category
-    ::anom/busy "timeout"
-    ::anom/incorrect "invalid"
-    ::anom/not-found "not-found"
-    ::anom/unsupported "not-supported"
-    ::anom/conflict "conflict"
-    "exception"))
+    ::anom/busy #fhir/code"timeout"
+    ::anom/incorrect #fhir/code"invalid"
+    ::anom/not-found #fhir/code"not-found"
+    ::anom/unsupported #fhir/code"not-supported"
+    ::anom/conflict #fhir/code"conflict"
+    #fhir/code"exception"))
 
 
 (defn- operation-outcome-issues [issues category]
   (mapv (fn [{:fhir.issues/keys [severity code diagnostics expression]}]
           (cond->
-            {:severity "error"
-             :code (or code (issue-code category))}
+            {:fhir/type :fhir.OperationOutcome/issue
+             :severity #fhir/code"error"
+             :code (or (some-> code type/->Code) (issue-code category))}
             severity
-            (assoc :severity severity)
+            (assoc :severity (type/->Code severity))
             diagnostics
             (assoc :diagnostics diagnostics)
             (coll? expression)
@@ -78,14 +80,15 @@
     :blaze/keys [stacktrace]
     ::anom/keys [category message]}]
   (cond->
-    {:severity "error"
-     :code (or issue (issue-code category))}
+    {:fhir/type :fhir.OperationOutcome/issue
+     :severity #fhir/code"error"
+     :code (or (some-> issue type/->Code) (issue-code category))}
     operation-outcome
     (assoc
       :details
       {:coding
-       [{:system "http://terminology.hl7.org/CodeSystem/operation-outcome"
-         :code operation-outcome}]})
+       [{:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+         :code (type/->Code operation-outcome)}]})
     message
     (assoc :diagnostics message)
     stacktrace
@@ -101,9 +104,9 @@
   [{:fhir/keys [issues]
     ::anom/keys [category] :as data}]
   (if issues
-    {:resourceType "OperationOutcome"
+    {:fhir/type :fhir/OperationOutcome
      :issue (operation-outcome-issues issues category)}
-    {:resourceType "OperationOutcome"
+    {:fhir/type :fhir/OperationOutcome
      :issue [(operation-outcome-issue data)]}))
 
 

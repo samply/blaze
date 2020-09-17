@@ -1,8 +1,8 @@
 (ns blaze.db.tx-log.kafka-test
   (:require
-    [blaze.db.hash :as hash]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka :as kafka :refer [new-kafka-tx-log]]
+    [blaze.fhir.hash :as hash]
     [cheshire.core :as cheshire]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -26,7 +26,7 @@
 
 
 (def bootstrap-servers "bootstrap-servers-182741")
-(def patient-0 {:resourceType "Patient" :id "0"})
+(def patient-0 {:fhir/type :fhir/Patient :id "0"})
 (def patient-hash-0 (hash/generate patient-0))
 (def tx-cmd {:op "create" :type "Patient" :id "0" :hash patient-hash-0})
 
@@ -85,7 +85,7 @@
   (byte-array [0xA1]))
 
 
-(def hash-patient-0 (hash/generate {:resourceType "Patient" :id "0"}))
+(def hash-patient-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
 
 
 (deftest deserializer

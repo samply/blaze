@@ -5,6 +5,7 @@
   (:require
     [blaze.async-comp :as ac]
     [blaze.db.api :as d]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
@@ -12,7 +13,6 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
-    [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
 
@@ -23,21 +23,23 @@
         paged-version-handles (into [] (take (inc page-size)) version-handles)
         self-link
         (fn [resource-handle]
-          {:relation "self"
-           :url (history-util/nav-url match query-params t (d/last-updated-t resource-handle))})
+          {:fhir/type :fhir.Bundle/link
+           :relation "self"
+           :url (type/->Uri (history-util/nav-url match query-params t (d/last-updated-t resource-handle)))})
         next-link
         (fn [resource-handle]
-          {:relation "next"
-           :url (history-util/nav-url match query-params t (d/last-updated-t resource-handle))})]
+          {:fhir/type :fhir.Bundle/link
+           :relation "next"
+           :url (type/->Uri (history-util/nav-url match query-params t (d/last-updated-t resource-handle)))})]
     ;; we need take here again because we take page-size + 1 above
     (-> (d/pull-many db (take page-size paged-version-handles))
         (ac/then-apply
           (fn [paged-versions]
             (ring/response
               (cond->
-                {:resourceType "Bundle"
-                 :type "history"
-                 :total total
+                {:fhir/type :fhir/Bundle
+                 :type #fhir/code"history"
+                 :total (type/->UnsignedInt total)
                  :link []
                  :entry (mapv #(history-util/build-entry router %) paged-versions)}
 
@@ -72,7 +74,6 @@
 
 (defn handler [node]
   (-> (handler-intern node)
-      (wrap-params)
       (wrap-observe-request-duration "history-instance")))
 
 

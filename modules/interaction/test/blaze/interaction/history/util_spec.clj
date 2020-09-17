@@ -8,28 +8,28 @@
 
 
 (s/fdef util/since
-  :args (s/cat :query-params  :ring.request/query-params)
+  :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable inst?))
 
 
 (s/fdef util/page-t
-  :args (s/cat :query-params  :ring.request/query-params)
+  :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.db/t))
 
 
 (s/fdef util/page-type
-  :args (s/cat :query-params  :ring.request/query-params)
-  :ret (s/nilable :blaze.resource/resourceType))
+  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :ret (s/nilable :fhir.type/name))
 
 
 (s/fdef util/nav-url
   :args
   (s/cat
     :match :fhir.router/match
-    :query-params  :ring.request/query-params
+    :query-params (s/nilable :ring.request/query-params)
     :t :blaze.db/t
     :page-t :blaze.db/t
-    :type (s/? :blaze.resource/resourceType)
+    :type (s/? :fhir.type/name)
     :id (s/? :blaze.resource/id)))
 
 

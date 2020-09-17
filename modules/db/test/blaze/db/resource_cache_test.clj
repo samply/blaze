@@ -1,11 +1,11 @@
 (ns blaze.db.resource-cache-test
   (:require
     [blaze.async-comp :as ac]
-    [blaze.db.hash :as hash]
     [blaze.db.resource-cache :as resource-cache]
     [blaze.db.resource-cache-spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store-spec]
+    [blaze.fhir.hash :as hash]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]])
   (:refer-clojure :exclude [get]))
@@ -31,8 +31,8 @@
     rs/ResourceStore))
 
 
-(def patient-0 {:resourceType "Patient" :id "0"})
-(def patient-1 {:resourceType "Patient" :id "1"})
+(def patient-0 {:fhir/type :fhir/Patient :id "0"})
+(def patient-1 {:fhir/type :fhir/Patient :id "1"})
 
 
 (def patient-0-hash (hash/generate patient-0))

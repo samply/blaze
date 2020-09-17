@@ -2,6 +2,7 @@
   "FHIR Bundle specific stuff."
   (:require
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [reitit.core :as reitit]))
 
@@ -19,10 +20,9 @@
     [type id]))
 
 
-(defn- resolve-link
-  [index link]
-  (if-let [{type :resourceType id :id} (get index link)]
-    (str type "/" id)
+(defn- resolve-link [index link]
+  (if-let [{:fhir/keys [type] :keys [id]} (get index link)]
+    (str (name type) "/" id)
     link))
 
 
@@ -30,49 +30,42 @@
 
 
 (defn- resolve-single-element-links
-  [{:keys [index] :as context}
-   spec
-   value]
-  (cond
-    (identical? :fhir/Reference spec)
-    (if-let [reference (:reference value)]
-      (assoc value :reference (resolve-link index reference))
-      value)
+  [{:keys [index] :as context} value]
+  (let [type (fhir-spec/fhir-type value)]
+    (cond
+      (identical? :fhir/Reference type)
+      (if-let [reference (:reference value)]
+        (assoc value :reference (resolve-link index reference))
+        value)
 
-    (or (fhir-spec/primitive? spec) (fhir-spec/system? spec))
-    value
+      (fhir-spec/primitive? type)
+      value
 
-    (identical? :fhir/Resource spec)
-    (resolve-links context (keyword "fhir" (:resourceType value)) value)
-
-    :else
-    (resolve-links context spec value)))
+      :else
+      (resolve-links context value))))
 
 
-(defn- resolve-element-links
-  [context spec value]
-  (if (= :many (fhir-spec/cardinality spec))
-    (mapv #(resolve-single-element-links context (fhir-spec/type-spec spec) %) value)
-    (resolve-single-element-links context spec value)))
+(defn- resolve-element-links [context value]
+  (if (sequential? value)
+    (mapv #(resolve-single-element-links context %) value)
+    (resolve-single-element-links context value)))
 
 
-(defn- resolve-links
-  [context spec resource]
-  (let [child-specs (fhir-spec/child-specs spec)]
-    (into
-      {}
-      (map
-        (fn [[key val]]
-          (if-let [spec (get child-specs key)]
-            [key (resolve-element-links context spec val)]
-            [key val])))
-      resource)))
+(defn- resolve-links [context complex-value]
+  (into
+    {}
+    (map
+      (fn [[key val]]
+        (if (identical? :fhir/type key)
+          [key val]
+          [key (resolve-element-links context val)])))
+    complex-value))
 
 
 (defn- index-resources-by-full-url [entries]
   (reduce
     (fn [r {:keys [fullUrl resource]}]
-      (assoc r fullUrl resource))
+      (assoc r (some-> fullUrl type/value) resource))
     {}
     entries))
 
@@ -83,13 +76,13 @@
   (let [index (index-resources-by-full-url entries)]
     (mapv
       (fn [entry]
-        (if-let [{type :resourceType :as resource} (:resource entry)]
-          (assoc entry :resource (resolve-links {:index index} (keyword "fhir" type) resource))
+        (if-let [resource (:resource entry)]
+          (assoc entry :resource (resolve-links {:index index} resource))
           entry))
       entries)))
 
 
-(defmulti entry-tx-op (fn [{{:keys [method]} :request}] method))
+(defmulti entry-tx-op (fn [{{:keys [method]} :request}] (type/value method)))
 
 
 (defmethod entry-tx-op "POST"
@@ -105,7 +98,7 @@
 
 (defmethod entry-tx-op "DELETE"
   [{{:keys [url]} :request}]
-  (let [[type id] (match-url url)]
+  (let [[type id] (match-url (type/value url))]
     [:delete type id]))
 
 

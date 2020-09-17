@@ -1,5 +1,6 @@
 (ns blaze.db.node.validation
   (:require
+    [blaze.fhir.spec :as fhir-spec]
     [cognitect.anomalies :as anom]))
 
 
@@ -7,13 +8,13 @@
 
 
 (defmethod extract-type-id :create
-  [[_ {:keys [resourceType id]}]]
-  [resourceType id])
+  [[_ {:keys [id] :as resource}]]
+  [(name (fhir-spec/fhir-type resource)) id])
 
 
 (defmethod extract-type-id :put
-  [[_ {:keys [resourceType id]}]]
-  [resourceType id])
+  [[_ {:keys [id] :as resource}]]
+  [(name (fhir-spec/fhir-type resource)) id])
 
 
 (defmethod extract-type-id :delete

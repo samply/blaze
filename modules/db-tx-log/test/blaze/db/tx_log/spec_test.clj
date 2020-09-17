@@ -1,7 +1,7 @@
 (ns blaze.db.tx-log.spec-test
   (:require
-    [blaze.db.hash :as hash]
     [blaze.db.tx-log.spec]
+    [blaze.fhir.hash :as hash]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest]]
@@ -18,8 +18,8 @@
 (test/use-fixtures :each fixture)
 
 
-(def patient-hash-0 (hash/generate {:resourceType "Patient" :id "0"}))
-(def observation-hash-0 (hash/generate {:resourceType "Observation" :id "0"}))
+(def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
+(def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
 
 
 (deftest tx-cmd

@@ -1,6 +1,7 @@
 (ns blaze.db.impl.index.resource-handle
   (:require
     [blaze.db.impl.codec :as codec]
+    [blaze.fhir.spec.type :as type]
     [blaze.fhir.util :as fhir-util])
   (:import
     [com.google.common.hash HashCode]
@@ -23,7 +24,11 @@
 
 
 (defrecord ResourceHandle [^int tid ^String id ^long t
-                           ^HashCode hash ^long state])
+                           ^HashCode hash ^long state]
+  type/FhirType
+  (-type [_]
+    ;; TODO: maybe cache this
+    (keyword "fhir" (tid->type tid))))
 
 
 (defn resource-handle
@@ -31,8 +36,7 @@
 
   The type of that handle will be the keyword `:fhir/<resource-type>`."
   [tid id t hash state]
-  (with-meta (ResourceHandle. tid id t hash state)
-             {:type (keyword "fhir" (tid->type tid))}))
+  (ResourceHandle. tid id t hash state))
 
 
 (defn tid
