@@ -6,11 +6,10 @@
   {:local/root "../module-base"}
 
   info.cqframework/cql
-  {:mvn/version "1.4.6"}
+  {:mvn/version "1.4.9"}
 
   org.antlr/antlr4-runtime
-  {:mvn/version "4.5"
-   :exclusions [org.abego.treelayout/org.abego.treelayout.core]}}
+  {:mvn/version "4.6"}}
 
  :aliases
  {:test

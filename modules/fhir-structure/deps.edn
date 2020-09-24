@@ -2,7 +2,7 @@
 
  :deps
  {cheshire/cheshire
-  {:mvn/version "5.9.0"}
+  {:mvn/version "5.10.0"}
 
   com.taoensso/timbre
   {:mvn/version "4.10.0"}

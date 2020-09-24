@@ -65,14 +65,12 @@
      :fhir.issue/expression "Library.content"}))
 
 
-(defn- compile-library
+(defn- compile-library*
   "Compiles the CQL code from the first attachment in the `library` resource
   using `node`.
 
   Returns an anomaly on errors."
-  {:arglists '([node library])}
-  [node {:keys [id] :as library}]
-  (log/debug "Compile library with ID:" id)
+  [node library]
   (when-ok [cql-code (extract-cql-code library)]
     (let [library (cql-translator/translate cql-code :locators? true)]
       (case (::anom/category library)
@@ -81,6 +79,24 @@
           :fhir/issue "value"
           :fhir.issue/expression "Measure.library")
         (compiler/compile-library node library {})))))
+
+
+(defn- compile-library
+  "Compiles the CQL code from the first attachment in the `library` resource
+  using `node`.
+
+  Returns an anomaly on errors."
+  {:arglists '([node library])}
+  [node {:keys [id] :as library}]
+  (log/debug (format "Start compiling Library with ID `%s`..." id))
+  (let [timer (prom/timer compile-duration-seconds)]
+    (try
+      (compile-library* node library)
+      (finally
+        (let [duration (prom/observe-duration! timer)]
+          (log/debug
+            (format "Compiled Library with ID `%s` in %.0f ms."
+                    id (* duration 1e3))))))))
 
 
 (defn- find-library [db library-ref]
@@ -402,6 +418,7 @@
 
 
 (defn- evaluate-groups [{:keys [subject-type] :as context} id groups]
+  (log/debug (format "Start evaluating Measure with ID `%s`..." id))
   (let [timer (prom/timer evaluate-duration-seconds subject-type)]
     (try
       (evaluate-groups* context groups)

@@ -25,7 +25,7 @@ In order to run Blaze just execute the following:
 
 ```bash
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.9.0-alpha.15
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.9.0-alpha.16
 ```
 
 Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
@@ -36,8 +36,8 @@ Blaze will create multiple directories inside the `blaze-data` volume on its fir
 In case Docker isn't available, Blaze can be run on a machine having OpenJDK 11 installed. Blaze is tested with [AdoptOpenJDK][11].
 
 ```bash
-wget https://github.com/samply/blaze/releases/download/v0.9.0-alpha.10/blaze-0.9.0-alpha.15-standalone.jar
-java -jar blaze-0.9.0-alpha.15-standalone.jar -m blaze.core
+wget https://github.com/samply/blaze/releases/download/v0.9.0-alpha.10/blaze-0.9.0-alpha.16-standalone.jar
+java -jar blaze-0.9.0-alpha.16-standalone.jar -m blaze.core
 ```
 
 Blaze will run with an in-memory, volatile database for testing and demo purposes.
@@ -47,14 +47,14 @@ Blaze can be run with durable storage by setting the environment variables `STOR
 Under Linux/macOS:
 
 ```bash
-STORAGE=standalone java -jar blaze-0.9.0-alpha.15-standalone.jar -m blaze.core
+STORAGE=standalone java -jar blaze-0.9.0-alpha.16-standalone.jar -m blaze.core
 ```
 
 Under Windows:
  
 ```bash
 $Env:STORAGE="standalone"
-java -jar blaze-0.9.0-alpha.15-standalone.jar -m blaze.core
+java -jar blaze-0.9.0-alpha.16-standalone.jar -m blaze.core
 ```
 
 This will create three directories called `index`, `transaction` and `resource` inside the current working directory, one for each database part used.
