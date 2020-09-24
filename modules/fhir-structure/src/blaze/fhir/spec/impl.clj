@@ -20,7 +20,9 @@
 
 
 (defn- type-regex [type]
-  (or (find-regex type)
+  (or (when (= "base64Binary" (find-fhir-type type))
+        #"([0-9a-zA-Z\\+/=]{4})+")
+      (find-regex type)
       (when (= "id" (find-fhir-type type))
         #"[A-Za-z0-9\-\.]{1,64}")))
 

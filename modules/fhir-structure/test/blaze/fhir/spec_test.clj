@@ -6,6 +6,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
+    [cuerdas.core :as str]
     [juxt.iota :refer [given]]))
 
 
@@ -49,6 +50,11 @@
     "a"
     "A"
     "0"))
+
+
+(deftest base64Binary
+  (testing "long base64Binary values validate"
+    (is (s2/valid? :fhir/base64Binary (str/repeat "a" 40000)))))
 
 
 (deftest valid?
