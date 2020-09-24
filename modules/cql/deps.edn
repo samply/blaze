@@ -4,17 +4,21 @@
  {blaze/db
   {:local/root "../db"}
 
+  com.fasterxml.jackson.core/jackson-annotations
+  {:mvn/version "2.10.2"}
+
+  com.fasterxml.jackson.module/jackson-module-jaxb-annotations
+  {:mvn/version "2.10.2"}
+
   info.cqframework/cql-to-elm
-  {:mvn/version "1.4.6"
+  {:mvn/version "1.4.9"
    :exclusions
    [com.fasterxml.jackson.core/jackson-databind
     com.google.code.javaparser/javaparser
-    org.eclipse.persistence/eclipselink
     info.cqframework/qdm
     junit/junit
     xpp3/xpp3
     xpp3/xpp3_xpath
-    org.antlr/antlr4
     org.slf4j/jcl-over-slf4j
     org.slf4j/slf4j-api]}
 
@@ -23,13 +27,6 @@
 
   javax.xml.bind/jaxb-api
   {:mvn/version "2.4.0-b180830.0359"}
-
-  org.antlr/antlr4-runtime
-  {:mvn/version "4.5"
-   :exclusions [org.abego.treelayout/org.abego.treelayout.core]}
-
-  org.eclipse.persistence/org.eclipse.persistence.moxy
-  {:mvn/version "2.7.5"}
 
   systems.uom/systems-quantity
   {:mvn/version "1.0"}

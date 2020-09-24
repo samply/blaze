@@ -4,7 +4,7 @@
     [blaze.cql-translator-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [deftest is testing]]
+    [clojure.test :refer [are deftest testing]]
     [juxt.iota :refer [given]]))
 
 
@@ -38,10 +38,11 @@
       [0 :expression :codes :operand :name] := "T0"))
 
   (testing "Returns a valid :elm/library"
-    (is
-      (s/valid?
-        :elm/library
-        (translate
-          "library Test
-           using FHIR version '4.0.0'
-           define Patients: [Patient]")))))
+    (are [cql] (s/valid? :elm/library (translate cql))
+      "library Test
+       using FHIR version '4.0.0'
+       define Patients: [Patient]"
+      "library Test
+      using FHIR version '4.0.0'
+      context Specimen
+      define Specimens: [Specimen]")))

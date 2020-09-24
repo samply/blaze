@@ -7,7 +7,7 @@
    :sha "56c0396a6d8640ebd588f2895e5e4583dc48b903"}
 
   cheshire/cheshire
-  {:mvn/version "5.9.0"}}
+  {:mvn/version "5.10.0"}}
 
  :aliases
  {:test

@@ -9,7 +9,7 @@
   {:local/root "../module-base"}
 
   cheshire/cheshire
-  {:mvn/version "5.9.0"}
+  {:mvn/version "5.10.0"}
 
   org.apache.kafka/kafka-clients
   {:mvn/version "2.5.0"}}
