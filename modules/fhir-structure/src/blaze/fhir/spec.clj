@@ -122,7 +122,10 @@
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
 
 
-(defn fhir-type [x]
+(defn fhir-type
+  "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if
+  `x` has no FHIR type."
+  [x]
   (type/-type x))
 
 

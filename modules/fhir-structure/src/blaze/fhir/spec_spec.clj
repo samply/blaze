@@ -23,5 +23,14 @@
   :args (s/cat :resource :blaze/resource))
 
 
+(s/fdef fhir-spec/unform-cbor
+  :args (s/cat :resource :blaze/resource))
+
+
 (s/fdef fhir-spec/unform-xml
   :args (s/cat :resource :blaze/resource))
+
+
+(s/fdef fhir-spec/fhir-type
+  :args (s/cat :x any?)
+  :ret (s/nilable boolean?))
