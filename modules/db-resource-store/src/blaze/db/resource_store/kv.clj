@@ -2,10 +2,11 @@
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async-comp :as ac]
-    [blaze.db.hash :as hash]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]
+    [blaze.fhir.hash :as hash]
+    [blaze.fhir.spec :as fhir-spec]
     [cheshire.core :as cheshire]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -35,11 +36,13 @@
   (map
     (fn [[k v]]
       (let [hash (HashCode/fromBytes k)]
-        [hash (parse-cbor v hash)]))))
+        [hash (fhir-spec/conform-json (parse-cbor v hash))]))))
 
 
 (def ^:private entry-freezer
-  (map (fn [[k v]] [(hash/encode k) (cheshire/generate-cbor v)])))
+  (map
+    (fn [[k v]]
+      [(hash/encode k) (cheshire/generate-cbor (fhir-spec/unform-cbor v))])))
 
 
 (defn- get-content [kv-store hash]
@@ -53,7 +56,10 @@
 (deftype KvResourceStore [kv-store]
   rs/ResourceLookup
   (-get [_ hash]
-    (ac/supply (some-> (get-content kv-store hash) (parse-cbor hash))))
+    (ac/supply
+      (some-> (get-content kv-store hash)
+              (parse-cbor hash)
+              (fhir-spec/conform-json))))
 
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")

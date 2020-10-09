@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :as anomaly :refer [when-ok]]
     [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.spec]
+    [blaze.fhir.spec :as fhir-spec]
     [cheshire.core :as json]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
@@ -66,7 +66,7 @@
       (let [res (s/conform :blaze.fhir/local-ref uri)]
         (when-not (s/invalid? res)
           (let [[type id] res]
-            {:resourceType type
+            {:fhir/type (keyword "fhir" type)
              :id id}))))))
 
 
@@ -80,7 +80,7 @@
       []
       (mapcat
         (fn [value]
-          (case (clojure.core/type value)
+          (case (fhir-spec/fhir-type value)
             :fhir/Reference
             (let [{:keys [reference]} value]
               (when reference
@@ -103,11 +103,11 @@
     (into (vec (vals (clojure.core/get index "Resource")))
           (vals (clojure.core/get index type))))
 
-  (-linked-compartments [_ {type :resourceType :as resource}]
+  (-linked-compartments [_ resource]
     (mapcat
       (fn [{:keys [def-code search-param]}]
         (map (fn [id] [def-code id]) (compartment-ids search-param resource)))
-      (clojure.core/get compartment-index type))))
+      (clojure.core/get compartment-index (name (fhir-spec/fhir-type resource))))))
 
 
 (defn- read-bundle

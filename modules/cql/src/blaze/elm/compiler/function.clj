@@ -5,6 +5,7 @@
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as q]
+    [blaze.fhir.spec.type :as type]
     [cognitect.anomalies :as anom])
   (:import
     [clojure.lang IPersistentMap]))
@@ -21,7 +22,7 @@
   IPersistentMap
   (-to-quantity [m]
     (when-let [value (:value m)]
-      (q/quantity value (:code m "1"))))
+      (q/quantity value (or (-> m :code type/value) "1"))))
 
   Object
   (-to-quantity [x]
@@ -43,7 +44,7 @@
   Expression
   (-eval [_ context resource scope]
     (let [{:keys [system version code]} (-eval operand context resource scope)]
-      (code/to-code system version code))))
+      (code/to-code (type/value system) (type/value version) (type/value code)))))
 
 
 (defrecord ToDateFunctionExpression [operand]

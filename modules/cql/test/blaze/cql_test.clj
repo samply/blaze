@@ -13,6 +13,7 @@
     [blaze.elm.type-infer-spec]
     [clojure.data.xml :as xml]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom])
   (:import
@@ -34,14 +35,15 @@
 
 
 (defn tests [xml exclusions]
-  (for [group (:content xml)]
+  (for [group (filter map? (:content xml))]
     {:name (-> group :attrs :name)
      :tests
-     (for [test (:content group)
+     (for [test (filter map? (:content group))
            :let [name (-> test :attrs :name)
-                 expression (-> test :content first)
+                 content (group-by :tag (:content test))
+                 expression (first (:expression content))
                  invalid? (-> expression :attrs :invalid)
-                 output (-> test :content second :content first)]
+                 output (first (:content (first (:output content))))]
            :when (not (contains? exclusions name))
            :let [expression-content (-> expression :content first)]]
        {:name name
@@ -51,6 +53,7 @@
 
 
 (defn to-source-elm [cql]
+  (assert (not (str/blank? cql)))
   (translate (str "define x: " cql)))
 
 
@@ -74,9 +77,13 @@
   (eval-elm now (to-elm cql)))
 
 
+(defn parse [s]
+  (xml/parse-str s :namespace-aware false :coalescing true))
+
+
 (defn gen-tests [name file exclusions]
   `(deftest ~(symbol name)
-     ~@(for [{:keys [name tests]} (tests (xml/parse-str (slurp file)) exclusions)]
+     ~@(for [{:keys [name tests]} (tests (parse (slurp file)) exclusions)]
          `(testing ~name
             ~@(for [{:keys [name expression invalid? output]} tests]
                 `(testing ~name

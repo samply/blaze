@@ -49,10 +49,10 @@
     {:mvn/version "0.1"}
 
     org.clojure/data.xml
-    {:mvn/version "0.0.8"}
+    {:mvn/version "0.2.0-alpha6"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}}
+    {:mvn/version "1.1.0"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -64,15 +64,15 @@
     {:local/root "../db-stub"}
 
     cloverage/cloverage
-    {:mvn/version "1.2.0"}
+    {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/data.xml
-    {:mvn/version "0.0.8"}
+    {:mvn/version "0.2.0-alpha6"}
 
     org.clojure/test.check
-    {:mvn/version "1.0.0"}}
+    {:mvn/version "1.1.0"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

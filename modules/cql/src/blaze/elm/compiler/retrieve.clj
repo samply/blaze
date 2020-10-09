@@ -104,7 +104,7 @@
   (-eval [_ context resource scope]
     (when-let [context-resource (-eval related-context-expr context resource scope)]
       (-eval
-        (context-expr (:resourceType context-resource) data-type)
+        (context-expr (-> context-resource :fhir/type name) data-type)
         context
         context-resource
         scope))))
@@ -130,9 +130,10 @@
   [context-expr data-type clauses]
   Expression
   (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [{type :resourceType :keys [id]} (-eval context-expr context resource scope)]
-      (when (and (string? type) (string? id))
-        (compartment-query db type id data-type clauses)))))
+    (when-let [{:fhir/keys[type] :keys [id]} (-eval context-expr context resource scope)]
+      (when-let [type (some-> type name)]
+        (when id
+          (compartment-query db type id data-type clauses))))))
 
 
 (defn with-related-context-expr

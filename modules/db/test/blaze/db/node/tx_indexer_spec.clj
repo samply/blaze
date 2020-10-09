@@ -10,7 +10,7 @@
 
 (s/fdef tx-indexer/last-t
   :args (s/cat :kv-store :blaze.db/kv-store)
-  :ret :blaze.db/t)
+  :ret (s/nilable :blaze.db/t))
 
 
 (s/fdef tx-indexer/index-tx

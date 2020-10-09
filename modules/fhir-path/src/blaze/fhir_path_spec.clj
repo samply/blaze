@@ -24,4 +24,4 @@
 
 (s/fdef fhir-path/compile
   :args (s/cat :expr string?)
-  :ret :blaze.fhir-path/expression)
+  :ret (s/or :expr :blaze.fhir-path/expression :anomaly ::anom/anomaly))

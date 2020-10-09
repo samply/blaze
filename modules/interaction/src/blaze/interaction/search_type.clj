@@ -16,6 +16,7 @@
     [blaze.anomaly :refer [when-ok]]
     [blaze.async-comp :as ac]
     [blaze.db.api :as d]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as util]
     [blaze.interaction.search.nav :as nav]
@@ -24,16 +25,15 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
-    [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
 
 
 (defn- entry
-  [router {type :resourceType id :id :as resource}]
-  {:fullUrl (fhir-util/instance-url router type id)
+  [router {:fhir/keys [type] :keys [id] :as resource}]
+  {:fullUrl (type/->Uri (fhir-util/instance-url router (name type) id))
    :resource resource
-   :search {:mode "match"}})
+   :search {:fhir/type :fhir.Bundle.entry/search :mode #fhir/code"match"}})
 
 
 (defn- entries
@@ -54,8 +54,9 @@
 
 
 (defn- self-link [match params t entries]
-  {:relation "self"
-   :url (nav/url match params t (self-link-offset params entries))})
+  {:fhir/type :fhir.Bundle/link
+   :relation "self"
+   :url (type/->Uri (nav/url match params t (self-link-offset params entries)))})
 
 
 (defn- next-link-offset [{:keys [clauses page-offset]} entries]
@@ -65,8 +66,9 @@
 
 
 (defn- next-link [match params t entries]
-  {:relation "next"
-   :url (nav/url match params t (next-link-offset params entries))})
+  {:fhir/type :fhir.Bundle/link
+   :relation "next"
+   :url (type/->Uri (nav/url match params t (next-link-offset params entries)))})
 
 
 (defn- total
@@ -94,12 +96,12 @@
           (let [page-size (:page-size params)
                 total (total db type params entries)]
             (cond->
-              {:resourceType "Bundle"
-               :type "searchset"
+              {:fhir/type :fhir/Bundle
+               :type #fhir/code"searchset"
                :entry (take page-size entries)}
 
               total
-              (assoc :total total)
+              (assoc :total (type/->UnsignedInt total))
 
               (seq entries)
               (update :link (fnil conj []) (self-link match params t entries))
@@ -116,9 +118,9 @@
 
 (defn- search-summary [db type params]
   (ac/completed-future
-    {:resourceType "Bundle"
-     :type "searchset"
-     :total (summary-total db type params)}))
+    {:fhir/type :fhir/Bundle
+     :type #fhir/code"searchset"
+     :total (type/->UnsignedInt (summary-total db type params))}))
 
 
 (defn- search* [router match db type params]
@@ -149,7 +151,6 @@
 
 (defn handler [node]
   (-> (handler-intern node)
-      (wrap-params)
       (wrap-observe-request-duration "search-type")))
 
 

@@ -1,6 +1,5 @@
 (ns blaze.db.impl.index.resource-as-of-spec
   (:require
-    [blaze.db.hash.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
     [blaze.db.impl.index.resource-handle-spec]
@@ -16,7 +15,7 @@
                :tid :blaze.db/tid
                :start-id (s/nilable bytes?)
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef resource-as-of/system-list
@@ -24,7 +23,7 @@
                :start-tid (s/nilable :blaze.db/tid)
                :start-id (s/nilable bytes?)
                :t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef resource-as-of/instance-history
@@ -33,7 +32,7 @@
                :id :blaze.resource/id
                :start-t :blaze.db/t
                :end-t :blaze.db/t)
-  :ret (s/coll-of :blaze/resource))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef resource-as-of/hash-state-t
@@ -41,7 +40,7 @@
                :tid :blaze.db/tid
                :id :blaze.db/id-bytes
                :t :blaze.db/t)
-  :ret (s/nilable (s/tuple :blaze.db.resource/hash :blaze.db/state :blaze.db/t)))
+  :ret (s/nilable (s/tuple :blaze.resource/hash :blaze.db/state :blaze.db/t)))
 
 
 (s/fdef resource-as-of/resource-handle

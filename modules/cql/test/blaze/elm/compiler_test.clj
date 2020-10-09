@@ -13,12 +13,14 @@
     [blaze.elm.compiler.retrieve-spec]
     [blaze.elm.compiler.retrieve-test :as retrieve-test]
     [blaze.elm.date-time :refer [local-time local-time? period]]
+    [blaze.elm.date-time-spec]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.interval :refer [interval]]
     [blaze.elm.interval-spec]
     [blaze.elm.literal :as elm]
     [blaze.elm.quantity :refer [quantity]]
     [blaze.elm.quantity-spec]
+    [blaze.fhir.spec :as fhir-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -274,38 +276,40 @@
                  :scope "R"
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
-                identifier {:system "foo" :value "bar"}
+                identifier
+                {:fhir/type :fhir/Identifier
+                 :system #fhir/uri"foo"
+                 :value "bar"}
                 entity
-                (vary-meta
-                  {:resourceType "Patient" :id "0" :identifier [identifier]}
-                  assoc :type :fhir/Patient)
-                expr
-                (compile
-                  {:eval-context "Patient"}
-                  elm)]
-            (testing "property spec is pre-calculated"
-              (is (= :fhir/Identifier (:spec expr))))
-            (let [result (coll/first (-eval expr nil nil {"R" entity}))]
-              (is (= identifier result))
-              (is (= :fhir/Identifier (type result))))))
-
-        (testing "without source-type"
-          (let [elm
-                {:path "identifier"
-                 :scope "R"
-                 :type "Property"}
-                identifier {:system "foo" :value "bar"}
-                entity
-                (vary-meta
-                  {:resourceType "Patient" :id "0" :identifier [identifier]}
-                  assoc :type :fhir/Patient)
+                {:fhir/type :fhir/Patient :id "0"
+                 :identifier [identifier]}
                 expr
                 (compile
                   {:eval-context "Patient"}
                   elm)
                 result (coll/first (-eval expr nil nil {"R" entity}))]
               (is (= identifier result))
-              (is (= :fhir/Identifier (type result))))))
+              (is (= :fhir/Identifier (fhir-spec/fhir-type result)))))
+
+        (testing "without source-type"
+          (let [elm
+                {:path "identifier"
+                 :scope "R"
+                 :type "Property"}
+                identifier
+                {:fhir/type :fhir/Identifier
+                 :system #fhir/uri"foo"
+                 :value "bar"}
+                entity
+                {:fhir/type :fhir/Patient :id "0"
+                 :identifier [identifier]}
+                expr
+                (compile
+                  {:eval-context "Patient"}
+                  elm)
+                result (coll/first (-eval expr nil nil {"R" entity}))]
+              (is (= identifier result))
+              (is (= :fhir/Identifier (fhir-spec/fhir-type result))))))
 
       (testing "Patient.gender"
         (testing "with source-type"
@@ -315,16 +319,13 @@
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 entity
-                (vary-meta
-                  {:resourceType "Patient" :id "0" :gender "male"}
-                  assoc :type :fhir/Patient)
+                {:fhir/type :fhir/Patient :id "0"
+                 :gender #fhir/code"male"}
                 expr
                 (compile
                   {:eval-context "Patient"}
                   elm)]
-            (testing "property spec is pre-calculated"
-              (is (= :fhir/code (:spec expr))))
-            (is (= "male" (-eval expr nil nil {"R" entity})))))
+            (is (= #fhir/code"male" (-eval expr nil nil {"R" entity})))))
 
         (testing "without source-type"
           (let [elm
@@ -332,14 +333,13 @@
                  :scope "R"
                  :type "Property"}
                 entity
-                (vary-meta
-                  {:resourceType "Patient" :id "0" :gender "male"}
-                  assoc :type :fhir/Patient)
+                {:fhir/type :fhir/Patient :id "0"
+                 :gender #fhir/code"male"}
                 expr
                 (compile
                   {:eval-context "Patient"}
                   elm)]
-            (is (= "male" (-eval expr nil nil {"R" entity}))))))
+            (is (= #fhir/code"male" (-eval expr nil nil {"R" entity}))))))
 
       (testing "Observation.value"
         (testing "with source-type"
@@ -349,15 +349,12 @@
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Observation"}
                 entity
-                (vary-meta
-                  {:resourceType "Observation" :id "0" :valueString "value-114318"}
-                  assoc :type :fhir/Observation)
+                {:fhir/type :fhir/Observation :id "0"
+                 :value "value-114318"}
                 expr
                 (compile
                   {:eval-context "Patient"}
                   elm)]
-            (testing "choices are pre-calculated"
-              (is (coll? (:choices expr))))
             (is (= "value-114318" (-eval expr nil nil {"R" entity})))))
 
         (testing "without source-type"
@@ -366,9 +363,8 @@
                  :scope "R"
                  :type "Property"}
                 entity
-                (vary-meta
-                  {:resourceType "Observation" :id "0" :valueString "value-114318"}
-                  assoc :type :fhir/Observation)
+                {:fhir/type :fhir/Observation :id "0"
+                 :value "value-114318"}
                 expr
                 (compile
                   {:eval-context "Patient"}
@@ -383,32 +379,13 @@
                  :scope "R"
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
-                identifier {:system "foo" :value "bar"}
+                identifier
+                {:fhir/type :fhir/Identifier
+                 :system #fhir/uri"foo"
+                 :value "bar"}
                 entity
-                (vary-meta
-                  {:resourceType "Patient" :id "0" :identifier [identifier]}
-                  assoc :type :fhir/Patient)
-                expr
-                (compile
-                  {:eval-context "Patient"
-                   :life/single-query-scope "R"}
-                  elm)]
-            (testing "property spec is pre-calculated"
-              (is (= :fhir/Identifier (:spec expr))))
-            (let [result (coll/first (-eval expr nil nil entity))]
-              (is (= identifier result))
-              (is (= :fhir/Identifier (type result))))))
-
-        (testing "without source-type"
-          (let [elm
-                {:path "identifier"
-                 :scope "R"
-                 :type "Property"}
-                identifier {:system "foo" :value "bar"}
-                entity
-                (vary-meta
-                  {:resourceType "Patient" :id "0" :identifier [identifier]}
-                  assoc :type :fhir/Patient)
+                {:fhir/type :fhir/Patient :id "0"
+                 :identifier [identifier]}
                 expr
                 (compile
                   {:eval-context "Patient"
@@ -416,7 +393,28 @@
                   elm)
                 result (coll/first (-eval expr nil nil entity))]
               (is (= identifier result))
-              (is (= :fhir/Identifier (type result))))))
+              (is (= :fhir/Identifier (fhir-spec/fhir-type result)))))
+
+        (testing "without source-type"
+          (let [elm
+                {:path "identifier"
+                 :scope "R"
+                 :type "Property"}
+                identifier
+                {:fhir/type :fhir/Identifier
+                 :system #fhir/uri"foo"
+                 :value "bar"}
+                entity
+                {:fhir/type :fhir/Patient :id "0"
+                 :identifier [identifier]}
+                expr
+                (compile
+                  {:eval-context "Patient"
+                   :life/single-query-scope "R"}
+                  elm)
+                result (coll/first (-eval expr nil nil entity))]
+              (is (= identifier result))
+              (is (= :fhir/Identifier (fhir-spec/fhir-type result))))))
 
       (testing "Patient.gender"
         (testing "with source-type"
@@ -426,17 +424,14 @@
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 entity
-                (vary-meta
-                  {:resourceType "Patient" :id "0" :gender "male"}
-                  assoc :type :fhir/Patient)
+                {:fhir/type :fhir/Patient :id "0"
+                 :gender #fhir/code"male"}
                 expr
                 (compile
                   {:eval-context "Patient"
                    :life/single-query-scope "R"}
                   elm)]
-            (testing "property spec is pre-calculated"
-              (is (= :fhir/code (:spec expr))))
-            (is (= "male" (-eval expr nil nil entity)))))
+            (is (= #fhir/code"male" (-eval expr nil nil entity)))))
 
         (testing "without source-type"
           (let [elm
@@ -444,15 +439,14 @@
                  :scope "R"
                  :type "Property"}
                 entity
-                (vary-meta
-                  {:resourceType "Patient" :id "0" :gender "male"}
-                  assoc :type :fhir/Patient)
+                {:fhir/type :fhir/Patient :id "0"
+                 :gender #fhir/code"male"}
                 expr
                 (compile
                   {:eval-context "Patient"
                    :life/single-query-scope "R"}
                   elm)]
-            (is (= "male" (-eval expr nil nil entity))))))
+            (is (= #fhir/code"male" (-eval expr nil nil entity))))))
 
       (testing "Observation.value"
         (testing "with source-type"
@@ -462,16 +456,13 @@
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Observation"}
                 entity
-                (vary-meta
-                  {:resourceType "Observation" :id "0" :valueString "value-114318"}
-                  assoc :type :fhir/Observation)
+                {:fhir/type :fhir/Observation :id "0"
+                 :value "value-114318"}
                 expr
                 (compile
                   {:eval-context "Patient"
                    :life/single-query-scope "R"}
                   elm)]
-            (testing "choices are pre-calculated"
-              (is (coll? (:choices expr))))
             (is (= "value-114318" (-eval expr nil nil entity)))))
 
         (testing "without source-type"
@@ -480,9 +471,7 @@
                  :scope "R"
                  :type "Property"}
                 entity
-                (vary-meta
-                  {:resourceType "Observation" :id "0" :valueString "value-114318"}
-                  assoc :type :fhir/Observation)
+                {:fhir/type :fhir/Observation :id "0" :value "value-114318"}
                 expr
                 (compile
                   {:eval-context "Patient"
@@ -499,17 +488,17 @@
                :source #elm/expression-ref "Patient"
                :type "Property"
                :life/source-type "{http://hl7.org/fhir}Patient"}
-              identifier {:system "foo" :value "bar"}
+              identifier
+              {:fhir/type :fhir/Identifier
+               :system #fhir/uri"foo"
+               :value "bar"}
               source
-              (vary-meta
-                {:resourceType "Patient" :id "0" :identifier [identifier]}
-                assoc :type :fhir/Patient)
-              expr (compile {:library library :eval-context "Patient"} elm)]
-          (testing "property spec is pre-calculated"
-            (is (= :fhir/Identifier (:spec expr))))
-          (let [result (coll/first (-eval expr {:library-context {"Patient" source}} nil nil))]
+              {:fhir/type :fhir/Patient :id "0"
+               :identifier [identifier]}
+              expr (compile {:library library :eval-context "Patient"} elm)
+              result (coll/first (-eval expr {:library-context {"Patient" source}} nil nil))]
             (is (= identifier result))
-            (is (= :fhir/Identifier (type result))))))
+            (is (= :fhir/Identifier (fhir-spec/fhir-type result)))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:name "Patient"}]}}
@@ -517,15 +506,17 @@
               {:path "identifier"
                :source #elm/expression-ref "Patient"
                :type "Property"}
-              identifier {:system "foo" :value "bar"}
+              identifier
+              {:fhir/type :fhir/Identifier
+               :system #fhir/uri"foo"
+               :value "bar"}
               source
-              (vary-meta
-                {:resourceType "Patient" :id "0" :identifier [identifier]}
-                assoc :type :fhir/Patient)
+              {:fhir/type :fhir/Patient :id "0"
+               :identifier [identifier]}
               expr (compile {:library library :eval-context "Patient"} elm)
               result (coll/first (-eval expr {:library-context {"Patient" source}} nil nil))]
             (is (= identifier result))
-            (is (= :fhir/Identifier (type result))))))
+            (is (= :fhir/Identifier (fhir-spec/fhir-type result))))))
 
     (testing "Patient.gender"
       (testing "with source-type"
@@ -536,13 +527,10 @@
                :type "Property"
                :life/source-type "{http://hl7.org/fhir}Patient"}
               source
-              (vary-meta
-                {:resourceType "Patient" :id "0" :gender "male"}
-                assoc :type :fhir/Patient)
+              {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"}
               expr (compile {:library library :eval-context "Patient"} elm)]
-          (testing "property spec is pre-calculated"
-            (is (= :fhir/code (:spec expr))))
-          (is (= "male" (-eval expr {:library-context {"Patient" source}} nil nil)))))
+          (is (= #fhir/code"male" (-eval expr {:library-context {"Patient" source}} nil nil)))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:name "Patient"}]}}
@@ -551,11 +539,10 @@
                :source #elm/expression-ref "Patient"
                :type "Property"}
               source
-              (vary-meta
-                {:resourceType "Patient" :id "0" :gender "male"}
-                assoc :type :fhir/Patient)
+              {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"}
               expr (compile {:library library :eval-context "Patient"} elm)]
-          (is (= "male" (-eval expr {:library-context {"Patient" source}} nil nil))))))
+          (is (= #fhir/code"male" (-eval expr {:library-context {"Patient" source}} nil nil))))))
 
     (testing "Observation.value"
       (testing "with source-type"
@@ -566,12 +553,9 @@
                :type "Property"
                :life/source-type "{http://hl7.org/fhir}Observation"}
               source
-              (vary-meta
-                {:resourceType "Observation" :id "0" :valueString "value-114318"}
-                assoc :type :fhir/Observation)
+              {:fhir/type :fhir/Observation :id "0"
+               :value "value-114318"}
               expr (compile {:library library :eval-context "Patient"} elm)]
-          (testing "choices are pre-calculated"
-            (is (coll? (:choices expr))))
           (is (= "value-114318" (-eval expr {:library-context {"Observation" source}} nil nil)))))
 
       (testing "without source-type"
@@ -581,9 +565,8 @@
                :source #elm/expression-ref "Observation"
                :type "Property"}
               source
-              (vary-meta
-                {:resourceType "Observation" :id "0" :valueString "value-114318"}
-                assoc :type :fhir/Observation)
+              {:fhir/type :fhir/Observation :id "0"
+               :value "value-114318"}
               expr (compile {:library library :eval-context "Patient"} elm)]
           (is (= "value-114318" (-eval expr {:library-context {"Observation" source}} nil nil))))))
 
@@ -871,7 +854,7 @@
         (is (not (instance? IPersistentCollection res))))))
 
   (testing "Retrieve queries"
-    (with-open [node (mem-node-with [[[:put {:resourceType "Patient" :id "0"}]]])]
+    (with-open [node (mem-node-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])]
       (let [db (d/db node)
             retrieve {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
             where {:type "Equal"
@@ -893,7 +876,7 @@
                      [{:alias "P"
                        :expression retrieve}]}]
           (given (-eval (compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)
-            [0 type name] := "Patient"
+            [0 fhir-spec/fhir-type] := :fhir/Patient
             [0 :id] := "0"))
 
         (let [query {:type "Query"
@@ -932,7 +915,7 @@
     ::node "Unspecified" "Observation" "code" nil?
     (reify Expression
       (-eval [_ _ _ _]
-        [{:resourceType "Observation" :subject {:reference "Patient/0"}}])))
+        [{:fhir/type :fhir/Observation :subject {:reference "Patient/0"}}])))
 
   (testing "Equiv With with two Observations comparing there subjects."
     (let [elm {:alias "O1"
@@ -958,7 +941,7 @@
           xform-factory (compile-with-equiv-clause compile-context elm)
           eval-context {:db ::db}
           xform (query/-create xform-factory eval-context nil)
-          lhs-entity {:resourceType "Observation" :subject {:reference "Patient/0"}}]
+          lhs-entity {:fhir/type :fhir/Observation :subject {:reference "Patient/0"}}]
       (is (= [lhs-entity] (into [] xform [lhs-entity])))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
@@ -1014,7 +997,7 @@
 (deftest compile-retrieve-test
   (testing "without related context"
     (testing "Patient"
-      (let [patient {:resourceType "Patient" :id "0"}]
+      (let [patient {:fhir/type :fhir/Patient :id "0"}]
         (with-open [node (mem-node-with [[[:put patient]]])]
           (let [context
                 {:node node
@@ -1022,15 +1005,17 @@
                  :library {}}
                 expr (compile context patient-retrieve-elm)]
             (given (-eval expr {:db (d/db node)} patient nil)
-              [0 :resourceType] := "Patient"
+              [0 fhir-spec/fhir-type] := :fhir/Patient
               [0 :id] := "0")))))
 
     (testing "without codes"
-      (let [patient {:resourceType "Patient" :id "0"}]
+      (let [patient {:fhir/type :fhir/Patient :id "0"}]
         (with-open [node (mem-node-with
                            [[[:put patient]
-                             [:put {:resourceType "Observation" :id "1"
-                                    :subject {:reference "Patient/0"}}]]])]
+                             [:put {:fhir/type :fhir/Observation :id "1"
+                                    :subject
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}]]])]
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -1038,21 +1023,27 @@
                 elm {:type "Retrieve" :dataType "{http://hl7.org/fhir}Observation"}
                 expr (compile context elm)]
             (given (-eval expr {:db (d/db node)} patient nil)
-              [0 type name] := "Observation"
+              [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1")))))
 
     (testing "with codes"
-      (let [patient {:resourceType "Patient" :id "0"}]
+      (let [patient {:fhir/type :fhir/Patient :id "0"}]
         (with-open [node (mem-node-with
                            [[[:put patient]
-                             [:put {:resourceType "Observation" :id "0"
-                                    :subject {:reference "Patient/0"}}]
-                             [:put {:resourceType "Observation" :id "1"
+                             [:put {:fhir/type :fhir/Observation :id "0"
+                                    :subject
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}]
+                             [:put {:fhir/type :fhir/Observation :id "1"
                                     :code
-                                    {:coding
-                                     [{:system "system-192253"
-                                       :code "code-192300"}]}
-                                    :subject {:reference "Patient/0"}}]]])]
+                                    {:fhir/type :fhir/CodeableConcept
+                                     :coding
+                                     [{:fhir/type :fhir/Coding
+                                       :system #fhir/uri"system-192253"
+                                       :code #fhir/code"code-192300"}]}
+                                    :subject
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}]]])]
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -1071,7 +1062,7 @@
                      :codes #elm/to-list #elm/code-ref "code-def-133853"}
                 expr (compile context elm)]
             (given (-eval expr {:db (d/db node)} patient nil)
-              [0 type name] := "Observation"
+              [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1"))))))
 
   (testing "with related context"
@@ -5666,72 +5657,56 @@
               {:path "deceased"
                :scope "R"
                :type "Property"}]
-      (with-meta
-        {:resourceType "Patient" :id "0" :deceasedBoolean true}
-        {:type :fhir/Patient})
+      {:fhir/type :fhir/Patient :id "0" :deceased true}
       true
 
       #elm/as ["{http://hl7.org/fhir}integer"
                {:path "value"
                 :scope "R"
                 :type "Property"}]
-      (with-meta
-        {:resourceType "Observation" :valueInteger 1}
-        {:type :fhir/Observation})
-      1
+      {:fhir/type :fhir/Observation :value (int 1)}
+      (int 1)
 
       #elm/as ["{http://hl7.org/fhir}string"
                {:path "name"
                 :scope "R"
                 :type "Property"}]
-      (with-meta
-        {:resourceType "Account" :name "a"}
-        {:type :fhir/Account})
+      {:fhir/type :fhir/Account :name "a"}
       "a"
 
       #elm/as ["{http://hl7.org/fhir}decimal"
                {:path "duration"
                 :scope "R"
                 :type "Property"}]
-      (with-meta
-        {:resourceType "Media" :duration 1.1M}
-        {:type :fhir/Media})
+      {:fhir/type :fhir/Media :duration 1.1M}
       1.1M
 
       #elm/as ["{http://hl7.org/fhir}uri"
                {:path "url"
                 :scope "R"
                 :type "Property"}]
-      (with-meta
-        {:resourceType "Measure" :url "a"}
-        {:type :fhir/Measure})
-      "a"
+      {:fhir/type :fhir/Measure :url #fhir/uri"a"}
+      #fhir/uri"a"
 
       #elm/as ["{http://hl7.org/fhir}url"
                {:path "address"
                 :scope "R"
                 :type "Property"}]
-      (with-meta
-        {:resourceType "Endpoint" :address "a"}
-        {:type :fhir/Endpoint})
-      "a"
+      {:fhir/type :fhir/Endpoint :address #fhir/url"a"}
+      #fhir/url"a"
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
                {:path "value"
                 :scope "R"
                 :type "Property"}]
-      (with-meta
-        {:resourceType "Observation" :valueDateTime "2019-09-04"}
-        {:type :fhir/Observation})
-      "2019-09-04"
+      {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
+      #fhir/dateTime"2019-09-04"
 
       #elm/as ["{http://hl7.org/fhir}Quantity"
                {:path "value"
                 :scope "R"
                 :type "Property"}]
-      (with-meta
-        {:resourceType "Observation" :valueDateTime "2019-09-04"}
-        {:type :fhir/Observation})
+      {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       nil))
 
   (testing "ELM types"

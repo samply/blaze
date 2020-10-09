@@ -3,11 +3,10 @@
 
   https://www.hl7.org/fhir/http.html#create"
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :refer [throw-anom]]
     [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.response.create :as response]
-    [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create.spec]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
@@ -21,36 +20,25 @@
 
 (defn- resource-type-mismatch-msg [type body]
   (format "Resource type `%s` doesn't match the endpoint type `%s`."
-          (get body :resourceType) type))
+          (-> body :fhir/type name) type))
 
 
 (defn- validate-resource [type body]
   (cond
-    (not (map? body))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         ::anom/message "Expect a JSON object."
-         :fhir/issue "structure"
-         :fhir/operation-outcome "MSG_JSON_OBJECT"}))
+    (nil? body)
+    (throw-anom
+      ::anom/incorrect
+      "Missing HTTP body."
+      :fhir/issue "invalid")
 
-    (not= type (get body :resourceType))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         ::anom/message (resource-type-mismatch-msg type body)
-         :fhir/issue "invariant"
-         :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"}))
+    (not= type (-> body :fhir/type name))
+    (throw-anom
+      ::anom/incorrect
+      (resource-type-mismatch-msg type body)
+      :fhir/issue "invariant"
+      :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")
 
-    (not (fhir-spec/valid? body))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         ::anom/message "Resource invalid."
-         :fhir/issues (:fhir/issues (fhir-spec/explain-data body))}))
-
-    :else
-    body))
+    :else body))
 
 
 (defn- handler-intern [node executor]

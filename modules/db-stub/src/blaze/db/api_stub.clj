@@ -6,9 +6,11 @@
     [blaze.db.node :refer [new-node]]
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
     [blaze.db.search-param-registry :as sr]
+    [blaze.db.spec]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local :refer [new-local-tx-log]]
-    [blaze.executors :as ex])
+    [blaze.executors :as ex]
+    [clojure.spec.alpha :as s])
   (:import
     [java.time Clock Instant ZoneId Duration]))
 
@@ -63,3 +65,8 @@
 (defn mem-node-with [txs]
   (doto (mem-node)
     (submit-txs txs)))
+
+
+(s/fdef mem-node-with
+  :args (s/cat :txs (s/coll-of :blaze.db/tx-ops))
+  :ret :blaze.db/node)

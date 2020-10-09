@@ -1,6 +1,5 @@
 (ns blaze.rest-api-test
   (:require
-    [blaze.async-comp :as ac]
     [blaze.db.search-param-registry :as sr]
     [blaze.rest-api :as rest-api]
     [clojure.spec.test.alpha :as st]
@@ -29,13 +28,14 @@
 
 
 (defn handler [key]
-  (fn [_] (ac/completed-future {::handler key})))
+  (fn [_] key))
 
 
 (def router
   (rest-api/router
     {:base-url "base-url-111523"
      :structure-definitions [{:kind "resource" :name "Patient"}]
+     :transaction-handler (handler ::transaction)
      :resource-patterns
      [#:blaze.rest-api.resource-pattern
          {:type :default
@@ -84,14 +84,14 @@
 
 
 (deftest router-test
-  (testing "Patient matches"
+  (testing "handlers"
     (are [path request-method handler]
       (= handler
-         (::handler
-           @((get-in
-               (reitit/match-by-path router path)
-               [:result request-method :handler])
-             {})))
+         ((get-in
+            (reitit/match-by-path router path)
+            [:result request-method :data :handler])
+          {}))
+      "" :post ::transaction
       "/Patient" :get ::search-type
       "/Patient" :post ::create
       "/Patient/_history" :get ::history-type
@@ -108,31 +108,55 @@
       "/Measure/0/$evaluate-measure" :get ::evaluate-measure-instance
       "/Measure/0/$evaluate-measure" :post ::evaluate-measure-instance))
 
+  (testing "resource middleware"
+    (are [path request-method middleware]
+      (= middleware
+         (->> (get-in
+                (reitit/match-by-path router path)
+                [:result request-method :data :middleware])
+              (some (comp #{:resource} :name first))))
+      "" :post :resource
+      "/Patient" :get nil
+      "/Patient" :post :resource
+      "/Patient/_history" :get nil
+      "/Patient/_search" :post nil
+      "/Patient/0" :get nil
+      "/Patient/0" :put :resource
+      "/Patient/0" :delete nil
+      "/Patient/0/_history" :get nil
+      "/Patient/0/_history/42" :get nil
+      "/Patient/0/Condition" :get nil
+      "/Patient/0/Observation" :get nil
+      "/Measure/$evaluate-measure" :get nil
+      "/Measure/$evaluate-measure" :post nil
+      "/Measure/0/$evaluate-measure" :get nil
+      "/Measure/0/$evaluate-measure" :post nil))
+
   (testing "Patient instance POST is not allowed"
     (given @((reitit.ring/ring-handler router rest-api/default-handler)
              {:uri "/Patient/0" :request-method :post})
       :status := 405
-      [:body :resourceType] := "OperationOutcome"
-      [:body :issue 0 :severity] := "error"
-      [:body :issue 0 :code] := "processing"
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code"error"
+      [:body :issue 0 :code] := #fhir/code"processing"
       [:body :issue 0 :diagnostics] := "Method POST not allowed on `/Patient/0` endpoint."))
 
   (testing "Patient type PUT is not allowed"
     (given @((reitit.ring/ring-handler router rest-api/default-handler)
              {:uri "/Patient" :request-method :put})
       :status := 405
-      [:body :resourceType] := "OperationOutcome"
-      [:body :issue 0 :severity] := "error"
-      [:body :issue 0 :code] := "processing"
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code"error"
+      [:body :issue 0 :code] := #fhir/code"processing"
       [:body :issue 0 :diagnostics] := "Method PUT not allowed on `/Patient` endpoint."))
 
   (testing "Observations are not found"
     (given @((reitit.ring/ring-handler router rest-api/default-handler)
              {:uri "/Observation" :request-method :get})
       :status := 404
-      [:body :resourceType] := "OperationOutcome"
-      [:body :issue 0 :severity] := "error"
-      [:body :issue 0 :code] := "not-found")))
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code"error"
+      [:body :issue 0 :code] := #fhir/code"not-found")))
 
 
 (deftest router-match-by-name-test
@@ -152,6 +176,10 @@
     "/Patient/23/_history/42"))
 
 
+(def copyright
+  #fhir/markdown"Copyright 2019 The Samply Development Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
+
+
 (deftest capabilities-handler-test
   (testing "minimal config"
     (given
@@ -163,14 +191,18 @@
                :search-param-registry search-param-registry})
             {})
           :body)
-      :resourceType := "CapabilityStatement"
-      :status := "active"
-      :kind := "instance"
+      :fhir/type := :fhir/CapabilityStatement
+      :status := #fhir/code"active"
+      :experimental := false
+      :publisher := "The Samply Development Community"
+      :copyright := copyright
+      :kind := #fhir/code"instance"
       [:software :name] := "Blaze"
       [:software :version] := "version-131640"
-      [:implementation :url] := "base-url-131713"
-      :fhirVersion := "4.0.1"
-      :format := ["application/fhir+json"]))
+      [:implementation :url] := #fhir/url"base-url-131713"
+      :fhirVersion := #fhir/code"4.0.1"
+      :format := [#fhir/code"application/fhir+json"
+                  #fhir/code"application/xml+json"]))
 
   (testing "one interaction"
     (given
@@ -189,9 +221,9 @@
                          {:handler (fn [_])}}}]})
             {})
           :body)
-      :resourceType := "CapabilityStatement"
-      [:rest 0 :resource 0 :type] := "Patient"
-      [:rest 0 :resource 0 :interaction 0 :code] := "read"))
+      :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :resource 0 :type] := #fhir/code"Patient"
+      [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"))
 
   (testing "one operation"
     (given
@@ -218,8 +250,8 @@
                     :instance-handler (fn [_])}]})
             {})
           :body)
-      :resourceType := "CapabilityStatement"
-      [:rest 0 :resource 0 :type] := "Measure"
+      :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :resource 0 :type] := #fhir/code"Measure"
       [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :definition] :=
-      "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")))
+      #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")))

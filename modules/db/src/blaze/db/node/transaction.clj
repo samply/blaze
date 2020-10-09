@@ -1,8 +1,9 @@
 (ns blaze.db.node.transaction
   (:require
-    [blaze.db.hash :as hash]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.tx-log.local.references :as references]))
+    [blaze.db.tx-log.local.references :as references]
+    [blaze.fhir.hash :as hash]
+    [blaze.fhir.spec :as fhir-spec]))
 
 
 (defmulti prepare-op first)
@@ -17,7 +18,7 @@
      :blaze.db/tx-cmd
      (cond->
        {:op (name op)
-        :type (:resourceType resource)
+        :type (name (fhir-spec/fhir-type resource))
         :id (:id resource)
         :hash hash}
        (seq refs)
@@ -33,7 +34,7 @@
      :blaze.db/tx-cmd
      (cond->
        {:op (name op)
-        :type (:resourceType resource)
+        :type (name (fhir-spec/fhir-type resource))
         :id (:id resource)
         :hash hash}
        (seq refs)
@@ -50,13 +51,13 @@
      [hash resource]
      :blaze.db/tx-cmd
      {:op "delete"
-      :type (:resourceType resource)
+      :type (name (fhir-spec/fhir-type resource))
       :id (:id resource)
       :hash hash}}))
 
 
 (def ^:private split
-  (juxt (partial mapv :blaze.db/tx-cmd)
+  (juxt #(mapv :blaze.db/tx-cmd %)
         #(into {} (map :hash-resource) %)))
 
 

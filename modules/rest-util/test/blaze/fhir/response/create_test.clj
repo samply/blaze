@@ -26,7 +26,7 @@
 
 
 (deftest build-created-response-test
-  (with-open [node (mem-node-with [[[:put {:resourceType "Patient" :id "0"}]]])]
+  (with-open [node (mem-node-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])]
     (let [db (d/db node)
           resource @(d/pull db (d/resource-handle db "Patient" "0"))]
 

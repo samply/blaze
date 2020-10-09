@@ -3,15 +3,13 @@
 
   https://www.hl7.org/fhir/http.html#update"
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :refer [throw-anom]]
     [blaze.async-comp :as ac]
     [blaze.db.api :as d]
-    [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.update.spec]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -36,50 +34,36 @@
 
 (defn- validate-resource [type id body]
   (cond
-    (not (map? body))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         :fhir/issue "structure"
-         :fhir/operation-outcome "MSG_JSON_OBJECT"}))
+    (nil? body)
+    (throw-anom
+      ::anom/incorrect
+      "Missing HTTP body."
+      :fhir/issue "invalid")
 
-    (not= type (:resourceType body))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         :fhir/issue "invariant"
-         :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"}))
+    (not= type (-> body :fhir/type name))
+    (throw-anom
+      ::anom/incorrect
+      (format "Invalid update interaction of a %s at a %s endpoint."
+              (-> body :fhir/type name) type)
+      :fhir/issue "invariant"
+      :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")
 
     (not (contains? body :id))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         :fhir/issue "required"
-         :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"}))
-
-    (not (s2/valid? :fhir/id (:id body)))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         :fhir/issue "value"
-         :fhir/operation-outcome "MSG_ID_INVALID"}))
+    (throw-anom
+      ::anom/incorrect
+      "Missing resource id."
+      :fhir/issue "required"
+      :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING")
 
     (not= id (:id body))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         :fhir/issue "invariant"
-         :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"}))
+    (throw-anom
+      ::anom/incorrect
+      (format "The resource id `%s` doesn't match the endpoints id `%s`."
+              (:id body) id)
+      :fhir/issue "invariant"
+      :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH")
 
-    (not (fhir-spec/valid? body))
-    (throw
-      (ex-anom
-        {::anom/category ::anom/incorrect
-         ::anom/message "Resource invalid."
-         :fhir/issues (:fhir/issues (fhir-spec/explain-data body))}))
-
-    :else
-    body))
+    :else body))
 
 
 (defn- build-response
@@ -94,7 +78,7 @@
           (= "minimal" return-preference)
           (ac/completed-future nil)
           (= "OperationOutcome" return-preference)
-          (ac/completed-future {:resourceType "OperationOutcome"})
+          (ac/completed-future {:fhir/type :fhir/OperationOutcome})
           :else
           (d/pull db new-handle))
         (ac/then-apply

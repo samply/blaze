@@ -11,6 +11,7 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
+    [blaze.fhir.spec :as fhir-spec]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -35,31 +36,32 @@
   "Returns an entry into the :compartment-resource-type-index where `resource`
   is linked to `compartment`."
   {:arglists '([compartment resource])}
-  [[comp-code comp-id] {type :resourceType id :id}]
+  [[comp-code comp-id] {:keys [id] :as resource}]
   [:compartment-resource-type-index
    (codec/compartment-resource-type-key
      (codec/c-hash comp-code) (codec/id-bytes comp-id)
-     (codec/tid type) (codec/id-bytes id))
+     (codec/tid (name (fhir-spec/fhir-type resource))) (codec/id-bytes id))
    bytes/empty])
 
 
 (defn- index-entries [linked-compartments search-param hash resource]
   (let [res (search-param/index-entries search-param hash resource linked-compartments)]
     (if (::anom/category res)
-      (log/warn (format "Skip indexing for search parameter `%s` on resource `%s/%s`. Cause: %s" (:url search-param) (:resourceType resource) (:id resource) (::anom/message res)))
+      (log/warn (format "Skip indexing for search parameter `%s` on resource `%s/%s`. Cause: %s" (:url search-param) (name (fhir-spec/fhir-type resource)) (:id resource) (::anom/message res)))
       res)))
 
 
 (defn- calc-search-params [search-param-registry hash resource]
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
-    (let [linked-compartments (sr/linked-compartments search-param-registry resource)]
+    (let [compartments (sr/linked-compartments search-param-registry resource)]
       (-> (into
             []
             (map #(compartment-resource-type-entry % resource))
-            linked-compartments)
+            compartments)
           (into
-            (mapcat #(index-entries linked-compartments % hash resource))
-            (sr/list-by-type search-param-registry (:resourceType resource)))))))
+            (mapcat #(index-entries compartments % hash resource))
+            (sr/list-by-type search-param-registry
+                             (name (fhir-spec/fhir-type resource))))))))
 
 
 (defn- index-resource [search-param-registry [hash resource]]

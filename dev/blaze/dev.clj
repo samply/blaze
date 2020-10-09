@@ -13,7 +13,7 @@
     [clojure.tools.namespace.repl :refer [refresh]]
     [criterium.core :refer [bench quick-bench]]
     [taoensso.timbre :as log]
-    [blaze.db.hash :as hash]
+    [blaze.fhir.hash :as hash]
     [cheshire.core :as cheshire]
     [blaze.executors :as ex])
   (:import
@@ -93,13 +93,13 @@
 
 (comment
   (require '[blaze.db.kv :as kv]
-           '[blaze.db.hash :as hash]
+           '[blaze.fhir.hash :as hash]
            '[cheshire.core :as cheshire]
            '[blaze.async-comp :as ac]
            '[blaze.executors :as ex]
            '[criterium.core :refer [quick-bench bench]])
 
-  (def patient-0 {:resourceType "Patient" :id "0"})
+  (def patient-0 {:fhir/type :fhir/Patient :id "0"})
   (def patient-0-hash (hash/generate patient-0))
 
   (def observation-0 (binding [cheshire.parse/*use-bigdecimals?* true] (cheshire/parse-string (slurp "/Users/akiel/coding/bbmri-fhir-ig/input/examples/exampleBodyHeight.json") keyword)))

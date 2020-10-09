@@ -1,6 +1,5 @@
 (ns blaze.db.node.tx-indexer.verify-test
   (:require
-    [blaze.db.hash :as hash]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.type-stats :as type-stats]
@@ -8,6 +7,7 @@
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.node.tx-indexer.verify :as verify]
     [blaze.db.node.tx-indexer.verify-spec]
+    [blaze.fhir.hash :as hash]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.walk :refer [postwalk]]
@@ -44,10 +44,10 @@
 
 (def tid-patient (codec/tid "Patient"))
 
-(def patient-0 {:resourceType "Patient" :id "0"})
-(def patient-0-v2 {:resourceType "Patient" :id "0" :gender "male"})
-(def patient-1 {:resourceType "Patient" :id "1"})
-(def patient-2 {:resourceType "Patient" :id "2"})
+(def patient-0 {:fhir/type :fhir/Patient :id "0"})
+(def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
+(def patient-1 {:fhir/type :fhir/Patient :id "1"})
+(def patient-2 {:fhir/type :fhir/Patient :id "2"})
 
 
 (def store-patient-0

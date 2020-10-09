@@ -6,6 +6,7 @@
     [blaze.db.api :as d]
     [blaze.elm.compiler :as compiler]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.uuid :refer [random-uuid]]
     [cognitect.anomalies :as anom]
@@ -13,7 +14,6 @@
     [taoensso.timbre :as log])
   (:import
     [java.nio.charset Charset]
-    [java.time.format DateTimeFormatter]
     [java.util Base64]))
 
 
@@ -48,13 +48,14 @@
   {:arglists '([library])}
   [{:keys [id content]}]
   (if-let [{:keys [contentType data]} (first content)]
-    (if (= "text/cql" contentType)
-      (if data
-        (String. ^bytes (.decode (Base64/getDecoder) ^String data) utf-8)
-        {::anom/category ::anom/incorrect
-         ::anom/message (format "Missing embedded data of first attachment in library with id `%s`." id)
-         :fhir/issue "value"
-         :fhir.issue/expression "Library.content[0].data"})
+    (if (= "text/cql" (type/value contentType))
+      (let [data (type/value data)]
+        (if data
+          (String. ^bytes (.decode (Base64/getDecoder) ^String data) utf-8)
+          {::anom/category ::anom/incorrect
+           ::anom/message (format "Missing embedded data of first attachment in library with id `%s`." id)
+           :fhir/issue "value"
+           :fhir.issue/expression "Library.content[0].data"}))
       {::anom/category ::anom/incorrect
        ::anom/message (format "Non `text/cql` content type of `%s` of first attachment in library with id `%s`." contentType id)
        :fhir/issue "value"
@@ -113,7 +114,7 @@
 
   Returns an anomaly on errors."
   [db measure]
-  (if-let [library-ref (first (:library measure))]
+  (if-let [library-ref (-> measure :library first type/value)]
     (if-let [library (find-library db library-ref)]
       (compile-library (d/node db) library)
       {::anom/category ::anom/incorrect
@@ -141,32 +142,39 @@
 
 (defn- population-tx-ops [{:keys [subject-type]} list-id result]
   [[:create
-    {:resourceType "List"
+    {:fhir/type :fhir/List
      :id list-id
-     :status "current"
-     :mode "working"
+     :status #fhir/code"current"
+     :mode #fhir/code"working"
      :entry
      (mapv
        (fn [subject-id]
-         {:item {:reference (str subject-type "/" subject-id)}})
+         {:fhir/type :fhir.List/entry
+          :item
+          {:fhir/type :fhir/Reference
+           :reference (str subject-type "/" subject-id)}})
        result)}]])
 
 
 (defn- population
-  [{:keys [report-type] :as context} code result]
+  [{:keys [report-type] :as context} fhir-type code result]
   (case report-type
     "population"
     {:result
      (cond->
-       {:count result}
+       {:fhir/type fhir-type
+        :count (int result)}
        code
        (assoc :code code))}
     "subject-list"
     (let [list-id (str (random-uuid))]
       {:result
        (cond->
-         {:count (count result)
-          :subjectResults {:reference (str "List/" list-id)}}
+         {:fhir/type fhir-type
+          :count (count result)
+          :subjectResults
+          {:fhir/type :fhir/Reference
+           :reference (str "List/" list-id)}}
          code
          (assoc :code code))
        :tx-ops
@@ -177,39 +185,44 @@
   {:arglists '([context groupIdx populationIdx population])}
   [context groupIdx populationIdx
    {:keys [code] {:keys [language expression]} :criteria}]
-  (cond
-    (not= "text/cql" language)
-    {::anom/category ::anom/unsupported
-     ::anom/message (str "Unsupported language `" language "`.")
-     :fhir/issue "not-supported"
-     :fhir.issue/expression
-     (format "Measure.group[%d].population[%d].criteria.language"
-             groupIdx populationIdx)}
+  (let [language (type/value language)
+        expression (type/value expression)]
+    (cond
+      (not= "text/cql" language)
+      {::anom/category ::anom/unsupported
+       ::anom/message (str "Unsupported language `" language "`.")
+       :fhir/issue "not-supported"
+       :fhir.issue/expression
+       (format "Measure.group[%d].population[%d].criteria.language"
+               groupIdx populationIdx)}
 
-    (nil? expression)
-    {::anom/category ::anom/incorrect
-     ::anom/message "Missing expression."
-     :fhir/issue "required"
-     :fhir.issue/expression
-     (format "Measure.group[%d].population[%d].criteria.expression"
-             groupIdx populationIdx)}
+      (nil? expression)
+      {::anom/category ::anom/incorrect
+       ::anom/message "Missing expression."
+       :fhir/issue "required"
+       :fhir.issue/expression
+       (format "Measure.group[%d].population[%d].criteria.expression"
+               groupIdx populationIdx)}
 
-    :else
-    (when-ok [result (cql/evaluate-expression context expression)]
-      (population context code result))))
+      :else
+      (when-ok [result (cql/evaluate-expression context expression)]
+        (population context :fhir.MeasureReport.group/population code result)))))
 
 
 (defn- value-concept [value]
-  {:text (str (if (nil? value) "null" value))})
+  {:fhir/type :fhir/CodeableConcept
+   :text (str (if (nil? value) "null" value))})
 
 
 (defn- stratum* [population value]
-  {:value (value-concept value)
+  {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+   :value (value-concept value)
    :population [population]})
 
 
 (defn- stratum [context population-code [value result]]
-  (-> (population context population-code result)
+  (-> (population context :fhir.MeasureReport.group.stratifier.stratum/population
+                  population-code result)
       (update :result stratum* value)))
 
 
@@ -224,7 +237,8 @@
 
 
 (defn- stratifier* [strata code]
-  (cond-> {:stratum (sort-by (comp :text :value) strata)}
+  (cond-> {:fhir/type :fhir.MeasureReport.group/stratifier
+           :stratum (sort-by (comp :text :value) strata)}
     code
     (assoc :code [code])))
 
@@ -239,7 +253,7 @@
   [context groupIdx populations stratifierIdx
    {:keys [code] {:keys [language expression]} :criteria}]
   (cond
-    (not= "text/cql" language)
+    (not= "text/cql" (type/value language))
     {::anom/category ::anom/unsupported
      ::anom/message (str "Unsupported language `" language "`.")
      :fhir/issue "not-supported"
@@ -277,7 +291,7 @@
      (format "Measure.group[%d].stratifier[%d].component[%d].code"
              groupIdx stratifierIdx componentIdx)}
 
-    (not= "text/cql" language)
+    (not= "text/cql" (type/value language))
     {::anom/category ::anom/unsupported
      ::anom/message (str "Unsupported language `" language "`.")
      :fhir/issue "not-supported"
@@ -317,10 +331,12 @@
 
 
 (defn- multi-component-stratum* [population codes values]
-  {:component
+  {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+   :component
    (mapv
      (fn [code value]
-       {:code code
+       {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
+        :code code
         :value (value-concept value)})
      codes
      values)
@@ -328,12 +344,14 @@
 
 
 (defn- multi-component-stratum [context codes population-code [values result]]
-  (-> (population context population-code result)
+  (-> (population context :fhir.MeasureReport.group.stratifier.stratum/population
+                  population-code result)
       (update :result multi-component-stratum* codes values)))
 
 
 (defn- multi-component-stratifier* [strata codes]
-  {:code codes
+  {:fhir/type :fhir.MeasureReport.group/stratifier
+   :code codes
    :stratum (sort-by (comp #(mapv (comp :text :value) %) :component) strata)})
 
 
@@ -396,7 +414,7 @@
 
       :else
       {:result
-       (cond-> {}
+       (cond-> {:fhir/type :fhir.MeasureReport/group}
          code
          (assoc :code code)
 
@@ -430,13 +448,40 @@
 
 
 (defn- canonical [router {:keys [id url version]}]
-  (if url
+  (if-let [url (type/value url)]
     (cond-> url version (str "|" version))
     (fhir-util/instance-url router "Measure" id)))
 
 
-(defn- subject-type [{{:keys [coding]} :subjectCodeableConcept}]
-  (or (-> coding first :code) "Patient"))
+(defn- get-code [codings system]
+  (some
+    #(when (= system (-> % :system type/value))
+       (-> % :code type/value))
+    codings))
+
+
+(defn- subject-type [{{codings :coding} :subject}]
+  (or (get-code codings "http://hl7.org/fhir/resource-types") "Patient"))
+
+
+(defn- measure-report [report-type measure-ref now start end result]
+  (cond->
+    {:fhir/type :fhir/MeasureReport
+     :status #fhir/code"complete"
+     :type
+     (if (= "subject-list" report-type)
+       #fhir/code"subject-list"
+       #fhir/code"summary")
+     :measure (type/->Canonical measure-ref)
+     :date now
+     :period
+     ;; TODO: find a way to transform directly without using strings
+     {:fhir/type :fhir/Period
+      :start (type/->DateTime (str start))
+      :end (type/->DateTime (str end))}}
+
+    (seq (:result result))
+    (assoc :group (:result result))))
 
 
 (defn evaluate-measure
@@ -453,16 +498,6 @@
                    :report-type report-type}]
       (when-ok [result (evaluate-groups context id groups)]
         {:resource
-         (cond->
-           {:resourceType "MeasureReport"
-            :status "complete"
-            :type (if (= "subject-list" report-type) "subject-list" "summary")
-            :measure (canonical router measure)
-            :date (.format DateTimeFormatter/ISO_DATE_TIME now)
-            :period
-            {:start (str start)
-             :end (str end)}}
-
-           (seq (:result result))
-           (assoc :group (:result result)))
+         (measure-report report-type (canonical router measure) now
+                         start end result)
          :tx-ops (:tx-ops result)}))))

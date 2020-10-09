@@ -39,7 +39,7 @@
           (= "minimal" return-preference)
           (ac/completed-future nil)
           (= "OperationOutcome" return-preference)
-          (ac/completed-future {:resourceType "OperationOutcome"})
+          (ac/completed-future {:fhir/type :fhir/OperationOutcome})
           :else
           (d/pull db handle))
         (ac/then-apply

@@ -5,43 +5,47 @@
   (:require
     [blaze.async-comp :as ac]
     [blaze.db.api :as d]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [integrant.core :as ig]
     [reitit.core :as reitit]
-    [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
 
 
 (defn- link [match query-params t relation resource-handle]
-  {:relation relation
-   :url (history-util/nav-url match query-params t (d/last-updated-t resource-handle)
-                              (:id resource-handle))})
+  {:fhir/type :fhir.Bundle/link
+   :relation relation
+   :url (type/->Uri (history-util/nav-url match query-params t
+                                          (d/last-updated-t resource-handle)
+                                          (:id resource-handle)))})
 
 
 (defn- build-response
   [router match db query-params t total version-handles]
   (let [page-size (fhir-util/page-size query-params)
         paged-version-handles (into [] (take (inc page-size)) version-handles)]
-                     ;; we need take here again because we take page-size + 1 above
+    ;; we need take here again because we take page-size + 1 above
     (-> (d/pull-many db (take page-size paged-version-handles))
         (ac/then-apply
           (fn [paged-versions]
             (ring/response
               (cond->
-                {:resourceType "Bundle"
-                 :type "history"
-                 :total total
+                {:fhir/type :fhir/Bundle
+                 :type #fhir/code"history"
+                 :total (type/->UnsignedInt total)
                  :entry (mapv #(history-util/build-entry router %) paged-versions)}
 
                 (seq paged-version-handles)
-                (update :link (fnil conj []) (link match query-params t "self" (first paged-version-handles)))
+                (update :link (fnil conj []) (link match query-params t "self"
+                                                   (first paged-version-handles)))
 
                 (< page-size (count paged-version-handles))
-                (update :link (fnil conj []) (link match query-params t "next" (peek paged-version-handles))))))))))
+                (update :link (fnil conj []) (link match query-params t "next"
+                                                   (peek paged-version-handles))))))))))
 
 
 (defn- handle [router match query-params db type]
@@ -63,7 +67,6 @@
 
 (defn handler [node]
   (-> (handler-intern node)
-      (wrap-params)
       (wrap-observe-request-duration "history-type")))
 
 

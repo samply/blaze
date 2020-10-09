@@ -37,7 +37,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@v1
       with:
-        version: '2020.07.29'
+        version: '2020.09.09'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2
@@ -59,7 +59,6 @@ jobs:
         - coll
         - cql
         - db
-        - db-hash
         - db-resource-store
         - db-resource-store-cassandra
         - db-tx-log
@@ -91,7 +90,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@v1
       with:
-        version: '2020.07.29'
+        version: '2020.09.09'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2
@@ -109,16 +108,16 @@ jobs:
     - name: Test
       run: make -C modules/${{ matrix.module }} test
 
-    - name: Test Coverage
-      run: make -C modules/${{ matrix.module }} test-coverage
-
-    - name: Codecov Upload
-      uses: codecov/codecov-action@v1
-      with:
-        name: ${{ matrix.module }}
-        file: modules/${{ matrix.module }}/target/coverage/codecov.json
-        flags: ${{ matrix.module }}
-        fail_ci_if_error: true
+    #- name: Test Coverage
+    #  run: make -C modules/${{ matrix.module }} test-coverage
+    #
+    #- name: Codecov Upload
+    #  uses: codecov/codecov-action@v1
+    #  with:
+    #    name: ${{ matrix.module }}
+    #    file: modules/${{ matrix.module }}/target/coverage/codecov.json
+    #    flags: ${{ matrix.module }}
+    #    fail_ci_if_error: true
 
   build:
     needs: [ lint-only, test ]

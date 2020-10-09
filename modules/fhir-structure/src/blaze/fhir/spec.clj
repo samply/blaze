@@ -1,6 +1,8 @@
 (ns blaze.fhir.spec
   (:require
+    [blaze.fhir.hash.spec]
     [blaze.fhir.spec.impl]
+    [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -11,31 +13,29 @@
 
 ;; ---- Specs -----------------------------------------------------------------
 
-(s/def :blaze.resource/resourceType
+(s/def :fhir.type/name
   (s/and string? #(re-matches #"[A-Z]([A-Za-z0-9_]){0,254}" %)))
 
 
+(s/def :fhir/type
+  (s/and
+    keyword?
+    #(some-> (namespace %) (str/starts-with? "fhir"))
+    #(s/valid? :fhir.type/name (name %))))
+
+
 (s/def :blaze.resource/id
-  #(s2/valid? :fhir/id %))
+  (s/and string? #(re-matches #"[A-Za-z0-9\-\.]{1,64}" %)))
 
 
 (s/def :blaze.fhir/local-ref
   (s/and string?
          (s/conformer #(str/split % #"/" 2))
-         (s/tuple :blaze.resource/resourceType :blaze.resource/id)))
-
-
-(s/def :blaze.resource.meta/versionId
-  string?)
-
-
-(s/def :blaze.resource/meta
-  (s/keys :opt-un [:blaze.resource.meta/versionId]))
+         (s/tuple :fhir.type/name :blaze.resource/id)))
 
 
 (s/def :blaze/resource
-  (s/keys :req-un [:blaze.resource/resourceType :blaze.resource/id]
-          :opt-un [:blaze.resource/meta]))
+  #(s2/valid? :fhir/Resource %))
 
 
 
@@ -45,15 +45,89 @@
   (some? (s2/get-spec (keyword "fhir" type))))
 
 
-(defn valid?
+(defn valid-json?
   "Determines whether the resource is valid."
   {:arglists '([resource])}
   [{type :resourceType :as resource}]
   (if type
-    (if-let [spec (s2/get-spec (keyword "fhir" type))]
+    (if-let [spec (s2/get-spec (keyword "fhir.json" type))]
       (s2/valid? spec resource)
       false)
     false))
+
+
+(defn conform-json
+  "Returns the internal representation of `resource` parsed from JSON."
+  {:arglists '([resource])}
+  [{type :resourceType :as resource}]
+  (or
+    (when type
+      (when-let [spec (s2/get-spec (keyword "fhir.json" type))]
+        (let [resource (s2/conform spec resource)]
+          (when-not (s2/invalid? resource)
+            resource))))
+    ::s/invalid))
+
+
+(defn conform-cbor
+  "Returns the internal representation of `resource` parsed from CBOR."
+  {:arglists '([resource])}
+  [{type :resourceType :as resource}]
+  (or
+    (when type
+      (when-let [spec (s2/get-spec (keyword "fhir.cbor" type))]
+        (let [resource (s2/conform spec resource)]
+          (when-not (s2/invalid? resource)
+            resource))))
+    ::s/invalid))
+
+
+(defn conform-xml
+  "Returns the internal representation of `resource` parsed from XML."
+  {:arglists '([resource])}
+  [{:keys [tag] :as resource}]
+  (or
+    (when type
+      (when-let [spec (s2/get-spec (keyword "fhir.xml" (name tag)))]
+        (let [resource (s2/conform spec resource)]
+          (when-not (s2/invalid? resource)
+            resource))))
+    ::s/invalid))
+
+
+(defn unform-json
+  "Returns the JSON representation of `resource`."
+  [resource]
+  (let [key (keyword "fhir.json" (name (type/-type resource)))]
+    (if-let [spec (s2/get-spec key)]
+      (s2/unform spec resource)
+      (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
+
+
+(defn unform-cbor
+  "Returns the CBOR representation of `resource`."
+  [resource]
+  (let [key (keyword "fhir.cbor" (name (type/-type resource)))]
+    (if-let [spec (s2/get-spec key)]
+      (s2/unform spec resource)
+      (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
+
+
+(defn unform-xml
+  "Returns the XML representation of `resource`."
+  [resource]
+  (let [key (keyword "fhir.xml" (name (type/-type resource)))]
+    (if-let [spec (s2/get-spec key)]
+      (s2/unform spec resource)
+      (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
+
+
+(defn fhir-type [x]
+  (type/-type x))
+
+
+(defn to-date-time [x]
+  (type/-to-date-time x))
 
 
 (defn- fhir-path-data
@@ -95,13 +169,11 @@
 
 
 (defn- fhir-data-type
-  "Returns the following namespace parts and name of `key` if the namespace of
-  `key` is more than fhir. Otherwise returns just the name of `key`."
+  "Returns a dot-separated string of all namespace and name parts of `key`,
+  excluding the two leading parts."
   [key]
-  (if (str/starts-with? (namespace key) "fhir")
-    (->> (rest (conj (str/split (namespace key) #"\.") (name key)))
-         (str/join "." ))
-    (name key)))
+  (->> (drop 2 (conj (str/split (namespace key) #"\.") (name key)))
+       (str/join ".")))
 
 
 (defn- diagnostics-from-problem
@@ -116,7 +188,7 @@
   [pred val via]
   (if-let [regex (get-regex pred)]
     (format "Error on value `%s`. Expected type is `%s`, regex `%s`."
-            val (name (last via)) regex)
+            (if (:tag val) (-> val :attrs :value) val) (name (last via)) regex)
     (if (= `coll? pred)
       (format "Error on value `%s`. Expected type is `JSON array`."
               val)
@@ -129,15 +201,17 @@
   "Returns an issue of type map for the given arguments."
   {:arglists '([resource problem])}
   [resource {:keys [val via in pred]}]
-  {:fhir.issues/severity "error"
-   :fhir.issues/code "invariant"
-   :fhir.issues/diagnostics (diagnostics-from-problem pred val via)
-   :fhir.issues/expression (fhir-path in resource)})
+  (cond->
+    {:fhir.issues/severity "error"
+     :fhir.issues/code "invariant"
+     :fhir.issues/diagnostics (diagnostics-from-problem pred val via)}
+    (:resourceType resource)
+    (assoc :fhir.issues/expression (fhir-path in resource))))
 
 
-(defn explain-data
+(defn explain-data-json
   "Given a resource, which includes :resourceType key, returns nil
-  if the resource is conform to the spec :fhir/resourceType,
+  if the resource is conform to the spec :fhir.json/<resourceType>,
   else a map with at least the keys :fhir/issues who's value is a collection of
   issue-maps to build a OperationsOutcome and ::problems whose value is a
   collection of problem-maps, where problem-map has at least :path :pred and
@@ -145,59 +219,48 @@
   {:arglists '([resource])}
   ([{type :resourceType :as resource}]
    (if type
-     (when-let
-       [spec-error (when-let
-                     [spec (s2/get-spec (keyword "fhir" type))]
-                     (s2/explain-data spec resource))]
-       (assoc
-         spec-error
-         :fhir/issues
-         (mapv #(generate-issue resource %)
-               (::s/problems spec-error))))
+     (if-let [spec (s2/get-spec (keyword "fhir.json" type))]
+       (when-let [error (s2/explain-data spec resource)]
+         (assoc
+           error
+           :fhir/issues
+           (mapv #(generate-issue resource %) (::s/problems error))))
+       {:fhir/issues
+        [{:fhir.issues/severity "error"
+          :fhir.issues/code "value"
+          :fhir.issues/diagnostics (format "Unknown resource type `%s`." type)}]})
      {:fhir/issues
       [{:fhir.issues/severity "error"
         :fhir.issues/code "value"
         :fhir.issues/diagnostics
-        "Given resource does not contain `resourceType` key!"}]})))
+        "Given resource does not contain a :resourceType key."}]})))
 
 
-(defn child-specs
-  "Returns a map of child specs of this spec where the keys are the keys found
-  in a FHIR resource or complex data type and the values are either spec keys of
-  FHIR types, `coll-of` forms of those or predicate symbols.
-
-  Example:
-
-   {:id clojure.core/string?
-    :extension (clojure.alpha.spec/coll-of :fhir/Extension)}"
-  [spec]
-  (let [[_ [m]] (s2/form spec)] m))
-
-
-(defn cardinality
-  "Returns either :many or :one."
-  [spec]
-  (if (and (sequential? spec) (= `s2/coll-of (first spec)))
-    :many
-    :one))
-
-
-(defn choice?
-  [spec]
-  (and (sequential? spec) (= `s2/or (first spec))))
-
-
-(defn choices
-  "Takes an or-spec form and returns its content."
-  [spec]
-  ;; fancy stuff to get an clojure.lang.PersistentList
-  (into (list) (map vec) (reverse (partition 2 (rest spec)))))
-
-
-(defn type-spec [spec]
-  (if (and (sequential? spec) (= `s2/coll-of (first spec)))
-    (second spec)
-    spec))
+(defn explain-data-xml
+  "Given a resource as XML element, returns nil
+  if the resource is conform to the spec :fhir.xml/<tag>,
+  else a map with at least the keys :fhir/issues who's value is a collection of
+  issue-maps to build a OperationsOutcome and ::problems whose value is a
+  collection of problem-maps, where problem-map has at least :path :pred and
+  :val keys describing the predicate and the value that failed at that path."
+  {:arglists '([resource])}
+  ([{:keys [tag] :as resource}]
+   (if tag
+     (if-let [spec (s2/get-spec (keyword "fhir.xml" (name tag)))]
+       (when-let [error (s2/explain-data spec resource)]
+         (assoc
+           error
+           :fhir/issues
+           (mapv #(generate-issue resource %) (::s/problems error))))
+       {:fhir/issues
+        [{:fhir.issues/severity "error"
+          :fhir.issues/code "value"
+          :fhir.issues/diagnostics (format "Unknown resource type `%s`." (name tag))}]})
+     {:fhir/issues
+      [{:fhir.issues/severity "error"
+        :fhir.issues/code "value"
+        :fhir.issues/diagnostics
+        "Given resource does not contain a :tag key."}]})))
 
 
 (defn primitive?
@@ -208,45 +271,9 @@
        (Character/isLowerCase ^char (first (name spec)))))
 
 
-(defn system?
-  "System FHIR Type like `http://hl7.org/fhirpath/System.String`."
-  [spec]
-  (or (symbol? spec)
-      (and (sequential? spec) (= `s2/and (first spec)))))
-
-
-(defn form [spec]
-  (s2/form spec))
-
-
-(comment
-  (into (sorted-map) (child-specs :fhir/Specimen))
-  (choices (get (child-specs :fhir/Observation) :value))
-  (get (child-specs :fhir/Quantity) :value)
-  (child-specs :fhir/Patient)
-
-  (cardinality `string?)
-  (cardinality :fhir/Annotation)
-  (cardinality :fhir/code)
-  (cardinality `(s2/coll-of :fhir/Extension))
-
-  (type-spec :fhir/Annotation)
-  (type-spec `(s2/coll-of :fhir/Extension))
-
-  (primitive? :fhir/id)
-  (primitive? :fhir.Patient/id)
-  (primitive? :fhir/code)
-  (primitive? :fhir/Annotation)
-  (primitive? `string?)
-
-  (type-exists? "Annotation")
-  (type-exists? "Annotatio")
-
-  (s2/form :fhir/id)
-  (s2/form :fhir/string)
-  (s2/form :fhir/Observation)
-  (s2/form :fhir/Patient)
-  (primitive? (:id (child-specs :fhir/Patient)))
-  (s2/valid? :fhir/Observation {:focus ""})
-  (s2/schema)
-  )
+(defn primitive-val?
+  ""
+  [x]
+  (when-let [fhir-type (fhir-type x)]
+    (and (= "fhir" (namespace fhir-type))
+         (Character/isLowerCase ^char (first (name fhir-type))))))

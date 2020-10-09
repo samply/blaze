@@ -1,10 +1,11 @@
 (ns blaze.db.resource-store.cassandra-test
   (:require
     [blaze.async-comp :as ac]
-    [blaze.db.hash :as hash]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.cassandra :as cass]
     [blaze.db.resource-store.cassandra-spec]
+    [blaze.fhir.hash :as hash]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.log]
     [cheshire.core :as cheshire]
     [clojure.spec.test.alpha :as st]
@@ -122,9 +123,9 @@
           (is (= "msg-141754" (ex-message (ex-cause e))))))))
 
   (testing "success"
-    (let [content {:resourceType "Patient" :id "0"}
+    (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
-          row (row-with 0 (cheshire/generate-cbor content))
+          row (row-with 0 (cheshire/generate-cbor (fhir-spec/unform-cbor content)))
           session
           (reify CqlSession
             (^CompletionStage executeAsync [_ ^Statement statement]
@@ -154,9 +155,9 @@
       (is (empty? @(rs/multi-get store [hash])))))
 
   (testing "success"
-    (let [content {:resourceType "Patient" :id "0"}
+    (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
-          row (row-with 0 (cheshire/generate-cbor content))
+          row (row-with 0 (cheshire/generate-cbor (fhir-spec/unform-cbor content)))
           session
           (reify CqlSession
             (^CompletionStage executeAsync [_ ^Statement statement]
@@ -187,9 +188,9 @@
 
 (deftest put
   (testing "execute error"
-    (let [resource {:resourceType "Patient" :id "0"}
+    (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
-          encoded-resource (ByteBuffer/wrap (cheshire/generate-cbor resource))
+          encoded-resource (ByteBuffer/wrap (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))
           session
           (reify CqlSession
             (^CompletionStage executeAsync [_ ^Statement _]
@@ -206,9 +207,9 @@
           (is (= "error-150216" (ex-message (ex-cause e))))))))
 
   (testing "success"
-    (let [resource {:resourceType "Patient" :id "0"}
+    (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
-          encoded-resource (ByteBuffer/wrap (cheshire/generate-cbor resource))
+          encoded-resource (ByteBuffer/wrap (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))
           session
           (reify CqlSession
             (^CompletionStage executeAsync [_ ^Statement _]

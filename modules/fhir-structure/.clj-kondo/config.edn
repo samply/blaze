@@ -2,6 +2,12 @@
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in
-  {:level :error}}
+  {:level :error}
+  :unresolved-namespace
+  {:level :off}
+  :redefined-var
+  {:level :off}
+  :unused-binding
+  {:level :off}}
 
  :skip-comments true}

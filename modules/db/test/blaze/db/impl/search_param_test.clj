@@ -1,16 +1,17 @@
 (ns blaze.db.impl.search-param-test
   (:require
-    [blaze.db.hash :as hash]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
+    [blaze.fhir.hash :as hash]
+    [blaze.fhir.spec.type :as type]
     [clj-fuzzy.phonetics :as phonetics]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [java.time ZoneId]))
+    [java.time OffsetDateTime ZoneId ZoneOffset LocalDate]))
 
 
 (defn fixture [f]
@@ -27,7 +28,7 @@
 
 (deftest index-entries
   (testing "Observation _id"
-    (let [observation {:resourceType "Observation"
+    (let [observation {:fhir/type :fhir/Observation
                        :id "id-161849"}
           hash (hash/generate observation)
           [[_ k0] [_ k1]]
@@ -56,12 +57,14 @@
                 (codec/v-hash "id-161849")))))))
 
   (testing "Observation code"
-    (let [observation {:resourceType "Observation"
+    (let [observation {:fhir/type :fhir/Observation
                        :id "id-183201"
                        :code
-                       {:coding
-                        [{:system "system-171339"
-                          :code "code-171327"}]}}
+                       {:fhir/type :fhir/CodeableConcept
+                        :coding
+                        [{:fhir/type :fhir/Coding
+                          :system #fhir/uri"system-171339"
+                          :code #fhir/code"code-171327"}]}}
           hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
@@ -131,9 +134,9 @@
 
   (testing "Patient phonetic"
     (testing "missing family is not a problem"
-      (let [patient {:resourceType "Patient"
+      (let [patient {:fhir/type :fhir/Patient
                      :id "id-164114"
-                     :name [{}]}
+                     :name [{:fhir/type :fhir/HumanName}]}
             hash (hash/generate patient)]
 
         (is (empty? (search-param/index-entries
@@ -142,10 +145,11 @@
 
 
   (testing "Patient address"
-    (let [patient {:resourceType "Patient"
+    (let [patient {:fhir/type :fhir/Patient
                    :id "id-122929"
                    :address
-                   [{:line ["line-120252"]
+                   [{:fhir/type :fhir/Address
+                     :line ["line-120252"]
                      :city "city-105431"}]}
           hash (hash/generate patient)
           [[_ k0] [_ k1] [_ k2] [_ k3]]
@@ -196,10 +200,11 @@
                   (codec/string "city 105431"))))))))
 
   (testing "Patient identifier"
-    (let [patient {:resourceType "Patient"
+    (let [patient {:fhir/type :fhir/Patient
                    :id "id-122929"
                    :identifier
-                   [{:system "system-123000"
+                   [{:fhir/type :fhir/Identifier
+                     :system #fhir/uri"system-123000"
                      :value "value-123005"}]}
           hash (hash/generate patient)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
@@ -268,11 +273,12 @@
                 (codec/v-hash "system-123000|value-123005")))))))
 
   (testing "Patient _profile"
-    (let [patient {:resourceType "Patient"
+    (let [patient {:fhir/type :fhir/Patient
                    :id "id-140855"
                    :meta
-                   {:profile
-                    ["profile-uri-141443"]}}
+                   {:fhir/type :fhir/Meta
+                    :profile
+                    [#fhir/canonical"profile-uri-141443"]}}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -300,10 +306,11 @@
                 (codec/v-hash "profile-uri-141443")))))))
 
   (testing "Patient phonetic"
-    (let [patient {:resourceType "Patient"
+    (let [patient {:fhir/type :fhir/Patient
                    :id "id-122929"
                    :name
-                   [{:family "family-102508"}]}
+                   [{:fhir/type :fhir/HumanName
+                     :family "family-102508"}]}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -331,9 +338,9 @@
                 (codec/string (phonetics/soundex "family-102508"))))))))
 
   (testing "Patient birthDate"
-    (let [patient {:resourceType "Patient"
+    (let [patient {:fhir/type :fhir/Patient
                    :id "id-142629"
-                   :birthDate "2020-02-04"}
+                   :birthDate #fhir/date"2020-02-04"}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -346,7 +353,7 @@
               (codec/search-param-value-key
                 (codec/c-hash "birthdate")
                 (codec/tid "Patient")
-                (codec/date-lb (ZoneId/systemDefault) "2020-02-04")
+                (codec/date-lb (ZoneId/systemDefault) (LocalDate/of 2020 2 4))
                 (codec/id-bytes "id-142629")
                 hash))))
 
@@ -356,12 +363,12 @@
               (codec/search-param-value-key
                 (codec/c-hash "birthdate")
                 (codec/tid "Patient")
-                (codec/date-ub (ZoneId/systemDefault) "2020-02-04")
+                (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2020 2 4))
                 (codec/id-bytes "id-142629")
                 hash))))))
 
   (testing "Patient deceased"
-    (let [patient {:resourceType "Patient"
+    (let [patient {:fhir/type :fhir/Patient
                    :id "id-142629"}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
@@ -390,9 +397,11 @@
                 (codec/v-hash "false")))))))
 
   (testing "Specimen patient will not indexed because we don't support resolving in FHIRPath"
-    (let [specimen {:resourceType "Specimen"
+    (let [specimen {:fhir/type :fhir/Specimen
                     :id "id-150810"
-                    :subject {:reference "reference-150829"}}
+                    :subject
+                    {:fhir/type :fhir/Reference
+                     :reference "reference-150829"}}
           hash (hash/generate specimen)]
       (is
         (empty?
@@ -401,13 +410,16 @@
             hash specimen [])))))
 
   (testing "Specimen bodysite"
-    (let [specimen {:resourceType "Specimen"
+    (let [specimen {:fhir/type :fhir/Specimen
                     :id "id-105153"
                     :collection
-                    {:bodySite
-                     {:coding
-                      [{:system "system-103824"
-                        :code "code-103812"}]}}}
+                    {:fhir/type :fhir.Specimen/collection
+                     :bodySite
+                     {:fhir/type :fhir/CodeableConcept
+                      :coding
+                      [{:fhir/type :fhir/Coding
+                        :system #fhir/uri"system-103824"
+                        :code #fhir/code"code-103812"}]}}}
           hash (hash/generate specimen)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
@@ -475,9 +487,9 @@
                 (codec/v-hash "system-103824|code-103812")))))))
 
   (testing "DiagnosticReport issued"
-    (let [patient {:resourceType "DiagnosticReport"
+    (let [patient {:fhir/type :fhir/DiagnosticReport
                    :id "id-155607"
-                   :issued "2019-11-17T00:14:29.917+01:00"}
+                   :issued (type/->Instant "2019-11-17T00:14:29.917+01:00")}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -490,7 +502,7 @@
               (codec/search-param-value-key
                 (codec/c-hash "issued")
                 (codec/tid "DiagnosticReport")
-                (codec/date-lb (ZoneId/systemDefault) "2019-11-17T00:14:29.917+01:00")
+                (codec/date-lb (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 14 29 917 (ZoneOffset/ofHours 1)))
                 (codec/id-bytes "id-155607")
                 hash))))
 
@@ -500,16 +512,17 @@
               (codec/search-param-value-key
                 (codec/c-hash "issued")
                 (codec/tid "DiagnosticReport")
-                (codec/date-ub (ZoneId/systemDefault) "2019-11-17T00:14:29.917+01:00")
+                (codec/date-ub (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 14 29 917 (ZoneOffset/ofHours 1)))
                 (codec/id-bytes "id-155607")
                 hash))))))
 
   (testing "Encounter date"
-    (let [patient {:resourceType "Encounter"
+    (let [patient {:fhir/type :fhir/Encounter
                    :id "id-160224"
                    :period
-                   {:start "2019-11-17T00:14:29+01:00"
-                    :end "2019-11-17T00:44:29+01:00"}}
+                   {:fhir/type :fhir/Period
+                    :start #fhir/dateTime"2019-11-17T00:14:29+01:00"
+                    :end #fhir/dateTime"2019-11-17T00:44:29+01:00"}}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -522,7 +535,7 @@
               (codec/search-param-value-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
-                (codec/date-lb (ZoneId/systemDefault) "2019-11-17T00:14:29+01:00")
+                (codec/date-lb (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 14 29 0 (ZoneOffset/ofHours 1)))
                 (codec/id-bytes "id-160224")
                 hash))))
 
@@ -532,15 +545,16 @@
               (codec/search-param-value-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
-                (codec/date-ub (ZoneId/systemDefault) "2019-11-17T00:44:29+01:00")
+                (codec/date-ub (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 44 29 0 (ZoneOffset/ofHours 1)))
                 (codec/id-bytes "id-160224")
                 hash))))))
 
   (testing "Encounter date without start"
-    (let [patient {:resourceType "Encounter"
+    (let [patient {:fhir/type :fhir/Encounter
                    :id "id-160224"
                    :period
-                   {:end "2019-11-17"}}
+                   {:fhir/type :fhir/Period
+                    :end #fhir/dateTime"2019-11-17"}}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -563,15 +577,16 @@
               (codec/search-param-value-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
-                (codec/date-ub (ZoneId/systemDefault) "2019-11-17")
+                (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2019 11 17))
                 (codec/id-bytes "id-160224")
                 hash))))))
 
   (testing "Encounter date without end"
-    (let [patient {:resourceType "Encounter"
+    (let [patient {:fhir/type :fhir/Encounter
                    :id "id-160224"
                    :period
-                   {:start "2019-11-17T00:14:29+01:00"}}
+                   {:fhir/type :fhir/Period
+                    :start #fhir/dateTime"2019-11-17T00:14:29+01:00"}}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -584,7 +599,7 @@
               (codec/search-param-value-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
-                (codec/date-lb (ZoneId/systemDefault) "2019-11-17T00:14:29+01:00")
+                (codec/date-lb (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 14 29 0 (ZoneOffset/ofHours 1)))
                 (codec/id-bytes "id-160224")
                 hash))))
 
@@ -599,11 +614,12 @@
                 hash))))))
 
   (testing "Encounter class"
-    (let [specimen {:resourceType "Encounter"
+    (let [specimen {:fhir/type :fhir/Encounter
                     :id "id-105153"
                     :class
-                    {:system "http://terminology.hl7.org/CodeSystem/v3-ActCode"
-                     :code "AMB"}}
+                    {:fhir/type :fhir/Coding
+                     :system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                     :code #fhir/code"AMB"}}
           hash (hash/generate specimen)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
@@ -671,10 +687,11 @@
                 (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")))))))
 
   (testing "ImagingStudy series"
-    (let [specimen {:resourceType "ImagingStudy"
+    (let [specimen {:fhir/type :fhir/ImagingStudy
                     :id "id-105153"
                     :series
-                    [{:uid "1.2.840.99999999.1.59354388.1582528879516"}]}
+                    [{:fhir/type :fhir.ImagingStudy/series
+                      :uid #fhir/id"1.2.840.99999999.1.59354388.1582528879516"}]}
           hash (hash/generate specimen)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -702,9 +719,9 @@
                 (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")))))))
 
   (testing "ActivityDefinition url"
-    (let [resource {:resourceType "ActivityDefinition"
+    (let [resource {:fhir/type :fhir/ActivityDefinition
                     :id "id-111846"
-                    :url "url-111854"}
+                    :url #fhir/uri"url-111854"}
           hash (hash/generate resource)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -732,9 +749,9 @@
                 (codec/v-hash "url-111854")))))))
 
   (testing "ActivityDefinition description"
-    (let [resource {:resourceType "ActivityDefinition"
+    (let [resource {:fhir/type :fhir/ActivityDefinition
                     :id "id-121344"
-                    :description "desc-121328"}
+                    :description #fhir/markdown"desc-121328"}
           hash (hash/generate resource)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -762,7 +779,7 @@
                 (codec/string "desc 121328")))))))
 
   (testing "CodeSystem version"
-    (let [resource {:resourceType "CodeSystem"
+    (let [resource {:fhir/type :fhir/CodeSystem
                     :id "id-111846"
                     :version "version-122621"}
           hash (hash/generate resource)
@@ -793,10 +810,13 @@
 
   (testing "List item"
     (testing "with literal reference"
-      (let [resource {:resourceType "List"
+      (let [resource {:fhir/type :fhir/List
                       :id "id-121825"
                       :entry
-                      [{:item {:reference "Patient/0"}}]}
+                      [{:fhir/type :fhir.List/entry
+                        :item
+                        {:fhir/type :fhir/Reference
+                         :reference "Patient/0"}}]}
             hash (hash/generate resource)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
@@ -864,12 +884,15 @@
                   (codec/tid-id "Patient" "0")))))))
 
     (testing "with identifier reference"
-      (let [resource {:resourceType "List"
+      (let [resource {:fhir/type :fhir/List
                       :id "id-123058"
                       :entry
-                      [{:item
-                        {:identifier
-                         {:system "system-122917"
+                      [{:fhir/type :fhir.List/entry
+                        :item
+                        {:fhir/type :fhir/Reference
+                         :identifier
+                         {:fhir/type :fhir/Identifier
+                          :system #fhir/uri"system-122917"
                           :value "value-122931"}}}]}
             hash (hash/generate resource)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]

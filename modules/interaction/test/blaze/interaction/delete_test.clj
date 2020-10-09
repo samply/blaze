@@ -43,14 +43,14 @@
       (is (= 404 status))
 
       (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "not-found")))
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"not-found")))
 
 
   (testing "Returns No Content on successful deletion"
     (let [{:keys [status headers body]}
-          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
@@ -69,7 +69,7 @@
   (testing "Returns No Content on already deleted resource"
     (let [{:keys [status headers body]}
           ((handler-with
-              [[[:put {:resourceType "Patient" :id "0"}]]
+              [[[:put {:fhir/type :fhir/Patient :id "0"}]]
                [[:delete "Patient" "0"]]])
             {:path-params {:id "0"}
              ::reitit/match {:data {:fhir.resource/type "Patient"}}})]

@@ -1,13 +1,13 @@
 (ns blaze.db.tx-log.local-test
   (:require
     [blaze.async-comp :as ac]
-    [blaze.db.hash :as hash]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local :as local :refer [new-local-tx-log]]
     [blaze.db.tx-log.local-spec]
     [blaze.executors :as ex]
+    [blaze.fhir.hash :as hash]
     [cheshire.core :as cheshire]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -29,8 +29,8 @@
 
 (def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 (def executor (ex/single-thread-executor "local-tx-log"))
-(def patient-hash-0 (hash/generate {:resourceType "Patient" :id "0"}))
-(def observation-hash-0 (hash/generate {:resourceType "Observation" :id "0"}))
+(def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
+(def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
 
 
 (defn invalid-cbor-content

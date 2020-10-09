@@ -38,7 +38,6 @@
 
 
 (defn poll
-  "Returns a coll of transaction commands or an anomaly in case the queue was
-  closed in cause of an error."
+  "Returns a coll of transaction commands."
   [queue timeout]
   (-poll queue timeout))

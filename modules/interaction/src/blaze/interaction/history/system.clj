@@ -5,13 +5,14 @@
   (:require
     [blaze.async-comp :as ac]
     [blaze.db.api :as d]
+    [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [integrant.core :as ig]
     [reitit.core :as reitit]
-    [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
 
@@ -22,27 +23,29 @@
         paged-version-handles (into [] (take (inc page-size)) version-handles)
         self-link
         (fn [resource-handle]
-          {:relation "self"
-           :url (history-util/nav-url match query-params t
-                                      (d/last-updated-t resource-handle)
-                                      (-> resource-handle type name)
-                                      (:id resource-handle))})
+          {:fhir/type :fhir.Bundle/link
+           :relation "self"
+           :url (type/->Uri (history-util/nav-url match query-params t
+                                                  (d/last-updated-t resource-handle)
+                                                  (-> resource-handle fhir-spec/fhir-type name)
+                                                  (:id resource-handle)))})
         next-link
         (fn [resource-handle]
-          {:relation "next"
-           :url (history-util/nav-url match query-params t
-                                      (d/last-updated-t resource-handle)
-                                      (-> resource-handle type name)
-                                      (:id resource-handle))})]
+          {:fhir/type :fhir.Bundle/link
+           :relation "next"
+           :url (type/->Uri (history-util/nav-url match query-params t
+                                                  (d/last-updated-t resource-handle)
+                                                  (-> resource-handle fhir-spec/fhir-type name)
+                                                  (:id resource-handle)))})]
     ;; we need take here again because we take page-size + 1 above
     (-> (d/pull-many db (take page-size paged-version-handles))
         (ac/then-apply
           (fn [pages-versions]
             (ring/response
               (cond->
-                {:resourceType "Bundle"
-                 :type "history"
-                 :total total
+                {:fhir/type :fhir/Bundle
+                 :type #fhir/code"history"
+                 :total (type/->UnsignedInt total)
                  :entry (mapv #(history-util/build-entry router %) pages-versions)}
 
                 (first paged-version-handles)
@@ -71,7 +74,6 @@
 
 (defn handler [node]
   (-> (handler-intern node)
-      (wrap-params)
       (wrap-observe-request-duration "history-system")))
 
 

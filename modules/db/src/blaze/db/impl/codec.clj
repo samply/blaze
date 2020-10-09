@@ -1,10 +1,11 @@
 (ns blaze.db.impl.codec
   (:require
-    [blaze.anomaly :refer [throw-anom]]
-    [blaze.db.hash :as hash]
+    [blaze.fhir.hash :as hash]
     [cheshire.core :as cheshire]
     [cognitect.anomalies :as anom])
   (:import
+    [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth
+                                 DateTimeYearMonthDay]
     [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
     [com.google.common.hash HashCode Hashing]
     [com.google.common.io BaseEncoding]
@@ -619,98 +620,44 @@
   (.toEpochSecond (.atZone date-time zone-id)))
 
 
-(defn- year-lb [zone-id ^Year year]
-  (number (epoch-seconds (.atStartOfDay (.atDay year 1)) zone-id)))
-
-
 (def ^:const ^:private ^long ub-offset 0xf0000000000)
 
 
-(defn- year-ub [zone-id ^Year year]
-  (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears year 1) 1)) zone-id)))))
+(defprotocol DateLowerBound
+  (-date-lb [date-time zone-id]))
 
 
-(defn- year-month-lb [zone-id ^YearMonth year-month]
-  (number (epoch-seconds (.atStartOfDay (.atDay year-month 1)) zone-id)))
-
-
-(defn- year-month-ub [zone-id ^YearMonth year-month]
-  (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1)) zone-id)))))
-
-
-(defn- date-lb' [zone-id ^LocalDate date]
-  (number (epoch-seconds (.atStartOfDay date) zone-id)))
-
-
-(defn- date-ub' [zone-id ^LocalDate date]
-  (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.plusDays date 1)) zone-id)))))
-
-
-(defn- date-time-lb [zone-id ^LocalDateTime date-time]
-  (number (epoch-seconds date-time zone-id)))
-
-
-(defn- date-time-ub [zone-id ^LocalDateTime date-time]
-  (number (+ ub-offset (epoch-seconds date-time zone-id))))
-
-
-(defn- offset-date-time-lb [^OffsetDateTime date-time]
-  (number (.toEpochSecond date-time)))
-
-
-(defn- offset-date-time-ub [^OffsetDateTime date-time]
-  (number (+ ub-offset (.toEpochSecond date-time))))
-
-
-(defn- parse-year [s]
-  (try
-    (Year/parse s)
-    (catch Exception _
-      (throw-anom ::anom/incorrect (format "Incorrect year `%s`." s)))))
-
-
-(defn- parse-year-month [s]
-  (try
-    (YearMonth/parse s)
-    (catch Exception _
-      (throw-anom ::anom/incorrect (format "Incorrect year-month `%s`." s)))))
-
-
-(defn- parse-date [s]
-  (try
-    (LocalDate/parse s)
-    (catch Exception _
-      (throw-anom ::anom/incorrect (format "Incorrect date `%s`." s)))))
-
-
-(defn- parse-date-time [s]
-  (try
-    (LocalDateTime/parse s)
-    (catch Exception _
-      (throw-anom ::anom/incorrect (format "Incorrect date-time `%s`." s)))))
-
-
-(defn- parse-offset-date-time [s]
-  (try
-    (OffsetDateTime/parse s)
-    (catch Exception _
-      (throw-anom ::anom/incorrect (format "Incorrect offset date-time `%s`." s)))))
+(extend-protocol DateLowerBound
+  Year
+  (-date-lb [year zone-id]
+    (number (epoch-seconds (.atStartOfDay (.atDay year 1)) zone-id)))
+  DateTimeYear
+  (-date-lb [year zone-id]
+    (number (epoch-seconds (.atStartOfDay (.atDay ^Year (.year year) 1)) zone-id)))
+  YearMonth
+  (-date-lb [year-month zone-id]
+    (number (epoch-seconds (.atStartOfDay (.atDay year-month 1)) zone-id)))
+  DateTimeYearMonth
+  (-date-lb [year-month zone-id]
+    (number (epoch-seconds (.atStartOfDay (.atDay ^YearMonth (.yearMonth year-month) 1)) zone-id)))
+  LocalDate
+  (-date-lb [date zone-id]
+    (number (epoch-seconds (.atStartOfDay date) zone-id)))
+  DateTimeYearMonthDay
+  (-date-lb [date zone-id]
+    (number (epoch-seconds (.atStartOfDay ^LocalDate (.date date)) zone-id)))
+  LocalDateTime
+  (-date-lb [date-time zone-id]
+    (number (epoch-seconds date-time zone-id)))
+  OffsetDateTime
+  (-date-lb [date-time _]
+    (number (.toEpochSecond date-time))))
 
 
 (defn date-lb
   "Returns the lower bound of the implicit range the `date-time` value spans."
-  ^bytes [zone-id ^String date-time]
-  (case (.length date-time)
-    4
-    (year-lb zone-id (parse-year date-time))
-    7
-    (year-month-lb zone-id (parse-year-month date-time))
-    10
-    (date-lb' zone-id (parse-date date-time))
-
-    (if (re-find #"(Z|[+-]\d{2}:)" date-time)
-      (offset-date-time-lb (parse-offset-date-time date-time))
-      (date-time-lb zone-id (parse-date-time date-time)))))
+  ^bytes [zone-id date-time]
+  (-date-lb date-time zone-id))
 
 
 (def ^:private ^:const ^long ub-first-byte 0xb0)
@@ -730,26 +677,47 @@
   (>= (bit-and (aget b offset) 0xff) ub-first-byte))
 
 
+(defprotocol DateUpperBound
+  (-date-ub [date-time zone-id]))
+
+
+(extend-protocol DateUpperBound
+  Year
+  (-date-ub [year zone-id]
+    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears year 1) 1)) zone-id)))))
+  DateTimeYear
+  (-date-ub [year zone-id]
+    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears ^Year (.year year) 1) 1)) zone-id)))))
+  YearMonth
+  (-date-ub [year-month zone-id]
+    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1)) zone-id)))))
+  DateTimeYearMonth
+  (-date-ub [year-month zone-id]
+    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.yearMonth year-month) 1) 1)) zone-id)))))
+  LocalDate
+  (-date-ub [date zone-id]
+    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.plusDays date 1)) zone-id)))))
+  DateTimeYearMonthDay
+  (-date-ub [date zone-id]
+    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.plusDays ^LocalDate (.date date) 1)) zone-id)))))
+  LocalDateTime
+  (-date-ub [date-time zone-id]
+    (number (+ ub-offset (epoch-seconds date-time zone-id))))
+  OffsetDateTime
+  (-date-ub [date-time _]
+    (number (+ ub-offset (.toEpochSecond date-time)))))
+
+
 (defn date-ub
   "Returns the upper bound of the implicit range the `date-time` value spans."
-  ^bytes [zone-id ^String date-time]
-  (case (.length date-time)
-    4
-    (year-ub zone-id (parse-year date-time))
-    7
-    (year-month-ub zone-id (parse-year-month date-time))
-    10
-    (date-ub' zone-id (parse-date date-time))
-
-    (if (re-find #"(Z|[+-]\d{2}:)" date-time)
-      (offset-date-time-ub (parse-offset-date-time date-time))
-      (date-time-ub zone-id (parse-date-time date-time)))))
+  ^bytes [zone-id date-time]
+  (-date-ub date-time zone-id))
 
 
-(def date-min-bound (date-lb (ZoneOffset/ofHours 0) "0001"))
+(def date-min-bound (date-lb (ZoneOffset/ofHours 0) (Year/of 1)))
 
 
-(def date-max-bound (date-ub (ZoneOffset/ofHours 0) "9999"))
+(def date-max-bound (date-ub (ZoneOffset/ofHours 0) (Year/of 9999)))
 
 
 (defn date-lb-ub [^bytes lb ^bytes ub]
@@ -781,7 +749,7 @@
 
 
 (defn deleted-resource [type id]
-  {:resourceType type :id id})
+  {:fhir/type (keyword "fhir" type) :id id})
 
 
 

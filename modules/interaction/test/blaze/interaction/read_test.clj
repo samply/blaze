@@ -12,7 +12,9 @@
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
@@ -45,9 +47,9 @@
       (is (= 404 status))
 
       (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "not-found"
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"not-found"
         [:issue 0 :diagnostics] := "Resource `/Patient/0` not found")))
 
 
@@ -60,16 +62,16 @@
       (is (= 404 status))
 
       (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "not-found"
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"not-found"
         [:issue 0 :diagnostics] := "Resource `/Patient/0` with versionId `a` was not found.")))
 
 
   (testing "Returns Gone on Deleted Resource"
     (let [{:keys [status body headers]}
           ((handler-with
-              [[[:put {:resourceType "Patient" :id "0"}]]
+              [[[:put {:fhir/type :fhir/Patient :id "0"}]]
                [[:delete "Patient" "0"]]])
             {:path-params {:id "0"}
              ::reitit/match match})]
@@ -80,14 +82,14 @@
         (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
       (given body
-        :resourceType := "OperationOutcome"
-        [:issue 0 :severity] := "error"
-        [:issue 0 :code] := "deleted")))
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"deleted")))
 
 
   (testing "Returns Existing Resource"
     (let [{:keys [status headers body]}
-          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
             {:path-params {:id "0"}
              ::reitit/match match})]
 
@@ -101,15 +103,15 @@
         (is (= "W/\"1\"" (get headers "ETag"))))
 
       (given body
-        :resourceType := "Patient"
+        :fhir/type := :fhir/Patient
         :id := "0"
-        [:meta :versionId] := "1"
-        [:meta :lastUpdated] := "1970-01-01T00:00:00Z")))
+        [:meta :versionId] := #fhir/id"1"
+        [:meta :lastUpdated] := Instant/EPOCH)))
 
 
   (testing "Returns Existing Resource on versioned read"
     (let [{:keys [status headers body]}
-          ((handler-with [[[:put {:resourceType "Patient" :id "0"}]]])
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
             {:path-params {:id "0" :vid "1"}
              ::reitit/match match})]
 
@@ -123,7 +125,7 @@
         (is (= "W/\"1\"" (get headers "ETag"))))
 
       (given body
-        :resourceType := "Patient"
+        :fhir/type := :fhir/Patient
         :id := "0"
-        [:meta :versionId] := "1"
-        [:meta :lastUpdated] := "1970-01-01T00:00:00Z"))))
+        [:meta :versionId] := #fhir/id"1"
+        [:meta :lastUpdated] := Instant/EPOCH))))

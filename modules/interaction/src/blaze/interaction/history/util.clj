@@ -1,6 +1,7 @@
 (ns blaze.interaction.history.util
   (:require
     [blaze.db.api-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.spec]
     [clojure.spec.alpha :as s]
@@ -39,7 +40,7 @@
   "Returns the `page-type` query param in case it is a valid FHIR resource type."
   {:arglists '([query-params])}
   [{v "__page-type"}]
-  (some #(when (s/valid? :blaze.resource/resourceType %) %)
+  (some #(when (s/valid? :fhir.type/name %) %)
         (fhir-util/to-seq v)))
 
 
@@ -67,9 +68,9 @@
 
 (defn- method [resource]
   ((-> resource meta :blaze.db/op)
-   {:create "POST"
-    :put "PUT"
-    :delete "DELETE"}))
+   {:create #fhir/code"POST"
+    :put #fhir/code"PUT"
+    :delete #fhir/code"DELETE"}))
 
 
 (defn- url [router type id resource]
@@ -87,19 +88,17 @@
       (if (= 1 (-> meta :blaze.db/num-changes)) "201" "200"))))
 
 
-(defn- last-modified [{:blaze.db.tx/keys [instant]}]
-  (str instant))
-
-
-(defn build-entry [router {type :resourceType id :id :as resource}]
+(defn build-entry [router {:fhir/keys [type] :keys [id] :as resource}]
   (cond->
-    {:fullUrl (fhir-util/instance-url router type id)
+    {:fullUrl (type/->Uri (fhir-util/instance-url router (name type) id))
      :request
-     {:method (method resource)
-      :url (url router type id resource)}
+     {:fhir/type :fhir.Bundle.entry/request
+      :method (method resource)
+      :url (type/->Uri (url router (name type) id resource))}
      :response
-     {:status (status resource)
-      :etag (str "W/\"" (-> resource :meta :versionId) "\"")
-      :lastModified (last-modified (-> resource meta :blaze.db/tx))}}
+     {:fhir/type :fhir.Bundle.entry/response
+      :status (status resource)
+      :etag (str "W/\"" (-> resource :meta :versionId type/value) "\"")
+      :lastModified (-> resource meta :blaze.db/tx :blaze.db.tx/instant)}}
     (-> resource meta :blaze.db/op #{:delete} not)
     (assoc :resource resource)))

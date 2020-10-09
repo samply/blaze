@@ -6,9 +6,10 @@
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.elm.protocols :as p]
-    [clojure.spec.alpha :as s]
+    [blaze.fhir.spec.type.system]
     [cognitect.anomalies :as anom])
   (:import
+    [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
     [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 
@@ -59,9 +60,6 @@
       (throw (ex-info (str "Invalid RHS subtracting from Period. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other})))))
 
-
-(s/fdef period
-  :args (s/cat :years number? :months number? :millis number?))
 
 (defn period [years months millis]
   (->Period (+ (* years 12) months) millis))
@@ -160,9 +158,15 @@
 (extend-protocol PrecisionNum
   Year
   (precision-num [_] 0)
+  DateTimeYear
+  (precision-num [_] 0)
   YearMonth
   (precision-num [_] 1)
+  DateTimeYearMonth
+  (precision-num [_] 1)
   LocalDate
+  (precision-num [_] 2)
+  DateTimeYearMonthDay
   (precision-num [_] 2)
   LocalDateTime
   (precision-num [_] 6))
@@ -269,6 +273,12 @@
         (< cmp 0))))
 
   LocalDate
+  (less [this other]
+    (when other
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+        (< cmp 0))))
+
+  DateTimeYearMonthDay
   (less [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
@@ -954,11 +964,23 @@
   (to-date-time [this _]
     this)
 
+  DateTimeYear
+  (to-date-time [this _]
+    this)
+
   YearMonth
   (to-date-time [this _]
     this)
 
+  DateTimeYearMonth
+  (to-date-time [this _]
+    this)
+
   LocalDate
+  (to-date-time [this _]
+    this)
+
+  DateTimeYearMonthDay
   (to-date-time [this _]
     this)
 

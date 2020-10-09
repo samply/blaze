@@ -2,7 +2,6 @@
   (:require
     [blaze.anomaly :refer [throw-anom when-ok]]
     [blaze.coll.core :as coll]
-    [blaze.db.hash :as hash]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
@@ -13,7 +12,10 @@
     [blaze.db.kv :as kv]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.spec]
+    [blaze.fhir.hash :as hash]
+    [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type.system :as system]
     [clj-fuzzy.phonetics :as phonetics]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -27,7 +29,9 @@
 (set! *warn-on-reflection* true)
 
 
-(defn compile-values [search-param values]
+(defn compile-values
+  ""
+  [search-param values]
   (p/-compile-values search-param values))
 
 
@@ -102,7 +106,7 @@
       (let [res (s/conform :blaze.fhir/local-ref uri)]
         (when-not (s/invalid? res)
           (let [[type id] res]
-            {:resourceType type
+            {:fhir/type (keyword "fhir" type)
              :id id}))))))
 
 
@@ -174,29 +178,36 @@
   (codec/date-ub default-zone-id date-time))
 
 
-(defmulti date-index-entries (fn [_ _ value] (type value)))
+(defmulti date-index-entries (fn [_ _ value] (fhir-spec/fhir-type value)))
 
 
 (defmethod date-index-entries :fhir/date
   [_ entries-fn date]
-  (entries-fn (date-lb @date) (date-ub @date)))
+  (when-let [value (type/value date)]
+    (entries-fn (date-lb value) (date-ub value))))
 
 
 (defmethod date-index-entries :fhir/dateTime
   [_ entries-fn date-time]
-  (entries-fn (date-lb @date-time) (date-ub @date-time)))
+  (when-let [value (type/value date-time)]
+    (entries-fn (date-lb value) (date-ub value))))
 
 
 (defmethod date-index-entries :fhir/instant
   [_ entries-fn date-time]
-  (entries-fn (date-lb @date-time) (date-ub @date-time)))
+  (when-let [value (type/value date-time)]
+    (entries-fn (date-lb value) (date-ub value))))
 
 
 (defmethod date-index-entries :fhir/Period
   [_ entries-fn {:keys [start end]}]
   (entries-fn
-    (if start (date-lb start) codec/date-min-bound)
-    (if end (date-ub end) codec/date-max-bound)))
+    (if-let [start (type/value start)]
+      (date-lb start)
+      codec/date-min-bound)
+    (if-let [end (type/value end)]
+      (date-ub end)
+      codec/date-max-bound)))
 
 
 (defmethod date-index-entries :default
@@ -228,7 +239,8 @@
     (vec values))
 
   (-resource-handles [_ snapshot svri _ raoi tid _ compiled-value t]
-    (let [[op value] (separate-op compiled-value)]
+    (let [[op value] (separate-op compiled-value)
+          value (system/parse-date-time value)]
       (case op
         :eq
         (let [start-key (codec/search-param-value-key c-hash tid (date-lb value))
@@ -274,7 +286,8 @@
 
   (-index-entries [_ resolver hash resource _]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [{type :resourceType id :id} resource
+      (let [{:keys [id]} resource
+            type (clojure.core/name (fhir-spec/fhir-type resource))
             tid (codec/tid type)
             id-bytes (codec/id-bytes id)]
         (into
@@ -314,7 +327,7 @@
 
 ;; ---- String ----------------------------------------------------------------
 
-(defmulti string-index-entries (fn [_ _ value] (type value)))
+(defmulti string-index-entries (fn [_ _ value] (fhir-spec/fhir-type value)))
 
 
 (defn- normalize-string [s]
@@ -327,12 +340,14 @@
 
 (defmethod string-index-entries :fhir/string
   [_ entries-fn s]
-  (entries-fn (normalize-string @s)))
+  (when-let [value (type/value s)]
+    (entries-fn (normalize-string value))))
 
 
 (defmethod string-index-entries :fhir/markdown
   [_ entries-fn s]
-  (entries-fn (normalize-string @s)))
+  (when-let [value (type/value s)]
+    (entries-fn (normalize-string value))))
 
 
 (defn- string-entries [entries-fn values]
@@ -353,8 +368,8 @@
 (defmethod string-index-entries :fhir/HumanName
   [url entries-fn {:keys [family given]}]
   (if (str/ends-with? url "phonetic")
-    (some-> family phonetics/soundex entries-fn)
-    (string-entries entries-fn (conj given family))))
+    (some-> family type/value phonetics/soundex entries-fn)
+    (string-entries entries-fn (conj (mapv type/value given) (type/value family)))))
 
 
 (defmethod string-index-entries :default
@@ -387,7 +402,8 @@
 
   (-index-entries [_ resolver hash resource _]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [{type :resourceType id :id} resource
+      (let [{:keys [id]} resource
+            type (clojure.core/name (fhir-spec/fhir-type resource))
             tid (codec/tid type)
             id-bytes (codec/id-bytes id)]
         (into
@@ -428,86 +444,82 @@
   actual index entries. Multiple such `entries-fn` results can be combined to
   one coll of entries."
   {:arglists '([url entries-fn value])}
-  (fn [_ _ value] (type value)))
-
-
-(defmethod token-index-entries String
-  [_ entries-fn s]
-  (entries-fn nil (codec/v-hash s)))
+  (fn [_ _ value] (fhir-spec/fhir-type value)))
 
 
 (defmethod token-index-entries :fhir/id
   [_ entries-fn id]
-  (entries-fn nil (codec/v-hash @id)))
+  (when-let [value (type/value id)]
+    (entries-fn nil (codec/v-hash value))))
 
 
 (defmethod token-index-entries :fhir/string
   [_ entries-fn s]
-  (entries-fn nil (codec/v-hash @s)))
+  (when-let [value (type/value s)]
+    (entries-fn nil (codec/v-hash value))))
 
 
 (defmethod token-index-entries :fhir/uri
   [_ entries-fn uri]
-  (entries-fn nil (codec/v-hash @uri)))
+  (when-let [value (type/value uri)]
+    (entries-fn nil (codec/v-hash value))))
 
 
 (defmethod token-index-entries :fhir/boolean
   [_ entries-fn boolean]
-  (entries-fn nil (codec/v-hash (str @boolean))))
+  (when-some [value (type/value boolean)]
+    (entries-fn nil (codec/v-hash (str value)))))
 
 
 (defmethod token-index-entries :fhir/canonical
   [_ entries-fn uri]
-  (entries-fn nil (codec/v-hash @uri)))
+  (when-let [value (type/value uri)]
+    (entries-fn nil (codec/v-hash value))))
 
 
 (defmethod token-index-entries :fhir/code
   [_ entries-fn code]
   ;; TODO: system
-  (entries-fn nil (codec/v-hash @code)))
+  (when-let [value (type/value code)]
+    (entries-fn nil (codec/v-hash value))))
+
+
+(defn token-coding-entries [entries-fn {:keys [code system]}]
+  (let [code (type/value code)
+        system (type/value system)]
+    (cond-> []
+      code
+      (into (entries-fn nil (codec/v-hash code)))
+      system
+      (into (entries-fn nil (codec/v-hash (str system "|"))))
+      (and code system)
+      (into (entries-fn nil (codec/v-hash (str system "|" code))))
+      (and code (nil? system))
+      (into (entries-fn nil (codec/v-hash (str "|" code)))))))
 
 
 (defmethod token-index-entries :fhir/Coding
-  [_ entries-fn {:keys [code system]}]
-  (cond-> []
-    code
-    (into (entries-fn nil (codec/v-hash code)))
-    system
-    (into (entries-fn nil (codec/v-hash (str system "|"))))
-    (and code system)
-    (into (entries-fn nil (codec/v-hash (str system "|" code))))
-    (and code (nil? system))
-    (into (entries-fn nil (codec/v-hash (str "|" code))))))
+  [_ entries-fn coding]
+  (token-coding-entries entries-fn coding))
 
 
 (defmethod token-index-entries :fhir/CodeableConcept
   [_ entries-fn {:keys [coding]}]
-  (into
-    []
-    (mapcat
-      (fn [{:keys [code system]}]
-        (cond-> []
-          code
-          (into (entries-fn nil (codec/v-hash code)))
-          system
-          (into (entries-fn nil (codec/v-hash (str system "|"))))
-          (and code system)
-          (into (entries-fn nil (codec/v-hash (str system "|" code))))
-          (and code (nil? system))
-          (into (entries-fn nil (codec/v-hash (str "|" code)))))))
-    coding))
+  (into [] (mapcat #(token-coding-entries entries-fn %)) coding))
 
 
 (defn- token-identifier-entries [entries-fn modifier {:keys [value system]}]
-  (cond-> []
-    value
-    (into (entries-fn modifier (codec/v-hash value)))
-    system
-    (into (entries-fn modifier (codec/v-hash (str system "|"))))
-    (and value system)
-    (into (entries-fn modifier (codec/v-hash (str system "|" value))))
-    (and value (nil? system))
-    (into (entries-fn modifier (codec/v-hash (str "|" value))))))
+  (let [value (type/value value)
+        system (type/value system)]
+    (cond-> []
+      value
+      (into (entries-fn modifier (codec/v-hash value)))
+      system
+      (into (entries-fn modifier (codec/v-hash (str system "|"))))
+      (and value system)
+      (into (entries-fn modifier (codec/v-hash (str system "|" value))))
+      (and value (nil? system))
+      (into (entries-fn modifier (codec/v-hash (str "|" value)))))))
 
 
 (defmethod token-index-entries :fhir/Identifier
@@ -516,13 +528,14 @@
 
 
 (defn- token-literal-reference-entries [entries-fn reference]
-  (let [res (s/conform :blaze.fhir/local-ref reference)]
-    (if (s/invalid? res)
-      (entries-fn nil (codec/v-hash reference))
-      (let [[type id] res]
-        (-> (entries-fn nil (codec/v-hash id))
-            (into (entries-fn nil (codec/v-hash (str type "/" id))))
-            (into (entries-fn nil (codec/tid-id type id))))))))
+  (when-let [value (type/value reference)]
+    (let [res (s/conform :blaze.fhir/local-ref value)]
+      (if (s/invalid? res)
+        (entries-fn nil (codec/v-hash value))
+        (let [[type id] res]
+          (-> (entries-fn nil (codec/v-hash id))
+              (into (entries-fn nil (codec/v-hash (str type "/" id))))
+              (into (entries-fn nil (codec/tid-id type id)))))))))
 
 
 (defmethod token-index-entries :fhir/Reference
@@ -536,7 +549,7 @@
 
 (defmethod token-index-entries :fhir/ContactPoint
   [_ entries-fn {:keys [value]}]
-  (when value
+  (when-let [value (type/value value)]
     (entries-fn nil (codec/v-hash value))))
 
 
@@ -553,7 +566,8 @@
 
 (defn- index-token-entries
   [url code c-hash hash resource linked-compartments values]
-  (let [{type :resourceType id :id} resource
+  (let [{:keys [id]} resource
+        type (name (fhir-spec/fhir-type resource))
         tid (codec/tid type)
         id-bytes (codec/id-bytes id)]
     (into
@@ -659,18 +673,24 @@
   create the actual index entries. Multiple such `entries-fn` results can be
   combined to one coll of entries."
   {:arglists '([url entries-fn value])}
-  (fn [_ _ value] (type value)))
+  (fn [_ _ value] (fhir-spec/fhir-type value)))
 
 
 (defmethod quantity-index-entries :fhir/Quantity
   [_ entries-fn {:keys [value system code unit]}]
-  (cond-> (entries-fn "" value)
-    code
-    (into (entries-fn code value))
-    (and unit (not= unit code))
-    (into (entries-fn unit value))
-    (and system code)
-    (into (entries-fn (str system "|" code) value))))
+  (let [value (type/value value)
+        system (type/value system)
+        code (type/value code)
+        unit (type/value unit)]
+    (cond-> []
+      value
+      (into (entries-fn "" value))
+      code
+      (into (entries-fn code value))
+      (and unit (not= unit code))
+      (into (entries-fn unit value))
+      (and system code)
+      (into (entries-fn (str system "|" code) value)))))
 
 
 (defmethod quantity-index-entries :default
@@ -707,7 +727,8 @@
 
   (-index-entries [_ resolver hash resource _]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [{type :resourceType id :id} resource
+      (let [{:keys [id]} resource
+            type (clojure.core/name (fhir-spec/fhir-type resource))
             tid (codec/tid type)
             id-bytes (codec/id-bytes id)]
         (into

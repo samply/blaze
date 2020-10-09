@@ -22,15 +22,23 @@
     (is
       (= [["Patient" "0"]]
          (references/extract-references
-           {:resourceType "Observation" :id "0"
-            :subject {:reference "Patient/0"}}))))
+           {:fhir/type :fhir/Observation :id "0"
+            :subject
+            {:fhir/type :fhir/Reference
+             :reference "Patient/0"}}))))
 
   (testing "List.item"
     (is
       (= [["Patient" "0"]
           ["Patient" "1"]]
          (references/extract-references
-           {:resourceType "List" :id "0"
+           {:fhir/type :fhir/List :id "0"
             :entry
-            [{:item {:reference "Patient/0"}}
-             {:item {:reference "Patient/1"}}]})))))
+            [{:fhir/type :fhir.List/entry
+              :item
+              {:fhir/type :fhir/Reference
+               :reference "Patient/0"}}
+             {:fhir/type :fhir.List/entry
+              :item
+              {:fhir/type :fhir/Reference
+               :reference "Patient/1"}}]})))))

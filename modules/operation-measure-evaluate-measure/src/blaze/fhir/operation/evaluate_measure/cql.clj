@@ -149,11 +149,11 @@
       (d/list-resource-handles db subject-type))))
 
 
-(defn- incorrect-stratum [resource expression-name]
+(defn- incorrect-stratum [{:fhir/keys [type] :keys [id]} expression-name]
   {::anom/category ::anom/incorrect
    ::anom/message
    (format "CQL expression `%s` returned more than one value for resource `%s`."
-           expression-name (str (:resourceType resource) "/" (:id resource)))})
+           expression-name (str type "/" id))})
 
 
 (defn- stratum-result-combine-op [{:keys [report-type]}]

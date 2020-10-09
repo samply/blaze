@@ -19,11 +19,11 @@
 
 
 (s/def :blaze.db.tx-cmd/type
-  :blaze.resource/resourceType)
+  :fhir.type/name)
 
 
 (s/def :blaze.db/local-ref
-  (s/tuple :blaze.resource/resourceType :blaze.resource/id))
+  (s/tuple :fhir.type/name :blaze.resource/id))
 
 
 (s/def :blaze.db.tx-cmd/refs
@@ -45,7 +45,7 @@
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.db.tx-cmd/type
                    :blaze.resource/id
-                   :blaze.db.resource/hash]
+                   :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs]))
 
 
@@ -53,7 +53,7 @@
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.db.tx-cmd/type
                    :blaze.resource/id
-                   :blaze.db.resource/hash]
+                   :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
                    :blaze.db.tx-cmd/if-match]))
 
@@ -62,7 +62,7 @@
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.db.tx-cmd/type
                    :blaze.resource/id
-                   :blaze.db.resource/hash]
+                   :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/if-match]))
 
 
@@ -71,7 +71,7 @@
 
 
 (s/def :blaze.db/tx-cmds
-  (s/coll-of :blaze.db/tx-cmd :kind vector? :min-count 1))
+  (s/coll-of :blaze.db/tx-cmd :kind vector?))
 
 
 (s/def :blaze.db/tx-data

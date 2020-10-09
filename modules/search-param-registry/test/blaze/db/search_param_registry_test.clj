@@ -53,7 +53,8 @@
   (is (= [["Patient" "id-1"]]
          (sr/linked-compartments
            search-param-registry
-           {:resourceType "Condition"
+           {:fhir/type :fhir/Condition
             :id "id-0"
             :subject
-            {:reference "Patient/id-1"}}))))
+            {:fhir/type :fhir/Reference
+             :reference "Patient/id-1"}}))))

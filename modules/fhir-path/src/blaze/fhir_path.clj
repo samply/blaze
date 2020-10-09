@@ -2,12 +2,13 @@
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type.system :as system]
     [cognitect.anomalies :as anom]
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang IDeref]
-    [java.io StringReader Writer]
+    [java.io StringReader]
     [org.antlr.v4.runtime ANTLRInputStream CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
     [org.cqframework.cql.gen
@@ -15,6 +16,7 @@
      fhirpathParser$TermExpressionContext
      fhirpathParser$InvocationExpressionContext
      fhirpathParser$IndexerExpressionContext
+     fhirpathParser$AdditiveExpressionContext
      fhirpathParser$TypeExpressionContext
      fhirpathParser$UnionExpressionContext
      fhirpathParser$EqualityExpressionContext
@@ -22,9 +24,11 @@
      fhirpathParser$InvocationTermContext
      fhirpathParser$LiteralTermContext
      fhirpathParser$ParenthesizedTermContext
+     fhirpathParser$NullLiteralContext
      fhirpathParser$BooleanLiteralContext
      fhirpathParser$StringLiteralContext
      fhirpathParser$NumberLiteralContext
+     fhirpathParser$DateTimeLiteralContext
      fhirpathParser$MemberInvocationContext
      fhirpathParser$FunctionInvocationContext
      fhirpathParser$FunctionContext
@@ -32,7 +36,7 @@
      fhirpathParser$TypeSpecifierContext
      fhirpathParser$QualifiedIdentifierContext
      fhirpathParser$IdentifierContext])
-  (:refer-clojure :exclude [eval compile resolve true? false?]))
+  (:refer-clojure :exclude [eval compile resolve]))
 
 
 (set! *warn-on-reflection* true)
@@ -53,50 +57,50 @@
   Returns either a collection of FHIR data or an anomaly in case of errors. The
   type of the FHIR data can be determined by calling `clojure.core/type` on it."
   {:arglists '([resolver expr resource])}
-  [resolver expr {type :resourceType :as resource}]
+  [resolver expr resource]
   (try
-    (-eval expr {:resolver resolver}
-           [(with-meta resource {:type (keyword "fhir" type)})])
+    (-eval expr {:resolver resolver} [resource])
     (catch Exception e
       (ex-data e))))
 
 
-;; allow metadata in primitives
-(defrecord PrimitiveWrapper [x]
-  IDeref
-  (deref [_] x))
+;; See: http://hl7.org/fhirpath/index.html#conversion
+(defn- convertible? [type item]
+  (if (= (fhir-spec/fhir-type item) type)
+    true
+    (case [(fhir-spec/fhir-type item) type]
+      ([:fhir/integer :fhir/decimal]
+       [:fhir/date :fhir/dateTime])
+      true
+      false)))
 
 
-(defmethod print-method PrimitiveWrapper [^PrimitiveWrapper pw ^Writer w]
-  (.write w (pr-str (.x pw))))
+;; See: http://hl7.org/fhirpath/index.html#conversion
+(defn- convert [type item]
+  (if (= (fhir-spec/fhir-type item) type)
+    item
+    (case [(fhir-spec/fhir-type item) type]
+      [:fhir/integer :fhir/decimal]
+      (BigDecimal/valueOf (long item))
+
+      [:fhir/date :fhir/dateTime]
+      (fhir-spec/to-date-time item))))
 
 
-(defn- with-spec [spec x]
+;; See: http://hl7.org/fhirpath/index.html#singleton-evaluation-of-collections
+(defn- singleton [type coll]
   (cond
-    (fhir-spec/primitive? spec)
-    (with-meta (->PrimitiveWrapper x) {:type spec})
+    (and (= 1 (count coll)) (convertible? type (first coll)))
+    (convert type (first coll))
 
-    (fhir-spec/system? spec)
-    x
+    (and (= 1 (count coll)) (= :fhir/boolean type))
+    true
+
+    (empty? coll)
+    []
 
     :else
-    (with-meta x {:type spec})))
-
-
-(def ^:private typed-true
-  (with-spec :fhir/boolean true))
-
-
-(def ^:private typed-false
-  (with-spec :fhir/boolean false))
-
-
-(defn- true? [x]
-  (and (= :fhir/boolean (type x)) (clojure.core/true? @x)))
-
-
-(defn- false? [x]
-  (and (= :fhir/boolean (type x)) (clojure.core/false? @x)))
+    (throw-anom ::anom/incorrect (format "unable to evaluate `%s` as singleton" (pr-str coll)))))
 
 
 (defrecord StartExpression []
@@ -108,7 +112,7 @@
 (defrecord TypedStartExpression [spec]
   Expression
   (-eval [_ _ coll]
-    (filterv #(= spec (type %)) coll)))
+    (filterv #(= spec (fhir-spec/fhir-type %)) coll)))
 
 
 (defrecord GetChildrenExpression [key]
@@ -116,27 +120,11 @@
   (-eval [_ _ coll]
     (reduce
       (fn [res x]
-        (if-let [child-spec (get (fhir-spec/child-specs (type x)) key)]
+        (let [val (get x key)]
           (cond
-            (fhir-spec/choice? child-spec)
-            (reduce
-              (fn [res [key spec]]
-                (if-some [val (get x key)]
-                  (reduced (conj res (with-spec spec val)))
-                  res))
-              res
-              (fhir-spec/choices child-spec))
-
-            (= :many (fhir-spec/cardinality child-spec))
-            (into res (map (partial with-spec (fhir-spec/type-spec child-spec))) (get x key))
-
-            :else
-            (if-some [val (get x key)]
-              (conj res (with-spec child-spec val))
-              res))
-          (throw-anom
-            ::anom/incorrect
-            (format "unknown FHIR data element `%s` in type `%s`" (name key) (name (type x))))))
+            (sequential? val) (into res val)
+            (some? val) (conj res val)
+            :else res)))
       []
       coll)))
 
@@ -153,13 +141,24 @@
     (nth (-eval expression context coll) (-eval index context coll))))
 
 
+(defrecord PlusExpression [left-expr right-expr]
+  Expression
+  (-eval [_ context coll]
+    (let [left (singleton :fhir/string (-eval left-expr context coll))
+          right (singleton :fhir/string (-eval right-expr context coll))]
+      (cond
+        (empty? left) [right]
+        (empty? right) [left]
+        :else [(str left right)]))))
+
+
 (defrecord IsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
       (cond
         (= 1 (count coll))
-        [(if (= type-specifier (type (first coll))) typed-true typed-false)]
+        [(if (= type-specifier (fhir-spec/fhir-type (first coll))) true false)]
 
         (empty? coll)
         []
@@ -171,7 +170,7 @@
 (defrecord AsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context x]
-    (filterv #(= type-specifier (type %)) (-eval expression context x))))
+    (filterv #(= type-specifier (fhir-spec/fhir-type %)) (-eval expression context x))))
 
 
 (defrecord UnionExpression [expressions]
@@ -185,12 +184,16 @@
   (-eval [_ context coll]
     (let [left (-eval left-expr context coll)
           right (-eval right-expr context coll)]
-      (if (and (empty? left) (empty? right))
-        []
-        ;; TODO: take all rules into consideration
-        [(if (clojure.core/true? (= left right))
-           typed-true
-           typed-false)]))))
+      (cond
+        (or (empty? left) (empty? right)) []
+        (not= (count left) (count right)) [false]
+        :else
+        (loop [[l & ls] left [r & rs] right]
+          (if (system/equals (type/value l) (type/value r))
+            (if (empty? ls)
+              [true]
+              (recur ls rs))
+            [false]))))))
 
 
 (defrecord NotEqualExpression [left-expr right-expr]
@@ -198,60 +201,16 @@
   (-eval [_ context coll]
     (let [left (-eval left-expr context coll)
           right (-eval right-expr context coll)]
-      (if (and (empty? left) (empty? right))
-        []
-        ;; TODO: take all rules into consideration
-        [(if (clojure.core/true? (not= left right))
-           typed-true
-           typed-false)]))))
-
-
-;; See: http://hl7.org/fhirpath/index.html#conversion
-(defn- convertible? [type item]
-  (if (= (clojure.core/type item) type)
-    true
-    (case [(clojure.core/type item) type]
-      ([:fhir/integer :fhir/decimal]
-       [:fhir/integer :fhir/Quantity]
-       [:fhir/decimal :fhir/Quantity]
-       [:fhir/date :fhir/dateTime])
-      true)))
-
-
-;; See: http://hl7.org/fhirpath/index.html#conversion
-(defn- convert [type item]
-  (if (= (clojure.core/type item) type)
-    item
-    (case [(clojure.core/type item) type]
-      [:fhir/integer :fhir/decimal]
-      (with-spec :fhir/decimal (BigDecimal/valueOf (long @item)))
-
-      [:fhir/integer :fhir/Quantity]
-      ;; TODO: is that right?
-      (with-spec :fhir/Quantity (str @item))
-
-      [:fhir/decimal :fhir/Quantity]
-      ;; TODO: is that right?
-      (with-spec :fhir/Quantity (str @item))
-
-      [:fhir/date :fhir/dateTime]
-      (with-spec :fhir/dateTime @item))))
-
-
-;; See: http://hl7.org/fhirpath/index.html#singleton-evaluation-of-collections
-(defn- singleton [type coll]
-  (cond
-    (and (= 1 (count coll)) (convertible? type (first coll)))
-    (convert type (first coll))
-
-    (and (= 1 (count coll)) (= :fhir/boolean type))
-    typed-true
-
-    (empty? coll)
-    []
-
-    :else
-    (throw-anom ::anom/incorrect (format "unable to evaluate `%s` as singleton" (pr-str coll)))))
+      (cond
+        (or (empty? left) (empty? right)) []
+        (not= (count left) (count right)) [false]
+        :else
+        (loop [[l & ls] left [r & rs] right]
+          (if (system/equals (type/value l) (type/value r))
+            (if (empty? ls)
+              [false]
+              (recur ls rs))
+            [true]))))))
 
 
 ;; See: http://hl7.org/fhirpath/index.html#and
@@ -260,22 +219,22 @@
   (-eval [_ context coll]
     (let [a (singleton :fhir/boolean (-eval expr-a context coll))]
       (if (false? a)
-        [typed-false]
+        [false]
 
         (let [b (singleton :fhir/boolean (-eval expr-b context coll))]
           (cond
-            (false? b) [typed-false]
-            (and (true? a) (true? b)) [typed-true]
+            (false? b) [false]
+            (and (true? a) (true? b)) [true]
             :else []))))))
 
 
 (defrecord AsFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ x]
-    (filterv #(= type-specifier (type %)) x)))
+    (filterv #(= type-specifier (fhir-spec/fhir-type %)) x)))
 
 
-;; See: http://hl7.org/fhirpath/index.html#wherecriteria-expression-collection
+;; See: http://hl7.org/fhirpath/#wherecriteria-expression-collection
 (defrecord WhereFunctionExpression [criteria]
   Expression
   (-eval [_ context coll]
@@ -284,9 +243,9 @@
         (let [res (-eval criteria context [item])]
           (cond
             (= 1 (count res))
-            (if (= :fhir/boolean (type (first res)))
-              (clojure.core/true? @(first res))
-              (throw-anom ::anom/incorrect (format "non-boolean result `%s` of type `%s` while evaluating where function criteria" (pr-str (first res)) (type (first res)))))
+            (if (identical? :system/boolean (system/type (first res)))
+              (first res)
+              (throw-anom ::anom/incorrect (format "non-boolean result `%s` of type `%s` while evaluating where function criteria" (pr-str (first res)) (fhir-spec/fhir-type (first res)))))
 
             (empty? res)
             false
@@ -299,7 +258,7 @@
 (defrecord ExistsFunctionExpression []
   Expression
   (-eval [_ _ coll]
-    [(if (empty? coll) typed-false typed-true)]))
+    [(if (empty? coll) false true)]))
 
 
 (defrecord ExistsWithCriteriaFunctionExpression [criteria]
@@ -308,12 +267,12 @@
     (throw-anom ::anom/unsupported "unsupported `exists` function")))
 
 
-(defmulti resolve (fn [_ item] (type item)))
+(defmulti resolve (fn [_ item] (fhir-spec/fhir-type item)))
 
 
 (defn- resolve* [resolver uri]
-  (when-let [{type :resourceType :as resource} (-resolve resolver uri)]
-    [(with-meta resource {:type (keyword "fhir" type)})]))
+  (when-let [resource (-resolve resolver uri)]
+    [resource]))
 
 
 (defmethod resolve :fhir/string [{:keys [resolver]} uri]
@@ -325,7 +284,7 @@
 
 
 (defmethod resolve :default [_ item]
-  (log/debug (format "Skip resolving %s `%s`." (name (type item)) (pr-str item))))
+  (log/debug (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item)) (pr-str item))))
 
 
 (defrecord ResolveFunctionExpression []
@@ -338,6 +297,12 @@
   Expression
   (-eval [_ _ _]
     [literal]))
+
+
+(defrecord NullLiteralExpression []
+  Expression
+  (-eval [_ _ _]
+    []))
 
 
 (defprotocol FPCompiler
@@ -402,6 +367,14 @@
       (-compile (.expression ctx 0))
       (-compile (.expression ctx 1))))
 
+  fhirpathParser$AdditiveExpressionContext
+  (-compile [ctx]
+    (case (.getText (.getSymbol ^TerminalNode (.getChild ctx 1)))
+      "+"
+      (->PlusExpression
+        (-compile (.expression ctx 0))
+        (-compile (.expression ctx 1)))))
+
   fhirpathParser$TypeExpressionContext
   (-compile [ctx]
     (case (.getText (.getSymbol ^TerminalNode (.getChild ctx 1)))
@@ -448,24 +421,37 @@
   (-compile [ctx]
     (-compile (.expression ctx)))
 
+  fhirpathParser$NullLiteralContext
+  (-compile [_]
+    (->NullLiteralExpression))
+
   fhirpathParser$BooleanLiteralContext
   (-compile [ctx]
     (->LiteralExpression
-      (with-spec :fhir/boolean (Boolean/valueOf (.getText (.getSymbol ^TerminalNode (.getChild ctx 0)))))))
+      (Boolean/valueOf (.getText (.getSymbol ^TerminalNode (.getChild ctx 0))))))
 
   fhirpathParser$StringLiteralContext
   (-compile [ctx]
     (->LiteralExpression
-      (with-spec :fhir/string (str/trim (.getText (.getSymbol (.STRING ctx))) "'"))))
+      (str/trim (.getText (.getSymbol (.STRING ctx))) "'")))
 
   fhirpathParser$NumberLiteralContext
   (-compile [ctx]
     (->LiteralExpression
       (let [text (.getText (.getSymbol (.NUMBER ctx)))]
         (try
-          (with-spec :fhir/integer (Long/parseLong text))
+          (Long/parseLong text)
           (catch Exception _
-            (with-spec :fhir/decimal (BigDecimal. text)))))))
+            (BigDecimal. text))))))
+
+  fhirpathParser$DateTimeLiteralContext
+  (-compile [ctx]
+    (->LiteralExpression
+      (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)]
+        (try
+          (type/->DateTime text)
+          (catch Exception _
+            (BigDecimal. text))))))
 
   fhirpathParser$MemberInvocationContext
   (-compile [ctx]
@@ -508,7 +494,11 @@
       (.getText (.getSymbol node)))))
 
 
-(defn compile [expr]
+(defn compile
+  "Compiles the FHIRPath `expr`.
+
+  Returns either a compiled FHIRPath expression or an anomaly in case of errors."
+  [expr]
   (let [r (StringReader. expr)
         s (ANTLRInputStream. r)
         l (fhirpathLexer. s)

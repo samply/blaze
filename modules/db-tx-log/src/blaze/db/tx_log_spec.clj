@@ -4,8 +4,7 @@
     [blaze.async-comp-spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.spec]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom])
+    [clojure.spec.alpha :as s])
   (:import
     [java.time Duration]))
 
@@ -23,4 +22,4 @@
 
 (s/fdef tx-log/poll
   :args (s/cat :queue ::tx-log/queue :timeout #(instance? Duration %))
-  :ret (s/or :tx-data (s/coll-of :blaze.db/tx-data) :anomaly ::anom/anomaly))
+  :ret (s/nilable (s/coll-of :blaze.db/tx-data)))

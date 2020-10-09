@@ -1,10 +1,10 @@
 (ns blaze.db.tx-log.kafka
   (:require
     [blaze.async-comp :as ac]
-    [blaze.db.hash :as hash]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka.spec]
     [blaze.db.tx-log.spec]
+    [blaze.fhir.hash :as hash]
     [blaze.module :refer [reg-collector]]
     [cheshire.core :as cheshire]
     [cheshire.generate :refer [JSONable]]

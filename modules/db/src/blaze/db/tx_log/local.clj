@@ -10,13 +10,13 @@
   store the transaction and transfers it to listening queues."
   (:require
     [blaze.async-comp :as ac]
-    [blaze.db.hash :as hash]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
+    [blaze.fhir.hash :as hash]
     [blaze.module :refer [reg-collector]]
     [cheshire.core :as cheshire]
     [cheshire.generate :refer [JSONable]]

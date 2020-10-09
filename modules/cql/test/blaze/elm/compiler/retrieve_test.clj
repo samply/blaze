@@ -6,6 +6,7 @@
     [blaze.elm.compiler.protocols :refer [-eval]]
     [blaze.elm.compiler.retrieve :refer [expr]]
     [blaze.elm.compiler.retrieve-spec]
+    [blaze.fhir.spec :as fhir-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
@@ -104,61 +105,77 @@
     (testing "without codes"
       (testing "Patient in Patient context"
         (with-open [node (mem-node-with
-                           [[[:put {:resourceType "Patient" :id "0"}]]])]
+                           [[[:put {:fhir/type :fhir/Patient :id "0"}]]])]
           (given
             (-eval
               (expr node "Patient" "Patient" "foo" [])
               {:db (d/db node)}
-              {:resourceType "Patient" :id "0"}
+              {:fhir/type :fhir/Patient :id "0"}
               nil)
-            [0 :resourceType] := "Patient"
+            [0 fhir-spec/fhir-type] := :fhir/Patient
             [0 :id] := "0")))
 
       (testing "Observation in Patient context"
         (with-open [node (mem-node-with
-                           [[[:put {:resourceType "Patient" :id "0"}]
-                             [:put {:resourceType "Observation" :id "1"
-                                    :subject {:reference "Patient/0"}}]]])]
+                           [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Observation :id "1"
+                                    :subject
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}]]])]
           (given
             (-eval
               (expr node "Patient" "Observation" "foo" [])
               {:db (d/db node)}
-              {:resourceType "Patient" :id "0"}
+              {:fhir/type :fhir/Patient :id "0"}
               nil)
-            [0 type name] := "Observation"
+            [0 fhir-spec/fhir-type] := :fhir/Observation
             [0 :id] := "1"))))
 
     (testing "with one code"
       (testing "Observation in Patient context"
         (with-open [node (mem-node-with
-                           [[[:put {:resourceType "Patient" :id "0"}]
-                             [:put {:resourceType "Observation" :id "1"
-                                    :code {:coding [{:system "s1" :code "c1"}]}
-                                    :subject {:reference "Patient/0"}}]]])]
+                           [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Observation :id "1"
+                                    :code
+                                    {:fhir/type :fhir/CodeableConcept
+                                     :coding
+                                     [{:fhir/type :fhir/Coding
+                                       :system #fhir/uri"s1"
+                                       :code #fhir/code"c1"}]}
+                                    :subject
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}]]])]
           (given
             (-eval
               (expr node "Patient" "Observation" "code" [(to-code "s1" "v1" "c1")])
               {:db (d/db node)}
-              {:resourceType "Patient" :id "0"}
+              {:fhir/type :fhir/Patient :id "0"}
               nil)
-            [0 type name] := "Observation"
+            [0 fhir-spec/fhir-type] := :fhir/Observation
             [0 :id] := "1"))))
 
     (testing "with two codes"
       (testing "Observation in Patient context"
         (with-open [node (mem-node-with
-                           [[[:put {:resourceType "Patient" :id "0"}]
-                             [:put {:resourceType "Observation" :id "1"
-                                    :code {:coding [{:system "s1" :code "c1"}]}
-                                    :subject {:reference "Patient/0"}}]]])]
+                           [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Observation :id "1"
+                                    :code
+                                    {:fhir/type :fhir/CodeableConcept
+                                     :coding
+                                     [{:fhir/type :fhir/Coding
+                                       :system #fhir/uri"s1"
+                                       :code #fhir/code"c1"}]}
+                                    :subject
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}]]])]
           (given
             (-eval
               (expr node "Patient" "Observation" "code" [(to-code "s1" "v1" "c1")
                                                          (to-code "s2" "v2" "c2")])
               {:db (d/db node)}
-              {:resourceType "Patient" :id "0"}
+              {:fhir/type :fhir/Patient :id "0"}
               nil)
-            [0 type name] := "Observation"
+            [0 fhir-spec/fhir-type] := :fhir/Observation
             [0 :id] := "1"))))))
 
 

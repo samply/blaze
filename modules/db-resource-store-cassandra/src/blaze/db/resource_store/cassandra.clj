@@ -4,6 +4,7 @@
     [blaze.async-comp :as ac]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.cassandra.spec]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.module :refer [reg-collector]]
     [cheshire.core :as cheshire]
     [clojure.spec.alpha :as s]
@@ -107,7 +108,7 @@
 
 (defn- read-content [^AsyncResultSet rs hash]
   (if-let [^Row row (.one rs)]
-    (parse-cbor (.array (.getByteBuffer row 0)) hash)
+    (fhir-spec/conform-cbor (parse-cbor (.array (.getByteBuffer row 0)) hash))
     (throw (ex-anom {::anom/category ::anom/not-found}))))
 
 
@@ -130,7 +131,7 @@
 
 
 (defn- bind-put [^PreparedStatement statement hash resource]
-  (let [content (ByteBuffer/wrap (cheshire/generate-cbor resource))]
+  (let [content (ByteBuffer/wrap (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))]
     (prom/observe! resource-bytes (.capacity content))
     (.bind statement (object-array [(str hash) content]))))
 
