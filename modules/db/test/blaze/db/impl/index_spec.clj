@@ -18,7 +18,7 @@
                :raoi :blaze.db/kv-iterator
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :start-id (s/nilable bytes?)
+               :start-id (s/nilable :blaze.db/id-bytes)
                :t :blaze.db/t)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
@@ -39,6 +39,7 @@
                :raoi :blaze.db/kv-iterator
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
+               :start-id (s/nilable :blaze.db/id-bytes)
                :t :blaze.db/t)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 

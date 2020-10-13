@@ -9,6 +9,11 @@
     [clojure.spec.alpha :as s]))
 
 
+(s/fdef rh/tid->type
+  :args (s/cat :tid :blaze.db/tid)
+  :ret :fhir.type/name)
+
+
 (s/fdef rh/resource-handle
   :args (s/cat :tid :blaze.db/tid :id :blaze.resource/id
                :t :blaze.db/t :hash :blaze.resource/hash

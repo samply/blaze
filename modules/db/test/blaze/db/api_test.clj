@@ -463,7 +463,13 @@
         (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient" "1"))
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
-          [0 :meta :versionId] := #fhir/id"2"))
+          [0 :meta :versionId] := #fhir/id"2"
+          1 := nil))
+
+      (testing "a nil start-id gives the full result"
+        (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient" nil))
+          [0 :id] := "0"
+          [1 :id] := "1"))
 
       (testing "overshooting the start-id returns an empty collection"
         (is (coll/empty? (d/list-resource-handles (d/db node) "Patient" "2"))))))
@@ -490,7 +496,8 @@
         (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient" "1"))
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
-          [0 :meta :versionId] := #fhir/id"1"))
+          [0 :meta :versionId] := #fhir/id"1"
+          1 := nil))
 
       (testing "overshooting the start-id returns an empty collection"
         (is (coll/empty? (d/list-resource-handles (d/db node) "Patient" "2"))))))
@@ -563,8 +570,11 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))))
 
 
-(defn- pull-type-query [node type clauses]
-  (d/pull-many node (d/type-query (d/db node) type clauses)))
+(defn- pull-type-query
+  ([node type clauses]
+   (d/pull-many node (d/type-query (d/db node) type clauses)))
+  ([node type clauses start-id]
+   (d/pull-many node (d/type-query (d/db node) type clauses start-id))))
 
 
 (deftest type-query
@@ -616,33 +626,94 @@
         [0 :id] := "0"
         1 := nil)))
 
-  (testing "Special Search Parameter _list"
+  (testing "a node with three patients in one transaction"
     (with-open [node (new-node)]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Patient :id "1"}]
-                         [:put {:fhir/type :fhir/Observation :id "0"}]
-                         [:put {:fhir/type :fhir/List :id "0"
-                                :entry
-                                [{:fhir/type :fhir.List/entry
-                                  :item
-                                  {:fhir/type :fhir/Reference
-                                   :reference "Patient/0"}}
-                                 {:fhir/type :fhir.List/entry
-                                  :item
-                                  {:fhir/type :fhir/Reference
-                                   :reference "Observation/0"}}]}]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+                         [:put {:fhir/type :fhir/Patient :id "1" :active false}]
+                         [:put {:fhir/type :fhir/Patient :id "2" :active true}]])
 
-      (testing "returns only the patient referenced in the list"
-        (given @(pull-type-query node "Patient" [["_list" "0"]])
+      (testing "two active patients will be found"
+        (given @(pull-type-query node "Patient" [["active" "true"]])
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "2"
+          2 := nil))
+
+      (testing "it is possible to start with the second patient"
+        (given @(pull-type-query node "Patient" [["active" "true"]] "2")
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "2"
           1 := nil))
 
-      (testing "returns only the observation referenced in the list"
-        (given @(pull-type-query node "Observation" [["_list" "0"]])
-          [0 :fhir/type] := :fhir/Observation
+      (testing "a nil start-id gives the full result"
+        (given @(pull-type-query node "Patient" [["active" "true"]] nil)
           [0 :id] := "0"
-          1 := nil))))
+          [1 :id] := "2"
+          2 := nil))))
+
+  (testing "Special Search Parameter _list"
+    (testing "a node with two patients, one observation and one list in one transaction"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                           [:put {:fhir/type :fhir/Patient :id "1"}]
+                           [:put {:fhir/type :fhir/Observation :id "0"}]
+                           [:put {:fhir/type :fhir/List :id "0"
+                                  :entry
+                                  [{:fhir/type :fhir.List/entry
+                                    :item
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}
+                                   {:fhir/type :fhir.List/entry
+                                    :item
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Observation/0"}}]}]])
+
+        (testing "returns only the patient referenced in the list"
+          (given @(pull-type-query node "Patient" [["_list" "0"]])
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            1 := nil))
+
+        (testing "returns only the observation referenced in the list"
+          (given @(pull-type-query node "Observation" [["_list" "0"]])
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            1 := nil))))
+
+    (testing "a node with three patients and one list in one transaction"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                           [:put {:fhir/type :fhir/Patient :id "1"}]
+                           [:put {:fhir/type :fhir/Patient :id "2"}]
+                           [:put {:fhir/type :fhir/Patient :id "3"}]
+                           [:put {:fhir/type :fhir/List :id "0"
+                                  :entry
+                                  [{:fhir/type :fhir.List/entry
+                                    :item
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}
+                                   {:fhir/type :fhir.List/entry
+                                    :item
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/2"}}
+                                   {:fhir/type :fhir.List/entry
+                                    :item
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/3"}}]}]])
+
+        (testing "it is possible to start with the second patient"
+          (given @(pull-type-query node "Patient" [["_list" "0"]] "2")
+            [0 :id] := "2"
+            [1 :id] := "3"
+            2 := nil))
+
+        (testing "a nil start-id gives the full result"
+          (given @(pull-type-query node "Patient" [["_list" "0"]] nil)
+            [0 :id] := "0"
+            [1 :id] := "2"
+            [2 :id] := "3"
+            3 := nil)))))
 
   (testing "Patient"
     (with-open [node (new-node)]
@@ -654,7 +725,8 @@
                  {:fhir/type :fhir/Meta
                   :profile [#fhir/canonical"profile-uri-145024"]}
                  :identifier
-                 [{:fhir/type :fhir/Identifier :value "0"}]
+                 [{:fhir/type :fhir/Identifier
+                   :value "0"}]
                  :active false
                  :gender #fhir/code"male"
                  :birthDate #fhir/date"2020-02-08"
@@ -723,10 +795,16 @@
             1 := nil)))
 
       (testing "address with city"
-        (given @(pull-type-query node "Patient" [["address" "Leipzig"]])
-          [0 :id] := "id-0"
-          [1 :id] := "id-2"
-          2 := nil))
+        (testing "full result"
+          (given @(pull-type-query node "Patient" [["address" "Leipzig"]])
+            [0 :id] := "id-0"
+            [1 :id] := "id-2"
+            2 := nil))
+
+        (testing "it is possible to start with the second patient"
+          (given @(pull-type-query node "Patient" [["address" "Leipzig"]] "id-2")
+            [0 :id] := "id-2"
+            1 := nil)))
 
       (testing "address-city full"
         (given @(pull-type-query node "Patient" [["address-city" "Leipzig"]])
@@ -735,10 +813,16 @@
           2 := nil))
 
       (testing "address-city prefix"
-        (given @(pull-type-query node "Patient" [["address-city" "Leip"]])
-          [0 :id] := "id-0"
-          [1 :id] := "id-2"
-          2 := nil))
+        (testing "full result"
+          (given @(pull-type-query node "Patient" [["address-city" "Leip"]])
+            [0 :id] := "id-0"
+            [1 :id] := "id-2"
+            2 := nil))
+
+        (testing "it is possible to start with the second patient"
+          (given @(pull-type-query node "Patient" [["address-city" "Leip"]] "id-2")
+            [0 :id] := "id-2"
+            1 := nil)))
 
       (testing "address-city and family prefix"
         (given @(pull-type-query node "Patient" [["address-city" "Leip"]
@@ -758,10 +842,16 @@
           1 := nil))
 
       (testing "birthdate YYYYMM"
-        (given @(pull-type-query node "Patient" [["birthdate" "2020-02"]])
-          [0 :id] := "id-1"
-          [1 :id] := "id-0"
-          2 := nil))
+        (testing "full result"
+          (given @(pull-type-query node "Patient" [["birthdate" "2020-02"]])
+            [0 :id] := "id-1"
+            [1 :id] := "id-0"
+            2 := nil))
+
+        (testing "it is possible to start with the second patient"
+          (given @(pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
+            [0 :id] := "id-0"
+            1 := nil)))
 
       (testing "birthdate YYYY"
         (given @(pull-type-query node "Patient" [["birthdate" "2020"]])
@@ -1071,6 +1161,42 @@
         (let [clauses [["value-quantity" "23.42|kg/m2"] ["status" "final"]]]
           (given @(pull-type-query node "Observation" clauses)
             [0 :id] := "id-0"
+            1 := nil)))))
+
+  (testing "Observation"
+    (with-open [node (new-node)]
+      @(d/transact
+         node
+         [[:put {:fhir/type :fhir/Observation
+                 :id "id-0"
+                 :status #fhir/code"final"
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 23.42M
+                  :unit "kg/m²"
+                  :code #fhir/code"kg/m2"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-1"
+                 :status #fhir/code"final"
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 23.42M
+                  :unit "kg/m²"
+                  :code #fhir/code"kg/m2"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]])
+
+      (testing "full result"
+        (let [clauses [["value-quantity" "23.42"]]]
+          (given @(pull-type-query node "Observation" clauses)
+            [0 :id] := "id-0"
+            [1 :id] := "id-1"
+            2 := nil)))
+
+      (testing "it is possible to start with the second patient"
+        (let [clauses [["value-quantity" "23.42"]]]
+          (given @(pull-type-query node "Observation" clauses "id-1")
+            [0 :id] := "id-1"
             1 := nil)))))
 
   (testing "MeasureReport"

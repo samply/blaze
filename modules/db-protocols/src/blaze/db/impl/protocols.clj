@@ -69,13 +69,13 @@
 
 (defprotocol Query
   (-execute
-    [query node snapshot raoi svri rsvi csvri t]
-    [query node snapshot raoi svri rsvi csvri t arg1]))
+    [query snapshot raoi svri rsvi csvri t]
+    [query snapshot raoi svri rsvi csvri t arg1]))
 
 
 (defprotocol SearchParam
   (-compile-values [search-param values])
-  (-resource-handles [search-param snapshot spvi rsvi raoi tid modifier compiled-value t])
+  (-resource-handles [search-param snapshot spvi rsvi raoi tid modifier compiled-value start-id t])
   (-compartment-keys [search-param cspvi compartment tid compiled-value])
   (-matches? [search-param snapshot tid id hash modifier compiled-values])
   (-compartment-ids [_ resolver resource])

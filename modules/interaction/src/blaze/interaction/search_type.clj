@@ -1,17 +1,7 @@
 (ns blaze.interaction.search-type
   "FHIR search interaction.
 
-  https://www.hl7.org/fhir/http.html#search
-
-  Pagination is implemented in two different ways. If no search parameters are
-  given, the id of the first resource of the next page is passed in __page-id
-  and used as start-id in `d/list-resources`. If on the other hand search
-  parameters are given, `d/type-query` is used which doesn't offer the
-  possibility to specify start arguments. So in this case a simple offset is
-  used in __page-offset which is used to drop the resources of previous pages.
-
-  In case performance gets a problem here, we have to add start arguments to
-  `d/type-query`."
+  https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.async-comp :as ac]
@@ -38,37 +28,33 @@
 
 (defn- entries
   "Returns bundle entries."
-  [router db type {:keys [clauses page-id page-offset page-size]}]
+  [router db type {:keys [clauses page-id page-size]}]
   (when-ok [handles (if (empty? clauses)
                       (d/list-resource-handles db type page-id)
-                      (d/type-query db type clauses))]
-    (-> (->> (into [] (comp (drop page-offset) (take (inc page-size))) handles)
+                      (d/type-query db type clauses page-id))]
+    (-> (->> (into [] (take (inc page-size)) handles)
              (d/pull-many db))
         (ac/then-apply #(mapv (partial entry router) %)))))
 
 
-(defn- self-link-offset [{:keys [clauses page-offset]} entries]
-  (if (seq clauses)
-    {"__page-offset" page-offset}
-    {"__page-id" (-> entries first :resource :id)}))
+(defn- self-link-offset [entries]
+  {"__page-id" (-> entries first :resource :id)})
 
 
 (defn- self-link [match params t entries]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url match params t (self-link-offset params entries)))})
+   :url (type/->Uri (nav/url match params t (self-link-offset entries)))})
 
 
-(defn- next-link-offset [{:keys [clauses page-offset]} entries]
-  (if (seq clauses)
-    {"__page-offset" (+ page-offset (dec (count entries)))}
-    {"__page-id" (-> entries peek :resource :id)}))
+(defn- next-link-offset [entries]
+  {"__page-id" (-> entries peek :resource :id)})
 
 
 (defn- next-link [match params t entries]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (type/->Uri (nav/url match params t (next-link-offset params entries)))})
+   :url (type/->Uri (nav/url match params t (next-link-offset entries)))})
 
 
 (defn- total
@@ -78,12 +64,12 @@
   Secondly, if the number of entries found is not more than one page in size,
   we can use that number. Otherwise there is no cheap way to calculate the
   number of matching resources, so we don't report it."
-  [db type {:keys [clauses page-size page-offset]} entries]
+  [db type {:keys [clauses page-size page-id]} entries]
   (cond
     (empty? clauses)
     (d/type-total db type)
 
-    (and (zero? page-offset) (<= (count entries) page-size))
+    (and (nil? page-id) (<= (count entries) page-size))
     (count entries)))
 
 

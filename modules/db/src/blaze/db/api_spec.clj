@@ -77,7 +77,8 @@
 
 (s/fdef d/type-query
   :args (s/cat :db :blaze.db/db :type :fhir.type/name
-               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+               :clauses (s/coll-of :blaze.db.query/clause :min-count 1)
+               :start-id (s/? (s/nilable :blaze.resource/id)))
   :ret (s/or :result (s/coll-of :blaze.db/resource-handle :kind sequential?)
              :anomaly ::anom/anomaly))
 

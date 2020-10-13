@@ -37,10 +37,10 @@
 
 (defn resource-handles
   "Returns a reducible collection of resource handles."
-  [search-param snapshot svri rsvi raoi tid modifier compiled-values t]
+  [search-param snapshot svri rsvi raoi tid modifier compiled-values start-id t]
   (coll/eduction
     (mapcat #(p/-resource-handles search-param snapshot svri rsvi raoi tid
-                                  modifier % t))
+                                  modifier % start-id t))
     compiled-values))
 
 
@@ -153,15 +153,35 @@
         k))))
 
 
-(defn- seek-value [snapshot tid id hash c-hash value]
-  (with-open [iter (kv/new-iterator snapshot :resource-value-index)]
-    (prefix-seek iter (codec/resource-value-key tid id hash c-hash value))))
+(defn- seek-value
+  ([snapshot tid id hash c-hash]
+   (with-open [iter (kv/new-iterator snapshot :resource-value-index)]
+     (prefix-seek iter (codec/resource-value-key tid id hash c-hash))))
+  ([snapshot tid id hash c-hash value]
+   (with-open [iter (kv/new-iterator snapshot :resource-value-index)]
+     (prefix-seek iter (codec/resource-value-key tid id hash c-hash value)))))
 
 
-(defn- prefix-keys [iter start-key]
-  (coll/eduction
-    (take-while (fn [[prefix]] (bytes/starts-with? prefix start-key)))
-    (i/keys iter codec/decode-search-param-value-key start-key)))
+(defn- prefix-keys
+  ([iter start-key]
+   (coll/eduction
+     (take-while (fn [[prefix]] (bytes/starts-with? prefix start-key)))
+     (i/keys iter codec/decode-search-param-value-key start-key)))
+  ([iter prefix-key start-key]
+   (coll/eduction
+     (take-while (fn [[prefix]] (bytes/starts-with? prefix prefix-key)))
+     (i/keys iter codec/decode-search-param-value-key start-key))))
+
+
+(defn- prefix-keys* [svri c-hash tid compiled-value start-id]
+  (if start-id
+    (prefix-keys
+      svri
+      (codec/search-param-value-key c-hash tid compiled-value)
+      (codec/search-param-value-key c-hash tid compiled-value start-id))
+    (prefix-keys
+      svri
+      (codec/search-param-value-key c-hash tid compiled-value))))
 
 
 
@@ -233,17 +253,37 @@
          (bytes/<= (codec/date-lb-ub->ub v) ub))))
 
 
+(defn- resource-hash [raoi tid id t]
+  (some-> (non-deleted-resource-handle raoi tid id t) rh/hash))
+
+
+(defn- resource-missing-msg [tid id t]
+  (format "Resource %s/%s doesn't exist at %d." (rh/tid->type tid) (codec/id id) t))
+
+
+(defn- date-start-key [snapshot raoi c-hash tid value start-id t]
+  (if start-id
+    (let [start-hash (resource-hash raoi tid start-id t)]
+      (assert start-hash (resource-missing-msg tid start-id t))
+      (codec/search-param-value-key
+        c-hash
+        tid
+        (codec/date-lb-ub->lb (get-value snapshot tid start-id start-hash c-hash))
+        start-id))
+    (codec/search-param-value-key c-hash tid (date-lb value))))
+
+
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
   (-compile-values [_ values]
     (vec values))
 
-  (-resource-handles [_ snapshot svri _ raoi tid _ compiled-value t]
+  (-resource-handles [_ snapshot svri _ raoi tid _ compiled-value start-id t]
     (let [[op value] (separate-op compiled-value)
           value (system/parse-date-time value)]
       (case op
         :eq
-        (let [start-key (codec/search-param-value-key c-hash tid (date-lb value))
+        (let [start-key (date-start-key snapshot raoi c-hash tid value start-id t)
               ub (date-ub value)
               date-eq-key-valid? #(date-eq-key-valid? c-hash snapshot tid ub %)]
           (coll/eduction
@@ -255,7 +295,7 @@
             (i/keys svri codec/decode-search-param-value-key start-key)))
 
         :ge
-        (let [start-key (codec/search-param-value-key c-hash tid (date-lb value))]
+        (let [start-key (date-start-key snapshot raoi c-hash tid value start-id t)]
           (coll/eduction
             (comp
               (take-while date-key-lb?)
@@ -377,18 +417,39 @@
   (log/warn (format-skip-indexing-msg value url "string")))
 
 
+(defn string-prefix-keys
+  [snapshot svri raoi c-hash tid compiled-value start-id t]
+  (if start-id
+    (let [start-hash (resource-hash raoi tid start-id t)]
+      (assert start-hash (resource-missing-msg tid start-id t))
+      (prefix-keys
+        svri
+        (codec/search-param-value-key c-hash tid compiled-value)
+        (codec/search-param-value-key
+          c-hash
+          tid
+          (-> (seek-value snapshot tid start-id start-hash c-hash)
+              (ByteBuffer/wrap)
+              (codec/decode-resource-value-key)
+              (second))
+          start-id)))
+    (prefix-keys
+      svri
+      (codec/search-param-value-key c-hash tid compiled-value))))
+
+
 (defrecord SearchParamString [name url type base code c-hash expression]
   p/SearchParam
   (-compile-values [_ values]
     (mapv (comp codec/string normalize-string) values))
 
-  (-resource-handles [_ _ svri _ raoi tid _ compiled-value t]
+  (-resource-handles [_ snapshot svri _ raoi tid _ compiled-value start-id t]
     (coll/eduction
       (comp
         by-id-grouper
         (resource-handle-mapper raoi tid t)
         matches-hash-prefixes-filter)
-      (prefix-keys svri (codec/search-param-value-key c-hash tid compiled-value))))
+      (string-prefix-keys snapshot svri raoi c-hash tid compiled-value start-id t)))
 
   (-compartment-keys [_ csvri compartment tid compiled-value]
     (let [{co-c-hash :c-hash co-res-id :res-id} compartment
@@ -535,7 +596,8 @@
         (let [[type id] res]
           (-> (entries-fn nil (codec/v-hash id))
               (into (entries-fn nil (codec/v-hash (str type "/" id))))
-              (into (entries-fn nil (codec/tid-id type id)))))))))
+              (into (entries-fn nil (codec/tid-id (codec/tid type)
+                                                  (codec/id-bytes id))))))))))
 
 
 (defmethod token-index-entries :fhir/Reference
@@ -618,18 +680,18 @@
   (-compile-values [_ values]
     (mapv codec/v-hash values))
 
-  (-resource-handles [_ _ svri _ raoi tid modifier compiled-value t]
+  (-resource-handles [_ _ svri _ raoi tid modifier compiled-value start-id t]
     (coll/eduction
       (comp
         by-id-grouper
         (resource-handle-mapper raoi tid t)
         matches-hash-prefixes-filter)
-      (prefix-keys
+      (prefix-keys*
         svri
-        (codec/search-param-value-key
-          (c-hash-w-modifier c-hash code modifier)
-          tid
-          compiled-value))))
+        (c-hash-w-modifier c-hash code modifier)
+        tid
+        compiled-value
+        start-id)))
 
   (-compartment-keys [_ csvri compartment tid compiled-value]
     (let [{co-c-hash :c-hash co-res-id :res-id} compartment
@@ -707,13 +769,13 @@
           (codec/quantity (BigDecimal. ^String value) unit)))
       values))
 
-  (-resource-handles [_ _ svri _ raoi tid _ compiled-value t]
+  (-resource-handles [_ _ svri _ raoi tid _ compiled-value start-id t]
     (coll/eduction
       (comp
         by-id-grouper
         (resource-handle-mapper raoi tid t)
         matches-hash-prefixes-filter)
-      (prefix-keys svri (codec/search-param-value-key c-hash tid compiled-value))))
+      (prefix-keys* svri c-hash tid compiled-value start-id)))
 
   (-compartment-keys [_ csvri compartment tid compiled-value]
     (let [{co-c-hash :c-hash co-res-id :res-id} compartment

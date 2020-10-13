@@ -150,10 +150,15 @@
 
   Returns an anomaly if search parameters in clauses can't be resolved.
 
+  An optional `start-id` (inclusive) can be supplied.
+
   Please use `pull-many` to obtain the full resources."
-  [db type clauses]
-  (when-ok [query (p/-compile-type-query db type clauses)]
-    (p/-execute-query db query)))
+  ([db type clauses]
+   (when-ok [query (p/-compile-type-query db type clauses)]
+     (p/-execute-query db query)))
+  ([db type clauses start-id]
+   (when-ok [query (p/-compile-type-query db type clauses)]
+     (p/-execute-query db query start-id))))
 
 
 (defn compile-type-query

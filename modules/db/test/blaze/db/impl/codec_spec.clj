@@ -355,7 +355,7 @@
 
 
 (s/fdef codec/tid-id
-  :args (s/cat :type :fhir.type/name :id :blaze.resource/id)
+  :args (s/cat :type :blaze.db/tid :id :blaze.db/id-bytes)
   :ret bytes?)
 
 
