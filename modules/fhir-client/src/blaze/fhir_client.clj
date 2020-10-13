@@ -77,8 +77,8 @@
          wrap-parse-body
          wrap-error-handling
          wrap-return-body)
-      (-> (assoc req :throw-exceptions false)
-          wrap-accept))))
+     (-> (assoc req :throw-exceptions false)
+         wrap-accept))))
 
 
 
@@ -170,6 +170,33 @@
     pages))
 
 (comment
-  @(fetch "http://hapi.fhir.org/baseR4/Observation?_count=500" {})
-  @(stream/reduce conj [] (unroll-pages (fetch-list "http://hapi.fhir.org/baseR4/Observation?_count=500" {})))
+  (import [java.util.concurrent Executor ExecutorService Executors TimeUnit])
+
+  (defn spit-bundles [base-uri ^Executor executor type query]
+    (stream/reduce
+      (fn [i bundle]
+        (if (::anom/category bundle)
+          (println bundle)
+          (do
+            (println "spit bundle" i)
+            (.execute
+              executor
+              #(spit (format "/Users/akiel/fhir-downloads/%s-%05d.json" type i)
+                     (json/generate-string bundle)))))
+        (inc i))
+      0
+      (fetch-list (str base-uri "/" type "?" query) {})))
+
+  (time
+    (let [executor (Executors/newSingleThreadExecutor)]
+      @(spit-bundles "https://blaze.life.uni-leipzig.de/fhir"
+                     executor
+                     "Observation"
+                     "code=http://loinc.org|39156-5")
+      (println "shutdown")
+      (.shutdown executor)
+      (.awaitTermination executor 1 TimeUnit/HOURS)
+      (println "finished")))
+
+  (double (/ 1274023 1000 60))
   )

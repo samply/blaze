@@ -369,8 +369,8 @@
 
 
 (defn resource-handle
-  "Returns a resource handle with `tid` and `id` at or before `t`, if their is
-  any."
+  "Returns a resource handle with `tid` and `id` at or before `t` or nil if
+  there is none."
   [raoi tid id t]
   (with-raoi-kv
     raoi (codec/resource-as-of-key tid id t)

@@ -133,11 +133,16 @@
   (swap! state assoc :error-t t))
 
 
-(defn- index-tx-data [kv-store state resource-indexer {:keys [t instant] :as tx-data}]
-  (log/trace "index transaction with t =" t "and" (count (:tx-cmds tx-data)) "command(s)")
-  (prom/observe! transaction-sizes (count (:tx-cmds tx-data)))
+(defn- hashes [tx-cmds]
+  (into [] (map :hash) tx-cmds))
+
+
+(defn- index-tx-data
+  [kv-store state resource-indexer {:keys [t instant tx-cmds] :as tx-data}]
+  (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
+  (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
-        future (resource-indexer/index-all-resources resource-indexer tx-data)
+        future (resource-indexer/index-resources resource-indexer (hashes tx-cmds))
         result (index-tx kv-store tx-data)]
     (if (::anom/category result)
       (do (kv/put kv-store (codec/tx-error-entries t result))
@@ -164,7 +169,7 @@
     (max t error-t)))
 
 
-(defn- enhance-meta [meta t {:blaze.db.tx/keys [instant]}]
+(defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
   (-> (or meta {:fhir/type :fhir/Meta})
       (assoc :versionId (->Id (str t)))
       (assoc :lastUpdated instant)))
@@ -186,7 +191,7 @@
 (defn- enhance-resource [kv-store handle resource]
   (let [t (rh/t handle)
         tx (tx kv-store t)]
-    (-> (update resource :meta enhance-meta t tx)
+    (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta (meta handle) (rh/state handle) t tx)))))
 
 

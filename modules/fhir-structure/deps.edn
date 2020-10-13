@@ -31,7 +31,10 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
+   {criterium/criterium
+    {:mvn/version "0.4.5"}
+
+    lambdaisland/kaocha
     {:mvn/version "1.0.641"}
 
     org.clojars.akiel/iota
@@ -41,10 +44,7 @@
     {:mvn/version "1.1.0"}
 
     org.openjdk.jol/jol-core
-    {:mvn/version "0.13"}
-
-    criterium/criterium
-    {:mvn/version "0.4.5"}}
+    {:mvn/version "0.13"}}
 
    :main-opts
    ["-m" "kaocha.runner"]}

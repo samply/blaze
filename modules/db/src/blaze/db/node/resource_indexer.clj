@@ -107,17 +107,9 @@
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources with
   `hashes` are indexed."
-  [indexer hashes]
+  [resource-indexer hashes]
   (log/trace "index" (count hashes) "resource(s)")
-  (ac/all-of (batch-index-resources indexer hashes)))
-
-
-(defn- hashes [{:keys [tx-cmds]}]
-  (into [] (map :hash) tx-cmds))
-
-
-(defn index-all-resources [resource-indexer tx-data]
-  (index-resources resource-indexer (hashes tx-data)))
+  (ac/all-of (batch-index-resources resource-indexer hashes)))
 
 
 (s/def :blaze.db.node/resource-indexer-executor

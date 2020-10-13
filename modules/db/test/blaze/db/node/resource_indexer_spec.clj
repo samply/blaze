@@ -17,7 +17,7 @@
 
 
 (s/fdef resource-indexer/index-resources
-  :args (s/cat :indexer :blaze.db.node/resource-indexer
+  :args (s/cat :resource-indexer :blaze.db.node/resource-indexer
                :hashes (s/coll-of :blaze.resource/hash))
   :ret ac/completable-future?)
 

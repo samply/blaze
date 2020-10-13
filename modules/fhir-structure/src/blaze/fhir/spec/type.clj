@@ -24,7 +24,7 @@
 
 (defprotocol FhirType
   (-type [_])
-  (-value [_] "Converts the instance into a FHIRPath system type.")
+  (-value [_])
   (-to-json [_])
   (-to-xml [_])
   (-hash-into [_ sink]))
@@ -36,7 +36,8 @@
 
 
 (defn value
-  "Returns the possible value of the primitive value `x`."
+  "Returns the possible value of the primitive value `x` as FHIRPath system
+  type."
   [x]
   (-value x))
 
@@ -909,17 +910,20 @@
 (extend-protocol FhirType
   List
   (-type [_])
+  (-value [_])
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
     (doseq [x xs]
       (-hash-into x sink)))
   Keyword
   (-type [_])
+  (-value [_])
   (-hash-into [k sink]
     (.putString ^PrimitiveSink sink (name k) StandardCharsets/UTF_8))
   Map
-  (-type [x]
-    (:fhir/type x))
+  (-type [m]
+    (:fhir/type m))
+  (-value [_])
   (-hash-into [m sink]
     (.putByte ^PrimitiveSink sink (byte 37))
     (doseq [[k v] (into (sorted-map) m)]

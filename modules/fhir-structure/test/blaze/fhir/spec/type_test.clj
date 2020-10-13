@@ -269,6 +269,8 @@
   (testing "from XML"
     (is (= Instant/EPOCH
            (type/xml->Instant (sexp [nil {:value "1970-01-01T00:00:00Z"}])))))
+  (testing "from JSON"
+    (is (= Instant/EPOCH (type/->Instant "1970-01-01T00:00:00Z"))))
   (testing "type"
     (is (= :fhir/instant
            (type/-type (type/->Instant "2020-01-01T00:00:00+02:00"))))
