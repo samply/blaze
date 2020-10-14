@@ -13,7 +13,7 @@ MacBook Pro \(Retina, 15-inch, Mid 2015\) 2,5 GHz Intel Core i7, 16 GB RAM. Blaz
 ### Start Script
 
 ```bash
-STORAGE=standalone INDEX_DB_DIR=blaze-data/index TRANSACTION_DB_DIR=blaze-data/transaction RESOURCE_DB_DIR=blaze-data/resource DB_RESOURCE_INDEXER_THREADS=8 java -jar blaze-0.9.0-alpha.21-standalone.jar -m blaze.core
+STORAGE=standalone INDEX_DB_DIR=blaze-data/index TRANSACTION_DB_DIR=blaze-data/transaction RESOURCE_DB_DIR=blaze-data/resource DB_RESOURCE_INDEXER_THREADS=8 java -jar blaze-0.9.0-alpha.22-standalone.jar -m blaze.core
 ```
 
 ### Relevant Startup Log Output
@@ -34,7 +34,7 @@ Init JSON parse executor with 8 threads
 JVM version: 11.0.7
 Maximum available memory: 4096 MiB
 Number of available processors: 8
-Successfully started Blaze version 0.9.0-alpha.21 in 13.1 seconds
+Successfully started Blaze version 0.9.0-alpha.22 in 13.1 seconds
 ```
 
 ### Upload Method

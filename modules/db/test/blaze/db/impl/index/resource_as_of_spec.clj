@@ -13,7 +13,7 @@
 (s/fdef resource-as-of/type-list
   :args (s/cat :raoi :blaze.db/kv-iterator
                :tid :blaze.db/tid
-               :start-id (s/nilable bytes?)
+               :start-id (s/nilable :blaze.db/id-bytes)
                :t :blaze.db/t)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
@@ -21,7 +21,7 @@
 (s/fdef resource-as-of/system-list
   :args (s/cat :raoi :blaze.db/kv-iterator
                :start-tid (s/nilable :blaze.db/tid)
-               :start-id (s/nilable bytes?)
+               :start-id (s/nilable :blaze.db/id-bytes)
                :t :blaze.db/t)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 

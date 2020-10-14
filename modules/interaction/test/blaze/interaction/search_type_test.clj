@@ -236,11 +236,11 @@
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-offset=0"
+            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-id=1"
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-offset=1"
+            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-id=2"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -251,18 +251,18 @@
               @((handler node)
                 {::reitit/router router
                  ::reitit/match patient-match
-                 :params {"active" "true" "_count" "1" "__t" "1" "__page-offset" "0"}})]
+                 :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "1"}})]
 
           (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-offset=0"
+            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-id=1"
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-offset=1"
+            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-id=2"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -273,14 +273,14 @@
               @((handler node)
                 {::reitit/router router
                  ::reitit/match patient-match
-                 :params {"active" "true" "_count" "1" "__t" "1" "__page-offset" "1"}})]
+                 :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
           (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-offset=1"
+            (is (= #fhir/uri"/Patient?active=true&_count=1&__t=1&__page-id=2"
                    (link-url body "self"))))
 
           (testing "has no next link"

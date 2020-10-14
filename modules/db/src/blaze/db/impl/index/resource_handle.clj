@@ -17,8 +17,8 @@
                (sort-by first))
       tid->idx (int-array (map first kvs))
       idx->type (object-array (map second kvs))]
-  (defn- tid->type [^long tid]
-    (let [idx (Arrays/binarySearch tid->idx tid)]
+  (defn tid->type [tid]
+    (let [idx (Arrays/binarySearch tid->idx ^long tid)]
       (when (nat-int? idx)
         (aget idx->type idx)))))
 

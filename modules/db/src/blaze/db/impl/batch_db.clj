@@ -69,10 +69,10 @@
   ;; ---- Common Query Functions ----------------------------------------------
 
   (-execute-query [_ query]
-    (p/-execute query node snapshot raoi svri rsvi csvri t))
+    (p/-execute query snapshot raoi svri rsvi csvri t))
 
   (-execute-query [_ query arg1]
-    (p/-execute query node snapshot raoi svri rsvi csvri t arg1))
+    (p/-execute query snapshot raoi svri rsvi csvri t arg1))
 
 
 
@@ -183,19 +183,22 @@
 
 (defrecord TypeQuery [tid clauses]
   p/Query
-  (-execute [_ node snapshot raoi svri rsvi _ t]
-    (index/type-query snapshot svri rsvi raoi tid clauses t)))
+  (-execute [_ snapshot raoi svri rsvi _ t]
+    (index/type-query snapshot svri rsvi raoi tid clauses nil t))
+  (-execute [_ snapshot raoi svri rsvi _ t start-id]
+    (index/type-query snapshot svri rsvi raoi tid clauses
+                      (some-> start-id codec/id-bytes) t)))
 
 
 (defrecord SystemQuery [clauses]
   p/Query
-  (-execute [_ node snapshot raoi svri rsvi _ t]
-    (index/system-query node snapshot svri rsvi raoi clauses t)))
+  (-execute [_ snapshot raoi svri rsvi _ t]
+    (index/system-query snapshot svri rsvi raoi clauses t)))
 
 
 (defrecord CompartmentQuery [c-hash tid clauses]
   p/Query
-  (-execute [_ node snapshot raoi _ _ cspvi t arg1]
+  (-execute [_ snapshot raoi _ _ cspvi t arg1]
     (let [compartment {:c-hash c-hash :res-id (codec/id-bytes arg1)}]
       (index/compartment-query snapshot cspvi raoi compartment tid clauses t))))
 

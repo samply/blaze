@@ -31,10 +31,10 @@
     id))
 
 
-(defn- ids [iter start-key tid]
+(defn- ids* [iter prefix-key tid start-key]
   (coll/eduction
     (comp
-      (take-while (fn [[prefix]] (bytes/starts-with? prefix start-key)))
+      (take-while (fn [[prefix]] (bytes/starts-with? prefix prefix-key)))
       (map (fn [[_ value]] value))
       ;; other index entries are all v-hashes
       (filter (fn [^bytes value] (< codec/v-hash-size (alength value))))
@@ -45,8 +45,19 @@
     (i/keys iter codec/decode-resource-value-key start-key)))
 
 
-(defn- start-key [list-id list-hash]
-  (codec/resource-value-key list-tid list-id list-hash item-c-hash))
+(defn- start-key
+  ([list-id list-hash]
+   (codec/resource-value-key list-tid list-id list-hash item-c-hash))
+  ([list-id list-hash tid start-id]
+   (codec/resource-value-key list-tid list-id list-hash item-c-hash
+                             (codec/tid-id tid start-id))))
+
+
+(defn- ids [iter list-id list-hash tid start-id]
+  (let [key (start-key list-id list-hash)]
+    (if start-id
+      (ids* iter key tid (start-key list-id list-hash tid start-id))
+      (ids* iter key tid key))))
 
 
 (defrecord SearchParamList [type name]
@@ -54,7 +65,7 @@
   (-compile-values [_ values]
     (map codec/id-bytes values))
 
-  (-resource-handles [_ _ _ rsvi raoi tid _ list-id t]
+  (-resource-handles [_ _ _ rsvi raoi tid _ list-id start-id t]
     (when-let [[list-hash state] (list-hash-state-t raoi list-id t)]
       (when-not (codec/deleted? state)
         (coll/eduction
@@ -63,7 +74,7 @@
               (when-let [handle (resource-as-of/resource-handle raoi tid id t)]
                 (when-not (rh/deleted? handle)
                   [handle]))))
-          (ids rsvi (start-key list-id list-hash) tid)))))
+          (ids rsvi list-id list-hash tid start-id)))))
 
   (-index-entries [_ _ _ _ _]
     []))

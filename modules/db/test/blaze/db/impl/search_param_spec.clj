@@ -38,6 +38,7 @@
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
+               :start-id (s/nilable :blaze.db/id-bytes)
                :t :blaze.db/t)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 

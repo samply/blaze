@@ -35,6 +35,18 @@
 
 
 
+;; ---- Key Functions ---------------------------------------------------------
+
+(deftest t-key-test
+  (are [t bs] (= bs (codec/hex (codec/t-key t)))
+    16 "7FFFFFFFFFFFFFEF"
+    15 "7FFFFFFFFFFFFFF0"
+    2 "7FFFFFFFFFFFFFFD"
+    1 "7FFFFFFFFFFFFFFE"
+    0 "7FFFFFFFFFFFFFFF"))
+
+
+
 ;; ---- ResourceValue Index ---------------------------------------------------
 
 

@@ -47,18 +47,18 @@
     identity))
 
 
-(defn type-query [snapshot svri rsvi raoi tid clauses t]
+(defn type-query [snapshot svri rsvi raoi tid clauses start-id t]
   (let [[[search-param modifier values] & other-clauses] clauses]
     (coll/eduction
       (other-clauses-filter snapshot tid other-clauses)
       (search-param/resource-handles search-param snapshot svri rsvi raoi tid
-                                     modifier values t))))
+                                     modifier values start-id t))))
 
 
 
 ;; ---- System-Level Functions ------------------------------------------------
 
-(defn system-query [_ _ _ _ _ _ _]
+(defn system-query [_ _ _ _ _ _]
   ;; TODO: implement
   [])
 

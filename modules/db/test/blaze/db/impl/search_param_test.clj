@@ -869,7 +869,7 @@
                 (codec/search-param-value-key
                   (codec/c-hash "item")
                   (codec/tid "List")
-                  (codec/tid-id "Patient" "0")
+                  (codec/tid-id (codec/tid "Patient") (codec/id-bytes "0"))
                   (codec/id-bytes "id-121825")
                   hash))))
 
@@ -881,7 +881,7 @@
                   (codec/id-bytes "id-121825")
                   hash
                   (codec/c-hash "item")
-                  (codec/tid-id "Patient" "0")))))))
+                  (codec/tid-id (codec/tid "Patient") (codec/id-bytes "0"))))))))
 
     (testing "with identifier reference"
       (let [resource {:fhir/type :fhir/List

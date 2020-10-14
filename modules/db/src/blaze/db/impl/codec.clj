@@ -95,12 +95,25 @@
 
 
 (defn search-param-value-key
-  {:arglists '([c-hash tid value] [c-hash tid value id hash])}
+  {:arglists
+   '([c-hash tid value]
+     [c-hash tid value id]
+     [c-hash tid value id hash])}
   ([c-hash tid ^bytes value]
    (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value)))
        (.putInt c-hash)
        (.putInt tid)
        (.put value)
+       (.array)))
+  ([c-hash tid ^bytes value ^bytes id]
+   (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value) 1
+                               (alength id) 1))
+       (.putInt c-hash)
+       (.putInt tid)
+       (.put value)
+       (.put (byte 0))
+       (.put id)
+       (.put (byte (alength id)))
        (.array)))
   ([c-hash tid ^bytes value ^bytes id ^bytes hash]
    (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value) 1
@@ -515,10 +528,10 @@
 
 (defn tid-id
   "Returns a byte array with tid from `type` followed by `id`."
-  [type ^String id]
-  (let [bb (ByteBuffer/allocate (+ tid-size (.length id)))]
-    (.putInt bb (tid type))
-    (.put bb (.getBytes id iso-8859-1))
+  [tid ^bytes id]
+  (let [bb (ByteBuffer/allocate (+ tid-size (alength id)))]
+    (.putInt bb tid)
+    (.put bb id)
     (.array bb)))
 
 
@@ -541,6 +554,7 @@
 
 
 ;; See https://github.com/danburkert/bytekey/blob/6980b9e33281d875f03f4c9a953b93a384eac085/src/encoder.rs#L258
+;; And https://cornerwings.github.io/2019/10/lexical-sorting/
 (extend-protocol NumberBytes
   BigDecimal
   (-number [val]
