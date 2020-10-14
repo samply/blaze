@@ -12,14 +12,17 @@
     clauses))
 
 
-(defn- query-params [{:keys [clauses page-size]}]
+(defn- query-params [{:keys [summary page-size]} clauses]
   (cond-> (clauses->query-params clauses)
-    page-size (assoc "_count" page-size)))
+    summary
+    (assoc "_summary" summary)
+    page-size
+    (assoc "_count" page-size)))
 
 
 (defn url
-  {:arglists '([match params t offset])}
-  [{{:blaze/keys [base-url]} :data :as match} params t offset]
-  (let [query-params (-> (query-params params) (assoc "__t" t) (merge offset))
+  {:arglists '([match params clauses t offset])}
+  [{{:blaze/keys [base-url]} :data :as match} params clauses t offset]
+  (let [query-params (-> (query-params params clauses) (assoc "__t" t) (merge offset))
         path (reitit/match->path match query-params)]
     (str base-url path)))

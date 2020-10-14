@@ -275,6 +275,9 @@
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
+  (-code [_]
+    code)
+
   (-compile-values [_ values]
     (vec values))
 
@@ -440,6 +443,9 @@
 
 (defrecord SearchParamString [name url type base code c-hash expression]
   p/SearchParam
+  (-code [_]
+    code)
+
   (-compile-values [_ values]
     (mapv (comp codec/string normalize-string) values))
 
@@ -677,6 +683,9 @@
 
 (defrecord SearchParamToken [name url type base code c-hash expression]
   p/SearchParam
+  (-code [_]
+    code)
+
   (-compile-values [_ values]
     (mapv codec/v-hash values))
 
@@ -762,6 +771,9 @@
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
+  (-code [_]
+    code)
+
   (-compile-values [_ values]
     (mapv
       (fn [value]

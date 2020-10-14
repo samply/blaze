@@ -158,11 +158,17 @@
   (-compile-type-query [_ type clauses]
     (p/-compile-type-query node type clauses))
 
+  (-compile-type-query-lenient [_ type clauses]
+    (p/-compile-type-query-lenient node type clauses))
+
   (-compile-system-query [_ clauses]
     (p/-compile-system-query node clauses))
 
   (-compile-compartment-query [_ code type clauses]
     (p/-compile-compartment-query node code type clauses))
+
+  (-compile-compartment-query-lenient [_ code type clauses]
+    (p/-compile-compartment-query-lenient node code type clauses))
 
 
 

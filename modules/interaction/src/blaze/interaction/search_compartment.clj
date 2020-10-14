@@ -1,11 +1,11 @@
 (ns blaze.interaction.search-compartment
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :refer [ex-anom when-ok]]
     [blaze.async-comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.handler.util :as util]
+    [blaze.handler.util :as handler-util]
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
@@ -24,14 +24,27 @@
    :search {:mode "match"}})
 
 
-(defn- resource-handles [db code id type {:keys [clauses]}]
-  (if (empty? clauses)
-    (into [] (d/list-compartment-resource-handles db code id type))
+(defn- handles-and-clauses
+  [{:keys [code id type] :preference/keys [handling] :or {handling "strict"}
+    {:keys [clauses]} :params}
+   db]
+  (cond
+    (empty? clauses)
+    {:handles (into [] (d/list-compartment-resource-handles db code id type))}
+
+    (= "strict" handling)
     (when-ok [handles (d/compartment-query db code id type clauses)]
-      (into [] handles))))
+      {:handles (into [] handles)
+       :clauses clauses})
+
+    :else
+    (let [query (d/compile-compartment-query-lenient db code type clauses)]
+      {:handles (into [] (d/execute-query db query id))
+       :clauses (d/query-clauses query)})))
 
 
-(defn- entries [router {:keys [page-offset page-size]} resources]
+(defn- entries
+  [{:keys [router] {:keys [page-offset page-size]} :params} resources]
   (into
     []
     (comp
@@ -41,83 +54,102 @@
     resources))
 
 
-(defn- self-link [match {:keys [page-offset] :as params} t]
+(defn- self-link
+  [{:keys [match] {:keys [page-offset] :as params} :params} clauses t]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url match params t {"__page-offset" page-offset}))})
+   :url (type/->Uri (nav/url match params clauses t
+                             {"__page-offset" page-offset}))})
 
 
 (defn- next-link-offset [{:keys [page-offset]} entries]
   {"__page-offset" (+ page-offset (dec (count entries)))})
 
 
-(defn- next-link [match params t entries]
+(defn- next-link [{:keys [match params]} clauses t entries]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (type/->Uri (nav/url match params t (next-link-offset params entries)))})
+   :url (type/->Uri (nav/url match params clauses t
+                             (next-link-offset params entries)))})
 
 
-(defn- search*
-  [router match db code id type {:keys [summary? page-size] :as params}]
-  (let [t (or (d/as-of-t db) (d/basis-t db))]
-    (when-ok [handles (resource-handles db code id type params)]
-      (if summary?
-        (ac/completed-future
-          {:fhir/type :fhir/Bundle
-           :type #fhir/code"searchset"
-           :total (type/->UnsignedInt (count handles))})
-        (-> (d/pull-many db handles)
-            (ac/then-apply
-              (fn [resources]
-                (let [entries (entries router params resources)]
-                  (cond->
-                    {:fhir/type :fhir/Bundle
-                     :type #fhir/code"searchset"
-                     :total (type/->UnsignedInt (count handles))
-                     :entry (take page-size entries)}
+(defn- search-normal
+  [{{:keys [page-size]} :params :as context} db]
+  (let [t (or (d/as-of-t db) (d/basis-t db))
+        {:keys [handles clauses] :as handles-and-clauses}
+        (handles-and-clauses context db)]
+    (if (::anom/category handles-and-clauses)
+      (ac/failed-future (ex-anom handles-and-clauses))
+      (-> (d/pull-many db handles)
+          (ac/then-apply
+            (fn [resources]
+              (let [entries (entries context resources)]
+                (cond->
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"searchset"
+                   :total (type/->UnsignedInt (count handles))
+                   :entry (take page-size entries)
+                   :link [(self-link context clauses t)]}
 
-                    (seq entries)
-                    (update :link (fnil conj []) (self-link match params t))
-
-                    (< page-size (count entries))
-                    (update :link (fnil conj []) (next-link match params t entries)))))))))))
+                  (< page-size (count entries))
+                  (update :link conj (next-link context clauses t
+                                                entries))))))))))
 
 
-(defn- search [router match db code id type params]
-  (when-ok [params (params/decode params)]
-    (search* router match db code id type params)))
+(defn- search-summary [context db]
+  (let [t (or (d/as-of-t db) (d/basis-t db))
+        {:keys [handles clauses] :as handles-and-clauses}
+        (handles-and-clauses context db)]
+    (if (::anom/category handles-and-clauses)
+      (ac/failed-future (ex-anom handles-and-clauses))
+      (ac/completed-future
+        {:fhir/type :fhir/Bundle
+         :type #fhir/code"searchset"
+         :total (type/->UnsignedInt (count handles))
+         :link [(self-link context clauses t)]}))))
 
 
-(defn- handle [router match db code id type params]
-  (let [body (search router match db code id type params)]
-    (if (::anom/category body)
-      (ac/completed-future (util/error-response body))
-      (ac/then-apply body ring/response))))
+(defn- search [{:keys [params] :as context} db]
+  (if (:summary? params)
+    (search-summary context db)
+    (search-normal context db)))
+
+
+(defn- context [router match code id type headers params]
+  (cond
+    (not (s/valid? :blaze.resource/id id))
+    {::anom/category ::anom/incorrect
+     ::anom/message (format "The identifier `%s` is invalid." id)
+     :fhir/issue "value"}
+
+    (not (s/valid? :fhir.type/name type))
+    {::anom/category ::anom/incorrect
+     ::anom/message (format "The type `%s` is invalid." type)
+     :fhir/issue "value"}
+
+    :else
+    (when-ok [params (params/decode params)]
+      {:router router
+       :match match
+       :code code
+       :id id
+       :type type
+       :preference/handling (handler-util/preference headers "handling")
+       :params params})))
 
 
 (defn- handler-intern [node]
   (fn [{{{:fhir.compartment/keys [code]} :data :as match} ::reitit/match
         {:keys [id type]} :path-params
-        :keys [params]
+        :keys [headers params]
         ::reitit/keys [router]}]
-    (cond
-      (not (s/valid? :blaze.resource/id id))
-      (ac/completed-future
-        (util/error-response
-          {::anom/category ::anom/incorrect
-           ::anom/message (format "The identifier `%s` is invalid." id)
-           :fhir/issue "value"}))
-
-      (not (s/valid? :fhir.type/name type))
-      (ac/completed-future
-        (util/error-response
-          {::anom/category ::anom/incorrect
-           ::anom/message (format "The type `%s` is invalid." type)
-           :fhir/issue "value"}))
-
-      :else
-      (-> (util/db node (fhir-util/t params))
-          (ac/then-compose #(handle router match % code id type params))))))
+    (let [context (context router match code id type headers params)]
+      (if (::anom/category context)
+        (ac/completed-future (handler-util/error-response context))
+        (-> (handler-util/db node (fhir-util/t params))
+            (ac/then-compose #(search context %))
+            (ac/then-apply ring/response)
+            (ac/exceptionally handler-util/error-response))))))
 
 
 (defn handler [node]

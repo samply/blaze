@@ -69,10 +69,10 @@
   ;; ---- Common Query Functions ----------------------------------------------
 
   (-execute-query [_ query]
-    (p/-execute query snapshot raoi svri rsvi csvri t))
+    (p/-execute query snapshot raoi svri rsvi cri csvri t))
 
   (-execute-query [_ query arg1]
-    (p/-execute query snapshot raoi svri rsvi csvri t arg1))
+    (p/-execute query snapshot raoi svri rsvi cri csvri t arg1))
 
 
 
@@ -150,11 +150,17 @@
   (-compile-type-query [_ type clauses]
     (p/-compile-type-query node type clauses))
 
+  (-compile-type-query-lenient [_ type clauses]
+    (p/-compile-type-query-lenient node type clauses))
+
   (-compile-system-query [_ clauses]
     (p/-compile-system-query node clauses))
 
   (-compile-compartment-query [_ code type clauses]
     (p/-compile-compartment-query node code type clauses))
+
+  (-compile-compartment-query-lenient [_ code type clauses]
+    (p/-compile-compartment-query-lenient node code type clauses))
 
 
 
@@ -181,26 +187,55 @@
   (.write w (format "BatchDb[t=%d]" (.t db))))
 
 
+(defn- decode-clauses [clauses]
+  (mapv
+    (fn [[search-param modifier values]]
+      (cons (cond-> (p/-code search-param) modifier (str ":" modifier))
+            values))
+    clauses))
+
+
 (defrecord TypeQuery [tid clauses]
   p/Query
-  (-execute [_ snapshot raoi svri rsvi _ t]
+  (-execute [_ snapshot raoi svri rsvi _ _ t]
     (index/type-query snapshot svri rsvi raoi tid clauses nil t))
-  (-execute [_ snapshot raoi svri rsvi _ t start-id]
+  (-execute [_ snapshot raoi svri rsvi _ _ t start-id]
     (index/type-query snapshot svri rsvi raoi tid clauses
-                      (some-> start-id codec/id-bytes) t)))
+                      (some-> start-id codec/id-bytes) t))
+  (-clauses [_]
+    (decode-clauses clauses)))
+
+
+(defrecord EmptyTypeQuery [tid]
+  p/Query
+  (-execute [_ _ raoi _ _ _ _ t]
+    (resource-as-of/type-list raoi tid nil t))
+  (-execute [_ _ raoi _ _ _ _ t start-id]
+    (resource-as-of/type-list raoi tid (some-> start-id codec/id-bytes) t))
+  (-clauses [_]))
 
 
 (defrecord SystemQuery [clauses]
   p/Query
-  (-execute [_ snapshot raoi svri rsvi _ t]
+  (-execute [_ snapshot raoi svri rsvi _ _ t]
     (index/system-query snapshot svri rsvi raoi clauses t)))
 
 
 (defrecord CompartmentQuery [c-hash tid clauses]
   p/Query
-  (-execute [_ snapshot raoi _ _ cspvi t arg1]
+  (-execute [_ snapshot raoi _ _ _ cspvi t arg1]
     (let [compartment {:c-hash c-hash :res-id (codec/id-bytes arg1)}]
-      (index/compartment-query snapshot cspvi raoi compartment tid clauses t))))
+      (index/compartment-query snapshot cspvi raoi compartment tid clauses t)))
+  (-clauses [_]
+    (decode-clauses clauses)))
+
+
+(defrecord EmptyCompartmentQuery [c-hash tid]
+  p/Query
+  (-execute [_ _ raoi _ _ cri _ t arg1]
+    (let [compartment {:c-hash c-hash :res-id (codec/id-bytes arg1)}]
+      (index/compartment-list cri raoi compartment tid nil t)))
+  (-clauses [_]))
 
 
 (defn new-batch-db

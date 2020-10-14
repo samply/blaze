@@ -90,6 +90,13 @@
   :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
 
+(s/fdef d/compile-type-query-lenient
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :type :fhir.type/name
+               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+  :ret :blaze.db/query)
+
+
 
 ;; ---- System-Level Functions ------------------------------------------------
 
@@ -156,8 +163,13 @@
 ;; ---- Common Query Functions ------------------------------------------------
 
 (s/fdef d/execute-query
-  :args (s/cat :db :blaze.db/db :query :blaze.db/query :args (s/* some?))
+  :args (s/cat :db :blaze.db/db :query :blaze.db/query :args (s/* any?))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+
+
+(s/fdef d/query-clauses
+  :args (s/cat :query :blaze.db/query)
+  :ret (s/coll-of :blaze.db.query/clause))
 
 
 

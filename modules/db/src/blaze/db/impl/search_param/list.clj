@@ -62,6 +62,9 @@
 
 (defrecord SearchParamList [type name]
   p/SearchParam
+  (-code [_]
+    "_list")
+
   (-compile-values [_ values]
     (map codec/id-bytes values))
 
