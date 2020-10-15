@@ -62,14 +62,14 @@
      ::anom/message (format "search-param with code `%s` and type `%s` not found" code type)}))
 
 
-(defn- resolve-search-params [search-param-registry type clauses]
+(defn- resolve-search-params [search-param-registry type clauses lenient?]
   (reduce
     (fn [ret [code & values]]
       (let [[code modifier] (str/split code #":" 2)
             res (resolve-search-param search-param-registry type code)]
         (if (::anom/category res)
-          (reduced res)
-          (conj ret [res modifier (search-param/compile-values res values)]))))
+          (if lenient? ret (reduced res))
+          (conj ret [res modifier values (search-param/compile-values res values)]))))
     []
     clauses))
 
@@ -243,18 +243,33 @@
 
   p/QueryCompiler
   (-compile-type-query [_ type clauses]
-    (when-ok [clauses (resolve-search-params search-param-registry type clauses)]
+    (when-ok [clauses (resolve-search-params search-param-registry type clauses
+                                             false)]
       (batch-db/->TypeQuery (codec/tid type) (seq clauses))))
+
+  (-compile-type-query-lenient [_ type clauses]
+    (if-let [clauses (seq (resolve-search-params search-param-registry type
+                                                 clauses true))]
+      (batch-db/->TypeQuery (codec/tid type) clauses)
+      (batch-db/->EmptyTypeQuery (codec/tid type))))
 
   (-compile-system-query [_ clauses]
     (when-ok [clauses (resolve-search-params search-param-registry "Resource"
-                                             clauses)]
+                                             clauses false)]
       (batch-db/->SystemQuery (seq clauses))))
 
   (-compile-compartment-query [_ code type clauses]
-    (when-ok [clauses (resolve-search-params search-param-registry type clauses)]
+    (when-ok [clauses (resolve-search-params search-param-registry type clauses
+                                             false)]
       (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
                                    (seq clauses))))
+
+  (-compile-compartment-query-lenient [_ code type clauses]
+    (if-let [clauses (seq (resolve-search-params search-param-registry type clauses
+                                                 true))]
+      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
+                                   clauses)
+      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))))
 
   p/Pull
   (-pull [_ resource-handle]

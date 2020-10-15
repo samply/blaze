@@ -19,10 +19,10 @@
   (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 
 
-(defn decode
-  [query-params]
+(defn decode [query-params]
   {:clauses (clauses query-params)
    :summary? (summary? query-params)
+   :summary (get query-params "_summary")
    :page-size (fhir-util/page-size query-params)
    :page-id (fhir-util/page-id query-params)
    :page-offset (fhir-util/page-offset query-params)})

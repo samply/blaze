@@ -38,7 +38,7 @@
       (fn [resource-handle]
         (let [id (codec/id-bytes (:id resource-handle))
               hash (rh/hash resource-handle)]
-          (loop [[[search-param modifier values] & clauses] clauses]
+          (loop [[[search-param modifier _ values] & clauses] clauses]
             (if search-param
               (when (search-param/matches? search-param snapshot tid id hash
                                            modifier values)
@@ -48,7 +48,7 @@
 
 
 (defn type-query [snapshot svri rsvi raoi tid clauses start-id t]
-  (let [[[search-param modifier values] & other-clauses] clauses]
+  (let [[[search-param modifier _ values] & other-clauses] clauses]
     (coll/eduction
       (other-clauses-filter snapshot tid other-clauses)
       (search-param/resource-handles search-param snapshot svri rsvi raoi tid
@@ -102,7 +102,7 @@
 (defn compartment-query
   "Iterates over the CSV index "
   [snapshot csvri raoi compartment tid clauses t]
-  (let [[[search-param _ values] & other-clauses] clauses]
+  (let [[[search-param _ _ values] & other-clauses] clauses]
     (coll/eduction
       (other-clauses-filter snapshot tid other-clauses)
       (search-param/compartment-resources search-param csvri raoi compartment

@@ -170,6 +170,13 @@
   (p/-compile-type-query node-or-db type clauses))
 
 
+(defn compile-type-query-lenient
+  "Like `compile-type-query` but ignores clauses which refer to unknown search
+  parameters."
+  [node-or-db type clauses]
+  (p/-compile-type-query-lenient node-or-db type clauses))
+
+
 
 ;; ---- System-Level Functions ------------------------------------------------
 
@@ -268,6 +275,13 @@
   (p/-compile-compartment-query node-or-db code type clauses))
 
 
+(defn compile-compartment-query-lenient
+  "Like `compile-compartment-query` but ignores clauses which refer to unknown
+  search parameters."
+  [node-or-db code type clauses]
+  (p/-compile-compartment-query-lenient node-or-db code type clauses))
+
+
 
 ;; ---- Common Query Functions ------------------------------------------------
 
@@ -286,6 +300,12 @@
    (p/-execute-query db query))
   ([db query arg1]
    (p/-execute-query db query arg1)))
+
+
+(defn query-clauses
+  "Returns the clauses used in `query`."
+  [query]
+  (p/-clauses query))
 
 
 

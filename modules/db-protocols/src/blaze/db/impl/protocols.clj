@@ -62,18 +62,25 @@
 (defprotocol QueryCompiler
   (-compile-type-query [compiler type clauses])
 
+  (-compile-type-query-lenient [compiler type clauses])
+
   (-compile-system-query [compiler clauses])
 
-  (-compile-compartment-query [compiler code type clauses]))
+  (-compile-compartment-query [compiler code type clauses])
+
+  (-compile-compartment-query-lenient [compiler code type clauses]))
 
 
 (defprotocol Query
   (-execute
-    [query snapshot raoi svri rsvi csvri t]
-    [query snapshot raoi svri rsvi csvri t arg1]))
+    [query snapshot raoi svri rsvi cri csvri t]
+    [query snapshot raoi svri rsvi cri csvri t arg1])
+
+  (-clauses [query]))
 
 
 (defprotocol SearchParam
+  (-code [search-param])
   (-compile-values [search-param values])
   (-resource-handles [search-param snapshot spvi rsvi raoi tid modifier compiled-value start-id t])
   (-compartment-keys [search-param cspvi compartment tid compiled-value])

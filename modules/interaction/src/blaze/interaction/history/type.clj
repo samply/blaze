@@ -7,7 +7,7 @@
     [blaze.db.api :as d]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.handler.util :as util]
+    [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [integrant.core :as ig]
@@ -61,7 +61,7 @@
 (defn- handler-intern [node]
   (fn [{::reitit/keys [router match] :keys [query-params]
         {{:fhir.resource/keys [type]} :data} ::reitit/match}]
-    (-> (util/db node (fhir-util/t query-params))
+    (-> (handler-util/db node (fhir-util/t query-params))
         (ac/then-compose #(handle router match query-params % type)))))
 
 
