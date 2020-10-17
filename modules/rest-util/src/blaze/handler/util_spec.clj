@@ -1,7 +1,7 @@
 (ns blaze.handler.util-spec
   (:require
-    [blaze.async-comp :as ac]
-    [blaze.async-comp-spec]
+    [blaze.async.comp :as ac]
+    [blaze.async.comp-spec]
     [blaze.db.spec]
     [blaze.handler.util :as util]
     [clojure.spec.alpha :as s]))

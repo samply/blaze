@@ -4,10 +4,16 @@
      :refer [split-by-first-equal-expression]]
     [blaze.elm.literal]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [are deftest]]))
+    [clojure.test :as test :refer [are deftest]]))
 
 
-(st/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
 
 
 (deftest split-by-first-equal-expression-test

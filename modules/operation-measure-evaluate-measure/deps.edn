@@ -1,9 +1,9 @@
 {:deps
- {blaze/cql
-  {:local/root "../cql"}
+ {blaze/async
+  {:local/root "../async"}
 
-  blaze/executor
-  {:local/root "../executor"}
+  blaze/cql
+  {:local/root "../cql"}
 
   blaze/module-base
   {:local/root "../module-base"}
@@ -40,7 +40,7 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
-    cloverage/cloverage
+    org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota

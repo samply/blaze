@@ -43,7 +43,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -63,7 +63,7 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
-    cloverage/cloverage
+    org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota

@@ -1,8 +1,20 @@
-(ns blaze.async-comp-spec
+(ns blaze.async.comp-spec
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.executors :as ex]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s])
+  (:import
+    [java.util.concurrent TimeUnit]))
+
+
+(s/fdef ac/completable-future?
+  :args (s/cat :x any?)
+  :ret boolean?)
+
+
+(s/fdef ac/future
+  :args (s/cat)
+  :ret ac/completable-future?)
 
 
 (s/fdef ac/completed-future
@@ -25,15 +37,31 @@
   :ret boolean?)
 
 
+(s/fdef ac/complete-on-timeout!
+  :args (s/cat :future ac/completable-future? :x any? :timeout int?
+               :unit #(instance? TimeUnit %))
+  :ret ac/completable-future?)
+
+
 (s/fdef ac/complete-exceptionally!
   :args (s/cat :future ac/completable-future?
                :e #(instance? Throwable %))
   :ret boolean?)
 
 
+(s/fdef ac/join
+  :args (s/cat :future ac/completable-future?)
+  :ret any?)
+
+
 (s/fdef ac/supply-async
   :args (s/cat :f fn? :executor ex/executor?)
   :ret ac/completable-future?)
+
+
+(s/fdef ac/completion-stage?
+  :args (s/cat :x any?)
+  :ret boolean?)
 
 
 (s/fdef ac/then-apply
@@ -52,6 +80,16 @@
   :ret ac/completion-stage?)
 
 
+(s/fdef ac/handle
+  :args (s/cat :stage ac/completion-stage? :f fn?)
+  :ret ac/completion-stage?)
+
+
+(s/fdef ac/exceptionally
+  :args (s/cat :stage ac/completion-stage? :f fn?)
+  :ret ac/completion-stage?)
+
+
 (s/fdef ac/when-complete
   :args (s/cat :stage ac/completion-stage? :f fn?)
   :ret ac/completion-stage?)
@@ -61,3 +99,8 @@
   :args (s/cat :stage ac/completion-stage? :f fn?
                :executor ex/executor?)
   :ret ac/completion-stage?)
+
+
+(s/fdef ac/->completable-future
+  :args (s/cat :stage ac/completion-stage?)
+  :ret ac/completable-future?)

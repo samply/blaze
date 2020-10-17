@@ -1,12 +1,12 @@
 {:deps
- {blaze/db
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/db
   {:local/root "../db"}
 
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
-
-  blaze/module-base
-  {:local/root "../module-base"}
 
   org.apache.httpcomponents/httpcore
   {:mvn/version "4.4.12"}
@@ -32,7 +32,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -52,7 +52,7 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
-    cloverage/cloverage
+    org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota

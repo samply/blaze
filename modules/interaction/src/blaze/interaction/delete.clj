@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.delete.spec]

@@ -1,7 +1,7 @@
 (ns blaze.db.tx-log-spec
   (:require
-    [blaze.async-comp :as ac]
-    [blaze.async-comp-spec]
+    [blaze.async.comp :as ac]
+    [blaze.async.comp-spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.spec]
     [clojure.spec.alpha :as s])

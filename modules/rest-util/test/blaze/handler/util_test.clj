@@ -1,6 +1,6 @@
 (ns blaze.handler.util-test
   (:require
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.handler.util :refer [preference]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is]]))

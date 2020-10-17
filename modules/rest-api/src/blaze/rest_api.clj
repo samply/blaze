@@ -1,6 +1,6 @@
 (ns blaze.rest-api
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]

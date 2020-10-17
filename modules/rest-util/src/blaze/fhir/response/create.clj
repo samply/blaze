@@ -1,6 +1,6 @@
 (ns blaze.fhir.response.create
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [ring.util.response :as ring]

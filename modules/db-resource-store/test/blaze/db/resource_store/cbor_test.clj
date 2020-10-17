@@ -5,7 +5,17 @@
     [blaze.fhir.spec]
     [cheshire.core :as cheshire]
     [clj-cbor.core :as cbor]
-    [clojure.test :refer [are deftest testing]]))
+    [clojure.spec.test.alpha :as st]
+    [clojure.test :as test :refer [are deftest testing]]))
+
+
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
 
 
 (deftest encode-cbor-cheshire-test

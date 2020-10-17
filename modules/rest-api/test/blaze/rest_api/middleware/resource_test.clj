@@ -1,6 +1,6 @@
 (ns blaze.rest-api.middleware.resource-test
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.executors :as ex]
     [blaze.rest-api.middleware.resource :refer [wrap-resource]]
     [clojure.spec.test.alpha :as st]

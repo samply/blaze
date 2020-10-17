@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#create"
   (:require
     [blaze.anomaly :refer [throw-anom]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.response.create :as response]
     [blaze.handler.util :as handler-util]

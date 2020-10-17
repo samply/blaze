@@ -7,7 +7,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
+    {:mvn/version "1.0.700"}
 
     org.clojure/test.check
     {:mvn/version "1.1.0"}}
@@ -18,7 +18,7 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {cloverage/cloverage
+   {org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}

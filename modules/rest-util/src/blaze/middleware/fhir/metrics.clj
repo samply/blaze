@@ -1,6 +1,6 @@
 (ns blaze.middleware.fhir.metrics
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [prometheus.alpha :as prom]))
 
 

@@ -2,7 +2,7 @@
   "JSON/XML deserialization middleware."
   (:require
     [blaze.anomaly :refer [throw-anom ex-anom]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.util :as handler-util]
     [cheshire.core :as json]

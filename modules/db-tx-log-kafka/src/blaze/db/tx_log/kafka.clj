@@ -1,6 +1,6 @@
 (ns blaze.db.tx-log.kafka
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka.spec]
     [blaze.db.tx-log.spec]

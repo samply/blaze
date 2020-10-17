@@ -7,9 +7,6 @@
   blaze/fhir-path
   {:local/root "../fhir-path"}
 
-  blaze/fhir-structure
-  {:local/root "../fhir-structure"}
-
   blaze/module-base
   {:local/root "../module-base"}}
 
@@ -19,7 +16,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -33,7 +30,7 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {cloverage/cloverage
+   {org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota

@@ -3,11 +3,17 @@
     [blaze.elm.type-infer :refer [infer-types]]
     [blaze.elm.type-infer-spec]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [deftest testing]]
+    [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]))
 
 
-(st/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
 
 
 (defmacro ^:private given-infer-types [elm & body]

@@ -1,6 +1,7 @@
 (ns blaze.db.search-param-registry-test
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.db.impl.protocols :as p]
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry-spec]
     [blaze.fhir-path :as fhir-path]
@@ -13,29 +14,30 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :info} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
 
 
+(defrecord SearchParam [type url expression]
+  p/SearchParam)
+
+
 (defmethod sr/search-param "token"
   [{:keys [url type expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
-      {:type type
-       :url url
-       :expression expression})))
+      (->SearchParam type url expression))))
 
 
 (defmethod sr/search-param "reference"
   [{:keys [url type expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
-      {:type type
-       :url url
-       :expression expression})))
+      (->SearchParam type url expression))))
 
 
 (def search-param-registry

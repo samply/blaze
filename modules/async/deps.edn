@@ -1,0 +1,25 @@
+{:deps
+ {blaze/executor
+  {:local/root "../executor"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.700"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

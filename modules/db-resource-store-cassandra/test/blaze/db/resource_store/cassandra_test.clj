@@ -1,6 +1,6 @@
 (ns blaze.db.resource-store.cassandra-test
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.cassandra :as cass]
     [blaze.db.resource-store.cassandra-spec]

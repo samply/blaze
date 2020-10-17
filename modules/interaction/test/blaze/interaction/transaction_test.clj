@@ -5,7 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
     [blaze.interaction.transaction :refer [handler]]

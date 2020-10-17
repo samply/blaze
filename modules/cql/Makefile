@@ -18,10 +18,10 @@ cql-test:
 	wget -P cql-test -q https://raw.githubusercontent.com/HL7/cql/v1.4-ballot/tests/cql/ValueLiteralsAndSelectors.xml
 
 test: cql-test
-	clojure -A:test --profile :ci
+	clojure -M:test --profile :ci
 
 test-coverage:
-	clojure -A:test-coverage
+	clojure -M:test-coverage
 
 clean:
 	rm -r cql-test

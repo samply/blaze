@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.anomaly :refer [ex-anom when-ok]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
