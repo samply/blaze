@@ -1,7 +1,7 @@
 (ns blaze.handler.util
   "HTTP/REST Handler Utils"
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.spec.type :as type]
     [clojure.core.protocols :refer [Datafiable]]

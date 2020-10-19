@@ -1,7 +1,7 @@
 (ns blaze.db.node.resource-indexer-spec
   (:require
-    [blaze.async-comp :as ac]
-    [blaze.async-comp-spec]
+    [blaze.async.comp :as ac]
+    [blaze.async.comp-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.resource-store.spec]
     [blaze.db.search-param-registry.spec]

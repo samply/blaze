@@ -1,6 +1,6 @@
 (ns blaze.db.resource-cache-test
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.resource-cache :as resource-cache]
     [blaze.db.resource-cache-spec]
     [blaze.db.resource-store :as rs]

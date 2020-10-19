@@ -1,6 +1,6 @@
 (ns blaze.interaction.search-compartment-spec
   (:require
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.db.spec]
     [blaze.interaction.search-compartment :as search-compartment]
     [blaze.interaction.search.nav-spec]

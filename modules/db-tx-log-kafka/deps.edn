@@ -1,5 +1,8 @@
 {:deps
- {blaze/db-protocols
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/db-protocols
   {:local/root "../db-protocols"}
 
   blaze/db-tx-log
@@ -20,7 +23,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -34,7 +37,7 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {cloverage/cloverage
+   {org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota

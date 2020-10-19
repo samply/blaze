@@ -129,7 +129,24 @@
               {:fhir/type :fhir/Patient :id "0"}
               nil)
             [0 fhir-spec/fhir-type] := :fhir/Observation
-            [0 :id] := "1"))))
+            [0 :id] := "1")))
+
+      (testing "Patient in Specimen context"
+        (with-open [node (mem-node-with
+                           [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Specimen :id "0"
+                                    :subject
+                                    {:fhir/type :fhir/Reference
+                                     :reference "Patient/0"}}]]])]
+          (let [db (d/db node)]
+            (given
+              (-eval
+                (expr node "Specimen" "Patient" "foo" [])
+                {:db db}
+                (d/resource-handle db "Specimen" "0")
+                nil)
+              [0 fhir-spec/fhir-type] := :fhir/Patient
+              [0 :id] := "0")))))
 
     (testing "with one code"
       (testing "Observation in Patient context"

@@ -1,6 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.handler.impl
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]

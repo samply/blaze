@@ -1,7 +1,7 @@
 (ns blaze.interaction.transaction-spec
   (:require
     [blaze.anomaly-spec]
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.db.spec]
     [blaze.executors :refer [executor?]]
     [blaze.interaction.transaction :as transaction]

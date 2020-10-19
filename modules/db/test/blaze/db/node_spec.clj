@@ -1,6 +1,6 @@
 (ns blaze.db.node-spec
   (:require
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.db.kv-spec]
     [blaze.db.node :as node]
     [blaze.db.node.resource-indexer]

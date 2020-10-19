@@ -13,7 +13,7 @@
     [prometheus.alpha :as prom]
     [taoensso.timbre :as log])
   (:import
-    [java.nio.charset Charset]
+    [java.nio.charset StandardCharsets]
     [java.util Base64]))
 
 
@@ -38,9 +38,6 @@
 
 ;; ---- Compilation -----------------------------------------------------------
 
-(def ^:private ^Charset utf-8 (Charset/forName "utf8"))
-
-
 (defn- extract-cql-code
   "Extracts the CQL code from the first attachment of `library`.
 
@@ -51,7 +48,8 @@
     (if (= "text/cql" (type/value contentType))
       (let [data (type/value data)]
         (if data
-          (String. ^bytes (.decode (Base64/getDecoder) ^String data) utf-8)
+          (String. ^bytes (.decode (Base64/getDecoder) ^String data)
+                   StandardCharsets/UTF_8)
           {::anom/category ::anom/incorrect
            ::anom/message (format "Missing embedded data of first attachment in library with id `%s`." id)
            :fhir/issue "value"

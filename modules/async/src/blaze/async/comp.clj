@@ -1,4 +1,7 @@
-(ns blaze.async-comp
+(ns blaze.async.comp
+  "This namespace provides functions to work with CompletableFutures.
+
+  https://www.baeldung.com/java-completablefuture"
   (:import
     [java.util.concurrent CompletionStage CompletableFuture]
     [java.util.function BiConsumer Function BiFunction Supplier])
@@ -8,14 +11,13 @@
 (set! *warn-on-reflection* true)
 
 
-
-;; ---- CompletableFuture -----------------------------------------------------
-
 (defn completable-future? [x]
   (instance? CompletableFuture x))
 
 
-(defn future []
+(defn future
+  "Returns a new incomplete CompletableFuture"
+  []
   (CompletableFuture.))
 
 
@@ -75,7 +77,9 @@
   (.completeExceptionally ^CompletableFuture future e))
 
 
-(defn join [future]
+(defn join
+  "Like `clojure.core/deref` but faster."
+  [future]
   (.join ^CompletableFuture future))
 
 
@@ -102,20 +106,6 @@
         (f)))
     executor))
 
-
-(defn delayed-executor
-  "Returns a Executor that submits a task to `executor` or the default executor
-  after `delay` (or no delay if non-positive).
-
-  The `delay` has to be a java.time.Duration."
-  ([delay unit]
-   (CompletableFuture/delayedExecutor delay unit))
-  ([delay unit executor]
-   (CompletableFuture/delayedExecutor delay unit executor)))
-
-
-
-;; ---- CompletionStage -------------------------------------------------------
 
 (defn completion-stage? [x]
   (instance? CompletionStage x))
@@ -149,13 +139,6 @@
        (apply [_ x]
          (f x)))
      executor)))
-
-
-(defn then-run
-  "Returns a CompletionStage that, when `stage` completes normally, calls the
-  function `f` with no arguments."
-  [stage f]
-  (.thenApply ^CompletionStage stage f))
 
 
 (defn then-compose

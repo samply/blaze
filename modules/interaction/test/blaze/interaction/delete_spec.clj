@@ -1,6 +1,6 @@
 (ns blaze.interaction.delete-spec
   (:require
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.db.spec]
     [blaze.interaction.delete :as delete]
     [blaze.middleware.fhir.metrics-spec]

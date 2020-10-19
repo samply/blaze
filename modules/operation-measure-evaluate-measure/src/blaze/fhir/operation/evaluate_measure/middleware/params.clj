@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params
   (:require
     [blaze.anomaly :refer [when-ok]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.handler.util :as util]
     [cognitect.anomalies :as anom])
   (:import

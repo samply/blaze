@@ -5,6 +5,9 @@
   {:mvn/version "1.0.2"
    :exclusions [org.clojure/clojurescript]}
 
+  blaze/async
+  {:local/root "../async"}
+
   blaze/coll
   {:local/root "../coll"}
 
@@ -13,9 +16,6 @@
 
   blaze/db-tx-log
   {:local/root "../db-tx-log"}
-
-  blaze/executor
-  {:local/root "../executor"}
 
   blaze/fhir-path
   {:local/root "../fhir-path"}
@@ -35,7 +35,7 @@
   blaze/search-param-registry
   {:local/root "../search-param-registry"}
 
-  clj-fuzzy
+  clj-fuzzy/clj-fuzzy
   {:mvn/version "0.4.1"}
 
   com.github.ben-manes.caffeine/caffeine
@@ -61,7 +61,7 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {cloverage/cloverage
+   {org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota

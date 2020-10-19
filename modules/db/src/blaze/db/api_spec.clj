@@ -1,7 +1,7 @@
 (ns blaze.db.api-spec
   (:require
-    [blaze.async-comp :as ac]
-    [blaze.async-comp-spec]
+    [blaze.async.comp :as ac]
+    [blaze.async.comp-spec]
     [blaze.db.api :as d]
     [blaze.db.search-param-registry-spec]
     [blaze.db.spec]

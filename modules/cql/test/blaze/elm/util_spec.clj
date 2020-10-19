@@ -7,7 +7,7 @@
 
 (s/fdef elm-util/parse-qualified-name
   :args (s/cat :s (s/nilable string?))
-  :ret (s/tuple string? string?))
+  :ret (s/nilable (s/tuple string? string?)))
 
 
 (s/fdef elm-util/named-type-specifier?

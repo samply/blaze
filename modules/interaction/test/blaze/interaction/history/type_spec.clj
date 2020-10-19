@@ -1,6 +1,6 @@
 (ns blaze.interaction.history.type-spec
   (:require
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.handler.fhir.util-spec]
     [blaze.interaction.history.type :as type]
     [blaze.interaction.history.util-spec]

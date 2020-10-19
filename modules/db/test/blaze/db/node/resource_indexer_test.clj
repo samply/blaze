@@ -1,6 +1,6 @@
 (ns blaze.db.node.resource-indexer-test
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.impl.codec :as codec]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]

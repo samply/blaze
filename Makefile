@@ -10,7 +10,7 @@ lint-root:
 lint: $(MODULES) lint-root
 
 test-root:
-	clojure -A:test --profile :ci
+	clojure -M:test --profile :ci
 
 test: $(MODULES)
 

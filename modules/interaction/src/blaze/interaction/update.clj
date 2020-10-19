@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#update"
   (:require
     [blaze.anomaly :refer [throw-anom]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]

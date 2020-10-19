@@ -29,3 +29,11 @@
     (is (not= (hash/generate {:fhir/type :fhir/Patient :id "0"})
               (hash/generate {:fhir/type :fhir/Observation :id "0"})))))
 
+
+(deftest encode-test
+  (is (= 32 (count (hash/encode (hash/generate {:fhir/type :fhir/Patient :id "0"}))))))
+
+
+(deftest decode-test
+  (let [hash (hash/generate {:fhir/type :fhir/Patient :id "0"})]
+    (is (= hash (hash/decode (hash/encode hash))))))

@@ -95,7 +95,7 @@
   (require '[blaze.db.kv :as kv]
            '[blaze.fhir.hash :as hash]
            '[cheshire.core :as cheshire]
-           '[blaze.async-comp :as ac]
+           '[blaze.async.comp :as ac]
            '[blaze.executors :as ex]
            '[criterium.core :refer [quick-bench bench]])
 

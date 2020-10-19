@@ -10,7 +10,7 @@
   Instance-level, Type-level, system-level, compartment-level."
   (:require
     [blaze.anomaly :refer [when-ok]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p])
   (:import

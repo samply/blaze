@@ -1,7 +1,7 @@
 (ns blaze.db.node.resource-indexer
   (:require
     [blaze.anomaly :refer [throw-anom]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]

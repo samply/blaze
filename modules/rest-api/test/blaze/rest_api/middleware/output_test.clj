@@ -1,6 +1,6 @@
 (ns blaze.rest-api.middleware.output-test
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.executors :as ex]
     [blaze.rest-api.middleware.output :refer [wrap-output]]
     [clojure.spec.test.alpha :as st]

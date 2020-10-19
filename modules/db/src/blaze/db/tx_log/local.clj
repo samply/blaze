@@ -9,7 +9,7 @@
   Uses a single thread names `local-tx-log` to increment the point in time `t`,
   store the transaction and transfers it to listening queues."
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]

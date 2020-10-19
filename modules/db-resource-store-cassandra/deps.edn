@@ -1,12 +1,12 @@
 {:deps
- {blaze/module-base
-  {:local/root "../module-base"}
+ {blaze/async
+  {:local/root "../async"}
 
   blaze/db-resource-store
   {:local/root "../db-resource-store"}
 
-  blaze/executor
-  {:local/root "../executor"}
+  blaze/module-base
+  {:local/root "../module-base"}
 
   com.datastax.oss/java-driver-core
   {:mvn/version "4.7.2"}}
@@ -17,7 +17,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -31,7 +31,7 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {cloverage/cloverage
+   {org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota

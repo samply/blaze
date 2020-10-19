@@ -1,8 +1,8 @@
 (ns blaze.db.api-test
   "Main high-level test of all database API functions."
   (:require
-    [blaze.async-comp :as ac]
-    [blaze.async-comp-spec]
+    [blaze.async.comp :as ac]
+    [blaze.async.comp-spec]
     [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
@@ -589,7 +589,20 @@
       (testing "the patient can be found"
         (given @(pull-type-query node "Patient" [["active" "true"]])
           [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"))))
+          [0 :id] := "0"))
+
+      (testing "an unknown search-param errors"
+        (given (d/type-query (d/db node) "Patient" [["foo" "bar"]
+                                                    ["active" "true"]])
+          ::anom/category := ::anom/not-found
+          ::anom/message := "search-param with code `foo` and type `Patient` not found")
+
+        (testing "with start id"
+          (given (d/type-query (d/db node) "Patient" [["foo" "bar"]
+                                                      ["active" "true"]]
+                               "0")
+            ::anom/category := ::anom/not-found
+            ::anom/message := "search-param with code `foo` and type `Patient` not found")))))
 
   (testing "a node with two patients in one transaction"
     (with-open [node (new-node)]
@@ -1316,6 +1329,46 @@
             (given @(pull-type-query node "List" clauses)
               [0 :id] := "id-143814"
               1 := nil)))))))
+
+
+(deftest compile-type-query
+  (testing "a node with one patient"
+    (with-open [node (new-node)]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+
+      (testing "the patient can be found"
+        (given @(->> (d/compile-type-query node "Patient" [["active" "true"]])
+                     (d/execute-query (d/db node))
+                     (d/pull-many node))
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"))
+
+      (testing "an unknown search-param errors"
+        (given (d/compile-type-query node "Patient" [["foo" "bar"]
+                                                     ["active" "true"]])
+          ::anom/category := ::anom/not-found
+          ::anom/message := "search-param with code `foo` and type `Patient` not found")))))
+
+
+(deftest compile-type-query-lenient
+  (testing "a node with one patient"
+    (with-open [node (new-node)]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+
+      (testing "the patient can be found"
+        (given @(->> (d/compile-type-query-lenient node "Patient" [["active" "true"]])
+                     (d/execute-query (d/db node))
+                     (d/pull-many node))
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"))
+
+      (testing "an unknown search-param is ignored"
+        (given @(->> (d/compile-type-query-lenient node "Patient" [["foo" "bar"]
+                                                                   ["active" "true"]])
+                     (d/execute-query (d/db node))
+                     (d/pull-many node))
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0")))))
 
 
 

@@ -1,7 +1,7 @@
 (ns blaze.db.resource-store.kv
   (:require
     [blaze.anomaly :refer [ex-anom]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]

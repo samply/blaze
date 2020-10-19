@@ -1,6 +1,6 @@
 (ns blaze.db.resource-store.cassandra-spec
   (:require
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.db.resource-store.cassandra :refer [new-cassandra-resource-store]]
     [blaze.db.resource-store.cassandra.spec]
     [clojure.spec.alpha :as s])

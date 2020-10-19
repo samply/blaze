@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#read"
   (:require
     [blaze.anomaly :refer [ex-anom]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]

@@ -2,7 +2,7 @@
   "Local Database Node"
   (:require
     [blaze.anomaly :refer [when-ok ex-anom]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]

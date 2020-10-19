@@ -4,11 +4,17 @@
     [blaze.cql-translator-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [are deftest testing]]
+    [clojure.test :as test :refer [are deftest testing]]
     [juxt.iota :refer [given]]))
 
 
-(st/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
 
 
 (defmacro given-translation [cql & body]

@@ -1,6 +1,6 @@
 (ns blaze.db.tx-log.local-test
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.tx-log :as tx-log]

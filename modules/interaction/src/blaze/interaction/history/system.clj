@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]

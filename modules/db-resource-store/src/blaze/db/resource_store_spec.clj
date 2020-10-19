@@ -1,7 +1,7 @@
 (ns blaze.db.resource-store-spec
   (:require
-    [blaze.async-comp :as ac]
-    [blaze.async-comp-spec]
+    [blaze.async.comp :as ac]
+    [blaze.async.comp-spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.spec]
     [blaze.fhir.spec]

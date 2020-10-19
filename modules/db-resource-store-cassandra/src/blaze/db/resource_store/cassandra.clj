@@ -1,7 +1,7 @@
 (ns blaze.db.resource-store.cassandra
   (:require
     [blaze.anomaly :refer [ex-anom]]
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.cassandra.spec]
     [blaze.fhir.spec :as fhir-spec]

@@ -1,6 +1,6 @@
 (ns blaze.rest-api.middleware.cors
   (:require
-    [blaze.async-comp :as ac]
+    [blaze.async.comp :as ac]
     [ring.util.response :as ring]))
 
 

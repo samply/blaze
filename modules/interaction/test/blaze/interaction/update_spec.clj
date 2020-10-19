@@ -1,7 +1,7 @@
 (ns blaze.interaction.update-spec
   (:require
     [blaze.anomaly-spec]
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.db.spec]
     [blaze.interaction.update :as update]
     [blaze.middleware.fhir.metrics-spec]

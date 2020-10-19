@@ -1,6 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.handler.impl-spec
   (:require
-    [blaze.async-comp-spec]
+    [blaze.async.comp-spec]
     [blaze.db.api-spec]
     [blaze.executors :refer [executor?]]
     [blaze.fhir.operation.evaluate-measure.handler.impl :as impl]
