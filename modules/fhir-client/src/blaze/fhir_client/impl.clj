@@ -6,7 +6,6 @@
     [blaze.fhir.spec.type :as type]
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
-    [clojure.java.io :as io]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [taoensso.timbre :as log])
@@ -27,16 +26,15 @@
 
 
 (defn- parse-body [body]
-  (with-open [reader (io/reader body)]
-    (binding [*use-bigdecimals?* true]
-      (try
-        (json/parse-stream reader keyword)
-        (catch Exception e
-          (throw-anom ::anom/fault (ex-message e)))))))
+  (binding [*use-bigdecimals?* true]
+    (try
+      (json/parse-string body keyword)
+      (catch Exception e
+        (throw-anom ::anom/fault (ex-message e))))))
 
 
 (defn- json-subscriber []
-  (-> (HttpResponse$BodySubscribers/ofInputStream)
+  (-> (HttpResponse$BodySubscribers/ofString StandardCharsets/UTF_8)
       (HttpResponse$BodySubscribers/mapping
         (reify Function
           (apply [_ body]
