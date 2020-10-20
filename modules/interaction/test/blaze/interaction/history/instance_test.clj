@@ -73,6 +73,8 @@
 
       (is (= :fhir/Bundle (:fhir/type body)))
 
+      (is (string? (:id body)))
+
       (is (= #fhir/code"history" (:type body)))
 
       (is (= #fhir/unsignedInt 1 (:total body)))
@@ -107,6 +109,8 @@
       (is (= 200 status))
 
       (is (= :fhir/Bundle (:fhir/type body)))
+
+      (is (string? (:id body)))
 
       (is (= #fhir/code"history" (:type body)))
 

@@ -10,6 +10,7 @@
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.uuid :refer [random-uuid]]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -35,6 +36,7 @@
             (ring/response
               (cond->
                 {:fhir/type :fhir/Bundle
+                 :id (str (random-uuid))
                  :type #fhir/code"history"
                  :total (type/->UnsignedInt total)
                  :entry (mapv #(history-util/build-entry router %) paged-versions)}

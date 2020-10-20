@@ -446,6 +446,7 @@
 
       (given body
         :fhir/type := :fhir/Bundle
+        :id :? string?
         :type := #fhir/code"transaction-response"
         [:entry 0 :response :status] := "201"
         [:entry 0 :response :location] := #fhir/uri"/Patient/0/_history/1"
@@ -478,6 +479,7 @@
 
           (given body
             :fhir/type := :fhir/Bundle
+            :id :? string?
             :type := #fhir/code"transaction-response"
             [:entry 0 :response :status] := "200"
             [:entry 0 :response :etag] := "W/\"2\""
@@ -502,6 +504,7 @@
 
           (given body
             :fhir/type := :fhir/Bundle
+            :id :? string?
             :type := #fhir/code"transaction-response"
             [:entry 0 :response :status] := "200"
             [:entry 0 :response :etag] := "W/\"2\""
@@ -539,6 +542,7 @@
 
             (given body
               :fhir/type := :fhir/Bundle
+              :id :? string?
               :type := #fhir/code"transaction-response"
               [:entry 0 :response :status] := "201"
               [:entry 0 :response :location] := #fhir/uri"/Patient/b11daf6d-4c7b-4f81-980e-8c599bb6bf2d/_history/1"
@@ -591,6 +595,7 @@
 
       (given body
         :fhir/type := :fhir/Bundle
+        :id :? string?
         :type := #fhir/code"batch-response"
         [:entry 0 :response :status] := "201"
         [:entry 0 :response :location] := #fhir/uri"location"
@@ -625,6 +630,7 @@
 
       (given body
         :fhir/type := :fhir/Bundle
+        :id :? string?
         :type := #fhir/code"batch-response"
         [:entry 0 :response :status] := "400"
         [:entry 0 :response :outcome] := ::operation-outcome))))
@@ -657,6 +663,7 @@
 
       (given body
         :fhir/type := :fhir/Bundle
+        :id :? string?
         :type := #fhir/code"batch-response"
         [:entry 0 :response :status] := "200"
         [:entry 0 :response :etag] := "etag"
@@ -688,6 +695,7 @@
 
       (given body
         :fhir/type := :fhir/Bundle
+        :id :? string?
         :type := #fhir/code"batch-response"
         [:entry 0 :response :status] := "400"
         [:entry 0 :response :outcome] := ::operation-outcome))))
@@ -718,6 +726,7 @@
 
       (given body
         :fhir/type := :fhir/Bundle
+        :id :? string?
         :type := #fhir/code"batch-response"
         [:entry 0 :response :status] := "200")
 
@@ -754,6 +763,7 @@
 
       (given body
         :fhir/type := :fhir/Bundle
+        :id :? string?
         :type := #fhir/code"batch-response"
         [:entry 0 :response :status] := "200"
         [:entry 0 :response :etag] := "etag"

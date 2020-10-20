@@ -352,6 +352,7 @@
           (fn [response-entries]
             (ring/response
               {:fhir/type :fhir/Bundle
+               :id (str (random-uuid))
                :type (type/->Code (str (type/value type) "-response"))
                :entry response-entries})))
         (ac/exceptionally handler-util/error-response))))
