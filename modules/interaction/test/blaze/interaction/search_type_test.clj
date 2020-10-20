@@ -120,6 +120,9 @@
               (testing "the body contains a bundle"
                 (is (= :fhir/Bundle (:fhir/type body))))
 
+              (testing "the bundle contains an id"
+                (is (string? (:id body))))
+
               (testing "the bundle type is searchset"
                 (is (= #fhir/code"searchset" (:type body))))
 
@@ -145,6 +148,9 @@
 
               (testing "the body contains a bundle"
                 (is (= :fhir/Bundle (:fhir/type body))))
+
+              (testing "the bundle contains an id"
+                (is (string? (:id body))))
 
               (testing "the bundle type is searchset"
                 (is (= #fhir/code"searchset" (:type body))))

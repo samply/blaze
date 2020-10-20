@@ -10,6 +10,7 @@
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.uuid :refer [random-uuid]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -38,6 +39,7 @@
             (ring/response
               (cond->
                 {:fhir/type :fhir/Bundle
+                 :id (str (random-uuid))
                  :type #fhir/code"history"
                  :total (type/->UnsignedInt total)
                  :link []
