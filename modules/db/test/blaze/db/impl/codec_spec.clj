@@ -214,17 +214,20 @@
   bytes?)
 
 
+(defn resource-as-of-key-check
+  [{{:keys [tid] {:keys [id t] :as more} :more} :args :keys [ret]}]
+  (let [tid' (codec/resource-as-of-key->tid ret)
+        id' (when more (codec/resource-as-of-key->id ret))
+        t' (when more (codec/resource-as-of-key->t ret))]
+    (if more
+      (and (= tid' tid) (bytes/= id' id) (= t' t))
+      (= tid' tid))))
+
+
 (s/fdef codec/resource-as-of-key
   :args (s/cat :tid :blaze.db/tid :more (s/? (s/cat :id :blaze.db/id-bytes :t :blaze.db/t)))
   :ret :blaze/resource-as-of-key
-  :fn #(let [tid (codec/resource-as-of-key->tid (:ret %))
-             id (when (-> % :args :more) (codec/resource-as-of-key->id (:ret %)))
-             t (when (-> % :args :more) (codec/resource-as-of-key->t (:ret %)))]
-         (if (-> % :args :more)
-           (and (= tid (-> % :args :tid))
-                (bytes/= id (-> % :args :more :id))
-                (= t (-> % :args :more :t)))
-           (= tid (-> % :args :tid)))))
+  :fn resource-as-of-key-check)
 
 
 (s/fdef codec/resource-as-of-key->tid

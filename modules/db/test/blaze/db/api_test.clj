@@ -567,7 +567,16 @@
               (given @(d/pull-many node (d/list-resource-handles db "Patient"))
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
-                [0 :meta :versionId] := #fhir/id"1"))))))))
+                [0 :meta :versionId] := #fhir/id"1")))))))
+
+  (testing "resources will be returned in lexical id order"
+    (with-open [node (new-node)]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                         [:put {:fhir/type :fhir/Patient :id "00"}]])
+
+      (given @(d/pull-many node (d/list-resource-handles (d/db node) "Patient"))
+        [0 :id] := "0"
+        [1 :id] := "00"))))
 
 
 (defn- pull-type-query

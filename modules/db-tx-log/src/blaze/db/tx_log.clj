@@ -15,15 +15,15 @@
 
 
 (defprotocol Queue
-  (-poll [tx-log timeout]))
+  (-poll [queue timeout]))
 
 
 (defn submit
   "Submits transaction commands.
 
-  Returns a success deferred with the point in time (:blaze.db/t) of the
-  potentially valid transaction or an error deferred with an anomaly in case of
-  errors."
+  Returns a CompletableFuture that will complete with point in time t of the
+  potentially valid transaction or complete exceptionally with an anomaly in
+  case of errors."
   [tx-log tx-cmds]
   (-submit tx-log tx-cmds))
 

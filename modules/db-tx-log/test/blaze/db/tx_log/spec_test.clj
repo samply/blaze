@@ -18,11 +18,18 @@
 (test/use-fixtures :each fixture)
 
 
+(deftest t-test
+  (are [x] (s/valid? :blaze.db/t x)
+    0
+    1
+    0xFFFFFFFFFFFFFF))
+
+
 (def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
 (def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
 
 
-(deftest tx-cmd
+(deftest tx-cmd-test
   (are [tx-cmd] (s/valid? :blaze.db/tx-cmd tx-cmd)
     {:op "create"
      :type "Patient"
@@ -33,7 +40,12 @@
      :id "0"
      :hash observation-hash-0
      :refs [["Patient" "0"]]}
-    {:op "create"
+    {:op "put"
+     :type "Patient"
+     :id "0"
+     :hash patient-hash-0
+     :if-match 1}
+    {:op "delete"
      :type "Patient"
      :id "0"
      :hash patient-hash-0
