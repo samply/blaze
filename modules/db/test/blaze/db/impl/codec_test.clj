@@ -6,8 +6,9 @@
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check]
-    [clojure.test.check.generators :as gen])
+    [clojure.test.check :as tc]
+    [clojure.test.check.generators :as gen]
+    [clojure.test.check.properties :as p])
   (:import
     [com.google.common.hash HashCode]
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset])
@@ -34,16 +35,32 @@
    `(is (not-every? :failure (st/check ~sym ~opts)))))
 
 
+(defmacro satisfies-prop [num-tests prop]
+  `(let [result# (tc/quick-check ~num-tests ~prop)]
+     (if (instance? Throwable (:result result#))
+       (throw (:result result#))
+       (if (true? (:result result#))
+         (is :success)
+         (is (clojure.pprint/pprint result#))))))
+
+
 
 ;; ---- Key Functions ---------------------------------------------------------
 
+(deftest descending-long-test
+  (satisfies-prop 100000
+    (p/for-all [t gen/nat]
+      (= t (codec/descending-long (codec/descending-long t))))))
+
+
 (deftest t-key-test
   (are [t bs] (= bs (codec/hex (codec/t-key t)))
-    16 "7FFFFFFFFFFFFFEF"
-    15 "7FFFFFFFFFFFFFF0"
-    2 "7FFFFFFFFFFFFFFD"
-    1 "7FFFFFFFFFFFFFFE"
-    0 "7FFFFFFFFFFFFFFF"))
+    0xFFFFFFFFFFFFFF "0000000000000000"
+    16 "00FFFFFFFFFFFFEF"
+    15 "00FFFFFFFFFFFFF0"
+    2 "00FFFFFFFFFFFFFD"
+    1 "00FFFFFFFFFFFFFE"
+    0 "00FFFFFFFFFFFFFF"))
 
 
 

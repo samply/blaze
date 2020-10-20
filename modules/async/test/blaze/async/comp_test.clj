@@ -57,7 +57,7 @@
   (testing "with timeout happen"
     (let [f (ac/future)]
       (ac/complete-on-timeout! f :a 1 TimeUnit/MILLISECONDS)
-      (Thread/sleep 2)
+      (Thread/sleep 10)
       (ac/complete! f :b)
       (is (= :a @f))))
 

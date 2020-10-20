@@ -31,7 +31,7 @@
 
 
 (s/def :blaze.db/t
-  nat-int?)
+  (s/and int? #(<= 0 % 0xFFFFFFFFFFFFFF)))
 
 
 (s/def :blaze.db.tx-cmd/if-match

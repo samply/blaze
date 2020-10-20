@@ -70,9 +70,17 @@
 ;; ---- Key Functions ---------------------------------------------------------
 
 (defn descending-long
-  "Descends from Long/MAX_VALUE."
+  "Converts positive longs so that they decrease from 0xFFFFFFFFFFFFFF.
+
+  This function is used for the point in time `t` value, which is always ordered
+  descending in indices. The value 0xFFFFFFFFFFFFFF has 7 bytes, so the first
+  byte will be always the zero byte. This comes handy in indices, because the
+  zero byte terminates ordering of index segments preceding the `t` value.
+
+  7 bytes are also plenty for the `t` value because with 5 bytes one could carry
+  out a transaction every millisecond for 20 years."
   ^long [^long l]
-  (bit-xor (bit-not l) Long/MIN_VALUE))
+  (bit-and (bit-not l) 0xFFFFFFFFFFFFFF))
 
 
 (defn t-key [t]
@@ -419,8 +427,11 @@
   (.getInt buf))
 
 
-(defn get-t! ^long [^ByteBuffer buf]
-  (descending-long (.getLong buf)))
+(defn get-t!
+  (^long [^ByteBuffer buf]
+   (descending-long (.getLong buf)))
+  (^long [^ByteBuffer buf ^long index]
+   (descending-long (.getLong buf index))))
 
 
 (defn get-hash! [^ByteBuffer buf]
