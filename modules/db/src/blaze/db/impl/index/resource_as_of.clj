@@ -311,16 +311,18 @@
   Both ByteBuffers are changed during decoding and have to be reset accordingly
   after decoding."
   []
+  (let [ib (byte-array codec/max-id-size)]
   (fn
     ([]
-     [(ByteBuffer/allocate max-resource-as-of-key-size)
+       [(ByteBuffer/allocateDirect max-resource-as-of-key-size)
       (ByteBuffer/allocateDirect codec/resource-as-of-value-size)])
     ([^ByteBuffer kb ^ByteBuffer vb]
-     (let [id-size (- (.remaining kb) codec/tid-size codec/t-size)]
        (rh/resource-handle
          (.getInt kb)
-         (codec/id (.array kb) codec/tid-size id-size)
-         (codec/get-t! kb (+ codec/tid-size id-size))
+         (let [id-size (- (.remaining kb) codec/t-size)]
+           (.get kb ib 0 id-size)
+           (codec/id ib 0 id-size))
+         (codec/get-t! kb)
          (codec/get-hash! vb)
          (codec/get-state! vb))))))
 

@@ -427,11 +427,8 @@
   (.getInt buf))
 
 
-(defn get-t!
-  (^long [^ByteBuffer buf]
+(defn get-t! ^long [^ByteBuffer buf]
    (descending-long (.getLong buf)))
-  (^long [^ByteBuffer buf ^long index]
-   (descending-long (.getLong buf index))))
 
 
 (defn get-hash! [^ByteBuffer buf]
