@@ -1,6 +1,6 @@
 (ns blaze.elm.spec
   (:require
-    [blaze.elm.quantity :refer [format-unit]]
+    [blaze.elm.quantity :as q]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
@@ -8,7 +8,7 @@
   (:import
     [java.time LocalDate]
     [javax.measure.spi ServiceProvider SystemOfUnits]
-    [tec.units.indriya.unit TransformedUnit]))
+    [tech.units.indriya.unit BaseUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -26,8 +26,8 @@
 
 (def defined-units
   "All defined units from ucum-service."
-  (into #{} (comp (remove (comp #{TransformedUnit} class))
-                  (map format-unit))
+  (into #{} (comp (filter (comp #{BaseUnit} class))
+                  (map q/format-unit))
         (.getUnits ucum-service)))
 
 

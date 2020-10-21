@@ -22,17 +22,14 @@
     org.slf4j/jcl-over-slf4j
     org.slf4j/slf4j-api]}
 
-  javax.measure/unit-api
-  {:mvn/version "1.0"}
-
   javax.xml.bind/jaxb-api
   {:mvn/version "2.4.0-b180830.0359"}
 
   systems.uom/systems-quantity
-  {:mvn/version "1.0"}
+  {:mvn/version "2.0.2"}
 
   systems.uom/systems-ucum
-  {:mvn/version "0.9"}}
+  {:mvn/version "2.0.2"}}
 
  :aliases
  {:test

@@ -18,6 +18,7 @@
     [blaze.elm.interval :refer [interval]]
     [blaze.elm.interval-spec]
     [blaze.elm.literal :as elm]
+    [blaze.elm.protocols :as p]
     [blaze.elm.quantity :refer [quantity]]
     [blaze.elm.quantity-spec]
     [blaze.fhir.spec :as fhir-spec]
@@ -597,7 +598,7 @@
            :path "value"
            :type "Property"
            :source #elm/quantity [42 "m"]}
-          42))
+          42M))
 
       (testing "unit"
         (are [elm result]
@@ -2320,7 +2321,7 @@
        [1 "year"]  [13.1M "month"] (period 2 1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (= res (compile-binop elm/add elm/quantity x y))
+    (are [x y res] (p/equal res (compile-binop elm/add elm/quantity x y))
        [1 "m"]  [1 "m"] (quantity 2 "m")
        [1 "m"]  [1 "cm"] (quantity 1.01M "m")))
 
@@ -2516,7 +2517,7 @@
                         (true? (-eval (compile {} elm) {} nil nil))))))
 
   (testing "UCUM Quantity"
-    (are [a b res] (= res (-eval (compile {} #elm/divide [a b]) {} nil nil))
+    (are [a b res] (p/equal res (-eval (compile {} #elm/divide [a b]) {} nil nil))
       #elm/quantity [1M "m"] #elm/integer "2" (quantity 0.5M "m")
 
       #elm/quantity [1 "m"] #elm/quantity [1 "s"] (quantity 1 "m/s")
@@ -2733,7 +2734,7 @@
         "99999999999999999999.99999999" "2")))
 
   (testing "Quantity"
-    (are [x y res] (= res (-eval (compile {} #elm/multiply [x y]) {} nil nil))
+    (are [x y res] (p/equal res (-eval (compile {} #elm/multiply [x y]) {} nil nil))
       #elm/quantity [1 "m"] #elm/integer "2" (quantity 2 "m")
       #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity 2 "m2"))
 
@@ -3001,7 +3002,7 @@
       #elm/quantity [1 "year"] #elm/quantity [13.1M "month"] (period 0 -1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (= res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
+    (are [x y res] (p/equal res (-eval (compile {} (elm/subtract [x y])) {} nil nil))
       #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity 0 "m")
       #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity 0.99 "m")))
 
@@ -5769,9 +5770,11 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-convert-quantity-test
-  (are [argument unit res] (= res (-eval (compile {} #elm/convert-quantity [argument unit]) {} nil nil))
-    #elm/quantity [5 "mg"] #elm/string "g" (quantity 0.005 "g")
-    #elm/quantity [5 "mg"] #elm/string "m" nil)
+  (are [argument unit res] (p/equal res (-eval (compile {} #elm/convert-quantity [argument unit]) {} nil nil))
+    #elm/quantity [5 "mg"] #elm/string "g" (quantity 0.005 "g"))
+
+  (are [argument unit] (nil? (-eval (compile {} #elm/convert-quantity [argument unit]) {} nil nil))
+    #elm/quantity [5 "mg"] #elm/string "m")
 
   (testing-binary-null elm/convert-quantity #elm/quantity [5 "mg"] #elm/string "m"))
 
@@ -6050,7 +6053,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-quantity-test
   (testing "String values"
-    (are [elm res] (= res (-eval (compile {} #elm/to-quantity elm) {} nil nil))
+    (are [elm res] (p/equal res (-eval (compile {} #elm/to-quantity elm) {} nil nil))
       #elm/string "1" (quantity 1 "1")
 
       #elm/string "1'm'" (quantity 1 "m")
@@ -6059,17 +6062,18 @@
 
       #elm/string "10 'm'" (quantity 10 "m")
 
-      #elm/string "1.1 'm'" (quantity 1.1M "m")
+      #elm/string "1.1 'm'" (quantity 1.1M "m"))
 
-      #elm/string "" nil
-      #elm/string "a" nil))
+    (are [elm] (nil? (-eval (compile {} #elm/to-quantity elm) {} nil nil))
+      #elm/string ""
+      #elm/string "a" ))
 
   (testing "Integer values"
     (are [elm res] (= res (-eval (compile {} #elm/to-quantity elm) {} nil nil))
       #elm/integer "1" (quantity 1 "1")))
 
   (testing "Decimal values"
-    (are [elm res] (= res (-eval (compile {} #elm/to-quantity elm) {} nil nil))
+    (are [elm res] (p/equal res (-eval (compile {} #elm/to-quantity elm) {} nil nil))
       #elm/decimal "1" (quantity 1 "1")
       #elm/decimal "1.1" (quantity 1.1M "1")))
 
