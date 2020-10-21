@@ -9,6 +9,7 @@
     [blaze.elm.expression :as expr]
     [blaze.elm.expression-spec]
     [blaze.elm.normalizer :as normalizer]
+    [blaze.elm.protocols :as p]
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.type-infer-spec]
     [clojure.data.xml :as xml]
@@ -81,6 +82,10 @@
   (xml/parse-str s :namespace-aware false :coalescing true))
 
 
+(defn- equal "Special equality handling for Quantities" [a b]
+  (or (= a b) (p/equal a b)))
+
+
 (defn gen-tests [name file exclusions]
   `(deftest ~(symbol name)
      ~@(for [{:keys [name tests]} (tests (parse (slurp file)) exclusions)]
@@ -90,7 +95,7 @@
                    (let [~'now (OffsetDateTime/now)]
                      ~(if invalid?
                         `(is (~'thrown? Exception (eval ~'now ~expression)))
-                        `(is (= (eval ~'now ~output) (eval ~'now ~expression)))))))))))
+                        `(is (equal (eval ~'now ~output) (eval ~'now ~expression)))))))))))
 
 
 (defmacro deftests [name file exclusions]

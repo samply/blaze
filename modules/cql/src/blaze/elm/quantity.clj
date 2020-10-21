@@ -8,18 +8,19 @@
     [cognitect.anomalies :as anom]
     [cuerdas.core :as str])
   (:import
-    [javax.measure Quantity UnconvertibleException]
+    [javax.measure Quantity UnconvertibleException Unit]
     [javax.measure.format UnitFormat]
     [javax.measure.spi ServiceProvider]
-    [tec.units.indriya ComparableQuantity]
-    [tec.units.indriya.quantity Quantities]))
+    [tech.units.indriya ComparableQuantity]
+    [tech.units.indriya.function RationalNumber]
+    [tech.units.indriya.quantity Quantities]))
 
 
 (set! *warn-on-reflection* true)
 
 
 (def ^:private ^UnitFormat ucum-format
-  (.getUnitFormat (.getUnitFormatService (ServiceProvider/current)) "UCUM"))
+  (.getUnitFormat (.getFormatService (ServiceProvider/current)) "CASE_SENSITIVE"))
 
 
 (defn- parse-unit* [s]
@@ -34,11 +35,19 @@
                         (assoc :cause-msg (ex-message t))))))))
 
 
+(defn- replace-exp [s n]
+  (str/replace s (str "10*" n) (apply str "1" (repeat n \0))))
+
+
+(defn- hack-replace-unsupported [s]
+  (reduce replace-exp s (range 1 13)))
+
+
 (let [mem (volatile! {})]
   (defn- parse-unit [s]
     (if-let [unit (get @mem s)]
       unit
-      (let [unit (parse-unit* s)]
+      (let [unit (parse-unit* (hack-replace-unsupported s))]
         (vswap! mem assoc s unit)
         unit))))
 
@@ -56,7 +65,7 @@
 (defn quantity
   "Creates a quantity with numerical value and string unit."
   [value unit]
-  (Quantities/getQuantity value (parse-unit unit)))
+  (Quantities/getQuantity ^Number value ^Unit (parse-unit unit)))
 
 
 (defprotocol QuantityDivide
@@ -68,11 +77,28 @@
 
 
 ;; 2.3. Property
+(defprotocol ToBigDecimal
+  (-to-big-decimal [_]))
+
+(extend-protocol ToBigDecimal
+  RationalNumber
+  (-to-big-decimal [x]
+    (.bigDecimalValue x))
+  BigDecimal
+  (-to-big-decimal [x]
+    x)
+  Long
+  (-to-big-decimal [x]
+    (BigDecimal/valueOf x))
+  Integer
+  (-to-big-decimal [x]
+    (BigDecimal/valueOf ^long x)))
+
 (extend-protocol p/StructuredType
   Quantity
   (get [quantity key]
     (case key
-      :value (.getValue quantity)
+      :value (-to-big-decimal (.getValue quantity))
       :unit (format-unit (.getUnit quantity))
       nil)))
 
@@ -83,7 +109,7 @@
   (equal [a b]
     (when b
       (try
-        (.isEquivalentOf a b)
+        (.isEquivalentTo a b)
         (catch UnconvertibleException _ false)))))
 
 
@@ -93,7 +119,7 @@
   (equivalent [a b]
     (if b
       (try
-        (.isEquivalentOf a b)
+        (.isEquivalentTo a b)
         (catch UnconvertibleException _ false))
       false)))
 
@@ -102,7 +128,7 @@
 (extend-protocol p/Abs
   Quantity
   (abs [x]
-    (Quantities/getQuantity (p/abs (.getValue x)) (.getUnit x))))
+    (Quantities/getQuantity ^Number (p/abs (.getValue x)) (.getUnit x))))
 
 
 ;; 16.2. Add
@@ -154,14 +180,14 @@
 (extend-protocol p/Negate
   Quantity
   (negate [x]
-    (Quantities/getQuantity (p/negate (.getValue x)) (.getUnit x))))
+    (Quantities/getQuantity ^Number (p/negate (.getValue x)) (.getUnit x))))
 
 
 ;; 16.15. Predecessor
 (extend-protocol p/Predecessor
   Quantity
   (predecessor [x]
-    (Quantities/getQuantity (p/predecessor (.getValue x)) (.getUnit x))))
+    (Quantities/getQuantity ^Number (p/predecessor (.getValue x)) (.getUnit x))))
 
 
 ;; 16.17. Subtract
@@ -175,7 +201,7 @@
 (extend-protocol p/Successor
   Quantity
   (successor [x]
-    (Quantities/getQuantity (p/successor (.getValue x)) (.getUnit x))))
+    (Quantities/getQuantity ^Number (p/successor (.getValue x)) (.getUnit x))))
 
 
 ;; 22.6. ConvertQuantity

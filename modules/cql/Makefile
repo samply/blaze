@@ -24,6 +24,6 @@ test-coverage:
 	clojure -M:test-coverage
 
 clean:
-	rm -r cql-test
+	rm -r .clj-kondo/.cache .cpcache cql-test target
 
 .PHONY: lint test test-coverage clean

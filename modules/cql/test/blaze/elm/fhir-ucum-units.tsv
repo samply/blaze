@@ -1,0 +1,347 @@
+Code	Descriptive Name	Code System	Definition	Date Created	Synonym	Status	Kind of Quantity	Date Revised	ConceptID	Dimension
+%	Percent [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	%	Active	Most Common Healthcare Units	12/08/2005	Percent	1
+/uL	PerMicroLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/uL	Active	Most Common Healthcare Units	12/08/2005	PerMicroLiter	L-3
+[iU]/L	InternationalUnitsPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IU/L	Active	Most Common Healthcare Units	12/08/2005	InternationalUnitsPerLiter	L-3[arb]
+10*3/uL	ThousandsPerMicroLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	K/uL, x10^3/mm^3	Active	Most Common Healthcare Units	12/08/2005	ThousandsPerMicroLiter	L-3
+10*6/uL	MillionsPerMicroLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	M/uL, x10^6/mm^3	Active	Most Common Healthcare Units	12/08/2005	MillionsPerMicroLiter	L-3
+fL	FemtoLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fL	Active	Most Common Healthcare Units	12/08/2005	FemtoLiter	L-3
+g/dL	GramsPerDeciLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/dL	Active	Most Common Healthcare Units	12/08/2005	GramsPerDeciLiter	L-3M
+g/L	GramsPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/L	Active	Most Common Healthcare Units	12/08/2005	GramsPerLiter	L-3M
+g/mL	GramsPerMilliLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/mL	Active	Most Common Healthcare Units	12/08/2005	GramsPerMilliLiter	L-3M
+kPa	KiloPascal [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kPa	Active	Most Common Healthcare Units	12/08/2005	KiloPascal	L-1MT-2
+m[iU]/mL	MilliInternationalUnitsPerMilliLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mIU/mL	Active	Most Common Healthcare Units	12/08/2005	MilliInternationalUnitsPerMilliLiter	L-3[arb]
+meq/L	MilliEquivalentsPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mEq/L	Active	Most Common Healthcare Units	12/08/2005	MilliEquivalentsPerLiter	L-3N
+mg/dL	MilliGramsPerDeciLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/dL	Active	Most Common Healthcare Units	12/08/2005	MilliGramsPerDeciLiter	L-3M
+mm[Hg]	MilliMetersOfMercury [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mm Hg	Active	Most Common Healthcare Units	12/08/2005	MilliMetersOfMercury	L-1MT-2
+mmol/kg	MilliMolesPerKiloGram [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/kg	Active	Most Common Healthcare Units	12/08/2005	MilliMolesPerKiloGram	M-1N
+mmol/L	MilliMolesPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/L	Active	Most Common Healthcare Units	12/08/2005	MilliMolesPerLiter	L-3N
+mosm/kg	MilliOsmolesPerKiloGram [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mOsm/kg	Active	Most Common Healthcare Units	12/08/2005	MilliOsmolesPerKiloGram	M-1N
+ng/mL	NanoGramsPerMilliLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/mL	Active	Most Common Healthcare Units	12/08/2005	NanoGramsPerMilliLiter	L-3M
+nmol/L	NanoMolesPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/L	Active	Most Common Healthcare Units	12/08/2005	NanoMolesPerLiter	L-3N
+pg	PicoGrams [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pg	Active	Most Common Healthcare Units	12/08/2005	PicoGrams	M
+pg/mL	PicoGramsPerMilliLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pg/mL	Active	Most Common Healthcare Units	12/08/2005	PicoGramsPerMilliLiter	L-3M
+pmol/L	PicoMolesPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pmol/L	Active	Most Common Healthcare Units	12/08/2005	PicoMolesPerLiter	L-3N
+U/L	UnitsPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	U/L	Active	Most Common Healthcare Units	12/08/2005	UnitsPerLiter	L-3[arb]
+u[iU]/mL	MicroInternationalUnitsPerMilliLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	uIU/mL	Active	Most Common Healthcare Units	12/08/2005	MicroInternationalUnitsPerMilliLiter	L-3[arb]
+ug/dL	MicroGramsPerDeciLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/dL	Active	Most Common Healthcare Units	12/08/2005	MicroGramsPerDeciLiter	L-3M
+ug/L	MicroGramsPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/L	Active	Most Common Healthcare Units	12/08/2005	MicroGramsPerLiter	L-3M
+ug/mL	MicroGramsPerMilliLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/mL	Active	Most Common Healthcare Units	12/08/2005	MicroGramsPerMilliLiter	L-3M
+umol/L	MicroMolesPerLiter [Most Common Healthcare Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/L	Active	Most Common Healthcare Units	12/08/2005	MicroMolesPerLiter	L-3N
+[lg]	Log10 [Unity]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	log 10	Active	Unity	08/24/2005	Log10	1
+10*6/{Specimen}	MillionPerSpecimen [Unity]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	x10^6/spec	Active	Unity	08/24/2005	MillionPerSpecimen	1
+/{tot}	PerTotalCount [Unity]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/Total	Active	Unity	08/24/2005	PerTotalCount	1
+10*3	Thousand [Unity]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	x10^3	Active	Unity	08/24/2005	Thousand	1
+10*3.{RBC}	ThousandRedBloodCells [Unity]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	x10^3 RBCs	Active	Unity	08/24/2005	ThousandRedBloodCells	1
+10*5	OneHundredThousand [Unity]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	x10^5	Active	Unity	08/24/2005	OneHundredThousand	1
+10*6	Million [Unity]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	x10^6	Active	Unity	08/24/2005	Million	1
+10*8	TenToEighth [Unity]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	x10^8	Active	Unity	08/24/2005	TenToEighth	1
+%	Percent [General Fraction Unit]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	%	Active	General Fraction Unit	08/24/2005	Percent	1
+{Relative}%	RelativePercent [General Fraction Unit]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Relative %	Active	General Fraction Unit	08/24/2005	RelativePercent	1
+%{Total}	PercentTotal [General Fraction Unit]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% of Total	Active	General Fraction Unit	08/24/2005	PercentTotal	1
+%{0to3Hours}	Percent0to3Hours [General Fraction Unit]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% 0-3 h	Active	General Fraction Unit	08/24/2005	Percent0to3Hours	1
+/10*10	PerTenGiga [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/10^10	Active	Number Fraction Units	08/24/2005	PerTenGiga	1
+/10*6	PerMillion [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/10^6	Active	Number Fraction Units	08/24/2005	PerMillion	1
+/10*9	PerBillion [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/10^9	Active	Number Fraction Units	08/24/2005	PerBillion	1
+/10*12	PerTrillion [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/10^12	Active	Number Fraction Units	08/24/2005	PerTrillion	1
+%{Normal}	PercentNormal [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Normal	Active	Number Fraction Units	08/24/2005	PercentNormal	1
+%{SpermMotility}	PercentSpermMotility [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Sperm Motility	Active	Number Fraction Units	08/24/2005	PercentSpermMotility	1
+%{Positive}	PercentPositive [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Positive	Active	Number Fraction Units	08/24/2005	PercentPositive	1
+%{FetalErythrocytes}	PercentFetalErythrocytes [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Fetal RBC	Active	Number Fraction Units	08/24/2005	PercentFetalErythrocytes	1
+%{OfLymphocytes}	PercentOfLymphocytes [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Lymphs	Active	Number Fraction Units	08/24/2005	PercentOfLymphocytes	1
+%{ofBacteria}	PercentofBacteria [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Bacteria	Active	Number Fraction Units	08/24/2005	PercentofBacteria	1
+%{OfWBCs}	PercentOfWBCs [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% WBCs	Active	Number Fraction Units	08/24/2005	PercentOfWBCs	1
+%{Abnormal}	PercentAbnormal [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Abnormal	Active	Number Fraction Units	08/24/2005	PercentAbnormal	1
+%{EosSeen}	PercentEosinophilsSeen [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% EOS Seen	Active	Number Fraction Units	08/24/2005	PercentEosinophilsSeen	1
+%{Hemolysis}	PercentHemolysis [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Hemolysis	Active	Number Fraction Units	08/24/2005	PercentHemolysis	1
+%{Blockade}	PercentBlockade [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Blockade	Active	Number Fraction Units	08/24/2005	PercentBlockade	1
+%/100{WBC}	PercentPer100WBC [Number Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% per 100 WBC	Active	Number Fraction Units	08/24/2005	PercentPer100WBC	1
+%{Binding}	PercentBinding [Mass Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Binding	Active	Mass Or Substance Fraction Units	08/24/2005	PercentBinding	1
+%{TotalProtein}	PercentTotalProtein [Mass Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Total Protein	Active	Mass Or Substance Fraction Units	08/24/2005	PercentTotalProtein	1
+%{Bound}	PercentBound [Mass Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Bound	Active	Mass Or Substance Fraction Units	08/24/2005	PercentBound	1
+%{Hemoglobin}	PercentHemoglobin [Mass Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Hgb	Active	Mass Or Substance Fraction Units	08/24/2005	PercentHemoglobin	1
+%{HemoglobinSaturation}	PercentHemoglobinSaturation [Mass Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Hgb SAT	Active	Mass Or Substance Fraction Units	08/24/2005	PercentHemoglobinSaturation	1
+%{Carboxyhemoglobin}	PercentCarboxyhemoglobin [Mass Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% CO Hgb	Active	Mass Or Substance Fraction Units	08/24/2005	PercentCarboxyhemoglobin	1
+%{HemoglobinA1C}	PercentHemoglobinA1C [Mass Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Hgb A1C	Active	Mass Or Substance Fraction Units	08/24/2005	PercentHemoglobinA1C	1
+%{Excretion}	PercentExcretion [Mass Or Substance Rate Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Excretion	Active	Mass Or Substance Rate Fraction Units	08/24/2005	PercentExcretion	1
+%{Uptake}	PercentUptake [Mass Or Substance Rate Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Uptake	Active	Mass Or Substance Rate Fraction Units	08/24/2005	PercentUptake	1
+ug/ng	MicroGramsPerNanoGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/ng	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramsPerNanoGram	1
+ng/mg	NanoGramsPerMilliGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/mg	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	NanoGramsPerMilliGram	1
+ng/mg{Protein}	NanoGramsPerMilliGramProtein [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/mg Prot	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	NanoGramsPerMilliGramProtein	1
+ug/mg	MicroGramsPerMilliGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/mg	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramsPerMilliGram	1
+ug/mg{Cre}	MicroGramsPerMilliGramCreatinine [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/mg Cre	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramsPerMilliGramCreatinine	1
+mg/mg	MilliGramsPerMilliGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/mg	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MilliGramsPerMilliGram	1
+mg/mg{Cre}	MilligramsPerMilligramCreatinine [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/mg Cre	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MilligramsPerMilligramCreatinine
+ng/g	NanoGramsPerGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/g	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	NanoGramsPerGram	1
+ng/g{Cre}	NanoGramsPerGramCreatinine [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/g Cre	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	NanoGramsPerGramCreatinine	1
+ug/g	MicroGramsPerGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/g	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramsPerGram	1
+ug/[100]g	MicroGramPer100Gram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/100 g	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramPer100Gram	1
+ug/g{DryWeight}	MicroGramPerGramDryWeight [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/g Dry Weight	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramPerGramDryWeight	1
+ug/g{Cre}	MicroGramPerGramCreatinine [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/g Cre	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramPerGramCreatinine	1
+ug/g{Hgb}	MicroGramsPerGramHemoglobin [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/g Hgb	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramsPerGramHemoglobin	1
+mg/g	MilliGramsPerGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/g	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MilliGramsPerGram	1
+mg/g{Cre}	MilliGramPerGramCreatinine [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/g Cre	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MilliGramPerGramCreatinine	1
+g/g	GramsPerGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/g	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	GramsPerGram	1
+ng/kg	NanoGramsPerKiloGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/kg	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	NanoGramsPerKiloGram	1
+ug/kg	MicroGramsPerKiloGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/kg	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MicroGramsPerKiloGram	1
+mg/kg	MilliGramsPerKiloGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/kg	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	MilliGramsPerKiloGram	1
+g/kg	GramsPerKiloGram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/kg	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	GramsPerKiloGram	1
+g/[100]g	GramsPer100Gram [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/100g	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	GramsPer100Gram	1
+g/g{Cre}	GramsPerGramCreatinine [Mass Ratio Or Mass Fraction Or Mass Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/g Cre	Active	Mass Ratio Or Mass Fraction Or Mass Content Units	08/24/2005	GramsPerGramCreatinine	1
+pmol/umol	PicoMolesPerMicroMole [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pmol/umol	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	PicoMolesPerMicroMole	1
+nmol/mmol	NanoMolesPerMilliMole [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/mmol	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	NanoMolesPerMilliMole	1
+nmol/mmol{Cre}	NanoMolesPerMilliMoleCreatinine [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/mmol Cre	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	NanoMolesPerMilliMoleCreatinine	1
+nmol/mol	NanoMolesPerMole [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/mol	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	NanoMolesPerMole	1
+umol/mol	MicroMolesPerMole [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/mol	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	MicroMolesPerMole	1
+mmol/mol	MilliMolesPerMole [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/mol	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	MilliMolesPerMole	1
+mmol/mol{Cre}	MilliMolesPerMoleCreatinine [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/mol Cre	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	MilliMolesPerMoleCreatinine	1
+umol/mol{Cre}	MicroMolesPerMoleCreatinine [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/mol Cre	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	MicroMolesPerMoleCreatinine	1
+eq/umol	EquivalentsPerMicroMole [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	eq/umol	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	EquivalentsPerMicroMole	1
+eq/mmol	EquivalentsPerMilliMole [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	eq/mmol	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	EquivalentsPerMilliMole	1
+{BoneCollagen}eq/mmol{Cre}	BoneCollagenEquivalentsPerMilliMoleCreatinine [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	BCE/mmol Cre	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	BoneCollagenEquivalentsPerMilliMoleCreatinine	1
+{BoneCollagen}eq/umol{Cre}	BoneCollagenEquivalentsPerMicroMoleCreatinine [Substance Ratio Or Substance Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	BCE/umol Cre	Active	Substance Ratio Or Substance Fraction Units	08/24/2005	BoneCollagenEquivalentsPerMicroMoleCreatinine	1
+%{vol}	VolumePercent [Volume Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Volume %	Active	Volume Fraction Units	08/24/2005	VolumePercent	1
+%{Oxygen}	PercentOxygen [Volume Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Oxygen	Active	Volume Fraction Units	08/24/2005	PercentOxygen	1
+mL/dL	MilliLitersPerDeciLiter [Volume Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	cc/dL	Active	Volume Fraction Units	08/24/2005	MilliLitersPerDeciLiter	1
+%{NormalPooledPlasma}	PercentNormalPooledPlasma [Catalytic Fraction Or Arbitrary Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Normal Pooled Plasma	Active	Catalytic Fraction Or Arbitrary Fraction Units	08/24/2005	PercentNormalPooledPlasma	1
+%{Activity}	PercentActivity [Catalytic Fraction Or Arbitrary Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Activity	Active	Catalytic Fraction Or Arbitrary Fraction Units	08/24/2005	PercentActivity	1
+%{BasalActivity}	PercentBasalActivity [Catalytic Fraction Or Arbitrary Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Basal Activity	Active	Catalytic Fraction Or Arbitrary Fraction Units	08/24/2005	PercentBasalActivity	1
+%{Inhibition}	PercentInhibition [Catalytic Fraction Or Arbitrary Fraction Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	% Inhibition	Active	Catalytic Fraction Or Arbitrary Fraction Units	08/24/2005	PercentInhibition	1
+/{Entity}	PerEntity [Entitic Number Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/Entity	Active	Entitic Number Units	08/24/2005	PerEntity	1
+/100{WBC}	Per100WBC [Entitic Number Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/100 WBCs	Active	Entitic Number Units	08/24/2005	Per100WBC	1
+/100	Per100 [Entitic Number Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/100	Active	Entitic Number Units	08/24/2005	Per100	1
+/100{Spermatozoa}	Per100Spermatozoa [Entitic Number Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/100 Sperm	Active	Entitic Number Units	08/24/2005	Per100Spermatozoa	1
+/10*12{rbc}	PerTrillionRedBloodCells [Entitic Number Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/10^12 RBCs	Active	Entitic Number Units	08/24/2005	PerTrillionRedBloodCells	1
+deg	DegreesOfArc [Plane Angle Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Deg	Active	Plane Angle Units	08/24/2005	DegreesOfArc	1
+/[arb`U]	PerArbitraryUnit [Arbitrary Number Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/Arbitrary Unit	Active	Arbitrary Number Units	08/24/2005	PerArbitraryUnit	[arb]-1
+u[iU]	MicroInternationalUnit [Arbitrary Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	uIU	Active	Arbitrary Units	08/24/2005	MicroInternationalUnit	[arb]
+[iU]	InternationalUnit [Arbitrary Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IU	Active	Arbitrary Units	08/24/2005	InternationalUnit	[arb]
+10*6.[iU]	MillionInternationalUnit [Arbitrary Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^6  IU	Active	Arbitrary Units	08/24/2005	MillionInternationalUnit	[arb]
+[in_i]	Inch [English Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	in	Active	English Length Units	08/24/2005	Inch	L
+[ft_i]	Feet [English Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ft	Active	English Length Units	08/24/2005	Feet	L
+[yd_i]	Yard [English Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	yd	Active	English Length Units	08/24/2005	Yard	L
+[fth_i]	Fathom [English Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fathom	Active	English Length Units	08/24/2005	Fathom	L
+[mi_i]	StatuteMile [English Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mi	Active	English Length Units	08/24/2005	StatuteMile	L
+[nmi_i]	NauticalMile [English Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	n mile	Active	English Length Units	08/24/2005	NauticalMile	L
+[Ch]	French [English Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	French Unit	Active	English Length Units	08/24/2005	French	L
+fm	FemtoMeter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fm	Active	SI Length Units	08/24/2005	FemtoMeter	L
+pm	PicoMeter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pm	Active	SI Length Units	08/24/2005	PicoMeter	L
+nm	NanoMeter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nm	Active	SI Length Units	08/24/2005	NanoMeter	L
+um	MicroMeter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	um	Active	SI Length Units	08/24/2005	MicroMeter	L
+mm	MilliMeter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mm	Active	SI Length Units	08/24/2005	MilliMeter	L
+cm	CentiMeter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	cm	Active	SI Length Units	08/24/2005	CentiMeter	L
+dm	DeciMeter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	dm	Active	SI Length Units	08/24/2005	DeciMeter	L
+m	Meter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	m	Active	SI Length Units	08/24/2005	Meter	L
+km	KiloMeter [SI Length Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	km	Active	SI Length Units	08/24/2005	KiloMeter	L
+[gr]	Grain [English Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	gr	Active	English Mass Units	08/24/2005	Grain	M
+[oz_av]	Ounce [English Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	oz	Active	English Mass Units	08/24/2005	Ounce	M
+[oz_tr]	TroyOunce [English Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	tr oz	Active	English Mass Units	08/24/2005	TroyOunce	M
+[lb_av]	Pound [English Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	lb	Active	English Mass Units	08/24/2005	Pound	M
+[ston_av]	Ton [English Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Ton	Active	English Mass Units	08/24/2005	Ton	M
+[dr_av]	Dram [English Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	dr	Active	English Mass Units	08/24/2005	Dram	M
+fg	FemtoGram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fg	Active	SI Mass Units	08/24/2005	FemtoGram	M
+pg	PicoGram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pg	Active	SI Mass Units	08/24/2005	PicoGram	M
+ng	NanoGram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng	Active	SI Mass Units	08/24/2005	NanoGram	M
+ug	MicroGram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug	Active	SI Mass Units	08/24/2005	MicroGram	M
+ug/{TotalVolume}	MicroGramsPerTotalVolume [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/Total Volume	Active	SI Mass Units	08/24/2005	MicroGramsPerTotalVolume	M
+ug/{Specimen}	MicroGramsPerSpecimen [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/Spec	Active	SI Mass Units	08/24/2005	MicroGramsPerSpecimen	M
+mg	MilliGram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg	Active	SI Mass Units	08/24/2005	MilliGram	M
+mg/{Volume}	MilliGramsPerVolume [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/Volume	Active	SI Mass Units	08/24/2005	MilliGramsPerVolume	M
+mg/{TotalVolume}	MilliGramPerTotalVolume [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/Total Volume	Active	SI Mass Units	08/24/2005	MilliGramPerTotalVolume	M
+g	Gram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g	Active	SI Mass Units	08/24/2005	Gram	M
+g/{TotalWeight}	GramsPerTotalWeight [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/Total Weight	Active	SI Mass Units	08/24/2005	GramsPerTotalWeight	M
+dg	DeciGram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	dg	Active	SI Mass Units	08/24/2005	DeciGram	M
+cg	CentiGram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	cg	Active	SI Mass Units	08/24/2005	CentiGram	M
+kg	KiloGram [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kg	Active	SI Mass Units	08/24/2005	KiloGram	M
+t	MetricTon [SI Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Metric Ton	Active	SI Mass Units	08/24/2005	MetricTon	M
+pg/mm	PicoGramsPerMilliMeter [Lineic Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pg/mm	Active	Lineic Mass Units	08/24/2005	PicoGramsPerMilliMeter	L-1M
+K	DegreesKelvin [Temperature Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	K	Active	Temperature Units	08/24/2005	DegreesKelvin	q
+Cel	DegreesCelsius [Temperature Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	C	Active	Temperature Units	08/24/2005	DegreesCelsius	q
+[degF]	DegreesFahrenheit [Temperature Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	F	Active	Temperature Units	08/24/2005	DegreesFahrenheit	q
+K/W	KelvinPerWatt [Thermal Resistance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	K/Watt	Active	Thermal Resistance Units	08/24/2005	KelvinPerWatt	L-2M-1T3q
+ps	PicoSecond [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ps	Active	Time Units	08/24/2005	PicoSecond	T
+ns	NanoSecond [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ns	Active	Time Units	08/24/2005	NanoSecond	T
+us	MicroSecond [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	us	Active	Time Units	08/24/2005	MicroSecond	T
+ms	MilliSecond [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ms	Active	Time Units	08/24/2005	MilliSecond	T
+s	Second [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	sec	Active	Time Units	08/24/2005	Second	T
+ks	KiloSecond [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ks	Active	Time Units	08/24/2005	KiloSecond	T
+Ms	Megasecond [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Ms	Active	Time Units	08/24/2005	Megasecond	T
+min	Minute [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	min	Active	Time Units	08/24/2005	Minute	T
+h	Hour [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	h	Active	Time Units	08/24/2005	Hour	T
+d	Day [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	d	Active	Time Units	08/24/2005	Day	T
+wk	Week [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	wk	Active	Time Units	08/24/2005	Week	T
+mo	Month [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Mo	Active	Time Units	08/24/2005	Month	T
+a	Year [Time Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	yr	Active	Time Units	08/24/2005	Year	T
+eq	Equivalent [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	eq	Active	Substance Units	08/24/2005	Equivalent	N
+ueq	MicroEquivalent [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ueq	Active	Substance Units	08/24/2005	MicroEquivalent	N
+meq	MilliEquivalent [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meq	Active	Substance Units	08/24/2005	MilliEquivalent	N
+meq/{Specimen}	MilliEquivalentsPerSpecimen [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meq/Spec	Active	Substance Units	08/24/2005	MilliEquivalentsPerSpecimen	N
+mol	Mole [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mol	Active	Substance Units	08/24/2005	Mole	N
+mmol	MilliMole [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol	Active	Substance Units	08/24/2005	MilliMole	N
+mmol/{TotalVolume}	MilliMolesPerTotalVolume [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/Total Volume	Active	Substance Units	08/24/2005	MilliMolesPerTotalVolume	N
+fmol	Femtomole [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fmol	Active	Substance Units	08/24/2005	Femtomole	N
+pmol	PicoMole [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pmol	Active	Substance Units	08/24/2005	PicoMole	N
+umol	MicroMole [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol	Active	Substance Units	08/24/2005	MicroMole	N
+nmol	NanoMole [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol	Active	Substance Units	08/24/2005	NanoMole	N
+mosm	MilliOsmole [Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mosm	Active	Substance Units	08/24/2005	MilliOsmole	N
+meq/m2	MilliEquivalentsPerSquareMeter [Areic Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meg/m^2	Active	Areic Substance Units	08/24/2005	MilliEquivalentsPerSquareMeter	L-2N
+mmol/m2	MilliMolesPerSquareMeter [Areic Substance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/m^2	Active	Areic Substance Units	08/24/2005	MilliMolesPerSquareMeter	L-2N
+[sin_i]	SquareInch [English Area Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	in^2	Active	English Area Units	08/24/2005	SquareInch	L2
+[sft_i]	SquareFeet [English Area Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ft^2	Active	English Area Units	08/24/2005	SquareFeet	L2
+[syd_i]	SquareYard [English Area Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	yd^2	Active	English Area Units	08/24/2005	SquareYard	L2
+mm2	SquareMilliMeter [SI Area Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mm^2	Active	SI Area Units	08/24/2005	SquareMilliMeter	L2
+cm2	SquareCentiMeter [SI Area Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	cm^2	Active	SI Area Units	08/24/2005	SquareCentiMeter	L2
+m2	SquareMeter [SI Area Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	m^2	Active	SI Area Units	08/24/2005	SquareMeter	L2
+[foz_us]	FluidOunce [English Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fl oz	Active	English Volume Units	08/24/2005	FluidOunce	L3
+[cin_i]	CubicInch [English Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	in^3	Active	English Volume Units	08/24/2005	CubicInch	L3
+[cup_us]	Cup [English Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Cup	Active	English Volume Units	08/24/2005	Cup	L3
+[pt_us]	Pint [English Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pt	Active	English Volume Units	08/24/2005	Pint	L3
+[qt_us]	Quart [English Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	qt	Active	English Volume Units	08/24/2005	Quart	L3
+[gal_us]	Gallon [English Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	gal	Active	English Volume Units	08/24/2005	Gallon	L3
+[fdr_us]	FluidDram [English Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fl dr	Active	English Volume Units	08/24/2005	FluidDram	L3
+fL	FemtoLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fL	Active	SI Volume Units	08/24/2005	FemtoLiter	L3
+pL	PicoLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pL	Active	SI Volume Units	08/24/2005	PicoLiter	L3
+nL	NanoLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nL	Active	SI Volume Units	08/24/2005	NanoLiter	L3
+uL	MicroLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	uL	Active	SI Volume Units	08/24/2005	MicroLiter	L3
+mL	MilliLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mL	Active	SI Volume Units	08/24/2005	MilliLiter	L3
+mL/{h`b}	MilliLitersPerHeartbeat [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mL/heart beat	Active	SI Volume Units	08/24/2005	MilliLitersPerHeartbeat	L3
+L	Liter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	L	Active	SI Volume Units	08/24/2005	Liter	L3
+dL	DeciLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	dL	Active	SI Volume Units	08/24/2005	DeciLiter	L3
+cL	CentiLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	cL	Active	SI Volume Units	08/24/2005	CentiLiter	L3
+kL	KiloLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kL	Active	SI Volume Units	08/24/2005	KiloLiter	L3
+hL	HectoLiter [SI Volume Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	hL	Active	SI Volume Units	08/24/2005	HectoLiter	L3
+L.s2/s	LiterSquareSecondPerSecond [Volume Duration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	L s^2/s	Active	Volume Duration Units	08/24/2005	LiterSquareSecondPerSecond	L3T
+/mg	PerMilliGram [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg	Active	Number Content Units	08/24/2005	PerMilliGram	M-1
+/g	PerGram [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/g	Active	Number Content Units	08/24/2005	PerGram	M-1
+/g{creat}	PerGramCreatinine [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/g Cre	Active	Number Content Units	08/24/2005	PerGramCreatinine	M-1
+/g{HGB}	PerGramHemoglobin [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/g Hgb	Active	Number Content Units	08/24/2005	PerGramHemoglobin	M-1
+/g{tot`nit}	PerGramTotalNitrogen [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/g Total Nitrogen	Active	Number Content Units	08/24/2005	PerGramTotalNitrogen	M-1
+/g{tot`prot}	PerGramTotalProtein [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/g Total Protein	Active	Number Content Units	08/24/2005	PerGramTotalProtein	M-1
+/g{wet`tis}	PerGramWetTissue [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/g Wet Tissue	Active	Number Content Units	08/24/2005	PerGramWetTissue	M-1
+/kg	PerKiloGram [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/kg	Active	Number Content Units	08/24/2005	PerKiloGram	M-1
+/kg{body`wt}	PerKiloGramBodyWeight [Number Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/kg Body Weight	Active	Number Content Units	08/24/2005	PerKiloGramBodyWeight	M-1
+fmol/mg	FemtoMolesPerMilliGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fmol/mg	Active	Substance Content Units	08/24/2005	FemtoMolesPerMilliGram	M-1N
+nmol/mg	NanoMolesPerMilliGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/mg	Active	Substance Content Units	08/24/2005	NanoMolesPerMilliGram	M-1N
+umol/mg	MicroMolesPerMilliGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/mg	Active	Substance Content Units	08/24/2005	MicroMolesPerMilliGram	M-1N
+umol/mg{Cre}	MicroMolesPerMilliGramCreatinine [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/mg Cre	Active	Substance Content Units	08/24/2005	MicroMolesPerMilliGramCreatinine	M-1N
+mol/kg	MolesPerKiloGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mol/kg	Active	Substance Content Units	08/24/2005	MolesPerKiloGram	M-1N
+fmol/g	FemtoMolesPerGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fmol/gm	Active	Substance Content Units	08/24/2005	FemtoMolesPerGram	M-1N
+nmol/g	NanoMolesPerGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/g	Active	Substance Content Units	08/24/2005	NanoMolesPerGram	M-1N
+nmol/g{Cre}	NanoMolesPerGramCreatinine [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/g Cre	Active	Substance Content Units	08/24/2005	NanoMolesPerGramCreatinine	M-1N
+umol/g	MicroMolesPerGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/g	Active	Substance Content Units	08/24/2005	MicroMolesPerGram	M-1N
+umol/g{Cre}	MicroMolesPerGramCreatinine [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/g Cre	Active	Substance Content Units	08/24/2005	MicroMolesPerGramCreatinine	M-1N
+umol/g{Hgb}	MicroMolesPerGramHemoglobin [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/g Hgb	Active	Substance Content Units	08/24/2005	MicroMolesPerGramHemoglobin	M-1N
+mmol/g	MilliMolesPerGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/g	Active	Substance Content Units	08/24/2005	MilliMolesPerGram	M-1N
+mmol/kg	MilliMolesPerKiloGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/kg	Active	Substance Content Units	08/24/2005	MilliMolesPerKiloGram	M-1N
+osm/kg	OsmolesPerKiloGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Osm/kg	Active	Substance Content Units	08/24/2005	OsmolesPerKiloGram	M-1N
+mosm/kg	MilliOsmolesPerKiloGram [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mosm/kg	Active	Substance Rate Content Units	08/24/2005	MilliOsmolesPerKiloGram	M-1T-1N
+meq/g	MilliEquivalentsPerGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meq/g	Active	Substance Content Units	08/24/2005	MilliEquivalentsPerGram	M-1N
+meq/g{Cre}	MilliEquivalentsPerGramCreatinine [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meq/g Cre	Active	Substance Content Units	08/24/2005	MilliEquivalentsPerGramCreatinine	M-1N
+meq/kg	MilliEquivalentsPerKiloGram [Substance Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meq/kg	Active	Substance Content Units	08/24/2005	MilliEquivalentsPerKiloGram	M-1N
+[iU]/g	InternationalUnitsPerGram [Arbitrary Concentration Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IU/g	Active	Arbitrary Concentration Content Units	08/24/2005	InternationalUnitsPerGram	M-1[arb]
+[iU]/g{Hgb}	InternationalUnitsPerGramHemoglobin [Arbitrary Concentration Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IU/g Hgb	Active	Arbitrary Concentration Content Units	08/24/2005	InternationalUnitsPerGramHemoglobin	M-1[arb]
+{Ehrlich_U}/100g	EhrlichUnitsPer100Gram [Arbitrary Concentration Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	EU/100 g	Active	Arbitrary Concentration Content Units	08/24/2005	EhrlichUnitsPer100Gram	M-1[arb]
+[iU]/kg	InternationalUnitsPerKilogram [Arbitrary Concentration Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IU/kg	Active	Arbitrary Concentration Content Units	08/24/2005	InternationalUnitsPerKilogram	M-1[arb]
+umol/min/g	MicroMolesPerMinutePerGram [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/min/g	Active	Substance Rate Content Units	08/24/2005	MicroMolesPerMinutePerGram	M-1T-1N
+mU/g	MilliUnitsPerGram [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mU/g	Active	Substance Rate Content Units	08/24/2005	MilliUnitsPerGram	M-1T-1N
+mU/g{Hgb}	MilliUnitsPerGramHemoglobin [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mU/g Hgb	Active	Substance Rate Content Units	08/24/2005	MilliUnitsPerGramHemoglobin	M-1T-1N
+U/g	UnitsPerGram [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	U/g	Active	Substance Rate Content Units	08/24/2005	UnitsPerGram	M-1T-1N
+U/g{Hgb}	UnitsPerGramHemoglobin [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	U/g Hgb	Active	Substance Rate Content Units	08/24/2005	UnitsPerGramHemoglobin	M-1T-1N
+U/g{Cre}	UnitsPerGramCreatinine [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	U/g Cre	Active	Substance Rate Content Units	08/24/2005	UnitsPerGramCreatinine	M-1T-1N
+mU/mg{Cre}	MilliUnitsPerMilliGramCreatinine [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mU/mg Cre	Active	Substance Rate Content Units	08/24/2005	MilliUnitsPerMilliGramCreatinine	M-1T-1N
+mU/mg	MilliUnitsPerMilligram [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mU/mg	Active	Substance Rate Content Units	08/24/2005	MilliUnitsPerMilligram	M-1T-1N
+kU/g	KiloUnitsPerGram [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kU/g	Active	Substance Rate Content Units	08/24/2005	KiloUnitsPerGram	M-1T-1N
+kat/kg	KatalPerKilogram [Substance Rate Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kat/kg	Active	Substance Rate Content Units	08/24/2005	KatalPerKilogram	M-1T-1N
+mL/kg	MilliLitersPerKiloGram [Volume Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mL/kg	Active	Volume Content Units	08/24/2005	MilliLitersPerKiloGram	L3M-1
+L/kg	LitersPerKilogram [Volume Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	L/kg	Active	Volume Content Units	08/24/2005	LitersPerKilogram	L3M-1
+kCal/[oz_av]	KiloCaloriesPerOunce [Energy Content Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kCal/oz	Active	Energy Content Units	08/24/2005	KiloCaloriesPerOunce	L2T-2
+/m2	PerSquareMeter [Areic Number Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/m^2	Active	Areic Number Units	08/24/2005	PerSquareMeter	L-2
+g/m2	GramsPerSquareMeter [Areic Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/m^2	Active	Areic Mass Units	08/24/2005	GramsPerSquareMeter	L-2M
+kg/m2	KiloGramsPerSquareMeter [Areic Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kg/m^2	Active	Areic Mass Units	08/24/2005	KiloGramsPerSquareMeter	L-2M
+ug/m2	MicroGramsPerSquareMeter [Areic Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/m^2	Active	Areic Mass Units	08/24/2005	MicroGramsPerSquareMeter	L-2M
+mg/m2	MilliGramsPerSquareMeter [Areic Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/m^2	Active	Areic Mass Units	08/24/2005	MilliGramsPerSquareMeter	L-2M
+ng/m2	NanoGramsPerSquareMeter [Areic Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/m^2	Active	Areic Mass Units	08/24/2005	NanoGramsPerSquareMeter	L-2M
+g.m	GramMeter [Massive Distance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Gram Meter	Active	Massive Distance Units	08/24/2005	GramMeter	LM
+g.m/{hb}	GramMeterPerHeartbeat [Massive Distance Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Gram Meter/Heartbeat	Active	Massive Distance Units	08/24/2005	GramMeterPerHeartbeat	LM
+g.m/({hb}.m2)	GramMeterPerHeartbeatPerSquareMeter [Lineic Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Gram Meter/Heartbeat/m^2	Active	Lineic Mass Units	08/24/2005	GramMeterPerHeartbeatPerSquareMeter	L-1M
+kg/mol	KiloGramsPerMole [Molar Mass Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kg/mol	Active	Molar Mass Units	08/24/2005	KiloGramsPerMole	MN-1
+/uL	PerMicroLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/mm^3	Active	Number Concentration Units	08/24/2005	PerMicroLiter	L-3
+{Cells}/uL	CellsPerMicroLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	cells/uL	Active	Number Concentration Units	08/24/2005	CellsPerMicroLiter	L-3
+{rbc}/uL	RedBloodCellsPerMicroLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	RBC/mm^3	Active	Number Concentration Units	08/24/2005	RedBloodCellsPerMicroLiter	L-3
+10*3/uL	ThousandsPerMicroLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^3/uL	Active	Number Concentration Units	08/24/2005	ThousandsPerMicroLiter	L-3
+10*6/uL	MillionsPerMicroLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^6/uL	Active	Number Concentration Units	08/24/2005	MillionsPerMicroLiter	L-3
+10*9/uL	BillionsPerMicroLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^9/uL	Active	Number Concentration Units	08/24/2005	BillionsPerMicroLiter	L-4
+/mL	PerMilliLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/mL	Active	Number Concentration Units	08/24/2005	PerMilliLiter	L-5
+{Spermatozoa}/mL	SpermatozoaPerMilliLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Sperm/mL	Active	Number Concentration Units	08/24/2005	SpermatozoaPerMilliLiter	L-6
+{Copies}/mL	CopiesPerMilliLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Copies/mL	Active	Number Concentration Units	08/24/2005	CopiesPerMilliLiter	L-7
+10*3/mL	ThousandPerMilliLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^3/mL	Active	Number Concentration Units	08/24/2005	ThousandPerMilliLiter	L-8
+10*3{Copies}/mL	ThousandCopiesPerMilliLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^3 copies/mL	Active	Number Concentration Units	08/24/2005	ThousandCopiesPerMilliLiter	L-9
+10*6/mL	MillionPerMilliLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^6/mL	Active	Number Concentration Units	08/24/2005	MillionPerMilliLiter	L-10
+10*9/mL	BillionsPerMilliliter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^9/mL	Active	Number Concentration Units	08/24/2005	BillionsPerMilliliter	L-11
+{cfu}/mL	ColonyFormingUnitsPerMilliLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	cfu/mL	Active	Number Concentration Units	08/24/2005	ColonyFormingUnitsPerMilliLiter	L-12
+/dL	PerDeciLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/dL	Active	Number Concentration Units	08/24/2005	PerDeciLiter	L-13
+/L	PerLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	/L	Active	Number Concentration Units	08/24/2005	PerLiter	L-14
+10*3/L	ThousandPerLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^3/L	Active	Number Concentration Units	08/24/2005	ThousandPerLiter	L-15
+10*6/L	MillionPerLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^6/L	Active	Number Concentration Units	08/24/2005	MillionPerLiter	L-16
+10*12/L	TrillionPerLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^12/L	Active	Number Concentration Units	08/24/2005	TrillionPerLiter	L-17
+10*9/L	BillionPerLiter [Number Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^9/L	Active	Number Concentration Units	08/24/2005	BillionPerLiter	L-18
+pg/mL	PicoGramsPerMilliLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pg/mL	Active	Mass Concentration Units	08/24/2005	PicoGramsPerMilliLiter	L-3M
+ng/mL	NanoGramsPerMilliLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/mL	Active	Mass Concentration Units	08/24/2005	NanoGramsPerMilliLiter	L-3M
+ng/mL{rbc}	NanoGramsPerMilliLiterRedBloodCells [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/mL RBCs	Active	Mass Concentration Units	08/24/2005	NanoGramsPerMilliLiterRedBloodCells	L-3M
+ug/mL	MicroGramsPerMilliLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/mL	Active	Mass Concentration Units	08/24/2005	MicroGramsPerMilliLiter	L-3M
+mg/mL	MilliGramsPerMilliLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/mL	Active	Mass Concentration Units	08/24/2005	MilliGramsPerMilliLiter	L-3M
+g/mL	GramsPerMilliLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/mL	Active	Mass Concentration Units	08/24/2005	GramsPerMilliLiter	L-3M
+pg/dL	PicoGramsPerDeciLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pg/dL	Active	Mass Concentration Units	08/24/2005	PicoGramsPerDeciLiter	L-3M
+ng/dL	NanoGramsPerDeciLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/dL	Active	Mass Concentration Units	08/24/2005	NanoGramsPerDeciLiter	L-3M
+ug/dL	MicroGramsPerDeciLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/dL	Active	Mass Concentration Units	08/24/2005	MicroGramsPerDeciLiter	0
+ug/dL{rbc}	MicroGramsPerDeciLiterRedBloodCells [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/dL RBCs	Active	Mass Concentration Units	08/24/2005	MicroGramsPerDeciLiterRedBloodCells	L-3M
+mg/dL	MilliGramsPerDeciLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/dL	Active	Mass Concentration Units	08/24/2005	MilliGramsPerDeciLiter	L-3M
+mg{Phenylketones}/dL	MilliGramsPhenylketonesPerDeciLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg Phe/dL	Active	Mass Concentration Units	08/24/2005	MilliGramsPhenylketonesPerDeciLiter	L-3M
+g/dL	GramsPerDeciLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/dL	Active	Mass Concentration Units	08/24/2005	GramsPerDeciLiter	L-3M
+ng/L	NanoGramsPerLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ng/L	Active	Mass Concentration Units	08/24/2005	NanoGramsPerLiter	L-3M
+pg/L	PicoGramsPerLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pg/L	Active	Mass Concentration Units	08/24/2005	PicoGramsPerLiter	L-3M
+ug/L	MicroGramsPerLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ug/L	Active	Mass Concentration Units	08/24/2005	MicroGramsPerLiter	L-3M
+mg/L	MilliGramsPerLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/L	Active	Mass Concentration Units	08/24/2005	MilliGramsPerLiter	L-3M
+g/L	GramsPerLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	g/L	Active	Mass Concentration Units	08/24/2005	GramsPerLiter	L-3M
+kg/L	KiloGramsPerLiter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kg/L	Active	Mass Concentration Units	08/24/2005	KiloGramsPerLiter	L-3M
+mg/m3	MilliGramsPerCubicMeter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mg/m^3	Active	Mass Concentration Units	08/24/2005	MilliGramsPerCubicMeter	L-3M
+kg/m3	KiloGramsPerCubicMeter [Mass Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kg/m^3	Active	Mass Concentration Units	08/24/2005	KiloGramsPerCubicMeter	L-3M
+fmol/mL	FemtoMolesPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	fmol/mL	Active	Substance Concentration Units	08/24/2005	FemtoMolesPerMilliLiter	L-3N
+pmol/mL	PicoMolesPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pmol/mL	Active	Substance Concentration Units	08/24/2005	PicoMolesPerMilliLiter	L-3N
+nmol/mL	NanoMolesPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/mL	Active	Substance Concentration Units	08/24/2005	NanoMolesPerMilliLiter	L-3N
+umol/mL	MicroMolesPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/mL	Active	Substance Concentration Units	08/24/2005	MicroMolesPerMilliLiter	L-3N
+mol/mL	MolesPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mol/mL	Active	Substance Concentration Units	08/24/2005	MolesPerMilliLiter	L-3N
+pmol/dL	PicoMolesPerDeciLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pmol/dL	Active	Substance Concentration Units	08/24/2005	PicoMolesPerDeciLiter	L-3N
+nmol/dL	NanoMolesPerDeciLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/dL	Active	Substance Concentration Units	08/24/2005	NanoMolesPerDeciLiter	L-3N
+umol/dL	MicroMolesPerDeciLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/dL	Active	Substance Concentration Units	08/24/2005	MicroMolesPerDeciLiter	L-3N
+mmol/dL	MilliMolesPerDeciLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/dL	Active	Substance Concentration Units	08/24/2005	MilliMolesPerDeciLiter	L-3N
+mmol/L	MilliMolesPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mmol/L	Active	Substance Concentration Units	08/24/2005	MilliMolesPerLiter	L-3N
+pmol/L	PicoMolesPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pmol/L	Active	Substance Concentration Units	08/24/2005	PicoMolesPerLiter	L-3N
+nmol/L	NanoMolesPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	nmol/L	Active	Substance Concentration Units	08/24/2005	NanoMolesPerLiter	L-3N
+umol/L	MicroMolesPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	umol/L	Active	Substance Concentration Units	08/24/2005	MicroMolesPerLiter	L-3N
+mol/L	MolesPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mol/L	Active	Substance Concentration Units	08/24/2005	MolesPerLiter	L-3N
+mol/m3	MolesPerCubicMeter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mol/m^3	Active	Substance Concentration Units	08/24/2005	MolesPerCubicMeter	L-3N
+ueq/mL	MicroEquivalentsPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ueq/mL	Active	Substance Concentration Units	08/24/2005	MicroEquivalentsPerMilliLiter	L-3N
+meq/mL	MilliEquivalentPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meq/mL	Active	Substance Concentration Units	08/24/2005	MilliEquivalentPerMilliLiter	L-3N
+eq/mL	EquivalentsPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	eq/mL	Active	Substance Concentration Units	08/24/2005	EquivalentsPerMilliLiter	L-3N
+{AHG}eq/mL	AHGEquivalentsPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	AHG eq/mL	Active	Substance Concentration Units	08/24/2005	AHGEquivalentsPerMilliLiter	L-3N
+10*6.eq/mL	MillionEquivalentsPerMilliLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	10^6 eq/mL	Active	Substance Concentration Units	08/24/2005	MillionEquivalentsPerMilliLiter	L-3N
+ueq/L	MicroEquivalentsPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	ueg/L	Active	Substance Concentration Units	08/24/2005	MicroEquivalentsPerLiter	L-3N
+meq/L	MilliEquivalentsPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meg/L	Active	Substance Concentration Units	08/24/2005	MilliEquivalentsPerLiter	L-3N
+eq/L	EquivalentsPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	eg/L	Active	Substance Concentration Units	08/24/2005	EquivalentsPerLiter	L-3N
+meq/dL	MilliEquivalentsPerDeciLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	meg/dL	Active	Substance Concentration Units	08/24/2005	MilliEquivalentsPerDeciLiter	L-3N
+mosm/L	MilliOsmolesPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mOsm/L	Active	Substance Concentration Units	08/24/2005	MilliOsmolesPerLiter	L-3N
+osm/L	OsmolesPerLiter [Substance Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Osm/L	Active	Substance Concentration Units	08/24/2005	OsmolesPerLiter	L-3N
+u[iU]/mL	MicroInternationalUnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	uIU/mL	Active	Arbitrary Concentration Units	08/24/2005	MicroInternationalUnitsPerMilliLiter	L-3[arb]
+m[iU]/mL	MilliInternationalUnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mIU/mL	Active	Arbitrary Concentration Units	08/24/2005	MilliInternationalUnitsPerMilliLiter	L-3[arb]
+{IgGPhospholipid}U/mL	IgGPhospholipidUnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IgG Phospholipid U/mL	Active	Arbitrary Concentration Units	08/24/2005	IgGPhospholipidUnitsPerMilliLiter	L-3[arb]
+{IgMPhospholipid}U/mL	IgMPhospholipidUnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IgM Phospholipid U/mL	Active	Arbitrary Concentration Units	08/24/2005	IgMPhospholipidUnitsPerMilliLiter	L-3[arb]
+{ComplementCh50}U/mL	ComplementCh50UnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	CH50 U/mL	Active	Arbitrary Concentration Units	08/24/2005	ComplementCh50UnitsPerMilliLiter	L-3[arb]
+{IgAPhospholipid}U/mL	IgAPhospholipidUnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IgA Phospholipid U/mL	Active	Arbitrary Concentration Units	08/24/2005	IgAPhospholipidUnitsPerMilliLiter	L-3[arb]
+{Elisa_U}/mL	ElisaUnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	Elisa U/mL	Active	Arbitrary Concentration Units	08/24/2005	ElisaUnitsPerMilliLiter	L-3[arb]
+[iU]/mL	InternationalUnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IU/mL	Active	Arbitrary Concentration Units	08/24/2005	InternationalUnitsPerMilliLiter	L-3[arb]
+k[iU]/mL	KiloInternationalUnitsPerMilliLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	kIU/mL	Active	Arbitrary Concentration Units	08/24/2005	KiloInternationalUnitsPerMilliLiter	L-3[arb]
+[iU]/dL	InternationalUnitsPerDeciLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IU/dL	Active	Arbitrary Concentration Units	08/24/2005	InternationalUnitsPerDeciLiter	L-3[arb]
+{Ehrlich_U}/dL	EhrlichUnitsPerDeciLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	EU/dL	Active	Arbitrary Concentration Units	08/24/2005	EhrlichUnitsPerDeciLiter	L-3[arb]
+m[iU]/L	MilliInternationalUnitsPerLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	mIU/L	Active	Arbitrary Concentration Units	08/24/2005	MilliInternationalUnitsPerLiter	L-3[arb]
+[iU]/L	InternationalUnitsPerLiter [Arbitrary Concentration Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	IU/L	Active	Arbitrary Concentration Units	08/24/2005	InternationalUnitsPerLiter	L-3[arb]
+[pH]	pH [pH Units]	PH_UnitsOfMeasure_UCUM_Expression		07/01/2004	pH	Active	pH Units	08/24/2005	pH	[pH]
