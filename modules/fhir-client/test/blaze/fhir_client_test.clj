@@ -312,3 +312,24 @@
         ::anom/category := ::anom/fault))))
 
 
+(deftest basic-auth-client
+  (testing "Authenticator is set"
+    (let [username "user-134952"
+          password "password-135000"
+          client (fhir-client/authenticated-client "http://localhost:8080/fhir" username password)
+          optionalAuthenticator (-> client
+                                    :http-client
+                                    .authenticator)]
+      (is (.isPresent optionalAuthenticator))))
+
+  (testing "Authenticator has given credentials"
+    (let [username "user-134952"
+          password "password-135000"
+          client (fhir-client/authenticated-client "http://localhost:8080/fhir" username password)
+          passwordAuth (-> client
+                           :http-client
+                           .authenticator
+                           .get
+                           .getPasswordAuthentication)]
+      (is (= (.getUserName passwordAuth) username))
+      (is (= (String. (.getPassword passwordAuth)) password)))))
