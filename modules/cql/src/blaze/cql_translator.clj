@@ -10,6 +10,7 @@
      CqlTranslator CqlTranslator$Options
      FhirLibrarySourceProvider LibraryManager ModelManager
      ModelInfoProvider ModelInfoLoader]
+    [java.util Locale]
     [javax.xml.bind JAXB]
     [org.hl7.elm_modelinfo.r1 ModelInfo]
     [org.hl7.elm.r1 VersionedIdentifier]))
@@ -45,6 +46,8 @@
   Returns an anomaly with category :cognitect.anomalies/incorrect in case of
   errors."
   [cql & {:keys [locators?]}]
+  ;; TODO: Remove if https://github.com/cqframework/clinical_quality_language/issues/579 is solved
+  (Locale/setDefault Locale/ENGLISH)
   (let [model-manager (ModelManager.)
         library-manager (LibraryManager. model-manager)
         _ (.registerProvider (.getLibrarySourceLoader library-manager) (FhirLibrarySourceProvider.))
