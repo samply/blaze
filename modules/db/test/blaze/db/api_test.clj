@@ -1,6 +1,7 @@
 (ns blaze.db.api-test
   "Main high-level test of all database API functions."
   (:require
+    [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
     [blaze.coll.core :as coll]
@@ -89,9 +90,9 @@
   (reify
     rs/ResourceLookup
     (-get [_ _]
-      (ac/failed-future (ex-info "" {::anom/category ::anom/fault})))
+      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))
     (-multi-get [_ _]
-      (ac/failed-future (ex-info "" {::anom/category ::anom/fault})))
+      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))
     rs/ResourceStore
     (-put [_ _]
       (ac/completed-future nil))))
@@ -102,7 +103,30 @@
     rs/ResourceLookup
     rs/ResourceStore
     (-put [_ _]
-      (ac/failed-future (ex-info "" {::anom/category ::anom/fault})))))
+      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))))
+
+
+(deftest sync-test
+  (testing "on already available database"
+    (with-open [node (new-node)]
+      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+
+      (is (= 1 (d/basis-t @(d/sync node 1))))))
+
+  (testing "on unavailable database"
+    (with-open [node (new-node)]
+      (let [future (d/sync node 1)]
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+
+        (is (= 1 (d/basis-t @future))))))
+
+  (testing "on database being available after two transactions"
+    (with-open [node (new-node)]
+      (let [future (d/sync node 2)]
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]])
+
+        (is (= 2 (d/basis-t @future)))))))
 
 
 (deftest transact

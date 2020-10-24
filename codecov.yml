@@ -3,32 +3,8 @@ coverage:
     project:
       default:
         target: auto
-      cql:
-        target: auto
-        flags:
-        - cql
-      db:
-        target: auto
-        flags:
-        - db
-      interaction:
-        target: auto
-        flags:
-        - interaction
 comment:
   layout: "reach, diff, flags, files"
   behavior: default
   require_changes: false
-  require_base: yes
-  require_head: yes
-  branches: null
-flags:
-  cql:
-    paths:
-    - modules/cql/src/
-  db:
-    paths:
-    - modules/db/src/
-  interaction:
-    paths:
-    - modules/interaction/src/
+  after_n_builds: 18

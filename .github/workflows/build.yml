@@ -117,7 +117,6 @@ jobs:
       with:
         name: ${{ matrix.module }}
         file: modules/${{ matrix.module }}/target/coverage/codecov.json
-        flags: ${{ matrix.module }}
         fail_ci_if_error: true
 
   build:

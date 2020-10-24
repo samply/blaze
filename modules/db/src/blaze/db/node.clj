@@ -74,7 +74,11 @@
     clauses))
 
 
-(defn- create-watcher! [state t]
+(defn- add-watcher!
+  "Adds a watcher to `state` and returns a CompletableFuture that will complete
+  with nil if `t` is reached or complete exceptionally in case the indexing
+  errored."
+  [state t]
   (let [future (ac/future)]
     (add-watch
       state future
@@ -198,14 +202,14 @@
 (defrecord Node [tx-log kv-store resource-store search-param-registry
                  resource-indexer state run? poll-timeout finished]
   p/Node
-  (-db [this]
-    (db/db this (:t @state)))
+  (-db [node]
+    (db/db node (:t @state)))
 
-  (-sync [this t]
+  (-sync [node t]
     (if (<= t (:t @state))
-      (ac/completed-future (d/db this))
-      (-> (create-watcher! state t)
-          (ac/then-apply #(d/sync this t)))))
+      (ac/completed-future (d/db node))
+      (-> (add-watcher! state t)
+          (ac/then-apply (fn [_] (db/db node t))))))
 
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
@@ -216,22 +220,22 @@
           (-> (rs/put resource-store entries)
               (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds))))))))
 
-  (-tx-result [this t]
-    (let [watcher (create-watcher! state t)
+  (-tx-result [node t]
+    (let [watcher (add-watcher! state t)
           current-state @state
           current-t (max-t current-state)]
       (log/trace "call tx-result: t =" t "current-t =" current-t)
       (cond
         (<= t current-t)
         (do (remove-watch state watcher)
-            (load-tx-result this kv-store t))
+            (load-tx-result node kv-store t))
 
         (:e current-state)
         (do (remove-watch state watcher)
             (ac/failed-future (:e current-state)))
 
         :else
-        (ac/then-compose watcher (fn [_] (load-tx-result this kv-store t))))))
+        (ac/then-compose watcher (fn [_] (load-tx-result node kv-store t))))))
 
   p/Tx
   (-tx [_ t]
