@@ -106,6 +106,21 @@
       (ac/failed-future (ex-anom {::anom/category ::anom/fault})))))
 
 
+(defn new-random-slow-resource-store [resource-store]
+  (reify
+    rs/ResourceLookup
+    (-get [_ hash]
+      (Thread/sleep (long (* 100 (Math/random))))
+      (rs/-get resource-store hash))
+    (-multi-get [_ hashes]
+      (Thread/sleep (long (* 100 (Math/random))))
+      (rs/-multi-get resource-store hashes))
+    rs/ResourceStore
+    (-put [_ entries]
+      (Thread/sleep (long (* 100 (Math/random))))
+      (rs/-put resource-store entries))))
+
+
 (deftest sync-test
   (testing "on already available database"
     (with-open [node (new-node)]
@@ -333,6 +348,29 @@
             (given (ex-data (ex-cause e))
               ::anom/category := ::anom/conflict
               ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))))
+
+  (testing "creating 10 transactions in parallel"
+    (with-open [node (new-node-with
+                       {:resource-store
+                        (-> (new-mem-kv-store)
+                            (new-kv-resource-store)
+                            (new-random-slow-resource-store))})]
+      (let [db-futures
+            (map
+              #(d/transact node [[:create {:fhir/type :fhir/Patient :id (str %)}]])
+              (range 10))]
+
+        (testing "wait for all transactions finishing"
+          @(ac/all-of db-futures))
+
+        (testing "every database contains an increasing number of patients"
+          (is
+            (every?
+              true?
+              (map-indexed
+                (fn [i db-future]
+                  (= (inc i) (d/type-total @db-future "Patient")))
+                db-futures)))))))
 
   (testing "with failing resource storage"
     (testing "on put"

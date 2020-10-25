@@ -9,5 +9,11 @@
   {:git/url "https://github.com/alexanderkiel/integrant.git"
    :sha "c673b85130e553feec6d4c5d2d1ec773a49c929c"}
 
+  io.prometheus/simpleclient
+  {:mvn/version "0.9.0"}
+
+  io.prometheus/simpleclient_common
+  {:mvn/version "0.9.0"}
+
   prom-metrics/prom-metrics
   {:mvn/version "0.5-alpha.3"}}}

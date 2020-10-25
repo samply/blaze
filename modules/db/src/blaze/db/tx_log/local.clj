@@ -6,7 +6,7 @@
   the point in time `t` of the transaction and the values are transaction
   commands and instants.
 
-  Uses a single thread names `local-tx-log` to increment the point in time `t`,
+  Uses a single thread named `local-tx-log` to increment the point in time `t`,
   store the transaction and transfers it to listening queues."
   (:require
     [blaze.async.comp :as ac]
@@ -21,7 +21,6 @@
     [cheshire.core :as cheshire]
     [cheshire.generate :refer [JSONable]]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [integrant.core :as ig]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
@@ -102,28 +101,11 @@
 (def ^:private ^:const max-poll-size 50)
 
 
-(defn- invalid-tx-data-msg [t cause]
-  (format "Skip transaction with point in time of %d because tx-data is invalid: %s"
-          t (str/replace cause #"\s" " ")))
-
-
-(def ^:private remove-invalid-tx-data
-  (filter
-    (fn [{:keys [t] :as tx-data}]
-      (if (s/valid? :blaze.db/tx-data tx-data)
-        true
-        (log/warn (invalid-tx-data-msg t (s/explain-str :blaze.db/tx-data tx-data)))))))
-
-
 (defn- tx-data [kv-store offset]
   (log/trace "fetch tx-data from storage offset =" offset)
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]
-    (into []
-          (comp (take max-poll-size)
-                remove-invalid-tx-data)
-          (i/kvs iter decode-tx-data (encode-t offset)))))
-
+    (into [] (take max-poll-size) (i/kvs iter decode-tx-data (encode-t offset)))))
 
 (defn- poll [^BlockingQueue queue ^Duration timeout]
   (log/trace "poll in-memory queue with timeout =" timeout)
@@ -146,19 +128,18 @@
     (log/trace "close queue")
     (unsubscribe!)))
 
-
-(defn- store-tx-data [kv-store {:keys [t instant tx-cmds]}]
+(defn- store-tx-data! [kv-store {:keys [t instant tx-cmds]}]
   (log/trace "store transaction data with t =" t)
   (kv/put kv-store (encode-t t) (encode-tx-data instant tx-cmds)))
 
 
-(defn- transfer-tx-data [queues tx-data]
+(defn- transfer-tx-data! [queues tx-data]
   (log/trace "transfer transaction data to" (count queues) "queue(s)")
   (doseq [^BlockingQueue queue queues]
     (.put queue tx-data)))
 
 
-(defn- submit
+(defn- submit!
   "Stores `tx-cmds` and transfers them to pollers on queues.
 
   Uses `state` to increment the point in time `t`. Stores transaction data
@@ -169,8 +150,8 @@
   (let [{:keys [t queues]} (swap! state update :t inc)
         instant (Instant/now clock)
         tx-data {:t t :instant instant :tx-cmds tx-cmds}]
-    (store-tx-data kv-store tx-data)
-    (transfer-tx-data (vals queues) [tx-data])
+    (store-tx-data! kv-store tx-data)
+    (transfer-tx-data! (vals queues) [tx-data])
     t))
 
 
@@ -183,7 +164,7 @@
     ;; ensures that the submit function is executed in a single thread
     (ac/supply-async
       #(with-open [_ (prom/timer duration-seconds "submit")]
-         (submit kv-store clock state tx-cmds))
+         (submit! kv-store clock state tx-cmds))
       executor))
 
   (-new-queue [_ offset]

@@ -17,22 +17,45 @@
   (instance? Flow$Publisher x))
 
 
+(defn subscriber? [x]
+  (instance? Flow$Subscriber x))
+
+
+(defn subscription? [x]
+  (instance? Flow$Subscription x))
+
+
 (defn processor? [x]
   (instance? Flow$Processor x))
 
 
+(defn subscribe! [publisher subscriber]
+  (.subscribe ^Flow$Publisher publisher subscriber))
+
+
+(defn on-subscribe! [subscriber subscription]
+  (.onSubscribe ^Flow$Subscriber subscriber subscription))
+
+
+(defn request! [subscription n]
+  (.request ^Flow$Subscription subscription n))
+
+
+(defn cancel! [subscription]
+  (.cancel ^Flow$Subscription subscription))
+
+
 (deftype Collector
-  [xs ^:volatile-mutable future
-   ^:volatile-mutable ^Flow$Subscription subscription]
+  [xs ^:volatile-mutable future ^:volatile-mutable subscription]
   Flow$Subscriber
   (onSubscribe [_ s]
     (set! subscription s)
-    (.request subscription 1))
+    (request! subscription 1))
   (onNext [_ x]
-    (.request subscription 1)
+    (request! subscription 1)
     (swap! xs conj x))
   (onError [_ e]
-    (.cancel subscription)
+    (cancel! subscription)
     (ac/complete-exceptionally! future e))
   (onComplete [_]
     (ac/complete! future @xs)))
@@ -47,7 +70,7 @@
   `publisher` produces."
   [publisher]
   (let [future (ac/future)]
-    (.subscribe ^Flow$Publisher publisher (collector future))
+    (subscribe! publisher (collector future))
     future))
 
 
@@ -59,11 +82,11 @@
     (proxy [SubmissionPublisher Flow$Processor] []
       (onSubscribe [s]
         (vreset! subscription s)
-        (.request ^Flow$Subscription s 1))
+        (request! s 1))
       (onNext [x]
         (doseq [y (f x)]
           (.submit ^SubmissionPublisher this y))
-        (.request ^Flow$Subscription @subscription 1))
+        (request! @subscription 1))
       (onError [e]
         (.closeExceptionally ^SubmissionPublisher this e))
       (onComplete []

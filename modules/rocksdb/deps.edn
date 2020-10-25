@@ -3,26 +3,4 @@
   {:local/root "../kv"}
 
   org.rocksdb/rocksdbjni
-  {:mvn/version "6.8.1"}}
-
- :aliases
- {:test
-  {:extra-paths ["test"]
-
-   :extra-deps
-   {lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
-
-   :main-opts
-   ["-m" "kaocha.runner"]}
-
-  :namespace-graph
-  {:extra-deps
-   {clj-kondo/tools
-    {:git/url "https://github.com/borkdude/clj-kondo"
-     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
-     :deps/root "analysis"}}
-   :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}
+  {:mvn/version "6.12.7"}}}

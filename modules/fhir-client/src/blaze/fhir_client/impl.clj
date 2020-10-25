@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :refer [throw-anom ex-anom]]
     [blaze.async.comp :as ac]
+    [blaze.async.flow :as flow]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [cheshire.core :as json]
@@ -166,15 +167,15 @@
   Flow$Subscriber
   (onSubscribe [_ s]
     (set! subscription s)
-    (.request ^Flow$Subscription s 1))
+    (flow/request! s 1))
   (onNext [_ x]
-    (.request ^Flow$Subscription subscription 1)
+    (flow/request! subscription 1)
     (let [file (.resolve ^Path dir ^String (filename-fn x))]
       (swap! filenames conj (.toAbsolutePath file))
       (with-open [w (writer file StandardOpenOption/CREATE_NEW)]
         (json/generate-stream (fhir-spec/unform-json x) w))))
   (onError [_ e]
-    (.cancel ^Flow$Subscription subscription)
+    (flow/cancel! subscription)
     (ac/complete-exceptionally! future e))
   (onComplete [_]
     (ac/complete! future @filenames)))

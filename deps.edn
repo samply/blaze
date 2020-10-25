@@ -38,19 +38,19 @@
   {:local/root "modules/thread-pool-executor-collector"}
 
   io.netty/netty-codec-http
-  {:mvn/version "4.1.50.Final"}
+  {:mvn/version "4.1.53.Final"}
 
   io.netty/netty-handler-proxy
-  {:mvn/version "4.1.50.Final"}
+  {:mvn/version "4.1.53.Final"}
 
   io.netty/netty-resolver-dns
-  {:mvn/version "4.1.50.Final"}
+  {:mvn/version "4.1.53.Final"}
 
   io.netty/netty-transport-native-epoll$linux-x86_64
-  {:mvn/version "4.1.50.Final"}
+  {:mvn/version "4.1.53.Final"}
 
   io.prometheus/simpleclient_hotspot
-  {:mvn/version "0.8.0"}
+  {:mvn/version "0.9.0"}
 
   org.clojars.akiel/spec-coerce
   {:mvn/version "0.4.0"}
@@ -65,25 +65,17 @@
  {:depstar
   {:extra-deps
    {seancorfield/depstar
-    {:mvn/version "1.0.94"}}}
-
-  :check
-  {:extra-deps
-   {athos/clj-check
-    {:git/url "https://github.com/athos/clj-check.git"
-     :sha "b48d4e7000586529f81c1e29069b503b57259514"}}
-   :main-opts
-   ["-m" "clj-check.check"]}
+    {:mvn/version "1.1.132"}}}
 
   :test
   {:extra-paths ["dev" "test"]
 
    :extra-deps
    {criterium/criterium
-    {:mvn/version "0.4.5"}
+    {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -97,5 +89,4 @@
     org.clojure/tools.namespace
     {:mvn/version "0.3.1"}}
 
-   :main-opts
-   ["-m" "kaocha.runner"]}}}
+   :main-opts ["-m" "kaocha.runner"]}}}

@@ -17,7 +17,7 @@
 
    :extra-deps
    {criterium/criterium
-    {:mvn/version "0.4.5"}
+    {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
     {:mvn/version "1.0.700"}
