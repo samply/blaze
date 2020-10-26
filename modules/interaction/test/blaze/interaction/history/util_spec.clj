@@ -17,11 +17,6 @@
   :ret (s/nilable :blaze.db/t))
 
 
-(s/fdef util/page-type
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
-  :ret (s/nilable :fhir.type/name))
-
-
 (s/fdef util/nav-url
   :args
   (s/cat

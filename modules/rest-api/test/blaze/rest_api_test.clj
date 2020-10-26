@@ -12,7 +12,8 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-merged-config {:level :fatal} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -35,7 +36,9 @@
   (rest-api/router
     {:base-url "base-url-111523"
      :structure-definitions [{:kind "resource" :name "Patient"}]
+     :search-system-handler (handler ::search-system)
      :transaction-handler (handler ::transaction)
+     :history-system-handler (handler ::history-system)
      :resource-patterns
      [#:blaze.rest-api.resource-pattern
          {:type :default
@@ -77,12 +80,6 @@
     (fn [_])))
 
 
-(comment
-  (reitit/router-name router)
-  (doseq [route (reitit/routes router)]
-    (prn route)))
-
-
 (deftest router-test
   (testing "handlers"
     (are [path request-method handler]
@@ -91,7 +88,9 @@
             (reitit/match-by-path router path)
             [:result request-method :data :handler])
           {}))
+      "" :get ::search-system
       "" :post ::transaction
+      "/_history" :get ::history-system
       "/Patient" :get ::search-type
       "/Patient" :post ::create
       "/Patient/_history" :get ::history-type
@@ -115,7 +114,9 @@
                 (reitit/match-by-path router path)
                 [:result request-method :data :middleware])
               (some (comp #{:resource} :name first))))
+      "" :get nil
       "" :post :resource
+      "/_history" :get nil
       "/Patient" :get nil
       "/Patient" :post :resource
       "/Patient/_history" :get nil
@@ -203,6 +204,34 @@
       :fhirVersion := #fhir/code"4.0.1"
       :format := [#fhir/code"application/fhir+json"
                   #fhir/code"application/xml+json"]))
+
+  (testing "minimal config + search-system"
+    (given
+      (-> @((rest-api/capabilities-handler
+              {:base-url "base-url-131713"
+               :version "version-131640"
+               :structure-definitions
+               [{:kind "resource" :name "Patient"}]
+               :search-param-registry search-param-registry
+               :search-system-handler ::search-system})
+            {})
+          :body)
+      :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :interaction 0 :code] := #fhir/code"search-system"))
+
+  (testing "minimal config + history-system"
+    (given
+      (-> @((rest-api/capabilities-handler
+              {:base-url "base-url-131713"
+               :version "version-131640"
+               :structure-definitions
+               [{:kind "resource" :name "Patient"}]
+               :search-param-registry search-param-registry
+               :history-system-handler ::history-system})
+            {})
+          :body)
+      :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :interaction 0 :code] := #fhir/code"history-system"))
 
   (testing "one interaction"
     (given

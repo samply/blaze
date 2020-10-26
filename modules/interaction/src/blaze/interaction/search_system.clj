@@ -1,4 +1,4 @@
-(ns blaze.interaction.search-type
+(ns blaze.interaction.search-system
   "FHIR search interaction.
 
   https://www.hl7.org/fhir/http.html#search"
@@ -22,21 +22,22 @@
 
 
 (defn- handles-and-clauses
-  [{:keys [type] :preference/keys [handling] :or {handling "strict"}
-    {:keys [clauses page-id]} :params}
+  [{#_:preference/keys #_[handling] #_:or #_{handling "strict"}
+    {:keys [#_clauses page-type page-id]} :params}
    db]
-  (cond
+  {:handles (d/system-list db page-type page-id)}
+  #_(cond
     (empty? clauses)
-    {:handles (d/list-resource-handles db type page-id)}
+    {:handles (d/system-list db page-type page-id)}
 
     (= "strict" handling)
-    (when-ok [handles (d/type-query db type clauses page-id)]
+    (when-ok [handles (d/system-query db clauses page-type page-id)]
       {:handles handles
        :clauses clauses})
 
     :else
-    (let [query (d/compile-type-query-lenient db type clauses)]
-      {:handles (d/execute-query db query page-id)
+    (let [query (d/compile-system-query-lenient db clauses)]
+      {:handles (d/execute-query db query page-type page-id)
        :clauses (d/query-clauses query)})))
 
 
@@ -55,9 +56,9 @@
                :clauses clauses}))))))
 
 
-(defn- self-link-offset [entries]
-  (when-let [id (-> entries first :resource :id)]
-    {"__page-id" id}))
+(defn- self-link-offset [[{first-resource :resource}]]
+  (when-let [{:fhir/keys [type] :keys [id]} first-resource]
+    {"__page-type" (name type) "__page-id" id}))
 
 
 (defn- self-link [{:keys [match params]} clauses t entries]
@@ -67,7 +68,8 @@
 
 
 (defn- next-link-offset [entries]
-  {"__page-id" (-> entries peek :resource :id)})
+  (let [{:fhir/keys [type] :keys [id]} (:resource (peek entries))]
+    {"__page-type" (name type) "__page-id" id}))
 
 
 (defn- next-link [{:keys [match params]} clauses t entries]
@@ -79,26 +81,26 @@
 (defn- total
   "Calculates the total number of resources returned.
 
-  If we have no clauses (returning all resources), we can use `d/type-total`.
+  If we have no clauses (returning all resources), we can use `d/system-total`.
   Secondly, if the number of entries found is not more than one page in size,
   we can use that number. Otherwise there is no cheap way to calculate the
   number of matching resources, so we don't report it."
-  [db type {:keys [clauses page-size page-id]} entries]
+  [db {:keys [clauses page-size page-id]} entries]
   (cond
     (empty? clauses)
-    (d/type-total db type)
+    (d/system-total db)
 
     (and (nil? page-id) (<= (count entries) page-size))
     (count entries)))
 
 
-(defn- search-normal [{:keys [type params] :as context} db]
+(defn- search-normal [{:keys [params] :as context} db]
   (let [t (or (d/as-of-t db) (d/basis-t db))]
     (-> (entries-and-clauses context db)
         (ac/then-apply
           (fn [{:keys [entries clauses]}]
             (let [page-size (:page-size params)
-                  total (total db type params entries)]
+                  total (total db params entries)]
               (cond->
                 {:fhir/type :fhir/Bundle
                  :id (str (random-uuid))
@@ -114,20 +116,21 @@
 
 
 (defn- summary-total
-  [{:keys [type] :preference/keys [handling] :or {handling "strict"}
+  [_ #_{:preference/keys [handling] :or {handling "strict"}
     {:keys [clauses]} :params}
    db]
-  (cond
+  {:total (d/system-total db)}
+  #_(cond
     (empty? clauses)
-    {:total (d/type-total db type)}
+    {:total (d/system-total db)}
 
     (= "strict" handling)
-    (when-ok [handles (d/type-query db type clauses)]
+    (when-ok [handles (d/system-query db clauses)]
       {:total (transduce (map (constantly 1)) + 0 handles)
        :clauses clauses})
 
     :else
-    (let [query (d/compile-type-query-lenient db type clauses)]
+    (let [query (d/compile-system-query-lenient db type clauses)]
       {:total (transduce (map (constantly 1)) + 0 (d/execute-query db query))
        :clauses (d/query-clauses query)})))
 
@@ -175,10 +178,10 @@
 
 (defn handler [node]
   (-> (handler-intern node)
-      (wrap-observe-request-duration "search-type")))
+      (wrap-observe-request-duration "search-system")))
 
 
-(defmethod ig/init-key :blaze.interaction/search-type
+(defmethod ig/init-key :blaze.interaction/search-system
   [_ {:keys [node]}]
-  (log/info "Init FHIR search-type interaction handler")
+  (log/info "Init FHIR search-system interaction handler")
   (handler node))

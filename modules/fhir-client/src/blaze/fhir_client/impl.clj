@@ -133,7 +133,7 @@
   (type/value (:url (first (filter (comp #{"next"} :relation) (:link page))))))
 
 
-(deftype SearchTypeSubscription
+(deftype PagingSubscription
   [^Flow$Subscriber subscriber http-client volatile-uri]
   Flow$Subscription
   (request [_ _]
@@ -154,8 +154,8 @@
   (cancel [_]))
 
 
-(defn search-type-subscription [subscriber http-client uri]
-  (->SearchTypeSubscription subscriber http-client (volatile! uri)))
+(defn paging-subscription [subscriber http-client uri]
+  (->PagingSubscription subscriber http-client (volatile! uri)))
 
 
 (defn- writer ^BufferedWriter [file & open-options]

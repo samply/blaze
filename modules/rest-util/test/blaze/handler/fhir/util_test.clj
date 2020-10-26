@@ -76,6 +76,22 @@
       ["3" "4"] 3)))
 
 
+(deftest page-type
+  (testing "no query param"
+    (is (nil? (fhir-util/page-type {}))))
+
+  (testing "invalid query param"
+    (are [type] (nil? (fhir-util/page-type {"__page-type" type}))
+      "<invalid>"
+      ""))
+
+  (testing "valid query param"
+    (are [v type] (= type (fhir-util/page-type {"__page-type" v}))
+      "A" "A"
+      ["<invalid>" "A"] "A"
+      ["A" "B"] "A")))
+
+
 (deftest page-id
   (testing "no query param"
     (is (nil? (fhir-util/page-id {}))))

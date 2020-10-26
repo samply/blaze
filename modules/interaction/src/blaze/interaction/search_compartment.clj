@@ -8,6 +8,7 @@
     [blaze.handler.util :as handler-util]
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
+    [blaze.interaction.search.util :as search-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
@@ -16,13 +17,6 @@
     [reitit.core :as reitit]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
-
-
-(defn- entry
-  [router {:fhir/keys [type] :keys [id] :as resource}]
-  {:fullUrl (type/->Uri (fhir-util/instance-url router (name type) id))
-   :resource resource
-   :search {:mode "match"}})
 
 
 (defn- handles-and-clauses
@@ -51,7 +45,7 @@
     (comp
       (drop page-offset)
       (take (inc page-size))
-      (map #(entry router %)))
+      (map #(search-util/entry router %)))
     resources))
 
 

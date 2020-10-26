@@ -266,10 +266,102 @@
     (let [http-client (HttpClientMock.)
           client (fhir-client/client http-client "http://localhost:8080/fhir")]
 
-      (-> (.onGet http-client "http://localhost:8080/fhir/Patient?birthdate=2020")
+      (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturnStatus 500))
 
-      (given @(-> (fhir-client/search-type client "Patient" {"birthdate" "2020"})
+      (given @(-> (fhir-client/search-type client "Patient")
+                  (ac/exceptionally (comp ex-data ex-cause)))
+        ::anom/category := ::anom/fault))))
+
+
+(deftest search-system-test
+  (testing "one bundle with one patient"
+    (let [http-client (HttpClientMock.)
+          client (fhir-client/client http-client "http://localhost:8080/fhir")]
+
+      (-> (.onGet http-client "http://localhost:8080/fhir")
+          (.doReturnJSON
+            (json/generate-string
+              {:resourceType "Bundle"
+               :entry
+               [{:resource {:resourceType "Patient" :id "0"}}]})))
+
+      (given @(fhir-client/search-system client)
+        [0 :fhir/type] := :fhir/Patient
+        [0 :id] := "0"
+        1 := nil)))
+
+  (testing "one bundle with two patients"
+    (let [http-client (HttpClientMock.)
+          client (fhir-client/client http-client "http://localhost:8080/fhir")]
+
+      (-> (.onGet http-client "http://localhost:8080/fhir")
+          (.doReturnJSON
+            (json/generate-string
+              {:resourceType "Bundle"
+               :entry
+               [{:resource {:resourceType "Patient" :id "0"}}
+                {:resource {:resourceType "Patient" :id "1"}}]})))
+
+      (given @(fhir-client/search-system client)
+        [0 :fhir/type] := :fhir/Patient
+        [0 :id] := "0"
+        [1 :fhir/type] := :fhir/Patient
+        [1 :id] := "1"
+        2 := nil)))
+
+  (testing "two bundles with two patients"
+    (let [http-client (HttpClientMock.)
+          client (fhir-client/client http-client "http://localhost:8080/fhir")]
+
+      (-> (.onGet http-client "http://localhost:8080/fhir")
+          (.doReturnJSON
+            (json/generate-string
+              {:resourceType "Bundle"
+               :link
+               [{:relation "next"
+                 :url "http://localhost:8080/fhir?page=2"}]
+               :entry
+               [{:resource {:resourceType "Patient" :id "0"}}]})))
+
+      (-> (.onGet http-client "http://localhost:8080/fhir?page=2")
+          (.doReturnJSON
+            (json/generate-string
+              {:resourceType "Bundle"
+               :entry
+               [{:resource {:resourceType "Patient" :id "1"}}]})))
+
+      (given @(fhir-client/search-system client)
+        [0 :fhir/type] := :fhir/Patient
+        [0 :id] := "0"
+        [1 :fhir/type] := :fhir/Patient
+        [1 :id] := "1"
+        2 := nil)))
+
+  (testing "with query params"
+    (let [http-client (HttpClientMock.)
+          client (fhir-client/client http-client "http://localhost:8080/fhir")]
+
+      (-> (.onGet http-client "http://localhost:8080/fhir?_id=0")
+          (.doReturnJSON
+            (json/generate-string
+              {:resourceType "Bundle"
+               :entry
+               [{:resource {:resourceType "Patient" :id "0"}}]})))
+
+      (given @(fhir-client/search-system client {"_id" "0"})
+        [0 :fhir/type] := :fhir/Patient
+        [0 :id] := "0"
+        1 := nil)))
+
+  (testing "Server Error without JSON response"
+    (let [http-client (HttpClientMock.)
+          client (fhir-client/client http-client "http://localhost:8080/fhir")]
+
+      (-> (.onGet http-client "http://localhost:8080/fhir")
+          (.doReturnStatus 500))
+
+      (given @(-> (fhir-client/search-system client)
                   (ac/exceptionally (comp ex-data ex-cause)))
         ::anom/category := ::anom/fault))))
 

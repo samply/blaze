@@ -158,6 +158,7 @@
      context-path
      structure-definitions
      auth-backends
+     search-system-handler
      transaction-handler
      history-system-handler
      resource-patterns
@@ -180,6 +181,8 @@
              (cond-> []
                (seq auth-backends)
                (conj wrap-auth-guard))}
+            (some? search-system-handler)
+            (assoc :get search-system-handler)
             (some? transaction-handler)
             (assoc :post {:middleware [[wrap-resource executor]]
                           :handler transaction-handler}))]
@@ -343,6 +346,7 @@
      context-path
      structure-definitions
      search-param-registry
+     search-system-handler
      transaction-handler
      history-system-handler
      resource-patterns
@@ -355,7 +359,7 @@
          :publisher "The Samply Development Community"
          :copyright copyright
          :kind #fhir/code"instance"
-         :date #fhir/dateTime"2020-10-06"
+         :date #fhir/dateTime"2020-10-26"
          :software
          {:name "Blaze"
           :version version}
@@ -377,6 +381,8 @@
              structure-definitions)
            :interaction
            (cond-> []
+             (some? search-system-handler)
+             (conj {:code #fhir/code"search-system"})
              (some? transaction-handler)
              (conj {:code #fhir/code"transaction"} {:code #fhir/code"batch"})
              (some? history-system-handler)
@@ -454,6 +460,7 @@
     :opt-un
     [::context-path
      ::auth-backends
+     ::search-system-handler
      ::transaction-handler
      ::history-system-handler
      ::resource-patterns

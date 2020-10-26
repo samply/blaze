@@ -60,7 +60,7 @@
 (defn- handle [router match query-params db]
   (let [t (or (d/as-of-t db) (d/basis-t db))
         page-t (history-util/page-t query-params)
-        page-type (when page-t (history-util/page-type query-params))
+        page-type (when page-t (fhir-util/page-type query-params))
         page-id (when page-type (fhir-util/page-id query-params))
         since (history-util/since query-params)
         total (d/total-num-of-system-changes db since)

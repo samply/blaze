@@ -4,7 +4,6 @@
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.spec]
-    [clojure.spec.alpha :as s]
     [reitit.core :as reitit])
   (:import
     [java.time Instant OffsetDateTime]
@@ -34,14 +33,6 @@
   [{v "__page-t"}]
   (when-let [t (some #(when (re-matches #"\d+" %) %) (fhir-util/to-seq v))]
     (Long/parseLong t)))
-
-
-(defn page-type
-  "Returns the `page-type` query param in case it is a valid FHIR resource type."
-  {:arglists '([query-params])}
-  [{v "__page-type"}]
-  (some #(when (s/valid? :fhir.type/name %) %)
-        (fhir-util/to-seq v)))
 
 
 (defn nav-url
