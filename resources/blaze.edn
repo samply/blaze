@@ -28,7 +28,8 @@
   ;; all resource types.
   ;;
   :blaze/rest-api
-  {:transaction-handler #blaze/ref :blaze.interaction.transaction/handler
+  {:search-system-handler #blaze/ref :blaze.interaction/search-system
+   :transaction-handler #blaze/ref :blaze.interaction.transaction/handler
    :history-system-handler #blaze/ref :blaze.interaction.history/system
    :resource-patterns
    [#:blaze.rest-api.resource-pattern
@@ -96,6 +97,9 @@
    :executor #blaze/ref :blaze.server/executor}
 
   :blaze.interaction/read
+  {:node #blaze/ref :blaze.db/node}
+
+  :blaze.interaction/search-system
   {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction/search-type

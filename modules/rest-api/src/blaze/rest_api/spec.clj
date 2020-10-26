@@ -15,6 +15,10 @@
   (s/coll-of #(satisfies? IAuthentication %)))
 
 
+(s/def :blaze.rest-api/search-system-handler
+  fn?)
+
+
 (s/def :blaze.rest-api/transaction-handler
   fn?)
 

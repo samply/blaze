@@ -50,6 +50,16 @@
     0))
 
 
+(defn page-type
+  "Returns the value of the first valid `__page-type` query param or nil
+  otherwise.
+
+  Values have to be valid FHIR resource type names."
+  {:arglists '([query-params])}
+  [{v "__page-type"}]
+  (some #(when (s/valid? :fhir.type/name %) %) (to-seq v)))
+
+
 (defn page-id
   "Returns the value of the first valid `__page-id` query param or nil
   otherwise.
