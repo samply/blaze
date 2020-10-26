@@ -3,11 +3,16 @@
   {:local/root "../module-base"}
 
   buddy/buddy-auth
-  {:git/url "https://github.com/alexanderkiel/buddy-auth.git"
-   :sha "56c0396a6d8640ebd588f2895e5e4583dc48b903"}
+  {:mvn/version "2.2.0"}
+
+  buddy/buddy-sign
+  {:mvn/version "3.2.0"}
 
   cheshire/cheshire
-  {:mvn/version "5.10.0"}}
+  {:mvn/version "5.10.0"}
+
+  funcool/cuerdas
+  {:mvn/version "2.2.1"}}
 
  :aliases
  {:test

@@ -63,7 +63,7 @@
     (subscribe [_ subscriber]
       (->> (search-type-uri base-uri type params)
            (impl/search-type-subscription subscriber http-client)
-           (.onSubscribe subscriber)))))
+           (flow/on-subscribe! subscriber)))))
 
 
 (defn resource-processor
@@ -82,7 +82,7 @@
    (let [src (search-type-publisher client type params)
          pro (resource-processor)
          dst (flow/collect pro)]
-     (.subscribe ^Flow$Publisher src pro)
+     (flow/subscribe! src pro)
      dst)))
 
 
@@ -91,5 +91,5 @@
   written of all resources the `publisher` produces."
   [dir publisher]
   (let [future (ac/future)]
-    (.subscribe ^Flow$Publisher publisher (impl/spitter dir future))
+    (flow/subscribe! publisher (impl/spitter dir future))
     future))

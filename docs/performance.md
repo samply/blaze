@@ -8,12 +8,12 @@ Generated 10,000 patients with Synthea master branch with Git SHA `4fed9eaf` and
 
 ### Test System
 
-MacBook Pro \(Retina, 15-inch, Mid 2015\) 2,5 GHz Intel Core i7, 16 GB RAM. Blaze version 0.9.0-alpha.21.
+MacBook Pro \(Retina, 15-inch, Mid 2015\) 2,5 GHz Intel Core i7, 16 GB RAM. Blaze version 0.9.0-alpha.26.
 
 ### Start Script
 
 ```bash
-STORAGE=standalone INDEX_DB_DIR=blaze-data/index TRANSACTION_DB_DIR=blaze-data/transaction RESOURCE_DB_DIR=blaze-data/resource DB_RESOURCE_INDEXER_THREADS=8 java -jar blaze-0.9.0-alpha.21-standalone.jar -m blaze.core
+STORAGE=standalone INDEX_DB_DIR=blaze-data/index TRANSACTION_DB_DIR=blaze-data/transaction RESOURCE_DB_DIR=blaze-data/resource DB_RESOURCE_INDEXER_THREADS=8 java -jar blaze-0.9.0-alpha.26-standalone.jar -m blaze.core
 ```
 
 ### Relevant Startup Log Output
@@ -34,7 +34,7 @@ Init JSON parse executor with 8 threads
 JVM version: 11.0.7
 Maximum available memory: 4096 MiB
 Number of available processors: 8
-Successfully started Blaze version 0.9.0-alpha.21 in 13.1 seconds
+Successfully started Blaze version 0.9.0-alpha.26 in 13.1 seconds
 ```
 
 ### Upload Method
@@ -45,10 +45,10 @@ Command line tool `blazectl` with concurrency of 8.
 Starting Upload to http://localhost:8080/fhir ...
 Uploads          [total, concurrency]     11676, 8
 Success          [ratio]                  100.00 %
-Duration         [total]                  29m36s
-Requ. Latencies  [mean, 50, 95, 99, max]  1.214s, 941ms, 2.513s, 6.41s 31.419s
-Proc. Latencies  [mean, 50, 95, 99, max]  1.206s, 938ms, 2.505s, 6.393s 30.37s
-Bytes In         [total, mean]            817.60 MiB, 71.70 KiB
+Duration         [total]                  27m6s
+Requ. Latencies  [mean, 50, 95, 99, max]  1.112s, 868ms, 2.312s, 5.786s 24.977s
+Proc. Latencies  [mean, 50, 95, 99, max]  1.103s, 863ms, 2.288s, 5.749s 23.992s
+Bytes In         [total, mean]            818.08 MiB, 71.75 KiB
 Bytes Out        [total, mean]            10.08 GiB, 904.95 KiB
 Status Codes     [code:count]             200:11676
 ```

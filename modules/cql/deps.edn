@@ -4,17 +4,13 @@
  {blaze/db
   {:local/root "../db"}
 
-  com.fasterxml.jackson.core/jackson-annotations
-  {:mvn/version "2.10.2"}
-
   com.fasterxml.jackson.module/jackson-module-jaxb-annotations
-  {:mvn/version "2.10.2"}
+  {:mvn/version "2.11.3"}
 
   info.cqframework/cql-to-elm
   {:mvn/version "1.4.9"
    :exclusions
-   [com.fasterxml.jackson.core/jackson-databind
-    com.google.code.javaparser/javaparser
+   [com.google.code.javaparser/javaparser
     info.cqframework/qdm
     junit/junit
     xpp3/xpp3

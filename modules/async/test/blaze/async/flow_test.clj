@@ -42,7 +42,7 @@
     (let [publisher (SubmissionPublisher.)
           processor (flow/mapcat #(repeat % %))
           future (flow/collect processor)]
-      (.subscribe publisher processor)
+      (flow/subscribe! publisher processor)
       (.submit publisher 1)
       (.submit publisher 2)
       (.close publisher)
@@ -52,7 +52,7 @@
     (let [publisher (SubmissionPublisher.)
           processor (flow/mapcat #(repeat % %))
           future (flow/collect processor)]
-      (.subscribe publisher processor)
+      (flow/subscribe! publisher processor)
       (.submit publisher 1)
       (.closeExceptionally publisher (ex-info "e" {}))
       (try
