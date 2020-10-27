@@ -1,19 +1,15 @@
----
-description: How to write and execute CQL queries
----
-
 # CQL Queries
 
 ## Install the Quality Reporting UI
 
-The most accesible way to create and execute CQL queries is to use the Quality Reporting UI. The Quality Reporting UI is a desktop application which you can download [here](https://github.com/samply/blaze-quality-reporting-ui).
+The most accessible way to create and execute CQL queries is to use the Quality Reporting UI. The Quality Reporting UI is a desktop application which you can download [here](https://github.com/samply/blaze-quality-reporting-ui).
 
 ## Run Blaze
 
 If you don't already have Blaze running, you can read about how to do it in [Deployment](deployment/). If you have Docker available just run:
 
 ```
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.8.0-beta.3
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.8.0
 ```
 
 Start the Quality Reporting UI. You should see an empty measure list.

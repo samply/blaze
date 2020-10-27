@@ -1,25 +1,33 @@
----
-description: In environments without Docker
----
-
 # Manual Deployment
 
-The installation works under Windows, Linux and macOS. The only dependency is an installed OpenJDK 11.
+The installation works under Windows, Linux and macOS. The only dependency is an installed OpenJDK 11. Blaze is tested with [AdoptOpenJDK][1].
 
-Blaze runs on the JVM and comes as single JAR file. Download the most recent version [here](https://github.com/samply/blaze/releases/tag/v0.8.0-beta.3). Look for `blaze-0.8.0-beta.3-standalone.jar`.
+Blaze runs on the JVM and comes as single JAR file. Download the most recent version [here](https://github.com/samply/blaze/releases/tag/v0.8.0). Look for `blaze-0.8.0-standalone.jar`.
 
-After the download, you can start blaze with the following command \(Linux, macOS\):
+After the download, you can start blaze with the following command (Linux, macOS):
 
-```text
-DB_DIR=db java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
+```bash
+java -jar blaze-0.8.0-standalone.jar -m blaze.core
 ```
 
-Under Windows you need to set the Environment variables in the PowerShell before starting Blaze:
+Blaze will run with an in-memory, volatile database for testing and demo purposes.
 
-```text
-$Env:DB_DIR="db"
-java -jar blaze-0.8.0-beta.3-standalone.jar -m blaze.core
+Blaze can be run with durable storage by setting the environment variables `STORAGE` to `standalone`. 
+
+Under Linux/macOS:
+
+```bash
+STORAGE=standalone java -jar blaze-0.8.0-standalone.jar -m blaze.core
 ```
+
+Under Windows, you need to set the Environment variables in the PowerShell before starting Blaze:
+
+```powershell
+$Env:STORAGE="standalone"
+java -jar blaze-0.8.0-standalone.jar -m blaze.core
+```
+
+This will create three directories called `index`, `transaction` and `resource` inside the current working directory, one for each database part used.
 
 The output should look like this:
 
@@ -68,18 +76,18 @@ The output should look like this:
 2020-06-23 06:45:06.858+0000 my-server INFO [blaze.core:60] - JVM version: 11.0.7
 2020-06-23 06:45:06.859+0000 my-server INFO [blaze.core:61] - Maximum available memory: 4070 MiB
 2020-06-23 06:45:06.859+0000 my-server INFO [blaze.core:62] - Number of available processors: 4
-2020-06-23 06:45:06.860+0000 my-server INFO [blaze.core:63] - Successfully started Blaze version 0.8.0-beta.3 in 25,5 seconds
+2020-06-23 06:45:06.860+0000 my-server INFO [blaze.core:63] - Successfully started Blaze version 0.8.0 in 25,5 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
 
-```text
+```bash
 curl http://localhost:8080/health
 ```
 
 After that please note that the [FHIR RESTful API](https://www.hl7.org/fhir/http.html) is available under `http://localhost:8080/fhir`. A good start is to query the [CapabilityStatement](https://www.hl7.org/fhir/capabilitystatement.html) of Blaze using [jq](https://stedolan.github.io/jq/) to select only the software key of the JSON output:
 
-```text
+```bash
 curl -H 'Accept:application/fhir+json' -s http://localhost:8080/fhir/metadata | jq .software
 ```
 
@@ -88,11 +96,11 @@ that should return:
 ```javascript
 {
   "name": "Blaze",
-  "version": "0.8.0-beta.3"
+  "version": "0.8.0"
 }
 ```
 
-Blaze will be configured through environment variables which are documented here:
+Blaze will be configured through environment variables which are documented [here][2].
 
-{% page-ref page="environment-variables.md" %}
-
+[1]: <https://adoptopenjdk.net>
+[2]: <environment-variables.md>

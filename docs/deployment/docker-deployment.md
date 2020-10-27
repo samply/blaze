@@ -1,21 +1,17 @@
----
-description: In Docker environments like Docker Compose or Kubernetes
----
-
 # Docker Deployment
 
 Blaze comes as a web application which needs one Docker volume to store its data.
 
 ## Volume
 
-```text
+```bash
 docker volume create blaze-data
 ```
 
 ## Blaze
 
-```text
-docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.8.0-beta.3
+```bash
+docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.8.0
 ```
 
 Blaze should log something like this:
@@ -65,18 +61,18 @@ Blaze should log something like this:
 2020-06-23 08:06:49.235+0000 73c1e4c03d80 INFO [blaze.core:60] - JVM version: 11.0.6
 2020-06-23 08:06:49.236+0000 73c1e4c03d80 INFO [blaze.core:61] - Maximum available memory: 1488 MiB
 2020-06-23 08:06:49.236+0000 73c1e4c03d80 INFO [blaze.core:62] - Number of available processors: 4
-2020-06-23 08:06:49.238+0000 73c1e4c03d80 INFO [blaze.core:63] - Successfully started Blaze version 0.8.0-beta.3 in 24.9 seconds
+2020-06-23 08:06:49.238+0000 73c1e4c03d80 INFO [blaze.core:63] - Successfully started Blaze version 0.8.0 in 24.9 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
 
-```text
+```bash
 curl http://localhost:8080/health
 ```
 
 After that please note that the [FHIR RESTful API](https://www.hl7.org/fhir/http.html) is available under `http://localhost:8080/fhir`. A good start is to query the [CapabilityStatement](https://www.hl7.org/fhir/capabilitystatement.html) of Blaze using [jq](https://stedolan.github.io/jq/) to select only the software key of the JSON output:
 
-```text
+```bash
 curl -H 'Accept:application/fhir+json' -s http://localhost:8080/fhir/metadata | jq .software
 ```
 
@@ -85,13 +81,11 @@ that should return:
 ```javascript
 {
   "name": "Blaze",
-  "version": "0.8.0-beta.3"
+  "version": "0.8.0"
 }
 ```
 
-Blaze will be configured through environment variables which are documented here:
-
-{% page-ref page="environment-variables.md" %}
+Blaze will be configured through environment variables which are documented [here](environment-variables.md).
 
 ## Docker Compose
 
@@ -101,10 +95,10 @@ A Docker Compose file looks like this:
 version: '3.2'
 services:
   blaze:
-    image: "samply/blaze:0.8.0-beta.3"
+    image: "samply/blaze:0.8.0"
     environment:
       BASE_URL: "http://localhost:8080"
-      JAVA_TOOL_OPTIONS: "-Xms2g -Xmx2g -XX:+UseG1GC"
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
     ports:
     - "8080:8080"
     volumes:
