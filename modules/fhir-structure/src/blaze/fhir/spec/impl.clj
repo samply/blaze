@@ -288,7 +288,7 @@
               [(keyword (name key))
                (if (= "1" max)
                  key
-                 (if (= :xml modifier)
+                 (if (#{:json :xml} modifier)
                    `(s/and
                       (s/conformer ensure-coll identity)
                       (s/coll-of ~key))
@@ -391,7 +391,7 @@
     (vector? old)
     (conj old element)
     old
-    (conj [old] element)
+    [old element]
     :else
     element))
 

@@ -467,8 +467,8 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Error on value ``. Expected type is `JSON array`."
-      [:fhir/issues 0 :fhir.issues/expression] := "contact"))
+      "Error on value ``. Expected type is `Patient.contact`."
+      [:fhir/issues 0 :fhir.issues/expression] := "contact[0]"))
 
   (testing "invalid non-primitive element"
     (given (fhir-spec/explain-data-json {:resourceType "Patient"
@@ -476,8 +476,8 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Error on value ``. Expected type is `JSON array`."
-      [:fhir/issues 0 :fhir.issues/expression] := "name"))
+      "Error on value ``. Expected type is `HumanName`."
+      [:fhir/issues 0 :fhir.issues/expression] := "name[0]"))
 
   (testing "Include namespace part if more than fhir"
     (given (fhir-spec/explain-data-json {:resourceType "Patient"
@@ -837,3 +837,10 @@
     (testing "XML"
       (is (= xhtml-element
              (s2/unform :fhir.xml/xhtml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))))
+
+
+(deftest primitive-val?
+  (are [x] (fhir-spec/primitive-val? x)
+    "foo"
+    1
+    #fhir/code"bar"))
