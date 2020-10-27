@@ -1,125 +1,91 @@
 (ns blaze.elm.compiler.retrieve
+  "Retrieve specific functions.
+
+  https://cql.hl7.org/04-logicalspecification.html#retrieve"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
-    [blaze.datomic.cql :as cql]
-    [blaze.datomic.util :as datomic-util]
-    [blaze.elm.code :refer [code?]]
-    [blaze.elm.compiler.protocols :refer [Expression -eval expr?]]
+    [blaze.db.api :as d]
+    [blaze.db.api-spec]
+    [blaze.elm.compiler.protocols :refer [Expression -eval]]
     [blaze.elm.spec]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds])
-  (:import
-    [datomic Datom]))
+    [blaze.elm.util :as elm-util]
+    [clojure.string :as str]
+    [cognitect.anomalies :as anom]))
 
 
-(defrecord AttrRetrieveExpression [attr]
+(set! *warn-on-reflection* true)
+
+
+(defrecord CompartmentListRetrieveExpression [context data-type]
   Expression
-  (-eval [_ {:keys [db]} resource _]
-    (transduce
-      (map #(d/entity db (.v ^Datom %)))
-      conj
-      (d/datoms db :eavt (:db/id resource) attr))))
+  (-eval [_ {:keys [db]} {:keys [id]} _]
+    (d/list-compartment-resource-handles db context id data-type)))
 
 
-(defrecord RevAttrRetrieveExpression [attr]
+(defrecord CompartmentQueryRetrieveExpression [query]
   Expression
-  (-eval [_ {:keys [db]} resource _]
-    (transduce
-      (map #(d/entity db (.e ^Datom %)))
-      conj
-      (d/datoms db :vaet (:db/id resource) attr))))
+  (-eval [_ {:keys [db]} {:keys [id]} _]
+    (d/execute-query db query id)))
 
 
-(defn- index-attr
-  "Index attribute like :Patient.Observation.code/system|code"
-  [context data-type property {:keys [system code]}]
-  (let [ns (format "%s.%s.%s" context data-type property)]
-    (keyword ns (str system "|" code))))
+(defn- code->clause-value [{:keys [system code]}]
+  (str system "|" code))
 
 
-(s/fdef single-code-expr
-  :args (s/cat :db ::ds/db
-               :context :elm/expression-execution-context
-               :data-type string?
-               :property string?
-               :code code?)
-  :ret expr?)
-
-(defn single-code-expr
+(defn- code-expr
   "Returns an expression which, when evaluated, returns all resources of type
   `data-type` which have a code equivalent to `code` at `property` and are
   reachable through `context`.
+
+  Uses special index attributes like :Patient.Observation.code/system|code.
 
   Example:
   * data-type - \"Observation\"
   * property - \"code\"
   * code - (code/to-code \"http://loinc.org\" nil \"39156-5\")"
-  {:arglists '([db context data-type property code])}
-  [db context data-type property code]
-  (when-let [attr-id (d/entid db (index-attr context data-type property code))]
-    (->AttrRetrieveExpression attr-id)))
+  [node context data-type property codes]
+  (let [clauses [(cons property (map code->clause-value codes))]
+        query (d/compile-compartment-query node context data-type clauses)]
+    (->CompartmentQueryRetrieveExpression query)))
 
 
-(defrecord MultipleCodeRetrieveExpression [exprs]
+(defn- split-reference [s]
+  (when-let [idx (str/index-of s \/)]
+    [(subs s 0 idx) (subs s (inc idx))]))
+
+
+(defn- pull [db x]
+  (if (d/resource-handle? x)
+    @(d/pull-content db x)
+    x))
+
+
+;; TODO: find a better solution than hard coding this case
+(defrecord SpecimenPatientExpression []
   Expression
-  (-eval [_ context resource _]
-    (transduce (mapcat #(-eval % context resource nil)) conj exprs)))
+  (-eval [_ {:keys [db]} resource-or-handle _]
+    (let [{{:keys [reference]} :subject} (pull db resource-or-handle)]
+      (when reference
+        (when-let [[type id] (split-reference reference)]
+          (when (and (= "Patient" type) (string? id))
+            (let [handle (d/resource-handle db "Patient" id)]
+              (when-not (d/deleted? handle)
+                [@(d/pull-content db handle)]))))))))
 
 
-(s/fdef multiple-code-expr
-  :args (s/cat :db ::ds/db
-               :context :elm/expression-execution-context
-               :data-type string?
-               :property string?
-               :codes (s/coll-of code?))
-  :ret expr?)
+(def ^:private specimen-patient-expr
+  (->SpecimenPatientExpression))
 
-(defn multiple-code-expr
+
+(defn- context-expr
   "Returns an expression which, when evaluated, returns all resources of type
-  `data-type` which have one of the `codes` at `property` and are reachable
-  through `context`
-
-  Example:
-  * data-type - \"Observation\"
-  * property - \"code\"
-  * codes - [{:code/id \"http://loinc.org||39156-5\"}]"
-  [db context data-type property codes]
-  (let [single-code-expr #(single-code-expr db context data-type property %)]
-    (->MultipleCodeRetrieveExpression (map single-code-expr codes))))
-
-
-(s/fdef context-expr
-  :args (s/cat :db ::ds/db
-               :context :elm/expression-execution-context
-               :data-type string?))
-
-;; TODO: use https://www.hl7.org/fhir/compartmentdefinition-patient.html
-(defn context-expr
-  "Returns an retrieve expression which returns a list of resources of
   `data-type` related to the resource in execution `context`."
-  [db context data-type]
+  [context data-type]
   (case context
-    "Patient"
-    (->RevAttrRetrieveExpression (d/entid db (keyword data-type "subject")))
     "Specimen"
     (case data-type
       "Patient"
-      (->AttrRetrieveExpression (d/entid db :Specimen/subject))
-      "Observation"
-      (->RevAttrRetrieveExpression (d/entid db :Observation/specimen))
-      (throw-anom
-        ::anom/unsupported
-        (format "Unsupported data type `%s` in context `%s`." data-type
-                context)
-        :elm/expression-execution-context context
-        :elm.retrieve/dataType data-type))
-    (throw-anom
-      ::anom/unsupported
-      (format "Unsupported execution context `%s`." context)
-      :elm/expression-execution-context context
-      :elm.retrieve/dataType data-type)))
+      specimen-patient-expr)
+    (->CompartmentListRetrieveExpression context data-type)))
 
 
 (defrecord ResourceRetrieveExpression []
@@ -128,105 +94,91 @@
     [resource]))
 
 
-(def resource-expr
+(def ^:private resource-expr
   (->ResourceRetrieveExpression))
 
 
 (defrecord WithRelatedContextRetrieveExpression
   [related-context-expr data-type]
   Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
+  (-eval [_ context resource scope]
     (when-let [context-resource (-eval related-context-expr context resource scope)]
       (-eval
-        (context-expr db (datomic-util/entity-type context-resource) data-type)
+        (context-expr (-> context-resource :fhir/type name) data-type)
         context
         context-resource
         scope))))
 
 
-(defrecord WithRelatedContextSingleCodeRetrieveExpression
-  [related-context-expr data-type code-property code]
+(defrecord WithRelatedContextQueryRetrieveExpression
+  [context-expr query]
   Expression
   (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [context-resource (-eval related-context-expr context resource scope)]
-      (-eval
-        (single-code-expr
-          db (datomic-util/entity-type context-resource) data-type
-          code-property code)
-        context
-        context-resource
-        scope))))
+    (when-let [{:keys [id]} (-eval context-expr context resource scope)]
+      (when (string? id)
+        (d/execute-query db query id)))))
 
 
-(defrecord WithRelatedContextMultipleCodesRetrieveExpression
-  [related-context-expr data-type code-property codes]
+(defn- compartment-query [db code id type clauses]
+  (let [res (d/compartment-query db code id type clauses)]
+    (if (::anom/category res)
+      (throw (ex-info (::anom/message res) res))
+      res)))
+
+
+(defrecord WithRelatedContextCodeRetrieveExpression
+  [context-expr data-type clauses]
   Expression
   (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [context-resource (-eval related-context-expr context resource scope)]
-      (-eval
-        (multiple-code-expr
-          db (datomic-util/entity-type context-resource) data-type
-          code-property codes)
-        context
-        context-resource
-        scope))))
+    (when-let [{:fhir/keys[type] :keys [id]} (-eval context-expr context resource scope)]
+      (when-let [type (some-> type name)]
+        (when id
+          (compartment-query db type id data-type clauses))))))
 
-
-(s/fdef with-related-context-expr
-  :args (s/cat :related-context-expr expr?
-               :data-type string?
-               :code-property string?
-               :codes (s/coll-of code?)))
 
 (defn with-related-context-expr
-  [related-context-expr data-type code-property codes]
+  [node context-expr data-type code-property codes]
   (if (seq codes)
-    (let [[code & more] (remove nil? codes)]
-      (cond
-        (nil? code)
-        []
+    (if-let [result-type-name (:result-type-name (meta context-expr))]
+      (let [[value-type-ns context-type] (elm-util/parse-qualified-name result-type-name)]
+        (if (= "http://hl7.org/fhir" value-type-ns)
+          (let [clauses [(cons code-property (map code->clause-value codes))]
+                query (d/compile-compartment-query node context-type data-type clauses)]
+            (if (::anom/category query)
+              (throw (ex-info (::anom/message query) query))
+              (->WithRelatedContextQueryRetrieveExpression context-expr query)))
 
-        (empty? more)
-        (->WithRelatedContextSingleCodeRetrieveExpression
-          related-context-expr data-type code-property code)
-
-        :else
-        (->WithRelatedContextMultipleCodesRetrieveExpression
-          related-context-expr data-type code-property codes)))
-    (->WithRelatedContextRetrieveExpression related-context-expr data-type)))
-
-
-(defn- find-code [db {:keys [system version code]}]
-  (when (and system code)
-    (:db/id (cql/find-code db system version code))))
+          (->WithRelatedContextCodeRetrieveExpression
+            context-expr data-type
+            [(cons code-property (map code->clause-value codes))])))
+      (->WithRelatedContextCodeRetrieveExpression
+        context-expr data-type
+        [(cons code-property (map code->clause-value codes))]))
+    (->WithRelatedContextRetrieveExpression context-expr data-type)))
 
 
-(defn expr [eval-context db data-type code-property codes]
-  (let [unspecified-eval-context? (= "Unspecified" eval-context)]
-    (cond
-      (seq codes)
-      (if unspecified-eval-context?
+(defn- unspecified-context-retrieve-expr [node data-type code-property codes]
+  (if (empty? codes)
+    (reify Expression
+      (-eval [_ {:keys [db]} _ _]
+        (into [] (d/list-resource-handles db data-type))))
+    (let [query (d/compile-type-query node data-type [[code-property codes]])]
+      (if (::anom/category query)
+        (throw (ex-info (::anom/message query) query))
         (reify Expression
           (-eval [_ {:keys [db]} _ _]
-            (cql/list-resource-by-code
-              db data-type code-property (keep #(find-code db %) codes))))
+            (into [] (d/execute-query db query))))))))
 
-        (let [[code & more] codes]
-          (if (empty? more)
-            (single-code-expr
-              db eval-context data-type code-property code)
-            (multiple-code-expr
-              db eval-context data-type code-property codes))))
 
-      (nil? codes)
-      (if unspecified-eval-context?
-        (reify Expression
-          (-eval [_ {:keys [db]} _ _]
-            (datomic-util/list-resources db data-type)))
+(defn- retrieve-expr [node eval-context data-type code-property codes]
+  (if (empty? codes)
+    (if (= data-type eval-context)
+      resource-expr
+      (context-expr eval-context data-type))
+    (code-expr node eval-context data-type code-property codes)))
 
-        (if (= data-type eval-context)
-          resource-expr
-          (context-expr db eval-context data-type)))
 
-      :else
-      [])))
+(defn expr [node eval-context data-type code-property codes]
+  (if (= "Unspecified" eval-context)
+    (unspecified-context-retrieve-expr node data-type code-property codes)
+    (retrieve-expr node eval-context data-type code-property codes)))

@@ -1,22 +1,21 @@
 {:deps
- {blaze/datomic
-  {:local/root "../datomic"}
+ {blaze/async
+  {:local/root "../async"}
 
-  com.cognitect/anomalies
-  {:mvn/version "0.1.12"}
+  blaze/db
+  {:local/root "../db"}
 
-  com.taoensso/timbre
-  {:mvn/version "4.10.0"}
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
 
   org.apache.httpcomponents/httpcore
   {:mvn/version "4.4.12"}
 
   metosin/reitit-ring
-  {:mvn/version "0.3.9"
-   :exclusions [ring/ring-core]}
+  {:mvn/version "0.4.0"}
 
   ring/ring-core
-  {:mvn/version "1.7.1"
+  {:mvn/version "1.8.0"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
@@ -28,17 +27,40 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/datomic-test-util
-    {:local/root "../datomic-test-util"}
+   {blaze/db-stub
+    {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-554"}
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}}
+    {:mvn/version "1.1.0"}
 
-   :main-opts
-   ["-m" "kaocha.runner"]}}}
+    ring/ring-spec
+    {:mvn/version "0.0.4"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}
+
+    org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}
+
+    ring/ring-spec
+    {:mvn/version "0.0.4"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

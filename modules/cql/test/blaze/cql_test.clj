@@ -1,18 +1,22 @@
 (ns blaze.cql-test
   "https://cql.hl7.org/2019May/tests.html"
   (:require
-    [clojure.data.xml :as xml]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [deftest is testing use-fixtures]]
-    [cognitect.anomalies :as anom]
     [blaze.cql-translator :refer [translate]]
+    [blaze.cql-translator-spec]
     [blaze.elm.compiler :refer [compile]]
-    [blaze.elm.compiler.protocols :refer [-eval]]
-    [blaze.elm.type-infer :as type-infer]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
-    [blaze.elm.normalizer :as normalizer])
+    [blaze.elm.expression :as expr]
+    [blaze.elm.expression-spec]
+    [blaze.elm.normalizer :as normalizer]
+    [blaze.elm.protocols :as p]
+    [blaze.elm.type-infer :as type-infer]
+    [blaze.elm.type-infer-spec]
+    [clojure.data.xml :as xml]
+    [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
+    [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom])
   (:import
     [java.time OffsetDateTime])
   (:refer-clojure :exclude [compile eval]))
@@ -23,28 +27,24 @@
 
 (defn fixture [f]
   (st/instrument)
-  (st/instrument
-    `compile
-    {:spec
-     {`compile
-      (s/fspec
-        :args (s/cat :context any? :expression :elm/expression))}})
+  (st/unstrument [`compile `expr/eval])
   (f)
   (st/unstrument))
 
 
-(use-fixtures :each fixture)
+(test/use-fixtures :each fixture)
 
 
 (defn tests [xml exclusions]
-  (for [group (:content xml)]
+  (for [group (filter map? (:content xml))]
     {:name (-> group :attrs :name)
      :tests
-     (for [test (:content group)
+     (for [test (filter map? (:content group))
            :let [name (-> test :attrs :name)
-                 expression (-> test :content first)
+                 content (group-by :tag (:content test))
+                 expression (first (:expression content))
                  invalid? (-> expression :attrs :invalid)
-                 output (-> test :content second :content first)]
+                 output (first (:content (first (:output content))))]
            :when (not (contains? exclusions name))
            :let [expression-content (-> expression :content first)]]
        {:name name
@@ -52,8 +52,11 @@
         :invalid? invalid?
         :output output})}))
 
+
 (defn to-source-elm [cql]
+  (assert (not (str/blank? cql)))
   (translate (str "define x: " cql)))
+
 
 (defn to-elm [cql]
   (let [elm (to-source-elm cql)]
@@ -66,22 +69,33 @@
           type-infer/infer-library-types
           :statements :def first :expression))))
 
+
 (defn eval-elm [now elm]
-  (-eval (compile {} elm) {:now now} nil nil))
+  (expr/eval (compile {} elm) {:now now} nil nil))
+
 
 (defn eval [now cql]
   (eval-elm now (to-elm cql)))
 
+
+(defn parse [s]
+  (xml/parse-str s :namespace-aware false :coalescing true))
+
+
+(defn- equal "Special equality handling for Quantities" [a b]
+  (or (= a b) (p/equal a b)))
+
+
 (defn gen-tests [name file exclusions]
   `(deftest ~(symbol name)
-     ~@(for [{:keys [name tests]} (tests (xml/parse-str (slurp file)) exclusions)]
+     ~@(for [{:keys [name tests]} (tests (parse (slurp file)) exclusions)]
          `(testing ~name
             ~@(for [{:keys [name expression invalid? output]} tests]
                 `(testing ~name
                    (let [~'now (OffsetDateTime/now)]
                      ~(if invalid?
                         `(is (~'thrown? Exception (eval ~'now ~expression)))
-                        `(is (= (eval ~'now ~output) (eval ~'now ~expression)))))))))))
+                        `(is (equal (eval ~'now ~output) (eval ~'now ~expression)))))))))))
 
 
 (defmacro deftests [name file exclusions]
@@ -287,6 +301,8 @@
             "NotEqualABCAnd123"                             ; new in v1.4.6
             "Equivalent123AndString123"                     ; new in v1.4.6
             "Equivalent123AndABC"                           ; new in v1.4.6
+
+            "ExistsListNull"                                ; the list contains one null element
             })
 
 

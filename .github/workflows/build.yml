@@ -1,0 +1,193 @@
+name: Build
+
+on: push
+
+jobs:
+  lint-only:
+    strategy:
+      matrix:
+        module:
+        - anomaly
+        - db-protocols
+        - db-stub
+        - extern-terminology-service
+        - kv
+        - module-base
+        - rocksdb
+        - spec
+        - structure-definition
+        - terminology-service
+        - thread-pool-executor-collector
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+        java-package: jdk
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.1.716'
+
+    - name: Setup clj-kondo
+      uses: DeLaGuardo/setup-clj-kondo@master
+      with:
+        version: '2020.10.10'
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2.1.2
+      with:
+        path: |
+          ~/.m2/repository
+        key: ${{ runner.os }}-maven-repo-${{ matrix.module }}
+
+    - name: Check out Git repository
+      uses: actions/checkout@v2.3.3
+
+    - name: Lint
+      run: make -C modules/${{ matrix.module }} lint
+
+  test:
+    strategy:
+      matrix:
+        module:
+        - async
+        - coll
+        - cql
+        - db
+        - db-resource-store
+        - db-resource-store-cassandra
+        - db-tx-log
+        - db-tx-log-kafka
+        - executor
+        - fhir-client
+        - fhir-path
+        - fhir-structure
+        - interaction
+        - openid-auth
+        - operation-measure-evaluate-measure
+        - rest-api
+        - rest-util
+        - search-param-registry
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+        java-package: jdk
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.1.716'
+
+    - name: Setup clj-kondo
+      uses: DeLaGuardo/setup-clj-kondo@master
+      with:
+        version: '2020.10.10'
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2.1.2
+      with:
+        path: |
+          ~/.m2/repository
+        key: ${{ runner.os }}-maven-repo-${{ matrix.module }}
+
+    - name: Check out Git repository
+      uses: actions/checkout@v2.3.3
+
+    - name: Lint
+      run: make -C modules/${{ matrix.module }} lint
+
+    - name: Test
+      run: make -C modules/${{ matrix.module }} test
+
+    - name: Test Coverage
+      run: make -C modules/${{ matrix.module }} test-coverage
+
+    - name: Codecov Upload
+      uses: codecov/codecov-action@master
+      with:
+        name: ${{ matrix.module }}
+        file: modules/${{ matrix.module }}/target/coverage/codecov.json
+        fail_ci_if_error: true
+
+  test-root:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: '11'
+        java-package: jdk
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.1.716'
+
+    - name: Setup clj-kondo
+      uses: DeLaGuardo/setup-clj-kondo@master
+      with:
+        version: '2020.10.10'
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2.1.2
+      with:
+        path: |
+          ~/.m2/repository
+        key: ${{ runner.os }}-maven-repo-root
+
+    - name: Check out Git repository
+      uses: actions/checkout@v2.3.3
+
+    - name: Lint
+      run: make lint-root
+
+    - name: Test
+      run: make test-root
+
+  build:
+    needs: [ lint-only, test, test-root ]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v1
+      with:
+        repository: samply/blaze/main
+        registry: docker.pkg.github.com
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        tag_with_ref: true
+
+  load-test:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Build Run Blaze Action
+      run: cd .github/actions/run-blaze && npm i && npm run build
+
+    - name: Run Blaze
+      uses: ./.github/actions/run-blaze
+      with:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Run
+      run: curl -s http://localhost:8080/fhir/metadata

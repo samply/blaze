@@ -1,0 +1,6 @@
+{:deps
+ {blaze/kv
+  {:local/root "../kv"}
+
+  org.rocksdb/rocksdbjni
+  {:mvn/version "6.12.7"}}}

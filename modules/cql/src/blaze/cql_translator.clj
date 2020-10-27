@@ -4,13 +4,13 @@
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
-    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom])
   (:import
     [org.cqframework.cql.cql2elm
      CqlTranslator CqlTranslator$Options
      FhirLibrarySourceProvider LibraryManager ModelManager
      ModelInfoProvider ModelInfoLoader]
+    [java.util Locale]
     [javax.xml.bind JAXB]
     [org.hl7.elm_modelinfo.r1 ModelInfo]
     [org.hl7.elm.r1 VersionedIdentifier]))
@@ -18,9 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
+
 (defn- load-model-info [name]
   (let [res (io/resource name)
-        ^ModelInfo modelInfo (JAXB/unmarshal res, ^Class ModelInfo)
+        ^ModelInfo modelInfo (JAXB/unmarshal res ^Class ModelInfo)
         id (doto (VersionedIdentifier.)
              (.setId (.getName modelInfo))
              (.setVersion (.getVersion modelInfo)))
@@ -39,16 +40,14 @@
 (load-model-info "blaze/fhir-modelinfo-4.0.0.xml")
 
 
-(s/fdef translate
-  :args (s/cat :cql string? :opts (s/* some?))
-  :ret :elm/library)
-
 (defn translate
   "Translates `cql` library into am :elm/library.
 
   Returns an anomaly with category :cognitect.anomalies/incorrect in case of
   errors."
   [cql & {:keys [locators?]}]
+  ;; TODO: Remove if https://github.com/cqframework/clinical_quality_language/issues/579 is solved
+  (Locale/setDefault Locale/ENGLISH)
   (let [model-manager (ModelManager.)
         library-manager (LibraryManager. model-manager)
         _ (.registerProvider (.getLibrarySourceLoader library-manager) (FhirLibrarySourceProvider.))

@@ -5,13 +5,12 @@
     [taoensso.timbre :as log])
   (:import
     [io.prometheus.client
-     Collector GaugeMetricFamily CounterMetricFamily
-     Collector$Describable Collector$MetricFamilySamples CollectorRegistry]
+     Collector Collector$MetricFamilySamples
+     CollectorRegistry]
     [io.prometheus.client.hotspot
      StandardExports MemoryPoolsExports
      GarbageCollectorExports ThreadExports
-     ClassLoadingExports VersionInfoExports]
-    [java.util.concurrent BlockingQueue ForkJoinPool ThreadPoolExecutor]))
+     ClassLoadingExports VersionInfoExports]))
 
 
 (s/def ::collectors
@@ -33,9 +32,8 @@
           (.register (ThreadExports.))
           (.register (ClassLoadingExports.))
           (.register (VersionInfoExports.)))]
-    (doseq [collector collectors]
-      (doseq [^Collector$MetricFamilySamples samples
-              (.describe ^Collector$Describable collector)]
+    (doseq [^Collector collector collectors]
+      (doseq [^Collector$MetricFamilySamples samples (.collect collector)]
         (log/debug "Register collector" (.name samples)))
       (.register registry collector))
     registry))

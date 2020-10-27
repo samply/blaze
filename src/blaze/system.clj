@@ -5,19 +5,19 @@
   The specs at the beginning of the namespace describe the config which has to
   be given to `init!``. The server port has a default of `8080`."
   (:require
-    [clojure.spec.alpha :as s]
-    [clojure.string :as str]
-    [clojure.walk :refer [postwalk]]
     [blaze.executors :as ex]
+    [blaze.log]
     [blaze.server :as server]
+    [blaze.server.spec]
+    [clojure.java.io :as io]
+    [clojure.string :as str]
     [clojure.tools.reader.edn :as edn]
+    [clojure.walk :refer [postwalk]]
     [integrant.core :as ig]
     [spec-coerce.alpha :refer [coerce]]
-    [taoensso.timbre :as log]
-    [clojure.java.io :as io])
+    [taoensso.timbre :as log])
   (:import
-    [java.io PushbackReader]
-    [java.time Clock]))
+    [java.io PushbackReader]))
 
 
 
@@ -71,43 +71,33 @@
 
 
 (defn- load-namespaces [config]
-  (log/info "Loading namespaces ...")
+  (log/info "Loading namespaces (can take up to 20 seconds) ...")
   (let [loaded-ns (ig/load-namespaces config)]
     (log/info "Loaded the following namespaces:" (str/join ", " loaded-ns))))
 
 
 (def ^:private root-config
-  {:blaze/version "0.7.0"
-
-   :blaze/clock {}
+  {:blaze/version "0.8.0"
 
    :blaze/structure-definition {}
 
-   :blaze.datomic.transaction/executor {}
-
-   :blaze.datomic/conn
-   {:structure-definitions (ig/ref :blaze/structure-definition)
-    :database/uri (->Cfg "DATABASE_URI" string? "datomic:mem://dev")}
-
-   :blaze.datomic/resource-upsert-duration-seconds {}
-   :blaze.datomic/execution-duration-seconds {}
-   :blaze.datomic/resources-total {}
-   :blaze.datomic/datoms-total {}
-
    :blaze.handler/health {}
+
+   :blaze.rest-api.json-parse/executor {}
 
    :blaze/rest-api
    {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
     :version (ig/ref :blaze/version)
     :structure-definitions (ig/ref :blaze/structure-definition)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)
-    :context-path "/fhir"}
+    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
+    :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)}
 
    :blaze.rest-api/requests-total {}
    :blaze.rest-api/request-duration-seconds {}
    :blaze.rest-api/parse-duration-seconds {}
    :blaze.rest-api/generate-duration-seconds {}
-   :blaze.rest-api/tx-data-duration-seconds {}
 
    :blaze.handler/app
    {:rest-api (ig/ref :blaze/rest-api)
@@ -137,13 +127,27 @@
 
 
 (defn- feature-enabled?
+  "Determines whether a feature is enabled or not.
+
+  Each feature has an environment variable name specified under :toggle. The
+  value of the environment variable is read here and checked to be truthy or
+  not. It is truthy if it is not blank and is not the word `false`."
   {:arglists '([env feature])}
-  [env {:keys [toggle]}]
-  (let [value (get env toggle)]
-    (and (not (str/blank? value)) (not= "false" (some-> value str/trim)))))
+  [env {:keys [toggle inverse?]}]
+  (let [value (get env toggle)
+        res (and (not (str/blank? value)) (not= "false" (some-> value str/trim)))]
+    (if inverse? (not res) res)))
+
+
+(defn- merge-storage
+  [{:keys [storage] :as config} env]
+  (let [key (get env "STORAGE" "in-memory")]
+    (log/info "Use storage variant" key)
+    (update config :base-config merge (get storage (keyword key)))))
 
 
 (defn- merge-features
+  "Merges feature config portions of enabled features into `base-config`."
   {:arglists '([blaze-edn env])}
   [{:keys [base-config features]} env]
   (reduce
@@ -157,14 +161,13 @@
     features))
 
 
-(s/fdef init!
-  :args (s/cat :env any?))
-
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
-  (log/merge-config! {:level (keyword (str/lower-case level))})
-  (let [config (merge-features (read-blaze-edn) env)
+  (log/set-level! (keyword (str/lower-case level)))
+  (let [config (-> (read-blaze-edn)
+                   (merge-storage env)
+                   (merge-features env))
         config (-> (merge-with merge root-config config)
                    (resolve-config env))]
     (load-namespaces config)
@@ -183,21 +186,21 @@
   version)
 
 
-(defmethod ig/init-key :blaze/clock
-  [_ _]
-  (Clock/systemDefaultZone))
-
-
 #_(defmethod ig/init-key :fhir-capabilities-handler
     [_ {:keys [base-url version structure-definitions]}]
     (log/debug "Init FHIR capabilities interaction handler")
     (fhir-capabilities-handler/handler base-url version structure-definitions))
 
 
+(defn- executor-init-msg []
+  (format "Init server executor with %d threads"
+          (.availableProcessors (Runtime/getRuntime))))
+
+
 (defmethod ig/init-key :blaze.server/executor
   [_ _]
-  (log/info "Init server executor")
-  (ex/cpu-bound-pool "server-%d"))
+  (log/info (executor-init-msg))
+  (ex/manifold-cpu-bound-pool "server-%d"))
 
 
 (derive :blaze.server/executor :blaze.metrics/thread-pool-executor)

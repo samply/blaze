@@ -3,61 +3,73 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
-    [blaze.datomic.util :as util]
-    [blaze.executors :refer [executor?]]
-    [blaze.handler.fhir.util :as handler-fhir-util]
+    [blaze.async.comp :as ac]
+    [blaze.db.api :as d]
     [blaze.handler.util :as handler-util]
+    [blaze.interaction.delete.spec]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
-    [ring.util.time :as ring-time]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time ZonedDateTime ZoneId]
+    [java.time.format DateTimeFormatter]))
 
 
-(defn- handler-intern [transaction-executor conn]
+(set! *warn-on-reflection* true)
+
+
+(def ^:private gmt (ZoneId/of "GMT"))
+
+
+(defn- last-modified [{:blaze.db.tx/keys [instant]}]
+  (->> (ZonedDateTime/ofInstant instant gmt)
+       (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
+
+
+(defn- build-response* [tx]
+  (-> (ring/response nil)
+      (ring/status 204)
+      (ring/header "Last-Modified" (last-modified tx))
+      (ring/header "ETag" (str "W/\"" (:blaze.db/t tx) "\""))))
+
+
+(defn- build-response [db]
+  (build-response* (d/tx db (d/basis-t db))))
+
+
+(defn- handler-intern [node executor]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
-    (let [db (d/db conn)]
-      (if (util/resource db type id)
-        (-> (handler-fhir-util/delete-resource
-              transaction-executor
-              conn
-              db
-              type
-              id)
-            (md/chain'
-              (fn [{db :db-after}]
-                (let [last-modified (:db/txInstant (util/basis-transaction db))]
-                  (-> (ring/response nil)
-                      (ring/status 204)
-                      (ring/header "Last-Modified" (ring-time/format-date last-modified))
-                      (ring/header "ETag" (str "W/\"" (d/basis-t db) "\"")))))))
-        (handler-util/error-response
-          {::anom/category ::anom/not-found
-           :fhir/issue "not-found"})))))
+    (let [db (d/db node)]
+      (if-let [handle (d/resource-handle db type id)]
+        (if (d/deleted? handle)
+          (-> (build-response* (d/tx db (d/last-updated-t handle)))
+              (ac/completed-future))
+          (-> (d/transact node [[:delete type id]])
+              ;; it's important to switch to the transaction executor here,
+              ;; because otherwise the central indexing thread would execute
+              ;; response building.
+              (ac/then-apply-async build-response executor)))
+        (ac/completed-future
+          (handler-util/error-response
+            {::anom/category ::anom/not-found
+             :fhir/issue "not-found"}))))))
 
 
-(s/def :handler.fhir/delete fn?)
-
-
-(s/fdef handler
-  :args (s/cat :transaction-executor executor? :conn ::ds/conn)
-  :ret :handler.fhir/delete)
-
-(defn handler
-  ""
-  [transaction-executor conn]
-  (-> (handler-intern transaction-executor conn)
+(defn handler [node executor]
+  (-> (handler-intern node executor)
       (wrap-observe-request-duration "delete")))
 
 
+(defmethod ig/pre-init-spec :blaze.interaction/delete [_]
+  (s/keys :req-un [:blaze.db/node ::executor]))
+
+
 (defmethod ig/init-key :blaze.interaction/delete
-  [_ {:database/keys [transaction-executor conn]}]
+  [_ {:keys [node executor]}]
   (log/info "Init FHIR delete interaction handler")
-  (handler transaction-executor conn))
+  (handler node executor))

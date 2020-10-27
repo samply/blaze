@@ -1,13 +1,20 @@
 (ns blaze.cql-translator-test
   (:require
     [blaze.cql-translator :refer [translate]]
+    [blaze.cql-translator-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [deftest is testing]]
+    [clojure.test :as test :refer [are deftest testing]]
     [juxt.iota :refer [given]]))
 
 
-(st/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
 
 
 (defmacro given-translation [cql & body]
@@ -37,31 +44,11 @@
       [0 :expression :codes :operand :name] := "T0"))
 
   (testing "Returns a valid :elm/library"
-    (is
-      (s/valid?
-        :elm/library
-        (translate
-          "library Test
-           using FHIR version '4.0.0'
-           define Patients: [Patient]")))))
-
-
-(comment
-  (translate
-    "library Retrieve
-     using FHIR version '4.0.0'
-     include FHIRHelpers version '4.0.0'
-
-     codesystem icd10: 'http://hl7.org/fhir/sid/icd-10'
-     codesystem icd10gm: 'http://fhir.de/CodeSystem/dimdi/icd-10-gm'
-
-     context Specimen
-
-     define Patient:
-     singleton from ([Patient])
-
-
-     define InInitialPopulation:
-     exists([Patient -> Condition: Code 'Z77.6' from icd10]) or
-     exists([Patient -> Condition: Code 'Z77.6' from icd10gm])")
-  )
+    (are [cql] (s/valid? :elm/library (translate cql))
+      "library Test
+       using FHIR version '4.0.0'
+       define Patients: [Patient]"
+      "library Test
+      using FHIR version '4.0.0'
+      context Specimen
+      define Specimens: [Specimen]")))

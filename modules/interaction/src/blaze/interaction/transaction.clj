@@ -3,35 +3,39 @@
 
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
+    [blaze.anomaly :refer [throw-anom ex-anom]]
+    [blaze.async.comp :as ac]
     [blaze.bundle :as bundle]
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.transaction :as tx]
-    [blaze.datomic.util :as util]
-    [blaze.executors :as ex :refer [executor?]]
+    [blaze.db.api :as d]
+    [blaze.executors :as ex]
+    [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.terminology-service :refer [term-service?]]
+    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [reitit.ring]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
-    [java.time.format DateTimeFormatter]))
+    [java.time.format DateTimeFormatter]
+    [java.time Instant]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn- validate-entry
   {:arglists '([db idx entry])}
-  [db idx
-   {:strs [resource] {:strs [method url] :as request} "request" :as entry}]
-  (let [[type id] (some-> url bundle/match-url)]
+  [idx {:keys [resource] {:keys [method url] :as request} :request :as entry}]
+  (let [method (type/value method)
+        url (type/value url)
+        [type id] (some-> url bundle/match-url)]
     (cond
       (nil? request)
       {::anom/category ::anom/incorrect
@@ -70,22 +74,14 @@
        :fhir/issue "value"
        :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}
 
-      (nil? (util/cached-entity db (keyword type)))
+      (not (fhir-spec/type-exists? type))
       {::anom/category ::anom/incorrect
        ::anom/message
        (format "Unknown type `%s` in bundle entry URL `%s`." type url)
        :fhir/issue "value"
        :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}
 
-      (and (#{"POST" "PUT"} method) (not (map? resource)))
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (format "Expected resource of entry %d to be a JSON Object." idx)
-       :fhir/issue "structure"
-       :fhir.issue/expression (format "Bundle.entry[%d].resource" idx)
-       :fhir/operation-outcome "MSG_JSON_OBJECT"}
-
-      (and (#{"POST" "PUT"} method) (not= type (get resource "resourceType")))
+      (and (#{"POST" "PUT"} method) (not= type (some-> resource :fhir/type name)))
       {::anom/category ::anom/incorrect
        :fhir/issue "invariant"
        :fhir.issue/expression
@@ -98,7 +94,21 @@
        ::anom/message "Can't parse id from `entry.request.url` `" url "`."
        :fhir/issue "value"}
 
-      (and (= "PUT" method) (not= id (get resource "id")))
+      (and (= "PUT" method) (not (contains? resource :id)))
+      {::anom/category ::anom/incorrect
+       :fhir/issue "required"
+       :fhir.issue/expression
+       [(format "Bundle.entry[%d].resource.id" idx)]
+       :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"}
+
+      (and (= "PUT" method) (not (s/valid? :blaze.resource/id (:id resource))))
+      {::anom/category ::anom/incorrect
+       :fhir/issue "value"
+       :fhir.issue/expression
+       [(format "Bundle.entry[%d].resource.id" idx)]
+       :fhir/operation-outcome "MSG_ID_INVALID"}
+
+      (and (= "PUT" method) (not= id (:id resource)))
       {::anom/category ::anom/incorrect
        :fhir/issue "invariant"
        :fhir.issue/expression
@@ -111,12 +121,12 @@
 
 
 (defn- validate-entries
-  [db entries]
+  [entries]
   (transduce
     (map-indexed vector)
     (completing
       (fn [res [idx entry]]
-        (let [entry (validate-entry db idx entry)]
+        (let [entry (validate-entry idx entry)]
           (if (::anom/category entry)
             (reduced entry)
             (conj res entry)))))
@@ -125,99 +135,109 @@
 
 
 (defn- prepare-entry
-  [db {{:strs [method]} "request" :strs [resource] :as entry}]
-  (cond
-    (= "PUT" method)
-    (let [{type "resourceType" id "id"} resource]
-      (if-let [resource (util/resource db type id)]
-        (assoc entry :blaze/old-resource resource)
-        entry))
+  [{{:keys [method]} :request :keys [resource] :as entry}]
+  (let [method (type/value method)]
+    (log/trace "prepare-entry" method (some-> resource :fhir/type name) (:id resource))
+    (cond
+      (= "POST" method)
+      (assoc-in entry [:resource :id] (str (random-uuid)))
 
-    (= "POST" method)
-    (assoc-in entry ["resource" "id"] (str (d/squuid)))
-
-    :else
-    entry))
+      :else
+      entry)))
 
 
 (defn- validate-and-prepare-bundle
-  [db {:strs [resourceType type] entries "entry"}]
-  (cond
-    (not= "Bundle" resourceType)
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       ::anom/message (str "Expected a Bundle but was `" resourceType "`.")
-       :fhir/issue "value"})
+  [{resource-type :fhir/type :keys [type] entries :entry :as bundle}]
+  (let [type (type/value type)]
+    (cond
+      (nil? bundle)
+      (throw-anom
+        ::anom/incorrect
+        "Missing Bundle."
+        :fhir/issue "invalid")
 
-    (not (#{"batch" "transaction"} type))
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (str "Expected a Bundle type of batch or transaction but was `" type "`.")
-       :fhir/issue "value"})
+      (not= :fhir/Bundle resource-type)
+      (throw-anom
+        ::anom/incorrect
+        (format "Expected a Bundle resource but got a %s resource."
+                (some-> resource-type name))
+        :fhir/issue "value")
 
-    :else
-    (if (= "transaction" type)
-      (let [entries (validate-entries db entries)]
-        (if (::anom/category entries)
-          (md/error-deferred entries)
-          (mapv #(prepare-entry db %) entries)))
-      entries)))
+      (not (#{"batch" "transaction"} type))
+      (throw-anom
+        ::anom/incorrect
+        (format "Expected a Bundle type of batch or transaction but was `%s`." type)
+        :fhir/issue "value")
+
+      :else
+      (if (= "transaction" type)
+        (let [entries (validate-entries entries)]
+          (if (::anom/category entries)
+            (throw (ex-anom entries))
+            (mapv prepare-entry entries)))
+        entries))))
 
 
 (defmulti build-response-entry
   "Builds the response entry."
-  {:arglists '([context request-entry tx-result])}
-  (fn [_ {{:strs [method]} "request"} _] method))
+  {:arglists '([context db request-entry])}
+  (fn [_ _ {{:keys [method]} :request}] (type/value method)))
 
 
 (defmethod build-response-entry "POST"
   [{:keys [router return-preference]}
-   {{type "resourceType" id "id"} "resource"}
-   {db :db-after}]
-  (let [last-modified (util/tx-instant (util/basis-transaction db))
-        vid (str (d/basis-t db))]
-    (cond->
-      {:response
-       {:status "201"
-        :etag (str "W/\"" vid "\"")
-        :lastModified (str last-modified)
-        :location
-        (fhir-util/versioned-instance-url router type id vid)}}
-
-      (= "representation" return-preference)
-      (assoc :resource (pull/pull-resource db type id)))))
+   db
+   {{:fhir/keys [type] :keys [id]} :resource}]
+  (let [handle (d/resource-handle db (name type) id)
+        tx (d/tx db (d/last-updated-t handle))
+        vid (str (:blaze.db/t tx))
+        entry {:fhir/type :fhir.Bundle/entry
+               :response
+               {:fhir/type :fhir.Bundle.entry/response
+                :status "201"
+                :etag (str "W/\"" vid "\"")
+                :lastModified (:blaze.db.tx/instant tx)
+                :location
+                (type/->Uri (fhir-util/versioned-instance-url router (name type) id vid))}}]
+    (if (= "representation" return-preference)
+      (-> (d/pull db handle)
+          (ac/then-apply #(assoc entry :resource %)))
+      (ac/completed-future entry))))
 
 
 (defmethod build-response-entry "PUT"
   [{:keys [router return-preference]}
-   {{type "resourceType" id "id"} "resource" :blaze/keys [old-resource]}
-   {db :db-after}]
-  (let [last-modified (util/tx-instant (util/basis-transaction db))
-        vid (str (d/basis-t db))]
-    (cond->
-      {:response
-       (cond->
-         {:status (if old-resource "200" "201")
-          :etag (str "W/\"" vid "\"")
-          :lastModified (str last-modified)}
-         (nil? old-resource)
-         (assoc
-           :location
-           (fhir-util/versioned-instance-url router type id vid)))}
-
-      (= "representation" return-preference)
-      (assoc :resource (pull/pull-resource db type id)))))
+   db
+   {{:fhir/keys [type] :keys [id]} :resource}]
+  (let [handle (d/resource-handle db (name type) id)
+        tx (d/tx db (d/last-updated-t handle))
+        num-changes (d/num-changes handle)
+        vid (str (:blaze.db/t tx))
+        entry {:fhir/type :fhir.Bundle/entry
+               :response
+               (cond->
+                 {:fhir/type :fhir.Bundle.entry/response
+                  :status (if (= 1 num-changes) "201" "200")
+                  :etag (str "W/\"" vid "\"")
+                  :lastModified (:blaze.db.tx/instant tx)}
+                 (= 1 num-changes)
+                 (assoc
+                   :location
+                   (type/->Uri (fhir-util/versioned-instance-url router (name type) id vid))))}]
+    (if (= "representation" return-preference)
+      (-> (d/pull db handle)
+          (ac/then-apply #(assoc entry :resource %)))
+      (ac/completed-future entry))))
 
 
 (defmethod build-response-entry "DELETE"
-  [_ _ {db :db-after}]
-  (let [last-modified (util/tx-instant (util/basis-transaction db))
-        vid (d/basis-t db)]
-    {:response
-     {:status "204"
-      :etag (str "W/\"" vid "\"")
-      :lastModified (str last-modified)}}))
+  [_ db _]
+  (ac/completed-future
+    {:fhir/type :fhir.Bundle/entry
+     :response
+     {:fhir/type :fhir.Bundle.entry/response
+      :status "204"
+      :lastModified (:blaze.db.tx/instant (d/tx db (d/basis-t db)))}}))
 
 
 (defn- strip-leading-slash [s]
@@ -227,27 +247,26 @@
 
 
 (defn- convert-http-date
-  "Converts string `s` representing a HTTP date into a FHIR instant formatted
-  string."
+  "Converts string `s` representing a HTTP date into a FHIR instant."
   [s]
-  (->> (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)
-       (.format DateTimeFormatter/ISO_INSTANT)))
+  (Instant/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)))
 
 
 (defn- process-batch-entry
   [{:keys [handler] :blaze/keys [context-path]}
-   {{:strs [method url]} "request" :strs [resource]}]
-  (let [url (strip-leading-slash (str/trim url))
+   {{:keys [method url]} :request :keys [resource]}]
+  (let [url (strip-leading-slash (str/trim (type/value url)))
         [url query-string] (str/split url #"\?")]
     (if (= "" url)
-      (handler-util/bundle-error-response
-        {::anom/category ::anom/incorrect
-         ::anom/message (format "Invalid URL `%s` in bundle request." url)
-         :fhir/issue "value"})
+      (ac/completed-future
+        (handler-util/bundle-error-response
+          {::anom/category ::anom/incorrect
+           ::anom/message (format "Invalid URL `%s` in bundle request." url)
+           :fhir/issue "value"}))
       (let [request
             (cond->
               {:uri (str context-path "/" url)
-               :request-method (keyword (str/lower-case method))}
+               :request-method (keyword (str/lower-case (type/value method)))}
 
               query-string
               (assoc :query-string query-string)
@@ -255,16 +274,18 @@
               resource
               (assoc :body resource))]
         (-> (handler request)
-            (md/chain'
+            (ac/then-apply
               (fn [{:keys [status body]
                     {etag "ETag"
                      last-modified "Last-Modified"
                      location "Location"}
                     :headers}]
                 (cond->
-                  {:response
+                  {:fhir/type :fhir.Bundle/entry
+                   :response
                    (cond->
-                     {:status (str status)}
+                     {:fhir/type :fhir.Bundle.entry/response
+                      :status (str status)}
 
                      etag
                      (assoc :etag etag)
@@ -273,13 +294,14 @@
                      (assoc :lastModified (convert-http-date last-modified))
 
                      location
-                     (assoc :location location))}
+                     (assoc :location (type/->Uri location)))}
 
                   (and (#{200 201} status) body)
                   (assoc :resource body)
 
                   (<= 400 status)
-                  (update :response assoc :outcome body)))))))))
+                  (update :response assoc :outcome body))))
+            (ac/exceptionally handler-util/bundle-error-response))))))
 
 
 (defmulti process
@@ -291,110 +313,79 @@
 
 (defmethod process "batch"
   [context _ request-entries]
-  (md/loop [[request-entry & request-entries] request-entries
-            response-entries []]
-    (if request-entry
-      (if (:response request-entry)
-        (md/recur request-entries (conj response-entries request-entry))
-        (-> (process-batch-entry context request-entry)
-            (md/chain'
-              (fn [response-entry]
-                (md/recur request-entries (conj response-entries response-entry))))
-            (md/catch'
-              (fn [error]
-                (let [response (handler-util/bundle-error-response error)]
-                  (md/recur request-entries (conj response-entries {:response response})))))))
-      response-entries)))
-
-
-(defn- transact-resources
-  [{:keys [executor conn db] :as context} request-entries]
-  (-> (tx/transact-async executor conn (bundle/tx-data db request-entries))
-      (md/chain'
-        (fn [tx-result]
-          (mapv
-            #(build-response-entry context % tx-result)
-            request-entries)))))
+  (let [futures (map #(process-batch-entry context %) request-entries)]
+    (-> (ac/all-of futures)
+        (ac/then-apply
+          (fn [_]
+            (mapv ac/join futures))))))
 
 
 (defmethod process "transaction"
-  [{:keys [executor conn term-service db] :as context} _ request-entries]
-  (-> (bundle/annotate-codes term-service db request-entries)
-      (md/chain'
-        (fn [request-entries]
-          (let [code-tx-data (bundle/code-tx-data db request-entries)]
-            (if (empty? code-tx-data)
-              (transact-resources context request-entries)
-              (-> (tx/transact-async executor conn code-tx-data)
-                  (md/chain'
-                    (fn [{db :db-after}]
-                      (transact-resources (assoc context :db db) request-entries))))))))))
+  [{:keys [node executor] :as context} _ request-entries]
+  (-> (d/transact node (bundle/tx-ops request-entries))
+      ;; it's important to switch to the transaction executor here, because
+      ;; otherwise the central indexing thread would execute response building.
+      (ac/then-apply-async identity executor)
+      (ac/then-compose
+        (fn [db]
+          (let [futures (mapv #(build-response-entry context db %) request-entries)]
+            (-> (ac/all-of futures)
+                (ac/then-apply
+                  (fn [_]
+                    (mapv ac/join futures)))))))))
 
 
-(defn- handler-intern [transaction-executor conn term-service executor]
-  (fn [{{:strs [type] :as bundle} :body :keys [headers]
+(defn- handler-intern [node executor]
+  (fn [{{:keys [type] :as bundle} :body :keys [headers]
         ::reitit/keys [router match]}]
-    (let [db (d/db conn)]
-      (-> (md/future-with executor
-            (validate-and-prepare-bundle db bundle))
-          (md/chain'
-            (let [context
-                  {:router router
-                   :handler (reitit.ring/ring-handler router)
-                   :blaze/context-path (-> match :data :blaze/context-path)
-                   :executor transaction-executor
-                   :conn conn
-                   :term-service term-service
-                   :db db
-                   :return-preference (handler-util/preference headers "return")}]
-              #(process context type %)))
-          (md/chain'
-            (fn [response-entries]
-              (ring/response
-                {:resourceType "Bundle"
-                 :type (str type "-response")
-                 :entry response-entries})))
-          (md/catch' handler-util/error-response)))))
+    (-> (ac/supply-async #(validate-and-prepare-bundle bundle) executor)
+        (ac/then-compose
+          (let [context
+                {:router router
+                 :handler (reitit.ring/ring-handler router)
+                 :blaze/context-path (-> match :data :blaze/context-path)
+                 :node node
+                 :executor executor
+                 :return-preference (handler-util/preference headers "return")}]
+            #(process context (type/value type) %)))
+        (ac/then-apply
+          (fn [response-entries]
+            (ring/response
+              {:fhir/type :fhir/Bundle
+               :id (str (random-uuid))
+               :type (type/->Code (str (type/value type) "-response"))
+               :entry response-entries})))
+        (ac/exceptionally handler-util/error-response))))
 
 
-(defn wrap-interaction-name [handler]
-  (fn [{{:strs [type]} :body :as request}]
-    (-> (handler request)
-        (md/chain'
-          (fn [response]
-            (assoc response :fhir/interaction-name type))))))
+(defn- wrap-interaction-name [handler]
+  (fn [{{:keys [type]} :body :as request}]
+    (cond-> (handler request)
+      (string? type)
+      (ac/then-apply #(assoc % :fhir/interaction-name type)))))
 
 
-(s/def :handler.fhir/transaction fn?)
-
-
-(s/fdef handler
-  :args
-  (s/cat
-    :transaction-executor executor?
-    :conn ::ds/conn
-    :term-service term-service?
-    :executor executor?)
-  :ret :handler.fhir/transaction)
-
-(defn handler
-  ""
-  [transaction-executor conn term-service executor]
-  (-> (handler-intern transaction-executor conn term-service executor)
+(defn handler [node executor]
+  (-> (handler-intern node executor)
       (wrap-interaction-name)
       (wrap-observe-request-duration)))
 
 
 (defmethod ig/init-key :blaze.interaction.transaction/handler
-  [_ {:database/keys [transaction-executor conn] :keys [term-service executor]}]
+  [_ {:keys [node executor]}]
   (log/info "Init FHIR transaction interaction handler")
-  (handler transaction-executor conn term-service executor))
+  (handler node executor))
+
+
+(defn- executor-init-msg []
+  (format "Init FHIR transaction interaction executor with %d threads"
+          (.availableProcessors (Runtime/getRuntime))))
 
 
 (defmethod ig/init-key ::executor
   [_ _]
-  (log/info "Init FHIR transaction interaction executor")
-  (ex/cpu-bound-pool "transaction-interaction-%d"))
+  (log/info (executor-init-msg))
+  (ex/cpu-bound-pool "blaze-transaction-interaction-%d"))
 
 
 (derive ::executor :blaze.metrics/thread-pool-executor)

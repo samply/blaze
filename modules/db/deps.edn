@@ -1,0 +1,96 @@
+{:paths ["src"]
+
+ :deps
+ {aysylu/loom
+  {:mvn/version "1.0.2"
+   :exclusions [org.clojure/clojurescript]}
+
+  blaze/async
+  {:local/root "../async"}
+
+  blaze/coll
+  {:local/root "../coll"}
+
+  blaze/db-protocols
+  {:local/root "../db-protocols"}
+
+  blaze/db-tx-log
+  {:local/root "../db-tx-log"}
+
+  blaze/fhir-path
+  {:local/root "../fhir-path"}
+
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
+
+  blaze/kv
+  {:local/root "../kv"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  blaze/db-resource-store
+  {:local/root "../db-resource-store"}
+
+  blaze/search-param-registry
+  {:local/root "../search-param-registry"}
+
+  clj-fuzzy/clj-fuzzy
+  {:mvn/version "0.4.1"}
+
+  com.github.ben-manes.caffeine/caffeine
+  {:mvn/version "2.8.6"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.641"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-perf
+  {:extra-paths ["test-perf"]
+
+   :extra-deps
+   {criterium/criterium
+    {:mvn/version "0.4.6"}}}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}
+
+  :unused-vars
+  {:extra-deps
+   {clj-kondo/tools
+    {:git/url "https://github.com/borkdude/clj-kondo"
+     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :deps/root "analysis"}}
+   :main-opts ["-m" "clj-kondo.tools.unused-vars"]}
+
+  :namespace-graph
+  {:extra-deps
+   {clj-kondo/tools
+    {:git/url "https://github.com/borkdude/clj-kondo"
+     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :deps/root "analysis"}}
+   :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}

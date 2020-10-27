@@ -1,0 +1,40 @@
+{:deps
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/db-resource-store
+  {:local/root "../db-resource-store"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  com.datastax.oss/java-driver-core
+  {:mvn/version "4.9.0"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.700"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

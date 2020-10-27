@@ -1,7 +1,6 @@
 (ns blaze.middleware.fhir.metrics
   (:require
-    [clojure.spec.alpha :as s]
-    [manifold.deferred :as md]
+    [blaze.async.comp :as ac]
     [prometheus.alpha :as prom]))
 
 
@@ -43,23 +42,20 @@
                    (duration-s request-arrived))))
 
 
-(s/fdef wrap-observe-request-duration
-  :args (s/cat :handler fn? :interaction-name (s/? string?)))
-
 (defn wrap-observe-request-duration
   ([handler]
    (fn [request]
      (-> (handler request)
-         (md/chain'
+         (ac/then-apply
            (fn [{:fhir/keys [interaction-name] :as response}]
-             (when interaction-name
+             (when (string? interaction-name)
                (inc-requests-total! interaction-name request response)
                (observe-request-duration-seconds! request interaction-name))
              response)))))
   ([handler interaction-name]
    (fn [request]
      (-> (handler request)
-         (md/chain'
+         (ac/then-apply
            (fn [response]
              (inc-requests-total! interaction-name request response)
              (observe-request-duration-seconds! request interaction-name)

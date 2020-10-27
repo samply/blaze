@@ -1,7 +1,6 @@
-sudo: true
 language: java
+dist: bionic
 jdk:
-- openjdk8
 - openjdk11
 cache:
   directories:

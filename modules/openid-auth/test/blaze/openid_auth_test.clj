@@ -1,9 +1,19 @@
 (ns blaze.openid-auth-test
   (:require
-   [blaze.openid-auth :refer [public-key]]
-   [clojure.test :refer [deftest is testing]])
+    [blaze.openid-auth :refer [public-key]]
+    [clojure.spec.test.alpha :as st]
+    [clojure.test :as test :refer [deftest is testing]])
   (:import
     [java.security PublicKey]))
+
+
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
 
 
 ;; The following json has been taken from https://samples.auth0.com/.well-known/jwks.json

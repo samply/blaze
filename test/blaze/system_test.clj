@@ -1,17 +1,17 @@
 (ns blaze.system-test
   (:require
     [blaze.system :as system]
+    [blaze.system-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [datomic-spec.test :as dst]
+    [clojure.test :as test :refer [are deftest testing]]
     [taoensso.timbre :as log]))
 
 
 (defn fixture [f]
   (st/instrument)
-  (dst/instrument)
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
@@ -49,6 +49,3 @@
       {:a (system/->Cfg "PROXY_HOST" (s/spec string?) "default")}
       {}
       {:a "default"})))
-
-(deftest init-shutdown-test
-  (is (nil? (system/shutdown! (system/init! {})))))

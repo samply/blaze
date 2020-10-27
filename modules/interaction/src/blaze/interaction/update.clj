@@ -3,112 +3,132 @@
 
   https://www.hl7.org/fhir/http.html#update"
   (:require
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.util :as util]
-    [blaze.executors :refer [executor?]]
+    [blaze.anomaly :refer [throw-anom]]
+    [blaze.async.comp :as ac]
+    [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
+    [blaze.interaction.update.spec]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.terminology-service :refer [term-service?]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
-    [ring.util.time :as ring-time]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time ZonedDateTime ZoneId]
+    [java.time.format DateTimeFormatter]))
+
+
+(set! *warn-on-reflection* true)
+
+
+(def ^:private gmt (ZoneId/of "GMT"))
+
+
+(defn- last-modified [{:blaze.db.tx/keys [instant]}]
+  (->> (ZonedDateTime/ofInstant instant gmt)
+       (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
 
 
 (defn- validate-resource [type id body]
   (cond
-    (not (map? body))
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       :fhir/issue "structure"
-       :fhir/operation-outcome "MSG_JSON_OBJECT"})
+    (nil? body)
+    (throw-anom
+      ::anom/incorrect
+      "Missing HTTP body."
+      :fhir/issue "invalid")
 
-    (not= type (get body "resourceType"))
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       :fhir/issue "invariant"
-       :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"})
+    (not= type (-> body :fhir/type name))
+    (throw-anom
+      ::anom/incorrect
+      (format "Invalid update interaction of a %s at a %s endpoint."
+              (-> body :fhir/type name) type)
+      :fhir/issue "invariant"
+      :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")
 
-    (not= id (get body "id"))
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       :fhir/issue "invariant"
-       :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"})
+    (not (contains? body :id))
+    (throw-anom
+      ::anom/incorrect
+      "Missing resource id."
+      :fhir/issue "required"
+      :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING")
 
-    :else
-    body))
+    (not= id (:id body))
+    (throw-anom
+      ::anom/incorrect
+      (format "The resource id `%s` doesn't match the endpoints id `%s`."
+              (:id body) id)
+      :fhir/issue "invariant"
+      :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH")
+
+    :else body))
 
 
 (defn- build-response
-  [router headers type id old-resource {db :db-after}]
-  (let [basis-transaction (util/basis-transaction db)
-        last-modified (:db/txInstant basis-transaction)
+  [router headers type id old-handle db]
+  (let [new-handle (d/resource-handle db type id)
         return-preference (handler-util/preference headers "return")
-        vid (str (d/basis-t db))]
-    (cond->
-      (-> (cond
-            (= "minimal" return-preference)
-            nil
-            (= "OperationOutcome" return-preference)
-            {:resourceType "OperationOutcome"}
-            :else
-            (pull/pull-resource db type id))
-          (ring/response)
-          (ring/status (if old-resource 200 201))
-          (ring/header "Last-Modified" (ring-time/format-date last-modified))
-          (ring/header "ETag" (str "W/\"" vid "\"")))
-      (nil? old-resource)
-      (ring/header
-        "Location" (fhir-util/versioned-instance-url router type id vid)))))
+        tx (d/tx db (d/last-updated-t new-handle))
+        vid (str (:blaze.db/t tx))
+        created (or (nil? old-handle) (d/deleted? old-handle))]
+    (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
+    (-> (cond
+          (= "minimal" return-preference)
+          (ac/completed-future nil)
+          (= "OperationOutcome" return-preference)
+          (ac/completed-future {:fhir/type :fhir/OperationOutcome})
+          :else
+          (d/pull db new-handle))
+        (ac/then-apply
+          (fn [body]
+            (cond->
+              (-> (ring/response body)
+                  (ring/status (if created 201 200))
+                  (ring/header "Last-Modified" (last-modified tx))
+                  (ring/header "ETag" (str "W/\"" vid "\"")))
+              created
+              (ring/header
+                "Location" (fhir-util/versioned-instance-url router type id vid))))))))
 
 
-(defn- handler-intern [transaction-executor conn term-service]
+(defn- tx-op [resource if-match-t]
+  (cond-> [:put resource]
+    if-match-t
+    (conj if-match-t)))
+
+
+(defn- handler-intern [node executor]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params
-        :keys [headers body]
+        :keys [body]
+        {:strs [if-match] :as headers} :headers
         ::reitit/keys [router]}]
-    (let [db (d/db conn)]
-      (-> (validate-resource type id body)
-          (md/chain'
-            #(fhir-util/upsert-resource
-               transaction-executor
-               conn
-               term-service
-               db
-               :client-assigned-id
-               %))
-          (md/chain'
+    (let [db (d/db node)]
+      (-> (ac/supply (validate-resource type id body))
+          (ac/then-compose
+            #(d/transact node [(tx-op % (fhir-util/etag->t if-match))]))
+          ;; it's important to switch to the transaction executor here, because
+          ;; otherwise the central indexing thread would execute response
+          ;; building.
+          (ac/then-apply-async identity executor)
+          (ac/then-compose
             #(build-response
-               router headers type id (util/resource db type id) %))
-          (md/catch' handler-util/error-response)))))
+               router headers type id (d/resource-handle db type id) %))
+          (ac/exceptionally handler-util/error-response)))))
 
 
-(s/def :handler.fhir/update fn?)
-
-
-(s/fdef handler
-  :args
-  (s/cat
-    :transaction-executor executor?
-    :conn ::ds/conn
-    :term-service term-service?)
-  :ret :handler.fhir/update)
-
-(defn handler
-  ""
-  [transaction-executor conn term-service]
-  (-> (handler-intern transaction-executor conn term-service)
+(defn handler [node executor]
+  (-> (handler-intern node executor)
       (wrap-observe-request-duration "update")))
 
 
+(defmethod ig/pre-init-spec :blaze.interaction/update [_]
+  (s/keys :req-un [:blaze.db/node ::executor]))
+
+
 (defmethod ig/init-key :blaze.interaction/update
-  [_ {:database/keys [transaction-executor conn] :keys [term-service]}]
+  [_ {:keys [node executor]}]
   (log/info "Init FHIR update interaction handler")
-  (handler transaction-executor conn term-service))
+  (handler node executor))

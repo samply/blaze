@@ -1,38 +1,55 @@
 {:deps
- {blaze/executor
-  {:local/root "../executor"}
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
 
   blaze/rest-util
   {:local/root "../rest-util"}
 
   blaze/spec
-  {:local/root "../spec"}
-
-  com.cognitect/anomalies
-  {:mvn/version "0.1.12"}
-
-  com.taoensso/timbre
-  {:mvn/version "4.10.0"}
-
-  integrant
-  {:mvn/version "0.7.0"}}
+  {:local/root "../spec"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/datomic-test-util
-    {:local/root "../datomic-test-util"}
+   {blaze/db-stub
+    {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-554"}
+    {:mvn/version "1.0.641"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}}
+    {:mvn/version "1.1.0"}
 
-   :main-opts
-   ["-m" "kaocha.runner"]}}}
+    ring/ring-spec
+    {:mvn/version "0.0.4"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}
+
+    org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}
+
+    ring/ring-spec
+    {:mvn/version "0.0.4"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

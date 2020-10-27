@@ -3,7 +3,10 @@
   (:require
     [blaze.elm.protocols :as p])
   (:import
-    [clojure.lang PersistentVector]))
+    [clojure.lang PersistentVector IReduceInit]))
+
+
+(set! *warn-on-reflection* true)
 
 
 ;; 12.1. Equal
@@ -48,11 +51,17 @@
 
 
 ;; 19.5. Contains
+;;
+;; TODO: implementation is O(n)
 (extend-protocol p/Contains
-  Iterable
+  IReduceInit
   (contains [list x _]
     (when x
-      (true? (some #(p/equal % x) list)))))
+      (true?
+        (.reduce
+          list
+          (fn [_ item] (when (p/equal item x) (reduced true)))
+          nil)))))
 
 
 ;; 19.10. Except
@@ -88,13 +97,15 @@
   PersistentVector
   (intersect [a b]
     (when b
-      (reduce
-        (fn [result x]
-          (if (and (p/contains a x nil) (p/contains b x nil))
-            (conj result x)
-            result))
-        []
-        (p/union a b)))))
+      (if (<= (count a) (count b))
+        (reduce
+          (fn [result x]
+            (if (p/contains b x nil)
+              (conj result x)
+              result))
+          []
+          a)
+        (p/intersect b a)))))
 
 
 ;; 19.24. ProperContains
@@ -129,3 +140,17 @@
           []
           a)
         b))))
+
+
+;; 20.25. SingletonFrom
+(extend-protocol p/SingletonFrom
+  PersistentVector
+  (singleton-from [list]
+    (let [[fst snd] list]
+      (if (nil? snd)
+        fst
+        (throw (Exception.)))))
+
+  IReduceInit
+  (singleton-from [list]
+    (p/singleton-from (.reduce list ((take 2) conj) []))))

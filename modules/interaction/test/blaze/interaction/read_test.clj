@@ -5,12 +5,12 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.datomic.test-util :as datomic-test-util]
+    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.read :refer [handler]]
-    [clojure.spec.alpha :as s]
+    [blaze.interaction.read-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [datomic-spec.test :as dst]
+    [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
@@ -19,130 +19,113 @@
 
 (defn fixture [f]
   (st/instrument)
-  (dst/instrument)
-  (st/instrument
-    [`handler]
-    {:spec
-     {`handler
-      (s/fspec
-        :args (s/cat :conn #{::conn}))}})
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
 
 
+(defn- handler-with [txs]
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
+
+
+(def ^:private match
+  {:data {:fhir.resource/type "Patient"}})
+
+
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Resource"
-    (datomic-test-util/stub-db ::conn ::db)
-    (datomic-test-util/stub-pull-resource ::db "Patient" "0" nil?)
-
     (let [{:keys [status body]}
-          @((handler ::conn)
-             {:path-params {:id "0"}
-              ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+          ((handler-with [])
+            {:path-params {:id "0"}
+             ::reitit/match match})]
 
       (is (= 404 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
+      (given body
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"not-found"
+        [:issue 0 :diagnostics] := "Resource `/Patient/0` not found")))
 
 
   (testing "Returns Not Found on Invalid Version ID"
     (let [{:keys [status body]}
-          @((handler ::conn)
-             {:path-params {:id "0" :vid "a"}
-              ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+          ((handler-with [])
+            {:path-params {:id "0" :vid "a"}
+             ::reitit/match match})]
 
       (is (= 404 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
-
-      (is (= "error" (-> body :issue first :severity)))
-
-      (is (= "not-found" (-> body :issue first :code)))))
+      (given body
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"not-found"
+        [:issue 0 :diagnostics] := "Resource `/Patient/0` with versionId `a` was not found.")))
 
 
   (testing "Returns Gone on Deleted Resource"
-    (let [resource
-          (with-meta {"meta" {"versionId" "42"}}
-                     {:last-transaction-instant (Instant/ofEpochMilli 0)
-                      :version-id "42"
-                      :deleted true})]
-      (datomic-test-util/stub-db ::conn ::db)
-      (datomic-test-util/stub-pull-resource ::db "Patient" "0" #{resource})
+    (let [{:keys [status body headers]}
+          ((handler-with
+              [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+               [[:delete "Patient" "0"]]])
+            {:path-params {:id "0"}
+             ::reitit/match match})]
 
-      (let [{:keys [status body headers]}
-            @((handler ::conn)
-               {:path-params {:id "0"}
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+      (is (= 410 status))
 
-        (is (= 410 status))
+      (testing "Transaction time in Last-Modified header"
+        (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
-
-        (testing "Version in ETag header"
-          ;; 42 is the T of the transaction of the resource update
-          (is (= "W/\"42\"" (get headers "ETag"))))
-
-        (is (= "OperationOutcome" (:resourceType body)))
-
-        (is (= "error" (-> body :issue first :severity)))
-
-        (is (= "deleted" (-> body :issue first :code))))))
+      (given body
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"deleted")))
 
 
   (testing "Returns Existing Resource"
-    (let [resource
-          (with-meta {"meta" {"versionId" "42"}}
-                     {:last-transaction-instant (Instant/ofEpochMilli 0)
-                      :version-id "42"})]
-      (datomic-test-util/stub-db ::conn ::db)
-      (datomic-test-util/stub-pull-resource ::db "Patient" "0" #{resource})
+    (let [{:keys [status headers body]}
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
+            {:path-params {:id "0"}
+             ::reitit/match match})]
 
-      (let [{:keys [status headers body]}
-            @((handler ::conn)
-               {:path-params {:id "0"}
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+      (is (= 200 status))
 
-        (is (= 200 status))
+      (testing "Transaction time in Last-Modified header"
+        (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+      (testing "Version in ETag header"
+        ;; 1 is the T of the transaction of the resource update
+        (is (= "W/\"1\"" (get headers "ETag"))))
 
-        (testing "Version in ETag header"
-          ;; 42 is the T of the transaction of the resource update
-          (is (= "W/\"42\"" (get headers "ETag"))))
-
-        (is (= {"meta" {"versionId" "42"}} body)))))
+      (given body
+        :fhir/type := :fhir/Patient
+        :id := "0"
+        [:meta :versionId] := #fhir/id"1"
+        [:meta :lastUpdated] := Instant/EPOCH)))
 
 
   (testing "Returns Existing Resource on versioned read"
-    (let [resource
-          (with-meta {"meta" {"versionId" "42"}}
-                     {:last-transaction-instant (Instant/ofEpochMilli 0)
-                      :version-id "42"})]
-      (datomic-test-util/stub-sync ::conn 42 ::db)
-      (datomic-test-util/stub-as-of ::db 42 ::as-of-db)
-      (datomic-test-util/stub-pull-resource ::as-of-db "Patient" "0" #{resource})
+    (let [{:keys [status headers body]}
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
+            {:path-params {:id "0" :vid "1"}
+             ::reitit/match match})]
 
-      (let [{:keys [status headers body]}
-            @((handler ::conn)
-               {:path-params {:id "0" :vid "42"}
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+      (is (= 200 status))
 
-        (is (= 200 status))
+      (testing "Transaction time in Last-Modified header"
+        (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+      (testing "Version in ETag header"
+        ;; 1 is the T of the transaction of the resource update
+        (is (= "W/\"1\"" (get headers "ETag"))))
 
-        (testing "Version in ETag header"
-          ;; 42 is the T of the transaction of the resource update
-          (is (= "W/\"42\"" (get headers "ETag"))))
-
-        (is (= {"meta" {"versionId" "42"}} body))))))
+      (given body
+        :fhir/type := :fhir/Patient
+        :id := "0"
+        [:meta :versionId] := #fhir/id"1"
+        [:meta :lastUpdated] := Instant/EPOCH))))

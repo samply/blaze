@@ -3,81 +3,73 @@
 
   https://www.hl7.org/fhir/http.html#create"
   (:require
-    [blaze.executors :refer [executor?]]
+    [blaze.anomaly :refer [throw-anom]]
+    [blaze.async.comp :as ac]
+    [blaze.db.api :as d]
     [blaze.fhir.response.create :as response]
-    [blaze.handler.fhir.util :as handler-fhir-util]
     [blaze.handler.util :as handler-util]
+    [blaze.interaction.create.spec]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.terminology-service :refer [term-service?]]
+    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
     [integrant.core :as ig]
-    [manifold.deferred :as md]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
 
 
+(defn- resource-type-mismatch-msg [type body]
+  (format "Resource type `%s` doesn't match the endpoint type `%s`."
+          (-> body :fhir/type name) type))
+
+
 (defn- validate-resource [type body]
   (cond
-    (not (map? body))
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       :fhir/issue "structure"
-       :fhir/operation-outcome "MSG_JSON_OBJECT"})
+    (nil? body)
+    (throw-anom
+      ::anom/incorrect
+      "Missing HTTP body."
+      :fhir/issue "invalid")
 
-    (not= type (get body "resourceType"))
-    (md/error-deferred
-      {::anom/category ::anom/incorrect
-       :fhir/issue "invariant"
-       :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"})
+    (not= type (-> body :fhir/type name))
+    (throw-anom
+      ::anom/incorrect
+      (resource-type-mismatch-msg type body)
+      :fhir/issue "invariant"
+      :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")
 
-    :else
-    body))
+    :else body))
 
 
-(defn- handler-intern [transaction-executor conn term-service]
+(defn- handler-intern [node executor]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
         ::reitit/keys [router]}]
     (let [return-preference (handler-util/preference headers "return")
-          id (str (d/squuid))]
-      (-> (validate-resource type body)
-          (md/chain' #(assoc % "id" id))
-          (md/chain'
-            #(handler-fhir-util/upsert-resource
-               transaction-executor
-               conn
-               term-service
-               (d/db conn)
-               :server-assigned-id
-               %))
-          (md/chain'
+          id (str (random-uuid))]
+      (-> (ac/supply (validate-resource type body))
+          (ac/then-apply #(assoc % :id id))
+          (ac/then-compose #(d/transact node [[:create %]]))
+          ;; it's important to switch to the transaction executor here, because
+          ;; otherwise the central indexing thread would execute response
+          ;; building.
+          (ac/then-apply-async identity executor)
+          (ac/then-compose
             #(response/build-created-response
-               router return-preference (:db-after %) type id))
-          (md/catch' handler-util/error-response)))))
+               router return-preference % type id))
+          (ac/exceptionally handler-util/error-response)))))
 
 
-(s/def :handler.fhir/create fn?)
-
-
-(s/fdef handler
-  :args
-  (s/cat
-    :transaction-executor executor?
-    :conn ::ds/conn
-    :term-service term-service?)
-  :ret :handler.fhir/create)
-
-(defn handler
-  ""
-  [transaction-executor conn term-service]
-  (-> (handler-intern transaction-executor conn term-service)
+(defn handler [node executor]
+  (-> (handler-intern node executor)
       (wrap-observe-request-duration "create")))
 
 
+(defmethod ig/pre-init-spec :blaze.interaction/create [_]
+  (s/keys :req-un [:blaze.db/node ::executor]))
+
+
 (defmethod ig/init-key :blaze.interaction/create
-  [_ {:database/keys [transaction-executor conn] :keys [term-service]}]
+  [_ {:keys [node executor]}]
   (log/info "Init FHIR create interaction handler")
-  (handler transaction-executor conn term-service))
+  (handler node executor))

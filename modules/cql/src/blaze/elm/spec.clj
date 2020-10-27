@@ -1,6 +1,6 @@
 (ns blaze.elm.spec
   (:require
-    [blaze.elm.quantity :refer [print-unit]]
+    [blaze.elm.quantity :as q]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
@@ -8,7 +8,10 @@
   (:import
     [java.time LocalDate]
     [javax.measure.spi ServiceProvider SystemOfUnits]
-    [tec.units.indriya.unit TransformedUnit]))
+    [tech.units.indriya.unit BaseUnit]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (def temporal-keywords
@@ -23,8 +26,8 @@
 
 (def defined-units
   "All defined units from ucum-service."
-  (into #{} (comp (remove #(= TransformedUnit (class %)))
-                  (map print-unit))
+  (into #{} (comp (filter (comp #{BaseUnit} class))
+                  (map q/format-unit))
         (.getUnits ucum-service)))
 
 
@@ -232,6 +235,31 @@
   (s/keys :opt-un [:elm.tuple/element]))
 
 
+(s/def :elm.instance/classType
+  string?)
+
+
+(s/def :elm.instance/name
+  string?)
+
+
+(s/def :elm.instance/value
+  :elm/expression)
+
+
+(s/def :elm/instance-element
+  (s/keys :req-un [:elm.instance/name :elm.instance/value]))
+
+
+(s/def :elm.instance/element
+  (s/coll-of :elm/instance-element))
+
+
+;; 2.2. Instance
+(defmethod expression :elm.spec.type/instance [_]
+  (s/keys :req-un [:elm/classType] :opt-un [:elm.instance/element]))
+
+
 ;; 2.3. Property
 (defmethod expression :elm.spec.type/property [_]
   (s/keys :req-un [:elm/path] :opt-un [:elm/source :elm/scope]))
@@ -302,8 +330,8 @@
 
 
 (s/def :elm/quantity
-  (s/keys :req-un [:elm.quantity/type :elm.quantity/value]
-          :opt-un [:elm.quantity/unit]))
+  (s/keys :req-un [:elm.quantity/type]
+          :opt-un [:elm.quantity/value :elm.quantity/unit]))
 
 
 (defmethod expression :elm.spec.type/quantity [_]
@@ -584,6 +612,11 @@
 ;; 9.4. FunctionRef
 (defmethod expression :elm.spec.type/function-ref [_]
   (s/keys :opt-un [:elm/name :elm/libraryName :elm.nary-expression/operand]))
+
+
+;; ?.? IdentifierRef
+(defmethod expression :elm.spec.type/identifier-ref [_]
+  (s/keys :opt-un [:elm/name]))
 
 
 
@@ -1565,6 +1598,10 @@
 
 ;; 22.3. CanConvertQuantity
 (derive :elm.spec.type/can-convert-quantity :elm.spec.type/binary-expression)
+
+
+;; 22.6. ConvertQuantity
+(derive :elm.spec.type/convert-quantity :elm.spec.type/binary-expression)
 
 
 ;; 22.4. Children

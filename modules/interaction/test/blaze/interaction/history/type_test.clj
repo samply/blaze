@@ -5,75 +5,83 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.interaction.history.test-util :as history-test-util]
+    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.history.type :refer [handler]]
-    [blaze.interaction.test-util :as test-util]
-    [clojure.spec.alpha :as s]
+    [blaze.interaction.history.type-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [datomic-spec.test :as dst]
+    [juxt.iota :refer [given]]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
   (st/instrument)
-  (dst/instrument)
-  (st/instrument
-    [`handler]
-    {:spec
-     {`handler
-      (s/fspec
-        :args (s/cat :conn #{::conn}))}})
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
 
 
+(def router
+  (reitit/router
+    [["/Patient/{id}" {:name :Patient/instance}]]
+    {:syntax :bracket}))
+
+
+(def match
+  {:data
+   {:blaze/base-url ""
+    :blaze/context-path ""
+    :fhir.resource/type "Patient"}
+   :path "/Patient/_history"})
+
+
+(defn- handler-with [txs]
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
+
+
+(defn- link-url [body link-relation]
+  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
+
+
 (deftest handler-test
-  (testing "Returns History with one Patient"
-    (let [tx {:db/id ::tx-eid}
-          match {:data {:fhir.resource/type "Patient"}}]
-      (test-util/stub-t ::query-params nil?)
-      (test-util/stub-db ::conn nil? ::db)
-      (history-test-util/stub-page-t ::query-params nil?)
-      (history-test-util/stub-since-t ::db ::query-params nil?)
-      (history-test-util/stub-tx-db ::db nil? nil? ::db)
-      (datomic-test-util/stub-type-transaction-history ::db "Patient" [tx])
-      (test-util/stub-page-size ::query-params 50)
-      (history-test-util/stub-page-eid ::query-params nil?)
-      (datomic-test-util/stub-entity-db #{tx} ::db)
-      (datomic-test-util/stub-datoms
-        ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
-        (constantly [{:v ::patient-eid}]))
-      (datomic-test-util/stub-as-of-t ::db nil?)
-      (datomic-test-util/stub-basis-t ::db 152026)
-      (datomic-test-util/stub-type-version ::db "Patient" 1)
-      (datomic-test-util/stub-resource-type* ::db ::patient-eid "Patient")
-      (history-test-util/stub-nav-link
-        match ::query-params 152026 tx #{::patient-eid}
-        (constantly ::self-link-url))
-      (history-test-util/stub-build-entry
-        ::router ::db #{tx} #{::patient-eid} (constantly ::entry))
+  (testing "with one patient"
+    (let [{:keys [status body]}
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
+            {::reitit/router router
+             ::reitit/match match})]
 
-      (let [{:keys [status body]}
-            @((handler ::conn)
-              {::reitit/router ::router
-               ::reitit/match match
-               :query-params ::query-params
-               :path-params {:type "Patient"}})]
+      (is (= 200 status))
 
-        (is (= 200 status))
+      (is (= :fhir/Bundle (:fhir/type body)))
 
-        (is (= "Bundle" (:resourceType body)))
+      (is (string? (:id body)))
 
-        (is (= "history" (:type body)))
+      (is (= #fhir/code"history" (:type body)))
 
-        (is (= 1 (:total body)))
+      (is (= #fhir/unsignedInt 1 (:total body)))
 
-        (is (= 1 (count (:entry body))))
+      (testing "has self link"
+        (is (= #fhir/uri"/Patient/_history?__t=1&__page-t=1&__page-id=0"
+               (link-url body "self"))))
 
-        (is (= ::entry (-> body :entry first)))))))
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (given (-> body :entry first)
+        :fullUrl := #fhir/uri"/Patient/0"
+        [:request :method] := #fhir/code"PUT"
+        [:request :url] := #fhir/uri"/Patient/0"
+        [:resource :id] := "0"
+        [:resource :fhir/type] := :fhir/Patient
+        [:resource :meta :versionId] := #fhir/id"1"
+        [:response :status] := "201"
+        [:response :etag] := "W/\"1\""
+        [:response :lastModified] := Instant/EPOCH))))

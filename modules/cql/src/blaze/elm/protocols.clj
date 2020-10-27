@@ -5,8 +5,12 @@
   namespaces.
 
   Section numbers are according to
-  https://cql.hl7.org/04-logicalspecification.html.")
+  https://cql.hl7.org/04-logicalspecification.html."
+  (:refer-clojure :exclude [get]))
 
+
+(defprotocol StructuredType
+  (get [x key]))
 
 
 ;; 12. Comparison Operators
@@ -225,6 +229,24 @@
   (union [a b]))
 
 
+
+;; 22. Type Operators
+
+;; 22.4. Children
+(defprotocol Children
+  (children [source]))
+
+
+;; 22.6. ConvertQuantity
+(defprotocol ConvertQuantity
+  (convert-quantity [x unit]))
+
+
+;; 22.16. Descendents
+(defprotocol Descendents
+  (descendents [source]))
+
+
 ;; 22.21. ToDate
 (defprotocol ToDate
   "Converts an object into something usable as Date relative to `now`.
@@ -251,6 +273,11 @@
 ;; 22.24. ToInteger
 (defprotocol ToInteger
   (to-integer [x]))
+
+
+;; 20.25. SingletonFrom
+(defprotocol SingletonFrom
+  (singleton-from [x]))
 
 
 ;; 22.26. ToQuantity

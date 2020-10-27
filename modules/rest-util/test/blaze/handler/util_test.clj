@@ -1,11 +1,18 @@
 (ns blaze.handler.util-test
   (:require
+    [blaze.async.comp-spec]
     [blaze.handler.util :refer [preference]]
-    [clojure.test :refer [deftest is]]
-    [clojure.spec.test.alpha :as st]))
+    [clojure.spec.test.alpha :as st]
+    [clojure.test :as test :refer [deftest is]]))
 
 
-(st/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
 
 
 (deftest preference-test

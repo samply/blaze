@@ -5,94 +5,174 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.datomic.test-util :as datomic-test-util]
-    [blaze.interaction.history.test-util :as history-test-util]
+    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.history.instance :refer [handler]]
-    [blaze.interaction.test-util :as test-util]
-    [clojure.spec.alpha :as s]
+    [blaze.interaction.history.instance-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [datomic-spec.test :as dst]
+    [juxt.iota :refer [given]]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
   (st/instrument)
-  (dst/instrument)
-  (st/instrument
-    [`handler]
-    {:spec
-     {`handler
-      (s/fspec
-        :args (s/cat :conn #{::conn}))}})
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
 
 
-(deftest handler-test
-  (testing "Returns Not Found on Non-Existing Resource"
-    (test-util/stub-t ::query-params nil?)
-    (test-util/stub-db ::conn nil? ::db)
-    (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} nil?)
+(def router
+  (reitit/router
+    [["/Patient/{id}" {:name :Patient/instance}]]
+    {:syntax :bracket}))
 
+
+(def match
+  {:data
+   {:blaze/base-url ""
+    :blaze/context-path ""
+    :fhir.resource/type "Patient"}
+   :path "/Patient/0/_history"})
+
+
+(defn- handler-with [txs]
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
+
+
+(deftest handler-test
+  (testing "returns not found on empty node"
     (let [{:keys [status body]}
-          @((handler ::conn)
-            {:query-params ::query-params
-             :path-params {:id "0"}
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+          ((handler-with [])
+            {::reitit/router router
+             ::reitit/match match
+             :path-params {:id "0"}})]
 
       (is (= 404 status))
 
-      (is (= "OperationOutcome" (:resourceType body)))
+      (given body
+        :fhir/type := :fhir/OperationOutcome
+        [:issue 0 :severity] := #fhir/code"error"
+        [:issue 0 :code] := #fhir/code"not-found")))
 
-      (is (= "error" (-> body :issue first :severity)))
+  (testing "returns history with one patient"
+    (let [{:keys [status body]}
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
+            {::reitit/router router
+             ::reitit/match match
+             :path-params {:id "0"}})]
 
-      (is (= "not-found" (-> body :issue first :code)))))
+      (is (= 200 status))
 
-  (testing "Returns History with one Patient"
-    (let [patient {:instance/version ::foo}
-          match {:data {:fhir.resource/type "Patient"}}]
-      (test-util/stub-t ::query-params nil?)
-      (test-util/stub-db ::conn nil? ::db)
-      (datomic-test-util/stub-resource ::db #{"Patient"} #{"0"} #{{:db/id 0}})
-      (history-test-util/stub-page-t ::query-params nil?)
-      (history-test-util/stub-since-t ::db ::query-params nil?)
-      (history-test-util/stub-tx-db ::db nil? nil? ::db)
-      (datomic-test-util/stub-instance-transaction-history ::db 0 [::tx])
-      (test-util/stub-page-size ::query-params 50)
-      (datomic-test-util/stub-as-of-t ::db nil?)
-      (datomic-test-util/stub-basis-t ::db 173105)
-      (datomic-test-util/stub-entity ::db #{0} #{patient})
-      (datomic-test-util/stub-ordinal-version patient 1)
-      (history-test-util/stub-nav-link
-        match ::query-params 173105 ::tx nil?
-        (constantly ::self-link-url))
-      (history-test-util/stub-build-entry
-        ::router ::db #{::tx} #{0} (constantly ::entry))
+      (is (= :fhir/Bundle (:fhir/type body)))
 
-      (let [{:keys [status body]}
-            @((handler ::conn)
-              {::reitit/router ::router
-               ::reitit/match match
-               :query-params ::query-params
-               :path-params {:id "0"}})]
+      (is (string? (:id body)))
 
-        (is (= 200 status))
+      (is (= #fhir/code"history" (:type body)))
 
-        (is (= "Bundle" (:resourceType body)))
+      (is (= #fhir/unsignedInt 1 (:total body)))
 
-        (is (= "history" (:type body)))
+      (is (= 1 (count (:entry body))))
 
-        (is (= 1 (:total body)))
+      (is (= 1 (count (:link body))))
 
-        (is (= 1 (count (:entry body))))
+      (is (= "self" (-> body :link first :relation)))
 
-        (is (= "self" (-> body :link first :relation)))
+      (is (= #fhir/uri"/Patient/0/_history?__t=1&__page-t=1" (-> body :link first :url)))
 
-        (is (= ::self-link-url (-> body :link first :url)))
+      (given (-> body :entry first)
+        :fullUrl := #fhir/uri"/Patient/0"
+        [:request :method] := #fhir/code"PUT"
+        [:request :url] := #fhir/uri"/Patient/0"
+        [:resource :id] := "0"
+        [:resource :fhir/type] := :fhir/Patient
+        [:resource :meta :versionId] := #fhir/id"1"
+        [:response :status] := "201"
+        [:response :etag] := "W/\"1\""
+        [:response :lastModified] := Instant/EPOCH)))
 
-        (is (= ::entry (-> body :entry first)))))))
+  (testing "returns history with one currently deleted patient"
+    (let [{:keys [status body]}
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+                           [[:delete "Patient" "0"]]])
+            {::reitit/router router
+             ::reitit/match match
+             :path-params {:id "0"}})]
+
+      (is (= 200 status))
+
+      (is (= :fhir/Bundle (:fhir/type body)))
+
+      (is (string? (:id body)))
+
+      (is (= #fhir/code"history" (:type body)))
+
+      (is (= #fhir/unsignedInt 2 (:total body)))
+
+      (is (= 2 (count (:entry body))))
+
+      (is (= 1 (count (:link body))))
+
+      (is (= "self" (-> body :link first :relation)))
+
+      (is (= #fhir/uri"/Patient/0/_history?__t=2&__page-t=2" (-> body :link first :url)))
+
+      (testing "first entry"
+        (given (-> body :entry first)
+          :fullUrl := #fhir/uri"/Patient/0"
+          [:request :method] := #fhir/code"DELETE"
+          [:request :url] := #fhir/uri"/Patient/0"
+          [:response :status] := "204"
+          [:response :etag] := "W/\"2\""
+          [:response :lastModified] := Instant/EPOCH))
+
+      (testing "second entry"
+        (given (-> body :entry second)
+          :fullUrl := #fhir/uri"/Patient/0"
+          [:request :method] := #fhir/code"PUT"
+          [:request :url] := #fhir/uri"/Patient/0"
+          [:resource :id] := "0"
+          [:resource :fhir/type] := :fhir/Patient
+          [:resource :meta :versionId] := #fhir/id"1"
+          [:response :status] := "201"
+          [:response :etag] := "W/\"1\""
+          [:response :lastModified] := Instant/EPOCH))))
+
+  (testing "contains a next link on node with two versions and _count=1"
+    (let [{:keys [body]}
+          ((handler-with
+              [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
+               [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]])
+            {::reitit/router router
+             ::reitit/match match
+             :path-params {:id "0"}
+             :query-params {"_count" "1"}})]
+
+      (is (= "next" (-> body :link second :relation)))
+
+      (is (= #fhir/uri"/Patient/0/_history?_count=1&__t=2&__page-t=1"
+             (-> body :link second :url)))))
+
+  (testing "with two versions, calling the second page"
+    (let [{:keys [body]}
+          ((handler-with
+              [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
+               [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]])
+            {::reitit/router router
+             ::reitit/match match
+             :path-params {:id "0"}
+             :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
+
+      (testing "the total count is still two"
+        (is (= #fhir/unsignedInt 2 (:total body))))
+
+      (testing "is shows the first version"
+        (given (-> body :entry first)
+          [:resource :gender] := #fhir/code"male")))))

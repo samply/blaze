@@ -1,0 +1,11 @@
+{:lint-as
+ {manifold.deferred/let-flow clojure.core/let
+  manifold.deferred/let-flow' clojure.core/let}
+
+ :linters
+ {:unsorted-required-namespaces
+  {:level :error}
+  :single-key-in
+  {:level :error}}
+
+ :skip-comments true}

@@ -1,0 +1,52 @@
+{:deps
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/cql
+  {:local/root "../cql"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  blaze/rest-util
+  {:local/root "../rest-util"}
+
+  blaze/thread-pool-executor-collector
+  {:local/root "../thread-pool-executor-collector"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}
+
+    lambdaisland/kaocha
+    {:mvn/version "1.0.641"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}
+
+    org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

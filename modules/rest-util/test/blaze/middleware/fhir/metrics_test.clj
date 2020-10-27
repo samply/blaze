@@ -2,10 +2,16 @@
   (:require
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :refer [deftest is]]))
+    [clojure.test :as test :refer [deftest is]]))
 
 
-(st/instrument)
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
 
 
 (deftest wrap-observe-request-duration-test

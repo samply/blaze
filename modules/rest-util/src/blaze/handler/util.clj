@@ -1,20 +1,20 @@
 (ns blaze.handler.util
   "HTTP/REST Handler Utils"
   (:require
+    [blaze.async.comp :as ac]
+    [blaze.db.api :as d]
+    [blaze.fhir.spec.type :as type]
     [clojure.core.protocols :refer [Datafiable]]
     [clojure.datafy :refer [datafy]]
-    [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
     [io.aviso.exception :as aviso]
-    [manifold.deferred :as md :refer [deferred?]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
     [org.apache.http HeaderElement]
-    [org.apache.http.message BasicHeaderValueParser]))
+    [org.apache.http.message BasicHeaderValueParser]
+    [java.util.concurrent CompletionException]))
 
 
 (set! *warn-on-reflection* true)
@@ -39,10 +39,6 @@
          (into [] (map datafy)))))
 
 
-(s/fdef preference
-  :args (s/cat :headers (s/nilable map?) :name string?)
-  :ret (s/nilable string?))
-
 (defn preference
   "Returns the value of the preference with `name` from Ring `headers`."
   [headers name]
@@ -50,34 +46,71 @@
        (some #(when (= name (:name %)) (:value %)))))
 
 
-(defn operation-outcome
+(defn- issue-code [category]
+  (case category
+    ::anom/busy #fhir/code"timeout"
+    ::anom/incorrect #fhir/code"invalid"
+    ::anom/not-found #fhir/code"not-found"
+    ::anom/unsupported #fhir/code"not-supported"
+    ::anom/conflict #fhir/code"conflict"
+    #fhir/code"exception"))
+
+
+(defn- operation-outcome-issues [issues category]
+  (mapv (fn [{:fhir.issues/keys [severity code diagnostics expression]}]
+          (cond->
+            {:fhir/type :fhir.OperationOutcome/issue
+             :severity #fhir/code"error"
+             :code (or (some-> code type/->Code) (issue-code category))}
+            severity
+            (assoc :severity (type/->Code severity))
+            diagnostics
+            (assoc :diagnostics diagnostics)
+            (coll? expression)
+            (assoc :expression expression)
+            (and (not (coll? expression))
+                 (some? expression))
+            (assoc :expression [expression])))
+        issues))
+
+
+(defn- operation-outcome-issue
   [{:fhir/keys [issue operation-outcome]
     :fhir.issue/keys [expression]
     :blaze/keys [stacktrace]
     ::anom/keys [category message]}]
-  {:resourceType "OperationOutcome"
-   :issue
-   [(cond->
-      {:severity "error"
-       :code (or issue (when (= ::anom/busy category) "timeout") "exception")}
-      operation-outcome
-      (assoc
-        :details
-        {:coding
-         [{:system "http://terminology.hl7.org/CodeSystem/operation-outcome"
-           :code operation-outcome}]})
-      message
-      (assoc :diagnostics message)
-      stacktrace
-      (assoc :diagnostics stacktrace)
-      (coll? expression)
-      (assoc :expression expression)
-      (and (not (coll? expression))
-           (some? expression))
-      (assoc :expression [expression]))]})
+  (cond->
+    {:fhir/type :fhir.OperationOutcome/issue
+     :severity #fhir/code"error"
+     :code (or (some-> issue type/->Code) (issue-code category))}
+    operation-outcome
+    (assoc
+      :details
+      {:coding
+       [{:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+         :code (type/->Code operation-outcome)}]})
+    message
+    (assoc :diagnostics message)
+    stacktrace
+    (assoc :diagnostics stacktrace)
+    (coll? expression)
+    (assoc :expression expression)
+    (and (not (coll? expression))
+         (some? expression))
+    (assoc :expression [expression])))
 
 
-(defn- status [category]
+(defn operation-outcome
+  [{:fhir/keys [issues]
+    ::anom/keys [category] :as data}]
+  (if issues
+    {:fhir/type :fhir/OperationOutcome
+     :issue (operation-outcome-issues issues category)}
+    {:fhir/type :fhir/OperationOutcome
+     :issue [(operation-outcome-issue data)]}))
+
+
+(defn- category->status [category]
   (case category
     ::anom/incorrect 400
     ::anom/not-found 404
@@ -99,7 +132,7 @@
         http://terminology.hl7.org/CodeSystem/operation-outcome
   * :fhir.issue/expression - will go into `OperationOutcome.issue.expression`"
   {:arglists '([error])}
-  [{::anom/keys [category] :as error}]
+  [{::anom/keys [category] :http/keys [status] :as error}]
   (cond
     category
     (do
@@ -109,7 +142,10 @@
           (log/error error)
           (log/warn error)))
       (-> (ring/response (operation-outcome error))
-          (ring/status (status category))))
+          (ring/status (or status (category->status category)))))
+
+    (instance? CompletionException error)
+    (error-response (ex-cause error))
 
     (instance? Throwable error)
     (if (::anom/category (ex-data error))
@@ -141,7 +177,7 @@
           ::anom/fault
           (log/error error)
           (log/warn error)))
-      {:status (str (status category))
+      {:status (str (category->status category))
        :outcome (operation-outcome error)})
 
     (instance? Throwable error)
@@ -161,16 +197,10 @@
     (bundle-error-response {::anom/category ::anom/fault})))
 
 
-(s/fdef db
-  :args (s/cat :conn ::ds/conn :t (s/nilable nat-int?))
-  :ret (s/or :deferred deferred? :db ::ds/db))
-
 (defn db
-  "Retrieves a value of the database, optionally as of some point `t`.
-
-  When `t` is non-nil, returns a deferred which will be realized when the
-  database with `t` is available."
-  [conn t]
+  "Returns a CompletableFuture that will complete with the value of the
+  database, optionally as of some point in time `t`."
+  [node t]
   (if t
-    (-> (d/sync conn t) (md/chain #(d/as-of % t)))
-    (d/db conn)))
+    (-> (d/sync node t) (ac/then-apply #(d/as-of % t)))
+    (ac/completed-future (d/db node))))

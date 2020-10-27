@@ -1,5 +1,6 @@
 (ns blaze.rest-api.spec
   (:require
+    [blaze.executors :as ex]
     [blaze.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig])
@@ -7,8 +8,15 @@
     [buddy.auth.protocols IAuthentication]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (s/def :blaze.rest-api/auth-backends
   (s/coll-of #(satisfies? IAuthentication %)))
+
+
+(s/def :blaze.rest-api/search-system-handler
+  fn?)
 
 
 (s/def :blaze.rest-api/transaction-handler
@@ -67,6 +75,21 @@
   (s/coll-of :blaze.rest-api/resource-pattern))
 
 
+(s/def :blaze.rest-api.compartment/search-handler
+  (s/or :ref ig/ref? :handler fn?))
+
+
+(s/def :blaze.rest-api/compartment
+  (s/keys
+    :req
+    [:blaze.rest-api.compartment/code
+     :blaze.rest-api.compartment/search-handler]))
+
+
+(s/def :blaze.rest-api/compartments
+  (s/coll-of :blaze.rest-api/compartment))
+
+
 (s/def :blaze.rest-api/version
   string?)
 
@@ -113,3 +136,7 @@
 
 (s/def :blaze.rest-api/operations
   (s/coll-of :blaze.rest-api/operation))
+
+
+(s/def :blaze.rest-api.json-parse/executor
+  ex/executor?)

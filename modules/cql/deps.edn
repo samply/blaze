@@ -1,58 +1,71 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/datomic
-  {:local/root "../datomic"}
+ {blaze/db
+  {:local/root "../db"}
+
+  com.fasterxml.jackson.module/jackson-module-jaxb-annotations
+  {:mvn/version "2.11.3"}
 
   info.cqframework/cql-to-elm
-  {:mvn/version "1.4.6"
+  {:mvn/version "1.4.9"
    :exclusions
    [com.google.code.javaparser/javaparser
-    org.eclipse.persistence/eclipselink
     info.cqframework/qdm
-    junit
-    xpp3
+    junit/junit
+    xpp3/xpp3
     xpp3/xpp3_xpath
-    org.antlr/antlr4]}
-
-  javax.measure/unit-api
-  {:mvn/version "1.0"}
+    org.slf4j/jcl-over-slf4j
+    org.slf4j/slf4j-api]}
 
   javax.xml.bind/jaxb-api
   {:mvn/version "2.4.0-b180830.0359"}
 
-  org.antlr/antlr4-runtime
-  {:mvn/version "4.5"
-   :exclusions [org.abego.treelayout/org.abego.treelayout.core]}
-
-  org.eclipse.persistence/org.eclipse.persistence.moxy
-  {:mvn/version "2.7.4"}
-
   systems.uom/systems-quantity
-  {:mvn/version "1.0"}
+  {:mvn/version "2.0.2"}
 
   systems.uom/systems-ucum
-  {:mvn/version "0.9"}}
+  {:mvn/version "2.0.2"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/datomic-test-util
-    {:local/root "../datomic-test-util"}
+   {blaze/db-stub
+    {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "0.0-554"}
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/data.xml
-    {:mvn/version "0.0.8"}
+    {:mvn/version "0.2.0-alpha6"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}}
+    {:mvn/version "1.1.0"}}
 
-   :main-opts
-   ["-m" "kaocha.runner"]}}}
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}
+
+    org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/data.xml
+    {:mvn/version "0.2.0-alpha6"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

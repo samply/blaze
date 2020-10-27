@@ -1,19 +1,29 @@
 (ns blaze.fhir.response.create
   (:require
-    [blaze.datomic.pull :as pull]
-    [blaze.datomic.util :as datomic-util]
+    [blaze.async.comp :as ac]
+    [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
-    [clojure.spec.alpha :as s]
-    [datomic.api :as d]
-    [datomic-spec.core :as ds]
-    [reitit.core :as reitit]
     [ring.util.response :as ring]
-    [ring.util.time :as ring-time]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time ZonedDateTime ZoneId]
+    [java.time.format DateTimeFormatter]))
 
 
-(s/fdef build-created-response
-  :args (s/cat :router reitit/router? :return-preference (s/nilable string?)
-               :db ::ds/db :type string? :id string?))
+(set! *warn-on-reflection* true)
+
+
+(def ^:private gmt (ZoneId/of "GMT"))
+
+
+(defn- last-modified [{:blaze.db.tx/keys [instant]}]
+  (->> (ZonedDateTime/ofInstant instant gmt)
+       (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
+
+
+(defn- build-created-response-msg [type id vid]
+  (format "build-created-response of %s/%s with vid = %s" type id vid))
+
 
 (defn build-created-response
   "Builds a 201 Created response of resource with `type` and `id` from `db`.
@@ -21,16 +31,21 @@
   The `router` is used to generate the absolute URL of the Location header and
   `return-preference` is used to decide which type of body is returned."
   [router return-preference db type id]
-  (let [last-modified (:db/txInstant (datomic-util/basis-transaction db))
-        vid (str (d/basis-t db))]
-    (-> (ring/created
-          (fhir-util/versioned-instance-url router type id vid)
-          (cond
-            (= "minimal" return-preference)
-            nil
-            (= "OperationOutcome" return-preference)
-            {:resourceType "OperationOutcome"}
-            :else
-            (pull/pull-resource db type id)))
-        (ring/header "Last-Modified" (ring-time/format-date last-modified))
-        (ring/header "ETag" (str "W/\"" vid "\"")))))
+  (let [handle (d/resource-handle db type id)
+        tx (d/tx db (d/last-updated-t handle))
+        vid (str (:blaze.db/t tx))]
+    (log/trace (build-created-response-msg type id vid))
+    (-> (cond
+          (= "minimal" return-preference)
+          (ac/completed-future nil)
+          (= "OperationOutcome" return-preference)
+          (ac/completed-future {:fhir/type :fhir/OperationOutcome})
+          :else
+          (d/pull db handle))
+        (ac/then-apply
+          (fn [body]
+            (-> (ring/created
+                  (fhir-util/versioned-instance-url router type id vid)
+                  body)
+                (ring/header "Last-Modified" (last-modified tx))
+                (ring/header "ETag" (str "W/\"" vid "\""))))))))

@@ -12,6 +12,9 @@
     [java.security PublicKey]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (s/fdef public-key
   :args (s/cat :jwks-json string?)
   :ret (s/nilable #(instance? PublicKey %)))
@@ -54,3 +57,6 @@
     {:token-name "Bearer"
      :secret (-> url jwks-json public-key)
      :options {:alg :rs256}}))
+
+
+(derive :blaze.openid-auth/backend :blaze.auth/backend)

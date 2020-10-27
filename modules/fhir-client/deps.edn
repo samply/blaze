@@ -1,27 +1,43 @@
 {:deps
- {aleph
-  {:mvn/version "0.4.7-alpha1"
-   :exclusions
-   [io.netty/netty-codec
-    io.netty/netty-resolver
-    io.netty/netty-handler
-    io.netty/netty-transport
-    io.netty/netty-transport-native-epoll]}
+ {blaze/async
+  {:local/root "../async"}
 
-  cheshire
-  {:mvn/version "5.9.0"}
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
 
-  com.cognitect/anomalies
-  {:mvn/version "0.1.12"}
+  com.taoensso/timbre
+  {:mvn/version "4.10.0"}}
 
-  io.netty/netty-codec-http
-  {:mvn/version "4.1.39.Final"}
+ :aliases
+ {:test
+  {:extra-paths ["test"]
 
-  io.netty/netty-handler-proxy
-  {:mvn/version "4.1.39.Final"}
+   :extra-deps
+   {com.pgs-soft/HttpClientMock
+    {:mvn/version "1.0.0"}
 
-  io.netty/netty-resolver-dns
-  {:mvn/version "4.1.39.Final"}
+    lambdaisland/kaocha
+    {:mvn/version "1.0.700"}
 
-  io.netty/netty-transport-native-epoll$linux-x86_64
-  {:mvn/version "4.1.39.Final"}}}
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {com.pgs-soft/HttpClientMock
+    {:mvn/version "1.0.0"}
+
+    org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

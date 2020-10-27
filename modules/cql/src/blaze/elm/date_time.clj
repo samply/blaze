@@ -4,14 +4,18 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [clojure.spec.alpha :as s]
-    [blaze.elm.protocols :as p])
+    [blaze.anomaly :refer [throw-anom]]
+    [blaze.elm.protocols :as p]
+    [blaze.fhir.spec.type.system]
+    [cognitect.anomalies :as anom])
   (:import
+    [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
-    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor TemporalAmount]))
+    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 
 
 (set! *warn-on-reflection* true)
+
 
 (def min-year (Year/of 1))
 (def min-year-month (YearMonth/of 1 1))
@@ -56,9 +60,6 @@
       (throw (ex-info (str "Invalid RHS subtracting from Period. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other})))))
 
-
-(s/fdef period
-  :args (s/cat :years number? :months number? :millis number?))
 
 (defn period [years months millis]
   (->Period (+ (* years 12) months) millis))
@@ -157,9 +158,15 @@
 (extend-protocol PrecisionNum
   Year
   (precision-num [_] 0)
+  DateTimeYear
+  (precision-num [_] 0)
   YearMonth
   (precision-num [_] 1)
+  DateTimeYearMonth
+  (precision-num [_] 1)
   LocalDate
+  (precision-num [_] 2)
+  DateTimeYearMonthDay
   (precision-num [_] 2)
   LocalDateTime
   (precision-num [_] 6))
@@ -271,6 +278,12 @@
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
         (< cmp 0))))
 
+  DateTimeYearMonthDay
+  (less [this other]
+    (when other
+      (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
+        (< cmp 0))))
+
   LocalDateTime
   (less [this other]
     (when other
@@ -370,36 +383,41 @@
   (predecessor [x]
     (if (.isAfter x min-year)
       (.minusYears x 1)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x}))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x))))
 
   YearMonth
   (predecessor [x]
     (if (.isAfter x min-year-month)
       (.minusMonths x 1)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x}))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x))))
 
   LocalDate
   (predecessor [x]
     (if (.isAfter x min-date)
       (.minusDays x 1)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x}))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x))))
 
   LocalDateTime
   (predecessor [x]
     (if (.isAfter x min-date-time)
       (.minusNanos x 1000000)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x}))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x))))
 
   PrecisionLocalTime
   (predecessor [{:keys [local-time p-num] :as x}]
     (if (p/greater x min-time)
       (->PrecisionLocalTime (.minus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num)
-      (throw (ex-info "Predecessor: argument is already the minimum value."
-                      {:x x})))))
+      (throw-anom
+        ::anom/incorrect
+        (format "Predecessor: argument `%s` is already the minimum value." x)))))
 
 
 ;; 16.17. Subtract
@@ -902,6 +920,41 @@
         (.toLocalDate))))
 
 
+(defn- parse-year [s]
+  (try
+    (Year/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect year `%s`." s)))))
+
+
+(defn- parse-year-month [s]
+  (try
+    (YearMonth/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect year-month `%s`." s)))))
+
+
+(defn- parse-date [s]
+  (try
+    (LocalDate/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect date `%s`." s)))))
+
+
+(defn- parse-date-time [s]
+  (try
+    (LocalDateTime/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect date-time `%s`." s)))))
+
+
+(defn- parse-offset-date-time [s]
+  (try
+    (OffsetDateTime/parse s)
+    (catch Exception _
+      (throw-anom ::anom/incorrect (format "Incorrect offset date-time `%s`." s)))))
+
+
 ;; 22.22. ToDateTime
 (extend-protocol p/ToDateTime
   nil
@@ -911,11 +964,23 @@
   (to-date-time [this _]
     this)
 
+  DateTimeYear
+  (to-date-time [this _]
+    this)
+
   YearMonth
   (to-date-time [this _]
     this)
 
+  DateTimeYearMonth
+  (to-date-time [this _]
+    this)
+
   LocalDate
+  (to-date-time [this _]
+    this)
+
+  DateTimeYearMonthDay
   (to-date-time [this _]
     this)
 
@@ -929,9 +994,18 @@
         (.toLocalDateTime)))
 
   String
-  (to-date-time [s _]
-    ;; TODO: implement
-    (throw (Exception. (str "Not implemented yet `ToDateTime('" s "')`.")))))
+  (to-date-time [s now]
+    (case (.length s)
+      4
+      (parse-year s)
+      7
+      (parse-year-month s)
+      10
+      (parse-date s)
+
+      (if (re-find #"(Z|[+-]\d{2}:)" s)
+        (p/to-date-time (parse-offset-date-time s) now)
+        (parse-date-time s)))))
 
 
 ;; 22.28. ToString

@@ -7,6 +7,11 @@
     [blaze.elm.protocols :as p]))
 
 
+(extend-protocol p/StructuredType
+  nil
+  (get [_ _]))
+
+
 (extend-protocol p/Equal
   nil
   (equal [_ _]))
@@ -237,6 +242,27 @@
   (union [_ _]))
 
 
+
+;; 22. Type Operators
+
+;; 22.4. Children
+(extend-protocol p/Children
+  nil
+  (children [_]))
+
+
+;; 22.6. ConvertQuantity
+(extend-protocol p/ConvertQuantity
+  nil
+  (convert-quantity [_ _]))
+
+
+;; 22.16. Descendents
+(extend-protocol p/Descendents
+  nil
+  (descendents [_]))
+
+
 ;; 22.23. ToDecimal
 (extend-protocol p/ToDecimal
   nil
@@ -247,6 +273,12 @@
 (extend-protocol p/ToInteger
   nil
   (to-integer [_]))
+
+
+;; 20.25. SingletonFrom
+(extend-protocol p/SingletonFrom
+  nil
+  (singleton-from [_]))
 
 
 ;; 22.26. ToQuantity

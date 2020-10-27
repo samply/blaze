@@ -5,260 +5,175 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.datomic.test-util :as datomic-test-util]
+    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.history.system :refer [handler]]
-    [blaze.interaction.history.test-util :as history-test-util]
-    [blaze.interaction.test-util :as test-util]
-    [clojure.spec.alpha :as s]
+    [blaze.interaction.history.system-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [datomic-spec.test :as dst]
+    [juxt.iota :refer [given]]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Instant]))
 
 
 (defn fixture [f]
   (st/instrument)
-  (dst/instrument)
-  (st/instrument
-    [`handler]
-    {:spec
-     {`handler
-      (s/fspec
-        :args (s/cat :conn #{::conn}))}})
-  (log/with-merged-config {:level :error} (f))
+  (log/set-level! :trace)
+  (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
 
 
+(def router
+  (reitit/router
+    [["/Patient/{id}" {:name :Patient/instance}]]
+    {:syntax :bracket}))
+
+
+(def match
+  {:data
+   {:blaze/base-url ""
+    :blaze/context-path ""}
+   :path "/_history"})
+
+
+(defn- handler-with [txs]
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node) request))))
+
+
+(defn- link-url [body link-relation]
+  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
+
+
 (deftest handler-test
-  (testing "Returns empty History"
-    (test-util/stub-t ::query-params nil?)
-    (test-util/stub-db ::conn nil? ::db)
-    (history-test-util/stub-page-t ::query-params nil?)
-    (history-test-util/stub-since-t ::db ::query-params nil?)
-    (history-test-util/stub-tx-db ::db nil? nil? ::db)
-    (datomic-test-util/stub-system-transaction-history ::db [])
-    (test-util/stub-page-size ::query-params 50)
-    (history-test-util/stub-page-eid ::query-params nil?)
-    (datomic-test-util/stub-as-of-t ::db nil?)
-    (datomic-test-util/stub-basis-t ::db 125346)
-    (datomic-test-util/stub-system-version ::db 0)
+  (testing "returns empty history on empty node"
 
     (let [{:keys [status body]}
-          @((handler ::conn)
-            {::reitit/router ::router
-             ::reitit/match ::match
-             :query-params ::query-params})]
+          ((handler-with [])
+            {::reitit/router router
+             ::reitit/match match})]
 
       (is (= 200 status))
 
-      (is (= "Bundle" (:resourceType body)))
+      (is (= :fhir/Bundle (:fhir/type body)))
 
-      (is (= "history" (:type body)))
+      (is (string? (:id body)))
 
-      (is (= 0 (:total body)))
+      (is (= #fhir/code"history" (:type body)))
+
+      (is (= #fhir/unsignedInt 0 (:total body)))
 
       (is (empty? (:entry body)))))
 
-  (testing "Returns History with one Patient"
-    (let [tx {:db/id ::tx-eid}]
-      (test-util/stub-t ::query-params nil?)
-      (test-util/stub-db ::conn nil? ::db)
-      (history-test-util/stub-page-t ::query-params nil?)
-      (history-test-util/stub-since-t ::db ::query-params nil?)
-      (history-test-util/stub-tx-db ::db nil? nil? ::db)
-      (datomic-test-util/stub-system-transaction-history ::db [tx])
-      (test-util/stub-page-size ::query-params 50)
-      (history-test-util/stub-page-eid ::query-params nil?)
-      (datomic-test-util/stub-entity-db #{tx} ::db)
-      (datomic-test-util/stub-datoms
-        ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
-        (constantly [{:v ::patient-eid}]))
-      (datomic-test-util/stub-as-of-t ::db nil?)
-      (datomic-test-util/stub-basis-t ::db 141653)
-      (datomic-test-util/stub-system-version ::db 1)
-      (history-test-util/stub-nav-link
-        ::match ::query-params 141653 tx #{::patient-eid}
-        (constantly ::self-link-url))
-      (history-test-util/stub-build-entry
-        ::router ::db #{tx} #{::patient-eid} (constantly ::entry)))
-
+  (testing "with one patient"
     (let [{:keys [status body]}
-          @((handler ::conn)
-            {::reitit/router ::router
-             ::reitit/match ::match
-             :query-params ::query-params})]
+          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
+            {::reitit/router router
+             ::reitit/match match})]
 
       (is (= 200 status))
 
-      (is (= "Bundle" (:resourceType body)))
+      (is (= :fhir/Bundle (:fhir/type body)))
 
-      (is (= "history" (:type body)))
+      (is (string? (:id body)))
 
-      (is (= 1 (:total body)))
+      (is (= #fhir/code"history" (:type body)))
 
-      (is (= 1 (count (:entry body))))
+      (is (= #fhir/unsignedInt 1 (:total body)))
 
-      (is (= "self" (-> body :link first :relation)))
+      (testing "has a self link"
+        (is (= #fhir/uri"/_history?__t=1&__page-t=1&__page-type=Patient&__page-id=0"
+               (link-url body "self"))))
 
-      (is (= ::self-link-url (-> body :link first :url)))
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
 
-      (is (= ::entry (-> body :entry first)))))
+      (given (-> body :entry first)
+        :fullUrl := #fhir/uri"/Patient/0"
+        [:request :method] := #fhir/code"PUT"
+        [:request :url] := #fhir/uri"/Patient/0"
+        [:resource :id] := "0"
+        [:resource :fhir/type] := :fhir/Patient
+        [:resource :meta :versionId] := #fhir/id"1"
+        [:response :status] := "201"
+        [:response :etag] := "W/\"1\""
+        [:response :lastModified] := Instant/EPOCH)))
 
-  (testing "Returns History with two Patients in one Transaction"
-    (let [tx {:db/id ::tx-eid}]
-      (test-util/stub-t ::query-params nil?)
-      (test-util/stub-db ::conn nil? ::db)
-      (history-test-util/stub-page-t ::query-params nil?)
-      (history-test-util/stub-since-t ::db ::query-params nil?)
-      (history-test-util/stub-tx-db ::db nil? nil? ::db)
-      (datomic-test-util/stub-system-transaction-history ::db [tx])
-      (test-util/stub-page-size ::query-params 50)
-      (history-test-util/stub-page-eid ::query-params nil?)
-      (datomic-test-util/stub-entity-db #{tx} ::db)
-      (datomic-test-util/stub-datoms
-        ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
-        (constantly [{:v ::patient-1-eid} {:v ::patient-2-eid}]))
-      (datomic-test-util/stub-as-of-t ::db nil?)
-      (datomic-test-util/stub-basis-t ::db 141702)
-      (datomic-test-util/stub-system-version ::db 2)
-      (history-test-util/stub-nav-link
-        ::match ::query-params 141702 tx #{::patient-1-eid}
-        (constantly ::self-link-url))
-      (history-test-util/stub-build-entry
-        ::router ::db #{tx} #{::patient-1-eid ::patient-2-eid}
-        (fn [_ _ _ resource-eid]
-          (case resource-eid
-            ::patient-1-eid ::entry-1
-            ::patient-2-eid ::entry-2))))
+  (testing "with two patients in one transaction"
+    (testing "contains a next link with t = page-t"
+      (let [{:keys [body]}
+            ((handler-with
+                [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                  [:put {:fhir/type :fhir/Patient :id "1"}]]])
+              {::reitit/router router
+               ::reitit/match match
+               :query-params {"_count" "1"}})]
 
-    (let [{:keys [status body]}
-          @((handler ::conn)
-            {::reitit/router ::router
-             ::reitit/match ::match
-             :query-params ::query-params})]
+        (testing "hash next link"
+          (is (= #fhir/uri"/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1"
+                 (link-url body "next"))))))
 
-      (is (= 200 status))
+    (testing "calling the second page shows the patient with the higher id"
+      (let [{:keys [body]}
+            ((handler-with
+                [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                  [:put {:fhir/type :fhir/Patient :id "1"}]]])
+              {::reitit/router router
+               ::reitit/match match
+               :path-params {:id "0"}
+               :query-params {"_count" "1" "__t" "1" "__page-t" "1"
+                              "__page-type" "Patient" "__page-id" "1"}})]
 
-      (is (= "Bundle" (:resourceType body)))
+        (given (-> body :entry first)
+          [:resource :id] := "1")))
 
-      (is (= "history" (:type body)))
+    (testing "a call with `page-id` but missing `page-type` just ignores `page-id`"
+      (let [{:keys [body]}
+            ((handler-with
+                [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                  [:put {:fhir/type :fhir/Patient :id "1"}]]])
+              {::reitit/router router
+               ::reitit/match match
+               :path-params {:id "0"}
+               :query-params {"_count" "1" "__t" "1" "__page-t" "1" "__page-id" "1"}})]
 
-      (is (= 2 (:total body)))
+        (given (-> body :entry first)
+          [:resource :id] := "0"))))
 
-      (is (= 2 (count (:entry body))))
-
-      (is (= "self" (-> body :link first :relation)))
-
-      (is (= ::self-link-url (-> body :link first :url)))
-
-      (is (= [::entry-1 ::entry-2] (:entry body)))))
-
-  (testing "Returns History with two Patients in two Transactions"
-    (let [tx-1 {:db/id ::tx-1-eid}
-          tx-2 {:db/id ::tx-2-eid}]
-      (test-util/stub-t ::query-params nil?)
-      (test-util/stub-db ::conn nil? ::db)
-      (history-test-util/stub-page-t ::query-params nil?)
-      (history-test-util/stub-since-t ::db ::query-params nil?)
-      (history-test-util/stub-tx-db ::db nil? nil? ::db)
-      (datomic-test-util/stub-system-transaction-history ::db [tx-1 tx-2])
-      (test-util/stub-page-size ::query-params 50)
-      (history-test-util/stub-page-eid ::query-params nil?)
-      (datomic-test-util/stub-entity-db #{tx-1 tx-2} ::db)
-      (datomic-test-util/stub-datoms
-        ::db :eavt (s/cat :e #{::tx-1-eid ::tx-2-eid} :a #{:tx/resources} :v nil?)
-        (fn [_ _ tx-eid _ _]
-          (case tx-eid
-            ::tx-1-eid [{:v ::patient-1-eid}]
-            ::tx-2-eid [{:v ::patient-2-eid}])))
-      (datomic-test-util/stub-as-of-t ::db nil?)
-      (datomic-test-util/stub-basis-t ::db 141708)
-      (datomic-test-util/stub-system-version ::db 2)
-      (history-test-util/stub-nav-link
-        ::match ::query-params 141708 tx-1 #{::patient-1-eid}
-        (constantly ::self-link-url))
-      (history-test-util/stub-build-entry
-        ::router ::db #{tx-1 tx-2} #{::patient-1-eid ::patient-2-eid}
-        (fn [_ _ _ resource-eid]
-          (case resource-eid
-            ::patient-1-eid ::entry-1
-            ::patient-2-eid ::entry-2))))
-
-    (let [{:keys [status body]}
-          @((handler ::conn)
-            {::reitit/router ::router
-             ::reitit/match ::match
-             :query-params ::query-params})]
-
-      (is (= 200 status))
-
-      (is (= "Bundle" (:resourceType body)))
-
-      (is (= "history" (:type body)))
-
-      (is (= 2 (:total body)))
-
-      (is (= 2 (count (:entry body))))
-
-      (is (= "self" (-> body :link first :relation)))
-
-      (is (= ::self-link-url (-> body :link first :url)))
-
-      (is (= [::entry-1 ::entry-2] (:entry body)))))
-
-  (testing "Returns History with next Link"
-    (let [tx {:db/id ::tx-eid}]
-      (test-util/stub-t ::query-params nil?)
-      (test-util/stub-db ::conn nil? ::db)
-      (history-test-util/stub-page-t ::query-params nil?)
-      (history-test-util/stub-since-t ::db ::query-params nil?)
-      (history-test-util/stub-tx-db ::db nil? nil? ::db)
-      (datomic-test-util/stub-system-transaction-history ::db [tx])
-      (test-util/stub-page-size ::query-params 1)
-      (history-test-util/stub-page-eid ::query-params nil?)
-      (datomic-test-util/stub-entity-db #{tx} ::db)
-      (datomic-test-util/stub-datoms
-        ::db :eavt (s/cat :e #{::tx-eid} :a #{:tx/resources} :v nil?)
-        (constantly [{:v ::patient-1-eid} {:v ::patient-2-eid}]))
-      (datomic-test-util/stub-as-of-t ::db nil?)
-      (datomic-test-util/stub-basis-t ::db 141715)
-      (datomic-test-util/stub-system-version ::db 1)
-      (history-test-util/stub-nav-link
-        ::match ::query-params 141715 tx
-        #{::patient-1-eid ::patient-2-eid}
-        (fn [_ _ _ _ resource-eid]
-          (case resource-eid
-            ::patient-1-eid ::self-link-url
-            ::patient-2-eid ::next-link-url)))
-      (history-test-util/stub-build-entry
-        ::router ::db #{tx} #{::patient-1-eid} (constantly ::entry))
-
-      (let [{:keys [status body]}
-            @((handler ::conn)
-              {::reitit/router ::router
-               ::reitit/match ::match
-               :query-params ::query-params})]
-
-        (is (= 200 status))
-
-        (is (= "Bundle" (:resourceType body)))
-
-        (is (= "history" (:type body)))
-
-        (is (= 1 (:total body)))
-
-        (is (= 1 (count (:entry body))))
-
-        (is (= "self" (-> body :link first :relation)))
-
-        (is (= ::self-link-url (-> body :link first :url)))
+  (testing "two patients in two transactions"
+    (testing "contains a next link with page-t going to the first transaction"
+      (let [{:keys [body]}
+            ((handler-with
+                [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+                 [[:put {:fhir/type :fhir/Patient :id "1"}]]])
+              {::reitit/router router
+               ::reitit/match match
+               :query-params {"_count" "1"}})]
 
         (is (= "next" (-> body :link second :relation)))
 
-        (is (= ::next-link-url (-> body :link second :url)))
+        (is (= #fhir/uri"/_history?_count=1&__t=2&__page-t=1&__page-type=Patient&__page-id=0"
+               (-> body :link second :url)))))
 
-        (is (= ::entry (-> body :entry first)))))))
+    (testing "calling the second page shows the patient from the first transaction"
+      (let [{:keys [body]}
+            ((handler-with
+                [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+                 [[:put {:fhir/type :fhir/Patient :id "1"}]]])
+              {::reitit/router router
+               ::reitit/match match
+               :path-params {:id "0"}
+               :query-params {"_count" "1" "__t" "2" "__page-t" "1"
+                              "__page-type" "Patient" "__page-id" "0"}})]
+
+        (testing "the total count is still two"
+          (is (= #fhir/unsignedInt 2 (:total body))))
+
+        (testing "is shows the first version"
+          (given (-> body :entry first)
+            [:resource :id] := "0"))))))

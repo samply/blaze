@@ -1,10 +1,8 @@
 (ns blaze.elm.interval
   "Implementation of the interval type."
   (:require
-    [clojure.spec.alpha :as s]
     [blaze.elm.date-time :refer [temporal?]]
-    [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :refer [quantity?]]))
+    [blaze.elm.protocols :as p]))
 
 
 (defrecord Interval [start end]
@@ -104,19 +102,6 @@
       (when (p/greater-or-equal (:end left) (p/predecessor (:start right)))
         (->Interval (:start left) (:end right))))))
 
-
-(defn point?
-  "Returns true iff `x` is of a valid point type for an interval."
-  [x]
-  (or (int? x) (decimal? x) (temporal? x) (quantity? x)))
-
-
-(defn interval? [x]
-  (instance? Interval x))
-
-
-(s/fdef interval
-  :args (s/cat :start (s/nilable point?) :end (s/nilable point?)))
 
 (defn interval [start end]
   (if-not (false? (p/less-or-equal start end))

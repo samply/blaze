@@ -1,13 +1,8 @@
 (ns blaze.handler.fhir.util-test
   (:require
-    [blaze.datomic.transaction :as tx]
-    [blaze.handler.fhir.util
-     :refer [upsert-resource type-url instance-url versioned-instance-url]]
-    [clojure.spec.alpha :as s]
+    [blaze.handler.fhir.util :as fhir-util]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [juxt.iota :refer [given]]
-    [manifold.deferred :as md]
+    [clojure.test :as test :refer [are deftest is testing]]
     [reitit.core :as reitit]))
 
 
@@ -20,132 +15,131 @@
 (test/use-fixtures :each fixture)
 
 
-(defn- stub-annotate-codes [term-service db resource result]
-  (st/instrument
-    `tx/annotate-codes
-    {:spec
-     {`tx/annotate-codes
-      (s/fspec
-        :args
-        (s/cat :term-service #{term-service} :db #{db} :resource #{resource})
-        :ret #{result})}
-     :stub
-     #{`tx/annotate-codes}}))
+(deftest t
+  (testing "no query param"
+    (is (nil? (fhir-util/t {}))))
+
+  (testing "invalid query param"
+    (are [t] (nil? (fhir-util/t {"__t" t}))
+      "<invalid>"
+      "-1"
+      ""))
+
+  (testing "valid query param"
+    (are [v t] (= t (fhir-util/t {"__t" v}))
+      "1" 1
+      ["<invalid>" "2"] 2
+      ["3" "4"] 3)))
 
 
-(defn- stub-resource-codes-creation [db resource result]
-  (st/instrument
-    `tx/resource-codes-creation
-    {:spec
-     {`tx/resource-codes-creation
-      (s/fspec
-        :args (s/cat :db #{db} :resource #{resource})
-        :ret #{result})}
-     :stub
-     #{`tx/resource-codes-creation}}))
+(deftest page-size
+  (testing "no query param"
+    (is (= 50 (fhir-util/page-size {}))))
+
+  (testing "invalid query param"
+    (are [size] (= 50 (fhir-util/page-size {"_count" size}))
+      "<invalid>"
+      "-1"
+      ""))
+
+  (testing "valid query param"
+    (are [v size] (= size (fhir-util/page-size {"_count" v}))
+      "0" 0
+      "1" 1
+      "50" 50
+      "500" 500
+      ["<invalid>" "2"] 2
+      ["3" "4"] 3))
+
+  (testing "500 is the maximum"
+    (is (= 500 (fhir-util/page-size {"_count" "501"})))))
 
 
-(defn- stub-resource-tempid [db resource result-spec]
-  (st/instrument
-    `tx/resource-tempid
-    {:spec
-     {`tx/resource-tempid
-      (s/fspec
-        :args (s/cat :db #{db} :resource #{resource})
-        :ret result-spec)}
-     :stub
-     #{`tx/resource-tempid}}))
+(deftest page-offset
+  (testing "no query param"
+    (is (zero? (fhir-util/page-offset {}))))
+
+  (testing "invalid query param"
+    (are [offset] (zero? (fhir-util/page-offset {"__page-offset" offset}))
+      "<invalid>"
+      "-1"
+      ""))
+
+  (testing "valid query param"
+    (are [v offset] (= offset (fhir-util/page-offset {"__page-offset" v}))
+      "0" 0
+      "1" 1
+      "10" 10
+      "100" 100
+      "1000" 1000
+      ["<invalid>" "2"] 2
+      ["3" "4"] 3)))
 
 
-(defn- stub-resource-upsert [db tempids-spec creation-mode resource result]
-  (st/instrument
-    `tx/resource-upsert
-    {:spec
-     {`tx/resource-upsert
-      (s/fspec
-        :args
-        (s/cat
-          :db #{db}
-          :tempids tempids-spec
-          :creation-mode #{creation-mode}
-          :resource #{resource})
-        :ret #{result})}
-     :stub
-     #{`tx/resource-upsert}}))
+(deftest page-type
+  (testing "no query param"
+    (is (nil? (fhir-util/page-type {}))))
+
+  (testing "invalid query param"
+    (are [type] (nil? (fhir-util/page-type {"__page-type" type}))
+      "<invalid>"
+      ""))
+
+  (testing "valid query param"
+    (are [v type] (= type (fhir-util/page-type {"__page-type" v}))
+      "A" "A"
+      ["<invalid>" "A"] "A"
+      ["A" "B"] "A")))
 
 
-(deftest upsert-resource-test
-  (st/unstrument `upsert-resource)
+(deftest page-id
+  (testing "no query param"
+    (is (nil? (fhir-util/page-id {}))))
 
-  (testing "Returns :db-after even when nothing has changed"
-    (let [resource
-          {"resourceType" "Patient"
-           "id" "0"}]
-      (stub-annotate-codes
-        ::term-service ::db resource (md/success-deferred resource))
-      (stub-resource-codes-creation ::db resource [])
-      (stub-resource-tempid ::db resource nil?)
-      (stub-resource-upsert ::db nil? ::creation-mode resource [])
+  (testing "invalid query param"
+    (are [id] (nil? (fhir-util/page-id {"__page-id" id}))
+      "<invalid>"
+      ""))
 
-      (given
-        @(upsert-resource
-           ::transaction-executor
-           ::conn
-           ::term-service
-           ::db
-           ::creation-mode
-           resource)
-        :db-after := ::db))))
+  (testing "valid query param"
+    (are [v id] (= id (fhir-util/page-id {"__page-id" v}))
+      "0" "0"
+      ["<invalid>" "a"] "a"
+      ["A" "b"] "A")))
 
 
-(defn- stub-match-by-name
-  ([router name match]
-   (st/instrument
-     [`reitit/match-by-name]
-     {:spec
-      {`reitit/match-by-name
-       (s/fspec
-         :args (s/cat :router #{router} :name #{name})
-         :ret #{match})}
-      :stub
-      #{`reitit/match-by-name}}))
-  ([router name params match]
-   (st/instrument
-     [`reitit/match-by-name]
-     {:spec
-      {`reitit/match-by-name
-       (s/fspec
-         :args (s/cat :router #{router} :name #{name}
-                      :params #{params})
-         :ret #{match})}
-      :stub
-      #{`reitit/match-by-name}})))
+(def ^:private router
+  (reitit/router
+    [[""
+      {:blaze/base-url "base-url"}
+      ["/Patient" {:name :Patient/type}]
+      ["/Patient/{id}" {:name :Patient/instance}]
+      ["/Patient/{id}/{vid}" {:name :Patient/versioned-instance}]]]
+    {:syntax :bracket}))
 
 
-(deftest type-url-test
-  (st/unstrument `type-url)
-  (stub-match-by-name
-    ::router :type-105536/type
-    {:data {:blaze/base-url "base-url"} :path "/path"})
-
-  (is (= "base-url/path" (type-url ::router "type-105536"))))
+(deftest type-url
+  (is (= "base-url/Patient" (fhir-util/type-url router "Patient"))))
 
 
-(deftest instance-url-test
-  (st/unstrument `instance-url)
-  (stub-match-by-name
-    ::router :type-105349/instance {:id ::id}
-    {:data {:blaze/base-url "base-url"} :path "/path"})
-
-  (is (= "base-url/path" (instance-url ::router "type-105349" ::id))))
+(deftest instance-url
+  (is (= "base-url/Patient/0" (fhir-util/instance-url router "Patient" "0"))))
 
 
-(deftest versioned-instance-url-test
-  (st/unstrument `versioned-instance-url)
-  (stub-match-by-name
-    ::router :type-105253/versioned-instance {:id ::id :vid ::vid}
-    {:data {:blaze/base-url "base-url"} :path "/path"})
+(deftest versioned-instance-url
+  (is (= "base-url/Patient/0/1"
+         (fhir-util/versioned-instance-url router "Patient" "0" "1"))))
 
-  (is
-    (= "base-url/path"
-       (versioned-instance-url ::router "type-105253" ::id ::vid))))
+
+(deftest etag->t
+  (testing "accepts nil"
+    (is (nil? (fhir-util/etag->t nil))))
+
+  (testing "valid ETag"
+    (is (= 1 (fhir-util/etag->t "W/\"1\""))))
+
+  (testing "invalid ETag"
+    (are [s] (nil? (fhir-util/etag->t s))
+      "foo"
+      "W/1"
+      "W/\"a\"")))

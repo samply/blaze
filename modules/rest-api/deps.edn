@@ -1,5 +1,8 @@
 {:deps
- {blaze/module-base
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/module-base
   {:local/root "../module-base"}
 
   blaze/spec
@@ -12,43 +15,38 @@
   {:local/root "../structure-definition"}
 
   buddy/buddy-auth
-  {:git/url "https://github.com/alexanderkiel/buddy-auth.git"
-   :sha "56c0396a6d8640ebd588f2895e5e4583dc48b903"}
+  {:mvn/version "2.2.0"}
 
-  cheshire
-  {:mvn/version "5.9.0"}
-
-  com.taoensso/timbre
-  {:mvn/version "4.10.0"}
-
-  integrant
-  {:mvn/version "0.7.0"}
-
-  manifold
-  {:mvn/version "0.1.8"}
-
-  org.clojars.akiel/datomic-spec
-  {:mvn/version "0.5.2"}
-
-  prom-metrics
-  {:mvn/version "0.5-alpha2"}}
+  org.clojure/data.xml
+  {:mvn/version "0.2.0-alpha6"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {com.datomic/datomic-free
-    {:mvn/version "0.9.5697"}
-
-    lambdaisland/kaocha
-    {:mvn/version "0.0-554"}
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.700"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "0.10.0"}}
+    {:mvn/version "1.1.0"}}
 
-   :main-opts
-   ["-m" "kaocha.runner"]}}}
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

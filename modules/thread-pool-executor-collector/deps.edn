@@ -1,6 +1,3 @@
 {:deps
  {blaze/module-base
-  {:local/root "../module-base"}
-
-  prom-metrics
-  {:mvn/version "0.5-alpha2"}}}
+  {:local/root "../module-base"}}}
