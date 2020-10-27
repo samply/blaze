@@ -353,8 +353,10 @@
              :type :fhir.json.Bundle/type
              :timestamp :fhir.json.Bundle/timestamp
              :total :fhir.json.Bundle/total
-             :link (s2/coll-of :fhir.json.Bundle/link)
-             :entry (s2/coll-of :fhir.json.Bundle/entry)
+             :link (s2/and (s2/conformer impl/ensure-coll identity)
+                           (s2/coll-of :fhir.json.Bundle/link))
+             :entry (s2/and (s2/conformer impl/ensure-coll identity)
+                            (s2/coll-of :fhir.json.Bundle/entry))
              :signature :fhir.json.Bundle/signature})))
 
   (testing "JSON representation of Bundle.id"
@@ -376,9 +378,12 @@
       := `(s2/and
             (s2/schema
               {:id :fhir.json.Bundle.entry/id
-               :extension (s2/coll-of :fhir.json.Bundle.entry/extension)
-               :modifierExtension (s2/coll-of :fhir.json.Bundle.entry/modifierExtension)
-               :link (s2/coll-of :fhir.json.Bundle.entry/link)
+               :extension (s2/and (s2/conformer impl/ensure-coll identity)
+                                  (s2/coll-of :fhir.json.Bundle.entry/extension))
+               :modifierExtension (s2/and (s2/conformer impl/ensure-coll identity)
+                                          (s2/coll-of :fhir.json.Bundle.entry/modifierExtension))
+               :link (s2/and (s2/conformer impl/ensure-coll identity)
+                             (s2/coll-of :fhir.json.Bundle.entry/link))
                :fullUrl :fhir.json.Bundle.entry/fullUrl
                :resource :fhir.json.Bundle.entry/resource
                :search :fhir.json.Bundle.entry/search

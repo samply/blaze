@@ -1,7 +1,7 @@
 (ns blaze.fhir.spec
   (:require
     [blaze.fhir.hash.spec]
-    [blaze.fhir.spec.impl]
+    [blaze.fhir.spec.impl :as impl]
     [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
@@ -140,10 +140,10 @@
   from data replaced by their indices."
   {:arglists '([path data])}
   [[elem & elems] data]
-  (if (vector? data)
-    (cons (first (keep-indexed #(when (= %2 elem) %1) data))
-          (when elems (fhir-path-data elems elem)))
-    (cons elem (if elems (fhir-path-data elems (get data elem)) []))))
+  (if (keyword? elem)
+    (cons elem (if elems (fhir-path-data elems (get data elem)) []))
+    (cons (first (keep-indexed #(when (= %2 elem) %1) (impl/ensure-coll data)))
+          (when elems (fhir-path-data elems elem)))))
 
 
 (defn fhir-path
@@ -151,13 +151,15 @@
   the given path."
   [path resource]
   (->> (fhir-path-data path resource)
-       (reduce (fn [list elem] (if (keyword? elem)
-                                 (conj list (name elem))
-                                 (update list
-                                         (dec (count list))
-                                         str
-                                         (format "[%d]" elem))))
-               [])
+       (reduce
+         (fn [list elem]
+           (if (keyword? elem)
+             (conj list (name elem))
+             (update list
+                     (dec (count list))
+                     str
+                     (format "[%d]" elem))))
+         [])
        (str/join ".")))
 
 
@@ -275,7 +277,7 @@
 
 
 (defn primitive-val?
-  ""
+  "Returns true if `x` is a primitive FHIR value."
   [x]
   (when-let [fhir-type (fhir-type x)]
     (and (= "fhir" (namespace fhir-type))
