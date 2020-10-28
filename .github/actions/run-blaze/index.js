@@ -2,8 +2,8 @@ const core = require('@actions/core');
 const {exec} = require('child_process');
 
 try {
-    const tag = process.env['GITHUB_REF'].split('/').slice(2).join('-');
-    const tag = "master" == tag ? "latest" : tag;
+    const tag0 = process.env['GITHUB_REF'].split('/').slice(2).join('-');
+    const tag = "master" == tag0 ? "latest" : tag0;
     const username = core.getInput('username')
     const password = core.getInput('password')
     exec('docker login -u ' + username + ' -p ' + password + ' docker.pkg.github.com', (error, stdout, stderr) => {
