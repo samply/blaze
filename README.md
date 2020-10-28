@@ -42,6 +42,8 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 * [Performance](docs/performance.md)
 * [Tuning Guide](docs/tuning-guide.md)
 * [Tooling](docs/tooling.md)
+* [CQL Queries](docs/cql-queries.md)
+* [Implementation](docs/implementation/README.md)
 
 ## YourKit Profiler
 
