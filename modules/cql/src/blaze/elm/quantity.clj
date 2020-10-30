@@ -204,6 +204,14 @@
     (Quantities/getQuantity ^Number (p/successor (.getValue x)) (.getUnit x))))
 
 
+;; 22.3. CanConvertQuantity
+(extend-protocol p/CanConvertQuantity
+  Quantity
+  (can-convert-quantity [x unit]
+    (when unit
+      (-> (.getUnit x) (.isCompatible (parse-unit unit))))))
+
+
 ;; 22.6. ConvertQuantity
 (extend-protocol p/ConvertQuantity
   Quantity

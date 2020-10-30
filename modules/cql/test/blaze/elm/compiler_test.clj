@@ -1698,7 +1698,7 @@
        [1 "m"]  [101 "cm"] true
        [1 "m"]  [100 "cm"] false)
 
-    (testing-binary-null elm/less #elm/quantity [1] #elm/quantity [1])))
+    (testing-binary-null elm/less #elm/quantity [1])))
 
 
 ;; 12.6. LessOrEqual
@@ -1778,7 +1778,7 @@
        [1 "m"]  [100 "cm"] true
        [101 "cm"]  [1 "m"] false)
 
-    (testing-binary-null elm/less-or-equal #elm/quantity [1] #elm/quantity [1])))
+    (testing-binary-null elm/less-or-equal #elm/quantity [1])))
 
 
 ;; 12.7. NotEqual
@@ -5728,7 +5728,25 @@
 ;; TODO 22.2. CanConvert
 
 
-;; TODO 22.3. CanConvertQuantity
+;; 22.3. CanConvertQuantity
+;;
+;; The CanConvertQuantity operator returns true if the Quantity can be converted
+;; to an equivalent Quantity with the given Unit. Otherwise, the result is false.
+;;
+;; Note that implementations are not required to support quantity conversion,
+;; and so may return false, even if the conversion is valid. Implementations
+;; that do support unit conversion shall do so according to the conversion
+;; specified by UCUM.
+;;
+;; If either argument is null, the result is null.
+(deftest compile-can-convert-quantity-test
+  (are [argument unit] (true? (-eval (compile {} #elm/can-convert-quantity [argument unit]) {} nil nil))
+    #elm/quantity [5 "mg"] #elm/string "g")
+
+  (are [argument unit] (false? (-eval (compile {} #elm/can-convert-quantity [argument unit]) {} nil nil))
+    #elm/quantity [5 "mg"] #elm/string "m")
+
+  (testing-binary-null elm/can-convert-quantity #elm/quantity [1 "m"] #elm/string "m"))
 
 
 ;; 22.4. Children
@@ -5741,7 +5759,7 @@
 ;; in the list and flattening the resulting lists into a single result.
 ;;
 ;; If the source is null, the result is null.
-(deftest compile-to-children-test
+(deftest compile-children-test
   (testing "Code"
     (are [elm res] (= res (-eval (compile {} #elm/children elm) {:now now} nil nil))
       (code "system-134534" "code-134551")

@@ -245,6 +245,12 @@
 
 ;; 22. Type Operators
 
+;; 22.3. CanConvertQuantity
+(extend-protocol p/CanConvertQuantity
+  nil
+  (can-convert-quantity [_ _]))
+
+
 ;; 22.4. Children
 (extend-protocol p/Children
   nil

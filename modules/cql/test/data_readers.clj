@@ -47,6 +47,7 @@
  elm/current blaze.elm.literal/current
  elm/singleton-from blaze.elm.literal/singleton-from
  elm/as blaze.elm.literal/as
+ elm/can-convert-quantity blaze.elm.literal/can-convert-quantity
  elm/convert-quantity blaze.elm.literal/convert-quantity
  elm/children blaze.elm.literal/children
  elm/descendents blaze.elm.literal/descendents
