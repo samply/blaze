@@ -446,6 +446,11 @@
   {:type "As" :asType type :operand operand})
 
 
+;; 22.4. CanConvertQuantity
+(defn can-convert-quantity [list]
+  {:type "CanConvertQuantity" :operand list})
+
+
 ;; 22.4. Children
 (defn children [source]
   {:type "Children" :source source})

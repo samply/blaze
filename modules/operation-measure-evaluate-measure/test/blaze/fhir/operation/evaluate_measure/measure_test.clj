@@ -141,7 +141,8 @@
     "q17" 2
     "q18-specimen-bmi" 1
     "q24" 1
-    "q28-relationship-procedure-condition" 1)
+    "q28-relationship-procedure-condition" 1
+    "q33-incompatible-quantities" 1)
 
   (with-redefs [random-uuid (take-from! (new-ids))]
     (let [result (evaluate "q1" "subject-list")]
@@ -297,5 +298,5 @@
 
 (comment
   (log/set-level! :trace)
-  (evaluate "q32-stratifier-underweight")
+  (evaluate "q33-incompatible-quantities")
   )

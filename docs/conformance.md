@@ -8,7 +8,7 @@ A current CapabilityStatement can be fetched from [https://blaze.life.uni-leipzi
 
 ### Touchstone
 
-Touchstone test results will be updated shortly.
+Touchstone test results can be found [here](https://touchstone.aegis.net/touchstone/conformance/history?suite=FHIR4-0-1-Basic-Server&supportedOnly=true&suiteType=HL7_FHIR_SERVER&ownedBy=ALL&ps=10&published=true&pPass=0&strSVersion=1&format=ALL).
 
 ### Crucible
 

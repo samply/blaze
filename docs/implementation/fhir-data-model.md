@@ -134,8 +134,9 @@ Last but not least the type `time` is represented by `java.time.LocalTime` and t
 
 ## Serialization at the Document Store
 
-At the document store, FHIR resources are serialized in the CBOR format. CBOR stands for Concise Binary Object Representation and is defined in [RFC 7049][5]. CBOR is a binary serialization format 
+At the document store, FHIR resources are serialized in the CBOR format. CBOR stands for Concise Binary Object Representation and is defined in [RFC 7049][5]. CBOR is a binary serialization format. 
 
+**TODO: continue...**
 
 [1]: <https://github.com/dakrone/cheshire>
 [2]: <https://github.com/clojure/data.xml>

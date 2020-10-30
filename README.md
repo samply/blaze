@@ -12,7 +12,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 ## State
 
-Blaze passes all [Touchstone][12] FHIR 4.0.1 Basic tests and almost all [CQL Tests][3]. Please report any issues you encounter during evaluation.
+Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please report any issues you encounter during evaluation.
 
 Latest release: [v0.8.0][5]
 
@@ -42,6 +42,8 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 * [Performance](docs/performance.md)
 * [Tuning Guide](docs/tuning-guide.md)
 * [Tooling](docs/tooling.md)
+* [CQL Queries](docs/cql-queries.md)
+* [Implementation](docs/implementation/README.md)
 
 ## YourKit Profiler
 
@@ -67,4 +69,4 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [8]: <https://www.yourkit.com/youmonitor/>
 [9]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [10]: <https://github.com/facebook/rocksdb/wiki/RocksDB-Basics#multi-threaded-compactions>
-[12]: <https://touchstone.aegis.net>
+[12]: <https://touchstone.aegis.net/touchstone/conformance/history?suite=FHIR4-0-1-Basic-Server&supportedOnly=true&suiteType=HL7_FHIR_SERVER&ownedBy=ALL&ps=10&published=true&pPass=0&strSVersion=1&format=ALL>

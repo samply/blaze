@@ -14,7 +14,7 @@ docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.8.0
 
 Start the Quality Reporting UI. You should see an empty measure list.
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-14.21.19.png)
+![](cql-queries/measures.png)
 
 In the upper right corner, you see **Localhost 8080**. If Blaze runs on Localhost port 8080, you can continue, otherwise you have to go into Settings and add your Blaze servers location.
 
@@ -22,7 +22,7 @@ In the upper right corner, you see **Localhost 8080**. If Blaze runs on Localhos
 
 Go into **Settings** and click on **Add**.
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-14.27.14.png)
+![](cql-queries/settings-server.png)
 
 Enter a **Name** and a **URL**. Please be aware that URLs of Blaze FHIR endpoints have the path `/fhir` in it by default. You can find your FHIR endpoint URL of Blaze in the logs in a line like this:
 
@@ -34,19 +34,19 @@ Init FHIR RESTful API with base URL: http://localhost:8080/fhir
 
 Blaze uses the FHIR [Quality Reporting](https://www.hl7.org/fhir/clinicalreasoning-quality-reporting.html) Module, to execute CQL queries. In Quality Reporting, CQL Query Expressions reside in [Library](https://www.hl7.org/fhir/library.html) resources and are referenced in [Measure](https://www.hl7.org/fhir/measure.html) resources. In order to create a Library resource, go to **Libraries** and click on **New Library**.
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-14.36.03.png)
+![](cql-queries/libraries-new.png)
 
 After you created your Library, you can give it a name by clicking at **Edit:**
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-14.39.38.png)
+![](cql-queries/library-title-edit.png)
 
 After naming your Library, you have to give it a canonical URL. We just use localhost for our URL here:
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-14.44.29.png)
+![](cql-queries/library-url-edit.png)
 
 Next we add the CQL source code for our single **InInitialPopulation** query expression: 
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-14.50.37.png)
+![](cql-queries/library-cql.png)
 
 ```text
 library Covid19
@@ -63,37 +63,37 @@ define InInitialPopulation:
 
 You can create Measure resources under **Measures** by clicking on **New Measure**. After giving our Measure a name, we also have to give it a canonical URL:
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-15.13.20.png)
+![](cql-queries/measure-url-edit.png)
 
 After that, we have to reference our previously created Library to our Measure by clicking on the **Edit** button in the right sidebar:
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-15.17.05.png)
+![](cql-queries/measure-library-edit.png)
 
 Because the Measure comes with an initial population definition by default, we will only check it by clicking on **initial-population**:
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-15.26.08.png)
+![](cql-queries/measure-initial-population.png)
 
 Here we see our CQL expression **InInitialPopulation** from our Library referenced:
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-15.27.23.png)
+![](cql-queries/measure-initial-population-criteria.png)
 
 ### Generating a First Report
 
 To generate a Report, we click on **Generate New Report**:
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-15.28.36.png)
+![](cql-queries/measure-generate-report.png)
 
-After some time, a MeasureReport will apear in the list of reports of our Measure:
+After some time, a MeasureReport will appear in the list of reports of our Measure:
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-15.32.06.png)
+![](cql-queries/measure-report-list.png)
 
 Please be patient, because currently there is no progress bar. If nothing appears for a long time, you can use the menu to go back to all measure, open our measure again and look if ou see a report with a fitting timestamp.
 
-All reports are persistet in Blaze and are shown in the UI with their creation timestamp.
+All reports are persisted in Blaze and are shown in the UI with their creation timestamp.
 
 After you open the report, you will see that your **initial-population** has a count of zero.
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-15.36.15.png)
+![](cql-queries/measure-report-1.png)
 
 ### Import Patients with COVID-19 Diagnoses
 
@@ -152,7 +152,7 @@ If you POST the following Bundle to the transaction endpoint of Blaze, you will 
 
 After importing patients, the result of the initial population will be one:
 
-![](.gitbook/assets/screen-shot-2020-07-31-at-16.18.05.png)
+![](cql-queries/measure-report-2.png)
 
 You can learn more about CQL queries in the [Author's Guide](https://cql.hl7.org/02-authorsguide.html) at HL7.
 

@@ -232,6 +232,11 @@
 
 ;; 22. Type Operators
 
+;; 22.3. ConvertQuantity
+(defprotocol CanConvertQuantity
+  (can-convert-quantity [x unit]))
+
+
 ;; 22.4. Children
 (defprotocol Children
   (children [source]))
