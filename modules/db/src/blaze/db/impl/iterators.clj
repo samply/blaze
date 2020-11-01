@@ -12,37 +12,38 @@
 
 
 (defn- read-key! [iter ^ByteBuffer bb]
-  (when (< (.capacity bb) ^long (kv/key iter (.clear bb)))
-    (throw (BufferOverflowException.))))
+  (let [size (kv/key! iter (.clear bb))]
+    (if (< (.capacity bb) ^long size)
+      (let [bb (ByteBuffer/allocateDirect size)]
+        (kv/key! iter bb)
+        bb)
+      bb)))
 
 
 (defn- reduce-keys! [iter decode dir rf init]
-  (let [kb (decode)]
-    (loop [ret init]
-      (if (kv/valid? iter)
-        (do
-          (read-key! iter kb)
-          (let [ret (rf ret (decode kb))]
-            (if (reduced? ret)
-              @ret
-              (do (dir iter) (recur ret)))))
-        ret))))
+  (loop [kb (decode)
+         ret init]
+    (if (kv/valid? iter)
+      (let [kb (read-key! iter kb)
+            ret (rf ret (decode kb))]
+        (if (reduced? ret)
+          @ret
+          (do (dir iter) (recur kb ret))))
+      ret)))
 
 
 (defn keys
-  "Returns a reducible collection of keys of `iter`.
+  "Returns a reducible collection of keys of `iter` starting with `start-key`
+  and decoded with the `decode` function.
 
-  Doesn't close the iterator."
-  ([iter decode]
-   (reify IReduceInit
-     (reduce [_ rf init]
-       (kv/seek-to-first! iter)
-       (reduce-keys! iter decode kv/next! rf init))))
-  ([iter decode start-key]
-   (reify IReduceInit
-     (reduce [_ rf init]
-       (kv/seek! iter start-key)
-       (reduce-keys! iter decode kv/next! rf init)))))
+  The decode function has to return a ByteBuffer when called with no argument.
+  That same ByteBuffer will be used for each key read and will be passed to the
+  decode function for decoding into a value which will end up in the collection."
+  [iter decode start-key]
+  (reify IReduceInit
+    (reduce [_ rf init]
+      (kv/seek! iter start-key)
+      (reduce-keys! iter decode kv/next! rf init))))
 
 
 (defn keys-prev [iter decode start-key]
@@ -53,7 +54,7 @@
 
 
 (defn- read-value! [iter ^ByteBuffer bb]
-  (when (< (.capacity bb) ^long (kv/value iter (.clear bb)))
+  (when (< (.capacity bb) ^long (kv/value! iter (.clear bb)))
     (throw (BufferOverflowException.))))
 
 
@@ -78,11 +79,11 @@
   and its result are the decoded values.
 
   Doesn't close the iterator."
-  ([iter decode start-key]
-   (reify IReduceInit
-     (reduce [_ rf init]
-       (kv/seek! iter start-key)
-       (reduce-kvs! iter decode kv/next! rf init)))))
+  [iter decode start-key]
+  (reify IReduceInit
+    (reduce [_ rf init]
+      (kv/seek! iter start-key)
+      (reduce-kvs! iter decode kv/next! rf init))))
 
 
 (defn- reduce-iter! [iter rf init]

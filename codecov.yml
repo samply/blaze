@@ -7,4 +7,4 @@ comment:
   layout: "reach, diff, flags, files"
   behavior: default
   require_changes: false
-  after_n_builds: 18
+  after_n_builds: 19

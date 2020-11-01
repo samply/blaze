@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index.resource-as-of-spec
   (:require
+    [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
     [blaze.db.impl.index.resource-handle-spec]
@@ -11,18 +12,16 @@
 
 
 (s/fdef resource-as-of/type-list
-  :args (s/cat :raoi :blaze.db/kv-iterator
+  :args (s/cat :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
-               :start-id (s/nilable :blaze.db/id-bytes)
-               :t :blaze.db/t)
+               :start-id (s/nilable :blaze.db/id-bytes))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef resource-as-of/system-list
-  :args (s/cat :raoi :blaze.db/kv-iterator
+  :args (s/cat :context :blaze.db.impl.batch-db/context
                :start-tid (s/nilable :blaze.db/tid)
-               :start-id (s/nilable :blaze.db/id-bytes)
-               :t :blaze.db/t)
+               :start-id (s/nilable :blaze.db/id-bytes))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
@@ -44,10 +43,9 @@
 
 
 (s/fdef resource-as-of/resource-handle
-  :args (s/cat :raoi :blaze.db/kv-iterator
+  :args (s/cat :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
-               :id :blaze.db/id-bytes
-               :t :blaze.db/t)
+               :id :blaze.db/id-bytes)
   :ret (s/nilable :blaze.db/resource-handle))
 
 

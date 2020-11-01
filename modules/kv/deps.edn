@@ -3,11 +3,41 @@
   {:local/root "../module-base"}}
 
  :aliases
- {:unused-vars
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.700"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}
+
+    org.clojure/test.check
+    {:mvn/version "1.1.0"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}
+
+  :unused-vars
   {:extra-deps
    {clj-kondo/tools
     {:git/url "https://github.com/borkdude/clj-kondo"
-     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :sha "3f842a99eb6da64b3ca6e952ddb7f00278e36c87"
      :deps/root "analysis"}}
    :main-opts ["-m" "clj-kondo.tools.unused-vars"]}
 
@@ -15,6 +45,6 @@
   {:extra-deps
    {clj-kondo/tools
     {:git/url "https://github.com/borkdude/clj-kondo"
-     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :sha "3f842a99eb6da64b3ca6e952ddb7f00278e36c87"
      :deps/root "analysis"}}
    :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}

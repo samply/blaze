@@ -4,6 +4,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv.mem-spec]
     [blaze.db.node.resource-indexer :as i :refer [new-resource-indexer]]
     [blaze.db.node.resource-indexer-spec]
     [blaze.db.resource-store :as rs]
@@ -80,7 +81,7 @@
             (kv/get
               kv-store
               :search-param-value-index
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "code")
                 (codec/tid "Condition")
                 (codec/v-hash "code-204441")
@@ -92,7 +93,7 @@
             (kv/get
               kv-store
               :resource-value-index
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Condition")
                 (codec/id-bytes "id-204446")
                 hash
@@ -102,7 +103,7 @@
             (kv/get
               kv-store
               :resource-value-index
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Condition")
                 (codec/id-bytes "id-204446")
                 hash
@@ -112,7 +113,7 @@
             (kv/get
               kv-store
               :resource-value-index
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Condition")
                 (codec/id-bytes "id-204446")
                 hash
@@ -140,7 +141,7 @@
           (kv/get
             kv-store
             :search-param-value-index
-            (codec/search-param-value-key
+            (codec/sp-value-resource-key
               (codec/c-hash "code")
               (codec/tid "Condition")
               (codec/v-hash "system-204435|code-204441")
@@ -166,7 +167,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "onset-date")
             (codec/tid "Condition")
             (codec/date-lb (ZoneId/systemDefault) (LocalDate/of 2020 1 30))
@@ -178,7 +179,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "onset-date")
             (codec/tid "Condition")
             (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2020 1 30))
@@ -190,7 +191,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "subject")
             (codec/tid "Condition")
             (codec/v-hash "Patient/id-145552")
@@ -202,7 +203,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "_id")
             (codec/tid "Condition")
             (codec/v-hash "id-204446")
@@ -214,7 +215,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "_profile")
             (codec/tid "Condition")
             (codec/v-hash "https://fhir.bbmri.de/StructureDefinition/Condition")
@@ -261,7 +262,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "status")
             (codec/tid "Observation")
             (codec/v-hash "status-193613")
@@ -273,7 +274,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "category")
             (codec/tid "Observation")
             (codec/v-hash "code-193603")
@@ -285,7 +286,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "code")
             (codec/tid "Observation")
             (codec/v-hash "code-193824")
@@ -297,7 +298,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "subject")
             (codec/tid "Observation")
             (codec/v-hash "reference-193945")
@@ -309,7 +310,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "date")
             (codec/tid "Observation")
             (codec/date-lb (ZoneId/systemDefault) (LocalDate/of 2005 6 17))
@@ -321,7 +322,7 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "date")
             (codec/tid "Observation")
             (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2005 6 17))
@@ -333,10 +334,10 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "value-quantity")
             (codec/tid "Observation")
-            (codec/quantity 23.42M)
+            (codec/quantity nil 23.42M)
             (codec/id-bytes "id-192702")
             hash))))
 
@@ -345,9 +346,9 @@
         (kv/get
           kv-store
           :search-param-value-index
-          (codec/search-param-value-key
+          (codec/sp-value-resource-key
             (codec/c-hash "value-quantity")
             (codec/tid "Observation")
-            (codec/quantity 23.42M "http://unitsofmeasure.org|kg/m2")
+            (codec/quantity "http://unitsofmeasure.org|kg/m2" 23.42M)
             (codec/id-bytes "id-192702")
             hash))))))

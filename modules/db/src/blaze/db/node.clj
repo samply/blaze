@@ -124,7 +124,7 @@
 
 (defn- store-tx-entries [kv-store entries]
   (with-open [_ (prom/timer duration-seconds "store-tx-entries")]
-    (kv/put kv-store entries)))
+    (kv/put! kv-store entries)))
 
 
 (defn- advance-t! [state t]
@@ -149,7 +149,7 @@
         future (resource-indexer/index-resources resource-indexer (hashes tx-cmds))
         result (index-tx kv-store tx-data)]
     (if (::anom/category result)
-      (do (kv/put kv-store (codec/tx-error-entries t result))
+      (do (kv/put! kv-store (codec/tx-error-entries t result))
           (advance-error-t! state t))
       (do (store-tx-entries kv-store result)
           (try
@@ -158,7 +158,7 @@
             (finally
               (log/trace "done indexing all resources")
               (prom/observe-duration! timer)))
-          (kv/put kv-store (codec/tx-success-entries t instant))
+          (kv/put! kv-store (codec/tx-success-entries t instant))
           (advance-t! state t)))))
 
 

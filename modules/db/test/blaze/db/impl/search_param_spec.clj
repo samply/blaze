@@ -1,8 +1,10 @@
 (ns blaze.db.impl.search-param-spec
   (:require
+    [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.iterators-spec]
     [blaze.db.impl.search-param :as search-param]
+    [blaze.db.impl.search-param.util-spec]
     [blaze.db.kv-spec]
     [blaze.db.search-param-registry-spec]
     [blaze.fhir-path-spec]
@@ -31,32 +33,28 @@
 
 (s/fdef search-param/resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :snapshot :blaze.db/kv-snapshot
-               :svri :blaze.db/kv-iterator
-               :rsvi :blaze.db/kv-iterator
-               :raoi :blaze.db/kv-iterator
+               :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1)
-               :start-id (s/nilable :blaze.db/id-bytes)
-               :t :blaze.db/t)
+               :start-id (s/nilable :blaze.db/id-bytes))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
-(s/fdef search-param/compartment-keys
+(s/fdef search-param/compartment-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :csvri :blaze.db/kv-iterator
+               :context :blaze.db.impl.batch-db/context
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :compiled-values (s/coll-of some? :min-count 1))
-  :ret (s/coll-of (s/tuple bytes? bytes? bytes?)))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef search-param/matches?
   :args (s/cat :search-param :blaze.db/search-param
-               :snapshot :blaze.db/kv-snapshot
+               :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
-               :id bytes?
+               :id :blaze.db/id-bytes
                :hash :blaze.resource/hash
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))

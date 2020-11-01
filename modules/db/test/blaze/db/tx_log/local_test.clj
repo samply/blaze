@@ -3,6 +3,7 @@
     [blaze.async.comp :as ac]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv.mem-spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local :as local :refer [new-local-tx-log]]
     [blaze.db.tx-log.local-spec]
@@ -41,10 +42,10 @@
 
 (defn new-failing-kv-store []
   (reify kv/KvStore
-    (new-snapshot [_]
+    (-new-snapshot [_]
       (reify
         kv/KvSnapshot
-        (new-iterator [_]
+        (-new-iterator [_]
           (reify
             kv/KvIterator
             (-seek-to-last [_])
@@ -99,7 +100,7 @@
   (testing "with invalid transaction data"
     (testing "with invalid key"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put kv-store (byte-array 0) (byte-array 0))
+        (kv/put! kv-store (byte-array 0) (byte-array 0))
 
         (let [tx-log (new-local-tx-log kv-store clock executor)]
 
@@ -109,8 +110,8 @@
 
     (testing "with invalid key followed by valid entry"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put kv-store (byte-array 0) (byte-array 0))
-        (kv/put kv-store (local/encode-t 1) (local/encode-tx-data
+        (kv/put! kv-store (byte-array 0) (byte-array 0))
+        (kv/put! kv-store (local/encode-t 1) (local/encode-tx-data
                                               (Instant/ofEpochSecond 0)
                                               [{:op "create" :type "Patient" :id "0"
                                                 :hash patient-hash-0}]))
@@ -129,9 +130,9 @@
 
     (testing "with two invalid keys followed by valid entry"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put kv-store (byte-array 0) (byte-array 0))
-        (kv/put kv-store (byte-array 1) (byte-array 0))
-        (kv/put kv-store (local/encode-t 1) (local/encode-tx-data
+        (kv/put! kv-store (byte-array 0) (byte-array 0))
+        (kv/put! kv-store (byte-array 1) (byte-array 0))
+        (kv/put! kv-store (local/encode-t 1) (local/encode-tx-data
                                               (Instant/ofEpochSecond 0)
                                               [{:op "create" :type "Patient" :id "0"
                                                 :hash patient-hash-0}]))
@@ -150,7 +151,7 @@
 
     (testing "with empty value"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put kv-store (byte-array Long/BYTES) (byte-array 0))
+        (kv/put! kv-store (byte-array Long/BYTES) (byte-array 0))
 
         (let [tx-log (new-local-tx-log kv-store clock executor)]
 
@@ -160,7 +161,7 @@
 
     (testing "with invalid cbor value"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put kv-store (byte-array Long/BYTES) (invalid-cbor-content))
+        (kv/put! kv-store (byte-array Long/BYTES) (invalid-cbor-content))
 
         (let [tx-log (new-local-tx-log kv-store clock executor)]
 
@@ -170,7 +171,7 @@
 
     (testing "with invalid instant value"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put kv-store (byte-array Long/BYTES) (cheshire/generate-cbor {:instant ""}))
+        (kv/put! kv-store (byte-array Long/BYTES) (cheshire/generate-cbor {:instant ""}))
 
         (let [tx-log (new-local-tx-log kv-store clock executor)]
 
@@ -180,7 +181,7 @@
 
     (testing "with invalid tx-cmd value"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put kv-store (byte-array Long/BYTES) (cheshire/generate-cbor {:tx-cmds [{}]}))
+        (kv/put! kv-store (byte-array Long/BYTES) (cheshire/generate-cbor {:tx-cmds [{}]}))
 
         (let [tx-log (new-local-tx-log kv-store clock executor)]
 

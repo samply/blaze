@@ -2,7 +2,7 @@
   "https://www.hl7.org/fhir/search.html#list"
   (:require
     [blaze.coll.core :as coll]
-    [blaze.db.impl.bytes :as bytes]
+    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
     [blaze.db.impl.index.resource-handle :as rh]
@@ -42,15 +42,15 @@
       ;; the type has to match
       (filter #(= tid (.getInt ^ByteBuffer %)))
       (map id))
-    (i/keys iter codec/decode-resource-value-key start-key)))
+    (i/keys iter codec/decode-resource-sp-value-key start-key)))
 
 
 (defn- start-key
   ([list-id list-hash]
-   (codec/resource-value-key list-tid list-id list-hash item-c-hash))
+   (codec/resource-sp-value-key list-tid list-id list-hash item-c-hash))
   ([list-id list-hash tid start-id]
-   (codec/resource-value-key list-tid list-id list-hash item-c-hash
-                             (codec/tid-id tid start-id))))
+   (codec/resource-sp-value-key list-tid list-id list-hash item-c-hash
+                                (codec/tid-id tid start-id))))
 
 
 (defn- ids [iter list-id list-hash tid start-id]
@@ -68,16 +68,17 @@
   (-compile-values [_ values]
     (map codec/id-bytes values))
 
-  (-resource-handles [_ _ _ rsvi raoi tid _ list-id start-id t]
-    (when-let [[list-hash state] (list-hash-state-t raoi list-id t)]
+  (-resource-handles [_ context tid _ list-id start-id]
+    (let [{:keys [raoi rsvi t]} context]
+      (when-let [[list-hash state] (list-hash-state-t raoi list-id t)]
       (when-not (codec/deleted? state)
         (coll/eduction
           (mapcat
             (fn [id]
-              (when-let [handle (resource-as-of/resource-handle raoi tid id t)]
+              (when-let [handle (resource-as-of/resource-handle context tid id)]
                 (when-not (rh/deleted? handle)
                   [handle]))))
-          (ids rsvi list-id list-hash tid start-id)))))
+          (ids rsvi list-id list-hash tid start-id))))))
 
   (-index-entries [_ _ _ _ _]
     []))
