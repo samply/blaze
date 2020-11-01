@@ -1,6 +1,7 @@
 (ns blaze.db.kv
   "Protocols for key-value store backend implementations."
-  (:refer-clojure :exclude [get key]))
+  (:refer-clojure :exclude [get key])
+  (:import [java.io Closeable]))
 
 
 (defprotocol KvIterator
@@ -89,37 +90,77 @@
   "Returns the key of the current entry of `iter`.
 
   Requires `iter` to be valid."
-  ([iter]
-   (-key iter))
-  ([iter buf]
-   (-key iter buf)))
+  [iter]
+  (-key iter))
+
+
+(defn key!
+  "Puts the key of current entry of `iter` in `buf`.
+
+  Uses the position of `buf` and sets the limit of `buf` according to the key
+  size. Supports direct buffers only.
+
+  Returns the size of the actual key. If the key is greater than the length of
+  `buf`, then it indicates that the size of the `buf` is insufficient and a
+  partial result is put."
+  [iter buf]
+  (-key iter buf))
 
 
 (defn value
   "Returns the value of the current entry of `iter`.
 
   Requires `iter` to be valid."
-  ([iter]
-   (-value iter))
-  ([iter buf]
-   (-value iter buf)))
+  [iter]
+  (-value iter))
+
+
+(defn value!
+  "Puts the value of current entry of `iter` in `buf`.
+
+  Uses the position of `buf` and sets the limit of `buf` according to the value
+  size. Supports direct buffers only.
+
+  Returns the size of the actual value. If the key is greater than the length
+  of `buf`, then it indicates that the size of the `buf` is insufficient and a
+  partial result is put."
+  [iter buf]
+  (-value iter buf))
 
 
 (defprotocol KvSnapshot
   "A snapshot of the contents of a KvStore."
 
-  (new-iterator
-    ^java.io.Closeable [snapshot]
-    ^java.io.Closeable [snapshot column-family])
+  (-new-iterator [snapshot] [snapshot column-family])
 
-  (snapshot-get [snapshot key] [snapshot column-family key]
-    "Returns the value if there is any."))
+  (-snapshot-get [snapshot key] [snapshot column-family key]))
+
+
+(defn new-iterator
+  "Return an iterator over the contents of the database.
+
+  The result is initially invalid, so the caller must call one of the seek
+  functions with the iterator before using it."
+  (^Closeable
+   [snapshot]
+   (-new-iterator snapshot))
+  (^Closeable
+   [snapshot column-family]
+   (-new-iterator snapshot column-family)))
+
+
+(defn snapshot-get
+  "Returns a new byte array storing the value associated with the `key` if any."
+  ([snapshot key]
+   (-snapshot-get snapshot key))
+  ([snapshot column-family key]
+   (-snapshot-get snapshot column-family key)))
 
 
 (defprotocol KvStore
   "A key-value store."
 
-  (new-snapshot ^java.io.Closeable [store])
+  (-new-snapshot [store])
 
   (-get [store key] [store column-family key])
 
@@ -127,16 +168,20 @@
 
   (-put [store entries] [store key value])
 
-  (delete [store keys]
-    "Deletes keys.")
+  (-delete [store keys])
 
-  (write [store entries]
-    "Entries are either triples of operator, key and value or quadruples of
-    operator, column-family, key and value.
+  (-write [store entries]))
 
-    Operators are :put, :merge and :delete.
 
-    Writes are atomic. Blocks."))
+(defn store? [x]
+  (satisfies? KvStore x))
+
+
+(defn new-snapshot
+  ""
+  ^Closeable
+  [store]
+  (-new-snapshot store))
 
 
 (defn get
@@ -153,7 +198,7 @@
    (-multi-get store keys)))
 
 
-(defn put
+(defn put!
   "Entries are either tuples of key and value or triples of column-family, key
   and value.
 
@@ -163,3 +208,19 @@
   ([store key value]
    (-put store key value)))
 
+
+(defn delete!
+  "Deletes entries with `keys`."
+  [store keys]
+  (-delete store keys))
+
+
+(defn write!
+  "Entries are either triples of operator, key and value or quadruples of
+  operator, column-family, key and value.
+
+  Operators are :put, :merge and :delete.
+
+  Writes are atomic. Blocks."
+  [store entries]
+  (-write store entries))

@@ -1,6 +1,7 @@
 (ns blaze.db.impl.codec
   (:require
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.util :as fhir-util]
     [cheshire.core :as cheshire]
     [cognitect.anomalies :as anom])
   (:import
@@ -40,6 +41,40 @@
 (def ^Charset iso-8859-1 StandardCharsets/ISO_8859_1)
 
 (def ^Charset utf-8 StandardCharsets/UTF_8)
+
+
+
+;; ---- Type Identifier -------------------------------------------------------
+
+(defn- memoize-1 [f]
+  (let [mem
+        (-> (Caffeine/newBuilder)
+            (.build
+              (reify CacheLoader
+                (load [_ x]
+                  (f x)))))]
+    (fn [x]
+      (.get mem x))))
+
+
+(def tid
+  "Internal type identifier.
+
+  Returns an integer."
+  (memoize-1
+    (fn [type]
+      (.asInt (.hashBytes (Hashing/murmur3_32) (.getBytes ^String type iso-8859-1))))))
+
+
+(let [kvs (->> (fhir-util/resources)
+               (map (fn [{:keys [type]}] [(tid type) type]))
+               (sort-by first))
+      tid->idx (int-array (map first kvs))
+      idx->type (object-array (map second kvs))]
+  (defn tid->type [tid]
+    (let [idx (Arrays/binarySearch tid->idx ^long tid)]
+      (when (nat-int? idx)
+        (aget idx->type idx)))))
 
 
 
@@ -94,7 +129,7 @@
 
 
 
-;; ---- SearchParamValue Index ------------------------------------------------
+;; ---- SearchParamValueResource Index ----------------------------------------
 
 (defn- hash-prefix ^bytes [^HashCode hash]
   (let [bs (byte-array hash-prefix-size)]
@@ -102,7 +137,7 @@
     bs))
 
 
-(defn search-param-value-key
+(defn sp-value-resource-key
   {:arglists
    '([c-hash tid value]
      [c-hash tid value id]
@@ -136,7 +171,7 @@
        (.array))))
 
 
-(defn append-fs [^bytes k ^long n]
+(defn- append-fs [^bytes k ^long n]
   (let [b (byte-array (+ (alength k) n))]
     (System/arraycopy k 0 b 0 (alength k))
     (dotimes [i n]
@@ -144,14 +179,22 @@
     b))
 
 
-(defn search-param-value-key-for-prev
-  [c-hash tid value]
-  (append-fs (search-param-value-key c-hash tid value)
-             (+ 1 max-id-size 1 hash-prefix-size)))
+(defn sp-value-resource-key-for-prev
+  ([c-hash tid value]
+   (append-fs (sp-value-resource-key c-hash tid value)
+              (+ 1 max-id-size 1 hash-prefix-size)))
+  ([c-hash tid value id]
+   (append-fs (sp-value-resource-key c-hash tid value id)
+              hash-prefix-size)))
 
 
-(defn decode-search-param-value-key
-  ([] (ByteBuffer/allocateDirect 1024))
+(def ^:private ^:const ^int sp-value-resource-key-buffer-capacity
+  "Most search param value keys should fit into this size."
+  128)
+
+
+(defn decode-sp-value-resource-key
+  ([] (ByteBuffer/allocateDirect sp-value-resource-key-buffer-capacity))
   ([^ByteBuffer bb]
    (let [id-size (.get bb (dec (- (.limit bb) hash-prefix-size)))
          prefix (byte-array (- (.remaining bb) id-size 2 hash-prefix-size))
@@ -166,9 +209,9 @@
 
 
 
-;; ---- ResourceValue Index ---------------------------------------------------
+;; ---- ResourceSearchParamValue Index ----------------------------------------
 
-(defn resource-value-key
+(defn resource-sp-value-key
   {:arglists '([tid id hash c-hash] [tid id hash c-hash value])}
   ([tid ^bytes id hash c-hash]
    (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
@@ -191,8 +234,13 @@
        (.array))))
 
 
-(defn decode-resource-value-key
-  ([] (ByteBuffer/allocateDirect 1024))
+(def ^:private ^:const ^int resource-sp-value-key-buffer-capacity
+  "Most resource value keys should fit into this size."
+  128)
+
+
+(defn decode-resource-sp-value-key
+  ([] (ByteBuffer/allocateDirect resource-sp-value-key-buffer-capacity))
   ([^ByteBuffer bb]
    (let [id-size (.get bb (+ (.position bb) tid-size))
          prefix (byte-array (+ tid-size 1 id-size hash-prefix-size c-hash-size))
@@ -200,6 +248,49 @@
      (.get bb prefix)
      (.get bb value)
      [prefix value])))
+
+
+(defn c-hash [code]
+  (.asInt (.hashString (Hashing/murmur3_32) ^String code utf-8)))
+
+
+(def ^:private c-hash->code
+  (into
+    {}
+    (map (fn [code] [(c-hash code) code]))
+    ["_id"
+     "combo-value-quantity"
+     "context-quantity"
+     "value-quantity"]))
+
+
+(defn decode-resource-sp-value-key-human
+  ([] (ByteBuffer/allocateDirect resource-sp-value-key-buffer-capacity))
+  ([^ByteBuffer bb]
+   (let [id-size (.get bb (+ (.position bb) tid-size))
+         tid (.getInt bb)
+         _ (.get bb)
+         id (byte-array id-size)
+         _ (.get bb id)
+         hash-prefix (byte-array hash-prefix-size)
+         _ (.get bb hash-prefix)
+         c-hash (.getInt bb)
+         value (byte-array (.remaining bb))]
+     (.get bb value)
+     [(tid->type tid) (blaze.db.impl.codec/id id) (hex hash-prefix)
+      (or (c-hash->code c-hash) (Integer/toHexString c-hash))
+      (hex value)])))
+
+
+(defn resource-sp-value-key->value [^bytes k]
+  (let [bb (ByteBuffer/wrap k)
+        id-size (.get bb tid-size)
+        prefix-length (+ tid-size 1 id-size hash-prefix-size c-hash-size)
+        value-length (- (alength k) prefix-length)
+        value (byte-array value-length)]
+    (.position bb prefix-length)
+    (.get bb value 0 value-length)
+    value))
 
 
 
@@ -328,7 +419,7 @@
     (.getInt bb (+ c-hash-size 1 co-res-id-size))))
 
 
-(def ^:const ^int compartment-resource-type-key-id-from
+(def ^:private ^:const ^int compartment-resource-type-key-id-from
   (+ (unchecked-inc-int c-hash-size) tid-size))
 
 
@@ -428,7 +519,7 @@
 
 
 (defn get-t! ^long [^ByteBuffer buf]
-   (descending-long (.getLong buf)))
+  (descending-long (.getLong buf)))
 
 
 (defn get-hash! [^ByteBuffer buf]
@@ -506,31 +597,7 @@
 
 ;; ---- Other Functions -------------------------------------------------------
 
-(defn- memoize-1 [f]
-  (let [mem
-        (-> (Caffeine/newBuilder)
-            (.build
-              (reify CacheLoader
-                (load [_ x]
-                  (f x)))))]
-    (fn [x]
-      (.get mem x))))
-
-
-(def tid
-  "Internal type identifier.
-
-  Returns an integer."
-  (memoize-1
-    (fn [type]
-      (.asInt (.hashBytes (Hashing/murmur3_32) (.getBytes ^String type iso-8859-1))))))
-
-
-(defn c-hash [code]
-  (.asInt (.hashString (Hashing/murmur3_32) ^String code utf-8)))
-
-
-(defn v-hash [value]
+(defn v-hash ^bytes [value]
   (.asBytes (.hashString (Hashing/murmur3_32) ^String value utf-8)))
 
 
@@ -557,6 +624,7 @@
   "Converts the number in a lexicographically sortable byte array.
 
   The array has variable length."
+  ^bytes
   [number]
   (-number number))
 
@@ -566,13 +634,8 @@
 (extend-protocol NumberBytes
   BigDecimal
   (-number [val]
-    (let [^bytes long-bs (number (.longValueExact (.toBigInteger val)))
-          bb (ByteBuffer/allocate (inc (alength long-bs)))
-          scale (.scale val)]
-      (assert (< scale 128))
-      (.put bb (byte scale))
-      (.put bb long-bs)
-      (.array bb)))
+    ;; Truncate at two digits after the decimal point
+    (-number (.longValue (.scaleByPowerOfTen val 2))))
 
   Integer
   (-number [val]
@@ -642,7 +705,7 @@
   (.toEpochSecond (.atZone date-time zone-id)))
 
 
-(def ^:const ^:private ^long ub-offset 0xf0000000000)
+(def ^:private ^:const ^long ub-offset 0xf0000000000)
 
 
 (defprotocol DateLowerBound
@@ -758,16 +821,16 @@
   (Arrays/copyOfRange lb-ub (inc (aget lb-ub 0)) (alength lb-ub)))
 
 
-(defn quantity
-  ([value]
-   (quantity value nil))
-  ([value unit]
-   (let [unit-hash (v-hash (or unit ""))
-         ^bytes number (number value)
-         value (byte-array (+ v-hash-size (alength number)))]
-     (System/arraycopy unit-hash 0 value 0 v-hash-size)
-     (System/arraycopy number 0 value v-hash-size (alength number))
-     value)))
+(defn quantity [unit value]
+  (let [number (number value)]
+    (-> (ByteBuffer/allocate (+ v-hash-size (alength number)))
+        (.put (v-hash (or unit "")))
+        (.put number)
+        (.array))))
+
+
+(defn unit-prefix [quantity]
+  (Arrays/copyOfRange ^bytes quantity 0 v-hash-size))
 
 
 (defn deleted-resource [type id]

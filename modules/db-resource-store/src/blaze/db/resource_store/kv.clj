@@ -67,7 +67,7 @@
 
   rs/ResourceStore
   (-put [_ entries]
-    (ac/supply (kv/put kv-store (into [] entry-freezer entries)))))
+    (ac/supply (kv/put! kv-store (into [] entry-freezer entries)))))
 
 
 (defn new-kv-resource-store [kv-store]

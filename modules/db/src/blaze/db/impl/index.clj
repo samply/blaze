@@ -1,7 +1,7 @@
 (ns blaze.db.impl.index
   (:require
     [blaze.coll.core :as coll]
-    [blaze.db.impl.bytes :as bytes]
+    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-as-of :as resource-as-of]
     [blaze.db.impl.index.resource-handle :as rh]
@@ -32,7 +32,7 @@
 
 ;; ---- Type-Level Functions ------------------------------------------------
 
-(defn- other-clauses-filter [snapshot tid clauses]
+(defn- other-clauses-filter [context tid clauses]
   (if (seq clauses)
     (filter
       (fn [resource-handle]
@@ -40,25 +40,25 @@
               hash (rh/hash resource-handle)]
           (loop [[[search-param modifier _ values] & clauses] clauses]
             (if search-param
-              (when (search-param/matches? search-param snapshot tid id hash
-                                           modifier values)
+              (when (search-param/matches? search-param context tid id
+                                           hash modifier values)
                 (recur clauses))
               resource-handle)))))
     identity))
 
 
-(defn type-query [snapshot svri rsvi raoi tid clauses start-id t]
+(defn type-query [context tid clauses start-id]
   (let [[[search-param modifier _ values] & other-clauses] clauses]
     (coll/eduction
-      (other-clauses-filter snapshot tid other-clauses)
-      (search-param/resource-handles search-param snapshot svri rsvi raoi tid
-                                     modifier values start-id t))))
+      (other-clauses-filter context tid other-clauses)
+      (search-param/resource-handles search-param context tid
+                                     modifier values start-id))))
 
 
 
 ;; ---- System-Level Functions ------------------------------------------------
 
-(defn system-query [_ _ _ _ _ _]
+(defn system-query [_ _]
   ;; TODO: implement
   [])
 
@@ -87,13 +87,13 @@
   It then looks up the newest version of each resource in the
   :resource-as-of-index not newer then `t`."
   ^IReduceInit
-  [cri raoi compartment tid start-id t]
+  [{:keys [cri] :as context} compartment tid start-id]
   (let [start-key (compartment-list-start-key compartment tid start-id)
         cmp-key (compartment-list-cmp-key compartment tid)]
     (coll/eduction
       (comp
         (take-while (fn [[prefix]] (bytes/= prefix cmp-key)))
-        (map (fn [[_ id]] (resource-as-of/resource-handle raoi tid id t)))
+        (map (fn [[_ id]] (resource-as-of/resource-handle context tid id)))
         (remove nil?)
         (remove rh/deleted?))
       (i/keys cri codec/decode-compartment-resource-type-key start-key))))
@@ -101,9 +101,9 @@
 
 (defn compartment-query
   "Iterates over the CSV index "
-  [snapshot csvri raoi compartment tid clauses t]
+  [context compartment tid clauses]
   (let [[[search-param _ _ values] & other-clauses] clauses]
     (coll/eduction
-      (other-clauses-filter snapshot tid other-clauses)
-      (search-param/compartment-resources search-param csvri raoi compartment
-                                          tid values t))))
+      (other-clauses-filter context tid other-clauses)
+      (search-param/compartment-resource-handles
+        search-param context compartment tid values))))

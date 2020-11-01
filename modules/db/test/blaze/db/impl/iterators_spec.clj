@@ -5,5 +5,9 @@
     [clojure.spec.alpha :as s]))
 
 
+(s/fdef i/keys
+  :args (s/cat :iter :blaze.db/kv-iterator :decode fn? :start-key bytes?))
+
+
 (s/fdef i/kvs
   :args (s/cat :iter :blaze.db/kv-iterator :decode fn? :start-key bytes?))

@@ -130,7 +130,7 @@
 
 (defn- store-tx-data! [kv-store {:keys [t instant tx-cmds]}]
   (log/trace "store transaction data with t =" t)
-  (kv/put kv-store (encode-t t) (encode-tx-data instant tx-cmds)))
+  (kv/put! kv-store (encode-t t) (encode-tx-data instant tx-cmds)))
 
 
 (defn- transfer-tx-data! [queues tx-data]
@@ -185,7 +185,7 @@
     (kv/seek-to-last! iter)
     (let [kb (ByteBuffer/allocateDirect Long/BYTES)]
       (when (kv/valid? iter)
-        (kv/key iter kb)
+        (kv/key! iter kb)
         (when (<= Long/BYTES (.remaining kb))
           (.getLong kb))))))
 

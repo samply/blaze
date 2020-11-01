@@ -1,26 +1,13 @@
 (ns blaze.db.impl.index.resource-handle
   (:require
     [blaze.db.impl.codec :as codec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.fhir.util :as fhir-util])
+    [blaze.fhir.spec.type :as type])
   (:import
-    [com.google.common.hash HashCode]
-    [java.util Arrays])
+    [com.google.common.hash HashCode])
   (:refer-clojure :exclude [hash]))
 
 
 (set! *warn-on-reflection* true)
-
-
-(let [kvs (->> (fhir-util/resources)
-               (map (fn [{:keys [type]}] [(codec/tid type) type]))
-               (sort-by first))
-      tid->idx (int-array (map first kvs))
-      idx->type (object-array (map second kvs))]
-  (defn tid->type [tid]
-    (let [idx (Arrays/binarySearch tid->idx ^long tid)]
-      (when (nat-int? idx)
-        (aget idx->type idx)))))
 
 
 (defrecord ResourceHandle [^int tid ^String id ^long t
@@ -28,7 +15,7 @@
   type/FhirType
   (-type [_]
     ;; TODO: maybe cache this
-    (keyword "fhir" (tid->type tid))))
+    (keyword "fhir" (codec/tid->type tid))))
 
 
 (defn resource-handle

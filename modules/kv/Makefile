@@ -2,9 +2,9 @@ lint:
 	clj-kondo --lint src
 
 test:
-	true
+	clojure -M:test --profile :ci
 
 test-coverage:
-	true
+	clojure -M:test-coverage
 
 .PHONY: lint test test-coverage

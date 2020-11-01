@@ -72,16 +72,16 @@
 (deftype RocksKvSnapshot
   [^RocksDB db ^Snapshot snapshot ^ReadOptions read-opts cfhs]
   kv/KvSnapshot
-  (new-iterator [_]
+  (-new-iterator [_]
     (->RocksKvIterator (.newIterator db read-opts)))
 
-  (new-iterator [_ column-family]
+  (-new-iterator [_ column-family]
     (->RocksKvIterator (.newIterator db (get-cfh cfhs column-family) read-opts)))
 
-  (snapshot-get [_ k]
+  (-snapshot-get [_ k]
     (.get db read-opts ^bytes k))
 
-  (snapshot-get [_ column-family k]
+  (-snapshot-get [_ column-family k]
     (.get db (get-cfh cfhs column-family) read-opts ^bytes k))
 
   Closeable
@@ -92,7 +92,7 @@
 
 (deftype RocksKvStore [^RocksDB db ^Options opts ^WriteOptions write-opts cfhs]
   kv/KvStore
-  (new-snapshot [_]
+  (-new-snapshot [_]
     (let [snapshot (.getSnapshot db)]
       (->RocksKvSnapshot db snapshot (.setSnapshot (ReadOptions.) snapshot) cfhs)))
 
@@ -123,7 +123,7 @@
   (-put [_ key value]
     (.put db key value))
 
-  (delete [_ ks]
+  (-delete [_ ks]
     (with-open [wb (WriteBatch.)]
       (doseq [k ks]
         (if (vector? k)
@@ -132,7 +132,7 @@
           (.delete wb k)))
       (.write db write-opts wb)))
 
-  (write [_ entries]
+  (-write [_ entries]
     (with-open [wb (WriteBatch.)]
       (doseq [[op column-family k v] entries]
         (if (keyword? column-family)

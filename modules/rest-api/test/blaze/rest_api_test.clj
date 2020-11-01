@@ -1,5 +1,6 @@
 (ns blaze.rest-api-test
   (:require
+    [blaze.db.impl.search-param]
     [blaze.db.search-param-registry :as sr]
     [blaze.rest-api :as rest-api]
     [clojure.spec.test.alpha :as st]
@@ -177,8 +178,12 @@
     "/Patient/23/_history/42"))
 
 
-(def copyright
+(def ^:private copyright
   #fhir/markdown"Copyright 2019 The Samply Development Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
+
+
+(defn- search-param [name]
+  (fn [params] (some #(when (= name (:name %)) %) params)))
 
 
 (deftest capabilities-handler-test
@@ -233,7 +238,7 @@
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :interaction 0 :code] := #fhir/code"history-system"))
 
-  (testing "one interaction"
+  (testing "Patient interaction"
     (given
       (-> @((rest-api/capabilities-handler
               {:base-url "base-url-131713"
@@ -253,6 +258,31 @@
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :resource 0 :type] := #fhir/code"Patient"
       [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"))
+
+  (testing "Observation interaction"
+    (given
+      (-> @((rest-api/capabilities-handler
+              {:base-url "base-url-131713"
+               :version "version-131640"
+               :structure-definitions
+               [{:kind "resource" :name "Observation"}]
+               :search-param-registry search-param-registry
+               :resource-patterns
+               [#:blaze.rest-api.resource-pattern
+                   {:type "Observation"
+                    :interactions
+                    {:read
+                     #:blaze.rest-api.interaction
+                         {:handler (fn [_])}}}]})
+            {})
+          :body)
+      :fhir/type := :fhir/CapabilityStatement
+      [:rest 0 :resource 0 :type] := #fhir/code"Observation"
+      [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
+      [:rest 0 :resource 0 :searchParam (search-param "value-quantity") :type]
+      := #fhir/code"quantity"
+      [:rest 0 :resource 0 :searchParam (search-param "value-quantity") :documentation]
+      := #fhir/markdown"Decimal values are truncated at two digits after the decimal point."))
 
   (testing "one operation"
     (given
