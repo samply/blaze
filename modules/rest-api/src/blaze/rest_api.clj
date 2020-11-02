@@ -365,7 +365,7 @@
          :publisher "The Samply Development Community"
          :copyright copyright
          :kind #fhir/code"instance"
-         :date #fhir/dateTime"2020-10-26"
+         :date #fhir/dateTime"2020-11-02"
          :software
          {:name "Blaze"
           :version version}
