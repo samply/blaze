@@ -130,14 +130,14 @@
     rs/ResourceLookup
     (-get [_ hash]
       (Thread/sleep (long (* 100 (Math/random))))
-      (rs/-get resource-store hash))
+      (rs/get resource-store hash))
     (-multi-get [_ hashes]
       (Thread/sleep (long (* 100 (Math/random))))
-      (rs/-multi-get resource-store hashes))
+      (rs/multi-get resource-store hashes))
     rs/ResourceStore
     (-put [_ entries]
       (Thread/sleep (long (* 100 (Math/random))))
-      (rs/-put resource-store entries))))
+      (rs/put resource-store entries))))
 
 
 (deftest sync-test

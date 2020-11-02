@@ -59,7 +59,7 @@
     (ac/supply
       (some-> (get-content kv-store hash)
               (parse-cbor hash)
-              (fhir-spec/conform-json))))
+              (fhir-spec/conform-cbor))))
 
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")
