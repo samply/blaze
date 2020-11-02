@@ -243,7 +243,7 @@
 
   rs/ResourceLookup
   (-get [_ hash]
-    (rs/-get resource-store hash))
+    (rs/get resource-store hash))
 
   p/QueryCompiler
   (-compile-type-query [_ type clauses]
@@ -277,11 +277,11 @@
 
   p/Pull
   (-pull [_ resource-handle]
-    (-> (rs/-get resource-store (rh/hash resource-handle))
+    (-> (rs/get resource-store (rh/hash resource-handle))
         (ac/then-apply #(enhance-resource kv-store resource-handle %))))
 
   (-pull-content [_ resource-handle]
-    (-> (rs/-get resource-store (rh/hash resource-handle))
+    (-> (rs/get resource-store (rh/hash resource-handle))
         (ac/then-apply #(with-meta % (meta resource-handle)))))
 
   Runnable

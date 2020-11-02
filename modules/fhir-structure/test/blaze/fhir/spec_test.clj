@@ -11,7 +11,9 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cuerdas.core :as str]
-    [juxt.iota :refer [given]]))
+    [juxt.iota :refer [given]])
+  (:import
+    [java.time LocalTime]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -336,6 +338,14 @@
   (testing "Patient with multipleBirthInteger"
     (let [json {:resourceType "Patient" :multipleBirthInteger 2}]
       (is (= json (fhir-spec/unform-json {:fhir/type :fhir/Patient :multipleBirth (int 2)}))))))
+
+
+(deftest unform-primitives-test
+  (testing "time"
+    (testing "json"
+      (is (= "17:23:00" (s2/unform :fhir.json/time (LocalTime/of 17 23)))))
+    (testing "cbor"
+      (is (= "17:23:00" (s2/unform :fhir.cbor/time (LocalTime/of 17 23)))))))
 
 
 (deftest unform-xml-test

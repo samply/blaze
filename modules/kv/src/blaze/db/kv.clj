@@ -185,7 +185,7 @@
 
 
 (defn get
-  "Returns the value if there is any."
+  "Returns the value if there is any, nil otherwise."
   ([store key]
    (-get store key))
   ([store column-family key]
