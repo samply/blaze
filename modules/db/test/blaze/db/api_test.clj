@@ -34,7 +34,7 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/set-level! :error)
+  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
