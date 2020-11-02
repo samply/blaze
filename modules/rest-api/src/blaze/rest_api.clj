@@ -266,6 +266,10 @@
              (ring/header "Access-Control-Allow-Headers" "content-type"))))}))
 
 
+(def ^:private quantity-documentation
+  #fhir/markdown"Decimal values are truncated at two digits after the decimal point.")
+
+
 (defn- capability-resource
   {:arglists '([resource-patterns operations search-param-registry structure-definition])}
   [resource-patterns operations search-param-registry
@@ -318,7 +322,9 @@
              (fn [{:keys [name url type]}]
                (cond-> {:name name :type (type/->Code type)}
                  url
-                 (assoc :definition (type/->Canonical url)))))
+                 (assoc :definition (type/->Canonical url))
+                 (= "quantity" type)
+                 (assoc :documentation quantity-documentation))))
            (sr/list-by-type search-param-registry name))}
 
         (seq operations)
@@ -359,7 +365,7 @@
          :publisher "The Samply Development Community"
          :copyright copyright
          :kind #fhir/code"instance"
-         :date #fhir/dateTime"2020-10-26"
+         :date #fhir/dateTime"2020-11-02"
          :software
          {:name "Blaze"
           :version version}

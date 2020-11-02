@@ -1,6 +1,6 @@
 (ns blaze.db.impl.codec-test
   (:require
-    [blaze.db.impl.bytes :as bytes]
+    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec-spec]
     [blaze.fhir.spec.type.system :as system]

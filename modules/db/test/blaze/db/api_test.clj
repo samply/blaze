@@ -7,8 +7,13 @@
     [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
+    [blaze.db.bytes :as bytes]
+    [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db-spec]
+    [blaze.db.impl.iterators :as i]
+    [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
     [blaze.db.resource-store :as rs]
@@ -35,6 +40,20 @@
 
 
 (test/use-fixtures :each fixture)
+
+
+(defmacro catch-ex-data [& body]
+  `(try
+     ~@body
+     (catch Exception e#
+       (ex-data e#))))
+
+
+(defmacro catch-cause-ex-data [& body]
+  `(try
+     ~@body
+     (catch Exception e#
+       (ex-data (ex-cause e#)))))
 
 
 (def ^:private search-param-registry (sr/init-search-param-registry))
@@ -111,14 +130,14 @@
     rs/ResourceLookup
     (-get [_ hash]
       (Thread/sleep (long (* 100 (Math/random))))
-      (rs/-get resource-store hash))
+      (rs/get resource-store hash))
     (-multi-get [_ hashes]
       (Thread/sleep (long (* 100 (Math/random))))
-      (rs/-multi-get resource-store hashes))
+      (rs/multi-get resource-store hashes))
     rs/ResourceStore
     (-put [_ entries]
       (Thread/sleep (long (* 100 (Math/random))))
-      (rs/-put resource-store entries))))
+      (rs/put resource-store entries))))
 
 
 (deftest sync-test
@@ -270,57 +289,53 @@
   (testing "a transaction with duplicate resources fails"
     (testing "two puts"
       (with-open [node (new-node)]
-        (try
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/Patient :id "0"}]
-              [:put {:fhir/type :fhir/Patient :id "0"}]])
-          (catch Exception e
-            (given (ex-data (ex-cause e))
-              ::anom/category := ::anom/incorrect
-              ::anom/message := "Duplicate resource `Patient/0`.")))))
+        (given
+          (catch-cause-ex-data
+            @(d/transact
+               node
+               [[:put {:fhir/type :fhir/Patient :id "0"}]
+                [:put {:fhir/type :fhir/Patient :id "0"}]]))
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Duplicate resource `Patient/0`.")))
 
     (testing "one put and one delete"
       (with-open [node (new-node)]
-        (try
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/Patient :id "0"}]
-              [:delete "Patient" "0"]])
-          (catch Exception e
-            (given (ex-data (ex-cause e))
-              ::anom/category := ::anom/incorrect
-              ::anom/message := "Duplicate resource `Patient/0`."))))))
+        (given
+          (catch-cause-ex-data
+            @(d/transact
+               node
+               [[:put {:fhir/type :fhir/Patient :id "0"}]
+                [:delete "Patient" "0"]]))
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Duplicate resource `Patient/0`."))))
 
   (testing "a transaction violating referential integrity fails"
     (testing "creating an Observation were the subject doesn't exist"
       (testing "create"
         (with-open [node (new-node)]
-          (try
-            @(d/transact
-               node
-               [[:create {:fhir/type :fhir/Observation :id "0"
-                          :subject
-                          {:fhir/type :fhir/Reference
-                           :reference "Patient/0"}}]])
-            (catch Exception e
-              (given (ex-data (ex-cause e))
-                ::anom/category := ::anom/conflict
-                ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))))
+          (given
+            (catch-cause-ex-data
+              @(d/transact
+                 node
+                 [[:create {:fhir/type :fhir/Observation :id "0"
+                            :subject
+                            {:fhir/type :fhir/Reference
+                             :reference "Patient/0"}}]]))
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
 
       (testing "put"
         (with-open [node (new-node)]
-          (try
-            @(d/transact
-               node
-               [[:put {:fhir/type :fhir/Observation :id "0"
-                       :subject
-                       {:fhir/type :fhir/Reference
-                        :reference "Patient/0"}}]])
-            (catch Exception e
-              (given (ex-data (ex-cause e))
-                ::anom/category := ::anom/conflict
-                ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
+          (given
+            (catch-cause-ex-data
+              @(d/transact
+                 node
+                 [[:put {:fhir/type :fhir/Observation :id "0"
+                         :subject
+                         {:fhir/type :fhir/Reference
+                          :reference "Patient/0"}}]]))
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
     (testing "creating a List were the entry item will be deleted in the same transaction"
       (with-open [node (new-node)]
@@ -329,25 +344,24 @@
            [[:create {:fhir/type :fhir/Observation :id "0"}]
             [:create {:fhir/type :fhir/Observation :id "1"}]])
 
-        (try
-          @(d/transact
-             node
-             [[:create
-               {:fhir/type :fhir/List :id "0"
-                :entry
-                [{:fhir/type :fhir.List/entry
-                  :item
-                  {:fhir/type :fhir/Reference
-                   :reference "Observation/0"}}
-                 {:fhir/type :fhir.List/entry
-                  :item
-                  {:fhir/type :fhir/Reference
-                   :reference "Observation/1"}}]}]
-              [:delete "Observation" "1"]])
-          (catch Exception e
-            (given (ex-data (ex-cause e))
-              ::anom/category := ::anom/conflict
-              ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))))
+        (given
+          (catch-cause-ex-data
+            @(d/transact
+               node
+               [[:create
+                 {:fhir/type :fhir/List :id "0"
+                  :entry
+                  [{:fhir/type :fhir.List/entry
+                    :item
+                    {:fhir/type :fhir/Reference
+                     :reference "Observation/0"}}
+                   {:fhir/type :fhir.List/entry
+                    :item
+                    {:fhir/type :fhir/Reference
+                     :reference "Observation/1"}}]}]
+                [:delete "Observation" "1"]]))
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
 
   (testing "creating 10 transactions in parallel"
     (with-open [node (new-node-with
@@ -376,22 +390,18 @@
     (testing "on put"
       (with-open [node (new-node-with
                          {:resource-store (new-resource-store-failing-on-put)})]
-
-        (try
-          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-          (catch Exception e
-            (given (ex-data (ex-cause e))
-              ::anom/category := ::anom/fault)))))
+        (given
+          (catch-cause-ex-data
+            @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
+          ::anom/category := ::anom/fault)))
 
     (testing "on get"
       (with-open [node (new-node-with
                          {:resource-store (new-resource-store-failing-on-get)})]
-
-        (try
-          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-          (catch Exception e
-            (given (ex-data (ex-cause e))
-              ::anom/category := ::anom/fault)))))))
+        (given
+          (catch-cause-ex-data
+            @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
+          ::anom/category := ::anom/fault)))))
 
 
 (deftest tx
@@ -866,6 +876,13 @@
           [0 :id] := "id-1"
           1 := nil))
 
+      (testing "gender and active"
+        (given @(pull-type-query node "Patient" [["gender" "female"]
+                                                 ["active" "true" "false"]])
+          count := 2
+          [0 :id] := "id-1"
+          [1 :id] := "id-2"))
+
       (testing "address with line"
         (testing "in first position"
           (given @(pull-type-query node "Patient" [["address" "Liebigstraße"]])
@@ -920,6 +937,13 @@
           [0 :id] := "id-2"
           1 := nil))
 
+      (testing "gender and address-city with multiple values"
+        (given @(pull-type-query node "Patient" [["gender" "female"]
+                                                 ["address-city" "Leipzig" "Berlin"]])
+          count := 2
+          [0 :id] := "id-1"
+          [1 :id] := "id-2"))
+
       (testing "birthdate YYYYMMDD"
         (given @(pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
           [0 :id] := "id-0"
@@ -949,11 +973,11 @@
           1 := nil))
 
       (testing "birthdate with `ne` prefix is unsupported"
-        (try
-          @(pull-type-query node "Patient" [["birthdate" "ne2020-02-08"]])
-          (catch Exception e
-            (given (ex-data e)
-              ::anom/category := ::anom/unsupported))))
+        (given
+          (catch-ex-data
+            (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]]))
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported prefix `ne` in search parameter of type date."))
 
       (testing "birthdate with `ge` prefix"
         (testing "finds equal date"
@@ -996,6 +1020,57 @@
             [1 :id] := "id-0"
             [1 :birthDate] := #fhir/date"2020-02-08"
             2 := nil)))
+
+      (testing "gender and birthdate"
+        (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+                                                 ["birthdate" "2020-02"]])
+          count := 2
+          [0 :id] := "id-0"
+          [1 :id] := "id-1"))
+
+      (testing "gender and birthdate with multiple values"
+        (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+                                                 ["birthdate" "2020-02" "2020"]])
+          count := 3
+          [0 :id] := "id-0"
+          [1 :id] := "id-1"
+          [2 :id] := "id-2"))
+
+      (testing "gender and birthdate with prefix"
+        (testing "greater equal"
+          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+                                                   ["birthdate" "ge2020"]])
+            count := 3
+            [0 :id] := "id-0"
+            [1 :id] := "id-1"
+            [2 :id] := "id-2")
+
+          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+                                                   ["birthdate" "ge2020-02"]])
+            count := 2
+            [0 :id] := "id-0"
+            [1 :id] := "id-1"))
+
+        (testing "less equal"
+          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+                                                   ["birthdate" "le2020"]])
+            count := 3
+            [0 :id] := "id-0"
+            [1 :id] := "id-1"
+            [2 :id] := "id-2")
+
+          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+                                                   ["birthdate" "le2020-02"]])
+            count := 2
+            [0 :id] := "id-0"
+            [1 :id] := "id-1")
+
+          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+                                                   ["birthdate" "le2021"]])
+            count := 3
+            [0 :id] := "id-0"
+            [1 :id] := "id-1"
+            [2 :id] := "id-2")))
 
       (testing "deceased"
         (given @(pull-type-query node "Patient" [["deceased" "true"]])
@@ -1205,47 +1280,319 @@
                  :status #fhir/code"final"
                  :value
                  {:fhir/type :fhir/Quantity
-                  :value 23.42M
+                  :value 0M
+                  :unit "kg/m²"
+                  :code #fhir/code"kg/m2"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-1"
+                 :status #fhir/code"final"
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 1M
+                  :unit "kg/m²"
+                  :code #fhir/code"kg/m2"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-2"
+                 :status #fhir/code"final"
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 2.11M
+                  :unit "kg/m²"
+                  :code #fhir/code"kg/m2"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-3"
+                 :status #fhir/code"final"
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 3M
                   :unit "kg/m²"
                   :code #fhir/code"kg/m2"
                   :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "value-quantity"
         (testing "without unit"
-          (let [clauses [["value-quantity" "23.42"]]]
+          (let [clauses [["value-quantity" "2.11"]]]
             (given @(pull-type-query node "Observation" clauses)
-              [0 :id] := "id-0"
-              1 := nil)))
+              count := 1
+              [0 :id] := "id-2")))
 
         (testing "with minimal unit"
-          (let [clauses [["value-quantity" "23.42|kg/m2"]]]
+          (let [clauses [["value-quantity" "2.11|kg/m2"]]]
             (given @(pull-type-query node "Observation" clauses)
-              [0 :id] := "id-0"
-              1 := nil)))
+              count := 1
+              [0 :id] := "id-2")))
 
         (testing "with human unit"
-          (let [clauses [["value-quantity" "23.42|kg/m²"]]]
+          (let [clauses [["value-quantity" "2.11|kg/m²"]]]
             (given @(pull-type-query node "Observation" clauses)
-              [0 :id] := "id-0"
-              1 := nil)))
+              count := 1
+              [0 :id] := "id-2")))
 
         (testing "with full unit"
-          (let [clauses [["value-quantity" "23.42|http://unitsofmeasure.org|kg/m2"]]]
+          (let [clauses [["value-quantity" "2.11|http://unitsofmeasure.org|kg/m2"]]]
             (given @(pull-type-query node "Observation" clauses)
-              [0 :id] := "id-0"
-              1 := nil))))
+              count := 1
+              [0 :id] := "id-2")))
+
+        (testing "with lesser precision"
+          (let [clauses [["value-quantity" "2.1"]]]
+            (given @(pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "id-2")))
+
+        (testing "with even lesser precision"
+          (let [clauses [["value-quantity" "2"]]]
+            (given @(pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "id-2")))
+
+        (testing "with prefix"
+          (testing "not equal"
+            (given
+              (catch-ex-data
+                (d/type-query (d/db node) "Observation" [["value-quantity" "ne2.11"]]))
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `ne` in search parameter of type quantity."))
+
+          (testing "greater than"
+            (let [clauses [["value-quantity" "gt2.11"]]]
+              (given @(pull-type-query node "Observation" clauses)
+                count := 1
+                [0 :id] := "id-3"))
+
+            (testing "with lesser precision"
+              (let [clauses [["value-quantity" "gt2.1"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-3"))
+
+              (testing "it is possible to start with the second observation"
+                (let [clauses [["value-quantity" "gt2.1"]]]
+                  (given @(pull-type-query node "Observation" clauses "id-3")
+                    count := 1
+                    [0 :id] := "id-3"))))
+
+            (testing "with even lesser precision"
+              (let [clauses [["value-quantity" "gt2"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-3"))))
+
+          (testing "less than"
+            (let [clauses [["value-quantity" "lt2.11"]]]
+              (given @(pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))
+
+            (testing "it is possible to start with the second observation"
+              (let [clauses [["value-quantity" "lt2.11"]]]
+                (given @(pull-type-query node "Observation" clauses "id-0")
+                  count := 1
+                  [0 :id] := "id-0")))
+
+            (testing "with lesser precision"
+              (let [clauses [["value-quantity" "lt2.1"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0")))
+
+            (testing "with even lesser precision"
+              (let [clauses [["value-quantity" "lt2"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0"))))
+
+          (testing "greater equal"
+            (let [clauses [["value-quantity" "ge2.11"]]]
+              (given @(pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-3"))
+
+            (testing "it is possible to start with the second observation"
+              (let [clauses [["value-quantity" "ge2.11"]]]
+                (given @(pull-type-query node "Observation" clauses "id-3")
+                  count := 1
+                  [0 :id] := "id-3")))
+
+            (testing "with lesser precision"
+              (let [clauses [["value-quantity" "ge2.1"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-3")))
+
+            (testing "with even lesser precision"
+              (let [clauses [["value-quantity" "ge2"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-3"))))
+
+          (testing "less equal"
+            (let [clauses [["value-quantity" "le2.11"]]]
+              (given @(pull-type-query node "Observation" clauses)
+                count := 3
+                [0 :id] := "id-2"
+                [1 :id] := "id-1"
+                [2 :id] := "id-0"))
+
+            (testing "it is possible to start with the second observation"
+              (let [clauses [["value-quantity" "le2.11"]]]
+                (given @(pull-type-query node "Observation" clauses "id-1")
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0")))
+
+            (testing "with lesser precision"
+              (let [clauses [["value-quantity" "le2.1"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0")))
+
+            (testing "with even lesser precision"
+              (let [clauses [["value-quantity" "le2"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0"))))
+
+          (testing "starts after"
+            (given
+              (catch-ex-data
+                (d/type-query (d/db node) "Observation" [["value-quantity" "sa2.11"]]))
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `sa` in search parameter of type quantity."))
+
+          (testing "ends before"
+            (given
+              (catch-ex-data
+                (d/type-query (d/db node) "Observation" [["value-quantity" "eb2.11"]]))
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `eb` in search parameter of type quantity."))
+
+          (testing "approximately"
+            (given
+              (catch-ex-data
+                (d/type-query (d/db node) "Observation" [["value-quantity" "ap2.11"]]))
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `ap` in search parameter of type quantity.")))
+
+        (testing "with more than one value"
+          (let [clauses [["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
+            (given @(pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-2"
+              [1 :id] := "id-1"))))
 
       (testing "status and value-quantity"
-        (let [clauses [["status" "final"] ["value-quantity" "23.42|kg/m2"]]]
+        (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2"]]]
           (given @(pull-type-query node "Observation" clauses)
-            [0 :id] := "id-0"
-            1 := nil)))
+            count := 1
+            [0 :id] := "id-2"))
+
+        (testing "with lesser precision"
+          (let [clauses [["status" "final"] ["value-quantity" "2.1|kg/m2"]]]
+            (given @(pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "id-2")))
+
+        (testing "with prefix"
+          (testing "not equal"
+            (given
+              (catch-ex-data
+                (let [clauses [["status" "final"] ["value-quantity" "ne2.11|kg/m2"]]]
+                  (d/type-query (d/db node) "Observation" clauses)))
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `ne` in search parameter of type quantity."))
+
+          (testing "greater than"
+            (let [clauses [["status" "final"] ["value-quantity" "gt2.11|kg/m2"]]]
+              (given @(pull-type-query node "Observation" clauses)
+                count := 1
+                [0 :id] := "id-3"))
+
+            (testing "with lesser precision"
+              (let [clauses [["status" "final"] ["value-quantity" "gt2.1|kg/m2"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-3"))))
+
+          (testing "less than"
+            (let [clauses [["status" "final"] ["value-quantity" "lt2.11|kg/m2"]]]
+              (given @(pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1")))
+
+          (testing "greater equal"
+            (let [clauses [["status" "final"] ["value-quantity" "ge2.11|kg/m2"]]]
+              (given @(pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-3")))
+
+          (testing "less equal"
+            (let [clauses [["status" "final"] ["value-quantity" "le2.11|kg/m2"]]]
+              (given @(pull-type-query node "Observation" clauses)
+                count := 3
+                [0 :id] := "id-0"
+                [1 :id] := "id-1"
+                [2 :id] := "id-2"))
+
+            (testing "with lesser precision"
+              (let [clauses [["status" "final"] ["value-quantity" "le2.1|kg/m2"]]]
+                (given @(pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1"))))
+
+          (testing "starts after"
+            (given
+              (catch-ex-data
+                (let [clauses [["status" "final"] ["value-quantity" "sa2.11|kg/m2"]]]
+                  (d/type-query (d/db node) "Observation" clauses)))
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `sa` in search parameter of type quantity."))
+
+          (testing "ends before"
+            (given
+              (catch-ex-data
+                (let [clauses [["status" "final"] ["value-quantity" "eb2.11|kg/m2"]]]
+                  (d/type-query (d/db node) "Observation" clauses)))
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `eb` in search parameter of type quantity."))
+
+          (testing "approximately"
+            (given
+              (catch-ex-data
+                (let [clauses [["status" "final"] ["value-quantity" "ap2.11|kg/m2"]]]
+                  (d/type-query (d/db node) "Observation" clauses)))
+              ::anom/category := ::anom/unsupported
+              ::anom/message := "Unsupported prefix `ap` in search parameter of type quantity.")))
+
+        (testing "with more than one value"
+          (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
+            (given @(pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-1"
+              [1 :id] := "id-2"))))
 
       (testing "value-quantity and status"
-        (let [clauses [["value-quantity" "23.42|kg/m2"] ["status" "final"]]]
+        (let [clauses [["value-quantity" "2.11|kg/m2"] ["status" "final"]]]
           (given @(pull-type-query node "Observation" clauses)
-            [0 :id] := "id-0"
-            1 := nil)))))
+            count := 1
+            [0 :id] := "id-2")))))
 
   (testing "Observation"
     (with-open [node (new-node)]
@@ -1273,15 +1620,68 @@
       (testing "full result"
         (let [clauses [["value-quantity" "23.42"]]]
           (given @(pull-type-query node "Observation" clauses)
+            count := 2
             [0 :id] := "id-0"
-            [1 :id] := "id-1"
-            2 := nil)))
+            [1 :id] := "id-1")))
 
-      (testing "it is possible to start with the second patient"
+      (testing "it is possible to start with the second observation"
         (let [clauses [["value-quantity" "23.42"]]]
           (given @(pull-type-query node "Observation" clauses "id-1")
-            [0 :id] := "id-1"
-            1 := nil)))))
+            count := 1
+            [0 :id] := "id-1")))))
+
+  (testing "quantity search doesn't overshoot into other types"
+    (with-open [node (new-node)]
+      @(d/transact
+         node
+         [[:put {:fhir/type :fhir/Observation
+                 :id "id-0"
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 0M
+                  :unit "m"
+                  :code #fhir/code"m"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+          [:put {:fhir/type :fhir/TestScript
+                 :id "id-0"
+                 :useContext
+                 [{:fhir/type :fhir/UsageContext
+                   :value
+                   {:fhir/type :fhir/Quantity
+                    :value 0M
+                    :unit "m"
+                    :code #fhir/code"m"
+                    :system #fhir/uri"http://unitsofmeasure.org"}}]}]])
+
+      (testing "ResourceSearchParamValue looks like it should"
+        (with-open [snapshot (kv/new-snapshot (:kv-store node))
+                    iter (kv/new-iterator snapshot :resource-value-index)]
+          (is
+            (= (into [] (i/keys iter codec/decode-resource-sp-value-key-human bytes/empty))
+               [["Observation" "id-0" "7B68D1DB" "value-quantity" "0000000080"]
+                ["Observation" "id-0" "7B68D1DB" "value-quantity" "5C38E45A80"]
+                ["Observation" "id-0" "7B68D1DB" "value-quantity" "9B780D9180"]
+                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" "0000000080"]
+                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" "5C38E45A80"]
+                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" "9B780D9180"]
+                ["Observation" "id-0" "7B68D1DB" "_id" "165494C5"]
+                ["TestScript" "id-0" "10FA3621" "context-quantity" "0000000080"]
+                ["TestScript" "id-0" "10FA3621" "context-quantity" "5C38E45A80"]
+                ["TestScript" "id-0" "10FA3621" "context-quantity" "9B780D9180"]
+                ["TestScript" "id-0" "10FA3621" "_id" "165494C5"]]))))
+
+
+      (testing "TestScript would be found"
+        (let [clauses [["context-quantity" "0"]]]
+          (given @(pull-type-query node "TestScript" clauses)
+            count := 1
+            [0 :id] := "id-0")))
+
+      (testing "greater equal"
+        (let [clauses [["value-quantity" "ge0"]]]
+          (given @(pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-0")))))
 
   (testing "MeasureReport"
     (with-open [node (new-node)]

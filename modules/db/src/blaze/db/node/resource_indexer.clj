@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.async.comp :as ac]
-    [blaze.db.impl.bytes :as bytes]
+    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
@@ -71,7 +71,7 @@
 
 (defn- put [store entries]
   (with-open [_ (prom/timer duration-seconds "put")]
-    (kv/put store entries)))
+    (kv/put! store entries)))
 
 
 (defn- missing-hashes-msg [missing-hashes]

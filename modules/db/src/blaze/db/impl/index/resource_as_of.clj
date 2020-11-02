@@ -16,16 +16,16 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(def ^:const ^:private ^long max-key-size
+(def ^:private ^:const ^long max-key-size
   (+ codec/tid-size codec/max-id-size codec/t-size))
 
 
-(def ^:const ^:private ^long value-size
+(def ^:private ^:const ^long value-size
   (+ codec/hash-size codec/state-size))
 
 
 (defn- key-reader [iter ^ByteBuffer kb]
-  (fn [_] (kv/key iter (.clear kb))))
+  (fn [_] (kv/key! iter (.clear kb))))
 
 
 (defn- focus-id!
@@ -123,7 +123,7 @@
   (let [vb (ByteBuffer/allocateDirect value-size)]
     #(let [t (codec/get-t! kb)]
        (when (<= t ^long base-t)
-         (kv/value iter (.clear vb))
+         (kv/value! iter (.clear vb))
          (new-entry! tid ib vb t)))))
 
 
@@ -132,7 +132,7 @@
   (let [vb (ByteBuffer/allocateDirect value-size)]
     #(let [t (codec/get-t! kb)]
        (when (<= t ^long base-t)
-         (kv/value iter (.clear vb))
+         (kv/value! iter (.clear vb))
          (new-entry! @tid-box ib vb t)))))
 
 
@@ -257,7 +257,7 @@
   and value buffer. The hash and state which are read from the value buffer are
   only read once for each resource handle."
   ^IReduceInit
-  [raoi tid start-id t]
+  [{:keys [raoi t]} tid start-id]
   (let [kb (ByteBuffer/allocateDirect max-key-size)
         ib (.limit (ByteBuffer/allocate codec/max-id-size) 0)
         entry-creator (type-entry-creator tid raoi kb ib t)]
@@ -277,7 +277,7 @@
 
   The list starts at the optional `start-tid` and `start-id`."
   ^IReduceInit
-  [raoi start-tid start-id t]
+  [{:keys [raoi t]} start-tid start-id]
   (let [kb (ByteBuffer/allocateDirect max-key-size)
         tid-box (volatile! start-tid)
         ib (.limit (ByteBuffer/allocate codec/max-id-size) 0)
@@ -371,7 +371,7 @@
 (defn resource-handle
   "Returns a resource handle with `tid` and `id` at or before `t` or nil if
   there is none."
-  [raoi tid id t]
+  [{:keys [raoi t]} tid id]
   (with-raoi-kv
     raoi (codec/resource-as-of-key tid id t)
     (fn [k v]

@@ -5,6 +5,7 @@
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv.mem-spec]
     [blaze.db.node.tx-indexer.verify :as verify]
     [blaze.db.node.tx-indexer.verify-spec]
     [blaze.fhir.hash :as hash]
@@ -36,6 +37,7 @@
      :t-by-instant-index nil
      :resource-as-of-index nil
      :type-as-of-index nil
+     :system-as-of-index nil
      :type-stats-index nil
      :system-stats-index nil}))
 
@@ -53,7 +55,7 @@
 (def store-patient-0
   (let [kv-store (init-store)
         cmds [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)}]]
-    (kv/put kv-store (verify/verify-tx-cmds kv-store 1 cmds))
+    (kv/put! kv-store (verify/verify-tx-cmds kv-store 1 cmds))
     kv-store))
 
 

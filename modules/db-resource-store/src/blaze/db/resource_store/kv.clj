@@ -59,7 +59,7 @@
     (ac/supply
       (some-> (get-content kv-store hash)
               (parse-cbor hash)
-              (fhir-spec/conform-json))))
+              (fhir-spec/conform-cbor))))
 
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")
@@ -67,7 +67,7 @@
 
   rs/ResourceStore
   (-put [_ entries]
-    (ac/supply (kv/put kv-store (into [] entry-freezer entries)))))
+    (ac/supply (kv/put! kv-store (into [] entry-freezer entries)))))
 
 
 (defn new-kv-resource-store [kv-store]

@@ -1,6 +1,11 @@
 (ns blaze.db.kv.mem
+  "In-Memory Implementation of a Key-Value Store.
+
+  It uses sorted maps with byte array keys and values."
   (:require
+    [blaze.anomaly :refer [throw-anom]]
     [blaze.db.kv :as kv]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -28,53 +33,62 @@
     (alength bs)))
 
 
+(defn- prev [db {x :first}]
+  (let [[x & xs] (rsubseq db < (key x))]
+    {:first x :rest xs}))
+
+
+(defn- check-valid [iter]
+  (when (not (kv/valid? iter))
+    (throw-anom ::anom/fault "The iterator is invalid.")))
+
+
 (deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
   kv/KvIterator
   (-valid [_]
-    (when closed? (throw (Exception. "closed")))
+    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
     (some? (:first @cursor)))
 
   (-seek-to-first [_]
-    (when closed? (throw (Exception. "closed")))
+    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
     (reset! cursor {:first (first db) :rest (rest db)}))
 
   (-seek-to-last [_]
-    (when closed? (throw (Exception. "closed")))
+    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
     (reset! cursor {:first (last db) :rest nil}))
 
   (-seek [_ k]
-    (when closed? (throw (Exception. "closed")))
+    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
     (let [[x & xs] (subseq db >= k)]
       (reset! cursor {:first x :rest xs})))
 
   (-seek-for-prev [_ k]
-    (when closed? (throw (Exception. "closed")))
+    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
     (let [[x & xs] (rsubseq db <= k)]
       (reset! cursor {:first x :rest xs})))
 
-  (-next [_]
-    (when closed? (throw (Exception. "closed")))
+  (-next [iter]
+    (check-valid iter)
     (swap! cursor (fn [{[x & xs] :rest}] {:first x :rest xs})))
 
-  (-prev [this]
-    (when closed? (throw (Exception. "closed")))
-    (when-let [prev (first (rsubseq db < (key (:first @cursor))))]
-      (kv/seek! this (key prev))))
+  (-prev [iter]
+    (check-valid iter)
+    (swap! cursor #(prev db %)))
 
-  (-key [_]
-    (when closed? (throw (Exception. "closed")))
+  (-key [iter]
+    (check-valid iter)
     (-> @cursor :first key copy))
 
-  (-key [_ buf]
-    (when closed? (throw (Exception. "closed")))
+  (-key [iter buf]
+    (check-valid iter)
     (put buf (-> @cursor :first key)))
 
-  (-value [_]
-    (when closed? (throw (Exception. "closed")))
+  (-value [iter]
+    (check-valid iter)
     (-> @cursor :first val copy))
 
-  (-value [_ buf]
-    (when closed? (throw (Exception. "closed")))
+  (-value [iter buf]
+    (check-valid iter)
     (put buf (-> @cursor :first val)))
 
   Closeable
@@ -82,25 +96,25 @@
     (set! closed? true)))
 
 
-(defn- column-family-unknown [column-family]
-  (RuntimeException. (format "column family %s unknown" column-family)))
+(defn- column-family-unknown-msg [column-family]
+  (format "column family %s is unknown" column-family))
 
 
 (deftype MemKvSnapshot [db]
   kv/KvSnapshot
-  (new-iterator [_]
+  (-new-iterator [_]
     (let [db (:default db)]
       (->MemKvIterator db (atom {:rest (seq db)}) false)))
 
-  (new-iterator [_ column-family]
+  (-new-iterator [_ column-family]
     (if-let [db (get db column-family)]
       (->MemKvIterator db (atom {:rest (seq db)}) false)
-      (throw (column-family-unknown column-family))))
+      (throw-anom ::anom/fault (column-family-unknown-msg column-family))))
 
-  (snapshot-get [_ k]
+  (-snapshot-get [_ k]
     (some-> (get-in db [:default k]) (copy)))
 
-  (snapshot-get [_ column-family k]
+  (-snapshot-get [_ column-family k]
     (some-> (get-in db [column-family k]) (copy)))
 
   Closeable
@@ -108,6 +122,7 @@
 
 
 (defn- assoc-copy [m ^bytes k ^bytes v]
+  (assert m "column-family not found")
   (assoc m (copy k) (copy v)))
 
 
@@ -127,19 +142,19 @@
       (if (keyword? column-family)
         (case op
           :put (update db column-family assoc-copy k v)
-          :merge (throw (UnsupportedOperationException. "merge is not supported"))
-          :delete (update db column-family dissoc k))
+          :delete (update db column-family dissoc k)
+          (throw-anom ::anom/unsupported (str (name op) " is not supported")))
         (case op
           :put (update db :default assoc-copy column-family k)
-          :merge (throw (UnsupportedOperationException. "merge is not supported"))
-          :delete (update db :default dissoc column-family))))
+          :delete (update db :default dissoc column-family)
+          (throw-anom ::anom/unsupported (str (name op) " is not supported")))))
     db
     entries))
 
 
 (deftype MemKvStore [db]
   kv/KvStore
-  (new-snapshot [_]
+  (-new-snapshot [_]
     (->MemKvSnapshot @db))
 
   (-get [_ k]
@@ -166,11 +181,11 @@
     (swap! db update :default assoc-copy k v)
     nil)
 
-  (delete [_ ks]
-    (swap! db #(apply dissoc % ks))
+  (-delete [_ ks]
+    (swap! db update :default #(apply dissoc % ks))
     nil)
 
-  (write [_ entries]
+  (-write [_ entries]
     (swap! db write-entries entries)
     nil))
 

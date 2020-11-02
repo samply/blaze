@@ -1,8 +1,8 @@
 (ns blaze.db.impl.codec-spec
   (:require
     [blaze.db.api-spec]
-    [blaze.db.impl.bytes :as bytes]
-    [blaze.db.impl.bytes-spec]
+    [blaze.db.bytes :as bytes]
+    [blaze.db.bytes-spec]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec.spec]
     [blaze.fhir.spec]
@@ -66,17 +66,17 @@
 
 ;; ---- SearchParamValue Index ------------------------------------------------
 
-(s/def :blaze.db/search-param-value-key
+(s/def :blaze.db/sp-value-resource-key
   bytes?)
 
 
-(s/fdef codec/search-param-value-key
+(s/fdef codec/sp-value-resource-key
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :value bytes?
                :id (s/? :blaze.db/id-bytes)
                :hash (s/? :blaze.resource/hash))
-  :ret :blaze.db/search-param-value-key)
+  :ret :blaze.db/sp-value-resource-key)
 
 
 
@@ -90,7 +90,7 @@
   (s/and bytes? #(= codec/hash-prefix-size (alength %))))
 
 
-(s/fdef codec/resource-value-key
+(s/fdef codec/resource-sp-value-key
   :args (s/cat :tid :blaze.db/tid
                :id :blaze.db/id-bytes
                :hash (s/alt :hash :blaze.resource/hash :hash-prefix :blaze.db/hash-prefix)
@@ -347,6 +347,11 @@
   :ret :blaze.db/tid)
 
 
+(s/fdef codec/tid->type
+  :args (s/cat :tid :blaze.db/tid)
+  :ret :fhir.type/name)
+
+
 (s/fdef codec/c-hash
   :args (s/cat :code string?)
   :ret int?)
@@ -400,7 +405,7 @@
 
 
 (s/fdef codec/quantity
-  :args (s/cat :value number? :unit (s/? (s/nilable string?)))
+  :args (s/cat :unit (s/nilable string?) :value number?)
   :ret bytes?)
 
 

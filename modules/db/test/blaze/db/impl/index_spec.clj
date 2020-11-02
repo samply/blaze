@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index-spec
   (:require
+    [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index :as index]
     [blaze.db.impl.iterators-spec]
@@ -14,12 +15,10 @@
 
 
 (s/fdef index/compartment-list
-  :args (s/cat :cri :blaze.db/kv-iterator
-               :raoi :blaze.db/kv-iterator
+  :args (s/cat :context :blaze.db.impl.batch-db/context
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :start-id (s/nilable :blaze.db/id-bytes)
-               :t :blaze.db/t)
+               :start-id (s/nilable :blaze.db/id-bytes))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
@@ -34,34 +33,22 @@
 
 
 (s/fdef index/type-query
-  :args (s/cat :snapshot :blaze.db/kv-snapshot
-               :svri :blaze.db/kv-iterator
-               :rsvi  :blaze.db/kv-iterator
-               :raoi :blaze.db/kv-iterator
+  :args (s/cat :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
-               :start-id (s/nilable :blaze.db/id-bytes)
-               :t :blaze.db/t)
+               :start-id (s/nilable :blaze.db/id-bytes))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef index/system-query
-  :args (s/cat :node :blaze.db/node
-               :snapshot :blaze.db/kv-snapshot
-               :svri :blaze.db/kv-iterator
-               :rsvi  :blaze.db/kv-iterator
-               :raoi :blaze.db/kv-iterator
-               :clauses :blaze.db.index.query/clauses
-               :t :blaze.db/t)
+  :args (s/cat :context :blaze.db.impl.batch-db/context
+               :clauses :blaze.db.index.query/clauses)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef index/compartment-query
-  :args (s/cat :snapshot :blaze.db/kv-snapshot
-               :csvri :blaze.db/kv-iterator
-               :raoi :blaze.db/kv-iterator
+  :args (s/cat :context :blaze.db.impl.batch-db/context
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :clauses :blaze.db.index.query/clauses
-               :t :blaze.db/t)
+               :clauses :blaze.db.index.query/clauses)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))

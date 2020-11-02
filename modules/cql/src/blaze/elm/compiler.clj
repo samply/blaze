@@ -2358,7 +2358,10 @@
 
 ;; 22.2. CanConvert
 
+
 ;; 22.3. CanConvertQuantity
+(defbinop can-convert-quantity [x unit]
+  (p/can-convert-quantity x unit))
 
 
 ;; 22.4. Children

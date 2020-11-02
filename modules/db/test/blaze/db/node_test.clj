@@ -8,6 +8,7 @@
     [blaze.db.impl.db-spec]
     [blaze.db.impl.protocols :as p]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
     [blaze.db.resource-store :as rs]

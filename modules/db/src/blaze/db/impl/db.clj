@@ -2,10 +2,7 @@
   "Primary Database Implementation"
   (:require
     [blaze.db.impl.batch-db :as batch-db]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-as-of :as resource-as-of]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.kv :as kv])
+    [blaze.db.impl.protocols :as p])
   (:import
     [clojure.lang IReduceInit Sequential Seqable Counted]
     [java.io Writer]))
@@ -52,9 +49,8 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ type id]
-    (with-open [snapshot (kv/new-snapshot (:kv-store node))
-                raoi (kv/new-iterator snapshot :resource-as-of-index)]
-      (resource-as-of/resource-handle raoi (codec/tid type) (codec/id-bytes id) t)))
+    (with-open [batch-db (batch-db/new-batch-db node t)]
+      (p/-resource-handle batch-db type id)))
 
 
 

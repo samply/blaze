@@ -3,6 +3,7 @@
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv.mem-spec]
     [blaze.db.node :refer [new-node]]
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
     [blaze.db.search-param-registry :as sr]

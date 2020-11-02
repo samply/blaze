@@ -1,21 +1,24 @@
 (ns blaze.db.impl.search-param-test
   (:require
-    [blaze.db.impl.bytes :as bytes]
+    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type.system :as system]
     [clj-fuzzy.phonetics :as phonetics]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
+    [clojure.test :as test :refer [are deftest is testing]]
+    [taoensso.timbre :as log])
   (:import
     [java.time OffsetDateTime ZoneId ZoneOffset LocalDate]))
 
 
 (defn fixture [f]
   (st/instrument)
+  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -26,7 +29,21 @@
 (def search-param-registry (sr/init-search-param-registry))
 
 
-(deftest index-entries
+(def birthdate
+  (sr/get search-param-registry "birthdate" "Patient"))
+
+
+(defn compile-birthdate [value]
+  (first (search-param/compile-values birthdate [value])))
+
+
+(deftest compile-values-test
+  (testing "Date"
+    (are [value op quantity] (= [op quantity] (compile-birthdate value))
+      "2020-10-30" :eq (system/parse-date-time "2020-10-30"))))
+
+
+(deftest index-entries-test
   (testing "Observation _id"
     (let [observation {:fhir/type :fhir/Observation
                        :id "id-161849"}
@@ -39,7 +56,7 @@
       (testing "search-param-value-key"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "_id")
                 (codec/tid "Observation")
                 (codec/v-hash "id-161849")
@@ -49,7 +66,7 @@
       (testing "resource-value-key"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Observation")
                 (codec/id-bytes "id-161849")
                 hash
@@ -74,7 +91,7 @@
       (testing "first search-param-value-key is about `code`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "code")
                 (codec/tid "Observation")
                 (codec/v-hash "code-171327")
@@ -84,7 +101,7 @@
       (testing "first resource-value-key is about `code`"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Observation")
                 (codec/id-bytes "id-183201")
                 hash
@@ -94,7 +111,7 @@
       (testing "second search-param-value-key is about `system|`"
         (is (bytes/=
               k2
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "code")
                 (codec/tid "Observation")
                 (codec/v-hash "system-171339|")
@@ -104,7 +121,7 @@
       (testing "second resource-value-key is about `system|`"
         (is (bytes/=
               k3
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Observation")
                 (codec/id-bytes "id-183201")
                 hash
@@ -114,7 +131,7 @@
       (testing "third search-param-value-key is about `system|code`"
         (is (bytes/=
               k4
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "code")
                 (codec/tid "Observation")
                 (codec/v-hash "system-171339|code-171327")
@@ -124,7 +141,7 @@
       (testing "third resource-value-key is about `system|code`"
         (is (bytes/=
               k5
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Observation")
                 (codec/id-bytes "id-183201")
                 hash
@@ -161,7 +178,7 @@
         (testing "search-param-value-key"
           (is (bytes/=
                 k0
-                (codec/search-param-value-key
+                (codec/sp-value-resource-key
                   (codec/c-hash "address")
                   (codec/tid "Patient")
                   (codec/string "line 120252")
@@ -171,7 +188,7 @@
         (testing "resource-value-key"
           (is (bytes/=
                 k1
-                (codec/resource-value-key
+                (codec/resource-sp-value-key
                   (codec/tid "Patient")
                   (codec/id-bytes "id-122929")
                   hash
@@ -182,7 +199,7 @@
         (testing "search-param-value-key"
           (is (bytes/=
                 k2
-                (codec/search-param-value-key
+                (codec/sp-value-resource-key
                   (codec/c-hash "address")
                   (codec/tid "Patient")
                   (codec/string "city 105431")
@@ -192,7 +209,7 @@
         (testing "resource-value-key"
           (is (bytes/=
                 k3
-                (codec/resource-value-key
+                (codec/resource-sp-value-key
                   (codec/tid "Patient")
                   (codec/id-bytes "id-122929")
                   hash
@@ -215,7 +232,7 @@
       (testing "first search-param-value-key is about `value`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "identifier")
                 (codec/tid "Patient")
                 (codec/v-hash "value-123005")
@@ -225,7 +242,7 @@
       (testing "first resource-value-key is about `value`"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Patient")
                 (codec/id-bytes "id-122929")
                 hash
@@ -235,7 +252,7 @@
       (testing "second search-param-value-key is about `system|`"
         (is (bytes/=
               k2
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "identifier")
                 (codec/tid "Patient")
                 (codec/v-hash "system-123000|")
@@ -245,7 +262,7 @@
       (testing "second resource-value-key is about `system|`"
         (is (bytes/=
               k3
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Patient")
                 (codec/id-bytes "id-122929")
                 hash
@@ -255,7 +272,7 @@
       (testing "third search-param-value-key is about `system|value`"
         (is (bytes/=
               k4
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "identifier")
                 (codec/tid "Patient")
                 (codec/v-hash "system-123000|value-123005")
@@ -265,7 +282,7 @@
       (testing "third resource-value-key is about `system|value`"
         (is (bytes/=
               k5
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Patient")
                 (codec/id-bytes "id-122929")
                 hash
@@ -288,7 +305,7 @@
       (testing "search-param-value-key"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "_profile")
                 (codec/tid "Patient")
                 (codec/v-hash "profile-uri-141443")
@@ -298,7 +315,7 @@
       (testing "resource-value-key"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Patient")
                 (codec/id-bytes "id-140855")
                 hash
@@ -320,7 +337,7 @@
       (testing "search-param-value-key"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "phonetic")
                 (codec/tid "Patient")
                 (codec/string (phonetics/soundex "family-102508"))
@@ -330,7 +347,7 @@
       (testing "resource-value-key"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Patient")
                 (codec/id-bytes "id-122929")
                 hash
@@ -350,7 +367,7 @@
       (testing "the first entry is about the lower bound of `2020-02-04`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "birthdate")
                 (codec/tid "Patient")
                 (codec/date-lb (ZoneId/systemDefault) (LocalDate/of 2020 2 4))
@@ -360,7 +377,7 @@
       (testing "the second entry is about the upper bound of `2020-02-04`"
         (is (bytes/=
               k1
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "birthdate")
                 (codec/tid "Patient")
                 (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2020 2 4))
@@ -379,7 +396,7 @@
       (testing "search-param-value-key"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "deceased")
                 (codec/tid "Patient")
                 (codec/v-hash "false")
@@ -389,7 +406,7 @@
       (testing "resource-value-key"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Patient")
                 (codec/id-bytes "id-142629")
                 hash
@@ -429,7 +446,7 @@
       (testing "first search-param-value-key is about `code`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "bodysite")
                 (codec/tid "Specimen")
                 (codec/v-hash "code-103812")
@@ -439,7 +456,7 @@
       (testing "first resource-value-key is about `code`"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Specimen")
                 (codec/id-bytes "id-105153")
                 hash
@@ -449,7 +466,7 @@
       (testing "second search-param-value-key is about `system|`"
         (is (bytes/=
               k2
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "bodysite")
                 (codec/tid "Specimen")
                 (codec/v-hash "system-103824|")
@@ -459,7 +476,7 @@
       (testing "second resource-value-key is about `system|`"
         (is (bytes/=
               k3
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Specimen")
                 (codec/id-bytes "id-105153")
                 hash
@@ -469,7 +486,7 @@
       (testing "third search-param-value-key is about `system|code`"
         (is (bytes/=
               k4
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "bodysite")
                 (codec/tid "Specimen")
                 (codec/v-hash "system-103824|code-103812")
@@ -479,7 +496,7 @@
       (testing "third resource-value-key is about `system|code`"
         (is (bytes/=
               k5
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Specimen")
                 (codec/id-bytes "id-105153")
                 hash
@@ -499,7 +516,7 @@
       (testing "the first entry is about the lower bound of `2019-11-17T00:14:29.917+01:00`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "issued")
                 (codec/tid "DiagnosticReport")
                 (codec/date-lb (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 14 29 917 (ZoneOffset/ofHours 1)))
@@ -509,7 +526,7 @@
       (testing "the second entry is about the upper bound of `2019-11-17T00:14:29.917+01:00`"
         (is (bytes/=
               k1
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "issued")
                 (codec/tid "DiagnosticReport")
                 (codec/date-ub (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 14 29 917 (ZoneOffset/ofHours 1)))
@@ -532,7 +549,7 @@
       (testing "the first entry is about the lower bound of `2019-11-17T00:14:29+01:00`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
                 (codec/date-lb (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 14 29 0 (ZoneOffset/ofHours 1)))
@@ -542,7 +559,7 @@
       (testing "the second entry is about the upper bound of `2019-11-17T00:44:29+01:00`"
         (is (bytes/=
               k1
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
                 (codec/date-ub (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 44 29 0 (ZoneOffset/ofHours 1)))
@@ -564,7 +581,7 @@
       (testing "the first entry is about the lower bound of `2019-11-17T00:14:29+01:00`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
                 codec/date-min-bound
@@ -574,7 +591,7 @@
       (testing "the second entry is about the upper bound of `2019-11-17`"
         (is (bytes/=
               k1
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
                 (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2019 11 17))
@@ -596,7 +613,7 @@
       (testing "the first entry is about the lower bound of `2019-11-17T00:14:29+01:00`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
                 (codec/date-lb (ZoneId/systemDefault) (OffsetDateTime/of 2019 11 17 0 14 29 0 (ZoneOffset/ofHours 1)))
@@ -606,7 +623,7 @@
       (testing "the second entry is about the upper bound of `2019-11-17T00:44:29+01:00`"
         (is (bytes/=
               k1
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "date")
                 (codec/tid "Encounter")
                 codec/date-max-bound
@@ -629,7 +646,7 @@
       (testing "first search-param-value-key is about `code`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "class")
                 (codec/tid "Encounter")
                 (codec/v-hash "AMB")
@@ -639,7 +656,7 @@
       (testing "first resource-value-key is about `code`"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Encounter")
                 (codec/id-bytes "id-105153")
                 hash
@@ -649,7 +666,7 @@
       (testing "second search-param-value-key is about `system|`"
         (is (bytes/=
               k2
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "class")
                 (codec/tid "Encounter")
                 (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|")
@@ -659,7 +676,7 @@
       (testing "second resource-value-key is about `system|`"
         (is (bytes/=
               k3
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Encounter")
                 (codec/id-bytes "id-105153")
                 hash
@@ -669,7 +686,7 @@
       (testing "third search-param-value-key is about `system|code`"
         (is (bytes/=
               k4
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "class")
                 (codec/tid "Encounter")
                 (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")
@@ -679,7 +696,7 @@
       (testing "third resource-value-key is about `system|code`"
         (is (bytes/=
               k5
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "Encounter")
                 (codec/id-bytes "id-105153")
                 hash
@@ -701,7 +718,7 @@
       (testing "search-param-value-key is about `id`"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "series")
                 (codec/tid "ImagingStudy")
                 (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")
@@ -711,7 +728,7 @@
       (testing "resource-value-key"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "ImagingStudy")
                 (codec/id-bytes "id-105153")
                 hash
@@ -731,7 +748,7 @@
       (testing "search-param-value-key"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "url")
                 (codec/tid "ActivityDefinition")
                 (codec/v-hash "url-111854")
@@ -741,7 +758,7 @@
       (testing "resource-value-key"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "ActivityDefinition")
                 (codec/id-bytes "id-111846")
                 hash
@@ -761,7 +778,7 @@
       (testing "search-param-value-key"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "description")
                 (codec/tid "ActivityDefinition")
                 (codec/string "desc 121328")
@@ -771,7 +788,7 @@
       (testing "resource-value-key"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "ActivityDefinition")
                 (codec/id-bytes "id-121344")
                 hash
@@ -791,7 +808,7 @@
       (testing "search-param-value-key"
         (is (bytes/=
               k0
-              (codec/search-param-value-key
+              (codec/sp-value-resource-key
                 (codec/c-hash "version")
                 (codec/tid "CodeSystem")
                 (codec/v-hash "version-122621")
@@ -801,7 +818,7 @@
       (testing "resource-value-key"
         (is (bytes/=
               k1
-              (codec/resource-value-key
+              (codec/resource-sp-value-key
                 (codec/tid "CodeSystem")
                 (codec/id-bytes "id-111846")
                 hash
@@ -826,7 +843,7 @@
         (testing "first search-param-value-key is about `id`"
           (is (bytes/=
                 k0
-                (codec/search-param-value-key
+                (codec/sp-value-resource-key
                   (codec/c-hash "item")
                   (codec/tid "List")
                   (codec/v-hash "0")
@@ -836,7 +853,7 @@
         (testing "first resource-value-key is about `id`"
           (is (bytes/=
                 k1
-                (codec/resource-value-key
+                (codec/resource-sp-value-key
                   (codec/tid "List")
                   (codec/id-bytes "id-121825")
                   hash
@@ -846,7 +863,7 @@
         (testing "second search-param-value-key is about `type/id`"
           (is (bytes/=
                 k2
-                (codec/search-param-value-key
+                (codec/sp-value-resource-key
                   (codec/c-hash "item")
                   (codec/tid "List")
                   (codec/v-hash "Patient/0")
@@ -856,7 +873,7 @@
         (testing "second resource-value-key is about `type/id`"
           (is (bytes/=
                 k3
-                (codec/resource-value-key
+                (codec/resource-sp-value-key
                   (codec/tid "List")
                   (codec/id-bytes "id-121825")
                   hash
@@ -866,7 +883,7 @@
         (testing "third search-param-value-key is about `tid` and `id`"
           (is (bytes/=
                 k4
-                (codec/search-param-value-key
+                (codec/sp-value-resource-key
                   (codec/c-hash "item")
                   (codec/tid "List")
                   (codec/tid-id (codec/tid "Patient") (codec/id-bytes "0"))
@@ -876,7 +893,7 @@
         (testing "third resource-value-key is about `tid` and `id`"
           (is (bytes/=
                 k5
-                (codec/resource-value-key
+                (codec/resource-sp-value-key
                   (codec/tid "List")
                   (codec/id-bytes "id-121825")
                   hash
@@ -903,7 +920,7 @@
         (testing "first search-param-value-key is about `value`"
           (is (bytes/=
                 k0
-                (codec/search-param-value-key
+                (codec/sp-value-resource-key
                   (codec/c-hash "item:identifier")
                   (codec/tid "List")
                   (codec/v-hash "value-122931")
@@ -913,7 +930,7 @@
         (testing "first resource-value-key is about `value`"
           (is (bytes/=
                 k1
-                (codec/resource-value-key
+                (codec/resource-sp-value-key
                   (codec/tid "List")
                   (codec/id-bytes "id-123058")
                   hash
@@ -923,7 +940,7 @@
         (testing "second search-param-value-key is about `system|`"
           (is (bytes/=
                 k2
-                (codec/search-param-value-key
+                (codec/sp-value-resource-key
                   (codec/c-hash "item:identifier")
                   (codec/tid "List")
                   (codec/v-hash "system-122917|")
@@ -933,7 +950,7 @@
         (testing "second resource-value-key is about `system|`"
           (is (bytes/=
                 k3
-                (codec/resource-value-key
+                (codec/resource-sp-value-key
                   (codec/tid "List")
                   (codec/id-bytes "id-123058")
                   hash
@@ -943,7 +960,7 @@
         (testing "third search-param-value-key is about `system|value`"
           (is (bytes/=
                 k4
-                (codec/search-param-value-key
+                (codec/sp-value-resource-key
                   (codec/c-hash "item:identifier")
                   (codec/tid "List")
                   (codec/v-hash "system-122917|value-122931")
@@ -953,7 +970,7 @@
         (testing "third resource-value-key is about `system|value`"
           (is (bytes/=
                 k5
-                (codec/resource-value-key
+                (codec/resource-sp-value-key
                   (codec/tid "List")
                   (codec/id-bytes "id-123058")
                   hash

@@ -495,21 +495,6 @@
       :id "0")))
 
 
-(comment
-  (-> (group-by :key (impl/struct-def->spec-def (resource "Patient")))
-      :fhir.xml/Patient
-      (get 0)
-      :spec-form
-      #_(nth 1)
-      #_(nth 2)
-      #_(nth 2)
-      #_(nth 2))
-  (s2/form :fhir.xml.MedicationKnowledge/contained)
-  (s2/form :fhir.xml/Coding)
-  (s2/form :fhir.xml/Extension)
-  )
-
-
 (deftest elem-def->spec-def
   (testing "normal type"
     (is (= (impl/elem-def->spec-def
@@ -599,8 +584,3 @@
       [3 :min] := 0
       [3 :max] := "*"
       [3 :spec-form] := :fhir.cbor.Questionnaire/item)))
-
-
-(comment
-  (complex-type "Extension")
-  )
