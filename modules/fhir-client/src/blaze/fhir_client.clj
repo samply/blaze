@@ -4,6 +4,8 @@
     [blaze.async.flow :as flow]
     [blaze.fhir-client.impl :as impl])
   (:import
+    [java.net Authenticator PasswordAuthentication]
+    [java.net.http HttpClient]
     [java.util.concurrent Flow$Publisher])
   (:refer-clojure :exclude [read spit update]))
 
@@ -17,6 +19,29 @@
   ([http-client base-uri]
    {:http-client http-client
     :base-uri base-uri}))
+
+
+(defn- password-authenticator [username password]
+  (proxy [Authenticator] []
+    (getPasswordAuthentication []
+      (PasswordAuthentication. username (.toCharArray ^String password)))))
+
+
+(defn- http-client-with-authenticator
+  "Returns a HttpClient with given Authenticator set for authentication."
+  [authenticator]
+  (-> (HttpClient/newBuilder)
+      (.authenticator authenticator)
+      .build))
+
+
+(defn authenticated-client
+  "Returns a FHIR client configured to use the given credentials with basic
+  authentication."
+  [base-uri username password]
+  (-> (password-authenticator username password)
+    http-client-with-authenticator
+    (client base-uri)))
 
 
 (defn metadata
