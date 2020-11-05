@@ -102,13 +102,28 @@
       (assoc request :body resource))))
 
 
+(defn- unknown-content-type-msg [request]
+  (if-let [content-type (request/content-type request)]
+    (if (:body request)
+      (format "Unknown Content-Type `%s` expected one of application/fhir+json` or `application/fhir+xml`."
+              content-type)
+      "Missing HTTP body.")
+    "Content-Type header expected, but is missing. Please specify one of application/fhir+json` or `application/fhir+xml`."))
+
+
+(defn- unknown-content-type-error [request]
+  (ex-anom
+    {::anom/category ::anom/incorrect
+     ::anom/message (unknown-content-type-msg request)}))
+
+
 (defn- handle-request [{:keys [body] :as request} executor]
   (cond
     (and (json-request? request) body)
     (ac/supply-async #(handle-json request) executor)
     (and (xml-request? request) body)
     (ac/supply-async #(handle-xml request) executor)
-    :else (ac/completed-future request)))
+    :else (ac/failed-future (unknown-content-type-error request))))
 
 
 (defn wrap-resource

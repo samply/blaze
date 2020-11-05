@@ -11,6 +11,9 @@
     [java.io StringReader]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (log/set-level! :trace)
@@ -59,11 +62,6 @@
       [:body :issue 0 :details :coding 0 :code] := #fhir/code"MSG_JSON_OBJECT"
       [:body :issue 0 :diagnostics] := "Expect a JSON object."))
 
-  (testing "does nothing on missing body"
-    (given @(resource-handler
-              {:headers {"content-type" "application/fhir+json"}})
-      :body := nil))
-
   (testing "body with invalid resource"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+json"}
@@ -103,9 +101,31 @@
       [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
+      [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`.")))
 
-  (testing "does nothing on missing body"
-    (given @(resource-handler
-              {:headers {"content-type" "application/fhir+xml"}})
-      :body := nil)))
+
+(deftest other-test
+  (testing "other content is invalid"
+    (testing "without content-type header"
+      (given @(resource-handler {})
+        :status := 400
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :severity] := #fhir/code"error"
+        [:body :issue 0 :code] := #fhir/code"invalid"
+        [:body :issue 0 :diagnostics] := "Content-Type header expected, but is missing. Please specify one of application/fhir+json` or `application/fhir+xml`."))
+
+    (testing "with unknown content-type header"
+      (given @(resource-handler {:headers {"content-type" "text/plain"} :body ""})
+        :status := 400
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :severity] := #fhir/code"error"
+        [:body :issue 0 :code] := #fhir/code"invalid"
+        [:body :issue 0 :diagnostics] := "Unknown Content-Type `text/plain` expected one of application/fhir+json` or `application/fhir+xml`."))
+
+    (testing "missing body"
+      (given @(resource-handler
+                {:headers {"content-type" "application/fhir+json"}})
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :severity] := #fhir/code"error"
+        [:body :issue 0 :code] := #fhir/code"invalid"
+        [:body :issue 0 :diagnostics] := "Missing HTTP body."))))
