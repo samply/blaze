@@ -52,14 +52,15 @@
 
 
 (defn eval
-  "Evaluates the FHIRPath expression on `resource` with help of `resolver`.
+  "Evaluates the FHIRPath expression on `value` with help of `resolver`.
 
   Returns either a collection of FHIR data or an anomaly in case of errors. The
-  type of the FHIR data can be determined by calling `clojure.core/type` on it."
-  {:arglists '([resolver expr resource])}
-  [resolver expr resource]
+  type of the FHIR data can be determined by calling `blaze.fhir.spec/fhir-type`
+  on it."
+  {:arglists '([resolver expr value])}
+  [resolver expr value]
   (try
-    (-eval expr {:resolver resolver} [resource])
+    (-eval expr {:resolver resolver} [value])
     (catch Exception e
       (ex-data e))))
 

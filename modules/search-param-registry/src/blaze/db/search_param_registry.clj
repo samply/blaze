@@ -1,6 +1,6 @@
 (ns blaze.db.search-param-registry
   (:require
-    [blaze.anomaly :as anomaly :refer [when-ok]]
+    [blaze.anomaly :refer [when-ok]]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [cheshire.core :as json]
@@ -18,13 +18,14 @@
   This multi-method is used to convert search parameters before storing them
   in the registry. Other namespaces can provide their own implementations here.
 
-  The conversion can also return an anomaly."
-  (fn [{:keys [type]}] type))
+  The conversion can return an anomaly."
+  (fn [_ {:keys [type]}] type))
 
 
 (defmethod search-param :default
-  [{:keys [url type]}]
-  (log/debug (format "Skip creating search parameter `%s` of type `%s` because the rule is missing." url type)))
+  [_ {:keys [url type]}]
+  (log/debug (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))
+  {::anom/category ::anom/unsupported})
 
 
 (defprotocol SearchParamRegistry
@@ -106,6 +107,7 @@
   (-linked-compartments [_ resource]
     (mapcat
       (fn [{:keys [def-code search-param]}]
+        ;; TODO: use search-params compartment-ids
         (map (fn [id] [def-code id]) (compartment-ids search-param resource)))
       (clojure.core/get compartment-index (name (fhir-spec/fhir-type resource))))))
 
@@ -117,17 +119,13 @@
     (json/parse-stream rdr keyword)))
 
 
-(defn- index-search-param [index {:keys [base code] :as sp}]
-  (anomaly/ensure-reduced
-    (reduce
-      (fn [index base]
-        (if-let [res (search-param sp)]
-          (if (::anom/category res)
-            (reduced res)
-            (assoc-in index [base code] res))
-          index))
-      index
-      base)))
+(defn- index-search-param [index {:keys [url] :as sp}]
+  (let [res (search-param index sp)]
+    (if-let [category (::anom/category res)]
+      (if (= ::anom/unsupported category)
+        index
+        (reduced res))
+      (assoc index url res))))
 
 
 (defn- read-compartment-def [name]
@@ -172,15 +170,57 @@
 
   See: https://www.hl7.org/fhir/search.html#special"
   [index]
-  (assoc-in index ["Resource" "_list"] (search-param list-search-param)))
+  (assoc-in index ["Resource" "_list"] (search-param nil list-search-param)))
+
+
+(defn- build-url-index* [index filter entries]
+  (transduce
+    (comp (map :resource)
+          filter)
+    (completing index-search-param)
+    index
+    entries))
+
+
+(def ^:private remove-composite
+  (remove (comp #{"composite"} :type)))
+
+
+(def ^:private filter-composite
+  (filter (comp #{"composite"} :type)))
+
+
+(defn- build-url-index
+  "Builds an index from url to search-param."
+  [entries]
+  (when-ok [non-composite (build-url-index* {} remove-composite entries)]
+    (build-url-index* non-composite filter-composite entries)))
+
+
+(defn- build-index
+  "Builds an index from [type code] to search param."
+  [{entries :entry}]
+  (when-ok [url-index (build-url-index entries)]
+    (transduce
+      (map :resource)
+      (completing
+        (fn [index {:keys [url base code]}]
+          (if-let [search-param (clojure.core/get url-index url)]
+            (reduce
+              (fn [index base]
+                (assoc-in index [base code] search-param))
+              index
+              base)
+            index)))
+      {}
+      entries)))
 
 
 (defn init-search-param-registry
   "Creates a new search param registry."
   []
   (let [bundle (read-bundle "blaze/db/search-parameters.json")]
-    (when-ok [index (transduce (map :resource) (completing index-search-param)
-                               {} (:entry bundle))]
+    (when-ok [index (build-index bundle)]
       (->MemSearchParamRegistry (add-special index) (index-compartments index)))))
 
 
@@ -188,3 +228,10 @@
   [_ _]
   (log/info "Init in-memory fixed R4 search parameter registry")
   (init-search-param-registry))
+
+(comment
+  (def bundle (read-bundle "blaze/db/search-parameters.json"))
+
+  (filter (comp #{"http://hl7.org/fhir/SearchParameter/Resource-query"} :url) (map :resource (:entry bundle)))
+
+  )

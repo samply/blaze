@@ -1,6 +1,9 @@
 {:deps
  {blaze/module-base
-  {:local/root "../module-base"}}
+  {:local/root "../module-base"}
+
+  com.google.guava/guava
+  {:mvn/version "30.0-jre"}}
 
  :aliases
  {:test
