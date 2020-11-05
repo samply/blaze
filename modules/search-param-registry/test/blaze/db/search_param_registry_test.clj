@@ -8,8 +8,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
-  (:refer-clojure :exclude [get]))
+    [taoensso.timbre :as log]))
 
 
 (defn fixture [f]
@@ -27,14 +26,14 @@
 
 
 (defmethod sr/search-param "token"
-  [{:keys [url type expression]}]
+  [_ {:keys [url type expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParam type url expression))))
 
 
 (defmethod sr/search-param "reference"
-  [{:keys [url type expression]}]
+  [_ {:keys [url type expression]}]
   (when expression
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParam type url expression))))
@@ -44,14 +43,14 @@
   (log/with-merged-config {:level :info} (sr/init-search-param-registry)))
 
 
-(deftest get
+(deftest get-test
   (testing "_id"
     (given (sr/get search-param-registry "_id")
       :type := "token"
       :url := "http://hl7.org/fhir/SearchParameter/Resource-id")))
 
 
-(deftest linked-compartments
+(deftest linked-compartments-test
   (is (= [["Patient" "id-1"]]
          (sr/linked-compartments
            search-param-registry

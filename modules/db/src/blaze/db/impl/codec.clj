@@ -131,7 +131,7 @@
 
 ;; ---- SearchParamValueResource Index ----------------------------------------
 
-(defn- hash-prefix ^bytes [^HashCode hash]
+(defn hash-prefix ^bytes [^HashCode hash]
   (let [bs (byte-array hash-prefix-size)]
     (.writeBytesTo hash bs 0 hash-prefix-size)
     bs))
@@ -208,6 +208,44 @@
      [prefix id hash-prefix])))
 
 
+(defn c-hash [code]
+  (.asInt (.hashString (Hashing/murmur3_32) ^String code utf-8)))
+
+
+(def ^:private c-hash->code
+  (into
+    {}
+    (map (fn [code] [(c-hash code) code]))
+    ["_id"
+     "code-value-quantity"
+     "combo-value-quantity"
+     "context-quantity"
+     "value-quantity"]))
+
+
+(defn decode-sp-value-resource-key-human
+  ([] (ByteBuffer/allocateDirect sp-value-resource-key-buffer-capacity))
+  ([^ByteBuffer bb]
+   (let [id-size (.get bb (dec (- (.limit bb) hash-prefix-size)))
+         value-size (- (.remaining bb) id-size 2 hash-prefix-size c-hash-size
+                       tid-size)
+         c-hash (.getInt bb)
+         tid (.getInt bb)
+         value (byte-array value-size)
+         _ (.get bb value)
+         _ (.get bb)
+         id (byte-array id-size)
+         _ (.get bb id)
+         _ (.get bb)
+         hash-prefix (byte-array hash-prefix-size)
+         _ (.get bb hash-prefix)]
+     {:code (or (c-hash->code c-hash) (Integer/toHexString c-hash))
+      :type (tid->type tid)
+      :value (hex value)
+      :id (blaze.db.impl.codec/id id)
+      :hash-prefix (hex hash-prefix)})))
+
+
 
 ;; ---- ResourceSearchParamValue Index ----------------------------------------
 
@@ -250,20 +288,6 @@
      [prefix value])))
 
 
-(defn c-hash [code]
-  (.asInt (.hashString (Hashing/murmur3_32) ^String code utf-8)))
-
-
-(def ^:private c-hash->code
-  (into
-    {}
-    (map (fn [code] [(c-hash code) code]))
-    ["_id"
-     "combo-value-quantity"
-     "context-quantity"
-     "value-quantity"]))
-
-
 (defn decode-resource-sp-value-key-human
   ([] (ByteBuffer/allocateDirect resource-sp-value-key-buffer-capacity))
   ([^ByteBuffer bb]
@@ -277,9 +301,11 @@
          c-hash (.getInt bb)
          value (byte-array (.remaining bb))]
      (.get bb value)
-     [(tid->type tid) (blaze.db.impl.codec/id id) (hex hash-prefix)
-      (or (c-hash->code c-hash) (Integer/toHexString c-hash))
-      (hex value)])))
+     {:type (tid->type tid)
+      :id (blaze.db.impl.codec/id id)
+      :hash-prefix (hex hash-prefix)
+      :code (or (c-hash->code c-hash) (Integer/toHexString c-hash))
+      :value (hex value)})))
 
 
 (defn resource-sp-value-key->value [^bytes k]

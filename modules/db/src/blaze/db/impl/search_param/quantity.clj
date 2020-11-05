@@ -55,19 +55,6 @@
           (name op)))
 
 
-(defn- compile-value [value]
-  (let [[op value-and-unit] (u/separate-op value)
-        [value unit] (str/split value-and-unit #"\|" 2)
-        value (BigDecimal. ^String value)
-        delta (.movePointLeft 0.5M (.scale value))]
-    (case op
-      (:eq :gt :lt :ge :le)
-      [op
-       (codec/quantity unit (- value delta))
-       (codec/quantity unit value)
-       (codec/quantity unit (+ value delta))]
-      (throw-anom ::anom/unsupported (unsupported-prefix-msg op)))))
-
 
 (defn- resource-value
   "Returns the value of the resource with `tid` and `id` according to the
@@ -160,7 +147,7 @@
   Decoded keys consist of the triple [prefix id hash-prefix]."
   [{:keys [svri] :as context} c-hash tid value start-id]
   (coll/eduction
-    (take-while-same-unit c-hash tid  value)
+    (take-while-same-unit c-hash tid value)
     (u/sp-value-resource-keys svri (start-key context c-hash tid value
                                               start-id))))
 
@@ -180,12 +167,12 @@
   Decoded keys consist of the triple [prefix id hash-prefix]."
   [{:keys [svri] :as context} c-hash tid value start-id]
   (coll/eduction
-    (take-while-same-unit c-hash tid  value)
+    (take-while-same-unit c-hash tid value)
     (u/sp-value-resource-keys-prev svri (le-start-key context c-hash tid value
                                                       start-id))))
 
 
-(defn- resource-keys
+(defn resource-keys
   [context c-hash tid [op lower-bound exact-value upper-bound] start-id]
   (case op
     :eq (eq-keys context c-hash tid lower-bound upper-bound start-id)
@@ -232,7 +219,7 @@
     (bytes/starts-with? found-value (codec/unit-prefix value))))
 
 
-(defn- matches?
+(defn matches?
   [context c-hash tid id hash [op lower-bound exact-value upper-bound]]
   (case op
     :eq (eq-matches? context c-hash tid id hash lower-bound upper-bound)
@@ -244,11 +231,18 @@
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
-  (-code [_]
-    code)
-
-  (-compile-values [_ values]
-    (mapv compile-value values))
+  (-compile-value [_ value]
+    (let [[op value-and-unit] (u/separate-op value)
+          [value unit] (str/split value-and-unit #"\|" 2)
+          value (BigDecimal. ^String value)
+          delta (.movePointLeft 0.5M (.scale value))]
+      (case op
+        (:eq :gt :lt :ge :le)
+        [op
+         (codec/quantity unit (- value delta))
+         (codec/quantity unit value)
+         (codec/quantity unit (+ value delta))]
+        (throw-anom ::anom/unsupported (unsupported-prefix-msg op)))))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
@@ -264,40 +258,26 @@
   (-matches? [_ context tid id hash _ values]
     (some #(matches? context c-hash tid id hash %) values))
 
-  (-index-entries [_ resolver hash resource _]
+  (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [{:keys [id]} resource
-            type (clojure.core/name (fhir-spec/fhir-type resource))
-            tid (codec/tid type)
-            id-bytes (codec/id-bytes id)]
-        (into
-          []
-          (mapcat
-            (partial
-              quantity-index-entries
-              url
-              (fn search-param-quantity-entry [unit value]
-                (log/trace "search-param-value-entry" "quantity" code unit value type id hash)
-                [[:search-param-value-index
-                  (codec/sp-value-resource-key
-                    c-hash
-                    tid
-                    (codec/quantity unit value)
-                    id-bytes
-                    hash)
-                  bytes/empty]
-                 [:resource-value-index
-                  (codec/resource-sp-value-key
-                    tid
-                    id-bytes
-                    hash
-                    c-hash
-                    (codec/quantity unit value))
-                  bytes/empty]])))
-          values)))))
+      (p/-compile-index-values search-param values)))
+
+  (-compile-index-values [_ values]
+    (into
+      []
+      (mapcat
+        #(quantity-index-entries
+           url
+           (fn [unit value]
+             [[nil (codec/quantity unit value)]])
+           %))
+      values)))
 
 
 (defmethod sr/search-param "quantity"
-  [{:keys [name url type base code expression]}]
-  (when-ok [expression (fhir-path/compile expression)]
-    (->SearchParamQuantity name url type base code (codec/c-hash code) expression)))
+  [_ {:keys [name url type base code expression]}]
+  (if expression
+    (when-ok [expression (fhir-path/compile expression)]
+      (->SearchParamQuantity name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))

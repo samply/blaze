@@ -60,13 +60,10 @@
       (ids* iter key tid key))))
 
 
-(defrecord SearchParamList [type name]
+(defrecord SearchParamList [type code]
   p/SearchParam
-  (-code [_]
-    "_list")
-
-  (-compile-values [_ values]
-    (map codec/id-bytes values))
+  (-compile-value [_ value]
+    (codec/id-bytes value))
 
   (-resource-handles [_ context tid _ list-id start-id]
     (let [{:keys [raoi rsvi t]} context]
@@ -80,9 +77,10 @@
                   [handle]))))
           (ids rsvi list-id list-hash tid start-id))))))
 
-  (-index-entries [_ _ _ _ _]
+  (-index-values [_ _ _]
     []))
 
 
-(defmethod special/special-search-param "_list" [_]
+(defmethod special/special-search-param "_list"
+  [_]
   (->SearchParamList "special" "_list"))

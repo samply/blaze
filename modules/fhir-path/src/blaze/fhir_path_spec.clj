@@ -1,7 +1,7 @@
 (ns blaze.fhir-path-spec
   (:require
     [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.spec]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec-spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))
@@ -18,7 +18,7 @@
 (s/fdef fhir-path/eval
   :args (s/cat :resolver :blaze.fhir-path/resolver
                :expr :blaze.fhir-path/expression
-               :resource :blaze/resource)
+               :value #(some? (fhir-spec/fhir-type %)))
   :ret (s/or :coll (s/coll-of some?) :anomaly ::anom/anomaly))
 
 

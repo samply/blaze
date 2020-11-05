@@ -1,7 +1,6 @@
 (ns blaze.anomaly
   (:require
-    [cognitect.anomalies :as anom])
-  (:refer-clojure :exclude [ensure-reduced]))
+    [cognitect.anomalies :as anom]))
 
 
 (defn ex-anom
@@ -22,9 +21,3 @@
      (if (::anom/category ~sym)
        ~sym
        (do ~@body))))
-
-
-(defn ensure-reduced [x]
-  (if (::anom/category x)
-    (reduced x)
-    x))

@@ -1,7 +1,7 @@
 (ns blaze.db.api-test
   "Main high-level test of all database API functions."
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :refer [ex-anom when-ok]]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
     [blaze.coll.core :as coll]
@@ -163,7 +163,7 @@
         (is (= 2 (d/basis-t @future)))))))
 
 
-(deftest transact
+(deftest transact-test
   (testing "create"
     (testing "one Patient"
       (with-open [node (new-node)]
@@ -404,7 +404,7 @@
           ::anom/category := ::anom/fault)))))
 
 
-(deftest tx
+(deftest tx-test
   (with-open [node (new-node)]
     @(d/transact node [[:put {:fhir/type :fhir/Patient :id "id-142136"}]])
 
@@ -416,7 +416,7 @@
 
 ;; ---- Instance-Level Functions ----------------------------------------------
 
-(deftest deleted?
+(deftest deleted-test
   (testing "a node with a patient"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "id-142136"}]])
@@ -433,7 +433,7 @@
         (is (true? (d/deleted? (d/resource-handle (d/db node) "Patient" "id-141820"))))))))
 
 
-(deftest resource
+(deftest resource-handle-test
   (testing "a new node does not contain a resource"
     (with-open [node (new-node)]
       (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
@@ -482,7 +482,7 @@
 
 ;; ---- Type-Level Functions --------------------------------------------------
 
-(deftest list-resources-and-type-total
+(deftest list-resources-and-type-total-test
   (testing "a new node has no patients"
     (with-open [node (new-node)]
       (is (coll/empty? (d/list-resource-handles (d/db node) "Patient")))
@@ -653,12 +653,14 @@
 
 (defn- pull-type-query
   ([node type clauses]
-   (d/pull-many node (d/type-query (d/db node) type clauses)))
+   (when-ok [handles (d/type-query (d/db node) type clauses)]
+     @(d/pull-many node handles)))
   ([node type clauses start-id]
-   (d/pull-many node (d/type-query (d/db node) type clauses start-id))))
+   (when-ok [handles (d/type-query (d/db node) type clauses start-id)]
+     @(d/pull-many node handles))))
 
 
-(deftest type-query
+(deftest type-query-test
   (testing "a new node has no patients"
     (with-open [node (new-node)]
       (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]])))))
@@ -668,7 +670,7 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (testing "the patient can be found"
-        (given @(pull-type-query node "Patient" [["active" "true"]])
+        (given (pull-type-query node "Patient" [["active" "true"]])
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"))
 
@@ -691,19 +693,19 @@
                          [:put {:fhir/type :fhir/Patient :id "1" :active false}]])
 
       (testing "only the active patient will be found"
-        (given @(pull-type-query node "Patient" [["active" "true"]])
+        (given (pull-type-query node "Patient" [["active" "true"]])
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           1 := nil))
 
       (testing "only the non-active patient will be found"
-        (given @(pull-type-query node "Patient" [["active" "false"]])
+        (given (pull-type-query node "Patient" [["active" "false"]])
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "1"
           1 := nil))
 
       (testing "both patients will be found"
-        (given @(pull-type-query node "Patient" [["active" "true" "false"]])
+        (given (pull-type-query node "Patient" [["active" "true" "false"]])
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [1 :fhir/type] := :fhir/Patient
@@ -715,7 +717,7 @@
                          [:put {:fhir/type :fhir/Patient :id "1" :active true}]])
       @(d/transact node [[:delete "Patient" "1"]])
 
-      (given @(pull-type-query node "Patient" [["active" "true"]])
+      (given (pull-type-query node "Patient" [["active" "true"]])
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"
         1 := nil)))
@@ -727,7 +729,7 @@
                          [:put {:fhir/type :fhir/Patient :id "2" :active true}]])
 
       (testing "two active patients will be found"
-        (given @(pull-type-query node "Patient" [["active" "true"]])
+        (given (pull-type-query node "Patient" [["active" "true"]])
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [1 :fhir/type] := :fhir/Patient
@@ -735,13 +737,13 @@
           2 := nil))
 
       (testing "it is possible to start with the second patient"
-        (given @(pull-type-query node "Patient" [["active" "true"]] "2")
+        (given (pull-type-query node "Patient" [["active" "true"]] "2")
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "2"
           1 := nil))
 
       (testing "a nil start-id gives the full result"
-        (given @(pull-type-query node "Patient" [["active" "true"]] nil)
+        (given (pull-type-query node "Patient" [["active" "true"]] nil)
           [0 :id] := "0"
           [1 :id] := "2"
           2 := nil))))
@@ -764,13 +766,13 @@
                                      :reference "Observation/0"}}]}]])
 
         (testing "returns only the patient referenced in the list"
-          (given @(pull-type-query node "Patient" [["_list" "0"]])
+          (given (pull-type-query node "Patient" [["_list" "0"]])
             [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0"
             1 := nil))
 
         (testing "returns only the observation referenced in the list"
-          (given @(pull-type-query node "Observation" [["_list" "0"]])
+          (given (pull-type-query node "Observation" [["_list" "0"]])
             [0 :fhir/type] := :fhir/Observation
             [0 :id] := "0"
             1 := nil))))
@@ -797,13 +799,13 @@
                                      :reference "Patient/3"}}]}]])
 
         (testing "it is possible to start with the second patient"
-          (given @(pull-type-query node "Patient" [["_list" "0"]] "2")
+          (given (pull-type-query node "Patient" [["_list" "0"]] "2")
             [0 :id] := "2"
             [1 :id] := "3"
             2 := nil))
 
         (testing "a nil start-id gives the full result"
-          (given @(pull-type-query node "Patient" [["_list" "0"]] nil)
+          (given (pull-type-query node "Patient" [["_list" "0"]] nil)
             [0 :id] := "0"
             [1 :id] := "2"
             [2 :id] := "3"
@@ -862,22 +864,22 @@
                    :family "Schmidt"}]}]])
 
       (testing "_id"
-        (given @(pull-type-query node "Patient" [["_id" "id-1"]])
+        (given (pull-type-query node "Patient" [["_id" "id-1"]])
           [0 :id] := "id-1"
           1 := nil))
 
       (testing "_profile"
-        (given @(pull-type-query node "Patient" [["_profile" "profile-uri-145024"]])
+        (given (pull-type-query node "Patient" [["_profile" "profile-uri-145024"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "active"
-        (given @(pull-type-query node "Patient" [["active" "true"]])
+        (given (pull-type-query node "Patient" [["active" "true"]])
           [0 :id] := "id-1"
           1 := nil))
 
       (testing "gender and active"
-        (given @(pull-type-query node "Patient" [["gender" "female"]
+        (given (pull-type-query node "Patient" [["gender" "female"]
                                                  ["active" "true" "false"]])
           count := 2
           [0 :id] := "id-1"
@@ -885,90 +887,90 @@
 
       (testing "address with line"
         (testing "in first position"
-          (given @(pull-type-query node "Patient" [["address" "Liebigstraße"]])
+          (given (pull-type-query node "Patient" [["address" "Liebigstraße"]])
             [0 :id] := "id-2"
             1 := nil))
 
         (testing "in second position"
-          (given @(pull-type-query node "Patient" [["gender" "female"]
+          (given (pull-type-query node "Patient" [["gender" "female"]
                                                    ["address" "Liebigstraße"]])
             [0 :id] := "id-2"
             1 := nil)))
 
       (testing "address with city"
         (testing "full result"
-          (given @(pull-type-query node "Patient" [["address" "Leipzig"]])
+          (given (pull-type-query node "Patient" [["address" "Leipzig"]])
             [0 :id] := "id-0"
             [1 :id] := "id-2"
             2 := nil))
 
         (testing "it is possible to start with the second patient"
-          (given @(pull-type-query node "Patient" [["address" "Leipzig"]] "id-2")
+          (given (pull-type-query node "Patient" [["address" "Leipzig"]] "id-2")
             [0 :id] := "id-2"
             1 := nil)))
 
       (testing "address-city full"
-        (given @(pull-type-query node "Patient" [["address-city" "Leipzig"]])
+        (given (pull-type-query node "Patient" [["address-city" "Leipzig"]])
           [0 :id] := "id-0"
           [1 :id] := "id-2"
           2 := nil))
 
       (testing "address-city prefix"
         (testing "full result"
-          (given @(pull-type-query node "Patient" [["address-city" "Leip"]])
+          (given (pull-type-query node "Patient" [["address-city" "Leip"]])
             [0 :id] := "id-0"
             [1 :id] := "id-2"
             2 := nil))
 
         (testing "it is possible to start with the second patient"
-          (given @(pull-type-query node "Patient" [["address-city" "Leip"]] "id-2")
+          (given (pull-type-query node "Patient" [["address-city" "Leip"]] "id-2")
             [0 :id] := "id-2"
             1 := nil)))
 
       (testing "address-city and family prefix"
-        (given @(pull-type-query node "Patient" [["address-city" "Leip"]
+        (given (pull-type-query node "Patient" [["address-city" "Leip"]
                                                  ["family" "Sch"]])
           [0 :id] := "id-2"
           1 := nil))
 
       (testing "address-city and gender"
-        (given @(pull-type-query node "Patient" [["address-city" "Leipzig"]
+        (given (pull-type-query node "Patient" [["address-city" "Leipzig"]
                                                  ["gender" "female"]])
           [0 :id] := "id-2"
           1 := nil))
 
       (testing "gender and address-city with multiple values"
-        (given @(pull-type-query node "Patient" [["gender" "female"]
+        (given (pull-type-query node "Patient" [["gender" "female"]
                                                  ["address-city" "Leipzig" "Berlin"]])
           count := 2
           [0 :id] := "id-1"
           [1 :id] := "id-2"))
 
       (testing "birthdate YYYYMMDD"
-        (given @(pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
+        (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "birthdate YYYYMM"
         (testing "full result"
-          (given @(pull-type-query node "Patient" [["birthdate" "2020-02"]])
+          (given (pull-type-query node "Patient" [["birthdate" "2020-02"]])
             [0 :id] := "id-1"
             [1 :id] := "id-0"
             2 := nil))
 
         (testing "it is possible to start with the second patient"
-          (given @(pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
+          (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
             [0 :id] := "id-0"
             1 := nil)))
 
       (testing "birthdate YYYY"
-        (given @(pull-type-query node "Patient" [["birthdate" "2020"]])
+        (given (pull-type-query node "Patient" [["birthdate" "2020"]])
           [0 :id] := "id-2"
           [1 :id] := "id-1"
           [2 :id] := "id-0"))
 
       (testing "birthdate with `eq` prefix"
-        (given @(pull-type-query node "Patient" [["birthdate" "eq2020-02-08"]])
+        (given (pull-type-query node "Patient" [["birthdate" "eq2020-02-08"]])
           [0 :id] := "id-0"
           1 := nil))
 
@@ -981,19 +983,19 @@
 
       (testing "birthdate with `ge` prefix"
         (testing "finds equal date"
-          (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]])
+          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]])
             [0 :id] := "id-0"
             [0 :birthDate] := #fhir/date"2020-02-08"
             1 := nil))
 
         (testing "finds greater date"
-          (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02-07"]])
+          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-07"]])
             [0 :id] := "id-0"
             [0 :birthDate] := #fhir/date"2020-02-08"
             1 := nil))
 
         (testing "finds more precise dates"
-          (given @(pull-type-query node "Patient" [["birthdate" "ge2020-02"]])
+          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02"]])
             [0 :id] := "id-1"
             [0 :birthDate] := #fhir/date"2020-02"
             [1 :id] := "id-0"
@@ -1002,19 +1004,19 @@
 
       (testing "birthdate with `le` prefix"
         (testing "finds equal date"
-          (given @(pull-type-query node "Patient" [["birthdate" "le2020-02-08"]])
+          (given (pull-type-query node "Patient" [["birthdate" "le2020-02-08"]])
             [0 :id] := "id-0"
             [0 :birthDate] := #fhir/date"2020-02-08"
             1 := nil))
 
         (testing "finds less date"
-          (given @(pull-type-query node "Patient" [["birthdate" "le2020-02-09"]])
+          (given (pull-type-query node "Patient" [["birthdate" "le2020-02-09"]])
             [0 :id] := "id-0"
             [0 :birthDate] := #fhir/date"2020-02-08"
             1 := nil))
 
         (testing "finds more precise dates"
-          (given @(pull-type-query node "Patient" [["birthdate" "le2020-03"]])
+          (given (pull-type-query node "Patient" [["birthdate" "le2020-03"]])
             [0 :id] := "id-1"
             [0 :birthDate] := #fhir/date"2020-02"
             [1 :id] := "id-0"
@@ -1022,14 +1024,14 @@
             2 := nil)))
 
       (testing "gender and birthdate"
-        (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+        (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                  ["birthdate" "2020-02"]])
           count := 2
           [0 :id] := "id-0"
           [1 :id] := "id-1"))
 
       (testing "gender and birthdate with multiple values"
-        (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+        (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                  ["birthdate" "2020-02" "2020"]])
           count := 3
           [0 :id] := "id-0"
@@ -1038,34 +1040,34 @@
 
       (testing "gender and birthdate with prefix"
         (testing "greater equal"
-          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+          (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                    ["birthdate" "ge2020"]])
             count := 3
             [0 :id] := "id-0"
             [1 :id] := "id-1"
             [2 :id] := "id-2")
 
-          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+          (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                    ["birthdate" "ge2020-02"]])
             count := 2
             [0 :id] := "id-0"
             [1 :id] := "id-1"))
 
         (testing "less equal"
-          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+          (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                    ["birthdate" "le2020"]])
             count := 3
             [0 :id] := "id-0"
             [1 :id] := "id-1"
             [2 :id] := "id-2")
 
-          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+          (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                    ["birthdate" "le2020-02"]])
             count := 2
             [0 :id] := "id-0"
             [1 :id] := "id-1")
 
-          (given @(pull-type-query node "Patient" [["gender" "male" "female"]
+          (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                    ["birthdate" "le2021"]])
             count := 3
             [0 :id] := "id-0"
@@ -1073,33 +1075,33 @@
             [2 :id] := "id-2")))
 
       (testing "deceased"
-        (given @(pull-type-query node "Patient" [["deceased" "true"]])
+        (given (pull-type-query node "Patient" [["deceased" "true"]])
           [0 :id] := "id-0"
           [1 :id] := "id-2"
           2 := nil))
 
       (testing "email"
-        (given @(pull-type-query node "Patient" [["email" "foo@bar.baz"]])
+        (given (pull-type-query node "Patient" [["email" "foo@bar.baz"]])
           [0 :id] := "id-1"
           1 := nil))
 
       (testing "family lower-case"
-        (given @(pull-type-query node "Patient" [["family" "schmidt"]])
+        (given (pull-type-query node "Patient" [["family" "schmidt"]])
           [0 :id] := "id-2"
           1 := nil))
 
       (testing "gender"
-        (given @(pull-type-query node "Patient" [["gender" "male"]])
+        (given (pull-type-query node "Patient" [["gender" "male"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "identifier"
-        (given @(pull-type-query node "Patient" [["identifier" "0"]])
+        (given (pull-type-query node "Patient" [["identifier" "0"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "telecom"
-        (given @(pull-type-query node "Patient" [["telecom" "0815"]])
+        (given (pull-type-query node "Patient" [["telecom" "0815"]])
           [0 :id] := "id-1"
           1 := nil))))
 
@@ -1116,17 +1118,17 @@
 
       (testing "name"
         (testing "using family"
-          (given @(pull-type-query node "Practitioner" [["name" "müller"]])
+          (given (pull-type-query node "Practitioner" [["name" "müller"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using first given"
-          (given @(pull-type-query node "Practitioner" [["name" "hans"]])
+          (given (pull-type-query node "Practitioner" [["name" "hans"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using second given"
-          (given @(pull-type-query node "Practitioner" [["name" "martin"]])
+          (given (pull-type-query node "Practitioner" [["name" "martin"]])
             [0 :id] := "id-0"
             1 := nil)))))
 
@@ -1153,47 +1155,47 @@
 
       (testing "bodysite"
         (testing "using system|code"
-          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]])
+          (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using code"
-          (given @(pull-type-query node "Specimen" [["bodysite" "C77.4"]])
+          (given (pull-type-query node "Specimen" [["bodysite" "C77.4"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using system|"
-          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|"]])
+          (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|"]])
             [0 :id] := "id-0"
             1 := nil)))
 
       (testing "type"
-        (given @(pull-type-query node "Specimen" [["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
+        (given (pull-type-query node "Specimen" [["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "bodysite and type"
         (testing "using system|code"
-          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
+          (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
                                                     ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using code"
-          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
+          (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
                                                     ["type" "dna"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using system|"
-          (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
+          (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
                                                     ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "does not match"
           (testing "using system|code"
-            (given @(pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
+            (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
                                                       ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|urine"]])
               0 := nil))))))
 
@@ -1210,12 +1212,12 @@
                  :url #fhir/uri"url-111721"}]])
 
       (testing "url"
-        (given @(pull-type-query node "ActivityDefinition" [["url" "url-111619"]])
+        (given (pull-type-query node "ActivityDefinition" [["url" "url-111619"]])
           [0 :id] := "id-0"
           1 := nil))
 
       (testing "description"
-        (given @(pull-type-query node "ActivityDefinition" [["description" "desc-121208"]])
+        (given (pull-type-query node "ActivityDefinition" [["description" "desc-121208"]])
           [0 :id] := "id-0"
           1 := nil))))
 
@@ -1231,7 +1233,7 @@
                  :version "version-122456"}]])
 
       (testing "version"
-        (given @(pull-type-query node "CodeSystem" [["version" "version-122443"]])
+        (given (pull-type-query node "CodeSystem" [["version" "version-122443"]])
           [0 :id] := "id-0"
           1 := nil))))
 
@@ -1248,7 +1250,7 @@
                  :id "id-1"}]])
 
       (testing "monitoring-program-name"
-        (given @(pull-type-query node "MedicationKnowledge" [["monitoring-program-name" "name-123124"]])
+        (given (pull-type-query node "MedicationKnowledge" [["monitoring-program-name" "name-123124"]])
           [0 :id] := "id-0"
           1 := nil))))
 
@@ -1267,7 +1269,7 @@
                  :id "id-1"}]])
 
       (testing "patient"
-        (given @(pull-type-query node "Condition" [["patient" "id-0"]])
+        (given (pull-type-query node "Condition" [["patient" "id-0"]])
           [0 :id] := "id-0"
           1 := nil))))
 
@@ -1315,37 +1317,37 @@
       (testing "value-quantity"
         (testing "without unit"
           (let [clauses [["value-quantity" "2.11"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 1
               [0 :id] := "id-2")))
 
         (testing "with minimal unit"
           (let [clauses [["value-quantity" "2.11|kg/m2"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 1
               [0 :id] := "id-2")))
 
         (testing "with human unit"
           (let [clauses [["value-quantity" "2.11|kg/m²"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 1
               [0 :id] := "id-2")))
 
         (testing "with full unit"
           (let [clauses [["value-quantity" "2.11|http://unitsofmeasure.org|kg/m2"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 1
               [0 :id] := "id-2")))
 
         (testing "with lesser precision"
           (let [clauses [["value-quantity" "2.1"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 1
               [0 :id] := "id-2")))
 
         (testing "with even lesser precision"
           (let [clauses [["value-quantity" "2"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 1
               [0 :id] := "id-2")))
 
@@ -1359,87 +1361,87 @@
 
           (testing "greater than"
             (let [clauses [["value-quantity" "gt2.11"]]]
-              (given @(pull-type-query node "Observation" clauses)
+              (given (pull-type-query node "Observation" clauses)
                 count := 1
                 [0 :id] := "id-3"))
 
             (testing "with lesser precision"
               (let [clauses [["value-quantity" "gt2.1"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-2"
                   [1 :id] := "id-3"))
 
               (testing "it is possible to start with the second observation"
                 (let [clauses [["value-quantity" "gt2.1"]]]
-                  (given @(pull-type-query node "Observation" clauses "id-3")
+                  (given (pull-type-query node "Observation" clauses "id-3")
                     count := 1
                     [0 :id] := "id-3"))))
 
             (testing "with even lesser precision"
               (let [clauses [["value-quantity" "gt2"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-2"
                   [1 :id] := "id-3"))))
 
           (testing "less than"
             (let [clauses [["value-quantity" "lt2.11"]]]
-              (given @(pull-type-query node "Observation" clauses)
+              (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "id-1"
                 [1 :id] := "id-0"))
 
             (testing "it is possible to start with the second observation"
               (let [clauses [["value-quantity" "lt2.11"]]]
-                (given @(pull-type-query node "Observation" clauses "id-0")
+                (given (pull-type-query node "Observation" clauses "id-0")
                   count := 1
                   [0 :id] := "id-0")))
 
             (testing "with lesser precision"
               (let [clauses [["value-quantity" "lt2.1"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-1"
                   [1 :id] := "id-0")))
 
             (testing "with even lesser precision"
               (let [clauses [["value-quantity" "lt2"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-1"
                   [1 :id] := "id-0"))))
 
           (testing "greater equal"
             (let [clauses [["value-quantity" "ge2.11"]]]
-              (given @(pull-type-query node "Observation" clauses)
+              (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "id-2"
                 [1 :id] := "id-3"))
 
             (testing "it is possible to start with the second observation"
               (let [clauses [["value-quantity" "ge2.11"]]]
-                (given @(pull-type-query node "Observation" clauses "id-3")
+                (given (pull-type-query node "Observation" clauses "id-3")
                   count := 1
                   [0 :id] := "id-3")))
 
             (testing "with lesser precision"
               (let [clauses [["value-quantity" "ge2.1"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-2"
                   [1 :id] := "id-3")))
 
             (testing "with even lesser precision"
               (let [clauses [["value-quantity" "ge2"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-2"
                   [1 :id] := "id-3"))))
 
           (testing "less equal"
             (let [clauses [["value-quantity" "le2.11"]]]
-              (given @(pull-type-query node "Observation" clauses)
+              (given (pull-type-query node "Observation" clauses)
                 count := 3
                 [0 :id] := "id-2"
                 [1 :id] := "id-1"
@@ -1447,21 +1449,21 @@
 
             (testing "it is possible to start with the second observation"
               (let [clauses [["value-quantity" "le2.11"]]]
-                (given @(pull-type-query node "Observation" clauses "id-1")
+                (given (pull-type-query node "Observation" clauses "id-1")
                   count := 2
                   [0 :id] := "id-1"
                   [1 :id] := "id-0")))
 
             (testing "with lesser precision"
               (let [clauses [["value-quantity" "le2.1"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-1"
                   [1 :id] := "id-0")))
 
             (testing "with even lesser precision"
               (let [clauses [["value-quantity" "le2"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-1"
                   [1 :id] := "id-0"))))
@@ -1489,20 +1491,20 @@
 
         (testing "with more than one value"
           (let [clauses [["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 2
               [0 :id] := "id-2"
               [1 :id] := "id-1"))))
 
       (testing "status and value-quantity"
         (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2"]]]
-          (given @(pull-type-query node "Observation" clauses)
+          (given (pull-type-query node "Observation" clauses)
             count := 1
             [0 :id] := "id-2"))
 
         (testing "with lesser precision"
           (let [clauses [["status" "final"] ["value-quantity" "2.1|kg/m2"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 1
               [0 :id] := "id-2")))
 
@@ -1517,34 +1519,34 @@
 
           (testing "greater than"
             (let [clauses [["status" "final"] ["value-quantity" "gt2.11|kg/m2"]]]
-              (given @(pull-type-query node "Observation" clauses)
+              (given (pull-type-query node "Observation" clauses)
                 count := 1
                 [0 :id] := "id-3"))
 
             (testing "with lesser precision"
               (let [clauses [["status" "final"] ["value-quantity" "gt2.1|kg/m2"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-2"
                   [1 :id] := "id-3"))))
 
           (testing "less than"
             (let [clauses [["status" "final"] ["value-quantity" "lt2.11|kg/m2"]]]
-              (given @(pull-type-query node "Observation" clauses)
+              (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "id-0"
                 [1 :id] := "id-1")))
 
           (testing "greater equal"
             (let [clauses [["status" "final"] ["value-quantity" "ge2.11|kg/m2"]]]
-              (given @(pull-type-query node "Observation" clauses)
+              (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "id-2"
                 [1 :id] := "id-3")))
 
           (testing "less equal"
             (let [clauses [["status" "final"] ["value-quantity" "le2.11|kg/m2"]]]
-              (given @(pull-type-query node "Observation" clauses)
+              (given (pull-type-query node "Observation" clauses)
                 count := 3
                 [0 :id] := "id-0"
                 [1 :id] := "id-1"
@@ -1552,7 +1554,7 @@
 
             (testing "with lesser precision"
               (let [clauses [["status" "final"] ["value-quantity" "le2.1|kg/m2"]]]
-                (given @(pull-type-query node "Observation" clauses)
+                (given (pull-type-query node "Observation" clauses)
                   count := 2
                   [0 :id] := "id-0"
                   [1 :id] := "id-1"))))
@@ -1583,14 +1585,14 @@
 
         (testing "with more than one value"
           (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
-            (given @(pull-type-query node "Observation" clauses)
+            (given (pull-type-query node "Observation" clauses)
               count := 2
               [0 :id] := "id-1"
               [1 :id] := "id-2"))))
 
       (testing "value-quantity and status"
         (let [clauses [["value-quantity" "2.11|kg/m2"] ["status" "final"]]]
-          (given @(pull-type-query node "Observation" clauses)
+          (given (pull-type-query node "Observation" clauses)
             count := 1
             [0 :id] := "id-2")))))
 
@@ -1619,14 +1621,14 @@
 
       (testing "full result"
         (let [clauses [["value-quantity" "23.42"]]]
-          (given @(pull-type-query node "Observation" clauses)
+          (given (pull-type-query node "Observation" clauses)
             count := 2
             [0 :id] := "id-0"
             [1 :id] := "id-1")))
 
       (testing "it is possible to start with the second observation"
         (let [clauses [["value-quantity" "23.42"]]]
-          (given @(pull-type-query node "Observation" clauses "id-1")
+          (given (pull-type-query node "Observation" clauses "id-1")
             count := 1
             [0 :id] := "id-1")))))
 
@@ -1657,7 +1659,10 @@
         (with-open [snapshot (kv/new-snapshot (:kv-store node))
                     iter (kv/new-iterator snapshot :resource-value-index)]
           (is
-            (= (into [] (i/keys iter codec/decode-resource-sp-value-key-human bytes/empty))
+            (= (into
+                 []
+                 (map #(mapv % [:type :id :hash-prefix :code :value]))
+                 (i/keys iter codec/decode-resource-sp-value-key-human bytes/empty))
                [["Observation" "id-0" "7B68D1DB" "value-quantity" "0000000080"]
                 ["Observation" "id-0" "7B68D1DB" "value-quantity" "5C38E45A80"]
                 ["Observation" "id-0" "7B68D1DB" "value-quantity" "9B780D9180"]
@@ -1673,15 +1678,94 @@
 
       (testing "TestScript would be found"
         (let [clauses [["context-quantity" "0"]]]
-          (given @(pull-type-query node "TestScript" clauses)
+          (given (pull-type-query node "TestScript" clauses)
             count := 1
             [0 :id] := "id-0")))
 
       (testing "greater equal"
         (let [clauses [["value-quantity" "ge0"]]]
-          (given @(pull-type-query node "Observation" clauses)
+          (given (pull-type-query node "Observation" clauses)
             count := 1
             [0 :id] := "id-0")))))
+
+  (testing "Observation code-value-quantity"
+    (with-open [node (new-node)]
+      @(d/transact
+         node
+         [[:put {:fhir/type :fhir/Observation
+                 :id "id-0"
+                 :status #fhir/code"final"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 130M
+                  :code #fhir/code"mm[Hg]"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-1"
+                 :status #fhir/code"final"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 150M
+                  :code #fhir/code"mm[Hg]"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-2"
+                 :status #fhir/code"final"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8462-4"}]}
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 90M
+                  :code #fhir/code"mm[Hg]"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-3"
+                 :status #fhir/code"final"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8462-4"}]}
+                 :value
+                 {:fhir/type :fhir/Quantity
+                  :value 70M
+                  :code #fhir/code"mm[Hg]"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}]])
+
+      (testing "as first clause"
+        (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge140|mm[Hg]"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-1"))
+
+        (let [clauses [["code-value-quantity" "http://loinc.org|8462-4$ge90|mm[Hg]"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-2")))
+
+      (testing "as second clause"
+        (let [clauses [["status" "final"]
+                       ["code-value-quantity" "http://loinc.org|8480-6$ge140|mm[Hg]"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-1")))))
 
   (testing "MeasureReport"
     (with-open [node (new-node)]
@@ -1693,7 +1777,7 @@
 
       (testing "measure"
         (let [clauses [["measure" "measure-url-181106"]]]
-          (given @(pull-type-query node "MeasureReport" clauses)
+          (given (pull-type-query node "MeasureReport" clauses)
             [0 :id] := "id-144132"
             1 := nil)))))
 
@@ -1723,7 +1807,7 @@
                         :reference "Patient/1"}}]}]])
 
           (let [clauses [["item" "Patient/1"]]]
-            (given @(pull-type-query node "List" clauses)
+            (given (pull-type-query node "List" clauses)
               [0 :id] := "id-143814"
               1 := nil))))
 
@@ -1753,7 +1837,7 @@
                          :value "value-143818"}}}]}]])
 
           (let [clauses [["item:identifier" "system-122917|value-122931"]]]
-            (given @(pull-type-query node "List" clauses)
+            (given (pull-type-query node "List" clauses)
               [0 :id] := "id-123058"
               1 := nil)))))
 
@@ -1797,12 +1881,12 @@
 
           (let [clauses [["code" "system-152812|code-152819"]
                          ["item:identifier" "system-122917|value-143818"]]]
-            (given @(pull-type-query node "List" clauses)
+            (given (pull-type-query node "List" clauses)
               [0 :id] := "id-143814"
               1 := nil)))))))
 
 
-(deftest compile-type-query
+(deftest compile-type-query-test
   (testing "a node with one patient"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
@@ -1821,7 +1905,7 @@
           ::anom/message := "search-param with code `foo` and type `Patient` not found")))))
 
 
-(deftest compile-type-query-lenient
+(deftest compile-type-query-lenient-test
   (testing "a node with one patient"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
@@ -1834,18 +1918,20 @@
           [0 :id] := "0"))
 
       (testing "an unknown search-param is ignored"
-        (given @(->> (d/compile-type-query-lenient node "Patient" [["foo" "bar"]
-                                                                   ["active" "true"]])
-                     (d/execute-query (d/db node))
-                     (d/pull-many node))
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0")))))
+        (let [clauses [["foo" "bar"] ["active" "true"]]
+              query (d/compile-type-query-lenient node "Patient" clauses)]
+          (given @(d/pull-many node (d/execute-query (d/db node) query))
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0")
+
+          (testing "the clause [\"foo\" \"bar\"] was not used"
+            (is (= [["active" "true"]] (d/query-clauses query)))))))))
 
 
 
 ;; ---- System-Level Functions ------------------------------------------------
 
-(deftest system-list-and-total
+(deftest system-list-and-total-test
   (testing "a new node has no resources"
     (with-open [node (new-node)]
       (is (zero? (d/system-total (d/db node))))))
@@ -1912,7 +1998,7 @@
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
-(deftest list-compartment-resources
+(deftest list-compartment-resources-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-open [node (new-node)]
       (is (coll/empty? (d/list-compartment-resource-handles (d/db node) "Patient" "0" "Observation")))))
@@ -1991,7 +2077,7 @@
       (is (coll/empty? (d/list-compartment-resource-handles (d/db node) "foo" "bar" "Condition"))))))
 
 
-(deftest compartment-query
+(deftest compartment-query-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-open [node (new-node)]
       (is (coll/empty? (d/compartment-query (d/db node) "Patient" "0" "Observation" [["code" "foo"]])))))
@@ -2266,7 +2352,7 @@
 
 ;; ---- Instance-Level History Functions --------------------------------------
 
-(deftest instance-history
+(deftest instance-history-test
   (testing "a new node has an empty instance history"
     (with-open [node (new-node)]
       (is (coll/empty? (d/instance-history (d/db node) "Patient" "0")))
@@ -2358,7 +2444,7 @@
 
 ;; ---- Type-Level History Functions ------------------------------------------
 
-(deftest type-history
+(deftest type-history-test
   (testing "a new node has an empty type history"
     (with-open [node (new-node)]
       (is (coll/empty? (d/type-history (d/db node) "Patient")))
@@ -2486,7 +2572,7 @@
 
 ;; ---- System-Level History Functions ----------------------------------------
 
-(deftest system-history
+(deftest system-history-test
   (testing "a new node has an empty system history"
     (with-open [node (new-node)]
       (is (coll/empty? (d/system-history (d/db node))))

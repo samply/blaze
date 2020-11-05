@@ -200,7 +200,7 @@
 (defn- decode-clauses [clauses]
   (mapv
     (fn [[search-param modifier values]]
-      (cons (cond-> (p/-code search-param) modifier (str ":" modifier))
+      (cons (cond-> (:code search-param) modifier (str ":" modifier))
             values))
     clauses))
 

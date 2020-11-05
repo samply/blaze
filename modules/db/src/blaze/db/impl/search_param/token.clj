@@ -2,7 +2,6 @@
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.util :as u]
@@ -11,12 +10,11 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
-
-
 
 
 (defmulti token-index-entries
@@ -147,55 +145,6 @@
     c-hash))
 
 
-(defn- index-token-entries
-  [url code c-hash hash resource linked-compartments values]
-  (let [{:keys [id]} resource
-        type (name (fhir-spec/fhir-type resource))
-        tid (codec/tid type)
-        id-bytes (codec/id-bytes id)]
-    (into
-      []
-      (mapcat
-        (partial
-          token-index-entries
-          url
-          (fn search-param-token-entry [modifier value]
-            (log/trace "search-param-value-entry" "token" code type id
-                       hash (codec/hex value))
-            (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-              (into
-                [[:search-param-value-index
-                  (codec/sp-value-resource-key
-                    c-hash
-                    tid
-                    value
-                    id-bytes
-                    hash)
-                  bytes/empty]
-                 [:resource-value-index
-                  (codec/resource-sp-value-key
-                    tid
-                    id-bytes
-                    hash
-                    c-hash
-                    value)
-                  bytes/empty]]
-                (map
-                  (fn [[code id]]
-                    [:compartment-search-param-value-index
-                     (codec/compartment-search-param-value-key
-                       (codec/c-hash code)
-                       (codec/id-bytes id)
-                       c-hash
-                       tid
-                       value
-                       id-bytes
-                       hash)
-                     bytes/empty]))
-                linked-compartments)))))
-      values)))
-
-
 (defn- resource-keys [{:keys [svri]} c-hash tid compiled-value start-id]
   (if start-id
     (u/prefix-keys
@@ -213,11 +162,8 @@
 
 (defrecord SearchParamToken [name url type base code c-hash expression]
   p/SearchParam
-  (-code [_]
-    code)
-
-  (-compile-values [_ values]
-    (mapv codec/v-hash values))
+  (-compile-value [_ value]
+    (codec/v-hash value))
 
   (-resource-handles [_ context tid modifier value start-id]
     (coll/eduction
@@ -241,7 +187,7 @@
         []
         (mapcat
           (fn [value]
-            (case (clojure.core/type value)
+            (case (fhir-spec/fhir-type value)
               :fhir/Reference
               (let [{:keys [reference]} value]
                 (when reference
@@ -250,28 +196,44 @@
                       (rest res))))))))
         values)))
 
-  (-index-entries [_ resolver hash resource linked-compartments]
+  (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (index-token-entries url code c-hash hash resource linked-compartments
-                           values))))
+      (p/-compile-index-values search-param values)))
+
+  (-compile-index-values [_ values]
+    (into
+      []
+      (mapcat
+        #(token-index-entries
+           url
+           (fn [modifier value]
+             [[modifier value]])
+           %))
+      values)))
 
 
 (defmethod sr/search-param "token"
-  [{:keys [name url type base code expression]}]
-  (when expression
+  [_ {:keys [name url type base code expression]}]
+  (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))
 
 
 (defmethod sr/search-param "reference"
-  [{:keys [name url type base code expression]}]
-  (when expression
+  [_ {:keys [name url type base code expression]}]
+  (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))
 
 
 (defmethod sr/search-param "uri"
-  [{:keys [name url type base code expression]}]
-  (when expression
+  [_ {:keys [name url type base code expression]}]
+  (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))

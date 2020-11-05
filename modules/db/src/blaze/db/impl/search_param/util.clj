@@ -9,6 +9,7 @@
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.spec :as fhir-spec]
     [cognitect.anomalies :as anom])
   (:import
     [java.nio ByteBuffer]))
@@ -30,7 +31,7 @@
 
 (defn format-skip-indexing-msg [value url type]
   (format "Skip indexing value `%s` of type `%s` for search parameter `%s` with type `%s` because the rule is missing."
-          (pr-str value) (clojure.core/type value) url type))
+          (pr-str value) (fhir-spec/fhir-type value) url type))
 
 
 (def by-id-grouper
@@ -157,3 +158,8 @@
    (coll/eduction
      (take-while (fn [[prefix]] (bytes/starts-with? prefix prefix-key)))
      (sp-value-resource-keys iter start-key))))
+
+
+(defn missing-expression-msg [url]
+  (format "Unsupported search parameter with URL `%s`. Required expression is missing."
+          url))

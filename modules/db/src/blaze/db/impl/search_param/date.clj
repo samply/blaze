@@ -145,14 +145,6 @@
           (name op)))
 
 
-(defn- compile-value [value]
-  (let [[op value] (u/separate-op value)]
-    (case op
-      (:eq :ge :le)
-      [op (system/parse-date-time value)]
-      (throw-anom ::anom/unsupported (unsupported-prefix-msg op)))))
-
-
 (defn- resource-keys [context c-hash tid [op value] start-id]
   (case op
     :eq (eq-keys context c-hash tid value start-id)
@@ -171,11 +163,12 @@
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
-  (-code [_]
-    code)
-
-  (-compile-values [_ values]
-    (mapv compile-value values))
+  (-compile-value [_ value]
+    (let [[op value] (u/separate-op value)]
+      (case op
+        (:eq :ge :le)
+        [op (system/parse-date-time value)]
+        (throw-anom ::anom/unsupported (unsupported-prefix-msg op)))))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
@@ -226,7 +219,9 @@
 
 
 (defmethod sr/search-param "date"
-  [{:keys [name url type base code expression]}]
-  (when expression
+  [_ {:keys [name url type base code expression]}]
+  (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamDate name url type base code (codec/c-hash code) expression))))
+      (->SearchParamDate name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))

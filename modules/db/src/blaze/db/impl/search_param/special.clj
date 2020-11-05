@@ -7,7 +7,8 @@
 (defmulti special-search-param (fn [{:keys [code]}] code))
 
 
-(defmethod sr/search-param "special" [search-param]
+(defmethod sr/search-param "special"
+  [_ search-param]
   (special-search-param search-param))
 
 

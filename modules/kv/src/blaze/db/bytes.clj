@@ -1,7 +1,8 @@
 (ns blaze.db.bytes
   (:import
+    [com.google.common.primitives Bytes]
     [java.util Arrays])
-  (:refer-clojure :exclude [= < <= > >= empty]))
+  (:refer-clojure :exclude [= < <= > >= concat empty]))
 
 
 (set! *warn-on-reflection* true)
@@ -71,3 +72,9 @@
 (def ^{:tag 'bytes} empty
   "The empty byte array (immutable)."
   (byte-array 0))
+
+
+(defn concat [& byte-arrays]
+  (if (seq byte-arrays)
+    (Bytes/concat (into-array byte-arrays))
+    empty))
