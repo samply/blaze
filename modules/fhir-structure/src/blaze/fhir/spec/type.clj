@@ -45,15 +45,21 @@
 
 ;; ---- Object and nil --------------------------------------------------------
 
-;; Be sure type and value can be called on every Object and nil. Every call
+;; Be sure all methods can be called on every Object and nil. Every call
 ;; will produce nil.
 (extend-protocol FhirType
   Object
   (-type [_])
   (-value [_])
+  (-to-json [_])
+  (-to-xml [_])
+  (-hash-into [_ _])
   nil
   (-type [_])
-  (-value [_]))
+  (-value [_])
+  (-to-json [_])
+  (-to-xml [_])
+  (-hash-into [_ _]))
 
 
 
