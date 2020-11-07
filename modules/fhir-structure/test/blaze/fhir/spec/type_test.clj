@@ -73,6 +73,34 @@
    :valueString "bar"})
 
 
+(deftest nil-test
+  (testing "all FhirType methods can be called on nil"
+    (testing "type"
+      (is (nil? (type/-type nil))))
+    (testing "value"
+      (is (nil? (type/-value nil))))
+    (testing "to-json"
+      (is (nil? (type/-to-json nil))))
+    (testing "to-xml"
+      (is (nil? (type/-to-xml nil))))
+    (testing "hash-into"
+      (is (= "0" (murmur3 nil))))))
+
+
+(deftest Object-test
+  (testing "all FhirType methods can be called on arbitrary Objects"
+    (testing "type"
+      (is (nil? (type/-type (Object.)))))
+    (testing "value"
+      (is (nil? (type/-value (Object.)))))
+    (testing "to-json"
+      (is (nil? (type/-to-json (Object.)))))
+    (testing "to-xml"
+      (is (nil? (type/-to-xml (Object.)))))
+    (testing "hash-into"
+      (is (= "0" (murmur3 (Object.)))))))
+
+
 (deftest boolean-test
   (testing "type"
     (is (= :fhir/boolean (type/-type true))))
