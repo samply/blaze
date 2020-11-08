@@ -38,6 +38,10 @@
   (is (= "birthdate" (:code birth-date-param))))
 
 
+(deftest name-test
+  (is (= "birthdate" (:name birth-date-param))))
+
+
 (deftest index-entries-test
   (testing "Patient birthDate"
     (let [patient {:fhir/type :fhir/Patient

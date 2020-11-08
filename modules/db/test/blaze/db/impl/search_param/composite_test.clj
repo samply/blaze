@@ -37,6 +37,10 @@
   (is (= "code-value-quantity" (:code code-value-quantity-param))))
 
 
+(deftest name-test
+  (is (= "code-value-quantity" (:name code-value-quantity-param))))
+
+
 (defn- split-value [hex]
   [(subs hex 0 8) (subs hex 8)])
 

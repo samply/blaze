@@ -36,6 +36,10 @@
   (is (= "phonetic" (:code phonetic-param))))
 
 
+(deftest name-test
+  (is (= "phonetic" (:name phonetic-param))))
+
+
 (deftest index-entries-test
   (testing "Patient phonetic"
     (testing "missing family is not a problem"
