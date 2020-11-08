@@ -35,6 +35,10 @@
   (is (= "value-quantity" (:code value-quantity-param))))
 
 
+(deftest name-test
+  (is (= "value-quantity" (:name value-quantity-param))))
+
+
 (defn compile-quantity-value [value]
   (let [[[op lower-bound exact-value upper-bound]]
         (search-param/compile-values value-quantity-param [value])]

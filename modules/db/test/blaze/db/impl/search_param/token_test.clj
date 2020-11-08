@@ -35,6 +35,10 @@
   (is (= "code" (:code code-param))))
 
 
+(deftest name-test
+  (is (= "code" (:name code-param))))
+
+
 (deftest index-entries-test
   (testing "Observation _id"
     (let [observation

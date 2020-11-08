@@ -29,3 +29,7 @@
 
 (deftest code-test
   (is (= "_list" (:code list-param))))
+
+
+(deftest name-test
+  (is (= "_list" (:name list-param))))

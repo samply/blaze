@@ -60,7 +60,7 @@
       (ids* iter key tid key))))
 
 
-(defrecord SearchParamList [type code]
+(defrecord SearchParamList [name type code]
   p/SearchParam
   (-compile-value [_ value]
     (codec/id-bytes value))
@@ -83,4 +83,4 @@
 
 (defmethod special/special-search-param "_list"
   [_]
-  (->SearchParamList "special" "_list"))
+  (->SearchParamList "_list" "special" "_list"))
