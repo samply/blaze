@@ -145,7 +145,7 @@
     c-hash))
 
 
-(defn- resource-keys [{:keys [svri]} c-hash tid compiled-value start-id]
+(defn resource-keys [{:keys [svri]} c-hash tid compiled-value start-id]
   (if start-id
     (u/prefix-keys
       svri
@@ -156,7 +156,7 @@
       (codec/sp-value-resource-key c-hash tid compiled-value))))
 
 
-(defn- matches? [{:keys [rsvi]} c-hash tid id hash value]
+(defn matches? [{:keys [rsvi]} c-hash tid id hash value]
   (u/resource-sp-value-seek rsvi tid id hash c-hash value))
 
 

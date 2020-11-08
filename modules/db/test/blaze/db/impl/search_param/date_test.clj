@@ -9,6 +9,8 @@
     [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
     [java.time LocalDate OffsetDateTime ZoneId ZoneOffset]))
@@ -40,6 +42,18 @@
 
 (deftest name-test
   (is (= "birthdate" (:name birth-date-param))))
+
+
+(deftest compile-value-test
+  (testing "invalid date value"
+    (given (search-param/compile-values birth-date-param ["a"])
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid date-time value `a` in search parameter `birthdate`."))
+
+  (testing "unsupported prefix"
+    (given (search-param/compile-values birth-date-param ["ne2020"])
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`.")))
 
 
 (deftest index-entries-test

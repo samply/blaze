@@ -3,7 +3,8 @@
     [blaze.fhir.spec.type.system :as system]
     [blaze.fhir.spec.type.system-spec]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]])
+    [clojure.test :as test :refer [are deftest is testing]]
+    [cognitect.anomalies :as anom])
   (:import
     [com.google.common.hash Hashing]
     [java.time LocalDate Year YearMonth]))
@@ -46,6 +47,22 @@
     (are [a b res] (= res (system/equals a b))
       "a" "a" true
       "a" "b" false)))
+
+
+(deftest decimal-test
+  (is (true? (system/decimal? 1M))))
+
+
+(deftest parse-decimal-test
+  (testing "valid"
+    (are [s d] (= d (system/parse-decimal s))
+      "1" 1M
+      "1.1" 1.1M))
+
+  (testing "invalid"
+    (are [s] (= ::anom/incorrect (::anom/category (system/parse-decimal s)))
+      "a"
+      "")))
 
 
 (deftest date-test
@@ -125,3 +142,14 @@
     (testing "DateTimeYearMonthDay hash-code equals that of LocalDate"
       (is (= (.hashCode (system/->DateTimeYearMonthDay 2020 1 1))
              (.hashCode (LocalDate/of 2020 1 1)))))))
+
+
+(deftest parse-date-time-test
+  (testing "valid"
+    (are [s d] (= d (system/parse-date-time s))
+      "2020" (system/->DateTimeYear 2020)))
+
+  (testing "invalid"
+    (are [s] (= ::anom/incorrect (::anom/category (system/parse-date-time s)))
+      "a"
+      "")))

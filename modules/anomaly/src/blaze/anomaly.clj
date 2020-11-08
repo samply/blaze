@@ -21,3 +21,19 @@
      (if (::anom/category ~sym)
        ~sym
        (do ~@body))))
+
+
+(defmacro if-ok [[sym form] then else]
+  `(let [~sym ~form]
+     (if (::anom/category ~sym)
+       ~else
+       ~then)))
+
+
+(defn conj-anom
+  ([xs]
+   xs)
+  ([xs x]
+   (if (::anom/category x)
+     (reduced x)
+     (conj xs x))))

@@ -9,12 +9,14 @@
    * DateTime
    * Time
    * Quantity"
+  (:require
+    [cognitect.anomalies :as anom])
   (:import
     [com.google.common.hash PrimitiveSink]
     [java.nio.charset StandardCharsets]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
     [java.time.temporal Temporal TemporalUnit TemporalAccessor TemporalField])
-  (:refer-clojure :exclude [type]))
+  (:refer-clojure :exclude [decimal? type]))
 
 
 (set! *warn-on-reflection* true)
@@ -40,19 +42,99 @@
   (-type x))
 
 
-(defn date? [x]
-  (identical? :system/date (-type x)))
-
-
-(defn date-time? [x]
-  (identical? :system/date-time (-type x)))
-
-
 (defn equals
   "Implements equals between two system types according to
   http://hl7.org/fhirpath/#equals."
   [a b]
   (-equals a b))
+
+
+
+;; ---- System.Boolean --------------------------------------------------------
+
+(extend-protocol SystemType
+  Boolean
+  (-type [_] :system/boolean)
+  (-hash-into [b sink]
+    (.putByte ^PrimitiveSink sink (byte 0))
+    (.putBoolean ^PrimitiveSink sink b))
+  (-equals [a b] (.equals a b)))
+
+
+
+;; ---- System.Integer --------------------------------------------------------
+
+(extend-protocol SystemType
+  Integer
+  (-type [_] :system/integer)
+  (-hash-into [i sink]
+    (.putByte ^PrimitiveSink sink (byte 2))
+    (.putInt ^PrimitiveSink sink i)))
+
+
+
+;; ---- System.Long -----------------------------------------------------------
+
+(extend-protocol SystemType
+  Long
+  (-type [_] :system/long)
+  (-hash-into [l sink]
+    (.putByte ^PrimitiveSink sink (byte 3))
+    (.putInt ^PrimitiveSink sink l)))
+
+
+
+;; ---- System.String ---------------------------------------------------------
+
+(extend-protocol SystemType
+  String
+  (-type [_] :system/string)
+  (-hash-into [s sink]
+    (.putByte ^PrimitiveSink sink (byte 1))
+    (.putString ^PrimitiveSink sink s StandardCharsets/UTF_8))
+  (-equals [a b] (.equals a b)))
+
+
+
+;; ---- System.Decimal --------------------------------------------------------
+
+(extend-protocol SystemType
+  BigDecimal
+  (-type [_] :system/decimal)
+  (-hash-into [d sink]
+    (.putByte ^PrimitiveSink sink (byte 4))
+    (.putString ^PrimitiveSink sink (str d) StandardCharsets/UTF_8)))
+
+
+(defn decimal? [x]
+  (identical? :system/decimal (-type x)))
+
+
+(defn- decimal-string?
+  "Returns true if `s` is a valid string representation of a decimal value."
+  [s]
+  (.matches (re-matcher #"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?" s)))
+
+
+(defn parse-decimal [s]
+  (if (decimal-string? s)
+    (BigDecimal. ^String s)
+    {::anom/category ::anom/incorrect
+     ::anom/message (format "Invalid decimal value `%s`." s)}))
+
+
+
+;; ---- System.Date -----------------------------------------------------------
+
+(defn date? [x]
+  (identical? :system/date (-type x)))
+
+
+
+;; ---- System.DateTime -------------------------------------------------------
+
+(defn date-time? [x]
+  (identical? :system/date-time (-type x)))
 
 
 (deftype DateTimeYear [year]
@@ -161,7 +243,7 @@
   (DateTimeYearMonthDay. (LocalDate/of ^int year ^int month ^int day)))
 
 
-(defn parse-date-time [s]
+(defn parse-date-time* [s]
   (condp < (count s)
     10 (if (re-find #"(Z|[+-]\d{2}:)" s)
          (OffsetDateTime/parse s)
@@ -171,34 +253,18 @@
     (DateTimeYear. (Year/parse s))))
 
 
+(defn- date-time-string? [s]
+  (.matches (re-matcher #"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?(Z|(\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?" s)))
+
+
+(defn parse-date-time [s]
+  (if (date-time-string? s)
+    (parse-date-time* s)
+    {::anom/category ::anom/incorrect
+     ::anom/message (format "Invalid date-time value `%s`." s)}))
+
+
 (extend-protocol SystemType
-  Boolean
-  (-type [_] :system/boolean)
-  (-hash-into [b sink]
-    (.putByte ^PrimitiveSink sink (byte 0))
-    (.putBoolean ^PrimitiveSink sink b))
-  (-equals [a b] (.equals a b))
-  String
-  (-type [_] :system/string)
-  (-hash-into [s sink]
-    (.putByte ^PrimitiveSink sink (byte 1))
-    (.putString ^PrimitiveSink sink s StandardCharsets/UTF_8))
-  (-equals [a b] (.equals a b))
-  Integer
-  (-type [_] :system/integer)
-  (-hash-into [i sink]
-    (.putByte ^PrimitiveSink sink (byte 2))
-    (.putInt ^PrimitiveSink sink i))
-  Long
-  (-type [_] :system/long)
-  (-hash-into [l sink]
-    (.putByte ^PrimitiveSink sink (byte 3))
-    (.putInt ^PrimitiveSink sink l))
-  BigDecimal
-  (-type [_] :system/decimal)
-  (-hash-into [d sink]
-    (.putByte ^PrimitiveSink sink (byte 4))
-    (.putString ^PrimitiveSink sink (str d) StandardCharsets/UTF_8))
   Year
   (-type [_] :system/date)
   (-hash-into [date sink]

@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param
   (:require
+    [blaze.anomaly :refer [conj-anom]]
     [blaze.coll.core :as coll]
     [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
@@ -21,9 +22,15 @@
 
 
 (defn compile-values
-  ""
+  "Compiles `values` according to `search-param`.
+
+  Returns an anomaly on errors."
   [search-param values]
-  (mapv #(p/-compile-value search-param %) values))
+  (transduce
+    (map #(p/-compile-value search-param %))
+    conj-anom
+    []
+    values))
 
 
 (defn resource-handles

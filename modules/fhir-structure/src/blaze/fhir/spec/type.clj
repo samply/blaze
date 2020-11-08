@@ -508,9 +508,9 @@
 (defn ->DateTime
   "Creates a primitive dateTime value."
   ([value]
-   (system/parse-date-time value))
+   (system/parse-date-time* value))
   ([id extensions value]
-   (->ExtendedDateTime id extensions (system/parse-date-time value))))
+   (->ExtendedDateTime id extensions (system/parse-date-time* value))))
 
 
 (defn xml->DateTime
@@ -519,7 +519,7 @@
   [{{:keys [id value]} :attrs extensions :content}]
   (if (or id (seq extensions))
     (->DateTime id extensions value)
-    (system/parse-date-time value)))
+    (system/parse-date-time* value)))
 
 
 (defn date-time? [x]
