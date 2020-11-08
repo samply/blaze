@@ -1,13 +1,14 @@
 (ns blaze.handler.fhir.util
-  "Utilities for FHIR interactions. Main functions are `upsert-resource` and
-  `delete-resource`."
+  "Utilities for FHIR interactions."
   (:require
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [reitit.core :as reitit]))
 
 
-(defn to-seq [x]
+(defn to-seq
+  "Coerces `x` to a sequence."
+  [x]
   (if (or (nil? x) (sequential? x)) x [x]))
 
 

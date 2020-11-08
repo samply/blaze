@@ -10,7 +10,8 @@
 
 
 (s/fdef bytes/starts-with?
-  :args (s/cat :bs (s/nilable bytes?) :prefix (s/nilable bytes?))
+  :args (s/cat :bs (s/nilable bytes?) :prefix (s/nilable bytes?)
+               :length (s/? nat-int?))
   :ret boolean?)
 
 

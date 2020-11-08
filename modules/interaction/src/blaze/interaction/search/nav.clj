@@ -7,7 +7,7 @@
 (defn- clauses->query-params [clauses]
   (reduce
     (fn [ret [param & values]]
-      (assoc ret param (str/join "," values)))
+      (update ret param (fnil conj []) (str/join "," values)))
     {}
     clauses))
 

@@ -137,38 +137,51 @@
     bs))
 
 
+(defn sp-value-resource-key*
+  {:arglists
+   '([c-hash tid value v-offset v-length]
+     [c-hash tid value v-offset v-length id]
+     [c-hash tid value v-offset v-length id hash])}
+  ([c-hash tid ^bytes value v-offset v-length]
+   (-> (ByteBuffer/allocate (+ c-hash-size tid-size ^int v-length))
+       (.putInt c-hash)
+       (.putInt tid)
+       (.put value v-offset v-length)
+       (.array)))
+  ([c-hash tid ^bytes value v-offset v-length ^bytes id]
+   (-> (ByteBuffer/allocate (+ c-hash-size tid-size ^int v-length 1
+                               (alength id) 1))
+       (.putInt c-hash)
+       (.putInt tid)
+       (.put value v-offset v-length)
+       (.put (byte 0))
+       (.put id)
+       (.put (byte (alength id)))
+       (.array)))
+  ([c-hash tid ^bytes value v-offset v-length ^bytes id ^bytes hash]
+   (-> (ByteBuffer/allocate (+ c-hash-size tid-size ^int v-length 1
+                               (alength id) 1 hash-prefix-size))
+       (.putInt c-hash)
+       (.putInt tid)
+       (.put value v-offset v-length)
+       (.put (byte 0))
+       (.put id)
+       (.put (byte (alength id)))
+       (.put (hash-prefix hash))
+       (.array))))
+
+
 (defn sp-value-resource-key
   {:arglists
    '([c-hash tid value]
      [c-hash tid value id]
      [c-hash tid value id hash])}
   ([c-hash tid ^bytes value]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value)))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value)
-       (.array)))
-  ([c-hash tid ^bytes value ^bytes id]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value) 1
-                               (alength id) 1))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value)
-       (.put (byte 0))
-       (.put id)
-       (.put (byte (alength id)))
-       (.array)))
-  ([c-hash tid ^bytes value ^bytes id ^bytes hash]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value) 1
-                               (alength id) 1 hash-prefix-size))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value)
-       (.put (byte 0))
-       (.put id)
-       (.put (byte (alength id)))
-       (.put (hash-prefix hash))
-       (.array))))
+   (sp-value-resource-key* c-hash tid value 0 (alength value)))
+  ([c-hash tid ^bytes value id]
+   (sp-value-resource-key* c-hash tid value 0 (alength value) id))
+  ([c-hash tid ^bytes value id hash]
+   (sp-value-resource-key* c-hash tid value 0 (alength value) id hash)))
 
 
 (defn- append-fs [^bytes k ^long n]
@@ -217,9 +230,13 @@
     {}
     (map (fn [code] [(c-hash code) code]))
     ["_id"
+     "code"
      "code-value-quantity"
+     "combo-code"
+     "combo-code-value-quantity"
      "combo-value-quantity"
      "context-quantity"
+     "status"
      "value-quantity"]))
 
 
@@ -250,7 +267,10 @@
 ;; ---- ResourceSearchParamValue Index ----------------------------------------
 
 (defn resource-sp-value-key
-  {:arglists '([tid id hash c-hash] [tid id hash c-hash value])}
+  {:arglists
+   '([tid id hash c-hash]
+     [tid id hash c-hash value]
+     [tid id hash c-hash value v-offset v-length])}
   ([tid ^bytes id hash c-hash]
    (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
                                c-hash-size))
@@ -261,14 +281,16 @@
        (.putInt c-hash)
        (.array)))
   ([tid ^bytes id hash c-hash ^bytes value]
+   (resource-sp-value-key tid id hash c-hash value 0 (alength value)))
+  ([tid ^bytes id hash c-hash ^bytes value v-offset v-length]
    (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
-                               c-hash-size (alength value)))
+                               c-hash-size ^int v-length))
        (.putInt tid)
        (.put (byte (alength id)))
        (.put id)
        (.put (if (bytes? hash) ^bytes hash (hash-prefix hash)))
        (.putInt c-hash)
-       (.put value)
+       (.put value v-offset v-length)
        (.array))))
 
 
@@ -853,10 +875,6 @@
         (.put (v-hash (or unit "")))
         (.put number)
         (.array))))
-
-
-(defn unit-prefix [quantity]
-  (Arrays/copyOfRange ^bytes quantity 0 v-hash-size))
 
 
 (defn deleted-resource [type id]

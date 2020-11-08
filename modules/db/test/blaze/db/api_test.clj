@@ -32,6 +32,9 @@
     [java.time Clock Duration Instant ZoneId]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (log/set-level! :trace)
@@ -880,7 +883,7 @@
 
       (testing "gender and active"
         (given (pull-type-query node "Patient" [["gender" "female"]
-                                                 ["active" "true" "false"]])
+                                                ["active" "true" "false"]])
           count := 2
           [0 :id] := "id-1"
           [1 :id] := "id-2"))
@@ -893,7 +896,7 @@
 
         (testing "in second position"
           (given (pull-type-query node "Patient" [["gender" "female"]
-                                                   ["address" "Liebigstraße"]])
+                                                  ["address" "Liebigstraße"]])
             [0 :id] := "id-2"
             1 := nil)))
 
@@ -929,19 +932,19 @@
 
       (testing "address-city and family prefix"
         (given (pull-type-query node "Patient" [["address-city" "Leip"]
-                                                 ["family" "Sch"]])
+                                                ["family" "Sch"]])
           [0 :id] := "id-2"
           1 := nil))
 
       (testing "address-city and gender"
         (given (pull-type-query node "Patient" [["address-city" "Leipzig"]
-                                                 ["gender" "female"]])
+                                                ["gender" "female"]])
           [0 :id] := "id-2"
           1 := nil))
 
       (testing "gender and address-city with multiple values"
         (given (pull-type-query node "Patient" [["gender" "female"]
-                                                 ["address-city" "Leipzig" "Berlin"]])
+                                                ["address-city" "Leipzig" "Berlin"]])
           count := 2
           [0 :id] := "id-1"
           [1 :id] := "id-2"))
@@ -1025,14 +1028,14 @@
 
       (testing "gender and birthdate"
         (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                 ["birthdate" "2020-02"]])
+                                                ["birthdate" "2020-02"]])
           count := 2
           [0 :id] := "id-0"
           [1 :id] := "id-1"))
 
       (testing "gender and birthdate with multiple values"
         (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                 ["birthdate" "2020-02" "2020"]])
+                                                ["birthdate" "2020-02" "2020"]])
           count := 3
           [0 :id] := "id-0"
           [1 :id] := "id-1"
@@ -1041,34 +1044,34 @@
       (testing "gender and birthdate with prefix"
         (testing "greater equal"
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                   ["birthdate" "ge2020"]])
+                                                  ["birthdate" "ge2020"]])
             count := 3
             [0 :id] := "id-0"
             [1 :id] := "id-1"
             [2 :id] := "id-2")
 
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                   ["birthdate" "ge2020-02"]])
+                                                  ["birthdate" "ge2020-02"]])
             count := 2
             [0 :id] := "id-0"
             [1 :id] := "id-1"))
 
         (testing "less equal"
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                   ["birthdate" "le2020"]])
+                                                  ["birthdate" "le2020"]])
             count := 3
             [0 :id] := "id-0"
             [1 :id] := "id-1"
             [2 :id] := "id-2")
 
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                   ["birthdate" "le2020-02"]])
+                                                  ["birthdate" "le2020-02"]])
             count := 2
             [0 :id] := "id-0"
             [1 :id] := "id-1")
 
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                   ["birthdate" "le2021"]])
+                                                  ["birthdate" "le2021"]])
             count := 3
             [0 :id] := "id-0"
             [1 :id] := "id-1"
@@ -1177,26 +1180,26 @@
       (testing "bodysite and type"
         (testing "using system|code"
           (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
-                                                    ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
+                                                   ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using code"
           (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
-                                                    ["type" "dna"]])
+                                                   ["type" "dna"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "using system|"
           (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
-                                                    ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|"]])
+                                                   ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|"]])
             [0 :id] := "id-0"
             1 := nil))
 
         (testing "does not match"
           (testing "using system|code"
             (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
-                                                      ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|urine"]])
+                                                     ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|urine"]])
               0 := nil))))))
 
   (testing "ActivityDefinition"
@@ -1750,7 +1753,7 @@
                   :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "as first clause"
-        (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge140|mm[Hg]"]]]
+        (let [clauses [["code-value-quantity" "8480-6$ge140"]]]
           (given (pull-type-query node "Observation" clauses)
             count := 1
             [0 :id] := "id-1"))
@@ -1765,7 +1768,120 @@
                        ["code-value-quantity" "http://loinc.org|8480-6$ge140|mm[Hg]"]]]
           (given (pull-type-query node "Observation" clauses)
             count := 1
-            [0 :id] := "id-1")))))
+            [0 :id] := "id-1")))
+
+      (testing "resulting on more than one observation"
+        (testing "as first clause"
+          (testing "code as system|code"
+            (testing "value as value|unit"
+              (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
+                (given (pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1"))))
+          (testing "code as code"
+            (testing "value as value|unit"
+              (let [clauses [["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["code-value-quantity" "8480-6$ge130"]]]
+                (given (pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1"))))
+
+          (testing "it is possible to start with the second observation"
+            (testing "code as system|code"
+              (testing "value as value|unit"
+                (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
+                  (given (pull-type-query node "Observation" clauses "id-1")
+                    count := 1
+                    [0 :id] := "id-1")))
+              (testing "value as value"
+                (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
+                  (given (pull-type-query node "Observation" clauses "id-1")
+                    count := 1
+                    [0 :id] := "id-1"))))
+            (testing "code as code"
+              (testing "value as value|unit"
+                (let [clauses [["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
+                  (given (pull-type-query node "Observation" clauses "id-1")
+                    count := 1
+                    [0 :id] := "id-1")))
+              (testing "value as value"
+                (let [clauses [["code-value-quantity" "8480-6$ge130"]]]
+                  (given (pull-type-query node "Observation" clauses "id-1")
+                    count := 1
+                    [0 :id] := "id-1"))))))
+
+        (testing "as second clause"
+          (testing "code as system|code"
+            (testing "value as value|unit"
+              (let [clauses [["status" "final"]
+                             ["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["status" "final"]
+                             ["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
+                (given (pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1"))))
+          (testing "code as code"
+            (testing "value as value|unit"
+              (let [clauses [["status" "final"]
+                             ["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["status" "final"]
+                             ["code-value-quantity" "8480-6$ge130"]]]
+                (given (pull-type-query node "Observation" clauses)
+                  count := 2
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1"))))
+
+          (testing "it is possible to start with the second observation"
+            (testing "code as system|code"
+              (testing "value as value|unit"
+                (let [clauses [["status" "final"]
+                               ["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
+                  (given (pull-type-query node "Observation" clauses "id-1")
+                    count := 1
+                    [0 :id] := "id-1")))
+              (testing "value as value"
+                (let [clauses [["status" "final"]
+                               ["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
+                  (given (pull-type-query node "Observation" clauses "id-1")
+                    count := 1
+                    [0 :id] := "id-1"))))
+            (testing "code as code"
+              (testing "value as value|unit"
+                (let [clauses [["status" "final"]
+                               ["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
+                  (given (pull-type-query node "Observation" clauses "id-1")
+                    count := 1
+                    [0 :id] := "id-1")))
+              (testing "value as value"
+                (let [clauses [["status" "final"]
+                               ["code-value-quantity" "8480-6$ge130"]]]
+                  (given (pull-type-query node "Observation" clauses "id-1")
+                    count := 1
+                    [0 :id] := "id-1")))))))))
 
   (testing "MeasureReport"
     (with-open [node (new-node)]

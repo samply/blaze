@@ -6,6 +6,9 @@
     [reitit.core :as reitit]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (f)
@@ -13,6 +16,17 @@
 
 
 (test/use-fixtures :each fixture)
+
+
+(deftest to-seq
+  (testing "nil"
+    (is (nil? (fhir-util/to-seq nil))))
+
+  (testing "non-sequential value"
+    (is (= [1] (fhir-util/to-seq 1))))
+
+  (testing "sequential value"
+    (is (= [1] (fhir-util/to-seq [1])))))
 
 
 (deftest t
