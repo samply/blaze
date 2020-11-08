@@ -44,6 +44,11 @@
     (is (bytes/starts-with? (byte-array [0x00 0x01 0x02])
                             (byte-array [0x00 0x01]))))
 
+  (testing "[0x00 0x01 0x02] starts with [0x00 0x01 0x03] up to a length of 2"
+    (is (bytes/starts-with? (byte-array [0x00 0x01 0x02])
+                            (byte-array [0x00 0x01 0x03])
+                            2)))
+
   (testing "[0x00 0x01 0x02] starts not with [0x00 0x01]"
     (is (not (bytes/starts-with? (byte-array [0x00 0x01 0x02])
                                  (byte-array [0x00 0x02])))))

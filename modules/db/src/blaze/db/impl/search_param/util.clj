@@ -105,12 +105,21 @@
   ([iter tid id hash c-hash]
    (prefix-seek iter (codec/resource-sp-value-key tid id hash c-hash)))
   ([iter tid id hash c-hash value]
-   (prefix-seek iter (codec/resource-sp-value-key tid id hash c-hash value))))
+   (resource-sp-value-seek iter tid id hash c-hash value 0
+                           (alength ^bytes value)))
+  ([iter tid id hash c-hash value v-offset v-length]
+   (prefix-seek iter (codec/resource-sp-value-key tid id hash c-hash value
+                                                  v-offset v-length))))
 
 
-(defn get-next-value [iter tid id hash c-hash]
-  (when-let [k (resource-sp-value-seek iter tid id hash c-hash)]
-    (codec/resource-sp-value-key->value k)))
+(defn get-next-value
+  ([iter tid id hash c-hash]
+   (when-let [k (resource-sp-value-seek iter tid id hash c-hash)]
+     (codec/resource-sp-value-key->value k)))
+  ([iter tid id hash c-hash prefix p-offset p-length]
+   (when-let [k (resource-sp-value-seek iter tid id hash c-hash
+                                        prefix p-offset p-length)]
+     (codec/resource-sp-value-key->value k))))
 
 
 (defn sp-value-resource-keys

@@ -15,6 +15,9 @@
     [java.time Instant]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (log/set-level! :trace)
@@ -50,12 +53,20 @@
    :path "/MeasureReport"})
 
 
-(def ^:private list-report-match
+(def ^:private list-match
   {:data
    {:blaze/base-url ""
     :blaze/context-path ""
     :fhir.resource/type "List"}
    :path "/List"})
+
+
+(def ^:private observation-match
+  {:data
+   {:blaze/base-url ""
+    :blaze/context-path ""
+    :fhir.resource/type "Observation"}
+   :path "/Observation"})
 
 
 (defn- handler-with [txs]
@@ -854,7 +865,7 @@
                           :system #fhir/uri"system-122917"
                           :value "value-143818"}}}]}]]])
            {::reitit/router router
-            ::reitit/match list-report-match
+            ::reitit/match list-match
             :params {"item:identifier" "system-122917|value-143818"}})]
 
       (is (= 200 status))
@@ -876,4 +887,82 @@
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
-          :id := "id-143814")))))
+          :id := "id-143814"))))
+
+  (testing "Observation combo-code-value-quantity search"
+    (let [{:keys [status body]}
+          ((handler-with
+             [[[:put {:fhir/type :fhir/Observation :id "id-121049"
+                      :component
+                      [{:fhir/type :fhir.Observation/component
+                        :code
+                        {:fhir/type :fhir/CodeableConcept
+                         :coding
+                         [{:fhir/type :fhir/Coding
+                           :system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8480-6"}]}
+                        :value
+                        {:fhir/type :fhir/Quantity
+                         :value 140M
+                         :system #fhir/uri"http://unitsofmeasure.org"
+                         :code #fhir/code"mm[Hg]"}}
+                       {:fhir/type :fhir.Observation/component
+                        :code
+                        {:fhir/type :fhir/CodeableConcept
+                         :coding
+                         [{:fhir/type :fhir/Coding
+                           :system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8462-4"}]}
+                        :value
+                        {:fhir/type :fhir/Quantity
+                         :value 90M
+                         :system #fhir/uri"http://unitsofmeasure.org"
+                         :code #fhir/code"mm[Hg]"}}]}]]
+              [[:put {:fhir/type :fhir/Observation :id "id-123130"
+                      :component
+                      [{:fhir/type :fhir.Observation/component
+                        :code
+                        {:fhir/type :fhir/CodeableConcept
+                         :coding
+                         [{:fhir/type :fhir/Coding
+                           :system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8480-6"}]}
+                        :value
+                        {:fhir/type :fhir/Quantity
+                         :value 150M
+                         :system #fhir/uri"http://unitsofmeasure.org"
+                         :code #fhir/code"mm[Hg]"}}
+                       {:fhir/type :fhir.Observation/component
+                        :code
+                        {:fhir/type :fhir/CodeableConcept
+                         :coding
+                         [{:fhir/type :fhir/Coding
+                           :system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8462-4"}]}
+                        :value
+                        {:fhir/type :fhir/Quantity
+                         :value 100M
+                         :system #fhir/uri"http://unitsofmeasure.org"
+                         :code #fhir/code"mm[Hg]"}}]}]]])
+           {::reitit/router router
+            ::reitit/match observation-match
+            :params
+            {"combo-code-value-quantity"
+             ["http://loinc.org|8480-6$ge140|mm[Hg]"
+              "http://loinc.org|8462-4$ge90|mm[Hg]"]
+             "_count" "1"}})]
+
+      (is (= 200 status))
+
+      (testing "the body contains a bundle"
+        (is (= :fhir/Bundle (:fhir/type body))))
+
+      (testing "the bundle type is searchset"
+        (is (= #fhir/code"searchset" (:type body))))
+
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (testing "has a next link"
+        (is (= #fhir/uri"/Observation?combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8480-6%24ge140%7Cmm%5BHg%5D&combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8462-4%24ge90%7Cmm%5BHg%5D&_count=1&__t=2&__page-id=id-123130"
+               (link-url body "next")))))))

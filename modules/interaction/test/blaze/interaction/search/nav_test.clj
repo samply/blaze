@@ -32,4 +32,11 @@
   (testing "url encoding of clauses"
     (testing "Observation code with URL"
       (is (= "/Observation?code=http%3A%2F%2Floinc.org%7C8480-6&__t=1"
-             (nav/url match nil [["code" "http://loinc.org|8480-6"]] 1 nil))))))
+             (nav/url match nil [["code" "http://loinc.org|8480-6"]] 1 nil)))))
+
+  (testing "two clauses with the same code"
+    (is (= "/Observation?combo-code-value-quantity=8480-6%24ge140&combo-code-value-quantity=8462-4%24ge90&__t=1"
+           (nav/url match nil
+                    [["combo-code-value-quantity" "8480-6$ge140"]
+                     ["combo-code-value-quantity" "8462-4$ge90"]]
+                    1 nil)))))

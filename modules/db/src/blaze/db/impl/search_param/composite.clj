@@ -17,7 +17,8 @@
 (set! *warn-on-reflection* true)
 
 
-(defn- component-index-values [resolver main-value {:keys [expression search-param]}]
+(defn- component-index-values
+  [resolver main-value {:keys [expression search-param]}]
   (when-ok [values (fhir-path/eval resolver expression main-value)]
     (into
       []
@@ -34,6 +35,10 @@
 
 (defn- compile-component-value [{:keys [search-param]} value]
   (p/-compile-value search-param value))
+
+
+(def ^:private ^:const ^int prefix-length
+  (* 2 codec/v-hash-size))
 
 
 (defrecord SearchParamComposite
@@ -53,10 +58,10 @@
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (spq/resource-keys context c-hash tid value start-id)))
+      (spq/resource-keys context c-hash tid prefix-length value start-id)))
 
   (-matches? [_ context tid id hash _ values]
-    (some #(spq/matches? context c-hash tid id hash %) values))
+    (some #(spq/matches? context c-hash tid id hash prefix-length %) values))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

@@ -70,6 +70,17 @@
   bytes?)
 
 
+(s/fdef codec/sp-value-resource-key*
+  :args (s/cat :c-hash :blaze.db/c-hash
+               :tid :blaze.db/tid
+               :value bytes?
+               :v-offset nat-int?
+               :v-length nat-int?
+               :id (s/? :blaze.db/id-bytes)
+               :hash (s/? :blaze.resource/hash))
+  :ret :blaze.db/sp-value-resource-key)
+
+
 (s/fdef codec/sp-value-resource-key
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
@@ -95,7 +106,9 @@
                :id :blaze.db/id-bytes
                :hash (s/alt :hash :blaze.resource/hash :hash-prefix :blaze.db/hash-prefix)
                :c-hash :blaze.db/c-hash
-               :value (s/? bytes?))
+               :value (s/? bytes?)
+               :v-offset (s/? nat-int?)
+               :v-length (s/? nat-int?))
   :ret :blaze/resource-value-key)
 
 

@@ -55,20 +55,31 @@
           (name op)))
 
 
-
 (defn- resource-value
   "Returns the value of the resource with `tid` and `id` according to the
-  search parameter with `c-hash`."
-  [{:keys [rsvi] :as context} c-hash tid id]
+  search parameter with `c-hash` starting with `prefix`.
+
+  The prefix is important, because resources have more than one index entry and
+  so more than one value per search parameter. Different unit representations
+  and other possible prefixes from composite search parameters are responsible
+  for the multiple values."
+  [{:keys [rsvi] :as context} c-hash tid id prefix p-offset p-length]
   (let [hash (u/resource-hash context tid id)]
-    (u/get-next-value rsvi tid id hash c-hash)))
+    (u/get-next-value rsvi tid id hash c-hash prefix p-offset p-length)))
 
 
-(defn- start-key [context c-hash tid value start-id]
+(defn- id-start-key [context c-hash tid prefix-length value start-id]
+  (let [start-value (resource-value context c-hash tid start-id
+                                    value 0 prefix-length)]
+    (assert start-value)
+    (codec/sp-value-resource-key c-hash tid start-value start-id)))
+
+
+(defn- eq-ge-start-key
+  "Returns the key at with equal or greater equal collections will start."
+  [context c-hash tid prefix-length value start-id]
   (if start-id
-    (let [start-value (resource-value context c-hash tid start-id)]
-      (assert start-value)
-      (codec/sp-value-resource-key c-hash tid start-value start-id))
+    (id-start-key context c-hash tid prefix-length value start-id)
     (codec/sp-value-resource-key c-hash tid value)))
 
 
@@ -82,49 +93,60 @@
   values between `lower-bound` and `upper-bound` starting at `start-id`
   (optional).
 
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid lower-bound upper-bound start-id]
+  Decoded keys consist of the triple [prefix id hash-prefix].
+
+  The `prefix-length` is the length of the fix prefix which all found values
+  have to have."
+  [{:keys [svri] :as context} c-hash tid prefix-length lower-bound upper-bound
+   start-id]
   (coll/eduction
     (take-while-less-equal c-hash tid upper-bound)
-    (u/sp-value-resource-keys svri (start-key context c-hash tid lower-bound
-                                              start-id))))
+    (u/sp-value-resource-keys svri (eq-ge-start-key context c-hash tid
+                                                    prefix-length lower-bound
+                                                    start-id))))
 
 
-(defn- gt-start-key [context c-hash tid value start-id]
+(defn- gt-start-key [context c-hash tid prefix-length value start-id]
   (if start-id
-    (let [start-value (resource-value context c-hash tid start-id)]
-      (assert start-value)
-      (codec/sp-value-resource-key c-hash tid start-value start-id))
+    (id-start-key context c-hash tid prefix-length value start-id)
     (codec/sp-value-resource-key-for-prev c-hash tid value)))
 
 
-(defn- unit-prefix-key [c-hash tid value]
-  (let [unit-prefix (codec/unit-prefix value)]
-    (codec/sp-value-resource-key c-hash tid unit-prefix)))
+(defn- prefix-key [c-hash tid prefix-length value]
+  (codec/sp-value-resource-key* c-hash tid value 0 prefix-length))
 
 
-(defn- take-while-same-unit [c-hash tid value]
-  (let [unit-prefix-key (unit-prefix-key c-hash tid value)]
-    (take-while (fn [[prefix]] (bytes/starts-with? prefix unit-prefix-key)))))
+(defn- take-while-same-unit [c-hash tid prefix-length value]
+  (let [prefix-key (prefix-key c-hash tid prefix-length value)]
+    (take-while (fn [[prefix]] (bytes/starts-with? prefix prefix-key)))))
 
 
 (defn- gt-keys
   "Returns a reducible collection of decoded SearchParamValueResource keys of
   values greater than `value` starting at `start-id` (optional).
 
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid value start-id]
+  Decoded keys consist of the triple [prefix id hash-prefix].
+
+  The `prefix-length` is the length of the fix prefix which all found values
+  have to have."
+  [{:keys [svri] :as context} c-hash tid prefix-length value start-id]
   (coll/eduction
-    (take-while-same-unit c-hash tid value)
-    (u/sp-value-resource-keys svri (gt-start-key context c-hash tid value
+    (take-while-same-unit c-hash tid prefix-length value)
+    (u/sp-value-resource-keys svri (gt-start-key context c-hash tid
+                                                 prefix-length value
                                                  start-id))))
 
 
-(defn- lt-start-key [context c-hash tid value start-id]
+(defn- id-start-key-for-prev [context c-hash tid prefix-length value start-id]
+  (let [start-value (resource-value context c-hash tid start-id
+                                    value 0 prefix-length)]
+    (assert start-value)
+    (codec/sp-value-resource-key-for-prev c-hash tid start-value start-id)))
+
+
+(defn- lt-start-key [context c-hash tid prefix-length value start-id]
   (if start-id
-    (let [start-value (resource-value context c-hash tid start-id)]
-      (assert start-value)
-      (codec/sp-value-resource-key-for-prev c-hash tid start-value start-id))
+    (id-start-key-for-prev context c-hash tid prefix-length value start-id)
     (codec/sp-value-resource-key c-hash tid value)))
 
 
@@ -132,11 +154,15 @@
   "Returns a reducible collection of decoded SearchParamValueResource keys of
   values less than `value` starting at `start-id` (optional).
 
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid value start-id]
+  Decoded keys consist of the triple [prefix id hash-prefix].
+
+  The `prefix-length` is the length of the fix prefix which all found values
+  have to have."
+  [{:keys [svri] :as context} c-hash tid prefix-length value start-id]
   (coll/eduction
-    (take-while-same-unit c-hash tid value)
-    (u/sp-value-resource-keys-prev svri (lt-start-key context c-hash tid value
+    (take-while-same-unit c-hash tid prefix-length value)
+    (u/sp-value-resource-keys-prev svri (lt-start-key context c-hash tid
+                                                      prefix-length value
                                                       start-id))))
 
 
@@ -144,19 +170,21 @@
   "Returns a reducible collection of decoded SearchParamValueResource keys of
   values greater or equal to `value` starting at `start-id` (optional).
 
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid value start-id]
+  Decoded keys consist of the triple [prefix id hash-prefix].
+
+  The `prefix-length` is the length of the fix prefix which all found values
+  have to have."
+  [{:keys [svri] :as context} c-hash tid prefix-length value start-id]
   (coll/eduction
-    (take-while-same-unit c-hash tid value)
-    (u/sp-value-resource-keys svri (start-key context c-hash tid value
-                                              start-id))))
+    (take-while-same-unit c-hash tid prefix-length value)
+    (u/sp-value-resource-keys svri (eq-ge-start-key context c-hash tid
+                                                    prefix-length value
+                                                    start-id))))
 
 
-(defn- le-start-key [context c-hash tid value start-id]
+(defn- le-start-key [context c-hash tid prefix-length value start-id]
   (if start-id
-    (let [start-value (resource-value context c-hash tid start-id)]
-      (assert start-value)
-      (codec/sp-value-resource-key-for-prev c-hash tid start-value start-id))
+    (id-start-key-for-prev context c-hash tid prefix-length value start-id)
     (codec/sp-value-resource-key-for-prev c-hash tid value)))
 
 
@@ -164,22 +192,35 @@
   "Returns a reducible collection of decoded SearchParamValueResource keys of
   values less or equal to `value` starting at `start-id` (optional).
 
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid value start-id]
+  Decoded keys consist of the triple [prefix id hash-prefix].
+
+  The `prefix-length` is the length of the fix prefix which all found values
+  have to have."
+  [{:keys [svri] :as context} c-hash tid prefix-length value start-id]
   (coll/eduction
-    (take-while-same-unit c-hash tid value)
-    (u/sp-value-resource-keys-prev svri (le-start-key context c-hash tid value
+    (take-while-same-unit c-hash tid prefix-length value)
+    (u/sp-value-resource-keys-prev svri (le-start-key context c-hash tid
+                                                      prefix-length value
                                                       start-id))))
 
 
 (defn resource-keys
-  [context c-hash tid [op lower-bound exact-value upper-bound] start-id]
+  "Returns a reducible collection of decoded SearchParamValueResource keys of
+  values according to `op` and values starting at `start-id` (optional).
+
+  Decoded keys consist of the triple [prefix id hash-prefix].
+
+  The `prefix-length` is the length of the fix prefix which all found values
+  have to have."
+  [context c-hash tid prefix-length [op lower-bound exact-value upper-bound]
+   start-id]
   (case op
-    :eq (eq-keys context c-hash tid lower-bound upper-bound start-id)
-    :gt (gt-keys context c-hash tid exact-value start-id)
-    :lt (lt-keys context c-hash tid exact-value start-id)
-    :ge (ge-keys context c-hash tid exact-value start-id)
-    :le (le-keys context c-hash tid exact-value start-id)))
+    :eq (eq-keys context c-hash tid prefix-length lower-bound upper-bound
+                 start-id)
+    :gt (gt-keys context c-hash tid prefix-length exact-value start-id)
+    :lt (lt-keys context c-hash tid prefix-length exact-value start-id)
+    :ge (ge-keys context c-hash tid prefix-length exact-value start-id)
+    :le (le-keys context c-hash tid prefix-length exact-value start-id)))
 
 
 (defn- resource-sp-value [{:keys [rsvi]} tid id hash c-hash value]
@@ -192,9 +233,9 @@
     (bytes/<= value upper-bound)))
 
 
-(defn gt-matches? [context c-hash tid id hash value]
+(defn gt-matches? [context c-hash tid id hash prefix-length value]
   (when-let [found-value (resource-sp-value context tid id hash c-hash value)]
-    (and (bytes/starts-with? found-value (codec/unit-prefix value))
+    (and (bytes/starts-with? found-value value prefix-length)
          (bytes/> found-value value))))
 
 
@@ -203,30 +244,33 @@
     (second (coll/first (u/resource-sp-value-keys-prev rsvi start-key)))))
 
 
-(defn lt-matches? [context c-hash tid id hash value]
-  (when-let [found-value (resource-sp-value-prev context tid id hash c-hash value)]
-    (and (bytes/starts-with? found-value (codec/unit-prefix value))
+(defn lt-matches? [context c-hash tid id hash prefix-length value]
+  (when-let [found-value (resource-sp-value-prev context tid id hash c-hash
+                                                 value)]
+    (and (bytes/starts-with? found-value value prefix-length)
          (bytes/< found-value value))))
 
 
-(defn ge-matches? [context c-hash tid id hash value]
+(defn ge-matches? [context c-hash tid id hash prefix-length value]
   (when-let [found-value (resource-sp-value context tid id hash c-hash value)]
-    (bytes/starts-with? found-value (codec/unit-prefix value))))
+    (bytes/starts-with? found-value value prefix-length)))
 
 
-(defn le-matches? [context c-hash tid id hash value]
-  (when-let [found-value (resource-sp-value-prev context tid id hash c-hash value)]
-    (bytes/starts-with? found-value (codec/unit-prefix value))))
+(defn le-matches? [context c-hash tid id hash prefix-length value]
+  (when-let [found-value (resource-sp-value-prev context tid id hash c-hash
+                                                 value)]
+    (bytes/starts-with? found-value value prefix-length)))
 
 
 (defn matches?
-  [context c-hash tid id hash [op lower-bound exact-value upper-bound]]
+  [context c-hash tid id hash prefix-length [op lower-bound exact-value
+                                             upper-bound]]
   (case op
     :eq (eq-matches? context c-hash tid id hash lower-bound upper-bound)
-    :gt (gt-matches? context c-hash tid id hash exact-value)
-    :lt (lt-matches? context c-hash tid id hash exact-value)
-    :ge (ge-matches? context c-hash tid id hash exact-value)
-    :le (le-matches? context c-hash tid id hash exact-value)))
+    :gt (gt-matches? context c-hash tid id hash prefix-length exact-value)
+    :lt (lt-matches? context c-hash tid id hash prefix-length exact-value)
+    :ge (ge-matches? context c-hash tid id hash prefix-length exact-value)
+    :le (le-matches? context c-hash tid id hash prefix-length exact-value)))
 
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
@@ -247,7 +291,7 @@
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (resource-keys context c-hash tid value start-id)))
+      (resource-keys context c-hash tid codec/v-hash-size value start-id)))
 
   (-compartment-keys [_ context compartment tid compiled-value]
     (let [{co-c-hash :c-hash co-res-id :res-id} compartment
@@ -256,7 +300,7 @@
       (u/prefix-keys (:csvri context) start-key)))
 
   (-matches? [_ context tid id hash _ values]
-    (some #(matches? context c-hash tid id hash %) values))
+    (some #(matches? context c-hash tid id hash codec/v-hash-size %) values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -278,6 +322,7 @@
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamQuantity name url type base code (codec/c-hash code) expression))
+      (->SearchParamQuantity name url type base code (codec/c-hash code)
+                             expression))
     {::anom/category ::anom/unsupported
      ::anom/message (u/missing-expression-msg url)}))

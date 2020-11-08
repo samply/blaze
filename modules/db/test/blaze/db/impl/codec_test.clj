@@ -3,14 +3,17 @@
     [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec-spec]
+    [blaze.fhir.hash :as hash]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check :as tc]
     [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as p])
+    [clojure.test.check.properties :as p]
+    [juxt.iota :refer [given]])
   (:import
     [com.google.common.hash HashCode]
+    [java.nio ByteBuffer]
     [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset])
   (:refer-clojure :exclude [hash]))
 
@@ -49,8 +52,8 @@
 
 (deftest descending-long-test
   (satisfies-prop 100000
-    (p/for-all [t gen/nat]
-      (= t (codec/descending-long (codec/descending-long t))))))
+                  (p/for-all [t gen/nat]
+                    (= t (codec/descending-long (codec/descending-long t))))))
 
 
 (deftest t-key-test
@@ -61,6 +64,26 @@
     2 "00FFFFFFFFFFFFFD"
     1 "00FFFFFFFFFFFFFE"
     0 "00FFFFFFFFFFFFFF"))
+
+
+
+;; ---- SearchParamValueResource Index ----------------------------------------
+
+(deftest decode-sp-value-resource-key-human-test
+  (given
+    (codec/decode-sp-value-resource-key-human
+      (ByteBuffer/wrap
+        (codec/sp-value-resource-key
+          (codec/c-hash "code")
+          (codec/tid "Observation")
+          (codec/v-hash "code-121019")
+          (codec/id-bytes "id-121116")
+          (hash/generate {:fhir/type :fhir/Observation :id "id-121116"}))))
+    :code := "code"
+    :type := "Observation"
+    :value := "290A0088"
+    :id := "id-121116"
+    :hash-prefix := "E6A213C8"))
 
 
 

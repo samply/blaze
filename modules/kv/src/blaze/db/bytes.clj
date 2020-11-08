@@ -18,11 +18,12 @@
 
 (defn starts-with?
   "Test whether `bs` start with `prefix`."
-  {:arglists '([bs prefix])}
-  [^bytes bs ^bytes prefix]
-  (let [prefix-length (alength prefix)]
-    (and (clojure.core/<= prefix-length (alength bs))
-         (Arrays/equals bs 0 prefix-length prefix 0 prefix-length))))
+  {:arglists '([bs prefix] [bs prefix length])}
+  ([bs ^bytes prefix]
+   (starts-with? bs prefix (alength prefix)))
+  ([^bytes bs ^bytes prefix length]
+   (and (clojure.core/<= ^int length (alength bs))
+        (Arrays/equals bs 0 ^int length prefix 0 ^int length))))
 
 
 (defn <
