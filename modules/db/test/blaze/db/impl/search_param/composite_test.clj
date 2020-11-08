@@ -7,6 +7,7 @@
     [blaze.fhir.hash :as hash]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
+    [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -76,7 +77,17 @@
     :ge
     [(hex-v-hash "8480-6") (hex-quantity "kg/m2" 22.5M)]
     [(hex-v-hash "8480-6") (hex-quantity "kg/m2" 23.00M)]
-    [(hex-v-hash "8480-6") (hex-quantity "kg/m2" 23.5M)]))
+    [(hex-v-hash "8480-6") (hex-quantity "kg/m2" 23.5M)])
+
+  (testing "invalid quantity decimal value"
+    (given (search-param/compile-values code-value-quantity-param ["a$a"])
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid decimal value `a` in search parameter `code-value-quantity`."))
+
+  (testing "unsupported quantity prefix"
+    (given (search-param/compile-values code-value-quantity-param ["a$ne1"])
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported prefix `ne` in search parameter `code-value-quantity`.")))
 
 
 (defn- decode-sp-value-resource-key [bs]

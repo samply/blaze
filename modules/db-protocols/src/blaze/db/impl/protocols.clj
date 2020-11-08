@@ -78,7 +78,7 @@
 
 
 (defprotocol SearchParam
-  (-compile-value [search-param value])
+  (-compile-value [search-param value] "Can return an anomaly.")
   (-resource-handles [search-param context tid modifier compiled-value start-id])
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matches? [search-param context tid id hash modifier compiled-values])

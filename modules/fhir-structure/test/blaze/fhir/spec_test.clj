@@ -20,6 +20,9 @@
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (f)
@@ -849,7 +852,7 @@
              (s2/unform :fhir.xml/xhtml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))))
 
 
-(deftest primitive-val?
+(deftest primitive-val-test
   (are [x] (fhir-spec/primitive-val? x)
     "foo"
     1

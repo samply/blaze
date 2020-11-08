@@ -69,7 +69,10 @@
             res (resolve-search-param search-param-registry type code)]
         (if (::anom/category res)
           (if lenient? ret (reduced res))
-          (conj ret [res modifier values (search-param/compile-values res values)]))))
+          (let [compiled-values (search-param/compile-values res values)]
+            (if (::anom/category compiled-values)
+              (reduced compiled-values)
+              (conj ret [res modifier values compiled-values]))))))
     []
     clauses))
 

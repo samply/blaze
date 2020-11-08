@@ -1,6 +1,6 @@
 (ns blaze.db.impl.search-param.date
   (:require
-    [blaze.anomaly :refer [throw-anom when-ok]]
+    [blaze.anomaly :refer [if-ok when-ok]]
     [blaze.coll.core :as coll]
     [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
@@ -140,9 +140,12 @@
     (u/sp-value-resource-keys-prev svri (le-start-key context c-hash tid value))))
 
 
-(defn- unsupported-prefix-msg [op]
-  (format "Unsupported prefix `%s` in search parameter of type date."
-          (name op)))
+(defn- invalid-date-time-value-msg [code value]
+  (format "Invalid date-time value `%s` in search parameter `%s`." value code))
+
+
+(defn- unsupported-prefix-msg [code op]
+  (format "Unsupported prefix `%s` in search parameter `%s`." (name op) code))
 
 
 (defn- resource-keys [context c-hash tid [op value] start-id]
@@ -167,8 +170,13 @@
     (let [[op value] (u/separate-op value)]
       (case op
         (:eq :ge :le)
-        [op (system/parse-date-time value)]
-        (throw-anom ::anom/unsupported (unsupported-prefix-msg op)))))
+        (if-ok [date-time-value (system/parse-date-time value)]
+          [op date-time-value]
+          (assoc date-time-value
+            ::anom/message
+            (invalid-date-time-value-msg code value)))
+        {::anom/category ::anom/unsupported
+         ::anom/message (unsupported-prefix-msg code op)})))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction

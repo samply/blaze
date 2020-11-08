@@ -979,10 +979,9 @@
 
       (testing "birthdate with `ne` prefix is unsupported"
         (given
-          (catch-ex-data
-            (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]]))
+          (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]])
           ::anom/category := ::anom/unsupported
-          ::anom/message := "Unsupported prefix `ne` in search parameter of type date."))
+          ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`."))
 
       (testing "birthdate with `ge` prefix"
         (testing "finds equal date"
@@ -1357,10 +1356,9 @@
         (testing "with prefix"
           (testing "not equal"
             (given
-              (catch-ex-data
-                (d/type-query (d/db node) "Observation" [["value-quantity" "ne2.11"]]))
+              (d/type-query (d/db node) "Observation" [["value-quantity" "ne2.11"]])
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ne` in search parameter of type quantity."))
+              ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
 
           (testing "greater than"
             (let [clauses [["value-quantity" "gt2.11"]]]
@@ -1473,31 +1471,32 @@
 
           (testing "starts after"
             (given
-              (catch-ex-data
-                (d/type-query (d/db node) "Observation" [["value-quantity" "sa2.11"]]))
+              (d/type-query (d/db node) "Observation" [["value-quantity" "sa2.11"]])
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `sa` in search parameter of type quantity."))
+              ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
 
           (testing "ends before"
             (given
-              (catch-ex-data
-                (d/type-query (d/db node) "Observation" [["value-quantity" "eb2.11"]]))
+              (d/type-query (d/db node) "Observation" [["value-quantity" "eb2.11"]])
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `eb` in search parameter of type quantity."))
+              ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
 
           (testing "approximately"
             (given
-              (catch-ex-data
-                (d/type-query (d/db node) "Observation" [["value-quantity" "ap2.11"]]))
+              (d/type-query (d/db node) "Observation" [["value-quantity" "ap2.11"]])
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ap` in search parameter of type quantity.")))
+              ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
 
         (testing "with more than one value"
           (let [clauses [["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
             (given (pull-type-query node "Observation" clauses)
               count := 2
               [0 :id] := "id-2"
-              [1 :id] := "id-1"))))
+              [1 :id] := "id-1")))
+
+        (testing "with invalid decimal value"
+          (let [clauses [["value-quantity" "a"]]]
+            (d/type-query (d/db node) "Observation" clauses))))
 
       (testing "status and value-quantity"
         (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2"]]]
@@ -1514,11 +1513,10 @@
         (testing "with prefix"
           (testing "not equal"
             (given
-              (catch-ex-data
-                (let [clauses [["status" "final"] ["value-quantity" "ne2.11|kg/m2"]]]
-                  (d/type-query (d/db node) "Observation" clauses)))
+              (let [clauses [["status" "final"] ["value-quantity" "ne2.11|kg/m2"]]]
+                (d/type-query (d/db node) "Observation" clauses))
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ne` in search parameter of type quantity."))
+              ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
 
           (testing "greater than"
             (let [clauses [["status" "final"] ["value-quantity" "gt2.11|kg/m2"]]]
@@ -1564,27 +1562,24 @@
 
           (testing "starts after"
             (given
-              (catch-ex-data
-                (let [clauses [["status" "final"] ["value-quantity" "sa2.11|kg/m2"]]]
-                  (d/type-query (d/db node) "Observation" clauses)))
+              (let [clauses [["status" "final"] ["value-quantity" "sa2.11|kg/m2"]]]
+                (d/type-query (d/db node) "Observation" clauses))
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `sa` in search parameter of type quantity."))
+              ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
 
           (testing "ends before"
             (given
-              (catch-ex-data
-                (let [clauses [["status" "final"] ["value-quantity" "eb2.11|kg/m2"]]]
-                  (d/type-query (d/db node) "Observation" clauses)))
+              (let [clauses [["status" "final"] ["value-quantity" "eb2.11|kg/m2"]]]
+                (d/type-query (d/db node) "Observation" clauses))
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `eb` in search parameter of type quantity."))
+              ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
 
           (testing "approximately"
             (given
-              (catch-ex-data
-                (let [clauses [["status" "final"] ["value-quantity" "ap2.11|kg/m2"]]]
-                  (d/type-query (d/db node) "Observation" clauses)))
+              (let [clauses [["status" "final"] ["value-quantity" "ap2.11|kg/m2"]]]
+                (d/type-query (d/db node) "Observation" clauses))
               ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ap` in search parameter of type quantity.")))
+              ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
 
         (testing "with more than one value"
           (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
@@ -1882,6 +1877,122 @@
                   (given (pull-type-query node "Observation" clauses "id-1")
                     count := 1
                     [0 :id] := "id-1")))))))))
+
+  (testing "Observation code-value-concept"
+    (with-open [node (new-node)]
+      @(d/transact
+         node
+         [[:put {:fhir/type :fhir/Observation
+                 :id "id-0"
+                 :status #fhir/code"final"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"94564-2"
+                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                 :value
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://snomed.info/sct"
+                    :code #fhir/code"260373001"
+                    :display "Detected (qualifier value)"}]}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-1"
+                 :status #fhir/code"final"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"94564-2"
+                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                 :value
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://snomed.info/sct"
+                    :code #fhir/code"260415000"
+                    :display "Not detected (qualifier value)"}]}}]
+          [:put {:fhir/type :fhir/Observation
+                 :id "id-2"
+                 :status #fhir/code"final"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"94564-2"
+                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                 :value
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://snomed.info/sct"
+                    :code #fhir/code"260373001"
+                    :display "Detected (qualifier value)"}]}}]])
+
+      (testing "as first clause"
+        (testing "code as system|code"
+          (testing "value as system|code"
+            (let [clauses [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-2")))
+          (testing "value as code"
+            (let [clauses [["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-2"))))
+        (testing "code as code"
+          (testing "value as system|code"
+            (let [clauses [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-2")))
+          (testing "value as code"
+            (let [clauses [["code-value-concept" "94564-2$260373001"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-2")))))
+
+      (testing "as second clause"
+        (testing "code as system|code"
+          (testing "value as system|code"
+            (let [clauses [["status" "final"]
+                           ["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-2")))
+          (testing "value as code"
+            (let [clauses [["status" "final"]
+                           ["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-2"))))
+        (testing "code as code"
+          (testing "value as system|code"
+            (let [clauses [["status" "final"]
+                           ["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-2")))
+          (testing "value as code"
+            (let [clauses [["status" "final"]
+                           ["code-value-concept" "94564-2$260373001"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-2")))))))
 
   (testing "MeasureReport"
     (with-open [node (new-node)]

@@ -1,6 +1,6 @@
 (ns blaze.db.impl.search-param.quantity
   (:require
-    [blaze.anomaly :refer [throw-anom when-ok]]
+    [blaze.anomaly :refer [if-ok when-ok]]
     [blaze.coll.core :as coll]
     [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
@@ -10,6 +10,7 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [taoensso.timbre :as log]))
@@ -50,9 +51,12 @@
   (log/warn (u/format-skip-indexing-msg value url "quantity")))
 
 
-(defn- unsupported-prefix-msg [op]
-  (format "Unsupported prefix `%s` in search parameter of type quantity."
-          (name op)))
+(defn invalid-decimal-value-msg [code value]
+  (format "Invalid decimal value `%s` in search parameter `%s`." value code))
+
+
+(defn unsupported-prefix-msg [code op]
+  (format "Unsupported prefix `%s` in search parameter `%s`." (name op) code))
 
 
 (defn- resource-value
@@ -277,16 +281,22 @@
   p/SearchParam
   (-compile-value [_ value]
     (let [[op value-and-unit] (u/separate-op value)
-          [value unit] (str/split value-and-unit #"\|" 2)
-          value (BigDecimal. ^String value)
-          delta (.movePointLeft 0.5M (.scale value))]
-      (case op
-        (:eq :gt :lt :ge :le)
-        [op
-         (codec/quantity unit (- value delta))
-         (codec/quantity unit value)
-         (codec/quantity unit (+ value delta))]
-        (throw-anom ::anom/unsupported (unsupported-prefix-msg op)))))
+          [value unit] (str/split value-and-unit #"\|" 2)]
+      (if-ok [decimal-value (system/parse-decimal value)]
+        (let [delta (.movePointLeft 0.5M (.scale ^BigDecimal decimal-value))]
+          (case op
+            (:eq :gt :lt :ge :le)
+            [op
+             (codec/quantity unit (- decimal-value delta))
+             (codec/quantity unit decimal-value)
+             (codec/quantity unit (+ decimal-value delta))]
+            {::anom/category ::anom/unsupported
+             ::category ::unsupported-prefix
+             ::unsupported-prefix op
+             ::anom/message (unsupported-prefix-msg code op)}))
+        (assoc decimal-value
+          ::category ::invalid-decimal-value
+          ::anom/message (invalid-decimal-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction

@@ -8,6 +8,8 @@
     [blaze.fhir.hash :as hash]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
 
@@ -58,7 +60,17 @@
     "ge23" :ge (hex-quantity nil 22.5M) (hex-quantity nil 23.00M) (hex-quantity nil 23.5M)
     "0.1" :eq (hex-quantity nil 0.05M) (hex-quantity nil 0.10M) (hex-quantity nil 0.15M)
     "0" :eq (hex-quantity nil -0.5M) (hex-quantity nil 0.00M) (hex-quantity nil 0.5M)
-    "0.0" :eq (hex-quantity nil -0.05M) (hex-quantity nil 0.00M) (hex-quantity nil 0.05M)))
+    "0.0" :eq (hex-quantity nil -0.05M) (hex-quantity nil 0.00M) (hex-quantity nil 0.05M))
+
+  (testing "invalid decimal value"
+    (given (search-param/compile-values value-quantity-param ["a"])
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid decimal value `a` in search parameter `value-quantity`."))
+
+  (testing "unsupported prefix"
+    (given (search-param/compile-values value-quantity-param ["ne23"])
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`.")))
 
 
 (deftest index-entries-test

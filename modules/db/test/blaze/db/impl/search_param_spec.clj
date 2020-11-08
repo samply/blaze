@@ -28,7 +28,8 @@
 (s/fdef search-param/compile-values
   :args (s/cat :search-param :blaze.db/search-param
                :values (s/coll-of some? :min-count 1))
-  :ret (s/coll-of some? :min-count 1))
+  :ret (s/or :compiled-values (s/coll-of some? :min-count 1)
+             :anomaly ::anom/anomaly))
 
 
 (s/fdef search-param/resource-handles
