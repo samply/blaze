@@ -1,6 +1,6 @@
 (ns blaze.db.impl.codec-test
   (:require
-    [blaze.db.bytes :as bytes]
+    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec-spec]
     [blaze.fhir.hash :as hash]
@@ -81,7 +81,7 @@
           (hash/generate {:fhir/type :fhir/Observation :id "id-121116"}))))
     :code := "code"
     :type := "Observation"
-    :value := "290A0088"
+    :value := #google/byte-string"290A0088"
     :id := "id-121116"
     :hash-prefix := "E6A213C8"))
 
@@ -137,26 +137,26 @@
 
 (deftest date-lb
   (testing "year"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (Year/of 1970) "80"
       (system/->DateTimeYear 1970) "80"))
 
   (testing "year-month"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (YearMonth/of 1970 1) "80"
       (system/->DateTimeYearMonth 1970 1) "80"))
 
   (testing "local-date"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (LocalDate/of 1970 1 1) "80"
       (system/->DateTimeYearMonthDay 1970 1 1) "80"))
 
   (testing "local-date-time"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (LocalDateTime/of 1970 1 1 0 0) "80"))
 
   (testing "offset-date-time"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC) "80"
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) "6FE3E0"
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 1)) "6FF1F0"
@@ -166,26 +166,26 @@
 
 (deftest date-ub
   (testing "year"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (Year/of 1969) "B00EFFFFFFFFFF"
       (system/->DateTimeYear 1969) "B00EFFFFFFFFFF"))
 
   (testing "year-month"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (YearMonth/of 1969 12) "B00EFFFFFFFFFF"
       (system/->DateTimeYearMonth 1969 12) "B00EFFFFFFFFFF"))
 
   (testing "local-date"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (LocalDate/of 1969 12 31) "B00EFFFFFFFFFF"
       (system/->DateTimeYearMonthDay 1969 12 31) "B00EFFFFFFFFFF"))
 
   (testing "local-date-time"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (LocalDateTime/of 1969 12 31 23 59 59) "B00EFFFFFFFFFF"))
 
   (testing "offset-date-time"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (OffsetDateTime/of 1969 12 31 23 59 59 0 ZoneOffset/UTC) "B00EFFFFFFFFFF"
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) "B00EFFFFFFE3DF"
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) "B00EFFFFFFF1EF"
@@ -195,18 +195,18 @@
 
 (deftest date
   (testing "upper bounds are always bigger than lower bounds"
-    (is (bytes/< (codec/date-lb zo (Year/of 9999)) (codec/date-ub zo (Year/of 1))))))
+    (is (bs/< (codec/date-lb zo (Year/of 9999)) (codec/date-ub zo (Year/of 1))))))
 
 
 (deftest date-lb-ub
   (testing "extract lower bound"
-    (is (bytes/=
+    (is (=
           (codec/date-lb-ub->lb
             (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
           (codec/date-lb zo (Year/of 2020)))))
 
   (testing "extract upper bound"
-    (is (bytes/=
+    (is (=
           (codec/date-lb-ub->ub
             (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
           (codec/date-ub zo (Year/of 2020))))))
@@ -224,7 +224,7 @@
 
 (deftest number
   (testing "long"
-    (are [n hex] (= hex (codec/hex (codec/number n)))
+    (are [n hex] (= hex (bs/hex (codec/number n)))
       Long/MIN_VALUE "3F8000000000000000"
       (inc Long/MIN_VALUE) "3F8000000000000001"
       -576460752303423489 "3FF7FFFFFFFFFFFFFF"

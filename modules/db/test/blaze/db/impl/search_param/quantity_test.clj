@@ -33,42 +33,42 @@
   (sr/get search-param-registry "value-quantity" "Observation"))
 
 
-(deftest code-test
-  (is (= "value-quantity" (:code value-quantity-param))))
-
-
 (deftest name-test
   (is (= "value-quantity" (:name value-quantity-param))))
 
 
+(deftest code-test
+  (is (= "value-quantity" (:code value-quantity-param))))
+
+
+(deftest c-hash-test
+  (is (= (codec/c-hash "value-quantity") (:c-hash value-quantity-param))))
+
+
 (defn compile-quantity-value [value]
   (let [[[op lower-bound exact-value upper-bound]]
-        (search-param/compile-values value-quantity-param [value])]
-    [op (codec/hex lower-bound) (codec/hex exact-value) (codec/hex upper-bound)]))
-
-
-(defn hex-quantity [unit value]
-  (codec/hex (codec/quantity unit value)))
+        (search-param/compile-values value-quantity-param nil [value])]
+    [op lower-bound exact-value upper-bound]))
 
 
 (deftest compile-value-test
   (are [value op lower-bound exact-value upper-bound]
     (= [op lower-bound exact-value upper-bound] (compile-quantity-value value))
 
-    "23.4" :eq (hex-quantity nil 23.35M) (hex-quantity nil 23.40M) (hex-quantity nil 23.45M)
-    "23.0|kg/m2" :eq (hex-quantity "kg/m2" 22.95M) (hex-quantity "kg/m2" 23.00M) (hex-quantity "kg/m2" 23.05M)
-    "ge23" :ge (hex-quantity nil 22.5M) (hex-quantity nil 23.00M) (hex-quantity nil 23.5M)
-    "0.1" :eq (hex-quantity nil 0.05M) (hex-quantity nil 0.10M) (hex-quantity nil 0.15M)
-    "0" :eq (hex-quantity nil -0.5M) (hex-quantity nil 0.00M) (hex-quantity nil 0.5M)
-    "0.0" :eq (hex-quantity nil -0.05M) (hex-quantity nil 0.00M) (hex-quantity nil 0.05M))
+    "23.4" :eq (codec/quantity nil 23.35M) (codec/quantity nil 23.40M) (codec/quantity nil 23.45M)
+    "23.0|kg/m2" :eq (codec/quantity "kg/m2" 22.95M) (codec/quantity "kg/m2" 23.00M) (codec/quantity "kg/m2" 23.05M)
+    "ge23" :ge (codec/quantity nil 22.5M) (codec/quantity nil 23.00M) (codec/quantity nil 23.5M)
+    "0.1" :eq (codec/quantity nil 0.05M) (codec/quantity nil 0.10M) (codec/quantity nil 0.15M)
+    "0" :eq (codec/quantity nil -0.5M) (codec/quantity nil 0.00M) (codec/quantity nil 0.5M)
+    "0.0" :eq (codec/quantity nil -0.05M) (codec/quantity nil 0.00M) (codec/quantity nil 0.05M))
 
   (testing "invalid decimal value"
-    (given (search-param/compile-values value-quantity-param ["a"])
+    (given (search-param/compile-values value-quantity-param nil ["a"])
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid decimal value `a` in search parameter `value-quantity`."))
 
   (testing "unsupported prefix"
-    (given (search-param/compile-values value-quantity-param ["ne23"])
+    (given (search-param/compile-values value-quantity-param nil ["ne23"])
       ::anom/category := ::anom/unsupported
       ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`.")))
 

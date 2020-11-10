@@ -145,24 +145,24 @@
     c-hash))
 
 
-(defn resource-keys [{:keys [svri]} c-hash tid compiled-value start-id]
+(defn resource-keys [{:keys [svri]} c-hash tid value start-id]
   (if start-id
     (u/prefix-keys
       svri
-      (codec/sp-value-resource-key c-hash tid compiled-value)
-      (codec/sp-value-resource-key c-hash tid compiled-value start-id))
+      (codec/sp-value-resource-key c-hash tid value)
+      (codec/sp-value-resource-key c-hash tid value start-id))
     (u/prefix-keys
       svri
-      (codec/sp-value-resource-key c-hash tid compiled-value))))
+      (codec/sp-value-resource-key c-hash tid value))))
 
 
-(defn matches? [{:keys [rsvi]} c-hash tid id hash value]
-  (u/resource-sp-value-seek rsvi tid id hash c-hash value))
+(defn matches? [{:keys [rsvi]} c-hash resource-handle value]
+  (u/resource-sp-value-seek rsvi resource-handle c-hash value))
 
 
 (defrecord SearchParamToken [name url type base code c-hash expression]
   p/SearchParam
-  (-compile-value [_ value]
+  (-compile-value [_ _ value]
     (codec/v-hash value))
 
   (-resource-handles [_ context tid modifier value start-id]
@@ -177,9 +177,9 @@
                       co-c-hash co-res-id c-hash tid compiled-value)]
       (u/prefix-keys (:csvri context) start-key)))
 
-  (-matches? [_ context tid id hash modifier values]
+  (-matches? [_ context resource-handle modifier values]
     (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-      (some #(matches? context c-hash tid id hash %) values)))
+      (some #(matches? context c-hash resource-handle %) values)))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

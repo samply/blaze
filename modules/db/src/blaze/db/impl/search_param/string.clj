@@ -4,6 +4,7 @@
     [blaze.coll.core :as coll]
     [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.util :as u]
     [blaze.db.search-param-registry :as sr]
@@ -73,8 +74,7 @@
   "Returns the value of the resource with `tid` and `id` according to the
   search parameter with `c-hash`."
   [{:keys [rsvi] :as context} c-hash tid id]
-  (let [hash (u/resource-hash context tid id)]
-    (u/get-next-value rsvi tid id hash c-hash)))
+  (u/get-next-value rsvi (rao/resource-handle context tid id) c-hash))
 
 
 (defn- start-key [context c-hash tid value start-id]
@@ -101,13 +101,13 @@
     (u/sp-value-resource-keys svri (start-key context c-hash tid value start-id))))
 
 
-(defn- matches? [{:keys [rsvi]} c-hash tid id hash value]
-  (u/resource-sp-value-seek rsvi tid id hash c-hash value))
+(defn- matches? [{:keys [rsvi]} c-hash resource-handle value]
+  (u/resource-sp-value-seek rsvi resource-handle c-hash value))
 
 
 (defrecord SearchParamString [name url type base code c-hash expression]
   p/SearchParam
-  (-compile-value [_ value]
+  (-compile-value [_ _ value]
     (codec/string (normalize-string value)))
 
   (-resource-handles [_ context tid _ value start-id]
@@ -121,8 +121,8 @@
                       co-c-hash co-res-id c-hash tid compiled-value)]
       (u/prefix-keys (:csvri context) start-key)))
 
-  (-matches? [_ context tid id hash _ values]
-    (some #(matches? context c-hash tid id hash %) values))
+  (-matches? [_ context resource-handle _ values]
+    (some #(matches? context c-hash resource-handle %) values))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

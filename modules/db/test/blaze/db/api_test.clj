@@ -441,6 +441,12 @@
     (with-open [node (new-node)]
       (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
 
+  (testing "a resource handle is actually one"
+    (with-open [node (new-node)]
+      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+
+      (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
+
   (testing "a node contains a resource after a create transaction"
     (with-open [node (new-node)]
       @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
@@ -456,7 +462,10 @@
       (testing "pull-content"
         (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
-          :id := "0"))))
+          :id := "0"))
+
+      (testing "number of changes is 1"
+        (is (= 1 (d/num-changes (d/resource-handle (d/db node) "Patient" "0")))))))
 
   (testing "a node contains a resource after a put transaction"
     (with-open [node (new-node)]
@@ -681,14 +690,14 @@
         (given (d/type-query (d/db node) "Patient" [["foo" "bar"]
                                                     ["active" "true"]])
           ::anom/category := ::anom/not-found
-          ::anom/message := "search-param with code `foo` and type `Patient` not found")
+          ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")
 
         (testing "with start id"
           (given (d/type-query (d/db node) "Patient" [["foo" "bar"]
                                                       ["active" "true"]]
                                "0")
             ::anom/category := ::anom/not-found
-            ::anom/message := "search-param with code `foo` and type `Patient` not found")))))
+            ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))))
 
   (testing "a node with two patients in one transaction"
     (with-open [node (new-node)]
@@ -813,6 +822,104 @@
             [1 :id] := "2"
             [2 :id] := "3"
             3 := nil)))))
+
+  (testing "Special Search Parameter _has"
+    (with-open [node (new-node)]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                :active true}]
+                         [:put {:fhir/type :fhir/Patient :id "1"
+                                :active true}]
+                         [:put {:fhir/type :fhir/Observation :id "0"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}
+                                :code
+                                {:fhir/type :fhir/CodeableConcept
+                                 :coding
+                                 [{:fhir/type :fhir/Coding
+                                   :system #fhir/uri"http://loinc.org"
+                                   :code #fhir/code"8480-6"}]}
+                                :value
+                                {:fhir/type :fhir/Quantity
+                                 :value 130M
+                                 :code #fhir/code"mm[Hg]"
+                                 :system #fhir/uri"http://unitsofmeasure.org"}}]
+                         [:put {:fhir/type :fhir/Observation :id "O1"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/0"}
+                                :code
+                                {:fhir/type :fhir/CodeableConcept
+                                 :coding
+                                 [{:fhir/type :fhir/Coding
+                                   :system #fhir/uri"http://loinc.org"
+                                   :code #fhir/code"8480-6"}]}
+                                :value
+                                {:fhir/type :fhir/Quantity
+                                 :value 150M
+                                 :code #fhir/code"mm[Hg]"
+                                 :system #fhir/uri"http://unitsofmeasure.org"}}]
+                         [:put {:fhir/type :fhir/Observation :id "O2"
+                                :subject
+                                {:fhir/type :fhir/Reference
+                                 :reference "Patient/1"}
+                                :code
+                                {:fhir/type :fhir/CodeableConcept
+                                 :coding
+                                 [{:fhir/type :fhir/Coding
+                                   :system #fhir/uri"http://loinc.org"
+                                   :code #fhir/code"8480-6"}]}
+                                :value
+                                {:fhir/type :fhir/Quantity
+                                 :value 100M
+                                 :code #fhir/code"mm[Hg]"
+                                 :system #fhir/uri"http://unitsofmeasure.org"}}]])
+
+      (testing "select the Patient with > 130 mm[Hg]"
+        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
+          (given (pull-type-query node "Patient" clauses)
+            count := 1
+            [0 :id] := "0")))
+
+      (testing "select the Patient with 100 mm[Hg]"
+        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$100"]]]
+          (given (pull-type-query node "Patient" clauses)
+            count := 1
+            [0 :id] := "1")))
+
+      (testing "select all Patients"
+        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge100"]]]
+          (given (pull-type-query node "Patient" clauses)
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1"))
+
+        (testing "it is possible to start with the second patient"
+          (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge100"]]]
+            (given (pull-type-query node "Patient" clauses "1")
+              count := 1
+              [0 :id] := "1"))))
+
+      (testing "as second clause"
+        (testing "select the Patient with > 130 mm[Hg]"
+          (let [clauses [["active" "true"]
+                         ["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
+            (given (pull-type-query node "Patient" clauses)
+              count := 1
+              [0 :id] := "0")))))
+
+    (testing "errors"
+      (testing "main search param not found"
+        (with-open [node (new-node)]
+          (given (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))
+
+      (testing "chain search param not found"
+        (with-open [node (new-node)]
+          (given (d/type-query (d/db node) "Patient" [["_has:Observation:foo:code" ""]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
 
   (testing "Patient"
     (with-open [node (new-node)]
@@ -1661,17 +1768,17 @@
                  []
                  (map #(mapv % [:type :id :hash-prefix :code :value]))
                  (i/keys iter codec/decode-resource-sp-value-key-human bytes/empty))
-               [["Observation" "id-0" "7B68D1DB" "value-quantity" "0000000080"]
-                ["Observation" "id-0" "7B68D1DB" "value-quantity" "5C38E45A80"]
-                ["Observation" "id-0" "7B68D1DB" "value-quantity" "9B780D9180"]
-                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" "0000000080"]
-                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" "5C38E45A80"]
-                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" "9B780D9180"]
-                ["Observation" "id-0" "7B68D1DB" "_id" "165494C5"]
-                ["TestScript" "id-0" "10FA3621" "context-quantity" "0000000080"]
-                ["TestScript" "id-0" "10FA3621" "context-quantity" "5C38E45A80"]
-                ["TestScript" "id-0" "10FA3621" "context-quantity" "9B780D9180"]
-                ["TestScript" "id-0" "10FA3621" "_id" "165494C5"]]))))
+               [["Observation" "id-0" "7B68D1DB" "value-quantity" #google/byte-string"0000000080"]
+                ["Observation" "id-0" "7B68D1DB" "value-quantity" #google/byte-string"5C38E45A80"]
+                ["Observation" "id-0" "7B68D1DB" "value-quantity" #google/byte-string"9B780D9180"]
+                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" #google/byte-string"0000000080"]
+                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" #google/byte-string"5C38E45A80"]
+                ["Observation" "id-0" "7B68D1DB" "combo-value-quantity" #google/byte-string"9B780D9180"]
+                ["Observation" "id-0" "7B68D1DB" "_id" #google/byte-string"165494C5"]
+                ["TestScript" "id-0" "10FA3621" "context-quantity" #google/byte-string"0000000080"]
+                ["TestScript" "id-0" "10FA3621" "context-quantity" #google/byte-string"5C38E45A80"]
+                ["TestScript" "id-0" "10FA3621" "context-quantity" #google/byte-string"9B780D9180"]
+                ["TestScript" "id-0" "10FA3621" "_id" #google/byte-string"165494C5"]]))))
 
 
       (testing "TestScript would be found"
@@ -2129,7 +2236,7 @@
         (given (d/compile-type-query node "Patient" [["foo" "bar"]
                                                      ["active" "true"]])
           ::anom/category := ::anom/not-found
-          ::anom/message := "search-param with code `foo` and type `Patient` not found")))))
+          ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))))
 
 
 (deftest compile-type-query-lenient-test
@@ -2538,7 +2645,7 @@
 
       (given (d/compartment-query (d/db node) "Patient" "id-0" "Foo" [["code" "baz"]])
         ::anom/category := ::anom/not-found
-        ::anom/message := "search-param with code `code` and type `Foo` not found")))
+        ::anom/message := "The search-param with code `code` and type `Foo` was not found.")))
 
   (testing "Patient Compartment"
     (testing "Condition"

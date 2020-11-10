@@ -1,5 +1,7 @@
 (ns blaze.db.impl.codec
   (:require
+    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.db.impl.byte-string :as bs]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.util :as fhir-util]
     [cheshire.core :as cheshire]
@@ -10,6 +12,7 @@
     [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
     [com.google.common.hash HashCode Hashing]
     [com.google.common.io BaseEncoding]
+    [com.google.protobuf ByteString]
     [java.nio ByteBuffer]
     [java.nio.charset Charset StandardCharsets]
     [java.time Instant LocalDate LocalDateTime OffsetDateTime Year YearMonth
@@ -137,51 +140,38 @@
     bs))
 
 
-(defn sp-value-resource-key*
-  {:arglists
-   '([c-hash tid value v-offset v-length]
-     [c-hash tid value v-offset v-length id]
-     [c-hash tid value v-offset v-length id hash])}
-  ([c-hash tid ^bytes value v-offset v-length]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size ^int v-length))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value v-offset v-length)
-       (.array)))
-  ([c-hash tid ^bytes value v-offset v-length ^bytes id]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size ^int v-length 1
-                               (alength id) 1))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value v-offset v-length)
-       (.put (byte 0))
-       (.put id)
-       (.put (byte (alength id)))
-       (.array)))
-  ([c-hash tid ^bytes value v-offset v-length ^bytes id ^bytes hash]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size ^int v-length 1
-                               (alength id) 1 hash-prefix-size))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value v-offset v-length)
-       (.put (byte 0))
-       (.put id)
-       (.put (byte (alength id)))
-       (.put (hash-prefix hash))
-       (.array))))
-
-
 (defn sp-value-resource-key
   {:arglists
    '([c-hash tid value]
      [c-hash tid value id]
      [c-hash tid value id hash])}
-  ([c-hash tid ^bytes value]
-   (sp-value-resource-key* c-hash tid value 0 (alength value)))
-  ([c-hash tid ^bytes value id]
-   (sp-value-resource-key* c-hash tid value 0 (alength value) id))
-  ([c-hash tid ^bytes value id hash]
-   (sp-value-resource-key* c-hash tid value 0 (alength value) id hash)))
+  ([c-hash tid value]
+   (-> (doto (ByteBuffer/allocate (+ c-hash-size tid-size ^int (bs/size value)))
+         (.putInt c-hash)
+         (.putInt tid)
+         (bb/into! value))
+       (.array)))
+  ([c-hash tid value ^bytes id]
+   (-> (doto (ByteBuffer/allocate (+ c-hash-size tid-size ^int (bs/size value) 1
+                                     (alength id) 1))
+         (.putInt c-hash)
+         (.putInt tid)
+         (bb/into! value)
+         (.put (byte 0))
+         (.put id)
+         (.put (byte (alength id))))
+       (.array)))
+  ([c-hash tid value ^bytes id ^bytes hash]
+   (-> (doto (ByteBuffer/allocate (+ c-hash-size tid-size ^int (bs/size value) 1
+                                     (alength id) 1 hash-prefix-size))
+         (.putInt c-hash)
+         (.putInt tid)
+         (bb/into! value)
+         (.put (byte 0))
+         (.put id)
+         (.put (byte (alength id)))
+         (.put (hash-prefix hash)))
+       (.array))))
 
 
 (defn- append-fs [^bytes k ^long n]
@@ -236,7 +226,9 @@
      "combo-code-value-quantity"
      "combo-value-quantity"
      "context-quantity"
+     "patient"
      "status"
+     "subject"
      "value-quantity"]))
 
 
@@ -258,7 +250,7 @@
          _ (.get bb hash-prefix)]
      {:code (or (c-hash->code c-hash) (Integer/toHexString c-hash))
       :type (tid->type tid)
-      :value (hex value)
+      :value (ByteString/copyFrom value)
       :id (blaze.db.impl.codec/id id)
       :hash-prefix (hex hash-prefix)})))
 
@@ -269,8 +261,7 @@
 (defn resource-sp-value-key
   {:arglists
    '([tid id hash c-hash]
-     [tid id hash c-hash value]
-     [tid id hash c-hash value v-offset v-length])}
+     [tid id hash c-hash value])}
   ([tid ^bytes id hash c-hash]
    (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
                                c-hash-size))
@@ -280,17 +271,15 @@
        (.put (if (bytes? hash) ^bytes hash (hash-prefix hash)))
        (.putInt c-hash)
        (.array)))
-  ([tid ^bytes id hash c-hash ^bytes value]
-   (resource-sp-value-key tid id hash c-hash value 0 (alength value)))
-  ([tid ^bytes id hash c-hash ^bytes value v-offset v-length]
-   (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
-                               c-hash-size ^int v-length))
-       (.putInt tid)
-       (.put (byte (alength id)))
-       (.put id)
-       (.put (if (bytes? hash) ^bytes hash (hash-prefix hash)))
-       (.putInt c-hash)
-       (.put value v-offset v-length)
+  ([tid ^bytes id hash c-hash value]
+   (-> (doto (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
+                                     c-hash-size ^int (bs/size value)))
+         (.putInt tid)
+         (.put (byte (alength id)))
+         (.put id)
+         (.put (if (bytes? hash) ^bytes hash (hash-prefix hash)))
+         (.putInt c-hash)
+         (bb/into! value))
        (.array))))
 
 
@@ -300,14 +289,14 @@
 
 
 (defn decode-resource-sp-value-key
+  "Decodes ResourceSearchParamValue keys into a tuple of `[prefix value]`, where
+  `prefix` are all bytes before the `value` byte string."
   ([] (ByteBuffer/allocateDirect resource-sp-value-key-buffer-capacity))
   ([^ByteBuffer bb]
    (let [id-size (.get bb (+ (.position bb) tid-size))
-         prefix (byte-array (+ tid-size 1 id-size hash-prefix-size c-hash-size))
-         value (byte-array (- (.remaining bb) (alength prefix)))]
+         prefix (byte-array (+ tid-size 1 id-size hash-prefix-size c-hash-size))]
      (.get bb prefix)
-     (.get bb value)
-     [prefix value])))
+     [prefix (bs/from-byte-buffer bb)])))
 
 
 (defn decode-resource-sp-value-key-human
@@ -327,18 +316,15 @@
       :id (blaze.db.impl.codec/id id)
       :hash-prefix (hex hash-prefix)
       :code (or (c-hash->code c-hash) (Integer/toHexString c-hash))
-      :value (hex value)})))
+      :value (ByteString/copyFrom value)})))
 
 
 (defn resource-sp-value-key->value [^bytes k]
   (let [bb (ByteBuffer/wrap k)
         id-size (.get bb tid-size)
-        prefix-length (+ tid-size 1 id-size hash-prefix-size c-hash-size)
-        value-length (- (alength k) prefix-length)
-        value (byte-array value-length)]
+        prefix-length (+ tid-size 1 id-size hash-prefix-size c-hash-size)]
     (.position bb prefix-length)
-    (.get bb value 0 value-length)
-    value))
+    (ByteString/copyFrom bb)))
 
 
 
@@ -348,28 +334,28 @@
   {:arglists
    '([co-c-hash co-res-id sp-c-hash tid value]
      [co-c-hash co-res-id sp-c-hash tid value id hash])}
-  ([co-c-hash ^bytes co-res-id sp-c-hash tid ^bytes value]
-   (-> (ByteBuffer/allocate (+ c-hash-size (alength co-res-id)
-                               c-hash-size tid-size (alength value)))
-       (.putInt co-c-hash)
-       (.put co-res-id)
-       (.putInt sp-c-hash)
-       (.putInt tid)
-       (.put value)
+  ([co-c-hash ^bytes co-res-id sp-c-hash tid value]
+   (-> (doto (ByteBuffer/allocate (+ c-hash-size (alength co-res-id)
+                                     c-hash-size tid-size ^int (bs/size value)))
+         (.putInt co-c-hash)
+         (.put co-res-id)
+         (.putInt sp-c-hash)
+         (.putInt tid)
+         (bb/into! value))
        (.array)))
-  ([co-c-hash ^bytes co-res-id sp-c-hash tid ^bytes value ^bytes id hash]
-   (-> (ByteBuffer/allocate (+ c-hash-size (alength co-res-id)
-                               c-hash-size tid-size (alength value) 1
-                               (alength id) 1 hash-prefix-size))
-       (.putInt co-c-hash)
-       (.put co-res-id)
-       (.putInt sp-c-hash)
-       (.putInt tid)
-       (.put value)
-       (.put (byte 0))
-       (.put id)
-       (.put (byte (alength id)))
-       (.put (hash-prefix hash))
+  ([co-c-hash ^bytes co-res-id sp-c-hash tid value ^bytes id hash]
+   (-> (doto (ByteBuffer/allocate (+ c-hash-size (alength co-res-id)
+                                     c-hash-size tid-size ^int (bs/size value) 1
+                                     (alength id) 1 hash-prefix-size))
+         (.putInt co-c-hash)
+         (.put co-res-id)
+         (.putInt sp-c-hash)
+         (.putInt tid)
+         (bb/into! value)
+         (.put (byte 0))
+         (.put id)
+         (.put (byte (alength id)))
+         (.put (hash-prefix hash)))
        (.array))))
 
 
@@ -645,23 +631,27 @@
 
 ;; ---- Other Functions -------------------------------------------------------
 
-(defn v-hash ^bytes [value]
-  (.asBytes (.hashString (Hashing/murmur3_32) ^String value utf-8)))
+(defn v-hash [value]
+  (-> (Hashing/murmur3_32)
+      (.hashString ^String value utf-8)
+      (.asBytes)
+      (ByteString/copyFrom)))
 
 
 (defn tid-id
-  "Returns a byte array with tid from `type` followed by `id`."
+  "Returns a byte string with tid from `type` followed by `id`."
   [tid ^bytes id]
-  (let [bb (ByteBuffer/allocate (+ tid-size (alength id)))]
-    (.putInt bb tid)
-    (.put bb id)
-    (.array bb)))
+  (-> (ByteBuffer/allocate (+ tid-size (alength id)))
+      (.putInt tid)
+      (.put id)
+      (.flip)
+      (ByteString/copyFrom)))
 
 
 (defn string
   "Returns a lexicographically sortable byte string of the `string` value."
   [string]
-  (.getBytes ^String string utf-8))
+  (ByteString/copyFromUtf8 string))
 
 
 (defprotocol NumberBytes
@@ -669,10 +659,9 @@
 
 
 (defn number
-  "Converts the number in a lexicographically sortable byte array.
+  "Converts the number in a lexicographically sortable byte string.
 
-  The array has variable length."
-  ^bytes
+  The byte string has variable length."
   [number]
   (-number number))
 
@@ -687,7 +676,7 @@
 
   Integer
   (-number [val]
-    (number (long val)))
+    (-number (long val)))
 
   Long
   (-number [val]
@@ -695,58 +684,67 @@
           val (- (Math/abs ^long val) (bit-and 1 mask))]
       (condp > val
         (bit-shift-left 1 3)
-        (let [bb (ByteBuffer/allocate 1)]
-          (.put bb (byte (bit-xor (bit-or val (bit-shift-left 0x10 3)) mask)))
-          (.array bb))
+        (-> (ByteBuffer/allocate 1)
+            (.put (byte (bit-xor (bit-or val (bit-shift-left 0x10 3)) mask)))
+            (.flip)
+            (ByteString/copyFrom))
 
         (bit-shift-left 1 11)
-        (let [bb (ByteBuffer/allocate 2)]
-          (.putShort bb (bit-xor (bit-or val (bit-shift-left 0x11 11)) mask))
-          (.array bb))
+        (-> (ByteBuffer/allocate 2)
+            (.putShort (bit-xor (bit-or val (bit-shift-left 0x11 11)) mask))
+            (.flip)
+            (ByteString/copyFrom))
 
         (bit-shift-left 1 19)
-        (let [bb (ByteBuffer/allocate 3)
-              masked (bit-xor (bit-or val (bit-shift-left 0x12 19)) mask)]
-          (.put bb (byte (bit-shift-right masked 16)))
-          (.putShort bb masked)
-          (.array bb))
+        (let [masked (bit-xor (bit-or val (bit-shift-left 0x12 19)) mask)]
+          (-> (ByteBuffer/allocate 3)
+              (.put (byte (bit-shift-right masked 16)))
+              (.putShort masked)
+              (.flip)
+              (ByteString/copyFrom)))
 
         (bit-shift-left 1 27)
-        (let [bb (ByteBuffer/allocate 4)]
-          (.putInt bb (bit-xor (bit-or val (bit-shift-left 0x13 27)) mask))
-          (.array bb))
+        (-> (ByteBuffer/allocate 4)
+            (.putInt (bit-xor (bit-or val (bit-shift-left 0x13 27)) mask))
+            (.flip)
+            (ByteString/copyFrom))
 
         (bit-shift-left 1 35)
-        (let [bb (ByteBuffer/allocate 5)
-              masked (bit-xor (bit-or val (bit-shift-left 0x14 35)) mask)]
-          (.put bb (byte (bit-shift-right masked 32)))
-          (.putInt bb masked)
-          (.array bb))
+        (let [masked (bit-xor (bit-or val (bit-shift-left 0x14 35)) mask)]
+          (-> (ByteBuffer/allocate 5)
+              (.put (byte (bit-shift-right masked 32)))
+              (.putInt masked)
+              (.flip)
+              (ByteString/copyFrom)))
 
         (bit-shift-left 1 43)
-        (let [bb (ByteBuffer/allocate 6)
-              masked (bit-xor (bit-or val (bit-shift-left 0x15 43)) mask)]
-          (.putShort bb (bit-shift-right masked 32))
-          (.putInt bb masked)
-          (.array bb))
+        (let [masked (bit-xor (bit-or val (bit-shift-left 0x15 43)) mask)]
+          (-> (ByteBuffer/allocate 6)
+              (.putShort (bit-shift-right masked 32))
+              (.putInt masked)
+              (.flip)
+              (ByteString/copyFrom)))
 
         (bit-shift-left 1 51)
-        (let [bb (ByteBuffer/allocate 7)
-              masked (bit-xor (bit-or val (bit-shift-left 0x16 51)) mask)]
-          (.put bb (byte (bit-shift-right masked 48)))
-          (.putShort bb (bit-shift-right masked 32))
-          (.putInt bb masked)
-          (.array bb))
+        (let [masked (bit-xor (bit-or val (bit-shift-left 0x16 51)) mask)]
+          (-> (ByteBuffer/allocate 7)
+              (.put (byte (bit-shift-right masked 48)))
+              (.putShort (bit-shift-right masked 32))
+              (.putInt masked)
+              (.flip)
+              (ByteString/copyFrom)))
 
         (bit-shift-left 1 59)
-        (let [bb (ByteBuffer/allocate 8)]
-          (.putLong bb (bit-xor (bit-or val (bit-shift-left 0x17 59)) mask))
-          (.array bb))
+        (-> (ByteBuffer/allocate 8)
+            (.putLong (bit-xor (bit-or val (bit-shift-left 0x17 59)) mask))
+            (.flip)
+            (ByteString/copyFrom))
 
-        (let [bb (ByteBuffer/allocate 9)]
-          (.put bb (byte (bit-xor (bit-shift-left 0x18 3) mask)))
-          (.putLong bb (bit-xor val mask))
-          (.array bb))))))
+        (-> (ByteBuffer/allocate 9)
+            (.put (byte (bit-xor (bit-shift-left 0x18 3) mask)))
+            (.putLong (bit-xor val mask))
+            (.flip)
+            (ByteString/copyFrom))))))
 
 
 (defn- epoch-seconds ^long [^LocalDateTime date-time ^ZoneId zone-id]
@@ -797,17 +795,15 @@
 
 
 (defn date-lb?
-  "Tests whether the bytes in `b` starting at `offset` represent a date lower
-  bound."
-  [^bytes b offset]
-  (< (bit-and (aget b offset) 0xff) ub-first-byte))
+  "Tests whether `bs` starting at `offset` represent a date lower bound."
+  [bs offset]
+  (< (bit-and ^long (bs/nth bs offset) 0xff) ub-first-byte))
 
 
 (defn date-ub?
-  "Tests whether the bytes in `b` starting at `offset` represent a date upper
-  bound."
-  [^bytes b offset]
-  (>= (bit-and (aget b offset) 0xff) ub-first-byte))
+  "Tests whether `bs` starting at `offset` represent a date upper bound."
+  [bs offset]
+  (>= (bit-and ^long (bs/nth bs offset) 0xff) ub-first-byte))
 
 
 (defprotocol DateUpperBound
@@ -847,34 +843,33 @@
   (-date-ub date-time zone-id))
 
 
-(def date-min-bound (date-lb (ZoneOffset/ofHours 0) (Year/of 1)))
+(def date-min-bound
+  (date-lb (ZoneOffset/ofHours 0) (Year/of 1)))
 
 
-(def date-max-bound (date-ub (ZoneOffset/ofHours 0) (Year/of 9999)))
+(def date-max-bound
+  (date-ub (ZoneOffset/ofHours 0) (Year/of 9999)))
 
 
-(defn date-lb-ub [^bytes lb ^bytes ub]
-  (let [bb (ByteBuffer/allocate (+ 1 (alength lb) (alength ub)))]
-    (.put bb (byte (alength lb)))
-    (.put bb lb)
-    (.put bb ub)
-    (.array bb)))
+(defn date-lb-ub [lb ub]
+  (-> (doto (ByteBuffer/allocate (+ 1 ^int (bs/size lb) ^int (bs/size ub)))
+        (.put (byte (bs/size lb)))
+        (bb/into! lb)
+        (bb/into! ub))
+      (.flip)
+      (ByteString/copyFrom)))
 
 
-(defn date-lb-ub->lb [^bytes lb-ub]
-  (Arrays/copyOfRange lb-ub 1 (inc (aget lb-ub 0))))
+(defn date-lb-ub->lb [lb-ub]
+  (bs/subs lb-ub 1 (inc ^long (bs/nth lb-ub 0))))
 
 
-(defn date-lb-ub->ub [^bytes lb-ub]
-  (Arrays/copyOfRange lb-ub (inc (aget lb-ub 0)) (alength lb-ub)))
+(defn date-lb-ub->ub [lb-ub]
+  (bs/subs lb-ub (inc ^long (bs/nth lb-ub 0)) (bs/size lb-ub)))
 
 
 (defn quantity [unit value]
-  (let [number (number value)]
-    (-> (ByteBuffer/allocate (+ v-hash-size (alength number)))
-        (.put (v-hash (or unit "")))
-        (.put number)
-        (.array))))
+  (bs/concat (v-hash (or unit "")) (number value)))
 
 
 (defn deleted-resource [type id]

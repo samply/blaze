@@ -31,12 +31,16 @@
   (sr/get search-param-registry "code" "Observation"))
 
 
+(deftest name-test
+  (is (= "code" (:name code-param))))
+
+
 (deftest code-test
   (is (= "code" (:code code-param))))
 
 
-(deftest name-test
-  (is (= "code" (:name code-param))))
+(deftest c-hash-test
+  (is (= (codec/c-hash "code") (:c-hash code-param))))
 
 
 (deftest index-entries-test

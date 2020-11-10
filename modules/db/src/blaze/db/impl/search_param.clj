@@ -3,10 +3,12 @@
     [blaze.anomaly :refer [conj-anom]]
     [blaze.coll.core :as coll]
     [blaze.db.bytes :as bytes]
+    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.composite]
     [blaze.db.impl.search-param.date]
+    [blaze.db.impl.search-param.has]
     [blaze.db.impl.search-param.list]
     [blaze.db.impl.search-param.quantity]
     [blaze.db.impl.search-param.string]
@@ -25,9 +27,9 @@
   "Compiles `values` according to `search-param`.
 
   Returns an anomaly on errors."
-  [search-param values]
+  [search-param modifier values]
   (transduce
-    (map #(p/-compile-value search-param %))
+    (map #(p/-compile-value search-param modifier %))
     conj-anom
     []
     values))
@@ -56,8 +58,8 @@
     (compartment-keys search-param context compartment tid compiled-values)))
 
 
-(defn matches? [search-param context tid id hash modifier compiled-values]
-  (p/-matches? search-param context tid id hash modifier compiled-values))
+(defn matches? [search-param context resource-handle modifier compiled-values]
+  (p/-matches? search-param context resource-handle modifier compiled-values))
 
 
 (def stub-resolver
@@ -100,7 +102,7 @@
         []
         (mapcat
           (fn search-param-entry [[modifier value]]
-            (log/trace "search-param-entry" code type id hash (codec/hex value))
+            (log/trace "search-param-entry" code type id hash (bs/hex value))
             (let [c-hash (c-hash-w-modifier c-hash code modifier)]
               (into
                 [[:search-param-value-index

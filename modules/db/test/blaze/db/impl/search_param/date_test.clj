@@ -36,22 +36,26 @@
   (sr/get search-param-registry "birthdate" "Patient"))
 
 
-(deftest code-test
-  (is (= "birthdate" (:code birth-date-param))))
-
-
 (deftest name-test
   (is (= "birthdate" (:name birth-date-param))))
 
 
+(deftest code-test
+  (is (= "birthdate" (:code birth-date-param))))
+
+
+(deftest c-hash-test
+  (is (= (codec/c-hash "birthdate") (:c-hash birth-date-param))))
+
+
 (deftest compile-value-test
   (testing "invalid date value"
-    (given (search-param/compile-values birth-date-param ["a"])
+    (given (search-param/compile-values birth-date-param nil ["a"])
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid date-time value `a` in search parameter `birthdate`."))
 
   (testing "unsupported prefix"
-    (given (search-param/compile-values birth-date-param ["ne2020"])
+    (given (search-param/compile-values birth-date-param nil ["ne2020"])
       ::anom/category := ::anom/unsupported
       ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`.")))
 

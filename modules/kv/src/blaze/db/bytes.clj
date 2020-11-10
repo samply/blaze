@@ -17,7 +17,7 @@
 
 
 (defn starts-with?
-  "Test whether `bs` start with `prefix`."
+  "Test whether `bs` starts with `prefix`."
   {:arglists '([bs prefix] [bs prefix length])}
   ([bs ^bytes prefix]
    (starts-with? bs prefix (alength prefix)))

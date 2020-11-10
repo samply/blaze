@@ -19,6 +19,7 @@
   in the registry. Other namespaces can provide their own implementations here.
 
   The conversion can return an anomaly."
+  {:arglists '([index definition])}
   (fn [_ {:keys [type]}] type))
 
 
@@ -162,7 +163,12 @@
 
 (def ^:private list-search-param
   {:type "special"
-   :code "_list"})
+   :name "_list"})
+
+
+(def ^:private has-search-param
+  {:type "special"
+   :name "_has"})
 
 
 (defn- add-special
@@ -170,7 +176,8 @@
 
   See: https://www.hl7.org/fhir/search.html#special"
   [index]
-  (assoc-in index ["Resource" "_list"] (search-param nil list-search-param)))
+  (-> (assoc-in index ["Resource" "_list"] (search-param nil list-search-param))
+      (assoc-in ["Resource" "_has"] (search-param index has-search-param))))
 
 
 (defn- build-url-index* [index filter entries]
@@ -228,10 +235,3 @@
   [_ _]
   (log/info "Init in-memory fixed R4 search parameter registry")
   (init-search-param-registry))
-
-(comment
-  (def bundle (read-bundle "blaze/db/search-parameters.json"))
-
-  (filter (comp #{"http://hl7.org/fhir/SearchParameter/Resource-query"} :url) (map :resource (:entry bundle)))
-
-  )

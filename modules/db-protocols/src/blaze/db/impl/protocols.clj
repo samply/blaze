@@ -78,10 +78,10 @@
 
 
 (defprotocol SearchParam
-  (-compile-value [search-param value] "Can return an anomaly.")
+  (-compile-value [search-param modifier value] "Can return an anomaly.")
   (-resource-handles [search-param context tid modifier compiled-value start-id])
   (-compartment-keys [search-param context compartment tid compiled-value])
-  (-matches? [search-param context tid id hash modifier compiled-values])
+  (-matches? [search-param context resource-handle modifier compiled-values])
   (-compartment-ids [_ resolver resource])
   ;; TODO: remove if not needed anymore for the data search param
   (-index-entries [_ resolver hash resource linked-compartments])

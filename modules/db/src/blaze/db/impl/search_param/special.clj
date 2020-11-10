@@ -4,14 +4,16 @@
     [taoensso.timbre :as log]))
 
 
-(defmulti special-search-param (fn [{:keys [code]}] code))
+(defmulti special-search-param
+  {:arglists '([index definition])}
+  (fn [_ {:keys [name]}] name))
 
 
 (defmethod sr/search-param "special"
-  [_ search-param]
-  (special-search-param search-param))
+  [index search-param]
+  (special-search-param index search-param))
 
 
 (defmethod special-search-param :default
-  [{:keys [url code]}]
+  [_ {:keys [url code]}]
   (log/debug (format "Skip creating special search parameter `%s` with code `%s` because the rule is missing." url code)))

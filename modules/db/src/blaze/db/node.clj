@@ -59,7 +59,7 @@
   (if-let [search-param (sr/get search-param-registry code type)]
     search-param
     {::anom/category ::anom/not-found
-     ::anom/message (format "search-param with code `%s` and type `%s` not found" code type)}))
+     ::anom/message (format "The search-param with code `%s` and type `%s` was not found." code type)}))
 
 
 (defn- resolve-search-params [search-param-registry type clauses lenient?]
@@ -69,7 +69,7 @@
             res (resolve-search-param search-param-registry type code)]
         (if (::anom/category res)
           (if lenient? ret (reduced res))
-          (let [compiled-values (search-param/compile-values res values)]
+          (let [compiled-values (search-param/compile-values res modifier values)]
             (if (::anom/category compiled-values)
               (reduced compiled-values)
               (conj ret [res modifier values compiled-values]))))))

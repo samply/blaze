@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :refer [conj-anom if-ok when-ok]]
     [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
+    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.quantity :as spq]
@@ -23,7 +23,7 @@
 
 
 (defn- compile-component-value [{:keys [search-param]} value]
-  (p/-compile-value search-param value))
+  (p/-compile-value search-param nil value))
 
 
 (defn- component-index-values
@@ -39,25 +39,25 @@
 (defn- index-values [resolver main-value c1 c2]
   (for [v1 (component-index-values resolver main-value c1)
         v2 (component-index-values resolver main-value c2)]
-    [nil (bytes/concat v1 v2)]))
+    [nil (bs/concat v1 v2)]))
 
 
 (defrecord SearchParamCompositeTokenToken
   [name url type base code c-hash main-expression c1 c2]
   p/SearchParam
-  (-compile-value [_ value]
+  (-compile-value [_ _ value]
     (let [[v1 v2] (split-value value)
           v1 (compile-component-value c1 v1)
           v2 (compile-component-value c1 v2)]
-      (bytes/concat v1 v2)))
+      (bs/concat v1 v2)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
       (spt/resource-keys context c-hash tid value start-id)))
 
-  (-matches? [_ context tid id hash _ values]
-    (some #(spt/matches? context c-hash tid id hash %) values))
+  (-matches? [_ context resource-handle _ values]
+    (some #(spt/matches? context c-hash resource-handle %) values))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
@@ -71,16 +71,16 @@
 (defrecord SearchParamCompositeTokenQuantity
   [name url type base code c-hash main-expression c1 c2]
   p/SearchParam
-  (-compile-value [_ value]
+  (-compile-value [_ _ value]
     (let [[v1 v2] (split-value value)
           token-value (compile-component-value c1 v1)]
       ;; the second component is always of type quantity
       (if-ok [quantity-value (compile-component-value c2 v2)]
         (let [[op lower-bound exact-value upper-bound] quantity-value]
           [op
-           (bytes/concat token-value lower-bound)
-           (bytes/concat token-value exact-value)
-           (bytes/concat token-value upper-bound)])
+           (bs/concat token-value lower-bound)
+           (bs/concat token-value exact-value)
+           (bs/concat token-value upper-bound)])
         (case (::spq/category quantity-value)
           ::spq/invalid-decimal-value
           (assoc quantity-value
@@ -98,9 +98,10 @@
       (spq/resource-keys context c-hash tid token-quantity-prefix-length value
                          start-id)))
 
-  (-matches? [_ context tid id hash _ values]
+  (-matches? [_ context resource-handle _ values]
     (some
-      #(spq/matches? context c-hash tid id hash token-quantity-prefix-length %)
+      #(spq/matches? context c-hash resource-handle
+                     token-quantity-prefix-length %)
       values))
 
   (-index-values [_ resolver resource]
@@ -108,16 +109,16 @@
       (into [] (mapcat #(index-values resolver % c1 c2)) values))))
 
 
-(defn- resolve-definition [index {url :definition :as component}]
+(defn- resolve-search-param [index {url :definition :as component}]
   (if-let [search-param (get index url)]
     (assoc component :search-param search-param)
     {::anom/category ::anom/not-found
      :url url}))
 
 
-(defn- resolve-definitions [index components]
+(defn- resolve-search-params [index components]
   (transduce
-    (map #(resolve-definition index %))
+    (map #(resolve-search-param index %))
     conj-anom
     []
     components))
@@ -145,7 +146,7 @@
 
 
 (defn- prepare-components [index components]
-  (when-ok [components (resolve-definitions index components)]
+  (when-ok [components (resolve-search-params index components)]
     (if (supported? components)
       (compile-expressions components)
       {::anom/category ::anom/unsupported})))

@@ -32,12 +32,16 @@
   (sr/get search-param-registry "phonetic" "Patient"))
 
 
+(deftest name-test
+  (is (= "phonetic" (:name phonetic-param))))
+
+
 (deftest code-test
   (is (= "phonetic" (:code phonetic-param))))
 
 
-(deftest name-test
-  (is (= "phonetic" (:name phonetic-param))))
+(deftest c-hash-test
+  (is (= (codec/c-hash "phonetic") (:c-hash phonetic-param))))
 
 
 (deftest index-entries-test

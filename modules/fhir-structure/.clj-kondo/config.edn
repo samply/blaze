@@ -4,10 +4,8 @@
   :single-key-in
   {:level :error}
   :unresolved-namespace
-  {:level :off}
+  {:exclude [f xhtml]}
   :redefined-var
-  {:level :off}
-  :unused-binding
   {:level :off}}
 
  :skip-comments true}

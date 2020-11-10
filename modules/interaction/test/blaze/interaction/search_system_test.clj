@@ -66,7 +66,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-found"
-              [:issue 0 :diagnostics] := "search-param with code `foo` and type `Patient` not found")))
+              [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Patient` was not found.")))
 
         (testing "summary result"
           (let [{:keys [status body]}
@@ -82,7 +82,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-found"
-              [:issue 0 :diagnostics] := "search-param with code `foo` and type `Patient` not found")))))
+              [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Patient` was not found.")))))
 
     (testing "with lenient handling"
       (testing "returns results with a self link lacking the unknown search parameter"

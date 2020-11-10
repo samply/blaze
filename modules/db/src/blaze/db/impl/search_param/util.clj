@@ -1,21 +1,22 @@
 (ns blaze.db.impl.search-param.util
   (:require
-    [blaze.anomaly :refer [throw-anom]]
     [blaze.coll.core :as coll]
     [blaze.db.bytes :as bytes]
+    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-as-of :as resource-as-of]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.fhir.hash :as hash]
-    [blaze.fhir.spec :as fhir-spec]
-    [cognitect.anomalies :as anom])
+    [blaze.fhir.spec :as fhir-spec])
   (:import
     [java.nio ByteBuffer]))
 
 
 (set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 
 (defn separate-op
@@ -45,22 +46,9 @@
 
 
 (defn non-deleted-resource-handle [context tid id]
-  (when-let [handle (resource-as-of/resource-handle context tid id)]
+  (when-let [handle (rao/resource-handle context tid id)]
     (when-not (rh/deleted? handle)
       handle)))
-
-
-(defn- resource-missing-msg [tid id t]
-  (format "Resource %s/%s doesn't exist at %d." (codec/tid->type tid)
-          (codec/id id) t))
-
-
-(defn resource-hash
-  "Returns the hash of the resource with `tid` and `id` at `t`."
-  [context tid id]
-  (if-let [handle (non-deleted-resource-handle context tid id)]
-    (rh/hash handle)
-    (throw-anom ::anom/fault (resource-missing-msg tid id (:t context)))))
 
 
 (defn- resource-handle-mapper* [context tid]
@@ -85,12 +73,6 @@
     matches-hash-prefixes-filter))
 
 
-(defn get-value [snapshot tid id hash c-hash]
-  (kv/snapshot-get
-    snapshot :resource-value-index
-    (codec/resource-sp-value-key tid id hash c-hash)))
-
-
 (defn prefix-seek [iter key]
   (kv/seek! iter key)
   (when (kv/valid? iter)
@@ -100,25 +82,25 @@
 
 
 (defn resource-sp-value-seek
-  "Returns the first key on ResourceSearchParamValue index with starts with
-  `tid`, `id`, `hash`, `c-hash` and optional `value`."
-  ([iter tid id hash c-hash]
-   (prefix-seek iter (codec/resource-sp-value-key tid id hash c-hash)))
-  ([iter tid id hash c-hash value]
-   (resource-sp-value-seek iter tid id hash c-hash value 0
-                           (alength ^bytes value)))
-  ([iter tid id hash c-hash value v-offset v-length]
-   (prefix-seek iter (codec/resource-sp-value-key tid id hash c-hash value
-                                                  v-offset v-length))))
+  "Returns the first key on ResourceSearchParamValue index which starts with
+  `resource-handle`, `c-hash` and optional `value`."
+  {:arglists
+   '([iter resource-handle c-hash]
+     [iter resource-handle c-hash value])}
+  ([iter {:keys [tid id hash]} c-hash]
+   (prefix-seek iter (codec/resource-sp-value-key tid (codec/id-bytes id) hash
+                                                  c-hash)))
+  ([iter {:keys [tid id hash]} c-hash value]
+   (prefix-seek iter (codec/resource-sp-value-key tid (codec/id-bytes id) hash
+                                                  c-hash value))))
 
 
 (defn get-next-value
-  ([iter tid id hash c-hash]
-   (when-let [k (resource-sp-value-seek iter tid id hash c-hash)]
+  ([iter resource-handle c-hash]
+   (when-let [k (resource-sp-value-seek iter resource-handle c-hash)]
      (codec/resource-sp-value-key->value k)))
-  ([iter tid id hash c-hash prefix p-offset p-length]
-   (when-let [k (resource-sp-value-seek iter tid id hash c-hash
-                                        prefix p-offset p-length)]
+  ([iter resource-handle c-hash prefix]
+   (when-let [k (resource-sp-value-seek iter resource-handle c-hash prefix)]
      (codec/resource-sp-value-key->value k))))
 
 
@@ -172,3 +154,21 @@
 (defn missing-expression-msg [url]
   (format "Unsupported search parameter with URL `%s`. Required expression is missing."
           url))
+
+
+(defn reference-resource-handle-mapper
+  "Filters all [prefix value] tuples for reference tid-id values with `tid`,
+  returning the resource handles of the referenced resources."
+  [context tid]
+  (comp
+    (map (fn [[_ value]] value))
+    ;; other index entries are all v-hashes
+    (filter #(< codec/v-hash-size ^int (bs/size %)))
+    (map bs/as-read-only-byte-buffer)
+    ;; the type has to match
+    (filter #(= tid (bb/get-int! %)))
+    (map (fn [^ByteBuffer bb]
+           (let [id (byte-array (.remaining bb))]
+             (.get bb id)
+             id)))
+    (mapcat #(some-> (non-deleted-resource-handle context tid %) vector))))

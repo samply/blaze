@@ -27,6 +27,7 @@
 
 (s/fdef search-param/compile-values
   :args (s/cat :search-param :blaze.db/search-param
+               :modifier (s/nilable string?)
                :values (s/coll-of some? :min-count 1))
   :ret (s/or :compiled-values (s/coll-of some? :min-count 1)
              :anomaly ::anom/anomaly))
@@ -54,9 +55,7 @@
 (s/fdef search-param/matches?
   :args (s/cat :search-param :blaze.db/search-param
                :context :blaze.db.impl.batch-db/context
-               :tid :blaze.db/tid
-               :id :blaze.db/id-bytes
-               :hash :blaze.resource/hash
+               :resource-handle :blaze.db/resource-handle
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))
   :ret boolean?)
