@@ -1,20 +1,22 @@
 (ns blaze.fhir.spec.type
   (:require
     [blaze.fhir.spec.type.system :as system]
+    [clojure.alpha.spec :as s2]
     [clojure.data.xml :as xml]
     [clojure.data.xml.node :as xml-node]
     [clojure.string :as str])
   (:import
+    [blaze.fhir.spec.type.system
+     DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [clojure.lang Keyword]
     [com.google.common.hash PrimitiveSink]
     [java.io Writer]
     [java.nio.charset StandardCharsets]
-    [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
-               YearMonth ZoneOffset]
-    [java.time.format DateTimeFormatter]
-    [java.util List Map UUID]
-    [blaze.fhir.spec.type.system
-     DateTimeYear DateTimeYearMonth DateTimeYearMonthDay])
+    [java.time
+     Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
+     ZoneOffset]
+    [java.time.format DateTimeFormatter DateTimeParseException]
+    [java.util List Map UUID])
   (:refer-clojure :exclude [decimal? string? uri?]))
 
 
@@ -406,11 +408,12 @@
     (system/-hash-into date sink)))
 
 
-(defn ->Date [s]
-  (case (count s)
-    10 (LocalDate/parse s)
-    7 (YearMonth/parse s)
-    (Year/parse s)))
+(defn ->Date [value]
+  (try
+    (system/parse-date* value)
+    (catch DateTimeParseException _
+      ;; in case of leap year errors not covered by regex
+      ::s2/invalid)))
 
 
 (defn xml->Date
@@ -508,9 +511,16 @@
 (defn ->DateTime
   "Creates a primitive dateTime value."
   ([value]
-   (system/parse-date-time* value))
+   (try
+     (system/parse-date-time* value)
+     (catch DateTimeParseException _
+       ;; in case of leap year errors not covered by regex
+       ::s2/invalid)))
   ([id extensions value]
-   (->ExtendedDateTime id extensions (system/parse-date-time* value))))
+   (let [date-time (->DateTime value)]
+     (if (s2/invalid? date-time)
+       ::s2/invalid
+       (->ExtendedDateTime id extensions date-time)))))
 
 
 (defn xml->DateTime
@@ -519,7 +529,7 @@
   [{{:keys [id value]} :attrs extensions :content}]
   (if (or id (seq extensions))
     (->DateTime id extensions value)
-    (system/parse-date-time* value)))
+    (->DateTime value)))
 
 
 (defn date-time? [x]

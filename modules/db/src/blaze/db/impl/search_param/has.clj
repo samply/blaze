@@ -3,10 +3,8 @@
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.special :as special]
     [blaze.db.impl.search-param.util :as u]
@@ -30,35 +28,26 @@
      ::anom/message (format "The search-param with code `%s` and type `%s` was not found." code type)}))
 
 
-(defn- start-key [c-hash resource-handle]
-  (codec/resource-sp-value-key
-    (rh/tid resource-handle)
-    (codec/id-bytes (rh/id resource-handle))
-    (rh/hash resource-handle)
-    c-hash))
-
-
 (defn- resolve-resource-handles
-  "Resolves a coll of resource handles of resources referenced in the resource
-  with `resource-handle` by `search-param`."
+  "Resolves a coll of resource handles of resources of type `tid`, referenced in
+  the resource with `resource-handle` by `search-param`."
+  {:arglists '([context search-param tid resource-handle])}
   [{:keys [rsvi] :as context} {:keys [c-hash]} tid resource-handle]
-  (let [start-key (start-key c-hash resource-handle)]
-    (into
-      []
-      (comp
-        (take-while (fn [[prefix]] (bytes/starts-with? prefix start-key)))
-        (u/reference-resource-handle-mapper context tid))
-      (i/keys rsvi codec/decode-resource-sp-value-key start-key))))
+  (into
+    []
+    (u/reference-resource-handle-mapper context tid)
+    (let [{:keys [tid id hash]} resource-handle]
+      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash c-hash))))
 
 
 (def ^:private id-cmp
   (reify Comparator
     (compare [_ a b]
-      (.compareTo ^String (rh/id a) (rh/id b)))))
+      (.compareTo ^String (:id a) (:id b)))))
 
 
 (defn- drop-lesser-ids [start-id]
-  (drop-while #(neg? (.compareTo ^String (rh/id %) start-id))))
+  (drop-while #(neg? (.compareTo ^String (:id %) start-id))))
 
 
 (defn- resource-handles*
@@ -66,20 +55,15 @@
   (into
     (sorted-set-by id-cmp)
     (mapcat #(resolve-resource-handles context chain-search-param tid %))
-    (p/-resource-handles search-param context join-tid nil value nil)))
+    (p/-resource-handles search-param context join-tid nil value)))
 
 
-;; TODO: make this cahce public and configurable?
+;; TODO: make this cache public and configurable?
 (def ^:private ^Cache resource-handles-cache
   (-> (Caffeine/newBuilder)
       (.maximumSize 100)
       (.expireAfterAccess 1 TimeUnit/MINUTES)
       (.build)))
-
-
-(comment
-  (keys (.asMap resource-handles-cache))
-  )
 
 
 (defn- resource-handles
@@ -108,11 +92,12 @@
            (codec/tid type)
            (p/-compile-value search-param nil value)]))))
 
+  (-resource-handles [_ context tid _ value]
+    (resource-handles context tid value))
+
   (-resource-handles [_ context tid _ value start-id]
-    (if start-id
-      (coll/eduction
-        (drop-lesser-ids (codec/id start-id))
-        (resource-handles context tid value))
+    (coll/eduction
+      (drop-lesser-ids (codec/id-string start-id))
       (resource-handles context tid value)))
 
   (-matches? [_ context resource-handle _ values]

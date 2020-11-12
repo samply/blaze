@@ -4,6 +4,6 @@
 
 
 (defn random-uuid
-  "Creates a random UUID especially as ID for resources."
+  "Creates a random UUID string."
   []
-  (UUID/randomUUID))
+  (str (UUID/randomUUID)))

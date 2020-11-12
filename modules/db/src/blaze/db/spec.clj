@@ -4,7 +4,9 @@
     [blaze.db.impl.protocols :as p]
     [blaze.db.resource-store.spec]
     [blaze.db.tx-log.spec]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s])
+  (:import
+    [com.github.benmanes.caffeine.cache Cache]))
 
 
 (s/def :blaze.db/node
@@ -13,6 +15,10 @@
 
 (s/def :blaze.db/resource-cache
   :blaze.db/resource-store)
+
+
+(s/def :blaze.db/resource-handle-cache
+  #(instance? Cache %))
 
 
 (s/def :blaze.db/op

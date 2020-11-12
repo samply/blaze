@@ -1,15 +1,16 @@
 (ns blaze.db.impl.index.resource-as-of
-  "Provides two public functions: `type-list` and `system-list`."
+  "Functions for accessing the ResourceAsOf index."
   (:require
+    [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
+    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv])
   (:import
-    [clojure.lang IReduceInit]
-    [com.google.common.hash HashCode]
-    [java.nio ByteBuffer]))
+    [com.github.benmanes.caffeine.cache Cache]
+    [java.util.function Function]))
 
 
 (set! *warn-on-reflection* true)
@@ -24,53 +25,53 @@
   (+ codec/hash-size codec/state-size))
 
 
-(defn- key-reader [iter ^ByteBuffer kb]
-  (fn [_] (kv/key! iter (.clear kb))))
+(defn- key-reader [iter kb]
+  (fn [_]
+    (bb/clear! kb)
+    (kv/key! iter kb)))
 
 
 (defn- focus-id!
   "Reduces the limit of `kb` in order to hide the t and focus on id solely."
-  [^ByteBuffer kb]
-  (.limit kb (- (.limit kb) codec/t-size)))
+  [kb]
+  (bb/set-limit! kb (- (bb/limit kb) codec/t-size)))
 
 
 (defn- copy-id!
-  "Copies the id bytes from the key buffer into the id buffer.
-
-  After the call, both buffers are ready to be compared for id."
-  [^ByteBuffer kb ^ByteBuffer ib]
-  (let [id-size (.remaining kb)]
-    (.limit ib codec/max-id-size)
-    (.put ib kb)
-    (.position ib 0)
-    (.limit ib id-size))
-  (.limit kb (+ (.limit kb) codec/t-size)))
+  "Copies the id bytes from the key buffer into the id buffer."
+  [kb ib]
+  (let [id-size (bb/remaining kb)]
+    (bb/set-limit! ib id-size)
+    (bb/put-byte-buffer! ib kb)
+    (bb/flip! ib)
+    (bb/rewind! ib))
+  (bb/set-limit! kb (+ (bb/limit kb) codec/t-size)))
 
 
 (defn- skip-id!
   "Does the same to `position` and `limit` of `kb` as `copy-id!` but doesn't
   copy anything."
-  [^ByteBuffer kb ^ByteBuffer ib]
-  (.position kb (+ (.position kb) (.remaining ib)))
-  (.limit kb (+ (.limit kb) codec/t-size)))
+  [kb ib]
+  (bb/set-position! kb (+ (bb/position kb) (bb/remaining ib)))
+  (bb/set-limit! kb (+ (bb/limit kb) codec/t-size)))
 
 
 (defn- id-marker
-  "Compares the id part of the current key buffer with the id buffer which may
+  "Compares the id part of the current key buffer with the id buffer that may
   contain previously seen ids.
 
   Returns true if the id changed over the previously seen one. Keeps the id
   buffer up to date."
-  [^ByteBuffer kb ^ByteBuffer ib]
+  [kb ib]
   (fn [_]
     (focus-id! kb)
     (cond
-      (zero? (.limit ib))
+      (zero? (bb/limit ib))
       (do
         (copy-id! kb ib)
         false)
 
-      (.equals kb ib)
+      (= kb ib)
       (do
         (skip-id! kb ib)
         false)
@@ -81,9 +82,9 @@
         true))))
 
 
-(defn- tid-marker [^ByteBuffer kb tid-box ^ByteBuffer ib id-marker]
+(defn- tid-marker [kb tid-box ib id-marker]
   (fn [x]
-    (let [tid (codec/get-tid! kb)
+    (let [tid (bb/get-int! kb)
           last-tid @tid-box]
       (cond
         (nil? last-tid)
@@ -97,20 +98,15 @@
         :else
         (do
           (vreset! tid-box tid)
-          (.limit ib 0)
+          (bb/set-limit! ib 0)
           (id-marker x)
           true)))))
 
 
 (defn- new-entry!
   "Creates a new resource handle entry."
-  [tid ^ByteBuffer ib ^ByteBuffer vb ^long t]
-  (rh/resource-handle
-    tid
-    (codec/id (.array ib) 0 (.remaining ib))
-    t
-    (let [bs (byte-array codec/hash-size)] (.get vb bs) (HashCode/fromBytes bs))
-    (.getLong vb)))
+  [tid ib vb t]
+  (rh/resource-handle tid (codec/id (bb/array ib) 0 (bb/remaining ib)) t vb))
 
 
 (defn- type-entry-creator
@@ -120,19 +116,21 @@
   Uses `iter` to read the `hash` and `state` when needed. Supplied `tid` to the
   created entry."
   [tid iter kb ib base-t]
-  (let [vb (ByteBuffer/allocateDirect value-size)]
-    #(let [t (codec/get-t! kb)]
+  (let [vb (bb/allocate-direct value-size)]
+    #(let [t (codec/descending-long (bb/get-long! kb))]
        (when (<= t ^long base-t)
-         (kv/value! iter (.clear vb))
+         (bb/clear! vb)
+         (kv/value! iter vb)
          (new-entry! tid ib vb t)))))
 
 
 (defn- system-entry-creator
-  [tid-box iter ^ByteBuffer kb ib base-t]
-  (let [vb (ByteBuffer/allocateDirect value-size)]
-    #(let [t (codec/get-t! kb)]
+  [tid-box iter kb ib base-t]
+  (let [vb (bb/allocate-direct value-size)]
+    #(let [t (codec/descending-long (bb/get-long! kb))]
        (when (<= t ^long base-t)
-         (kv/value! iter (.clear vb))
+         (bb/clear! vb)
+         (kv/value! iter vb)
          (new-entry! @tid-box ib vb t)))))
 
 
@@ -171,10 +169,43 @@
                result))))))))
 
 
-(defn- start-key [tid start-id t]
-  (if start-id
-    (codec/resource-as-of-key tid start-id t)
-    (codec/resource-as-of-key tid)))
+(defn- encode-key-buf [tid id t]
+  (-> (bb/allocate (+ Integer/BYTES (bs/size id) Long/BYTES))
+      (bb/put-int! tid)
+      (bb/put-byte-string! id)
+      (bb/put-long! (codec/descending-long ^long t))))
+
+
+(defn encode-key
+  "Encodes the key of the ResourceAsOf index from `tid`, `id` and `t`."
+  [tid id t]
+  (bb/array (encode-key-buf tid id t)))
+
+
+(defn- type-list* [{:keys [raoi t]} tid start-key]
+  (let [kb (bb/allocate-direct max-key-size)
+        ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)
+        entry-creator (type-entry-creator tid raoi kb ib t)]
+    (coll/eduction
+      (comp
+        (map (key-reader raoi kb))
+        (take-while (fn [_] (= ^long tid (bb/get-int! kb))))
+        (map (id-marker kb ib))
+        (group-by-id entry-creator)
+        (remove (comp #{:delete} :op)))
+      (i/iter! raoi start-key))))
+
+
+(defn- start-key
+  ([tid]
+   (-> (bb/allocate Integer/BYTES)
+       (bb/put-int! tid)
+       (bb/flip!)
+       (bs/from-byte-buffer)))
+  ([tid start-id t]
+   (-> (encode-key-buf tid start-id t)
+       (bb/flip!)
+       (bs/from-byte-buffer))))
 
 
 (defn type-list
@@ -183,15 +214,15 @@
 
   The list starts at the optional `start-id`.
 
-  The resource-as-of-index consists of keys with three parts: `tid`, `id` and
+  The ResourceAsOf index consists of keys with three parts: `tid`, `id` and
   `t`. The `tid` is a 4-byte hash of the resource type, the `id` a variable
   length byte array of the resource id and `t` is an 8-byte long of the
-  transaction number. The value of the resource-as-of-index contains two parts:
+  transaction number. The value of the ResourceAsOf index contains two parts:
   `hash` and `state`. The `hash` is a 32-byte content hash of the resource and
   the `state` is an 8-byte long encoding create, put, delete state and a local
   version counter of the resource.
 
-  The resource-as-of-index contains one entry for each resource version. For the
+  The ResourceAsOf index contains one entry for each resource version. For the
   type list, only that versions not newer than `t` are returned. For example, an
   index containing two versions of the same resource looks like this:
 
@@ -205,7 +236,7 @@
   `t` of two should return the newest version of the resource, were a call with
   a `t` of `1` should return the older version.
 
-  The implementation iterates over the resource-as-of-index, starting this `tid`
+  The implementation iterates over the ResourceAsOf index, starting with `tid`
   and possible `start-id`. It goes from higher `t` values to lower `t` values
   because they are encoded in descending order.
 
@@ -226,13 +257,13 @@
       (partition-by id)
       (map pick-entry-according-to-t))
 
-  First the whole entry consisting of its key and value are decoded completely
+  First, the whole entry consisting of its key and value are decoded completely
   into an immutable data structure. Than the `tid` is tested against the given
-  `tid` in order to stop iterating before hitting the next type. Third all
+  `tid` in order to stop iterating before hitting the next type. Third, all
   entries are partitioned by id which each partition containing a list of
-  entries with the same id. Last the entry with the right `t` is picked.
+  entries with the same id. Last, the entry with the right `t` is picked.
 
-  This non-optimized implementation has several disadvantages. First each entry
+  This non-optimized implementation has several disadvantages. First, each entry
   is decoded fully but the `t`, `hash` and `state` part is only needed from
   fewer entries. Even the `id` has only to be compared to a reference `id`, but
   not fully decoded, for non-matching entries. Second `partition-by` creates an
@@ -240,10 +271,9 @@
   and time spend.
 
   The implementation used here avoids excessive object allocation altogether.
-  Only objects
 
   Uses three byte buffers to avoid object allocation as much as
-  possible. The first buffer is a off-heap key buffer. Each key is read into
+  possible. The first buffer is an off-heap key buffer. Each key is read into
   the key buffer. The second buffer is an heap allocated id buffer. The id bytes
   of the first key are copied into the id buffer and later copied only on id
   change. To detect id changes, the id part of the key buffer and the id buffer
@@ -256,19 +286,21 @@
   iteration. The state and t which are both longs are read from the off-heap key
   and value buffer. The hash and state which are read from the value buffer are
   only read once for each resource handle."
-  ^IReduceInit
-  [{:keys [raoi t]} tid start-id]
-  (let [kb (ByteBuffer/allocateDirect max-key-size)
-        ib (.limit (ByteBuffer/allocate codec/max-id-size) 0)
-        entry-creator (type-entry-creator tid raoi kb ib t)]
-    (coll/eduction
-      (comp
-        (map (key-reader raoi kb))
-        (take-while (fn [_] (= ^int tid (codec/get-tid! kb))))
-        (map (id-marker kb ib))
-        (group-by-id entry-creator)
-        (remove rh/deleted?))
-      (i/iter raoi (start-key tid start-id t)))))
+  ([context tid]
+   (type-list* context tid (start-key tid)))
+  ([{:keys [t] :as context} tid start-id]
+   (type-list* context tid (start-key tid start-id t))))
+
+
+(defn- system-list-xf [{:keys [raoi t]} start-tid]
+  (let [kb (bb/allocate-direct max-key-size)
+        tid-box (volatile! start-tid)
+        ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)]
+    (comp
+      (map (key-reader raoi kb))
+      (map (tid-marker kb tid-box ib (id-marker kb ib)))
+      (group-by-id (system-entry-creator tid-box raoi kb ib t))
+      (remove (comp #{:delete} :op)))))
 
 
 (defn system-list
@@ -276,62 +308,51 @@
   tid and resource id.
 
   The list starts at the optional `start-tid` and `start-id`."
-  ^IReduceInit
-  [{:keys [raoi t]} start-tid start-id]
-  (let [kb (ByteBuffer/allocateDirect max-key-size)
-        tid-box (volatile! start-tid)
-        ib (.limit (ByteBuffer/allocate codec/max-id-size) 0)
-        entry-creator (system-entry-creator tid-box raoi kb ib t)]
-    (coll/eduction
-      (comp
-        (map (key-reader raoi kb))
-        (map (tid-marker kb tid-box ib (id-marker kb ib)))
-        (group-by-id entry-creator)
-        (remove rh/deleted?))
-      (if start-tid
-        (i/iter raoi (start-key start-tid start-id t))
-        (i/iter raoi)))))
-
-
-(def ^:private ^:const ^int max-resource-as-of-key-size
-  (+ codec/tid-size codec/max-id-size codec/t-size))
+  ([{:keys [raoi] :as context}]
+   (coll/eduction
+     (system-list-xf context nil)
+     (i/iter! raoi)))
+  ([{:keys [raoi t] :as context} start-tid start-id]
+   (coll/eduction
+     (system-list-xf context start-tid)
+     (i/iter! raoi (start-key start-tid start-id t)))))
 
 
 (defn decoder
   "Returns a function which decodes an resource handle out of a key and a value
-  ByteBuffer from the resource-as-of index.
+  byte buffers from the ResourceAsOf index.
 
   Closes over a shared byte array for id decoding, because the String
   constructor creates a copy of the id bytes anyway. Can only be used from one
   thread.
 
-  The decode function creates only four objects, the resource handle, the String
-  for the id, the byte array inside the string and the byte array for the hash.
+  The decode function creates only five objects, the resource handle, the String
+  for the id, the byte array inside the String, the ByteString and the byte
+  array inside the ByteString for the hash.
 
-  Both ByteBuffers are changed during decoding and have to be reset accordingly
+  Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
   []
   (let [ib (byte-array codec/max-id-size)]
-  (fn
-    ([]
-       [(ByteBuffer/allocateDirect max-resource-as-of-key-size)
-      (ByteBuffer/allocateDirect codec/resource-as-of-value-size)])
-    ([^ByteBuffer kb ^ByteBuffer vb]
+    (fn
+      ([]
+       [(bb/allocate-direct max-key-size)
+        (bb/allocate-direct value-size)])
+      ([kb vb]
        (rh/resource-handle
-         (.getInt kb)
-         (let [id-size (- (.remaining kb) codec/t-size)]
-           (.get kb ib 0 id-size)
+         (bb/get-int! kb)
+         (let [id-size (- (bb/remaining kb) codec/t-size)]
+           (bb/copy-into-byte-array! kb ib 0 id-size)
            (codec/id ib 0 id-size))
-         (codec/get-t! kb)
-         (codec/get-hash! vb)
-         (codec/get-state! vb))))))
+         (codec/descending-long (bb/get-long! kb))
+         vb)))))
 
 
-(defn- instance-history-key-valid? [^long tid id ^long end-t]
+(defn- instance-history-key-valid? [tid id ^long end-t]
   (fn [resource-handle]
-    (and (= (rh/tid resource-handle) tid)
-         (= (rh/id resource-handle) id)
-         (< end-t ^long (rh/t resource-handle)))))
+    (and (= (:tid resource-handle) tid)
+         (= (:id resource-handle) id)
+         (< end-t ^long (:t resource-handle)))))
 
 
 (defn instance-history
@@ -340,62 +361,70 @@
 
   Versions are resource handles."
   [raoi tid id start-t end-t]
-  (let [start-key (codec/resource-as-of-key tid (codec/id-bytes id) start-t)]
+  (let [start-key (encode-key tid id start-t)]
     (coll/eduction
-      (take-while (instance-history-key-valid? tid id end-t))
-      (i/kvs raoi (decoder) start-key))))
+      (take-while (instance-history-key-valid? tid (codec/id-string id) end-t))
+      (i/kvs! raoi (decoder) (bs/from-byte-array start-key)))))
 
 
-(defn- with-raoi-kv [raoi target fn]
-  (kv/seek! raoi target)
+(defn- resource-handle** [raoi tb kb vb tid id t]
+  ;; fill target buffer
+  (bb/clear! tb)
+  (bb/put-int! tb tid)
+  (bb/put-byte-string! tb id)
+  (bb/put-long! tb (codec/descending-long ^long t))
+  ;; flip target buffer to be ready for seek
+  (bb/flip! tb)
+  (kv/seek-buffer! raoi tb)
   (when (kv/valid? raoi)
-    ;; we have to check that we are still on target, because otherwise we would
-    ;; find the next resource
-    (let [k (kv/key raoi)]
-      (when (codec/bytes-eq-without-t target k)
-        (fn k (kv/value raoi))))))
-
-
-(defn hash-state-t
-  "Returns a triple of `hash`, `state` and `t` of the resource with `tid` and
-  `id` at or before `t` if their is any."
-  [raoi tid id t]
-  (with-raoi-kv
-    raoi (codec/resource-as-of-key tid id t)
-    (fn [k v]
-      [(codec/resource-as-of-value->hash v)
-       (codec/resource-as-of-value->state v)
-       (codec/resource-as-of-key->t k)])))
+    ;; read key
+    (bb/clear! kb)
+    (kv/key! raoi kb)
+    ;; we have to check that we are still on target, because otherwise we
+    ;; would find the next resource
+    ;; focus target buffer on tid and id
+    (bb/rewind! tb)
+    (bb/set-limit! tb (- (bb/limit tb) codec/t-size))
+    ;; focus key buffer on tid and id
+    (bb/set-limit! kb (- (bb/limit kb) codec/t-size))
+    (when (= tb kb)
+      ;; focus key buffer on t
+      (let [limit (bb/limit kb)]
+        (bb/set-position! kb limit)
+        (bb/set-limit! kb (+ limit codec/t-size)))
+      ;; read value
+      (bb/clear! vb)
+      (kv/value! raoi vb)
+      ;; create resource handle
+      (rh/resource-handle
+        tid
+        (codec/id-string id)
+        (codec/descending-long (bb/get-long! kb))
+        vb))))
 
 
 (defn resource-handle
-  "Returns a resource handle with `tid` and `id` at or before `t` or nil if
-  there is none."
-  [{:keys [raoi t]} tid id]
-  (with-raoi-kv
-    raoi (codec/resource-as-of-key tid id t)
-    (fn [k v]
-      (rh/resource-handle
-        (codec/resource-as-of-key->tid k)
-        (codec/id (codec/resource-as-of-key->id k))
-        (codec/resource-as-of-key->t k)
-        (codec/resource-as-of-value->hash v)
-        (codec/resource-as-of-value->state v)))))
+  "Returns a function which can be called with a `tid`, an `id` and an optional
+  `t` which will lookup the resource handle in `raoi`.
 
-
-(defn- resource-state [raoi target]
-  (with-raoi-kv raoi target (fn [_ v] (codec/resource-as-of-value->state v))))
-
-
-(defn- num-of-instance-changes* ^long [iter tid id t]
-  (-> (some-> (resource-state iter (codec/resource-as-of-key tid id t))
-              codec/state->num-changes)
-      (or 0)))
+  The `t` is the default if `t` isn't given at the returned function."
+  [rh-cache raoi t]
+  (let [tb (bb/allocate-direct max-key-size)
+        kb (bb/allocate-direct max-key-size)
+        vb (bb/allocate-direct value-size)
+        rh (reify Function
+             (apply [_ [tid id t]]
+               (resource-handle** raoi tb kb vb tid id t)))]
+    (fn resource-handle
+      ([tid id]
+       (resource-handle tid id t))
+      ([tid id t]
+       (.get ^Cache rh-cache [tid id t] rh)))))
 
 
 (defn num-of-instance-changes
   "Returns the number of changes between `start-t` (inclusive) and `end-t`
   (inclusive) of the resource with `tid` and `id`."
-  [raoi tid id start-t end-t]
-  (- (num-of-instance-changes* raoi tid id start-t)
-     (num-of-instance-changes* raoi tid id end-t)))
+  [resource-handle tid id start-t end-t]
+  (- ^long (:num-changes (resource-handle tid id start-t) 0)
+     ^long (:num-changes (resource-handle tid id end-t) 0)))

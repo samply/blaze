@@ -46,27 +46,12 @@
   :ret boolean?)
 
 
-(s/fdef d/deleted?
-  :args (s/cat :resource :blaze.db/resource-handle)
-  :ret boolean?)
-
-
-(s/fdef d/last-updated-t
-  :args (s/cat :resource :blaze.db/resource-handle)
-  :ret :blaze.db/t)
-
-
-(s/fdef d/num-changes
-  :args (s/cat :resource-handle :blaze.db/resource-handle)
-  :ret pos-int?)
-
-
 
 ;; ---- Type-Level Functions --------------------------------------------------
 
-(s/fdef d/list-resource-handles
+(s/fdef d/type-list
   :args (s/cat :db :blaze.db/db :type :fhir.type/name
-               :start-id (s/? (s/nilable :blaze.resource/id)))
+               :start-id (s/? :blaze.resource/id))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
@@ -78,7 +63,7 @@
 (s/fdef d/type-query
   :args (s/cat :db :blaze.db/db :type :fhir.type/name
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1)
-               :start-id (s/? (s/nilable :blaze.resource/id)))
+               :start-id (s/? :blaze.resource/id))
   :ret (s/or :result (s/coll-of :blaze.db/resource-handle :kind sequential?)
              :anomaly ::anom/anomaly))
 
@@ -103,9 +88,8 @@
 (s/fdef d/system-list
   :args (s/cat
           :db :blaze.db/db
-          :more (s/? (s/cat
-                       :start-type (s/nilable :fhir.type/name)
-                       :start-id (s/? (s/nilable :blaze.resource/id)))))
+          :start (s/? (s/cat :start-type :fhir.type/name
+                             :start-id :blaze.resource/id)))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
@@ -132,19 +116,17 @@
 
 (s/fdef d/list-compartment-resource-handles
   :args (s/cat :db :blaze.db/db
-               :code :blaze.db.compartment/code :id :blaze.resource/id
+               :code string?
+               :id :blaze.resource/id
                :type :fhir.type/name
                :start-id (s/? :blaze.resource/id))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
-(s/def :blaze.db.compartment/code
-  string?)
-
-
 (s/fdef d/compartment-query
   :args (s/cat :db :blaze.db/db
-               :code :blaze.db.compartment/code :id :blaze.resource/id
+               :code string?
+               :id :blaze.resource/id
                :type :fhir.type/name
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
   :ret (s/or :result (s/coll-of :blaze.db/resource-handle :kind sequential?)
@@ -153,7 +135,7 @@
 
 (s/fdef d/compile-compartment-query
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
-               :code :blaze.db.compartment/code
+               :code string?
                :type :fhir.type/name
                :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
   :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))

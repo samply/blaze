@@ -67,8 +67,8 @@
       (when reference
         (when-let [[type id] (split-reference reference)]
           (when (and (= "Patient" type) (string? id))
-            (let [handle (d/resource-handle db "Patient" id)]
-              (when-not (d/deleted? handle)
+            (let [{:keys [op] :as handle} (d/resource-handle db "Patient" id)]
+              (when-not (identical? :delete op)
                 [@(d/pull-content db handle)]))))))))
 
 
@@ -161,7 +161,7 @@
   (if (empty? codes)
     (reify Expression
       (-eval [_ {:keys [db]} _ _]
-        (into [] (d/list-resource-handles db data-type))))
+        (into [] (d/type-list db data-type))))
     (let [query (d/compile-type-query node data-type [[code-property codes]])]
       (if (::anom/category query)
         (throw (ex-info (::anom/message query) query))

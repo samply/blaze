@@ -62,6 +62,11 @@
     (let [[x & xs] (subseq db >= k)]
       (reset! cursor {:first x :rest xs})))
 
+  (-seek-buffer [iter kb]
+    (let [k (byte-array (.remaining ^ByteBuffer kb))]
+      (.get ^ByteBuffer kb k)
+      (kv/-seek iter k)))
+
   (-seek-for-prev [_ k]
     (when closed? (throw-anom ::anom/fault "The iterator is closed."))
     (let [[x & xs] (rsubseq db <= k)]
@@ -196,8 +201,18 @@
       (Arrays/compareUnsigned ^bytes a ^bytes b))))
 
 
+(def ^:private reverse-bytes-cmp
+  (reify Comparator
+    (compare [_ a b]
+      (Arrays/compareUnsigned ^bytes b ^bytes a))))
+
+
+(defn- init-column-family [[name {:keys [reverse-comparator?]}]]
+  [name (sorted-map-by (if reverse-comparator? reverse-bytes-cmp bytes-cmp))])
+
+
 (defn- init-db [column-families]
-  (into {} (map (fn [cf] [cf (sorted-map-by bytes-cmp)])) column-families))
+  (into {} (map init-column-family) column-families))
 
 
 (defn new-mem-kv-store
@@ -205,7 +220,7 @@
   ([]
    (new-mem-kv-store {}))
   ([column-families]
-   (->MemKvStore (atom (init-db (conj (set (keys column-families)) :default))))))
+   (->MemKvStore (atom (init-db (assoc column-families :default nil))))))
 
 
 (defmethod ig/init-key :blaze.db.kv/mem

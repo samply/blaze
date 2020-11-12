@@ -1,6 +1,4 @@
-(ns blaze.db.impl.protocols
-  (:import
-    [clojure.lang IReduceInit]))
+(ns blaze.db.impl.protocols)
 
 
 (defprotocol Node
@@ -22,33 +20,31 @@
 
   (-as-of-t [db])
 
-  (-resource-handle [db type id])
+  (-resource-handle [db tid id])
 
-  (-list-resource-handles ^IReduceInit [db type start-id])
+  (-type-list [db tid] [db tid start-id])
 
-  (-type-total [db type])
+  (-type-total [db tid])
 
-  (-system-list ^IReduceInit [_ start-type start-id])
+  (-system-list [_] [_ start-tid start-id])
 
   (-system-total [db])
 
-  (-list-compartment-resource-handles
-    ^IReduceInit [db code id type start-id])
+  (-compartment-resource-handles
+    [db compartment tid]
+    [db compartment tid start-id])
 
-  (-execute-query
-    ^IReduceInit [db query]
-    ^IReduceInit [db query arg1])
+  (-execute-query [db query] [db query arg1])
 
-  (-instance-history ^IReduceInit [db type id start-t since])
+  (-instance-history [db tid id start-t since])
 
-  (-total-num-of-instance-changes [_ type id since])
+  (-total-num-of-instance-changes [_ tid id since])
 
-  (-type-history ^IReduceInit [db type start-t start-id since])
+  (-type-history [db type start-t start-id since])
 
   (-total-num-of-type-changes [db type since])
 
-  (-system-history
-    ^IReduceInit [db start-t start-type start-id since])
+  (-system-history [db start-t start-tid start-id since])
 
   (-total-num-of-system-changes [db since])
 
@@ -79,7 +75,9 @@
 
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")
-  (-resource-handles [search-param context tid modifier compiled-value start-id])
+  (-resource-handles
+    [search-param context tid modifier compiled-value]
+    [search-param context tid modifier compiled-value start-id])
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matches? [search-param context resource-handle modifier compiled-values])
   (-compartment-ids [_ resolver resource])

@@ -17,12 +17,10 @@
     [com.google.common.hash Hashing]))
 
 
-(comment
-  (require '[criterium.core :refer [bench quick-bench]])
-  )
-
-
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -405,7 +403,7 @@
     (testing "type"
       (is (= :fhir/dateTime (type/-type #fhir/dateTime"2020"))))
     (testing "value"
-      (is (= (system/->DateTimeYear 2020) (type/-value #fhir/dateTime"2020"))))
+      (is (= (system/date-time 2020) (type/-value #fhir/dateTime"2020"))))
     (testing "to-json"
       (is (= "2020" (type/-to-json #fhir/dateTime"2020"))))
     (testing "to-xml"
@@ -427,7 +425,7 @@
     (testing "type"
       (is (= :fhir/dateTime (type/-type #fhir/dateTime"2020-01"))))
     (testing "value"
-      (is (= (system/->DateTimeYearMonth 2020 1)
+      (is (= (system/date-time 2020 1)
              (type/-value #fhir/dateTime"2020-01"))))
     (testing "to-json"
       (is (= "2020-01" (type/-to-json #fhir/dateTime"2020-01"))))
@@ -449,7 +447,7 @@
     (testing "type"
       (is (= :fhir/dateTime (type/-type #fhir/dateTime"2020-01-01"))))
     (testing "value"
-      (is (= (system/->DateTimeYearMonthDay 2020 1 1)
+      (is (= (system/date-time 2020 1 1)
              (type/-value #fhir/dateTime"2020-01-01"))))
     (testing "to-json"
       (is (= "2020-01-01" (type/-to-json #fhir/dateTime"2020-01-01"))))
@@ -599,7 +597,7 @@
       (testing "type"
         (is (= :fhir/dateTime (type/-type extended-date-time))))
       (testing "value"
-        (is (= (system/->DateTimeYear 2020) (type/-value extended-date-time))))
+        (is (= (system/date-time 2020) (type/-value extended-date-time))))
       (testing "to-json"
         (is (= "2020" (type/-to-json extended-date-time))))
       (testing "to-xml"
@@ -627,6 +625,9 @@
            (type/-to-xml #fhir/time"13:53:21"))))
   (testing "equals"
     (is (= #fhir/time"13:53:21" #fhir/time"13:53:21")))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/time"13:53:21" "faa37be9"))
   (testing "instance size"
     (is (= 24 (total-size #fhir/time"13:53:21")))))
 

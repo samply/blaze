@@ -9,8 +9,8 @@
     [blaze.fhir.response.create :as response]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create.spec]
+    [blaze.luid :refer [luid]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -46,7 +46,7 @@
         :keys [headers body]
         ::reitit/keys [router]}]
     (let [return-preference (handler-util/preference headers "return")
-          id (str (random-uuid))]
+          id (luid)]
       (-> (ac/supply (validate-resource type body))
           (ac/then-apply #(assoc % :id id))
           (ac/then-compose #(d/transact node [[:create %]]))

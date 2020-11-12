@@ -4,8 +4,14 @@
  {blaze/anomaly
   {:local/root "../anomaly"}
 
+  blaze/byte-string
+  {:local/root "../byte-string"}
+
   cheshire/cheshire
   {:mvn/version "5.10.0"}
+
+  clojure.java-time/clojure.java-time
+  {:mvn/version "0.3.2"}
 
   com.github.ben-manes.caffeine/caffeine
   {:mvn/version "2.8.6"}

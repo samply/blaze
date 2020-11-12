@@ -1,18 +1,21 @@
 (ns blaze.db.impl.search-param.composite-test
   (:require
-    [blaze.db.impl.byte-string :as bs]
+    [blaze.byte-string :as bs]
+    [blaze.byte-string-spec]
+    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
+    [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
-  (:import
-    [java.nio ByteBuffer]))
+    [taoensso.timbre :as log]))
 
 
 (st/instrument)
@@ -35,6 +38,10 @@
   (sr/get search-param-registry "code-value-quantity" "Observation"))
 
 
+(def code-value-concept-param
+  (sr/get search-param-registry "code-value-concept" "Observation"))
+
+
 (deftest name-test
   (is (= "code-value-quantity" (:name code-value-quantity-param))))
 
@@ -52,29 +59,29 @@
 
 
 (defn compile-code-quantity-value [value]
-  (let [[[op lower-bound exact-value upper-bound]]
-        (search-param/compile-values code-value-quantity-param nil [value])]
-    [op
-     (split-value lower-bound)
-     (split-value exact-value)
-     (split-value upper-bound)]))
+  (first (search-param/compile-values code-value-quantity-param nil [value])))
 
 
 (deftest compile-value-test
-  (are [value op lower-bound exact-value upper-bound]
-    (= [op lower-bound exact-value upper-bound] (compile-code-quantity-value value))
+  (testing "eq"
+    (are [value lower-bound upper-bound]
+      (given (compile-code-quantity-value value)
+        :op := :eq
+        :lower-bound := lower-bound
+        :upper-bound := upper-bound)
 
-    "8480-6$23.4"
-    :eq
-    [(codec/v-hash "8480-6") (codec/quantity nil 23.35M)]
-    [(codec/v-hash "8480-6") (codec/quantity nil 23.40M)]
-    [(codec/v-hash "8480-6") (codec/quantity nil 23.45M)]
+      "8480-6$23.4"
+      (bs/concat (codec/v-hash "8480-6") (codec/quantity nil 23.35M))
+      (bs/concat (codec/v-hash "8480-6") (codec/quantity nil 23.45M))))
 
-    "8480-6$ge23|kg/m2"
-    :ge
-    [(codec/v-hash "8480-6") (codec/quantity "kg/m2" 22.5M)]
-    [(codec/v-hash "8480-6") (codec/quantity "kg/m2" 23.00M)]
-    [(codec/v-hash "8480-6") (codec/quantity "kg/m2" 23.5M)])
+  (testing "ge"
+    (are [value exact-value]
+      (given (compile-code-quantity-value value)
+        :op := :ge
+        :exact-value := exact-value)
+
+      "8480-6$ge23|kg/m2"
+      (bs/concat (codec/v-hash "8480-6") (codec/quantity "kg/m2" 23.00M))))
 
   (testing "invalid quantity decimal value"
     (given (search-param/compile-values code-value-quantity-param nil ["a$a"])
@@ -85,14 +92,6 @@
     (given (search-param/compile-values code-value-quantity-param nil ["a$ne1"])
       ::anom/category := ::anom/unsupported
       ::anom/message := "Unsupported prefix `ne` in search parameter `code-value-quantity`.")))
-
-
-(defn- decode-sp-value-resource-key [bs]
-  (codec/decode-sp-value-resource-key-human (ByteBuffer/wrap bs)))
-
-
-(defn- decode-resource-sp-value-key [bs]
-  (codec/decode-resource-sp-value-key-human (ByteBuffer/wrap bs)))
 
 
 (def ^:private observation-code
@@ -144,108 +143,129 @@
                                       hash observation [])]
 
       (testing "`code` followed by `value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k0)
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "code-value-quantity"
             :type := "Observation"
-            [:value split-value 0] := observation-code
-            [:value split-value 1] := value
+            [:v-hash split-value 0] := observation-code
+            [:v-hash split-value 1] := value
             :id := "id-155558"
-            :hash-prefix := (codec/hex (codec/hash-prefix hash))))
+            :hash-prefix := (codec/hash-prefix hash)))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k1)
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
             :id := "id-155558"
-            :hash-prefix := (codec/hex (codec/hash-prefix hash))
+            :hash-prefix := (codec/hash-prefix hash)
             :code := "code-value-quantity"
-            [:value split-value 0] := observation-code
-            [:value split-value 1] := value)))
+            [:v-hash split-value 0] := observation-code
+            [:v-hash split-value 1] := value)))
 
       (testing "`code` followed by `code value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k2)
-            [:value split-value 0] := observation-code
-            [:value split-value 1] := value-code))
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k2))
+            [:v-hash split-value 0] := observation-code
+            [:v-hash split-value 1] := value-code))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k3)
-            [:value split-value 0] := observation-code
-            [:value split-value 1] := value-code)))
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
+            [:v-hash split-value 0] := observation-code
+            [:v-hash split-value 1] := value-code)))
 
       (testing "`code` followed by `system|code value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k4)
-            [:value split-value 0] := observation-code
-            [:value split-value 1] := value-system-code))
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k4))
+            [:v-hash split-value 0] := observation-code
+            [:v-hash split-value 1] := value-system-code))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k5)
-            [:value split-value 0] := observation-code
-            [:value split-value 1] := value-system-code)))
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
+            [:v-hash split-value 0] := observation-code
+            [:v-hash split-value 1] := value-system-code)))
 
       (testing "`system|` followed by `value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k6)
-            [:value split-value 0] := observation-system
-            [:value split-value 1] := value))
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k6))
+            [:v-hash split-value 0] := observation-system
+            [:v-hash split-value 1] := value))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k7)
-            [:value split-value 0] := observation-system
-            [:value split-value 1] := value)))
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k7))
+            [:v-hash split-value 0] := observation-system
+            [:v-hash split-value 1] := value)))
 
       (testing "`system|` followed by `code value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k8)
-            [:value split-value 0] := observation-system
-            [:value split-value 1] := value-code))
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k8))
+            [:v-hash split-value 0] := observation-system
+            [:v-hash split-value 1] := value-code))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k9)
-            [:value split-value 0] := observation-system
-            [:value split-value 1] := value-code)))
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k9))
+            [:v-hash split-value 0] := observation-system
+            [:v-hash split-value 1] := value-code)))
 
       (testing "`system|` followed by `system|code value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k10)
-            [:value split-value 0] := observation-system
-            [:value split-value 1] := value-system-code))
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k10))
+            [:v-hash split-value 0] := observation-system
+            [:v-hash split-value 1] := value-system-code))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k11)
-            [:value split-value 0] := observation-system
-            [:value split-value 1] := value-system-code)))
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k11))
+            [:v-hash split-value 0] := observation-system
+            [:v-hash split-value 1] := value-system-code)))
 
       (testing "`system|code` followed by `value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k12)
-            [:value split-value 0] := observation-system-code
-            [:value split-value 1] := value))
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k12))
+            [:v-hash split-value 0] := observation-system-code
+            [:v-hash split-value 1] := value))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k13)
-            [:value split-value 0] := observation-system-code
-            [:value split-value 1] := value)))
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k13))
+            [:v-hash split-value 0] := observation-system-code
+            [:v-hash split-value 1] := value)))
 
       (testing "`system|code` followed by `code value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k14)
-            [:value split-value 0] := observation-system-code
-            [:value split-value 1] := value-code))
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k14))
+            [:v-hash split-value 0] := observation-system-code
+            [:v-hash split-value 1] := value-code))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k15)
-            [:value split-value 0] := observation-system-code
-            [:value split-value 1] := value-code)))
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k15))
+            [:v-hash split-value 0] := observation-system-code
+            [:v-hash split-value 1] := value-code)))
 
       (testing "`system|code` followed by `system|code value`"
-        (testing "search-param-value-key"
-          (given (decode-sp-value-resource-key k16)
-            [:value split-value 0] := observation-system-code
-            [:value split-value 1] := value-system-code))
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k16))
+            [:v-hash split-value 0] := observation-system-code
+            [:v-hash split-value 1] := value-system-code))
 
-        (testing "resource-value-key"
-          (given (decode-resource-sp-value-key k17)
-            [:value split-value 0] := observation-system-code
-            [:value split-value 1] := value-system-code))))))
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k17))
+            [:v-hash split-value 0] := observation-system-code
+            [:v-hash split-value 1] := value-system-code)))))
+
+  (testing "FHIRPath evaluation problem"
+    (testing "code-value-quantity"
+      (let [resource {:fhir/type :fhir/Observation :id "foo"}
+            hash (hash/generate resource)]
+
+        (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
+          (given (search-param/index-entries
+                   code-value-quantity-param
+                   hash resource [])
+            ::anom/category := ::anom/fault))))
+
+    (testing "code-value-concept"
+      (let [resource {:fhir/type :fhir/Observation :id "foo"}
+            hash (hash/generate resource)]
+
+        (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
+          (given (search-param/index-entries
+                   code-value-concept-param
+                   hash resource [])
+            ::anom/category := ::anom/fault))))))

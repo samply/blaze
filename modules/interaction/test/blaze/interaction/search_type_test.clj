@@ -390,14 +390,26 @@
                          [:put {:fhir/type :fhir/Patient :id "2" :active true}]]])]
 
       (testing "search for active patients with _summary=count"
-        (let [{:keys [body]}
-              @((handler node)
-                {::reitit/router router
-                 ::reitit/match patient-match
-                 :params {"active" "true" "_summary" "count"}})]
+        (testing "with strict handling"
+          (let [{:keys [body]}
+                @((handler node)
+                  {::reitit/router router
+                   ::reitit/match patient-match
+                   :headers {"prefer" "handling=strict"}
+                   :params {"active" "true" "_summary" "count"}})]
 
-          (testing "their is a total count because we used _summary=count"
-            (is (= #fhir/unsignedInt 2 (:total body))))))
+            (testing "their is a total count because we used _summary=count"
+              (is (= #fhir/unsignedInt 2 (:total body))))))
+
+        (testing "with default handling"
+          (let [{:keys [body]}
+                @((handler node)
+                  {::reitit/router router
+                   ::reitit/match patient-match
+                   :params {"active" "true" "_summary" "count"}})]
+
+            (testing "their is a total count because we used _summary=count"
+              (is (= #fhir/unsignedInt 2 (:total body)))))))
 
       (testing "search for active patients with _count=1"
         (let [{:keys [body]}

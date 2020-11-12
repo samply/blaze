@@ -5,6 +5,9 @@
   blaze/cql
   {:local/root "../cql"}
 
+  blaze/luid
+  {:local/root "../luid"}
+
   blaze/module-base
   {:local/root "../module-base"}
 

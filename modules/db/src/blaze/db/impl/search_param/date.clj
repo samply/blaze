@@ -1,14 +1,13 @@
 (ns blaze.db.impl.search-param.date
   (:require
     [blaze.anomaly :refer [if-ok when-ok]]
+    [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
-    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.util :as u]
-    [blaze.db.kv :as kv]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
@@ -76,35 +75,28 @@
 
 
 (defn- date-key-lb? [[prefix]]
-  (codec/date-lb? (bs/from-bytes prefix) date-key-offset))
+  (codec/date-lb? prefix date-key-offset))
 
 
 (defn- date-key-ub? [[prefix]]
-  (codec/date-ub? (bs/from-bytes prefix) date-key-offset))
-
-
-(defn- get-value [snapshot tid id hash c-hash]
-  (bs/from-bytes
-    (kv/snapshot-get
-    snapshot :resource-value-index
-    (codec/resource-sp-value-key tid id hash c-hash))))
+  (codec/date-ub? prefix date-key-offset))
 
 
 (defn- eq-key-valid? [{:keys [snapshot]} c-hash tid ub [prefix id hash-prefix]]
   (and (date-key-lb? [prefix])
-       (when-let [v (get-value snapshot tid id hash-prefix c-hash)]
+       (when-let [v (r-sp-v/get-value snapshot tid id hash-prefix c-hash)]
          (bs/<= (codec/date-lb-ub->ub v) ub))))
 
 
-(defn- start-key [{:keys [snapshot] :as context} c-hash tid value start-id]
+(defn- start-key [{:keys [snapshot resource-handle]} c-hash tid value start-id]
   (if start-id
-    (let [{:keys [hash]} (rao/resource-handle context tid start-id)]
-      (codec/sp-value-resource-key
+    (let [{:keys [hash]} (resource-handle tid start-id)]
+      (sp-vr/encode-seek-key
         c-hash
         tid
-        (codec/date-lb-ub->lb (get-value snapshot tid start-id hash c-hash))
+        (codec/date-lb-ub->lb (r-sp-v/get-value snapshot tid start-id hash c-hash))
         start-id))
-    (codec/sp-value-resource-key c-hash tid (date-lb value))))
+    (sp-vr/encode-seek-key c-hash tid (date-lb value))))
 
 
 (defn- take-while-eq-key-valid [context c-hash tid value]
@@ -112,33 +104,41 @@
     (take-while #(eq-key-valid? context c-hash tid upper-bound %))))
 
 
-(defn- eq-keys
+(defn- eq-keys!
   "Returns a reducible collection of decoded SearchParamValueResource keys of
   values equal to `value` starting at `start-id` (optional).
 
   Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid value start-id]
-  (coll/eduction
-    (take-while-eq-key-valid context c-hash tid value)
-    (u/sp-value-resource-keys svri (start-key context c-hash tid value start-id))))
+  ([{:keys [svri] :as context} c-hash tid value]
+   (coll/eduction
+     (take-while-eq-key-valid context c-hash tid value)
+     (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid (date-lb value)))))
+  ([{:keys [svri] :as context} c-hash tid value start-id]
+   (coll/eduction
+     (take-while-eq-key-valid context c-hash tid value)
+     (sp-vr/keys! svri (start-key context c-hash tid value start-id)))))
 
 
-(defn- ge-keys
+(defn- ge-keys!
   "Returns a reducible collection of decoded SearchParamValueResource keys of
   values greater or equal to `value` starting at `start-id` (optional).
 
   Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid value start-id]
-  (coll/eduction
-    (take-while date-key-lb?)
-    (u/sp-value-resource-keys svri (start-key context c-hash tid value start-id))))
+  ([{:keys [svri]} c-hash tid value]
+   (coll/eduction
+     (take-while date-key-lb?)
+     (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid (date-lb value)))))
+  ([{:keys [svri] :as context} c-hash tid value start-id]
+   (coll/eduction
+     (take-while date-key-lb?)
+     (sp-vr/keys! svri (start-key context c-hash tid value start-id)))))
 
 
 (defn- le-start-key [_ c-hash tid value]
-  (codec/sp-value-resource-key-for-prev c-hash tid (date-ub value)))
+  (sp-vr/encode-seek-key-for-prev c-hash tid (date-ub value)))
 
 
-(defn- le-keys
+(defn- le-keys!
   "Returns a reducible collection of decoded SearchParamValueResource keys of
   values less or equal to `value` starting at `start-id` (optional).
 
@@ -146,7 +146,7 @@
   [{:keys [svri] :as context} c-hash tid value]
   (coll/eduction
     (take-while date-key-ub?)
-    (u/sp-value-resource-keys-prev svri (le-start-key context c-hash tid value))))
+    (sp-vr/keys-prev! svri (le-start-key context c-hash tid value))))
 
 
 (defn- invalid-date-time-value-msg [code value]
@@ -157,15 +157,22 @@
   (format "Unsupported prefix `%s` in search parameter `%s`." (name op) code))
 
 
-(defn- resource-keys [context c-hash tid [op value] start-id]
-  (case op
-    :eq (eq-keys context c-hash tid value start-id)
-    :ge (ge-keys context c-hash tid value start-id)
-    :le (le-keys context c-hash tid value)))
+(defn- resource-keys!
+  ([context c-hash tid [op value]]
+   (case op
+     :eq (eq-keys! context c-hash tid value)
+     :ge (ge-keys! context c-hash tid value)
+     :le (le-keys! context c-hash tid value)))
+  ([context c-hash tid [op value] start-id]
+   (case op
+     :eq (eq-keys! context c-hash tid value start-id)
+     :ge (ge-keys! context c-hash tid value start-id)
+     :le (le-keys! context c-hash tid value))))
 
 
 (defn- matches? [{:keys [snapshot]} c-hash {:keys [tid id hash]} [op value]]
-  (when-let [v (get-value snapshot tid (codec/id-bytes id) hash c-hash)]
+  (when-let [v (r-sp-v/get-value snapshot tid (codec/id-byte-string id)
+                                 hash c-hash)]
     (case op
       :eq (and (bs/<= (date-lb value) (codec/date-lb-ub->lb v))
                (bs/<= (codec/date-lb-ub->ub v) (date-ub value)))
@@ -187,10 +194,19 @@
         {::anom/category ::anom/unsupported
          ::anom/message (unsupported-prefix-msg code op)})))
 
+  (-resource-handles [_ context tid _ value]
+    (coll/eduction
+      (comp
+        (map (fn [[_ id hash-prefix]] [id hash-prefix]))
+        (u/resource-handle-mapper context tid))
+      (resource-keys! context c-hash tid value)))
+
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (resource-keys context c-hash tid value start-id)))
+      (comp
+        (map (fn [[_ id hash-prefix]] [id hash-prefix]))
+        (u/resource-handle-mapper context tid))
+      (resource-keys! context c-hash tid value start-id)))
 
   (-matches? [_ context resource-handle _ values]
     (some #(matches? context c-hash resource-handle %) values))
@@ -200,7 +216,7 @@
       (let [{:keys [id]} resource
             type (clojure.core/name (fhir-spec/fhir-type resource))
             tid (codec/tid type)
-            id-bytes (codec/id-bytes id)]
+            id (codec/id-byte-string id)]
         (into
           []
           (mapcat
@@ -208,30 +224,12 @@
               date-index-entries
               url
               (fn search-param-date-entry [lb ub]
-                (log/trace "search-param-value-entry" "date" code type id hash)
-                [[:search-param-value-index
-                  (codec/sp-value-resource-key
-                    c-hash
-                    tid
-                    lb
-                    id-bytes
-                    hash)
-                  bytes/empty]
-                 [:search-param-value-index
-                  (codec/sp-value-resource-key
-                    c-hash
-                    tid
-                    ub
-                    id-bytes
-                    hash)
-                  bytes/empty]
-                 [:resource-value-index
-                  (codec/resource-sp-value-key
-                    tid
-                    id-bytes
-                    hash
-                    c-hash)
-                  (bs/to-byte-array (codec/date-lb-ub lb ub))]])))
+                (log/trace "search-param-value-entry" "date" code type id
+                           (bs/hex hash))
+                [(sp-vr/index-entry c-hash tid lb id hash)
+                 (sp-vr/index-entry c-hash tid ub id hash)
+                 (r-sp-v/index-entry-special tid id hash c-hash
+                                             (codec/date-lb-ub lb ub))])))
           values)))))
 
 

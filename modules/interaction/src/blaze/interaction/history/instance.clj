@@ -26,12 +26,12 @@
         (fn [resource-handle]
           {:fhir/type :fhir.Bundle/link
            :relation "self"
-           :url (type/->Uri (history-util/nav-url match query-params t (d/last-updated-t resource-handle)))})
+           :url (type/->Uri (history-util/nav-url match query-params t (:t resource-handle)))})
         next-link
         (fn [resource-handle]
           {:fhir/type :fhir.Bundle/link
            :relation "next"
-           :url (type/->Uri (history-util/nav-url match query-params t (d/last-updated-t resource-handle)))})]
+           :url (type/->Uri (history-util/nav-url match query-params t (:t resource-handle)))})]
     ;; we need take here again because we take page-size + 1 above
     (-> (d/pull-many db (take page-size paged-version-handles))
         (ac/then-apply
@@ -39,7 +39,7 @@
             (ring/response
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (str (random-uuid))
+                 :id (random-uuid)
                  :type #fhir/code"history"
                  :total (type/->UnsignedInt total)
                  :link []

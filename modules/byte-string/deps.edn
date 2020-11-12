@@ -1,0 +1,11 @@
+{:paths ["src" "resources"]
+
+ :deps
+ {cheshire/cheshire
+  {:mvn/version "5.10.0"}
+
+  com.google.guava/guava
+  {:mvn/version "30.0-jre"}
+
+  com.google.protobuf/protobuf-java
+  {:mvn/version "3.13.0"}}}

@@ -1,10 +1,10 @@
 (ns blaze.db.tx-log.kafka
   (:require
     [blaze.async.comp :as ac]
+    [blaze.byte-string :as bs]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka.spec]
     [blaze.db.tx-log.spec]
-    [blaze.fhir.hash :as hash]
     [blaze.module :refer [reg-collector]]
     [cheshire.core :as cheshire]
     [cheshire.generate :refer [JSONable]]
@@ -78,7 +78,7 @@
 
 (defn decode-hashes [cmds]
   (when (sequential? cmds)
-    (mapv #(update % :hash hash/decode) cmds)))
+    (mapv #(update % :hash bs/from-byte-array) cmds)))
 
 
 (deftype CborDeserializer []
@@ -213,24 +213,3 @@
 
 (reg-collector ::duration-seconds
   duration-seconds)
-
-
-(comment
-  (def log (new-kafka-tx-log "k8s-test-b:32336"))
-  (.close log)
-
-  @(tx-log/submit log [[:put "Patient" "0"]])
-
-  (def tx-data (with-open [queue (tx-log/new-queue log 1)]
-                 (loop [tx-data (tx-log/poll queue (Duration/ofMillis 100))
-                        res []]
-                   (prn (count tx-data))
-                   (if (seq tx-data)
-                     (recur (tx-log/poll queue (Duration/ofMillis 100))
-                            (into res tx-data))
-                     res))))
-
-  (count tx-data)
-  (first tx-data)
-  (count (map :id (filter #(= "Patient" (:type %)) (mapcat :tx-cmds tx-data))))
-  )

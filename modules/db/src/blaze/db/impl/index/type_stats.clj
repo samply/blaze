@@ -15,11 +15,11 @@
   Each transaction which touches resources of a particular type, puts an entry
   with the new totals for this type at its t."
   (:require
+    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.kv :as kv])
   (:import
-    [java.io Closeable]
-    [java.nio ByteBuffer]))
+    [java.io Closeable]))
 
 
 (set! *warn-on-reflection* true)
@@ -34,36 +34,14 @@
   (kv/new-iterator snapshot :type-stats-index))
 
 
-(defn- encode-key [tid t]
-  (-> (ByteBuffer/allocate (+ codec/tid-size codec/t-size))
-      (.putInt tid)
-      (.putLong (codec/descending-long t))
-      (.array)))
+(def ^:private ^:const ^long key-size (+ codec/tid-size codec/t-size))
+(def ^:private ^:const ^long value-size (+ Long/BYTES Long/BYTES))
+(def ^:private ^:const ^long kv-capacity (max key-size value-size))
 
 
-(defn- encode-value [{:keys [total num-changes]}]
-  (-> (ByteBuffer/allocate 16)
-      (.putLong total)
-      (.putLong num-changes)
-      (.array)))
-
-
-(defn entry
-  "Creates an entry which can be written to the key-value store.
-
-  The value is a map of :total and :num-changes."
-  [tid t value]
-  [:type-stats-index (encode-key tid t) (encode-value value)])
-
-
-(defn- key->tid [k]
-  (.getInt (ByteBuffer/wrap k)))
-
-
-(defn- decode-value [v]
-  (let [bb (ByteBuffer/wrap v)]
-    {:total (.getLong bb)
-     :num-changes (.getLong bb 8)}))
+(defn- decode-value! [buf]
+  {:total (bb/get-long! buf)
+   :num-changes (bb/get-long! buf)})
 
 
 (defn get!
@@ -73,7 +51,37 @@
   Needs to use an iterator because there could be no entry at `t`. So `kv/seek!`
   is used to get near `t`."
   [iter tid t]
-  (kv/seek! iter (encode-key tid t))
-  (when (kv/valid? iter)
-    (when (= tid (key->tid (kv/key iter)))
-      (decode-value (kv/value iter)))))
+  (let [buf (bb/allocate-direct kv-capacity)]
+    (bb/put-int! buf tid)
+    (bb/put-long! buf (codec/descending-long ^long t))
+    (bb/flip! buf)
+    (kv/seek-buffer! iter buf)
+    (when (kv/valid? iter)
+      (bb/clear! buf)
+      (kv/key! iter buf)
+      (when (= ^long tid (bb/get-int! buf))
+        (bb/clear! buf)
+        (kv/value! iter buf)
+        (decode-value! buf)))))
+
+
+(defn- encode-key [tid t]
+  (-> (bb/allocate key-size)
+      (bb/put-int! tid)
+      (bb/put-long! (codec/descending-long ^long t))
+      (bb/array)))
+
+
+(defn- encode-value [{:keys [total num-changes]}]
+  (-> (bb/allocate value-size)
+      (bb/put-long! total)
+      (bb/put-long! num-changes)
+      (bb/array)))
+
+
+(defn index-entry
+  "Creates an entry which can be written to the key-value store.
+
+  The value is a map of :total and :num-changes."
+  [tid t value]
+  [:type-stats-index (encode-key tid t) (encode-value value)])

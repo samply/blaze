@@ -5,6 +5,10 @@
 
 
 (defrecord Code [system version code]
+  p/Equal
+  (equal [this other]
+    (some->> other (= this)))
+
   p/Equivalent
   (equivalent [_ other]
     (and (= system (:system other))

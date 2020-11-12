@@ -1,7 +1,10 @@
 (ns blaze.db.impl.codec.spec
   (:require
+    [blaze.byte-string :as bs :refer [byte-string?]]
+    [blaze.db.impl.codec :as codec]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
+    [clojure.string :as str]
     [clojure.test.check.generators :as gen2]))
 
 
@@ -25,12 +28,13 @@
   (s/with-gen int? gen/int))
 
 
-(defn- byte-array-gen [max-size]
-  #(gen/fmap byte-array (gen/vector gen2/byte 1 max-size)))
+(def ^:private id-gen
+  #(gen/fmap (comp codec/id-byte-string str/join)
+             (gen/vector gen2/char-alphanumeric 1 64)))
 
 
-(s/def :blaze.db/id-bytes
-  (s/with-gen bytes? (byte-array-gen 64)))
+(s/def :blaze.db/id-byte-string
+  (s/with-gen (s/and byte-string? #(<= 1 (bs/size %) 64)) id-gen))
 
 
 (s/def :blaze.db/state

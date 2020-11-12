@@ -57,7 +57,7 @@
 
 
 ;; 3.3. CodeRef
-(s/fdef literal/code
+(s/fdef literal/code-ref
   :args (s/cat :name string?)
   :ret :elm/expression)
 
@@ -276,13 +276,15 @@
 
 ;; 19.2. After
 (s/fdef literal/after
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.3. Before
 (s/fdef literal/before
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)
 
 

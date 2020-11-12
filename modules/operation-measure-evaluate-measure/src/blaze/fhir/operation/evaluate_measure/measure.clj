@@ -8,7 +8,7 @@
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.uuid :refer [random-uuid]]
+    [blaze.luid :refer [luid]]
     [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom]
     [taoensso.timbre :as log])
@@ -165,7 +165,7 @@
        code
        (assoc :code code))}
     "subject-list"
-    (let [list-id (str (random-uuid))]
+    (let [list-id (luid)]
       {:result
        (cond->
          {:fhir/type fhir-type

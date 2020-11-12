@@ -11,6 +11,7 @@
     [blaze.interaction.transaction :refer [handler]]
     [blaze.interaction.transaction-spec]
     [blaze.log]
+    [blaze.luid :as luid]
     [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -21,6 +22,9 @@
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -528,7 +532,8 @@
 
       (testing "with no Prefer header"
         (with-redefs
-          [random-uuid (constantly #uuid "b11daf6d-4c7b-4f81-980e-8c599bb6bf2d")]
+          [luid/init (constantly [0 0])
+           random-uuid (constantly "b11daf6d-4c7b-4f81-980e-8c599bb6bf2d")]
           (let [{:keys [status body]}
                 ((handler-with [])
                  {::reitit/router router
@@ -542,15 +547,44 @@
 
             (given body
               :fhir/type := :fhir/Bundle
-              :id :? string?
+              :id := "b11daf6d-4c7b-4f81-980e-8c599bb6bf2d"
               :type := #fhir/code"transaction-response"
               [:entry 0 :response :status] := "201"
-              [:entry 0 :response :location] := #fhir/uri"/Patient/b11daf6d-4c7b-4f81-980e-8c599bb6bf2d/_history/1"
+              [:entry 0 :response :location] := #fhir/uri"/Patient/AAAAAAAAAAAAAAAB/_history/1"
               [:entry 0 :response :etag] := "W/\"1\""
               [:entry 0 :response :lastModified] := Instant/EPOCH)
 
             (testing "there is no resource embedded in the entry"
-              (is (nil? (-> body :entry first :resource))))))))))
+              (is (nil? (-> body :entry first :resource)))))))))
+
+  (testing "creates sequential identifiers"
+    (let [entries
+          [{:resource
+            {:fhir/type :fhir/Patient}
+            :request
+            {:method #fhir/code"POST"
+             :url #fhir/uri"Patient"}}
+           {:resource
+            {:fhir/type :fhir/Patient}
+            :request
+            {:method #fhir/code"POST"
+             :url #fhir/uri"Patient"}}]]
+
+      (with-redefs
+        [luid/init (constantly [0 0])]
+        (let [{:keys [body]}
+              ((handler-with [])
+               {::reitit/router router
+                ::reitit/match {:data {:blaze/context-path ""}}
+                :headers {"prefer" "return=representation"}
+                :body
+                {:fhir/type :fhir/Bundle
+                 :type #fhir/code"transaction"
+                 :entry entries}})]
+
+          (given body
+            [:entry 0 :resource :id] := "AAAAAAAAAAAAAAAB"
+            [:entry 1 :resource :id] := "AAAAAAAAAAAAAAAC"))))))
 
 
 (defn- stub-match-by-path [router path match]

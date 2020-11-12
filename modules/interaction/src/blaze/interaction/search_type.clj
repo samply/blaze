@@ -21,22 +21,40 @@
     [taoensso.timbre :as log]))
 
 
+(defn- type-list [db type page-id]
+  (if page-id
+    (d/type-list db type page-id)
+    (d/type-list db type)))
+
+
+(defn- type-query [db type clauses page-id]
+  (if page-id
+    (d/type-query db type clauses page-id)
+    (d/type-query db type clauses)))
+
+
+(defn- execute-query [db query page-id]
+  (if page-id
+    (d/execute-query db query page-id)
+    (d/execute-query db query)))
+
+
 (defn- handles-and-clauses
   [{:keys [type] :preference/keys [handling] :or {handling "strict"}
     {:keys [clauses page-id]} :params}
    db]
   (cond
     (empty? clauses)
-    {:handles (d/list-resource-handles db type page-id)}
+    {:handles (type-list db type page-id)}
 
     (= "strict" handling)
-    (when-ok [handles (d/type-query db type clauses page-id)]
+    (when-ok [handles (type-query db type clauses page-id)]
       {:handles handles
        :clauses clauses})
 
     :else
     (let [query (d/compile-type-query-lenient db type clauses)]
-      {:handles (d/execute-query db query page-id)
+      {:handles (execute-query db query page-id)
        :clauses (d/query-clauses query)})))
 
 
@@ -101,7 +119,7 @@
                   total (total db type params entries)]
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (str (random-uuid))
+                 :id (random-uuid)
                  :type #fhir/code"searchset"
                  :entry (take page-size entries)
                  :link [(self-link context clauses t entries)]}
@@ -123,12 +141,12 @@
 
     (= "strict" handling)
     (when-ok [handles (d/type-query db type clauses)]
-      {:total (transduce (map (constantly 1)) + 0 handles)
+      {:total (count handles)
        :clauses clauses})
 
     :else
     (let [query (d/compile-type-query-lenient db type clauses)]
-      {:total (transduce (map (constantly 1)) + 0 (d/execute-query db query))
+      {:total (count (d/execute-query db query))
        :clauses (d/query-clauses query)})))
 
 
@@ -139,7 +157,7 @@
       (ac/failed-future (ex-anom summary-total))
       (ac/completed-future
         {:fhir/type :fhir/Bundle
-         :id (str (random-uuid))
+         :id (random-uuid)
          :type #fhir/code"searchset"
          :total (type/->UnsignedInt total)
          :link [(self-link context clauses t [])]}))))

@@ -81,7 +81,7 @@
               (let [entries (entries context resources)]
                 (cond->
                   {:fhir/type :fhir/Bundle
-                   :id (str (random-uuid))
+                   :id (random-uuid)
                    :type #fhir/code"searchset"
                    :total (type/->UnsignedInt (count handles))
                    :entry (take page-size entries)
@@ -100,7 +100,7 @@
       (ac/failed-future (ex-anom handles-and-clauses))
       (ac/completed-future
         {:fhir/type :fhir/Bundle
-         :id (str (random-uuid))
+         :id (random-uuid)
          :type #fhir/code"searchset"
          :total (type/->UnsignedInt (count handles))
          :link [(self-link context clauses t)]}))))

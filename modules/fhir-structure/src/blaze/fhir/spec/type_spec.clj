@@ -2,6 +2,7 @@
   (:require
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.fhir.spec.type.system-spec]
     [clojure.spec.alpha :as s]))
 
 

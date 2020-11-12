@@ -14,11 +14,11 @@
   Each transaction which touches any resources, puts an entry with the new
   totals at its t."
   (:require
+    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.kv :as kv])
   (:import
-    [java.io Closeable]
-    [java.nio ByteBuffer]))
+    [java.io Closeable]))
 
 
 (set! *warn-on-reflection* true)
@@ -33,31 +33,14 @@
   (kv/new-iterator snapshot :system-stats-index))
 
 
-(defn- encode-key [t]
-  (-> (ByteBuffer/allocate codec/t-size)
-      (.putLong (codec/descending-long t))
-      (.array)))
+(def ^:private ^:const ^long key-size codec/t-size)
+(def ^:private ^:const ^long value-size (+ Long/BYTES Long/BYTES))
+(def ^:private ^:const ^long kv-capacity (max key-size value-size))
 
 
-(defn- encode-value [{:keys [total num-changes]}]
-  (-> (ByteBuffer/allocate 16)
-      (.putLong total)
-      (.putLong num-changes)
-      (.array)))
-
-
-(defn entry
-  "Creates an entry which can be written to the key-value store.
-
-  The value is a map of :total and :num-changes."
-  [t value]
-  [:system-stats-index (encode-key t) (encode-value value)])
-
-
-(defn- decode-value [v]
-  (let [bb (ByteBuffer/wrap v)]
-    {:total (.getLong bb)
-     :num-changes (.getLong bb 8)}))
+(defn- decode-value! [buf]
+  {:total (bb/get-long! buf)
+   :num-changes (bb/get-long! buf)})
 
 
 (defn get!
@@ -66,6 +49,32 @@
   Needs to use an iterator because there could be no entry at `t`. So `kv/seek!`
   is used to get near `t`."
   [iter t]
-  (kv/seek! iter (encode-key t))
-  (when (kv/valid? iter)
-    (decode-value (kv/value iter))))
+  (let [buf (bb/allocate-direct kv-capacity)]
+    (bb/put-long! buf (codec/descending-long ^long t))
+    (bb/flip! buf)
+    (kv/seek-buffer! iter buf)
+    (when (kv/valid? iter)
+      (bb/clear! buf)
+      (kv/value! iter buf)
+      (decode-value! buf))))
+
+
+(defn- encode-key [t]
+  (-> (bb/allocate key-size)
+      (bb/put-long! (codec/descending-long ^long t))
+      (bb/array)))
+
+
+(defn- encode-value [{:keys [total num-changes]}]
+  (-> (bb/allocate value-size)
+      (bb/put-long! total)
+      (bb/put-long! num-changes)
+      (bb/array)))
+
+
+(defn index-entry
+  "Creates an entry which can be written to the key-value store.
+
+  The value is a map of :total and :num-changes."
+  [t value]
+  [:system-stats-index (encode-key t) (encode-value value)])

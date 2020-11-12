@@ -17,6 +17,9 @@
     [java.time Instant]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (log/set-level! :trace)

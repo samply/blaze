@@ -56,7 +56,7 @@
     "0"))
 
 
-(deftest valid?-test
+(deftest valid-test
   (testing "valid resources"
     (are [resource] (fhir-spec/valid-json? resource)
       {:resourceType "Patient"
@@ -603,6 +603,17 @@
            (s2/unform :fhir.json/instant (type/->Instant "2015-02-07T13:28:17.239+02:00"))))))
 
 
+(defn elem [value]
+  (sexp [nil {:value value}]))
+
+
+(defn ext-elem [value]
+  (sexp
+    [nil {:value value}
+     [:extension {:url "foo"}
+      [:valueString {:value "bar"}]]]))
+
+
 (deftest fhir-date
   (testing "FHIR spec"
     (are [s] (s2/valid? :fhir/date s)
@@ -612,22 +623,27 @@
     (are [s] (s2/valid? :fhir.json/date s)
       "2020"))
 
-  (testing "conforming from JSON to FHIR"
-    (is (= #fhir/date"2020" (s2/conform :fhir.json/date "2020"))))
+  (testing "conforming"
+    (testing "JSON"
+      (testing "valid"
+        (is (= #fhir/date"2020" (s2/conform :fhir.json/date "2020"))))
+
+      (testing "invalid"
+        (are [v] (s2/invalid? (s2/conform :fhir.json/date v))
+          "2019-13"
+          "2019-02-29")))
+
+    (testing "XML"
+      (testing "valid"
+        (is (= #fhir/date"2020" (s2/conform :fhir.xml/date (elem "2020")))))
+
+      (testing "invalid"
+        (are [v] (s2/invalid? (s2/conform :fhir.xml/date (elem v)))
+          "2019-13"
+          "2019-02-29"))))
 
   (testing "unforming from FHIR to JSON"
     (is (= "2020" (s2/unform :fhir.json/date #fhir/date"2020")))))
-
-
-(def date-time-element
-  (sexp [nil {:value "2020"}]))
-
-
-(def extended-date-time-element
-  (sexp
-    [nil {:value "2020"}
-     [:extension {:url "foo"}
-      [:valueString {:value "bar"}]]]))
 
 
 (def extended-date-time
@@ -646,12 +662,34 @@
 
   (testing "conforming"
     (testing "JSON"
-      (is (= #fhir/dateTime"2020" (s2/conform :fhir.json/dateTime "2020"))))
+      (testing "valid"
+        (is (= #fhir/dateTime"2020" (s2/conform :fhir.json/dateTime "2020"))))
+
+      (testing "invalid"
+        (are [s] (s2/invalid? (s2/conform :fhir.json/dateTime s))
+          "2019-13"
+          "2019-02-29")))
+
     (testing "XML"
       (testing "value only"
-        (is (= #fhir/dateTime"2020" (s2/conform :fhir.xml/dateTime date-time-element))))
+        (testing "valid"
+          (are [v dt] (= dt (s2/conform :fhir.xml/dateTime (elem v)))
+            "2020" #fhir/dateTime"2020"))
+
+        (testing "invalid"
+          (are [v] (s2/invalid? (s2/conform :fhir.xml/dateTime (elem v)))
+            "2019-13"
+            "2019-02-29")))
+
       (testing "with extension"
-        (is (= extended-date-time (s2/conform :fhir.xml/dateTime extended-date-time-element))))))
+        (testing "valid"
+          (are [v dt] (= dt (s2/conform :fhir.xml/dateTime (ext-elem v)))
+            "2020" extended-date-time))
+
+        (testing "invalid"
+          (are [v] (s2/invalid? (s2/conform :fhir.xml/dateTime (ext-elem v)))
+            "2019-13"
+            "2019-02-29")))))
 
   (testing "unforming"
     (testing "JSON"

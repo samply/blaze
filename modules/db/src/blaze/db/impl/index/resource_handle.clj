@@ -1,70 +1,50 @@
 (ns blaze.db.impl.index.resource-handle
   (:require
+    [blaze.byte-string :as bs]
+    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
-    [blaze.fhir.spec.type :as type])
-  (:import
-    [com.google.common.hash HashCode])
-  (:refer-clojure :exclude [hash]))
+    [blaze.fhir.spec.type :as type]))
 
 
 (set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 
-(defrecord ResourceHandle [^int tid ^String id ^long t
-                           ^HashCode hash ^long state]
+(defrecord ResourceHandle [^int tid id ^long t hash ^long num-changes op]
   type/FhirType
   (-type [_]
     ;; TODO: maybe cache this
     (keyword "fhir" (codec/tid->type tid))))
 
 
+(defn- state->num-changes
+  "A resource is new if num-changes is 1."
+  [state]
+  (bit-shift-right ^long state 8))
+
+
+(defn- state->op [state]
+  (cond
+    (bit-test ^long state 1) :create
+    (bit-test ^long state 0) :delete
+    :else :put))
+
+
 (defn resource-handle
   "Creates a new resource handle.
 
   The type of that handle will be the keyword `:fhir/<resource-type>`."
-  [tid id t hash state]
-  (ResourceHandle. tid id t hash state))
-
-
-(defn tid
-  "Returns the tid of the resource handle."
-  [resource-handle]
-  (.tid ^ResourceHandle resource-handle))
-
-
-(defn id
-  "Returns the id of the resource handle."
-  [resource-handle]
-  (.id ^ResourceHandle resource-handle))
-
-
-(defn t
-  "Returns the t of the resource handle."
-  [resource-handle]
-  (.t ^ResourceHandle resource-handle))
-
-
-(defn num-changes
-  "Returns the number of changes of the resource of the handle."
-  [resource-handle]
-  (codec/state->num-changes (.state ^ResourceHandle resource-handle)))
-
-
-(defn hash
-  "Returns the hash of the resource handle."
-  [resource-handle]
-  (.hash ^ResourceHandle resource-handle))
-
-
-(defn state
-  "Returns the state of the resource handle."
-  [resource-handle]
-  (.state ^ResourceHandle resource-handle))
+  [tid id t value-buffer]
+  (let [hash (bs/from-byte-buffer value-buffer codec/hash-size)
+        state (bb/get-long! value-buffer)]
+    (ResourceHandle.
+      tid
+      id
+      t
+      hash
+      (state->num-changes state)
+      (state->op state))))
 
 
 (defn resource-handle? [x]
   (instance? ResourceHandle x))
-
-
-(defn deleted? [resource-handle]
-  (codec/deleted? (.state ^ResourceHandle resource-handle)))

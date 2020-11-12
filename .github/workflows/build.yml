@@ -68,6 +68,7 @@ jobs:
         - fhir-structure
         - interaction
         - kv
+        - luid
         - openid-auth
         - operation-measure-evaluate-measure
         - rest-api
