@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param.composite-test
   (:require
+    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
@@ -34,33 +35,29 @@
   (sr/get search-param-registry "code-value-quantity" "Observation"))
 
 
-(deftest code-test
-  (is (= "code-value-quantity" (:code code-value-quantity-param))))
-
-
 (deftest name-test
   (is (= "code-value-quantity" (:name code-value-quantity-param))))
 
 
-(defn- split-value [hex]
-  [(subs hex 0 8) (subs hex 8)])
+(deftest code-test
+  (is (= "code-value-quantity" (:code code-value-quantity-param))))
+
+
+(deftest c-hash-test
+  (is (= (codec/c-hash "code-value-quantity") (:c-hash code-value-quantity-param))))
+
+
+(defn- split-value [bs]
+  [(bs/subs bs 0 4) (bs/subs bs 4)])
 
 
 (defn compile-code-quantity-value [value]
   (let [[[op lower-bound exact-value upper-bound]]
-        (search-param/compile-values code-value-quantity-param [value])]
+        (search-param/compile-values code-value-quantity-param nil [value])]
     [op
-     (split-value (codec/hex lower-bound))
-     (split-value (codec/hex exact-value))
-     (split-value (codec/hex upper-bound))]))
-
-
-(defn- hex-v-hash [value]
-  (codec/hex (codec/v-hash value)))
-
-
-(defn- hex-quantity [unit value]
-  (codec/hex (codec/quantity unit value)))
+     (split-value lower-bound)
+     (split-value exact-value)
+     (split-value upper-bound)]))
 
 
 (deftest compile-value-test
@@ -69,23 +66,23 @@
 
     "8480-6$23.4"
     :eq
-    [(hex-v-hash "8480-6") (hex-quantity nil 23.35M)]
-    [(hex-v-hash "8480-6") (hex-quantity nil 23.40M)]
-    [(hex-v-hash "8480-6") (hex-quantity nil 23.45M)]
+    [(codec/v-hash "8480-6") (codec/quantity nil 23.35M)]
+    [(codec/v-hash "8480-6") (codec/quantity nil 23.40M)]
+    [(codec/v-hash "8480-6") (codec/quantity nil 23.45M)]
 
     "8480-6$ge23|kg/m2"
     :ge
-    [(hex-v-hash "8480-6") (hex-quantity "kg/m2" 22.5M)]
-    [(hex-v-hash "8480-6") (hex-quantity "kg/m2" 23.00M)]
-    [(hex-v-hash "8480-6") (hex-quantity "kg/m2" 23.5M)])
+    [(codec/v-hash "8480-6") (codec/quantity "kg/m2" 22.5M)]
+    [(codec/v-hash "8480-6") (codec/quantity "kg/m2" 23.00M)]
+    [(codec/v-hash "8480-6") (codec/quantity "kg/m2" 23.5M)])
 
   (testing "invalid quantity decimal value"
-    (given (search-param/compile-values code-value-quantity-param ["a$a"])
+    (given (search-param/compile-values code-value-quantity-param nil ["a$a"])
       ::anom/category := ::anom/incorrect
       ::anom/message := "Invalid decimal value `a` in search parameter `code-value-quantity`."))
 
   (testing "unsupported quantity prefix"
-    (given (search-param/compile-values code-value-quantity-param ["a$ne1"])
+    (given (search-param/compile-values code-value-quantity-param nil ["a$ne1"])
       ::anom/category := ::anom/unsupported
       ::anom/message := "Unsupported prefix `ne` in search parameter `code-value-quantity`.")))
 
@@ -99,27 +96,27 @@
 
 
 (def ^:private observation-code
-  (codec/hex (codec/v-hash "8480-6")))
+  (codec/v-hash "8480-6"))
 
 
 (def ^:private observation-system
-  (codec/hex (codec/v-hash "http://loinc.org|")))
+  (codec/v-hash "http://loinc.org|"))
 
 
 (def ^:private observation-system-code
-  (codec/hex (codec/v-hash "http://loinc.org|8480-6")))
+  (codec/v-hash "http://loinc.org|8480-6"))
 
 
 (def ^:private value
-  (codec/hex (codec/quantity nil 100M)))
+  (codec/quantity nil 100M))
 
 
 (def ^:private value-code
-  (codec/hex (codec/quantity "mm[Hg]" 100M)))
+  (codec/quantity "mm[Hg]" 100M))
 
 
 (def ^:private value-system-code
-  (codec/hex (codec/quantity "http://unitsofmeasure.org|mm[Hg]" 100M)))
+  (codec/quantity "http://unitsofmeasure.org|mm[Hg]" 100M))
 
 
 (deftest index-entries-test

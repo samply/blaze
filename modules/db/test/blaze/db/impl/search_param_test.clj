@@ -33,7 +33,7 @@
 
 
 (defn compile-birthdate [value]
-  (first (search-param/compile-values birthdate [value])))
+  (first (search-param/compile-values birthdate nil [value])))
 
 
 (deftest compile-value-test

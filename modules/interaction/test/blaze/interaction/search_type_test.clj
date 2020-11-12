@@ -97,7 +97,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-found"
-              [:issue 0 :diagnostics] := "search-param with code `foo` and type `Patient` not found")))
+              [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Patient` was not found.")))
 
         (testing "summary result"
           (let [{:keys [status body]}
@@ -113,7 +113,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-found"
-              [:issue 0 :diagnostics] := "search-param with code `foo` and type `Patient` not found")))))
+              [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Patient` was not found.")))))
 
     (testing "with lenient handling"
       (testing "returns results with a self link lacking the unknown search parameter"
@@ -550,6 +550,82 @@
            {::reitit/router router
             ::reitit/match {:data {:fhir.resource/type "Patient"}}
             :params {"_list" "0"}})]
+
+      (is (= 200 status))
+
+      (testing "the body contains a bundle"
+        (is (= :fhir/Bundle (:fhir/type body))))
+
+      (testing "the bundle type is searchset"
+        (is (= #fhir/code"searchset" (:type body))))
+
+      (testing "the total count is 1"
+        (is (= #fhir/unsignedInt 1 (:total body))))
+
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (testing "the entry has the right fullUrl"
+        (is (= #fhir/uri"/Patient/0" (-> body :entry first :fullUrl))))
+
+      (testing "the entry has the right resource"
+        (given (-> body :entry first :resource)
+          :fhir/type := :fhir/Patient
+          :id := "0"))))
+
+  (testing "_has search"
+    (let [{:keys [status body]}
+          ((handler-with
+             [[[:put {:fhir/type :fhir/Patient :id "0"}]
+               [:put {:fhir/type :fhir/Patient :id "1"}]
+               [:put {:fhir/type :fhir/Observation :id "0"
+                      :subject
+                      {:fhir/type :fhir/Reference
+                       :reference "Patient/0"}
+                      :code
+                      {:fhir/type :fhir/CodeableConcept
+                       :coding
+                       [{:fhir/type :fhir/Coding
+                         :system #fhir/uri"http://loinc.org"
+                         :code #fhir/code"8480-6"}]}
+                      :value
+                      {:fhir/type :fhir/Quantity
+                       :value 130M
+                       :code #fhir/code"mm[Hg]"
+                       :system #fhir/uri"http://unitsofmeasure.org"}}]
+               [:put {:fhir/type :fhir/Observation :id "1"
+                      :subject
+                      {:fhir/type :fhir/Reference
+                       :reference "Patient/0"}
+                      :code
+                      {:fhir/type :fhir/CodeableConcept
+                       :coding
+                       [{:fhir/type :fhir/Coding
+                         :system #fhir/uri"http://loinc.org"
+                         :code #fhir/code"8480-6"}]}
+                      :value
+                      {:fhir/type :fhir/Quantity
+                       :value 150M
+                       :code #fhir/code"mm[Hg]"
+                       :system #fhir/uri"http://unitsofmeasure.org"}}]
+               [:put {:fhir/type :fhir/Observation :id "2"
+                      :subject
+                      {:fhir/type :fhir/Reference
+                       :reference "Patient/1"}
+                      :code
+                      {:fhir/type :fhir/CodeableConcept
+                       :coding
+                       [{:fhir/type :fhir/Coding
+                         :system #fhir/uri"http://loinc.org"
+                         :code #fhir/code"8480-6"}]}
+                      :value
+                      {:fhir/type :fhir/Quantity
+                       :value 100M
+                       :code #fhir/code"mm[Hg]"
+                       :system #fhir/uri"http://unitsofmeasure.org"}}]]])
+           {::reitit/router router
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :params {"_has:Observation:patient:code-value-quantity" "8480-6$ge130"}})]
 
       (is (= 200 status))
 

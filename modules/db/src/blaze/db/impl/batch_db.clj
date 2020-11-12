@@ -6,7 +6,7 @@
   (:require
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
-    [blaze.db.impl.index.resource-as-of :as resource-as-of]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.system-as-of :as system-as-of]
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.type-as-of :as type-as-of]
@@ -29,16 +29,14 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ type id]
-    (resource-as-of/resource-handle context (codec/tid type)
-                                    (codec/id-bytes id)))
+    (rao/resource-handle context (codec/tid type) (codec/id-bytes id)))
 
 
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
   (-list-resource-handles [_ type start-id]
-    (resource-as-of/type-list context (codec/tid type)
-                              (some-> start-id codec/id-bytes)))
+    (rao/type-list context (codec/tid type) (some-> start-id codec/id-bytes)))
 
   (-type-total [_ type]
     (let [{:keys [snapshot t]} context]
@@ -50,8 +48,8 @@
   ;; ---- System-Level Functions ----------------------------------------------
 
   (-system-list [_ start-type start-id]
-    (resource-as-of/system-list context (some-> start-type codec/tid)
-                                (some-> start-id codec/id-bytes)))
+    (rao/system-list context (some-> start-type codec/tid)
+                     (some-> start-id codec/id-bytes)))
 
   (-system-total [_]
     (let [{:keys [snapshot t]} context]
@@ -85,13 +83,13 @@
     (let [{:keys [snapshot raoi t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
           end-t (or (some->> since (index/t-by-instant snapshot)) 0)]
-      (resource-as-of/instance-history raoi (codec/tid type) id start-t end-t)))
+      (rao/instance-history raoi (codec/tid type) id start-t end-t)))
 
   (-total-num-of-instance-changes [_ type id since]
     (let [{:keys [snapshot raoi t]} context
           end-t (or (some->> since (index/t-by-instant snapshot)) 0)]
-      (resource-as-of/num-of-instance-changes raoi (codec/tid type)
-                                              (codec/id-bytes id) t end-t)))
+      (rao/num-of-instance-changes raoi (codec/tid type)
+                                   (codec/id-bytes id) t end-t)))
 
 
 
@@ -219,9 +217,9 @@
 (defrecord EmptyTypeQuery [tid]
   p/Query
   (-execute [_ context]
-    (resource-as-of/type-list context tid nil))
+    (rao/type-list context tid nil))
   (-execute [_ context start-id]
-    (resource-as-of/type-list context tid (some-> start-id codec/id-bytes)))
+    (rao/type-list context tid (some-> start-id codec/id-bytes)))
   (-clauses [_]))
 
 

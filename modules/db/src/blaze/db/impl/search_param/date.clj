@@ -3,9 +3,12 @@
     [blaze.anomaly :refer [if-ok when-ok]]
     [blaze.coll.core :as coll]
     [blaze.db.bytes :as bytes]
+    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.util :as u]
+    [blaze.db.kv :as kv]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
@@ -73,27 +76,33 @@
 
 
 (defn- date-key-lb? [[prefix]]
-  (codec/date-lb? prefix date-key-offset))
+  (codec/date-lb? (bs/from-bytes prefix) date-key-offset))
 
 
 (defn- date-key-ub? [[prefix]]
-  (codec/date-ub? prefix date-key-offset))
+  (codec/date-ub? (bs/from-bytes prefix) date-key-offset))
+
+
+(defn- get-value [snapshot tid id hash c-hash]
+  (bs/from-bytes
+    (kv/snapshot-get
+    snapshot :resource-value-index
+    (codec/resource-sp-value-key tid id hash c-hash))))
 
 
 (defn- eq-key-valid? [{:keys [snapshot]} c-hash tid ub [prefix id hash-prefix]]
   (and (date-key-lb? [prefix])
-       (when-let [v (u/get-value snapshot tid id hash-prefix c-hash)]
-         (bytes/<= (codec/date-lb-ub->ub v) ub))))
+       (when-let [v (get-value snapshot tid id hash-prefix c-hash)]
+         (bs/<= (codec/date-lb-ub->ub v) ub))))
 
 
 (defn- start-key [{:keys [snapshot] :as context} c-hash tid value start-id]
   (if start-id
-    (let [start-hash (u/resource-hash context tid start-id)]
+    (let [{:keys [hash]} (rao/resource-handle context tid start-id)]
       (codec/sp-value-resource-key
         c-hash
         tid
-        (codec/date-lb-ub->lb (u/get-value snapshot tid start-id start-hash
-                                           c-hash))
+        (codec/date-lb-ub->lb (get-value snapshot tid start-id hash c-hash))
         start-id))
     (codec/sp-value-resource-key c-hash tid (date-lb value))))
 
@@ -155,18 +164,18 @@
     :le (le-keys context c-hash tid value)))
 
 
-(defn- matches? [context c-hash tid id hash [op value]]
-  (when-let [v (u/get-value (:snapshot context) tid id hash c-hash)]
+(defn- matches? [{:keys [snapshot]} c-hash {:keys [tid id hash]} [op value]]
+  (when-let [v (get-value snapshot tid (codec/id-bytes id) hash c-hash)]
     (case op
-      :eq (and (bytes/<= (date-lb value) (codec/date-lb-ub->lb v))
-               (bytes/<= (codec/date-lb-ub->ub v) (date-ub value)))
-      :ge (bytes/<= (date-lb value) (codec/date-lb-ub->lb v))
-      :le (bytes/<= (codec/date-lb-ub->ub v) (date-ub value)))))
+      :eq (and (bs/<= (date-lb value) (codec/date-lb-ub->lb v))
+               (bs/<= (codec/date-lb-ub->ub v) (date-ub value)))
+      :ge (bs/<= (date-lb value) (codec/date-lb-ub->lb v))
+      :le (bs/<= (codec/date-lb-ub->ub v) (date-ub value)))))
 
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
-  (-compile-value [_ value]
+  (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
       (case op
         (:eq :ge :le)
@@ -183,8 +192,8 @@
       (u/resource-handle-mapper context tid)
       (resource-keys context c-hash tid value start-id)))
 
-  (-matches? [_ context tid id hash _ values]
-    (some #(matches? context c-hash tid id hash %) values))
+  (-matches? [_ context resource-handle _ values]
+    (some #(matches? context c-hash resource-handle %) values))
 
   (-index-entries [_ resolver hash resource _]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -222,7 +231,7 @@
                     id-bytes
                     hash
                     c-hash)
-                  (codec/date-lb-ub lb ub)]])))
+                  (bs/to-byte-array (codec/date-lb-ub lb ub))]])))
           values)))))
 
 

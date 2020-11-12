@@ -3,48 +3,16 @@
     [blaze.db.api-spec]
     [blaze.db.bytes :as bytes]
     [blaze.db.bytes-spec]
+    [blaze.db.impl.byte-string :refer [byte-string?]]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec.spec]
     [blaze.fhir.spec]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as gen]
     [clojure.test.check]
-    [clojure.test.check.generators :as gen2]
     [cognitect.anomalies :as anom])
   (:import
     [java.time ZoneId]))
-
-
-
-;; ---- Internal Identifiers --------------------------------------------------
-
-(s/def :blaze.db/tid
-  (s/with-gen int? gen/int))
-
-
-(s/def :blaze.db/spid
-  (s/with-gen int? gen/int))
-
-
-(s/def :blaze.db/c-hash
-  (s/with-gen int? gen/int))
-
-
-(s/def :blaze.db/v-hash
-  (s/with-gen int? gen/int))
-
-
-(s/def :blaze.db/unit-hash
-  (s/with-gen int? gen/int))
-
-
-(defn byte-array-gen [max-size]
-  #(gen/fmap byte-array (gen/vector gen2/byte 1 max-size)))
-
-
-(s/def :blaze.db/id-bytes
-  (s/with-gen bytes? (byte-array-gen 64)))
 
 
 
@@ -70,23 +38,20 @@
   bytes?)
 
 
-(s/fdef codec/sp-value-resource-key*
+(s/fdef codec/sp-value-resource-key
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
-               :value bytes?
-               :v-offset nat-int?
-               :v-length nat-int?
+               :value byte-string?
                :id (s/? :blaze.db/id-bytes)
                :hash (s/? :blaze.resource/hash))
   :ret :blaze.db/sp-value-resource-key)
 
 
-(s/fdef codec/sp-value-resource-key
+(s/fdef codec/sp-value-resource-key-for-prev
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
-               :value bytes?
-               :id (s/? :blaze.db/id-bytes)
-               :hash (s/? :blaze.resource/hash))
+               :value byte-string?
+               :id (s/? :blaze.db/id-bytes))
   :ret :blaze.db/sp-value-resource-key)
 
 
@@ -106,7 +71,7 @@
                :id :blaze.db/id-bytes
                :hash (s/alt :hash :blaze.resource/hash :hash-prefix :blaze.db/hash-prefix)
                :c-hash :blaze.db/c-hash
-               :value (s/? bytes?)
+               :value (s/? byte-string?)
                :v-offset (s/? nat-int?)
                :v-length (s/? nat-int?))
   :ret :blaze/resource-value-key)
@@ -125,7 +90,7 @@
                :co-res-id :blaze.db/id-bytes
                :sp-c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
-               :value bytes?
+               :value byte-string?
                :id (s/? :blaze.db/id-bytes)
                :hash (s/? :blaze.resource/hash))
   :ret :blaze.db/compartment-search-param-value-key)
@@ -372,54 +337,54 @@
 
 (s/fdef codec/v-hash
   :args (s/cat :value string?)
-  :ret bytes?)
+  :ret byte-string?)
 
 
 (s/fdef codec/tid-id
   :args (s/cat :type :blaze.db/tid :id :blaze.db/id-bytes)
-  :ret bytes?)
+  :ret byte-string?)
 
 
 (s/fdef codec/string
   :args (s/cat :string string?)
-  :ret bytes?)
+  :ret byte-string?)
 
 
 (s/fdef codec/date-lb
   :args (s/cat :zone-id #(instance? ZoneId %)
                :date-time (s/or :date system/date? :date-time system/date-time?))
-  :ret bytes?)
+  :ret byte-string?)
 
 
 (s/fdef codec/date-lb?
-  :args (s/cat :b bytes? :offset nat-int?)
+  :args (s/cat :bs byte-string? :offset nat-int?)
   :ret boolean?)
 
 
 (s/fdef codec/date-ub?
-  :args (s/cat :b bytes? :offset nat-int?)
+  :args (s/cat :bs byte-string? :offset nat-int?)
   :ret boolean?)
 
 
 (s/fdef codec/date-ub
   :args (s/cat :zone-id #(instance? ZoneId %)
                :date-time (s/or :date system/date? :date-time system/date-time?))
-  :ret bytes?)
+  :ret byte-string?)
 
 
 (s/fdef codec/date-lb-ub
-  :args (s/cat :lb bytes? :ub bytes?)
-  :ret bytes?)
+  :args (s/cat :lb byte-string? :ub byte-string?)
+  :ret byte-string?)
 
 
 (s/fdef codec/number
   :args (s/cat :number number?)
-  :ret bytes?)
+  :ret byte-string?)
 
 
 (s/fdef codec/quantity
   :args (s/cat :unit (s/nilable string?) :value number?)
-  :ret bytes?)
+  :ret byte-string?)
 
 
 

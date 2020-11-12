@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-as-of :as resource-as-of]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv :as kv]
@@ -37,7 +37,7 @@
 
 
 (defn- resource-exists? [raoi type id t]
-  (let [[_ state] (resource-as-of/hash-state-t raoi (codec/tid type) (codec/id-bytes id) t)]
+  (let [[_ state] (rao/hash-state-t raoi (codec/tid type) (codec/id-bytes id) t)]
     (and (some? state) (not (identical? :delete (codec/state->op state))))))
 
 
@@ -118,7 +118,7 @@
     (check-referential-integrity raoi t res [type id] refs)
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)
-          [_ state old-t] (resource-as-of/hash-state-t raoi tid id-bytes t)
+          [_ state old-t] (rao/hash-state-t raoi tid id-bytes t)
           num-changes (or (some-> state codec/state->num-changes) 0)]
       (if (or (nil? if-match) (= if-match old-t))
         (cond->
@@ -137,7 +137,7 @@
   (with-open [_ (prom/timer duration-seconds "verify-delete")]
     (let [tid (codec/tid type)
           id-bytes (codec/id-bytes id)
-          [_ state] (resource-as-of/hash-state-t raoi tid id-bytes t)
+          [_ state] (rao/hash-state-t raoi tid id-bytes t)
           num-changes (or (some-> state codec/state->num-changes) 0)]
       (-> res
           (update :entries into (entries tid id-bytes t hash num-changes :delete))

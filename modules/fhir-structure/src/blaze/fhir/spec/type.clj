@@ -79,7 +79,7 @@
 
 (defn xml->Boolean
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (Boolean/valueOf ^String value))
 
 
@@ -100,7 +100,7 @@
 
 (defn xml->Integer
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (Integer/valueOf ^String value))
 
 
@@ -121,7 +121,7 @@
 
 (defn xml->Long
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (Long/valueOf ^String value))
 
 
@@ -142,7 +142,7 @@
 
 (defn xml->String
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   value)
 
 
@@ -167,7 +167,7 @@
 
 (defn xml->Decimal
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (BigDecimal. ^String value))
 
 
@@ -205,7 +205,7 @@
 
 (defn xml->Uri
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (->Uri value))
 
 
@@ -243,7 +243,7 @@
 
 (defn xml->Url
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Url value))
 
 
@@ -281,7 +281,7 @@
 
 (defn xml->Canonical
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Canonical value))
 
 
@@ -313,7 +313,7 @@
 
 (defn xml->Base64Binary
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Base64Binary value))
 
 
@@ -365,7 +365,7 @@
 
 (defn xml->Instant
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Instant value))
 
 
@@ -415,7 +415,7 @@
 
 (defn xml->Date
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Date value))
 
 
@@ -547,7 +547,7 @@
 
 (defn xml->Time
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Time value))
 
 
@@ -644,7 +644,7 @@
 
 (defn xml->Oid
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Oid value))
 
 
@@ -682,7 +682,7 @@
 
 (defn xml->Id
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Id value))
 
 
@@ -720,7 +720,7 @@
 
 (defn xml->Markdown
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Markdown value))
 
 
@@ -864,7 +864,7 @@
 
 (defn xml->Uuid
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Uuid value))
 
 

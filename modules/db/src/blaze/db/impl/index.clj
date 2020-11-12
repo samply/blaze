@@ -3,7 +3,7 @@
     [blaze.coll.core :as coll]
     [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-as-of :as resource-as-of]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
     [blaze.db.impl.search-param :as search-param]
@@ -32,25 +32,23 @@
 
 ;; ---- Type-Level Functions ------------------------------------------------
 
-(defn- other-clauses-filter [context tid clauses]
+(defn- other-clauses-filter [context clauses]
   (if (seq clauses)
     (filter
       (fn [resource-handle]
-        (let [id (codec/id-bytes (:id resource-handle))
-              hash (rh/hash resource-handle)]
-          (loop [[[search-param modifier _ values] & clauses] clauses]
-            (if search-param
-              (when (search-param/matches? search-param context tid id
-                                           hash modifier values)
-                (recur clauses))
-              resource-handle)))))
+        (loop [[[search-param modifier _ values] & clauses] clauses]
+          (if search-param
+            (when (search-param/matches? search-param context resource-handle
+                                         modifier values)
+              (recur clauses))
+            true))))
     identity))
 
 
 (defn type-query [context tid clauses start-id]
   (let [[[search-param modifier _ values] & other-clauses] clauses]
     (coll/eduction
-      (other-clauses-filter context tid other-clauses)
+      (other-clauses-filter context other-clauses)
       (search-param/resource-handles search-param context tid
                                      modifier values start-id))))
 
@@ -93,7 +91,7 @@
     (coll/eduction
       (comp
         (take-while (fn [[prefix]] (bytes/= prefix cmp-key)))
-        (map (fn [[_ id]] (resource-as-of/resource-handle context tid id)))
+        (map (fn [[_ id]] (rao/resource-handle context tid id)))
         (remove nil?)
         (remove rh/deleted?))
       (i/keys cri codec/decode-compartment-resource-type-key start-key))))
@@ -104,6 +102,6 @@
   [context compartment tid clauses]
   (let [[[search-param _ _ values] & other-clauses] clauses]
     (coll/eduction
-      (other-clauses-filter context tid other-clauses)
+      (other-clauses-filter context other-clauses)
       (search-param/compartment-resource-handles
         search-param context compartment tid values))))
