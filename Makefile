@@ -5,7 +5,7 @@ $(MODULES):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 lint-root:
-	clj-kondo --lint src test
+	clj-kondo --lint src test deps.edn
 
 lint: $(MODULES) lint-root
 
