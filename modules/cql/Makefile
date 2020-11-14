@@ -1,5 +1,5 @@
 lint:
-	clj-kondo --lint src test
+	clj-kondo --lint src test deps.edn
 
 cql-test:
 	wget -P cql-test -q https://raw.githubusercontent.com/HL7/cql/v1.4-ballot/tests/cql/CqlAggregateFunctionsTest.xml
