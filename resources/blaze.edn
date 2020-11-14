@@ -283,7 +283,7 @@
    [:blaze.db.kv/rocksdb :blaze.db/index-kv-store]
    {:dir #blaze/cfg ["INDEX_DB_DIR" string? "index"]
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
-    :stats #blaze/ref :blaze.db.kv.rocksdb/stats
+    :stats #blaze/ref :blaze.db.index-kv-store/stats
     :opts
     {:max-background-jobs
      #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
@@ -376,6 +376,8 @@
       :level0-file-num-compaction-trigger 2
       :max-bytes-for-level-base-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+
+   [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store/stats] {}
 
    ;;
    ;; Local Transaction Log for Single Node Deployments
@@ -403,7 +405,7 @@
    [:blaze.db.kv/rocksdb :blaze.db/transaction-kv-store]
    {:dir #blaze/cfg ["TRANSACTION_DB_DIR" string? "transaction"]
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
-    :stats #blaze/ref :blaze.db.kv.rocksdb/stats
+    :stats #blaze/ref :blaze.db.transaction-kv-store/stats
     :opts
     {:max-background-jobs
      #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
@@ -417,6 +419,8 @@
       :max-bytes-for-level-base-in-mb 256
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
+   [:blaze.db.kv.rocksdb/stats :blaze.db.transaction-kv-store/stats] {}
+
    ;;
    ;; Key-Value Resource Store
    ;;
@@ -429,7 +433,7 @@
    [:blaze.db.kv/rocksdb :blaze.db/resource-kv-store]
    {:dir #blaze/cfg ["RESOURCE_DB_DIR" string? "resource"]
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
-    :stats #blaze/ref :blaze.db.kv.rocksdb/stats
+    :stats #blaze/ref :blaze.db.resource-kv-store/stats
     :opts
     {:max-background-jobs
      #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
@@ -445,13 +449,16 @@
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :bloom-filter? true}}}
 
+   [:blaze.db.kv.rocksdb/stats :blaze.db.resource-kv-store/stats] {}
+
    :blaze.db.kv.rocksdb/block-cache
    {:size-in-mb #blaze/cfg ["DB_BLOCK_CACHE_SIZE" int? 128]}
 
-   :blaze.db.kv.rocksdb/stats {}
-
    :blaze.db.kv.rocksdb/stats-collector
-   {:stats #blaze/ref :blaze.db.kv.rocksdb/stats}}
+   {:stats
+    [["index" #blaze/ref :blaze.db.index-kv-store/stats]
+     ["transaction" #blaze/ref :blaze.db.transaction-kv-store/stats]
+     ["resource" #blaze/ref :blaze.db.resource-kv-store/stats]]}}
 
   :distributed
   {
@@ -464,7 +471,7 @@
    [:blaze.db.kv/rocksdb :blaze.db/index-kv-store]
    {:dir #blaze/cfg ["INDEX_DB_DIR" string?]
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
-    :stats #blaze/ref :blaze.db.kv.rocksdb/stats
+    :stats #blaze/ref :blaze.db.index-kv-store/stats
     :opts
     {:max-background-jobs
      #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
@@ -561,10 +568,11 @@
    :blaze.db.kv.rocksdb/block-cache
    {:size-in-mb #blaze/cfg ["DB_BLOCK_CACHE_SIZE" int? 128]}
 
-   :blaze.db.kv.rocksdb/stats {}
+   [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store/stats] {}
 
    :blaze.db.kv.rocksdb/stats-collector
-   {:stats #blaze/ref :blaze.db.kv.rocksdb/stats}
+   {:stats
+    [["index" #blaze/ref :blaze.db.index-kv-store/stats]]}
 
    ;;
    ;; Kafka Transaction Log
