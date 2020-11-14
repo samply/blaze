@@ -11,6 +11,9 @@
     [java.nio ByteBuffer]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (f)

@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.db.kv :as kv]
+    [blaze.db.kv.rocksdb.metrics :as metrics]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -11,12 +12,11 @@
     [java.lang AutoCloseable]
     [java.io Closeable]
     [java.util ArrayList]
-    [io.prometheus.client Collector CounterMetricFamily]
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
      DBOptions ColumnFamilyDescriptor CompressionType ColumnFamilyOptions
      BlockBasedTableConfig Statistics LRUCache BloomFilter CompactRangeOptions
-     TickerType Snapshot ReadOptions]))
+     Snapshot ReadOptions]))
 
 
 (set! *warn-on-reflection* true)
@@ -261,67 +261,6 @@
         (.close db)))))
 
 
-(defn- stats-collector [^Statistics stats]
-  (proxy [Collector] []
-    (collect []
-      [(CounterMetricFamily.
-         "blaze_rocksdb_block_cache_miss_total"
-         "blaze_rocksdb_block_cache_miss_total"
-         (double (.getTickerCount stats TickerType/BLOCK_CACHE_MISS)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_block_cache_hit_total"
-         "blaze_rocksdb_block_cache_hit_total"
-         (double (.getTickerCount stats TickerType/BLOCK_CACHE_HIT)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_keys_read_total"
-         "blaze_rocksdb_keys_read_total"
-         (double (.getTickerCount stats TickerType/NUMBER_KEYS_READ)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_keys_written_total"
-         "blaze_rocksdb_keys_written_total"
-         (double (.getTickerCount stats TickerType/NUMBER_KEYS_WRITTEN)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_keys_updated_total"
-         "blaze_rocksdb_keys_updated_total"
-         (double (.getTickerCount stats TickerType/NUMBER_KEYS_UPDATED)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_seek_total"
-         "blaze_rocksdb_seek_total"
-         (double (.getTickerCount stats TickerType/NUMBER_DB_SEEK)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_next_total"
-         "blaze_rocksdb_next_total"
-         (double (.getTickerCount stats TickerType/NUMBER_DB_NEXT)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_prev_total"
-         "blaze_rocksdb_prev_total"
-         (double (.getTickerCount stats TickerType/NUMBER_DB_PREV)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_file_open_total"
-         "blaze_rocksdb_file_open_total"
-         (double (.getTickerCount stats TickerType/NO_FILE_OPENS)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_file_close_total"
-         "blaze_rocksdb_file_close_total"
-         (double (.getTickerCount stats TickerType/NO_FILE_CLOSES)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_file_error_total"
-         "blaze_rocksdb_file_error_total"
-         (double (.getTickerCount stats TickerType/NO_FILE_ERRORS)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_bloom_filter_useful_total"
-         "Number of times bloom filter has avoided file reads."
-         (double (.getTickerCount stats TickerType/BLOOM_FILTER_USEFUL)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_bloom_filter_full_positive_total"
-         "Number of times bloom FullFilter has not avoided the reads."
-         (double (.getTickerCount stats TickerType/BLOOM_FILTER_FULL_POSITIVE)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_bloom_filter_full_true_positive_total"
-         "Number of times bloom FullFilter has not avoided the reads and data actually exist."
-         (double (.getTickerCount stats TickerType/BLOOM_FILTER_FULL_TRUE_POSITIVE)))])))
-
-
 (defmethod ig/init-key ::block-cache
   [_ {:keys [size-in-mb] :or {size-in-mb 128}}]
   (log/info (format "Init RocksDB block cache of %d MB" size-in-mb))
@@ -376,6 +315,7 @@
 
 (defmethod ig/init-key ::stats-collector
   [_ {:keys [stats]}]
-  (stats-collector stats))
+  (metrics/stats-collector stats))
+
 
 (derive ::stats-collector :blaze.metrics/collector)

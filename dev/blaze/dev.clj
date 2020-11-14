@@ -57,9 +57,15 @@
   (log/set-level! :info)
   )
 
+;; Resource Cache
 (comment
   (str (resource-cache/stats (:blaze.db/resource-cache system)))
   (resource-cache/invalidate-all! (:blaze.db/resource-cache system))
+  )
+
+;; RocksDB Stats
+(comment
+  (.reset (get system [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store/stats]))
   )
 
 ;; Node
