@@ -5162,41 +5162,36 @@
 ;; TODO: only implemented as binary operator because it's binary in CQL.
 (deftest compile-intersect-test
   (testing "List"
-    (are [x y res] (= res (compile {} (elm/intersect [x y])))
-      #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] []
-      #elm/list [#elm/integer "1"] #elm/list [#elm/integer "1"] [1]
-      #elm/list [#elm/integer "1"] #elm/list [#elm/integer "2"] []
+    (are [x y res] (= res (compile-binop elm/intersect elm/list x y))
+      [#elm/integer "1"] [#elm/integer "1"] [1]
+      [#elm/integer "1"] [#elm/integer "2"] []
 
-      #elm/list [#elm/integer "1"]
-      #elm/list [#elm/integer "1" #elm/integer "2"]
-      [1]
+      [#elm/integer "1"] [#elm/integer "1" #elm/integer "2"] [1]
 
-      #elm/list [#elm/integer "1" #elm/integer "2"]
-      #elm/list [#elm/integer "1"]
-      [1])
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1"] [1])
 
-    (testing-binary-null elm/intersect #elm/list []))
+    (testing-binary-null elm/intersect #elm/list[]))
 
   (testing "Interval"
-    (are [x y res] (= res (compile {} (elm/intersect [x y])))
-      #elm/interval [#elm/integer "1" #elm/integer "2"]
-      #elm/interval [#elm/integer "2" #elm/integer "3"]
+    (are [x y res] (= res (compile-binop elm/intersect elm/interval x y))
+      [#elm/integer "1" #elm/integer "2"]
+      [#elm/integer "2" #elm/integer "3"]
       (interval 2 2)
 
-      #elm/interval [#elm/integer "2" #elm/integer "3"]
-      #elm/interval [#elm/integer "1" #elm/integer "2"]
+      [#elm/integer "2" #elm/integer "3"]
+      [#elm/integer "1" #elm/integer "2"]
       (interval 2 2)
 
-      #elm/interval [#elm/integer "1" #elm/integer "10"]
-      #elm/interval [#elm/integer "5" #elm/integer "8"]
+      [#elm/integer "1" #elm/integer "10"]
+      [#elm/integer "5" #elm/integer "8"]
       (interval 5 8)
 
-      #elm/interval [#elm/integer "1" #elm/integer "10"]
-      #elm/interval [#elm/integer "5" {:type "Null"} :>]
+      [#elm/integer "1" #elm/integer "10"]
+      [#elm/integer "5" {:type "Null"} :>]
       nil
 
-      #elm/interval [#elm/integer "1" #elm/integer "2"]
-      #elm/interval [#elm/integer "3" #elm/integer "4"]
+      [#elm/integer "1" #elm/integer "2"]
+      [#elm/integer "3" #elm/integer "4"]
       nil)
 
     (testing-binary-null elm/intersect interval-zero)))
