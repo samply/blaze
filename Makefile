@@ -1,4 +1,4 @@
-VERSION := "0.10.0-alpha.6"
+VERSION := "0.10.0-alpha.7"
 MODULES := $(wildcard modules/*)
 
 $(MODULES):
