@@ -1,10 +1,14 @@
-(ns blaze.db.impl.byte-string
+(ns blaze.byte-string
+  (:require
+    [cheshire.generate :refer [JSONable]])
   (:import
     [com.google.common.io BaseEncoding]
     [com.google.protobuf ByteString]
+    [com.fasterxml.jackson.core JsonGenerator]
     [java.io Writer]
-    [java.nio ByteBuffer])
-  (:refer-clojure :exclude [concat nth subs < <= > >=]))
+    [java.nio ByteBuffer]
+    [java.nio.charset Charset])
+  (:refer-clojure :exclude [concat empty nth subs < <= > >=]))
 
 
 (set! *warn-on-reflection* true)
@@ -15,14 +19,31 @@
   (instance? ByteString x))
 
 
-(defn from-bytes [bs]
-  (ByteString/copyFrom ^bytes bs))
+(def empty
+  ByteString/EMPTY)
+
+
+(defn from-byte-array
+  ([bs]
+   (ByteString/copyFrom ^bytes bs))
+  ([bs offset size]
+   (ByteString/copyFrom ^bytes bs offset size)))
+
+
+(defn from-utf8-string [s]
+  (ByteString/copyFromUtf8 s))
+
+
+(defn from-string [s charset]
+  (ByteString/copyFrom ^String s ^Charset charset))
 
 
 (defn from-byte-buffer
   "Returns the remaining bytes from `byte-buffer` as byte string."
-  [byte-buffer]
-  (ByteString/copyFrom ^ByteBuffer byte-buffer))
+  ([byte-buffer]
+   (ByteString/copyFrom ^ByteBuffer byte-buffer))
+  ([byte-buffer size]
+   (ByteString/copyFrom ^ByteBuffer byte-buffer ^int size)))
 
 
 (defn from-hex [s]
@@ -33,7 +54,9 @@
   (.byteAt ^ByteString bs index))
 
 
-(defn size [bs]
+(defn size
+  {:inline (fn [bs] `(.size ~(vary-meta bs assoc :tag `ByteString)))}
+  [bs]
   (.size ^ByteString bs))
 
 
@@ -78,12 +101,22 @@
   (.toByteArray ^ByteString bs))
 
 
+(defn to-string [bs charset]
+  (.toString ^ByteString bs ^Charset charset))
+
+
 (defn as-read-only-byte-buffer [bs]
   (.asReadOnlyByteBuffer ^ByteString bs))
 
 
+(extend-protocol JSONable
+  ByteString
+  (to-json [byte-string jg]
+    (.writeBinary ^JsonGenerator jg (.toByteArray byte-string))))
+
+
 (defmethod print-method ByteString [^ByteString bs ^Writer w]
-  (.write w "#google/byte-string\"")
+  (.write w "#blaze/byte-string\"")
   (.write w ^String (hex bs))
   (.write w "\""))
 
@@ -92,3 +125,4 @@
   (.write w "#=(com.google.protobuf.ByteString/copyFrom ")
   (print-dup (.toByteArray bs) w)
   (.write w ")"))
+

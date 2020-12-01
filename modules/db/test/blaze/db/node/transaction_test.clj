@@ -7,6 +7,9 @@
     [juxt.iota :refer [given]]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (f)
@@ -31,9 +34,9 @@
       [0 0 :op] := "create"
       [0 0 :type] := "Observation"
       [0 0 :id] := "0"
-      [0 0 :hash str] := "188c7598c8ab1dbdcf94acd7b60f3e324fbe7535cbb6a56a89c2977f4a30f9ce"
+      [0 0 :hash] := #blaze/byte-string"188C7598C8AB1DBDCF94ACD7B60F3E324FBE7535CBB6A56A89C2977F4A30F9CE"
       [0 0 :refs] := [["Patient" "0"]]
-      [1 0 0 str] := "188c7598c8ab1dbdcf94acd7b60f3e324fbe7535cbb6a56a89c2977f4a30f9ce"
+      [1 0 0] := #blaze/byte-string"188C7598C8AB1DBDCF94ACD7B60F3E324FBE7535CBB6A56A89C2977F4A30F9CE"
       [1 0 1] := {:fhir/type :fhir/Observation :id "0"
                   :subject
                   {:fhir/type :fhir/Reference
@@ -44,8 +47,8 @@
       [0 0 :op] := "put"
       [0 0 :type] := "Patient"
       [0 0 :id] := "0"
-      [0 0 :hash str] := "6f04185daea9350f2e9d1d80ddfcd1890b0da1300cdd83a3aeaf21d637442e9a"
-      [1 0 0 str] := "6f04185daea9350f2e9d1d80ddfcd1890b0da1300cdd83a3aeaf21d637442e9a"
+      [0 0 :hash] := #blaze/byte-string"6F04185DAEA9350F2E9D1D80DDFCD1890B0DA1300CDD83A3AEAF21D637442E9A"
+      [1 0 0] := #blaze/byte-string"6F04185DAEA9350F2E9D1D80DDFCD1890B0DA1300CDD83A3AEAF21D637442E9A"
       [1 0 1] := {:fhir/type :fhir/Patient :id "0"}))
 
   (testing "one put with matches"

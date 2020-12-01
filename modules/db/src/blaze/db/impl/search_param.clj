@@ -1,10 +1,12 @@
 (ns blaze.db.impl.search-param
   (:require
-    [blaze.anomaly :refer [conj-anom]]
+    [blaze.anomaly :refer [conj-anom when-ok]]
+    [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
-    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.composite]
     [blaze.db.impl.search-param.date]
@@ -37,10 +39,14 @@
 
 (defn resource-handles
   "Returns a reducible collection of resource handles."
-  [search-param context tid modifier compiled-values start-id]
-  (coll/eduction
-    (mapcat #(p/-resource-handles search-param context tid modifier % start-id))
-    compiled-values))
+  ([search-param context tid modifier compiled-values]
+   (coll/eduction
+     (mapcat #(p/-resource-handles search-param context tid modifier %))
+     compiled-values))
+  ([search-param context tid modifier compiled-values start-id]
+   (coll/eduction
+     (mapcat #(p/-resource-handles search-param context tid modifier % start-id))
+     compiled-values)))
 
 
 (defn- compartment-keys
@@ -94,44 +100,29 @@
   (case type
     "date"
     (p/-index-entries search-param stub-resolver hash resource linked-compartments)
-    (let [{:keys [id]} resource
-          type (name (fhir-spec/fhir-type resource))
-          tid (codec/tid type)
-          id-bytes (codec/id-bytes id)]
-      (into
-        []
-        (mapcat
-          (fn search-param-entry [[modifier value]]
-            (log/trace "search-param-entry" code type id hash (bs/hex value))
-            (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-              (into
-                [[:search-param-value-index
-                  (codec/sp-value-resource-key
-                    c-hash
-                    tid
-                    value
-                    id-bytes
-                    hash)
-                  bytes/empty]
-                 [:resource-value-index
-                  (codec/resource-sp-value-key
-                    tid
-                    id-bytes
-                    hash
-                    c-hash
-                    value)
-                  bytes/empty]]
-                (map
-                  (fn [[code id]]
-                    [:compartment-search-param-value-index
-                     (codec/compartment-search-param-value-key
-                       (codec/c-hash code)
-                       (codec/id-bytes id)
-                       c-hash
-                       tid
-                       value
-                       id-bytes
-                       hash)
-                     bytes/empty]))
-                linked-compartments))))
-        (p/-index-values search-param stub-resolver resource)))))
+    (when-ok [values (p/-index-values search-param stub-resolver resource)]
+      (let [{:keys [id]} resource
+            type (name (fhir-spec/fhir-type resource))
+            tid (codec/tid type)]
+        (into
+          []
+          (mapcat
+            (fn search-param-entry [[modifier value]]
+              (log/trace "search-param-entry" code type id (bs/hex hash) (bs/hex value))
+              (let [c-hash (c-hash-w-modifier c-hash code modifier)
+                    id (codec/id-byte-string id)]
+                (into
+                  [(sp-vr/index-entry c-hash tid value id hash)
+                   (r-sp-v/index-entry tid id hash c-hash value)]
+                  (map
+                    (fn [[code comp-id]]
+                      (c-sp-vr/index-entry
+                        [(codec/c-hash code)
+                         (codec/id-byte-string comp-id)]
+                        c-hash
+                        tid
+                        value
+                        id
+                        hash)))
+                  linked-compartments))))
+          values)))))

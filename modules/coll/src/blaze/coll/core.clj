@@ -1,7 +1,11 @@
 (ns blaze.coll.core
   (:import
-    [clojure.lang IReduceInit Sequential])
-  (:refer-clojure :exclude [eduction empty? first]))
+    [clojure.lang Counted IReduceInit Seqable Sequential])
+  (:refer-clojure :exclude [count eduction empty? first]))
+
+
+(set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 
 (defn first
@@ -23,7 +27,13 @@
     Sequential
     IReduceInit
     (reduce [_ f init]
-      (transduce xform (completing f) init coll))))
+      (transduce xform (completing f) init coll))
+    Seqable
+    (seq [coll]
+      (.seq ^Seqable (persistent! (.reduce coll conj! (transient [])))))
+    Counted
+    (count [coll]
+      (.reduce coll (fn ^long [^long sum _] (inc sum)) 0))))
 
 
 (defn first-by

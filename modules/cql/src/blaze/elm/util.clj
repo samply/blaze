@@ -9,27 +9,3 @@
   [s]
   (when-let [[_ ns name] (some->> s (re-matches #"\{(.+)\}(.+)"))]
     [ns name]))
-
-
-(defn named-type-specifier?
-  {:arglists '([type-specifier])}
-  [{:keys [type]}]
-  (= "NamedTypeSpecifier" type))
-
-
-(defn tuple-type-specifier?
-  {:arglists '([type-specifier])}
-  [{:keys [type]}]
-  (= "TupleTypeSpecifier" type))
-
-
-(defn choice-type-specifier?
-  {:arglists '([type-specifier])}
-  [{:keys [type]}]
-  (= "ChoiceTypeSpecifier" type))
-
-
-(defn list-type-specifier?
-  {:arglists '([type-specifier])}
-  [{:keys [type]}]
-  (= "ListTypeSpecifier" type))

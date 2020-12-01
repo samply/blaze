@@ -1,5 +1,6 @@
 (ns blaze.db.resource-store.kv-test
   (:require
+    [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
@@ -14,8 +15,6 @@
     [clojure.test :as test :refer [deftest is testing]]
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
-  (:import
-    [com.google.common.hash HashCode])
   (:refer-clojure :exclude [hash]))
 
 
@@ -31,7 +30,7 @@
 
 (defn hash [s]
   (assert (= 1 (count s)))
-  (HashCode/fromString (str/repeat s 64)))
+  (bs/from-hex (str/repeat s 64)))
 
 
 (defn invalid-content
@@ -50,7 +49,7 @@
           hash (hash/generate content)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (hash/encode hash) (encode-resource content))
+      (kv/put! kv-store (bs/to-byte-array hash) (encode-resource content))
 
       (is (= content @(rs/get store hash)))))
 
@@ -58,7 +57,7 @@
     (let [hash (hash "0")
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (hash/encode hash) (invalid-content))
+      (kv/put! kv-store (bs/to-byte-array hash) (invalid-content))
 
       (try
         @(rs/get store hash)
@@ -93,7 +92,7 @@
           hash (hash/generate content)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (hash/encode hash) (encode-resource content))
+      (kv/put! kv-store (bs/to-byte-array hash) (encode-resource content))
 
       (is (= {hash content} @(rs/multi-get store [hash])))))
 
@@ -104,8 +103,8 @@
           hash-1 (hash/generate content-1)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (hash/encode hash-0) (encode-resource content-0))
-      (kv/put! kv-store (hash/encode hash-1) (encode-resource content-1))
+      (kv/put! kv-store (bs/to-byte-array hash-0) (encode-resource content-0))
+      (kv/put! kv-store (bs/to-byte-array hash-1) (encode-resource content-1))
 
       (is (= {hash-0 content-0 hash-1 content-1}
              @(rs/multi-get store [hash-0 hash-1])))))
@@ -114,7 +113,7 @@
     (let [hash (hash "0")
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (hash/encode hash) (invalid-content))
+      (kv/put! kv-store (bs/to-byte-array hash) (invalid-content))
 
       (try
         @(rs/multi-get store [hash])

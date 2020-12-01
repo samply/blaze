@@ -5,7 +5,7 @@
   ConcurrentHashMap."
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.impl.metrics :as metrics]
+    [blaze.db.cache-collector :as cc]
     [blaze.db.resource-cache.spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.spec]
@@ -14,7 +14,7 @@
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache
-     AsyncCache AsyncCacheLoader AsyncLoadingCache Cache Caffeine]
+     AsyncCache AsyncCacheLoader AsyncLoadingCache Caffeine]
     [java.util.concurrent ForkJoinPool]))
 
 
@@ -41,16 +41,16 @@
   rs/ResourceStore
   (-put [_ entries]
     (-> (rs/put resource-store entries)
-        (ac/when-complete-async (put-stored cache entries) put-executor))))
+        (ac/when-complete-async (put-stored cache entries) put-executor)))
+
+  cc/StatsCache
+  (-stats [_]
+    (.stats (.synchronous cache))))
 
 
 (defn invalidate-all! [resource-cache]
   (-> (.synchronous ^AsyncLoadingCache (.cache ^ResourceCache resource-cache))
       (.invalidateAll)))
-
-
-(defn stats [resource-cache]
-  (.stats ^Cache (.synchronous ^AsyncCache (.cache ^ResourceCache resource-cache))))
 
 
 (defn new-resource-cache
@@ -80,11 +80,3 @@
   [_ {:keys [resource-store max-size] :or {max-size 0}}]
   (log/info "Create resource cache with a size of" max-size "resources")
   (new-resource-cache resource-store max-size))
-
-
-(defmethod ig/init-key ::collector
-  [_ {:keys [cache]}]
-  (metrics/cache-collector "resource-cache" (.cache ^ResourceCache cache)))
-
-
-(derive ::collector :blaze.metrics/collector)

@@ -7,7 +7,7 @@
     [blaze.fhir.operation.evaluate-measure.measure.spec]
     [blaze.fhir.response.create :as response]
     [blaze.handler.util :as handler-util]
-    [blaze.uuid :refer [random-uuid]]
+    [blaze.luid :refer [luid]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [reitit.core :as reitit]
@@ -51,7 +51,7 @@
               (ac/completed-future (ring/response (:resource result)))
 
               (= :post request-method)
-              (let [id (str (random-uuid))
+              (let [id (luid)
                     return-preference (handler-util/preference headers "return")]
                 (-> (d/transact node (tx-ops result id))
                     ;; it's important to switch to the transaction
@@ -99,8 +99,8 @@
       (if (::anom/category result)
         (ac/completed-future (handler-util/error-response result))
         (let [db (d/db node)]
-          (if-let [measure-handle (find-measure-handle db request)]
-            (if (d/deleted? measure-handle)
+          (if-let [{:keys [op] :as measure-handle} (find-measure-handle db request)]
+            (if (identical? :delete op)
               (-> (handler-util/operation-outcome
                     {:fhir/issue "deleted"})
                   (ring/response)

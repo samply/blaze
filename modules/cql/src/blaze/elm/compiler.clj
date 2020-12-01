@@ -15,7 +15,6 @@
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.elm.aggregates :as aggregates]
-    [blaze.elm.boolean]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.function :as function]
     [blaze.elm.compiler.protocols :refer [Expression -eval]]
@@ -35,9 +34,11 @@
     [blaze.elm.quantity :refer [quantity quantity?]]
     [blaze.elm.spec]
     [blaze.elm.string :as string]
+    [blaze.elm.tuple]
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.util :as elm-util]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [cuerdas.core :as cuerdas])
@@ -54,7 +55,7 @@
 (extend-protocol p/Equal
   Object
   (equal [x y]
-    (some->> y (= x))))
+    (system/equals x y)))
 
 
 (extend-protocol p/Equivalent
@@ -85,6 +86,12 @@
   Comparable
   (less-or-equal [x y]
     (some->> y (.compareTo x) (>= 0))))
+
+
+(extend-protocol p/ToString
+  Object
+  (to-string [x]
+    (str x)))
 
 
 (defmulti compile*
@@ -397,7 +404,10 @@
 
 (defmethod compile* :elm.compiler.type/tuple
   [context {elements :element}]
-  (->TupleExpression (compile-elements context elements)))
+  (let [elements (compile-elements context elements)]
+    (if (every? static? (vals elements))
+      elements
+      (->TupleExpression elements))))
 
 
 ;; 2.2. Instance
@@ -610,7 +620,7 @@
             (if-some [expression (get library-context name)]
               (mapv
                 #(-eval expression context % nil)
-                (d/list-resource-handles db def-eval-context))
+                (d/type-list db def-eval-context))
               (throw-anom
                 ::anom/incorrect
                 (format "Expression `%s` not found." name)
@@ -1446,19 +1456,28 @@
     (throw-anom ::anom/incorrect (format "Year `%d` out of range." year))))
 
 
-(defn- to-year [year]
-  (check-year-range year)
-  (Year/of year))
+(defn- date
+  ([year]
+   (check-year-range year)
+   (Year/of year))
+  ([year month]
+   (check-year-range year)
+   (YearMonth/of ^long year ^long month))
+  ([year month day]
+   (check-year-range year)
+   (LocalDate/of ^long year ^long month ^long day)))
 
 
-(defn- to-year-month [year month]
-  (check-year-range year)
-  (YearMonth/of ^long year ^long month))
-
-
-(defn- to-local-date [year month day]
-  (check-year-range year)
-  (LocalDate/of ^long year ^long month ^long day))
+(defn- date-time
+  ([year]
+   (check-year-range year)
+   (system/date-time year))
+  ([year month]
+   (check-year-range year)
+   (system/date-time year month))
+  ([year month day]
+   (check-year-range year)
+   (system/date-time year month day)))
 
 
 (defn- to-local-date-time
@@ -1486,7 +1505,13 @@
 (defrecord YearExpression [year]
   Expression
   (-eval [_ context resource scope]
-    (some-> (-eval year context resource scope) to-year)))
+    (some-> (-eval year context resource scope) date)))
+
+
+(defrecord DateTimeYearExpression [year]
+  Expression
+  (-eval [_ context resource scope]
+    (some-> (-eval year context resource scope) date-time)))
 
 
 (defrecord YearMonthExpression [year month]
@@ -1494,8 +1519,17 @@
   (-eval [_ context resource scope]
     (when-let [year (-eval year context resource scope)]
       (if-let [month (-eval month context resource scope)]
-        (to-year-month year month)
-        (to-year year)))))
+        (date year month)
+        (date year)))))
+
+
+(defrecord DateTimeYearMonthExpression [year month]
+  Expression
+  (-eval [_ context resource scope]
+    (when-let [year (-eval year context resource scope)]
+      (if-let [month (-eval month context resource scope)]
+        (date-time year month)
+        (date-time year)))))
 
 
 (defrecord LocalDateExpression [year month day]
@@ -1504,9 +1538,20 @@
     (when-let [year (-eval year context resource scope)]
       (if-let [month (-eval month context resource scope)]
         (if-let [day (-eval day context resource scope)]
-          (to-local-date year month day)
-          (to-year-month year month))
-        (to-year year)))))
+          (date year month day)
+          (date year month))
+        (date year)))))
+
+
+(defrecord DateTimeYearMonthDayExpression [year month day]
+  Expression
+  (-eval [_ context resource scope]
+    (when-let [year (-eval year context resource scope)]
+      (if-let [month (-eval month context resource scope)]
+        (if-let [day (-eval day context resource scope)]
+          (date-time year month day)
+          (date-time year month))
+        (date-time year)))))
 
 
 ;; 18.6. Date
@@ -1517,19 +1562,19 @@
         day (some->> day (compile context))]
     (cond
       (and (int? day) (int? month) (int? year))
-      (to-local-date year month day)
+      (date year month day)
 
       (some? day)
       (->LocalDateExpression year month day)
 
       (and (int? month) (int? year))
-      (to-year-month year month)
+      (date year month)
 
       (some? month)
       (->YearMonthExpression year month)
 
       (int? year)
-      (to-year year)
+      (date year)
 
       :else
       (some-> year ->YearExpression))))
@@ -1620,22 +1665,22 @@
               (or (-eval millisecond context resource scope) 0))))
 
         (and (int? day) (int? month) (int? year))
-        (to-local-date year month day)
+        (date-time year month day)
 
         (some? day)
-        (->LocalDateExpression year month day)
+        (->DateTimeYearMonthDayExpression year month day)
 
         (and (int? month) (int? year))
-        (to-year-month year month)
+        (date-time year month)
 
         (some? month)
-        (->YearMonthExpression year month)
+        (->DateTimeYearMonthExpression year month)
 
         (int? year)
-        (to-year year)
+        (date-time year)
 
         :else
-        (some-> year ->YearExpression)))))
+        (some-> year ->DateTimeYearExpression)))))
 
 
 ;; 18.9. DateTimeComponentFrom

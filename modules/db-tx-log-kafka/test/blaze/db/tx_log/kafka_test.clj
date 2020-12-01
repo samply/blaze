@@ -1,15 +1,17 @@
 (ns blaze.db.tx-log.kafka-test
   (:require
+    [blaze.byte-string :as bs]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka :as kafka :refer [new-kafka-tx-log]]
     [blaze.fhir.hash :as hash]
     [cheshire.core :as cheshire]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [java-time :as jt]
     [juxt.iota :refer [given]])
   (:import
     [java.io Closeable]
-    [java.time Duration Instant]
+    [java.time Instant]
     [org.apache.kafka.clients.consumer Consumer ConsumerRecord]
     [org.apache.kafka.clients.producer Producer RecordMetadata]
     [org.apache.kafka.common TopicPartition]
@@ -70,13 +72,13 @@
                (throw (Error.))))
            tx-log/Queue
            (-poll [_ timeout]
-             (when-not (= (Duration/ofMillis 10) timeout)
+             (when-not (= (jt/millis 10) timeout)
                (throw (Error.))))
            Closeable
            (close [_])))]
       (with-open [tx-log (new-kafka-tx-log bootstrap-servers 1048576)
                   queue (tx-log/new-queue tx-log 1)]
-        (is (empty? (tx-log/poll queue (Duration/ofMillis 10))))))))
+        (is (empty? (tx-log/poll queue (jt/millis 10))))))))
 
 
 (defn invalid-cbor-content
@@ -99,7 +101,7 @@
     (is (nil? (.deserialize kafka/deserializer nil (cheshire/generate-cbor {:a 1})))))
 
   (testing "success"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash (hash/encode hash-patient-0)}]
+    (let [cmd {:op "create" :type "Patient" :id "0" :hash (bs/to-byte-array hash-patient-0)}]
       (given (first (.deserialize kafka/deserializer nil (cheshire/generate-cbor [cmd])))
         :op := "create"
         :type := "Patient"

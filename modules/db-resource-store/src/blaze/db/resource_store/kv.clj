@@ -2,18 +2,16 @@
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
+    [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]
-    [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
     [cheshire.core :as cheshire]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [taoensso.timbre :as log])
-  (:import
-    [com.google.common.hash HashCode]))
+    [taoensso.timbre :as log]))
 
 
 (defn- parse-msg [hash e]
@@ -35,22 +33,21 @@
 (def ^:private entry-thawer
   (map
     (fn [[k v]]
-      (let [hash (HashCode/fromBytes k)]
-        [hash (fhir-spec/conform-json (parse-cbor v hash))]))))
+      [(bs/from-byte-array k) (fhir-spec/conform-json (parse-cbor v hash))])))
 
 
 (def ^:private entry-freezer
   (map
     (fn [[k v]]
-      [(hash/encode k) (cheshire/generate-cbor (fhir-spec/unform-cbor v))])))
+      [(bs/to-byte-array k) (cheshire/generate-cbor (fhir-spec/unform-cbor v))])))
 
 
 (defn- get-content [kv-store hash]
-  (kv/get kv-store (hash/encode hash)))
+  (kv/get kv-store (bs/to-byte-array hash)))
 
 
 (defn- multi-get-content [kv-store hashes]
-  (kv/multi-get kv-store (mapv #(hash/encode %) hashes)))
+  (kv/multi-get kv-store (mapv bs/to-byte-array hashes)))
 
 
 (deftype KvResourceStore [kv-store]

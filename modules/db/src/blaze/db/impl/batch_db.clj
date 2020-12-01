@@ -6,10 +6,12 @@
   (:require
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
+    [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.index.resource-as-of :as rao]
-    [blaze.db.impl.index.system-as-of :as system-as-of]
+    [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
-    [blaze.db.impl.index.type-as-of :as type-as-of]
+    [blaze.db.impl.index.t-by-instant :as ti]
+    [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.impl.protocols :as p]
     [blaze.db.kv :as kv])
@@ -28,28 +30,33 @@
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
-  (-resource-handle [_ type id]
-    (rao/resource-handle context (codec/tid type) (codec/id-bytes id)))
+  (-resource-handle [_ tid id]
+    ((:resource-handle context) tid id))
 
 
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
-  (-list-resource-handles [_ type start-id]
-    (rao/type-list context (codec/tid type) (some-> start-id codec/id-bytes)))
+  (-type-list [_ tid]
+    (rao/type-list context tid))
 
-  (-type-total [_ type]
+  (-type-list [_ tid start-id]
+    (rao/type-list context tid start-id))
+
+  (-type-total [_ tid]
     (let [{:keys [snapshot t]} context]
       (with-open [iter (type-stats/new-iterator snapshot)]
-        (:total (type-stats/get! iter (codec/tid type) t) 0))))
+        (:total (type-stats/get! iter tid t) 0))))
 
 
 
   ;; ---- System-Level Functions ----------------------------------------------
 
-  (-system-list [_ start-type start-id]
-    (rao/system-list context (some-> start-type codec/tid)
-                     (some-> start-id codec/id-bytes)))
+  (-system-list [_]
+    (rao/system-list context))
+
+  (-system-list [_ start-tid start-id]
+    (rao/system-list context start-tid start-id))
 
   (-system-total [_]
     (let [{:keys [snapshot t]} context]
@@ -60,10 +67,11 @@
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
-  (-list-compartment-resource-handles [_ code id type start-id]
-    (let [compartment {:c-hash (codec/c-hash code) :res-id (codec/id-bytes id)}]
-      (index/compartment-list context compartment (codec/tid type)
-                              (some-> start-id codec/id-bytes))))
+  (-compartment-resource-handles [_ compartment tid]
+    (cr/resource-handles! context compartment tid))
+
+  (-compartment-resource-handles [_ compartment tid start-id]
+    (cr/resource-handles! context compartment tid start-id))
 
 
 
@@ -79,38 +87,35 @@
 
   ;; ---- Instance-Level History Functions ------------------------------------
 
-  (-instance-history [_ type id start-t since]
+  (-instance-history [_ tid id start-t since]
     (let [{:keys [snapshot raoi t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (index/t-by-instant snapshot)) 0)]
-      (rao/instance-history raoi (codec/tid type) id start-t end-t)))
+          end-t (or (some->> since (ti/t-by-instant snapshot)) 0)]
+      (rao/instance-history raoi tid id start-t end-t)))
 
-  (-total-num-of-instance-changes [_ type id since]
-    (let [{:keys [snapshot raoi t]} context
-          end-t (or (some->> since (index/t-by-instant snapshot)) 0)]
-      (rao/num-of-instance-changes raoi (codec/tid type)
-                                   (codec/id-bytes id) t end-t)))
+  (-total-num-of-instance-changes [_ tid id since]
+    (let [{:keys [snapshot resource-handle t]} context
+          end-t (or (some->> since (ti/t-by-instant snapshot)) 0)]
+      (rao/num-of-instance-changes resource-handle tid id t end-t)))
 
 
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
-  (-type-history [_ type start-t start-id since]
+  (-type-history [_ tid start-t start-id since]
     (let [{:keys [snapshot t]} context
-          tid (codec/tid type)
           start-t (if (some-> start-t (<= t)) start-t t)
-          start-id (some-> start-id codec/id-bytes)
-          end-t (or (some->> since (index/t-by-instant snapshot)) 0)]
+          end-t (or (some->> since (ti/t-by-instant snapshot)) 0)]
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [taoi (kv/new-iterator snapshot :type-as-of-index)]
-            (.reduce (type-as-of/type-history taoi tid start-t start-id end-t)
+            (.reduce (tao/type-history taoi tid start-t start-id end-t)
                      rf init))))))
 
   (-total-num-of-type-changes [_ type since]
     (let [{:keys [snapshot t]} context
           tid (codec/tid type)
-          end-t (some->> since (index/t-by-instant snapshot))]
+          end-t (some->> since (ti/t-by-instant snapshot))]
       (with-open [snapshot (kv/new-snapshot (:kv-store node))
                   iter (type-stats/new-iterator snapshot)]
         (- (:num-changes (type-stats/get! iter tid t) 0)
@@ -120,22 +125,19 @@
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-type start-id since]
+  (-system-history [_ start-t start-tid start-id since]
     (let [{:keys [snapshot t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
-          start-tid (some-> start-type codec/tid)
-          start-id (some-> start-id codec/id-bytes)
-          end-t (or (some->> since (index/t-by-instant snapshot)) 0)]
+          end-t (or (some->> since (ti/t-by-instant snapshot)) 0)]
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [saoi (kv/new-iterator snapshot :system-as-of-index)]
-            (.reduce (system-as-of/system-history saoi start-t start-tid
-                                                  start-id end-t)
+            (.reduce (sao/system-history saoi start-t start-tid start-id end-t)
                      rf init))))))
 
   (-total-num-of-system-changes [_ since]
     (let [{:keys [snapshot t]} context
-          end-t (some->> since (index/t-by-instant snapshot))]
+          end-t (some->> since (ti/t-by-instant snapshot))]
       (with-open [snapshot (kv/new-snapshot (:kv-store node))
                   iter (system-stats/new-iterator snapshot)]
         (- (:num-changes (system-stats/get! iter t) 0)
@@ -206,10 +208,9 @@
 (defrecord TypeQuery [tid clauses]
   p/Query
   (-execute [_ context]
-    (index/type-query context tid clauses nil))
+    (index/type-query context tid clauses))
   (-execute [_ context start-id]
-    (index/type-query context tid clauses
-                      (some-> start-id codec/id-bytes)))
+    (index/type-query context tid clauses (codec/id-byte-string start-id)))
   (-clauses [_]
     (decode-clauses clauses)))
 
@@ -217,9 +218,9 @@
 (defrecord EmptyTypeQuery [tid]
   p/Query
   (-execute [_ context]
-    (rao/type-list context tid nil))
+    (rao/type-list context tid))
   (-execute [_ context start-id]
-    (rao/type-list context tid (some-> start-id codec/id-bytes)))
+    (rao/type-list context tid (codec/id-byte-string start-id)))
   (-clauses [_]))
 
 
@@ -232,8 +233,8 @@
 (defrecord CompartmentQuery [c-hash tid clauses]
   p/Query
   (-execute [_ context arg1]
-    (let [compartment {:c-hash c-hash :res-id (codec/id-bytes arg1)}]
-      (index/compartment-query context compartment tid clauses)))
+    (index/compartment-query context [c-hash (codec/id-byte-string arg1)]
+                             tid clauses))
   (-clauses [_]
     (decode-clauses clauses)))
 
@@ -241,8 +242,7 @@
 (defrecord EmptyCompartmentQuery [c-hash tid]
   p/Query
   (-execute [_ context arg1]
-    (let [compartment {:c-hash c-hash :res-id (codec/id-bytes arg1)}]
-      (index/compartment-list context compartment tid nil)))
+    (cr/resource-handles! context [c-hash (codec/id-byte-string arg1)] tid))
   (-clauses [_]))
 
 
@@ -253,14 +253,16 @@
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^Closeable
-  [{:keys [kv-store] :as node} t]
+  [{:keys [kv-store rh-cache] :as node} t]
   (let [snapshot (kv/new-snapshot kv-store)]
     (->BatchDb
       node
-      {:snapshot snapshot
-       :raoi (kv/new-iterator snapshot :resource-as-of-index)
-       :svri (kv/new-iterator snapshot :search-param-value-index)
-       :rsvi (kv/new-iterator snapshot :resource-value-index)
-       :cri (kv/new-iterator snapshot :compartment-resource-type-index)
-       :csvri (kv/new-iterator snapshot :compartment-search-param-value-index)
-       :t t})))
+      (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
+        {:snapshot snapshot
+         :raoi raoi
+         :resource-handle (rao/resource-handle rh-cache raoi t)
+         :svri (kv/new-iterator snapshot :search-param-value-index)
+         :rsvi (kv/new-iterator snapshot :resource-value-index)
+         :cri (kv/new-iterator snapshot :compartment-resource-type-index)
+         :csvri (kv/new-iterator snapshot :compartment-search-param-value-index)
+         :t t}))))

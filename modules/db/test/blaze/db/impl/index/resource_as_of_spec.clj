@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index.resource-as-of-spec
   (:require
+    [blaze.byte-string-spec]
     [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-as-of :as rao]
@@ -11,48 +12,56 @@
     [clojure.spec.alpha :as s]))
 
 
+(s/fdef rao/encode-key
+  :args (s/cat :tid :blaze.db/tid :id :blaze.db/id-byte-string :t :blaze.db/t)
+  :ret bytes?)
+
+
 (s/fdef rao/type-list
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
-               :start-id (s/nilable :blaze.db/id-bytes))
+               :start-id (s/? :blaze.db/id-byte-string))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef rao/system-list
   :args (s/cat :context :blaze.db.impl.batch-db/context
-               :start-tid (s/nilable :blaze.db/tid)
-               :start-id (s/nilable :blaze.db/id-bytes))
+               :start (s/? (s/cat :start-tid :blaze.db/tid
+                                  :start-id :blaze.db/id-byte-string)))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef rao/instance-history
   :args (s/cat :raoi :blaze.db/kv-iterator
                :tid :blaze.db/tid
-               :id :blaze.resource/id
+               :id :blaze.db/id-byte-string
                :start-t :blaze.db/t
                :end-t :blaze.db/t)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
-(s/fdef rao/hash-state-t
-  :args (s/cat :raoi :blaze.db/kv-iterator
-               :tid :blaze.db/tid
-               :id :blaze.db/id-bytes
-               :t :blaze.db/t)
-  :ret (s/nilable (s/tuple :blaze.resource/hash :blaze.db/state :blaze.db/t)))
+(s/def ::resource-handle-fn
+  (s/fspec
+    :args
+    (s/cat
+      :tid :blaze.db/tid
+      :id :blaze.db/id-byte-string
+      :t (s/? :blaze.db/t))
+    :ret
+    (s/nilable :blaze.db/resource-handle)))
 
 
 (s/fdef rao/resource-handle
-  :args (s/cat :context :blaze.db.impl.batch-db/context
-               :tid :blaze.db/tid
-               :id :blaze.db/id-bytes)
-  :ret (s/nilable :blaze.db/resource-handle))
+  :args (s/cat :rh-cache :blaze.db/resource-handle-cache
+               :raoi :blaze.db/kv-iterator
+               :t :blaze.db/t)
+  :ret ::resource-handle-fn)
 
 
 (s/fdef rao/num-of-instance-changes
-  :args (s/cat :raoi :blaze.db/kv-iterator
+  :args (s/cat :resource-handle ::resource-handle-fn
                :tid :blaze.db/tid
-               :id :blaze.db/id-bytes
+               :id :blaze.db/id-byte-string
                :start-t :blaze.db/t
                :end-t :blaze.db/t)
   :ret nat-int?)

@@ -2,8 +2,7 @@
 
 
 (defprotocol Expression
-  (-eval [this context resource scope])
-  (-hash [this]))
+  (-eval [this context resource scope]))
 
 
 (defn expr? [x]
@@ -14,11 +13,7 @@
   nil
   (-eval [this _ _ _]
     this)
-  (-hash [this]
-    this)
 
   Object
   (-eval [this _ _ _]
-    this)
-  (-hash [this]
     this))

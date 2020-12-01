@@ -15,6 +15,8 @@
 
   (-seek [iter target])
 
+  (-seek-buffer [iter target])
+
   (-seek-for-prev [iter target])
 
   (-next [iter])
@@ -57,6 +59,17 @@
   The iterator will be valid if its source contains a key at or past `target`."
   [iter target]
   (-seek iter target))
+
+
+(defn seek-buffer!
+  "Positions `iter` at the first entry of its source whose key is at or past
+  `target`.
+
+  The `target` is a byte buffer describing a key or a key prefix to seek for.
+
+  The iterator will be valid if its source contains a key at or past `target`."
+  [iter target]
+  (-seek-buffer iter target))
 
 
 (defn seek-for-prev!

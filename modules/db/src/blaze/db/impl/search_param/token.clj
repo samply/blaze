@@ -3,6 +3,9 @@
     [blaze.anomaly :refer [when-ok]]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.util :as u]
     [blaze.db.search-param-registry :as sr]
@@ -115,8 +118,9 @@
         (let [[type id] res]
           (-> (entries-fn nil (codec/v-hash id))
               (into (entries-fn nil (codec/v-hash (str type "/" id))))
-              (into (entries-fn nil (codec/tid-id (codec/tid type)
-                                                  (codec/id-bytes id))))))))))
+              (into (entries-fn nil (codec/tid-id
+                                      (codec/tid type)
+                                      (codec/id-byte-string id))))))))))
 
 
 (defmethod token-index-entries :fhir/Reference
@@ -145,19 +149,20 @@
     c-hash))
 
 
-(defn resource-keys [{:keys [svri]} c-hash tid value start-id]
-  (if start-id
-    (u/prefix-keys
-      svri
-      (codec/sp-value-resource-key c-hash tid value)
-      (codec/sp-value-resource-key c-hash tid value start-id))
-    (u/prefix-keys
-      svri
-      (codec/sp-value-resource-key c-hash tid value))))
+(defn resource-keys!
+  "Returns a reducible collection of [id hash-prefix] tuples starting at
+  `start-id` (optional).
+
+  Changes the state of `iter`. Consuming the collection requires exclusive
+  access to `iter`. Doesn't close `iter`."
+  ([{:keys [svri]} c-hash tid value]
+   (sp-vr/prefix-keys! svri c-hash tid value value))
+  ([{:keys [svri]} c-hash tid value start-id]
+   (sp-vr/prefix-keys! svri c-hash tid value value start-id)))
 
 
 (defn matches? [{:keys [rsvi]} c-hash resource-handle value]
-  (u/resource-sp-value-seek rsvi resource-handle c-hash value))
+  (some? (r-sp-v/next-value! rsvi resource-handle c-hash value value)))
 
 
 (defrecord SearchParamToken [name url type base code c-hash expression]
@@ -165,17 +170,20 @@
   (-compile-value [_ _ value]
     (codec/v-hash value))
 
+  (-resource-handles [_ context tid modifier value]
+    (coll/eduction
+      (u/resource-handle-mapper context tid)
+      (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid
+                      value)))
+
   (-resource-handles [_ context tid modifier value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (resource-keys context (c-hash-w-modifier c-hash code modifier) tid value
-                     start-id)))
+      (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid value
+                      start-id)))
 
-  (-compartment-keys [_ context compartment tid compiled-value]
-    (let [{co-c-hash :c-hash co-res-id :res-id} compartment
-          start-key (codec/compartment-search-param-value-key
-                      co-c-hash co-res-id c-hash tid compiled-value)]
-      (u/prefix-keys (:csvri context) start-key)))
+  (-compartment-keys [_ context compartment tid value]
+    (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value value))
 
   (-matches? [_ context resource-handle modifier values]
     (let [c-hash (c-hash-w-modifier c-hash code modifier)]

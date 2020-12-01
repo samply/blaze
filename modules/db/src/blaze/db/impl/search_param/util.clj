@@ -1,18 +1,9 @@
 (ns blaze.db.impl.search-param.util
   (:require
-    [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
+    [blaze.byte-string :as bs]
     [blaze.db.impl.byte-buffer :as bb]
-    [blaze.db.impl.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-as-of :as rao]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]
-    [blaze.db.kv :as kv]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.spec :as fhir-spec])
-  (:import
-    [java.nio ByteBuffer]))
+    [blaze.fhir.spec :as fhir-spec]))
 
 
 (set! *warn-on-reflection* true)
@@ -36,119 +27,43 @@
 
 
 (def by-id-grouper
-  "Transducer which groups `[id hash-prefix]` tuples by `id` and concatenates
-  all hash-prefixes within each group, outputting `[id hash-prefixes]` tuples."
+  "Transducer which groups `[id hash-prefix]` tuples by `id` and returns
+  `[id tuples]` tuples."
   (comp
-    (partition-by (fn [[_ id]] (ByteBuffer/wrap id)))
-    (map
-      (fn group-hash-prefixes [[[_ id hash-prefix] & more]]
-        [id (cons hash-prefix (map #(nth % 2) more))]))))
+    (partition-by (fn [[id]] id))
+    (map (fn [[[id] :as tuples]] [id tuples]))))
 
 
-(defn non-deleted-resource-handle [context tid id]
-  (when-let [handle (rao/resource-handle context tid id)]
-    (when-not (rh/deleted? handle)
+(defn non-deleted-resource-handle [resource-handle tid id]
+  (when-let [{:keys [op] :as handle} (resource-handle tid id)]
+    (when-not (identical? :delete op)
       handle)))
 
 
-(defn- resource-handle-mapper* [context tid]
-  (mapcat
-    (fn [[id hash-prefixes]]
-      (when-let [resource-handle (non-deleted-resource-handle context tid id)]
-        [[resource-handle hash-prefixes]]))))
+(defn- contains-hash-prefix? [triples hash-prefix]
+  (reduce
+    (fn [_ tuple]
+      (when (= hash-prefix (nth tuple 1))
+        (reduced true)))
+    nil
+    triples))
 
 
-(def ^:private matches-hash-prefixes-filter
-  (mapcat
-    (fn [[resource-handle hash-prefixes]]
-      (let [hash (hash/encode (rh/hash resource-handle))]
-        (when (some #(bytes/starts-with? hash %) hash-prefixes)
-          [resource-handle])))))
+(defn- resource-handle-mapper* [{:keys [resource-handle]} tid]
+  (comp
+    (map
+      (fn [[id tuples]]
+        (when-let [{:keys [hash] :as resource-handle} (resource-handle tid id)]
+          (let [hash-prefix (codec/hash-prefix hash)]
+            (when (contains-hash-prefix? tuples hash-prefix)
+              resource-handle)))))
+    (remove nil?)))
 
 
 (defn resource-handle-mapper [context tid]
   (comp
     by-id-grouper
-    (resource-handle-mapper* context tid)
-    matches-hash-prefixes-filter))
-
-
-(defn prefix-seek [iter key]
-  (kv/seek! iter key)
-  (when (kv/valid? iter)
-    (let [k (kv/key iter)]
-      (when (bytes/starts-with? k key)
-        k))))
-
-
-(defn resource-sp-value-seek
-  "Returns the first key on ResourceSearchParamValue index which starts with
-  `resource-handle`, `c-hash` and optional `value`."
-  {:arglists
-   '([iter resource-handle c-hash]
-     [iter resource-handle c-hash value])}
-  ([iter {:keys [tid id hash]} c-hash]
-   (prefix-seek iter (codec/resource-sp-value-key tid (codec/id-bytes id) hash
-                                                  c-hash)))
-  ([iter {:keys [tid id hash]} c-hash value]
-   (prefix-seek iter (codec/resource-sp-value-key tid (codec/id-bytes id) hash
-                                                  c-hash value))))
-
-
-(defn get-next-value
-  ([iter resource-handle c-hash]
-   (when-let [k (resource-sp-value-seek iter resource-handle c-hash)]
-     (codec/resource-sp-value-key->value k)))
-  ([iter resource-handle c-hash prefix]
-   (when-let [k (resource-sp-value-seek iter resource-handle c-hash prefix)]
-     (codec/resource-sp-value-key->value k))))
-
-
-(defn sp-value-resource-keys
-  "Returns a reducible collection of decoded SearchParamValueResource keys
-  starting at `start-key`.
-
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [iter start-key]
-  (i/keys iter codec/decode-sp-value-resource-key start-key))
-
-
-(defn sp-value-resource-keys-prev
-  "Returns a reducible collection of decoded SearchParamValueResource keys
-  starting at `start-key` in reverse order.
-
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [iter start-key]
-  (i/keys-prev iter codec/decode-sp-value-resource-key start-key))
-
-
-(defn resource-sp-value-keys
-  "Returns a reducible collection of decoded ResourceSearchParamValue keys
-  starting at `start-key`.
-
-  Decoded keys consist of the tuple [prefix value]."
-  [iter start-key]
-  (i/keys iter codec/decode-resource-sp-value-key start-key))
-
-
-(defn resource-sp-value-keys-prev
-  "Returns a reducible collection of decoded ResourceSearchParamValue keys
-  starting at `start-key` in reverse order.
-
-  Decoded keys consist of the tuple [prefix value]."
-  [iter start-key]
-  (i/keys-prev iter codec/decode-resource-sp-value-key start-key))
-
-
-(defn prefix-keys
-  ([iter start-key]
-   (coll/eduction
-     (take-while (fn [[prefix]] (bytes/starts-with? prefix start-key)))
-     (sp-value-resource-keys iter start-key)))
-  ([iter prefix-key start-key]
-   (coll/eduction
-     (take-while (fn [[prefix]] (bytes/starts-with? prefix prefix-key)))
-     (sp-value-resource-keys iter start-key))))
+    (resource-handle-mapper* context tid)))
 
 
 (defn missing-expression-msg [url]
@@ -157,18 +72,16 @@
 
 
 (defn reference-resource-handle-mapper
-  "Filters all [prefix value] tuples for reference tid-id values with `tid`,
-  returning the resource handles of the referenced resources."
-  [context tid]
+  "Returns a transducer that filters all upstream values for reference tid-id
+  values with `tid`, returning the non-deleted resource handles of the
+  referenced resources."
+  [{:keys [resource-handle]} tid]
   (comp
-    (map (fn [[_ value]] value))
     ;; other index entries are all v-hashes
-    (filter #(< codec/v-hash-size ^int (bs/size %)))
+    (filter #(< codec/v-hash-size (bs/size %)))
     (map bs/as-read-only-byte-buffer)
     ;; the type has to match
-    (filter #(= tid (bb/get-int! %)))
-    (map (fn [^ByteBuffer bb]
-           (let [id (byte-array (.remaining bb))]
-             (.get bb id)
-             id)))
-    (mapcat #(some-> (non-deleted-resource-handle context tid %) vector))))
+    (filter #(= ^long tid (bb/get-int! %)))
+    (map bs/from-byte-buffer)
+    (map #(non-deleted-resource-handle resource-handle tid %))
+    (remove nil?)))

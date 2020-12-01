@@ -1,112 +1,16 @@
 (ns blaze.db.impl.search-param.composite
   (:require
-    [blaze.anomaly :refer [conj-anom if-ok when-ok]]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.byte-string :as bs]
+    [blaze.anomaly :refer [conj-anom when-ok]]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.impl.search-param.quantity :as spq]
-    [blaze.db.impl.search-param.token :as spt]
-    [blaze.db.impl.search-param.util :as u]
+    [blaze.db.impl.search-param.composite.token-quantity :as tq]
+    [blaze.db.impl.search-param.composite.token-token :as tt]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
-    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
-
-
-(defn- split-value [value]
-  (str/split value #"\$" 2))
-
-
-(defn- compile-component-value [{:keys [search-param]} value]
-  (p/-compile-value search-param nil value))
-
-
-(defn- component-index-values
-  [resolver main-value {:keys [expression search-param]}]
-  (when-ok [values (fhir-path/eval resolver expression main-value)]
-    (into
-      []
-      (comp (filter (fn [[modifier]] (nil? modifier)))
-            (map (fn [[_ value]] value)))
-      (p/-compile-index-values search-param values))))
-
-
-(defn- index-values [resolver main-value c1 c2]
-  (for [v1 (component-index-values resolver main-value c1)
-        v2 (component-index-values resolver main-value c2)]
-    [nil (bs/concat v1 v2)]))
-
-
-(defrecord SearchParamCompositeTokenToken
-  [name url type base code c-hash main-expression c1 c2]
-  p/SearchParam
-  (-compile-value [_ _ value]
-    (let [[v1 v2] (split-value value)
-          v1 (compile-component-value c1 v1)
-          v2 (compile-component-value c1 v2)]
-      (bs/concat v1 v2)))
-
-  (-resource-handles [_ context tid _ value start-id]
-    (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (spt/resource-keys context c-hash tid value start-id)))
-
-  (-matches? [_ context resource-handle _ values]
-    (some #(spt/matches? context c-hash resource-handle %) values))
-
-  (-index-values [_ resolver resource]
-    (when-ok [values (fhir-path/eval resolver main-expression resource)]
-      (into [] (mapcat #(index-values resolver % c1 c2)) values))))
-
-
-(def ^:private ^:const ^int token-quantity-prefix-length
-  (* 2 codec/v-hash-size))
-
-
-(defrecord SearchParamCompositeTokenQuantity
-  [name url type base code c-hash main-expression c1 c2]
-  p/SearchParam
-  (-compile-value [_ _ value]
-    (let [[v1 v2] (split-value value)
-          token-value (compile-component-value c1 v1)]
-      ;; the second component is always of type quantity
-      (if-ok [quantity-value (compile-component-value c2 v2)]
-        (let [[op lower-bound exact-value upper-bound] quantity-value]
-          [op
-           (bs/concat token-value lower-bound)
-           (bs/concat token-value exact-value)
-           (bs/concat token-value upper-bound)])
-        (case (::spq/category quantity-value)
-          ::spq/invalid-decimal-value
-          (assoc quantity-value
-            ::anom/message (spq/invalid-decimal-value-msg code v2))
-          ::spq/unsupported-prefix
-          (assoc quantity-value
-            ::anom/message
-            (spq/unsupported-prefix-msg
-              code (::spq/unsupported-prefix quantity-value)))
-          quantity-value))))
-
-  (-resource-handles [_ context tid _ value start-id]
-    (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (spq/resource-keys context c-hash tid token-quantity-prefix-length value
-                         start-id)))
-
-  (-matches? [_ context resource-handle _ values]
-    (some
-      #(spq/matches? context c-hash resource-handle
-                     token-quantity-prefix-length %)
-      values))
-
-  (-index-values [_ resolver resource]
-    (when-ok [values (fhir-path/eval resolver main-expression resource)]
-      (into [] (mapcat #(index-values resolver % c1 c2)) values))))
 
 
 (defn- resolve-search-param [index {url :definition :as component}]
@@ -160,11 +64,11 @@
       (let [[c1 c2] components]
         (case (:type (:search-param c2))
           "token"
-          (->SearchParamCompositeTokenToken name url type base code
+          (tt/->SearchParamCompositeTokenToken name url type base code
                                             (codec/c-hash code)
                                             main-expression c1 c2)
           "quantity"
-          (->SearchParamCompositeTokenQuantity name url type base code
+          (tq/->SearchParamCompositeTokenQuantity name url type base code
                                                (codec/c-hash code)
                                                main-expression c1 c2))))))
 

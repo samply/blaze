@@ -10,28 +10,28 @@
   store the transaction and transfers it to listening queues."
   (:require
     [blaze.async.comp :as ac]
+    [blaze.byte-string :as bs]
+    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
-    [blaze.fhir.hash :as hash]
     [blaze.module :refer [reg-collector]]
     [cheshire.core :as cheshire]
     [cheshire.generate :refer [JSONable]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
+    [java-time :as jt]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
-    [java.nio ByteBuffer]
-    [java.time Clock Duration Instant]
+    [java.time Clock Instant]
     [java.util.concurrent
      ArrayBlockingQueue BlockingQueue ExecutorService TimeUnit]
-    [com.fasterxml.jackson.core JsonGenerator]
-    [com.google.common.hash HashCode$BytesHashCode]))
+    [com.fasterxml.jackson.core JsonGenerator]))
 
 
 (set! *warn-on-reflection* true)
@@ -42,14 +42,11 @@
   {:namespace "blaze"
    :subsystem "db"
    :name "tx_log_duration_seconds"}
-  (mapcat #(list % (* 2.5 %) (* 5 %) (* 7.5 %)) (take 6 (iterate #(* 10 %) 0.00001)))
+  (take 16 (iterate #(* 2 %) 0.00001))
   "op")
 
 
 (extend-protocol JSONable
-  HashCode$BytesHashCode
-  (to-json [hash-code jg]
-    (.writeBinary ^JsonGenerator jg (.asBytes hash-code)))
   Instant
   (to-json [instant jg]
     (.writeNumber ^JsonGenerator jg (.toEpochMilli instant))))
@@ -63,7 +60,7 @@
 
 
 (defn- decode-hash [tx-cmd]
-  (update tx-cmd :hash hash/decode))
+  (update tx-cmd :hash bs/from-byte-array))
 
 
 (defn- decode-instant [x]
@@ -73,23 +70,22 @@
 
 (defn- decode-tx-data
   ([]
-   [(ByteBuffer/allocateDirect codec/t-size)
-    ;; TODO: transaction cmds can get arbitrarily big
-    (ByteBuffer/allocateDirect (* 1024 1024))])
-  ([^ByteBuffer kb ^ByteBuffer vb]
-   (let [t (.getLong kb)
-         value (byte-array (.remaining vb))]
-     (.get vb value)
+   [(bb/allocate-direct codec/t-size)
+    (bb/allocate-direct 1024)])
+  ([kb vb]
+   (let [t (bb/get-long! kb)
+         value (byte-array (bb/remaining vb))]
+     (bb/copy-into-byte-array! vb value 0 (bb/remaining vb))
      (-> (parse-cbor value t)
          (update :tx-cmds #(mapv decode-hash %))
          (update :instant decode-instant)
          (assoc :t t)))))
 
 
-(defn encode-t [t]
-  (-> (ByteBuffer/allocate Long/BYTES)
-      (.putLong t)
-      (.array)))
+(defn encode-key [t]
+  (-> (bb/allocate Long/BYTES)
+      (bb/put-long! t)
+      (bb/array)))
 
 
 (defn encode-tx-data [instant tx-cmds]
@@ -105,11 +101,12 @@
   (log/trace "fetch tx-data from storage offset =" offset)
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]
-    (into [] (take max-poll-size) (i/kvs iter decode-tx-data (encode-t offset)))))
+    (into [] (take max-poll-size) (i/kvs! iter decode-tx-data (bs/from-byte-array (encode-key offset))))))
 
-(defn- poll [^BlockingQueue queue ^Duration timeout]
+
+(defn- poll [^BlockingQueue queue timeout]
   (log/trace "poll in-memory queue with timeout =" timeout)
-  (.poll queue (.toMillis timeout) TimeUnit/MILLISECONDS))
+  (.poll queue (jt/as timeout :millis) TimeUnit/MILLISECONDS))
 
 
 (deftype LocalQueue [kv-store offset queue queue-start unsubscribe!]
@@ -128,9 +125,10 @@
     (log/trace "close queue")
     (unsubscribe!)))
 
+
 (defn- store-tx-data! [kv-store {:keys [t instant tx-cmds]}]
   (log/trace "store transaction data with t =" t)
-  (kv/put! kv-store (encode-t t) (encode-tx-data instant tx-cmds)))
+  (kv/put! kv-store (encode-key t) (encode-tx-data instant tx-cmds)))
 
 
 (defn- transfer-tx-data! [queues tx-data]
@@ -183,11 +181,11 @@
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]
     (kv/seek-to-last! iter)
-    (let [kb (ByteBuffer/allocateDirect Long/BYTES)]
+    (let [buf (bb/allocate-direct Long/BYTES)]
       (when (kv/valid? iter)
-        (kv/key! iter kb)
-        (when (<= Long/BYTES (.remaining kb))
-          (.getLong kb))))))
+        (kv/key! iter buf)
+        (when (<= Long/BYTES (bb/remaining buf))
+          (bb/get-long! buf))))))
 
 
 (defn new-local-tx-log

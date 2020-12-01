@@ -3,8 +3,12 @@
     [blaze.elm.equiv-relationships
      :refer [split-by-first-equal-expression]]
     [blaze.elm.literal]
+    [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest]]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]

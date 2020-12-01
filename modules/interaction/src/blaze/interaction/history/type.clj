@@ -21,7 +21,7 @@
   {:fhir/type :fhir.Bundle/link
    :relation relation
    :url (type/->Uri (history-util/nav-url match query-params t
-                                          (d/last-updated-t resource-handle)
+                                          (:t resource-handle)
                                           (:id resource-handle)))})
 
 
@@ -36,7 +36,7 @@
             (ring/response
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (str (random-uuid))
+                 :id (random-uuid)
                  :type #fhir/code"history"
                  :total (type/->UnsignedInt total)
                  :entry (mapv #(history-util/build-entry router %) paged-versions)}

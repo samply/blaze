@@ -12,6 +12,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
+    [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
@@ -135,15 +136,17 @@
 
 
 (defn- prepare-entry
-  [{{:keys [method]} :request :keys [resource] :as entry}]
+  [res {{:keys [method]} :request :keys [resource] :as entry}]
   (let [method (type/value method)]
     (log/trace "prepare-entry" method (some-> resource :fhir/type name) (:id resource))
     (cond
       (= "POST" method)
-      (assoc-in entry [:resource :id] (str (random-uuid)))
+      (let [[luid-state luid] (luid/next (:luid-state res))]
+        (-> (assoc res :luid-state luid-state)
+            (update :entries conj (assoc-in entry [:resource :id] luid))))
 
       :else
-      entry)))
+      (update res :entries conj entry))))
 
 
 (defn- validate-and-prepare-bundle
@@ -174,7 +177,8 @@
         (let [entries (validate-entries entries)]
           (if (::anom/category entries)
             (throw (ex-anom entries))
-            (mapv prepare-entry entries)))
+            (let [init {:luid-state (luid/init) :entries []}]
+              (:entries (reduce prepare-entry init entries)))))
         entries))))
 
 
@@ -189,7 +193,7 @@
    db
    {{:fhir/keys [type] :keys [id]} :resource}]
   (let [handle (d/resource-handle db (name type) id)
-        tx (d/tx db (d/last-updated-t handle))
+        tx (d/tx db (:t handle))
         vid (str (:blaze.db/t tx))
         entry {:fhir/type :fhir.Bundle/entry
                :response
@@ -209,9 +213,8 @@
   [{:keys [router return-preference]}
    db
    {{:fhir/keys [type] :keys [id]} :resource}]
-  (let [handle (d/resource-handle db (name type) id)
-        tx (d/tx db (d/last-updated-t handle))
-        num-changes (d/num-changes handle)
+  (let [{:keys [num-changes] :as handle} (d/resource-handle db (name type) id)
+        tx (d/tx db (:t handle))
         vid (str (:blaze.db/t tx))
         entry {:fhir/type :fhir.Bundle/entry
                :response
@@ -352,7 +355,7 @@
           (fn [response-entries]
             (ring/response
               {:fhir/type :fhir/Bundle
-               :id (str (random-uuid))
+               :id (random-uuid)
                :type (type/->Code (str (type/value type) "-response"))
                :entry response-entries})))
         (ac/exceptionally handler-util/error-response))))

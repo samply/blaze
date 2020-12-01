@@ -21,10 +21,15 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
+    [java-time :as jt]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock Duration Instant ZoneId]))
+    [com.github.benmanes.caffeine.cache Caffeine]
+    [java.time Clock Instant ZoneId]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -61,9 +66,9 @@
      :compartment-search-param-value-index nil
      :compartment-resource-type-index nil
      :active-search-params nil
-     :tx-success-index nil
+     :tx-success-index {:reverse-comparator? true}
      :tx-error-index nil
-     :t-by-instant-index nil
+     :t-by-instant-index {:reverse-comparator? true}
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
@@ -75,10 +80,11 @@
 
 
 (defn new-node-with [{:keys [resource-store]}]
-  (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)]
-    (node/new-node tx-log resource-indexer-executor 1 indexer-executor
-                   (new-index-kv-store) resource-store search-param-registry
-                   (Duration/ofMillis 10))))
+  (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
+        resource-handle-cache (.build (Caffeine/newBuilder))]
+    (node/new-node tx-log resource-handle-cache resource-indexer-executor 1
+                   indexer-executor (new-index-kv-store) resource-store
+                   search-param-registry (jt/millis 10))))
 
 
 (defn new-node []

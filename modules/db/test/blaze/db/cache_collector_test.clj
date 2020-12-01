@@ -1,6 +1,6 @@
-(ns blaze.db.impl.metrics-test
+(ns blaze.db.cache-collector-test
   (:require
-    [blaze.db.impl.metrics :as metrics]
+    [blaze.db.cache-collector :as cc]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]])
@@ -22,8 +22,8 @@
 
 
 (deftest cache-collector-test
-  (let [cache (-> (Caffeine/newBuilder) (.recordStats) (.buildAsync))
-        collector (metrics/cache-collector "name-135224" cache)]
+  (let [cache (-> (Caffeine/newBuilder) (.recordStats) (.build))
+        collector (cc/cache-collector {"name-135224" cache})]
 
     (testing "all zero on fresh cache"
       (given (.collect collector)
@@ -39,7 +39,7 @@
         [4 #(.-samples %) 0 #(.-value %)] := 0.0))
 
     (testing "one load"
-      @(.get cache 1 (reify Function (apply [_ key] key)))
+      (.get cache 1 (reify Function (apply [_ key] key)))
       (Thread/sleep 100)
 
       (given (.collect collector)
@@ -49,7 +49,7 @@
         [1 #(.-samples %) 0 #(.-value %)] := 1.0))
 
     (testing "one loads and one hit"
-      @(.get cache 1 (reify Function (apply [_ key] key)))
+      (.get cache 1 (reify Function (apply [_ key] key)))
       (Thread/sleep 100)
 
       (given (.collect collector)

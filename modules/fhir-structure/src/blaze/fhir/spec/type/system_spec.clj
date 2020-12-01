@@ -5,6 +5,11 @@
     [cognitect.anomalies :as anom]))
 
 
+(s/fdef system/value?
+  :args (s/cat :a any?)
+  :ret boolean?)
+
+
 (s/fdef system/type
   :args (s/cat :a any?)
   :ret (s/nilable keyword?))
@@ -24,6 +29,22 @@
   :args (s/cat :s string?)
   :ret (s/or :decimal system/decimal?
              :anomaly ::anom/anomaly))
+
+
+
+;; ---- System.Date -----------------------------------------------------------
+
+(s/fdef system/date?
+  :args (s/cat :x any?)
+  :ret boolean?)
+
+
+
+;; ---- System.DateTime -------------------------------------------------------
+
+(s/fdef system/date-time?
+  :args (s/cat :x any?)
+  :ret boolean?)
 
 
 (s/fdef system/parse-date-time

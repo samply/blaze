@@ -8,6 +8,7 @@
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:import
+    [clojure.lang ExceptionInfo]
     [java.io StringReader]
     [org.antlr.v4.runtime ANTLRInputStream CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -61,7 +62,7 @@
   [resolver expr value]
   (try
     (-eval expr {:resolver resolver} [value])
-    (catch Exception e
+    (catch ExceptionInfo e
       (ex-data e))))
 
 

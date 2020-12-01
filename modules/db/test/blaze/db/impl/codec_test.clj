@@ -1,21 +1,20 @@
 (ns blaze.db.impl.codec-test
   (:require
-    [blaze.db.impl.byte-string :as bs]
+    [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec-spec]
-    [blaze.fhir.hash :as hash]
+    [blaze.db.impl.index.search-param-value-resource-spec]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check :as tc]
     [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as p]
-    [juxt.iota :refer [given]])
+    [clojure.test.check.properties :as p])
   (:import
-    [com.google.common.hash HashCode]
-    [java.nio ByteBuffer]
-    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset])
-  (:refer-clojure :exclude [hash]))
+    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -25,10 +24,6 @@
 
 
 (test/use-fixtures :each fixture)
-
-
-(defn hash-gen [size]
-  #(gen/fmap (fn [bs] (HashCode/fromBytes bs)) (gen/fmap byte-array (gen/vector gen/byte size))))
 
 
 (defmacro check
@@ -51,80 +46,13 @@
 ;; ---- Key Functions ---------------------------------------------------------
 
 (deftest descending-long-test
+  (are [t dt] (= dt (codec/descending-long t))
+    1 0xFFFFFFFFFFFFFE
+    0 0xFFFFFFFFFFFFFF)
   (satisfies-prop 100000
                   (p/for-all [t gen/nat]
                     (= t (codec/descending-long (codec/descending-long t))))))
 
-
-(deftest t-key-test
-  (are [t bs] (= bs (codec/hex (codec/t-key t)))
-    0xFFFFFFFFFFFFFF "0000000000000000"
-    16 "00FFFFFFFFFFFFEF"
-    15 "00FFFFFFFFFFFFF0"
-    2 "00FFFFFFFFFFFFFD"
-    1 "00FFFFFFFFFFFFFE"
-    0 "00FFFFFFFFFFFFFF"))
-
-
-
-;; ---- SearchParamValueResource Index ----------------------------------------
-
-(deftest decode-sp-value-resource-key-human-test
-  (given
-    (codec/decode-sp-value-resource-key-human
-      (ByteBuffer/wrap
-        (codec/sp-value-resource-key
-          (codec/c-hash "code")
-          (codec/tid "Observation")
-          (codec/v-hash "code-121019")
-          (codec/id-bytes "id-121116")
-          (hash/generate {:fhir/type :fhir/Observation :id "id-121116"}))))
-    :code := "code"
-    :type := "Observation"
-    :value := #google/byte-string"290A0088"
-    :id := "id-121116"
-    :hash-prefix := "E6A213C8"))
-
-
-
-;; ---- ResourceValue Index ---------------------------------------------------
-
-
-
-;; ---- ResourceType Index ----------------------------------------------------
-
-(deftest resource-type-key
-  (check `codec/resource-type-key))
-
-
-
-;; ---- CompartmentResourceType Index -----------------------------------------
-
-(deftest compartment-resource-type-key
-  (check `codec/compartment-resource-type-key))
-
-
-
-;; ---- ResourceAsOf Index ----------------------------------------------------
-
-(deftest resource-as-of-key
-  (check `codec/resource-as-of-key))
-
-
-
-;; ---- ResourceAsOf Index ----------------------------------------------------
-
-(deftest resource-as-of-value
-  (check
-    `codec/resource-as-of-value
-    {:gen {:blaze.resource/hash (hash-gen codec/hash-size)}}))
-
-
-
-;; ---- TypeAsOf Index --------------------------------------------------------
-
-(deftest type-as-of-key
-  (check `codec/type-as-of-key))
 
 
 (deftest tid
@@ -139,17 +67,17 @@
   (testing "year"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (Year/of 1970) "80"
-      (system/->DateTimeYear 1970) "80"))
+      (system/date-time 1970) "80"))
 
   (testing "year-month"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (YearMonth/of 1970 1) "80"
-      (system/->DateTimeYearMonth 1970 1) "80"))
+      (system/date-time 1970 1) "80"))
 
   (testing "local-date"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (LocalDate/of 1970 1 1) "80"
-      (system/->DateTimeYearMonthDay 1970 1 1) "80"))
+      (system/date-time 1970 1 1) "80"))
 
   (testing "local-date-time"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
@@ -168,17 +96,17 @@
   (testing "year"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (Year/of 1969) "B00EFFFFFFFFFF"
-      (system/->DateTimeYear 1969) "B00EFFFFFFFFFF"))
+      (system/date-time 1969) "B00EFFFFFFFFFF"))
 
   (testing "year-month"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (YearMonth/of 1969 12) "B00EFFFFFFFFFF"
-      (system/->DateTimeYearMonth 1969 12) "B00EFFFFFFFFFF"))
+      (system/date-time 1969 12) "B00EFFFFFFFFFF"))
 
   (testing "local-date"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (LocalDate/of 1969 12 31) "B00EFFFFFFFFFF"
-      (system/->DateTimeYearMonthDay 1969 12 31) "B00EFFFFFFFFFF"))
+      (system/date-time 1969 12 31) "B00EFFFFFFFFFF"))
 
   (testing "local-date-time"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))

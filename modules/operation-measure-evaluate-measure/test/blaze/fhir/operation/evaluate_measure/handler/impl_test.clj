@@ -5,7 +5,7 @@
     [blaze.fhir.operation.evaluate-measure.handler.impl :refer [handler]]
     [blaze.fhir.spec.type :as type]
     [blaze.log]
-    [blaze.uuid :refer [random-uuid]]
+    [blaze.luid :refer [luid]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -395,7 +395,7 @@
 
       (testing "as POST request"
         (with-redefs
-          [random-uuid (constantly #uuid "29217af5-1f5b-4860-af2d-277af728fed2")]
+          [luid (constantly "C5OC2PO45UVYCD2A")]
           (let [{:keys [status headers body]}
                 ((handler-with
                     [[[:put {:fhir/type :fhir/Measure :id "0"
@@ -414,7 +414,7 @@
             (is (= 201 status))
 
             (testing "Location header"
-              (is (= "/MeasureReport/29217af5-1f5b-4860-af2d-277af728fed2/_history/2"
+              (is (= "/MeasureReport/C5OC2PO45UVYCD2A/_history/2"
                      (get headers "Location"))))
 
             (given body
@@ -456,7 +456,7 @@
 
       (testing "as POST request"
         (with-redefs
-          [random-uuid (constantly #uuid "33e62d8a-cc01-4d8f-af7e-3166c603b87d")]
+          [luid (constantly "C5OC2QYKLM577GLL")]
           (let [{:keys [status headers body]}
                 ((handler-with
                     [[[:put {:fhir/type :fhir/Measure :id "0"
@@ -475,7 +475,7 @@
             (is (= 201 status))
 
             (testing "Location header"
-              (is (= "/MeasureReport/33e62d8a-cc01-4d8f-af7e-3166c603b87d/_history/2"
+              (is (= "/MeasureReport/C5OC2QYKLM577GLL/_history/2"
                      (get headers "Location"))))
 
             (given body

@@ -146,7 +146,7 @@
         (partition-all eval-parallel-chunk-size)
         (map #(evaluate-expression* context name %)))
       (expression-combine-op context)
-      (d/list-resource-handles db subject-type))))
+      (d/type-list db subject-type))))
 
 
 (defn- incorrect-stratum [{:fhir/keys [type] :keys [id]} expression-name]
@@ -220,7 +220,7 @@
         (map #(calc-strata* context population-expression-name
                             stratum-expression-name %)))
       (stratum-combine-op context)
-      (d/list-resource-handles db subject-type))))
+      (d/type-list db subject-type))))
 
 
 (defn- anom-conj
@@ -274,4 +274,4 @@
         (map #(calc-mult-component-strata* context population-expression-name
                                            stratum-expression-names %)))
       (stratum-combine-op context)
-      (d/list-resource-handles db subject-type))))
+      (d/type-list db subject-type))))

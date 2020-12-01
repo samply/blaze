@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param.list-test
   (:require
+    [blaze.byte-string-spec]
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
     [clojure.spec.test.alpha :as st]

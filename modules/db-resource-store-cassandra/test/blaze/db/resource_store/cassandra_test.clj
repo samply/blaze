@@ -1,6 +1,7 @@
 (ns blaze.db.resource-store.cassandra-test
   (:require
     [blaze.async.comp :as ac]
+    [blaze.byte-string :as bs]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.cassandra :as cass]
     [blaze.db.resource-store.cassandra-spec]
@@ -16,7 +17,6 @@
     [com.datastax.oss.driver.api.core CqlSession]
     [com.datastax.oss.driver.api.core.cql PreparedStatement BoundStatement Statement Row AsyncResultSet]
     [com.datastax.oss.driver.api.core.metadata Node EndPoint]
-    [com.google.common.hash HashCode]
     [java.net InetSocketAddress]
     [java.nio ByteBuffer]
     [java.util.concurrent CompletionStage])
@@ -35,7 +35,7 @@
 
 (defn hash [s]
   (assert (= 1 (count s)))
-  (HashCode/fromString (str/repeat s 64)))
+  (bs/from-hex (str/repeat s 64)))
 
 
 (defn store [session get-statement put-statement]
