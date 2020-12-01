@@ -11,6 +11,9 @@
   (:refer-clojure :exclude [eval]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (f)
@@ -36,6 +39,14 @@
 
 ;; 3. Path selection
 (deftest path-selection-test
+  (testing "Resource.id"
+    (are [x]
+      (= x (first (eval "Resource.id"
+                        {:fhir/type :fhir/Patient
+                         :id x})))
+      "id-161533"
+      "id-161537"))
+
   (testing "Patient.id"
     (are [x]
       (= x (first (eval "Patient.id"
@@ -228,6 +239,25 @@
            :id "id-162953"})))))
 
 
+;; 5.3. Subsetting
+
+;; 5.3.1. [ index : Integer ] : collection
+(deftest indexer-test
+  (is
+    (=
+      (eval
+        "Bundle.entry[0].resource"
+        {:fhir/type :fhir/Bundle
+         :id "id-110914"
+         :entry
+         [{:fhir/type :fhir.Bundle/entry
+           :resource
+           {:fhir/type :fhir/Patient
+            :id "id-111004"}}]})
+      [{:fhir/type :fhir/Patient
+        :id "id-111004"}])))
+
+
 ;; 5.4. Combining
 
 ;; 5.4.1. union(other : collection)
@@ -259,6 +289,7 @@
             "{} = {}"
             {:fhir/type :fhir/Patient
              :id "foo"}))))
+
     (testing "left empty"
       (is
         (empty?
@@ -266,6 +297,7 @@
             "{} = Patient.id"
             {:fhir/type :fhir/Patient
              :id "foo"}))))
+
     (testing "right empty"
       (is
         (empty?
@@ -280,6 +312,12 @@
         (first
           (eval "Patient.id = 'foo'"
                 {:fhir/type :fhir/Patient
+                 :id "foo"}))))
+    (is
+      (false?
+        (first
+          (eval "Patient.id = 'bar'"
+                {:fhir/type :fhir/Patient
                  :id "foo"}))))))
 
 
@@ -293,6 +331,7 @@
             "{} != {}"
             {:fhir/type :fhir/Patient
              :id "foo"}))))
+
     (testing "left empty"
       (is
         (empty?
@@ -300,13 +339,28 @@
             "{} != Patient.id"
             {:fhir/type :fhir/Patient
              :id "foo"}))))
+
     (testing "right empty"
       (is
         (empty?
           (eval
             "Patient.id != {}"
             {:fhir/type :fhir/Patient
-             :id "foo"}))))))
+             :id "foo"}))))
+
+    (testing "string comparison"
+      (is
+        (true?
+          (first
+            (eval "Patient.id != 'bar'"
+                  {:fhir/type :fhir/Patient
+                   :id "foo"}))))
+      (is
+        (false?
+          (first
+            (eval "Patient.id != 'foo'"
+                  {:fhir/type :fhir/Patient
+                   :id "foo"})))))))
 
 
 ;; 6.3. Types
