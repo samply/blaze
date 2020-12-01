@@ -11,7 +11,7 @@ docker volume create blaze-data
 ## Blaze
 
 ```bash
-docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.10.0-alpha.5
+docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.10.0-alpha.6
 ```
 
 Blaze should log something like this:
@@ -29,7 +29,7 @@ Blaze should log something like this:
 2020-06-23 08:06:49.235+0000 73c1e4c03d80 INFO [blaze.core:60] - JVM version: 11.0.6
 2020-06-23 08:06:49.236+0000 73c1e4c03d80 INFO [blaze.core:61] - Maximum available memory: 1488 MiB
 2020-06-23 08:06:49.236+0000 73c1e4c03d80 INFO [blaze.core:62] - Number of available processors: 4
-2020-06-23 08:06:49.238+0000 73c1e4c03d80 INFO [blaze.core:63] - Successfully started Blaze version 0.10.0-alpha.5 in 24.9 seconds
+2020-06-23 08:06:49.238+0000 73c1e4c03d80 INFO [blaze.core:63] - Successfully started Blaze version 0.10.0-alpha.6 in 24.9 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
@@ -49,7 +49,7 @@ that should return:
 ```javascript
 {
   "name": "Blaze",
-  "version": "0.10.0-alpha.5"
+  "version": "0.10.0-alpha.6"
 }
 ```
 
@@ -63,7 +63,7 @@ A Docker Compose file looks like this:
 version: '3.2'
 services:
   blaze:
-    image: "samply/blaze:0.10.0-alpha.5"
+    image: "samply/blaze:0.10.0-alpha.6"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
