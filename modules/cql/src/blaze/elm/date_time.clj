@@ -13,28 +13,28 @@
     [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
     [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]
-    [clojure.lang IPersistentMap]))
+    [java.util Map]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(def min-year (Year/of 1))
+(def min-year (system/date 1))
 (def date-time-min-year (system/date-time 1))
-(def min-year-month (YearMonth/of 1 1))
+(def min-year-month (system/date 1 1))
 (def date-time-min-year-month (system/date-time 1 1))
-(def min-date (LocalDate/of 1 1 1))
+(def min-date (system/date 1 1 1))
 (def date-time-min-date (system/date-time 1 1 1))
-(def min-date-time (LocalDateTime/of 1 1 1 0 0 0 0))
+(def min-date-time (system/date-time 1 1 1 0 0 0 0))
 
 
-(def max-year (Year/of 9999))
+(def max-year (system/date 9999))
 (def date-time-max-year (system/date-time 9999))
-(def max-year-month (YearMonth/of 9999 12))
+(def max-year-month (system/date 9999 12))
 (def date-time-max-year-month (system/date-time 9999 12))
-(def max-date (LocalDate/of 9999 12 31))
+(def max-date (system/date 9999 12 31))
 (def date-time-max-date (system/date-time 9999 12 31))
-(def max-date-time (LocalDateTime/of 9999 12 31 23 59 59 999000000))
+(def max-date-time (system/date-time 9999 12 31 23 59 59 999))
 
 
 (defrecord Period [months millis]
@@ -1327,7 +1327,7 @@
     (p/to-date-time (system/parse-date-time s) now))
 
   ;; for the anomaly
-  IPersistentMap
+  Map
   (to-date-time [_ _]))
 
 

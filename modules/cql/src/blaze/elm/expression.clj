@@ -1,12 +1,8 @@
 (ns blaze.elm.expression
   (:require
-    [blaze.elm.compiler.protocols :as p])
+    [blaze.elm.compiler.core :as core])
   (:refer-clojure :exclude [eval]))
 
 
-(defn expr? [x]
-  (satisfies? p/Expression x))
-
-
 (defn eval [expression context resource scope]
-  (p/-eval expression context resource scope))
+  (core/-eval expression context resource scope))

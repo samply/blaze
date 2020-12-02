@@ -2,11 +2,12 @@
   "A CQL Tuple is implemented by a Clojure map."
   (:require
     [blaze.elm.protocols :as p])
-  (:import [clojure.lang IPersistentMap]))
+  (:import
+    [java.util Map]))
 
 
 (extend-protocol p/Equal
-  IPersistentMap
+  Map
   (equal [x y]
     (loop [[[k vx] & xs] x]
       (if (some? k)

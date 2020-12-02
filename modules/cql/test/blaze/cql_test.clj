@@ -13,6 +13,7 @@
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.type-infer-spec]
     [clojure.data.xml :as xml]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
@@ -27,7 +28,19 @@
 
 (defn fixture [f]
   (st/instrument)
-  (st/unstrument [`compile `expr/eval])
+  (st/instrument
+    `compile
+    {:spec
+     {`compile
+      (s/fspec
+        :args (s/cat :context any? :expression :elm/expression))}})
+  (st/instrument
+    `expr/eval
+    {:spec
+     {`expr/eval
+      (s/fspec
+        :args (s/cat :expression :blaze.elm.compiler/expression
+                     :context map? :resource nil? :scope nil?))}})
   (f)
   (st/unstrument))
 

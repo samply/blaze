@@ -3,7 +3,8 @@
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]
     [clojure.string :as str])
-  (:refer-clojure :exclude [and boolean distinct flatten list not or time]))
+  (:refer-clojure :exclude [and boolean count distinct flatten list max min not
+                            or time]))
 
 
 ;; 1. Simple Values
@@ -89,35 +90,59 @@
    :name name})
 
 
+
+;; 11. External Data
+
+;; 11.1. Retrieve
+(defn retrieve [{:keys [type codes]}]
+  (cond->
+    {:type "Retrieve"
+     :dataType (str "{http://hl7.org/fhir}" type)}
+    codes
+    (assoc :codes codes)))
+
+
+
+;; 12. Comparison Operators
+
+;; 12.1. Equal
 (defn equal [ops]
   {:type "Equal"
    :operand ops})
 
 
+;; 12.2. Equivalent
 (defn equivalent [ops]
   {:type "Equivalent"
    :operand ops})
 
 
+;; 12.3. Greater
 (defn greater [ops]
   {:type "Greater"
    :operand ops})
 
 
+;; 12.4. GreaterOrEqual
 (defn greater-or-equal [ops]
   {:type "GreaterOrEqual"
    :operand ops})
 
 
+;; 12.5. Less
 (defn less [ops]
   {:type "Less"
    :operand ops})
 
 
+;; 12.6. LessOrEqual
 (defn less-or-equal [ops]
   {:type "LessOrEqual"
    :operand ops})
 
+
+
+;; 13. Logical Operators
 
 ;; 13.1. And
 (defn and [ops]
@@ -140,6 +165,12 @@
 ;; 13.5. Xor
 (defn xor [ops]
   {:type "Xor"
+   :operand ops})
+
+
+;; 14.2. Coalesce
+(defn coalesce [ops]
+  {:type "Coalesce"
    :operand ops})
 
 
@@ -216,6 +247,16 @@
 (defn ln [op]
   {:type "Ln"
    :operand op})
+
+
+;; 16.9. MaxValue
+(defn max-value [type]
+  {:type "MaxValue" :valueType type})
+
+
+;; 16.10. MinValue
+(defn min-value [type]
+  {:type "MinValue" :valueType type})
 
 
 ;; 16.11. Modulo
@@ -492,6 +533,81 @@
 ;; 20.28. Times
 (defn times [lists]
   {:type "SingletonFrom" :operand lists})
+
+
+;; 21.1. AllTrue
+(defn all-true [source]
+  {:type "AllTrue" :source source})
+
+
+;; 21.2. AnyTrue
+(defn any-true [source]
+  {:type "AnyTrue" :source source})
+
+
+;; 21.3. Avg
+(defn avg [source]
+  {:type "Avg" :source source})
+
+
+;; 21.4. Count
+(defn count [source]
+  {:type "Count" :source source})
+
+
+;; 21.5. GeometricMean
+(defn geometric-mean [source]
+  {:type "GeometricMean" :source source})
+
+
+;; 21.6. Product
+(defn product [source]
+  {:type "Product" :source source})
+
+
+;; 21.7. Max
+(defn max [source]
+  {:type "Max" :source source})
+
+
+;; 21.8. Median
+(defn median [source]
+  {:type "Median" :source source})
+
+
+;; 21.9. Min
+(defn min [source]
+  {:type "Min" :source source})
+
+
+;; 21.10. Mode
+(defn mode [source]
+  {:type "Mode" :source source})
+
+
+;; 21.11. PopulationVariance
+(defn population-variance [source]
+  {:type "PopulationVariance" :source source})
+
+
+;; 21.12. PopulationStdDev
+(defn population-std-dev [source]
+  {:type "PopulationStdDev" :source source})
+
+
+;; 21.13. Sum
+(defn sum [source]
+  {:type "Sum" :source source})
+
+
+;; 21.14. StdDev
+(defn std-dev [source]
+  {:type "StdDev" :source source})
+
+
+;; 21.15. Variance
+(defn variance [source]
+  {:type "Variance" :source source})
 
 
 ;; 22.1. As
