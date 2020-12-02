@@ -364,8 +364,8 @@
 (defn- wrap-interaction-name [handler]
   (fn [{{:keys [type]} :body :as request}]
     (cond-> (handler request)
-      (string? type)
-      (ac/then-apply #(assoc % :fhir/interaction-name type)))))
+      (some? type)
+      (ac/then-apply #(assoc % :fhir/interaction-name (type/value type))))))
 
 
 (defn handler [node executor]
