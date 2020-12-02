@@ -194,7 +194,7 @@
   ;; on your use case while monitoring JVM heap size.
   ;;
   :blaze.db/resource-handle-cache
-  {:max-size #blaze/cfg ["DB_RESOURCE_CACHE_SIZE" nat-int? 100000]}
+  {:max-size #blaze/cfg ["DB_RESOURCE_HANDLE_CACHE_SIZE" nat-int? 100000]}
 
   ;;
   ;; Resource Cache
