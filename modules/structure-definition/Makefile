@@ -1,5 +1,5 @@
 lint:
-	clj-kondo --lint src
+	clj-kondo --lint src deps.edn
 
 test:
 	true

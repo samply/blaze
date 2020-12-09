@@ -119,8 +119,8 @@ The indices not depending on `t` directly point to the resource versions by thei
 |---|---|---|
 | SearchParamValueResource | search-param type value id content-hash | - |
 | ResourceSearchParamValue | type id content-hash search-param value | - |
-| CSVR | co-c-hash co-res-id sp-c-hash tid value id hash-prefix | - |
-| CompartmentResourceType | co-c-hash co-res-id tid id | - |
+| CompartmentSearchParamValueResource | co-c-hash co-res-id sp-c-hash tid value id hash-prefix | - |
+| CompartmentResource | co-c-hash co-res-id tid id | - |
 | SearchParam | code tid | id |
 | ActiveSearchParams | id | - |
 

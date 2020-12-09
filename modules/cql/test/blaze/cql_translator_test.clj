@@ -8,6 +8,9 @@
     [juxt.iota :refer [given]]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (f)

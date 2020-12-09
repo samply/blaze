@@ -1,18 +1,16 @@
 (ns blaze.db.impl.codec
   (:require
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.util :as fhir-util]
-    [cheshire.core :as cheshire]
-    [cognitect.anomalies :as anom])
+    [blaze.byte-string :as bs]
+    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.fhir.spec.type.system]
+    [blaze.fhir.util :as fhir-util])
   (:import
     [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth
                                  DateTimeYearMonthDay]
     [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
-    [com.google.common.hash HashCode Hashing]
-    [com.google.common.io BaseEncoding]
-    [java.nio ByteBuffer]
-    [java.nio.charset Charset StandardCharsets]
-    [java.time Instant LocalDate LocalDateTime OffsetDateTime Year YearMonth
+    [com.google.common.hash Hashing]
+    [java.nio.charset StandardCharsets]
+    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth
                ZoneId ZoneOffset]
     [java.util Arrays]))
 
@@ -24,23 +22,15 @@
 
 ;; ---- Sizes of Byte Arrays --------------------------------------------------
 
-(def ^:const ^int hash-size 32)
-(def ^:const ^int hash-prefix-size 4)
-(def ^:const ^int c-hash-size Integer/BYTES)
-(def ^:const ^int v-hash-size Integer/BYTES)
-(def ^:const ^int tid-size Integer/BYTES)
-(def ^:const ^int t-size Long/BYTES)
-(def ^:const ^int state-size Long/BYTES)
-(def ^:const ^int tx-time-size Long/BYTES)
-(def ^:const ^int max-id-size 64)
-
-
-
-;; ---- Instances -------------------------------------------------------------
-
-(def ^Charset iso-8859-1 StandardCharsets/ISO_8859_1)
-
-(def ^Charset utf-8 StandardCharsets/UTF_8)
+(def ^:const ^long hash-size 32)
+(def ^:const ^long hash-prefix-size 4)
+(def ^:const ^long c-hash-size Integer/BYTES)
+(def ^:const ^long v-hash-size Integer/BYTES)
+(def ^:const ^long tid-size Integer/BYTES)
+(def ^:const ^long t-size Long/BYTES)
+(def ^:const ^long state-size Long/BYTES)
+(def ^:const ^long tx-time-size Long/BYTES)
+(def ^:const ^long max-id-size 64)
 
 
 
@@ -63,7 +53,9 @@
   Returns an integer."
   (memoize-1
     (fn [type]
-      (.asInt (.hashBytes (Hashing/murmur3_32) (.getBytes ^String type iso-8859-1))))))
+      (-> (Hashing/murmur3_32)
+          (.hashBytes (.getBytes ^String type StandardCharsets/ISO_8859_1))
+          (.asInt)))))
 
 
 (let [kvs (->> (fhir-util/resources)
@@ -78,27 +70,19 @@
 
 
 
-;; ---- Byte Array Functions --------------------------------------------------
+;; ---- Identifier Functions --------------------------------------------------
+
+(defn id-byte-string [id]
+  (bs/from-string id StandardCharsets/ISO_8859_1))
 
 
-(defn bytes-eq-without-t [^bytes a ^bytes b]
-  (Arrays/equals a 0 (- (alength a) t-size)
-                 b 0 (- (alength b) t-size)))
-
-
-(defn hex [bs]
-  (.encode (BaseEncoding/base16) bs))
-
-
-(defn id-bytes [^String id]
-  (.getBytes id iso-8859-1))
+(defn id-string [id-byte-string]
+  (bs/to-string id-byte-string StandardCharsets/ISO_8859_1))
 
 
 (defn id
-  ([^bytes id-bytes]
-   (String. id-bytes iso-8859-1))
-  ([^bytes id-bytes ^long offset ^long length]
-   (String. id-bytes offset length iso-8859-1)))
+  [^bytes id-bytes ^long offset ^long length]
+  (String. id-bytes offset length StandardCharsets/ISO_8859_1))
 
 
 
@@ -114,506 +98,80 @@
 
   7 bytes are also plenty for the `t` value because with 5 bytes one could carry
   out a transaction every millisecond for 20 years."
-  ^long [^long l]
-  (bit-and (bit-not l) 0xFFFFFFFFFFFFFF))
+  {:inline
+   (fn [l]
+     `(bit-and (bit-not ~l) 0xFFFFFFFFFFFFFF))}
+  [l]
+  (bit-and (bit-not ^long l) 0xFFFFFFFFFFFFFF))
 
 
-(defn t-key [t]
-  (-> (ByteBuffer/allocate t-size)
-      (.putLong (descending-long t))
-      (.array)))
-
-
-(defn decode-t-key [k]
-  (descending-long (.getLong (ByteBuffer/wrap k))))
-
-
-
-;; ---- SearchParamValueResource Index ----------------------------------------
-
-(defn- hash-prefix ^bytes [^HashCode hash]
-  (let [bs (byte-array hash-prefix-size)]
-    (.writeBytesTo hash bs 0 hash-prefix-size)
-    bs))
-
-
-(defn sp-value-resource-key
-  {:arglists
-   '([c-hash tid value]
-     [c-hash tid value id]
-     [c-hash tid value id hash])}
-  ([c-hash tid ^bytes value]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value)))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value)
-       (.array)))
-  ([c-hash tid ^bytes value ^bytes id]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value) 1
-                               (alength id) 1))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value)
-       (.put (byte 0))
-       (.put id)
-       (.put (byte (alength id)))
-       (.array)))
-  ([c-hash tid ^bytes value ^bytes id ^bytes hash]
-   (-> (ByteBuffer/allocate (+ c-hash-size tid-size (alength value) 1
-                               (alength id) 1 hash-prefix-size))
-       (.putInt c-hash)
-       (.putInt tid)
-       (.put value)
-       (.put (byte 0))
-       (.put id)
-       (.put (byte (alength id)))
-       (.put (hash-prefix hash))
-       (.array))))
-
-
-(defn- append-fs [^bytes k ^long n]
-  (let [b (byte-array (+ (alength k) n))]
-    (System/arraycopy k 0 b 0 (alength k))
-    (dotimes [i n]
-      (aset b (+ (alength k) i) (byte 0xff)))
-    b))
-
-
-(defn sp-value-resource-key-for-prev
-  ([c-hash tid value]
-   (append-fs (sp-value-resource-key c-hash tid value)
-              (+ 1 max-id-size 1 hash-prefix-size)))
-  ([c-hash tid value id]
-   (append-fs (sp-value-resource-key c-hash tid value id)
-              hash-prefix-size)))
-
-
-(def ^:private ^:const ^int sp-value-resource-key-buffer-capacity
-  "Most search param value keys should fit into this size."
-  128)
-
-
-(defn decode-sp-value-resource-key
-  ([] (ByteBuffer/allocateDirect sp-value-resource-key-buffer-capacity))
-  ([^ByteBuffer bb]
-   (let [id-size (.get bb (dec (- (.limit bb) hash-prefix-size)))
-         prefix (byte-array (- (.remaining bb) id-size 2 hash-prefix-size))
-         id (byte-array id-size)
-         hash-prefix (byte-array hash-prefix-size)]
-     (.get bb prefix)
-     (.get bb)
-     (.get bb id)
-     (.get bb)
-     (.get bb hash-prefix)
-     [prefix id hash-prefix])))
-
-
-
-;; ---- ResourceSearchParamValue Index ----------------------------------------
-
-(defn resource-sp-value-key
-  {:arglists '([tid id hash c-hash] [tid id hash c-hash value])}
-  ([tid ^bytes id hash c-hash]
-   (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
-                               c-hash-size))
-       (.putInt tid)
-       (.put (byte (alength id)))
-       (.put id)
-       (.put (if (bytes? hash) ^bytes hash (hash-prefix hash)))
-       (.putInt c-hash)
-       (.array)))
-  ([tid ^bytes id hash c-hash ^bytes value]
-   (-> (ByteBuffer/allocate (+ tid-size 1 (alength id) hash-prefix-size
-                               c-hash-size (alength value)))
-       (.putInt tid)
-       (.put (byte (alength id)))
-       (.put id)
-       (.put (if (bytes? hash) ^bytes hash (hash-prefix hash)))
-       (.putInt c-hash)
-       (.put value)
-       (.array))))
-
-
-(def ^:private ^:const ^int resource-sp-value-key-buffer-capacity
-  "Most resource value keys should fit into this size."
-  128)
-
-
-(defn decode-resource-sp-value-key
-  ([] (ByteBuffer/allocateDirect resource-sp-value-key-buffer-capacity))
-  ([^ByteBuffer bb]
-   (let [id-size (.get bb (+ (.position bb) tid-size))
-         prefix (byte-array (+ tid-size 1 id-size hash-prefix-size c-hash-size))
-         value (byte-array (- (.remaining bb) (alength prefix)))]
-     (.get bb prefix)
-     (.get bb value)
-     [prefix value])))
+(defn hash-prefix [hash]
+  (bs/subs hash 0 hash-prefix-size))
 
 
 (defn c-hash [code]
-  (.asInt (.hashString (Hashing/murmur3_32) ^String code utf-8)))
+  (-> (Hashing/murmur3_32)
+      (.hashString ^String code StandardCharsets/UTF_8)
+      (.asInt)))
 
 
-(def ^:private c-hash->code
+(def c-hash->code
   (into
     {}
     (map (fn [code] [(c-hash code) code]))
     ["_id"
+     "_profile"
+     "address"
+     "birthdate"
+     "bodysite"
+     "category"
+     "class"
+     "code"
+     "code-value-quantity"
+     "combo-code"
+     "combo-code-value-quantity"
      "combo-value-quantity"
      "context-quantity"
-     "value-quantity"]))
-
-
-(defn decode-resource-sp-value-key-human
-  ([] (ByteBuffer/allocateDirect resource-sp-value-key-buffer-capacity))
-  ([^ByteBuffer bb]
-   (let [id-size (.get bb (+ (.position bb) tid-size))
-         tid (.getInt bb)
-         _ (.get bb)
-         id (byte-array id-size)
-         _ (.get bb id)
-         hash-prefix (byte-array hash-prefix-size)
-         _ (.get bb hash-prefix)
-         c-hash (.getInt bb)
-         value (byte-array (.remaining bb))]
-     (.get bb value)
-     [(tid->type tid) (blaze.db.impl.codec/id id) (hex hash-prefix)
-      (or (c-hash->code c-hash) (Integer/toHexString c-hash))
-      (hex value)])))
-
-
-(defn resource-sp-value-key->value [^bytes k]
-  (let [bb (ByteBuffer/wrap k)
-        id-size (.get bb tid-size)
-        prefix-length (+ tid-size 1 id-size hash-prefix-size c-hash-size)
-        value-length (- (alength k) prefix-length)
-        value (byte-array value-length)]
-    (.position bb prefix-length)
-    (.get bb value 0 value-length)
-    value))
-
-
-
-;; ---- CompartmentResource Index ---------------------------------------------
-
-(defn compartment-search-param-value-key
-  {:arglists
-   '([co-c-hash co-res-id sp-c-hash tid value]
-     [co-c-hash co-res-id sp-c-hash tid value id hash])}
-  ([co-c-hash ^bytes co-res-id sp-c-hash tid ^bytes value]
-   (-> (ByteBuffer/allocate (+ c-hash-size (alength co-res-id)
-                               c-hash-size tid-size (alength value)))
-       (.putInt co-c-hash)
-       (.put co-res-id)
-       (.putInt sp-c-hash)
-       (.putInt tid)
-       (.put value)
-       (.array)))
-  ([co-c-hash ^bytes co-res-id sp-c-hash tid ^bytes value ^bytes id hash]
-   (-> (ByteBuffer/allocate (+ c-hash-size (alength co-res-id)
-                               c-hash-size tid-size (alength value) 1
-                               (alength id) 1 hash-prefix-size))
-       (.putInt co-c-hash)
-       (.put co-res-id)
-       (.putInt sp-c-hash)
-       (.putInt tid)
-       (.put value)
-       (.put (byte 0))
-       (.put id)
-       (.put (byte (alength id)))
-       (.put (hash-prefix hash))
-       (.array))))
-
-
-
-;; ---- CompartmentResourceValue Index ----------------------------------------
-
-(defn compartment-resource-value-key
-  {:arglists
-   '([co-c-hash co-res-id tid id hash c-hash]
-     [co-c-hash co-res-id tid id hash c-hash value])}
-  ([co-c-hash ^bytes co-res-id tid ^bytes id ^bytes hash sp-c-hash]
-   (-> (ByteBuffer/allocate (+ c-hash-size (alength co-res-id)
-                               tid-size (alength id) hash-prefix-size
-                               c-hash-size))
-       (.putInt co-c-hash)
-       (.put co-res-id)
-       (.putInt tid)
-       (.put id)
-       (.put (hash-prefix hash))
-       (.putInt sp-c-hash)
-       (.array)))
-  ([co-c-hash ^bytes co-res-id tid ^bytes id ^bytes hash sp-c-hash ^bytes value]
-   (-> (ByteBuffer/allocate (+ c-hash-size (alength co-res-id)
-                               tid-size (alength id) hash-prefix-size
-                               c-hash-size (alength value)))
-       (.putInt co-c-hash)
-       (.put co-res-id)
-       (.putInt tid)
-       (.put id)
-       (.put (hash-prefix hash))
-       (.putInt sp-c-hash)
-       (.put value)
-       (.array))))
-
-
-
-;; ---- ResourceType Index ----------------------------------------------------
-
-(defn resource-type-key
-  ([tid]
-   (-> (ByteBuffer/allocate tid-size)
-       (.putInt tid)
-       (.array)))
-  ([tid ^bytes id]
-   (-> (ByteBuffer/allocate (+ tid-size (alength id)))
-       (.putInt tid)
-       (.put id)
-       (.array))))
-
-
-(defn resource-type-key->tid [k]
-  (.getInt (ByteBuffer/wrap k)))
-
-
-(defn resource-type-key->id [^bytes k]
-  (Arrays/copyOfRange k tid-size (alength k)))
-
-
-
-;; ---- CompartmentResourceType Index -----------------------------------------
-
-(defn compartment-resource-type-key
-  ([co-c-hash ^bytes co-res-id tid]
-   (-> (ByteBuffer/allocate (+ c-hash-size 1 (alength co-res-id) tid-size))
-       (.putInt co-c-hash)
-       (.put (byte (alength co-res-id)))
-       (.put co-res-id)
-       (.putInt tid)
-       (.array)))
-  ([co-c-hash ^bytes co-res-id tid ^bytes id]
-   (-> (ByteBuffer/allocate (+ c-hash-size 1 (alength co-res-id) tid-size
-                               (alength id)))
-       (.putInt co-c-hash)
-       (.put (byte (alength co-res-id)))
-       (.put co-res-id)
-       (.putInt tid)
-       (.put id)
-       (.array))))
-
-
-(defn compartment-resource-type-key->co-c-hash [k]
-  (.getInt (ByteBuffer/wrap k)))
-
-
-(defn compartment-resource-type-key->co-res-id [^bytes k]
-  (let [bb (ByteBuffer/wrap k)
-        co-res-id-size (.get bb c-hash-size)
-        from (unchecked-inc-int c-hash-size)]
-    (Arrays/copyOfRange k from (unchecked-add-int from co-res-id-size))))
-
-
-(defn compartment-resource-type-key->tid [k]
-  (let [bb (ByteBuffer/wrap k)
-        co-res-id-size (.get bb c-hash-size)]
-    (.getInt bb (+ c-hash-size 1 co-res-id-size))))
-
-
-(def ^:private ^:const ^int compartment-resource-type-key-id-from
-  (+ (unchecked-inc-int c-hash-size) tid-size))
-
-
-(defn compartment-resource-type-key->id [^bytes k]
-  (let [co-res-id-size (.get (ByteBuffer/wrap k) c-hash-size)]
-    (Arrays/copyOfRange k (unchecked-add-int compartment-resource-type-key-id-from co-res-id-size) (alength k))))
-
-
-(def ^:private ^:const ^int max-compartment-resource-type-key-size
-  (+ c-hash-size 1 max-id-size tid-size max-id-size))
-
-
-(defn decode-compartment-resource-type-key
-  ([]
-   (ByteBuffer/allocateDirect max-compartment-resource-type-key-size))
-  ([^ByteBuffer bb]
-   (let [co-res-id-size (.get bb c-hash-size)
-         prefix (byte-array (+ c-hash-size 1 co-res-id-size tid-size))
-         id (byte-array (- (.remaining bb) (alength prefix)))]
-     (.get bb prefix)
-     (.get bb id)
-     [prefix id])))
-
-
-;; ---- ResourceAsOf Index ----------------------------------------------------
-
-
-(defn resource-as-of-key
-  ([tid]
-   (-> (ByteBuffer/allocate tid-size)
-       (.putInt tid)
-       (.array)))
-  ([tid ^bytes id t]
-   (-> (ByteBuffer/allocate (+ tid-size (alength id) t-size))
-       (.putInt tid)
-       (.put id)
-       (.putLong (descending-long t))
-       (.array))))
-
-
-(defn resource-as-of-key->tid [k]
-  (.getInt (ByteBuffer/wrap k)))
-
-
-(defn resource-as-of-key->id [^bytes k]
-  (Arrays/copyOfRange k tid-size (- (alength k) t-size)))
-
-
-(defn resource-as-of-key->t ^long [^bytes k]
-  (descending-long (.getLong (ByteBuffer/wrap k) (- (alength k) t-size))))
-
-
-(defn state [num-changes op]
-  (cond-> (bit-shift-left ^long num-changes 8)
-    (identical? :create op) (bit-set 1)
-    (identical? :delete op) (bit-set 0)))
-
-
-(defn state->num-changes
-  "A resource is new if num-changes is 1."
-  [state]
-  (bit-shift-right ^long state 8))
-
-
-(defn state->op [state]
-  (cond
-    (bit-test ^long state 1) :create
-    (bit-test ^long state 0) :delete
-    :else :put))
-
-
-(defn deleted? [^long state]
-  (= 1 (bit-and state 1)))
-
-
-(def ^:const ^int resource-as-of-value-size
-  (+ hash-size state-size))
-
-
-(defn resource-as-of-value [hash state]
-  (-> (ByteBuffer/allocate resource-as-of-value-size)
-      (.put (hash/encode hash))
-      (.putLong state)
-      (.array)))
-
-
-(defn resource-as-of-value->hash [^bytes v]
-  (HashCode/fromBytes (Arrays/copyOfRange v 0 hash-size)))
-
-
-(defn resource-as-of-value->state [v]
-  (.getLong (ByteBuffer/wrap v) hash-size))
-
-
-(defn get-tid! ^long [^ByteBuffer buf]
-  (.getInt buf))
-
-
-(defn get-t! ^long [^ByteBuffer buf]
-  (descending-long (.getLong buf)))
-
-
-(defn get-hash! [^ByteBuffer buf]
-  (let [hash (byte-array hash-size)]
-    (.get buf hash)
-    (HashCode/fromBytes hash)))
-
-
-(defn get-state! ^long [^ByteBuffer buf]
-  (.getLong buf))
-
-
-
-;; ---- TypeAsOf Index --------------------------------------------------------
-
-(defn type-as-of-key
-  ([tid t]
-   (-> (ByteBuffer/allocate (+ tid-size t-size))
-       (.putInt tid)
-       (.putLong (descending-long t))
-       (.array)))
-  ([tid t ^bytes id]
-   (-> (ByteBuffer/allocate (+ tid-size t-size (alength id)))
-       (.putInt tid)
-       (.putLong (descending-long t))
-       (.put id)
-       (.array))))
-
-
-(defn type-as-of-key->tid [k]
-  (.getInt (ByteBuffer/wrap k)))
-
-
-(defn type-as-of-key->t [k]
-  (descending-long (.getLong (ByteBuffer/wrap k) tid-size)))
-
-
-(defn type-as-of-key->id [^bytes k]
-  (Arrays/copyOfRange k (+ tid-size t-size) (alength k)))
-
-
-
-;; ---- SystemAsOf Index ----------------------------------------------------
-
-(defn system-as-of-key
-  ([t]
-   (-> (ByteBuffer/allocate t-size)
-       (.putLong (descending-long t))
-       (.array)))
-  ([t tid]
-   (-> (ByteBuffer/allocate (+ t-size tid-size))
-       (.putLong (descending-long t))
-       (.putInt tid)
-       (.array)))
-  ([t tid ^bytes id]
-   (-> (ByteBuffer/allocate (+ t-size tid-size (alength id)))
-       (.putLong (descending-long t))
-       (.putInt tid)
-       (.put id)
-       (.array))))
-
-
-(defn system-as-of-key->t [k]
-  (descending-long (.getLong (ByteBuffer/wrap k))))
-
-
-(defn system-as-of-key->tid [k]
-  (.getInt (ByteBuffer/wrap k) t-size))
-
-
-(defn system-as-of-key->id [^bytes k]
-  (Arrays/copyOfRange k (+ t-size tid-size) (alength k)))
-
-
-
-;; ---- Other Functions -------------------------------------------------------
-
-(defn v-hash ^bytes [value]
-  (.asBytes (.hashString (Hashing/murmur3_32) ^String value utf-8)))
+     "date"
+     "death-date"
+     "deceased"
+     "description"
+     "identifier"
+     "issued"
+     "item"
+     "item:identifier"
+     "onset-date"
+     "patient"
+     "phonetic"
+     "series"
+     "status"
+     "subject"
+     "url"
+     "value-quantity"
+     "version"]))
+
+
+(defn v-hash [value]
+  (-> (Hashing/murmur3_32)
+      (.hashString ^String value StandardCharsets/UTF_8)
+      (.asBytes)
+      (bs/from-byte-array)))
 
 
 (defn tid-id
-  "Returns a byte array with tid from `type` followed by `id`."
-  [tid ^bytes id]
-  (let [bb (ByteBuffer/allocate (+ tid-size (alength id)))]
-    (.putInt bb tid)
-    (.put bb id)
-    (.array bb)))
+  "Returns a byte string with `tid` followed by `id`."
+  [tid id]
+  (-> (bb/allocate (+ tid-size (bs/size id)))
+      (bb/put-int! tid)
+      (bb/put-byte-string! id)
+      (bb/flip!)
+      (bs/from-byte-buffer)))
 
 
 (defn string
   "Returns a lexicographically sortable byte string of the `string` value."
   [string]
-  (.getBytes ^String string utf-8))
+  (bs/from-utf8-string string))
 
 
 (defprotocol NumberBytes
@@ -621,10 +179,9 @@
 
 
 (defn number
-  "Converts the number in a lexicographically sortable byte array.
+  "Converts the number in a lexicographically sortable byte string.
 
-  The array has variable length."
-  ^bytes
+  The byte string has variable length."
   [number]
   (-number number))
 
@@ -639,7 +196,7 @@
 
   Integer
   (-number [val]
-    (number (long val)))
+    (-number (long val)))
 
   Long
   (-number [val]
@@ -647,58 +204,67 @@
           val (- (Math/abs ^long val) (bit-and 1 mask))]
       (condp > val
         (bit-shift-left 1 3)
-        (let [bb (ByteBuffer/allocate 1)]
-          (.put bb (byte (bit-xor (bit-or val (bit-shift-left 0x10 3)) mask)))
-          (.array bb))
+        (-> (bb/allocate 1)
+            (bb/put-byte! (bit-xor (bit-or val (bit-shift-left 0x10 3)) mask))
+            (bb/flip!)
+            (bs/from-byte-buffer))
 
         (bit-shift-left 1 11)
-        (let [bb (ByteBuffer/allocate 2)]
-          (.putShort bb (bit-xor (bit-or val (bit-shift-left 0x11 11)) mask))
-          (.array bb))
+        (-> (bb/allocate 2)
+            (bb/put-short! (bit-xor (bit-or val (bit-shift-left 0x11 11)) mask))
+            (bb/flip!)
+            (bs/from-byte-buffer))
 
         (bit-shift-left 1 19)
-        (let [bb (ByteBuffer/allocate 3)
-              masked (bit-xor (bit-or val (bit-shift-left 0x12 19)) mask)]
-          (.put bb (byte (bit-shift-right masked 16)))
-          (.putShort bb masked)
-          (.array bb))
+        (let [masked (bit-xor (bit-or val (bit-shift-left 0x12 19)) mask)]
+          (-> (bb/allocate 3)
+              (bb/put-byte! (bit-shift-right masked 16))
+              (bb/put-short! masked)
+              (bb/flip!)
+              (bs/from-byte-buffer)))
 
         (bit-shift-left 1 27)
-        (let [bb (ByteBuffer/allocate 4)]
-          (.putInt bb (bit-xor (bit-or val (bit-shift-left 0x13 27)) mask))
-          (.array bb))
+        (-> (bb/allocate 4)
+            (bb/put-int! (bit-xor (bit-or val (bit-shift-left 0x13 27)) mask))
+            (bb/flip!)
+            (bs/from-byte-buffer))
 
         (bit-shift-left 1 35)
-        (let [bb (ByteBuffer/allocate 5)
-              masked (bit-xor (bit-or val (bit-shift-left 0x14 35)) mask)]
-          (.put bb (byte (bit-shift-right masked 32)))
-          (.putInt bb masked)
-          (.array bb))
+        (let [masked (bit-xor (bit-or val (bit-shift-left 0x14 35)) mask)]
+          (-> (bb/allocate 5)
+              (bb/put-byte! (bit-shift-right masked 32))
+              (bb/put-int! masked)
+              (bb/flip!)
+              (bs/from-byte-buffer)))
 
         (bit-shift-left 1 43)
-        (let [bb (ByteBuffer/allocate 6)
-              masked (bit-xor (bit-or val (bit-shift-left 0x15 43)) mask)]
-          (.putShort bb (bit-shift-right masked 32))
-          (.putInt bb masked)
-          (.array bb))
+        (let [masked (bit-xor (bit-or val (bit-shift-left 0x15 43)) mask)]
+          (-> (bb/allocate 6)
+              (bb/put-short! (bit-shift-right masked 32))
+              (bb/put-int! masked)
+              (bb/flip!)
+              (bs/from-byte-buffer)))
 
         (bit-shift-left 1 51)
-        (let [bb (ByteBuffer/allocate 7)
-              masked (bit-xor (bit-or val (bit-shift-left 0x16 51)) mask)]
-          (.put bb (byte (bit-shift-right masked 48)))
-          (.putShort bb (bit-shift-right masked 32))
-          (.putInt bb masked)
-          (.array bb))
+        (let [masked (bit-xor (bit-or val (bit-shift-left 0x16 51)) mask)]
+          (-> (bb/allocate 7)
+              (bb/put-byte! (bit-shift-right masked 48))
+              (bb/put-short! (bit-shift-right masked 32))
+              (bb/put-int! masked)
+              (bb/flip!)
+              (bs/from-byte-buffer)))
 
         (bit-shift-left 1 59)
-        (let [bb (ByteBuffer/allocate 8)]
-          (.putLong bb (bit-xor (bit-or val (bit-shift-left 0x17 59)) mask))
-          (.array bb))
+        (-> (bb/allocate 8)
+            (bb/put-long! (bit-xor (bit-or val (bit-shift-left 0x17 59)) mask))
+            (bb/flip!)
+            (bs/from-byte-buffer))
 
-        (let [bb (ByteBuffer/allocate 9)]
-          (.put bb (byte (bit-xor (bit-shift-left 0x18 3) mask)))
-          (.putLong bb (bit-xor val mask))
-          (.array bb))))))
+        (-> (bb/allocate 9)
+            (bb/put-byte! (bit-xor (bit-shift-left 0x18 3) mask))
+            (bb/put-long! (bit-xor val mask))
+            (bb/flip!)
+            (bs/from-byte-buffer))))))
 
 
 (defn- epoch-seconds ^long [^LocalDateTime date-time ^ZoneId zone-id]
@@ -724,7 +290,7 @@
     (number (epoch-seconds (.atStartOfDay (.atDay year-month 1)) zone-id)))
   DateTimeYearMonth
   (-date-lb [year-month zone-id]
-    (number (epoch-seconds (.atStartOfDay (.atDay ^YearMonth (.yearMonth year-month) 1)) zone-id)))
+    (number (epoch-seconds (.atStartOfDay (.atDay ^YearMonth (.-year_month year-month) 1)) zone-id)))
   LocalDate
   (-date-lb [date zone-id]
     (number (epoch-seconds (.atStartOfDay date) zone-id)))
@@ -741,7 +307,7 @@
 
 (defn date-lb
   "Returns the lower bound of the implicit range the `date-time` value spans."
-  ^bytes [zone-id date-time]
+  [zone-id date-time]
   (-date-lb date-time zone-id))
 
 
@@ -749,17 +315,15 @@
 
 
 (defn date-lb?
-  "Tests whether the bytes in `b` starting at `offset` represent a date lower
-  bound."
-  [^bytes b offset]
-  (< (bit-and (aget b offset) 0xff) ub-first-byte))
+  "Tests whether `bs` starting at `offset` represent a date lower bound."
+  [bs offset]
+  (< (bit-and ^long (bs/nth bs offset) 0xff) ub-first-byte))
 
 
 (defn date-ub?
-  "Tests whether the bytes in `b` starting at `offset` represent a date upper
-  bound."
-  [^bytes b offset]
-  (>= (bit-and (aget b offset) 0xff) ub-first-byte))
+  "Tests whether `bs` starting at `offset` represent a date upper bound."
+  [bs offset]
+  (>= (bit-and ^long (bs/nth bs offset) 0xff) ub-first-byte))
 
 
 (defprotocol DateUpperBound
@@ -778,7 +342,7 @@
     (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1)) zone-id)))))
   DateTimeYearMonth
   (-date-ub [year-month zone-id]
-    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.yearMonth year-month) 1) 1)) zone-id)))))
+    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.-year_month year-month) 1) 1)) zone-id)))))
   LocalDate
   (-date-ub [date zone-id]
     (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.plusDays date 1)) zone-id)))))
@@ -795,98 +359,38 @@
 
 (defn date-ub
   "Returns the upper bound of the implicit range the `date-time` value spans."
-  ^bytes [zone-id date-time]
+  [zone-id date-time]
   (-date-ub date-time zone-id))
 
 
-(def date-min-bound (date-lb (ZoneOffset/ofHours 0) (Year/of 1)))
+(def date-min-bound
+  (date-lb (ZoneOffset/ofHours 0) (Year/of 1)))
 
 
-(def date-max-bound (date-ub (ZoneOffset/ofHours 0) (Year/of 9999)))
+(def date-max-bound
+  (date-ub (ZoneOffset/ofHours 0) (Year/of 9999)))
 
 
-(defn date-lb-ub [^bytes lb ^bytes ub]
-  (let [bb (ByteBuffer/allocate (+ 1 (alength lb) (alength ub)))]
-    (.put bb (byte (alength lb)))
-    (.put bb lb)
-    (.put bb ub)
-    (.array bb)))
+(defn date-lb-ub [lb ub]
+  (-> (bb/allocate (+ 1 (bs/size lb) (bs/size ub)))
+      (bb/put-byte! (bs/size lb))
+      (bb/put-byte-string! lb)
+      (bb/put-byte-string! ub)
+      (bb/flip!)
+      (bs/from-byte-buffer)))
 
 
-(defn date-lb-ub->lb [^bytes lb-ub]
-  (Arrays/copyOfRange lb-ub 1 (inc (aget lb-ub 0))))
+(defn date-lb-ub->lb [lb-ub]
+  (bs/subs lb-ub 1 (inc ^long (bs/nth lb-ub 0))))
 
 
-(defn date-lb-ub->ub [^bytes lb-ub]
-  (Arrays/copyOfRange lb-ub (inc (aget lb-ub 0)) (alength lb-ub)))
+(defn date-lb-ub->ub [lb-ub]
+  (bs/subs lb-ub (inc ^long (bs/nth lb-ub 0)) (bs/size lb-ub)))
 
 
 (defn quantity [unit value]
-  (let [number (number value)]
-    (-> (ByteBuffer/allocate (+ v-hash-size (alength number)))
-        (.put (v-hash (or unit "")))
-        (.put number)
-        (.array))))
-
-
-(defn unit-prefix [quantity]
-  (Arrays/copyOfRange ^bytes quantity 0 v-hash-size))
+  (bs/concat (v-hash (or unit "")) (number value)))
 
 
 (defn deleted-resource [type id]
   {:fhir/type (keyword "fhir" type) :id id})
-
-
-
-;; ---- Transaction -----------------------------------------------------------
-;; TODO: encode nanoseconds here?
-
-(defn tx-by-instant-key [instant]
-  (-> (ByteBuffer/allocate tx-time-size)
-      (.putLong (descending-long (inst-ms instant)))
-      (.array)))
-
-
-(defn encode-t [t]
-  (-> (ByteBuffer/allocate t-size)
-      (.putLong t)
-      (.array)))
-
-
-(defn decode-t [bs]
-  (.getLong (ByteBuffer/wrap bs)))
-
-
-(defn encode-tx [{tx-instant :blaze.db.tx/instant}]
-  (cheshire/generate-cbor {:inst (inst-ms tx-instant)}))
-
-
-(defn decode-tx [bytes t]
-  (let [{:keys [inst]} (cheshire/parse-cbor bytes keyword)]
-    {:blaze.db/t t
-     :blaze.db.tx/instant (Instant/ofEpochMilli inst)}))
-
-
-(defn tx-success-entries [t tx-instant]
-  [[:tx-success-index (t-key t) (encode-tx {:blaze.db.tx/instant tx-instant})]
-   [:t-by-instant-index (tx-by-instant-key tx-instant) (encode-t t)]])
-
-
-(defn encode-tx-error [{::anom/keys [category message] :http/keys [status]}]
-  (cheshire/generate-cbor
-    {:category (name category) :message message :http-status status}))
-
-
-(defn decode-tx-error
-  "Returns an anomaly."
-  [bytes]
-  (let [{:keys [category message http-status]} (cheshire/parse-cbor bytes keyword)]
-    (cond->
-      {::anom/category (keyword "cognitect.anomalies" category)
-       ::anom/message message}
-      http-status
-      (assoc :http/status http-status))))
-
-
-(defn tx-error-entries [t anomaly]
-  [[:tx-error-index (t-key t) (encode-tx-error anomaly)]])

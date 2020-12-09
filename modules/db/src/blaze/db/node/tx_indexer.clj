@@ -8,23 +8,12 @@
   sequential to ensure ACID properties. Uses the same key-value store as the
   resource indexer and node. The metric duration-seconds is exported."
   (:require
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.kv :as kv]
+    [blaze.db.api :as d]
     [blaze.db.kv.spec]
     [blaze.db.node.tx-indexer.verify :as verify]
     [loom.alg]
     [loom.graph]
     [taoensso.timbre :as log]))
-
-
-(defn last-t
-  "Returns the last known `t` or nil if the store is empty."
-  [kv-store]
-  (with-open [snapshot (kv/new-snapshot kv-store)
-              iter (kv/new-iterator snapshot :tx-success-index)]
-    (kv/seek-to-first! iter)
-    (when (kv/valid? iter)
-      (codec/decode-t-key (kv/key iter)))))
 
 
 (defn- reference-graph [cmds]
@@ -56,7 +45,7 @@
 
 
 (defn index-tx
-  [kv-store {:keys [t tx-cmds]}]
-  (log/trace "verify transaction commands with t =" t)
-  (->> (sort-by-references tx-cmds)
-       (verify/verify-tx-cmds kv-store t)))
+  [db-before {:keys [t tx-cmds]}]
+  (log/trace "verify transaction commands with t =" t
+             "based on db with t =" (d/basis-t db-before))
+  (verify/verify-tx-cmds db-before t (sort-by-references tx-cmds)))

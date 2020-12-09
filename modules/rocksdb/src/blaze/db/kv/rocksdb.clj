@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.db.kv :as kv]
-    [clojure.java.io :as io]
+    [blaze.db.kv.rocksdb.metrics :as metrics]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -10,13 +10,13 @@
   (:import
     [java.lang AutoCloseable]
     [java.io Closeable]
+    [java.nio ByteBuffer]
     [java.util ArrayList]
-    [io.prometheus.client Collector CounterMetricFamily]
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
      DBOptions ColumnFamilyDescriptor CompressionType ColumnFamilyOptions
      BlockBasedTableConfig Statistics LRUCache BloomFilter CompactRangeOptions
-     TickerType Snapshot ReadOptions]))
+     Snapshot ReadOptions BuiltinComparator]))
 
 
 (set! *warn-on-reflection* true)
@@ -35,6 +35,9 @@
 
   (-seek [_ target]
     (.seek i ^bytes target))
+
+  (-seek-buffer [_ target]
+    (.seek i ^ByteBuffer target))
 
   (-seek-for-prev [_ target]
     (.seekForPrev i ^bytes target))
@@ -187,35 +190,40 @@
                  min-write-buffer-number-to-merge
                  max-bytes-for-level-base-in-mb
                  block-size
-                 bloom-filter?]
+                 bloom-filter?
+                 reverse-comparator?]
           :or {write-buffer-size-in-mb 4
                max-write-buffer-number 2
                level0-file-num-compaction-trigger 4
                min-write-buffer-number-to-merge 1
                max-bytes-for-level-base-in-mb 10
                block-size (bit-shift-left 4 10)
-               bloom-filter? false}}]]
+               bloom-filter? false
+               reverse-comparator? false}}]]
    (ColumnFamilyDescriptor.
      (.getBytes (name key))
-     (doto (ColumnFamilyOptions.)
-       (.setLevelCompactionDynamicLevelBytes true)
-       (.setCompressionType CompressionType/LZ4_COMPRESSION)
-       (.setBottommostCompressionType CompressionType/ZSTD_COMPRESSION)
-       (.setWriteBufferSize (bit-shift-left ^long write-buffer-size-in-mb 20))
-       (.setMaxWriteBufferNumber ^long max-write-buffer-number)
-       (.setMaxBytesForLevelBase (bit-shift-left ^long max-bytes-for-level-base-in-mb 20))
-       (.setLevel0FileNumCompactionTrigger ^long level0-file-num-compaction-trigger)
-       (.setMinWriteBufferNumberToMerge ^long min-write-buffer-number-to-merge)
-       (.setTableFormatConfig
-         (cond->
-           (doto (BlockBasedTableConfig.)
-             (.setVerifyCompression false)
-             (.setCacheIndexAndFilterBlocks true)
-             (.setPinL0FilterAndIndexBlocksInCache true)
-             (.setBlockSize block-size)
-             (.setBlockCache block-cache))
-           bloom-filter?
-           (.setFilterPolicy (BloomFilter. 10 false))))))))
+     (cond->
+       (doto (ColumnFamilyOptions.)
+         (.setLevelCompactionDynamicLevelBytes true)
+         (.setCompressionType CompressionType/LZ4_COMPRESSION)
+         (.setBottommostCompressionType CompressionType/ZSTD_COMPRESSION)
+         (.setWriteBufferSize (bit-shift-left ^long write-buffer-size-in-mb 20))
+         (.setMaxWriteBufferNumber ^long max-write-buffer-number)
+         (.setMaxBytesForLevelBase (bit-shift-left ^long max-bytes-for-level-base-in-mb 20))
+         (.setLevel0FileNumCompactionTrigger ^long level0-file-num-compaction-trigger)
+         (.setMinWriteBufferNumberToMerge ^long min-write-buffer-number-to-merge)
+         (.setTableFormatConfig
+           (cond->
+             (doto (BlockBasedTableConfig.)
+               (.setVerifyCompression false)
+               (.setCacheIndexAndFilterBlocks true)
+               (.setPinL0FilterAndIndexBlocksInCache true)
+               (.setBlockSize block-size)
+               (.setBlockCache block-cache))
+             bloom-filter?
+             (.setFilterPolicy (BloomFilter. 10 false)))))
+       reverse-comparator?
+       (.setComparator BuiltinComparator/REVERSE_BYTEWISE_COMPARATOR)))))
 
 
 (defn init-rocksdb-kv-store
@@ -234,7 +242,9 @@
                (.setStatistics ^Statistics stats)
                (.setMaxBackgroundJobs ^long max-background-jobs)
                (.setCompactionReadaheadSize ^long compaction-readahead-size)
-               (.setBytesPerSync 1048576))
+               (.setBytesPerSync 1048576)
+               (.setCreateIfMissing true)
+               (.setCreateMissingColumnFamilies true))
         cfds (map (partial column-family-descriptor block-cache) column-families)
         cfhs (ArrayList.)
         db (try
@@ -247,79 +257,6 @@
     (when disable-wal?
       (.setDisableWAL write-opts true))
     (->RocksKvStore db opts write-opts (index-column-family-handles cfhs))))
-
-
-(defn create-rocksdb-kv-store [dir column-families]
-  (let [opts (doto (Options.)
-               (.setCreateIfMissing true))
-        ^RocksDB db (try
-                      (RocksDB/open opts dir)
-                      (finally (.close opts)))]
-    (try
-      (.createColumnFamilies db (map column-family-descriptor column-families))
-      (finally
-        (.close db)))))
-
-
-(defn- stats-collector [^Statistics stats]
-  (proxy [Collector] []
-    (collect []
-      [(CounterMetricFamily.
-         "blaze_rocksdb_block_cache_miss_total"
-         "blaze_rocksdb_block_cache_miss_total"
-         (double (.getTickerCount stats TickerType/BLOCK_CACHE_MISS)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_block_cache_hit_total"
-         "blaze_rocksdb_block_cache_hit_total"
-         (double (.getTickerCount stats TickerType/BLOCK_CACHE_HIT)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_keys_read_total"
-         "blaze_rocksdb_keys_read_total"
-         (double (.getTickerCount stats TickerType/NUMBER_KEYS_READ)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_keys_written_total"
-         "blaze_rocksdb_keys_written_total"
-         (double (.getTickerCount stats TickerType/NUMBER_KEYS_WRITTEN)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_keys_updated_total"
-         "blaze_rocksdb_keys_updated_total"
-         (double (.getTickerCount stats TickerType/NUMBER_KEYS_UPDATED)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_seek_total"
-         "blaze_rocksdb_seek_total"
-         (double (.getTickerCount stats TickerType/NUMBER_DB_SEEK)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_next_total"
-         "blaze_rocksdb_next_total"
-         (double (.getTickerCount stats TickerType/NUMBER_DB_NEXT)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_prev_total"
-         "blaze_rocksdb_prev_total"
-         (double (.getTickerCount stats TickerType/NUMBER_DB_PREV)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_file_open_total"
-         "blaze_rocksdb_file_open_total"
-         (double (.getTickerCount stats TickerType/NO_FILE_OPENS)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_file_close_total"
-         "blaze_rocksdb_file_close_total"
-         (double (.getTickerCount stats TickerType/NO_FILE_CLOSES)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_file_error_total"
-         "blaze_rocksdb_file_error_total"
-         (double (.getTickerCount stats TickerType/NO_FILE_ERRORS)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_bloom_filter_useful_total"
-         "Number of times bloom filter has avoided file reads."
-         (double (.getTickerCount stats TickerType/BLOOM_FILTER_USEFUL)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_bloom_filter_full_positive_total"
-         "Number of times bloom FullFilter has not avoided the reads."
-         (double (.getTickerCount stats TickerType/BLOOM_FILTER_FULL_POSITIVE)))
-       (CounterMetricFamily.
-         "blaze_rocksdb_bloom_filter_full_true_positive_total"
-         "Number of times bloom FullFilter has not avoided the reads and data actually exist."
-         (double (.getTickerCount stats TickerType/BLOOM_FILTER_FULL_TRUE_POSITIVE)))])))
 
 
 (defmethod ig/init-key ::block-cache
@@ -351,8 +288,6 @@
 (defmethod ig/init-key :blaze.db.kv/rocksdb
   [_ {:keys [dir block-cache stats opts column-families]}]
   (log/info (init-log-msg dir opts))
-  (when-not (.isDirectory (io/file dir))
-    (create-rocksdb-kv-store dir (dissoc column-families :default)))
   (init-rocksdb-kv-store dir block-cache stats opts (merge {:default nil} column-families)))
 
 
@@ -376,6 +311,7 @@
 
 (defmethod ig/init-key ::stats-collector
   [_ {:keys [stats]}]
-  (stats-collector stats))
+  (metrics/stats-collector stats))
+
 
 (derive ::stats-collector :blaze.metrics/collector)

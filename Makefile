@@ -1,11 +1,11 @@
-VERSION := "0.9.0"
+VERSION := "0.10.0"
 MODULES := $(wildcard modules/*)
 
 $(MODULES):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 lint-root:
-	clj-kondo --lint src test
+	clj-kondo --lint src test deps.edn
 
 lint: $(MODULES) lint-root
 

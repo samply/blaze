@@ -21,19 +21,21 @@
   (s/keys :req-un [::collectors]))
 
 
+(defn register-collectors! [registry collectors]
+  (doseq [^Collector collector collectors]
+    (doseq [^Collector$MetricFamilySamples samples (.collect collector)]
+      (log/debug "Register collector" (.-name samples)))
+    (.register registry collector)))
+
+
 (defmethod ig/init-key :blaze.metrics/registry
   [_ {:keys [collectors]}]
   (log/info "Init metrics registry")
-  (let [registry
-        (doto (CollectorRegistry. true)
-          (.register (StandardExports.))
-          (.register (MemoryPoolsExports.))
-          (.register (GarbageCollectorExports.))
-          (.register (ThreadExports.))
-          (.register (ClassLoadingExports.))
-          (.register (VersionInfoExports.)))]
-    (doseq [^Collector collector collectors]
-      (doseq [^Collector$MetricFamilySamples samples (.collect collector)]
-        (log/debug "Register collector" (.name samples)))
-      (.register registry collector))
-    registry))
+  (doto (CollectorRegistry. true)
+    (.register (StandardExports.))
+    (.register (MemoryPoolsExports.))
+    (.register (GarbageCollectorExports.))
+    (.register (ThreadExports.))
+    (.register (ClassLoadingExports.))
+    (.register (VersionInfoExports.))
+    (register-collectors! collectors)))

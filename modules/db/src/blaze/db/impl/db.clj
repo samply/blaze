@@ -20,13 +20,13 @@
      IReduceInit
      (reduce [_ rf# init#]
        (with-open ~bindings
-         (.reduce ~coll rf# init#)))
+         (.reduce ~(vary-meta coll assoc :tag `IReduceInit) rf# init#)))
      Seqable
      (seq [this#]
        (.seq ^Seqable (persistent! (.reduce this# conj! (transient [])))))
      Counted
      (count [this#]
-       (.reduce this# (fn [sum# ~'_] (inc sum#)) 0))))
+       (.reduce this# (fn ^long [^long sum# ~'_] (inc sum#)) 0))))
 
 
 (deftype Db [node basis-t t]
@@ -48,29 +48,37 @@
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
-  (-resource-handle [_ type id]
+  (-resource-handle [_ tid id]
     (with-open [batch-db (batch-db/new-batch-db node t)]
-      (p/-resource-handle batch-db type id)))
+      (p/-resource-handle batch-db tid id)))
 
 
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
-  (-list-resource-handles [_ type start-id]
+  (-type-list [_ tid]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
-      (p/-list-resource-handles batch-db type start-id)))
+      (p/-type-list batch-db tid)))
 
-  (-type-total [_ type]
+  (-type-list [_ tid start-id]
+    (with-open-coll [batch-db (batch-db/new-batch-db node t)]
+      (p/-type-list batch-db tid start-id)))
+
+  (-type-total [_ tid]
     (with-open [batch-db (batch-db/new-batch-db node t)]
-      (p/-type-total batch-db type)))
+      (p/-type-total batch-db tid)))
 
 
 
   ;; ---- System-Level Functions ----------------------------------------------
 
-  (-system-list [_ start-type start-id]
+  (-system-list [_]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
-      (p/-system-list batch-db start-type start-id)))
+      (p/-system-list batch-db)))
+
+  (-system-list [_ start-tid start-id]
+    (with-open-coll [batch-db (batch-db/new-batch-db node t)]
+      (p/-system-list batch-db start-tid start-id)))
 
   (-system-total [_]
     (with-open [batch-db (batch-db/new-batch-db node t)]
@@ -80,9 +88,13 @@
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
-  (-list-compartment-resource-handles [_ code id type start-id]
+  (-compartment-resource-handles [_ compartment tid]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
-      (p/-list-compartment-resource-handles batch-db code id type start-id)))
+      (p/-compartment-resource-handles batch-db compartment tid)))
+
+  (-compartment-resource-handles [_ compartment tid start-id]
+    (with-open-coll [batch-db (batch-db/new-batch-db node t)]
+      (p/-compartment-resource-handles batch-db compartment tid start-id)))
 
 
 
@@ -100,21 +112,21 @@
 
   ;; ---- Instance-Level History Functions ------------------------------------
 
-  (-instance-history [_ type id start-t since]
+  (-instance-history [_ tid id start-t since]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
-      (p/-instance-history batch-db type id start-t since)))
+      (p/-instance-history batch-db tid id start-t since)))
 
-  (-total-num-of-instance-changes [_ type id since]
+  (-total-num-of-instance-changes [_ tid id since]
     (with-open [batch-db (batch-db/new-batch-db node t)]
-      (p/-total-num-of-instance-changes batch-db type id since)))
+      (p/-total-num-of-instance-changes batch-db tid id since)))
 
 
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
-  (-type-history [_ type start-t start-id since]
+  (-type-history [_ tid start-t start-id since]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
-      (p/-type-history batch-db type start-t start-id since)))
+      (p/-type-history batch-db tid start-t start-id since)))
 
   (-total-num-of-type-changes [_ type since]
     (with-open [batch-db (batch-db/new-batch-db node t)]
@@ -124,9 +136,9 @@
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-type start-id since]
+  (-system-history [_ start-t start-tid start-id since]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
-      (p/-system-history batch-db start-t start-type start-id since)))
+      (p/-system-history batch-db start-t start-tid start-id since)))
 
   (-total-num-of-system-changes [_ since]
     (with-open [batch-db (batch-db/new-batch-db node t)]

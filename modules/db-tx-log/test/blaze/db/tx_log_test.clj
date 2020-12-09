@@ -4,9 +4,10 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.fhir.hash :as hash]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [is deftest]])
+    [clojure.test :as test :refer [is deftest]]
+    [java-time :as jt])
   (:import
-    [java.time Duration Instant]
+    [java.time Instant]
     [java.io Closeable]))
 
 
@@ -53,4 +54,4 @@
                      Closeable
                      (close [_]))))]
     (with-open [queue (tx-log/new-queue tx-log 1)]
-      (is (= [tx-data] (tx-log/poll queue (Duration/ofMillis 100)))))))
+      (is (= [tx-data] (tx-log/poll queue (jt/millis 100)))))))

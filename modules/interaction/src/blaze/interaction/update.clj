@@ -70,9 +70,9 @@
   [router headers type id old-handle db]
   (let [new-handle (d/resource-handle db type id)
         return-preference (handler-util/preference headers "return")
-        tx (d/tx db (d/last-updated-t new-handle))
+        tx (d/tx db (:t new-handle))
         vid (str (:blaze.db/t tx))
-        created (or (nil? old-handle) (d/deleted? old-handle))]
+        created (or (nil? old-handle) (identical? :delete (:op old-handle)))]
     (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
     (-> (cond
           (= "minimal" return-preference)

@@ -2,26 +2,15 @@
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.async.comp :as ac]
+    [blaze.fhir.spec.type.system :as system]
     [blaze.handler.util :as util]
-    [cognitect.anomalies :as anom])
-  (:import
-    [java.time LocalDate Year YearMonth]))
-
-
-(set! *warn-on-reflection* true)
-
-
-(defn- parse-date [date]
-  (case (count date)
-    4 (Year/parse date)
-    7 (YearMonth/parse date)
-    (LocalDate/parse date)))
+    [cognitect.anomalies :as anom]))
 
 
 (defn- coerce-date [request param-name]
   (if-let [value (get-in request [:params param-name])]
     (try
-      (update-in request [:params param-name] parse-date)
+      (update-in request [:params param-name] system/parse-date*)
       (catch Exception _
         {::anom/category ::anom/incorrect
          ::anom/message

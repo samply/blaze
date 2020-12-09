@@ -37,6 +37,10 @@
  elm/power blaze.elm.literal/power
  elm/predecessor blaze.elm.literal/predecessor
  elm/round blaze.elm.literal/round
+ elm/successor blaze.elm.literal/successor
+ elm/same-as blaze.elm.literal/same-as
+ elm/same-or-before blaze.elm.literal/same-or-before
+ elm/same-or-after blaze.elm.literal/same-or-after
  elm/subtract blaze.elm.literal/subtract
  elm/date blaze.elm.literal/date
  elm/date-from blaze.elm.literal/date-from

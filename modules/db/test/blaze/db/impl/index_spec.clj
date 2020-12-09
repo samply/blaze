@@ -1,25 +1,14 @@
 (ns blaze.db.impl.index-spec
   (:require
+    [blaze.byte-string-spec]
     [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index :as index]
     [blaze.db.impl.iterators-spec]
     [blaze.db.impl.search-param-spec]
+    [blaze.db.impl.search-param.spec]
     [blaze.db.kv-spec]
     [clojure.spec.alpha :as s]))
-
-
-(s/fdef index/t-by-instant
-  :args (s/cat :snapshot :blaze.db/kv-snapshot :instant inst?)
-  :ret (s/nilable :blaze.db/t))
-
-
-(s/fdef index/compartment-list
-  :args (s/cat :context :blaze.db.impl.batch-db/context
-               :compartment :blaze.db/compartment
-               :tid :blaze.db/tid
-               :start-id (s/nilable :blaze.db/id-bytes))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/def :blaze.db.index.query/clause
@@ -36,7 +25,7 @@
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
-               :start-id (s/nilable :blaze.db/id-bytes))
+               :start-id (s/? :blaze.db/id-byte-string))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 

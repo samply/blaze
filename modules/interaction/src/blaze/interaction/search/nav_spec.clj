@@ -8,7 +8,7 @@
 
 (s/fdef nav/url
   :args (s/cat :match some?
-               :params ::params-spec/params
+               :params (s/nilable ::params-spec/params)
                :clauses (s/nilable (s/coll-of :blaze.db.query/clause))
                :t :blaze.db/t
                :offset (s/nilable map?))

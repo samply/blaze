@@ -4,11 +4,17 @@
     [clojure.string :as str]))
 
 
+(defn- remove-query-param? [[k]]
+  (and (str/starts-with? k "_")
+       (not (#{"_id" "_list"} k))
+       (not (str/starts-with? k "_has"))))
+
+
 (defn- clauses [query-params]
   (into
     []
     (comp
-      (remove (fn [[k]] (and (str/starts-with? k "_") (not (#{"_id" "_list"} k)))))
+      (remove remove-query-param?)
       (mapcat (fn [[k v]] (mapv #(into [k] (str/split % #",")) (fhir-util/to-seq v)))))
     query-params))
 

@@ -54,7 +54,7 @@ In Crux an entity can have multiple documents over time. Every time a new docume
 | SVR | c-hash tid value id hash-prefix | - |
 | RSV | tid id hash-prefix c-hash value | - |
 | CSVR | co-c-hash co-res-id sp-c-hash tid value id hash-prefix | - |
-| CompartmentResourceType | co-c-hash co-res-id tid id | - |
+| CompartmentResource | co-c-hash co-res-id tid id | - |
 | SearchParam | code tid | id |
 | ActiveSearchParams | id | - |
 

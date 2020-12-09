@@ -7,7 +7,9 @@
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db :as db]
-    [blaze.db.impl.index.resource-handle :as rh]
+    [blaze.db.impl.index.t-by-instant :as ti]
+    [blaze.db.impl.index.tx-error :as te]
+    [blaze.db.impl.index.tx-success :as tsi]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
@@ -27,11 +29,11 @@
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
+    [java-time :as jt]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
-    [java.time Duration]
     [java.util.concurrent TimeUnit ExecutorService CompletableFuture]))
 
 
@@ -59,7 +61,7 @@
   (if-let [search-param (sr/get search-param-registry code type)]
     search-param
     {::anom/category ::anom/not-found
-     ::anom/message (format "search-param with code `%s` and type `%s` not found" code type)}))
+     ::anom/message (format "The search-param with code `%s` and type `%s` was not found." code type)}))
 
 
 (defn- resolve-search-params [search-param-registry type clauses lenient?]
@@ -69,7 +71,10 @@
             res (resolve-search-param search-param-registry type code)]
         (if (::anom/category res)
           (if lenient? ret (reduced res))
-          (conj ret [res modifier values (search-param/compile-values res values)]))))
+          (let [compiled-values (search-param/compile-values res modifier values)]
+            (if (::anom/category compiled-values)
+              (reduced compiled-values)
+              (conj ret [res modifier values compiled-values]))))))
     []
     clauses))
 
@@ -94,19 +99,10 @@
     future))
 
 
-(defn- tx-success? [kv-store t]
-  (kv/get kv-store :tx-success-index (codec/t-key t)))
-
-
-(defn- get-tx-error [kv-store t]
-  (some-> (kv/get kv-store :tx-error-index (codec/t-key t))
-          (codec/decode-tx-error)))
-
-
 (defn load-tx-result [node kv-store t]
-  (if (tx-success? kv-store t)
+  (if (tsi/tx kv-store t)
     (ac/completed-future (db/db node t))
-    (if-let [anomaly (get-tx-error kv-store t)]
+    (if-let [anomaly (te/tx-error kv-store t)]
       (ac/failed-future
         (ex-info (format "Transaction with point in time %d errored." t)
                  anomaly))
@@ -117,9 +113,9 @@
            (format "Can't find transaction result with point in time of %d." t)})))))
 
 
-(defn- index-tx [kv-store tx-data]
+(defn- index-tx [db-before tx-data]
   (with-open [_ (prom/timer duration-seconds "index-transactions")]
-    (tx-indexer/index-tx kv-store tx-data)))
+    (tx-indexer/index-tx db-before tx-data)))
 
 
 (defn- store-tx-entries [kv-store entries]
@@ -141,31 +137,40 @@
   (into [] (map :hash) tx-cmds))
 
 
+(defn- tx-success-entries [t instant]
+  [(tsi/index-entry t instant)
+   (ti/index-entry instant t)])
+
+
 (defn- index-tx-data
-  [kv-store state resource-indexer {:keys [t instant tx-cmds] :as tx-data}]
+  [{:keys [kv-store state resource-indexer] :as node}
+   {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
         future (resource-indexer/index-resources resource-indexer (hashes tx-cmds))
-        result (index-tx kv-store tx-data)]
+        result (index-tx (d/db node) tx-data)]
     (if (::anom/category result)
-      (do (kv/put! kv-store (codec/tx-error-entries t result))
+      (do (kv/put! kv-store [(te/index-entry t result)])
           (advance-error-t! state t))
       (do (store-tx-entries kv-store result)
           (try
             (log/trace "wait until resources are indexed...")
             (ac/join future)
+            (log/trace "done indexing all resources")
+            (catch Exception e
+              (log/error "Error while resource indexing: " (ex-message (ex-cause e)))
+              (throw e))
             (finally
-              (log/trace "done indexing all resources")
               (prom/observe-duration! timer)))
-          (kv/put! kv-store (codec/tx-success-entries t instant))
+          (kv/put! kv-store (tx-success-entries t instant))
           (advance-t! state t)))))
 
 
-(defn- poll [kv-store state resource-indexer queue poll-timeout]
+(defn- poll [node queue poll-timeout]
   (log/trace "poll transaction queue")
   (doseq [tx-data (tx-log/poll queue poll-timeout)]
-    (index-tx-data kv-store state resource-indexer tx-data)))
+    (index-tx-data node tx-data)))
 
 
 (defn- max-t [state]
@@ -179,27 +184,21 @@
       (assoc :lastUpdated instant)))
 
 
-(defn- mk-meta [meta state t tx]
-  (-> meta
+(defn- mk-meta [{:keys [t num-changes op] :as handle} tx]
+  (-> (meta handle)
       (assoc :blaze.db/t t)
-      (assoc :blaze.db/num-changes (codec/state->num-changes state))
-      (assoc :blaze.db/op (codec/state->op state))
+      (assoc :blaze.db/num-changes num-changes)
+      (assoc :blaze.db/op op)
       (assoc :blaze.db/tx tx)))
 
 
-(defn- tx [kv-store t]
-  (some-> (kv/get kv-store :tx-success-index (codec/t-key t))
-          (codec/decode-tx t)))
-
-
-(defn- enhance-resource [kv-store handle resource]
-  (let [t (rh/t handle)
-        tx (tx kv-store t)]
+(defn- enhance-resource [kv-store {:keys [t] :as handle} resource]
+  (let [tx (tsi/tx kv-store t)]
     (-> (update resource :meta enhance-resource-meta t tx)
-        (with-meta (mk-meta (meta handle) (rh/state handle) t tx)))))
+        (with-meta (mk-meta handle tx)))))
 
 
-(defrecord Node [tx-log kv-store resource-store search-param-registry
+(defrecord Node [tx-log rh-cache kv-store resource-store search-param-registry
                  resource-indexer state run? poll-timeout finished]
   p/Node
   (-db [node]
@@ -239,7 +238,7 @@
 
   p/Tx
   (-tx [_ t]
-    (tx kv-store t))
+    (tsi/tx kv-store t))
 
   rs/ResourceLookup
   (-get [_ hash]
@@ -277,22 +276,22 @@
 
   p/Pull
   (-pull [_ resource-handle]
-    (-> (rs/get resource-store (rh/hash resource-handle))
+    (-> (rs/get resource-store (:hash resource-handle))
         (ac/then-apply #(enhance-resource kv-store resource-handle %))))
 
   (-pull-content [_ resource-handle]
-    (-> (rs/get resource-store (rh/hash resource-handle))
+    (-> (rs/get resource-store (:hash resource-handle))
         (ac/then-apply #(with-meta % (meta resource-handle)))))
 
   Runnable
-  (run [_]
+  (run [node]
     (try
       (let [offset (inc (:t @state))]
         (log/trace "enter indexer and open transaction queue with offset =" offset)
         (with-open [queue (tx-log/new-queue tx-log offset)]
           (while @run?
             (try
-              (poll kv-store state resource-indexer queue poll-timeout)
+              (poll node queue poll-timeout)
               (catch Exception e
                 (swap! state assoc :e e)
                 (throw e))))))
@@ -312,24 +311,24 @@
   (-> (CompletableFuture/runAsync node executor)
       (ac/exceptionally
         (fn [e]
-          (log/error "Error while indexing:" (ex-cause e))
+          (log/error "Error while indexing:" (ex-message (ex-cause e)))
           (swap! error (ex-cause e))))))
 
 
 (defn new-node
   "Creates a new local database node."
-  [tx-log resource-indexer-executor resource-indexer-batch-size
-   indexer-executor kv-store resource-store search-param-registry
-   poll-timeout]
+  [tx-log resource-handle-cache resource-indexer-executor
+   resource-indexer-batch-size indexer-executor kv-store
+   resource-store search-param-registry poll-timeout]
   (let [resource-indexer (new-resource-indexer resource-store
                                                search-param-registry
                                                kv-store
                                                resource-indexer-executor
                                                resource-indexer-batch-size)
         indexer-abort-reason (atom nil)
-        node (->Node tx-log kv-store resource-store search-param-registry
-                     resource-indexer
-                     (atom {:t (or (tx-indexer/last-t kv-store) 0)
+        node (->Node tx-log resource-handle-cache kv-store resource-store
+                     search-param-registry resource-indexer
+                     (atom {:t (or (tsi/last-t kv-store) 0)
                             :error-t 0})
                      (volatile! true)
                      poll-timeout
@@ -346,6 +345,7 @@
   (s/keys
     :req-un
     [:blaze.db/tx-log
+     :blaze.db/resource-handle-cache
      ::resource-indexer-executor
      ::resource-indexer-batch-size
      ::indexer-executor
@@ -360,12 +360,13 @@
 
 
 (defmethod ig/init-key :blaze.db/node
-  [_ {:keys [tx-log resource-indexer-executor resource-indexer-batch-size
-             indexer-executor kv-store resource-store search-param-registry]}]
+  [_ {:keys [tx-log resource-handle-cache resource-indexer-executor
+             resource-indexer-batch-size indexer-executor kv-store
+             resource-store search-param-registry]}]
   (log/info (init-msg resource-indexer-batch-size))
-  (new-node tx-log resource-indexer-executor resource-indexer-batch-size
-            indexer-executor kv-store resource-store search-param-registry
-            (Duration/ofSeconds 1)))
+  (new-node tx-log resource-handle-cache resource-indexer-executor
+            resource-indexer-batch-size indexer-executor kv-store resource-store
+            search-param-registry (jt/seconds 1)))
 
 
 (defmethod ig/halt-key! :blaze.db/node

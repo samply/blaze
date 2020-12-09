@@ -1,11 +1,17 @@
 (ns blaze.db.node.resource-indexer-test
   (:require
     [blaze.async.comp :as ac]
+    [blaze.byte-string :as bs]
+    [blaze.byte-string-spec]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.kv :as kv]
+    [blaze.db.impl.index.compartment.resource-test-util :as cr-tu]
+    [blaze.db.impl.index.compartment.search-param-value-resource-test-util
+     :as c-sp-vr-tu]
+    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
-    [blaze.db.node.resource-indexer :as i :refer [new-resource-indexer]]
+    [blaze.db.node.resource-indexer :as ri :refer [new-resource-indexer]]
     [blaze.db.node.resource-indexer-spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
@@ -15,6 +21,9 @@
     [clojure.test :as test :refer [deftest is testing]])
   (:import
     [java.time ZoneId LocalDate]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -54,7 +63,7 @@
                   {:fhir/type :fhir/Meta
                    :versionId #fhir/id"1"
                    :profile
-                   [#fhir/canonical"https://fhir.bbmri.de/StructureDefinition/Condition"]}}
+                   [#fhir/canonical"url-164445"]}}
         hash (hash/generate resource)
         rl (reify
              rs/ResourceLookup
@@ -63,164 +72,82 @@
         kv-store (init-kv-store)
         i (new-resource-indexer rl search-param-registry kv-store
                                 (ex/single-thread-executor) 1)]
-    @(i/index-resources i [hash])
+    @(ri/index-resources i [hash])
 
-    (testing "compartment-resource-type"
-      (is
-        (kv/get
-          kv-store
-          :compartment-resource-type-index
-          (codec/compartment-resource-type-key
-            (codec/c-hash "Patient") (codec/id-bytes "id-145552")
-            (codec/tid "Condition") (codec/id-bytes "id-204446")))))
+    (testing "SearchParamValueResource index"
+      (is (every? #{["Condition" "id-204446" #blaze/byte-string"F6260321"]}
+                  (sp-vr-tu/decode-index-entries
+                    kv-store :type :id :hash-prefix)))
+      (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
+             [["patient" (codec/v-hash "Patient/id-145552")]
+              ["patient" (codec/tid-id
+                           (codec/tid "Patient")
+                           (codec/id-byte-string "id-145552"))]
+              ["patient" (codec/v-hash "id-145552")]
+              ["code" (codec/v-hash "code-204441")]
+              ["code" (codec/v-hash "system-204435|")]
+              ["code" (codec/v-hash "system-204435|code-204441")]
+              ["onset-date" (codec/date-lb
+                              (ZoneId/systemDefault)
+                              (LocalDate/of 2020 1 30))]
+              ["onset-date" (codec/date-ub
+                              (ZoneId/systemDefault)
+                              (LocalDate/of 2020 1 30))]
+              ["subject" (codec/v-hash "Patient/id-145552")]
+              ["subject" (codec/tid-id
+                           (codec/tid "Patient")
+                           (codec/id-byte-string "id-145552"))]
+              ["subject" (codec/v-hash "id-145552")]
+              ["_profile" (codec/v-hash "url-164445")]
+              ["_id" (codec/v-hash "id-204446")]])))
 
-    (testing "code `code-204441` entry"
-      (testing "standalone"
-        (testing "search-param-value-index"
-          (is
-            (kv/get
-              kv-store
-              :search-param-value-index
-              (codec/sp-value-resource-key
-                (codec/c-hash "code")
-                (codec/tid "Condition")
-                (codec/v-hash "code-204441")
-                (codec/id-bytes "id-204446")
-                hash))))
+    (testing "ResourceSearchParamValue index"
+      (is (every? #{["Condition" "id-204446" #blaze/byte-string"F6260321"]}
+                  (r-sp-v-tu/decode-index-entries
+                    kv-store :type :id :hash-prefix)))
+      (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
+             [["patient" (codec/v-hash "Patient/id-145552")]
+              ["patient" (codec/tid-id
+                           (codec/tid "Patient")
+                           (codec/id-byte-string "id-145552"))]
+              ["patient" (codec/v-hash "id-145552")]
+              ["code" (codec/v-hash "code-204441")]
+              ["code" (codec/v-hash "system-204435|")]
+              ["code" (codec/v-hash "system-204435|code-204441")]
+              ["onset-date" #blaze/byte-string""]
+              ["subject" (codec/v-hash "Patient/id-145552")]
+              ["subject" (codec/tid-id
+                           (codec/tid "Patient")
+                           (codec/id-byte-string "id-145552"))]
+              ["subject" (codec/v-hash "id-145552")]
+              ["_profile" (codec/v-hash "url-164445")]
+              ["_id" (codec/v-hash "id-204446")]])))
 
-        (testing "resource-value-index"
-          (is
-            (kv/get
-              kv-store
-              :resource-value-index
-              (codec/resource-sp-value-key
-                (codec/tid "Condition")
-                (codec/id-bytes "id-204446")
-                hash
-                (codec/c-hash "code")
-                (codec/v-hash "code-204441"))))
-          (is
-            (kv/get
-              kv-store
-              :resource-value-index
-              (codec/resource-sp-value-key
-                (codec/tid "Condition")
-                (codec/id-bytes "id-204446")
-                hash
-                (codec/c-hash "code")
-                (codec/v-hash "system-204435|"))))
-          (is
-            (kv/get
-              kv-store
-              :resource-value-index
-              (codec/resource-sp-value-key
-                (codec/tid "Condition")
-                (codec/id-bytes "id-204446")
-                hash
-                (codec/c-hash "code")
-                (codec/v-hash "system-204435|code-204441"))))))
+    (testing "CompartmentResource index"
+      (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id)
+             [[["Patient" "id-145552"] "Condition" "id-204446"]])))
 
-      (testing "Patient compartment"
-        (testing "search-param-value-index"
-          (is
-            (kv/get
-              kv-store
-              :compartment-search-param-value-index
-              (codec/compartment-search-param-value-key
-                (codec/c-hash "Patient")
-                (codec/id-bytes "id-145552")
-                (codec/c-hash "code")
-                (codec/tid "Condition")
-                (codec/v-hash "code-204441")
-                (codec/id-bytes "id-204446")
-                hash))))))
-
-    (testing "code `system-204435|code-204441` entry"
-      (testing "standalone"
-        (is
-          (kv/get
-            kv-store
-            :search-param-value-index
-            (codec/sp-value-resource-key
-              (codec/c-hash "code")
-              (codec/tid "Condition")
-              (codec/v-hash "system-204435|code-204441")
-              (codec/id-bytes "id-204446")
-              hash))))
-
-      (testing "Patient compartment"
-        (is
-          (kv/get
-            kv-store
-            :compartment-search-param-value-index
-            (codec/compartment-search-param-value-key
-              (codec/c-hash "Patient")
-              (codec/id-bytes "id-145552")
-              (codec/c-hash "code")
-              (codec/tid "Condition")
-              (codec/v-hash "system-204435|code-204441")
-              (codec/id-bytes "id-204446")
-              hash)))))
-
-    (testing "onset-date `2020-01-30` lower bound entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "onset-date")
-            (codec/tid "Condition")
-            (codec/date-lb (ZoneId/systemDefault) (LocalDate/of 2020 1 30))
-            (codec/id-bytes "id-204446")
-            hash))))
-
-    (testing "onset-date `2020-01-30` upper bound entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "onset-date")
-            (codec/tid "Condition")
-            (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2020 1 30))
-            (codec/id-bytes "id-204446")
-            hash))))
-
-    (testing "subject `Patient/0` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "subject")
-            (codec/tid "Condition")
-            (codec/v-hash "Patient/id-145552")
-            (codec/id-bytes "id-204446")
-            hash))))
-
-    (testing "_id `id-204446` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "_id")
-            (codec/tid "Condition")
-            (codec/v-hash "id-204446")
-            (codec/id-bytes "id-204446")
-            hash))))
-
-    (testing "_profile `https://fhir.bbmri.de/StructureDefinition/Condition` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "_profile")
-            (codec/tid "Condition")
-            (codec/v-hash "https://fhir.bbmri.de/StructureDefinition/Condition")
-            (codec/id-bytes "id-204446")
-            hash))))))
+    (testing "CompartmentSearchParamValueResource index"
+      (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"
+                     #blaze/byte-string"F6260321"]}
+                  (c-sp-vr-tu/decode-index-entries
+                    kv-store :compartment :type :id :hash-prefix)))
+      (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
+             [["patient" (codec/v-hash "Patient/id-145552")]
+              ["patient" (codec/tid-id
+                           (codec/tid "Patient")
+                           (codec/id-byte-string "id-145552"))]
+              ["patient" (codec/v-hash "id-145552")]
+              ["code" (codec/v-hash "code-204441")]
+              ["code" (codec/v-hash "system-204435|")]
+              ["code" (codec/v-hash "system-204435|code-204441")]
+              ["subject" (codec/v-hash "Patient/id-145552")]
+              ["subject" (codec/tid-id
+                           (codec/tid "Patient")
+                           (codec/id-byte-string "id-145552"))]
+              ["subject" (codec/v-hash "id-145552")]
+              ["_profile" (codec/v-hash "url-164445")]
+              ["_id" (codec/v-hash "id-204446")]])))))
 
 
 (deftest index-observation-resource
@@ -240,7 +167,7 @@
                      :code #fhir/code"code-193824"}]}
                   :subject
                   {:fhir/type :fhir/Reference
-                   :reference "reference-193945"}
+                   :reference "Patient/id-180857"}
                   :effective #fhir/dateTime"2005-06-17"
                   :value
                   {:fhir/type :fhir/Quantity
@@ -255,100 +182,88 @@
         kv-store (init-kv-store)
         i (new-resource-indexer rl search-param-registry kv-store
                                 (ex/single-thread-executor) 1)]
-    @(i/index-resources i [hash])
+    @(ri/index-resources i [hash])
 
-    (testing "status `status-193613` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "status")
-            (codec/tid "Observation")
-            (codec/v-hash "status-193613")
-            (codec/id-bytes "id-192702")
-            hash))))
-
-    (testing "category `code-193603` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "category")
-            (codec/tid "Observation")
-            (codec/v-hash "code-193603")
-            (codec/id-bytes "id-192702")
-            hash))))
-
-    (testing "code `code-193824` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "code")
-            (codec/tid "Observation")
-            (codec/v-hash "code-193824")
-            (codec/id-bytes "id-192702")
-            hash))))
-
-    (testing "subject `reference-193945` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "subject")
-            (codec/tid "Observation")
-            (codec/v-hash "reference-193945")
-            (codec/id-bytes "id-192702")
-            hash))))
-
-    (testing "date `2005-06-17` lower bound entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "date")
-            (codec/tid "Observation")
-            (codec/date-lb (ZoneId/systemDefault) (LocalDate/of 2005 6 17))
-            (codec/id-bytes "id-192702")
-            hash))))
-
-    (testing "date `2005-06-17` upper bound entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "date")
-            (codec/tid "Observation")
-            (codec/date-ub (ZoneId/systemDefault) (LocalDate/of 2005 6 17))
-            (codec/id-bytes "id-192702")
-            hash))))
-
-    (testing "value-quantity `23` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "value-quantity")
-            (codec/tid "Observation")
-            (codec/quantity nil 23.42M)
-            (codec/id-bytes "id-192702")
-            hash))))
-
-    (testing "value-quantity `http://unitsofmeasure.org|kg/m2` `23` entry"
-      (is
-        (kv/get
-          kv-store
-          :search-param-value-index
-          (codec/sp-value-resource-key
-            (codec/c-hash "value-quantity")
-            (codec/tid "Observation")
-            (codec/quantity "http://unitsofmeasure.org|kg/m2" 23.42M)
-            (codec/id-bytes "id-192702")
-            hash))))))
+    (testing "SearchParamValueResource index"
+      (is (every? #{["Observation" "id-192702" #blaze/byte-string"DD3A49CC"]}
+                  (sp-vr-tu/decode-index-entries
+                    kv-store :type :id :hash-prefix)))
+      (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
+             [["code-value-quantity"
+               #blaze/byte-string"82821D0F00000000900926"]
+              ["code-value-quantity"
+               #blaze/byte-string"82821D0F32690DC8900926"]
+              ["code-value-quantity"
+               #blaze/byte-string"82821D0FA3C37576900926"]
+              ["code-value-quantity"
+               #blaze/byte-string"9F7C9B9400000000900926"]
+              ["code-value-quantity"
+               #blaze/byte-string"9F7C9B9432690DC8900926"]
+              ["code-value-quantity"
+               #blaze/byte-string"9F7C9B94A3C37576900926"]
+              ["code-value-quantity"
+               (bs/concat (codec/v-hash "code-193824")
+                          (codec/quantity "" 23.42M))]
+              ["code-value-quantity"
+               (bs/concat (codec/v-hash "code-193824")
+                          (codec/quantity "kg/m2" 23.42M))]
+              ["code-value-quantity"
+               (bs/concat (codec/v-hash "code-193824")
+                          (codec/quantity "http://unitsofmeasure.org|kg/m2"
+                                          23.42M))]
+              ["date" (codec/date-lb
+                        (ZoneId/systemDefault)
+                        (LocalDate/of 2005 6 17))]
+              ["date" (codec/date-ub
+                        (ZoneId/systemDefault)
+                        (LocalDate/of 2005 6 17))]
+              ["category" (codec/v-hash "system-193558|code-193603")]
+              ["category" (codec/v-hash "system-193558|")]
+              ["category" (codec/v-hash "code-193603")]
+              ["patient" (codec/v-hash "id-180857")]
+              ["patient" (codec/tid-id
+                           (codec/tid "Patient")
+                           (codec/id-byte-string "id-180857"))]
+              ["patient" (codec/v-hash "Patient/id-180857")]
+              ["code" (codec/v-hash "system-193821|")]
+              ["code" (codec/v-hash "system-193821|code-193824")]
+              ["code" (codec/v-hash "code-193824")]
+              ["value-quantity" (codec/quantity "" 23.42M)]
+              ["value-quantity" (codec/quantity "kg/m2" 23.42M)]
+              ["value-quantity" (codec/quantity
+                                  "http://unitsofmeasure.org|kg/m2"
+                                  23.42M)]
+              ["combo-code" (codec/v-hash "system-193821|")]
+              ["combo-code" (codec/v-hash "system-193821|code-193824")]
+              ["combo-code" (codec/v-hash "code-193824")]
+              ["combo-value-quantity"
+               #blaze/byte-string"00000000900926"]
+              ["combo-value-quantity"
+               #blaze/byte-string"32690DC8900926"]
+              ["combo-value-quantity"
+               #blaze/byte-string"A3C37576900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"82821D0F00000000900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"82821D0F32690DC8900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"82821D0FA3C37576900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"9F7C9B9400000000900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"9F7C9B9432690DC8900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"9F7C9B94A3C37576900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"A75DEC9D00000000900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"A75DEC9D32690DC8900926"]
+              ["combo-code-value-quantity"
+               #blaze/byte-string"A75DEC9DA3C37576900926"]
+              ["subject" (codec/v-hash "id-180857")]
+              ["subject" (codec/tid-id
+                           (codec/tid "Patient")
+                           (codec/id-byte-string "id-180857"))]
+              ["subject" (codec/v-hash "Patient/id-180857")]
+              ["status" (codec/v-hash "status-193613")]
+              ["_id" (codec/v-hash "id-192702")]])))))

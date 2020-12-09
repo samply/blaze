@@ -19,7 +19,3 @@
                :block-cache :blaze.db.kv.rocksdb/block-cache
                :stats :blaze.db.kv.rocksdb/stats
                :opts map? :column-families map?))
-
-
-(s/fdef rocksdb/create-rocksdb-kv-store
-  :args (s/cat :dir string? :column-families map?))

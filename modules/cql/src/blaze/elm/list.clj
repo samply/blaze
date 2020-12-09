@@ -1,7 +1,9 @@
 (ns blaze.elm.list
   "Implementation of the list type."
   (:require
-    [blaze.elm.protocols :as p])
+    [blaze.anomaly :refer [throw-anom]]
+    [blaze.elm.protocols :as p]
+    [cognitect.anomalies :as anom])
   (:import
     [clojure.lang PersistentVector IReduceInit]))
 
@@ -23,7 +25,11 @@
             (if (and (true? t) ts)
               (recur ts)
               t)))
-        false))))
+        false)))
+
+  IReduceInit
+  (equal [x y]
+    (p/equal (into [] x) y)))
 
 
 ;; 12.2. Equivalent
@@ -39,7 +45,11 @@
               (recur ts)
               t)))
         false)
-      (nil? x))))
+      (nil? x)))
+
+  IReduceInit
+  (equivalent [x y]
+    (p/equivalent (into [] x) y)))
 
 
 ;; 17.6. Indexer
@@ -47,7 +57,11 @@
   PersistentVector
   (indexer [list index]
     (when (and index (<= 0 index) (< index (count list)))
-      (nth list index))))
+      (nth list index)))
+
+  IReduceInit
+  (indexer [list index]
+    (p/indexer (into [] list) index)))
 
 
 ;; 19.5. Contains
@@ -68,23 +82,23 @@
 ;;
 ;; TODO: implementation is O(n^2)
 (extend-protocol p/Except
-  PersistentVector
+  IReduceInit
   (except [x y]
     (when y
-      (reduce
+      (.reduce
+        x
         (fn [result x]
           (if (or (p/contains result x nil) (p/contains y x nil))
             result
             (conj result x)))
-        []
-        x))))
+        []))))
 
 
 ;; 19.13. Includes
 ;;
 ;; TODO: implementation is O(n^2)
 (extend-protocol p/Includes
-  PersistentVector
+  IReduceInit
   (includes [x y _]
     (when y
       (every? #(p/contains x % nil) y))))
@@ -95,38 +109,50 @@
 ;; TODO: implementation is O(n^2)
 (extend-protocol p/Intersect
   PersistentVector
-  (intersect [a b]
-    (when b
-      (if (<= (count a) (count b))
-        (reduce
+  (intersect [x y]
+    (when y
+      (if (<= (count x) (count y))
+        (.reduce
+          x
           (fn [result x]
-            (if (p/contains b x nil)
+            (if (p/contains y x nil)
               (conj result x)
               result))
-          []
-          a)
-        (p/intersect b a)))))
+          [])
+        (p/intersect y x))))
+
+  IReduceInit
+  (intersect [x y]
+    (p/intersect (into [] x) y)))
 
 
 ;; 19.24. ProperContains
 (extend-protocol p/ProperContains
   PersistentVector
   (proper-contains [list x _]
-    (and (p/contains list x _) (> (count list) 1))))
+    (and (p/contains list x _) (> (count list) 1)))
+
+  IReduceInit
+  (proper-contains [list x precision]
+    (p/proper-contains (into [] list) x precision)))
 
 
 ;; 19.26. ProperIncludes
 (extend-protocol p/ProperIncludes
   PersistentVector
   (proper-includes [x y _]
-    (and (p/includes x y _) (> (count x) (count y)))))
+    (and (p/includes x y _) (> (count x) (count y))))
+
+  IReduceInit
+  (proper-includes [x y precision]
+    (p/proper-includes (into [] x) y precision)))
 
 
 ;; 19.31. Union
 (extend-protocol p/Union
-  PersistentVector
-  (union [a b]
-    (when b
+  IReduceInit
+  (union [x y]
+    (when y
       (reduce
         (fn [result x]
           (if (p/contains result x nil)
@@ -138,8 +164,8 @@
               result
               (conj result x)))
           []
-          a)
-        b))))
+          x)
+        y))))
 
 
 ;; 20.25. SingletonFrom
@@ -149,7 +175,10 @@
     (let [[fst snd] list]
       (if (nil? snd)
         fst
-        (throw (Exception.)))))
+        (throw-anom
+          ::anom/conflict
+          "More than one element in `SingletonFrom` expression."
+          :list list))))
 
   IReduceInit
   (singleton-from [list]

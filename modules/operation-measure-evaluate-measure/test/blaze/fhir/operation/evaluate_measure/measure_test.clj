@@ -8,7 +8,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.log]
-    [blaze.uuid :refer [random-uuid]]
+    [blaze.luid :refer [luid]]
     [cheshire.core :as json]
     [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
@@ -22,6 +22,9 @@
   (:import
     [java.time Instant OffsetDateTime ZoneOffset Year]
     [java.util Base64]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -144,7 +147,7 @@
     "q28-relationship-procedure-condition" 1
     "q33-incompatible-quantities" 1)
 
-  (with-redefs [random-uuid (take-from! (new-ids))]
+  (with-redefs [luid (take-from! (new-ids))]
     (let [result (evaluate "q1" "subject-list")]
       (testing "MeasureReport is valid"
         (is (s/valid? :blaze/resource (:resource result))))
@@ -171,7 +174,7 @@
       [1 :value :text] := "70"
       [1 :population 0 :count] := 2))
 
-  (with-redefs [random-uuid (take-from! (new-ids))]
+  (with-redefs [luid (take-from! (new-ids))]
     (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
       (testing "MeasureReport is valid"
         (is (s/valid? :blaze/resource (:resource result))))
@@ -223,7 +226,7 @@
     [2 :component 1 :value :text] := "male"
     [2 :population 0 :count] := 1)
 
-  (with-redefs [random-uuid (take-from! (new-ids))]
+  (with-redefs [luid (take-from! (new-ids))]
     (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
       (testing "MeasureReport is valid"
         (is (s/valid? :blaze/resource (:resource result))))

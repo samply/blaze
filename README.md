@@ -24,7 +24,7 @@ In order to run Blaze just execute the following:
 
 ```bash
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.9.0
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.10.0
 ```
 
 Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
@@ -53,7 +53,7 @@ The developers of Blaze uses the YourKit profiler to optimize performance. YourK
 
 ## License
 
-Copyright 2020 The Samply Development Community
+Copyright 2020 The Samply Community
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 

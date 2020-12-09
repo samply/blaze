@@ -2,8 +2,10 @@
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.util :as u]
     [blaze.db.search-param-registry :as sr]
@@ -11,12 +13,11 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
-
-
 
 
 (defmulti token-index-entries
@@ -117,8 +118,9 @@
         (let [[type id] res]
           (-> (entries-fn nil (codec/v-hash id))
               (into (entries-fn nil (codec/v-hash (str type "/" id))))
-              (into (entries-fn nil (codec/tid-id (codec/tid type)
-                                                  (codec/id-bytes id))))))))))
+              (into (entries-fn nil (codec/tid-id
+                                      (codec/tid type)
+                                      (codec/id-byte-string id))))))))))
 
 
 (defmethod token-index-entries :fhir/Reference
@@ -147,93 +149,45 @@
     c-hash))
 
 
-(defn- index-token-entries
-  [url code c-hash hash resource linked-compartments values]
-  (let [{:keys [id]} resource
-        type (name (fhir-spec/fhir-type resource))
-        tid (codec/tid type)
-        id-bytes (codec/id-bytes id)]
-    (into
-      []
-      (mapcat
-        (partial
-          token-index-entries
-          url
-          (fn search-param-token-entry [modifier value]
-            (log/trace "search-param-value-entry" "token" code type id
-                       hash (codec/hex value))
-            (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-              (into
-                [[:search-param-value-index
-                  (codec/sp-value-resource-key
-                    c-hash
-                    tid
-                    value
-                    id-bytes
-                    hash)
-                  bytes/empty]
-                 [:resource-value-index
-                  (codec/resource-sp-value-key
-                    tid
-                    id-bytes
-                    hash
-                    c-hash
-                    value)
-                  bytes/empty]]
-                (map
-                  (fn [[code id]]
-                    [:compartment-search-param-value-index
-                     (codec/compartment-search-param-value-key
-                       (codec/c-hash code)
-                       (codec/id-bytes id)
-                       c-hash
-                       tid
-                       value
-                       id-bytes
-                       hash)
-                     bytes/empty]))
-                linked-compartments)))))
-      values)))
+(defn resource-keys!
+  "Returns a reducible collection of [id hash-prefix] tuples starting at
+  `start-id` (optional).
+
+  Changes the state of `iter`. Consuming the collection requires exclusive
+  access to `iter`. Doesn't close `iter`."
+  ([{:keys [svri]} c-hash tid value]
+   (sp-vr/prefix-keys! svri c-hash tid value value))
+  ([{:keys [svri]} c-hash tid value start-id]
+   (sp-vr/prefix-keys! svri c-hash tid value value start-id)))
 
 
-(defn- resource-keys [{:keys [svri]} c-hash tid compiled-value start-id]
-  (if start-id
-    (u/prefix-keys
-      svri
-      (codec/sp-value-resource-key c-hash tid compiled-value)
-      (codec/sp-value-resource-key c-hash tid compiled-value start-id))
-    (u/prefix-keys
-      svri
-      (codec/sp-value-resource-key c-hash tid compiled-value))))
-
-
-(defn- matches? [{:keys [rsvi]} c-hash tid id hash value]
-  (u/resource-sp-value-seek rsvi tid id hash c-hash value))
+(defn matches? [{:keys [rsvi]} c-hash resource-handle value]
+  (some? (r-sp-v/next-value! rsvi resource-handle c-hash value value)))
 
 
 (defrecord SearchParamToken [name url type base code c-hash expression]
   p/SearchParam
-  (-code [_]
-    code)
+  (-compile-value [_ _ value]
+    (codec/v-hash value))
 
-  (-compile-values [_ values]
-    (mapv codec/v-hash values))
+  (-resource-handles [_ context tid modifier value]
+    (coll/eduction
+      (u/resource-handle-mapper context tid)
+      (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid
+                      value)))
 
   (-resource-handles [_ context tid modifier value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (resource-keys context (c-hash-w-modifier c-hash code modifier) tid value
-                     start-id)))
+      (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid value
+                      start-id)))
 
-  (-compartment-keys [_ context compartment tid compiled-value]
-    (let [{co-c-hash :c-hash co-res-id :res-id} compartment
-          start-key (codec/compartment-search-param-value-key
-                      co-c-hash co-res-id c-hash tid compiled-value)]
-      (u/prefix-keys (:csvri context) start-key)))
+  (-compartment-keys [_ context compartment tid value]
+    (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value value))
 
-  (-matches? [_ context tid id hash modifier values]
+  (-matches? [_ context resource-handle modifier values]
     (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-      (some #(matches? context c-hash tid id hash %) values)))
+      (some #(matches? context c-hash resource-handle %) values)))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -241,7 +195,7 @@
         []
         (mapcat
           (fn [value]
-            (case (clojure.core/type value)
+            (case (fhir-spec/fhir-type value)
               :fhir/Reference
               (let [{:keys [reference]} value]
                 (when reference
@@ -250,28 +204,44 @@
                       (rest res))))))))
         values)))
 
-  (-index-entries [_ resolver hash resource linked-compartments]
+  (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (index-token-entries url code c-hash hash resource linked-compartments
-                           values))))
+      (p/-compile-index-values search-param values)))
+
+  (-compile-index-values [_ values]
+    (into
+      []
+      (mapcat
+        #(token-index-entries
+           url
+           (fn [modifier value]
+             [[modifier value]])
+           %))
+      values)))
 
 
 (defmethod sr/search-param "token"
-  [{:keys [name url type base code expression]}]
-  (when expression
+  [_ {:keys [name url type base code expression]}]
+  (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))
 
 
 (defmethod sr/search-param "reference"
-  [{:keys [name url type base code expression]}]
-  (when expression
+  [_ {:keys [name url type base code expression]}]
+  (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))
 
 
 (defmethod sr/search-param "uri"
-  [{:keys [name url type base code expression]}]
-  (when expression
+  [_ {:keys [name url type base code expression]}]
+  (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))))
+      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))

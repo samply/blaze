@@ -6,6 +6,11 @@
     [reitit.core :as reitit]))
 
 
+(s/fdef util/to-seq
+  :args (s/cat :x any?)
+  :ret (s/nilable sequential?))
+
+
 (s/def :ring.request.query-params/key
   string?)
 

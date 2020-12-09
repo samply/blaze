@@ -1,8 +1,9 @@
 (ns blaze.db.impl.codec-test
   (:require
-    [blaze.db.bytes :as bytes]
+    [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec-spec]
+    [blaze.db.impl.index.search-param-value-resource-spec]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -10,9 +11,10 @@
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as p])
   (:import
-    [com.google.common.hash HashCode]
-    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset])
-  (:refer-clojure :exclude [hash]))
+    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -22,10 +24,6 @@
 
 
 (test/use-fixtures :each fixture)
-
-
-(defn hash-gen [size]
-  #(gen/fmap (fn [bs] (HashCode/fromBytes bs)) (gen/fmap byte-array (gen/vector gen/byte size))))
 
 
 (defmacro check
@@ -48,60 +46,13 @@
 ;; ---- Key Functions ---------------------------------------------------------
 
 (deftest descending-long-test
+  (are [t dt] (= dt (codec/descending-long t))
+    1 0xFFFFFFFFFFFFFE
+    0 0xFFFFFFFFFFFFFF)
   (satisfies-prop 100000
-    (p/for-all [t gen/nat]
-      (= t (codec/descending-long (codec/descending-long t))))))
+                  (p/for-all [t gen/nat]
+                    (= t (codec/descending-long (codec/descending-long t))))))
 
-
-(deftest t-key-test
-  (are [t bs] (= bs (codec/hex (codec/t-key t)))
-    0xFFFFFFFFFFFFFF "0000000000000000"
-    16 "00FFFFFFFFFFFFEF"
-    15 "00FFFFFFFFFFFFF0"
-    2 "00FFFFFFFFFFFFFD"
-    1 "00FFFFFFFFFFFFFE"
-    0 "00FFFFFFFFFFFFFF"))
-
-
-
-;; ---- ResourceValue Index ---------------------------------------------------
-
-
-
-;; ---- ResourceType Index ----------------------------------------------------
-
-(deftest resource-type-key
-  (check `codec/resource-type-key))
-
-
-
-;; ---- CompartmentResourceType Index -----------------------------------------
-
-(deftest compartment-resource-type-key
-  (check `codec/compartment-resource-type-key))
-
-
-
-;; ---- ResourceAsOf Index ----------------------------------------------------
-
-(deftest resource-as-of-key
-  (check `codec/resource-as-of-key))
-
-
-
-;; ---- ResourceAsOf Index ----------------------------------------------------
-
-(deftest resource-as-of-value
-  (check
-    `codec/resource-as-of-value
-    {:gen {:blaze.resource/hash (hash-gen codec/hash-size)}}))
-
-
-
-;; ---- TypeAsOf Index --------------------------------------------------------
-
-(deftest type-as-of-key
-  (check `codec/type-as-of-key))
 
 
 (deftest tid
@@ -114,26 +65,26 @@
 
 (deftest date-lb
   (testing "year"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (Year/of 1970) "80"
-      (system/->DateTimeYear 1970) "80"))
+      (system/date-time 1970) "80"))
 
   (testing "year-month"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (YearMonth/of 1970 1) "80"
-      (system/->DateTimeYearMonth 1970 1) "80"))
+      (system/date-time 1970 1) "80"))
 
   (testing "local-date"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (LocalDate/of 1970 1 1) "80"
-      (system/->DateTimeYearMonthDay 1970 1 1) "80"))
+      (system/date-time 1970 1 1) "80"))
 
   (testing "local-date-time"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (LocalDateTime/of 1970 1 1 0 0) "80"))
 
   (testing "offset-date-time"
-    (are [date hex] (= hex (codec/hex (codec/date-lb zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC) "80"
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) "6FE3E0"
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 1)) "6FF1F0"
@@ -143,26 +94,26 @@
 
 (deftest date-ub
   (testing "year"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (Year/of 1969) "B00EFFFFFFFFFF"
-      (system/->DateTimeYear 1969) "B00EFFFFFFFFFF"))
+      (system/date-time 1969) "B00EFFFFFFFFFF"))
 
   (testing "year-month"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (YearMonth/of 1969 12) "B00EFFFFFFFFFF"
-      (system/->DateTimeYearMonth 1969 12) "B00EFFFFFFFFFF"))
+      (system/date-time 1969 12) "B00EFFFFFFFFFF"))
 
   (testing "local-date"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (LocalDate/of 1969 12 31) "B00EFFFFFFFFFF"
-      (system/->DateTimeYearMonthDay 1969 12 31) "B00EFFFFFFFFFF"))
+      (system/date-time 1969 12 31) "B00EFFFFFFFFFF"))
 
   (testing "local-date-time"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (LocalDateTime/of 1969 12 31 23 59 59) "B00EFFFFFFFFFF"))
 
   (testing "offset-date-time"
-    (are [date hex] (= hex (codec/hex (codec/date-ub zo date)))
+    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       (OffsetDateTime/of 1969 12 31 23 59 59 0 ZoneOffset/UTC) "B00EFFFFFFFFFF"
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) "B00EFFFFFFE3DF"
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) "B00EFFFFFFF1EF"
@@ -172,18 +123,18 @@
 
 (deftest date
   (testing "upper bounds are always bigger than lower bounds"
-    (is (bytes/< (codec/date-lb zo (Year/of 9999)) (codec/date-ub zo (Year/of 1))))))
+    (is (bs/< (codec/date-lb zo (Year/of 9999)) (codec/date-ub zo (Year/of 1))))))
 
 
 (deftest date-lb-ub
   (testing "extract lower bound"
-    (is (bytes/=
+    (is (=
           (codec/date-lb-ub->lb
             (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
           (codec/date-lb zo (Year/of 2020)))))
 
   (testing "extract upper bound"
-    (is (bytes/=
+    (is (=
           (codec/date-lb-ub->ub
             (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
           (codec/date-ub zo (Year/of 2020))))))
@@ -201,7 +152,7 @@
 
 (deftest number
   (testing "long"
-    (are [n hex] (= hex (codec/hex (codec/number n)))
+    (are [n hex] (= hex (bs/hex (codec/number n)))
       Long/MIN_VALUE "3F8000000000000000"
       (inc Long/MIN_VALUE) "3F8000000000000001"
       -576460752303423489 "3FF7FFFFFFFFFFFFFF"

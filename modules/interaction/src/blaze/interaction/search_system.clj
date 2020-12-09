@@ -25,20 +25,22 @@
   [{#_:preference/keys #_[handling] #_:or #_{handling "strict"}
     {:keys [#_clauses page-type page-id]} :params}
    db]
-  {:handles (d/system-list db page-type page-id)}
+  {:handles (if (and page-type page-id)
+              (d/system-list db page-type page-id)
+              (d/system-list db))}
   #_(cond
-    (empty? clauses)
-    {:handles (d/system-list db page-type page-id)}
+      (empty? clauses)
+      {:handles (d/system-list db page-type page-id)}
 
-    (= "strict" handling)
-    (when-ok [handles (d/system-query db clauses page-type page-id)]
-      {:handles handles
-       :clauses clauses})
+      (= "strict" handling)
+      (when-ok [handles (d/system-query db clauses page-type page-id)]
+        {:handles handles
+         :clauses clauses})
 
-    :else
-    (let [query (d/compile-system-query-lenient db clauses)]
-      {:handles (d/execute-query db query page-type page-id)
-       :clauses (d/query-clauses query)})))
+      :else
+      (let [query (d/compile-system-query-lenient db clauses)]
+        {:handles (d/execute-query db query page-type page-id)
+         :clauses (d/query-clauses query)})))
 
 
 (defn- entries-and-clauses
@@ -103,7 +105,7 @@
                   total (total db params entries)]
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (str (random-uuid))
+                 :id (random-uuid)
                  :type #fhir/code"searchset"
                  :entry (take page-size entries)
                  :link [(self-link context clauses t entries)]}
@@ -117,22 +119,22 @@
 
 (defn- summary-total
   [_ #_{:preference/keys [handling] :or {handling "strict"}
-    {:keys [clauses]} :params}
+        {:keys [clauses]} :params}
    db]
   {:total (d/system-total db)}
   #_(cond
-    (empty? clauses)
-    {:total (d/system-total db)}
+      (empty? clauses)
+      {:total (d/system-total db)}
 
-    (= "strict" handling)
-    (when-ok [handles (d/system-query db clauses)]
-      {:total (transduce (map (constantly 1)) + 0 handles)
-       :clauses clauses})
+      (= "strict" handling)
+      (when-ok [handles (d/system-query db clauses)]
+        {:total (coll/count 0 handles)
+         :clauses clauses})
 
-    :else
-    (let [query (d/compile-system-query-lenient db type clauses)]
-      {:total (transduce (map (constantly 1)) + 0 (d/execute-query db query))
-       :clauses (d/query-clauses query)})))
+      :else
+      (let [query (d/compile-system-query-lenient db type clauses)]
+        {:total (coll/count (d/execute-query db query))
+         :clauses (d/query-clauses query)})))
 
 
 (defn- search-summary [context db]
@@ -142,7 +144,7 @@
       (ac/failed-future (ex-anom summary-total))
       (ac/completed-future
         {:fhir/type :fhir/Bundle
-         :id (str (random-uuid))
+         :id (random-uuid)
          :type #fhir/code"searchset"
          :total (type/->UnsignedInt total)
          :link [(self-link context clauses t [])]}))))

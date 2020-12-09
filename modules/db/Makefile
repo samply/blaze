@@ -1,5 +1,5 @@
 lint:
-	clj-kondo --lint src test
+	clj-kondo --lint src test deps.edn
 
 test:
 	clojure -M:test --profile :ci
@@ -7,4 +7,7 @@ test:
 test-coverage:
 	clojure -M:test-coverage
 
-.PHONY: lint test test-coverage
+unused-vars:
+	clojure -M:unused-vars src test
+
+.PHONY: lint test test-coverage unused-vars

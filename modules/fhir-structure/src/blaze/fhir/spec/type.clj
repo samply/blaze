@@ -1,20 +1,22 @@
 (ns blaze.fhir.spec.type
   (:require
     [blaze.fhir.spec.type.system :as system]
+    [clojure.alpha.spec :as s2]
     [clojure.data.xml :as xml]
     [clojure.data.xml.node :as xml-node]
     [clojure.string :as str])
   (:import
+    [blaze.fhir.spec.type.system
+     DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [clojure.lang Keyword]
     [com.google.common.hash PrimitiveSink]
     [java.io Writer]
     [java.nio.charset StandardCharsets]
-    [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year
-               YearMonth ZoneOffset]
-    [java.time.format DateTimeFormatter]
-    [java.util List Map UUID]
-    [blaze.fhir.spec.type.system
-     DateTimeYear DateTimeYearMonth DateTimeYearMonthDay])
+    [java.time
+     Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
+     ZoneOffset]
+    [java.time.format DateTimeFormatter DateTimeParseException]
+    [java.util List Map UUID])
   (:refer-clojure :exclude [decimal? string? uri?]))
 
 
@@ -45,15 +47,21 @@
 
 ;; ---- Object and nil --------------------------------------------------------
 
-;; Be sure type and value can be called on every Object and nil. Every call
+;; Be sure all methods can be called on every Object and nil. Every call
 ;; will produce nil.
 (extend-protocol FhirType
   Object
   (-type [_])
   (-value [_])
+  (-to-json [_])
+  (-to-xml [_])
+  (-hash-into [_ _])
   nil
   (-type [_])
-  (-value [_]))
+  (-value [_])
+  (-to-json [_])
+  (-to-xml [_])
+  (-hash-into [_ _]))
 
 
 
@@ -73,7 +81,7 @@
 
 (defn xml->Boolean
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (Boolean/valueOf ^String value))
 
 
@@ -94,7 +102,7 @@
 
 (defn xml->Integer
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (Integer/valueOf ^String value))
 
 
@@ -115,7 +123,7 @@
 
 (defn xml->Long
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (Long/valueOf ^String value))
 
 
@@ -136,7 +144,7 @@
 
 (defn xml->String
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   value)
 
 
@@ -161,7 +169,7 @@
 
 (defn xml->Decimal
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (BigDecimal. ^String value))
 
 
@@ -199,7 +207,7 @@
 
 (defn xml->Uri
   {:arglists '([element])}
-  [{{:keys [id extension value]} :attrs}]
+  [{{:keys [_id _extension value]} :attrs}]
   (->Uri value))
 
 
@@ -237,7 +245,7 @@
 
 (defn xml->Url
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Url value))
 
 
@@ -275,7 +283,7 @@
 
 (defn xml->Canonical
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Canonical value))
 
 
@@ -307,7 +315,7 @@
 
 (defn xml->Base64Binary
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Base64Binary value))
 
 
@@ -359,7 +367,7 @@
 
 (defn xml->Instant
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Instant value))
 
 
@@ -400,16 +408,17 @@
     (system/-hash-into date sink)))
 
 
-(defn ->Date [s]
-  (case (count s)
-    10 (LocalDate/parse s)
-    7 (YearMonth/parse s)
-    (Year/parse s)))
+(defn ->Date [value]
+  (try
+    (system/parse-date* value)
+    (catch DateTimeParseException _
+      ;; in case of leap year errors not covered by regex
+      ::s2/invalid)))
 
 
 (defn xml->Date
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Date value))
 
 
@@ -502,9 +511,16 @@
 (defn ->DateTime
   "Creates a primitive dateTime value."
   ([value]
-   (system/parse-date-time value))
+   (try
+     (system/parse-date-time* value)
+     (catch DateTimeParseException _
+       ;; in case of leap year errors not covered by regex
+       ::s2/invalid)))
   ([id extensions value]
-   (->ExtendedDateTime id extensions (system/parse-date-time value))))
+   (let [date-time (->DateTime value)]
+     (if (s2/invalid? date-time)
+       ::s2/invalid
+       (->ExtendedDateTime id extensions date-time)))))
 
 
 (defn xml->DateTime
@@ -513,7 +529,7 @@
   [{{:keys [id value]} :attrs extensions :content}]
   (if (or id (seq extensions))
     (->DateTime id extensions value)
-    (system/parse-date-time value)))
+    (->DateTime value)))
 
 
 (defn date-time? [x]
@@ -541,7 +557,7 @@
 
 (defn xml->Time
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Time value))
 
 
@@ -638,7 +654,7 @@
 
 (defn xml->Oid
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Oid value))
 
 
@@ -676,7 +692,7 @@
 
 (defn xml->Id
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Id value))
 
 
@@ -714,7 +730,7 @@
 
 (defn xml->Markdown
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Markdown value))
 
 
@@ -858,7 +874,7 @@
 
 (defn xml->Uuid
   {:arglists '([element])}
-  [{{:keys [id value]} :attrs extensions :content}]
+  [{{:keys [_id value]} :attrs _extensions :content}]
   (->Uuid value))
 
 

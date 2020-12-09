@@ -13,6 +13,7 @@
     [blaze.elm.type-infer :as type-infer]
     [blaze.elm.type-infer-spec]
     [clojure.data.xml :as xml]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
@@ -27,7 +28,19 @@
 
 (defn fixture [f]
   (st/instrument)
-  (st/unstrument [`compile `expr/eval])
+  (st/instrument
+    `compile
+    {:spec
+     {`compile
+      (s/fspec
+        :args (s/cat :context any? :expression :elm/expression))}})
+  (st/instrument
+    `expr/eval
+    {:spec
+     {`expr/eval
+      (s/fspec
+        :args (s/cat :expression :blaze.elm.compiler/expression
+                     :context map? :resource nil? :scope nil?))}})
   (f)
   (st/unstrument))
 
@@ -134,12 +147,9 @@
             "StringIsInteger"                               ; TODO: implement
             "StringNoToBoolean"                             ; TODO: implement
             "CodeToConcept1"                                ; TODO: implement
-            "ToDateTime1"                                   ; TODO: implement
-            "ToDateTime2"                                   ; TODO: implement
-            "ToDateTime3"                                   ; TODO: implement
-            "ToDateTime4"                                   ; TODO: implement
-            "ToDateTime5"                                   ; TODO: implement
-            "ToDateTime6"                                   ; TODO: implement
+            "ToDateTime4"                                   ; time zones don't match
+            "ToDateTime5"                                   ; time zones don't match
+            "ToDateTime6"                                   ; time zones don't match
             "String5D5CMToQuantity"                         ; TODO: implement
             "IntegerNeg5ToString"                           ; TODO: implement
             "Decimal18D55ToString"                          ; TODO: implement
@@ -149,6 +159,8 @@
             "ToTime2"                                       ; TODO: implement
             "ToTime3"                                       ; TODO: implement
             "ToTime4"                                       ; TODO: implement
+            "StringToDateTimeMalformed"                     ; should return null
+            "ToDateTimeMalformed"                           ; should return null
             })
 
 

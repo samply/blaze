@@ -56,9 +56,9 @@
     (-> (db node vid type id)
         (ac/then-compose
           (fn [db]
-            (if-let [handle (d/resource-handle db type id)]
-              (if (d/deleted? handle)
-                (let [tx (d/tx db (d/last-updated-t handle))]
+            (if-let [{:keys [op t] :as handle} (d/resource-handle db type id)]
+              (if (identical? :delete op)
+                (let [tx (d/tx db t)]
                   (-> (handler-util/operation-outcome
                         {:fhir/issue "deleted"})
                       (ring/response)

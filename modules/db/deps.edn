@@ -1,12 +1,13 @@
-{:paths ["src"]
-
- :deps
+{:deps
  {aysylu/loom
   {:mvn/version "1.0.2"
    :exclusions [org.clojure/clojurescript]}
 
   blaze/async
   {:local/root "../async"}
+
+  blaze/byte-string
+  {:local/root "../byte-string"}
 
   blaze/coll
   {:local/root "../coll"}
@@ -19,9 +20,6 @@
 
   blaze/fhir-path
   {:local/root "../fhir-path"}
-
-  blaze/fhir-structure
-  {:local/root "../fhir-structure"}
 
   blaze/kv
   {:local/root "../kv"}
@@ -83,7 +81,7 @@
   {:extra-deps
    {clj-kondo/tools
     {:git/url "https://github.com/borkdude/clj-kondo"
-     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
+     :sha "47ce3f9e3a4bf88a4942f4b5a2bcdd0e278dcc8b"
      :deps/root "analysis"}}
    :main-opts ["-m" "clj-kondo.tools.unused-vars"]}
 

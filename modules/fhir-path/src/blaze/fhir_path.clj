@@ -8,6 +8,7 @@
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:import
+    [clojure.lang ExceptionInfo PersistentVector]
     [java.io StringReader]
     [org.antlr.v4.runtime ANTLRInputStream CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -46,22 +47,34 @@
   (-eval [_ context coll]))
 
 
+;; The compiler can generate static collections that will evaluate to itself
+(extend-protocol Expression
+  PersistentVector
+  (-eval [expr _ _]
+    expr))
+
+
 (defprotocol Resolver
   (-resolve [_ uri]
     "Resolves `uri` into a resource."))
 
 
 (defn eval
-  "Evaluates the FHIRPath expression on `resource` with help of `resolver`.
+  "Evaluates the FHIRPath expression on `value` with help of `resolver`.
 
   Returns either a collection of FHIR data or an anomaly in case of errors. The
-  type of the FHIR data can be determined by calling `clojure.core/type` on it."
-  {:arglists '([resolver expr resource])}
-  [resolver expr resource]
+  type of the FHIR data can be determined by calling `blaze.fhir.spec/fhir-type`
+  on it."
+  {:arglists '([resolver expr value])}
+  [resolver expr value]
   (try
-    (-eval expr {:resolver resolver} [resource])
-    (catch Exception e
-      (ex-data e))))
+    (-eval expr {:resolver resolver} [value])
+    (catch ExceptionInfo e
+      (if-let [ex-data (ex-data e)]
+        (if (::anom/category ex-data)
+          ex-data
+          (throw e))
+        (throw e)))))
 
 
 ;; See: http://hl7.org/fhirpath/index.html#conversion
@@ -138,7 +151,9 @@
 (defrecord IndexerExpression [expression index]
   Expression
   (-eval [_ context coll]
-    (nth (-eval expression context coll) (-eval index context coll))))
+    (let [coll (-eval expression context coll)
+          idx (singleton :fhir/integer (-eval index context coll))]
+      [(nth coll idx [])])))
 
 
 (defrecord PlusExpression [left-expr right-expr]
@@ -293,18 +308,6 @@
     (mapcat (partial resolve context) coll)))
 
 
-(defrecord LiteralExpression [literal]
-  Expression
-  (-eval [_ _ _]
-    [literal]))
-
-
-(defrecord NullLiteralExpression []
-  Expression
-  (-eval [_ _ _]
-    []))
-
-
 (defprotocol FPCompiler
   (-compile [ctx])
   (-compile-as-type-specifier [ctx]))
@@ -423,35 +426,31 @@
 
   fhirpathParser$NullLiteralContext
   (-compile [_]
-    (->NullLiteralExpression))
+    [])
 
   fhirpathParser$BooleanLiteralContext
   (-compile [ctx]
-    (->LiteralExpression
-      (Boolean/valueOf (.getText (.getSymbol ^TerminalNode (.getChild ctx 0))))))
+    [(Boolean/valueOf (.getText (.getSymbol ^TerminalNode (.getChild ctx 0))))])
 
   fhirpathParser$StringLiteralContext
   (-compile [ctx]
-    (->LiteralExpression
-      (str/trim (.getText (.getSymbol (.STRING ctx))) "'")))
+    [(str/trim (.getText (.getSymbol (.STRING ctx))) "'")])
 
   fhirpathParser$NumberLiteralContext
   (-compile [ctx]
-    (->LiteralExpression
-      (let [text (.getText (.getSymbol (.NUMBER ctx)))]
-        (try
-          (Long/parseLong text)
-          (catch Exception _
-            (BigDecimal. text))))))
+    (let [text (.getText (.getSymbol (.NUMBER ctx)))]
+      (try
+        [(Integer/parseInt text)]
+        (catch Exception _
+          [(BigDecimal. text)]))))
 
   fhirpathParser$DateTimeLiteralContext
   (-compile [ctx]
-    (->LiteralExpression
-      (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)]
-        (try
-          (type/->DateTime text)
-          (catch Exception _
-            (BigDecimal. text))))))
+    (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)]
+      (try
+        [(type/->DateTime text)]
+        (catch Exception _
+          [(BigDecimal. text)]))))
 
   fhirpathParser$MemberInvocationContext
   (-compile [ctx]

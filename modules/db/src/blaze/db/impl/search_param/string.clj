@@ -2,8 +2,10 @@
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.util :as u]
     [blaze.db.search-param-registry :as sr]
@@ -12,6 +14,7 @@
     [blaze.fhir.spec.type :as type]
     [clj-fuzzy.phonetics :as phonetics]
     [clojure.string :as str]
+    [cognitect.anomalies :as anom]
     [taoensso.timbre :as log]))
 
 
@@ -71,97 +74,63 @@
 (defn- resource-value
   "Returns the value of the resource with `tid` and `id` according to the
   search parameter with `c-hash`."
-  [{:keys [rsvi] :as context} c-hash tid id]
-  (let [hash (u/resource-hash context tid id)]
-    (u/get-next-value rsvi tid id hash c-hash)))
+  [{:keys [rsvi resource-handle]} c-hash tid id]
+  (r-sp-v/next-value! rsvi (resource-handle tid id) c-hash))
 
 
-(defn- start-key [context c-hash tid value start-id]
-  (if start-id
-    (let [start-value (resource-value context c-hash tid start-id)]
-      (assert start-value)
-      (codec/sp-value-resource-key c-hash tid start-value start-id))
-    (codec/sp-value-resource-key c-hash tid value)))
+(defn- resource-keys!
+  "Returns a reducible collection of `[id hash-prefix]` tuples starting at
+  `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid value]
+   (sp-vr/prefix-keys! svri c-hash tid value value))
+  ([{:keys [svri] :as context} c-hash tid _value start-id]
+   (let [start-value (resource-value context c-hash tid start-id)]
+     (assert start-value)
+     (sp-vr/prefix-keys! svri c-hash tid start-value start-value start-id))))
 
 
-(defn- take-while-prefix-matches [c-hash tid value]
-  (let [prefix-key (codec/sp-value-resource-key c-hash tid value)]
-    (take-while (fn [[prefix]] (bytes/starts-with? prefix prefix-key)))))
-
-
-(defn- resource-keys
-  "Returns a reducible collection of decoded SearchParamValueResource keys of
-  values starting with prefix of `value` starting at `start-id` (optional).
-
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid value start-id]
-  (coll/eduction
-    (take-while-prefix-matches c-hash tid value)
-    (u/sp-value-resource-keys svri (start-key context c-hash tid value start-id))))
-
-
-(defn- matches? [{:keys [rsvi]} c-hash tid id hash value]
-  (u/resource-sp-value-seek rsvi tid id hash c-hash value))
+(defn- matches? [{:keys [rsvi]} c-hash resource-handle value]
+  (some? (r-sp-v/next-value! rsvi resource-handle c-hash value value)))
 
 
 (defrecord SearchParamString [name url type base code c-hash expression]
   p/SearchParam
-  (-code [_]
-    code)
+  (-compile-value [_ _ value]
+    (codec/string (normalize-string value)))
 
-  (-compile-values [_ values]
-    (mapv (comp codec/string normalize-string) values))
+  (-resource-handles [_ context tid _ value]
+    (coll/eduction
+      (u/resource-handle-mapper context tid)
+      (resource-keys! context c-hash tid value)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (resource-keys context c-hash tid value start-id)))
+      (resource-keys! context c-hash tid value start-id)))
 
-  (-compartment-keys [_ context compartment tid compiled-value]
-    (let [{co-c-hash :c-hash co-res-id :res-id} compartment
-          start-key (codec/compartment-search-param-value-key
-                      co-c-hash co-res-id c-hash tid compiled-value)]
-      (u/prefix-keys (:csvri context) start-key)))
+  (-compartment-keys [_ context compartment tid value]
+    (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value value))
 
-  (-matches? [_ context tid id hash _ values]
-    (some #(matches? context c-hash tid id hash %) values))
+  (-matches? [_ context resource-handle _ values]
+    (some #(matches? context c-hash resource-handle %) values))
 
-  (-index-entries [_ resolver hash resource _]
+  (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [{:keys [id]} resource
-            type (clojure.core/name (fhir-spec/fhir-type resource))
-            tid (codec/tid type)
-            id-bytes (codec/id-bytes id)]
-        (into
-          []
-          (mapcat
-            (partial
-              string-index-entries
-              url
-              (fn search-param-string-entry [value]
-                (log/trace "search-param-value-entry" "string" code value type id hash)
-                (let [value-bytes (codec/string value)]
-                  [[:search-param-value-index
-                    (codec/sp-value-resource-key
-                      c-hash
-                      tid
-                      value-bytes
-                      id-bytes
-                      hash)
-                    bytes/empty]
-                   [:resource-value-index
-                    (codec/resource-sp-value-key
-                      tid
-                      id-bytes
-                      hash
-                      c-hash
-                      value-bytes)
-                    bytes/empty]]))))
-          values)))))
+      (into
+        []
+        (mapcat
+          #(string-index-entries
+             url
+             (fn [value]
+               [[nil (codec/string value)]])
+             %))
+        values))))
 
 
 (defmethod sr/search-param "string"
-  [{:keys [name url type base code expression]}]
-  (when expression
+  [_ {:keys [name url type base code expression]}]
+  (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamString name url type base code (codec/c-hash code) expression))))
+      (->SearchParamString name url type base code (codec/c-hash code) expression))
+    {::anom/category ::anom/unsupported
+     ::anom/message (u/missing-expression-msg url)}))

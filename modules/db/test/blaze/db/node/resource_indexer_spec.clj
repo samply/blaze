@@ -2,9 +2,14 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
+    [blaze.byte-string-spec]
+    [blaze.db.impl.index.compartment.resource-spec]
+    [blaze.db.impl.search-param-spec]
+    [blaze.db.kv-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.resource-store.spec]
     [blaze.db.search-param-registry.spec]
+    [blaze.fhir.spec-spec]
     [clojure.spec.alpha :as s]))
 
 

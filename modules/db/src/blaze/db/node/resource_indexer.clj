@@ -2,14 +2,14 @@
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.async.comp :as ac]
-    [blaze.db.bytes :as bytes]
+    [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
-    [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.set :as set]
@@ -28,7 +28,7 @@
   {:namespace "blaze"
    :subsystem "db"
    :name "resource_indexer_duration_seconds"}
-  (mapcat #(list % (* 2.5 %) (* 5 %) (* 7.5 %)) (take 5 (iterate #(* 10 %) 0.00001)))
+  (take 14 (iterate #(* 2 %) 0.00001))
   "op")
 
 
@@ -37,17 +37,23 @@
   is linked to `compartment`."
   {:arglists '([compartment resource])}
   [[comp-code comp-id] {:keys [id] :as resource}]
-  [:compartment-resource-type-index
-   (codec/compartment-resource-type-key
-     (codec/c-hash comp-code) (codec/id-bytes comp-id)
-     (codec/tid (name (fhir-spec/fhir-type resource))) (codec/id-bytes id))
-   bytes/empty])
+  (cr/index-entry
+    [(codec/c-hash comp-code) (codec/id-byte-string comp-id)]
+    (codec/tid (name (fhir-spec/fhir-type resource)))
+    (codec/id-byte-string id)))
+
+
+(defn- skip-indexing-msg [search-param resource cause-msg]
+  (format "Skip indexing for search parameter `%s` on resource `%s/%s`. Cause: %s"
+          (:url search-param) (name (fhir-spec/fhir-type resource))
+          (:id resource) cause-msg))
 
 
 (defn- index-entries [linked-compartments search-param hash resource]
-  (let [res (search-param/index-entries search-param hash resource linked-compartments)]
+  (let [res (search-param/index-entries search-param hash resource
+                                        linked-compartments)]
     (if (::anom/category res)
-      (log/warn (format "Skip indexing for search parameter `%s` on resource `%s/%s`. Cause: %s" (:url search-param) (name (fhir-spec/fhir-type resource)) (:id resource) (::anom/message res)))
+      (log/warn (skip-indexing-msg search-param resource (::anom/message res)))
       res)))
 
 
@@ -65,7 +71,7 @@
 
 
 (defn- index-resource [search-param-registry [hash resource]]
-  (log/trace "index-resource" hash)
+  (log/trace "index-resource with hash" (bs/hex hash))
   (calc-search-params search-param-registry hash resource))
 
 
@@ -80,10 +86,10 @@
 
 
 (defn- index-resources**
-  [{:keys [search-param-registry kv-store]} hashes results]
-  (let [missing-hashes (set/difference (set hashes) (set (keys results)))]
+  [{:keys [search-param-registry kv-store]} hashes resources]
+  (let [missing-hashes (set/difference (set hashes) (set (keys resources)))]
     (if (empty? missing-hashes)
-      (->> (into [] (mapcat #(index-resource search-param-registry %)) results)
+      (->> (into [] (mapcat #(index-resource search-param-registry %)) resources)
            (put kv-store))
       (throw-anom ::anom/fault (missing-hashes-msg missing-hashes)))))
 

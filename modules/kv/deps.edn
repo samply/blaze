@@ -1,6 +1,9 @@
 {:deps
  {blaze/module-base
-  {:local/root "../module-base"}}
+  {:local/root "../module-base"}
+
+  com.google.guava/guava
+  {:mvn/version "30.0-jre"}}
 
  :aliases
  {:test
@@ -31,7 +34,7 @@
     org.clojure/test.check
     {:mvn/version "1.1.0"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}
+   :main-opts ["-m" "cloverage.coverage" "-d" "--codecov" "-p" "src" "-s" "test"]}
 
   :unused-vars
   {:extra-deps

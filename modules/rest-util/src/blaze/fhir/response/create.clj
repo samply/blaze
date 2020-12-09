@@ -32,7 +32,7 @@
   `return-preference` is used to decide which type of body is returned."
   [router return-preference db type id]
   (let [handle (d/resource-handle db type id)
-        tx (d/tx db (d/last-updated-t handle))
+        tx (d/tx db (:t handle))
         vid (str (:blaze.db/t tx))]
     (log/trace (build-created-response-msg type id vid))
     (-> (cond

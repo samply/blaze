@@ -8,10 +8,13 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
-    [taoensso.timbre :as log]
-    [integrant.core :as ig])
+    [integrant.core :as ig]
+    [taoensso.timbre :as log])
   (:import
     [java.nio ByteBuffer]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -120,7 +123,46 @@
 
     (testing "errors on closed iterator"
       (.close iter)
-      (is (fault? (catch-ex-data (kv/seek! iter (ba 0x00))))))))
+      (is (fault? (catch-ex-data (kv/seek! iter (ba 0x00)))))))
+
+  (testing "reverse comparator"
+    (let [kv-store (new-mem-kv-store-with
+                     {:a {:reverse-comparator? true}}
+                     [[:a (ba 0x01) (ba 0x10)]
+                      [:a (ba 0x03) (ba 0x30)]])
+          iter (kv/new-iterator (kv/new-snapshot kv-store) :a)]
+
+      (testing "before first entry"
+        (kv/seek! iter (ba 0x04))
+        (is (kv/valid? iter))
+        (is (bytes/= (ba 0x03) (kv/key iter)))
+        (is (bytes/= (ba 0x30) (kv/value iter))))
+
+      (testing "at first entry"
+        (kv/seek! iter (ba 0x03))
+        (is (kv/valid? iter))
+        (is (bytes/= (ba 0x03) (kv/key iter)))
+        (is (bytes/= (ba 0x30) (kv/value iter))))
+
+      (testing "before second entry"
+        (kv/seek! iter (ba 0x02))
+        (is (kv/valid? iter))
+        (is (bytes/= (ba 0x01) (kv/key iter)))
+        (is (bytes/= (ba 0x10) (kv/value iter))))
+
+      (testing "at second entry"
+        (kv/seek! iter (ba 0x01))
+        (is (kv/valid? iter))
+        (is (bytes/= (ba 0x01) (kv/key iter)))
+        (is (bytes/= (ba 0x10) (kv/value iter))))
+
+      (testing "overshoot"
+        (kv/seek! iter (ba 0x00))
+        (is (not (kv/valid? iter))))
+
+      (testing "errors on closed iterator"
+        (.close iter)
+        (is (fault? (catch-ex-data (kv/seek! iter (ba 0x04)))))))))
 
 
 (deftest seek-for-prev-test

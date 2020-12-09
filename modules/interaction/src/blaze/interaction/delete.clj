@@ -45,9 +45,9 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
     (let [db (d/db node)]
-      (if-let [handle (d/resource-handle db type id)]
-        (if (d/deleted? handle)
-          (-> (build-response* (d/tx db (d/last-updated-t handle)))
+      (if-let [{:keys [op t]} (d/resource-handle db type id)]
+        (if (identical? :delete op)
+          (-> (build-response* (d/tx db t))
               (ac/completed-future))
           (-> (d/transact node [[:delete type id]])
               ;; it's important to switch to the transaction executor here,

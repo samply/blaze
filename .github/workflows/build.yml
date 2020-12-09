@@ -35,7 +35,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2020.10.10'
+        version: '2020.11.07'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.2
@@ -68,6 +68,7 @@ jobs:
         - fhir-structure
         - interaction
         - kv
+        - luid
         - openid-auth
         - operation-measure-evaluate-measure
         - rest-api
@@ -91,7 +92,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2020.10.10'
+        version: '2020.11.07'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.2
@@ -137,7 +138,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2020.10.10'
+        version: '2020.11.07'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.2
