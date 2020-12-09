@@ -1,12 +1,12 @@
 (ns blaze.elm.spec
   (:require
     [blaze.elm.quantity :as q]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
     [cuerdas.core :as str])
   (:import
-    [java.time LocalDate]
     [javax.measure.spi ServiceProvider SystemOfUnits]
     [tech.units.indriya.unit BaseUnit]))
 
@@ -69,10 +69,6 @@
   string?)
 
 
-(s/def :elm/direction
-  #{"asc" "ascending" "desc" "descending"})
-
-
 (s/def :elm/scope
   string?)
 
@@ -93,7 +89,7 @@
   (s/coll-of :elm/type-specifier))
 
 
-(defn expression-dispatch [{:keys [type]}]
+(defn- expression-dispatch [{:keys [type]}]
   (when type
     (keyword "elm.spec.type" (str/kebab type))))
 
@@ -149,15 +145,19 @@
   :elm/expression)
 
 
+(s/def :elm/sort-direction
+  #{"asc" "ascending" "desc" "descending"})
+
+
+(s/def :elm.sort-by-item/direction
+  :elm/sort-direction)
+
+
 (defmulti sort-by-item :type)
 
 
 (s/def :elm/sort-by-item
   (s/multi-spec sort-by-item :type))
-
-
-(s/def :elm.sort/by
-  (s/coll-of :elm/sort-by-item :min-count 1))
 
 
 (s/def :elm/orderBy
@@ -621,15 +621,100 @@
 
 
 ;; 10. Queries
+
+;; 10.2. AliasedQuerySource
+(s/def :elm/aliased-query-source
+  (s/keys :req-un [:elm/expression :elm/alias]))
+
+
+;; 10.3. AliasRef
+(defmethod expression :elm.spec.type/alias-ref [_]
+  (s/keys :opt-un [:elm/name]))
+
+
+;; 10.4. ByColumn
+(s/def :elm.sort-by-item.by-column/path
+  string?)
+
+
+(defmethod sort-by-item "ByColumn" [_]
+  (s/keys
+    :req-un
+    [:elm.sort-by-item/direction
+     :elm.sort-by-item.by-column/path]))
+
+
+;; 10.5. ByDirection
+(defmethod sort-by-item "ByDirection" [_]
+  (s/keys :req-un [:elm.sort-by-item/direction]))
+
+
+;; 10.6. ByExpression
+(s/def :elm.sort-by-item.by-expression/expression
+  :elm/expression)
+
+
+(defmethod sort-by-item "ByExpression" [_]
+  (s/keys
+    :req-un
+    [:elm.sort-by-item/direction
+     :elm.sort-by-item.by-expression/expression]))
+
+
+;; 10.9. RelationshipClause
+(defmulti relationship-clause :type)
+
+(s/def :elm/relationship-clause
+  (s/multi-spec relationship-clause :type))
+
+
+;; 10.10. ReturnClause
+(s/def :elm.return-clause/expression
+  :elm/expression)
+
+
+(s/def :elm.return-clause/distinct
+  boolean?)
+
+
+(s/def :elm/return-clause
+  (s/keys :req-un [:elm.return-clause/expression]
+          :opt-un [:elm.return-clause/distinct]))
+
+
+;; TODO: 10.11. AggregateClause
+
+;; 10.12. SortClause
+(s/def :elm.sort-clause/by
+  (s/coll-of :elm/sort-by-item :min-count 1))
+
+
+(s/def :elm/sort-clause
+  (s/keys :req-un [:elm.sort-clause/by]))
+
+
+;; 10.13. With
+(defmethod relationship-clause "With" [_]
+  (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))
+
+
+(defmethod relationship-clause "WithEquiv" [_]
+  (s/keys :req-un [:elm/expression :elm/alias :elm.query.life/equivOperand]
+          :opt-un [:elm.query/suchThat]))
+
+
+;; 10.14. Without
+(defmethod relationship-clause "Without" [_]
+  (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))
+
+
+;; 10.1. Query
 (s/def :elm.query/source
   (s/coll-of :elm/aliased-query-source :min-count 1))
 
 
 (s/def :elm.query/relationship
-  (s/coll-of
-    (s/or :with :elm.query/with
-          :with-equiv :elm.query.life/with-equiv
-          :without :elm.query/without)))
+  (s/coll-of :elm/relationship-clause))
 
 
 (s/def :elm.query/suchThat
@@ -644,55 +729,23 @@
   :elm/expression)
 
 
-;; 10.1. Query
+(s/def :elm.query/return
+  :elm/return-clause)
+
+
+(s/def :elm.query/sort
+  :elm/sort-clause)
+
+
 (defmethod expression :elm.spec.type/query [_]
-  (s/keys :req-un [:elm.query/source]
-          :opt-un [:elm.query/relationship :elm.query/where]))
-
-
-;; 10.2. AliasedQuerySource
-(s/def :elm/aliased-query-source
-  (s/keys :req-un [:elm/expression :elm/alias]))
-
-
-;; 10.3. AliasRef
-(defmethod expression :elm.spec.type/alias-ref [_]
-  (s/keys :opt-un [:elm/name]))
-
-
-;; 10.4. ByColumn
-(defmethod sort-by-item "ByColumn" [_]
-  (s/keys :opt-un [:elm/direction :elm/path]))
-
-
-;; 10.5. ByDirection
-(defmethod sort-by-item "ByDirection" [_]
-  (s/keys :opt-un [:elm/direction]))
-
-
-;; 10.6. ByExpression
-(defmethod sort-by-item "ByExpression" [_]
-  (s/keys :req-un [:elm/expression] :opt-un [:elm/direction]))
-
-
-;; 10.11. SortClause
-(s/def :elm.query/sort-clause
-  (s/keys :req-un [:elm.sort/by]))
-
-
-;; 10.12. With
-(s/def :elm.query/with
-  (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))
-
-
-(s/def :elm.query.life/with-equiv
-  (s/keys :req-un [:elm/expression :elm/alias :elm.query.life/equivOperand]
-          :opt-un [:elm.query/suchThat]))
-
-
-;; 10.13. Without
-(s/def :elm.query/without
-  (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))
+  (s/keys
+    :req-un [:elm.query/source]
+    :opt-un
+    [#_:elm.query/let
+     :elm.query/relationship
+     :elm.query/where
+     :elm.query/return
+     :elm.query/sort]))
 
 
 
@@ -1082,7 +1135,7 @@
            (or
              (nil? day)
              (try
-               (LocalDate/of
+               (system/date
                  (Long/parseLong year)
                  (Long/parseLong month)
                  (Long/parseLong day))
@@ -1166,7 +1219,7 @@
            (or
              (nil? day)
              (try
-               (LocalDate/of
+               (system/date
                  (Long/parseLong year)
                  (Long/parseLong month)
                  (Long/parseLong day))

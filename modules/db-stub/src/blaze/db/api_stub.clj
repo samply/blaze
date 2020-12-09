@@ -15,6 +15,7 @@
     [java-time :as jt])
   (:import
     [com.github.benmanes.caffeine.cache Caffeine]
+    [java.io Closeable]
     [java.time Clock Instant ZoneId]))
 
 
@@ -37,7 +38,7 @@
 
 (def ^:private clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
-(defn mem-node []
+(defn mem-node ^Closeable []
   (let [index-kv-store
         (new-mem-kv-store
           {:search-param-value-index nil
@@ -66,7 +67,7 @@
     @(d/transact node tx-ops)))
 
 
-(defn mem-node-with [txs]
+(defn mem-node-with ^Closeable [txs]
   (doto (mem-node)
     (submit-txs txs)))
 

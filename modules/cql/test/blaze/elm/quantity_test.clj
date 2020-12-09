@@ -8,6 +8,9 @@
     [clojure.test :as test :refer [are deftest is testing]]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (f)

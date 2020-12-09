@@ -1,7 +1,9 @@
 (ns blaze.elm.list
   "Implementation of the list type."
   (:require
-    [blaze.elm.protocols :as p])
+    [blaze.anomaly :refer [throw-anom]]
+    [blaze.elm.protocols :as p]
+    [cognitect.anomalies :as anom])
   (:import
     [clojure.lang PersistentVector IReduceInit]))
 
@@ -173,7 +175,10 @@
     (let [[fst snd] list]
       (if (nil? snd)
         fst
-        (throw (Exception.)))))
+        (throw-anom
+          ::anom/conflict
+          "More than one element in `SingletonFrom` expression."
+          :list list))))
 
   IReduceInit
   (singleton-from [list]

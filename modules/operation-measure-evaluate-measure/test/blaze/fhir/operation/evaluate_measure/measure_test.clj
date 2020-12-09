@@ -24,6 +24,9 @@
     [java.util Base64]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (log/set-level! :trace)

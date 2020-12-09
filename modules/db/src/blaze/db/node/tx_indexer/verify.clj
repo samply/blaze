@@ -192,10 +192,8 @@
     (let [res (verify-tx-cmds** db-before t tx-cmds)]
       (post-process-res db-before t res))
     (catch ExceptionInfo e
-      (if-let [ex-data (ex-data e)]
-        (if (::anom/category ex-data)
-          ex-data
-          (throw e))
+      (if (::anom/category (ex-data e))
+        (ex-data e)
         (throw e)))))
 
 

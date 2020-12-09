@@ -1,12 +1,12 @@
 {:lint-as
  {blaze.anomaly/when-ok clojure.core/let
-  blaze.elm.compiler/defunop clojure.core/defn
-  blaze.elm.compiler/defbinop clojure.core/defn
-  blaze.elm.compiler/defternop clojure.core/defn
-  blaze.elm.compiler/defnaryop clojure.core/defn
-  blaze.elm.compiler/defaggop clojure.core/defn
-  blaze.elm.compiler/defbinopp clojure.core/defn
-  blaze.elm.compiler/defunopp clojure.core/defn
+  blaze.elm.compiler.macros/defunop clojure.core/defn
+  blaze.elm.compiler.macros/defbinop clojure.core/defn
+  blaze.elm.compiler.macros/defternop clojure.core/defn
+  blaze.elm.compiler.macros/defnaryop clojure.core/defn
+  blaze.elm.compiler.macros/defaggop clojure.core/defn
+  blaze.elm.compiler.macros/defbinopp clojure.core/defn
+  blaze.elm.compiler.macros/defunopp clojure.core/defn
   clojure.test.check.properties/for-all clojure.core/let
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}
