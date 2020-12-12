@@ -7,11 +7,12 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
-    [blaze.interaction.create :refer [handler]]
+    [blaze.interaction.create]
     [blaze.interaction.create-spec]
     [blaze.luid :refer [luid]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -42,10 +43,18 @@
     {:syntax :bracket}))
 
 
+(defn- handler [node]
+  (-> (ig/init
+        {:blaze.interaction/create
+         {:node node
+          :executor executor}})
+      (:blaze.interaction/create)))
+
+
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node executor) request))))
+      @((handler node) request))))
 
 
 (deftest handler-test

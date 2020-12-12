@@ -127,7 +127,7 @@
 
 
 (defn- execute-multi-get [session get-statement hashes]
-  (map #(ac/->completable-future (execute-get session get-statement %)) hashes))
+  (mapv #(ac/->completable-future (execute-get session get-statement %)) hashes))
 
 
 (defn- bind-put [^PreparedStatement statement hash resource]

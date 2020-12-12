@@ -67,10 +67,11 @@
 
 
 (defn- build-response
-  [router headers type id old-handle db]
-  (let [new-handle (d/resource-handle db type id)
+  [router headers type id old-before db-after]
+  (let [old-handle (d/resource-handle old-before type id)
+        new-handle (d/resource-handle db-after type id)
         return-preference (handler-util/preference headers "return")
-        tx (d/tx db (:t new-handle))
+        tx (d/tx db-after (:t new-handle))
         vid (str (:blaze.db/t tx))
         created (or (nil? old-handle) (identical? :delete (:op old-handle)))]
     (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
@@ -80,7 +81,7 @@
           (= "OperationOutcome" return-preference)
           (ac/completed-future {:fhir/type :fhir/OperationOutcome})
           :else
-          (d/pull db new-handle))
+          (d/pull db-after new-handle))
         (ac/then-apply
           (fn [body]
             (cond->
@@ -105,17 +106,16 @@
         :keys [body]
         {:strs [if-match] :as headers} :headers
         ::reitit/keys [router]}]
-    (let [db (d/db node)]
+    (let [db-before (d/db node)]
       (-> (ac/supply (validate-resource type id body))
           (ac/then-compose
             #(d/transact node [(tx-op % (fhir-util/etag->t if-match))]))
-          ;; it's important to switch to the transaction executor here, because
-          ;; otherwise the central indexing thread would execute response
-          ;; building.
+          ;; it's important to switch to the executor here, because otherwise
+          ;; the central indexing thread would execute response building.
           (ac/then-apply-async identity executor)
           (ac/then-compose
             #(build-response
-               router headers type id (d/resource-handle db type id) %))
+               router headers type id db-before %))
           (ac/exceptionally handler-util/error-response)))))
 
 

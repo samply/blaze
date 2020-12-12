@@ -5,9 +5,11 @@
     [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
     [blaze.fhir.spec.type :as type]
+    [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
-    [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
+    [blaze.rest-api.middleware.auth-guard :as auth-guard]
+    [blaze.rest-api.middleware.batch-handler :as batch-handler]
     [blaze.rest-api.middleware.cors :as cors]
     [blaze.rest-api.middleware.log :refer [wrap-log]]
     [blaze.rest-api.middleware.output :as output :refer [wrap-output]]
@@ -19,12 +21,21 @@
     [clojure.string :as str]
     [integrant.core :as ig]
     [reitit.core :as reitit]
-    [reitit.impl :as impl]
     [reitit.ring]
     [reitit.ring.spec]
     [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
+
+
+(def ^:private wrap-auth-guard
+  {:name :auth-guard
+   :wrap auth-guard/wrap-auth-guard})
+
+
+(def ^:private wrap-batch-handler
+  {:name :wrap-batch-handler
+   :wrap batch-handler/wrap-batch-handler})
 
 
 (def ^:private wrap-cors
@@ -80,18 +91,20 @@
                       :handler (-> interactions :create
                                    :blaze.rest-api.interaction/handler)}))]
      ["/_history"
-      (cond-> {}
+      (cond-> {:conflicting true}
         (contains? interactions :history-type)
         (assoc :get (-> interactions :history-type
                         :blaze.rest-api.interaction/handler)))]
      ["/_search"
-      (cond-> {}
+      (cond-> {:conflicting true}
         (contains? interactions :search-type)
         (assoc :post (-> interactions :search-type
                          :blaze.rest-api.interaction/handler)))]
      ["/{id}"
       [""
-       (cond-> {:name (keyword name "instance")}
+       (cond->
+         {:name (keyword name "instance")
+          :conflicting true}
          (contains? interactions :read)
          (assoc :get (-> interactions :read
                          :blaze.rest-api.interaction/handler))
@@ -104,7 +117,9 @@
                             :blaze.rest-api.interaction/handler)))]
       ["/_history"
        [""
-        (cond-> {:name (keyword name "history-instance")}
+        (cond->
+          {:name (keyword name "history-instance")
+           :conflicting true}
           (contains? interactions :history-instance)
           (assoc :get (-> interactions :history-instance
                           :blaze.rest-api.interaction/handler)))]
@@ -121,6 +136,7 @@
   [(format "/%s/{id}/{type}" code)
    {:name (keyword code "compartment")
     :fhir.compartment/code code
+    :conflicting true
     :middleware
     (cond-> []
       (seq auth-backends)
@@ -135,24 +151,8 @@
     (remove :abstract)))
 
 
-(s/def ::structure-definitions
-  (s/coll-of :fhir.un/StructureDefinition))
-
-
-(defn- non-conflict-detecting-router
-  "Like reitit.core/router but without conflict detection."
-  ([raw-routes opts]
-   (let [{:keys [router] :as opts} (merge (reitit/default-router-options) opts)
-         routes (impl/resolve-routes raw-routes opts)
-         compiled-routes (impl/compile-routes routes opts)]
-
-     (when-let [validate (:validate opts)]
-       (validate compiled-routes opts))
-
-     (router compiled-routes opts))))
-
-(defn router
-  {:arglists '([config capabilities-handler])}
+(defn routes
+  {:arglists '([config capabilities-handler batch-handler-promise])}
   [{:keys
     [base-url
      context-path
@@ -166,104 +166,124 @@
      operations]
     :blaze.rest-api.json-parse/keys [executor]
     :or {context-path ""}}
-   capabilities-handler]
-  (non-conflict-detecting-router
-    (-> [""
-         {:blaze/base-url base-url
-          :blaze/context-path context-path
-          :middleware
-          (cond-> [wrap-cors]
-            (seq auth-backends)
-            (conj #(apply wrap-authentication % auth-backends)))}
-         [""
-          (cond->
-            {:middleware
-             (cond-> []
-               (seq auth-backends)
-               (conj wrap-auth-guard))}
-            (some? search-system-handler)
-            (assoc :get search-system-handler)
-            (some? transaction-handler)
-            (assoc :post {:middleware [[wrap-resource executor]]
-                          :handler transaction-handler}))]
-         ["/metadata"
-          {:get capabilities-handler}]
-         ["/_history"
-          (cond->
-            {:middleware
-             (cond-> []
-               (seq auth-backends)
-               (conj wrap-auth-guard))}
-            (some? history-system-handler)
-            (assoc :get history-system-handler))]]
-        (into
-          (map #(compartment-route auth-backends %))
-          compartments)
-        (into
-          (comp
-            structure-definition-filter
-            (map #(resource-route auth-backends executor resource-patterns %))
-            (remove nil?))
-          structure-definitions)
-        (into
-          (mapcat
-            (fn [{:blaze.rest-api.operation/keys
-                  [code system-handler]}]
-              (when system-handler
-                [(str "/$" code)
-                 {:middleware
-                  (cond-> []
-                    (seq auth-backends)
-                    (conj wrap-auth-guard))
-                  :get system-handler
-                  :post system-handler}])))
-          operations)
-        (into
-          (mapcat
-            (fn [{:blaze.rest-api.operation/keys
-                  [code resource-types type-handler]}]
-              (when type-handler
-                (map
-                  (fn [resource-type]
-                    [(str "/" resource-type "/$" code)
-                     {:middleware
-                      (cond-> []
-                        (seq auth-backends)
-                        (conj wrap-auth-guard))
-                      :get type-handler
-                      :post type-handler}])
-                  resource-types))))
-          operations)
-        (into
-          (mapcat
-            (fn [{:blaze.rest-api.operation/keys
-                  [code resource-types instance-handler]}]
-              (when instance-handler
-                (map
-                  (fn [resource-type]
-                    [(str "/" resource-type "/{id}/$" code)
-                     {:middleware
-                      (cond-> []
-                        (seq auth-backends)
-                        (conj wrap-auth-guard))
-                      :get instance-handler
-                      :post instance-handler}])
-                  resource-types))))
-          operations))
-    {:path context-path
-     :syntax :bracket
-     :router reitit/mixed-router
-     :validate reitit.ring.spec/validate
-     :coerce reitit.ring/coerce-handler
-     :compile reitit.ring/compile-result
-     :reitit.ring/default-options-handler
-     (fn [{::reitit/keys [match]}]
-       (let [methods (->> match :result (keep (fn [[k v]] (when v k))))
-             allowed-methods
-             (->> methods (map (comp str/upper-case name)) (str/join ","))]
-         (-> (ring/response {})
-             (ring/header "Access-Control-Allow-Methods" allowed-methods)
-             (ring/header "Access-Control-Allow-Headers" "content-type"))))}))
+   capabilities-handler
+   batch-handler-promise]
+  (-> [""
+       {:blaze/base-url base-url
+        :blaze/context-path context-path}
+       [""
+        (cond->
+          {:middleware
+           (cond-> []
+             (seq auth-backends)
+             (conj wrap-auth-guard))}
+          (some? search-system-handler)
+          (assoc :get search-system-handler)
+          (some? transaction-handler)
+          (assoc :post {:middleware
+                        [[wrap-resource executor]
+                         [wrap-batch-handler batch-handler-promise]]
+                        :handler transaction-handler}))]
+       ["/metadata"
+        {:get capabilities-handler}]
+       ["/_history"
+        (cond->
+          {:middleware
+           (cond-> []
+             (seq auth-backends)
+             (conj wrap-auth-guard))}
+          (some? history-system-handler)
+          (assoc :get history-system-handler))]]
+      (into
+        (mapcat
+          (fn [{:blaze.rest-api.operation/keys [code system-handler]}]
+            (when system-handler
+              [[(str "/$" code)
+                {:middleware
+                 (cond-> []
+                   (seq auth-backends)
+                   (conj wrap-auth-guard))
+                 :get system-handler
+                 :post system-handler}]])))
+        operations)
+      (into
+        (mapcat
+          (fn [{:blaze.rest-api.operation/keys
+                [code resource-types type-handler]}]
+            (when type-handler
+              (map
+                (fn [resource-type]
+                  [(str "/" resource-type "/$" code)
+                   {:conflicting true
+                    :middleware
+                    (cond-> []
+                      (seq auth-backends)
+                      (conj wrap-auth-guard))
+                    :get type-handler
+                    :post type-handler}])
+                resource-types))))
+        operations)
+      (into
+        (mapcat
+          (fn [{:blaze.rest-api.operation/keys
+                [code resource-types instance-handler]}]
+            (when instance-handler
+              (map
+                (fn [resource-type]
+                  [(str "/" resource-type "/{id}/$" code)
+                   {:middleware
+                    (cond-> []
+                      (seq auth-backends)
+                      (conj wrap-auth-guard))
+                    :get instance-handler
+                    :post instance-handler}])
+                resource-types))))
+        operations)
+      (into
+        (comp
+          structure-definition-filter
+          (map #(resource-route auth-backends executor resource-patterns %))
+          (remove nil?))
+        structure-definitions)
+      (into
+        (map #(compartment-route auth-backends %))
+        compartments)))
+
+
+(defn batch-handler
+  "Handler for individual requests of a batch request."
+  [routes context-path]
+  (reitit.ring/ring-handler
+    (reitit.ring/router
+      routes
+      {:path context-path
+       :syntax :bracket
+       :reitit.middleware/transform
+       (fn [middleware]
+         (filterv (comp not #{:resource} :name) middleware))})
+    handler-util/default-handler))
+
+
+(defn router
+  {:arglists '([config capabilities-handler])}
+  [{:keys [context-path] :or {context-path ""} :as config} capabilities-handler]
+  (let [batch-handler-promise (promise)
+        routes (routes config capabilities-handler batch-handler-promise)]
+    (deliver batch-handler-promise (batch-handler routes context-path))
+    (reitit.ring/router
+      routes
+      {:path context-path
+       :syntax :bracket
+       :reitit.ring/default-options-endpoint
+       {:no-doc true
+        :handler
+        (fn [{::reitit/keys [match]}]
+          (let [methods (->> match :result (keep (fn [[k v]] (when v k))))
+                allowed-methods
+                (->> methods (map (comp str/upper-case name)) (str/join ","))]
+            (-> (ring/response {})
+                (ring/header "Access-Control-Allow-Methods" allowed-methods)
+                (ring/header "Access-Control-Allow-Headers" "content-type"))))}})))
 
 
 (def ^:private quantity-documentation
@@ -394,44 +414,16 @@
       (ac/completed-future (ring/response capability-statement)))))
 
 
-(def default-handler
-  (reitit.ring/create-default-handler
-    {:not-found
-     (fn [_]
-       (ac/completed-future
-         (ring/not-found
-           {:fhir/type :fhir/OperationOutcome
-            :issue
-            [{:severity #fhir/code"error"
-              :code #fhir/code"not-found"}]})))
-     :method-not-allowed
-     (fn [{:keys [uri request-method]}]
-       (-> (ring/response
-             {:fhir/type :fhir/OperationOutcome
-              :issue
-              [{:severity #fhir/code"error"
-                :code #fhir/code"processing"
-                :diagnostics (format "Method %s not allowed on `%s` endpoint."
-                                     (str/upper-case (name request-method)) uri)}]})
-           (ring/status 405)
-           (ac/completed-future)))
-     :not-acceptable
-     (fn [_]
-       (-> (ring/response
-             {:fhir/type :fhir/OperationOutcome
-              :issue
-              [{:severity #fhir/code"error"
-                :code #fhir/code"structure"}]})
-           (ring/status 406)
-           (ac/completed-future)))}))
-
-
 (defn handler
   "Whole app Ring handler."
-  [config]
+  [{:keys [auth-backends] :as config}]
   (-> (reitit.ring/ring-handler
         (router config (capabilities-handler config))
-        default-handler)
+        handler-util/default-handler
+        {:middleware
+         (cond-> [wrap-cors]
+           (seq auth-backends)
+           (conj #(apply wrap-authentication % auth-backends)))})
       (wrap-output)
       (wrap-params)
       (wrap-log)))
@@ -458,7 +450,7 @@
     :req-un
     [:blaze/base-url
      ::version
-     ::structure-definitions
+     :blaze.rest-api/structure-definitions
      :blaze.db/search-param-registry]
     :opt-un
     [::context-path

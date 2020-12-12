@@ -29,7 +29,7 @@
   ;;
   :blaze/rest-api
   {:search-system-handler #blaze/ref :blaze.interaction/search-system
-   :transaction-handler #blaze/ref :blaze.interaction.transaction/handler
+   :transaction-handler #blaze/ref :blaze.interaction/transaction
    :history-system-handler #blaze/ref :blaze.interaction.history/system
    :resource-patterns
    [#:blaze.rest-api.resource-pattern
@@ -108,7 +108,7 @@
   :blaze.interaction/search-compartment
   {:node #blaze/ref :blaze.db/node}
 
-  :blaze.interaction.transaction/handler
+  :blaze.interaction/transaction
   {:node #blaze/ref :blaze.db/node
    :executor #blaze/ref :blaze.interaction.transaction/executor}
 

@@ -12,6 +12,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
+    [blaze.interaction.transaction.spec]
     [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.uuid :refer [random-uuid]]
@@ -35,7 +36,7 @@
   {:arglists '([db idx entry])}
   [idx {:keys [resource] {:keys [method url] :as request} :request :as entry}]
   (let [method (type/value method)
-        url (type/value url)
+        [url] (some-> (type/value url) (str/split #"\?"))
         [type id] (some-> url bundle/match-url)]
     (cond
       (nil? request)
@@ -92,8 +93,10 @@
 
       (and (= "PUT" method) (nil? id))
       {::anom/category ::anom/incorrect
-       ::anom/message "Can't parse id from `entry.request.url` `" url "`."
-       :fhir/issue "value"}
+       ::anom/message (format "Can't parse id from URL `%s`." url)
+       :fhir/issue "value"
+       :fhir.issue/expression
+       [(format "Bundle.entry[%d].request.url" idx)]}
 
       (and (= "PUT" method) (not (contains? resource :id)))
       {::anom/category ::anom/incorrect
@@ -235,12 +238,14 @@
 
 (defmethod build-response-entry "DELETE"
   [_ db _]
-  (ac/completed-future
-    {:fhir/type :fhir.Bundle/entry
-     :response
-     {:fhir/type :fhir.Bundle.entry/response
-      :status "204"
-      :lastModified (:blaze.db.tx/instant (d/tx db (d/basis-t db)))}}))
+  (let [t (d/basis-t db)]
+    (ac/completed-future
+      {:fhir/type :fhir.Bundle/entry
+       :response
+       {:fhir/type :fhir.Bundle.entry/response
+        :status "204"
+        :etag (str "W/\"" t "\"")
+        :lastModified (:blaze.db.tx/instant (d/tx db t))}})))
 
 
 (defn- strip-leading-slash [s]
@@ -255,56 +260,88 @@
   (Instant/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)))
 
 
+(defn- response-entry [response]
+  {:fhir/type :fhir.Bundle/entry
+   :response response})
+
+
+(defn- with-entry-location* [issues idx]
+  (mapv #(assoc % :expression [(format "Bundle.entry[%d]" idx)]) issues))
+
+
+(defn- with-entry-location [outcome idx]
+  (update outcome :issue with-entry-location* idx))
+
+
+(defn- bundle-response [idx]
+  (fn [{:keys [status body]
+        {etag "ETag"
+         last-modified "Last-Modified"
+         location "Location"}
+        :headers}]
+    (cond->
+      {:fhir/type :fhir.Bundle/entry
+       :response
+       (cond->
+         {:fhir/type :fhir.Bundle.entry/response
+          :status (str status)}
+
+         etag
+         (assoc :etag etag)
+
+         last-modified
+         (assoc :lastModified (convert-http-date last-modified))
+
+         location
+         (assoc :location (type/->Uri location))
+
+         (<= 400 status)
+         (assoc :outcome (with-entry-location body idx)))}
+
+      (and (#{200 201} status) body)
+      (assoc :resource body))))
+
+
+(def ^:private bundle-error-response
+  (comp response-entry handler-util/bundle-error-response))
+
+
 (defn- process-batch-entry
-  [{:keys [handler] :blaze/keys [context-path]}
-   {{:keys [method url]} :request :keys [resource]}]
-  (let [url (strip-leading-slash (str/trim (type/value url)))
-        [url query-string] (str/split url #"\?")]
-    (if (= "" url)
+  [{:keys [batch-handler context-path return-preference]} idx
+   {{:keys [method url identity] if-match :ifMatch} :request
+    :keys [resource] :as entry}]
+  (let [entry (validate-entry idx entry)]
+    (if (::anom/category entry)
       (ac/completed-future
-        (handler-util/bundle-error-response
-          {::anom/category ::anom/incorrect
-           ::anom/message (format "Invalid URL `%s` in bundle request." url)
-           :fhir/issue "value"}))
-      (let [request
+        (response-entry (handler-util/bundle-error-response entry)))
+      (let [url (strip-leading-slash (str/trim (type/value url)))
+            [url query-string] (str/split url #"\?")
+            method (keyword (str/lower-case (type/value method)))
+            return-preference (or return-preference
+                                  (when (#{:post :put} method)
+                                    "minimal"))
+            request
             (cond->
               {:uri (str context-path "/" url)
-               :request-method (keyword (str/lower-case (type/value method)))}
+               :request-method method}
 
               query-string
               (assoc :query-string query-string)
 
+              return-preference
+              (assoc-in [:headers "prefer"] (str "return=" return-preference))
+
+              if-match
+              (assoc-in [:headers "if-match"] if-match)
+
+              identity
+              (assoc :identity identity)
+
               resource
               (assoc :body resource))]
-        (-> (handler request)
-            (ac/then-apply
-              (fn [{:keys [status body]
-                    {etag "ETag"
-                     last-modified "Last-Modified"
-                     location "Location"}
-                    :headers}]
-                (cond->
-                  {:fhir/type :fhir.Bundle/entry
-                   :response
-                   (cond->
-                     {:fhir/type :fhir.Bundle.entry/response
-                      :status (str status)}
-
-                     etag
-                     (assoc :etag etag)
-
-                     last-modified
-                     (assoc :lastModified (convert-http-date last-modified))
-
-                     location
-                     (assoc :location (type/->Uri location)))}
-
-                  (and (#{200 201} status) body)
-                  (assoc :resource body)
-
-                  (<= 400 status)
-                  (update :response assoc :outcome body))))
-            (ac/exceptionally handler-util/bundle-error-response))))))
+        (-> (batch-handler request)
+            (ac/then-apply (bundle-response idx))
+            (ac/exceptionally bundle-error-response))))))
 
 
 (defmulti process
@@ -316,7 +353,7 @@
 
 (defmethod process "batch"
   [context _ request-entries]
-  (let [futures (map #(process-batch-entry context %) request-entries)]
+  (let [futures (vec (map-indexed (partial process-batch-entry context) request-entries))]
     (-> (ac/all-of futures)
         (ac/then-apply
           (fn [_]
@@ -326,8 +363,8 @@
 (defmethod process "transaction"
   [{:keys [node executor] :as context} _ request-entries]
   (-> (d/transact node (bundle/tx-ops request-entries))
-      ;; it's important to switch to the transaction executor here, because
-      ;; otherwise the central indexing thread would execute response building.
+      ;; it's important to switch to the executor here, because otherwise
+      ;; the central indexing thread would execute response building.
       (ac/then-apply-async identity executor)
       (ac/then-compose
         (fn [db]
@@ -339,16 +376,16 @@
 
 
 (defn- handler-intern [node executor]
-  (fn [{{:keys [type] :as bundle} :body :keys [headers]
+  (fn [{{:keys [type] :as bundle} :body :keys [batch-handler headers]
         ::reitit/keys [router match]}]
     (-> (ac/supply-async #(validate-and-prepare-bundle bundle) executor)
         (ac/then-compose
           (let [context
-                {:router router
-                 :handler (reitit.ring/ring-handler router)
-                 :blaze/context-path (-> match :data :blaze/context-path)
-                 :node node
+                {:node node
                  :executor executor
+                 :router router
+                 :batch-handler batch-handler
+                 :context-path (-> match :data :blaze/context-path)
                  :return-preference (handler-util/preference headers "return")}]
             #(process context (type/value type) %)))
         (ac/then-apply
@@ -374,7 +411,11 @@
       (wrap-observe-request-duration)))
 
 
-(defmethod ig/init-key :blaze.interaction.transaction/handler
+(defmethod ig/pre-init-spec :blaze.interaction/transaction [_]
+  (s/keys :req-un [:blaze.db/node ::executor]))
+
+
+(defmethod ig/init-key :blaze.interaction/transaction
   [_ {:keys [node executor]}]
   (log/info "Init FHIR transaction interaction handler")
   (handler node executor))

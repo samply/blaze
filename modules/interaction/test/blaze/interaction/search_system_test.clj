@@ -4,15 +4,19 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
-    [blaze.interaction.search-system :refer [handler]]
+    [blaze.interaction.search-system]
     [blaze.interaction.search-system-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -36,6 +40,13 @@
    {:blaze/base-url ""
     :blaze/context-path ""}
    :path ""})
+
+
+(defn- handler [node]
+  (-> (ig/init
+        {:blaze.interaction/search-system
+         {:node node}})
+      (:blaze.interaction/search-system)))
 
 
 (defn- handler-with [txs]

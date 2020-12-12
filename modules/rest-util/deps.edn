@@ -12,7 +12,7 @@
   {:mvn/version "4.4.12"}
 
   metosin/reitit-ring
-  {:mvn/version "0.4.0"}
+  {:mvn/version "0.5.10"}
 
   ring/ring-core
   {:mvn/version "1.8.0"
@@ -20,7 +20,10 @@
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
     crypto-equality/crypto-equality
-    crypto-random/crypto-random]}}
+    crypto-random/crypto-random]}
+
+  ring/ring-spec
+  {:mvn/version "0.0.4"}}
 
  :aliases
  {:test
@@ -37,10 +40,7 @@
     {:mvn/version "0.1"}
 
     org.clojure/test.check
-    {:mvn/version "1.1.0"}
-
-    ring/ring-spec
-    {:mvn/version "0.0.4"}}
+    {:mvn/version "1.1.0"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
