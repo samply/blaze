@@ -4,10 +4,11 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
-    [blaze.interaction.search-type :refer [handler]]
+    [blaze.interaction.search-type]
     [blaze.interaction.search-type-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -67,6 +68,13 @@
     :blaze/context-path ""
     :fhir.resource/type "Observation"}
    :path "/Observation"})
+
+
+(defn- handler [node]
+  (-> (ig/init
+        {:blaze.interaction/search-type
+         {:node node}})
+      (:blaze.interaction/search-type)))
 
 
 (defn- handler-with [txs]

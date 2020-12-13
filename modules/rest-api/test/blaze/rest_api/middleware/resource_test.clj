@@ -65,13 +65,24 @@
   (testing "body with invalid resource"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+json"}
-               :body (StringReader. "{\"resourceType\": \"Patient\", \"gender\":{}}")})
+               :body (StringReader. "{\"resourceType\": \"Patient\", \"gender\": {}}")})
       :status := 400
       [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invariant"
       [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`."
-      [:body :issue 0 :expression] := ["gender"])))
+      [:body :issue 0 :expression] := ["gender"]))
+
+  (testing "body with bundle with invalid resource"
+    (given @(resource-handler
+              {:headers {"content-type" "application/fhir+json"}
+               :body (StringReader. "{\"resourceType\": \"Bundle\", \"entry\": [{\"resource\": {\"resourceType\": \"Patient\", \"gender\": {}}}]}")})
+      :status := 400
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code"error"
+      [:body :issue 0 :code] := #fhir/code"invariant"
+      [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`."
+      [:body :issue 0 :expression] := ["entry[0].resource.gender"])))
 
 
 (deftest xml-test
@@ -97,6 +108,16 @@
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+xml"}
                :body (StringReader. "<Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient>")})
+      :status := 400
+      [:body :fhir/type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code"error"
+      [:body :issue 0 :code] := #fhir/code"invariant"
+      [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
+
+  (testing "body with bundle with invalid resource"
+    (given @(resource-handler
+              {:headers {"content-type" "application/fhir+xml"}
+               :body (StringReader. "<Bundle xmlns=\"http://hl7.org/fhir\"><entry><resource><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient></resource></entry></Bundle>")})
       :status := 400
       [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"

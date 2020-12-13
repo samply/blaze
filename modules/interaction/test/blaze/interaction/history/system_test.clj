@@ -6,15 +6,20 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
-    [blaze.interaction.history.system :refer [handler]]
+    [blaze.interaction.history.system]
     [blaze.interaction.history.system-spec]
+    [blaze.interaction.history.util-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -38,6 +43,13 @@
    {:blaze/base-url ""
     :blaze/context-path ""}
    :path "/_history"})
+
+
+(defn- handler [node]
+  (-> (ig/init
+        {:blaze.interaction.history/system
+         {:node node}})
+      (:blaze.interaction.history/system)))
 
 
 (defn- handler-with [txs]

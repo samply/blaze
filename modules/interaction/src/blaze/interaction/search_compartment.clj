@@ -3,6 +3,7 @@
     [blaze.anomaly :refer [ex-anom when-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
+    [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
@@ -152,6 +153,10 @@
 (defn handler [node]
   (-> (handler-intern node)
       (wrap-observe-request-duration "search-compartment")))
+
+
+(defmethod ig/pre-init-spec :blaze.interaction/search-compartment [_]
+  (s/keys :req-un [:blaze.db/node]))
 
 
 (defmethod ig/init-key :blaze.interaction/search-compartment

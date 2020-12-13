@@ -6,8 +6,10 @@
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
+    [blaze.db.spec]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -91,6 +93,10 @@
   (-> (handler-intern node)
       (wrap-interaction-name)
       (wrap-observe-request-duration)))
+
+
+(defmethod ig/pre-init-spec :blaze.interaction/read [_]
+  (s/keys :req-un [:blaze.db/node]))
 
 
 (defmethod ig/init-key :blaze.interaction/read

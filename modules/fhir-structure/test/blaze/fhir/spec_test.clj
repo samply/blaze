@@ -340,7 +340,14 @@
 
   (testing "Patient with multipleBirthInteger"
     (let [json {:resourceType "Patient" :multipleBirthInteger 2}]
-      (is (= json (fhir-spec/unform-json {:fhir/type :fhir/Patient :multipleBirth (int 2)}))))))
+      (is (= json (fhir-spec/unform-json {:fhir/type :fhir/Patient :multipleBirth (int 2)})))))
+
+  (testing "Bundle with Patient"
+    (let [json {:resourceType "Bundle"
+                :entry
+                [{:resource
+                  {:resourceType "Patient" :id "0"}}]}]
+      (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json)))))))
 
 
 (deftest unform-primitives-test
@@ -508,7 +515,20 @@
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
       "Error on value `1`. Expected type is `HumanName`."
-      [:fhir/issues 0 :fhir.issues/expression] := "name[0]")))
+      [:fhir/issues 0 :fhir.issues/expression] := "name[0]"))
+
+  (testing "Bundle with invalid Patient gender"
+    (given (fhir-spec/explain-data-json
+             {:resourceType "Bundle"
+              :entry
+              [{:resource
+                {:resourceType "Patient"
+                 :gender 1}}]})
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Error on value `1`. Expected type is `code`."
+      [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource.gender")))
 
 
 (deftest explain-data-xml
@@ -528,7 +548,8 @@
     (given (fhir-spec/explain-data-xml {:tag "<unknown>"})
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "value"
-      [:fhir/issues 0 :fhir.issues/diagnostics] := "Unknown resource type `<unknown>`."))
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Unknown resource type `<unknown>`."))
 
   (testing "invalid resource"
     (given (fhir-spec/explain-data-xml
@@ -538,7 +559,23 @@
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
       "Error on value ``. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
       ;; TODO: implement expression for XML
-      (comment [:fhir/issues 0 :fhir.issues/expression] := "name[0].use"))))
+      (comment [:fhir/issues 0 :fhir.issues/expression] := "name[0].use")))
+
+  (testing "Bundle with invalid Patient gender"
+    (given (fhir-spec/explain-data-xml
+             (sexp
+               [::f/Bundle
+                [::f/entry
+                 [::f/resource
+                  [::f/Patient [::f/gender {:value " "}]]]]]))
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Error on value ` `. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      ;; TODO: implement expression for XML
+      (comment
+        [:fhir/issues 0 :fhir.issues/expression] :=
+        "entry[0].resource.gender"))))
 
 
 (deftest primitive?

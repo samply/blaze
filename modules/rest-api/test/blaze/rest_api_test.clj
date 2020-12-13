@@ -2,6 +2,7 @@
   (:require
     [blaze.db.impl.search-param]
     [blaze.db.search-param-registry :as sr]
+    [blaze.handler.util :as handler-util]
     [blaze.rest-api :as rest-api]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
@@ -9,6 +10,9 @@
     [reitit.core :as reitit]
     [reitit.ring]
     [taoensso.timbre :as log]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -33,10 +37,13 @@
   (fn [_] key))
 
 
-(def router
+(defn router [auth-backends]
   (rest-api/router
     {:base-url "base-url-111523"
-     :structure-definitions [{:kind "resource" :name "Patient"}]
+     :structure-definitions
+     [{:kind "resource" :name "Patient"}
+      {:kind "resource" :name "Measure"}]
+     :auth-backends auth-backends
      :search-system-handler (handler ::search-system)
      :transaction-handler (handler ::transaction)
      :history-system-handler (handler ::history-system)
@@ -74,10 +81,27 @@
           :search-handler (handler ::search-patient-compartment)}]
      :operations
      [#:blaze.rest-api.operation
+         {:code "compact-db"
+          :system-handler (handler ::compact-db)}
+      #:blaze.rest-api.operation
          {:code "evaluate-measure"
           :resource-types ["Measure"]
           :type-handler (handler ::evaluate-measure-type)
           :instance-handler (handler ::evaluate-measure-instance)}]}
+    (fn [_])))
+
+
+(def minimal-router
+  (rest-api/router
+    {:base-url "base-url-111523"
+     :structure-definitions [{:kind "resource" :name "Patient"}]
+     :resource-patterns
+     [#:blaze.rest-api.resource-pattern
+         {:type :default
+          :interactions
+          {:read
+           #:blaze.rest-api.interaction
+               {:handler (handler ::read)}}}]}
     (fn [_])))
 
 
@@ -86,7 +110,7 @@
     (are [path request-method handler]
       (= handler
          ((get-in
-            (reitit/match-by-path router path)
+            (reitit/match-by-path (router []) path)
             [:result request-method :data :handler])
           {}))
       "" :get ::search-system
@@ -103,39 +127,66 @@
       "/Patient/0/_history/42" :get ::vread
       "/Patient/0/Condition" :get ::search-patient-compartment
       "/Patient/0/Observation" :get ::search-patient-compartment
+      "/$compact-db" :get ::compact-db
+      "/$compact-db" :post ::compact-db
       "/Measure/$evaluate-measure" :get ::evaluate-measure-type
       "/Measure/$evaluate-measure" :post ::evaluate-measure-type
       "/Measure/0/$evaluate-measure" :get ::evaluate-measure-instance
-      "/Measure/0/$evaluate-measure" :post ::evaluate-measure-instance))
+      "/Measure/0/$evaluate-measure" :post ::evaluate-measure-instance
+      "/Measure/0" :get ::read)
 
-  (testing "resource middleware"
+    (testing "of minimal router"
+      (are [path request-method handler]
+        (= handler
+           ((get-in
+              (reitit/match-by-path minimal-router path)
+              [:result request-method :data :handler])
+            {}))
+        "/Patient/0" :get ::read)))
+
+  (testing "middleware"
     (are [path request-method middleware]
       (= middleware
          (->> (get-in
-                (reitit/match-by-path router path)
+                (reitit/match-by-path (router []) path)
                 [:result request-method :data :middleware])
-              (some (comp #{:resource} :name first))))
-      "" :get nil
-      "" :post :resource
-      "/_history" :get nil
-      "/Patient" :get nil
-      "/Patient" :post :resource
-      "/Patient/_history" :get nil
-      "/Patient/_search" :post nil
-      "/Patient/0" :get nil
-      "/Patient/0" :put :resource
-      "/Patient/0" :delete nil
-      "/Patient/0/_history" :get nil
-      "/Patient/0/_history/42" :get nil
-      "/Patient/0/Condition" :get nil
-      "/Patient/0/Observation" :get nil
-      "/Measure/$evaluate-measure" :get nil
-      "/Measure/$evaluate-measure" :post nil
-      "/Measure/0/$evaluate-measure" :get nil
-      "/Measure/0/$evaluate-measure" :post nil))
+              (mapv (comp :name #(if (sequential? %) (first %) %)))))
+      "" :get []
+      "" :post [:resource :wrap-batch-handler]
+      "/_history" :get []
+      "/Patient" :get []
+      "/Patient" :post [:resource]
+      "/Patient/_history" :get []
+      "/Patient/_search" :post []
+      "/Patient/0" :get []
+      "/Patient/0" :put [:resource]
+      "/Patient/0" :delete []
+      "/Patient/0/_history" :get []
+      "/Patient/0/_history/42" :get []
+      "/Patient/0/Condition" :get []
+      "/Patient/0/Observation" :get []
+      "/$compact-db" :get []
+      "/$compact-db" :post []
+      "/Measure/$evaluate-measure" :get []
+      "/Measure/$evaluate-measure" :post []
+      "/Measure/0/$evaluate-measure" :get []
+      "/Measure/0/$evaluate-measure" :post []
+      "/Measure/0" :get [])
+
+    (testing "with auth backends"
+      (are [path request-method middleware]
+        (= middleware
+           (->> (get-in
+                  (reitit/match-by-path (router [:auth-backend]) path)
+                  [:result request-method :data :middleware])
+                (mapv (comp :name #(if (sequential? %) (first %) %)))))
+        "" :get [:auth-guard]
+        "" :post [:auth-guard :resource :wrap-batch-handler]
+        "/$compact-db" :get [:auth-guard]
+        "/$compact-db" :post [:auth-guard])))
 
   (testing "Patient instance POST is not allowed"
-    (given @((reitit.ring/ring-handler router rest-api/default-handler)
+    (given @((reitit.ring/ring-handler (router []) handler-util/default-handler)
              {:uri "/Patient/0" :request-method :post})
       :status := 405
       [:body :fhir/type] := :fhir/OperationOutcome
@@ -144,7 +195,7 @@
       [:body :issue 0 :diagnostics] := "Method POST not allowed on `/Patient/0` endpoint."))
 
   (testing "Patient type PUT is not allowed"
-    (given @((reitit.ring/ring-handler router rest-api/default-handler)
+    (given @((reitit.ring/ring-handler (router []) handler-util/default-handler)
              {:uri "/Patient" :request-method :put})
       :status := 405
       [:body :fhir/type] := :fhir/OperationOutcome
@@ -153,7 +204,7 @@
       [:body :issue 0 :diagnostics] := "Method PUT not allowed on `/Patient` endpoint."))
 
   (testing "Observations are not found"
-    (given @((reitit.ring/ring-handler router rest-api/default-handler)
+    (given @((reitit.ring/ring-handler (router []) handler-util/default-handler)
              {:uri "/Observation" :request-method :get})
       :status := 404
       [:body :fhir/type] := :fhir/OperationOutcome
@@ -163,7 +214,7 @@
 
 (deftest router-match-by-name-test
   (are [name params path]
-    (= (reitit/match->path (reitit/match-by-name router name params)) path)
+    (= (reitit/match->path (reitit/match-by-name (router []) name params)) path)
 
     :Patient/type
     {}

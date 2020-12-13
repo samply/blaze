@@ -5,12 +5,14 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
+    [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.uuid :refer [random-uuid]]
+    [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -70,6 +72,10 @@
 (defn handler [node]
   (-> (handler-intern node)
       (wrap-observe-request-duration "history-type")))
+
+
+(defmethod ig/pre-init-spec :blaze.interaction.history/type [_]
+  (s/keys :req-un [:blaze.db/node]))
 
 
 (defmethod ig/init-key :blaze.interaction.history/type

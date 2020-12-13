@@ -4,13 +4,17 @@
   https://www.hl7.org/fhir/http.html#vsearch"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
-    [blaze.interaction.search-compartment :refer [handler]]
+    [blaze.interaction.search-compartment]
     [blaze.interaction.search-compartment-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -36,6 +40,13 @@
     :blaze/context-path ""
     :fhir.compartment/code "Patient"}
    :path "/Patient/0/Observation"})
+
+
+(defn- handler [node]
+  (-> (ig/init
+        {:blaze.interaction/search-compartment
+         {:node node}})
+      (:blaze.interaction/search-compartment)))
 
 
 (defn- handler-with [txs]

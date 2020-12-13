@@ -481,20 +481,6 @@
 (def sexp prxml/sexp-as-element)
 
 
-(deftest conform-xml-test
-  (testing "patient resource with mixed character content"
-    (given (impl/conform-xml :fhir/Patient (sexp [::f/Patient "" [::f/id {:value "0"}]]))
-      :fhir/type := :fhir/Patient
-      :id (sexp [::f/id {:value "0"}]))))
-
-
-(deftest conform-xml-resource-test
-  (testing "patient resource with mixed character content"
-    (given (impl/conform-xml-resource (sexp [::f/resource "" [::f/Patient [::f/id {:value "0"}]]]))
-      :fhir/type := :fhir/Patient
-      :id "0")))
-
-
 (deftest elem-def->spec-def
   (testing "normal type"
     (is (= (impl/elem-def->spec-def

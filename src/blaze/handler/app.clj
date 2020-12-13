@@ -13,10 +13,11 @@
       {:head health-handler
        :get health-handler}]]
     {:syntax :bracket
-     :reitit.ring/default-options-handler
-     (fn [_]
-       (-> (ring/response nil)
-           (ring/status 405)))}))
+     :reitit.ring/default-options-endpoint
+     {:handler
+      (fn [_]
+        (-> (ring/response nil)
+            (ring/status 405)))}}))
 
 
 (s/fdef handler
