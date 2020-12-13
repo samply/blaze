@@ -9,6 +9,7 @@
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [io.aviso.exception :as aviso]
+    [reitit.ring]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
@@ -120,6 +121,15 @@
     500))
 
 
+(defn- format-exception
+  "Formats `e` without any ANSI formatting.
+
+  Used to output stack traces in OperationOutcome's."
+  [e]
+  (binding [aviso/*fonts* nil]
+    (aviso/format-exception e)))
+
+
 (defn error-response
   "Converts `error` into a OperationOutcome response. Uses ::anom/category to
   determine the response status.
@@ -158,7 +168,7 @@
         (error-response
           {::anom/category ::anom/fault
            ::anom/message (ex-message error)
-           :blaze/stacktrace (aviso/format-exception error)})))
+           :blaze/stacktrace (format-exception error)})))
 
     :else
     (error-response {::anom/category ::anom/fault})))
@@ -177,7 +187,8 @@
           ::anom/fault
           (log/error error)
           (log/warn error)))
-      {:status (str (category->status category))
+      {:fhir/type :fhir.Bundle.entry/response
+       :status (str (category->status category))
        :outcome (operation-outcome error)})
 
     (instance? Throwable error)
@@ -191,7 +202,7 @@
         (bundle-error-response
           {::anom/category ::anom/fault
            ::anom/message (ex-message error)
-           :blaze/stacktrace (aviso/format-exception error)})))
+           :blaze/stacktrace (format-exception error)})))
 
     :else
     (bundle-error-response {::anom/category ::anom/fault})))
@@ -204,3 +215,35 @@
   (if t
     (-> (d/sync node t) (ac/then-apply #(d/as-of % t)))
     (ac/completed-future (d/db node))))
+
+
+(def default-handler
+  (reitit.ring/create-default-handler
+    {:not-found
+     (fn [_]
+       (ac/completed-future
+         (ring/not-found
+           {:fhir/type :fhir/OperationOutcome
+            :issue
+            [{:severity #fhir/code"error"
+              :code #fhir/code"not-found"}]})))
+     :method-not-allowed
+     (fn [{:keys [uri request-method]}]
+       (-> (ring/response
+             {:fhir/type :fhir/OperationOutcome
+              :issue
+              [{:severity #fhir/code"error"
+                :code #fhir/code"processing"
+                :diagnostics (format "Method %s not allowed on `%s` endpoint."
+                                     (str/upper-case (name request-method)) uri)}]})
+           (ring/status 405)
+           (ac/completed-future)))
+     :not-acceptable
+     (fn [_]
+       (-> (ring/response
+             {:fhir/type :fhir/OperationOutcome
+              :issue
+              [{:severity #fhir/code"error"
+                :code #fhir/code"structure"}]})
+           (ring/status 406)
+           (ac/completed-future)))}))

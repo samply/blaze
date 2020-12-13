@@ -6,15 +6,19 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
-    [blaze.interaction.read :refer [handler]]
+    [blaze.interaction.read]
     [blaze.interaction.read-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -25,6 +29,13 @@
 
 
 (test/use-fixtures :each fixture)
+
+
+(defn- handler [node]
+  (-> (ig/init
+        {:blaze.interaction/read
+         {:node node}})
+      (:blaze.interaction/read)))
 
 
 (defn- handler-with [txs]

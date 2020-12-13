@@ -6,6 +6,7 @@
     [blaze.anomaly :refer [throw-anom]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
+    [blaze.db.spec]
     [blaze.fhir.response.create :as response]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create.spec]
@@ -50,9 +51,8 @@
       (-> (ac/supply (validate-resource type body))
           (ac/then-apply #(assoc % :id id))
           (ac/then-compose #(d/transact node [[:create %]]))
-          ;; it's important to switch to the transaction executor here, because
-          ;; otherwise the central indexing thread would execute response
-          ;; building.
+          ;; it's important to switch to the executor here, because otherwise
+          ;; the central indexing thread would execute response building.
           (ac/then-apply-async identity executor)
           (ac/then-compose
             #(response/build-created-response

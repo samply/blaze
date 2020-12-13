@@ -3,7 +3,7 @@
     [blaze.anomaly :refer [when-ok]]
     [blaze.async.comp :as ac]
     [blaze.fhir.spec.type.system :as system]
-    [blaze.handler.util :as util]
+    [blaze.handler.util :as handler-util]
     [cognitect.anomalies :as anom]))
 
 
@@ -36,5 +36,5 @@
     (let [request (params-request request)]
       (if (::anom/category request)
         (ac/completed-future
-          (util/error-response request))
+          (handler-util/error-response request))
         (handler request)))))

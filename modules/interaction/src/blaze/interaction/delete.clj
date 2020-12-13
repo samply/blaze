@@ -5,6 +5,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
+    [blaze.db.spec]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.delete.spec]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
@@ -50,7 +51,7 @@
           (-> (build-response* (d/tx db t))
               (ac/completed-future))
           (-> (d/transact node [[:delete type id]])
-              ;; it's important to switch to the transaction executor here,
+              ;; it's important to switch to the executor here,
               ;; because otherwise the central indexing thread would execute
               ;; response building.
               (ac/then-apply-async build-response executor)))

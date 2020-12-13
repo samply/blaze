@@ -7,8 +7,7 @@
     [clojure.data.xml :as xml]
     [clojure.string :as str]
     [prometheus.alpha :as prom]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
+    [ring.util.response :as ring]))
 
 
 (prom/defhistogram generate-duration-seconds
@@ -18,22 +17,9 @@
   "format")
 
 
-(defn- error [message]
-  {:fhir/type :fhir/OperationOutcome
-   :issue
-   [{:fhir/type :fhir.OperationOutcome/issue
-     :severity #fhir/code"error"
-     :code #fhir/code"exception"
-     :diagnostics message}]})
-
-
 (defn- generate-json [body]
-  (try
-    (with-open [_ (prom/timer generate-duration-seconds "json")]
-      (json/generate-string (fhir-spec/unform-json body) {:key-fn name}))
-    (catch Exception e
-      (log/error (log/stacktrace e))
-      (json/generate-string (fhir-spec/unform-json (error (ex-message e)))))))
+  (with-open [_ (prom/timer generate-duration-seconds "json")]
+    (json/generate-string (fhir-spec/unform-json body) {:key-fn name})))
 
 
 (defn- xml-response?
@@ -47,12 +33,8 @@
 
 
 (defn- generate-xml [body]
-  (try
-    (with-open [_ (prom/timer generate-duration-seconds "xml")]
-      (xml/emit-str (fhir-spec/unform-xml body)))
-    (catch Exception e
-      (log/error (log/stacktrace e))
-      (xml/emit-str (fhir-spec/unform-xml (error (ex-message e)))))))
+  (with-open [_ (prom/timer generate-duration-seconds "xml")]
+    (xml/emit-str (fhir-spec/unform-xml body))))
 
 
 (defn handle-response [request {:keys [body] :as response}]

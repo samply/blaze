@@ -5,13 +5,17 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
-    [blaze.interaction.delete :refer [handler]]
+    [blaze.interaction.delete]
     [blaze.interaction.delete-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -27,18 +31,26 @@
 (def executor (ex/single-thread-executor))
 
 
+(defn- handler [node]
+  (-> (ig/init
+        {:blaze.interaction/delete
+         {:node node
+          :executor executor}})
+      (:blaze.interaction/delete)))
+
+
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node executor) request))))
+      @((handler node) request))))
 
 
 (deftest handler-test
   (testing "Returns Not Found on non-existing resource"
     (let [{:keys [status body]}
           ((handler-with [])
-            {:path-params {:id "0"}
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+           {:path-params {:id "0"}
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
       (is (= 404 status))
 
@@ -51,8 +63,8 @@
   (testing "Returns No Content on successful deletion"
     (let [{:keys [status headers body]}
           ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-            {:path-params {:id "0"}
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+           {:path-params {:id "0"}
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
       (is (= 204 status))
 
@@ -69,10 +81,10 @@
   (testing "Returns No Content on already deleted resource"
     (let [{:keys [status headers body]}
           ((handler-with
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-               [[:delete "Patient" "0"]]])
-            {:path-params {:id "0"}
-             ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+             [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+              [[:delete "Patient" "0"]]])
+           {:path-params {:id "0"}
+            ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
       (is (= 204 status))
 

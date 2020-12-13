@@ -2,12 +2,16 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.executors :as ex]
+    [blaze.fhir.spec-spec]
     [blaze.rest-api.middleware.output :refer [wrap-output]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [juxt.iota :refer [given]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -43,7 +47,7 @@
   (testing "_format overrides"
     (are [format]
       (given @(resource-handler
-                {:headers {"accept" "application/xml+json"}
+                {:headers {"accept" "application/fhir+xml"}
                  :query-params {"_format" format}})
         :body := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
       "application/json+xml"

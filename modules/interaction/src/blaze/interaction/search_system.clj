@@ -6,6 +6,7 @@
     [blaze.anomaly :refer [ex-anom when-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
+    [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
@@ -14,6 +15,7 @@
     [blaze.interaction.search.util :as search-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.uuid :refer [random-uuid]]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -181,6 +183,10 @@
 (defn handler [node]
   (-> (handler-intern node)
       (wrap-observe-request-duration "search-system")))
+
+
+(defmethod ig/pre-init-spec :blaze.interaction/search-system [_]
+  (s/keys :req-un [:blaze.db/node]))
 
 
 (defmethod ig/init-key :blaze.interaction/search-system

@@ -7,16 +7,20 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
-    [blaze.interaction.update :refer [handler]]
+    [blaze.interaction.update]
     [blaze.interaction.update-spec]
     [blaze.log]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -32,10 +36,18 @@
 (def executor (ex/single-thread-executor))
 
 
+(defn- handler [node]
+  (-> (ig/init
+        {:blaze.interaction/update
+         {:node node
+          :executor executor}})
+      (:blaze.interaction/update)))
+
+
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node executor) request))))
+      @((handler node) request))))
 
 
 (def ^:private router

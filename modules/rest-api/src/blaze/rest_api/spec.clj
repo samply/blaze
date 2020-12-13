@@ -2,6 +2,7 @@
   (:require
     [blaze.executors :as ex]
     [blaze.spec]
+    [blaze.structure-definition]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig])
   (:import
@@ -126,10 +127,10 @@
   (s/keys
     :req
     [:blaze.rest-api.operation/code
-     :blaze.rest-api.operation/def-uri
-     :blaze.rest-api.operation/resource-types]
+     :blaze.rest-api.operation/def-uri]
     :opt
-    [:blaze.rest-api.operation/system-handler
+    [:blaze.rest-api.operation/resource-types
+     :blaze.rest-api.operation/system-handler
      :blaze.rest-api.operation/type-handler
      :blaze.rest-api.operation/instance-handler]))
 
@@ -140,3 +141,7 @@
 
 (s/def :blaze.rest-api.json-parse/executor
   ex/executor?)
+
+
+(s/def :blaze.rest-api/structure-definitions
+  (s/coll-of :fhir.un/StructureDefinition))
