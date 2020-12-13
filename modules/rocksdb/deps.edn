@@ -3,4 +3,4 @@
   {:local/root "../kv"}
 
   org.rocksdb/rocksdbjni
-  {:mvn/version "6.12.7"}}}
+  {:mvn/version "6.13.3"}}}
