@@ -33,7 +33,7 @@
 (def ^:private entry-thawer
   (map
     (fn [[k v]]
-      [(bs/from-byte-array k) (fhir-spec/conform-json (parse-cbor v hash))])))
+      [(bs/from-byte-array k) (fhir-spec/conform-cbor (parse-cbor v hash))])))
 
 
 (def ^:private entry-freezer
