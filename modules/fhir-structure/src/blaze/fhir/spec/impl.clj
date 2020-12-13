@@ -10,6 +10,7 @@
     [cuerdas.core :as str])
   (:import
     [java.net URLEncoder]
+    [java.nio.charset StandardCharsets]
     [clojure.data.xml.node Element]))
 
 
@@ -17,7 +18,7 @@
 
 
 (def ^:const fhir-namespace
-  (str "xmlns." (URLEncoder/encode "http://hl7.org/fhir")))
+  (str "xmlns." (URLEncoder/encode "http://hl7.org/fhir" StandardCharsets/UTF_8)))
 
 
 (defn- find-fhir-type [{:keys [extension]}]
@@ -689,16 +690,15 @@
 
 
 ;; Resource Spec
-(defn conform-json-resource [{type :resourceType :as resource}]
-  (s/conform (keyword "fhir.json" type) resource))
+(defmulti json-resource identity)
 
 
-(defn unform-json-resource [{:fhir/keys [type] :as resource}]
-  (s/unform (keyword "fhir.json" (name type)) resource))
+(defmethod json-resource :default [{json-type :resourceType :fhir/keys [type]}]
+  (keyword "fhir.json" (or json-type (name type))))
 
 
 (s/def :fhir.json/Resource
-  (s/conformer conform-json-resource unform-json-resource))
+  (s/multi-spec json-resource (fn [value tag] (assoc value :resourceType tag))))
 
 
 (defn conform-cbor-resource [{type :resourceType :as resource}]
@@ -713,25 +713,24 @@
   (s/conformer conform-cbor-resource unform-cbor-resource))
 
 
-(def ^:const invalid ::s/invalid)
+(defmulti xml-resource identity)
 
 
-(defn conform-xml-resource
-  {:arglists '([element])}
-  [{:keys [content]}]
-  (if-let [{:keys [tag] :as element} (some #(when (element? %) %) content)]
-    (if-let [spec-key (some->> tag name (keyword "fhir.xml"))]
-      (s/conform spec-key element)
-      invalid)
-    invalid))
+(defmethod xml-resource :default [{:keys [tag] :fhir/keys [type]}]
+  (->> (or tag type) name (keyword "fhir.xml")))
 
 
-(defn unform-xml-resource [{:fhir/keys [type] :as resource}]
-  (xml-node/element ::f/resource {} (s/unform (keyword "fhir.xml" (name type)) resource)))
+(defn conform-xml-resource [{:keys [content]}]
+  (some #(when (element? %) %) content))
+
+
+(defn unform-xml-resource [resource]
+  (xml-node/element ::f/resource {} resource))
 
 
 (s/def :fhir.xml/Resource
-  (s/conformer conform-xml-resource unform-xml-resource))
+  (s/and (s/conformer conform-xml-resource unform-xml-resource)
+         (s/multi-spec xml-resource (fn [value _] value))))
 
 
 ;; register all resource specs
