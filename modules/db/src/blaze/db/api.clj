@@ -39,6 +39,8 @@
   "Submits `tx-ops` to the central transaction log and waits for the transaction
   to commit on `node`.
 
+  The collection of `tx-ops` has to be non-empty.
+
   Returns a CompletableFuture that completes with the database after the
   transaction in case of success or completes exceptionally with an anomaly in
   case of a transaction error or other errors."
