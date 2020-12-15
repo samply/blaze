@@ -690,7 +690,7 @@
 
 
 ;; Resource Spec
-(defmulti json-resource identity)
+(defmulti json-resource (constantly :default))
 
 
 (defmethod json-resource :default [{json-type :resourceType :fhir/keys [type]}]
@@ -713,7 +713,7 @@
   (s/conformer conform-cbor-resource unform-cbor-resource))
 
 
-(defmulti xml-resource identity)
+(defmulti xml-resource (constantly :default))
 
 
 (defmethod xml-resource :default [{:keys [tag] :fhir/keys [type]}]
