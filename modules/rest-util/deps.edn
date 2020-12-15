@@ -63,4 +63,5 @@
     ring/ring-spec
     {:mvn/version "0.0.4"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
+               "-e" ".+spec"]}}}

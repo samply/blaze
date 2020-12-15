@@ -16,7 +16,7 @@
 (set! *warn-on-reflection* true)
 
 
-(defn new-resource-handle-cache
+(defn- new-resource-handle-cache
   "Creates a new resource handle cache."
   [max-size]
   (-> (Caffeine/newBuilder)

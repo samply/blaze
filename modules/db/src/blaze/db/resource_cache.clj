@@ -53,7 +53,7 @@
       (.invalidateAll)))
 
 
-(defn new-resource-cache
+(defn- new-resource-cache
   "Creates a new resource cache with implements the `ResourceContentLookup`
   protocol."
   [resource-store max-size]

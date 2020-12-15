@@ -7,11 +7,14 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local :as local :refer [new-local-tx-log]]
     [blaze.db.tx-log.local-spec]
+    [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
     [cheshire.core :as cheshire]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [java-time :as jt]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
@@ -63,7 +66,18 @@
       (throw (Exception. "put-error")))))
 
 
-(deftest tx-log
+(defn- tx-log [kv-store]
+  (-> (ig/init
+        {:blaze.db.tx-log/local
+         {:kv-store kv-store}})
+      (:blaze.db.tx-log/local)))
+
+
+(deftest init-test
+  (is (s/valid? :blaze.db/tx-log (tx-log (new-mem-kv-store)))))
+
+
+(deftest tx-log-test
   (testing "an empty transaction log has no transaction data"
     (let [tx-log (new-local-tx-log (new-mem-kv-store) clock executor)
                 queue (tx-log/new-queue tx-log 1)]
