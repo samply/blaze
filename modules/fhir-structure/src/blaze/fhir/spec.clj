@@ -98,7 +98,7 @@
 (defn unform-json
   "Returns the JSON representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.json" (name (type/-type resource)))]
+  (let [key (keyword "fhir.json" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
@@ -107,7 +107,7 @@
 (defn unform-cbor
   "Returns the CBOR representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.cbor" (name (type/-type resource)))]
+  (let [key (keyword "fhir.cbor" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
@@ -116,7 +116,7 @@
 (defn unform-xml
   "Returns the XML representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.xml" (name (type/-type resource)))]
+  (let [key (keyword "fhir.xml" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
@@ -126,7 +126,7 @@
   "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if
   `x` has no FHIR type."
   [x]
-  (type/-type x))
+  (type/type x))
 
 
 (defn to-date-time [x]

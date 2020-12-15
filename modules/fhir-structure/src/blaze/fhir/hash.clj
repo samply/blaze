@@ -14,5 +14,5 @@
   resource, overwriting it."
   [resource]
   (let [hasher (.newHasher (Hashing/sha256))]
-    (type/-hash-into resource hasher)
+    (type/hash-into resource hasher)
     (bs/from-byte-array (.asBytes (.hash hasher)))))
