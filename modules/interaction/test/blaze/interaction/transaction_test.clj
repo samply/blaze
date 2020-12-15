@@ -138,6 +138,22 @@
 
   (doseq [type ["transaction" "batch"]]
     (testing (format "On %s bundle" type)
+      (testing "empty bundle"
+        (let [{:keys [status body]}
+              ((handler-with [])
+               {:body
+                {:fhir/type :fhir/Bundle
+                 :type (type/->Code type)}})]
+
+          (is (= 200 status))
+
+          (testing "bundle"
+            (given body
+              :fhir/type := :fhir/Bundle
+              :id :? string?
+              :type := (type/->Code (str type "-response"))
+              :entry :? empty?))))
+
       (testing "and update interaction"
         (testing "and newly created resource"
           (let [entries

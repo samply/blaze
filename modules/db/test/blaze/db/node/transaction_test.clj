@@ -20,11 +20,6 @@
 
 
 (deftest prepare-ops
-  (testing "no ops"
-    (given (tx/prepare-ops [])
-      0 := []
-      1 := {}))
-
   (testing "one create with references"
     (given (tx/prepare-ops
              [[:create {:fhir/type :fhir/Observation :id "0"

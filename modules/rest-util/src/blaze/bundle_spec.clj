@@ -11,5 +11,5 @@
 
 
 (s/fdef bundle/tx-ops
-  :args (s/cat :entries (s/coll-of map?))
+  :args (s/cat :entries (s/coll-of map? :min-count 1))
   :ret :blaze.db/tx-ops)

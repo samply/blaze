@@ -102,13 +102,15 @@
 
 
 (defn operation-outcome
+  "Creates an FHIR OperationOutcome from an anomaly."
+  {:arglists '([anomaly])}
   [{:fhir/keys [issues]
-    ::anom/keys [category] :as data}]
+    ::anom/keys [category] :as anomaly}]
   (if issues
     {:fhir/type :fhir/OperationOutcome
      :issue (operation-outcome-issues issues category)}
     {:fhir/type :fhir/OperationOutcome
-     :issue [(operation-outcome-issue data)]}))
+     :issue [(operation-outcome-issue anomaly)]}))
 
 
 (defn- category->status [category]
@@ -131,8 +133,10 @@
 
 
 (defn error-response
-  "Converts `error` into a OperationOutcome response. Uses ::anom/category to
-  determine the response status.
+  "Converts `error` into a OperationOutcome response.
+
+  Accepts anomalies and exceptions. Uses ::anom/category to determine the
+  response status.
 
   Other used keys are:
 
@@ -175,8 +179,9 @@
 
 
 (defn bundle-error-response
-  "Returns an error response suitable for bundles. Accepts anomalies and
-  exceptions."
+  "Returns an error response suitable for bundles.
+
+  Accepts anomalies and exceptions."
   {:arglists '([error])}
   [{::anom/keys [category] :as error}]
   (cond

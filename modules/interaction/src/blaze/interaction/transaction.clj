@@ -153,6 +153,9 @@
 
 
 (defn- validate-and-prepare-bundle
+  "Validates the bundle and returns its entries.
+
+  Throws an anomaly in case of errors."
   [{resource-type :fhir/type :keys [type] entries :entry :as bundle}]
   (let [type (type/value type)]
     (cond
@@ -345,8 +348,6 @@
 
 
 (defmulti process
-  "Processes the prepared entries according the batch or transaction rules and
-  returns the response entries."
   {:arglists '([context type request-entries])}
   (fn [_ type _] type))
 
@@ -375,19 +376,31 @@
                     (mapv ac/join futures)))))))))
 
 
+(defn- process-context
+  [node executor {:keys [batch-handler headers] ::reitit/keys [router match]}]
+  {:node node
+   :executor executor
+   :router router
+   :batch-handler batch-handler
+   :context-path (-> match :data :blaze/context-path)
+   :return-preference (handler-util/preference headers "return")})
+
+
+(defn- process-entries
+  "Processes `entries` according the batch or transaction rules.
+
+  Returns a CompletableFuture that will complete with the response entries."
+  [node executor {{:keys [type]} :body :as request} entries]
+  (process (process-context node executor request) (type/value type) entries))
+
+
 (defn- handler-intern [node executor]
-  (fn [{{:keys [type] :as bundle} :body :keys [batch-handler headers]
-        ::reitit/keys [router match]}]
+  (fn [{{:keys [type] :as bundle} :body :as request}]
     (-> (ac/supply-async #(validate-and-prepare-bundle bundle) executor)
         (ac/then-compose
-          (let [context
-                {:node node
-                 :executor executor
-                 :router router
-                 :batch-handler batch-handler
-                 :context-path (-> match :data :blaze/context-path)
-                 :return-preference (handler-util/preference headers "return")}]
-            #(process context (type/value type) %)))
+          #(if (empty? %)
+             (ac/completed-future [])
+             (process-entries node executor request %)))
         (ac/then-apply
           (fn [response-entries]
             (ring/response
