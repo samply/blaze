@@ -32,7 +32,19 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest resource-id
+(deftest fhir-type-test
+  (testing "valid"
+    (are [s] (s/valid? :fhir/type s)
+      :fhir/Patient))
+
+  (testing "invalid"
+    (are [s] (not (s/valid? :fhir/type s))
+      "Patient"
+      :Patient
+      :fhir/patient)))
+
+
+(deftest resource-id-test
   (are [s] (s/valid? :blaze.resource/id s)
     "."
     "-"
@@ -56,21 +68,15 @@
     "0"))
 
 
-(deftest valid-test
-  (testing "valid resources"
-    (are [resource] (fhir-spec/valid-json? resource)
-      {:resourceType "Patient"
-       :id "."}
-      {:resourceType "Patient"
-       :id "0"}))
+(deftest type-exists-test
+  (testing "true"
+    (are [type] (true? (fhir-spec/type-exists? type))
+      "Patient"
+      "Observation"))
 
-  (testing "invalid resources"
-    (are [resource] (not (fhir-spec/valid-json? resource))
-      {}
-      {:resourceType "Patient"
-       :id ""}
-      {:resourceType "Patient"
-       :id "/"})))
+  (testing "false"
+    (are [type] (false? (fhir-spec/type-exists? type))
+      "Foo")))
 
 
 (deftest fhir-path-test
@@ -91,6 +97,15 @@
 
 
 (deftest conform-json-test
+  (testing "nil"
+    (is (s/invalid? (fhir-spec/conform-json nil))))
+
+  (testing "string"
+    (is (s/invalid? (fhir-spec/conform-json "foo"))))
+
+  (testing "invalid"
+    (is (s/invalid? (fhir-spec/conform-json {:resourceType "Patient" :id 0}))))
+
   (testing "empty patient resource"
     (testing "gets type annotated"
       (is (= :fhir/Patient
@@ -140,6 +155,21 @@
                 :item
                 [{:type "string"
                   :text "foo"}]}]})))))
+
+
+(deftest conform-cbor-test
+  (testing "nil"
+    (is (s/invalid? (fhir-spec/conform-cbor nil))))
+
+  (testing "string"
+    (is (s/invalid? (fhir-spec/conform-cbor "foo"))))
+
+  (testing "invalid"
+    (is (s/invalid? (fhir-spec/conform-cbor {:resourceType "Patient" :meta ""}))))
+
+  (testing "valid"
+    (is (= {:fhir/type :fhir/Patient}
+           (fhir-spec/conform-cbor {:resourceType "Patient"})))))
 
 
 (defn- conform-xml [sexp]

@@ -2,6 +2,7 @@
   (:require
     [blaze.fhir.hash.spec]
     [blaze.fhir.spec.impl :as impl]
+    [blaze.fhir.spec.spec]
     [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
@@ -11,49 +12,8 @@
     [java.util.regex Pattern]))
 
 
-;; ---- Specs -----------------------------------------------------------------
-
-(s/def :fhir.type/name
-  (s/and string? #(re-matches #"[A-Z]([A-Za-z0-9_]){0,254}" %)))
-
-
-(s/def :fhir/type
-  (s/and
-    keyword?
-    #(some-> (namespace %) (str/starts-with? "fhir"))
-    #(s/valid? :fhir.type/name (name %))))
-
-
-(s/def :blaze.resource/id
-  (s/and string? #(re-matches #"[A-Za-z0-9\-\.]{1,64}" %)))
-
-
-(s/def :blaze.fhir/local-ref
-  (s/and string?
-         (s/conformer #(str/split % #"/" 2))
-         (s/tuple :fhir.type/name :blaze.resource/id)))
-
-
-(s/def :blaze/resource
-  #(s2/valid? :fhir/Resource %))
-
-
-
-;; ---- Functions -------------------------------------------------------------
-
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
-
-
-(defn valid-json?
-  "Determines whether the resource is valid."
-  {:arglists '([resource])}
-  [{type :resourceType :as resource}]
-  (if type
-    (if-let [spec (s2/get-spec (keyword "fhir.json" type))]
-      (s2/valid? spec resource)
-      false)
-    false))
 
 
 (defn conform-json
