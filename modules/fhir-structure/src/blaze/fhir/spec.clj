@@ -2,6 +2,7 @@
   (:require
     [blaze.fhir.hash.spec]
     [blaze.fhir.spec.impl :as impl]
+    [blaze.fhir.spec.spec]
     [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
@@ -11,49 +12,8 @@
     [java.util.regex Pattern]))
 
 
-;; ---- Specs -----------------------------------------------------------------
-
-(s/def :fhir.type/name
-  (s/and string? #(re-matches #"[A-Z]([A-Za-z0-9_]){0,254}" %)))
-
-
-(s/def :fhir/type
-  (s/and
-    keyword?
-    #(some-> (namespace %) (str/starts-with? "fhir"))
-    #(s/valid? :fhir.type/name (name %))))
-
-
-(s/def :blaze.resource/id
-  (s/and string? #(re-matches #"[A-Za-z0-9\-\.]{1,64}" %)))
-
-
-(s/def :blaze.fhir/local-ref
-  (s/and string?
-         (s/conformer #(str/split % #"/" 2))
-         (s/tuple :fhir.type/name :blaze.resource/id)))
-
-
-(s/def :blaze/resource
-  #(s2/valid? :fhir/Resource %))
-
-
-
-;; ---- Functions -------------------------------------------------------------
-
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
-
-
-(defn valid-json?
-  "Determines whether the resource is valid."
-  {:arglists '([resource])}
-  [{type :resourceType :as resource}]
-  (if type
-    (if-let [spec (s2/get-spec (keyword "fhir.json" type))]
-      (s2/valid? spec resource)
-      false)
-    false))
 
 
 (defn conform-json
@@ -98,7 +58,7 @@
 (defn unform-json
   "Returns the JSON representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.json" (name (type/-type resource)))]
+  (let [key (keyword "fhir.json" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
@@ -107,7 +67,7 @@
 (defn unform-cbor
   "Returns the CBOR representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.cbor" (name (type/-type resource)))]
+  (let [key (keyword "fhir.cbor" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
@@ -116,7 +76,7 @@
 (defn unform-xml
   "Returns the XML representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.xml" (name (type/-type resource)))]
+  (let [key (keyword "fhir.xml" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
@@ -126,7 +86,7 @@
   "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if
   `x` has no FHIR type."
   [x]
-  (type/-type x))
+  (type/type x))
 
 
 (defn to-date-time [x]

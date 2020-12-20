@@ -3,7 +3,7 @@
     [blaze.byte-string :as bs]
     [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
-    [blaze.fhir.spec.type :as type]))
+    [blaze.fhir.spec.type.protocols :as p]))
 
 
 (set! *warn-on-reflection* true)
@@ -11,7 +11,7 @@
 
 
 (defrecord ResourceHandle [^int tid id ^long t hash ^long num-changes op]
-  type/FhirType
+  p/FhirType
   (-type [_]
     ;; TODO: maybe cache this
     (keyword "fhir" (codec/tid->type tid))))

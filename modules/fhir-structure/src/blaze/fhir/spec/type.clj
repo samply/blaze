@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec.type
   (:require
+    [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
     [clojure.alpha.spec :as s2]
     [clojure.data.xml :as xml]
@@ -17,45 +18,46 @@
      ZoneOffset]
     [java.time.format DateTimeFormatter DateTimeParseException]
     [java.util List Map UUID])
-  (:refer-clojure :exclude [decimal? string? uri?]))
+  (:refer-clojure :exclude [decimal? string? type uri?]))
 
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defprotocol FhirType
-  (-type [_])
-  (-value [_])
-  (-to-json [_])
-  (-to-xml [_])
-  (-hash-into [_ sink]))
-
-
 (defn primitive? [x]
-  (when-let [type (-type x)]
+  (when-let [type (p/-type x)]
     (Character/isLowerCase ^char (first (name type)))))
+
+
+(defn type [x]
+  (p/-type x))
 
 
 (defn value
   "Returns the possible value of the primitive value `x` as FHIRPath system
   type."
   [x]
-  (-value x))
+  (p/-value x))
+
+
+(defn to-json [x]
+  (p/-to-json x))
+
+
+(defn to-xml [x]
+  (p/-to-xml x))
+
+
+(defn hash-into [x sink]
+  (p/-hash-into x sink))
 
 
 
-;; ---- Object and nil --------------------------------------------------------
+;; ---- nil -------------------------------------------------------------------
 
-;; Be sure all methods can be called on every Object and nil. Every call
-;; will produce nil.
-(extend-protocol FhirType
-  Object
-  (-type [_])
-  (-value [_])
-  (-to-json [_])
-  (-to-xml [_])
-  (-hash-into [_ _])
+;; Be sure all methods can be called on nil.
+(extend-protocol p/FhirType
   nil
   (-type [_])
   (-value [_])
@@ -65,9 +67,18 @@
 
 
 
+;; ---- Object -------------------------------------------------------------------
+
+;; Other instances have no type.
+(extend-protocol p/FhirType
+  Object
+  (-type [_]))
+
+
+
 ;; ---- boolean ---------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Boolean
   (-type [_] :fhir/boolean)
   (-value [b] b)
@@ -88,7 +99,7 @@
 
 ;; ---- integer ---------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Integer
   (-type [_] :fhir/integer)
   (-value [i] i)
@@ -109,7 +120,7 @@
 
 ;; ---- long ---------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Long
   (-type [_] :fhir/long)
   (-value [i] i)
@@ -130,7 +141,7 @@
 
 ;; ---- string ----------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   String
   (-type [_] :fhir/string)
   (-value [s] s)
@@ -149,13 +160,13 @@
 
 
 (defn string? [x]
-  (identical? :fhir/string (-type x)))
+  (identical? :fhir/string (p/-type x)))
 
 
 
 ;; ---- decimal ---------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   BigDecimal
   (-type [_] :fhir/decimal)
   (-value [d] d)
@@ -174,14 +185,14 @@
 
 
 (defn decimal? [x]
-  (identical? :fhir/decimal (-type x)))
+  (identical? :fhir/decimal (p/-type x)))
 
 
 
 ;; ---- uri -------------------------------------------------------------------
 
 (deftype Uri [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/uri)
   (-value [_] value)
   (-to-json [_] value)
@@ -219,7 +230,7 @@
 ;; ---- url -------------------------------------------------------------------
 
 (deftype Url [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/url)
   (-value [_] value)
   (-to-json [_] value)
@@ -257,7 +268,7 @@
 ;; ---- canonical -------------------------------------------------------------
 
 (deftype Canonical [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/canonical)
   (-value [_] value)
   (-to-json [_] value)
@@ -295,7 +306,7 @@
 ;; ---- base64Binary ----------------------------------------------------------
 
 (deftype Base64Binary [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/base64Binary)
   (-value [_] value)
   (-to-json [_] value)
@@ -328,11 +339,11 @@
 
 ;; Implementation of a FHIR instant with a variable ZoneOffset.
 (deftype OffsetInstant [^OffsetDateTime value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/instant)
   (-value [_] value)
-  (-to-json [_] (-to-json value))
-  (-to-xml [_] (xml-node/element nil {:value (-to-json value)}))
+  (-to-json [_] (p/-to-json value))
+  (-to-xml [_] (xml-node/element nil {:value (p/-to-json value)}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
@@ -346,7 +357,7 @@
     (str value)))
 
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Instant
   (-type [_] :fhir/instant)
   (-value [instant] (.atOffset instant ZoneOffset/UTC))
@@ -355,7 +366,7 @@
   (-hash-into [instant sink]
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into (-value instant) sink)))
+    (system/-hash-into (p/-value instant) sink)))
 
 
 (defn ->Instant [s]
@@ -372,13 +383,13 @@
 
 
 (defn instant? [x]
-  (identical? :fhir/instant (-type x)))
+  (identical? :fhir/instant (p/-type x)))
 
 
 
 ;; -- date --------------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Year
   (-type [_] :fhir/date)
   (-value [date] date)
@@ -423,7 +434,7 @@
 
 
 (defn date? [x]
-  (identical? :fhir/date (-type x)))
+  (identical? :fhir/date (p/-type x)))
 
 
 (defprotocol ConvertToDateTime
@@ -439,7 +450,7 @@
 
 ;; -- dateTime ----------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   DateTimeYear
   (-type [_] :fhir/dateTime)
   (-value [year] year)
@@ -469,12 +480,12 @@
     (system/-hash-into year-month-day sink)))
 
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   OffsetDateTime
   (-type [_] :fhir/dateTime)
   (-value [date-time] date-time)
   (-to-json [date-time] (.format DateTimeFormatter/ISO_DATE_TIME date-time))
-  (-to-xml [date-time] (xml-node/element nil {:value (-to-json date-time)}))
+  (-to-xml [date-time] (xml-node/element nil {:value (p/-to-json date-time)}))
   (-hash-into [date-time sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
@@ -483,7 +494,7 @@
   (-type [_] :fhir/dateTime)
   (-value [date-time] date-time)
   (-to-json [date-time] (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time))
-  (-to-xml [date-time] (xml-node/element nil {:value (-to-json date-time)}))
+  (-to-xml [date-time] (xml-node/element nil {:value (p/-to-json date-time)}))
   (-hash-into [date-time sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
@@ -491,7 +502,7 @@
 
 
 (defrecord ExtendedDateTime [id extensions value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/dateTime)
   (-value [_] value)
   (-to-json [_] (str value))
@@ -503,7 +514,7 @@
       (system/-hash-into id sink))
     (when extensions
       (.putByte ^PrimitiveSink sink (byte 1))               ; :extensions
-      (-hash-into extensions sink))
+      (p/-hash-into extensions sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink)))
 
@@ -533,18 +544,18 @@
 
 
 (defn date-time? [x]
-  (identical? :fhir/dateTime (-type x)))
+  (identical? :fhir/dateTime (p/-type x)))
 
 
 
 ;; ---- time ------------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   LocalTime
   (-type [_] :fhir/time)
   (-value [time] time)
   (-to-json [time] (.format DateTimeFormatter/ISO_LOCAL_TIME time))
-  (-to-xml [time] (xml-node/element nil {:value (-to-json time)}))
+  (-to-xml [time] (xml-node/element nil {:value (p/-to-json time)}))
   (-hash-into [time sink]
     (.putByte ^PrimitiveSink sink (byte 12))                ; :fhir/time
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
@@ -562,14 +573,14 @@
 
 
 (defn time? [x]
-  (identical? :fhir/time (-type x)))
+  (identical? :fhir/time (p/-type x)))
 
 
 
 ;; ---- code ------------------------------------------------------------------
 
 (deftype Code [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/code)
   (-value [_] value)
   (-to-json [_] value)
@@ -589,12 +600,12 @@
 
 (defmethod print-method Code [code ^Writer w]
   (.write w "#fhir/code\"")
-  (.write w ^String (-value code))
+  (.write w ^String (p/-value code))
   (.write w "\""))
 
 
 (defrecord ExtendedCode [id extensions value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/code)
   (-value [_] value)
   (-to-json [_] (str value))
@@ -606,7 +617,7 @@
       (system/-hash-into id sink))
     (when extensions
       (.putByte ^PrimitiveSink sink (byte 1))               ; :extensions
-      (-hash-into extensions sink))
+      (p/-hash-into extensions sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink)))
 
@@ -621,14 +632,14 @@
 
 
 (defn code? [x]
-  (identical? :fhir/code (-type x)))
+  (identical? :fhir/code (p/-type x)))
 
 
 
 ;; ---- oid -------------------------------------------------------------------
 
 (deftype Oid [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/oid)
   (-value [_] value)
   (-to-json [_] value)
@@ -648,7 +659,7 @@
 
 (defmethod print-method Oid [id ^Writer w]
   (.write w "#fhir/oid\"")
-  (.write w ^String (-value id))
+  (.write w ^String (p/-value id))
   (.write w "\""))
 
 
@@ -659,14 +670,14 @@
 
 
 (defn oid? [x]
-  (identical? :fhir/oid (-type x)))
+  (identical? :fhir/oid (p/-type x)))
 
 
 
 ;; ---- id --------------------------------------------------------------------
 
 (deftype Id [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/id)
   (-value [_] value)
   (-to-json [_] value)
@@ -686,7 +697,7 @@
 
 (defmethod print-method Id [id ^Writer w]
   (.write w "#fhir/id\"")
-  (.write w ^String (-value id))
+  (.write w ^String (p/-value id))
   (.write w "\""))
 
 
@@ -697,14 +708,14 @@
 
 
 (defn id? [x]
-  (identical? :fhir/id (-type x)))
+  (identical? :fhir/id (p/-type x)))
 
 
 
 ;; ---- markdown --------------------------------------------------------------
 
 (deftype Markdown [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/markdown)
   (-value [_] value)
   (-to-json [_] value)
@@ -724,7 +735,7 @@
 
 (defmethod print-method Markdown [markdown ^Writer w]
   (.write w "#fhir/markdown\"")
-  (.write w ^String (-value markdown))
+  (.write w ^String (p/-value markdown))
   (.write w "\""))
 
 
@@ -735,14 +746,14 @@
 
 
 (defn markdown? [x]
-  (identical? :fhir/markdown (-type x)))
+  (identical? :fhir/markdown (p/-type x)))
 
 
 
 ;; ---- unsignedInt -----------------------------------------------------------
 
 (deftype UnsignedInt [^int value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/unsignedInt)
   (-value [_] value)
   (-to-json [_] value)
@@ -766,7 +777,7 @@
 
 
 (defrecord ExtendedUnsignedInt [id extensions ^int value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/unsignedInt)
   (-value [_] value)
   (-to-json [_] value)
@@ -778,7 +789,7 @@
       (system/-hash-into id sink))
     (when extensions
       (.putByte ^PrimitiveSink sink (byte 1))               ; :extensions
-      (-hash-into extensions sink))
+      (p/-hash-into extensions sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink)))
 
@@ -792,14 +803,14 @@
 
 
 (defn unsignedInt? [x]
-  (identical? :fhir/unsignedInt (-type x)))
+  (identical? :fhir/unsignedInt (p/-type x)))
 
 
 
 ;; ---- positiveInt -----------------------------------------------------------
 
 (deftype PositiveInt [^int value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/positiveInt)
   (-value [_] value)
   (-to-json [_] value)
@@ -823,7 +834,7 @@
 
 
 (defrecord ExtendedPositiveInt [id extensions ^int value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/positiveInt)
   (-value [_] value)
   (-to-json [_] value)
@@ -835,7 +846,7 @@
       (system/-hash-into id sink))
     (when extensions
       (.putByte ^PrimitiveSink sink (byte 1))               ; :extensions
-      (-hash-into extensions sink))
+      (p/-hash-into extensions sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink)))
 
@@ -849,13 +860,13 @@
 
 
 (defn positiveInt? [x]
-  (identical? :fhir/positiveInt (-type x)))
+  (identical? :fhir/positiveInt (p/-type x)))
 
 
 
 ;; ---- uuid ------------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   UUID
   (-type [_] :fhir/uuid)
   (-value [uuid] (str "urn:uuid:" uuid))
@@ -882,7 +893,7 @@
 ;; ---- xhtml -----------------------------------------------------------------
 
 (deftype Xhtml [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/xhtml)
   (-value [_] value)
   (-to-json [_] value)
@@ -902,7 +913,7 @@
 
 (defmethod print-method Xhtml [xhtml ^Writer w]
   (.write w "#fhir/xhtml\"")
-  (.write w ^String (-value xhtml))
+  (.write w ^String (p/-value xhtml))
   (.write w "\""))
 
 
@@ -923,14 +934,14 @@
 
 ;; ---- Complex Types --------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   List
   (-type [_])
   (-value [_])
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
     (doseq [x xs]
-      (-hash-into x sink)))
+      (p/-hash-into x sink)))
   Keyword
   (-type [_])
   (-value [_])
@@ -944,7 +955,7 @@
     (.putByte ^PrimitiveSink sink (byte 37))
     (doseq [[k v] (into (sorted-map) m)]
       (.putString ^PrimitiveSink sink (name k) StandardCharsets/UTF_8)
-      (-hash-into v sink))))
+      (p/-hash-into v sink))))
 
 
 

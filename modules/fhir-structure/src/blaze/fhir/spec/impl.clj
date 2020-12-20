@@ -298,7 +298,7 @@
 
 
 (defn- type-check-form [key]
-  `(fn [~'m] (identical? ~key (type/-type ~'m))))
+  `(fn [~'m] (identical? ~key (type/type ~'m))))
 
 
 (defn- internal-schema-spec-def [parent-path-parts path-part elem-def child-spec-defs]
@@ -333,7 +333,7 @@
 
 
 (defn- type-suffix [x]
-  (if-let [type (type/-type x)]
+  (if-let [type (type/type x)]
     (str/capital (name type))
     (throw (ex-info (format "Unknown type of `%s`." x) {:x x}))))
 
@@ -585,25 +585,25 @@
   (let [regex (type-regex (value-type element))]
     (case name
       "boolean" `boolean?
-      "integer" `(s/and int? (s/conformer int type/-to-json))
-      "string" `(s/and string? ~(re-matches-form-json regex) (s/conformer identity type/-to-json))
+      "integer" `(s/and int? (s/conformer int type/to-json))
+      "string" `(s/and string? ~(re-matches-form-json regex) (s/conformer identity type/to-json))
       "decimal" `(s/conformer conform-decimal-json identity)
-      "uri" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Uri type/-to-json))
-      "url" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Url type/-to-json))
-      "canonical" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Canonical type/-to-json))
-      "base64Binary" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Base64Binary type/-to-json))
-      "instant" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Instant type/-to-json))
-      "date" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Date type/-to-json))
-      "dateTime" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->DateTime type/-to-json))
-      "time" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Time type/-to-json))
-      "code" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Code type/-to-json))
-      "oid" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Oid type/-to-json))
-      "id" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Id type/-to-json))
-      "markdown" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Markdown type/-to-json))
-      "unsignedInt" `(s/and int? (s/conformer type/->UnsignedInt type/-to-json))
-      "positiveInt" `(s/and int? (s/conformer type/->PositiveInt type/-to-json))
-      "uuid" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Uuid type/-to-json))
-      "xhtml" `(s/and string? (s/conformer type/->Xhtml type/-to-json))
+      "uri" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Uri type/to-json))
+      "url" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Url type/to-json))
+      "canonical" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Canonical type/to-json))
+      "base64Binary" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Base64Binary type/to-json))
+      "instant" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Instant type/to-json))
+      "date" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Date type/to-json))
+      "dateTime" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->DateTime type/to-json))
+      "time" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Time type/to-json))
+      "code" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Code type/to-json))
+      "oid" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Oid type/to-json))
+      "id" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Id type/to-json))
+      "markdown" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Markdown type/to-json))
+      "unsignedInt" `(s/and int? (s/conformer type/->UnsignedInt type/to-json))
+      "positiveInt" `(s/and int? (s/conformer type/->PositiveInt type/to-json))
+      "uuid" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Uuid type/to-json))
+      "xhtml" `(s/and string? (s/conformer type/->Xhtml type/to-json))
       (throw (ex-info (format "Unknown primitive type `%s`." name) {})))))
 
 
@@ -623,39 +623,39 @@
      (fn [~'e] (xml-value-matches? ~regex ~'e))
      (s/conformer identity set-extension-tag)
      (s/schema {:content (s/coll-of :fhir.xml/Extension)})
-     (s/conformer ~constructor type/-to-xml)))
+     (s/conformer ~constructor type/to-xml)))
 
 
 (defn- xml-spec-form [name {:keys [element]}]
   (let [regex (type-regex (value-type element))
         constructor (str "xml->" (str/capital name))]
     (case name
-      "xhtml" `(s/and element? (s/conformer type/xml->Xhtml type/-to-xml))
+      "xhtml" `(s/and element? (s/conformer type/xml->Xhtml type/to-xml))
       (primitive-xml-form regex (symbol "blaze.fhir.spec.type" constructor)))))
 
 
 (defn- cbor-spec-form [name _]
   (case name
     "boolean" `any?
-    "integer" `(s/conformer int type/-to-json)
+    "integer" `(s/conformer int type/to-json)
     "string" `any?
     "decimal" `any?
-    "uri" `(s/conformer type/->Uri type/-to-json)
-    "url" `(s/conformer type/->Url type/-to-json)
-    "canonical" `(s/conformer type/->Canonical type/-to-json)
-    "base64Binary" `(s/conformer type/->Base64Binary type/-to-json)
-    "instant" `(s/conformer type/->Instant type/-to-json)
-    "date" `(s/conformer type/->Date type/-to-json)
-    "dateTime" `(s/conformer type/->DateTime type/-to-json)
-    "time" `(s/conformer type/->Time type/-to-json)
-    "code" `(s/conformer type/->Code type/-to-json)
-    "oid" `(s/conformer type/->Oid type/-to-json)
-    "id" `(s/conformer type/->Id type/-to-json)
-    "markdown" `(s/conformer type/->Markdown type/-to-json)
-    "unsignedInt" `(s/conformer type/->UnsignedInt type/-to-json)
-    "positiveInt" `(s/conformer type/->PositiveInt type/-to-json)
-    "uuid" `(s/conformer type/->Uuid type/-to-json)
-    "xhtml" `(s/conformer type/->Xhtml type/-to-json)
+    "uri" `(s/conformer type/->Uri type/to-json)
+    "url" `(s/conformer type/->Url type/to-json)
+    "canonical" `(s/conformer type/->Canonical type/to-json)
+    "base64Binary" `(s/conformer type/->Base64Binary type/to-json)
+    "instant" `(s/conformer type/->Instant type/to-json)
+    "date" `(s/conformer type/->Date type/to-json)
+    "dateTime" `(s/conformer type/->DateTime type/to-json)
+    "time" `(s/conformer type/->Time type/to-json)
+    "code" `(s/conformer type/->Code type/to-json)
+    "oid" `(s/conformer type/->Oid type/to-json)
+    "id" `(s/conformer type/->Id type/to-json)
+    "markdown" `(s/conformer type/->Markdown type/to-json)
+    "unsignedInt" `(s/conformer type/->UnsignedInt type/to-json)
+    "positiveInt" `(s/conformer type/->PositiveInt type/to-json)
+    "uuid" `(s/conformer type/->Uuid type/to-json)
+    "xhtml" `(s/conformer type/->Xhtml type/to-json)
     (throw (ex-info (format "Unknown primitive type `%s`." name) {}))))
 
 
