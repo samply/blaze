@@ -593,7 +593,7 @@
         (is (= (type/->DateTime nil [string-extension] "2020") extended-date-time)))
       (testing "hash-into"
         (are [u hex] (= hex (murmur3 u))
-          extended-date-time "13a956a8"))
+          extended-date-time "e3246eac"))
       (comment
         (quick-bench extended-date-time)))))
 

@@ -75,7 +75,7 @@
     @(ri/index-resources i [hash])
 
     (testing "SearchParamValueResource index"
-      (is (every? #{["Condition" "id-204446" #blaze/byte-string"F6260321"]}
+      (is (every? #{["Condition" "id-204446" #blaze/byte-string"7EF16FC6"]}
                   (sp-vr-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -102,7 +102,7 @@
               ["_id" (codec/v-hash "id-204446")]])))
 
     (testing "ResourceSearchParamValue index"
-      (is (every? #{["Condition" "id-204446" #blaze/byte-string"F6260321"]}
+      (is (every? #{["Condition" "id-204446" #blaze/byte-string"7EF16FC6"]}
                   (r-sp-v-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
@@ -129,7 +129,7 @@
 
     (testing "CompartmentSearchParamValueResource index"
       (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"
-                     #blaze/byte-string"F6260321"]}
+                     #blaze/byte-string"7EF16FC6"]}
                   (c-sp-vr-tu/decode-index-entries
                     kv-store :compartment :type :id :hash-prefix)))
       (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -185,7 +185,7 @@
     @(ri/index-resources i [hash])
 
     (testing "SearchParamValueResource index"
-      (is (every? #{["Observation" "id-192702" #blaze/byte-string"DD3A49CC"]}
+      (is (every? #{["Observation" "id-192702" #blaze/byte-string"7EFFE8CC"]}
                   (sp-vr-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)

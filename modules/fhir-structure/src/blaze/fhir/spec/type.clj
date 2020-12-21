@@ -12,7 +12,6 @@
     [clojure.lang Keyword]
     [com.google.common.hash PrimitiveSink]
     [java.io Writer]
-    [java.nio.charset StandardCharsets]
     [java.time
      Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
      ZoneOffset]
@@ -940,22 +939,24 @@
   (-value [_])
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
-    (doseq [x xs]
-      (p/-hash-into x sink)))
+    (reduce (fn [_ x] (p/-hash-into x sink)) nil xs))
   Keyword
   (-type [_])
   (-value [_])
   (-hash-into [k sink]
-    (.putString ^PrimitiveSink sink (name k) StandardCharsets/UTF_8))
+    (.putInt ^PrimitiveSink sink (.hasheq k)))
   Map
   (-type [m]
     (:fhir/type m))
   (-value [_])
   (-hash-into [m sink]
     (.putByte ^PrimitiveSink sink (byte 37))
-    (doseq [[k v] (into (sorted-map) m)]
-      (.putString ^PrimitiveSink sink (name k) StandardCharsets/UTF_8)
-      (p/-hash-into v sink))))
+    (reduce
+      (fn [_ k]
+        (p/-hash-into k sink)
+        (p/-hash-into (k m) sink))
+      nil
+      (sort (keys m)))))
 
 
 
