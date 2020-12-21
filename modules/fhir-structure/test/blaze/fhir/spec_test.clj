@@ -264,11 +264,6 @@
                 [::f/type {:value "string"}]
                 [::f/text {:value "foo"}]]]])))))
 
-(comment
-  (s2/form :fhir.xml.Questionnaire/item)
-  (s2/form :fhir.json.Questionnaire/item)
-  )
-
 
 (defn remove-narrative [entry]
   (update entry :resource dissoc :text))
@@ -377,7 +372,42 @@
                 :entry
                 [{:resource
                   {:resourceType "Patient" :id "0"}}]}]
+      (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json))))))
+
+  (testing "Observation with code"
+    (let [json {:resourceType "Observation"
+                :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}]
       (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json)))))))
+
+
+(deftest unform-cbor-test
+  (testing "Patient with deceasedBoolean"
+    (let [cbor {:resourceType "Patient" :deceasedBoolean true}]
+      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+
+  (testing "Patient with deceasedDateTime"
+    (let [cbor {:resourceType "Patient" :deceasedDateTime "2020"}]
+      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+
+  (testing "Patient with multipleBirthBoolean"
+    (let [cbor {:resourceType "Patient" :multipleBoolean false}]
+      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+
+  (testing "Patient with multipleBirthInteger"
+    (let [cbor {:resourceType "Patient" :multipleBirthInteger 2}]
+      (is (= cbor (fhir-spec/unform-cbor {:fhir/type :fhir/Patient :multipleBirth (int 2)})))))
+
+  (testing "Bundle with Patient"
+    (let [cbor {:resourceType "Bundle"
+                :entry
+                [{:resource
+                  {:resourceType "Patient" :id "0"}}]}]
+      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+
+  (testing "Observation with code"
+    (let [cbor {:resourceType "Observation"
+                :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}]
+      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor)))))))
 
 
 (deftest unform-primitives-test

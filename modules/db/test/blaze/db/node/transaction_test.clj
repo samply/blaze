@@ -29,9 +29,9 @@
       [0 0 :op] := "create"
       [0 0 :type] := "Observation"
       [0 0 :id] := "0"
-      [0 0 :hash] := #blaze/byte-string"188C7598C8AB1DBDCF94ACD7B60F3E324FBE7535CBB6A56A89C2977F4A30F9CE"
+      [0 0 :hash] := #blaze/byte-string"3E2D4F15EFD656DE2EAB5237CB5EFDB452FF4A21F18DD808AC14BEB2D83DF2BB"
       [0 0 :refs] := [["Patient" "0"]]
-      [1 0 0] := #blaze/byte-string"188C7598C8AB1DBDCF94ACD7B60F3E324FBE7535CBB6A56A89C2977F4A30F9CE"
+      [1 0 0] := #blaze/byte-string"3E2D4F15EFD656DE2EAB5237CB5EFDB452FF4A21F18DD808AC14BEB2D83DF2BB"
       [1 0 1] := {:fhir/type :fhir/Observation :id "0"
                   :subject
                   {:fhir/type :fhir/Reference
@@ -42,8 +42,8 @@
       [0 0 :op] := "put"
       [0 0 :type] := "Patient"
       [0 0 :id] := "0"
-      [0 0 :hash] := #blaze/byte-string"6F04185DAEA9350F2E9D1D80DDFCD1890B0DA1300CDD83A3AEAF21D637442E9A"
-      [1 0 0] := #blaze/byte-string"6F04185DAEA9350F2E9D1D80DDFCD1890B0DA1300CDD83A3AEAF21D637442E9A"
+      [0 0 :hash] := #blaze/byte-string"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
+      [1 0 0] := #blaze/byte-string"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
       [1 0 1] := {:fhir/type :fhir/Patient :id "0"}))
 
   (testing "one put with matches"

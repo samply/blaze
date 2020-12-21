@@ -1784,27 +1784,27 @@
         (is (= (r-sp-v-tu/decode-index-entries
                  (:kv-store node)
                  :type :id :hash-prefix :code :v-hash)
-               [["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+               [["Observation" "id-0" #blaze/byte-string"01FD55D1"
                  "value-quantity" #blaze/byte-string"0000000080"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"01FD55D1"
                  "value-quantity" #blaze/byte-string"5C38E45A80"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"01FD55D1"
                  "value-quantity" #blaze/byte-string"9B780D9180"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"01FD55D1"
                  "combo-value-quantity" #blaze/byte-string"0000000080"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"01FD55D1"
                  "combo-value-quantity" #blaze/byte-string"5C38E45A80"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"01FD55D1"
                  "combo-value-quantity" #blaze/byte-string"9B780D9180"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"01FD55D1"
                  "_id" #blaze/byte-string"165494C5"]
-                ["TestScript" "id-0" #blaze/byte-string"10FA3621"
+                ["TestScript" "id-0" #blaze/byte-string"DF8AA1E3"
                  "context-quantity" #blaze/byte-string"0000000080"]
-                ["TestScript" "id-0" #blaze/byte-string"10FA3621"
+                ["TestScript" "id-0" #blaze/byte-string"DF8AA1E3"
                  "context-quantity" #blaze/byte-string"5C38E45A80"]
-                ["TestScript" "id-0" #blaze/byte-string"10FA3621"
+                ["TestScript" "id-0" #blaze/byte-string"DF8AA1E3"
                  "context-quantity" #blaze/byte-string"9B780D9180"]
-                ["TestScript" "id-0" #blaze/byte-string"10FA3621"
+                ["TestScript" "id-0" #blaze/byte-string"DF8AA1E3"
                  "_id" #blaze/byte-string"165494C5"]])))
 
 
