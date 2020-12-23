@@ -29,6 +29,7 @@
      fhirpathParser$BooleanLiteralContext
      fhirpathParser$StringLiteralContext
      fhirpathParser$NumberLiteralContext
+     fhirpathParser$DateLiteralContext
      fhirpathParser$DateTimeLiteralContext
      fhirpathParser$MemberInvocationContext
      fhirpathParser$FunctionInvocationContext
@@ -70,10 +71,8 @@
   (try
     (-eval expr {:resolver resolver} [value])
     (catch ExceptionInfo e
-      (if-let [ex-data (ex-data e)]
-        (if (::anom/category ex-data)
-          ex-data
-          (throw e))
+      (if (::anom/category (ex-data e))
+        (ex-data e)
         (throw e)))))
 
 
@@ -444,13 +443,16 @@
         (catch Exception _
           [(BigDecimal. text)]))))
 
+  fhirpathParser$DateLiteralContext
+  (-compile [ctx]
+    (let [text (subs (.getText (.getSymbol (.DATE ctx))) 1)]
+      [(type/->Date text)]))
+
   fhirpathParser$DateTimeLiteralContext
   (-compile [ctx]
-    (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)]
-      (try
-        [(type/->DateTime text)]
-        (catch Exception _
-          [(BigDecimal. text)]))))
+    (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)
+          text (if (str/ends-with? text "T") (subs text 0 (dec (count text))) text)]
+      [(type/->DateTime text)]))
 
   fhirpathParser$MemberInvocationContext
   (-compile [ctx]

@@ -4,6 +4,7 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir-path-spec]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -86,6 +87,39 @@
 
 
 ;; 4. Expressions
+
+;; 4.1 Literals
+(deftest boolean-test
+  (is (true? (first (eval "true" "foo"))))
+  (is (false? (first (eval "false" "foo")))))
+
+
+(deftest string-test
+  (is (= "bar" (first (eval "'bar'" "foo")))))
+
+
+(deftest integer-test
+  (is (= 0 (first (eval "0" "foo")))))
+
+
+(deftest decimal-test
+  (is (= 0.1M (first (eval "0.1" "foo")))))
+
+
+(deftest date-test
+  (are [expr date] (= date (first (eval expr "foo")))
+    "@2020" (system/date 2020)
+    "@2020-01" (system/date 2020 1)
+    "@2020-01-02" (system/date 2020 1 2)))
+
+
+(deftest date-time-test
+  (are [expr date-time] (= date-time (first (eval expr "foo")))
+    "@2020T" (system/date-time 2020)
+    "@2020-01T" (system/date-time 2020 1)
+    "@2020-01-02T" (system/date-time 2020 1 2)
+    "@2020-01-02T03" (system/date-time 2020 1 2 3)))
+
 
 ;; 4.5. Singleton Evaluation of Collections
 (deftest singleton-test
