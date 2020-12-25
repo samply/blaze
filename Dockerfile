@@ -3,7 +3,7 @@ FROM clojure:openjdk-11-tools-deps-1.10.1.727 as build
 COPY . /build/
 
 WORKDIR /build
-RUN clojure -M:depstar -m hf.depstar.uberjar target/blaze-standalone.jar
+RUN clojure -X:depstar uberjar :jar target/blaze-standalone.jar
 
 RUN mkdir -p /app/data
 

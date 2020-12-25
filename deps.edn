@@ -66,9 +66,10 @@
 
  :aliases
  {:depstar
-  {:extra-deps
+  {:replace-deps
    {seancorfield/depstar
-    {:mvn/version "1.1.132"}}}
+    {:mvn/version "2.0.161"}}
+   :ns-default hf.depstar}
 
   :test
   {:extra-paths ["dev" "test"]

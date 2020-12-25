@@ -22,7 +22,7 @@ clean-root:
 clean: $(MODULES) clean-root
 
 uberjar:
-	clojure -Sforce -M:depstar -m hf.depstar.uberjar target/blaze-${VERSION}-standalone.jar
+	clojure -X:depstar uberjar :jar target/blaze-${VERSION}-standalone.jar
 
 outdated:
 	clojure -M:outdated
