@@ -28,7 +28,7 @@
      :value (.getValue element)}))
 
 
-(defn parse-header-value
+(defn- parse-header-value
   "Parses the header value string `s` into elements which have a :name and a
   :value.
 

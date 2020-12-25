@@ -6,13 +6,13 @@
   {:mvn/version "2.2.0"}
 
   buddy/buddy-sign
-  {:mvn/version "3.2.0"}
+  {:mvn/version "3.3.0"}
 
   cheshire/cheshire
   {:mvn/version "5.10.0"}
 
   funcool/cuerdas
-  {:mvn/version "2.2.1"}}
+  {:mvn/version "2020.03.26-3"}}
 
  :aliases
  {:test
@@ -20,7 +20,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
+    {:mvn/version "1.0.732"}
 
     org.clojure/test.check
     {:mvn/version "1.1.0"}}

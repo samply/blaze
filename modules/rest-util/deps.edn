@@ -9,13 +9,13 @@
   {:local/root "../fhir-structure"}
 
   org.apache.httpcomponents/httpcore
-  {:mvn/version "4.4.12"}
+  {:mvn/version "4.4.14"}
 
   metosin/reitit-ring
   {:mvn/version "0.5.10"}
 
   ring/ring-core
-  {:mvn/version "1.8.0"
+  {:mvn/version "1.8.2"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
@@ -34,7 +34,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
+    {:mvn/version "1.0.732"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

@@ -26,7 +26,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
+    {:mvn/version "1.0.732"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
