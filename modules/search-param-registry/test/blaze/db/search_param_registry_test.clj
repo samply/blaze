@@ -13,8 +13,7 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
-  (f)
+  (log/with-level :trace (f))
   (st/unstrument))
 
 
@@ -40,7 +39,7 @@
 
 
 (def search-param-registry
-  (log/with-merged-config {:level :info} (sr/init-search-param-registry)))
+  (log/with-level :info (sr/init-search-param-registry)))
 
 
 (deftest get-test
