@@ -1,6 +1,6 @@
 {:deps
  {com.google.guava/guava
-  {:mvn/version "30.0-jre"}}
+  {:mvn/version "30.1-jre"}}
 
  :aliases
  {:test
@@ -8,7 +8,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
+    {:mvn/version "1.0.732"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

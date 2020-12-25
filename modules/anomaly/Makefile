@@ -7,4 +7,7 @@ test:
 test-coverage:
 	true
 
-.PHONY: lint test test-coverage
+clean:
+	rm -rf .clj-kondo/.cache .cpcache target
+
+.PHONY: lint test test-coverage clean

@@ -16,7 +16,15 @@ test: $(MODULES) test-root
 
 test-coverage: $(MODULES)
 
+clean-root:
+	rm -rf .clj-kondo/.cache .cpcache target
+
+clean: $(MODULES) clean-root
+
 uberjar:
 	clojure -Sforce -M:depstar -m hf.depstar.uberjar target/blaze-${VERSION}-standalone.jar
 
-.PHONY: $(MODULES) lint-root lint test-root test test-coverage uberjar
+outdated:
+	clojure -M:outdated
+
+.PHONY: $(MODULES) lint-root lint test-root test test-coverage clean-root clean uberjar outdated
