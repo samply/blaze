@@ -29,7 +29,7 @@
   {:mvn/version "2.12.0"}
 
   com.taoensso/timbre
-  {:mvn/version "4.10.0"}
+  {:mvn/version "5.1.0"}
 
   funcool/cuerdas
   {:mvn/version "2020.03.26-3"}

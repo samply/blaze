@@ -9,8 +9,7 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
-  (f)
+  (log/with-level :trace (f))
   (st/unstrument))
 
 

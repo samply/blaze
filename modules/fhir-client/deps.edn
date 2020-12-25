@@ -6,7 +6,7 @@
   {:local/root "../fhir-structure"}
 
   com.taoensso/timbre
-  {:mvn/version "4.10.0"}}
+  {:mvn/version "5.1.0"}}
 
  :aliases
  {:test
