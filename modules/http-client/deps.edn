@@ -1,22 +1,16 @@
 {:deps
- {blaze/fhir-client
-  {:local/root "../fhir-client"}
-
-  blaze/module-base
+ {blaze/module-base
   {:local/root "../module-base"}
 
-  blaze/terminology-service
-  {:local/root "../terminology-service"}}
+  hato/hato
+  {:mvn/version "0.7.2"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {com.pgs-soft/HttpClientMock
-    {:mvn/version "1.0.0"}
-
-    lambdaisland/kaocha
+   {lambdaisland/kaocha
     {:mvn/version "1.0.732"}
 
     org.clojars.akiel/iota
@@ -28,10 +22,7 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {com.pgs-soft/HttpClientMock
-    {:mvn/version "1.0.0"}
-
-    org.clojars.akiel/cloverage
+   {org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota

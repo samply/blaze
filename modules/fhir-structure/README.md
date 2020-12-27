@@ -10,7 +10,7 @@ This module provides [specs][1] for the [FHIR Data Model][2] and functions to co
 (use 'blaze.fhir.spec)
 
 (conform-json {:resourceType "Patient" :id "0"})
-;;=> {:id "0", :fhir/type :fhir/Patient}
+;;=> {:fhir/type :fhir/Patient :id "0"}
 ```
 
 

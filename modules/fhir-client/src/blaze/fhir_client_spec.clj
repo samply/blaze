@@ -5,35 +5,36 @@
     [blaze.async.flow :as flow]
     [blaze.async.flow-spec]
     [blaze.fhir-client :as fhir-client]
-    [blaze.fhir-client.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s])
   (:import
     [java.nio.file Path]))
 
 
-(s/fdef fhir-client/client
-  :args (s/cat :http-client (s/? :java.net.http/http-client) :base-uri string?)
-  :ret :blaze.fhir-client/client)
-
-
 (s/fdef fhir-client/metadata
-  :args (s/cat :client :blaze.fhir-client/client)
+  :args (s/cat :base-uri string? :opts (s/? map?))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/read
-  :args (s/cat :client :blaze.fhir-client/client :type string? :id string?)
+  :args (s/cat :base-uri string? :type :fhir.type/name :id :blaze.resource/id
+               :opts (s/? map?))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/update
-  :args (s/cat :client :blaze.fhir-client/client :resource :blaze/resource)
+  :args (s/cat :base-uri string? :resource :blaze/resource :opts (s/? map?))
+  :ret ac/completable-future?)
+
+
+(s/fdef fhir-client/execute-type-get
+  :args (s/cat :base-uri string? :type :fhir.type/name :name string?
+               :opts (s/? map?))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/search-type-publisher
-  :args (s/cat :client :blaze.fhir-client/client :type string? :params map?)
+  :args (s/cat :base-uri string? :type :fhir.type/name :opts (s/? map?))
   :ret flow/publisher?)
 
 
@@ -43,7 +44,12 @@
 
 
 (s/fdef fhir-client/search-type
-  :args (s/cat :client :blaze.fhir-client/client :type string? :params (s/? map?))
+  :args (s/cat :base-uri string? :type :fhir.type/name :opts (s/? map?))
+  :ret ac/completable-future?)
+
+
+(s/fdef fhir-client/search-system
+  :args (s/cat :base-uri string? :opts (s/? map?))
   :ret ac/completable-future?)
 
 
