@@ -10,7 +10,6 @@ jobs:
         - anomaly
         - db-protocols
         - db-stub
-        - extern-terminology-service
         - module-base
         - rocksdb
         - spec
@@ -63,9 +62,11 @@ jobs:
         - db-tx-log
         - db-tx-log-kafka
         - executor
+        - extern-terminology-service
         - fhir-client
         - fhir-path
         - fhir-structure
+        - http-client
         - interaction
         - kv
         - luid

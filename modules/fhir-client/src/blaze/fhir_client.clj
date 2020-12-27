@@ -2,10 +2,9 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.async.flow :as flow]
-    [blaze.fhir-client.impl :as impl])
+    [blaze.fhir-client.impl :as impl]
+    [taoensso.timbre :as log])
   (:import
-    [java.net Authenticator PasswordAuthentication]
-    [java.net.http HttpClient]
     [java.util.concurrent Flow$Publisher])
   (:refer-clojure :exclude [read spit update]))
 
@@ -13,68 +12,44 @@
 (set! *warn-on-reflection* true)
 
 
-(defn client
-  ([base-uri]
-   (client impl/default-http-client base-uri))
-  ([http-client base-uri]
-   {:http-client http-client
-    :base-uri base-uri}))
-
-
-(defn- password-authenticator [username password]
-  (proxy [Authenticator] []
-    (getPasswordAuthentication []
-      (PasswordAuthentication. username (.toCharArray ^String password)))))
-
-
-(defn- http-client-with-authenticator
-  "Returns a HttpClient with given Authenticator set for authentication."
-  [authenticator]
-  (-> (HttpClient/newBuilder)
-      (.authenticator authenticator)
-      .build))
-
-
-(defn authenticated-client
-  "Returns a FHIR client configured to use the given credentials with basic
-  authentication."
-  [base-uri username password]
-  (-> (password-authenticator username password)
-    http-client-with-authenticator
-    (client base-uri)))
-
-
 (defn metadata
   "Returns a CompletableFuture that completes with the CapabilityStatement in
-  case of success or completes exceptionally with an anomaly in case of an error."
-  {:arglists '([client])}
-  [{:keys [base-uri http-client]}]
-  (impl/fetch http-client (str base-uri "/metadata")))
+  case of success or completes exceptionally with an anomaly in case of an
+  error."
+  [base-uri & [opts]]
+  (impl/fetch (str base-uri "/metadata") opts))
 
 
 (defn read
   "Returns a CompletableFuture that completes with the resource with `type` and
   `id` in case of success or completes exceptionally with an anomaly in case of
   an error."
-  {:arglists '([client type id])}
-  [{:keys [base-uri http-client]} type id]
-  (impl/fetch http-client (str base-uri "/" type "/" id)))
+  [base-uri type id & [opts]]
+  (impl/fetch (str base-uri "/" type "/" id) opts))
 
 
 (defn update
   "Returns a CompletableFuture that completes with `resource` updated."
-  [client resource]
-  (impl/update client resource))
+  {:arglists '([base-uri resource & [opts]])}
+  [base-uri {:fhir/keys [type] :keys [id] :as resource} & [opts]]
+  (impl/update (str base-uri "/" (name type) "/" id) resource opts))
 
 
-(defn- query-str [params]
-  (interpose "&" (map (fn [[k v]] (str k "=" v)) params)))
+(defn- execute-type-get-msg [type name {:keys [query-params]}]
+  (format "Execute $%s on type %s with params %s" name type query-params))
 
 
-(defn- search-type-uri [base-uri type params]
-  (if (seq params)
-    (apply str base-uri "/" type "?" (query-str params))
-    (str base-uri "/" type)))
+(defn execute-type-get
+  "Executes the operation with `name` on the type-level endpoint with `type`
+  using GET.
+
+  Params to the operation can be given in :query-params in `opts`.
+
+  Returns a CompletableFuture that completes with either a Parameters resource
+  or a resource of the type of the single out parameter named `return`."
+  [base-uri type name & [opts]]
+  (log/trace (execute-type-get-msg type name opts))
+  (impl/fetch (apply str base-uri "/" type "/$" name) opts))
 
 
 (defn search-type-publisher
@@ -82,12 +57,10 @@
 
   Use `resource-processor` to transform the pages to individual resources. Use
   `search-type` if you simply want to fetch all resources."
-  {:arglists '([client type params])}
-  [{:keys [base-uri http-client]} type params]
+  [base-uri type & [opts]]
   (reify Flow$Publisher
     (subscribe [_ subscriber]
-      (->> (search-type-uri base-uri type params)
-           (impl/paging-subscription subscriber http-client)
+      (->> (impl/paging-subscription subscriber (str base-uri "/" type) opts)
            (flow/on-subscribe! subscriber)))))
 
 
@@ -101,20 +74,12 @@
   "Returns a CompletableFuture that completes with all resource of `type` in
   case of success or completes exceptionally with an anomaly in case of an
   error."
-  ([client type]
-   (search-type client type {}))
-  ([client type params]
-   (let [src (search-type-publisher client type params)
-         pro (resource-processor)
-         dst (flow/collect pro)]
-     (flow/subscribe! src pro)
-     dst)))
-
-
-(defn- search-system-uri [base-uri params]
-  (if (seq params)
-    (apply str base-uri "?" (query-str params))
-    base-uri))
+  [base-uri type & [opts]]
+  (let [src (search-type-publisher base-uri type opts)
+        pro (resource-processor)
+        dst (flow/collect pro)]
+    (flow/subscribe! src pro)
+    dst))
 
 
 (defn search-system-publisher
@@ -122,26 +87,22 @@
 
   Use `resource-processor` to transform the pages to individual resources. Use
   `search-system` if you simply want to fetch all resources."
-  {:arglists '([client params])}
-  [{:keys [base-uri http-client]} params]
+  [base-uri & [opts]]
   (reify Flow$Publisher
     (subscribe [_ subscriber]
-      (->> (search-system-uri base-uri params)
-           (impl/paging-subscription subscriber http-client)
+      (->> (impl/paging-subscription subscriber base-uri opts)
            (flow/on-subscribe! subscriber)))))
 
 
 (defn search-system
   "Returns a CompletableFuture that completes with all resource in case of
   success or completes exceptionally with an anomaly in case of an error."
-  ([client]
-   (search-system client {}))
-  ([client params]
-   (let [src (search-system-publisher client params)
-         pro (resource-processor)
-         dst (flow/collect pro)]
-     (flow/subscribe! src pro)
-     dst)))
+  [base-uri & [opts]]
+  (let [src (search-system-publisher base-uri opts)
+        pro (resource-processor)
+        dst (flow/collect pro)]
+    (flow/subscribe! src pro)
+    dst))
 
 
 (defn spit
