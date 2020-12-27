@@ -9,8 +9,8 @@
   {:mvn/version "5.1.0"}
 
   integrant/integrant
-  {:git/url "https://github.com/alexanderkiel/integrant.git"
-   :sha "c673b85130e553feec6d4c5d2d1ec773a49c929c"}
+  {:git/url "https://github.com/weavejester/integrant.git"
+   :sha "b4f77b0fe9618c5d65bf2cafd27510e8e6ba7cdd"}
 
   io.prometheus/simpleclient
   {:mvn/version "0.9.0"}
