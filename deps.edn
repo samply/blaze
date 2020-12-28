@@ -84,9 +84,6 @@
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
-    org.clojure/data.xml
-    {:mvn/version "0.2.0-alpha6"}
-
     org.clojure/test.check
     {:mvn/version "1.1.0"}
 
@@ -94,6 +91,13 @@
     {:mvn/version "1.1.0"}}
 
    :main-opts ["-m" "kaocha.runner"]}
+
+  :profiling
+  {:extra-paths ["profiling"]
+
+   :extra-deps
+   {org.clojure/tools.namespace
+    {:mvn/version "1.1.0"}}}
 
   :outdated
   {:replace-deps
