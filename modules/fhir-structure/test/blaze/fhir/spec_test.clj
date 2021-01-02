@@ -356,8 +356,10 @@
       (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json))))))
 
   (testing "Patient with deceasedDateTime"
-    (let [json {:resourceType "Patient" :deceasedDateTime "2020"}]
-      (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json))))))
+    (let [json {:resourceType "Patient" :deceasedDateTime "2020"}
+          unformed-json
+          {:resourceType "Patient" :deceasedDateTime #fhir/dateTime"2020"}]
+      (is (= unformed-json (fhir-spec/unform-json (fhir-spec/conform-json json))))))
 
   (testing "Patient with multipleBirthBoolean"
     (let [json {:resourceType "Patient" :multipleBoolean false}]
@@ -376,8 +378,13 @@
 
   (testing "Observation with code"
     (let [json {:resourceType "Observation"
-                :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}]
-      (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json)))))))
+                :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}
+          unformed-json
+          {:resourceType "Observation"
+           :code
+           {:coding
+            [{:system #fhir/uri"http://loinc.org" :code #fhir/code"39156-5"}]}}]
+      (is (= unformed-json (fhir-spec/unform-json (fhir-spec/conform-json json)))))))
 
 
 (deftest unform-cbor-test
@@ -386,8 +393,10 @@
       (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
 
   (testing "Patient with deceasedDateTime"
-    (let [cbor {:resourceType "Patient" :deceasedDateTime "2020"}]
-      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+    (let [cbor {:resourceType "Patient" :deceasedDateTime "2020"}
+          unformed-cbor
+          {:resourceType "Patient" :deceasedDateTime #fhir/dateTime"2020"}]
+      (is (= unformed-cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
 
   (testing "Patient with multipleBirthBoolean"
     (let [cbor {:resourceType "Patient" :multipleBoolean false}]
@@ -405,17 +414,25 @@
       (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
 
   (testing "Observation with code"
-    (let [cbor {:resourceType "Observation"
-                :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}]
-      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor)))))))
+    (let [cbor
+          {:resourceType "Observation"
+           :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}
+          unformed-cbor
+          {:resourceType "Observation"
+           :code
+           {:coding
+            [{:system #fhir/uri"http://loinc.org" :code #fhir/code"39156-5"}]}}]
+      (is (= unformed-cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor)))))))
 
 
 (deftest unform-primitives-test
   (testing "time"
     (testing "json"
-      (is (= "17:23:00" (s2/unform :fhir.json/time (LocalTime/of 17 23)))))
+      (let [time (LocalTime/of 17 23)]
+        (is (identical? time (s2/unform :fhir.json/time time)))))
     (testing "cbor"
-      (is (= "17:23:00" (s2/unform :fhir.cbor/time (LocalTime/of 17 23)))))))
+      (let [time (LocalTime/of 17 23)]
+        (is (identical? time (s2/unform :fhir.cbor/time time)))))))
 
 
 (deftest unform-xml-test
@@ -696,8 +713,8 @@
            (s2/conform :fhir.json/instant "2015-02-07T13:28:17.239+02:00"))))
 
   (testing "unforming from FHIR to JSON"
-    (is (= "2015-02-07T13:28:17.239+02:00"
-           (s2/unform :fhir.json/instant (type/->Instant "2015-02-07T13:28:17.239+02:00"))))))
+    (let [instant (type/->Instant "2015-02-07T13:28:17.239+02:00")]
+      (is (identical? instant (s2/unform :fhir.json/instant instant))))))
 
 
 (defn elem [value]
@@ -740,7 +757,8 @@
           "2019-02-29"))))
 
   (testing "unforming from FHIR to JSON"
-    (is (= "2020" (s2/unform :fhir.json/date #fhir/date"2020")))))
+    (let [date #fhir/date"2020"]
+      (is (identical? date (s2/unform :fhir.json/date date))))))
 
 
 (def extended-date-time
@@ -790,7 +808,8 @@
 
   (testing "unforming"
     (testing "JSON"
-      (is (= "2020" (s2/unform :fhir.json/dateTime #fhir/dateTime"2020"))))))
+      (let [date-time #fhir/dateTime"2020"]
+        (is (identical? date-time (s2/unform :fhir.json/dateTime date-time)))))))
 
 
 (def code-element
@@ -829,7 +848,8 @@
 
   (testing "unforming"
     (testing "JSON"
-      (is (= "foo" (s2/unform :fhir.json/code #fhir/code"foo"))))
+      (let [code #fhir/code"foo"]
+        (is (identical? code (s2/unform :fhir.json/code code)))))
     (testing "XML"
       (testing "value only"
         (is (= code-element (s2/unform :fhir.xml/code #fhir/code"foo"))))
@@ -858,7 +878,8 @@
     (is (= #fhir/id"foo" (s2/conform :fhir.json/id "foo"))))
 
   (testing "unforming from FHIR to JSON"
-    (is (= "foo" (s2/unform :fhir.json/id #fhir/id"foo")))))
+    (let [id #fhir/id"foo"]
+      (is (identical? id (s2/unform :fhir.json/id id))))))
 
 
 (def unsignedInt-element
@@ -901,7 +922,8 @@
 
   (testing "unforming"
     (testing "JSON"
-      (is (= 1 (s2/unform :fhir.json/unsignedInt #fhir/unsignedInt 1))))
+      (let [int #fhir/unsignedInt 1]
+        (is (identical? int (s2/unform :fhir.json/unsignedInt int)))))
     (testing "XML"
       (testing "value only"
         (is (= unsignedInt-element (s2/unform :fhir.xml/unsignedInt #fhir/unsignedInt 1))))
@@ -949,7 +971,8 @@
 
   (testing "unforming"
     (testing "JSON"
-      (is (= 1 (s2/unform :fhir.json/positiveInt #fhir/positiveInt 1))))
+      (let [int #fhir/positiveInt 1]
+        (is (identical? int (s2/unform :fhir.json/positiveInt int)))))
     (testing "XML"
       (testing "value only"
         (is (= positiveInt-element (s2/unform :fhir.xml/positiveInt #fhir/positiveInt 1))))
@@ -981,7 +1004,8 @@
 
   (testing "unforming"
     (testing "JSON"
-      (is (= "foo" (s2/unform :fhir.json/xhtml #fhir/xhtml"foo"))))
+      (let [xhtml #fhir/xhtml"foo"]
+        (is (identical? xhtml (s2/unform :fhir.json/xhtml xhtml)))))
     (testing "XML"
       (is (= xhtml-element
              (s2/unform :fhir.xml/xhtml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))))
