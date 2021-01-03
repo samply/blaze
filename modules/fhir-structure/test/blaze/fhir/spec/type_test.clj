@@ -74,7 +74,7 @@
     (testing "value"
       (is (nil? (type/value nil))))
     (testing "to-json"
-      (is (nil? (type/to-json nil))))
+      (is (= "null" (json/generate-string nil))))
     (testing "to-xml"
       (is (nil? (type/to-xml nil))))
     (testing "hash-into"
@@ -92,7 +92,7 @@
   (testing "value"
     (is (= true (type/value true))))
   (testing "to-json"
-    (is (= true (type/to-json true))))
+    (is (= "true" (json/generate-string true))))
   (testing "to-xml"
     (are [b s] (= (sexp [nil {:value s}]) (type/to-xml b))
       true "true"
@@ -111,9 +111,9 @@
   (testing "value"
     (is (= 1 (type/value #fhir/integer 1))))
   (testing "to-json"
-    (is (= 1 (type/to-json #fhir/integer 1))))
+    (is (= "1" (json/generate-string #fhir/integer 1))))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "1"}]) (type/to-xml #fhir/integer 1))))
+    (is (= (sexp [nil {:value "1"}]) (type/to-xml #fhir/integer 1))))
   (testing "instance size"
     (is (= 16 (total-size #fhir/integer 1))))
   (testing "hash-into"
@@ -130,9 +130,9 @@
   (testing "value"
     (is (= 1 (type/value #fhir/long 1))))
   (testing "to-json"
-    (is (= 1 (type/to-json #fhir/long 1))))
+    (is (= "1" (json/generate-string #fhir/long 1))))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "1"}]) (type/to-xml #fhir/long 1))))
+    (is (= (sexp [nil {:value "1"}]) (type/to-xml #fhir/long 1))))
   (testing "instance size"
     (is (= 24 (total-size #fhir/long 1))))
   (testing "hash-into"
@@ -142,6 +142,8 @@
 
 
 (deftest string-test
+  (testing "string?"
+    (is (type/string? "")))
   (testing "from XML"
     (is (= "142214" (type/xml->String (sexp [nil {:value "142214"}])))))
   (testing "type"
@@ -149,9 +151,9 @@
   (testing "value"
     (is (= "175227" (type/value "175227"))))
   (testing "to-json"
-    (is (= "105406" (type/to-json "105406"))))
+    (is (= "\"105406\"" (json/generate-string "105406"))))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "121344"}]) (type/to-xml "121344"))))
+    (is (= (sexp [nil {:value "121344"}]) (type/to-xml "121344"))))
   (testing "instance size"
     (is (= 48 (total-size "a")))
     (is (= 48 (total-size (str/repeat "a" 8))))
@@ -163,6 +165,8 @@
 
 
 (deftest decimal-test
+  (testing "decimal?"
+    (is (type/decimal? 1M)))
   (testing "from XML"
     (is (= 1M (type/xml->Decimal (sexp [nil {:value "1"}])))))
   (testing "type"
@@ -170,9 +174,11 @@
   (testing "value"
     (is (= 1M (type/value 1M))))
   (testing "to-json"
-    (is (= 1M (type/to-json 1M))))
+    (are [decimal json] (= json (json/generate-string decimal))
+      1M "1"
+      1.1M "1.1"))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "1.1"}]) (type/to-xml 1.1M))))
+    (is (= (sexp [nil {:value "1.1"}]) (type/to-xml 1.1M))))
   (testing "instance size"
     (is (= 40 (total-size (parse-json "1.1")))))
   (testing "hash-into"
@@ -182,6 +188,8 @@
 
 
 (deftest uri-test
+  (testing "uri?"
+    (is (type/uri? #fhir/uri"")))
   (testing "from XML"
     (is (= #fhir/uri"142307" (type/xml->Uri (sexp [nil {:value "142307"}])))))
   (testing "type"
@@ -189,9 +197,9 @@
   (testing "value"
     (is (= "105614" (type/value #fhir/uri"105614"))))
   (testing "to-json"
-    (is (= "105846" (type/to-json #fhir/uri"105846"))))
+    (is (= "\"105846\"" (json/generate-string #fhir/uri"105846"))))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "105846"}]) (type/to-xml #fhir/uri"105846"))))
+    (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/uri"105846"))))
   (testing "equals"
     (is (= #fhir/uri"142334" #fhir/uri"142334")))
   (testing "print"
@@ -206,6 +214,8 @@
 
 
 (deftest url-test
+  (testing "url?"
+    (is (type/url? #fhir/url"")))
   (testing "from XML"
     (is (= #fhir/url"142307" (type/xml->Url (sexp [nil {:value "142307"}])))))
   (testing "type"
@@ -213,9 +223,9 @@
   (testing "value"
     (is (= "105614" (type/value #fhir/url"105614"))))
   (testing "to-json"
-    (is (= "105846" (type/to-json #fhir/url"105846"))))
+    (is (= "\"105846\"" (json/generate-string #fhir/url"105846"))))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "105846"}]) (type/to-xml #fhir/url"105846"))))
+    (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/url"105846"))))
   (testing "equals"
     (is (= #fhir/url"142334" #fhir/url"142334")))
   (testing "print"
@@ -230,6 +240,8 @@
 
 
 (deftest canonical-test
+  (testing "canonical?"
+    (is (type/canonical? #fhir/canonical"")))
   (testing "from XML"
     (is (= #fhir/canonical"142307" (type/xml->Canonical (sexp [nil {:value "142307"}])))))
   (testing "type"
@@ -237,9 +249,9 @@
   (testing "value"
     (is (= "105614" (type/value #fhir/canonical"105614"))))
   (testing "to-json"
-    (is (= "105846" (type/to-json #fhir/canonical"105846"))))
+    (is (= "\"105846\"" (json/generate-string #fhir/canonical"105846"))))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "105846"}]) (type/to-xml #fhir/canonical"105846"))))
+    (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/canonical"105846"))))
   (testing "equals"
     (is (= #fhir/canonical"142334" #fhir/canonical"142334")))
   (testing "print"
@@ -254,6 +266,8 @@
 
 
 (deftest base64Binary-test
+  (testing "base64Binary?"
+    (is (type/base64Binary? #fhir/base64Binary"MTA1NjE0Cg==")))
   (testing "from XML"
     (is (= #fhir/base64Binary"MTA1NjE0Cg=="
            (type/xml->Base64Binary (sexp [nil {:value "MTA1NjE0Cg=="}])))))
@@ -262,9 +276,9 @@
   (testing "value"
     (is (= "MTA1NjE0Cg==" (type/value #fhir/base64Binary"MTA1NjE0Cg=="))))
   (testing "to-json"
-    (is (= "MTA1NjE0Cg==" (type/to-json #fhir/base64Binary"MTA1NjE0Cg=="))))
+    (is (= "\"MTA1NjE0Cg==\"" (json/generate-string #fhir/base64Binary"MTA1NjE0Cg=="))))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "MTA1NjE0Cg=="}]) (type/to-xml #fhir/base64Binary"MTA1NjE0Cg=="))))
+    (is (= (sexp [nil {:value "MTA1NjE0Cg=="}]) (type/to-xml #fhir/base64Binary"MTA1NjE0Cg=="))))
   (testing "equals"
     (is (= #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"MTA1NjE0Cg==")))
   (testing "instance size"
@@ -279,6 +293,8 @@
 
 
 (deftest instant-test
+  (testing "instant?"
+    (is (type/instant? Instant/EPOCH)))
   (testing "from XML"
     (is (= Instant/EPOCH
            (type/xml->Instant (sexp [nil {:value "1970-01-01T00:00:00Z"}])))))
@@ -294,13 +310,13 @@
     (is (= (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC)
            (type/value Instant/EPOCH))))
   (testing "to-json"
-    (is (= "2020-01-01T00:00:00+02:00"
-           (type/to-json (type/->Instant "2020-01-01T00:00:00+02:00"))))
-    (is (= "1970-01-01T00:00:00Z" (type/to-json Instant/EPOCH))))
+    (are [instant json] (= json (json/generate-string instant))
+      (type/->Instant "2020-01-01T00:00:00+02:00") "\"2020-01-01T00:00:00+02:00\""
+      Instant/EPOCH "\"1970-01-01T00:00:00Z\""))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "2020-01-01T00:00:00+02:00"}])
+    (is (= (sexp [nil {:value "2020-01-01T00:00:00+02:00"}])
            (type/to-xml (type/->Instant "2020-01-01T00:00:00+02:00"))))
-    (is (= (sexp  [nil {:value "1970-01-01T00:00:00Z"}])
+    (is (= (sexp [nil {:value "1970-01-01T00:00:00Z"}])
            (type/to-xml Instant/EPOCH))))
   (testing "equals"
     (is (= (type/->Instant "2020-01-01T00:00:00+02:00")
@@ -315,6 +331,7 @@
       (is (= 24 (total-size Instant/EPOCH)))))
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
+      (type/->Instant "2020-01-01T00:00:00+00:00") "d81f6bc2"
       (type/->Instant "2020-01-01T00:00:00Z") "d81f6bc2"
       (type/->Instant "1970-01-01T00:00:00Z") "93344244"
       Instant/EPOCH "93344244")))
@@ -322,6 +339,8 @@
 
 (deftest date-test
   (testing "with year precision"
+    (testing "date?"
+      (is (type/date? #fhir/date"2010")))
     (testing "from XML"
       (is (= #fhir/date"2010" (type/xml->Date (sexp [nil {:value "2010"}])))))
     (testing "type"
@@ -329,9 +348,9 @@
     (testing "value"
       (is (= (Year/of 2020) (type/value #fhir/date"2020"))))
     (testing "to-json"
-      (is (= "2020" (type/to-json #fhir/date"2020"))))
+      (is (= "\"2020\"" (json/generate-string #fhir/date"2020"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020"}]) (type/to-xml #fhir/date"2020"))))
+      (is (= (sexp [nil {:value "2020"}]) (type/to-xml #fhir/date"2020"))))
     (testing "equals"
       (is (= #fhir/date"2020" #fhir/date"2020")))
     (testing "instance size"
@@ -341,6 +360,8 @@
         #fhir/date"2020" "c92be432")))
 
   (testing "with year-month precision"
+    (testing "date?"
+      (is (type/date? #fhir/date"2010-04")))
     (testing "from XML"
       (is (= #fhir/date"2010-04"
              (type/xml->Date (sexp [nil {:value "2010-04"}])))))
@@ -349,9 +370,9 @@
     (testing "value"
       (is (= (YearMonth/of 2020 1) (type/value #fhir/date"2020-01"))))
     (testing "to-json"
-      (is (= "2020-01" (type/to-json #fhir/date"2020-01"))))
+      (is (= "\"2020-01\"" (json/generate-string #fhir/date"2020-01"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01"}]) (type/to-xml #fhir/date"2020-01"))))
+      (is (= (sexp [nil {:value "2020-01"}]) (type/to-xml #fhir/date"2020-01"))))
     (testing "equals"
       (is (= #fhir/date"2020-01" #fhir/date"2020-01")))
     (testing "instance size"
@@ -361,6 +382,8 @@
         #fhir/date"2020-01" "fbcdf97f")))
 
   (testing "with date precision"
+    (testing "date?"
+      (is (type/date? #fhir/date"2010-05-15")))
     (testing "from XML"
       (is (= #fhir/date"2010-05-15"
              (type/xml->Date (sexp [nil {:value "2010-05-15"}])))))
@@ -369,9 +392,9 @@
     (testing "value"
       (is (= (LocalDate/of 2020 1 1) (type/value #fhir/date"2020-01-01"))))
     (testing "to-json"
-      (is (= "2020-01-01" (type/to-json #fhir/date"2020-01-01"))))
+      (is (= "\"2020-01-01\"" (json/generate-string #fhir/date"2020-01-01"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01-01"}])
+      (is (= (sexp [nil {:value "2020-01-01"}])
              (type/to-xml #fhir/date"2020-01-01"))))
     (testing "equals"
       (is (= #fhir/date"2020-01-01" #fhir/date"2020-01-01")))
@@ -384,6 +407,8 @@
 
 (deftest dateTime-test
   (testing "with year precision"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2010")))
     (testing "from XML"
       (is (= #fhir/dateTime"2010"
              (type/xml->DateTime (sexp [nil {:value "2010"}])))))
@@ -392,9 +417,9 @@
     (testing "value"
       (is (= (system/date-time 2020) (type/value #fhir/dateTime"2020"))))
     (testing "to-json"
-      (is (= "2020" (type/to-json #fhir/dateTime"2020"))))
+      (is (= "\"2020\"" (json/generate-string #fhir/dateTime"2020"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020"}]) (type/to-xml #fhir/dateTime"2020"))))
+      (is (= (sexp [nil {:value "2020"}]) (type/to-xml #fhir/dateTime"2020"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020" #fhir/dateTime"2020")))
     (testing "instance size"
@@ -406,6 +431,8 @@
       (quick-bench (type/->DateTime "2020"))))
 
   (testing "with year-month precision"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2010-04")))
     (testing "from XML"
       (is (= #fhir/dateTime"2010-04"
              (type/xml->DateTime (sexp [nil {:value "2010-04"}])))))
@@ -415,9 +442,9 @@
       (is (= (system/date-time 2020 1)
              (type/value #fhir/dateTime"2020-01"))))
     (testing "to-json"
-      (is (= "2020-01" (type/to-json #fhir/dateTime"2020-01"))))
+      (is (= "\"2020-01\"" (json/generate-string #fhir/dateTime"2020-01"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01"}])
+      (is (= (sexp [nil {:value "2020-01"}])
              (type/to-xml #fhir/dateTime"2020-01"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020-01" #fhir/dateTime"2020-01")))
@@ -428,6 +455,8 @@
         #fhir/dateTime"2020-01" "9d6c5bd3")))
 
   (testing "with date precision"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2010-05-15")))
     (testing "from XML"
       (is (= #fhir/dateTime"2010-05-15"
              (type/xml->DateTime (sexp [nil {:value "2010-05-15"}])))))
@@ -437,9 +466,9 @@
       (is (= (system/date-time 2020 1 1)
              (type/value #fhir/dateTime"2020-01-01"))))
     (testing "to-json"
-      (is (= "2020-01-01" (type/to-json #fhir/dateTime"2020-01-01"))))
+      (is (= "\"2020-01-01\"" (json/generate-string #fhir/dateTime"2020-01-01"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01-01"}])
+      (is (= (sexp [nil {:value "2020-01-01"}])
              (type/to-xml #fhir/dateTime"2020-01-01"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020-01-01" #fhir/dateTime"2020-01-01")))
@@ -452,16 +481,18 @@
       (quick-bench (type/->DateTime "2020-01-01"))))
 
   (testing "without timezone"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2020-01-01T00:00:00")))
     (testing "from XML"
       (is (= #fhir/dateTime"2020-01-01T00:00:00"
              (type/xml->DateTime (sexp [nil {:value "2020-01-01T00:00:00"}])))))
     (testing "type"
       (is (= :fhir/dateTime (type/type #fhir/dateTime"2020-01-01T00:00:00"))))
     (testing "to-json"
-      (is (= "2020-01-01T00:00:00"
-             (type/to-json #fhir/dateTime"2020-01-01T00:00:00"))))
+      (is (= "\"2020-01-01T00:00:00\""
+             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01-01T00:00:00"}])
+      (is (= (sexp [nil {:value "2020-01-01T00:00:00"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020-01-01T00:00:00"
@@ -473,16 +504,18 @@
         #fhir/dateTime"2020-01-01T00:00:00" "da537591")))
 
   (testing "without timezone but millis"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2020-01-01T00:00:00.001")))
     (testing "from XML"
       (is (= #fhir/dateTime"2020-01-01T00:00:00.001"
              (type/xml->DateTime (sexp [nil {:value "2020-01-01T00:00:00.001"}])))))
     (testing "type"
       (is (= :fhir/dateTime (type/type #fhir/dateTime"2020-01-01T00:00:00.000"))))
     (testing "to-json"
-      (is (= "2020-01-01T00:00:00.001"
-             (type/to-json #fhir/dateTime"2020-01-01T00:00:00.001"))))
+      (is (= "\"2020-01-01T00:00:00.001\""
+             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00.001"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01-01T00:00:00.001"}])
+      (is (= (sexp [nil {:value "2020-01-01T00:00:00.001"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00.001"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020-01-01T00:00:00.000"
@@ -494,16 +527,18 @@
         #fhir/dateTime"2020-01-01T00:00:00.000" "da537591")))
 
   (testing "with zulu timezone"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2020-01-01T00:00:00Z")))
     (testing "from XML"
       (is (= #fhir/dateTime"2020-01-01T00:00:00Z"
              (type/xml->DateTime (sexp [nil {:value "2020-01-01T00:00:00Z"}])))))
     (testing "type"
       (is (= :fhir/dateTime (type/type #fhir/dateTime"2020-01-01T00:00:00Z"))))
     (testing "to-json"
-      (is (= "2020-01-01T00:00:00Z"
-             (type/to-json #fhir/dateTime"2020-01-01T00:00:00Z"))))
+      (is (= "\"2020-01-01T00:00:00Z\""
+             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00Z"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01-01T00:00:00Z"}])
+      (is (= (sexp [nil {:value "2020-01-01T00:00:00Z"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00Z"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020-01-01T00:00:00Z"
@@ -516,6 +551,8 @@
         #fhir/dateTime"2020-01-01T00:00:00Z" "d541a45")))
 
   (testing "with positive timezone offset"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2020-01-01T00:00:00+01:00")))
     (testing "from XML"
       (is (= #fhir/dateTime"2020-01-01T00:00:00+01:00"
              (type/xml->DateTime (sexp [nil {:value "2020-01-01T00:00:00+01:00"}])))))
@@ -523,10 +560,10 @@
       (is (= :fhir/dateTime
              (type/type #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
     (testing "to-json"
-      (is (= "2020-01-01T00:00:00+01:00"
-             (type/to-json #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
+      (is (= "\"2020-01-01T00:00:00+01:00\""
+             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01-01T00:00:00+01:00"}])
+      (is (= (sexp [nil {:value "2020-01-01T00:00:00+01:00"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020-01-01T00:00:00+01:00"
@@ -536,6 +573,8 @@
         #fhir/dateTime"2020-01-01T00:00:00+01:00" "9c535d0d")))
 
   (testing "with negative timezone offset"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2020-01-01T00:00:00-01:00")))
     (testing "from XML"
       (is (= #fhir/dateTime"2020-01-01T00:00:00-01:00"
              (type/xml->DateTime (sexp [nil {:value "2020-01-01T00:00:00-01:00"}])))))
@@ -543,10 +582,10 @@
       (is (= :fhir/dateTime
              (type/type #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
     (testing "to-json"
-      (is (= "2020-01-01T00:00:00-01:00"
-             (type/to-json #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
+      (is (= "\"2020-01-01T00:00:00-01:00\""
+             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01-01T00:00:00-01:00"}])
+      (is (= (sexp [nil {:value "2020-01-01T00:00:00-01:00"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020-01-01T00:00:00-01:00"
@@ -556,6 +595,8 @@
         #fhir/dateTime"2020-01-01T00:00:00-01:00" "839fd8a6")))
 
   (testing "with zulu timezone and millis"
+    (testing "date-time?"
+      (is (type/date-time? #fhir/dateTime"2020-01-01T00:00:00.001Z")))
     (testing "from XML"
       (is (= #fhir/dateTime"2020-01-01T00:00:00.001Z"
              (type/xml->DateTime (sexp [nil {:value "2020-01-01T00:00:00.001Z"}])))))
@@ -566,10 +607,10 @@
       (is (= (OffsetDateTime/of 2020 1 1 0 0 0 1000000 ZoneOffset/UTC)
              (type/value #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
     (testing "to-json"
-      (is (= "2020-01-01T00:00:00.001Z"
-             (type/to-json #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
+      (is (= "\"2020-01-01T00:00:00.001Z\""
+             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
     (testing "to-xml"
-      (is (= (sexp  [nil {:value "2020-01-01T00:00:00.001Z"}])
+      (is (= (sexp [nil {:value "2020-01-01T00:00:00.001Z"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
     (testing "equals"
       (is (= #fhir/dateTime"2020-01-01T00:00:00.001Z"
@@ -581,12 +622,14 @@
   (testing "with extensions"
     (let [extended-date-time (type/->DateTime nil [string-extension] "2020")
           extended-date-time-element (xml-node/element nil {:value "2020"} string-extension)]
+      (testing "date-time?"
+        (is (type/date-time? extended-date-time)))
       (testing "type"
         (is (= :fhir/dateTime (type/type extended-date-time))))
       (testing "value"
         (is (= (system/date-time 2020) (type/value extended-date-time))))
       (testing "to-json"
-        (is (= "2020" (type/to-json extended-date-time))))
+        (is (= "\"2020\"" (json/generate-string extended-date-time))))
       (testing "to-xml"
         (is (= extended-date-time-element (type/to-xml extended-date-time))))
       (testing "equals"
@@ -599,6 +642,8 @@
 
 
 (deftest time-test
+  (testing "time?"
+    (is (type/time? #fhir/time"13:53:21")))
   (testing "from XML"
     (is (= #fhir/time"13:53:21" (type/xml->Time (sexp [nil {:value "13:53:21"}])))))
   (testing "type"
@@ -606,9 +651,9 @@
   (testing "value is a System.Time which is a LocalTime"
     (is (= (LocalTime/of 13 53 21) (type/value #fhir/time"13:53:21"))))
   (testing "to-json"
-    (is (= "13:53:21" (type/to-json #fhir/time"13:53:21"))))
+    (is (= "\"13:53:21\"" (json/generate-string #fhir/time"13:53:21"))))
   (testing "to-xml"
-    (is (= (sexp  [nil {:value "13:53:21"}])
+    (is (= (sexp [nil {:value "13:53:21"}])
            (type/to-xml #fhir/time"13:53:21"))))
   (testing "equals"
     (is (= #fhir/time"13:53:21" #fhir/time"13:53:21")))
@@ -638,6 +683,8 @@
 
 
 (deftest code-test
+  (testing "code?"
+    (is (type/code? #fhir/code"")))
   (testing "from XML"
     (is (= #fhir/code"code-150725"
            (type/xml->Code (sexp [nil {:value "code-150725"}])))))
@@ -647,13 +694,18 @@
     (is (= "code-123745" (type/value #fhir/code"code-123745")))
     (is (= "other" (type/value (type/->ExtendedCode nil [] "other")))))
   (testing "to-json"
-    (is (= "code-123745" (type/to-json #fhir/code"code-123745"))))
+    (are [code json] (= json (json/generate-string code))
+      #fhir/code"code-123745" "\"code-123745\""
+      extended-gender-code "\"other\""))
   (testing "to-xml"
     (is (= (sexp [nil {:value "code-123745"}])
            (type/to-xml #fhir/code"code-123745")))
     (is (= extended-gender-code-element (type/to-xml extended-gender-code))))
   (testing "equals"
     (is (= #fhir/code"175726" #fhir/code"175726")))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/code"175726" "9c96c20f"))
   (testing "print"
     (is (= "#fhir/code\"175718\"" (pr-str #fhir/code"175718"))))
   (testing "instance size"
@@ -662,6 +714,8 @@
 
 
 (deftest oid-test
+  (testing "oid?"
+    (is (type/oid? #fhir/oid"")))
   (testing "from XML"
     (is (= #fhir/oid"oid-150725"
            (type/xml->Oid (sexp [nil {:value "oid-150725"}])))))
@@ -670,12 +724,15 @@
   (testing "value is a System.String which is a String"
     (is (= "oid-123745" (type/value #fhir/oid"oid-123745"))))
   (testing "to-json"
-    (is (= "oid-123745" (type/to-json #fhir/oid"oid-123745"))))
+    (is (= "\"oid-123745\"" (json/generate-string #fhir/oid"oid-123745"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "oid-123745"}])
            (type/to-xml #fhir/oid"oid-123745"))))
   (testing "equals"
     (is (= #fhir/oid"175726" #fhir/oid"175726")))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/oid"175726" "a73ea817"))
   (testing "print"
     (is (= "#fhir/oid\"175718\"" (pr-str #fhir/oid"175718"))))
   (testing "instance size"
@@ -685,6 +742,8 @@
 
 
 (deftest id-test
+  (testing "id?"
+    (is (type/id? #fhir/id"")))
   (testing "from XML"
     (is (= #fhir/id"id-150725"
            (type/xml->Id (sexp [nil {:value "id-150725"}])))))
@@ -693,12 +752,15 @@
   (testing "value is a System.String which is a String"
     (is (= "id-123745" (type/value #fhir/id"id-123745"))))
   (testing "to-json"
-    (is (= "id-123745" (type/to-json #fhir/id"id-123745"))))
+    (is (= "\"id-123745\"" (json/generate-string #fhir/id"id-123745"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "id-123745"}])
            (type/to-xml #fhir/id"id-123745"))))
   (testing "equals"
     (is (= #fhir/id"175726" #fhir/id"175726")))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/id"175726" "e56cbac6"))
   (testing "print"
     (is (= "#fhir/id\"175718\"" (pr-str #fhir/id"175718"))))
   (testing "instance size"
@@ -707,6 +769,8 @@
 
 
 (deftest markdown-test
+  (testing "markdown?"
+    (is (type/markdown? #fhir/markdown"")))
   (testing "from XML"
     (is (= #fhir/markdown"markdown-150725"
            (type/xml->Markdown (sexp [nil {:value "markdown-150725"}])))))
@@ -715,12 +779,16 @@
   (testing "value is a System.String which is a String"
     (is (= "markdown-123745" (type/value #fhir/markdown"markdown-123745"))))
   (testing "to-json"
-    (is (= "markdown-123745" (type/to-json #fhir/markdown"markdown-123745"))))
+    (is (= "\"markdown-123745\""
+           (json/generate-string #fhir/markdown"markdown-123745"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "markdown-123745"}])
            (type/to-xml #fhir/markdown"markdown-123745"))))
   (testing "equals"
     (is (= #fhir/markdown"175726" #fhir/markdown"175726")))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/markdown"175726" "444928f7"))
   (testing "print"
     (is (= "#fhir/markdown\"175718\"" (pr-str #fhir/markdown"175718"))))
   (testing "instance size"
@@ -729,6 +797,8 @@
 
 
 (deftest unsignedInt-test
+  (testing "unsignedInt?"
+    (is (type/unsignedInt? #fhir/unsignedInt 0)))
   (testing "from XML"
     (is (= #fhir/unsignedInt 150725
            (type/xml->UnsignedInt (sexp [nil {:value "150725"}])))))
@@ -738,12 +808,15 @@
     (is (= 160845 (type/value #fhir/unsignedInt 160845)))
     (is (instance? Integer (type/value #fhir/unsignedInt 160845))))
   (testing "to-json"
-    (is (= 160845 (type/to-json #fhir/unsignedInt 160845))))
+    (is (= "160845" (json/generate-string #fhir/unsignedInt 160845))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "160845"}])
            (type/to-xml #fhir/unsignedInt 160845))))
   (testing "equals"
     (is (= #fhir/unsignedInt 160845 #fhir/unsignedInt 160845)))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/unsignedInt 160845 "10a52aa2"))
   (testing "print"
     (is (= "#fhir/unsignedInt 160845" (pr-str #fhir/unsignedInt 160845))))
   (testing "instance size"
@@ -752,6 +825,8 @@
 
 
 (deftest positiveInt-test
+  (testing "positiveInt?"
+    (is (type/positiveInt? #fhir/positiveInt 0)))
   (testing "from XML"
     (is (= #fhir/positiveInt 150725
            (type/xml->PositiveInt (sexp [nil {:value "150725"}])))))
@@ -761,12 +836,15 @@
     (is (= 160845 (type/value #fhir/positiveInt 160845)))
     (is (instance? Integer (type/value #fhir/positiveInt 160845))))
   (testing "to-json"
-    (is (= 160845 (type/to-json #fhir/positiveInt 160845))))
+    (is (= "160845" (json/generate-string #fhir/positiveInt 160845))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "160845"}])
            (type/to-xml #fhir/positiveInt 160845))))
   (testing "equals"
     (is (= #fhir/positiveInt 160845 #fhir/positiveInt 160845)))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/positiveInt 160845 "8c218d7d"))
   (testing "print"
     (is (= "#fhir/positiveInt 160845" (pr-str #fhir/positiveInt 160845))))
   (testing "instance size"
@@ -775,6 +853,8 @@
 
 
 (deftest uuid-test
+  (testing "uuid?"
+    (is (type/uuid? #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))
   (testing "from XML"
     (is (= #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
            (type/xml->Uuid (sexp [nil {:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"}])))))
@@ -784,14 +864,17 @@
     (is (= "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
            (type/value #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
   (testing "to-json"
-    (is (= "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
-           (type/to-json #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
+    (is (= "\"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3\""
+           (json/generate-string #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"}])
            (type/to-xml #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
   (testing "equals"
     (is (= #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
            #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "f894ff2b"))
   (testing "instance size"
     (is (= 32 (total-size #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))))
 
@@ -803,6 +886,8 @@
 
 
 (deftest xhtml-test
+  (testing "xhtml?"
+    (is (type/xhtml? #fhir/xhtml"xhtml-123745")))
   (testing "from XML"
     (is (= #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"
            (type/xml->Xhtml xhtml-element))))
@@ -811,11 +896,14 @@
   (testing "value is a System.String which is a String"
     (is (= "xhtml-123745" (type/value #fhir/xhtml"xhtml-123745"))))
   (testing "to-json"
-    (is (= "xhtml-123745" (type/to-json #fhir/xhtml"xhtml-123745"))))
+    (is (= "\"xhtml-123745\"" (json/generate-string #fhir/xhtml"xhtml-123745"))))
   (testing "to-xml"
     (is (= xhtml-element (type/to-xml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))
   (testing "equals"
     (is (= #fhir/xhtml"175726" #fhir/xhtml"175726")))
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/xhtml"175726" "e90ddf05"))
   (testing "print"
     (is (= "#fhir/xhtml\"175718\"" (pr-str #fhir/xhtml"175718"))))
   (testing "instance size"

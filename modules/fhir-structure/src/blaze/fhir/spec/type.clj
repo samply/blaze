@@ -2,6 +2,7 @@
   (:require
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
+    [cheshire.generate :as json-gen]
     [clojure.alpha.spec :as s2]
     [clojure.data.xml :as xml]
     [clojure.data.xml.node :as xml-node]
@@ -16,8 +17,9 @@
      Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
      ZoneOffset]
     [java.time.format DateTimeFormatter DateTimeParseException]
-    [java.util List Map UUID])
-  (:refer-clojure :exclude [decimal? string? type uri?]))
+    [java.util List Map UUID]
+    [com.fasterxml.jackson.core JsonGenerator])
+  (:refer-clojure :exclude [decimal? string? type uri? uuid?]))
 
 
 (set! *warn-on-reflection* true)
@@ -40,10 +42,6 @@
   (p/-value x))
 
 
-(defn to-json [x]
-  (p/-to-json x))
-
-
 (defn to-xml [x]
   (p/-to-xml x))
 
@@ -60,7 +58,6 @@
   nil
   (-type [_])
   (-value [_])
-  (-to-json [_])
   (-to-xml [_])
   (-hash-into [_ _]))
 
@@ -81,7 +78,6 @@
   Boolean
   (-type [_] :fhir/boolean)
   (-value [b] b)
-  (-to-json [b] b)
   (-to-xml [b] (xml-node/element nil {:value (str b)}))
   (-hash-into [b sink]
     (.putByte ^PrimitiveSink sink (byte 0))                 ; :fhir/boolean
@@ -102,7 +98,6 @@
   Integer
   (-type [_] :fhir/integer)
   (-value [i] i)
-  (-to-json [i] i)
   (-to-xml [i] (xml-node/element nil {:value (str i)}))
   (-hash-into [i sink]
     (.putByte ^PrimitiveSink sink (byte 1))                 ; :fhir/integer
@@ -123,7 +118,6 @@
   Long
   (-type [_] :fhir/long)
   (-value [i] i)
-  (-to-json [i] i)
   (-to-xml [i] (xml-node/element nil {:value (str i)}))
   (-hash-into [i sink]
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :fhir/long
@@ -144,7 +138,6 @@
   String
   (-type [_] :fhir/string)
   (-value [s] s)
-  (-to-json [s] s)
   (-to-xml [s] (xml-node/element nil {:value (str s)}))
   (-hash-into [s sink]
     (.putByte ^PrimitiveSink sink (byte 3))                 ; :fhir/string
@@ -169,7 +162,6 @@
   BigDecimal
   (-type [_] :fhir/decimal)
   (-value [d] d)
-  (-to-json [d] d)
   (-to-xml [d] (xml-node/element nil {:value (str d)}))
   (-hash-into [d sink]
     (.putByte ^PrimitiveSink sink (byte 4))                 ; :fhir/decimal
@@ -194,12 +186,12 @@
   p/FhirType
   (-type [_] :fhir/uri)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 5))                 ; :fhir/uri
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+
   Object
   (equals [_ x]
     (and (instance? Uri x) (= value (.value ^Uri x))))
@@ -207,6 +199,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(extend-protocol json-gen/JSONable
+  Uri
+  (to-json [uri jg]
+    (.writeString ^JsonGenerator jg ^String (.value uri))))
 
 
 (defmethod print-method Uri [^Uri uri ^Writer w]
@@ -232,12 +230,12 @@
   p/FhirType
   (-type [_] :fhir/url)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 6))                 ; :fhir/url
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+
   Object
   (equals [_ x]
     (and (instance? Url x) (= value (.value ^Url x))))
@@ -245,6 +243,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(extend-protocol json-gen/JSONable
+  Url
+  (to-json [url jg]
+    (.writeString ^JsonGenerator jg ^String (.value url))))
 
 
 (defmethod print-method Url [^Url url ^Writer w]
@@ -270,12 +274,12 @@
   p/FhirType
   (-type [_] :fhir/canonical)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 7))                 ; :fhir/canonical
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+
   Object
   (equals [_ x]
     (and (instance? Canonical x) (= value (.value ^Canonical x))))
@@ -283,6 +287,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(extend-protocol json-gen/JSONable
+  Canonical
+  (to-json [canonical jg]
+    (.writeString ^JsonGenerator jg ^String (.value canonical))))
 
 
 (defmethod print-method Canonical [^Canonical canonical ^Writer w]
@@ -308,12 +318,12 @@
   p/FhirType
   (-type [_] :fhir/base64Binary)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 8))                 ; :fhir/base64Binary
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+
   Object
   (equals [_ x]
     (and (instance? Base64Binary x) (= value (.value ^Base64Binary x))))
@@ -321,6 +331,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(extend-protocol json-gen/JSONable
+  Base64Binary
+  (to-json [base64-binary jg]
+    (.writeString ^JsonGenerator jg ^String (.value base64-binary))))
 
 
 (defn xml->Base64Binary
@@ -336,17 +352,22 @@
 
 ;; ---- instant ---------------------------------------------------------------
 
+
+(defn- format-offset-date-time [date-time]
+  (.format DateTimeFormatter/ISO_DATE_TIME date-time))
+
+
 ;; Implementation of a FHIR instant with a variable ZoneOffset.
 (deftype OffsetInstant [^OffsetDateTime value]
   p/FhirType
   (-type [_] :fhir/instant)
   (-value [_] value)
-  (-to-json [_] (p/-to-json value))
-  (-to-xml [_] (xml-node/element nil {:value (p/-to-json value)}))
+  (-to-xml [_] (xml-node/element nil {:value (format-offset-date-time value)}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+
   Object
   (equals [_ x]
     (and (instance? OffsetInstant x) (= value (.value ^OffsetInstant x))))
@@ -356,16 +377,27 @@
     (str value)))
 
 
+(extend-protocol json-gen/JSONable
+  OffsetInstant
+  (to-json [instant jg]
+    (json-gen/to-json (.value instant) jg)))
+
+
 (extend-protocol p/FhirType
   Instant
   (-type [_] :fhir/instant)
   (-value [instant] (.atOffset instant ZoneOffset/UTC))
-  (-to-json [instant] (str instant))
   (-to-xml [instant] (xml-node/element nil {:value (str instant)}))
   (-hash-into [instant sink]
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into (p/-value instant) sink)))
+
+
+(extend-protocol json-gen/JSONable
+  Instant
+  (to-json [instant jg]
+    (.writeString ^JsonGenerator jg (str instant))))
 
 
 (defn ->Instant [s]
@@ -392,30 +424,43 @@
   Year
   (-type [_] :fhir/date)
   (-value [date] date)
-  (-to-json [date] (str date))
   (-to-xml [date] (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
+
   YearMonth
   (-type [_] :fhir/date)
   (-value [date] date)
-  (-to-json [date] (str date))
   (-to-xml [date] (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
+
   LocalDate
   (-type [_] :fhir/date)
   (-value [date] date)
-  (-to-json [date] (str date))
   (-to-xml [date] (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink)))
+
+
+(extend-protocol json-gen/JSONable
+  Year
+  (to-json [year jg]
+    (.writeString ^JsonGenerator jg (str year)))
+
+  YearMonth
+  (to-json [year-month jg]
+    (.writeString ^JsonGenerator jg (str year-month)))
+
+  LocalDate
+  (to-json [date jg]
+    (.writeString ^JsonGenerator jg (str date))))
 
 
 (defn ->Date [value]
@@ -453,25 +498,24 @@
   DateTimeYear
   (-type [_] :fhir/dateTime)
   (-value [year] year)
-  (-to-json [year] (str year))
   (-to-xml [year] (xml-node/element nil {:value (str year)}))
   (-hash-into [year sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into year sink))
+
   DateTimeYearMonth
   (-type [_] :fhir/dateTime)
   (-value [year-month] year-month)
-  (-to-json [year-month] (str year-month))
   (-to-xml [year-month] (xml-node/element nil {:value (str year-month)}))
   (-hash-into [year-month sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into year-month sink))
+
   DateTimeYearMonthDay
   (-type [_] :fhir/dateTime)
   (-value [year-month-day] year-month-day)
-  (-to-json [year-month-day] (str year-month-day))
   (-to-xml [year-month-day] (xml-node/element nil {:value (str year-month-day)}))
   (-hash-into [year-month-day sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
@@ -479,32 +523,60 @@
     (system/-hash-into year-month-day sink)))
 
 
+(extend-protocol json-gen/JSONable
+  DateTimeYear
+  (to-json [year jg]
+    (.writeString ^JsonGenerator jg (str year)))
+
+  DateTimeYearMonth
+  (to-json [year-month jg]
+    (.writeString ^JsonGenerator jg (str year-month)))
+
+  DateTimeYearMonthDay
+  (to-json [year-month-day jg]
+    (.writeString ^JsonGenerator jg (str year-month-day))))
+
+
+(defn- format-local-date-time [date-time]
+  (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time))
+
+
 (extend-protocol p/FhirType
   OffsetDateTime
   (-type [_] :fhir/dateTime)
   (-value [date-time] date-time)
-  (-to-json [date-time] (.format DateTimeFormatter/ISO_DATE_TIME date-time))
-  (-to-xml [date-time] (xml-node/element nil {:value (p/-to-json date-time)}))
+  (-to-xml [date-time]
+    (xml-node/element nil {:value (format-offset-date-time date-time)}))
   (-hash-into [date-time sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date-time sink))
+
   LocalDateTime
   (-type [_] :fhir/dateTime)
   (-value [date-time] date-time)
-  (-to-json [date-time] (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time))
-  (-to-xml [date-time] (xml-node/element nil {:value (p/-to-json date-time)}))
+  (-to-xml [date-time]
+    (xml-node/element nil {:value (format-local-date-time date-time)}))
   (-hash-into [date-time sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date-time sink)))
 
 
+(extend-protocol json-gen/JSONable
+  OffsetDateTime
+  (to-json [date-time jg]
+    (.writeString ^JsonGenerator jg ^String (format-offset-date-time date-time)))
+
+  LocalDateTime
+  (to-json [date-time jg]
+    (.writeString ^JsonGenerator jg ^String (format-local-date-time date-time))))
+
+
 (defrecord ExtendedDateTime [id extensions value]
   p/FhirType
   (-type [_] :fhir/dateTime)
   (-value [_] value)
-  (-to-json [_] (str value))
   (-to-xml [_] (xml-node/element* id {:value (str value)} extensions))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
@@ -516,6 +588,12 @@
       (p/-hash-into extensions sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink)))
+
+
+(extend-protocol json-gen/JSONable
+  ExtendedDateTime
+  (to-json [date-time jg]
+    (json-gen/to-json (.value date-time) jg)))
 
 
 (defn ->DateTime
@@ -549,16 +627,25 @@
 
 ;; ---- time ------------------------------------------------------------------
 
+(defn- format-time [time]
+  (.format DateTimeFormatter/ISO_LOCAL_TIME time))
+
+
 (extend-protocol p/FhirType
   LocalTime
   (-type [_] :fhir/time)
   (-value [time] time)
-  (-to-json [time] (.format DateTimeFormatter/ISO_LOCAL_TIME time))
-  (-to-xml [time] (xml-node/element nil {:value (p/-to-json time)}))
+  (-to-xml [time] (xml-node/element nil {:value (format-time time)}))
   (-hash-into [time sink]
     (.putByte ^PrimitiveSink sink (byte 12))                ; :fhir/time
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into time sink)))
+
+
+(extend-protocol json-gen/JSONable
+  LocalTime
+  (to-json [time jg]
+    (.writeString ^JsonGenerator jg ^String (format-time time))))
 
 
 (defn ->Time [s]
@@ -582,7 +669,6 @@
   p/FhirType
   (-type [_] :fhir/code)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 13))                ; :fhir/code
@@ -597,6 +683,12 @@
     value))
 
 
+(extend-protocol json-gen/JSONable
+  Code
+  (to-json [code jg]
+    (.writeString ^JsonGenerator jg ^String (.value code))))
+
+
 (defmethod print-method Code [code ^Writer w]
   (.write w "#fhir/code\"")
   (.write w ^String (p/-value code))
@@ -607,7 +699,6 @@
   p/FhirType
   (-type [_] :fhir/code)
   (-value [_] value)
-  (-to-json [_] (str value))
   (-to-xml [_] (xml-node/element* nil {:value value} extensions))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 13))                ; :fhir/code
@@ -619,6 +710,12 @@
       (p/-hash-into extensions sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink)))
+
+
+(extend-protocol json-gen/JSONable
+  ExtendedCode
+  (to-json [code jg]
+    (.writeString ^JsonGenerator jg ^String (.value code))))
 
 
 (defn xml->Code
@@ -641,7 +738,6 @@
   p/FhirType
   (-type [_] :fhir/oid)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 14))                ; :fhir/oid
@@ -654,6 +750,12 @@
     (.hashCode value))
   (toString [_]
     value))
+
+
+(extend-protocol json-gen/JSONable
+  Oid
+  (to-json [oid jg]
+    (.writeString ^JsonGenerator jg ^String (.value oid))))
 
 
 (defmethod print-method Oid [id ^Writer w]
@@ -679,7 +781,6 @@
   p/FhirType
   (-type [_] :fhir/id)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 15))                ; :fhir/id
@@ -692,6 +793,12 @@
     (.hashCode value))
   (toString [_]
     value))
+
+
+(extend-protocol json-gen/JSONable
+  Id
+  (to-json [id jg]
+    (.writeString ^JsonGenerator jg ^String (.value id))))
 
 
 (defmethod print-method Id [id ^Writer w]
@@ -717,7 +824,6 @@
   p/FhirType
   (-type [_] :fhir/markdown)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 16))                ; :fhir/markdown
@@ -730,6 +836,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(extend-protocol json-gen/JSONable
+  Markdown
+  (to-json [markdown jg]
+    (.writeString ^JsonGenerator jg ^String (.value markdown))))
 
 
 (defmethod print-method Markdown [markdown ^Writer w]
@@ -755,7 +867,6 @@
   p/FhirType
   (-type [_] :fhir/unsignedInt)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value (Integer/toString value)}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 17))                ; :fhir/unsignedInt
@@ -770,16 +881,21 @@
     (Integer/toString value)))
 
 
-(defmethod print-method UnsignedInt [unsignedInt ^Writer w]
+(extend-protocol json-gen/JSONable
+  UnsignedInt
+  (to-json [unsigned-int jg]
+    (.writeNumber ^JsonGenerator jg ^int (.-value unsigned-int))))
+
+
+(defmethod print-method UnsignedInt [unsigned-int ^Writer w]
   (.write w "#fhir/unsignedInt ")
-  (.write w (str unsignedInt)))
+  (.write w (str unsigned-int)))
 
 
 (defrecord ExtendedUnsignedInt [id extensions ^int value]
   p/FhirType
   (-type [_] :fhir/unsignedInt)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element* nil {:value (Integer/toString value)} extensions))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 17))                ; :fhir/unsignedInt
@@ -812,7 +928,6 @@
   p/FhirType
   (-type [_] :fhir/positiveInt)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value (Integer/toString value)}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 18))                ; :fhir/positiveInt
@@ -827,16 +942,21 @@
     (Integer/toString value)))
 
 
-(defmethod print-method PositiveInt [positiveInt ^Writer w]
+(extend-protocol json-gen/JSONable
+  PositiveInt
+  (to-json [positive-int jg]
+    (.writeNumber ^JsonGenerator jg ^int (.-value positive-int))))
+
+
+(defmethod print-method PositiveInt [positive-int ^Writer w]
   (.write w "#fhir/positiveInt ")
-  (.write w (str positiveInt)))
+  (.write w (str positive-int)))
 
 
 (defrecord ExtendedPositiveInt [id extensions ^int value]
   p/FhirType
   (-type [_] :fhir/positiveInt)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element* nil {:value (Integer/toString value)} extensions))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 18))                ; :fhir/positiveInt
@@ -869,13 +989,18 @@
   UUID
   (-type [_] :fhir/uuid)
   (-value [uuid] (str "urn:uuid:" uuid))
-  (-to-json [uuid] (str "urn:uuid:" uuid))
   (-to-xml [uuid] (xml-node/element nil {:value (str "urn:uuid:" uuid)}))
   (-hash-into [uuid sink]
     (.putByte ^PrimitiveSink sink (byte 19))                ; :fhir/uuid
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (.putLong ^PrimitiveSink sink (.getMostSignificantBits uuid))
     (.putLong ^PrimitiveSink sink (.getLeastSignificantBits uuid))))
+
+
+(extend-protocol json-gen/JSONable
+  UUID
+  (to-json [uuid jg]
+    (.writeString ^JsonGenerator jg (str "urn:uuid:" uuid))))
 
 
 (defn ->Uuid [s]
@@ -888,6 +1013,10 @@
   (->Uuid value))
 
 
+(defn uuid? [x]
+  (clojure.core/uuid? x))
+
+
 
 ;; ---- xhtml -----------------------------------------------------------------
 
@@ -895,7 +1024,6 @@
   p/FhirType
   (-type [_] :fhir/xhtml)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (update (xml/parse-str value) :attrs assoc :xmlns "http://www.w3.org/1999/xhtml"))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 20))                ; :fhir/xhtml
@@ -908,6 +1036,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(extend-protocol json-gen/JSONable
+  Xhtml
+  (to-json [xhtml jg]
+    (.writeString ^JsonGenerator jg ^String (.value xhtml))))
 
 
 (defmethod print-method Xhtml [xhtml ^Writer w]
