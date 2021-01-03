@@ -9,6 +9,10 @@
   (s/and string? #(re-matches #"[A-Z]([A-Za-z0-9_]){0,254}" %)))
 
 
+(s/def :fhir.resource/type
+  :fhir.type/name)
+
+
 (s/def :fhir/type
   (s/and
     keyword?

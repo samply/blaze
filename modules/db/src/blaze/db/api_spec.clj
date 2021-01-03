@@ -151,7 +151,7 @@
 
 (s/fdef d/query-clauses
   :args (s/cat :query :blaze.db/query)
-  :ret (s/coll-of :blaze.db.query/clause))
+  :ret (s/nilable (s/coll-of :blaze.db.query/clause)))
 
 
 

@@ -47,7 +47,7 @@
       (.get mem x))))
 
 
-(def tid
+(def ^{:arglists '([type])} tid
   "Internal type identifier.
 
   Returns an integer."

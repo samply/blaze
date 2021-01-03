@@ -6,10 +6,8 @@
     [blaze.executors :refer [executor?]]
     [blaze.interaction.transaction :as transaction]
     [blaze.middleware.fhir.metrics-spec]
-    [clojure.spec.alpha :as s]
-    [ring.core.spec]))
+    [clojure.spec.alpha :as s]))
 
 
 (s/fdef transaction/handler
-  :args (s/cat :node :blaze.db/node :executor executor?)
-  :ret :ring/handler)
+  :args (s/cat :node :blaze.db/node :executor executor?))

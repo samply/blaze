@@ -8,6 +8,9 @@
     [taoensso.timbre :as log]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (log/with-level :trace (f))
