@@ -64,7 +64,8 @@
       (spq/resource-keys! context c-hash tid prefix-length value start-id)))
 
   (-matches? [_ context resource-handle _ values]
-    (some #(spq/matches? context c-hash resource-handle prefix-length %) values))
+    (some? (some #(spq/matches? context c-hash resource-handle prefix-length %)
+                 values)))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

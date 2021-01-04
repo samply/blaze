@@ -39,8 +39,8 @@
   :args (s/cat :context ::context
                :population-expression-name string?
                :stratum-expression-name string?)
-  :ret (s/or :strata (s/map-of some? nat-int?)
-             :subject-strata (s/map-of some? (s/coll-of :blaze.resource/id))
+  :ret (s/or :strata (s/map-of any? nat-int?)
+             :subject-strata (s/map-of any? (s/coll-of :blaze.resource/id))
              :anomaly ::anom/anomaly))
 
 

@@ -11,8 +11,9 @@
   [bytes]
   (let [{:keys [category message http-status]} (cheshire/parse-cbor bytes keyword)]
     (cond->
-      {::anom/category (keyword "cognitect.anomalies" category)
-       ::anom/message message}
+      {::anom/category (keyword "cognitect.anomalies" category)}
+      message
+      (assoc ::anom/message message)
       http-status
       (assoc :http/status http-status))))
 

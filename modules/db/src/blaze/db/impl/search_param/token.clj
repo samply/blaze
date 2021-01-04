@@ -187,7 +187,7 @@
 
   (-matches? [_ context resource-handle modifier values]
     (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-      (some #(matches? context c-hash resource-handle %) values)))
+      (some? (some #(matches? context c-hash resource-handle %) values))))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

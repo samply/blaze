@@ -321,7 +321,8 @@
     (compartment-keys context compartment c-hash tid value))
 
   (-matches? [_ context resource-handle _ values]
-    (some #(matches? context c-hash resource-handle codec/v-hash-size %) values))
+    (some? (some #(matches? context c-hash resource-handle codec/v-hash-size %)
+                 values)))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

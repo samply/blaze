@@ -209,7 +209,7 @@
       (resource-keys! context c-hash tid value start-id)))
 
   (-matches? [_ context resource-handle _ values]
-    (some #(matches? context c-hash resource-handle %) values))
+    (some? (some #(matches? context c-hash resource-handle %) values)))
 
   (-index-entries [_ resolver hash resource _]
     (when-ok [values (fhir-path/eval resolver expression resource)]
