@@ -5,9 +5,12 @@
     [blaze.fhir.spec :as fhir-spec]
     [cheshire.core :as json]
     [clojure.data.xml :as xml]
+    [clojure.java.io :as io]
     [clojure.string :as str]
     [prometheus.alpha :as prom]
-    [ring.util.response :as ring]))
+    [ring.util.response :as ring])
+  (:import
+    [java.io ByteArrayOutputStream]))
 
 
 (prom/defhistogram generate-duration-seconds
@@ -18,23 +21,29 @@
 
 
 (defn- generate-json [body]
-  (with-open [_ (prom/timer generate-duration-seconds "json")]
-    (json/generate-string (fhir-spec/unform-json body) {:key-fn name})))
+  (let [out (ByteArrayOutputStream.)]
+    (with-open [_ (prom/timer generate-duration-seconds "json")
+                writer (io/writer out)]
+      (json/generate-stream (fhir-spec/unform-json body) writer {:key-fn name}))
+    (.toByteArray out)))
 
 
 (defn- xml-response?
   [{{:strs [accept]} :headers {format "_format"} :query-params}]
   (let [accept (or format accept)]
     (or (and accept
-           (or (str/starts-with? accept "application/fhir+xml")
-               (str/starts-with? accept "application/xml")
-               (str/starts-with? accept "text/xml")))
+             (or (str/starts-with? accept "application/fhir+xml")
+                 (str/starts-with? accept "application/xml")
+                 (str/starts-with? accept "text/xml")))
         (= "xml" format))))
 
 
 (defn- generate-xml [body]
-  (with-open [_ (prom/timer generate-duration-seconds "xml")]
-    (xml/emit-str (fhir-spec/unform-xml body))))
+  (let [out (ByteArrayOutputStream.)]
+    (with-open [_ (prom/timer generate-duration-seconds "xml")
+                writer (io/writer out)]
+      (xml/emit (fhir-spec/unform-xml body) writer))
+    (.toByteArray out)))
 
 
 (defn handle-response [request {:keys [body] :as response}]
