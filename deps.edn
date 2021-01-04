@@ -2,7 +2,7 @@
 
  :deps
  {aleph/aleph
-  {:mvn/version "0.4.7-alpha1"
+  {:mvn/version "0.4.7-alpha7"
    :exclusions
    [io.netty/netty-codec
     io.netty/netty-resolver
