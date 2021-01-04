@@ -433,6 +433,11 @@
     groups))
 
 
+(defn- evaluate-groups-msg [id subject-type duration]
+  (format "Evaluated Measure with ID `%s` and subject type `%s` in %.0f ms."
+          id subject-type (* duration 1e3)))
+
+
 (defn- evaluate-groups [{:keys [subject-type] :as context} id groups]
   (log/debug (format "Start evaluating Measure with ID `%s`..." id))
   (let [timer (prom/timer evaluate-duration-seconds subject-type)]
@@ -440,9 +445,7 @@
       (evaluate-groups* context groups)
       (finally
         (let [duration (prom/observe-duration! timer)]
-          (log/debug
-            (format "Evaluated Measure with ID `%s` and subject type `%s` in %.0f ms."
-                    id subject-type (* duration 1e3))))))))
+          (log/debug (evaluate-groups-msg id subject-type duration)))))))
 
 
 (defn- canonical [router {:keys [id url version]}]
@@ -495,7 +498,8 @@
                    :subject-type (subject-type measure)
                    :report-type report-type}]
       (when-ok [result (evaluate-groups context id groups)]
-        {:resource
-         (measure-report report-type (canonical router measure) now
-                         start end result)
-         :tx-ops (:tx-ops result)}))))
+        (cond->
+          {:resource (measure-report report-type (canonical router measure) now
+                                     start end result)}
+          (seq (:tx-ops result))
+          (assoc :tx-ops (:tx-ops result)))))))

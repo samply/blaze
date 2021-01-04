@@ -101,7 +101,7 @@
       (resource-handles context tid value)))
 
   (-matches? [_ context resource-handle _ values]
-    (some #(matches? context resource-handle %) values))
+    (some? (some #(matches? context resource-handle %) values)))
 
   (-index-values [_ _ _]
     []))

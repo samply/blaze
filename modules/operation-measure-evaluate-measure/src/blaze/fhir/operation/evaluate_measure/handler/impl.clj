@@ -32,7 +32,7 @@
 
 
 (defn- tx-ops [{:keys [tx-ops resource]} id]
-  (conj tx-ops [:create (assoc resource :id id)]))
+  (conj (or tx-ops []) [:create (assoc resource :id id)]))
 
 
 (defn- handle
