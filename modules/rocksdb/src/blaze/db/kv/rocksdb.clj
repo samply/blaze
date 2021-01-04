@@ -157,6 +157,10 @@
 
 
 (defn compact-range
+  "Range compaction of database.
+
+  Note: After the database has been compacted, all data will have been pushed
+  down to the last level containing any data."
   ([store]
    (.compactRange ^RocksDB (.db ^RocksKvStore store)))
   ([^RocksKvStore store column-family change-level target-level]

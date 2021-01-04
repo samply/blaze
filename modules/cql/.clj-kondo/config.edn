@@ -25,7 +25,7 @@
   {:level :error}
 
   :single-key-in
-  {:level :error}}
+  {:level :warning}}
 
  :output
  {:exclude-files ["^test/data_readers.clj"]}
