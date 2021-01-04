@@ -140,4 +140,5 @@
     "-d" "modules/spec"
     "-d" "modules/structure-definition"
     "-d" "modules/terminology-service"
-    "-d" "modules/thread-pool-executor-collector"]}}}
+    "-d" "modules/thread-pool-executor-collector"
+    "--exclude" "org.antlr/antlr4-runtime"]}}}
