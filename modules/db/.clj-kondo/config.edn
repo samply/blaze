@@ -3,12 +3,13 @@
   blaze.anomaly/if-ok clojure.core/let
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def
-  clojure.test.check.properties/for-all clojure.core/let}
+  clojure.test.check.properties/for-all clojure.core/let
+  blaze.db.impl.db/with-open-coll clojure.core/let}
 
  :linters
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in
-  {:level :error}}
+  {:level :warning}}
 
  :skip-comments true}

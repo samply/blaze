@@ -2,7 +2,7 @@
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in
-  {:level :error}
+  {:level :warning}
   :unresolved-namespace
   {:exclude [f xhtml]}
   :redefined-var

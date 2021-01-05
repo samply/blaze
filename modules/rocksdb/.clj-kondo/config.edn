@@ -1,9 +1,7 @@
-{:missing-docstring
- {:level :warning
-  :exclude [".*test$"]}
- :unsorted-required-namespaces
- {:level :error}
- :single-key-in
- {:level :error}
+{:linters
+ {:unsorted-required-namespaces
+  {:level :error}
+  :single-key-in
+  {:level :warning}}
 
  :skip-comments true}

@@ -6,6 +6,6 @@
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in
-  {:level :error}}
+  {:level :warning}}
 
  :skip-comments true}

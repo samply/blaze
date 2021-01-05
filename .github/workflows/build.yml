@@ -34,7 +34,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2020.11.07'
+        version: '2020.12.12'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.3
@@ -93,7 +93,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2020.11.07'
+        version: '2020.12.12'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.3
@@ -139,7 +139,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2020.11.07'
+        version: '2020.12.12'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.3
