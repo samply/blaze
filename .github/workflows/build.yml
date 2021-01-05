@@ -3,19 +3,53 @@ name: Build
 on: push
 
 jobs:
-  lint-only:
+  lint:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Setup clj-kondo
+      uses: DeLaGuardo/setup-clj-kondo@master
+      with:
+        version: '2020.12.12'
+
+    - name: Check out Git repository
+      uses: actions/checkout@v2.3.4
+
+    - name: Lint
+      run: make lint
+
+  test:
+    needs: [ lint ]
+
     strategy:
       matrix:
         module:
-        - anomaly
-        - db-protocols
-        - db-stub
-        - module-base
-        - rocksdb
-        - spec
-        - structure-definition
-        - terminology-service
-        - thread-pool-executor-collector
+        - async
+        - coll
+        - cql
+        - db
+        - db-resource-store
+        - db-resource-store-cassandra
+        - db-tx-log
+        - db-tx-log-kafka
+        - executor
+        - extern-terminology-service
+        - fhir-client
+        - fhir-path
+        - fhir-structure
+        - http-client
+        - interaction
+        - kv
+        - luid
+        - openid-auth
+        - operation-measure-evaluate-measure
+        - rest-api
+        - rest-util
+        - search-param-registry
+
+        java-version:
+        - '11'
+        - '15'
 
     runs-on: ubuntu-20.04
 
@@ -23,18 +57,13 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v1
       with:
-        java-version: '11'
+        java-version: ${{ matrix.java-version }}
         java-package: jdk
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
         tools-deps: '1.10.1.716'
-
-    - name: Setup clj-kondo
-      uses: DeLaGuardo/setup-clj-kondo@master
-      with:
-        version: '2020.12.12'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.3
@@ -46,10 +75,12 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v2.3.4
 
-    - name: Lint
-      run: make -C modules/${{ matrix.module }} lint
+    - name: Test
+      run: make -C modules/${{ matrix.module }} test
 
-  test:
+  test-coverage:
+    needs: [ test ]
+
     strategy:
       matrix:
         module:
@@ -90,11 +121,6 @@ jobs:
       with:
         tools-deps: '1.10.1.716'
 
-    - name: Setup clj-kondo
-      uses: DeLaGuardo/setup-clj-kondo@master
-      with:
-        version: '2020.12.12'
-
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.3
       with:
@@ -104,12 +130,6 @@ jobs:
 
     - name: Check out Git repository
       uses: actions/checkout@v2.3.4
-
-    - name: Lint
-      run: make -C modules/${{ matrix.module }} lint
-
-    - name: Test
-      run: make -C modules/${{ matrix.module }} test
 
     - name: Test Coverage
       run: make -C modules/${{ matrix.module }} test-coverage
@@ -122,24 +142,27 @@ jobs:
         fail_ci_if_error: true
 
   test-root:
+    needs: [ lint ]
+
+    strategy:
+      matrix:
+        java-version:
+        - '11'
+        - '15'
+
     runs-on: ubuntu-20.04
 
     steps:
     - name: Setup Java
       uses: actions/setup-java@v1
       with:
-        java-version: '11'
+        java-version: ${{ matrix.java-version }}
         java-package: jdk
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
         tools-deps: '1.10.1.716'
-
-    - name: Setup clj-kondo
-      uses: DeLaGuardo/setup-clj-kondo@master
-      with:
-        version: '2020.12.12'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.3
@@ -151,14 +174,11 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v2.3.4
 
-    - name: Lint
-      run: make lint-root
-
     - name: Test
       run: make test-root
 
   build:
-    needs: [ lint-only, test, test-root ]
+    needs: [ test, test-root ]
     runs-on: ubuntu-20.04
 
     steps:
