@@ -20,7 +20,7 @@ cql-test:
 test: cql-test
 	clojure -M:test --profile :ci
 
-test-coverage:
+test-coverage: cql-test
 	clojure -M:test-coverage
 
 clean:
