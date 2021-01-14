@@ -85,7 +85,7 @@
                    :id (random-uuid)
                    :type #fhir/code"searchset"
                    :total (type/->UnsignedInt (count handles))
-                   :entry (take page-size entries)
+                   :entry (subvec entries 0 (min (count entries) page-size))
                    :link [(self-link context clauses t)]}
 
                   (< page-size (count entries))

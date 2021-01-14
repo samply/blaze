@@ -109,7 +109,7 @@
                 {:fhir/type :fhir/Bundle
                  :id (random-uuid)
                  :type #fhir/code"searchset"
-                 :entry (take page-size entries)
+                 :entry (subvec entries 0 (min (count entries) page-size))
                  :link [(self-link context clauses t entries)]}
 
                 total
