@@ -158,12 +158,13 @@
     (->WithRelatedContextRetrieveExpression context-expr data-type)))
 
 
-(defn- unspecified-context-expr [node data-type code-property codes]
+(defn- unfiltered-context-expr [node data-type code-property codes]
   (if (empty? codes)
     (reify core/Expression
       (-eval [_ {:keys [db]} _ _]
         (into [] (d/type-list db data-type))))
-    (let [query (d/compile-type-query node data-type [[code-property codes]])]
+    (let [clauses [(cons code-property (map code->clause-value codes))]
+          query (d/compile-type-query node data-type clauses)]
       (if (::anom/category query)
         (throw (ex-info (::anom/message query) query))
         (reify core/Expression
@@ -186,8 +187,8 @@
     context-expr
     (related-context-expr node context-expr data-type code-property codes)
 
-    (= "Unspecified" eval-context)
-    (unspecified-context-expr node data-type code-property codes)
+    (= "Unfiltered" eval-context)
+    (unfiltered-context-expr node data-type code-property codes)
 
     :else
     (expr* node eval-context data-type code-property codes)))

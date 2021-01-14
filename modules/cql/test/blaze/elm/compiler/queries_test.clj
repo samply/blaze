@@ -133,7 +133,7 @@
                      :source
                      [{:alias "P"
                        :expression retrieve}]}]
-          (given (core/-eval (c/compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)
+          (given (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil)
             [0 fhir-spec/fhir-type] := :fhir/Patient
             [0 :id] := "0"))
 
@@ -142,14 +142,14 @@
                      [{:alias "P"
                        :expression retrieve}]
                      :where where}]
-          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil))))
+          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil))))
 
         (let [query {:type "Query"
                      :source
                      [{:alias "P"
                        :expression retrieve}]
                      :return {:expression return}}]
-          (is (nil? (first (core/-eval (c/compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)))))
+          (is (nil? (first (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil)))))
 
         (let [query {:type "Query"
                      :source
@@ -157,7 +157,7 @@
                        :expression retrieve}]
                      :where where
                      :return {:expression return}}]
-          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil))))))))
+          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil))))))))
 
 
 ;; 10.3. AliasRef
@@ -195,7 +195,7 @@
                  :life/scopes #{"O1"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context
-          {:node node :life/single-query-scope "O0" :eval-context "Unspecified"}
+          {:node node :life/single-query-scope "O0" :eval-context "Unfiltered"}
           xform-factory (queries/compile-with-equiv-clause compile-context elm)
           eval-context {:db (d/db node)}
           xform (queries/-create xform-factory eval-context nil)
@@ -226,7 +226,7 @@
                  :life/scopes #{"O"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context
-          {:node node :life/single-query-scope "P" :eval-context "Unspecified"}
+          {:node node :life/single-query-scope "P" :eval-context "Unfiltered"}
           xform-factory (queries/compile-with-equiv-clause compile-context elm)
           eval-context {:db (d/db node)}
           xform (queries/-create xform-factory eval-context nil)

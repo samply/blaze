@@ -144,7 +144,8 @@
     "q18-specimen-bmi" 1
     "q24" 1
     "q28-relationship-procedure-condition" 1
-    "q33-incompatible-quantities" 1)
+    "q33-incompatible-quantities" 1
+    "q34-medication" 1)
 
   (with-redefs [luid (take-from! (new-ids))]
     (let [result (evaluate "q1" "subject-list")]
@@ -300,5 +301,5 @@
 
 (comment
   (log/set-level! :trace)
-  (evaluate "q33-incompatible-quantities")
+  (evaluate "q34-medication")
   )

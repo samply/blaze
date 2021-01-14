@@ -1,6 +1,6 @@
 using FHIR version '4.0.0'
 
-context Unspecified
+context Unfiltered
 
 define OnePlusOne: 1 + 1
 define OnePointOnePlusOnePointOne: 1.1 + 1.1
