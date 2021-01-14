@@ -84,7 +84,7 @@
 
 
 (def ^:private root-config
-  {:blaze/version "0.10.3"
+  {:blaze/version "0.11.0-alpha.1"
 
    :blaze/structure-definition {}
 
