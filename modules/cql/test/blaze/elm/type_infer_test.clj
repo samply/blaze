@@ -60,7 +60,7 @@
 
 ;; 9.2. ExpressionRef
 (deftest infer-types-expression-ref-test
-  (testing "Pointing from Unspecified Context into Patient Context"
+  (testing "Pointing from Unfiltered Context into Patient Context"
     (given-infer-types-with-context
       {:library
        {:statements
@@ -68,18 +68,18 @@
          [{:name "MalePatient"
            :context "Patient"
            :expression {}}]}}
-       :eval-context "Unspecified"}
+       :eval-context "Unfiltered"}
       {:type "ExpressionRef" :name "MalePatient"}
       :life/eval-context := "Patient"))
 
-  (testing "Pointing from Unspecified Context into Unspecified Context"
+  (testing "Pointing from Unfiltered Context into Unfiltered Context"
     (given-infer-types-with-context
       {:library
        {:statements
         {:def
          [{:name "MalePatients"
-           :context "Unspecified"
+           :context "Unfiltered"
            :expression {}}]}}
-       :eval-context "Unspecified"}
+       :eval-context "Unfiltered"}
       {:type "ExpressionRef" :name "MalePatients"}
-      :life/eval-context := "Unspecified")))
+      :life/eval-context := "Unfiltered")))

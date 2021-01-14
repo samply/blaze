@@ -20,7 +20,7 @@ define Qualifies:
   exists([Specimen: "Gesundes Gewebe"]) and
   (exists([Specimen: "Serum"]) or exists([Specimen: "Vollblut-EDTA"]))
 
-context Unspecified
+context Unfiltered
 
 define NumberOfPatients:
   Count(Qualifies Q where Q return all Q)

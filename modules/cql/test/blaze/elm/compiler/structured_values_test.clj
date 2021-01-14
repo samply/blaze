@@ -388,7 +388,7 @@
 
     (testing "Tuple"
       (are [elm result]
-        (= result (core/-eval (c/compile {:eval-context "Unspecified"} elm) {} nil nil))
+        (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
         {:resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
          :path "id"
          :type "Property"
@@ -408,7 +408,7 @@
     (testing "Quantity"
       (testing "value"
         (are [elm result]
-          (= result (core/-eval (c/compile {:eval-context "Unspecified"} elm) {} nil nil))
+          (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
           {:resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
            :path "value"
            :type "Property"
@@ -417,7 +417,7 @@
 
       (testing "unit"
         (are [elm result]
-          (= result (core/-eval (c/compile {:eval-context "Unspecified"} elm) {} nil nil))
+          (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
           {:resultTypeName "{urn:hl7-org:elm-types:r1}String"
            :path "unit"
            :type "Property"
@@ -426,7 +426,7 @@
 
     (testing "nil"
       (are [elm result]
-        (= result (core/-eval (c/compile {:eval-context "Unspecified"} elm) {} nil nil))
+        (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
         {:path "value"
          :type "Property"
          :source {:type "Null"}}

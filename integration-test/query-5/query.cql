@@ -14,7 +14,7 @@ define Qualifies:
   exists([Condition: "Speicheldrüsenkrebs"]) or
   exists([Condition: "Thrombotische Mikroangiopathie"])
 
-context Unspecified
+context Unfiltered
 
 define NumberOfPatients:
   Count(Qualifies Q where Q return all Q)

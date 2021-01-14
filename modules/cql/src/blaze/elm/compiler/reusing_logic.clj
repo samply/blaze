@@ -47,9 +47,9 @@
   (when name
     (if-let [def (find-expression-def library name)]
       (cond
-        (and (= "Unspecified" eval-context) (not= "Unspecified" def-eval-context))
+        (and (= "Unfiltered" eval-context) (not= "Unfiltered" def-eval-context))
         ;; The referenced expression has a concrete context but we are in the
-        ;; Unspecified context. So we map the referenced expression over all
+        ;; Unfiltered context. So we map the referenced expression over all
         ;; concrete resources.
         (reify core/Expression
           (-eval [_ {:keys [db library-context] :as context} _ _]
