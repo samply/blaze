@@ -20,7 +20,6 @@
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
     [cheshire.core :as cheshire]
-    [cheshire.generate :refer [JSONable]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [java-time :as jt]
@@ -30,8 +29,7 @@
     [java.io Closeable]
     [java.time Clock Instant]
     [java.util.concurrent
-     ArrayBlockingQueue BlockingQueue ExecutorService TimeUnit]
-    [com.fasterxml.jackson.core JsonGenerator]))
+     ArrayBlockingQueue BlockingQueue ExecutorService TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -44,12 +42,6 @@
    :name "tx_log_duration_seconds"}
   (take 16 (iterate #(* 2 %) 0.00001))
   "op")
-
-
-(extend-protocol JSONable
-  Instant
-  (to-json [instant jg]
-    (.writeNumber ^JsonGenerator jg (.toEpochMilli instant))))
 
 
 (defn- parse-cbor [value t]
@@ -90,7 +82,7 @@
 
 (defn encode-tx-data [instant tx-cmds]
   (cheshire/generate-cbor
-    {:instant instant
+    {:instant (.toEpochMilli ^Instant instant)
      :tx-cmds tx-cmds}))
 
 
