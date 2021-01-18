@@ -12,7 +12,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 ## State
 
-Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please report any issues you encounter during evaluation.
+Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please refer to the [Conformance](docs/conformance.md) section and report any issues you encounter during evaluation.
 
 Latest release: [v0.11.0-alpha.2][5]
 
