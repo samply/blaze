@@ -4,6 +4,10 @@ Blaze implements the [RESTful FHIR API](https://www.hl7.org/fhir/http.html) and 
 
 A current CapabilityStatement can be fetched from [https://blaze.life.uni-leipzig.de/fhir/metadata](https://blaze.life.uni-leipzig.de/fhir/metadata)
 
+## CQL
+
+The state of the implementation of CQL can be found [here](conformance/cql.md).
+
 ## Conformance Tests
 
 ### Touchstone
