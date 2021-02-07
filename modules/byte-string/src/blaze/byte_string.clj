@@ -1,10 +1,10 @@
 (ns blaze.byte-string
-  (:require
-    [cheshire.generate :refer [JSONable]])
   (:import
     [com.google.common.io BaseEncoding]
     [com.google.protobuf ByteString]
     [com.fasterxml.jackson.core JsonGenerator]
+    [com.fasterxml.jackson.databind.module SimpleModule]
+    [com.fasterxml.jackson.databind.ser.std StdSerializer]
     [java.io Writer]
     [java.nio ByteBuffer]
     [java.nio.charset Charset])
@@ -114,10 +114,15 @@
   (.asReadOnlyByteBuffer ^ByteString bs))
 
 
-(extend-protocol JSONable
-  ByteString
-  (to-json [byte-string jg]
-    (.writeBinary ^JsonGenerator jg (.toByteArray byte-string))))
+(def ^:private serializer
+  (proxy [StdSerializer] [ByteString]
+    (serialize [^ByteString bs ^JsonGenerator gen _]
+      (.writeBinary gen (.toByteArray bs)))))
+
+
+(def object-mapper-module
+  (doto (SimpleModule. "ByteString")
+    (.addSerializer ByteString serializer)))
 
 
 (defmethod print-method ByteString [^ByteString bs ^Writer w]

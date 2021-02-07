@@ -11,6 +11,7 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [clj-fuzzy.phonetics :as phonetics]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]

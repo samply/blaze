@@ -2,6 +2,7 @@
   (:require
     [blaze.byte-string :as bs]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 

@@ -23,7 +23,7 @@
     [blaze.db.search-param-registry.spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.executors :as ex]
-    [blaze.fhir.spec.type :refer [->Id]]
+    [blaze.fhir.spec.type :as type]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -31,7 +31,8 @@
     [integrant.core :as ig]
     [java-time :as jt]
     [prometheus.alpha :as prom :refer [defhistogram]]
-    [taoensso.timbre :as log])
+    [taoensso.timbre :as log]
+    )
   (:import
     [java.io Closeable]
     [java.util.concurrent TimeUnit ExecutorService CompletableFuture]))
@@ -180,8 +181,8 @@
 
 
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
-  (-> (or meta {:fhir/type :fhir/Meta})
-      (assoc :versionId (->Id (str t)))
+  (-> (or meta (type/map->Meta {}))
+      (assoc :versionId (type/->Id (str t)))
       (assoc :lastUpdated instant)))
 
 
@@ -283,6 +284,15 @@
   (-pull-content [_ resource-handle]
     (-> (rs/get resource-store (:hash resource-handle))
         (ac/then-apply #(with-meta % (meta resource-handle)))))
+
+  (-pull-many [_ resource-handles]
+    (-> (rs/multi-get resource-store (mapv :hash resource-handles))
+        (ac/then-apply
+          (fn [resources]
+            (mapv
+              (fn [{:keys [hash] :as resource-handle}]
+                (enhance-resource kv-store resource-handle (get resources hash)))
+              resource-handles)))))
 
   Runnable
   (run [node]

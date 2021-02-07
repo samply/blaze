@@ -17,6 +17,8 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
@@ -50,20 +52,19 @@
 (deftest index-condition-resource
   (let [resource {:fhir/type :fhir/Condition :id "id-204446"
                   :code
-                  {:fhir/type :fhir/CodeableConcept
-                   :coding
-                   [{:fhir/type :fhir/Coding
-                     :system #fhir/uri"system-204435"
-                     :code #fhir/code"code-204441"}]}
+                  (type/map->CodeableConcept
+                    {:coding
+                     [(type/map->Coding
+                        {:system #fhir/uri"system-204435"
+                         :code #fhir/code"code-204441"})]})
                   :onset #fhir/dateTime"2020-01-30"
                   :subject
-                  {:fhir/type :fhir/Reference
-                   :reference "Patient/id-145552"}
+                  (type/map->Reference
+                    {:reference "Patient/id-145552"})
                   :meta
-                  {:fhir/type :fhir/Meta
-                   :versionId #fhir/id"1"
-                   :profile
-                   [#fhir/canonical"url-164445"]}}
+                  (type/map->Meta
+                    {:versionId #fhir/id"1"
+                     :profile [#fhir/canonical"url-164445"]})}
         hash (hash/generate resource)
         rl (reify
              rs/ResourceLookup
@@ -75,7 +76,7 @@
     @(ri/index-resources i [hash])
 
     (testing "SearchParamValueResource index"
-      (is (every? #{["Condition" "id-204446" #blaze/byte-string"7EF16FC6"]}
+      (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
                   (sp-vr-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -103,7 +104,7 @@
               ["_id" (codec/v-hash "id-204446")]])))
 
     (testing "ResourceSearchParamValue index"
-      (is (every? #{["Condition" "id-204446" #blaze/byte-string"7EF16FC6"]}
+      (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
                   (r-sp-v-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
@@ -136,7 +137,7 @@
 
     (testing "CompartmentSearchParamValueResource index"
       (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"
-                     #blaze/byte-string"7EF16FC6"]}
+                     #blaze/byte-string"4AB29C7B"]}
                   (c-sp-vr-tu/decode-index-entries
                     kv-store :compartment :type :id :hash-prefix)))
       (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -168,26 +169,26 @@
   (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                   :status #fhir/code"status-193613"
                   :category
-                  [{:fhir/type :fhir/CodeableConcept
-                    :coding
-                    [{:fhir/type :fhir/Coding
-                      :system #fhir/uri"system-193558"
-                      :code #fhir/code"code-193603"}]}]
+                  [(type/map->CodeableConcept
+                     {:coding
+                      [(type/map->Coding
+                         {:system #fhir/uri"system-193558"
+                          :code #fhir/code"code-193603"})]})]
                   :code
-                  {:fhir/type :fhir/CodeableConcept
-                   :coding
-                   [{:fhir/type :fhir/Coding
-                     :system #fhir/uri"system-193821"
-                     :code #fhir/code"code-193824"}]}
+                  (type/map->CodeableConcept
+                    {:coding
+                     [(type/map->Coding
+                        {:system #fhir/uri"system-193821"
+                         :code #fhir/code"code-193824"})]})
                   :subject
-                  {:fhir/type :fhir/Reference
-                   :reference "Patient/id-180857"}
+                  (type/map->Reference
+                    {:reference "Patient/id-180857"})
                   :effective #fhir/dateTime"2005-06-17"
                   :value
-                  {:fhir/type :fhir/Quantity
-                   :code #fhir/code"kg/m2"
+                  (type/map->Quantity
+                    {:code #fhir/code"kg/m2"
                    :system #fhir/uri"http://unitsofmeasure.org"
-                   :value 23.42M}}
+                   :value 23.42M})}
         hash (hash/generate resource)
         rl (reify
              rs/ResourceLookup
@@ -199,7 +200,7 @@
     @(ri/index-resources i [hash])
 
     (testing "SearchParamValueResource index"
-      (is (every? #{["Observation" "id-192702" #blaze/byte-string"7EFFE8CC"]}
+      (is (every? #{["Observation" "id-192702" #blaze/byte-string"651D1F37"]}
                   (sp-vr-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)

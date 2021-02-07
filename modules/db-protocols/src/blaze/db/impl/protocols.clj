@@ -88,4 +88,6 @@
 (defprotocol Pull
   (-pull [pull resource-handle])
 
-  (-pull-content [pull resource-handle]))
+  (-pull-content [pull resource-handle])
+
+  (-pull-many [pull resource-handles]))

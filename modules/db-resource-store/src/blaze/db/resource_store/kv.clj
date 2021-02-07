@@ -7,7 +7,6 @@
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]
     [blaze.fhir.spec :as fhir-spec]
-    [cheshire.core :as cheshire]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -15,17 +14,17 @@
 
 
 (defn- parse-msg [hash e]
-  (format "Error while parsing resource content with hash `%s`: %s" hash
-          (ex-message e)))
+  (format "Error while parsing resource content with hash `%s`: %s"
+          (bs/hex hash) (ex-message e)))
 
 
 (defn- parse-anom [hash e]
   (ex-anom #::anom{:category ::anom/fault :message (parse-msg hash e)}))
 
 
-(defn- parse-cbor [bytes hash]
+(defn- conform-cbor [bytes hash]
   (try
-    (cheshire/parse-cbor bytes keyword)
+    (fhir-spec/conform-cbor (fhir-spec/parse-cbor bytes))
     (catch Exception e
       (throw (parse-anom hash e)))))
 
@@ -33,13 +32,14 @@
 (def ^:private entry-thawer
   (map
     (fn [[k v]]
-      [(bs/from-byte-array k) (fhir-spec/conform-cbor (parse-cbor v hash))])))
+      (let [hash (bs/from-byte-array k)]
+        [hash (conform-cbor v hash)]))))
 
 
 (def ^:private entry-freezer
   (map
     (fn [[k v]]
-      [(bs/to-byte-array k) (cheshire/generate-cbor (fhir-spec/unform-cbor v))])))
+      [(bs/to-byte-array k) (fhir-spec/unform-cbor v)])))
 
 
 (defn- get-content [kv-store hash]
@@ -55,8 +55,7 @@
   (-get [_ hash]
     (ac/supply
       (some-> (get-content kv-store hash)
-              (parse-cbor hash)
-              (fhir-spec/conform-cbor))))
+              (conform-cbor hash))))
 
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")

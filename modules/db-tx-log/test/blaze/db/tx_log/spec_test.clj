@@ -2,10 +2,14 @@
   (:require
     [blaze.db.tx-log.spec]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest]]
     [taoensso.timbre :as log]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]

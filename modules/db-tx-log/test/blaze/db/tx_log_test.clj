@@ -3,12 +3,16 @@
     [blaze.async.comp :as ac]
     [blaze.db.tx-log :as tx-log]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [is deftest]]
     [java-time :as jt])
   (:import
     [java.time Instant]
     [java.io Closeable]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]

@@ -11,6 +11,7 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -123,9 +124,9 @@
       (let [patient {:fhir/type :fhir/Encounter
                      :id "id-160224"
                      :period
-                     {:fhir/type :fhir/Period
-                      :start #fhir/dateTime"2019-11-17T00:14:29+01:00"
-                      :end #fhir/dateTime"2019-11-17T00:44:29+01:00"}}
+                     (type/map->Period
+                       {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"
+                        :end #fhir/dateTime"2019-11-17T00:44:29+01:00"})}
             hash (hash/generate patient)
             [[_ k0]]
             (search-param/index-entries
@@ -151,8 +152,8 @@
         (let [patient {:fhir/type :fhir/Encounter
                        :id "id-160224"
                        :period
-                       {:fhir/type :fhir/Period
-                        :end #fhir/dateTime"2019-11-17"}}
+                       (type/map->Period
+                         {:end #fhir/dateTime"2019-11-17"})}
               hash (hash/generate patient)
               [[_ k0]]
               (search-param/index-entries
@@ -174,8 +175,8 @@
         (let [patient {:fhir/type :fhir/Encounter
                        :id "id-160224"
                        :period
-                       {:fhir/type :fhir/Period
-                        :start #fhir/dateTime"2019-11-17T00:14:29+01:00"}}
+                       (type/map->Period
+                         {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"})}
               hash (hash/generate patient)
               [[_ k0]]
               (search-param/index-entries

@@ -7,9 +7,6 @@
   blaze/byte-string
   {:local/root "../byte-string"}
 
-  cheshire/cheshire
-  {:mvn/version "5.10.0"}
-
   clojure.java-time/clojure.java-time
   {:mvn/version "0.3.2"}
 
@@ -34,9 +31,15 @@
   funcool/cuerdas
   {:mvn/version "2020.03.26-3"}
 
+  metosin/jsonista
+  {:mvn/version "0.3.1"}
+
+  com.fasterxml.jackson.datatype/jackson-datatype-joda
+  {:mvn/version "2.12.0"}
+
   org.clojure/alpha.spec
-  {:git/url "https://github.com/clojure/spec-alpha2.git"
-   :sha "cd07a40c4ee720614a18429da4b09a6c5d8fe979"}
+  {:git/url "https://github.com/alexanderkiel/spec-alpha2.git"
+   :sha "032c6a59c4c519c95e9234173f00bf48470a812d"}
 
   org.clojure/data.xml
   {:mvn/version "0.2.0-alpha6"}}
@@ -68,8 +71,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
+   {cloverage/cloverage
+    {:mvn/version "1.2.2"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

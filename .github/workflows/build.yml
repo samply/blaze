@@ -10,7 +10,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2021.02.13'
+        version: '2021.02.28'
 
     - name: Check out Git repository
       uses: actions/checkout@v2.3.4
@@ -199,9 +199,9 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         push: true
-        tags: ghcr.io/samply/blaze:latest
+        tags: ghcr.io/samply/blaze:${{ github.sha }}
 
-  load-test:
+  integration-test:
     needs: build
     runs-on: ubuntu-20.04
 
@@ -214,19 +214,48 @@ jobs:
         password: ${{ secrets.CR_PAT }}
 
     - name: Pull Docker Image
-      run: docker pull ghcr.io/samply/blaze:latest
+      run: docker pull ghcr.io/samply/blaze:${{ github.sha }}
 
     - name: Run Blaze
-      run: docker run --name blaze --rm -d -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:latest
+      run: docker run --name blaze --rm -d -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:${{ github.sha }}
 
     - name: Sleep
-      run: sleep 30
+      run: sleep 40
 
     - name: Docker Logs
       run: docker logs blaze
 
-    - name: Fetch Capability Statement
-      run: curl -s http://localhost:8080/fhir/metadata | jq .software
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: 11
+
+    - name: Generate Data
+      run: .github/scripts/generate-data.sh
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Load Data
+      run: .github/scripts/load-data.sh
+
+    - name: Download Patient Resources
+      run: .github/scripts/download-resources.sh Patient 394200
+
+    - name: Download Observation Resources
+      run: .github/scripts/download-resources.sh Observation 39094679
+
+    - name: Download Condition Resources
+      run: .github/scripts/download-resources.sh Condition 1568473
+
+    - name: Download DiagnosticReport Resources
+      run: .github/scripts/download-resources.sh DiagnosticReport 22373528
 
     - name: Docker Stop
       run: docker stop blaze

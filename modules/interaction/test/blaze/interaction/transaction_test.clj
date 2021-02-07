@@ -749,8 +749,8 @@
                  :resource
                  {:fhir/type :fhir/Observation :id "0"
                   :subject
-                  {:fhir/type :fhir/Reference
-                   :reference "Patient/0"}}
+                  (type/map->Reference
+                    {:reference "Patient/0"})}
                  :request
                  {:fhir/type :fhir.Bundle.entry/request
                   :method #fhir/code"POST"
@@ -1084,8 +1084,8 @@
                    :resource
                    {:fhir/type :fhir/Observation
                     :subject
-                    {:fhir/type :fhir/Reference
-                     :reference "Patient/0"}}
+                    (type/map->Reference
+                      {:reference "Patient/0"})}
                    :request
                    {:fhir/type :fhir.Bundle.entry/request
                     :method #fhir/code"POST"

@@ -1,6 +1,7 @@
 (ns blaze.db.tx-log.local-test
   (:require
     [blaze.async.comp :as ac]
+    [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
@@ -10,15 +11,17 @@
     [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
-    [cheshire.core :as cheshire]
+    [blaze.fhir.hash-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
     [java-time :as jt]
+    [jsonista.core :as j]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.io Closeable]
     [java.time Clock Instant ZoneId]))
 
@@ -34,6 +37,13 @@
 
 
 (test/use-fixtures :each fixture)
+
+
+(def ^:private cbor-object-mapper
+  (j/object-mapper
+    {:factory (CBORFactory.)
+     :decode-key-fn true
+     :modules [bs/object-mapper-module]}))
 
 
 (def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
@@ -76,6 +86,10 @@
 
 (deftest init-test
   (is (s/valid? :blaze.db/tx-log (tx-log (new-mem-kv-store)))))
+
+
+(defn- write-cbor [x]
+  (j/write-value-as-bytes x cbor-object-mapper))
 
 
 (deftest tx-log-test
@@ -190,7 +204,7 @@
 
     (testing "with invalid instant value"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put! kv-store (byte-array Long/BYTES) (cheshire/generate-cbor {:instant ""}))
+        (kv/put! kv-store (byte-array Long/BYTES) (write-cbor {:instant ""}))
 
         (let [tx-log (new-local-tx-log kv-store clock executor)]
 
@@ -200,7 +214,7 @@
 
     (testing "with invalid tx-cmd value"
       (let [kv-store (new-mem-kv-store)]
-        (kv/put! kv-store (byte-array Long/BYTES) (cheshire/generate-cbor {:tx-cmds [{}]}))
+        (kv/put! kv-store (byte-array Long/BYTES) (write-cbor {:tx-cmds [{}]}))
 
         (let [tx-log (new-local-tx-log kv-store clock executor)]
 

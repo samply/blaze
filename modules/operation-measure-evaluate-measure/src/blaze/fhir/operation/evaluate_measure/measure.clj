@@ -149,8 +149,7 @@
        (fn [subject-id]
          {:fhir/type :fhir.List/entry
           :item
-          {:fhir/type :fhir/Reference
-           :reference (str subject-type "/" subject-id)}})
+          (type/map->Reference {:reference (str subject-type "/" subject-id)})})
        result)}]])
 
 
@@ -171,8 +170,7 @@
          {:fhir/type fhir-type
           :count (count result)
           :subjectResults
-          {:fhir/type :fhir/Reference
-           :reference (str "List/" list-id)}}
+          (type/map->Reference {:reference (str "List/" list-id)})}
          code
          (assoc :code code))
        :tx-ops
@@ -208,8 +206,7 @@
 
 
 (defn- value-concept [value]
-  {:fhir/type :fhir/CodeableConcept
-   :text (str (if (nil? value) "null" value))})
+  (type/map->CodeableConcept {:text (str (if (nil? value) "null" value))}))
 
 
 (defn- stratum* [population value]
@@ -476,10 +473,9 @@
      :measure (type/->Canonical measure-ref)
      :date now
      :period
-     ;; TODO: find a way to transform directly without using strings
-     {:fhir/type :fhir/Period
-      :start (type/->DateTime (str start))
-      :end (type/->DateTime (str end))}}
+     (type/map->Period
+       {:start (type/->DateTime (str start))
+        :end (type/->DateTime (str end))})}
 
     (seq (:result result))
     (assoc :group (:result result))))

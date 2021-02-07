@@ -4,5 +4,5 @@
  {blaze/module-base
   {:local/root "../module-base"}
 
-  cheshire/cheshire
-  {:mvn/version "5.10.0"}}}
+  metosin/jsonista
+  {:mvn/version "0.3.1"}}}

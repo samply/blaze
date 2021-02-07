@@ -1,6 +1,7 @@
 (ns blaze.fhir.spec.impl
   (:require
     [blaze.anomaly :refer [throw-anom]]
+    [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.util :as u]
     [clojure.alpha.spec :as s]
@@ -11,11 +12,14 @@
   (:import
     [java.net URLEncoder]
     [java.nio.charset StandardCharsets]
-    [clojure.data.xml.node Element]))
+    [clojure.data.xml.node Element]
+    [com.github.benmanes.caffeine.cache Caffeine CacheLoader LoadingCache]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
+
+(set! *warn-on-reflection* true)
 
 (def ^:const fhir-namespace
   (str "xmlns." (URLEncoder/encode "http://hl7.org/fhir" StandardCharsets/UTF_8)))
@@ -297,6 +301,20 @@
         child-spec-defs)))
 
 
+(defn- record-spec-form [class-name child-spec-defs]
+  `(specs/record
+     ~(symbol (str "blaze.fhir.spec.type." class-name))
+     ~(into
+        {}
+        (comp
+          (filter :key)
+          (filter #(nil? (:modifier %)))
+          (map
+            (fn [{:keys [key max]}]
+              [(keyword (name key)) (if (= "1" max) key `(s/coll-of ~key))])))
+        child-spec-defs)))
+
+
 (defn- type-check-form [key]
   `(fn [~'m] (identical? ~key (type/type ~'m))))
 
@@ -306,7 +324,12 @@
     {:key key
      :min (:min elem-def)
      :max (:max elem-def)
-     :spec-form `(s/and ~(type-check-form key) ~(schema-spec-form nil child-spec-defs))}))
+     :spec-form
+     (case path-part
+       ("Extension" "Coding" "CodeableConcept" "Quantity" "Period" "Identifier"
+         "Reference" "Meta")
+       (record-spec-form path-part child-spec-defs)
+       `(s/and ~(type-check-form key) ~(schema-spec-form nil child-spec-defs)))}))
 
 
 (defn- type-annotating-conformer-form [key]
@@ -332,17 +355,23 @@
       m)))
 
 
-(defn- type-suffix [x]
-  (if-let [type (type/type x)]
-    (str/capital (name type))
-    (throw (ex-info (format "Unknown type of `%s`." x) {:x x}))))
+(def ^:private choice-type-key-cache
+  (-> (Caffeine/newBuilder)
+      (.build
+        (reify CacheLoader
+          (load [_ [key type]]
+            (keyword (str (name key) (str/capital (name type)))))))))
+
+
+(defn choice-type-key [key type]
+  (.get ^LoadingCache choice-type-key-cache [key type]))
 
 
 (defn add-choice-type
   "Add the type suffix to the key of a choice typed data element."
   [m key]
   (if-some [v (get m key)]
-    (-> (dissoc m key) (assoc (keyword (str (name key) (type-suffix v))) v))
+    (-> (dissoc m key) (assoc (choice-type-key key (type/type v)) v))
     m))
 
 
@@ -375,16 +404,46 @@
     (type-annotating-conformer-form (spec-key "fhir" parent-path-parts path-part))))
 
 
+(defn- key-map [child-spec-defs]
+  (into
+    {}
+    (comp
+      (remove (comp nil? first))
+      (mapcat
+        (fn [[internal-key child-spec-defs]]
+          (mapv (comp #(vector % internal-key) keyword name :key) child-spec-defs))))
+    (group-by :choice-group child-spec-defs)))
+
+
+(defn- json-object-spec-form [class-name child-spec-defs]
+  `(specs/json-object
+     ~(symbol "blaze.fhir.spec.type" (str "map->" class-name))
+     ~(into
+        {}
+        (comp
+          (filter :key)
+          (filter #(= :json (:modifier %)))
+          (map
+            (fn [{:keys [key max]}]
+              [(keyword (name key)) (if (= "1" max) key `(s/coll-of ~key))])))
+        child-spec-defs)
+     ~(key-map child-spec-defs)))
+
+
 (defn- json-schema-spec-def [kind parent-path-parts path-part elem-def child-spec-defs]
   {:key (spec-key "fhir.json" parent-path-parts path-part)
    :min (:min elem-def)
    :max (:max elem-def)
    :modifier :json
    :spec-form
-   (conj (seq (remap-choice-conformer-forms child-spec-defs))
-         (json-type-conformer-form kind parent-path-parts path-part)
-         (schema-spec-form :json child-spec-defs)
-         `s/and)})
+   (case path-part
+     ("Extension" "Coding" "CodeableConcept" "Quantity" "Period" "Identifier"
+       "Reference" "Meta")
+     (json-object-spec-form path-part child-spec-defs)
+     (conj (seq (remap-choice-conformer-forms child-spec-defs))
+           (json-type-conformer-form kind parent-path-parts path-part)
+           (schema-spec-form :json child-spec-defs)
+           `s/and))})
 
 
 (defn- append-child [old element]
@@ -402,20 +461,24 @@
 
   Builds a map from child tags to either vector of childs or single-valued
   childs."
-  {:arglists '([type element])}
-  [type {:keys [attrs content]}]
+  {:arglists '([element])}
+  [{:keys [attrs content]}]
   (transduce
     ;; remove mixed character content
     (filter element?)
     (completing
       (fn [ret {:keys [tag] :as element}]
         (update ret (keyword (name tag)) append-child element)))
-    (-> (dissoc attrs :xmlns) (assoc :fhir/type type))
+    (dissoc attrs :xmlns)
     content))
 
 
-(defn xml-attrs-form [child-spec-defs]
-  `(select-keys
+(defn select-non-nil-keys [m ks]
+  (into {} (remove (comp nil? val)) (select-keys m ks)))
+
+
+(defn- xml-attrs-form [child-spec-defs]
+  `(select-non-nil-keys
      ~'m
      ~(into
         []
@@ -469,30 +532,71 @@
 
 (defn- xml-schema-spec-form [kind key child-spec-defs]
   (conj (seq (remap-choice-conformer-forms child-spec-defs))
+        `(s/conformer (fn [~'m] (assoc ~'m :fhir/type ~key)) identity)
         (schema-spec-form :xml child-spec-defs)
-        `(s/conformer (fn [~'e] (conform-xml ~key ~'e))
+        `(s/conformer conform-xml
                       ~(xml-unformer kind (keyword (name key)) child-spec-defs))
         `s/and))
 
 
-(defn- xml-schema-spec-def [kind parent-path-parts path-part elem-def child-spec-defs]
+(defn- special-xml-schema-spec-form [kind key child-spec-defs]
+  (let [type-name (name key)
+        constructor-sym (symbol "blaze.fhir.spec.type" (str "map->" type-name))
+        constructor (resolve constructor-sym)]
+    (conj (seq (remap-choice-conformer-forms child-spec-defs))
+          `(s/conformer ~constructor identity)
+          (schema-spec-form :xml child-spec-defs)
+          `(s/conformer conform-xml
+                        ~(xml-unformer kind (keyword type-name) child-spec-defs))
+          `s/and)))
+
+
+(defn- xml-schema-spec-def
+  [kind parent-path-parts path-part elem-def child-spec-defs]
   {:key (spec-key "fhir.xml" parent-path-parts path-part)
    :min (:min elem-def)
    :max (:max elem-def)
    :modifier :xml
-   :spec-form (xml-schema-spec-form kind (spec-key "fhir" parent-path-parts path-part) child-spec-defs)})
+   :spec-form
+   (case path-part
+     ("Extension" "Coding" "CodeableConcept" "Quantity" "Period" "Identifier"
+       "Reference" "Meta")
+     (special-xml-schema-spec-form
+       kind (spec-key "fhir" parent-path-parts path-part) child-spec-defs)
+     (xml-schema-spec-form
+       kind (spec-key "fhir" parent-path-parts path-part) child-spec-defs))})
 
 
-(defn- cbor-schema-spec-def [kind parent-path-parts path-part elem-def child-spec-defs]
+(defn- cbor-object-spec-form [class-name child-spec-defs]
+  `(specs/json-object
+     ~(symbol "blaze.fhir.spec.type" (str "map->" class-name))
+     ~(into
+        {}
+        (comp
+          (filter :key)
+          (filter #(= :cbor (:modifier %)))
+          (map
+            (fn [{:keys [key max]}]
+              [(keyword (name key)) (if (= "1" max) key `(s/coll-of ~key))])))
+        child-spec-defs)
+     ~(key-map child-spec-defs)))
+
+
+(defn- cbor-schema-spec-def
+  [kind parent-path-parts path-part elem-def child-spec-defs]
   {:key (spec-key "fhir.cbor" parent-path-parts path-part)
    :min (:min elem-def)
    :max (:max elem-def)
    :modifier :cbor
    :spec-form
-   (conj (seq (remap-choice-conformer-forms child-spec-defs))
-         (json-type-conformer-form kind parent-path-parts path-part)
-         (schema-spec-form :cbor child-spec-defs)
-         `s/and)})
+   (case path-part
+     ("Extension" "Coding" "CodeableConcept" "Quantity" "Period" "Identifier"
+       "Reference" "Meta")
+     (cbor-object-spec-form path-part child-spec-defs)
+     (conj (seq (remap-choice-conformer-forms child-spec-defs))
+           (json-type-conformer-form kind parent-path-parts path-part)
+           (schema-spec-form :cbor child-spec-defs)
+           `s/and))})
 
 
 (defn- build-spec-defs [kind parent-path-parts indexed-elem-defs]
@@ -539,11 +643,6 @@
   (flatten (build-spec-defs kind [] (index-by-path elem-defs))))
 
 
-(defn- to-predefine-spec-def [{:keys [key] :as spec-def}]
-  (when (#{"fhir" "fhir.json"} (namespace key))
-    [(assoc spec-def :spec-form `any?)]))
-
-
 (defn- internal-spec-form [name]
   (case name
     "boolean" `boolean?
@@ -573,36 +672,32 @@
   (some #(when (str/ends-with? (:path %) "value") (first (:type %))) element))
 
 
-(defn- re-matches-form-json [regex]
-  `(fn [~'s] (re-matches ~regex ~'s)))
-
-
 (defn conform-decimal-json [x]
   (cond (int? x) (BigDecimal/valueOf ^long x) (decimal? x) x :else ::s/invalid))
 
 
 (defn- json-spec-form [name {:keys [element]}]
-  (let [regex (type-regex (value-type element))]
+  (let [pattern (type-regex (value-type element))]
     (case name
       "boolean" `boolean?
       "integer" `(s/and int? (s/conformer int identity))
-      "string" `(s/and string? ~(re-matches-form-json regex))
+      "string" `(specs/regex ~pattern identity)
       "decimal" `(s/conformer conform-decimal-json identity)
-      "uri" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Uri identity))
-      "url" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Url identity))
-      "canonical" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Canonical identity))
-      "base64Binary" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Base64Binary identity))
-      "instant" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Instant identity))
-      "date" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Date identity))
-      "dateTime" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->DateTime identity))
-      "time" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Time identity))
-      "code" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Code identity))
-      "oid" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Oid identity))
-      "id" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Id identity))
-      "markdown" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Markdown identity))
+      "uri" `(specs/regex ~pattern type/->Uri)
+      "url" `(specs/regex ~pattern type/->Url)
+      "canonical" `(specs/regex ~pattern type/->Canonical)
+      "base64Binary" `(specs/regex ~pattern type/->Base64Binary)
+      "instant" `(specs/regex ~pattern type/->Instant)
+      "date" `(specs/regex ~pattern type/->Date)
+      "dateTime" `(specs/regex ~pattern type/->DateTime)
+      "time" `(specs/regex ~pattern type/->Time)
+      "code" `(specs/regex ~pattern type/->Code)
+      "oid" `(specs/regex ~pattern type/->Oid)
+      "id" `(specs/regex ~pattern type/->Id)
+      "markdown" `(specs/regex ~pattern type/->Markdown)
       "unsignedInt" `(s/and int? (s/conformer type/->UnsignedInt identity))
       "positiveInt" `(s/and int? (s/conformer type/->PositiveInt identity))
-      "uuid" `(s/and string? ~(re-matches-form-json regex) (s/conformer type/->Uuid identity))
+      "uuid" `(specs/regex ~pattern type/->Uuid)
       "xhtml" `(s/and string? (s/conformer type/->Xhtml identity))
       (throw (ex-info (format "Unknown primitive type `%s`." name) {})))))
 
@@ -614,7 +709,7 @@
 
 
 (defn set-extension-tag [element]
-  (update element :content (partial map #(assoc % :tag ::f/extension))))
+  (some-> element (update :content (partial map #(assoc % :tag ::f/extension)))))
 
 
 (defn- primitive-xml-form [regex constructor]
@@ -680,11 +775,6 @@
 (register (mapcat primitive-type->spec-defs (u/primitive-types)))
 
 
-;; preregister all complex type specs with any? because there are circles which
-;; cause spec registration to fail
-(register (mapcat to-predefine-spec-def (mapcat struct-def->spec-def (u/complex-types))))
-
-
 ;; register all complex type specs
 (register (mapcat struct-def->spec-def (u/complex-types)))
 
@@ -733,24 +823,20 @@
          (s/multi-spec xml-resource (fn [value _] value))))
 
 
-;; register all resource specs
-(defn register-resources [spec-defs]
-  (register spec-defs)
-  (s/register
-    :fhir/Resource
-    (s/resolve-spec
-      `(s/or
-         ~@(into
-             []
-             (comp
-               (map :key)
-               (filter (comp #{"fhir"} namespace))
-               (mapcat #(vector (keyword (name %)) %)))
-             spec-defs)))))
+(register (mapcat struct-def->spec-def (remove :abstract (u/resources))))
 
 
-(register-resources (mapcat struct-def->spec-def (remove :abstract (u/resources))))
+(defmulti resource (constantly :default))
 
 
-;; should be 32564
+(defmethod resource :default [{:fhir/keys [type]}]
+  (when type
+    (keyword "fhir" (name type))))
+
+
+(s/def :fhir/Resource
+  (s/multi-spec resource :fhir/type))
+
+
+;; should be 32784
 (comment (count (keys (s/registry))))

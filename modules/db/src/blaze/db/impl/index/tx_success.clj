@@ -6,14 +6,14 @@
   is just a monotonically increasing number to a real point in time."
   (:require
     [blaze.db.impl.byte-buffer :as bb]
-    [blaze.db.kv :as kv]
-    [cheshire.core :as cheshire])
+    [blaze.db.impl.index.cbor :as cbor]
+    [blaze.db.kv :as kv])
   (:import
     [java.time Instant]))
 
 
 (defn- decode-tx [bytes t]
-  (let [{:keys [inst]} (cheshire/parse-cbor bytes keyword)]
+  (let [{:keys [inst]} (cbor/read bytes)]
     {:blaze.db/t t
      :blaze.db.tx/instant (Instant/ofEpochMilli inst)}))
 
@@ -48,7 +48,7 @@
 (defn- encode-tx
   "A map is encoded in CBOR format to be able to add additional data later."
   [instant]
-  (cheshire/generate-cbor {:inst (inst-ms instant)}))
+  (cbor/write {:inst (inst-ms instant)}))
 
 
 (defn index-entry [t instant]

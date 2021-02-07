@@ -19,12 +19,22 @@
   :ret boolean?)
 
 
+(s/fdef fhir-spec/parse-json
+  :args (s/cat :source some?))
+
+
 (s/fdef fhir-spec/unform-json
-  :args (s/cat :resource :blaze/resource))
+  :args (s/cat :resource any?)
+  :ret bytes?)
+
+
+(s/fdef fhir-spec/parse-cbor
+  :args (s/cat :source some?))
 
 
 (s/fdef fhir-spec/unform-cbor
-  :args (s/cat :resource :blaze/resource))
+  :args (s/cat :resource any?)
+  :ret bytes?)
 
 
 (s/fdef fhir-spec/unform-xml

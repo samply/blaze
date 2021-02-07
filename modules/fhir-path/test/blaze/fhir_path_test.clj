@@ -4,6 +4,7 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir-path-spec]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -202,8 +203,8 @@
         {:fhir/type :fhir/Specimen
          :id "id-175250"
          :subject
-         {:fhir/type :fhir/Reference
-          :reference "reference-180039"}})
+         (type/map->Reference
+           {:reference "reference-180039"})})
       [0 :reference] := "reference-180039")))
 
 
@@ -428,12 +429,12 @@
         {:fhir/type :fhir/Patient
          :id "id-162953"
          :identifier
-         [{:fhir/type :fhir/Identifier
-           :value "value-163922"}
-          {:fhir/type :fhir/Identifier
-           :value "value-163928"}]})
+         [(type/map->Identifier
+            {:value "value-163922"})
+          (type/map->Identifier
+            {:value "value-163928"})]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "is type specifier with more than one item at the left side `[{:fhir/type :fhir/Identifier, :value \"value-163922\"} {:fhir/type :fhir/Identifier, :value \"value-163928\"}]`")))
+      ::anom/message := "is type specifier with more than one item at the left side `[#blaze.fhir.spec.type.Identifier{:id nil, :extension nil, :use nil, :type nil, :system nil, :value \"value-163922\", :period nil, :assigner nil} #blaze.fhir.spec.type.Identifier{:id nil, :extension nil, :use nil, :type nil, :system nil, :value \"value-163928\", :period nil, :assigner nil}]`")))
 
 
 

@@ -3,11 +3,11 @@
     [blaze.anomaly :refer [when-ok]]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
-    [cheshire.core :as json]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
+    [jsonista.core :as j]
     [taoensso.timbre :as log])
   (:refer-clojure :exclude [get]))
 
@@ -113,11 +113,16 @@
       (clojure.core/get compartment-index (name (fhir-spec/fhir-type resource))))))
 
 
+(def ^:private object-mapper
+  (j/object-mapper
+    {:decode-key-fn true}))
+
+
 (defn- read-bundle
   "Reads a bundle from classpath named `resource-name`."
   [resource-name]
   (with-open [rdr (io/reader (io/resource resource-name))]
-    (json/parse-stream rdr keyword)))
+    (j/read-value rdr object-mapper)))
 
 
 (defn- index-search-param [index {:keys [url] :as sp}]
@@ -131,7 +136,7 @@
 
 (defn- read-compartment-def [name]
   (with-open [rdr (io/reader (io/resource name))]
-    (json/parse-stream rdr keyword)))
+    (j/read-value rdr object-mapper)))
 
 
 (defn- index-compartment-def

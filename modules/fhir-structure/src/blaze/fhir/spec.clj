@@ -7,13 +7,32 @@
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [clojure.walk :as walk])
+    [clojure.walk :as walk]
+    [jsonista.core :as j])
   (:import
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.util.regex Pattern]))
 
 
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
+
+
+(def ^:private json-object-mapper
+  (j/object-mapper
+    {:decode-key-fn true
+     :bigdecimals true
+     :modules [type/fhir-module]}))
+
+
+(defn parse-json
+  "Parses a JSON representation of a resource in `source` into an intermediate
+  representation which can be conformed using `conform-json`.
+
+  Possible `source` types are byte array, File, URL, String, Reader and
+  InputStream."
+  [source]
+  (j/read-value source json-object-mapper))
 
 
 (defn conform-json
@@ -27,6 +46,23 @@
           (when-not (s2/invalid? resource)
             resource))))
     ::s/invalid))
+
+
+(def ^:private cbor-object-mapper
+  (j/object-mapper
+    {:factory (CBORFactory.)
+     :decode-key-fn true
+     :modules [type/fhir-module]}))
+
+
+(defn parse-cbor
+  "Parses a CBOR representation of a resource in `source` into an intermediate
+  representation which can be conformed using `conform-json`.
+
+  Possible `source` types are byte array, File, URL, String, Reader and
+  InputStream."
+  [source]
+  (j/read-value source cbor-object-mapper))
 
 
 (defn conform-cbor
@@ -60,7 +96,7 @@
   [resource]
   (let [key (keyword "fhir.json" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
-      (s2/unform spec resource)
+      (j/write-value-as-bytes (s2/unform spec resource) json-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
 
 
@@ -69,7 +105,7 @@
   [resource]
   (let [key (keyword "fhir.cbor" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
-      (s2/unform spec resource)
+      (j/write-value-as-bytes (s2/unform spec resource) cbor-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
 
 

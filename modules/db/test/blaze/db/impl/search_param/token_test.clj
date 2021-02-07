@@ -11,6 +11,8 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -82,11 +84,11 @@
           {:fhir/type :fhir/Observation
            :id "id-183201"
            :code
-           {:fhir/type :fhir/CodeableConcept
-            :coding
-            [{:fhir/type :fhir/Coding
-              :system #fhir/uri"system-171339"
-              :code #fhir/code"code-171327"}]}}
+           (type/map->CodeableConcept
+             {:coding
+              [(type/map->Coding
+                 {:system #fhir/uri"system-171339"
+                  :code #fhir/code"code-171327"})]})}
           hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries code-param hash observation [])]
@@ -144,10 +146,10 @@
           {:fhir/type :fhir/Observation
            :id "id-183201"
            :code
-           {:fhir/type :fhir/CodeableConcept
-            :coding
-            [{:fhir/type :fhir/Coding
-              :code #fhir/code"code-134035"}]}}
+           (type/map->CodeableConcept
+             {:coding
+              [(type/map->Coding
+                 {:code #fhir/code"code-134035"})]})}
           hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3]]
           (search-param/index-entries code-param hash observation [])]
@@ -189,10 +191,10 @@
           {:fhir/type :fhir/Observation
            :id "id-183201"
            :code
-           {:fhir/type :fhir/CodeableConcept
-            :coding
-            [{:fhir/type :fhir/Coding
-              :system #fhir/uri"system-171339"}]}}
+           (type/map->CodeableConcept
+             {:coding
+              [(type/map->Coding
+                 {:system #fhir/uri"system-171339"})]})}
           hash (hash/generate observation)
           [[_ k0] [_ k1]]
           (search-param/index-entries code-param hash observation [])]
@@ -217,9 +219,9 @@
     (let [patient {:fhir/type :fhir/Patient
                    :id "id-122929"
                    :identifier
-                   [{:fhir/type :fhir/Identifier
-                     :system #fhir/uri"system-123000"
-                     :value "value-123005"}]}
+                   [(type/map->Identifier
+                      {:system #fhir/uri"system-123000"
+                     :value "value-123005"})]}
           hash (hash/generate patient)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
@@ -278,8 +280,8 @@
     (let [patient {:fhir/type :fhir/Patient
                    :id "id-122929"
                    :identifier
-                   [{:fhir/type :fhir/Identifier
-                     :value "value-140132"}]}
+                   [(type/map->Identifier
+                      {:value "value-140132"})]}
           hash (hash/generate patient)
           [[_ k0] [_ k1] [_ k2] [_ k3]]
           (search-param/index-entries
@@ -322,8 +324,8 @@
     (let [patient {:fhir/type :fhir/Patient
                    :id "id-122929"
                    :identifier
-                   [{:fhir/type :fhir/Identifier
-                     :system #fhir/uri"system-140316"}]}
+                   [(type/map->Identifier
+                      {:system #fhir/uri"system-140316"})]}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -431,11 +433,11 @@
                     :collection
                     {:fhir/type :fhir.Specimen/collection
                      :bodySite
-                     {:fhir/type :fhir/CodeableConcept
-                      :coding
-                      [{:fhir/type :fhir/Coding
-                        :system #fhir/uri"system-103824"
-                        :code #fhir/code"code-103812"}]}}}
+                     (type/map->CodeableConcept
+                       {:coding
+                        [(type/map->Coding
+                           {:system #fhir/uri"system-103824"
+                            :code #fhir/code"code-103812"})]})}}
           hash (hash/generate specimen)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
@@ -494,9 +496,9 @@
     (let [specimen {:fhir/type :fhir/Encounter
                     :id "id-105153"
                     :class
-                    {:fhir/type :fhir/Coding
-                     :system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
-                     :code #fhir/code"AMB"}}
+                    (type/map->Coding
+                      {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                       :code #fhir/code"AMB"})}
           hash (hash/generate specimen)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries

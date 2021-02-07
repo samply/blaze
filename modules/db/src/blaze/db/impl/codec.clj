@@ -354,20 +354,22 @@
 
 
 (defn date-lb-ub [lb ub]
-  (-> (bb/allocate (+ 1 (bs/size lb) (bs/size ub)))
-      (bb/put-byte! (bs/size lb))
+  (-> (bb/allocate (+ 2 (bs/size lb) (bs/size ub)))
       (bb/put-byte-string! lb)
+      (bb/put-byte! 0)
       (bb/put-byte-string! ub)
+      (bb/put-byte! (bs/size lb))
       (bb/flip!)
       (bs/from-byte-buffer)))
 
 
 (defn date-lb-ub->lb [lb-ub]
-  (bs/subs lb-ub 1 (inc ^long (bs/nth lb-ub 0))))
+  (bs/subs lb-ub 0 (bs/nth lb-ub (dec (bs/size lb-ub)))))
 
 
 (defn date-lb-ub->ub [lb-ub]
-  (bs/subs lb-ub (inc ^long (bs/nth lb-ub 0)) (bs/size lb-ub)))
+  (let [lb-size-idx (dec (bs/size lb-ub))]
+    (bs/subs lb-ub (inc ^long (bs/nth lb-ub lb-size-idx)) lb-size-idx)))
 
 
 (defn quantity [unit value]

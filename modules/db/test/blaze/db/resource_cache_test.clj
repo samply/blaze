@@ -6,6 +6,7 @@
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store-spec]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [integrant.core :as ig]

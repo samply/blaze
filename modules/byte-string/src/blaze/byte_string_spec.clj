@@ -11,8 +11,14 @@
   :ret boolean?)
 
 
+(s/fdef bs/from-byte-array
+  :args (s/cat :bs bytes?)
+  :ret bs/byte-string?)
+
+
 (s/fdef bs/from-string
-  :args (s/cat :s string? :charset #(instance? Charset %)))
+  :args (s/cat :s string? :charset #(instance? Charset %))
+  :ret bs/byte-string?)
 
 
 (s/fdef bs/<=

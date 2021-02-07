@@ -4,20 +4,17 @@
   (:require
     [buddy.auth.backends :as backends]
     [buddy.core.keys :as keys]
-    [cheshire.core :as json]
-    [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [taoensso.timbre :as log])
-  (:import
-    [java.security PublicKey]))
+    [jsonista.core :as j]
+    [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(s/fdef public-key
-  :args (s/cat :jwks-json string?)
-  :ret (s/nilable #(instance? PublicKey %)))
+(def ^:private object-mapper
+  (j/object-mapper
+    {:decode-key-fn true}))
 
 
 (defn public-key
@@ -25,15 +22,10 @@
    convert it into a PublicKey."
   [jwks-json]
   (some-> jwks-json
-          (json/parse-string keyword)
+          (j/read-value object-mapper)
           :keys
           first
           keys/jwk->public-key))
-
-
-(s/fdef jwks-json
-  :args (s/cat :url string?)
-  :ret map?)
 
 
 (defn jwks-json [url]
@@ -41,7 +33,7 @@
         jwks-json (some-> url
                           (str well-known)
                           slurp
-                          json/parse-string
+                          (j/read-value object-mapper)
                           (get "jwks_uri")
                           slurp)]
     (if (some? jwks-json)

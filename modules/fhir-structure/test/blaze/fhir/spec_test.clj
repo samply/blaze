@@ -13,7 +13,8 @@
     [cuerdas.core :as str]
     [juxt.iota :refer [given]])
   (:import
-    [java.time LocalTime]))
+    [java.time LocalTime Instant]
+    [java.nio.charset StandardCharsets]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -30,6 +31,26 @@
 
 
 (test/use-fixtures :each fixture)
+
+
+(deftest resource-test
+  (testing "valid"
+    (are [x] (s2/valid? :fhir/Resource x)
+      {:fhir/type :fhir/Condition :id "id-204446"
+       :code
+       (type/map->CodeableConcept
+         {:coding
+          [(type/map->Coding
+             {:system #fhir/uri"system-204435"
+              :code #fhir/code"code-204441"})]})
+       :onset #fhir/dateTime"2020-01-30"
+       :subject
+       (type/map->Reference
+         {:reference "Patient/id-145552"})
+       :meta
+       (type/map->Meta
+         {:versionId #fhir/id"1"
+          :profile [#fhir/canonical"url-164445"]})})))
 
 
 (deftest fhir-type-test
@@ -109,7 +130,9 @@
   (testing "empty patient resource"
     (testing "gets type annotated"
       (is (= :fhir/Patient
-             (fhir-spec/fhir-type (fhir-spec/conform-json {:resourceType "Patient"})))))
+             (fhir-spec/fhir-type
+               (fhir-spec/conform-json
+                 {:resourceType "Patient"})))))
 
     (testing "stays the same"
       (is (= {:fhir/type :fhir/Patient}
@@ -117,24 +140,27 @@
 
   (testing "deceasedBoolean on Patient will be remapped"
     (is (= {:fhir/type :fhir/Patient :deceased true}
-           (fhir-spec/conform-json {:resourceType "Patient" :deceasedBoolean true}))))
+           (fhir-spec/conform-json
+             {:resourceType "Patient" :deceasedBoolean true}))))
 
   (testing "deceasedDateTime on Patient will be remapped"
     (is (= {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}
-           (fhir-spec/conform-json {:resourceType "Patient" :deceasedDateTime "2020"}))))
+           (fhir-spec/conform-json
+             {:resourceType "Patient" :deceasedDateTime "2020"}))))
 
   (testing "multipleBirthInteger on Patient will be remapped"
     (is (= {:fhir/type :fhir/Patient :multipleBirth 2}
-           (fhir-spec/conform-json {:resourceType "Patient" :multipleBirthInteger 2}))))
+           (fhir-spec/conform-json
+             {:resourceType "Patient" :multipleBirthInteger 2}))))
 
   (testing "Observation with code"
     (is (= {:fhir/type :fhir/Observation
             :code
-            {:fhir/type :fhir/CodeableConcept
-             :coding
-             [{:fhir/type :fhir/Coding
-               :system #fhir/uri"http://loinc.org"
-               :code #fhir/code"39156-5"}]}}
+            (type/map->CodeableConcept
+              {:coding
+               [(type/map->Coding
+                  {:system #fhir/uri"http://loinc.org"
+                   :code #fhir/code"39156-5"})]})}
            (fhir-spec/conform-json
              {:resourceType "Observation"
               :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}))))
@@ -155,21 +181,6 @@
                 :item
                 [{:type "string"
                   :text "foo"}]}]})))))
-
-
-(deftest conform-cbor-test
-  (testing "nil"
-    (is (s/invalid? (fhir-spec/conform-cbor nil))))
-
-  (testing "string"
-    (is (s/invalid? (fhir-spec/conform-cbor "foo"))))
-
-  (testing "invalid"
-    (is (s/invalid? (fhir-spec/conform-cbor {:resourceType "Patient" :meta ""}))))
-
-  (testing "valid"
-    (is (= {:fhir/type :fhir/Patient}
-           (fhir-spec/conform-cbor {:resourceType "Patient"})))))
 
 
 (defn- conform-xml [sexp]
@@ -208,11 +219,11 @@
   (testing "Observation with code"
     (is (= {:fhir/type :fhir/Observation
             :code
-            {:fhir/type :fhir/CodeableConcept
-             :coding
-             [{:fhir/type :fhir/Coding
-               :system #fhir/uri"http://loinc.org"
-               :code #fhir/code"39156-5"}]}}
+            (type/map->CodeableConcept
+              {:coding
+               [(type/map->Coding
+                  {:system #fhir/uri"http://loinc.org"
+                   :code #fhir/code"39156-5"})]})}
            (conform-xml
              [::f/Observation
               [::f/code
@@ -225,13 +236,13 @@
             :gender
             (type/->ExtendedCode
               nil
-              [{:fhir/type :fhir/Extension
-                :url "http://fhir.de/StructureDefinition/gender-amtlich-de"
-                :value
-                {:fhir/type :fhir/Coding
-                 :system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                 :code #fhir/code"D"
-                 :display "divers"}}]
+              [(type/map->Extension
+                 {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
+                  :value
+                  (type/map->Coding
+                    {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+                     :code #fhir/code"D"
+                     :display "divers"})})]
               "other")}
            (conform-xml
              [:Patient
@@ -269,160 +280,111 @@
   (update entry :resource dissoc :text))
 
 
-(comment
-  (require '[criterium.core :refer [bench quick-bench]])
-
-  (def parsed-json-observation
-    {:category [{:coding [{:code "vital-signs" :system "http://terminology.hl7.org/CodeSystem/observation-category"}]}]
-     :meta {:profile ["https://fhir.bbmri.de/StructureDefinition/Bmi"]}
-     :valueQuantity {:code "kg/m2" :system "http://unitsofmeasure.org" :unit "kg/m2" :value 36.6M}
-     :resourceType "Observation"
-     :effectiveDateTime "2005-06-17"
-     :status "final"
-     :id "0-bmi"
-     :code {:coding [{:code "39156-5" :system "http://loinc.org"}]}
-     :subject {:reference "Patient/0"}})
-
-  (def parsed-xml-observation
-    (fhir-spec/unform-xml (fhir-spec/conform-json parsed-json-observation)))
-
-  (= (fhir-spec/conform-json parsed-json-observation)
-     (fhir-spec/conform-xml parsed-xml-observation))
-
-  ;; 17 µs
-  (quick-bench (fhir-spec/conform-json parsed-json-observation))
-
-  ;; 46 µs
-  (quick-bench (fhir-spec/conform-xml parsed-xml-observation))
-
-  ;; 11 µs
-  (quick-bench
-    (fhir-spec/conform-cbor
-      {:category [{:coding [{:code "vital-signs" :system "http://terminology.hl7.org/CodeSystem/observation-category"}]}]
-       :meta {:profile ["https://fhir.bbmri.de/StructureDefinition/Bmi"]}
-       :valueQuantity {:code "kg/m2" :system "http://unitsofmeasure.org" :unit "kg/m2" :value 36.6M}
-       :resourceType "Observation"
-       :effectiveDateTime "2005-06-17"
-       :status "final"
-       :id "0-bmi"
-       :code {:coding [{:code "39156-5" :system "http://loinc.org"}]}
-       :subject {:reference "Patient/0"}}))
-
-  (require '[cheshire.core :as json]
-           '[cheshire.parse :refer [*use-bigdecimals?*]])
-
-  (def data
-    (json/generate-cbor
-      {:category [{:coding [{:code "vital-signs" :system "http://terminology.hl7.org/CodeSystem/observation-category"}]}]
-       :meta {:profile ["https://fhir.bbmri.de/StructureDefinition/Bmi"]}
-       :valueQuantity {:code "kg/m2" :system "http://unitsofmeasure.org" :unit "kg/m2" :value 36.6M}
-       :resourceType "Observation"
-       :effectiveDateTime "2005-06-17"
-       :status "final"
-       :id "0-bmi"
-       :code {:coding [{:code "39156-5" :system "http://loinc.org"}]}
-       :subject {:reference "Patient/0"}}))
-
-  (quick-bench (json/parse-cbor data keyword))
-
-  ;; 20 µs
-  (quick-bench (fhir-spec/conform-cbor (json/parse-cbor data keyword)))
-
-  (def clementine-json
-    (-> (binding [*use-bigdecimals?* true]
-          (json/parse-string
-            (slurp "/Users/akiel/coding/synthea/output/fhir/Clementine778_Heller342_983b62ad-6da5-460f-8593-e97834178d53.json") keyword))
-        (update :entry (partial mapv remove-narrative))))
-
-
-  (def clementine
-    (fhir-spec/conform-json clementine-json))
-
-  (= (fhir-spec/conform-xml (fhir-spec/unform-xml clementine)) clementine)
-
-  ;; 2.7 s - 2.27 s
-  (st/unstrument)
-  (quick-bench (fhir-spec/unform-xml clementine))
-  (dotimes [_ 10]
-    (fhir-spec/unform-xml clementine))
-
-  (-> clementine :entry first :resource)
-  )
+(defn- unform-json [resource]
+  (String. ^bytes (fhir-spec/unform-json resource) StandardCharsets/UTF_8))
 
 
 (deftest unform-json-test
   (testing "Patient with deceasedBoolean"
-    (let [json {:resourceType "Patient" :deceasedBoolean true}]
-      (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json))))))
+    (are [resource json] (= json (unform-json resource))
+      {:fhir/type :fhir/Patient :deceased true}
+      "{\"deceasedBoolean\":true,\"resourceType\":\"Patient\"}"))
 
   (testing "Patient with deceasedDateTime"
-    (let [json {:resourceType "Patient" :deceasedDateTime "2020"}
-          unformed-json
-          {:resourceType "Patient" :deceasedDateTime #fhir/dateTime"2020"}]
-      (is (= unformed-json (fhir-spec/unform-json (fhir-spec/conform-json json))))))
+    (are [resource json] (= json (unform-json resource))
+      {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}
+      "{\"deceasedDateTime\":\"2020\",\"resourceType\":\"Patient\"}"))
 
   (testing "Patient with multipleBirthBoolean"
-    (let [json {:resourceType "Patient" :multipleBoolean false}]
-      (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json))))))
+    (are [resource json] (= json (unform-json resource))
+      {:fhir/type :fhir/Patient :multipleBirth false}
+      "{\"multipleBirthBoolean\":false,\"resourceType\":\"Patient\"}"))
 
   (testing "Patient with multipleBirthInteger"
-    (let [json {:resourceType "Patient" :multipleBirthInteger 2}]
-      (is (= json (fhir-spec/unform-json {:fhir/type :fhir/Patient :multipleBirth (int 2)})))))
+    (are [resource json] (= json (unform-json resource))
+      {:fhir/type :fhir/Patient :multipleBirth (int 2)}
+      "{\"multipleBirthInteger\":2,\"resourceType\":\"Patient\"}"))
 
   (testing "Bundle with Patient"
-    (let [json {:resourceType "Bundle"
-                :entry
-                [{:resource
-                  {:resourceType "Patient" :id "0"}}]}]
-      (is (= json (fhir-spec/unform-json (fhir-spec/conform-json json))))))
+    (are [resource json] (= json (unform-json resource))
+      {:fhir/type :fhir/Bundle
+       :entry
+       [{:fhir/type :fhir.Bundle/entry
+         :resource {:fhir/type :fhir/Patient :id "0"}}]}
+      "{\"entry\":[{\"resource\":{\"id\":\"0\",\"resourceType\":\"Patient\"}}],\"resourceType\":\"Bundle\"}"))
 
   (testing "Observation with code"
-    (let [json {:resourceType "Observation"
-                :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}
-          unformed-json
-          {:resourceType "Observation"
-           :code
-           {:coding
-            [{:system #fhir/uri"http://loinc.org" :code #fhir/code"39156-5"}]}}]
-      (is (= unformed-json (fhir-spec/unform-json (fhir-spec/conform-json json)))))))
+    (are [resource json] (= json (unform-json resource))
+      {:fhir/type :fhir/Observation
+       :code
+       (type/map->CodeableConcept
+         {:coding
+          [(type/map->Coding
+             {:system #fhir/uri"http://loinc.org"
+              :code #fhir/code"39156-5"})]})}
+      "{\"code\":{\"coding\":[{\"system\":\"http://loinc.org\",\"code\":\"39156-5\"}]},\"resourceType\":\"Observation\"}"))
+
+  (testing "Observation with valueQuantity"
+    (are [resource json] (= json (unform-json resource))
+      {:fhir/type :fhir/Observation
+       :value
+       (type/map->Quantity
+         {:value 36.6M
+          :unit "kg/m^2"
+          :system #fhir/uri"http://unitsofmeasure.org"
+          :code #fhir/code"kg/m2"})}
+      "{\"valueQuantity\":{\"value\":36.6,\"unit\":\"kg/m^2\",\"system\":\"http://unitsofmeasure.org\",\"code\":\"kg/m2\"},\"resourceType\":\"Observation\"}")))
+
+
+(defn- conform-unform-cbor [resource]
+  (-> (fhir-spec/unform-cbor resource)
+      (fhir-spec/parse-cbor)
+      (fhir-spec/conform-cbor)))
 
 
 (deftest unform-cbor-test
   (testing "Patient with deceasedBoolean"
-    (let [cbor {:resourceType "Patient" :deceasedBoolean true}]
-      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+    (are [resource] (= resource (conform-unform-cbor resource))
+      {:fhir/type :fhir/Patient :deceased true}))
 
   (testing "Patient with deceasedDateTime"
-    (let [cbor {:resourceType "Patient" :deceasedDateTime "2020"}
-          unformed-cbor
-          {:resourceType "Patient" :deceasedDateTime #fhir/dateTime"2020"}]
-      (is (= unformed-cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+    (are [resource] (= resource (conform-unform-cbor resource))
+      {:fhir/type :fhir/Patient :deceased #fhir/dateTime"2020"}))
 
   (testing "Patient with multipleBirthBoolean"
-    (let [cbor {:resourceType "Patient" :multipleBoolean false}]
-      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+    (are [resource] (= resource (conform-unform-cbor resource))
+      {:fhir/type :fhir/Patient :multipleBirth false}))
 
   (testing "Patient with multipleBirthInteger"
-    (let [cbor {:resourceType "Patient" :multipleBirthInteger 2}]
-      (is (= cbor (fhir-spec/unform-cbor {:fhir/type :fhir/Patient :multipleBirth (int 2)})))))
+    (are [resource] (= resource (conform-unform-cbor resource))
+      {:fhir/type :fhir/Patient :multipleBirth (int 2)}))
 
   (testing "Bundle with Patient"
-    (let [cbor {:resourceType "Bundle"
-                :entry
-                [{:resource
-                  {:resourceType "Patient" :id "0"}}]}]
-      (is (= cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor))))))
+    (are [resource] (= resource (conform-unform-cbor resource))
+      {:fhir/type :fhir/Bundle
+       :entry
+       [{:fhir/type :fhir.Bundle/entry
+         :resource {:fhir/type :fhir/Patient :id "0"}}]}))
 
   (testing "Observation with code"
-    (let [cbor
-          {:resourceType "Observation"
-           :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}
-          unformed-cbor
-          {:resourceType "Observation"
-           :code
-           {:coding
-            [{:system #fhir/uri"http://loinc.org" :code #fhir/code"39156-5"}]}}]
-      (is (= unformed-cbor (fhir-spec/unform-cbor (fhir-spec/conform-cbor cbor)))))))
+    (are [resource] (= resource (conform-unform-cbor resource))
+      {:fhir/type :fhir/Observation
+       :code
+       (type/map->CodeableConcept
+         {:coding
+          [(type/map->Coding
+             {:system #fhir/uri"http://loinc.org"
+              :code #fhir/code"39156-5"})]})}))
+
+  (testing "Observation with valueQuantity"
+    (are [resource] (= resource (conform-unform-cbor resource))
+      {:fhir/type :fhir/Observation
+       :value
+       (type/map->Quantity
+         {:value 36.6M
+          :unit "kg/m^2"
+          :system #fhir/uri"http://unitsofmeasure.org"
+          :code #fhir/code"kg/m2"})})))
 
 
 (deftest unform-primitives-test
@@ -482,13 +444,13 @@
               :gender
               (type/->ExtendedCode
                 nil
-                [{:fhir/type :fhir/Extension
-                  :url "http://fhir.de/StructureDefinition/gender-amtlich-de"
-                  :value
-                  {:fhir/type :fhir/Coding
-                   :system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                   :code #fhir/code"D"
-                   :display "divers"}}]
+                [(type/map->Extension
+                   {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
+                    :value
+                    (type/map->Coding
+                      {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+                       :code #fhir/code"D"
+                       :display "divers"})})]
                 "other")}))))
 
   (testing "Patient with Narrative"
@@ -522,7 +484,8 @@
 (deftest fhir-type
   (testing "Patient"
     (is (= :fhir/Patient
-           (fhir-spec/fhir-type (fhir-spec/conform-json {:resourceType "Patient"}))))))
+           (fhir-spec/fhir-type
+             (fhir-spec/conform-json {:resourceType "Patient"}))))))
 
 
 (deftest explain-data-json
@@ -545,8 +508,8 @@
       [:fhir/issues 0 :fhir.issues/diagnostics] := "Unknown resource type `<unknown>`."))
 
   (testing "invalid resource"
-    (given (fhir-spec/explain-data-json {:resourceType "Patient"
-                                         :name [{:use "" :text []}]})
+    (given (fhir-spec/explain-data-json
+             {:resourceType "Patient" :name [{:use "" :text []}]})
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
@@ -555,12 +518,12 @@
       [:fhir/issues 1 :fhir.issues/severity] := "error"
       [:fhir/issues 1 :fhir.issues/code] := "invariant"
       [:fhir/issues 1 :fhir.issues/diagnostics] :=
-      "Error on value `[]`. Expected type is `string`."
+      "Error on value `[]`. Expected type is `string`, regex `[ \\r\\n\\t\\S]+`."
       [:fhir/issues 1 :fhir.issues/expression] := "name[0].text"))
 
   (testing "invalid backbone-element"
-    (given (fhir-spec/explain-data-json {:resourceType "Patient"
-                                         :contact ""})
+    (given (fhir-spec/explain-data-json
+             {:resourceType "Patient" :contact ""})
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
@@ -568,8 +531,8 @@
       [:fhir/issues 0 :fhir.issues/expression] := "contact[0]"))
 
   (testing "invalid non-primitive element"
-    (given (fhir-spec/explain-data-json {:resourceType "Patient"
-                                         :name ""})
+    (given (fhir-spec/explain-data-json
+             {:resourceType "Patient" :name ""})
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
@@ -577,8 +540,8 @@
       [:fhir/issues 0 :fhir.issues/expression] := "name[0]"))
 
   (testing "Include namespace part if more than fhir"
-    (given (fhir-spec/explain-data-json {:resourceType "Patient"
-                                         :contact [2]})
+    (given (fhir-spec/explain-data-json
+             {:resourceType "Patient" :contact [2]})
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
@@ -586,8 +549,8 @@
       [:fhir/issues 0 :fhir.issues/expression] := "contact[0]"))
 
   (testing "invalid non-primitive element and wrong type in list"
-    (given (fhir-spec/explain-data-json {:resourceType "Patient"
-                                         :name [1]})
+    (given (fhir-spec/explain-data-json
+             {:resourceType "Patient" :name [1]})
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
@@ -604,8 +567,18 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Error on value `1`. Expected type is `code`."
-      [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource.gender")))
+      "Error on value `1`. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource.gender"))
+
+  (testing "Invalid Coding in Observation"
+    (given (fhir-spec/explain-data-json
+             {:resourceType "Observation"
+              :code {:coding [{:system 1}]}})
+      [:fhir/issues 0 :fhir.issues/severity] := "error"
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] :=
+      "Error on value `1`. Expected type is `uri`, regex `\\S*`."
+      [:fhir/issues 0 :fhir.issues/expression] := "code.coding[0].system")))
 
 
 (deftest explain-data-xml
@@ -674,11 +647,12 @@
     (testing "XML"
       (are [xml fhir] (= fhir (s2/conform :fhir.xml/decimal xml))
         (sexp [nil {:value "1"}]) 1M)))
+
   (testing "unforming"
     (testing "JSON"
-      (are [fhir json] (= json (s2/unform :fhir.json/decimal fhir))
-        0M 0M
-        1M 1M))
+      (are [fhir json] (= json (unform-json fhir))
+        0M "0"
+        1M "1"))
     (testing "XML"
       (are [fhir xml] (= xml (s2/unform :fhir.xml/decimal fhir))
         0M (sexp [nil {:value "0"}])
@@ -688,6 +662,7 @@
 (deftest fhir-base64Binary
   (are [s] (s2/valid? :fhir/base64Binary s)
     #fhir/base64Binary"Zm9vCg==")
+
   (testing "conforming"
     (testing "JSON"
       (are [json fhir] (= fhir (s2/conform :fhir.json/base64Binary json))
@@ -696,7 +671,15 @@
     (testing "XML"
       (are [xml fhir] (= fhir (s2/conform :fhir.xml/base64Binary xml))
         (xml-node/element :foo {:value (str/repeat "a" 40000)})
-        (type/->Base64Binary (str/repeat "a" 40000))))))
+        (type/->Base64Binary (str/repeat "a" 40000)))))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (unform-json fhir))
+        #fhir/base64Binary"Zm9vCg==" "\"Zm9vCg==\""))
+    (testing "XML"
+      (are [fhir xml] (= xml (s2/unform :fhir.xml/decimal fhir))
+        #fhir/base64Binary"Zm9vCg==" (sexp [nil {:value "Zm9vCg=="}])))))
 
 
 (deftest fhir-instant
@@ -708,13 +691,19 @@
     (are [s] (s2/valid? :fhir.json/instant s)
       "2015-02-07T13:28:17.239+02:00"))
 
-  (testing "conforming from JSON to FHIR"
-    (is (= (type/->Instant "2015-02-07T13:28:17.239+02:00")
-           (s2/conform :fhir.json/instant "2015-02-07T13:28:17.239+02:00"))))
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/instant json))
+        "2015-02-07T13:28:17.239+02:00"
+        (type/->Instant "2015-02-07T13:28:17.239+02:00"))))
 
-  (testing "unforming from FHIR to JSON"
-    (let [instant (type/->Instant "2015-02-07T13:28:17.239+02:00")]
-      (is (identical? instant (s2/unform :fhir.json/instant instant))))))
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (unform-json fhir))
+        (type/->Instant "2015-02-07T13:28:17.239+02:00")
+        "\"2015-02-07T13:28:17.239+02:00\""
+        (type/->Instant "2015-02-07T13:28:17.239Z")
+        "\"2015-02-07T13:28:17.239Z\""))))
 
 
 (defn elem [value]
@@ -756,14 +745,16 @@
           "2019-13"
           "2019-02-29"))))
 
-  (testing "unforming from FHIR to JSON"
-    (let [date #fhir/date"2020"]
-      (is (identical? date (s2/unform :fhir.json/date date))))))
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (unform-json fhir))
+        #fhir/date"2020"
+        "\"2020\""))))
 
 
 (def extended-date-time
   (type/->DateTime
-    nil [{:fhir/type :fhir/Extension :url "foo" :value "bar"}] "2020"))
+    nil [(type/map->Extension {:url "foo" :value "bar"})] "2020"))
 
 
 (deftest fhir-dateTime
@@ -808,8 +799,9 @@
 
   (testing "unforming"
     (testing "JSON"
-      (let [date-time #fhir/dateTime"2020"]
-        (is (identical? date-time (s2/unform :fhir.json/dateTime date-time)))))))
+      (are [fhir json] (= json (unform-json fhir))
+        #fhir/dateTime"2020"
+        "\"2020\""))))
 
 
 (def code-element
@@ -825,7 +817,7 @@
 
 (def extended-code
   (type/->ExtendedCode
-    nil [{:fhir/type :fhir/Extension :url "bar" :value "baz"}] "foo"))
+    nil [(type/map->Extension {:url "bar" :value "baz"})] "foo"))
 
 
 (deftest fhir-code
@@ -848,8 +840,9 @@
 
   (testing "unforming"
     (testing "JSON"
-      (let [code #fhir/code"foo"]
-        (is (identical? code (s2/unform :fhir.json/code code)))))
+      (are [fhir json] (= json (unform-json fhir))
+        #fhir/code"foo"
+        "\"foo\""))
     (testing "XML"
       (testing "value only"
         (is (= code-element (s2/unform :fhir.xml/code #fhir/code"foo"))))
@@ -877,9 +870,11 @@
   (testing "conforming from JSON to FHIR"
     (is (= #fhir/id"foo" (s2/conform :fhir.json/id "foo"))))
 
-  (testing "unforming from FHIR to JSON"
-    (let [id #fhir/id"foo"]
-      (is (identical? id (s2/unform :fhir.json/id id))))))
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (unform-json fhir))
+        #fhir/id"foo"
+        "\"foo\""))))
 
 
 (def unsignedInt-element
@@ -895,7 +890,7 @@
 
 (def extended-unsignedInt
   (type/->ExtendedUnsignedInt
-    nil [{:fhir/type :fhir/Extension :url "foo" :value "bar"}] 1))
+    nil [(type/map->Extension {:url "foo" :value "bar"})] 1))
 
 
 (deftest fhir-unsignedInt
@@ -922,8 +917,9 @@
 
   (testing "unforming"
     (testing "JSON"
-      (let [int #fhir/unsignedInt 1]
-        (is (identical? int (s2/unform :fhir.json/unsignedInt int)))))
+      (are [fhir json] (= json (unform-json fhir))
+        #fhir/unsignedInt 1
+        "1"))
     (testing "XML"
       (testing "value only"
         (is (= unsignedInt-element (s2/unform :fhir.xml/unsignedInt #fhir/unsignedInt 1))))
@@ -944,7 +940,7 @@
 
 (def extended-positiveInt
   (type/->ExtendedPositiveInt
-    nil [{:fhir/type :fhir/Extension :url "foo" :value "bar"}] 1))
+    nil [(type/map->Extension {:url "foo" :value "bar"})] 1))
 
 
 (deftest fhir-positiveInt
@@ -971,8 +967,9 @@
 
   (testing "unforming"
     (testing "JSON"
-      (let [int #fhir/positiveInt 1]
-        (is (identical? int (s2/unform :fhir.json/positiveInt int)))))
+      (are [fhir json] (= json (unform-json fhir))
+        #fhir/positiveInt 1
+        "1"))
     (testing "XML"
       (testing "value only"
         (is (= positiveInt-element (s2/unform :fhir.xml/positiveInt #fhir/positiveInt 1))))
@@ -1004,11 +1001,540 @@
 
   (testing "unforming"
     (testing "JSON"
-      (let [xhtml #fhir/xhtml"foo"]
-        (is (identical? xhtml (s2/unform :fhir.json/xhtml xhtml)))))
+      (are [fhir json] (= json (unform-json fhir))
+        #fhir/xhtml"foo"
+        "\"foo\""))
     (testing "XML"
       (is (= xhtml-element
              (s2/unform :fhir.xml/xhtml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))))
+
+
+(deftest extension-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/Extension x)
+        (type/map->Extension {})
+        (type/map->Extension {:value #fhir/code"bar"})
+        (type/map->Extension {:url "foo" :value #fhir/code"bar"})))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Extension x))
+        (type/map->Extension {:url 1}))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Extension json))
+        {:url "foo" :valueCode "bar"}
+        (type/map->Extension {:url "foo" :value #fhir/code"bar"})
+
+        {:url "foo" :valueReference {}}
+        (type/map->Extension {:url "foo" :value (type/map->Reference {})})
+
+        {:url "foo" :valueCodeableConcept {}}
+        (type/map->Extension {:url "foo" :value (type/map->CodeableConcept {})}))))
+
+  (testing "conforming"
+    (testing "CBOR"
+      (are [json fhir] (= fhir (s2/conform :fhir.cbor/Extension json))
+        {:url "foo" :valueCode "bar"}
+        (type/map->Extension {:url "foo" :value #fhir/code"bar"})
+
+        {:url "foo" :valueReference {}}
+        (type/map->Extension {:url "foo" :value (type/map->Reference {})})
+
+        {:url "foo" :valueCodeableConcept {}}
+        (type/map->Extension {:url "foo" :value (type/map->CodeableConcept {})}))))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->Extension {})
+        {}
+
+        (type/map->Extension {:id "id-135149"})
+        {:id "id-135149"}
+
+        (type/map->Extension
+          {:extension
+           [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->Extension
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->Extension
+          {:url "url-135208"})
+        {:url "url-135208"}
+
+        (type/map->Extension
+          {:value #fhir/code"code-135234"})
+        {:valueCode "code-135234"}
+
+        (type/map->Extension
+          {:value (type/map->CodeableConcept {})})
+        {:valueCodeableConcept {}}))
+
+    (testing "CBOR"
+      (are [fhir cbor] (= cbor (fhir-spec/parse-cbor (fhir-spec/unform-cbor fhir)))
+        (type/map->Extension {})
+        {}
+
+        (type/map->Extension {:id "id-135149"})
+        {:id "id-135149"}
+
+        (type/map->Extension
+          {:extension
+           [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->Extension
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->Extension
+          {:url "url-135208"})
+        {:url "url-135208"}
+
+        (type/map->Extension
+          {:value #fhir/code"code-135234"})
+        {:valueCode "code-135234"}
+
+        (type/map->Extension
+          {:value (type/map->CodeableConcept {})})
+        {:valueCodeableConcept {}}
+
+        (type/map->Extension
+          {:value {:fhir/type :fhir/Address}})
+        {:valueAddress {}}
+
+        (type/map->Extension
+          {:value
+           {:fhir/type :fhir/Address
+            :city "foo"}})
+        {:valueAddress {:city "foo"}}))))
+
+
+(deftest coding-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/Coding x)
+        (type/map->Coding {})
+        (type/map->Coding {:system #fhir/uri"foo" :code #fhir/code"bar"})))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Coding x))
+        (type/map->Coding {:system "foo"}))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Coding json))
+        {:system "foo" :code "bar"}
+        (type/map->Coding {:system #fhir/uri"foo" :code #fhir/code"bar"}))))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->Coding {})
+        {}
+
+        (type/map->Coding {:id "id-205424"})
+        {:id "id-205424"}
+
+        (type/map->Coding
+          {:extension
+           [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->Coding
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->Coding
+          {:system #fhir/uri"system-185812"})
+        {:system "system-185812"}
+
+        (type/map->Coding
+          {:version "version-185951"})
+        {:version "version-185951"}
+
+        (type/map->Coding
+          {:code #fhir/code"code-190226"})
+        {:code "code-190226"}
+
+        (type/map->Coding
+          {:display "display-190327"})
+        {:display "display-190327"}))))
+
+
+(deftest codeable-concept-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/CodeableConcept x)
+        (type/map->CodeableConcept {})
+        (type/map->CodeableConcept {:coding []})
+        (type/map->CodeableConcept {:coding [(type/map->Coding {})]})
+        (type/map->CodeableConcept {:text "foo"})))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/CodeableConcept x))
+        (type/map->CodeableConcept {:text 1}))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/CodeableConcept json))
+        {}
+        (type/map->CodeableConcept {})
+        {:coding [{}]}
+        (type/map->CodeableConcept {:coding [(type/map->Coding {})]})
+        {:text "text-223528"}
+        (type/map->CodeableConcept {:text "text-223528"}))))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->CodeableConcept {})
+        {}
+
+        (type/map->CodeableConcept {:id "id-134927"})
+        {:id "id-134927"}
+
+        (type/map->CodeableConcept
+          {:extension
+           [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->CodeableConcept
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->CodeableConcept {:coding [(type/map->Coding {})]})
+        {:coding [{}]}
+
+        (type/map->CodeableConcept {:text "text-223528"})
+        {:text "text-223528"}))))
+
+
+(deftest quantity-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/Quantity x)
+        (type/map->Quantity {})))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Quantity x))
+        (type/map->Quantity {:value "1"}))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Quantity json))
+        {}
+        (type/map->Quantity {})
+
+        {:value 1M}
+        (type/map->Quantity {:value 1M})
+
+        {:value "1"}
+        ::s2/invalid)))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->Quantity {})
+        {}
+
+        (type/map->Quantity {:id "id-134908"})
+        {:id "id-134908"}
+
+        (type/map->Quantity
+          {:extension
+           [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->Quantity
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->Quantity {:value 1M})
+        {:value 1}
+
+        (type/map->Quantity {:comparator #fhir/code"code-153342"})
+        {:comparator "code-153342"}
+
+        (type/map->Quantity {:unit "string-153351"})
+        {:unit "string-153351"}
+
+        (type/map->Quantity {:system #fhir/uri"system-153337"})
+        {:system "system-153337"}
+
+        (type/map->Quantity {:code #fhir/code"code-153427"})
+        {:code "code-153427"}))))
+
+
+(deftest period-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/Period x)
+        (type/map->Period {})
+        (type/map->Period {:start #fhir/dateTime"2020"})))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Period x))
+        (type/map->Period {:start "2020"}))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Period json))
+        {}
+        (type/map->Period {})
+
+        {:id "id-151304"}
+        (type/map->Period {:id "id-151304"})
+
+        {:extension [{}]}
+        (type/map->Period {:extension [(type/map->Extension {})]})
+
+        {:start "2020"}
+        (type/map->Period {:start #fhir/dateTime"2020"})
+
+        {:start "foo"}
+        ::s2/invalid)))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->Period {})
+        {}
+
+        (type/map->Period {:id "id-134428"})
+        {:id "id-134428"}
+
+        (type/map->Period
+          {:extension
+           [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->Period
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->Period {:start #fhir/dateTime"2020"})
+        {:start "2020"}
+
+        (type/map->Period {:end #fhir/dateTime"2020"})
+        {:end "2020"}))))
+
+
+(deftest identifier-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/Identifier x)
+        (type/map->Identifier {})
+        (type/map->Identifier {:use #fhir/code"usual"})))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Identifier x))
+        (type/map->Identifier {:use "usual"}))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Identifier json))
+        {}
+        (type/map->Identifier {})
+
+        {:use "usual"}
+        (type/map->Identifier {:use #fhir/code"usual"})
+
+        {:use 1}
+        ::s2/invalid)))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->Identifier {})
+        {}
+
+        (type/map->Identifier {:id "id-155426"})
+        {:id "id-155426"}
+
+        (type/map->Identifier
+          {:extension
+           [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->Identifier
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->Identifier {:use #fhir/code"use-155449"})
+        {:use "use-155449"}
+
+        (type/map->Identifier {:type (type/map->CodeableConcept {})})
+        {:type {}}
+
+        (type/map->Identifier {:system #fhir/uri"system-160011"})
+        {:system "system-160011"}
+
+        (type/map->Identifier {:value "value-160034"})
+        {:value "value-160034"}
+
+        (type/map->Identifier {:period (type/map->Period {})})
+        {:period {}}
+
+        (type/map->Identifier {:assigner (type/map->Reference {})})
+        {:assigner {}}))))
+
+
+(deftest reference-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/Reference x)
+        (type/map->Reference {})
+        (type/map->Reference {:reference "Patient/1"})))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Reference x))
+        (type/map->Reference {:reference 1}))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Reference json))
+        {}
+        (type/map->Reference {})
+
+        {:reference "Patient/1"}
+        (type/map->Reference {:reference "Patient/1"})
+
+        {:reference 1}
+        ::s2/invalid)))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->Reference {})
+        {}
+
+        (type/map->Reference {:id "id-155426"})
+        {:id "id-155426"}
+
+        (type/map->Reference {:extension []})
+        {:extension []}
+
+        (type/map->Reference {:extension [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->Reference
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->Reference {:reference "Patient/1"})
+        {:reference "Patient/1"}
+
+        (type/map->Reference {:type #fhir/uri"type-161222"})
+        {:type "type-161222"}
+
+        (type/map->Reference {:identifier (type/map->Identifier {})})
+        {:identifier {}}
+
+        (type/map->Reference {:display "display-161314"})
+        {:display "display-161314"}))))
+
+
+(deftest meta-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/Meta x)
+        (type/map->Meta {})
+        (type/map->Meta {:versionId #fhir/id"1"})))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Meta x))
+        (type/map->Identifier {:versionId "1"}))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Meta json))
+        {}
+        (type/map->Meta {})
+
+        {:versionId "1"}
+        (type/map->Meta {:versionId #fhir/id"1"})
+
+        {:versionId 1}
+        ::s2/invalid)))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->Meta {})
+        {}
+
+        (type/map->Meta {:id "id-155426"})
+        {:id "id-155426"}
+
+        (type/map->Meta {:extension []})
+        {:extension []}
+
+        (type/map->Meta {:extension [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->Meta
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->Meta {:versionId #fhir/id"versionId-161812"})
+        {:versionId "versionId-161812"}
+
+        (type/map->Meta {:lastUpdated Instant/EPOCH})
+        {:lastUpdated "1970-01-01T00:00:00Z"}
+
+        (type/map->Meta {:source #fhir/uri"source-162704"})
+        {:source "source-162704"}
+
+        (type/map->Meta {:profile [#fhir/canonical"profile-uri-145024"]})
+        {:profile ["profile-uri-145024"]}
+
+        (type/map->Meta {:security []})
+        {:security []}
+
+        (type/map->Meta {:security [(type/map->Coding {})]})
+        {:security [{}]}
+
+        (type/map->Meta
+          {:security
+           [(type/map->Coding {})
+            (type/map->Coding {})]})
+        {:security [{} {}]}
+
+        (type/map->Meta {:tag []})
+        {:tag []}
+
+        (type/map->Meta {:tag [(type/map->Coding {})]})
+        {:tag [{}]}
+
+        (type/map->Meta
+          {:tag
+           [(type/map->Coding {})
+            (type/map->Coding {})]})
+        {:tag [{} {}]}))))
 
 
 (deftest primitive-val-test

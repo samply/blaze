@@ -6,9 +6,9 @@
     [blaze.db.resource-store.cassandra :as cass]
     [blaze.db.resource-store.cassandra-spec]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.log]
-    [cheshire.core :as cheshire]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cuerdas.core :as str]
@@ -21,6 +21,9 @@
     [java.nio ByteBuffer]
     [java.util.concurrent CompletionStage])
   (:refer-clojure :exclude [get hash]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -124,7 +127,7 @@
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
-          row (row-with 0 (cheshire/generate-cbor (fhir-spec/unform-cbor content)))
+          row (row-with 0 (fhir-spec/unform-cbor content))
           session
           (reify CqlSession
             (^CompletionStage executeAsync [_ ^Statement statement]
@@ -156,7 +159,7 @@
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
-          row (row-with 0 (cheshire/generate-cbor (fhir-spec/unform-cbor content)))
+          row (row-with 0 (fhir-spec/unform-cbor content))
           session
           (reify CqlSession
             (^CompletionStage executeAsync [_ ^Statement statement]
@@ -189,7 +192,7 @@
   (testing "execute error"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
-          encoded-resource (ByteBuffer/wrap (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))
+          encoded-resource (ByteBuffer/wrap (fhir-spec/unform-cbor resource))
           session
           (reify CqlSession
             (^CompletionStage executeAsync [_ ^Statement _]
@@ -208,7 +211,7 @@
   (testing "success"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
-          encoded-resource (ByteBuffer/wrap (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))
+          encoded-resource (ByteBuffer/wrap (fhir-spec/unform-cbor resource))
           session
           (reify CqlSession
             (^CompletionStage executeAsync [_ ^Statement _]

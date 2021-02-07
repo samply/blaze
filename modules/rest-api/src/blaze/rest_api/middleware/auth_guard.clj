@@ -1,7 +1,7 @@
 (ns blaze.rest-api.middleware.auth-guard
   (:require
     [blaze.async.comp :as ac]
-    [blaze.fhir.spec.type]
+    [blaze.fhir.spec.type :as type]
     [buddy.auth :refer [authenticated?]]
     [ring.util.response :as ring]))
 
@@ -20,9 +20,9 @@
                  :severity #fhir/code"error"
                  :code #fhir/code"login"
                  :details
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-                    :code #fhir/code"MSG_AUTH_REQUIRED"}]}}]})
+                 (type/map->CodeableConcept
+                   {:coding
+                    [(type/map->Coding
+                       {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+                        :code #fhir/code"MSG_AUTH_REQUIRED"})]})}]})
             (ring/status 401))))))

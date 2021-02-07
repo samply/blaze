@@ -47,11 +47,11 @@
         more (if (map? (first more)) (next more) more)
         [[op-1-binding op-2-binding] & body] more]
     `(do
-       (defrecord ~(symbol (record-name name)) [operand-1# operand-2#]
+       (defrecord ~(symbol (record-name name)) [~'operand-1 ~'operand-2]
          core/Expression
-         (-eval [_# context# resource# scope#]
-           (let [~op-1-binding (core/-eval operand-1# context# resource# scope#)
-                 ~op-2-binding (core/-eval operand-2# context# resource# scope#)]
+         (-eval [~'_ context# resource# scope#]
+           (let [~op-1-binding (core/-eval ~'operand-1 context# resource# scope#)
+                 ~op-2-binding (core/-eval ~'operand-2 context# resource# scope#)]
              ~@body)))
 
        (defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
