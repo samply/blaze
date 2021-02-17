@@ -7,8 +7,13 @@
   blaze.db.impl.db/with-open-coll clojure.core/let}
 
  :linters
- {:unsorted-required-namespaces
+ {:unresolved-var
+  {:exclude
+   [clojure.spec.gen.alpha/int]}
+
+  :unsorted-required-namespaces
   {:level :error}
+
   :single-key-in
   {:level :warning}}
 

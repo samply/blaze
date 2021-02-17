@@ -1390,6 +1390,12 @@
                  :id "id-0"}]
           [:put {:fhir/type :fhir/Condition
                  :id "id-0"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                    :code #fhir/code"C71.4"}]}
                  :subject
                  {:fhir/type :fhir/Reference
                   :reference "Patient/id-0"}}]
@@ -1398,8 +1404,14 @@
 
       (testing "patient"
         (given (pull-type-query node "Condition" [["patient" "id-0"]])
-          [0 :id] := "id-0"
-          1 := nil))))
+          count := 1
+          [0 :id] := "id-0"))
+
+      (testing "code"
+        (testing "duplicate values have no effect (#293)"
+          (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
+            count := 1
+            [0 :id] := "id-0")))))
 
   (testing "Observation"
     (with-open [node (new-node)]
