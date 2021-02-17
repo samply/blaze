@@ -68,6 +68,7 @@
   (reduce
     (fn [ret [code & values]]
       (let [[code modifier] (str/split code #":" 2)
+            values (distinct values)
             res (resolve-search-param search-param-registry type code)]
         (if (::anom/category res)
           (if lenient? ret (reduced res))

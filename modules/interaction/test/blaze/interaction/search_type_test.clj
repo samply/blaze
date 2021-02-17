@@ -33,7 +33,8 @@
     [["/Patient/{id}" {:name :Patient/instance}]
      ["/MeasureReport/{id}" {:name :MeasureReport/instance}]
      ["/Library/{id}" {:name :Library/instance}]
-     ["/List/{id}" {:name :List/instance}]]
+     ["/List/{id}" {:name :List/instance}]
+     ["/Condition/{id}" {:name :Condition/instance}]]
     {:syntax :bracket}))
 
 
@@ -67,6 +68,14 @@
     :blaze/context-path ""
     :fhir.resource/type "Observation"}
    :path "/Observation"})
+
+
+(def ^:private condition-match
+  {:data
+   {:blaze/base-url ""
+    :blaze/context-path ""
+    :fhir.resource/type "Condition"}
+   :path "/Condition"})
 
 
 (defn- handler [node]
@@ -1060,4 +1069,39 @@
 
       (testing "has a next link"
         (is (= #fhir/uri"/Observation?combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8480-6%24ge140%7Cmm%5BHg%5D&combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8462-4%24ge90%7Cmm%5BHg%5D&_count=1&__t=2&__page-id=id-123130"
-               (link-url body "next")))))))
+               (link-url body "next"))))))
+
+  (testing "Duplicate OR Search Parameters have no Effect (#293)"
+    (let [{:keys [status body]}
+          ((handler-with
+             [[[:put {:fhir/type :fhir/Condition :id "0"
+                      :code
+                      {:fhir/type :fhir/CodeableConcept
+                       :coding
+                       [{:fhir/type :fhir/Coding
+                         :system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                         :code #fhir/code"C71.4"}]}}]]])
+           {::reitit/router router
+            ::reitit/match condition-match
+            :params {"code" "C71.4,C71.4"}})]
+
+      (is (= 200 status))
+
+      (testing "the body contains a bundle"
+        (is (= :fhir/Bundle (:fhir/type body))))
+
+      (testing "the bundle type is searchset"
+        (is (= #fhir/code"searchset" (:type body))))
+
+      (testing "the total count is 1"
+        (is (= #fhir/unsignedInt 1 (:total body))))
+
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (testing "the entry has the right fullUrl"
+        (is (= #fhir/uri"/Condition/0" (-> body :entry first :fullUrl))))
+
+      (testing "the entry has the right resource"
+        (given (-> body :entry first :resource)
+          [:code :coding 0 :code] := #fhir/code"C71.4")))))
