@@ -146,8 +146,7 @@
          (into
            []
            (comp
-             (map #(get-in search-param-index [res-type %]))
-             (remove nil?)
+             (keep #(get-in search-param-index [res-type %]))
              (map
                (fn [search-param]
                  {:search-param search-param

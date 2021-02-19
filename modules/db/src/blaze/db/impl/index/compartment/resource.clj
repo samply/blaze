@@ -32,8 +32,7 @@
 
 (defn- resource-handles-xform [resource-handle tid]
   (comp
-    (map #(resource-handle tid %))
-    (remove nil?)
+    (keep #(resource-handle tid %))
     (remove (comp #{:delete} :op))))
 
 
