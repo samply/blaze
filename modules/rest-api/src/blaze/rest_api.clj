@@ -242,8 +242,7 @@
       (into
         (comp
           structure-definition-filter
-          (map #(resource-route auth-backends executor resource-patterns %))
-          (remove nil?))
+          (keep #(resource-route auth-backends executor resource-patterns %)))
         structure-definitions)
       (into
         (map #(compartment-route auth-backends %))
@@ -399,8 +398,7 @@
              []
              (comp
                structure-definition-filter
-               (map #(capability-resource resource-patterns operations search-param-registry %))
-               (remove nil?))
+               (keep #(capability-resource resource-patterns operations search-param-registry %)))
              structure-definitions)
            :interaction
            (cond-> []

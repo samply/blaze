@@ -41,7 +41,7 @@
 (defn- sort-by-references [tx-cmds]
   (let [index (index-by-type-id tx-cmds)
         order (reference-order tx-cmds)]
-    (into [] (comp (map index) (remove nil?)) order)))
+    (into [] (keep index) order)))
 
 
 (defn index-tx
