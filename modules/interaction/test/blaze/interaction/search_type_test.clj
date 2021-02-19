@@ -1104,4 +1104,44 @@
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
-          [:code :coding 0 :code] := #fhir/code"C71.4")))))
+          [:code :coding 0 :code] := #fhir/code"C71.4"))))
+
+  (testing "Paging works with OR Search Parameters"
+    (let [{:keys [status body]}
+          ((handler-with
+             [[[:put {:fhir/type :fhir/Condition :id "0"
+                      :code
+                      {:fhir/type :fhir/CodeableConcept
+                       :coding
+                       [{:fhir/type :fhir/Coding
+                         :code #fhir/code"0"}]}}]
+               [:put {:fhir/type :fhir/Condition :id "2"
+                      :code
+                      {:fhir/type :fhir/CodeableConcept
+                       :coding
+                       [{:fhir/type :fhir/Coding
+                         :code #fhir/code"0"}]}}]
+               [:put {:fhir/type :fhir/Condition :id "1"
+                      :code
+                      {:fhir/type :fhir/CodeableConcept
+                       :coding
+                       [{:fhir/type :fhir/Coding
+                         :code #fhir/code"1"}]}}]]])
+           {::reitit/router router
+            ::reitit/match condition-match
+            :params {"code" "0,1" "_count" "2"
+                     "__t" "1" "__page-id" "1"}})]
+
+      (is (= 200 status))
+
+      (testing "the body contains a bundle"
+        (is (= :fhir/Bundle (:fhir/type body))))
+
+      (testing "the bundle type is searchset"
+        (is (= #fhir/code"searchset" (:type body))))
+
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (testing "the entry has the right fullUrl"
+        (is (= #fhir/uri"/Condition/1" (-> body :entry first :fullUrl)))))))

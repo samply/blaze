@@ -32,22 +32,16 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
-
-
-(defmacro catch-ex-data [& body]
-  `(try
-     ~@body
-     (catch Exception e#
-       (ex-data e#))))
 
 
 (defmacro catch-cause-ex-data [& body]
@@ -774,17 +768,17 @@
 
       (testing "two active patients will be found"
         (given (pull-type-query node "Patient" [["active" "true"]])
+          count := 2
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [1 :fhir/type] := :fhir/Patient
-          [1 :id] := "2"
-          2 := nil))
+          [1 :id] := "2"))
 
       (testing "it is possible to start with the second patient"
         (given (pull-type-query node "Patient" [["active" "true"]] "2")
+          count := 1
           [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "2"
-          1 := nil))))
+          [0 :id] := "2"))))
 
   (testing "Special Search Parameter _list"
     (testing "a node with two patients, one observation and one list in one transaction"
@@ -1411,7 +1405,62 @@
         (testing "duplicate values have no effect (#293)"
           (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
             count := 1
-            [0 :id] := "id-0")))))
+            [0 :id] := "id-0"))
+
+        (testing "starting"
+          (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
+            count := 1
+            [0 :id] := "id-0"))))
+
+    (with-open [node (new-node)]
+      @(d/transact
+         node
+         [[:put {:fhir/type :fhir/Condition :id "0"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :code #fhir/code"0"}]}}]
+          [:put {:fhir/type :fhir/Condition :id "3"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :code #fhir/code"0"}]}}]
+          [:put {:fhir/type :fhir/Condition :id "4"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :code #fhir/code"0"}]}}]
+          [:put {:fhir/type :fhir/Condition :id "1"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :code #fhir/code"1"}]}}]
+          [:put {:fhir/type :fhir/Condition :id "2"
+                 :code
+                 {:fhir/type :fhir/CodeableConcept
+                  :coding
+                  [{:fhir/type :fhir/Coding
+                    :code #fhir/code"1"}]}}]])
+
+      (testing "code"
+        (testing "starting with ID `1` does not return Conditions with ID `3`
+                  and `4` because they were already returned"
+          (given (pull-type-query node "Condition" [["code" "0" "1"]] "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "2"))
+
+        (testing "starting with ID `4` does return Conditions with ID `1` and
+                  `2` even if they are smaller than `4`"
+          (given (pull-type-query node "Condition" [["code" "0" "1"]] "4")
+            count := 3
+            [0 :id] := "4"
+            [1 :id] := "1"
+            [2 :id] := "2")))))
 
   (testing "Observation"
     (with-open [node (new-node)]
