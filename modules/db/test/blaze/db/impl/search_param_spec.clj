@@ -38,7 +38,7 @@
                :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
-               :compiled-values (s/coll-of some? :min-count 1)
+               :values (s/coll-of some? :min-count 1)
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 

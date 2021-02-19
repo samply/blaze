@@ -37,16 +37,53 @@
     values))
 
 
+(defn- drop-done-values
+  "Drops all values of a conjunction that are already done in respect to
+  `string-start-id`.
+
+  This is done by looking at the first resource handle and ensure that it is
+  actually the one meant to find."
+  [string-start-id resource-handles values]
+  (drop-while
+    #(let [resource-handle (coll/first (resource-handles %))]
+       (not= string-start-id (:id resource-handle)))
+    values))
+
+
+(defn- map-2
+  "Like `map` but applies `f-first` to the first item of coll and `f-rest` to
+  all other items in coll."
+  [f-first f-rest]
+  (map-indexed
+    (fn [idx x]
+      (if (zero? idx)
+        (f-first x)
+        (f-rest x)))))
+
+
+(defn- mapcat-2 [f-first f-rest]
+  (comp (map-2 f-first f-rest) cat))
+
+
 (defn resource-handles
-  "Returns a reducible collection of resource handles."
-  ([search-param context tid modifier compiled-values]
+  "Returns a reducible collection of resource handles.
+
+  Concatenates resource handles of each value in compiled `values`."
+  ([search-param context tid modifier values]
    (coll/eduction
      (mapcat #(p/-resource-handles search-param context tid modifier %))
-     compiled-values))
-  ([search-param context tid modifier compiled-values start-id]
-   (coll/eduction
-     (mapcat #(p/-resource-handles search-param context tid modifier % start-id))
-     compiled-values)))
+     values))
+  ([search-param context tid modifier values start-id]
+   (let [resource-handles-start
+         #(p/-resource-handles search-param context tid modifier % start-id)]
+     (->> (drop-done-values
+            (codec/id-string start-id)
+            resource-handles-start
+            values)
+          (coll/eduction
+            (mapcat-2
+              resource-handles-start
+              #(p/-resource-handles search-param context tid modifier %)))))))
 
 
 (defn- compartment-keys
