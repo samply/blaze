@@ -91,21 +91,25 @@
   (log/warn (u/format-skip-indexing-msg value url "quantity")))
 
 
-(defn- resource-value
+(defn- resource-value!
   "Returns the value of the resource with `tid` and `id` according to the
   search parameter with `c-hash` starting with `prefix`.
 
   The `prefix` is important, because resources have more than one index entry
   and so more than one value per search parameter. Different unit
   representations and other possible prefixes from composite search parameters
-  are responsible for the multiple values."
+  are responsible for the multiple values.
+
+  Changes the state of `context`. Calling this function requires exclusive
+  access to `context`."
+  {:arglists '([context c-hash tid id prefix])}
   [{:keys [rsvi resource-handle]} c-hash tid id prefix]
   (let [handle (resource-handle tid id)]
     (r-sp-v/next-value! rsvi handle c-hash prefix prefix)))
 
 
-(defn- id-start-key [context c-hash tid prefix start-id]
-  (let [start-value (resource-value context c-hash tid start-id prefix)]
+(defn- id-start-key! [context c-hash tid prefix start-id]
+  (let [start-value (resource-value! context c-hash tid start-id prefix)]
     (assert start-value)
     (sp-vr/encode-seek-key c-hash tid start-value start-id)))
 
@@ -127,16 +131,16 @@
    (coll/eduction
      (comp
        (take-while-less-equal c-hash tid upper-bound)
-       (map (fn [[_ id hash-prefix]] [id hash-prefix])))
+       (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
      (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid lower-bound))))
   ([{:keys [svri] :as context} c-hash tid lower-bound-prefix upper-bound
     start-id]
    (coll/eduction
      (comp
        (take-while-less-equal c-hash tid upper-bound)
-       (map (fn [[_ id hash-prefix]] [id hash-prefix])))
-     (sp-vr/keys! svri (id-start-key context c-hash tid lower-bound-prefix
-                                     start-id)))))
+       (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
+     (sp-vr/keys! svri (id-start-key! context c-hash tid lower-bound-prefix
+                                      start-id)))))
 
 
 (defn- gt-keys!
@@ -150,7 +154,7 @@
   ([{:keys [svri]} c-hash tid prefix value]
    (sp-vr/prefix-keys'! svri c-hash tid prefix value))
   ([{:keys [svri] :as context} c-hash tid prefix _value start-id]
-   (let [start-value (resource-value context c-hash tid start-id prefix)]
+   (let [start-value (resource-value! context c-hash tid start-id prefix)]
      (assert start-value)
      (sp-vr/prefix-keys! svri c-hash tid prefix start-value start-id))))
 
@@ -166,7 +170,7 @@
   ([{:keys [svri]} c-hash tid prefix value]
    (sp-vr/prefix-keys-prev'! svri c-hash tid prefix value))
   ([{:keys [svri] :as context} c-hash tid prefix _value start-id]
-   (let [start-value (resource-value context c-hash tid start-id prefix)]
+   (let [start-value (resource-value! context c-hash tid start-id prefix)]
      (assert start-value)
      (sp-vr/prefix-keys-prev! svri c-hash tid prefix start-value start-id))))
 
@@ -182,7 +186,7 @@
   ([{:keys [svri]} c-hash tid prefix value]
    (sp-vr/prefix-keys! svri c-hash tid prefix value))
   ([{:keys [svri] :as context} c-hash tid prefix _value start-id]
-   (let [start-value (resource-value context c-hash tid start-id prefix)]
+   (let [start-value (resource-value! context c-hash tid start-id prefix)]
      (assert start-value)
      (sp-vr/prefix-keys! svri c-hash tid prefix start-value start-id))))
 
@@ -198,7 +202,7 @@
   ([{:keys [svri]} c-hash tid prefix value]
    (sp-vr/prefix-keys-prev! svri c-hash tid prefix value))
   ([{:keys [svri] :as context} c-hash tid prefix _value start-id]
-   (let [start-value (resource-value context c-hash tid start-id prefix)]
+   (let [start-value (resource-value! context c-hash tid start-id prefix)]
      (assert start-value)
      (sp-vr/prefix-keys-prev! svri c-hash tid prefix start-value start-id))))
 
@@ -207,13 +211,13 @@
   "Returns a reducible collection of `[id hash-prefix]` tuples of values
   according to `op` and values starting at `start-id` (optional).
 
-  The `prefix-length` is the length of the fix prefix which all found values
+  The `prefix-length` is the length of the fix prefix that all found values
   have to have.
 
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
+  Changes the state of `context`. Consuming the collection requires exclusive
+  access to `context`."
   ([context c-hash tid prefix-length
-   {:keys [op lower-bound exact-value upper-bound]}]
+    {:keys [op lower-bound exact-value upper-bound]}]
    (case op
      :eq (eq-keys! context c-hash tid lower-bound upper-bound)
      :gt (gt-keys! context c-hash tid (bs/subs exact-value 0 prefix-length)
@@ -225,8 +229,8 @@
      :le (le-keys! context c-hash tid (bs/subs exact-value 0 prefix-length)
                    exact-value)))
   ([context c-hash tid prefix-length
-   {:keys [op lower-bound exact-value upper-bound]}
-   start-id]
+    {:keys [op lower-bound exact-value upper-bound]}
+    start-id]
    (case op
      :eq (eq-keys! context c-hash tid (bs/subs lower-bound 0 prefix-length)
                    upper-bound start-id)
@@ -250,7 +254,7 @@
   (coll/eduction
     (comp
       (take-while-compartment-less-equal compartment c-hash tid upper-bound)
-      (map (fn [[_ id hash-prefix]] [id hash-prefix])))
+      (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
     (c-sp-vr/keys! csvri (c-sp-vr/encode-seek-key compartment c-hash tid
                                                   lower-bound))))
 

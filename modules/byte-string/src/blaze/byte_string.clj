@@ -50,7 +50,9 @@
   (ByteString/copyFrom (.decode (BaseEncoding/base16) s)))
 
 
-(defn nth [bs index]
+(defn nth
+  "Returns the byte at `index` from `bs`."
+  [bs index]
   (.byteAt ^ByteString bs index))
 
 
@@ -81,8 +83,11 @@
   (neg? (.compare (ByteString/unsignedLexicographicalComparator) a b)))
 
 
-(defn <= [a b]
-  (clojure.core/<= (.compare (ByteString/unsignedLexicographicalComparator) a b) 0))
+(defn <=
+  ([a b]
+   (clojure.core/<= (.compare (ByteString/unsignedLexicographicalComparator) a b) 0))
+  ([a b c]
+   (and (<= a b) (<= b c))))
 
 
 (defn > [a b]

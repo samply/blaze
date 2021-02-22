@@ -13,7 +13,9 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time ZoneId]))
 
 
 (st/instrument)
@@ -41,8 +43,15 @@
 
 (deftest compile-value-test
   (testing "Date"
-    (are [value op quantity] (= [op quantity] (compile-birthdate value))
-      "2020-10-30" :eq (system/parse-date-time "2020-10-30"))))
+    (are [value op lower-bound upper-bound]
+      (given (compile-birthdate value)
+        :op := op
+        :lower-bound := lower-bound
+        :upper-bound := upper-bound)
+      "2020-10-30"
+      :eq
+      (codec/date-lb (ZoneId/systemDefault) (system/parse-date-time "2020-10-30"))
+      (codec/date-ub (ZoneId/systemDefault) (system/parse-date-time "2020-10-30")))))
 
 
 (deftest index-entries-test

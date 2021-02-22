@@ -13,3 +13,8 @@
 
 (s/fdef bs/from-string
   :args (s/cat :s string? :charset #(instance? Charset %)))
+
+
+(s/fdef bs/<=
+  :args (s/cat :a bs/byte-string? :b bs/byte-string? :c (s/? bs/byte-string?))
+  :ret boolean?)
