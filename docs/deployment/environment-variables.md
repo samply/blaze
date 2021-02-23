@@ -21,7 +21,7 @@ The three database directories must not exist on the first start of Blaze and wi
 | RESOURCE\_DB\_DIR | resource \* | v0.8 | The directory were the resource files are stored. This directory must not exist on the first start of Blaze and will be created by 
 | DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
 | DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
-| DB\_RESOURCE\_CACHE\_SIZE | 10000 | v0.8 | The size of the resource cache of the DB in number of resources. |
+| DB\_RESOURCE\_CACHE\_SIZE | 100000 | v0.8 | The size of the resource cache of the DB in number of resources. |
 | DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
 | DB\_RESOURCE\_INDEXER\_THREADS | 4 | v0.8 | The number threads used for indexing resources. |
 | DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
@@ -36,7 +36,7 @@ The distributed storage variant only uses the index database locally.
 | :--- | :--- | :--- | :--- |
 | INDEX\_DB\_DIR | index \* | v0.8 | The directory were the index database files are stored.  |
 | DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
-| DB\_RESOURCE\_CACHE\_SIZE | 10000 | v0.8 | The size of the resource cache of the DB in number of resources. |
+| DB\_RESOURCE\_CACHE\_SIZE | 100000 | v0.8 | The size of the resource cache of the DB in number of resources. |
 | DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
 | DB\_RESOURCE\_INDEXER\_THREADS | 4 | v0.8 | The number threads used for indexing resources. |
 | DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |

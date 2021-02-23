@@ -16,10 +16,6 @@
   :args (s/cat :iter :blaze.db/kv-iterator :start-key byte-string?))
 
 
-(s/fdef sp-vr/keys-prev!
-  :args (s/cat :iter :blaze.db/kv-iterator :start-key byte-string?))
-
-
 (s/fdef sp-vr/prefix-keys!
   :args (s/cat :iter :blaze.db/kv-iterator
                :c-hash :blaze.db/c-hash
@@ -32,8 +28,8 @@
 (s/fdef sp-vr/encode-seek-key
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
-               :value byte-string?
-               :id (s/? :blaze.db/id-byte-string))
+               :more (s/? (s/cat :value byte-string?
+                                 :id (s/? :blaze.db/id-byte-string))))
   :ret byte-string?)
 
 

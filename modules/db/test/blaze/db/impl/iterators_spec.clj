@@ -20,10 +20,6 @@
   :args (s/cat :iter :blaze.db/kv-iterator :decode fn? :start-key byte-string?))
 
 
-(s/fdef i/keys-prev!
-  :args (s/cat :iter :blaze.db/kv-iterator :decode fn? :start-key byte-string?))
-
-
 (s/fdef i/prefix-keys!
   :args (s/cat :iter :blaze.db/kv-iterator :prefix byte-string?
                :decode fn? :start-key byte-string?))

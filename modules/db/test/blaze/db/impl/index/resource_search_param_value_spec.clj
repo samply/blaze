@@ -32,12 +32,3 @@
                :c-hash :blaze.db/c-hash
                :value byte-string?)
   :ret :blaze.db.kv/put-entry)
-
-
-(s/fdef r-sp-v/index-entry-special
-  :args (s/cat :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string
-               :hash :blaze.resource/hash
-               :c-hash :blaze.db/c-hash
-               :value byte-string?)
-  :ret :blaze.db.kv/put-entry)

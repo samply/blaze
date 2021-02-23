@@ -24,6 +24,6 @@
   (s/keys
     :req-un
     [:blaze.db.impl.search-param.quantity.value/op
-     (or (and :blaze.db.impl.search-param.quantity.value/lower-bound
-              :blaze.db.impl.search-param.quantity.value/upper-bound)
+     (or :blaze.db.impl.search-param.quantity.value/lower-bound
+         :blaze.db.impl.search-param.quantity.value/upper-bound
          :blaze.db.impl.search-param.quantity.value/exact-value)]))

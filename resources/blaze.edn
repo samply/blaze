@@ -210,7 +210,7 @@
   ;;
   :blaze.db/resource-cache
   {:resource-store #blaze/ref :blaze.db/resource-store
-   :max-size #blaze/cfg ["DB_RESOURCE_CACHE_SIZE" nat-int? 10000]}
+   :max-size #blaze/cfg ["DB_RESOURCE_CACHE_SIZE" nat-int? 100000]}
 
   ;;
   ;; Search Param Registry

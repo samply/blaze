@@ -58,7 +58,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: ${{ matrix.java-version }}
-        java-package: jdk
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -114,7 +113,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: '11'
-        java-package: jdk
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -157,7 +155,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: ${{ matrix.java-version }}
-        java-package: jdk
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master

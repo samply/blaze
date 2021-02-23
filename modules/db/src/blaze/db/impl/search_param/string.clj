@@ -71,20 +71,28 @@
   (log/warn (u/format-skip-indexing-msg value url "string")))
 
 
-(defn- resource-value
+(defn- resource-value!
   "Returns the value of the resource with `tid` and `id` according to the
-  search parameter with `c-hash`."
+  search parameter with `c-hash`.
+
+  Changes the state of `context`. Calling this function requires exclusive
+  access to `context`."
+  {:arglists '([context c-hash tid id])}
   [{:keys [rsvi resource-handle]} c-hash tid id]
   (r-sp-v/next-value! rsvi (resource-handle tid id) c-hash))
 
 
 (defn- resource-keys!
   "Returns a reducible collection of `[id hash-prefix]` tuples starting at
-  `start-id` (optional)."
+  `start-id` (optional).
+
+  Changes the state of `context`. Calling this function requires exclusive
+  access to `context`."
+  {:arglists '([context c-hash tid value] [context c-hash tid value start-id])}
   ([{:keys [svri]} c-hash tid value]
    (sp-vr/prefix-keys! svri c-hash tid value value))
   ([{:keys [svri] :as context} c-hash tid _value start-id]
-   (let [start-value (resource-value context c-hash tid start-id)]
+   (let [start-value (resource-value! context c-hash tid start-id)]
      (assert start-value)
      (sp-vr/prefix-keys! svri c-hash tid start-value start-value start-id))))
 

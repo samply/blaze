@@ -18,7 +18,9 @@
 
 
 (defn decode-key
-  "Returns a triple of [prefix id hash-prefix]."
+  "Returns a triple of [prefix id hash-prefix].
+
+  The prefix contains the c-hash, tid and value parts as encoded byte string."
   ([] (bb/allocate-direct key-buffer-capacity))
   ([buf]
    (let [id-size (bb/get-byte! buf (dec (- (bb/limit buf) codec/hash-prefix-size)))
@@ -34,30 +36,32 @@
   "Returns a reducible collection of `[prefix id hash-prefix]` triples starting
   at `start-key`.
 
+  The prefix contains the c-hash, tid and value parts as encoded byte string.
+
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
   [iter start-key]
   (i/keys! iter decode-key start-key))
 
 
-(defn keys-prev!
-  "Returns a reducible collection of `[prefix id hash-prefix]` triples starting
-  at `start-key`, iterating in reverse.
-
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  [iter start-key]
-  (i/keys-prev! iter decode-key start-key))
+(def ^:const ^long base-key-size
+  (+ codec/c-hash-size codec/tid-size))
 
 
 (defn- key-size
   (^long [value]
-   (+ codec/c-hash-size codec/tid-size (bs/size value)))
+   (+ base-key-size (bs/size value)))
   (^long [value id]
    (+ (key-size value) (bs/size id) 2)))
 
 
 (defn encode-seek-key
+  ([c-hash tid]
+   (-> (bb/allocate base-key-size)
+       (bb/put-int! c-hash)
+       (bb/put-int! tid)
+       (bb/flip!)
+       (bs/from-byte-buffer)))
   ([c-hash tid value]
    (-> (bb/allocate (key-size value))
        (bb/put-int! c-hash)
@@ -82,6 +86,36 @@
    (bs/concat (encode-seek-key c-hash tid value) (bs/from-hex "FF")))
   ([c-hash tid value id]
    (bs/concat (encode-seek-key c-hash tid value id) (bs/from-hex "FF"))))
+
+
+(defn decode-value-id-hash-prefix
+  "Returns a triple of [value id hash-prefix]."
+  ([] (bb/allocate-direct key-buffer-capacity))
+  ([buf]
+   (let [id-size (bb/get-byte! buf (dec (- (bb/limit buf) codec/hash-prefix-size)))
+         ;; TODO: don't copy first base-key-size bytes here
+         all-size (bb/remaining buf)
+         all (bs/from-byte-buffer buf)
+         prefix-size (- all-size id-size 1 codec/hash-prefix-size)]
+     [(bs/subs all base-key-size (dec prefix-size))
+      (bs/subs all prefix-size (+ prefix-size id-size))
+      (bs/subs all (- all-size codec/hash-prefix-size))])))
+
+
+(defn all-keys!
+  "Returns a reducible collection of `[value id hash-prefix]` triples of the
+  whole range prefixed with `c-hash` and `tid` starting with `start-value` and
+  `start-id` (optional).
+
+  Changes the state of `iter`. Consuming the collection requires exclusive
+  access to `iter`. Doesn't close `iter`."
+  ([iter c-hash tid]
+   (let [prefix (encode-seek-key c-hash tid)]
+     (i/prefix-keys! iter prefix decode-value-id-hash-prefix prefix)))
+  ([iter c-hash tid start-value start-id]
+   (let [prefix (encode-seek-key c-hash tid)
+         start-key (encode-seek-key c-hash tid start-value start-id)]
+     (i/prefix-keys! iter prefix decode-value-id-hash-prefix start-key))))
 
 
 (defn decode-id-hash-prefix

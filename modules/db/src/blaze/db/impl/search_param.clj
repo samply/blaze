@@ -133,33 +133,31 @@
 (defn index-entries
   "Returns search index entries of `resource` with `hash` or an anomaly in case
   of errors."
-  [{:keys [type code c-hash] :as search-param} hash resource linked-compartments]
-  (case type
-    "date"
-    (p/-index-entries search-param stub-resolver hash resource linked-compartments)
-    (when-ok [values (p/-index-values search-param stub-resolver resource)]
-      (let [{:keys [id]} resource
-            type (name (fhir-spec/fhir-type resource))
-            tid (codec/tid type)]
-        (into
-          []
-          (mapcat
-            (fn search-param-entry [[modifier value]]
-              (log/trace "search-param-entry" code type id (bs/hex hash) (bs/hex value))
-              (let [c-hash (c-hash-w-modifier c-hash code modifier)
-                    id (codec/id-byte-string id)]
-                (into
-                  [(sp-vr/index-entry c-hash tid value id hash)
-                   (r-sp-v/index-entry tid id hash c-hash value)]
-                  (map
-                    (fn [[code comp-id]]
-                      (c-sp-vr/index-entry
-                        [(codec/c-hash code)
-                         (codec/id-byte-string comp-id)]
-                        c-hash
-                        tid
-                        value
-                        id
-                        hash)))
-                  linked-compartments))))
-          values)))))
+  [{:keys [code c-hash] :as search-param} hash resource linked-compartments]
+  (when-ok [values (p/-index-values search-param stub-resolver resource)]
+    (let [{:keys [id]} resource
+          type (name (fhir-spec/fhir-type resource))
+          tid (codec/tid type)
+          id (codec/id-byte-string id)]
+      (into
+        []
+        (mapcat
+          (fn search-param-entry [[modifier value]]
+            (log/trace "search-param-entry" code type (codec/id-string id)
+                       (bs/hex hash) (bs/hex value))
+            (let [c-hash (c-hash-w-modifier c-hash code modifier)]
+              (into
+                [(sp-vr/index-entry c-hash tid value id hash)
+                 (r-sp-v/index-entry tid id hash c-hash value)]
+                (map
+                  (fn [[code comp-id]]
+                    (c-sp-vr/index-entry
+                      [(codec/c-hash code)
+                       (codec/id-byte-string comp-id)]
+                      c-hash
+                      tid
+                      value
+                      id
+                      hash)))
+                linked-compartments))))
+        values))))

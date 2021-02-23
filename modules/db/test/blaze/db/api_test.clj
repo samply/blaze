@@ -21,7 +21,7 @@
     [blaze.db.tx-log.local-spec]
     [blaze.executors :as ex]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
+    [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [java-time :as jt]
     [juxt.iota :refer [given]]
@@ -984,7 +984,13 @@
                    :city "Leipzig"}]
                  :name
                  [{:fhir/type :fhir/HumanName
-                   :family "Schmidt"}]}]])
+                   :family "Schmidt"}]}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-3"
+                 :birthDate #fhir/date"2019"}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-4"
+                 :birthDate #fhir/date"2021"}]])
 
       (testing "_id"
         (given (pull-type-query node "Patient" [["_id" "id-1"]])
@@ -1069,92 +1075,290 @@
           [0 :id] := "id-1"
           [1 :id] := "id-2"))
 
-      (testing "birthdate YYYYMMDD"
-        (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
-          [0 :id] := "id-0"
-          1 := nil))
+      (testing "birthdate"
+        (testing "with day precision"
+          (testing "overlapping three patients"
+            (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
+              count := 3
+              [0 :id] := "id-2"
+              [1 :id] := "id-1"
+              [2 :id] := "id-0")
 
-      (testing "birthdate YYYYMM"
-        (testing "full result"
-          (given (pull-type-query node "Patient" [["birthdate" "2020-02"]])
-            [0 :id] := "id-1"
-            [1 :id] := "id-0"
-            2 := nil))
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]] "id-1")
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))
 
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
-            [0 :id] := "id-0"
-            1 := nil)))
+            (testing "it is possible to start with the third patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]] "id-0")
+                count := 1
+                [0 :id] := "id-0")))
 
-      (testing "birthdate YYYY"
-        (given (pull-type-query node "Patient" [["birthdate" "2020"]])
-          [0 :id] := "id-2"
-          [1 :id] := "id-1"
-          [2 :id] := "id-0"))
+          (testing "overlapping two patients"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-1")
+              "2020-02-07"
+              "2020-02-09")
 
-      (testing "birthdate with `eq` prefix"
-        (given (pull-type-query node "Patient" [["birthdate" "eq2020-02-08"]])
-          [0 :id] := "id-0"
-          1 := nil))
+            (testing "it is possible to start with the second patient"
+              (are [date]
+                (given (pull-type-query node "Patient" [["birthdate" date]] "id-1")
+                  count := 1
+                  [0 :id] := "id-1")
+                "2020-02-07"
+                "2020-02-09")))
 
-      (testing "birthdate with `ne` prefix is unsupported"
-        (given
-          (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]])
-          ::anom/category := ::anom/unsupported
-          ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`."))
+          (testing "overlapping one patient"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 1
+                [0 :id] := "id-2")
+              "2020-01-31"
+              "2020-03-01"))
 
-      (testing "birthdate with `ge` prefix"
-        (testing "finds equal date"
-          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]])
-            [0 :id] := "id-0"
-            [0 :birthDate] := #fhir/date"2020-02-08"
-            1 := nil))
+          (testing "overlapping no patient"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 0)
+              "2018-12-31"
+              "2022-01-01")))
 
-        (testing "finds greater date"
-          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-07"]])
-            [0 :id] := "id-0"
-            [0 :birthDate] := #fhir/date"2020-02-08"
-            1 := nil))
+        (testing "with month precision"
+          (testing "overlapping three patients"
+            (given (pull-type-query node "Patient" [["birthdate" "2020-02"]])
+              count := 3
+              [0 :id] := "id-2"
+              [1 :id] := "id-1"
+              [2 :id] := "id-0")
 
-        (testing "finds more precise dates"
-          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02"]])
-            [0 :id] := "id-1"
-            [0 :birthDate] := #fhir/date"2020-02"
-            [1 :id] := "id-0"
-            [1 :birthDate] := #fhir/date"2020-02-08"
-            2 := nil)))
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-1")
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))
 
-      (testing "birthdate with `le` prefix"
-        (testing "finds equal date"
-          (given (pull-type-query node "Patient" [["birthdate" "le2020-02-08"]])
-            [0 :id] := "id-0"
-            [0 :birthDate] := #fhir/date"2020-02-08"
-            1 := nil))
+            (testing "it is possible to start with the third patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
+                count := 1
+                [0 :id] := "id-0")))
 
-        (testing "finds less date"
-          (given (pull-type-query node "Patient" [["birthdate" "le2020-02-09"]])
-            [0 :id] := "id-0"
-            [0 :birthDate] := #fhir/date"2020-02-08"
-            1 := nil))
+          (testing "overlapping one patient"
+            (given (pull-type-query node "Patient" [["birthdate" "2020-03"]])
+              count := 1
+              [0 :id] := "id-2"))
 
-        (testing "finds more precise dates"
-          (given (pull-type-query node "Patient" [["birthdate" "le2020-03"]])
-            [0 :id] := "id-1"
-            [0 :birthDate] := #fhir/date"2020-02"
-            [1 :id] := "id-0"
-            [1 :birthDate] := #fhir/date"2020-02-08"
-            2 := nil)))
+          (testing "overlapping no patient"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 0)
+              "2018-12"
+              "2022-01")))
+
+        (testing "with year precision"
+          (testing "overlapping three patients"
+            (given (pull-type-query node "Patient" [["birthdate" "2020"]])
+              count := 3
+              [0 :id] := "id-2"
+              [1 :id] := "id-1"
+              [2 :id] := "id-0")
+
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020"]] "id-1")
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))
+
+            (testing "it is possible to start with the third patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020"]] "id-0")
+                count := 1
+                [0 :id] := "id-0")))
+
+          (testing "overlapping no patient"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 0)
+              "2018"
+              "2022")))
+
+        (testing "with `eq` prefix"
+          (given (pull-type-query node "Patient" [["birthdate" "eq2020-02-08"]])
+            count := 3
+            [0 :id] := "id-2"
+            [1 :id] := "id-1"
+            [2 :id] := "id-0"))
+
+        (testing "with `ne` prefix is unsupported"
+          (given
+            (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`."))
+
+        (testing "with `ge` prefix"
+          (testing "with day precision"
+            (testing "overlapping four patients"
+              (testing "starting at the most specific birthdate"
+                (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]])
+                  count := 4
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-1"
+                  [2 :id] := "id-0"
+                  [3 :id] := "id-4")
+
+                (testing "it is possible to start with the second patient"
+                  (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]] "id-1")
+                    count := 3
+                    [0 :id] := "id-1"
+                    [1 :id] := "id-0"
+                    [2 :id] := "id-4"))
+
+                (testing "it is possible to start with the third patient"
+                  (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]] "id-0")
+                    count := 2
+                    [0 :id] := "id-0"
+                    [1 :id] := "id-4"))
+
+                (testing "it is possible to start with the fourth patient"
+                  (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]] "id-4")
+                    count := 1
+                    [0 :id] := "id-4")))
+
+              (testing "starting before the most specific birthdate"
+                (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-07"]])
+                  count := 4
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-1"
+                  [2 :id] := "id-0"
+                  [3 :id] := "id-4")))
+
+            (testing "overlapping three patients"
+              (testing "starting after the most specific birthdate"
+                (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-09"]])
+                  count := 3
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-1"
+                  [2 :id] := "id-4"))
+
+              (testing "starting at the last day of 2020-02"
+                (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-29"]])
+                  count := 3
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-1"
+                  [2 :id] := "id-4")))
+
+            (testing "overlapping two patients"
+              (testing "starting at the first day of 2020-03"
+                (given (pull-type-query node "Patient" [["birthdate" "ge2020-03-01"]])
+                  count := 2
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-4"))
+
+              (testing "starting at the last day of 2020"
+                (given (pull-type-query node "Patient" [["birthdate" "ge2020-12-31"]])
+                  count := 2
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-4")))
+
+            (testing "overlapping one patient"
+              (testing "starting at the first day of 2021"
+                (given (pull-type-query node "Patient" [["birthdate" "ge2021-01-01"]])
+                  count := 1
+                  [0 :id] := "id-4")))
+
+            (testing "overlapping no patient"
+              (testing "starting at the first day of 2022"
+                (given (pull-type-query node "Patient" [["birthdate" "ge2022-01-01"]])
+                  count := 0)))))
+
+        (testing "with `le` prefix"
+          (testing "with day precision"
+            (testing "overlapping four patients"
+              (testing "starting at the most specific birthdate"
+                (given (pull-type-query node "Patient" [["birthdate" "le2020-02-08"]])
+                  count := 4
+                  [0 :id] := "id-3"
+                  [1 :id] := "id-2"
+                  [2 :id] := "id-1"
+                  [3 :id] := "id-0")
+
+                (testing "it is possible to start with the second patient"
+                  (given (pull-type-query node "Patient" [["birthdate" "le2020-02-08"]] "id-2")
+                    count := 3
+                    [0 :id] := "id-2"
+                    [1 :id] := "id-1"
+                    [2 :id] := "id-0"))
+
+                (testing "it is possible to start with the third patient"
+                  (given (pull-type-query node "Patient" [["birthdate" "le2020-02-08"]] "id-1")
+                    count := 2
+                    [0 :id] := "id-1"
+                    [1 :id] := "id-0"))
+
+                (testing "it is possible to start with the fourth patient"
+                  (given (pull-type-query node "Patient" [["birthdate" "le2020-02-08"]] "id-0")
+                    count := 1
+                    [0 :id] := "id-0")))
+
+              (testing "starting after the most specific birthdate"
+                (given (pull-type-query node "Patient" [["birthdate" "le2020-02-09"]])
+                  count := 4
+                  [0 :id] := "id-3"
+                  [1 :id] := "id-2"
+                  [2 :id] := "id-1"
+                  [3 :id] := "id-0")))
+
+            (testing "overlapping three patients"
+              (testing "starting before the most specific birthdate"
+                (given (pull-type-query node "Patient" [["birthdate" "le2020-02-07"]])
+                  count := 3
+                  [0 :id] := "id-3"
+                  [1 :id] := "id-2"
+                  [2 :id] := "id-1"))
+
+              (testing "starting at the first day of 2020-02"
+                (given (pull-type-query node "Patient" [["birthdate" "le2020-02-01"]])
+                  count := 3
+                  [0 :id] := "id-3"
+                  [1 :id] := "id-2"
+                  [2 :id] := "id-1")))
+
+            (testing "overlapping two patients"
+              (testing "starting at the last day of 2020-01"
+                (given (pull-type-query node "Patient" [["birthdate" "le2020-01-31"]])
+                  count := 2
+                  [0 :id] := "id-3"
+                  [1 :id] := "id-2"))
+
+              (testing "starting at the first day of 2020"
+                (given (pull-type-query node "Patient" [["birthdate" "le2020-01-01"]])
+                  count := 2
+                  [0 :id] := "id-3"
+                  [1 :id] := "id-2")))
+
+            (testing "overlapping one patient"
+              (testing "starting at the last day of 2019"
+                (given (pull-type-query node "Patient" [["birthdate" "le2019-12-31"]])
+                  count := 1
+                  [0 :id] := "id-3")))
+
+            (testing "overlapping no patient"
+              (testing "starting at the last day of 2018"
+                (given (pull-type-query node "Patient" [["birthdate" "le2018-12-31"]])
+                  count := 0))))))
 
       (testing "gender and birthdate"
         (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                ["birthdate" "2020-02"]])
+                                                ["birthdate" "2020-02-09"]])
           count := 2
-          [0 :id] := "id-0"
-          [1 :id] := "id-1"))
+          [0 :id] := "id-1"
+          [1 :id] := "id-2"))
 
       (testing "gender and birthdate with multiple values"
         (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                ["birthdate" "2020-02" "2020"]])
+                                                ["birthdate" "2020-02-09" "2020"]])
           count := 3
           [0 :id] := "id-0"
           [1 :id] := "id-1"
@@ -1170,10 +1374,11 @@
             [2 :id] := "id-2")
 
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                  ["birthdate" "ge2020-02"]])
-            count := 2
+                                                  ["birthdate" "ge2020-02-07"]])
+            count := 3
             [0 :id] := "id-0"
-            [1 :id] := "id-1"))
+            [1 :id] := "id-1"
+            [2 :id] := "id-2"))
 
         (testing "less equal"
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
@@ -1185,9 +1390,10 @@
 
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                   ["birthdate" "le2020-02"]])
-            count := 2
+            count := 3
             [0 :id] := "id-0"
-            [1 :id] := "id-1")
+            [1 :id] := "id-1"
+            [2 :id] := "id-2")
 
           (given (pull-type-query node "Patient" [["gender" "male" "female"]
                                                   ["birthdate" "le2021"]])
@@ -1469,6 +1675,10 @@
          [[:put {:fhir/type :fhir/Observation
                  :id "id-0"
                  :status #fhir/code"final"
+                 :effective
+                 {:fhir/type :fhir/Period
+                  :start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                  :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
                  :value
                  {:fhir/type :fhir/Quantity
                   :value 0M
@@ -1478,6 +1688,7 @@
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
+                 :effective #fhir/dateTime"2021-02-25"
                  :value
                  {:fhir/type :fhir/Quantity
                   :value 1M
@@ -1502,6 +1713,55 @@
                   :unit "kg/m²"
                   :code #fhir/code"kg/m2"
                   :system #fhir/uri"http://unitsofmeasure.org"}}]])
+
+      (testing "date"
+        (testing "with year precision"
+          (given (pull-type-query node "Observation" [["date" "2021"]])
+            count := 2
+            [0 :id] := "id-0"
+            [1 :id] := "id-1"))
+
+        (testing "with day precision"
+          (testing "before the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-22"]])
+              count := 0))
+
+          (testing "within the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23"]])
+              count := 1
+              [0 :id] := "id-0"))
+
+          (testing "after the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-24"]])
+              count := 0)))
+
+        (testing "with second precision"
+          (testing "before the start of the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23T15:12:44+01:00"]])
+              count := 0))
+
+          (testing "at the start of the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23T15:12:45+01:00"]])
+              count := 1
+              [0 :id] := "id-0"))
+
+          (testing "within the period"
+            (are [date]
+              (given (pull-type-query node "Observation" [["date" date]])
+                count := 1
+                [0 :id] := "id-0")
+              "2021-02-23T15:12:46+01:00"
+              "2021-02-23T15:30:00+01:00"
+              "2021-02-23T15:59:59+01:00"))
+
+          (testing "at the end of the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23T16:00:00+01:00"]])
+              count := 1
+              [0 :id] := "id-0"))
+
+          (testing "after the end of the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23T16:00:01+01:00"]])
+              count := 0))))
 
       (testing "value-quantity"
         (testing "without unit"

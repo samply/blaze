@@ -65,12 +65,12 @@
         (case (:type (:search-param c2))
           "token"
           (tt/->SearchParamCompositeTokenToken name url type base code
-                                            (codec/c-hash code)
-                                            main-expression c1 c2)
+                                               (codec/c-hash code)
+                                               main-expression c1 c2)
           "quantity"
           (tq/->SearchParamCompositeTokenQuantity name url type base code
-                                               (codec/c-hash code)
-                                               main-expression c1 c2))))))
+                                                  (codec/c-hash code)
+                                                  main-expression c1 c2))))))
 
 
 (defn- handle-anomaly [{:keys [url type]} anomaly]

@@ -22,11 +22,12 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -64,6 +65,14 @@
       ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`.")))
 
 
+(defn- date-lb [date-time]
+  (codec/date-lb (ZoneId/systemDefault) date-time))
+
+
+(defn- date-ub [date-time]
+  (codec/date-ub (ZoneId/systemDefault) date-time))
+
+
 (deftest index-entries-test
   (testing "Patient"
     (testing "birthDate"
@@ -71,26 +80,16 @@
                      :id "id-142629"
                      :birthDate #fhir/date"2020-02-04"}
             hash (hash/generate patient)
-            [[_ k0] [_ k1]]
+            [[_ k0]]
             (search-param/index-entries birth-date-param hash patient [])]
 
-        (testing "the first entry is about the lower bound of `2020-02-04`"
+        (testing "the entry is about both bounds of `2020-02-04`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "birthdate"
             :type := "Patient"
-            :v-hash := (codec/date-lb
-                         (ZoneId/systemDefault)
-                         (LocalDate/of 2020 2 4))
-            :id := "id-142629"
-            :hash-prefix (codec/hash-prefix hash)))
-
-        (testing "the second entry is about the upper bound of `2020-02-04`"
-          (given (sp-vr-tu/decode-key-human (bb/wrap k1))
-            :code := "birthdate"
-            :type := "Patient"
-            :v-hash := (codec/date-ub
-                         (ZoneId/systemDefault)
-                         (LocalDate/of 2020 2 4))
+            :v-hash := (codec/date-lb-ub
+                         (date-lb (LocalDate/of 2020 2 4))
+                         (date-ub (LocalDate/of 2020 2 4)))
             :id := "id-142629"
             :hash-prefix (codec/hash-prefix hash)))))
 
@@ -100,30 +99,22 @@
              :id "id-142629"
              :deceased #fhir/dateTime"2019-11-17T00:14:29+01:00"}
             hash (hash/generate patient)
-            [[_ k0] [_ k1]]
+            [[_ k0]]
             (search-param/index-entries
               (sr/get search-param-registry "death-date" "Patient")
               hash patient [])]
 
-        (testing "the first entry is about the lower bound of `2020-01-01T00:00:00Z`"
+        (testing "the entry is about both bounds of `2020-01-01T00:00:00Z`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "death-date"
             :type := "Patient"
-            :v-hash := (codec/date-lb
-                         (ZoneId/systemDefault)
-                         (OffsetDateTime/of 2019 11 17 0 14 29 0
-                                            (ZoneOffset/ofHours 1)))
-            :id := "id-142629"
-            :hash-prefix (codec/hash-prefix hash)))
-
-        (testing "the first entry is about the upper bound of `2020-01-01T00:00:00Z`"
-          (given (sp-vr-tu/decode-key-human (bb/wrap k1))
-            :code := "death-date"
-            :type := "Patient"
-            :v-hash := (codec/date-ub
-                         (ZoneId/systemDefault)
-                         (OffsetDateTime/of 2019 11 17 0 14 29 0
-                                            (ZoneOffset/ofHours 1)))
+            :v-hash := (codec/date-lb-ub
+                         (date-lb
+                           (OffsetDateTime/of 2019 11 17 0 14 29 0
+                                              (ZoneOffset/ofHours 1)))
+                         (date-ub
+                           (OffsetDateTime/of 2019 11 17 0 14 29 0
+                                              (ZoneOffset/ofHours 1))))
             :id := "id-142629"
             :hash-prefix (codec/hash-prefix hash))))))
 
@@ -136,30 +127,23 @@
                       :start #fhir/dateTime"2019-11-17T00:14:29+01:00"
                       :end #fhir/dateTime"2019-11-17T00:44:29+01:00"}}
             hash (hash/generate patient)
-            [[_ k0] [_ k1]]
+            [[_ k0]]
             (search-param/index-entries
               (sr/get search-param-registry "date" "Encounter")
               hash patient [])]
 
-        (testing "the first entry is about the lower bound of `2019-11-17T00:14:29+01:00`"
+        (testing "the entry is about the lower bound of the start and the upper
+                  bound of the end of the period"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "date"
             :type := "Encounter"
-            :v-hash := (codec/date-lb
-                         (ZoneId/systemDefault)
-                         (OffsetDateTime/of 2019 11 17 0 14 29 0
-                                            (ZoneOffset/ofHours 1)))
-            :id := "id-160224"
-            :hash-prefix (codec/hash-prefix hash)))
-
-        (testing "the second entry is about the upper bound of `2019-11-17T00:44:29+01:00`"
-          (given (sp-vr-tu/decode-key-human (bb/wrap k1))
-            :code := "date"
-            :type := "Encounter"
-            :v-hash := (codec/date-ub
-                         (ZoneId/systemDefault)
-                         (OffsetDateTime/of 2019 11 17 0 44 29 0
-                                            (ZoneOffset/ofHours 1)))
+            :v-hash := (codec/date-lb-ub
+                         (date-lb
+                           (OffsetDateTime/of 2019 11 17 0 14 29 0
+                                              (ZoneOffset/ofHours 1)))
+                         (date-ub
+                           (OffsetDateTime/of 2019 11 17 0 44 29 0
+                                              (ZoneOffset/ofHours 1))))
             :id := "id-160224"
             :hash-prefix (codec/hash-prefix hash))))
 
@@ -170,25 +154,19 @@
                        {:fhir/type :fhir/Period
                         :end #fhir/dateTime"2019-11-17"}}
               hash (hash/generate patient)
-              [[_ k0] [_ k1]]
+              [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "date" "Encounter")
                 hash patient [])]
 
-          (testing "the first entry is about the lower bound of `2019-11-17T00:14:29+01:00`"
+          (testing "the entry is about the min bound as lower bound and the
+                    upper bound of the end of the period"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "date"
               :type := "Encounter"
-              :v-hash := codec/date-min-bound
-              :id := "id-160224"
-              :hash-prefix (codec/hash-prefix hash)))
-
-          (testing "the second entry is about the upper bound of `2019-11-17`"
-            (given (sp-vr-tu/decode-key-human (bb/wrap k1))
-              :code := "date"
-              :type := "Encounter"
-              :v-hash := (codec/date-ub (ZoneId/systemDefault)
-                                        (LocalDate/of 2019 11 17))
+              :v-hash := (codec/date-lb-ub
+                           codec/date-min-bound
+                           (date-ub (LocalDate/of 2019 11 17)))
               :id := "id-160224"
               :hash-prefix (codec/hash-prefix hash)))))
 
@@ -199,27 +177,21 @@
                        {:fhir/type :fhir/Period
                         :start #fhir/dateTime"2019-11-17T00:14:29+01:00"}}
               hash (hash/generate patient)
-              [[_ k0] [_ k1]]
+              [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "date" "Encounter")
                 hash patient [])]
 
-          (testing "the first entry is about the lower bound of `2019-11-17T00:14:29+01:00`"
+          (testing "the entry is about the lower bound of the start and the max
+                    upper bound"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "date"
               :type := "Encounter"
-              :v-hash := (codec/date-lb
-                           (ZoneId/systemDefault)
-                           (OffsetDateTime/of 2019 11 17 0 14 29 0
-                                              (ZoneOffset/ofHours 1)))
-              :id := "id-160224"
-              :hash-prefix (codec/hash-prefix hash)))
-
-          (testing "the second entry is about the upper bound of `2019-11-17T00:44:29+01:00`"
-            (given (sp-vr-tu/decode-key-human (bb/wrap k1))
-              :code := "date"
-              :type := "Encounter"
-              :v-hash := codec/date-max-bound
+              :v-hash := (codec/date-lb-ub
+                           (date-lb
+                             (OffsetDateTime/of 2019 11 17 0 14 29 0
+                                                (ZoneOffset/ofHours 1)))
+                           codec/date-max-bound)
               :id := "id-160224"
               :hash-prefix (codec/hash-prefix hash)))))))
 
@@ -229,30 +201,22 @@
                      :id "id-155607"
                      :issued (type/->Instant "2019-11-17T00:14:29.917+01:00")}
             hash (hash/generate patient)
-            [[_ k0] [_ k1]]
+            [[_ k0]]
             (search-param/index-entries
               (sr/get search-param-registry "issued" "DiagnosticReport")
               hash patient [])]
 
-        (testing "the first entry is about the lower bound of `2019-11-17T00:14:29.917+01:00`"
+        (testing "the entry is about both bounds of `2019-11-17T00:14:29.917+01:00`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "issued"
             :type := "DiagnosticReport"
-            :v-hash := (codec/date-lb
-                         (ZoneId/systemDefault)
-                         (OffsetDateTime/of 2019 11 17 0 14 29 917
-                                            (ZoneOffset/ofHours 1)))
-            :id := "id-155607"
-            :hash-prefix (codec/hash-prefix hash)))
-
-        (testing "the second entry is about the upper bound of `2019-11-17T00:14:29.917+01:00`"
-          (given (sp-vr-tu/decode-key-human (bb/wrap k1))
-            :code := "issued"
-            :type := "DiagnosticReport"
-            :v-hash := (codec/date-ub
-                         (ZoneId/systemDefault)
-                         (OffsetDateTime/of 2019 11 17 0 14 29 917
-                                            (ZoneOffset/ofHours 1)))
+            :v-hash := (codec/date-lb-ub
+                         (date-lb
+                           (OffsetDateTime/of 2019 11 17 0 14 29 917
+                                              (ZoneOffset/ofHours 1)))
+                         (date-ub
+                           (OffsetDateTime/of 2019 11 17 0 14 29 917
+                                              (ZoneOffset/ofHours 1))))
             :id := "id-155607"
             :hash-prefix (codec/hash-prefix hash))))))
 
