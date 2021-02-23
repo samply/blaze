@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please refer to the [Conformance](docs/conformance.md) section and report any issues you encounter during evaluation.
 
-Latest release: [v0.11.0-alpha.4][5]
+Latest release: [v0.11.0-alpha.5][5]
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ In order to run Blaze just execute the following:
 
 ```bash
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11.0-alpha.4
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11.0-alpha.5
 ```
 
 Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
@@ -63,7 +63,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.11.0-alpha.4>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.11.0-alpha.5>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
