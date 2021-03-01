@@ -50,7 +50,7 @@
   {:mvn/version "4.1.59.Final"}
 
   io.prometheus/simpleclient_hotspot
-  {:mvn/version "0.9.0"}
+  {:mvn/version "0.10.0"}
 
   org.clojars.akiel/spec-coerce
   {:mvn/version "0.4.0"}

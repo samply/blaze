@@ -13,10 +13,10 @@
    :sha "b4f77b0fe9618c5d65bf2cafd27510e8e6ba7cdd"}
 
   io.prometheus/simpleclient
-  {:mvn/version "0.9.0"}
+  {:mvn/version "0.10.0"}
 
   io.prometheus/simpleclient_common
-  {:mvn/version "0.9.0"}
+  {:mvn/version "0.10.0"}
 
   prom-metrics/prom-metrics
-  {:mvn/version "0.6-alpha.1"}}}
+  {:mvn/version "0.6-alpha.2"}}}
