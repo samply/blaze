@@ -34,10 +34,7 @@
   {:local/root "../search-param-registry"}
 
   clj-fuzzy/clj-fuzzy
-  {:mvn/version "0.4.1"}
-
-  com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "2.8.8"}}
+  {:mvn/version "0.4.1"}}
 
  :aliases
  {:test

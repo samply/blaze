@@ -11,7 +11,7 @@
   {:mvn/version "0.3.2"}
 
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "2.8.8"}
+  {:mvn/version "3.0.0"}
 
   com.google.guava/guava
   {:mvn/version "30.1-jre"}
