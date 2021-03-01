@@ -1,5 +1,5 @@
 lint:
-	clj-kondo --lint src deps.edn
+	clj-kondo --lint src test deps.edn
 
 test:
 	clojure -M:test --profile :ci

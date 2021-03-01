@@ -2,6 +2,7 @@
   (:require
     [blaze.db.tx-log.local.references :as references]
     [blaze.db.tx-log.local.references-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [taoensso.timbre :as log]))
@@ -23,8 +24,8 @@
          (references/extract-references
            {:fhir/type :fhir/Observation :id "0"
             :subject
-            {:fhir/type :fhir/Reference
-             :reference "Patient/0"}}))))
+            (type/map->Reference
+              {:reference "Patient/0"})}))))
 
   (testing "List.item"
     (is
@@ -35,9 +36,9 @@
             :entry
             [{:fhir/type :fhir.List/entry
               :item
-              {:fhir/type :fhir/Reference
-               :reference "Patient/0"}}
+              (type/map->Reference
+                {:reference "Patient/0"})}
              {:fhir/type :fhir.List/entry
               :item
-              {:fhir/type :fhir/Reference
-               :reference "Patient/1"}}]})))))
+              (type/map->Reference
+                {:reference "Patient/1"})}]})))))

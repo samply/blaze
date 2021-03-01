@@ -19,13 +19,14 @@
     [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
-    [cheshire.core :as cheshire]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [java-time :as jt]
+    [jsonista.core :as j]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.io Closeable]
     [java.time Clock Instant]
     [java.util.concurrent
@@ -44,9 +45,16 @@
   "op")
 
 
+(def ^:private cbor-object-mapper
+  (j/object-mapper
+    {:factory (CBORFactory.)
+     :decode-key-fn true
+     :modules [bs/object-mapper-module]}))
+
+
 (defn- parse-cbor [value t]
   (try
-    (cheshire/parse-cbor value keyword)
+    (j/read-value value cbor-object-mapper)
     (catch Exception e
       (log/warn (format "Skip transaction with point in time of %d because their was an error while parsing tx-data: %s" t (ex-message e))))))
 
@@ -81,9 +89,10 @@
 
 
 (defn encode-tx-data [instant tx-cmds]
-  (cheshire/generate-cbor
+  (j/write-value-as-bytes
     {:instant (.toEpochMilli ^Instant instant)
-     :tx-cmds tx-cmds}))
+     :tx-cmds tx-cmds}
+    cbor-object-mapper))
 
 
 (def ^:private ^:const max-poll-size 50)

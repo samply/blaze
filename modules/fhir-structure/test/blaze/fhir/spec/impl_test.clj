@@ -2,6 +2,7 @@
   (:require
     [blaze.fhir.spec.impl :as impl]
     [blaze.fhir.spec.impl-spec]
+    [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.util :as u]
     [clojure.alpha.spec :as s2]
@@ -84,10 +85,7 @@
            [{:key :fhir/string
              :spec-form `type/string?}
             {:key :fhir.json/string
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "[ \\r\\n\\t\\S]+" ~'s)))}
+             :spec-form `(specs/regex "[ \\r\\n\\t\\S]+" identity)}
             {:key :fhir.xml/string
              :spec-form
              `(s2/and
@@ -123,11 +121,7 @@
            [{:key :fhir/uri
              :spec-form `type/uri?}
             {:key :fhir.json/uri
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "\\S*" ~'s))
-                (s2/conformer type/->Uri identity))}
+             :spec-form `(specs/regex "\\S*" type/->Uri)}
             {:key :fhir.xml/uri
              :spec-form
              `(s2/and
@@ -145,11 +139,7 @@
            [{:key :fhir/canonical
              :spec-form `type/canonical?}
             {:key :fhir.json/canonical
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "\\S*" ~'s))
-                (s2/conformer type/->Canonical identity))}
+             :spec-form `(specs/regex "\\S*" type/->Canonical)}
             {:key :fhir.xml/canonical
              :spec-form
              `(s2/and
@@ -167,11 +157,7 @@
            [{:key :fhir/base64Binary
              :spec-form `type/base64Binary?}
             {:key :fhir.json/base64Binary
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "([0-9a-zA-Z\\\\+/=]{4})+" ~'s))
-                (s2/conformer type/->Base64Binary identity))}
+             :spec-form `(specs/regex "([0-9a-zA-Z\\\\+/=]{4})+" type/->Base64Binary)}
             {:key :fhir.xml/base64Binary
              :spec-form
              `(s2/and
@@ -189,11 +175,7 @@
            [{:key :fhir/code
              :spec-form `type/code?}
             {:key :fhir.json/code
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "[^\\s]+(\\s[^\\s]+)*" ~'s))
-                (s2/conformer type/->Code identity))}
+             :spec-form `(specs/regex "[^\\s]+(\\s[^\\s]+)*" type/->Code)}
             {:key :fhir.xml/code
              :spec-form
              `(s2/and
@@ -247,11 +229,7 @@
            [{:key :fhir/uuid
              :spec-form `uuid?}
             {:key :fhir.json/uuid
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" ~'s))
-                (s2/conformer type/->Uuid identity))}
+             :spec-form `(specs/regex "urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" type/->Uuid)}
             {:key :fhir.xml/uuid
              :spec-form
              `(s2/and
@@ -397,20 +375,21 @@
       [:fhir.xml.Bundle/entry 0 :spec-form]
       := `(s2/and
             (s2/conformer
-              (fn [~'e] (blaze.fhir.spec.impl/conform-xml :fhir.Bundle/entry ~'e))
+              blaze.fhir.spec.impl/conform-xml
               (fn [~'m]
-                (xml-node/element*
-                  nil
-                  (select-keys ~'m [:id])
-                  (-> []
-                    (impl/conj-all ::f/extension (:extension ~'m))
-                    (impl/conj-all ::f/modifierExtension (:modifierExtension ~'m))
-                    (impl/conj-all ::f/link (:link ~'m))
-                    (impl/conj-when (some-> ~'m :fullUrl (assoc :tag ::f/fullUrl)))
-                    (impl/conj-when (:resource ~'m))
-                    (impl/conj-when (some-> ~'m :search (assoc :tag ::f/search)))
-                    (impl/conj-when (some-> ~'m :request (assoc :tag ::f/request)))
-                    (impl/conj-when (some-> ~'m :response (assoc :tag ::f/response)))))))
+                (when ~'m
+                  (xml-node/element*
+                    nil
+                    (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
+                    (-> []
+                        (impl/conj-all ::f/extension (:extension ~'m))
+                        (impl/conj-all ::f/modifierExtension (:modifierExtension ~'m))
+                        (impl/conj-all ::f/link (:link ~'m))
+                        (impl/conj-when (some-> ~'m :fullUrl (assoc :tag ::f/fullUrl)))
+                        (impl/conj-when (:resource ~'m))
+                        (impl/conj-when (some-> ~'m :search (assoc :tag ::f/search)))
+                        (impl/conj-when (some-> ~'m :request (assoc :tag ::f/request)))
+                        (impl/conj-when (some-> ~'m :response (assoc :tag ::f/response))))))))
             (s2/schema
               {:id :fhir.xml.Bundle.entry/id
                :extension (s2/and
@@ -426,7 +405,10 @@
                :resource :fhir.xml.Bundle.entry/resource
                :search :fhir.xml.Bundle.entry/search
                :request :fhir.xml.Bundle.entry/request
-               :response :fhir.xml.Bundle.entry/response}))))
+               :response :fhir.xml.Bundle.entry/response})
+            (s2/conformer
+              (fn [~'m] (assoc ~'m :fhir/type :fhir.Bundle/entry))
+              identity))))
 
   (testing "JSON representation of Bundle.entry.resource"
     (given (group-by :key (impl/struct-def->spec-def (resource "Bundle")))
@@ -448,10 +430,10 @@
 
   (testing "XML representation of Coding"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Coding")))
-      [:fhir.xml/Coding 0 :spec-form 1 2 2]
+      [:fhir.xml/Coding 0 :spec-form 1 2 2 2]
       := `(xml-node/element*
             nil
-            (select-keys ~'m [:id])
+            (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
             (->
               []
               (impl/conj-all ::f/extension (:extension ~'m))
@@ -463,7 +445,8 @@
 
   (testing "XML representation of Measure unformer XML attributes"
     (given (group-by :key (impl/struct-def->spec-def (resource "Measure")))
-      [:fhir.xml/Measure 0 :spec-form 1 2 2 2] := `(assoc (select-keys ~'m []) :xmlns "http://hl7.org/fhir")))
+      [:fhir.xml/Measure 0 :spec-form 1 2 2 2 2] :=
+      `(assoc (blaze.fhir.spec.impl/select-non-nil-keys ~'m []) :xmlns "http://hl7.org/fhir")))
 
   (testing "XML representation of Measure.url"
     (given (group-by :key (impl/struct-def->spec-def (resource "Measure")))

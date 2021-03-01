@@ -3,16 +3,15 @@
     [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.fhir-client-spec]
-    [blaze.fhir.spec :as fhir-spec]
-    [cheshire.core :as json]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
+    [jsonista.core :as j]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
     [com.pgssoft.httpclient HttpClientMock]
-    [org.hamcrest.core Is]
     [java.nio.file Files Path]
     [java.nio.file.attribute FileAttribute]))
 
@@ -33,7 +32,7 @@
   (let [http-client (HttpClientMock.)]
 
     (-> (.onGet http-client "http://localhost:8080/fhir/metadata")
-        (.doReturn (json/generate-string {:resourceType "CapabilityStatement"}))
+        (.doReturn (j/write-value-as-string {:resourceType "CapabilityStatement"}))
         (.withHeader "content-type" "application/fhir+json"))
 
     (given @(fhir-client/metadata "http://localhost:8080/fhir"
@@ -46,7 +45,7 @@
     (let [http-client (HttpClientMock.)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
-          (.doReturn (json/generate-string {:resourceType "Patient" :id "0"}))
+          (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
@@ -58,7 +57,7 @@
     (let [http-client (HttpClientMock.)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
-          (.doReturn (json/generate-string {:resourceType "Patient" :id "0"}))
+          (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/json"))
 
       (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
@@ -72,7 +71,7 @@
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn
             404
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "OperationOutcome"
                :issue
                [{:severity "error"
@@ -126,9 +125,7 @@
           resource {:fhir/type :fhir/Patient :id "0"}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
-          (.withBody
-            (Is/is (json/generate-string (fhir-spec/unform-json resource))))
-          (.doReturn (json/generate-string {:resourceType "Patient" :id "0"}))
+          (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/update "http://localhost:8080/fhir" resource
@@ -139,15 +136,11 @@
   (testing "with meta versionId"
     (let [http-client (HttpClientMock.)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta
-                    {:fhir/type :fhir/Meta
-                     :versionId #fhir/id"180040"}}]
+                    :meta (type/map->Meta {:versionId #fhir/id"180040"})}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
-          (.withBody
-            (Is/is (json/generate-string (fhir-spec/unform-json resource))))
-          (.doReturn (json/generate-string {:resourceType "Patient" :id "0"}))
+          (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/update "http://localhost:8080/fhir" resource
@@ -158,18 +151,13 @@
   (testing "stale update"
     (let [http-client (HttpClientMock.)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta
-                    {:fhir/type :fhir/Meta
-                     :versionId #fhir/id"180040"}}]
+                    :meta (type/map->Meta {:versionId #fhir/id"180040"})}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
-          (.withBody
-            (Is/is (json/generate-string (fhir-spec/unform-json resource))))
-
           (.doReturn
             412
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "OperationOutcome"
                :issue
                [{:severity "error"}]}))
@@ -187,7 +175,7 @@
     (let [http-client (HttpClientMock.)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/ValueSet/$expand?url=http://hl7.org/fhir/ValueSet/administrative-gender")
-          (.doReturn (json/generate-string {:resourceType "ValueSet" :id "0"}))
+          (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/execute-type-get
@@ -205,7 +193,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "0"}}]}))
@@ -222,7 +210,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "0"}}
@@ -242,7 +230,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :link
                [{:relation "next"
@@ -253,7 +241,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient?page=2")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "1"}}]}))
@@ -272,7 +260,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient?birthdate=2020")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "0"}}]}))
@@ -303,7 +291,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "0"}}]}))
@@ -320,7 +308,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "0"}}
@@ -340,7 +328,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :link
                [{:relation "next"
@@ -351,7 +339,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir?page=2")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "1"}}]}))
@@ -370,7 +358,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir?_id=0")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "0"}}]}))
@@ -409,7 +397,7 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
-            (json/generate-string
+            (j/write-value-as-string
               {:resourceType "Bundle"
                :entry
                [{:resource {:resourceType "Patient" :id "0"}}]}))

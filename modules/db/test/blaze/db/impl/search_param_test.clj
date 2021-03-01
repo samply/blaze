@@ -9,6 +9,8 @@
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -59,9 +61,8 @@
     (let [patient {:fhir/type :fhir/Patient
                    :id "id-140855"
                    :meta
-                   {:fhir/type :fhir/Meta
-                    :profile
-                    [#fhir/canonical"profile-uri-141443"]}}
+                   (type/map->Meta
+                     {:profile [#fhir/canonical"profile-uri-141443"]})}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
@@ -88,8 +89,8 @@
     (let [specimen {:fhir/type :fhir/Specimen
                     :id "id-150810"
                     :subject
-                    {:fhir/type :fhir/Reference
-                     :reference "reference-150829"}}
+                    (type/map->Reference
+                      {:reference "reference-150829"})}
           hash (hash/generate specimen)]
       (is
         (empty?
@@ -130,8 +131,8 @@
                       :entry
                       [{:fhir/type :fhir.List/entry
                         :item
-                        {:fhir/type :fhir/Reference
-                         :reference "Patient/0"}}]}
+                        (type/map->Reference
+                          {:reference "Patient/0"})}]}
             hash (hash/generate resource)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
@@ -194,11 +195,11 @@
                       :entry
                       [{:fhir/type :fhir.List/entry
                         :item
-                        {:fhir/type :fhir/Reference
-                         :identifier
-                         {:fhir/type :fhir/Identifier
-                          :system #fhir/uri"system-122917"
-                          :value "value-122931"}}}]}
+                        (type/map->Reference
+                          {:identifier
+                         (type/map->Identifier
+                           {:system #fhir/uri"system-122917"
+                          :value "value-122931"})})}]}
             hash (hash/generate resource)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
@@ -259,8 +260,8 @@
                       :entry
                       [{:fhir/type :fhir.List/entry
                         :item
-                        {:fhir/type :fhir/Reference
-                         :reference "http://foo.com/bar-141221"}}]}
+                        (type/map->Reference
+                          {:reference "http://foo.com/bar-141221"})}]}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (search-param/index-entries

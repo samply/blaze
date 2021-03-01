@@ -1,10 +1,9 @@
 (ns blaze.cql-translator
   (:require
     [blaze.elm.spec]
-    [cheshire.core :as json]
-    [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
-    [cognitect.anomalies :as anom])
+    [cognitect.anomalies :as anom]
+    [jsonista.core :as j])
   (:import
     [org.cqframework.cql.cql2elm
      CqlTranslator CqlTranslator$Options
@@ -40,6 +39,12 @@
 (load-model-info "blaze/fhir-modelinfo-4.0.0.xml")
 
 
+(def ^:private json-object-mapper
+  (j/object-mapper
+    {:decode-key-fn true
+     :bigdecimals true}))
+
+
 (defn translate
   "Translates `cql` library into am :elm/library.
 
@@ -57,6 +62,4 @@
        ::anom/message (apply str (map ex-message errors))
        :cql cql
        :errors errors}
-      (:library
-        (binding [*use-bigdecimals?* true]
-          (json/parse-string (.toJson translator) keyword))))))
+      (:library (j/read-value (.toJson translator) json-object-mapper)))))

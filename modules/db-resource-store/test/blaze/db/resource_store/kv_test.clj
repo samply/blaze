@@ -9,13 +9,16 @@
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
     [blaze.db.resource-store.kv-spec]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
-    [cheshire.core :as cheshire]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:refer-clojure :exclude [hash]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -39,7 +42,7 @@
 
 
 (defn encode-resource [resource]
-  (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))
+  (fhir-spec/unform-cbor resource))
 
 
 (deftest get-test
@@ -48,7 +51,7 @@
           hash (hash/generate content)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (bs/to-byte-array hash) (encode-resource content))
+      (kv/put! kv-store (bs/to-byte-array hash) (fhir-spec/unform-cbor content))
 
       (is (= content @(rs/get store hash)))))
 
@@ -91,7 +94,7 @@
           hash (hash/generate content)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (bs/to-byte-array hash) (encode-resource content))
+      (kv/put! kv-store (bs/to-byte-array hash) (fhir-spec/unform-cbor content))
 
       (is (= {hash content} @(rs/multi-get store [hash])))))
 
@@ -102,8 +105,8 @@
           hash-1 (hash/generate content-1)
           kv-store (new-mem-kv-store)
           store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (bs/to-byte-array hash-0) (encode-resource content-0))
-      (kv/put! kv-store (bs/to-byte-array hash-1) (encode-resource content-1))
+      (kv/put! kv-store (bs/to-byte-array hash-0) (fhir-spec/unform-cbor content-0))
+      (kv/put! kv-store (bs/to-byte-array hash-1) (fhir-spec/unform-cbor content-1))
 
       (is (= {hash-0 content-0 hash-1 content-1}
              @(rs/multi-get store [hash-0 hash-1])))))

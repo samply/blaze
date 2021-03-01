@@ -2,6 +2,7 @@
   (:require
     [blaze.bundle :refer [resolve-entry-links]]
     [blaze.bundle-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]
@@ -28,8 +29,8 @@
             {:fhir/type :fhir/Observation
              :id "0"
              :subject
-             {:fhir/type :fhir/Reference
-              :reference "urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"}}
+             (type/map->Reference
+               {:reference "urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"})}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Observation"}}
@@ -57,8 +58,8 @@
             {:fhir/type :fhir/Patient
              :id "0"
              :generalPractitioner
-             [{:fhir/type :fhir/Reference
-               :reference "urn:uuid:44dded80-aaf1-4988-ace4-5f3a2c9935a7"}]}
+             [(type/map->Reference
+                {:reference "urn:uuid:44dded80-aaf1-4988-ace4-5f3a2c9935a7"})]}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Patient"}}]]
@@ -80,13 +81,22 @@
              :id "0"
              :diagnosis
              [{:diagnosisReference
-               {:fhir/type :fhir/Reference
-                :reference "urn:uuid:69857788-8691-45b9-bc97-654fb93ba615"}}]}
+               (type/map->Reference
+                 {:reference "urn:uuid:69857788-8691-45b9-bc97-654fb93ba615"})}]}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Claim"}}]]
       (given (resolve-entry-links entries)
-        [1 :resource :diagnosis 0 :diagnosisReference :reference] := "Condition/0"))))
+        [1 :resource :diagnosis 0 :diagnosisReference :reference] := "Condition/0")))
+
+  (testing "preserves complex-type records"
+    (let [entries
+          [{:resource
+            {:fhir/type :fhir/Observation
+             :id "0"
+             :code (type/map->CodeableConcept {})}}]]
+      (given (resolve-entry-links entries)
+        [0 :resource :code type/type] := :fhir/CodeableConcept))))
 
 
 (deftest resolve-entry-links-in-contained-resources-test
@@ -106,8 +116,8 @@
            [{:fhir/type :fhir/ServiceRequest
              :id "0"
              :subject
-             {:fhir/type :fhir/Reference
-              :reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
+             (type/map->Reference
+               {:reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"})}]}
           :request
           {:method #fhir/code"POST"
            :url #fhir/uri"ExplanationOfBenefit"}}]]

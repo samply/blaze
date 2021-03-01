@@ -7,6 +7,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
+    [blaze.fhir.spec.type :as type]
     [blaze.interaction.update]
     [blaze.interaction.update-spec]
     [blaze.log]
@@ -152,8 +153,8 @@
              ::reitit/match {:data {:fhir.resource/type "Observation"}}
              :body {:fhir/type :fhir/Observation :id "0"
                     :subject
-                    {:fhir/type :fhir/Reference
-                     :reference "Patient/0"}}})]
+                    (type/map->Reference
+                      {:reference "Patient/0"})}})]
 
       (is (= 409 status))
 

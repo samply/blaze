@@ -1,9 +1,9 @@
 (ns blaze.structure-definition
   (:require
-    [cheshire.core :as json]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
+    [jsonista.core :as j]
     [taoensso.timbre :as log]))
 
 
@@ -151,11 +151,15 @@
 
 ;; ---- Read ------------------------------------------------------------------
 
+(def ^:private json-object-mapper
+  (j/object-mapper {:decode-key-fn true}))
+
+
 (defn- read-bundle
   "Reads a bundle from classpath named `resource-name`."
   [resource-name]
   (with-open [rdr (io/reader (io/resource resource-name))]
-    (json/parse-stream rdr keyword)))
+    (j/read-value rdr json-object-mapper)))
 
 
 (defn- extract [kind bundle]

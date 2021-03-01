@@ -443,6 +443,4 @@
 
   Returns a failed CompletableFuture if one pull fails."
   [node-or-db resource-handles]
-  (let [futures (mapv #(pull node-or-db %) resource-handles)]
-    (-> (ac/all-of futures)
-        (ac/then-apply (fn [_] (mapv deref futures))))))
+  (p/-pull-many node-or-db resource-handles))

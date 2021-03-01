@@ -7,7 +7,7 @@
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
-    [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]])
@@ -93,9 +93,9 @@
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 identifier
-                {:fhir/type :fhir/Identifier
-                 :system #fhir/uri"foo"
-                 :value "bar"}
+                (type/map->Identifier
+                  {:system #fhir/uri"foo"
+                   :value "bar"})
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
@@ -104,8 +104,7 @@
                   {:eval-context "Patient"}
                   elm)
                 result (coll/first (core/-eval expr nil nil {"R" entity}))]
-            (is (= identifier result))
-            (is (= :fhir/Identifier (fhir-spec/fhir-type result)))))
+            (is (= identifier result))))
 
         (testing "without source-type"
           (let [elm
@@ -113,9 +112,9 @@
                  :scope "R"
                  :type "Property"}
                 identifier
-                {:fhir/type :fhir/Identifier
-                 :system #fhir/uri"foo"
-                 :value "bar"}
+                (type/map->Identifier
+                  {:system #fhir/uri"foo"
+                 :value "bar"})
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
@@ -124,8 +123,27 @@
                   {:eval-context "Patient"}
                   elm)
                 result (coll/first (core/-eval expr nil nil {"R" entity}))]
-            (is (= identifier result))
-            (is (= :fhir/Identifier (fhir-spec/fhir-type result))))))
+            (is (= identifier result)))))
+
+      (testing "Patient.extension"
+        (testing "without source-type"
+          (let [elm
+                {:path "extension"
+                 :scope "R"
+                 :type "Property"}
+                extension
+                (type/map->Extension
+                  {:url "foo"
+                   :valueString "bar"})
+                entity
+                {:fhir/type :fhir/Patient :id "0"
+                 :extension [extension]}
+                expr
+                (c/compile
+                  {:eval-context "Patient"}
+                  elm)
+                result (coll/first (core/-eval expr nil nil {"R" entity}))]
+            (is (= extension result)))))
 
       (testing "Patient.gender"
         (testing "with source-type"
@@ -196,9 +214,9 @@
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 identifier
-                {:fhir/type :fhir/Identifier
-                 :system #fhir/uri"foo"
-                 :value "bar"}
+                (type/map->Identifier
+                  {:system #fhir/uri"foo"
+                 :value "bar"})
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
@@ -208,8 +226,7 @@
                    :life/single-query-scope "R"}
                   elm)
                 result (coll/first (core/-eval expr nil nil entity))]
-            (is (= identifier result))
-            (is (= :fhir/Identifier (fhir-spec/fhir-type result)))))
+            (is (= identifier result))))
 
         (testing "without source-type"
           (let [elm
@@ -217,9 +234,9 @@
                  :scope "R"
                  :type "Property"}
                 identifier
-                {:fhir/type :fhir/Identifier
-                 :system #fhir/uri"foo"
-                 :value "bar"}
+                (type/map->Identifier
+                  {:system #fhir/uri"foo"
+                 :value "bar"})
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
@@ -229,8 +246,7 @@
                    :life/single-query-scope "R"}
                   elm)
                 result (coll/first (core/-eval expr nil nil entity))]
-            (is (= identifier result))
-            (is (= :fhir/Identifier (fhir-spec/fhir-type result))))))
+            (is (= identifier result)))))
 
       (testing "Patient.gender"
         (testing "with source-type"
@@ -305,16 +321,15 @@
                :type "Property"
                :life/source-type "{http://hl7.org/fhir}Patient"}
               identifier
-              {:fhir/type :fhir/Identifier
-               :system #fhir/uri"foo"
-               :value "bar"}
+              (type/map->Identifier
+                {:system #fhir/uri"foo"
+               :value "bar"})
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
               expr (c/compile {:library library :eval-context "Patient"} elm)
               result (coll/first (core/-eval expr {:library-context {"Patient" source}} nil nil))]
-          (is (= identifier result))
-          (is (= :fhir/Identifier (fhir-spec/fhir-type result)))))
+          (is (= identifier result))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:name "Patient"}]}}
@@ -323,16 +338,15 @@
                :source #elm/expression-ref "Patient"
                :type "Property"}
               identifier
-              {:fhir/type :fhir/Identifier
-               :system #fhir/uri"foo"
-               :value "bar"}
+              (type/map->Identifier
+                {:system #fhir/uri"foo"
+               :value "bar"})
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
               expr (c/compile {:library library :eval-context "Patient"} elm)
               result (coll/first (core/-eval expr {:library-context {"Patient" source}} nil nil))]
-          (is (= identifier result))
-          (is (= :fhir/Identifier (fhir-spec/fhir-type result))))))
+          (is (= identifier result)))))
 
     (testing "Patient.gender"
       (testing "with source-type"
@@ -345,8 +359,9 @@
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
-          (is (= #fhir/code"male" (core/-eval expr {:library-context {"Patient" source}} nil nil)))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              result (core/-eval expr {:library-context {"Patient" source}} nil nil)]
+          (is (= #fhir/code"male" result))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:name "Patient"}]}}
@@ -357,8 +372,9 @@
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
-          (is (= #fhir/code"male" (core/-eval expr {:library-context {"Patient" source}} nil nil))))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              result (core/-eval expr {:library-context {"Patient" source}} nil nil)]
+          (is (= #fhir/code"male" result)))))
 
     (testing "Observation.value"
       (testing "with source-type"
@@ -371,8 +387,9 @@
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
-          (is (= "value-114318" (core/-eval expr {:library-context {"Observation" source}} nil nil)))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              result (core/-eval expr {:library-context {"Observation" source}} nil nil)]
+          (is (= "value-114318" result))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:name "Observation"}]}}
@@ -383,8 +400,9 @@
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
-          (is (= "value-114318" (core/-eval expr {:library-context {"Observation" source}} nil nil))))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              result (core/-eval expr {:library-context {"Observation" source}} nil nil)]
+          (is (= "value-114318" result)))))
 
     (testing "Tuple"
       (are [elm result]

@@ -5,10 +5,14 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry-spec]
     [blaze.fhir-path :as fhir-path]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -56,5 +60,5 @@
            {:fhir/type :fhir/Condition
             :id "id-0"
             :subject
-            {:fhir/type :fhir/Reference
-             :reference "Patient/id-1"}}))))
+            (type/map->Reference
+              {:reference "Patient/id-1"})}))))

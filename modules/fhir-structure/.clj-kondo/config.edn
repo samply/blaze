@@ -1,4 +1,7 @@
-{:linters
+{:lint-as
+ {blaze.fhir.spec.type.macros/defcomplextype clojure.core/defrecord}
+
+ :linters
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in

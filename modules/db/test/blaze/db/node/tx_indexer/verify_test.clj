@@ -18,6 +18,7 @@
     [blaze.db.tx-log.local :refer [new-local-tx-log]]
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.walk :refer [postwalk]]

@@ -3,6 +3,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.tx-log.local.references :as references]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]))
 
 

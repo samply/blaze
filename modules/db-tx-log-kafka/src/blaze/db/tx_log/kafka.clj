@@ -6,19 +6,17 @@
     [blaze.db.tx-log.kafka.spec]
     [blaze.db.tx-log.spec]
     [blaze.module :refer [reg-collector]]
-    [cheshire.core :as cheshire]
-    [cheshire.generate :refer [JSONable]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [integrant.core :as ig]
+    [jsonista.core :as j]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
     [java.time Duration Instant]
     [java.util Map]
-    [com.fasterxml.jackson.core JsonGenerator]
-    [com.google.common.hash HashCode$BytesHashCode]
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [org.apache.kafka.clients.consumer Consumer KafkaConsumer ConsumerRecord]
     [org.apache.kafka.clients.producer Producer KafkaProducer ProducerRecord RecordMetadata Callback]
     [org.apache.kafka.common TopicPartition]
@@ -38,16 +36,17 @@
   "op")
 
 
-(extend-protocol JSONable
-  HashCode$BytesHashCode
-  (to-json [hash-code jg]
-    (.writeBinary ^JsonGenerator jg (.asBytes hash-code))))
+(def ^:private cbor-object-mapper
+  (j/object-mapper
+    {:factory (CBORFactory.)
+     :decode-key-fn true
+     :modules [bs/object-mapper-module]}))
 
 
 (deftype CborSerializer []
   Serializer
   (serialize [_ _ data]
-    (cheshire/generate-cbor data)))
+    (j/write-value-as-bytes data cbor-object-mapper)))
 
 
 (def ^Serializer serializer (CborSerializer.))
@@ -71,7 +70,7 @@
 
 (defn- parse-cbor [data]
   (try
-    (cheshire/parse-cbor data keyword)
+    (j/read-value data cbor-object-mapper)
     (catch Exception e
       (log/warn (format "Error while parsing tx-data: %s" (ex-message e))))))
 

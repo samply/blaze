@@ -9,8 +9,6 @@
     [blaze.fhir.spec.type :as type]
     [blaze.log]
     [blaze.luid :refer [luid]]
-    [cheshire.core :as json]
-    [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -72,13 +70,9 @@
     :url #fhir/uri"Library/0"}})
 
 
-(defn- parse-json [s]
-  (binding [*use-bigdecimals?* true] (json/parse-string s keyword)))
-
-
 (defn- read-data [name]
   (let [raw (slurp-resource (str name "-data.json"))
-        bundle (fhir-spec/conform-json (parse-json raw))
+        bundle (fhir-spec/conform-json (fhir-spec/parse-json raw))
         library (library-entry (slurp-resource (str name "-query.cql")))]
     (update bundle :entry conj library)))
 

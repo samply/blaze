@@ -1,11 +1,11 @@
 {:paths ["src" "resources"]
 
  :deps
- {cheshire/cheshire
-  {:mvn/version "5.10.0"}
-
-  com.google.guava/guava
+ {com.google.guava/guava
   {:mvn/version "30.1-jre"}
 
   com.google.protobuf/protobuf-java
-  {:mvn/version "3.14.0"}}}
+  {:mvn/version "3.14.0"}
+
+  com.fasterxml.jackson.core/jackson-databind
+  {:mvn/version "2.12.0"}}}

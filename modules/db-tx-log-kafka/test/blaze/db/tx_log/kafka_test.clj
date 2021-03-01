@@ -1,10 +1,9 @@
 (ns blaze.db.tx-log.kafka-test
   (:require
-    [blaze.byte-string :as bs]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka :as kafka :refer [new-kafka-tx-log]]
     [blaze.fhir.hash :as hash]
-    [cheshire.core :as cheshire]
+    [blaze.fhir.hash-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [java-time :as jt]
@@ -16,6 +15,9 @@
     [org.apache.kafka.clients.producer Producer RecordMetadata]
     [org.apache.kafka.common TopicPartition]
     [org.apache.kafka.common.record TimestampType]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -90,19 +92,32 @@
 (def hash-patient-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
 
 
+(defn- serialize [cmds]
+  (.serialize kafka/serializer nil cmds))
+
+
+(defn- deserialize [cmds]
+  (.deserialize kafka/deserializer nil cmds))
+
+
+(deftest serializer
+  (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
+    (is (= [cmd] (deserialize (serialize [cmd]))))))
+
+
 (deftest deserializer
   (testing "empty value"
-    (is (nil? (.deserialize kafka/deserializer nil (byte-array 0)))))
+    (is (nil? (deserialize (byte-array 0)))))
 
   (testing "invalid cbor value"
-    (is (nil? (.deserialize kafka/deserializer nil (invalid-cbor-content)))))
+    (is (nil? (deserialize (invalid-cbor-content)))))
 
   (testing "invalid map value"
-    (is (nil? (.deserialize kafka/deserializer nil (cheshire/generate-cbor {:a 1})))))
+    (is (nil? (deserialize (serialize {:a 1})))))
 
   (testing "success"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash (bs/to-byte-array hash-patient-0)}]
-      (given (first (.deserialize kafka/deserializer nil (cheshire/generate-cbor [cmd])))
+    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
+      (given (first (deserialize (serialize [cmd])))
         :op := "create"
         :type := "Patient"
         :id := "0"

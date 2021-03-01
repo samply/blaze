@@ -1,5 +1,6 @@
 (ns blaze.interaction.history.util-test
   (:require
+    [blaze.fhir.spec.type :as type]
     [blaze.interaction.history.util :as history-util]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -67,9 +68,7 @@
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta
-           {:fhir/type :fhir/Meta
-            :versionId #fhir/id"1"}}
+           :meta (type/map->Meta {:versionId #fhir/id"1"})}
           {:blaze.db/op :create
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
@@ -90,9 +89,7 @@
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta
-           {:fhir/type :fhir/Meta
-            :versionId #fhir/id"1"}}
+           :meta (type/map->Meta {:versionId #fhir/id"1"})}
           {:blaze.db/op :put
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
@@ -113,9 +110,7 @@
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta
-           {:fhir/type :fhir/Meta
-            :versionId #fhir/id"2"}}
+           :meta (type/map->Meta {:versionId #fhir/id"2"})}
           {:blaze.db/op :put
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
@@ -136,9 +131,7 @@
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta
-           {:fhir/type :fhir/Meta
-            :versionId #fhir/id"2"}}
+           :meta (type/map->Meta {:versionId #fhir/id"2"})}
           {:blaze.db/op :delete
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))

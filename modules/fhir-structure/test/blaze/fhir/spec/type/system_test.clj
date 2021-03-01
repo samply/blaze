@@ -487,11 +487,16 @@
       "2020-01-02T03:04" (system/date-time 2020 1 2 3 4)
       "2020-01-02T03:04:05" (system/date-time 2020 1 2 3 4 5)
       "2020-01-02T03:04:05.006" (system/date-time 2020 1 2 3 4 5 6)
-      "2020-01-02T03:04:05Z" (system/date-time 2020 1 2 3 4 5 0 ZoneOffset/UTC)
+      "2020-01-02T03:04:05Z"
+      (system/date-time 2020 1 2 3 4 5 0 ZoneOffset/UTC)
+      "2020-01-02T03:04:05-01:00"
+      (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHours -1))
       "2020-01-02T03:04:05+01:00"
       (system/date-time 2020 1 2 3 4 5 0 (ZoneOffset/ofHours 1))
       "2020-01-02T03:04:05.006Z"
       (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
+      "2020-01-02T03:04:05.006-01:00"
+      (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours -1))
       "2020-01-02T03:04:05.006+01:00"
       (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours 1))))
 

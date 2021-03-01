@@ -8,6 +8,7 @@
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal :as elm]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -77,8 +78,8 @@
                          [[[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "1"
                                   :subject
-                                  {:fhir/type :fhir/Reference
-                                   :reference "Patient/0"}}]]])]
+                                  (type/map->Reference
+                                    {:reference "Patient/0"})}]]])]
         (let [context
               {:node node
                :eval-context "Patient"
@@ -96,18 +97,18 @@
                            [[[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "0"
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]
                              [:put {:fhir/type :fhir/Observation :id "1"
                                     :code
-                                    {:fhir/type :fhir/CodeableConcept
-                                     :coding
-                                     [{:fhir/type :fhir/Coding
-                                       :system #fhir/uri"system-192253"
-                                       :code #fhir/code"code-192300"}]}
+                                    (type/map->CodeableConcept
+                                      {:coding
+                                       [(type/map->Coding
+                                          {:system #fhir/uri"system-192253"
+                                           :code #fhir/code"code-192300"})]})
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]]])]
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]]])]
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -134,28 +135,28 @@
                            [[[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "0"
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]
                              [:put {:fhir/type :fhir/Observation :id "1"
                                     :code
-                                    {:fhir/type :fhir/CodeableConcept
-                                     :coding
-                                     [{:fhir/type :fhir/Coding
-                                       :system #fhir/uri"system-192253"
-                                       :code #fhir/code"code-192300"}]}
+                                    (type/map->CodeableConcept
+                                      {:coding
+                                       [(type/map->Coding
+                                          {:system #fhir/uri"system-192253"
+                                           :code #fhir/code"code-192300"})]})
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]
                              [:put {:fhir/type :fhir/Observation :id "2"
                                     :code
-                                    {:fhir/type :fhir/CodeableConcept
-                                     :coding
-                                     [{:fhir/type :fhir/Coding
-                                       :system #fhir/uri"system-192253"
-                                       :code #fhir/code"code-140541"}]}
+                                    (type/map->CodeableConcept
+                                      {:coding
+                                       [(type/map->Coding
+                                          {:system #fhir/uri"system-192253"
+                                           :code #fhir/code"code-140541"})]})
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]]])]
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]]])]
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -186,8 +187,8 @@
                          [[[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Specimen :id "0"
                                   :subject
-                                  {:fhir/type :fhir/Reference
-                                   :reference "Patient/0"}}]]])]
+                                  (type/map->Reference
+                                    {:reference "Patient/0"})}]]])]
         (let [context
               {:node node
                :eval-context "Specimen"
@@ -205,11 +206,11 @@
       (with-open [node (mem-node-with
                          [[[:put {:fhir/type :fhir/Medication :id "0"
                                   :code
-                                  {:fhir/type :fhir/CodeableConcept
-                                   :coding
-                                   [{:fhir/type :fhir/Coding
-                                     :system #fhir/uri"system-225806"
-                                     :code #fhir/code"code-225809"}]}}]]])]
+                                  (type/map->CodeableConcept
+                                    {:coding
+                                     [(type/map->Coding
+                                        {:system #fhir/uri"system-225806"
+                                         :code #fhir/code"code-225809"})]})}]]])]
         (let [context
               {:node node
                :eval-context "Unfiltered"

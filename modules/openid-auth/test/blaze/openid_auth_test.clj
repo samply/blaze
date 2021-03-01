@@ -1,10 +1,14 @@
 (ns blaze.openid-auth-test
   (:require
-    [blaze.openid-auth :refer [public-key]]
+    [blaze.openid-auth :as openid-auth]
+    [blaze.openid-auth-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
     [java.security PublicKey]))
+
+
+(st/instrument)
 
 
 (defn fixture [f]
@@ -22,5 +26,5 @@
 
 (deftest public-key-test
   (testing "Returns type PublicKey after parsing jwks-json string"
-    (let [k (public-key jwks-json)]
+    (let [k (openid-auth/public-key jwks-json)]
       (is (instance? PublicKey k)))))

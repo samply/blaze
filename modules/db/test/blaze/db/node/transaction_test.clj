@@ -2,6 +2,7 @@
   (:require
     [blaze.db.node.transaction :as tx]
     [blaze.db.node.transaction-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]))
@@ -24,18 +25,18 @@
     (given (tx/prepare-ops
              [[:create {:fhir/type :fhir/Observation :id "0"
                         :subject
-                        {:fhir/type :fhir/Reference
-                         :reference "Patient/0"}}]])
+                        (type/map->Reference
+                          {:reference "Patient/0"})}]])
       [0 0 :op] := "create"
       [0 0 :type] := "Observation"
       [0 0 :id] := "0"
-      [0 0 :hash] := #blaze/byte-string"3E2D4F15EFD656DE2EAB5237CB5EFDB452FF4A21F18DD808AC14BEB2D83DF2BB"
+      [0 0 :hash] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
       [0 0 :refs] := [["Patient" "0"]]
-      [1 0 0] := #blaze/byte-string"3E2D4F15EFD656DE2EAB5237CB5EFDB452FF4A21F18DD808AC14BEB2D83DF2BB"
+      [1 0 0] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
       [1 0 1] := {:fhir/type :fhir/Observation :id "0"
                   :subject
-                  {:fhir/type :fhir/Reference
-                   :reference "Patient/0"}}))
+                  (type/map->Reference
+                    {:reference "Patient/0"})}))
 
   (testing "one put"
     (given (tx/prepare-ops [[:put {:fhir/type :fhir/Patient :id "0"}]])

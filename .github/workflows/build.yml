@@ -10,7 +10,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2021.02.13'
+        version: '2021.02.28'
 
     - name: Check out Git repository
       uses: actions/checkout@v2.3.4
@@ -199,9 +199,9 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         push: true
-        tags: ghcr.io/samply/blaze:latest
+        tags: ghcr.io/samply/blaze:${{ github.sha }}
 
-  load-test:
+  integration-test:
     needs: build
     runs-on: ubuntu-20.04
 
@@ -214,19 +214,51 @@ jobs:
         password: ${{ secrets.CR_PAT }}
 
     - name: Pull Docker Image
-      run: docker pull ghcr.io/samply/blaze:latest
+      run: docker pull ghcr.io/samply/blaze:${{ github.sha }}
 
     - name: Run Blaze
-      run: docker run --name blaze --rm -d -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:latest
+      run: docker run --name blaze --rm -d -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:${{ github.sha }}
 
-    - name: Sleep
-      run: sleep 30
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Setup Java
+      uses: actions/setup-java@v1
+      with:
+        java-version: 15
+
+    - name: Download Synthea
+      run: curl -sLO https://github.com/synthetichealth/synthea/releases/download/v2.7.0/synthea-with-dependencies.jar
+
+    - name: Generate Data
+      run: java -jar synthea-with-dependencies.jar -s 93254876 -cs 238756253 -r 20210101 -p 100 --generate.only_alive_patients=true
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
 
     - name: Docker Logs
       run: docker logs blaze
 
-    - name: Fetch Capability Statement
-      run: curl -s http://localhost:8080/fhir/metadata | jq .software
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Load Data
+      run: ./blazectl --server http://localhost:8080/fhir upload output/fhir
+
+    - name: Count Resources
+      run: ./blazectl --server http://localhost:8080/fhir count-resources
+
+    - name: Download Patient Resources
+      run: .github/scripts/download-resources.sh Patient 100
+
+    - name: Download Observation Resources
+      run: .github/scripts/download-resources.sh Observation 28801
+
+    - name: Download Condition Resources
+      run: .github/scripts/download-resources.sh Condition 1255
+
+    - name: Download DiagnosticReport Resources
+      run: .github/scripts/download-resources.sh DiagnosticReport 7324
 
     - name: Docker Stop
       run: docker stop blaze

@@ -182,6 +182,9 @@
   (-pull-content [_ resource-handle]
     (p/-pull-content node resource-handle))
 
+  (-pull-many [_ resource-handles]
+    (p/-pull-many node resource-handles))
+
   Closeable
   (close [_]
     (let [{:keys [snapshot raoi svri rsvi cri csvri]} context]

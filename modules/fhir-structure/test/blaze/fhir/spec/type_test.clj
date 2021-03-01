@@ -2,14 +2,13 @@
   (:require
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
-    [cheshire.core :as json]
-    [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
     [clojure.data.xml.prxml :as prxml]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [cuerdas.core :as str])
+    [cuerdas.core :as str]
+    [jsonista.core :as j])
   (:import
     [java.time Instant LocalDate LocalTime OffsetDateTime Year YearMonth
                ZoneOffset]
@@ -48,23 +47,28 @@
   (.totalSize (GraphLayout/parseInstance (object-array xs))))
 
 
-(defn parse-json [s]
-  (binding [*use-bigdecimals?* true] (json/parse-string s keyword)))
-
-
 (defn murmur3 [x]
   (let [hasher (.newHasher (Hashing/murmur3_32))]
     (type/hash-into x hasher)
     (Integer/toHexString (.asInt (.hash hasher)))))
 
 
-(def sexp prxml/sexp-as-element)
+(def ^:private object-mapper
+  (j/object-mapper
+    {:modules [type/fhir-module]}))
 
 
-(def string-extension
-  {:fhir/type :fhir/Extension
-   :url #fhir/uri"foo"
-   :valueString "bar"})
+(defn- gen-json-string [x]
+  (j/write-value-as-string x object-mapper))
+
+
+(def ^:private sexp prxml/sexp-as-element)
+
+
+(def ^:private string-extension
+  (type/map->Extension
+    {:url #fhir/uri"foo"
+     :valueString "bar"}))
 
 
 (deftest nil-test
@@ -74,7 +78,7 @@
     (testing "value"
       (is (nil? (type/value nil))))
     (testing "to-json"
-      (is (= "null" (json/generate-string nil))))
+      (is (= "null" (gen-json-string nil))))
     (testing "to-xml"
       (is (nil? (type/to-xml nil))))
     (testing "hash-into"
@@ -92,7 +96,7 @@
   (testing "value"
     (is (= true (type/value true))))
   (testing "to-json"
-    (is (= "true" (json/generate-string true))))
+    (is (= "true" (gen-json-string true))))
   (testing "to-xml"
     (are [b s] (= (sexp [nil {:value s}]) (type/to-xml b))
       true "true"
@@ -111,7 +115,7 @@
   (testing "value"
     (is (= 1 (type/value #fhir/integer 1))))
   (testing "to-json"
-    (is (= "1" (json/generate-string #fhir/integer 1))))
+    (is (= "1" (gen-json-string #fhir/integer 1))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "1"}]) (type/to-xml #fhir/integer 1))))
   (testing "instance size"
@@ -130,7 +134,7 @@
   (testing "value"
     (is (= 1 (type/value #fhir/long 1))))
   (testing "to-json"
-    (is (= "1" (json/generate-string #fhir/long 1))))
+    (is (= "1" (gen-json-string #fhir/long 1))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "1"}]) (type/to-xml #fhir/long 1))))
   (testing "instance size"
@@ -151,7 +155,7 @@
   (testing "value"
     (is (= "175227" (type/value "175227"))))
   (testing "to-json"
-    (is (= "\"105406\"" (json/generate-string "105406"))))
+    (is (= "\"105406\"" (gen-json-string "105406"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "121344"}]) (type/to-xml "121344"))))
   (testing "instance size"
@@ -174,13 +178,13 @@
   (testing "value"
     (is (= 1M (type/value 1M))))
   (testing "to-json"
-    (are [decimal json] (= json (json/generate-string decimal))
+    (are [decimal json] (= json (gen-json-string decimal))
       1M "1"
       1.1M "1.1"))
   (testing "to-xml"
     (is (= (sexp [nil {:value "1.1"}]) (type/to-xml 1.1M))))
   (testing "instance size"
-    (is (= 40 (total-size (parse-json "1.1")))))
+    (is (= 40 (total-size 1.1M))))
   (testing "hash-into"
     (are [d hex] (= hex (murmur3 d))
       0M "7e564b82"
@@ -197,7 +201,7 @@
   (testing "value"
     (is (= "105614" (type/value #fhir/uri"105614"))))
   (testing "to-json"
-    (is (= "\"105846\"" (json/generate-string #fhir/uri"105846"))))
+    (is (= "\"105846\"" (gen-json-string #fhir/uri"105846"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/uri"105846"))))
   (testing "equals"
@@ -223,7 +227,7 @@
   (testing "value"
     (is (= "105614" (type/value #fhir/url"105614"))))
   (testing "to-json"
-    (is (= "\"105846\"" (json/generate-string #fhir/url"105846"))))
+    (is (= "\"105846\"" (gen-json-string #fhir/url"105846"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/url"105846"))))
   (testing "equals"
@@ -249,7 +253,7 @@
   (testing "value"
     (is (= "105614" (type/value #fhir/canonical"105614"))))
   (testing "to-json"
-    (is (= "\"105846\"" (json/generate-string #fhir/canonical"105846"))))
+    (is (= "\"105846\"" (gen-json-string #fhir/canonical"105846"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/canonical"105846"))))
   (testing "equals"
@@ -276,7 +280,7 @@
   (testing "value"
     (is (= "MTA1NjE0Cg==" (type/value #fhir/base64Binary"MTA1NjE0Cg=="))))
   (testing "to-json"
-    (is (= "\"MTA1NjE0Cg==\"" (json/generate-string #fhir/base64Binary"MTA1NjE0Cg=="))))
+    (is (= "\"MTA1NjE0Cg==\"" (gen-json-string #fhir/base64Binary"MTA1NjE0Cg=="))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "MTA1NjE0Cg=="}]) (type/to-xml #fhir/base64Binary"MTA1NjE0Cg=="))))
   (testing "equals"
@@ -310,7 +314,7 @@
     (is (= (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC)
            (type/value Instant/EPOCH))))
   (testing "to-json"
-    (are [instant json] (= json (json/generate-string instant))
+    (are [instant json] (= json (gen-json-string instant))
       (type/->Instant "2020-01-01T00:00:00+02:00") "\"2020-01-01T00:00:00+02:00\""
       Instant/EPOCH "\"1970-01-01T00:00:00Z\""))
   (testing "to-xml"
@@ -348,7 +352,7 @@
     (testing "value"
       (is (= (Year/of 2020) (type/value #fhir/date"2020"))))
     (testing "to-json"
-      (is (= "\"2020\"" (json/generate-string #fhir/date"2020"))))
+      (is (= "\"2020\"" (gen-json-string #fhir/date"2020"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020"}]) (type/to-xml #fhir/date"2020"))))
     (testing "equals"
@@ -370,7 +374,7 @@
     (testing "value"
       (is (= (YearMonth/of 2020 1) (type/value #fhir/date"2020-01"))))
     (testing "to-json"
-      (is (= "\"2020-01\"" (json/generate-string #fhir/date"2020-01"))))
+      (is (= "\"2020-01\"" (gen-json-string #fhir/date"2020-01"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01"}]) (type/to-xml #fhir/date"2020-01"))))
     (testing "equals"
@@ -392,7 +396,7 @@
     (testing "value"
       (is (= (LocalDate/of 2020 1 1) (type/value #fhir/date"2020-01-01"))))
     (testing "to-json"
-      (is (= "\"2020-01-01\"" (json/generate-string #fhir/date"2020-01-01"))))
+      (is (= "\"2020-01-01\"" (gen-json-string #fhir/date"2020-01-01"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01-01"}])
              (type/to-xml #fhir/date"2020-01-01"))))
@@ -417,7 +421,7 @@
     (testing "value"
       (is (= (system/date-time 2020) (type/value #fhir/dateTime"2020"))))
     (testing "to-json"
-      (is (= "\"2020\"" (json/generate-string #fhir/dateTime"2020"))))
+      (is (= "\"2020\"" (gen-json-string #fhir/dateTime"2020"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020"}]) (type/to-xml #fhir/dateTime"2020"))))
     (testing "equals"
@@ -442,7 +446,7 @@
       (is (= (system/date-time 2020 1)
              (type/value #fhir/dateTime"2020-01"))))
     (testing "to-json"
-      (is (= "\"2020-01\"" (json/generate-string #fhir/dateTime"2020-01"))))
+      (is (= "\"2020-01\"" (gen-json-string #fhir/dateTime"2020-01"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01"}])
              (type/to-xml #fhir/dateTime"2020-01"))))
@@ -466,7 +470,7 @@
       (is (= (system/date-time 2020 1 1)
              (type/value #fhir/dateTime"2020-01-01"))))
     (testing "to-json"
-      (is (= "\"2020-01-01\"" (json/generate-string #fhir/dateTime"2020-01-01"))))
+      (is (= "\"2020-01-01\"" (gen-json-string #fhir/dateTime"2020-01-01"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01-01"}])
              (type/to-xml #fhir/dateTime"2020-01-01"))))
@@ -490,7 +494,7 @@
       (is (= :fhir/dateTime (type/type #fhir/dateTime"2020-01-01T00:00:00"))))
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00\""
-             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00"))))
+             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01-01T00:00:00"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00"))))
@@ -513,7 +517,7 @@
       (is (= :fhir/dateTime (type/type #fhir/dateTime"2020-01-01T00:00:00.000"))))
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00.001\""
-             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00.001"))))
+             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00.001"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01-01T00:00:00.001"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00.001"))))
@@ -536,7 +540,7 @@
       (is (= :fhir/dateTime (type/type #fhir/dateTime"2020-01-01T00:00:00Z"))))
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00Z\""
-             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00Z"))))
+             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00Z"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01-01T00:00:00Z"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00Z"))))
@@ -561,7 +565,7 @@
              (type/type #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00+01:00\""
-             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
+             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01-01T00:00:00+01:00"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00+01:00"))))
@@ -583,7 +587,7 @@
              (type/type #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00-01:00\""
-             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
+             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01-01T00:00:00-01:00"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00-01:00"))))
@@ -608,7 +612,7 @@
              (type/value #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
     (testing "to-json"
       (is (= "\"2020-01-01T00:00:00.001Z\""
-             (json/generate-string #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
+             (gen-json-string #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01-01T00:00:00.001Z"}])
              (type/to-xml #fhir/dateTime"2020-01-01T00:00:00.001Z"))))
@@ -629,14 +633,14 @@
       (testing "value"
         (is (= (system/date-time 2020) (type/value extended-date-time))))
       (testing "to-json"
-        (is (= "\"2020\"" (json/generate-string extended-date-time))))
+        (is (= "\"2020\"" (gen-json-string extended-date-time))))
       (testing "to-xml"
         (is (= extended-date-time-element (type/to-xml extended-date-time))))
       (testing "equals"
         (is (= (type/->DateTime nil [string-extension] "2020") extended-date-time)))
       (testing "hash-into"
         (are [u hex] (= hex (murmur3 u))
-          extended-date-time "e3246eac"))
+          extended-date-time "c10cb51"))
       (comment
         (quick-bench extended-date-time)))))
 
@@ -651,7 +655,7 @@
   (testing "value is a System.Time which is a LocalTime"
     (is (= (LocalTime/of 13 53 21) (type/value #fhir/time"13:53:21"))))
   (testing "to-json"
-    (is (= "\"13:53:21\"" (json/generate-string #fhir/time"13:53:21"))))
+    (is (= "\"13:53:21\"" (gen-json-string #fhir/time"13:53:21"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "13:53:21"}])
            (type/to-xml #fhir/time"13:53:21"))))
@@ -665,13 +669,13 @@
 
 
 (def gender-extension
-  {:fhir/type :fhir/Extension
-   :url #fhir/uri"http://fhir.de/StructureDefinition/gender-amtlich-de"
-   :value
-   {:fhir/type :fhir/Coding
-    :system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-    :code #fhir/code"D"
-    :display "divers"}})
+  (type/map->Extension
+    {:url #fhir/uri"http://fhir.de/StructureDefinition/gender-amtlich-de"
+     :value
+     (type/map->Coding
+       {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+        :code #fhir/code"D"
+        :display "divers"})}))
 
 
 (def extended-gender-code
@@ -694,7 +698,7 @@
     (is (= "code-123745" (type/value #fhir/code"code-123745")))
     (is (= "other" (type/value (type/->ExtendedCode nil [] "other")))))
   (testing "to-json"
-    (are [code json] (= json (json/generate-string code))
+    (are [code json] (= json (gen-json-string code))
       #fhir/code"code-123745" "\"code-123745\""
       extended-gender-code "\"other\""))
   (testing "to-xml"
@@ -724,7 +728,7 @@
   (testing "value is a System.String which is a String"
     (is (= "oid-123745" (type/value #fhir/oid"oid-123745"))))
   (testing "to-json"
-    (is (= "\"oid-123745\"" (json/generate-string #fhir/oid"oid-123745"))))
+    (is (= "\"oid-123745\"" (gen-json-string #fhir/oid"oid-123745"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "oid-123745"}])
            (type/to-xml #fhir/oid"oid-123745"))))
@@ -752,7 +756,7 @@
   (testing "value is a System.String which is a String"
     (is (= "id-123745" (type/value #fhir/id"id-123745"))))
   (testing "to-json"
-    (is (= "\"id-123745\"" (json/generate-string #fhir/id"id-123745"))))
+    (is (= "\"id-123745\"" (gen-json-string #fhir/id"id-123745"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "id-123745"}])
            (type/to-xml #fhir/id"id-123745"))))
@@ -780,7 +784,7 @@
     (is (= "markdown-123745" (type/value #fhir/markdown"markdown-123745"))))
   (testing "to-json"
     (is (= "\"markdown-123745\""
-           (json/generate-string #fhir/markdown"markdown-123745"))))
+           (gen-json-string #fhir/markdown"markdown-123745"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "markdown-123745"}])
            (type/to-xml #fhir/markdown"markdown-123745"))))
@@ -808,7 +812,7 @@
     (is (= 160845 (type/value #fhir/unsignedInt 160845)))
     (is (instance? Integer (type/value #fhir/unsignedInt 160845))))
   (testing "to-json"
-    (is (= "160845" (json/generate-string #fhir/unsignedInt 160845))))
+    (is (= "160845" (gen-json-string #fhir/unsignedInt 160845))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "160845"}])
            (type/to-xml #fhir/unsignedInt 160845))))
@@ -836,7 +840,7 @@
     (is (= 160845 (type/value #fhir/positiveInt 160845)))
     (is (instance? Integer (type/value #fhir/positiveInt 160845))))
   (testing "to-json"
-    (is (= "160845" (json/generate-string #fhir/positiveInt 160845))))
+    (is (= "160845" (gen-json-string #fhir/positiveInt 160845))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "160845"}])
            (type/to-xml #fhir/positiveInt 160845))))
@@ -865,7 +869,7 @@
            (type/value #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
   (testing "to-json"
     (is (= "\"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3\""
-           (json/generate-string #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
+           (gen-json-string #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
   (testing "to-xml"
     (is (= (sexp [nil {:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"}])
            (type/to-xml #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
@@ -896,7 +900,7 @@
   (testing "value is a System.String which is a String"
     (is (= "xhtml-123745" (type/value #fhir/xhtml"xhtml-123745"))))
   (testing "to-json"
-    (is (= "\"xhtml-123745\"" (json/generate-string #fhir/xhtml"xhtml-123745"))))
+    (is (= "\"xhtml-123745\"" (gen-json-string #fhir/xhtml"xhtml-123745"))))
   (testing "to-xml"
     (is (= xhtml-element (type/to-xml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))
   (testing "equals"
@@ -909,3 +913,294 @@
   (testing "instance size"
     (is (= 56 (total-size #fhir/xhtml"")))
     (is (= 64 (total-size #fhir/xhtml"175718")))))
+
+
+(deftest extension-test
+  (testing "type"
+    (is (= :fhir/Extension (type/type (type/map->Extension {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->Extension {})
+      "9b6ea882"
+
+      (type/map->Extension {:id "id-204201"})
+      "495cd278"
+
+      (type/map->Extension
+        {:extension [(type/map->Extension {})]})
+      "af661e95"
+
+      (type/map->Extension
+        {:extension
+         [(type/map->Extension {})
+          (type/map->Extension {})]})
+      "96fd01bd"
+
+      (type/map->Extension
+        {:url "url-130945"})
+      "8204427a"
+
+      (type/map->Extension
+        {:value #fhir/code"value-130953"})
+      "befce87a"))
+
+  (testing "instance size"
+    (is (= 48 (total-size (type/map->Extension {}))))))
+
+
+(deftest coding-test
+  (testing "type"
+    (is (= :fhir/Coding (type/type (type/map->Coding {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->Coding {})
+      "24e7e891"
+
+      (type/map->Coding {:id "id-204201"})
+      "c1c82c65"
+
+      (type/map->Coding
+        {:extension [(type/map->Extension {})]})
+      "e1d440bb"
+
+      (type/map->Coding
+        {:system #fhir/uri"system-202808"})
+      "da808d2d"
+
+      (type/map->Coding
+        {:version #fhir/uri"version-154317"})
+      "93fc58d9"
+
+      (type/map->Coding
+        {:code #fhir/code"code-202828"})
+      "74e3328d"
+
+      (type/map->Coding
+        {:display "display-154256"})
+      "baac923d"))
+
+  (testing "instance size"
+    (is (= 56 (total-size (type/map->Coding {}))))))
+
+
+(deftest codeable-concept-test
+  (testing "type"
+    (is (= :fhir/CodeableConcept (type/type (type/map->CodeableConcept {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->CodeableConcept {})
+      "9b6ea882"
+
+      (type/map->CodeableConcept {:id "id-141755"})
+      "d9ac742f"
+
+      (type/map->CodeableConcept
+        {:extension [(type/map->Extension {})]})
+      "af661e95"
+
+      (type/map->CodeableConcept
+        {:coding
+         [(type/map->Coding {})]})
+      "9c4509ed"
+
+      (type/map->CodeableConcept
+        {:text "text-153829"})
+      "fe2e61f1"))
+
+  (testing "instance size"
+    (is (= 48 (total-size (type/map->CodeableConcept {}))))))
+
+
+(deftest quantity-test
+  (testing "type"
+    (is (= :fhir/Quantity (type/type (type/map->Quantity {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->Quantity {})
+      "1ddef3ed"
+
+      (type/map->Quantity {:id "id-141848"})
+      "abb59da1"
+
+      (type/map->Quantity
+        {:extension [(type/map->Extension {})]})
+      "4f5028ac"
+
+      (type/map->Quantity
+        {:value 1M})
+      "4adf97ab"
+
+      (type/map->Quantity
+        {:comparator #fhir/code"comparator-153342"})
+      "6339e3e8"
+
+      (type/map->Quantity
+        {:unit "unit-153351"})
+      "d8f92891"
+
+      (type/map->Quantity
+        {:system #fhir/uri"system-153337"})
+      "98f918ba"
+
+      (type/map->Quantity
+        {:code #fhir/code"code-153427"})
+      "7ff49528"))
+
+  (testing "instance size"
+    (is (= 56 (total-size (type/map->Quantity {}))))))
+
+
+(deftest period-test
+  (testing "type"
+    (is (= :fhir/Period (type/type (type/map->Period {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->Period {})
+      "e5f76205"
+
+      (type/map->Period {:id "id-130710"})
+      "29c53420"
+
+      (type/map->Period
+        {:extension [(type/map->Extension {})]})
+      "92e4ba37"
+
+      (type/map->Period
+        {:start #fhir/dateTime"2020"})
+      "f1b7c952"
+
+      (type/map->Period
+        {:end #fhir/dateTime"2020"})
+      "434787dd"))
+
+  (testing "instance size"
+    (is (= 48 (total-size (type/map->Period {}))))))
+
+
+(deftest identifier-test
+  (testing "type"
+    (is (= :fhir/Identifier (type/type (type/map->Identifier {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->Identifier {})
+      "14336e1c"
+
+      (type/map->Identifier {:id "id-130739"})
+      "57c166f0"
+
+      (type/map->Identifier
+        {:extension [(type/map->Extension {})]})
+      "810b77ff"
+
+      (type/map->Identifier
+        {:use #fhir/code"use-155144"})
+      "4bf89602"
+
+      (type/map->Identifier
+        {:type (type/map->CodeableConcept {})})
+      "736db874"
+
+      (type/map->Identifier
+        {:system #fhir/uri"system-145514"})
+      "acbabb5d"
+
+      (type/map->Identifier
+        {:value "value-145509"})
+      "de7e521f"
+
+      (type/map->Identifier
+        {:period (type/map->Period {})})
+      "8a73bfa3"
+
+      (type/map->Identifier
+        {:assigner (type/map->Reference {})})
+      "aa994e1e"))
+
+  (testing "instance size"
+    (is (= 64 (total-size (type/map->Identifier {}))))))
+
+
+(deftest reference-test
+  (testing "type"
+    (is (= :fhir/Reference (type/type (type/map->Reference {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->Reference {})
+      "6498613c"
+
+      (type/map->Reference {:id "id-130802"})
+      "a48cca5a"
+
+      (type/map->Reference
+        {:extension [(type/map->Extension {})]})
+      "210e3eb7"
+
+      (type/map->Reference
+        {:reference "Patient/0"})
+      "cd80b8ac"
+
+      (type/map->Reference
+        {:type #fhir/uri"type-161222"})
+      "2fe271cd"
+
+      (type/map->Reference
+        {:identifier (type/map->Identifier {})})
+      "eb066d27"
+
+      (type/map->Reference
+        {:display "display-161314"})
+      "543cf75f"))
+
+  (testing "instance size"
+    (is (= 56 (total-size (type/map->Reference {}))))))
+
+
+(deftest meta-test
+  (testing "type"
+    (is (= :fhir/Meta (type/type (type/map->Meta {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->Meta {})
+      "cbae28fd"
+
+      (type/map->Meta {:id "id-130825"})
+      "c2c18a00"
+
+      (type/map->Meta
+        {:extension [(type/map->Extension {})]})
+      "aaf41f94"
+
+      (type/map->Meta
+        {:versionId #fhir/id"versionId-161415"})
+      "9edaa9b"
+
+      (type/map->Meta
+        {:lastUpdated Instant/EPOCH})
+      "38b8dfe3"
+
+      (type/map->Meta
+        {:source #fhir/uri"source-161629"})
+      "bc99bc82"
+
+      (type/map->Meta
+        {:profile [#fhir/canonical"profile-uri-145024"]})
+      "b13c3d52"
+
+      (type/map->Meta
+        {:security [(type/map->Coding {})]})
+      "9b7633bc"
+
+      (type/map->Meta
+        {:tag [(type/map->Coding {})]})
+      "96e4e336"))
+
+  (testing "instance size"
+    (is (= 64 (total-size (type/map->Meta {}))))))

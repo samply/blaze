@@ -1,34 +1,24 @@
 (ns blaze.fhir-client.impl
   (:require
-    [blaze.anomaly :refer [throw-anom ex-anom]]
+    [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.async.flow :as flow]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
-    [cheshire.core :as json]
-    [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
     [cognitect.anomalies :as anom]
     [hato.client :as hc]
     [hato.middleware :as hm]
     [taoensso.timbre :as log])
   (:import
-    [java.io BufferedWriter]
-    [java.nio.charset StandardCharsets]
+    [java.nio ByteBuffer]
+    [java.nio.channels SeekableByteChannel]
     [java.nio.file Path Files StandardOpenOption]
     [java.util.concurrent Flow$Subscriber Flow$Subscription])
   (:refer-clojure :exclude [update]))
 
 
 (set! *warn-on-reflection* true)
-
-
-(defn- parse-body [reader]
-  (binding [*use-bigdecimals?* true]
-    (try
-      (json/parse-stream-strict reader keyword)
-      (catch Exception e
-        (throw-anom ::anom/fault (ex-message e))))))
 
 
 (defn- json? [content-type]
@@ -64,7 +54,7 @@
   (let [charset (or (-> resp :content-type-params :charset) "UTF-8")]
     (if (json? content-type)
       (with-open [r (io/reader body :encoding charset)]
-        (assoc resp :body (fhir-spec/conform-json (parse-body r))))
+        (assoc resp :body (fhir-spec/conform-json (fhir-spec/parse-json r))))
       resp)))
 
 
@@ -97,7 +87,7 @@
 
 
 (defn- generate-body [resource]
-  (json/generate-string (fhir-spec/unform-json resource) {:key-fn name}))
+  (fhir-spec/unform-json resource))
 
 
 (defn- if-match [etag]
@@ -148,8 +138,12 @@
   (->PagingSubscription subscriber (volatile! uri) opts))
 
 
-(defn- writer ^BufferedWriter [file & open-options]
-  (Files/newBufferedWriter file StandardCharsets/UTF_8 (into-array open-options)))
+(defn- byte-channel ^SeekableByteChannel [file & open-options]
+  (Files/newByteChannel file (into-array open-options)))
+
+
+(defn- new-file-byte-channel ^SeekableByteChannel [file]
+  (byte-channel file StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE))
 
 
 (deftype Spitter
@@ -162,8 +156,8 @@
     (flow/request! subscription 1)
     (let [file (.resolve ^Path dir ^String (filename-fn x))]
       (swap! filenames conj (.toAbsolutePath file))
-      (with-open [w (writer file StandardOpenOption/CREATE_NEW)]
-        (json/generate-stream (fhir-spec/unform-json x) w))))
+      (with-open [bc (new-file-byte-channel file)]
+        (.write bc (ByteBuffer/wrap (fhir-spec/unform-json x))))))
   (onError [_ e]
     (flow/cancel! subscription)
     (ac/complete-exceptionally! future e))
