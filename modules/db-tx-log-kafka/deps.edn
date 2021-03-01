@@ -12,7 +12,7 @@
   {:local/root "../module-base"}
 
   org.apache.kafka/kafka-clients
-  {:mvn/version "2.5.0"}}
+  {:mvn/version "2.7.0"}}
 
  :aliases
  {:test

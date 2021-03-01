@@ -5,7 +5,7 @@
   {:mvn/version "30.1-jre"}
 
   com.google.protobuf/protobuf-java
-  {:mvn/version "3.14.0"}
+  {:mvn/version "3.15.3"}
 
   com.fasterxml.jackson.core/jackson-databind
-  {:mvn/version "2.12.0"}}}
+  {:mvn/version "2.12.1"}}}

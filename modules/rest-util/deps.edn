@@ -12,10 +12,10 @@
   {:mvn/version "4.4.14"}
 
   metosin/reitit-ring
-  {:mvn/version "0.5.10"}
+  {:mvn/version "0.5.12"}
 
   ring/ring-core
-  {:mvn/version "1.8.2"
+  {:mvn/version "1.9.1"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
