@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env -S bash -e
 
 VERSION=0.5.0
 

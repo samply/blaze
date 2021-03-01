@@ -38,7 +38,7 @@
 
 
 (s/fdef fhir-spec/unform-xml
-  :args (s/cat :resource :blaze/resource))
+  :args (s/cat :resource any?))
 
 
 (s/fdef fhir-spec/fhir-type

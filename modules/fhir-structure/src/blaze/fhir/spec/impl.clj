@@ -503,31 +503,32 @@
 (defn- xml-unformer
   [kind type child-spec-defs]
   `(fn [~'m]
-     (xml-node/element*
-       ~(when (= "resource" kind) (keyword fhir-namespace (name type)))
-       ~(if (= "resource" kind)
-          `(assoc ~(xml-attrs-form child-spec-defs) :xmlns "http://hl7.org/fhir")
-          (xml-attrs-form child-spec-defs))
-       ~(seq
-          (into
-            [`-> []]
-            (comp
-              (filter :key)
-              (remove :representation)
-              (filter #(= :xml (:modifier %)))
-              (map
-                (fn [{:keys [key max]}]
-                  (let [key (keyword (name key))
-                        tag (keyword fhir-namespace (name key))]
-                    (cond
-                      (or (and (= :entry type) (= :resource key))
-                          (and (= :Narrative type) (= :div key)))
-                      `(conj-when (~key ~'m))
-                      (= "1" max)
-                      `(conj-when (some-> ~'m ~key (assoc :tag ~tag)))
-                      :else
-                      `(conj-all ~tag (~key ~'m)))))))
-            child-spec-defs)))))
+     (when ~'m
+       (xml-node/element*
+         ~(when (= "resource" kind) (keyword fhir-namespace (name type)))
+         ~(if (= "resource" kind)
+            `(assoc ~(xml-attrs-form child-spec-defs) :xmlns "http://hl7.org/fhir")
+            (xml-attrs-form child-spec-defs))
+         ~(seq
+            (into
+              [`-> []]
+              (comp
+                (filter :key)
+                (remove :representation)
+                (filter #(= :xml (:modifier %)))
+                (map
+                  (fn [{:keys [key max]}]
+                    (let [key (keyword (name key))
+                          tag (keyword fhir-namespace (name key))]
+                      (cond
+                        (or (and (= :entry type) (= :resource key))
+                            (and (= :Narrative type) (= :div key)))
+                        `(conj-when (~key ~'m))
+                        (= "1" max)
+                        `(conj-when (some-> ~'m ~key (assoc :tag ~tag)))
+                        :else
+                        `(conj-all ~tag (~key ~'m)))))))
+              child-spec-defs))))))
 
 
 (defn- xml-schema-spec-form [kind key child-spec-defs]

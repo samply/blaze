@@ -377,18 +377,19 @@
             (s2/conformer
               blaze.fhir.spec.impl/conform-xml
               (fn [~'m]
-                (xml-node/element*
-                  nil
-                  (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
-                  (-> []
-                    (impl/conj-all ::f/extension (:extension ~'m))
-                    (impl/conj-all ::f/modifierExtension (:modifierExtension ~'m))
-                    (impl/conj-all ::f/link (:link ~'m))
-                    (impl/conj-when (some-> ~'m :fullUrl (assoc :tag ::f/fullUrl)))
-                    (impl/conj-when (:resource ~'m))
-                    (impl/conj-when (some-> ~'m :search (assoc :tag ::f/search)))
-                    (impl/conj-when (some-> ~'m :request (assoc :tag ::f/request)))
-                    (impl/conj-when (some-> ~'m :response (assoc :tag ::f/response)))))))
+                (when ~'m
+                  (xml-node/element*
+                    nil
+                    (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
+                    (-> []
+                        (impl/conj-all ::f/extension (:extension ~'m))
+                        (impl/conj-all ::f/modifierExtension (:modifierExtension ~'m))
+                        (impl/conj-all ::f/link (:link ~'m))
+                        (impl/conj-when (some-> ~'m :fullUrl (assoc :tag ::f/fullUrl)))
+                        (impl/conj-when (:resource ~'m))
+                        (impl/conj-when (some-> ~'m :search (assoc :tag ::f/search)))
+                        (impl/conj-when (some-> ~'m :request (assoc :tag ::f/request)))
+                        (impl/conj-when (some-> ~'m :response (assoc :tag ::f/response))))))))
             (s2/schema
               {:id :fhir.xml.Bundle.entry/id
                :extension (s2/and
@@ -429,7 +430,7 @@
 
   (testing "XML representation of Coding"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Coding")))
-      [:fhir.xml/Coding 0 :spec-form 1 2 2]
+      [:fhir.xml/Coding 0 :spec-form 1 2 2 2]
       := `(xml-node/element*
             nil
             (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
@@ -444,7 +445,7 @@
 
   (testing "XML representation of Measure unformer XML attributes"
     (given (group-by :key (impl/struct-def->spec-def (resource "Measure")))
-      [:fhir.xml/Measure 0 :spec-form 1 2 2 2] :=
+      [:fhir.xml/Measure 0 :spec-form 1 2 2 2 2] :=
       `(assoc (blaze.fhir.spec.impl/select-non-nil-keys ~'m []) :xmlns "http://hl7.org/fhir")))
 
   (testing "XML representation of Measure.url"

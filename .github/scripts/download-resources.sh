@@ -1,11 +1,11 @@
-#!/usr/bin/env sh
+#!/usr/bin/env -S bash -e
 
 TYPE=$1
 EXPECTED_SIZE=$2
 
 ./blazectl --server http://localhost:8080/fhir download -t $TYPE -o ${TYPE}.ndjson
 
-SIZE=$(wc -c ${TYPE}.ndjson | tr -s "[:space:]" | cut -d ' ' -f2)
+SIZE=$(wc -l ${TYPE}.ndjson | xargs | cut -d ' ' -f1)
 
 if [ $EXPECTED_SIZE = $SIZE ]; then
   echo "Success: Download size matches"

@@ -1396,7 +1396,45 @@
         {:period {}}
 
         (type/map->Identifier {:assigner (type/map->Reference {})})
-        {:assigner {}}))))
+        {:assigner {}})))
+
+  (testing "unforming"
+    (testing "XML"
+      (are [fhir xml] (= xml (fhir-spec/unform-xml fhir))
+        (type/map->Identifier {})
+        (sexp [])
+
+        (type/map->Identifier {:id "id-155426"})
+        (sexp [nil {:id "id-155426"}])
+
+        (type/map->Identifier
+          {:extension
+           [(type/map->Extension {})]})
+        (sexp [nil {} [::f/extension]])
+
+        (type/map->Identifier
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        (sexp [nil {} [::f/extension] [::f/extension]])
+
+        (type/map->Identifier {:use #fhir/code"use-155449"})
+        (sexp [nil {} [::f/use {:value "use-155449"}]])
+
+        (type/map->Identifier {:type (type/map->CodeableConcept {})})
+        (sexp [nil {} [::f/type]])
+
+        (type/map->Identifier {:system #fhir/uri"system-160011"})
+        (sexp [nil {} [::f/system {:value "system-160011"}]])
+
+        (type/map->Identifier {:value "value-160034"})
+        (sexp [nil {} [::f/value {:value "value-160034"}]])
+
+        (type/map->Identifier {:period (type/map->Period {})})
+        (sexp [nil {} [::f/period]])
+
+        (type/map->Identifier {:assigner (type/map->Reference {})})
+        (sexp [nil {} [::f/assigner]])))))
 
 
 (deftest reference-test

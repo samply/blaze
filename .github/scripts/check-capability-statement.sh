@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env -S bash -e
 
 SOFTWARE_NAME=$(curl -s http://localhost:8080/fhir/metadata | jq -r .software.name)
 
