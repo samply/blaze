@@ -1185,6 +1185,20 @@
 (declare meta-serializer)
 
 
+(defcomplextype BundleEntrySearch [id extension mode score]
+  :fhir-type :fhir.Bundle.entry/search
+  :hash-num 45
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   mode code-serializer
+   score :decimal})
+
+
+(declare bundle-entry-search-serializer)
+
+
+
 ;; ---- Jackson Databind Module -----------------------------------------------
 
 (def fhir-module
@@ -1214,7 +1228,8 @@
     (.addSerializer Period period-serializer)
     (.addSerializer Identifier identifier-serializer)
     (.addSerializer Reference reference-serializer)
-    (.addSerializer Meta meta-serializer)))
+    (.addSerializer Meta meta-serializer)
+    (.addSerializer BundleEntrySearch bundle-entry-search-serializer)))
 
 
 

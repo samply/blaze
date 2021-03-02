@@ -1075,7 +1075,22 @@
 
         (type/map->Extension
           {:value (type/map->CodeableConcept {})})
-        {:valueCodeableConcept {}}))
+        {:valueCodeableConcept {}}
+
+        (type/map->Extension
+          {:value (type/map->CodeableConcept {:text "text-104840"})})
+        {:valueCodeableConcept {:text "text-104840"}}
+
+        (type/map->Extension
+          {:value
+           (type/map->CodeableConcept
+             {:coding
+              [(type/map->Coding {:system #fhir/uri"system-105127"})]})})
+        {:valueCodeableConcept {:coding [{:system "system-105127"}]}}
+
+        (type/map->Extension
+          {:value {:fhir/type :fhir/Annotation :text "text-105422"}})
+        {:valueAnnotation {:text "text-105422"}}))
 
     (testing "CBOR"
       (are [fhir cbor] (= cbor (fhir-spec/parse-cbor (fhir-spec/unform-cbor fhir)))
@@ -1573,6 +1588,90 @@
            [(type/map->Coding {})
             (type/map->Coding {})]})
         {:tag [{} {}]}))))
+
+
+(deftest bundle-entry-search-test
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json.Bundle.entry/search json))
+        {}
+        (type/map->BundleEntrySearch {})
+
+        {:id "id-134805"}
+        (type/map->BundleEntrySearch {:id "id-134805"})
+
+        {:mode "match"}
+        (type/map->BundleEntrySearch {:mode #fhir/code"match"})
+
+        {:id 1}
+        ::s2/invalid))
+
+    (testing "CBOR"
+      (are [cbor fhir] (= fhir (s2/conform :fhir.cbor.Bundle.entry/search cbor))
+        {}
+        (type/map->BundleEntrySearch {})
+
+        {:id "id-134805"}
+        (type/map->BundleEntrySearch {:id "id-134805"})
+
+        {:mode "match"}
+        (type/map->BundleEntrySearch {:mode #fhir/code"match"})
+
+        {:id 1}
+        ::s2/invalid)))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        (type/map->BundleEntrySearch {})
+        {}
+
+        (type/map->BundleEntrySearch {:id "id-115229"})
+        {:id "id-115229"}
+
+        (type/map->BundleEntrySearch {:extension []})
+        {:extension []}
+
+        (type/map->BundleEntrySearch {:extension [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->BundleEntrySearch
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->BundleEntrySearch {:mode #fhir/code"match"})
+        {:mode "match"}
+
+        (type/map->BundleEntrySearch {:score 1.1M})
+        {:score 1.1M}))
+
+    (testing "CBOR"
+      (are [fhir cbor] (= cbor (fhir-spec/parse-cbor (fhir-spec/unform-cbor fhir)))
+        (type/map->BundleEntrySearch {})
+        {}
+
+        (type/map->BundleEntrySearch {:id "id-115229"})
+        {:id "id-115229"}
+
+        (type/map->BundleEntrySearch {:extension []})
+        {:extension []}
+
+        (type/map->BundleEntrySearch {:extension [(type/map->Extension {})]})
+        {:extension [{}]}
+
+        (type/map->BundleEntrySearch
+          {:extension
+           [(type/map->Extension {})
+            (type/map->Extension {})]})
+        {:extension [{} {}]}
+
+        (type/map->BundleEntrySearch {:mode #fhir/code"match"})
+        {:mode "match"}
+
+        (type/map->BundleEntrySearch {:score 1.1M})
+        {:score 1.1M}))))
 
 
 (deftest primitive-val-test

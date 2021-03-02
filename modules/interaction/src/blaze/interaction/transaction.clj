@@ -264,8 +264,7 @@
 
 
 (defn- response-entry [response]
-  {:fhir/type :fhir.Bundle/entry
-   :response response})
+  {:fhir/type :fhir.Bundle/entry :response response})
 
 
 (defn- with-entry-location* [issues idx]

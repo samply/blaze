@@ -325,10 +325,18 @@
      :min (:min elem-def)
      :max (:max elem-def)
      :spec-form
-     (case path-part
-       ("Extension" "Coding" "CodeableConcept" "Quantity" "Period" "Identifier"
-         "Reference" "Meta")
+     (case key
+       (:fhir/Extension
+         :fhir/Coding
+         :fhir/CodeableConcept
+         :fhir/Quantity
+         :fhir/Period
+         :fhir/Identifier
+         :fhir/Reference
+         :fhir/Meta)
        (record-spec-form path-part child-spec-defs)
+       :fhir.Bundle.entry/search
+       (record-spec-form "BundleEntrySearch" child-spec-defs)
        `(s/and ~(type-check-form key) ~(schema-spec-form nil child-spec-defs)))}))
 
 
@@ -431,19 +439,28 @@
 
 
 (defn- json-schema-spec-def [kind parent-path-parts path-part elem-def child-spec-defs]
-  {:key (spec-key "fhir.json" parent-path-parts path-part)
-   :min (:min elem-def)
-   :max (:max elem-def)
-   :modifier :json
-   :spec-form
-   (case path-part
-     ("Extension" "Coding" "CodeableConcept" "Quantity" "Period" "Identifier"
-       "Reference" "Meta")
-     (json-object-spec-form path-part child-spec-defs)
-     (conj (seq (remap-choice-conformer-forms child-spec-defs))
-           (json-type-conformer-form kind parent-path-parts path-part)
-           (schema-spec-form :json child-spec-defs)
-           `s/and))})
+  (let [key (spec-key "fhir.json" parent-path-parts path-part)]
+    {:key key
+     :min (:min elem-def)
+     :max (:max elem-def)
+     :modifier :json
+     :spec-form
+     (case key
+       (:fhir.json/Extension
+         :fhir.json/Coding
+         :fhir.json/CodeableConcept
+         :fhir.json/Quantity
+         :fhir.json/Period
+         :fhir.json/Identifier
+         :fhir.json/Reference
+         :fhir.json/Meta)
+       (json-object-spec-form path-part child-spec-defs)
+       :fhir.json.Bundle.entry/search
+       (json-object-spec-form "BundleEntrySearch" child-spec-defs)
+       (conj (seq (remap-choice-conformer-forms child-spec-defs))
+             (json-type-conformer-form kind parent-path-parts path-part)
+             (schema-spec-form :json child-spec-defs)
+             `s/and))}))
 
 
 (defn- append-child [old element]
@@ -540,9 +557,8 @@
         `s/and))
 
 
-(defn- special-xml-schema-spec-form [kind key child-spec-defs]
-  (let [type-name (name key)
-        constructor-sym (symbol "blaze.fhir.spec.type" (str "map->" type-name))
+(defn- special-xml-schema-spec-form [kind type-name child-spec-defs]
+  (let [constructor-sym (symbol "blaze.fhir.spec.type" (str "map->" type-name))
         constructor (resolve constructor-sym)]
     (conj (seq (remap-choice-conformer-forms child-spec-defs))
           `(s/conformer ~constructor identity)
@@ -554,18 +570,26 @@
 
 (defn- xml-schema-spec-def
   [kind parent-path-parts path-part elem-def child-spec-defs]
-  {:key (spec-key "fhir.xml" parent-path-parts path-part)
-   :min (:min elem-def)
-   :max (:max elem-def)
-   :modifier :xml
-   :spec-form
-   (case path-part
-     ("Extension" "Coding" "CodeableConcept" "Quantity" "Period" "Identifier"
-       "Reference" "Meta")
-     (special-xml-schema-spec-form
-       kind (spec-key "fhir" parent-path-parts path-part) child-spec-defs)
-     (xml-schema-spec-form
-       kind (spec-key "fhir" parent-path-parts path-part) child-spec-defs))})
+  (let [key (spec-key "fhir.xml" parent-path-parts path-part)]
+    {:key key
+     :min (:min elem-def)
+     :max (:max elem-def)
+     :modifier :xml
+     :spec-form
+     (case key
+       (:fhir.xml/Extension
+         :fhir.xml/Coding
+         :fhir.xml/CodeableConcept
+         :fhir.xml/Quantity
+         :fhir.xml/Period
+         :fhir.xml/Identifier
+         :fhir.xml/Reference
+         :fhir.xml/Meta)
+       (special-xml-schema-spec-form kind (name key) child-spec-defs)
+       :fhir.xml.Bundle.entry/search
+       (special-xml-schema-spec-form kind "BundleEntrySearch" child-spec-defs)
+       (xml-schema-spec-form kind (spec-key "fhir" parent-path-parts path-part)
+                             child-spec-defs))}))
 
 
 (defn- cbor-object-spec-form [class-name child-spec-defs]
@@ -585,19 +609,28 @@
 
 (defn- cbor-schema-spec-def
   [kind parent-path-parts path-part elem-def child-spec-defs]
-  {:key (spec-key "fhir.cbor" parent-path-parts path-part)
-   :min (:min elem-def)
-   :max (:max elem-def)
-   :modifier :cbor
-   :spec-form
-   (case path-part
-     ("Extension" "Coding" "CodeableConcept" "Quantity" "Period" "Identifier"
-       "Reference" "Meta")
-     (cbor-object-spec-form path-part child-spec-defs)
-     (conj (seq (remap-choice-conformer-forms child-spec-defs))
-           (json-type-conformer-form kind parent-path-parts path-part)
-           (schema-spec-form :cbor child-spec-defs)
-           `s/and))})
+  (let [key (spec-key "fhir.cbor" parent-path-parts path-part)]
+    {:key key
+     :min (:min elem-def)
+     :max (:max elem-def)
+     :modifier :cbor
+     :spec-form
+     (case key
+       (:fhir.cbor/Extension
+         :fhir.cbor/Coding
+         :fhir.cbor/CodeableConcept
+         :fhir.cbor/Quantity
+         :fhir.cbor/Period
+         :fhir.cbor/Identifier
+         :fhir.cbor/Reference
+         :fhir.cbor/Meta)
+       (cbor-object-spec-form path-part child-spec-defs)
+       :fhir.cbor.Bundle.entry/search
+       (cbor-object-spec-form "BundleEntrySearch" child-spec-defs)
+       (conj (seq (remap-choice-conformer-forms child-spec-defs))
+             (json-type-conformer-form kind parent-path-parts path-part)
+             (schema-spec-form :cbor child-spec-defs)
+             `s/and))}))
 
 
 (defn- build-spec-defs [kind parent-path-parts indexed-elem-defs]
