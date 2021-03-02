@@ -201,6 +201,11 @@ jobs:
         push: true
         tags: ghcr.io/samply/blaze:${{ github.sha }}
 
+    - name: Scan Container Image
+      uses: azure/container-scan@v0
+      with:
+        image-name: ghcr.io/samply/blaze:${{ github.sha }}
+
   integration-test:
     needs: build
     runs-on: ubuntu-20.04
