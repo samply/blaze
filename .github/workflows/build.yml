@@ -225,7 +225,7 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v1
       with:
-        java-version: 15
+        java-version: 11
 
     - name: Download Synthea
       run: curl -sLO https://github.com/synthetichealth/synthea/releases/download/v2.7.0/synthea-with-dependencies.jar
@@ -252,13 +252,13 @@ jobs:
       run: .github/scripts/download-resources.sh Patient 100
 
     - name: Download Observation Resources
-      run: .github/scripts/download-resources.sh Observation 28801
+      run: .github/scripts/download-resources.sh Observation 28852
 
     - name: Download Condition Resources
-      run: .github/scripts/download-resources.sh Condition 1255
+      run: .github/scripts/download-resources.sh Condition 1254
 
     - name: Download DiagnosticReport Resources
-      run: .github/scripts/download-resources.sh DiagnosticReport 7324
+      run: .github/scripts/download-resources.sh DiagnosticReport 7329
 
     - name: Docker Stop
       run: docker stop blaze
