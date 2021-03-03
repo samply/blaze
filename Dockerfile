@@ -7,7 +7,7 @@ RUN clojure -X:depstar uberjar :jar target/blaze-standalone.jar
 
 RUN mkdir -p /app/data
 
-FROM gcr.io/distroless/java:11
+FROM gcr.io/distroless/java-debian10:11
 
 WORKDIR /app
 

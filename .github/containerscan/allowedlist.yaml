@@ -1,0 +1,8 @@
+general:
+  vulnerabilities:
+  # Newest Debian 10.8
+  - CVE-2020-1751
+  - CVE-2020-1752
+  - CVE-2021-3326
+  - CVE-2018-12886
+  - CVE-2019-15847
