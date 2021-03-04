@@ -5,8 +5,10 @@
     [blaze.db.resource-cache-spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store-spec]
+    [blaze.db.test-util :refer [given-thrown]]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [integrant.core :as ig]
@@ -15,11 +17,12 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -57,6 +60,26 @@
          {:resource-store resource-store
           :max-size max-size}})
       (:blaze.db/resource-cache)))
+
+
+(deftest init-test
+  (testing "missing store"
+    (given-thrown (ig/init {:blaze.db/resource-cache {}})
+      :key := :blaze.db/resource-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))))
+
+  (testing "invalid store"
+    (given-thrown (ig/init {:blaze.db/resource-cache {:resource-store nil}})
+      :key := :blaze.db/resource-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (satisfies? rs/ResourceLookup ~'%))))
+
+  (testing "invalid max-size"
+    (given-thrown (cache resource-store nil)
+      :key := :blaze.db/resource-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `nat-int?)))
 
 
 (deftest get

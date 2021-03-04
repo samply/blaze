@@ -63,6 +63,12 @@
   (.invalidateAll ^Cache (:blaze.db/resource-handle-cache system))
   )
 
+;; Transaction Cache
+(comment
+  (str (cc/-stats (:blaze.db/tx-cache system)))
+  (resource-cache/invalidate-all! (:blaze.db/tx-cache system))
+  )
+
 ;; Resource Cache
 (comment
   (str (cc/-stats (:blaze.db/resource-cache system)))
@@ -83,7 +89,7 @@
 
   (.hash (d/resource-handle db "Patient" "01f5d727-e75c-4662-aecd-df2ffccd2e27"))
 
-  @(blaze.db.node/load-tx-result node (:kv-store node) 21228)
+  @(blaze.db.node/load-tx-result node 21228)
 
   )
 

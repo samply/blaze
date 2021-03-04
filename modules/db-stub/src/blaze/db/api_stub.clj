@@ -2,6 +2,7 @@
   (:require
     [blaze.db.api :as d]
     [blaze.db.api-spec]
+    [blaze.db.impl.index.tx-success :as tsi]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :refer [new-node]]
@@ -38,6 +39,11 @@
 
 (def ^:private clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
+
+(defn- tx-cache [index-kv-store]
+  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+
+
 (defn mem-node ^Closeable []
   (let [index-kv-store
         (new-mem-kv-store
@@ -57,9 +63,9 @@
         resource-store (new-kv-resource-store (new-mem-kv-store))
         tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
         resource-handle-cache (.build (Caffeine/newBuilder))]
-    (new-node tx-log resource-handle-cache resource-indexer-executor 1
-              indexer-executor index-kv-store resource-store
-              search-param-registry (jt/millis 10))))
+    (new-node tx-log resource-handle-cache (tx-cache index-kv-store)
+              resource-indexer-executor 1 indexer-executor index-kv-store
+              resource-store search-param-registry (jt/millis 10))))
 
 
 (defn- submit-txs [node txs]
