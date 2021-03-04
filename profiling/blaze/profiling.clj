@@ -47,6 +47,12 @@
   (.invalidateAll ^Cache (:blaze.db/resource-handle-cache system))
   )
 
+;; Transaction Cache
+(comment
+  (str (cc/-stats (:blaze.db/tx-cache system)))
+  (resource-cache/invalidate-all! (:blaze.db/tx-cache system))
+  )
+
 ;; Resource Cache
 (comment
   (str (cc/-stats (:blaze.db/resource-cache system)))

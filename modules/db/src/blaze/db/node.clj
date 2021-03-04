@@ -101,8 +101,8 @@
     future))
 
 
-(defn load-tx-result [node kv-store t]
-  (if (tsi/tx kv-store t)
+(defn load-tx-result [{:keys [tx-cache kv-store] :as node} t]
+  (if (tsi/tx tx-cache t)
     (ac/completed-future (db/db node t))
     (if-let [anomaly (te/tx-error kv-store t)]
       (ac/failed-future
@@ -194,14 +194,15 @@
       (assoc :blaze.db/tx tx)))
 
 
-(defn- enhance-resource [kv-store {:keys [t] :as handle} resource]
-  (let [tx (tsi/tx kv-store t)]
+(defn- enhance-resource [tx-cache {:keys [t] :as handle} resource]
+  (let [tx (tsi/tx tx-cache t)]
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
 
 
-(defrecord Node [tx-log rh-cache kv-store resource-store search-param-registry
-                 resource-indexer state run? poll-timeout finished]
+(defrecord Node [tx-log rh-cache tx-cache kv-store resource-store
+                 search-param-registry resource-indexer state run? poll-timeout
+                 finished]
   p/Node
   (-db [node]
     (db/db node (:t @state)))
@@ -229,18 +230,18 @@
       (cond
         (<= t current-t)
         (do (remove-watch state watcher)
-            (load-tx-result node kv-store t))
+            (load-tx-result node t))
 
         (:e current-state)
         (do (remove-watch state watcher)
             (ac/failed-future (:e current-state)))
 
         :else
-        (ac/then-compose watcher (fn [_] (load-tx-result node kv-store t))))))
+        (ac/then-compose watcher (fn [_] (load-tx-result node t))))))
 
   p/Tx
   (-tx [_ t]
-    (tsi/tx kv-store t))
+    (tsi/tx tx-cache t))
 
   rs/ResourceLookup
   (-get [_ hash]
@@ -279,7 +280,7 @@
   p/Pull
   (-pull [_ resource-handle]
     (-> (rs/get resource-store (:hash resource-handle))
-        (ac/then-apply #(enhance-resource kv-store resource-handle %))))
+        (ac/then-apply #(enhance-resource tx-cache resource-handle %))))
 
   (-pull-content [_ resource-handle]
     (-> (rs/get resource-store (:hash resource-handle))
@@ -291,7 +292,7 @@
           (fn [resources]
             (mapv
               (fn [{:keys [hash] :as resource-handle}]
-                (enhance-resource kv-store resource-handle (get resources hash)))
+                (enhance-resource tx-cache resource-handle (get resources hash)))
               resource-handles)))))
 
   Runnable
@@ -328,7 +329,7 @@
 
 (defn new-node
   "Creates a new local database node."
-  [tx-log resource-handle-cache resource-indexer-executor
+  [tx-log resource-handle-cache tx-cache resource-indexer-executor
    resource-indexer-batch-size indexer-executor kv-store
    resource-store search-param-registry poll-timeout]
   (let [resource-indexer (new-resource-indexer resource-store
@@ -337,8 +338,8 @@
                                                resource-indexer-executor
                                                resource-indexer-batch-size)
         indexer-abort-reason (atom nil)
-        node (->Node tx-log resource-handle-cache kv-store resource-store
-                     search-param-registry resource-indexer
+        node (->Node tx-log resource-handle-cache tx-cache kv-store
+                     resource-store search-param-registry resource-indexer
                      (atom {:t (or (tsi/last-t kv-store) 0)
                             :error-t 0})
                      (volatile! true)
@@ -357,6 +358,7 @@
     :req-un
     [:blaze.db/tx-log
      :blaze.db/resource-handle-cache
+     :blaze.db/tx-cache
      ::resource-indexer-executor
      ::resource-indexer-batch-size
      ::indexer-executor
@@ -371,11 +373,11 @@
 
 
 (defmethod ig/init-key :blaze.db/node
-  [_ {:keys [tx-log resource-handle-cache resource-indexer-executor
+  [_ {:keys [tx-log resource-handle-cache tx-cache resource-indexer-executor
              resource-indexer-batch-size indexer-executor kv-store
              resource-store search-param-registry]}]
   (log/info (init-msg resource-indexer-batch-size))
-  (new-node tx-log resource-handle-cache resource-indexer-executor
+  (new-node tx-log resource-handle-cache tx-cache resource-indexer-executor
             resource-indexer-batch-size indexer-executor kv-store resource-store
             search-param-registry (jt/seconds 1)))
 

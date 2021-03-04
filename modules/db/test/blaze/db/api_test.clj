@@ -9,6 +9,7 @@
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+    [blaze.db.impl.index.tx-success :as tsi]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
@@ -89,12 +90,17 @@
 (def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
 
+(defn- tx-cache [index-kv-store]
+  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+
+
 (defn new-node-with [{:keys [resource-store]}]
   (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))]
-    (node/new-node tx-log resource-handle-cache resource-indexer-executor 1
-                   indexer-executor (new-index-kv-store) resource-store
-                   search-param-registry (jt/millis 10))))
+        resource-handle-cache (.build (Caffeine/newBuilder))
+        index-kv-store (new-index-kv-store)]
+    (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
+                   resource-indexer-executor 1 indexer-executor index-kv-store
+                   resource-store search-param-registry (jt/millis 10))))
 
 
 (defn new-node []

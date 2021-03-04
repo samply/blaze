@@ -6,6 +6,7 @@
     [blaze.db.impl.index.rts-as-of :as rts]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
+    [blaze.db.impl.index.tx-success :as tsi]
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
@@ -79,11 +80,16 @@
 (def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
 
+(defn- tx-cache [index-kv-store]
+  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+
+
 (defn new-node []
   (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))]
-    (node/new-node tx-log resource-handle-cache resource-indexer-executor 1
-                   indexer-executor (new-index-kv-store)
+        resource-handle-cache (.build (Caffeine/newBuilder))
+        index-kv-store (new-index-kv-store)]
+    (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
+                   resource-indexer-executor 1 indexer-executor index-kv-store
                    (new-kv-resource-store (new-mem-kv-store))
                    search-param-registry (jt/millis 10))))
 

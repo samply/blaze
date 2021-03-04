@@ -20,6 +20,7 @@
 (s/fdef node/new-node
   :args (s/cat :tx-log :blaze.db/tx-log
                :resource-handle-cache :blaze.db/resource-handle-cache
+               :tx-cache :blaze.db/tx-cache
                :resource-indexer-executor ::node/resource-indexer-executor
                :resource-indexer-batch-size ::node/resource-indexer-batch-size
                :indexer-executor ::node/indexer-executor

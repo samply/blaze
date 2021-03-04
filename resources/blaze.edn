@@ -160,6 +160,7 @@
   :blaze.db/node
   {:tx-log #blaze/ref :blaze.db/tx-log
    :resource-handle-cache #blaze/ref :blaze.db/resource-handle-cache
+   :tx-cache #blaze/ref :blaze.db/tx-cache
    :resource-indexer-executor #blaze/ref :blaze.db.node/resource-indexer-executor
    :resource-indexer-batch-size #blaze/cfg ["DB_RESOURCE_INDEXER_BATCH_SIZE" int? 1]
    :indexer-executor #blaze/ref :blaze.db.node/indexer-executor
@@ -180,6 +181,7 @@
   :blaze.db/cache-collector
   {:caches
    {"resource-handle-cache" #blaze/ref :blaze.db/resource-handle-cache
+    "tx-cache" #blaze/ref :blaze.db/tx-cache
     "resource-cache" #blaze/ref :blaze.db/resource-cache}}
 
   ;;
@@ -195,6 +197,17 @@
   ;;
   :blaze.db/resource-handle-cache
   {:max-size #blaze/cfg ["DB_RESOURCE_HANDLE_CACHE_SIZE" nat-int? 100000]}
+
+  ;;
+  ;; Transaction Cache
+  ;;
+  ;; The transaction cache holds transaction data that currently only consists
+  ;; of the instant at which the transaction happened. Transaction data is keyed
+  ;; by t.
+  ;;
+  :blaze.db/tx-cache
+  {:kv-store #blaze/ref :blaze.db/index-kv-store
+   :max-size #blaze/cfg ["DB_TRANSACTION_CACHE_SIZE" nat-int? 100000]}
 
   ;;
   ;; Resource Cache
