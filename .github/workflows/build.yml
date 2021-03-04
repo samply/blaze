@@ -236,7 +236,7 @@ jobs:
       run: curl -sLO https://github.com/synthetichealth/synthea/releases/download/v2.7.0/synthea-with-dependencies.jar
 
     - name: Generate Data
-      run: java -jar synthea-with-dependencies.jar -s 93254876 -cs 238756253 -r 20210101 -p 100 --generate.only_alive_patients=true
+      run: java -jar synthea-with-dependencies.jar -s 93254876 -cs 238756253 -r 20210101 -p 100 --generate.only_alive_patients=true --exporter.years_of_history=0
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -257,13 +257,13 @@ jobs:
       run: .github/scripts/download-resources.sh Patient 100
 
     - name: Download Observation Resources
-      run: .github/scripts/download-resources.sh Observation 28852
+      run: .github/scripts/download-resources.sh Observation 75275
 
     - name: Download Condition Resources
-      run: .github/scripts/download-resources.sh Condition 1254
+      run: .github/scripts/download-resources.sh Condition 2489
 
     - name: Download DiagnosticReport Resources
-      run: .github/scripts/download-resources.sh DiagnosticReport 7329
+      run: .github/scripts/download-resources.sh DiagnosticReport 15905
 
     - name: Docker Stop
       run: docker stop blaze
