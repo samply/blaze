@@ -25,7 +25,8 @@
     (dyn-serialize* gen provider value)))
 
 
-(defmacro defcomplextype [name [& fields] & {:keys [hash-num field-serializers]}]
+(defmacro defcomplextype
+  [name [& fields] & {:keys [fhir-type hash-num field-serializers]}]
   (let [sink-sym (gensym "sink")
         sink-sym-tag (with-meta sink-sym {:tag `PrimitiveSink})
         value-sym (gensym "value")
@@ -33,7 +34,7 @@
     `(do
        (defrecord ~name [~@fields]
          p/FhirType
-         (-type [~'_] ~(keyword "fhir" (str name)))
+         (-type [~'_] ~(or fhir-type (keyword "fhir" (str name))))
          (-hash-into [~'_ ~sink-sym]
            (.putByte ~sink-sym-tag (byte ~hash-num))
            ~@(map-indexed

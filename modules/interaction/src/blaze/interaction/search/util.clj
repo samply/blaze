@@ -4,8 +4,12 @@
     [blaze.handler.fhir.util :as fhir-util]))
 
 
-(defn entry
-  [router {:fhir/keys [type] :keys [id] :as resource}]
-  {:fullUrl (type/->Uri (fhir-util/instance-url router (name type) id))
+(def ^:private match
+  (type/map->BundleEntrySearch {:mode #fhir/code"match"}))
+
+
+(defn entry [router {:fhir/keys [type] :keys [id] :as resource}]
+  {:fhir/type :fhir.Bundle/entry
+   :fullUrl (type/->Uri (fhir-util/instance-url router (name type) id))
    :resource resource
-   :search {:fhir/type :fhir.Bundle.entry/search :mode #fhir/code"match"}})
+   :search match})

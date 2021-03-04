@@ -1204,3 +1204,29 @@
 
   (testing "instance size"
     (is (= 64 (total-size (type/map->Meta {}))))))
+
+
+(deftest bundle-entry-search-test
+  (testing "type"
+    (is (= :fhir.Bundle.entry/search (type/type (type/map->BundleEntrySearch {})))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      (type/map->BundleEntrySearch {})
+      "f945531f"
+
+      (type/map->BundleEntrySearch {:id "id-130825"})
+      "6b1b9201"
+
+      (type/map->BundleEntrySearch
+        {:extension [(type/map->Extension {})]})
+      "f24daf4f"
+
+      (type/map->BundleEntrySearch {:mode #fhir/code"match"})
+      "5912b48c"
+
+      (type/map->BundleEntrySearch {:score 1M})
+      "2b2509dc"))
+
+  (testing "instance size"
+    (is (= 48 (total-size (type/map->BundleEntrySearch {}))))))

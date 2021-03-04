@@ -92,7 +92,6 @@
 
 
 (defn- explain-1 [form pred path via in v settings-key settings]
-  ;;(prn {:form form :pred pred :path path :in in :v v})
   (let [pred (maybe-spec pred)]
     (if (s/spec? pred)
       (sp/explain* pred path (if-let [name (#'s/spec-name pred)] (conj via name) via) in v settings-key settings)

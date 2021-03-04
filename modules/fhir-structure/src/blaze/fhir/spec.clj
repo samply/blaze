@@ -91,10 +91,16 @@
     ::s/invalid))
 
 
+(defn- transform-type-key [type-key modifier]
+  (let [ns (namespace type-key)
+        ns-parts (cons (str "fhir." modifier) (rest (str/split ns #"\.")))]
+    (keyword (str/join "." ns-parts) (name type-key))))
+
+
 (defn unform-json
   "Returns the JSON representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.json" (name (type/type resource)))]
+  (let [key (transform-type-key (type/type resource) "json")]
     (if-let [spec (s2/get-spec key)]
       (j/write-value-as-bytes (s2/unform spec resource) json-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
@@ -103,7 +109,7 @@
 (defn unform-cbor
   "Returns the CBOR representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.cbor" (name (type/type resource)))]
+  (let [key (transform-type-key (type/type resource) "cbor")]
     (if-let [spec (s2/get-spec key)]
       (j/write-value-as-bytes (s2/unform spec resource) cbor-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))

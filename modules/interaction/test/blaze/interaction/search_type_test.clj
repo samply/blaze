@@ -282,7 +282,12 @@
           :fhir/type := :fhir/Patient
           :id := "0"
           [:meta :versionId] := #fhir/id"1"
-          [:meta :lastUpdated] := Instant/EPOCH))))
+          [:meta :lastUpdated] := Instant/EPOCH))
+
+      (testing "the entry has the right search information"
+        (given (-> body :entry first :search)
+          type/type := :fhir.Bundle.entry/search
+          :mode := #fhir/code"match"))))
 
   (testing "with param _summary equal to count"
     (let [{:keys [status body]}
