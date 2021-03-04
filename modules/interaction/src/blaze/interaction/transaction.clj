@@ -15,7 +15,6 @@
     [blaze.interaction.transaction.spec]
     [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
@@ -404,7 +403,7 @@
           (fn [response-entries]
             (ring/response
               {:fhir/type :fhir/Bundle
-               :id (random-uuid)
+               :id (luid/luid)
                :type (type/->Code (str (type/value type) "-response"))
                :entry response-entries})))
         (ac/exceptionally handler-util/error-response))))

@@ -11,8 +11,8 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
+    [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -47,7 +47,7 @@
             (ring/response
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (random-uuid)
+                 :id (luid/luid)
                  :type #fhir/code"history"
                  :total (type/->UnsignedInt total)
                  :entry (mapv #(history-util/build-entry router %) pages-versions)}

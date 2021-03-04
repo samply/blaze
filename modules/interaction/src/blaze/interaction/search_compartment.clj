@@ -10,8 +10,8 @@
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.util :as search-util]
+    [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -82,7 +82,7 @@
               (let [entries (entries context resources)]
                 (cond->
                   {:fhir/type :fhir/Bundle
-                   :id (random-uuid)
+                   :id (luid/luid)
                    :type #fhir/code"searchset"
                    :total (type/->UnsignedInt (count handles))
                    :entry (subvec entries 0 (min (count entries) page-size))
@@ -101,7 +101,7 @@
       (ac/failed-future (ex-anom handles-and-clauses))
       (ac/completed-future
         {:fhir/type :fhir/Bundle
-         :id (random-uuid)
+         :id (luid/luid)
          :type #fhir/code"searchset"
          :total (type/->UnsignedInt (count handles))
          :link [(self-link context clauses t)]}))))
