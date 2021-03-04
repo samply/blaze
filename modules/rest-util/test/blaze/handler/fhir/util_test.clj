@@ -128,7 +128,7 @@
       {:blaze/base-url "base-url"}
       ["/Patient" {:name :Patient/type}]
       ["/Patient/{id}" {:name :Patient/instance}]
-      ["/Patient/{id}/{vid}" {:name :Patient/versioned-instance}]]]
+      ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]]
     {:syntax :bracket}))
 
 
@@ -141,7 +141,7 @@
 
 
 (deftest versioned-instance-url
-  (is (= "base-url/Patient/0/1"
+  (is (= "base-url/Patient/0/_history/1"
          (fhir-util/versioned-instance-url router "Patient" "0" "1"))))
 
 

@@ -10,6 +10,9 @@
     [java.time Instant]))
 
 
+(st/instrument)
+
+
 (defn fixture [f]
   (st/instrument)
   (f)

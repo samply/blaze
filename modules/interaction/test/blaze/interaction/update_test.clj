@@ -22,11 +22,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -53,8 +53,7 @@
 
 (def ^:private router
   (reitit/router
-    [["/Patient/{id}" {:name :Patient/instance}]
-     ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]
+    [["/Patient" {:name :Patient/type}]]
     {:syntax :bracket}))
 
 
