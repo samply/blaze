@@ -82,19 +82,18 @@
 (defn instance-url
   "Returns the URL of a instance (resource) like `[base]/[type]/[id]`."
   [router type id]
-  (let [{:keys [path] {:blaze/keys [base-url]} :data}
-        (reitit/match-by-name router (keyword type "instance") {:id id})]
-    (str base-url path)))
+  ;; URL's are build by hand here, because id's do not need to be URL encoded
+  ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
+  (str (type-url router type) "/" id))
 
 
 (defn versioned-instance-url
   "Returns the URL of a versioned instance (resource) like
   `[base]/[type]/[id]/_history/[vid]`."
   [router type id vid]
-  (let [{:keys [path] {:blaze/keys [base-url]} :data}
-        (reitit/match-by-name
-          router (keyword type "versioned-instance") {:id id :vid vid})]
-    (str base-url path)))
+  ;; URL's are build by hand here, because id's do not need to be URL encoded
+  ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
+  (str (instance-url router type id) "/_history/" vid))
 
 
 (defn etag->t [etag]

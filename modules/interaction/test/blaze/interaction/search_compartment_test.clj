@@ -16,11 +16,12 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -30,7 +31,7 @@
 (def router
   (reitit/router
     [["/Patient/{id}/{type}" {:name :Patient/compartment}]
-     ["/Observation/{id}" {:name :Observation/instance}]]
+     ["/Observation" {:name :Observation/type}]]
     {:syntax :bracket}))
 
 

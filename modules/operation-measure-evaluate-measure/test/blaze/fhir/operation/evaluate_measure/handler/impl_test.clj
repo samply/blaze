@@ -15,9 +15,13 @@
     [java.time Clock Instant Year ZoneOffset]))
 
 
+(st/instrument)
+(log/set-level! :trace)
+
+
 (defn- fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -29,8 +33,7 @@
 
 (def router
   (reitit/router
-    [["/Patient/{id}" {:name :Patient/instance}]
-     ["/MeasureReport/{id}/_history/{vid}" {:name :MeasureReport/versioned-instance}]]
+    [["/MeasureReport" {:name :MeasureReport/type}]]
     {:syntax :bracket}))
 
 
