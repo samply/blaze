@@ -10,11 +10,11 @@ define Strahlentherapien:
   [Procedure: category in Code 'ST' from therapie_art]
 
 define EwingSarkomMitStrahlentherapie:
-  exists(
+  exists
     from [Condition: Code 'C41.9' from icd10] C
       with Strahlentherapien P
         such that P.reasonReference.reference = 'Condition/' + C.id
-    where exists(from C.bodySite BS where BS.coding contains Code 'C44.6' from idco3))
+    where exists from C.bodySite BS where BS.coding contains Code 'C44.6' from idco3
 
 define InInitialPopulation:
   EwingSarkomMitStrahlentherapie

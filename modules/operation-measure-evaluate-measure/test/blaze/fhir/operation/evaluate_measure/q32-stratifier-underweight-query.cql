@@ -11,6 +11,6 @@ define InInitialPopulation:
   true
 
 define Underweight:
-  exists(from [Observation: bmi] O
-      where AgeInYearsAt(FHIRHelpers.ToDateTime(O.effective as dateTime)) >= 18
-        and (O.value as Quantity) < 18.6 'kg/m2')
+  exists from [Observation: bmi] O
+    where AgeInYearsAt(FHIRHelpers.ToDateTime(O.effective as dateTime)) >= 18
+      and O.value as Quantity < 18.6 'kg/m2'

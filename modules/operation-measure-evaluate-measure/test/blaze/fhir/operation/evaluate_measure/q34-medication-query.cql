@@ -13,5 +13,5 @@ define "Temozolomid Ref":
 context Patient
 
 define InInitialPopulation:
-  exists(from [MedicationStatement] M
-    where (M.medication as Reference).reference = "Temozolomid Ref")
+  exists from [MedicationStatement] M
+    where (M.medication as Reference).reference = "Temozolomid Ref"

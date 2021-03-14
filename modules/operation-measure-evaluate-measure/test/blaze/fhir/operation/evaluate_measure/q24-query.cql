@@ -10,4 +10,4 @@ define Patient:
   singleton from ([Patient])
 
 define InInitialPopulation:
-  exists([Patient -> Observation: Code '39156-5' from loinc])
+  exists [Patient -> Observation: Code '39156-5' from loinc]

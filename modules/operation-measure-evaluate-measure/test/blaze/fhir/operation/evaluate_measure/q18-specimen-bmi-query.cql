@@ -10,6 +10,6 @@ define Patient:
   singleton from ([Patient])
 
 define InInitialPopulation:
-  exists(
+  exists
     from [Patient -> Observation: Code '39156-5' from loinc] O
-    where (O.value as Quantity) > 30 'kg/m2')
+    where O.value as Quantity > 30 'kg/m2'

@@ -6,6 +6,6 @@ codesystem SampleMaterialType: 'https://fhir.bbmri.de/CodeSystem/SampleMaterialT
 codesystem icd_o: 'urn:oid:2.16.840.1.113883.6.43.1'
 
 define InInitialPopulation:
-  exists(
+  exists
     from [Specimen: Code 'whole-blood' from SampleMaterialType] S
-    where S.collection.bodySite.coding contains Code 'C26.1' from icd_o)
+    where S.collection.bodySite.coding contains Code 'C26.1' from icd_o
