@@ -222,7 +222,7 @@ jobs:
       run: docker pull ghcr.io/samply/blaze:${{ github.sha }}
 
     - name: Run Blaze
-      run: docker run --name blaze --rm -d -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:${{ github.sha }}
+      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:${{ github.sha }}
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -236,7 +236,7 @@ jobs:
       run: curl -sLO https://github.com/synthetichealth/synthea/releases/download/v2.7.0/synthea-with-dependencies.jar
 
     - name: Generate Data
-      run: java -jar synthea-with-dependencies.jar -s 93254876 -cs 238756253 -r 20210101 -p 100 --generate.only_alive_patients=true --exporter.years_of_history=0
+      run: java -jar synthea-with-dependencies.jar -s 93254876 -cs 238756253 -r 20210101 -p 100 --generate.only_alive_patients=true --exporter.years_of_history=0 --exporter.hospital.fhir.export=false --exporter.use_uuid_filenames=true
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -254,16 +254,16 @@ jobs:
       run: ./blazectl --server http://localhost:8080/fhir count-resources
 
     - name: Download Patient Resources
-      run: .github/scripts/download-resources.sh Patient 100
+      run: ./blazectl --server http://localhost:8080/fhir download -t Patient -o Patient.ndjson
 
     - name: Download Observation Resources
-      run: .github/scripts/download-resources.sh Observation 75275
+      run: ./blazectl --server http://localhost:8080/fhir download -t Observation -o Observation.ndjson
 
     - name: Download Condition Resources
-      run: .github/scripts/download-resources.sh Condition 2489
+      run: ./blazectl --server http://localhost:8080/fhir download -t Condition -o Condition.ndjson
 
     - name: Download DiagnosticReport Resources
-      run: .github/scripts/download-resources.sh DiagnosticReport 15905
+      run: ./blazectl --server http://localhost:8080/fhir download -t DiagnosticReport -o DiagnosticReport.ndjson
 
     - name: Docker Stop
       run: docker stop blaze
