@@ -81,7 +81,7 @@ Status Codes     [code:count]             200:100001
 The upload resulted in the following resource counts:
 
 | Metric | Count |
-| :--- | :--- |
+| :--- | ---: |
 | AllergyIntolerance | 66,388 |
 | CarePlan | 980,220 |
 | CareTeam | 980,220 |
@@ -165,7 +165,7 @@ Status Codes     [code:count]             200:11676
 The upload resulted in the following resource counts:
 
 | Metric | Count |
-| :--- | :--- |
+| :--- | ---: |
 | AllergyIntolerance | 5,360 |
 | CarePlan | 35,578 |
 | Claim | 522,122 |
