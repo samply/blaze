@@ -106,7 +106,7 @@ The upload resulted in the following resource counts:
 | SupplyDelivery | 1,029,962 |
 | **total** | **171,536,553** |
 
-That are 171536553 resources in 13 hours and 5 minutes or about 3,600 resources per second.
+That are 171,536,553 resources in 13 hours and 5 minutes or about 3,600 resources per second.
 
 The size of the database directory after the import was 234 GiB or about 1,43 kB per resource which is less than the uncompressed JSON transaction bundles.
 
