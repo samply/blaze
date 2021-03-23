@@ -12,8 +12,29 @@
     clauses))
 
 
-(defn- query-params [{:keys [summary page-size]} clauses]
+(defn- include-defs->query-param-values [include-defs]
+  (mapv
+    (fn [[source-type {:keys [code target-type]}]]
+      (cond-> (str source-type ":" code)
+        target-type
+        (str ":" target-type)))
+    include-defs))
+
+
+(defn- include-defs->query-params [{:keys [direct iterate]}]
+  (let [direct (include-defs->query-param-values direct)
+        iterate (include-defs->query-param-values iterate)]
+    (cond-> {}
+      (seq direct)
+      (assoc "_include" direct)
+      (seq iterate)
+      (assoc "_include:iterate" iterate))))
+
+
+(defn- query-params [{:keys [include-defs summary page-size]} clauses]
   (cond-> (clauses->query-params clauses)
+    (seq include-defs)
+    (merge (include-defs->query-params include-defs))
     summary
     (assoc "_summary" summary)
     page-size

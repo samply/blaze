@@ -4,16 +4,19 @@
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
   (:require
+    [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
     [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.t-by-instant :as ti]
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.impl.search-param.util :as u]
     [blaze.db.kv :as kv])
   (:import
     [java.io Closeable Writer]
@@ -142,6 +145,22 @@
                   iter (system-stats/new-iterator snapshot)]
         (- (:num-changes (system-stats/get! iter t) 0)
            (:num-changes (some->> end-t (system-stats/get! iter)) 0)))))
+
+  (-include [_ resource-handle code]
+    (let [{:keys [tid id hash]} resource-handle
+          {:keys [rsvi]} context]
+      (coll/eduction
+        (u/reference-resource-handle-mapper context)
+        (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash
+                             (codec/c-hash code)))))
+
+  (-include [_ resource-handle code target-type]
+    (let [{:keys [tid id hash]} resource-handle
+          {:keys [rsvi]} context]
+      (coll/eduction
+        (u/reference-resource-handle-mapper context (codec/tid target-type))
+        (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash
+                             (codec/c-hash code)))))
 
 
 

@@ -3559,6 +3559,109 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))))
 
 
+(deftest include-test
+  (testing "Observation"
+    (doseq [code ["subject" "patient"]]
+      (testing code
+        (with-open [node (new-node)]
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Observation :id "0"
+                                    :subject
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]])
+
+          (let [db (d/db node)
+                observation (d/resource-handle db "Observation" "0")]
+
+            (testing "without target type"
+              (given @(d/pull-many node (d/include db observation code))
+                count := 1
+                [0 :fhir/type] := :fhir/Patient
+                [0 :id] := "0"))
+
+            (testing "with target type"
+              (given @(d/pull-many node (d/include db observation code "Patient"))
+                count := 1
+                [0 :fhir/type] := :fhir/Patient
+                [0 :id] := "0"))))))
+
+    (testing "encounter"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                           [:put {:fhir/type :fhir/Encounter :id "0"}]
+                           [:put {:fhir/type :fhir/Observation :id "0"
+                                  :subject
+                                  (type/map->Reference
+                                    {:reference "Patient/0"})
+                                  :encounter
+                                  (type/map->Reference
+                                    {:reference "Encounter/0"})}]])
+
+        (let [db (d/db node)
+              observation (d/resource-handle db "Observation" "0")]
+          (given @(d/pull-many node (d/include db observation "encounter"))
+            count := 1
+            [0 :fhir/type] := :fhir/Encounter
+            [0 :id] := "0"))))
+
+    (testing "with Group subject"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Group :id "0"}]
+                           [:put {:fhir/type :fhir/Observation :id "0"
+                                  :subject
+                                  (type/map->Reference
+                                    {:reference "Group/0"})}]])
+
+        (let [db (d/db node)
+              observation (d/resource-handle db "Observation" "0")]
+
+          (testing "returns group with subject param"
+            (given @(d/pull-many node (d/include db observation "subject"))
+              count := 1
+              [0 :fhir/type] := :fhir/Group
+              [0 :id] := "0"))
+
+          (testing "returns nothing with patient param"
+            (given @(d/pull-many node (d/include db observation "patient"))
+              count := 0))
+
+          (testing "returns group with subject param and Group target type"
+            (given @(d/pull-many node (d/include db observation "subject" "Group"))
+              count := 1
+              [0 :fhir/type] := :fhir/Group
+              [0 :id] := "0"))
+
+          (testing "returns nothing with subject param and Patient target type"
+            (given @(d/pull-many node (d/include db observation "subject" "Patient"))
+              count := 0)))))
+
+    (testing "non-reference search parameter code"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
+                                  :code
+                                  (type/map->CodeableConcept
+                                    {:coding
+                                     [(type/map->Coding
+                                        {:system #fhir/uri"http://loinc.org"
+                                         :code #fhir/code"8480-6"})]})}]])
+
+        (let [db (d/db node)
+              observation (d/resource-handle db "Observation" "0")]
+          (is (coll/empty? (d/include db observation "code")))))))
+
+  (testing "Patient"
+    (testing "non-reference search parameter family"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                  :name
+                                  [{:fhir/type :fhir/HumanName
+                                    :family "Müller"}]}]])
+
+        (let [db (d/db node)
+              patient (d/resource-handle db "Patient" "0")]
+          (is (coll/empty? (d/include db patient "family"))))))))
+
+
 (deftest new-batch-db-test
   (testing "resource-handle"
     (with-open [node (new-node)]

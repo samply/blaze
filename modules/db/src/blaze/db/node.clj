@@ -31,8 +31,7 @@
     [integrant.core :as ig]
     [java-time :as jt]
     [prometheus.alpha :as prom :refer [defhistogram]]
-    [taoensso.timbre :as log]
-    )
+    [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
     [java.util.concurrent TimeUnit ExecutorService CompletableFuture]))

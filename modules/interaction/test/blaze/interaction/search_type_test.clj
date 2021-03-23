@@ -36,7 +36,11 @@
      ["/MeasureReport" {:name :MeasureReport/type}]
      ["/Library" {:name :Library/type}]
      ["/List" {:name :List/type}]
-     ["/Condition" {:name :Condition/type}]]
+     ["/Condition" {:name :Condition/type}]
+     ["/Observation" {:name :Observation/type}]
+     ["/MedicationStatement" {:name :MedicationStatement/type}]
+     ["/Medication" {:name :Medication/type}]
+     ["/Organization" {:name :Organization/type}]]
     {:syntax :bracket}))
 
 
@@ -78,6 +82,14 @@
     :blaze/context-path ""
     :fhir.resource/type "Condition"}
    :path "/Condition"})
+
+
+(def ^:private medication-statement-match
+  {:data
+   {:blaze/base-url ""
+    :blaze/context-path ""
+    :fhir.resource/type "MedicationStatement"}
+   :path "/MedicationStatement"})
 
 
 (defn- handler [node]
@@ -1151,4 +1163,307 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"/Condition/1" (-> body :entry first :fullUrl)))))))
+        (is (= #fhir/uri"/Condition/1" (-> body :entry first :fullUrl))))))
+
+  (testing "Include Resources"
+    (testing "direct include"
+      (let [{:keys [status body]}
+            ((handler-with
+               [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                 [:put {:fhir/type :fhir/Observation :id "0"
+                        :subject
+                        (type/map->Reference
+                          {:reference "Patient/0"})}]]])
+             {::reitit/router router
+              ::reitit/match observation-match
+              :params {"_include" "Observation:subject"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is 1"
+          (is (= #fhir/unsignedInt 1 (:total body))))
+
+        (testing "has a self link"
+          (is (= #fhir/uri"/Observation?_include=Observation%3Asubject&_count=50&__t=1&__page-id=0"
+                 (link-url body "self"))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry is the matched Observation"
+          (given (-> body :entry first)
+            :fullUrl := #fhir/uri"/Observation/0"
+            [:resource :fhir/type] := :fhir/Observation
+            [:search :mode] := #fhir/code"match"))
+
+        (testing "the second entry is the included Patient"
+          (given (-> body :entry second)
+            :fullUrl := #fhir/uri"/Patient/0"
+            [:resource :fhir/type] := :fhir/Patient
+            [:search :mode] := #fhir/code"include")))
+
+      (testing "with non-matching target type"
+        (let [{:keys [status body]}
+              ((handler-with
+                 [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                   [:put {:fhir/type :fhir/Observation :id "0"
+                          :subject
+                          (type/map->Reference
+                            {:reference "Patient/0"})}]]])
+               {::reitit/router router
+                ::reitit/match observation-match
+                :params {"_include" "Observation:subject:Group"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is 1"
+            (is (= #fhir/unsignedInt 1 (:total body))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the first entry is the matched Observation"
+            (given (-> body :entry first)
+              :fullUrl := #fhir/uri"/Observation/0"
+              [:resource :fhir/type] := :fhir/Observation
+              [:search :mode] := #fhir/code"match"))))
+
+      (testing "includes don't appear twice"
+        (let [{:keys [status body]}
+              ((handler-with
+                 [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                   [:put {:fhir/type :fhir/Observation :id "1"
+                          :subject
+                          (type/map->Reference
+                            {:reference "Patient/0"})}]
+                   [:put {:fhir/type :fhir/Observation :id "2"
+                          :subject
+                          (type/map->Reference
+                            {:reference "Patient/0"})}]]])
+               {::reitit/router router
+                ::reitit/match observation-match
+                :params {"_include" "Observation:subject"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
+
+          (testing "the bundle contains three entries"
+            (is (= 3 (count (:entry body)))))
+
+          (testing "the first entry is the first matched Observation"
+            (given (-> body :entry first)
+              :fullUrl := #fhir/uri"/Observation/1"
+              [:resource :fhir/type] := :fhir/Observation
+              [:search :mode] := #fhir/code"match"))
+
+          (testing "the second entry is the second matched Observation"
+            (given (-> body :entry second)
+              :fullUrl := #fhir/uri"/Observation/2"
+              [:resource :fhir/type] := :fhir/Observation
+              [:search :mode] := #fhir/code"match"))
+
+          (testing "the third entry is the included Patient"
+            (given (-> body :entry (nth 2))
+              :fullUrl := #fhir/uri"/Patient/0"
+              [:resource :fhir/type] := :fhir/Patient
+              [:search :mode] := #fhir/code"include"))))
+
+      (testing "with paging"
+        (with-open [node (mem-node-with
+                           [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Observation :id "1"
+                                    :subject
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]
+                             [:put {:fhir/type :fhir/Patient :id "2"}]
+                             [:put {:fhir/type :fhir/Observation :id "3"
+                                    :subject
+                                    (type/map->Reference
+                                      {:reference "Patient/2"})}]]])]
+          (let [{:keys [status body]}
+                @((handler node)
+                  {::reitit/router router
+                   ::reitit/match observation-match
+                   :params {"_include" "Observation:subject" "_count" "2"}})]
+
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code"searchset" (:type body))))
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a next link"
+              (is (= #fhir/uri"/Observation?_include=Observation%3Asubject&_count=2&__t=1&__page-id=3"
+                     (link-url body "next"))))
+
+            (testing "the bundle contains two entries"
+              (is (= 2 (count (:entry body)))))
+
+            (testing "the first entry is the matched Observation"
+              (given (-> body :entry first)
+                :fullUrl := #fhir/uri"/Observation/1"
+                [:resource :fhir/type] := :fhir/Observation
+                [:search :mode] := #fhir/code"match"))
+
+            (testing "the second entry is the included Patient"
+              (given (-> body :entry second)
+                :fullUrl := #fhir/uri"/Patient/0"
+                [:resource :fhir/type] := :fhir/Patient
+                [:search :mode] := #fhir/code"include"))
+
+            (testing "second page"
+              (let [{:keys [status body]}
+                    @((handler node)
+                      {::reitit/router router
+                       ::reitit/match observation-match
+                       :params {"_include" "Observation:subject" "_count" "2"
+                                "__t" "1" "__page-id" "3"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 2"
+                  (is (= #fhir/unsignedInt 2 (:total body))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"/Observation?_include=Observation%3Asubject&_count=2&__t=1&__page-id=3"
+                         (link-url body "self"))))
+
+                (testing "the bundle contains two entries"
+                  (is (= 2 (count (:entry body)))))
+
+                (testing "the first entry is the matched Observation"
+                  (given (-> body :entry first)
+                    :fullUrl := #fhir/uri"/Observation/3"
+                    [:resource :fhir/type] := :fhir/Observation
+                    [:search :mode] := #fhir/code"match"))
+
+                (testing "the second entry is the included Patient"
+                  (given (-> body :entry second)
+                    :fullUrl := #fhir/uri"/Patient/2"
+                    [:resource :fhir/type] := :fhir/Patient
+                    [:search :mode] := #fhir/code"include"))))))))
+
+    (testing "iterative include"
+      (let [{:keys [status body]}
+            ((handler-with
+               [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
+                        :medication
+                        (type/map->Reference
+                          {:reference "Medication/0"})}]
+                 [:put {:fhir/type :fhir/Medication :id "0"
+                        :manufacturer
+                        (type/map->Reference
+                          {:reference "Organization/0"})}]
+                 [:put {:fhir/type :fhir/Organization :id "0"}]]])
+             {::reitit/router router
+              ::reitit/match medication-statement-match
+              :params
+              {"_include" "MedicationStatement:medication"
+               "_include:iterate" "Medication:manufacturer"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is 1"
+          (is (= #fhir/unsignedInt 1 (:total body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 3 (count (:entry body)))))
+
+        (testing "the first entry is the matched MedicationStatement"
+          (given (-> body :entry first)
+            :fullUrl := #fhir/uri"/MedicationStatement/0"
+            [:resource :fhir/type] := :fhir/MedicationStatement
+            [:search :mode] := #fhir/code"match"))
+
+        (testing "the second entry is the included Organization"
+          (given (-> body :entry second)
+            :fullUrl := #fhir/uri"/Organization/0"
+            [:resource :fhir/type] := :fhir/Organization
+            [:search :mode] := #fhir/code"include"))
+
+        (testing "the third entry is the included Medication"
+          (given (-> body :entry (nth 2))
+            :fullUrl := #fhir/uri"/Medication/0"
+            [:resource :fhir/type] := :fhir/Medication
+            [:search :mode] := #fhir/code"include"))))
+
+    (testing "non-iterative include doesn't work iterative"
+      (let [{:keys [status body]}
+            ((handler-with
+               [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
+                        :medication
+                        (type/map->Reference
+                          {:reference "Medication/0"})}]
+                 [:put {:fhir/type :fhir/Medication :id "0"
+                        :manufacturer
+                        (type/map->Reference
+                          {:reference "Organization/0"})}]
+                 [:put {:fhir/type :fhir/Organization :id "0"}]]])
+             {::reitit/router router
+              ::reitit/match medication-statement-match
+              :params
+              {"_include"
+               ["MedicationStatement:medication" "Medication:manufacturer"]}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is 1"
+          (is (= #fhir/unsignedInt 1 (:total body))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry is the matched MedicationStatement"
+          (given (-> body :entry first)
+            :fullUrl := #fhir/uri"/MedicationStatement/0"
+            [:resource :fhir/type] := :fhir/MedicationStatement
+            [:search :mode] := #fhir/code"match"))
+
+        (testing "the second entry is the included Medication"
+          (given (-> body :entry second)
+            :fullUrl := #fhir/uri"/Medication/0"
+            [:resource :fhir/type] := :fhir/Medication
+            [:search :mode] := #fhir/code"include"))))))
