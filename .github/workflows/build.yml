@@ -280,5 +280,20 @@ jobs:
     - name: Download MedicationRequest Resources - Including Medications
       run: ./blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
+    - name: Evaluate CQL Query 1
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql http://localhost:8080/fhir
+
+    - name: Evaluate CQL Query 2
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql http://localhost:8080/fhir
+
+    - name: Evaluate CQL Query 7
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7-query.cql http://localhost:8080/fhir
+
+    - name: Evaluate CQL Query 14
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql http://localhost:8080/fhir
+
+    - name: Evaluate CQL Query 15
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql http://localhost:8080/fhir
+
     - name: Docker Stop
       run: docker stop blaze
