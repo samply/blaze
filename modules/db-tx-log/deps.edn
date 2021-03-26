@@ -17,7 +17,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.732"}
+    {:mvn/version "1.0.829"}
 
     org.clojure/test.check
     {:mvn/version "1.1.0"}}

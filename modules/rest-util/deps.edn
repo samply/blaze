@@ -15,7 +15,7 @@
   {:mvn/version "0.5.12"}
 
   ring/ring-core
-  {:mvn/version "1.9.1"
+  {:mvn/version "1.9.2"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
@@ -31,7 +31,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.732"}
+    {:mvn/version "1.0.829"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

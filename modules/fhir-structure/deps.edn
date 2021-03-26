@@ -11,19 +11,19 @@
   {:mvn/version "0.3.2"}
 
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "3.0.0"}
+  {:mvn/version "3.0.1"}
 
   com.google.guava/guava
-  {:mvn/version "30.1-jre"}
+  {:mvn/version "30.1.1-jre"}
 
   com.fasterxml.jackson.core/jackson-core
-  {:mvn/version "2.12.1"}
+  {:mvn/version "2.12.2"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.12.1"}
+  {:mvn/version "2.12.2"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.12.1"}
+  {:mvn/version "2.12.2"}
 
   com.taoensso/timbre
   {:mvn/version "5.1.2"}
@@ -50,7 +50,7 @@
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.732"}
+    {:mvn/version "1.0.829"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
