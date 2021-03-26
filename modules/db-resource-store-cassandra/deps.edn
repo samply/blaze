@@ -9,7 +9,7 @@
   {:local/root "../module-base"}
 
   com.datastax.oss/java-driver-core
-  {:mvn/version "4.10.0"}}
+  {:mvn/version "4.11.0"}}
 
  :aliases
  {:test
@@ -17,7 +17,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.732"}
+    {:mvn/version "1.0.829"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

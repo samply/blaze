@@ -9,7 +9,7 @@
   {:mvn/version "5.1.2"}
 
   hato/hato
-  {:mvn/version "0.7.2"}}
+  {:mvn/version "0.8.1"}}
 
  :aliases
  {:test
@@ -20,7 +20,7 @@
     {:mvn/version "1.0.0"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.732"}
+    {:mvn/version "1.0.829"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
