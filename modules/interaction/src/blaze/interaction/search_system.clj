@@ -109,7 +109,9 @@
                 {:fhir/type :fhir/Bundle
                  :id (luid/luid)
                  :type #fhir/code"searchset"
-                 :entry (subvec entries 0 (min (count entries) page-size))
+                 :entry (if (< page-size (count entries))
+                          (pop entries)
+                          entries)
                  :link [(self-link context clauses t entries)]}
 
                 total

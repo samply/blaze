@@ -1,6 +1,7 @@
 (ns blaze.interaction.search.params
   (:require
     [blaze.handler.fhir.util :as fhir-util]
+    [blaze.interaction.search.params.include :as include]
     [clojure.string :as str]))
 
 
@@ -27,6 +28,7 @@
 
 (defn decode [query-params]
   {:clauses (clauses query-params)
+   :include-defs (include/include-defs query-params)
    :summary? (summary? query-params)
    :summary (get query-params "_summary")
    :page-size (fhir-util/page-size query-params)

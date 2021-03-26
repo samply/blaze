@@ -98,7 +98,9 @@
   (clojure.core/>= (.compare (ByteString/unsignedLexicographicalComparator) a b) 0))
 
 
-(defn hex [bs]
+(defn hex
+  "Returns an upper-case hexadecimal string representation of `bs`."
+  [bs]
   (.encode (BaseEncoding/base16) (.toByteArray ^ByteString bs)))
 
 

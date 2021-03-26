@@ -48,6 +48,8 @@
 
   (-total-num-of-system-changes [db since])
 
+  (-include [db resource-handle code] [db resource-handle code target-type])
+
   (-new-batch-db [db]))
 
 

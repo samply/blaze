@@ -71,14 +71,23 @@
 
 (defn reference-resource-handle-mapper
   "Returns a transducer that filters all upstream values for reference tid-id
-  values with `tid`, returning the non-deleted resource handles of the
-  referenced resources."
-  [{:keys [resource-handle]} tid]
-  (comp
-    ;; other index entries are all v-hashes
-    (filter #(< codec/v-hash-size (bs/size %)))
-    (map bs/as-read-only-byte-buffer)
-    ;; the type has to match
-    (filter #(= ^long tid (bb/get-int! %)))
-    (map bs/from-byte-buffer)
-    (keep #(non-deleted-resource-handle resource-handle tid %))))
+  values with `tid` (optional), returning the non-deleted resource handles of
+  the referenced resources."
+  ([{:keys [resource-handle]}]
+   (comp
+     ;; other index entries are all v-hashes
+     (filter #(< codec/v-hash-size (bs/size %)))
+     (map bs/as-read-only-byte-buffer)
+     (keep
+       #(let [tid (bb/get-int! %)
+              id (bs/from-byte-buffer %)]
+          (non-deleted-resource-handle resource-handle tid id)))))
+  ([{:keys [resource-handle]} tid]
+   (comp
+     ;; other index entries are all v-hashes
+     (filter #(< codec/v-hash-size (bs/size %)))
+     (map bs/as-read-only-byte-buffer)
+     ;; the type has to match
+     (filter #(= ^long tid (bb/get-int! %)))
+     (map bs/from-byte-buffer)
+     (keep #(non-deleted-resource-handle resource-handle tid %)))))

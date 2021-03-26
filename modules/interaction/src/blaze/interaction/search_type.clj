@@ -10,6 +10,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
+    [blaze.interaction.search.include :as include]
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.util :as search-util]
@@ -60,40 +61,72 @@
        :clauses (d/query-clauses query)})))
 
 
-(defn- entries-and-clauses
-  "Returns a CompletableFuture that will complete with a vector of all entries
-  of the current page plus one entry of the next page."
-  [{:keys [router] {:keys [page-size]} :params :as context} db]
-  (let [{:keys [handles clauses] :as handles-and-clauses}
-        (handles-and-clauses context db)]
-    (if (::anom/category handles-and-clauses)
-      (ac/failed-future (ex-anom handles-and-clauses))
-      (-> (d/pull-many db (into [] (take (inc page-size)) handles))
-          (ac/then-apply
-            (fn [resources]
-              {:entries (mapv #(search-util/entry router %) resources)
-               :clauses clauses}))))))
+(defn- build-matches-only-page [page-size handles]
+  (let [handles (into [] (take (inc page-size)) handles)]
+    (if (< page-size (count handles))
+      {:matches (pop handles)
+       :next-match (peek handles)}
+      {:matches handles})))
 
 
-(defn- self-link-offset [entries]
-  (when-let [id (-> entries first :resource :id)]
+(defn- build-page [db include-defs page-size handles]
+  (if (:direct include-defs)
+    (->> (include/add-includes db include-defs handles)
+         (include/build-page page-size))
+    (build-matches-only-page page-size handles)))
+
+
+(defn- entries [router matches includes]
+  (-> (mapv #(search-util/entry router % search-util/match) matches)
+      (into (map #(search-util/entry router % search-util/include)) includes)))
+
+
+(defn- page-data
+  "Returns a CompletableFuture that will complete with a map of:
+
+  :entries - the bundle entries of the page
+  :num-matches - the number of search matches (excluding includes)
+  :next-handle - the resource handle of the first resource of the next page
+  :clauses - the actually used clauses"
+  {:arglists '([context db])}
+  [{:keys [router] {:keys [include-defs page-size]} :params :as context} db]
+  (let [{:keys [handles clauses] :as res} (handles-and-clauses context db)]
+    (if (::anom/category res)
+      (ac/failed-future (ex-anom res))
+      (let [{:keys [matches includes next-match]}
+            (build-page db include-defs page-size handles)
+            matches (d/pull-many db matches)
+            includes (d/pull-many db (into [] includes))]
+        (-> (ac/all-of [matches includes])
+            (ac/then-apply
+              (fn [_]
+                {:entries (entries router @matches @includes)
+                 :num-matches (count @matches)
+                 :next-handle next-match
+                 :clauses clauses})))))))
+
+
+(defn- self-link-offset [first-entry]
+  (when-let [id (-> first-entry :resource :id)]
     {"__page-id" id}))
 
 
-(defn- self-link [{:keys [match params]} clauses t entries]
+(defn- self-link [{:keys [match params]} clauses t first-entry]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url match params clauses t (self-link-offset entries)))})
+   :url (type/->Uri (nav/url match params clauses t
+                             (self-link-offset first-entry)))})
 
 
-(defn- next-link-offset [entries]
-  {"__page-id" (-> entries peek :resource :id)})
+(defn- next-link-offset [next-handle]
+  {"__page-id" (:id next-handle)})
 
 
-(defn- next-link [{:keys [match params]} clauses t entries]
+(defn- next-link [{:keys [match params]} clauses t next-handle]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (type/->Uri (nav/url match params clauses t (next-link-offset entries)))})
+   :url (type/->Uri (nav/url match params clauses t
+                             (next-link-offset next-handle)))})
 
 
 (defn- total
@@ -103,34 +136,33 @@
   Secondly, if the number of entries found is not more than one page in size,
   we can use that number. Otherwise there is no cheap way to calculate the
   number of matching resources, so we don't report it."
-  [db type {:keys [clauses page-size page-id]} entries]
+  [db type {:keys [clauses page-id]} num-matches next-handle]
   (cond
     (empty? clauses)
     (d/type-total db type)
 
-    (and (nil? page-id) (<= (count entries) page-size))
-    (count entries)))
+    (and (nil? page-id) (nil? next-handle))
+    num-matches))
 
 
 (defn- search-normal [{:keys [type params] :as context} db]
   (let [t (or (d/as-of-t db) (d/basis-t db))]
-    (-> (entries-and-clauses context db)
+    (-> (page-data context db)
         (ac/then-apply
-          (fn [{:keys [entries clauses]}]
-            (let [page-size (:page-size params)
-                  total (total db type params entries)]
+          (fn [{:keys [entries num-matches next-handle clauses]}]
+            (let [total (total db type params num-matches next-handle)]
               (cond->
                 {:fhir/type :fhir/Bundle
                  :id (luid/luid)
                  :type #fhir/code"searchset"
-                 :entry (subvec entries 0 (min (count entries) page-size))
-                 :link [(self-link context clauses t entries)]}
+                 :entry entries
+                 :link [(self-link context clauses t (first entries))]}
 
                 total
                 (assoc :total (type/->UnsignedInt total))
 
-                (< page-size (count entries))
-                (update :link conj (next-link context clauses t entries)))))))))
+                next-handle
+                (update :link conj (next-link context clauses t next-handle)))))))))
 
 
 (defn- summary-total

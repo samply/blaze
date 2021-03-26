@@ -405,6 +405,20 @@
 
 
 
+;; ---- Include ---------------------------------------------------------------
+
+(defn include
+  "Returns a reducible collection of resource handles that are reachable by the
+  search parameter with `code` and have a type of `target-type` (optional).
+
+  The search parameter has to be of type reference."
+  ([db resource-handle code]
+   (p/-include db resource-handle code))
+  ([db resource-handle code target-type]
+   (p/-include db resource-handle code target-type)))
+
+
+
 ;; ---- Batch DB --------------------------------------------------------------
 
 (defn new-batch-db
