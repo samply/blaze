@@ -11,8 +11,7 @@
      ModelInfoProvider ModelInfoLoader]
     [java.util Locale]
     [javax.xml.bind JAXB]
-    [org.hl7.elm_modelinfo.r1 ModelInfo]
-    [org.hl7.elm.r1 VersionedIdentifier]))
+    [org.hl7.elm_modelinfo.r1 ModelInfo]))
 
 
 (set! *warn-on-reflection* true)
@@ -21,11 +20,8 @@
 (defn- load-model-info [name]
   (let [res (io/resource name)
         ^ModelInfo modelInfo (JAXB/unmarshal res ^Class ModelInfo)
-        id (doto (VersionedIdentifier.)
-             (.setId (.getName modelInfo))
-             (.setVersion (.getVersion modelInfo)))
-        provider (reify ModelInfoProvider (load [_] modelInfo))]
-    (ModelInfoLoader/registerModelInfoProvider id provider)))
+        provider (reify ModelInfoProvider (load [_ _] modelInfo))]
+    (.registerModelInfoProvider (ModelInfoLoader.) provider)))
 
 
 (defn- options [locators?]

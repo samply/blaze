@@ -3,10 +3,7 @@
   {:local/root "../fhir-structure"}
 
   info.cqframework/cql
-  {:mvn/version "1.5.1"}
-
-  org.antlr/antlr4-runtime
-  {:mvn/version "4.6"}}
+  {:mvn/version "1.5.2"}}
 
  :aliases
  {:test
