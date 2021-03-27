@@ -17,11 +17,11 @@
 
 
 (s/def ::direct
-  (s/map-of :fhir.type/name ::include-def))
+  (s/map-of :fhir.type/name (s/coll-of ::include-def)))
 
 
 (s/def ::iterate
-  (s/map-of :fhir.type/name ::include-def))
+  (s/map-of :fhir.type/name (s/coll-of ::include-def)))
 
 
 (s/def :blaze.interaction.search/include-defs

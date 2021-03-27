@@ -13,11 +13,14 @@
 
 
 (defn- include-defs* [name query-params]
-  (into
-    {}
+  (transduce
     (comp
       (filter (fn [[k]] (= name k)))
       (mapcat (fn [[_k v]] (mapv include-value (fhir-util/to-seq v)))))
+    (completing
+      (fn [res [source-type include-def]]
+        (update res source-type (fnil conj []) include-def)))
+    {}
     query-params))
 
 

@@ -5,15 +5,20 @@
     [blaze.fhir.spec.type :as type]))
 
 
+(defn- include [db handle {:keys [code target-type]}]
+  (if target-type
+    (d/include db handle code target-type)
+    (d/include db handle code)))
+
+
 (defn- add-includes* [db include-defs key handle]
   (let [type (name (type/type handle))]
-    (when-let [{:keys [code target-type]} (get-in include-defs [key type])]
-      (into
-        []
-        (mapcat #(into [%] (add-includes* db include-defs :iterate %)))
-        (if target-type
-          (d/include db handle code target-type)
-          (d/include db handle code))))))
+    (into
+      []
+      (comp
+        (mapcat #(include db handle %))
+        (mapcat #(into [%] (add-includes* db include-defs :iterate %))))
+      (get-in include-defs [key type]))))
 
 
 (defn add-includes
