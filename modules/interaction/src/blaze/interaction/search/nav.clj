@@ -12,7 +12,7 @@
     clauses))
 
 
-(defn- include-defs->query-param-values [include-defs]
+(defn- forward-include-defs->query-param-values [include-defs]
   (into
     []
     (mapcat
@@ -26,14 +26,36 @@
     include-defs))
 
 
-(defn- include-defs->query-params [{:keys [direct iterate]}]
-  (let [direct (include-defs->query-param-values direct)
-        iterate (include-defs->query-param-values iterate)]
+(defn- reverse-include-defs->query-param-values [include-defs]
+  (into
+    []
+    (mapcat
+      (fn [[target-type include-defs]]
+        (mapv
+          (fn [{:keys [source-type code]}]
+            (cond-> (str source-type ":" code)
+              (not= :any target-type)
+              (str ":" target-type)))
+          include-defs)))
+    include-defs))
+
+
+(defn- include-defs->query-params
+  [{{fwd-dir :forward rev-dir :reverse} :direct
+    {fwd-itr :forward rev-itr :reverse} :iterate}]
+  (let [fwd-dir (forward-include-defs->query-param-values fwd-dir)
+        fwd-itr (forward-include-defs->query-param-values fwd-itr)
+        rev-dir (reverse-include-defs->query-param-values rev-dir)
+        rev-itr (reverse-include-defs->query-param-values rev-itr)]
     (cond-> {}
-      (seq direct)
-      (assoc "_include" direct)
-      (seq iterate)
-      (assoc "_include:iterate" iterate))))
+      (seq fwd-dir)
+      (assoc "_include" fwd-dir)
+      (seq fwd-itr)
+      (assoc "_include:iterate" fwd-itr)
+      (seq rev-dir)
+      (assoc "_revinclude" rev-dir)
+      (seq rev-itr)
+      (assoc "_revinclude:iterate" rev-itr))))
 
 
 (defn- query-params [{:keys [include-defs summary page-size]} clauses]

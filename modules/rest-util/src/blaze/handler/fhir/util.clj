@@ -24,7 +24,7 @@
 
 
 (def ^:private ^:const default-page-size 50)
-(def ^:private ^:const max-page-size 500)
+(def ^:private ^:const max-page-size 1000)
 
 
 (defn page-size

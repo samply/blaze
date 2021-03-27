@@ -7,6 +7,8 @@
     [blaze.fhir.spec.type :as type]
     [blaze.interaction.search-type]
     [blaze.interaction.search-type-spec]
+    [blaze.interaction.search.nav-spec]
+    [blaze.interaction.search.params-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
@@ -1519,4 +1521,115 @@
           (given (-> body :entry second)
             :fullUrl := #fhir/uri"/Medication/0"
             [:resource :fhir/type] := :fhir/Medication
-            [:search :mode] := #fhir/code"include"))))))
+            [:search :mode] := #fhir/code"include"))))
+
+    (testing "revinclude"
+      (let [{:keys [status body]}
+            ((handler-with
+               [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                 [:put {:fhir/type :fhir/Observation :id "1"
+                        :subject
+                        (type/map->Reference
+                          {:reference "Patient/0"})}]]])
+             {::reitit/router router
+              ::reitit/match patient-match
+              :params {"_revinclude" "Observation:subject"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is 1"
+          (is (= #fhir/unsignedInt 1 (:total body))))
+
+        (testing "has a self link"
+          (is (= #fhir/uri"/Patient?_revinclude=Observation%3Asubject&_count=50&__t=1&__page-id=0"
+                 (link-url body "self"))))
+
+        (testing "the bundle contains two entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry is the matched Patient"
+          (given (-> body :entry first)
+            :fullUrl := #fhir/uri"/Patient/0"
+            [:resource :fhir/type] := :fhir/Patient
+            [:search :mode] := #fhir/code"match"))
+
+        (testing "the second entry is the included Observation"
+          (given (-> body :entry second)
+            :fullUrl := #fhir/uri"/Observation/1"
+            [:resource :fhir/type] := :fhir/Observation
+            [:search :mode] := #fhir/code"include")))
+
+      (testing "two revincludes"
+        (let [{:keys [status body]}
+              ((handler-with
+                 [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                   [:put {:fhir/type :fhir/Observation :id "1"
+                          :subject
+                          (type/map->Reference
+                            {:reference "Patient/0"})}]
+                   [:put {:fhir/type :fhir/Condition :id "2"
+                          :subject
+                          (type/map->Reference
+                            {:reference "Patient/0"})}]]])
+               {::reitit/router router
+                ::reitit/match patient-match
+                :params
+                {"_revinclude" ["Observation:subject" "Condition:subject"]}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is 1"
+            (is (= #fhir/unsignedInt 1 (:total body))))
+
+          (testing "has a self link"
+            (is (= #fhir/uri"/Patient?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50&__t=1&__page-id=0"
+                   (link-url body "self"))))
+
+          (testing "the bundle contains two entries"
+            (is (= 3 (count (:entry body)))))
+
+          (testing "the first entry is the matched Patient"
+            (given (-> body :entry first)
+              :fullUrl := #fhir/uri"/Patient/0"
+              [:resource :fhir/type] := :fhir/Patient
+              [:search :mode] := #fhir/code"match"))
+
+          (testing "the second entry is the included Observation"
+            (given (-> body :entry second)
+              :fullUrl := #fhir/uri"/Observation/1"
+              [:resource :fhir/type] := :fhir/Observation
+              [:search :mode] := #fhir/code"include"))
+
+          (testing "the third entry is the included Condition"
+            (given (-> body :entry (nth 2))
+              :fullUrl := #fhir/uri"/Condition/2"
+              [:resource :fhir/type] := :fhir/Condition
+              [:search :mode] := #fhir/code"include")))))
+
+    (testing "invalid include parameter"
+      (let [{:keys [status body]}
+            ((handler-with [])
+             {::reitit/router router
+              ::reitit/match patient-match
+              :headers {"prefer" "handling=strict"}
+              :params {"_include" "Observation"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"invalid"
+          [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`.")))))

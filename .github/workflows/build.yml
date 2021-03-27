@@ -256,6 +256,9 @@ jobs:
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
 
+    - name: Download Patient Resources - Including Observation, Condition, Encounter and Procedure
+      run: .github/scripts/revinclude.sh
+
     - name: Download Observation Resources
       run: .github/scripts/download-resources.sh Observation
 

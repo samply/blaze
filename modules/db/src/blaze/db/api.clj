@@ -408,14 +408,31 @@
 ;; ---- Include ---------------------------------------------------------------
 
 (defn include
-  "Returns a reducible collection of resource handles that are reachable by the
-  search parameter with `code` and have a type of `target-type` (optional).
+  "Returns a reducible collection of resource handles that are reachable from
+  `resource-handle` by the search parameter with `code` and have a type of
+  `target-type` (optional).
 
-  The search parameter has to be of type reference."
+  The search parameter has to be of type reference.
+
+  One example are Patients that are reachable from resource handle of type
+  Observation by the search parameter with code subject."
   ([db resource-handle code]
    (p/-include db resource-handle code))
   ([db resource-handle code target-type]
    (p/-include db resource-handle code target-type)))
+
+
+(defn rev-include
+  "Returns a reducible collection of resource handles that point to
+  `resource-handle` by the search parameter with `code` and have a type of
+  `source-type`.
+
+  The search parameter has to be of type reference.
+
+  One example are Observations that point to resource handle of type Patient by
+  the search parameter with code subject."
+  [db resource-handle source-type code]
+  (p/-rev-include db resource-handle source-type code))
 
 
 

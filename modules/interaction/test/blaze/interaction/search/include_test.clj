@@ -23,7 +23,7 @@
 
 
 (deftest add-includes-test
-  (testing "one direct include"
+  (testing "one direct forward include"
     (with-open [node (mem-node-with
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Observation :id "0"
@@ -31,7 +31,7 @@
                                 (type/map->Reference
                                   {:reference "Patient/0"})}]]])]
       (let [db (d/db node)
-            include-defs {:direct {"Observation" [{:code "subject"}]}}
+            include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
             observations (d/type-list db "Observation")]
         (given (into [] (include/add-includes db include-defs observations))
           count := 1
@@ -48,15 +48,16 @@
                                     {:reference "Patient/0"})}]]])]
         (let [db (d/db node)
               include-defs {:direct
-                            {"Observation"
-                             [{:code "subject" :target-type "Group"}]}}
+                            {:forward
+                             {"Observation"
+                              [{:code "subject" :target-type "Group"}]}}}
               observations (d/type-list db "Observation")]
           (given (into [] (include/add-includes db include-defs observations))
             count := 1
             [0 :match type/type] := :fhir/Observation
             [0 :includes count] := 0)))))
 
-  (testing "two direct includes with the same type"
+  (testing "two direct forward includes with the same type"
     (with-open [node (mem-node-with
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Encounter :id "1"
@@ -72,15 +73,35 @@
                                   {:reference "Encounter/1"})}]]])]
       (let [db (d/db node)
             include-defs {:direct
-                          {"Observation"
-                           [{:code "subject"} {:code "encounter"}]}}
+                          {:forward
+                           {"Observation"
+                            [{:code "subject"} {:code "encounter"}]}}}
             observations (d/type-list db "Observation")]
         (given (into [] (include/add-includes db include-defs observations))
           count := 1
           [0 :match type/type] := :fhir/Observation
           [0 :includes count] := 2
           [0 :includes 0 type/type] := :fhir/Patient
-          [0 :includes 1 type/type] := :fhir/Encounter)))))
+          [0 :includes 1 type/type] := :fhir/Encounter))))
+
+  (testing "one direct reverse include"
+    (with-open [node (mem-node-with
+                       [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                         [:put {:fhir/type :fhir/Observation :id "1"
+                                :subject
+                                (type/map->Reference
+                                  {:reference "Patient/0"})}]]])]
+      (let [db (d/db node)
+            include-defs {:direct
+                          {:reverse
+                           {:any
+                            [{:source-type "Observation" :code "subject"}]}}}
+            patients (d/type-list db "Patient")]
+        (given (into [] (include/add-includes db include-defs patients))
+          count := 1
+          [0 :match type/type] := :fhir/Patient
+          [0 :includes count] := 1
+          [0 :includes 0 type/type] := :fhir/Observation)))))
 
 
 (deftest build-page-test

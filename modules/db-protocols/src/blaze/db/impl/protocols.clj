@@ -50,6 +50,8 @@
 
   (-include [db resource-handle code] [db resource-handle code target-type])
 
+  (-rev-include [db resource-handle source-type code])
+
   (-new-batch-db [db]))
 
 
