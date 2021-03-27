@@ -31,7 +31,7 @@
                                 (type/map->Reference
                                   {:reference "Patient/0"})}]]])]
       (let [db (d/db node)
-            include-defs {:direct {"Observation" {:code "subject"}}}
+            include-defs {:direct {"Observation" [{:code "subject"}]}}
             observations (d/type-list db "Observation")]
         (given (into [] (include/add-includes db include-defs observations))
           count := 1
@@ -49,12 +49,38 @@
         (let [db (d/db node)
               include-defs {:direct
                             {"Observation"
-                             {:code "subject" :target-type "Group"}}}
+                             [{:code "subject" :target-type "Group"}]}}
               observations (d/type-list db "Observation")]
           (given (into [] (include/add-includes db include-defs observations))
             count := 1
             [0 :match type/type] := :fhir/Observation
-            [0 :includes count] := 0))))))
+            [0 :includes count] := 0)))))
+
+  (testing "two direct includes with the same type"
+    (with-open [node (mem-node-with
+                       [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                         [:put {:fhir/type :fhir/Encounter :id "1"
+                                :subject
+                                (type/map->Reference
+                                  {:reference "Patient/0"})}]
+                         [:put {:fhir/type :fhir/Observation :id "2"
+                                :subject
+                                (type/map->Reference
+                                  {:reference "Patient/0"})
+                                :encounter
+                                (type/map->Reference
+                                  {:reference "Encounter/1"})}]]])]
+      (let [db (d/db node)
+            include-defs {:direct
+                          {"Observation"
+                           [{:code "subject"} {:code "encounter"}]}}
+            observations (d/type-list db "Observation")]
+        (given (into [] (include/add-includes db include-defs observations))
+          count := 1
+          [0 :match type/type] := :fhir/Observation
+          [0 :includes count] := 2
+          [0 :includes 0 type/type] := :fhir/Patient
+          [0 :includes 1 type/type] := :fhir/Encounter)))))
 
 
 (deftest build-page-test

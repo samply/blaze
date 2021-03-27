@@ -49,7 +49,7 @@
       (is (= "/Observation?_include=Observation%3Asubject&__t=1"
              (nav/url
                match
-               {:include-defs {:direct {"Observation" {:code "subject"}}}}
+               {:include-defs {:direct {"Observation" [{:code "subject"}]}}}
                nil
                1
                nil)))
@@ -60,7 +60,7 @@
                  match
                  {:include-defs
                   {:direct
-                   {"Observation" {:code "subject" :target-type "Group"}}}}
+                   {"Observation" [{:code "subject" :target-type "Group"}]}}}
                  nil
                  1
                  nil)))))
@@ -70,8 +70,8 @@
              (nav/url
                match
                {:include-defs
-                {:direct {"MedicationStatement" {:code "medication"}
-                          "Medication" {:code "manufacturer"}}}}
+                {:direct {"MedicationStatement" [{:code "medication"}]
+                          "Medication" [{:code "manufacturer"}]}}}
                nil
                1
                nil))))
@@ -80,7 +80,7 @@
       (is (= "/Observation?_include%3Aiterate=Observation%3Asubject&__t=1"
              (nav/url
                match
-               {:include-defs {:iterate {"Observation" {:code "subject"}}}}
+               {:include-defs {:iterate {"Observation" [{:code "subject"}]}}}
                nil
                1
                nil))))
@@ -90,8 +90,8 @@
              (nav/url
                match
                {:include-defs
-                {:direct {"MedicationStatement" {:code "medication"}}
-                 :iterate {"Medication" {:code "manufacturer"}}}}
+                {:direct {"MedicationStatement" [{:code "medication"}]}
+                 :iterate {"Medication" [{:code "manufacturer"}]}}}
                nil
                1
                nil))))))

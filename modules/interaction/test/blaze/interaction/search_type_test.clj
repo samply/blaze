@@ -40,7 +40,8 @@
      ["/Observation" {:name :Observation/type}]
      ["/MedicationStatement" {:name :MedicationStatement/type}]
      ["/Medication" {:name :Medication/type}]
-     ["/Organization" {:name :Organization/type}]]
+     ["/Organization" {:name :Organization/type}]
+     ["/Encounter" {:name :Encounter/type}]]
     {:syntax :bracket}))
 
 
@@ -1284,6 +1285,58 @@
 
           (testing "the third entry is the included Patient"
             (given (-> body :entry (nth 2))
+              :fullUrl := #fhir/uri"/Patient/0"
+              [:resource :fhir/type] := :fhir/Patient
+              [:search :mode] := #fhir/code"include"))))
+
+      (testing "two includes"
+        (let [{:keys [status body]}
+              ((handler-with
+                 [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                   [:put {:fhir/type :fhir/Encounter :id "1"
+                          :subject
+                          (type/map->Reference
+                            {:reference "Patient/0"})}]
+                   [:put {:fhir/type :fhir/Observation :id "2"
+                          :subject
+                          (type/map->Reference
+                            {:reference "Patient/0"})
+                          :encounter
+                          (type/map->Reference
+                            {:reference "Encounter/1"})}]]])
+               {::reitit/router router
+                ::reitit/match observation-match
+                :params
+                {"_include" ["Observation:subject" "Observation:encounter"]}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is 1"
+            (is (= #fhir/unsignedInt 1 (:total body))))
+
+          (testing "the bundle contains three entries"
+            (is (= 3 (count (:entry body)))))
+
+          (testing "the first entry is the matched Observation"
+            (given (-> body :entry first)
+              :fullUrl := #fhir/uri"/Observation/2"
+              [:resource :fhir/type] := :fhir/Observation
+              [:search :mode] := #fhir/code"match"))
+
+          (testing "the second entry is the included Encounter"
+            (given (-> body :entry (nth 2))
+              :fullUrl := #fhir/uri"/Encounter/1"
+              [:resource :fhir/type] := :fhir/Encounter
+              [:search :mode] := #fhir/code"include"))
+
+          (testing "the third entry is the included Patient"
+            (given (-> body :entry second)
               :fullUrl := #fhir/uri"/Patient/0"
               [:resource :fhir/type] := :fhir/Patient
               [:search :mode] := #fhir/code"include"))))

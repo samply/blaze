@@ -13,11 +13,16 @@
 
 
 (defn- include-defs->query-param-values [include-defs]
-  (mapv
-    (fn [[source-type {:keys [code target-type]}]]
-      (cond-> (str source-type ":" code)
-        target-type
-        (str ":" target-type)))
+  (into
+    []
+    (mapcat
+      (fn [[source-type include-defs]]
+        (mapv
+          (fn [{:keys [code target-type]}]
+            (cond-> (str source-type ":" code)
+              target-type
+              (str ":" target-type)))
+          include-defs)))
     include-defs))
 
 

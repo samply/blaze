@@ -262,8 +262,11 @@ jobs:
     - name: Download Observation Resources - Including Patients
       run: ./blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
 
+    - name: Download Observation Resources - Including Encounters and Patients
+      run: ./blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
+
     - name: Download Observation Resources - Including Encounters and Encounter Patients
-      run: ./blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Patient.ndjson
+      run: ./blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
 
     - name: Download Condition Resources
       run: .github/scripts/download-resources.sh Condition
