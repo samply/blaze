@@ -24,14 +24,14 @@
 
 
 (def ^:private ^:const default-page-size 50)
-(def ^:private ^:const max-page-size 1000)
+(def ^:private ^:const max-page-size 10000)
 
 
 (defn page-size
   "Returns the page size taken from a possible `_count` query param.
 
   Returns the value from the first valid `_count` query param or the default
-  value of 50. Limits values to 500."
+  value of 50. Limits values to 10000."
   {:arglists '([query-params])}
   [{v "_count"}]
   (if-let [count (some #(when (re-matches #"\d+" %) %) (to-seq v))]

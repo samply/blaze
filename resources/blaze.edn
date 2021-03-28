@@ -293,7 +293,11 @@
    ;; Key-Value Resource Store
    ;;
    :blaze.db.resource-store/kv
-   {:kv-store #blaze/ref :blaze.db/resource-kv-store}
+   {:kv-store #blaze/ref :blaze.db/resource-kv-store
+    :executor #blaze/ref :blaze.db.resource-store.kv/executor}
+
+   :blaze.db.resource-store.kv/executor
+   {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" int? 4]}
 
    ;;
    ;; In-Memory, Volatile Key-Value Store Resource Store Backend
@@ -457,7 +461,11 @@
    ;; Key-Value Resource Store
    ;;
    :blaze.db.resource-store/kv
-   {:kv-store #blaze/ref :blaze.db/resource-kv-store}
+   {:kv-store #blaze/ref :blaze.db/resource-kv-store
+    :executor #blaze/ref :blaze.db.resource-store.kv/executor}
+
+   :blaze.db.resource-store.kv/executor
+   {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" int? 4]}
 
    ;;
    ;; RocksDB Key-Value Store Resource Store Backend

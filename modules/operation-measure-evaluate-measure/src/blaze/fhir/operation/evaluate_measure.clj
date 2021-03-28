@@ -12,7 +12,8 @@
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock]))
+    [java.time Clock]
+    [java.util.concurrent ExecutorService TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -39,7 +40,7 @@
 
 
 (defn- executor-init-msg [num-threads]
-  (format "Init FHIR $evaluate-measure operation executor with %d threads"
+  (format "Init $evaluate-measure operation executor with %d threads"
           num-threads))
 
 
@@ -47,6 +48,15 @@
   [_ {:keys [num-threads] :or {num-threads 4}}]
   (log/info (executor-init-msg num-threads))
   (ex/io-pool num-threads "operation-evaluate-measure-%d"))
+
+
+(defmethod ig/halt-key! ::executor
+  [_ ^ExecutorService executor]
+  (log/info "Stopping $evaluate-measure operation executor...")
+  (.shutdown executor)
+  (if (.awaitTermination executor 10 TimeUnit/SECONDS)
+    (log/info "$evaluate-measure operation executor was stopped successfully")
+    (log/warn "Got timeout while stopping the $evaluate-measure operation executor")))
 
 
 (derive ::executor :blaze.metrics/thread-pool-executor)

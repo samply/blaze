@@ -95,13 +95,17 @@
       (ac/failed-future (ex-anom res))
       (let [{:keys [matches includes next-match]}
             (build-page db include-defs page-size handles)
-            matches (d/pull-many db matches)
-            includes (d/pull-many db (into [] includes))]
-        (-> (ac/all-of [matches includes])
+            match-futures (mapv #(d/pull-many db %) (partition-all 100 matches))
+            include-futures (mapv #(d/pull-many db %) (partition-all 100 includes))]
+        (-> (ac/all-of (into match-futures include-futures))
             (ac/then-apply
               (fn [_]
-                {:entries (entries router @matches @includes)
-                 :num-matches (count @matches)
+                {:entries
+                 (entries
+                   router
+                   (mapcat deref match-futures)
+                   (mapcat deref include-futures))
+                 :num-matches (count matches)
                  :next-handle next-match
                  :clauses clauses})))))))
 
