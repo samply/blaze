@@ -10,5 +10,6 @@
 
 
 (s/fdef params/decode
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :handling (s/nilable string?)
+               :query-params (s/nilable :ring.request/query-params))
   :ret ::params)

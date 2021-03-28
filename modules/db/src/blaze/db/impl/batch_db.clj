@@ -10,6 +10,7 @@
     [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.t-by-instant :as ti]
@@ -146,6 +147,10 @@
         (- (:num-changes (system-stats/get! iter t) 0)
            (:num-changes (some->> end-t (system-stats/get! iter)) 0)))))
 
+
+
+  ;; ---- Include ---------------------------------------------------------------
+
   (-include [_ resource-handle code]
     (let [{:keys [tid id hash]} resource-handle
           {:keys [rsvi]} context]
@@ -161,6 +166,17 @@
         (u/reference-resource-handle-mapper context (codec/tid target-type))
         (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash
                              (codec/c-hash code)))))
+
+
+  (-rev-include [_ resource-handle source-type code]
+    (let [{:keys [tid id]} resource-handle
+          {:keys [svri]} context
+          reference (codec/v-hash (str (codec/tid->type tid) "/" id))
+          source-tid (codec/tid source-type)]
+      (coll/eduction
+        (u/resource-handle-mapper context source-tid)
+        (sp-vr/prefix-keys! svri (codec/c-hash code) source-tid
+                            reference reference))))
 
 
 

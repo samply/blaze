@@ -3,8 +3,6 @@
     [blaze.async.comp-spec]
     [blaze.db.spec]
     [blaze.interaction.search-system :as search-system]
-    [blaze.interaction.search.nav-spec]
-    [blaze.interaction.search.params-spec]
     [blaze.middleware.fhir.metrics-spec]
     [clojure.spec.alpha :as s]))
 

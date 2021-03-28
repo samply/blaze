@@ -3574,15 +3574,15 @@
                 observation (d/resource-handle db "Observation" "0")]
 
             (testing "without target type"
-              (given @(d/pull-many node (d/include db observation code))
+              (given (d/include db observation code)
                 count := 1
-                [0 :fhir/type] := :fhir/Patient
+                [0 type/type] := :fhir/Patient
                 [0 :id] := "0"))
 
             (testing "with target type"
-              (given @(d/pull-many node (d/include db observation code "Patient"))
+              (given (d/include db observation code "Patient")
                 count := 1
-                [0 :fhir/type] := :fhir/Patient
+                [0 type/type] := :fhir/Patient
                 [0 :id] := "0"))))))
 
     (testing "encounter"
@@ -3599,9 +3599,9 @@
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
-          (given @(d/pull-many node (d/include db observation "encounter"))
+          (given (d/include db observation "encounter")
             count := 1
-            [0 :fhir/type] := :fhir/Encounter
+            [0 type/type] := :fhir/Encounter
             [0 :id] := "0"))))
 
     (testing "with Group subject"
@@ -3616,24 +3616,23 @@
               observation (d/resource-handle db "Observation" "0")]
 
           (testing "returns group with subject param"
-            (given @(d/pull-many node (d/include db observation "subject"))
+            (given (d/include db observation "subject")
               count := 1
-              [0 :fhir/type] := :fhir/Group
+              [0 type/type] := :fhir/Group
               [0 :id] := "0"))
 
           (testing "returns nothing with patient param"
-            (given @(d/pull-many node (d/include db observation "patient"))
+            (given (d/include db observation "patient")
               count := 0))
 
           (testing "returns group with subject param and Group target type"
-            (given @(d/pull-many node (d/include db observation "subject" "Group"))
+            (given (d/include db observation "subject" "Group")
               count := 1
-              [0 :fhir/type] := :fhir/Group
+              [0 type/type] := :fhir/Group
               [0 :id] := "0"))
 
           (testing "returns nothing with subject param and Patient target type"
-            (given @(d/pull-many node (d/include db observation "subject" "Patient"))
-              count := 0)))))
+            (is (empty? (d/include db observation "subject" "Patient")))))))
 
     (testing "non-reference search parameter code"
       (with-open [node (new-node)]
@@ -3647,7 +3646,7 @@
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
-          (is (coll/empty? (d/include db observation "code")))))))
+          (is (empty? (d/include db observation "code")))))))
 
   (testing "Patient"
     (testing "non-reference search parameter family"
@@ -3659,7 +3658,48 @@
 
         (let [db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
-          (is (coll/empty? (d/include db patient "family"))))))))
+          (is (empty? (d/include db patient "family"))))))))
+
+
+(deftest rev-include-test
+  (testing "Patient"
+    (doseq [code ["subject" "patient"]]
+      (testing code
+        (with-open [node (new-node)]
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Observation :id "1"
+                                    :subject
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]
+                             [:put {:fhir/type :fhir/Observation :id "2"
+                                    :subject
+                                    (type/map->Reference
+                                      {:reference "Patient/0"})}]])
+
+          (let [db (d/db node)
+                patients (d/resource-handle db "Patient" "0")]
+
+            (given (d/rev-include db patients "Observation" code)
+              count := 2
+              [0 type/type] := :fhir/Observation
+              [0 :id] := "1"
+              [1 type/type] := :fhir/Observation
+              [1 :id] := "2")))))
+
+    (testing "non-reference search parameter code"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                           [:put {:fhir/type :fhir/Observation :id "0"
+                                  :code
+                                  (type/map->CodeableConcept
+                                    {:coding
+                                     [(type/map->Coding
+                                        {:system #fhir/uri"http://loinc.org"
+                                         :code #fhir/code"8480-6"})]})}]])
+
+        (let [db (d/db node)
+              patients (d/resource-handle db "Patient" "0")]
+          (is (empty? (d/rev-include db patients "Observation" "code"))))))))
 
 
 (deftest new-batch-db-test

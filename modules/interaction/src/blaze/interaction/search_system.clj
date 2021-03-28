@@ -161,12 +161,13 @@
 
 
 (defn- context [router match type headers params]
-  (when-ok [params (params/decode params)]
-    {:router router
-     :match match
-     :type type
-     :preference/handling (handler-util/preference headers "handling")
-     :params params}))
+  (let [handling (handler-util/preference headers "handling")]
+    (when-ok [params (params/decode handling params)]
+      {:router router
+       :match match
+       :type type
+       :preference/handling handling
+       :params params})))
 
 
 (defn- handler-intern [node]

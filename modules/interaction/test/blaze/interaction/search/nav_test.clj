@@ -45,11 +45,12 @@
              (nav/url match {:include-defs {:direct {} :iterate {}}} nil 1
                       nil))))
 
-    (testing "one direct include param"
+    (testing "one direct forward include param"
       (is (= "/Observation?_include=Observation%3Asubject&__t=1"
              (nav/url
                match
-               {:include-defs {:direct {"Observation" [{:code "subject"}]}}}
+               {:include-defs
+                {:direct {:forward {"Observation" [{:code "subject"}]}}}}
                nil
                1
                nil)))
@@ -60,38 +61,82 @@
                  match
                  {:include-defs
                   {:direct
-                   {"Observation" [{:code "subject" :target-type "Group"}]}}}
+                   {:forward
+                    {"Observation" [{:code "subject" :target-type "Group"}]}}}}
                  nil
                  1
                  nil)))))
 
-    (testing "two direct include params"
+    (testing "two direct forward include params"
       (is (= "/Observation?_include=MedicationStatement%3Amedication&_include=Medication%3Amanufacturer&__t=1"
              (nav/url
                match
                {:include-defs
-                {:direct {"MedicationStatement" [{:code "medication"}]
-                          "Medication" [{:code "manufacturer"}]}}}
+                {:direct
+                 {:forward
+                  {"MedicationStatement" [{:code "medication"}]
+                   "Medication" [{:code "manufacturer"}]}}}}
                nil
                1
                nil))))
 
-    (testing "one iterate include param"
+    (testing "one iterate forward include param"
       (is (= "/Observation?_include%3Aiterate=Observation%3Asubject&__t=1"
              (nav/url
                match
-               {:include-defs {:iterate {"Observation" [{:code "subject"}]}}}
+               {:include-defs
+                {:iterate {:forward {"Observation" [{:code "subject"}]}}}}
                nil
                1
                nil))))
 
-    (testing "one direct and one iterate include param"
+    (testing "one direct and one iterate forward include param"
       (is (= "/Observation?_include=MedicationStatement%3Amedication&_include%3Aiterate=Medication%3Amanufacturer&__t=1"
              (nav/url
                match
                {:include-defs
-                {:direct {"MedicationStatement" [{:code "medication"}]}
-                 :iterate {"Medication" [{:code "manufacturer"}]}}}
+                {:direct
+                 {:forward
+                  {"MedicationStatement" [{:code "medication"}]}}
+                 :iterate
+                 {:forward
+                  {"Medication" [{:code "manufacturer"}]}}}}
+               nil
+               1
+               nil))))
+
+    (testing "one direct reverse include param"
+      (is (= "/Observation?_revinclude=Observation%3Asubject&__t=1"
+             (nav/url
+               match
+               {:include-defs
+                {:direct
+                 {:reverse
+                  {:any [{:source-type "Observation" :code "subject"}]}}}}
+               nil
+               1
+               nil)))
+
+      (testing "with target type"
+        (is (= "/Observation?_revinclude=Observation%3Asubject%3AGroup&__t=1"
+               (nav/url
+                 match
+                 {:include-defs
+                  {:direct
+                   {:reverse
+                    {"Group" [{:source-type "Observation" :code "subject"}]}}}}
+                 nil
+                 1
+                 nil)))))
+
+    (testing "one iterate reverse include param"
+      (is (= "/Observation?_revinclude%3Aiterate=Observation%3Asubject&__t=1"
+             (nav/url
+               match
+               {:include-defs
+                {:iterate
+                 {:reverse
+                  {:any [{:source-type "Observation" :code "subject"}]}}}}
                nil
                1
                nil))))))

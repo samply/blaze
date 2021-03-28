@@ -6,6 +6,8 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.interaction.search-system]
     [blaze.interaction.search-system-spec]
+    [blaze.interaction.search.nav-spec]
+    [blaze.interaction.search.params-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]

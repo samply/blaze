@@ -148,6 +148,10 @@
     (with-open [batch-db (batch-db/new-batch-db node t)]
       (p/-total-num-of-system-changes batch-db since)))
 
+
+
+  ;; ---- Include ---------------------------------------------------------------
+
   (-include [_ resource-handle code]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
       (p/-include batch-db resource-handle code)))
@@ -155,6 +159,10 @@
   (-include [_ resource-handle code target-type]
     (with-open-coll [batch-db (batch-db/new-batch-db node t)]
       (p/-include batch-db resource-handle code target-type)))
+
+  (-rev-include [_ resource-handle source-type code]
+    (with-open-coll [batch-db (batch-db/new-batch-db node t)]
+      (p/-rev-include batch-db resource-handle source-type code)))
 
 
 

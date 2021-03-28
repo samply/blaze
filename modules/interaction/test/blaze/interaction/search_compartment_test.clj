@@ -7,6 +7,8 @@
     [blaze.fhir.spec.type :as type]
     [blaze.interaction.search-compartment]
     [blaze.interaction.search-compartment-spec]
+    [blaze.interaction.search.nav-spec]
+    [blaze.interaction.search.params-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]

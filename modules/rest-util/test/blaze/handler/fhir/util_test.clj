@@ -62,11 +62,12 @@
       "1" 1
       "50" 50
       "500" 500
+      "1000" 1000
       ["<invalid>" "2"] 2
       ["3" "4"] 3))
 
-  (testing "500 is the maximum"
-    (is (= 500 (fhir-util/page-size {"_count" "501"})))))
+  (testing "1000 is the maximum"
+    (is (= 1000 (fhir-util/page-size {"_count" "1001"})))))
 
 
 (deftest page-offset

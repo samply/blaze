@@ -5,20 +5,38 @@
     [blaze.fhir.spec.type :as type]))
 
 
-(defn- include [db handle {:keys [code target-type]}]
+(defn- forward-includes* [db handle {:keys [code target-type]}]
   (if target-type
     (d/include db handle code target-type)
     (d/include db handle code)))
 
 
-(defn- add-includes* [db include-defs key handle]
-  (let [type (name (type/type handle))]
-    (into
-      []
-      (comp
-        (mapcat #(include db handle %))
-        (mapcat #(into [%] (add-includes* db include-defs :iterate %))))
-      (get-in include-defs [key type]))))
+(defn- reverse-includes* [db handle {:keys [source-type code]}]
+  (d/rev-include db handle source-type code))
+
+
+(defn- forward-includes [db include-defs key handle]
+  (into
+    []
+    (comp
+      (mapcat #(forward-includes* db handle %))
+      (mapcat #(into [%] (forward-includes db include-defs :iterate %))))
+    (get-in include-defs [key :forward (name (type/type handle))])))
+
+
+(defn- reverse-includes [db include-defs key handle]
+  (into
+    []
+    (mapcat #(reverse-includes* db handle %))
+    (concat
+      (get-in include-defs [key :reverse (name (type/type handle))])
+      (get-in include-defs [key :reverse :any]))))
+
+
+(defn- includes [db include-defs key handle]
+  (-> (forward-includes db include-defs key handle)
+      (into (reverse-includes db include-defs key handle))))
+
 
 
 (defn add-includes
@@ -29,7 +47,7 @@
     (map
       (fn [handle]
         {:match handle
-         :includes (add-includes* db include-defs :direct handle)}))
+         :includes (includes db include-defs :direct handle)}))
     resource-handles))
 
 

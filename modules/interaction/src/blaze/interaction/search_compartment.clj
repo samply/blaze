@@ -128,14 +128,15 @@
      :fhir/issue "value"}
 
     :else
-    (when-ok [params (params/decode params)]
-      {:router router
-       :match match
-       :code code
-       :id id
-       :type type
-       :preference/handling (handler-util/preference headers "handling")
-       :params params})))
+    (let [handling (handler-util/preference headers "handling")]
+     (when-ok [params (params/decode handling params)]
+       {:router router
+        :match match
+        :code code
+        :id id
+        :type type
+        :preference/handling handling
+        :params params}))))
 
 
 (defn- handler-intern [node]
