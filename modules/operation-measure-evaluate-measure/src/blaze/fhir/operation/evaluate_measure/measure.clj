@@ -9,6 +9,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.luid :refer [luid]]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom]
     [taoensso.timbre :as log])
@@ -98,8 +99,23 @@
                     id (* duration 1e3))))))))
 
 
+(defn- first-library-by-url [db url]
+  (coll/first (d/type-query db "Library" [["url" url]])))
+
+
+(defn- non-deleted-library-handle [db id]
+  (when-let [handle (d/resource-handle db "Library" id)]
+    (when-not (= (:op handle) :delete) handle)))
+
+
+(defn- find-library-handle [db library-ref]
+  (if-let [handle (first-library-by-url db library-ref)]
+    handle
+    (non-deleted-library-handle db (peek (str/split library-ref #"/")))))
+
+
 (defn- find-library [db library-ref]
-  (when-let [handle (coll/first (d/type-query db "Library" [["url" library-ref]]))]
+  (when-let [handle (find-library-handle db library-ref)]
     @(d/pull db handle)))
 
 

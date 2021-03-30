@@ -59,7 +59,7 @@
 (defn- library-entry [query]
   {:resource
    {:fhir/type :fhir/Library
-    :id "0"
+    :id "1"
     :url #fhir/uri"0"
     :content
     [{:fhir/type :fhir/Attachment
@@ -67,7 +67,7 @@
       :data (type/->Base64Binary (b64-encode query))}]}
    :request
    {:method #fhir/code"PUT"
-    :url #fhir/uri"Library/0"}})
+    :url #fhir/uri"Library/1"}})
 
 
 (defn- read-data [name]
@@ -139,7 +139,8 @@
     "q24" 1
     "q28-relationship-procedure-condition" 1
     "q33-incompatible-quantities" 1
-    "q34-medication" 1)
+    "q34-medication" 1
+    "q35-literal-library-ref" 1)
 
   (with-redefs [luid (take-from! (new-ids))]
     (let [result (evaluate "q1" "subject-list")]
@@ -295,5 +296,5 @@
 
 (comment
   (log/set-level! :trace)
-  (evaluate "q34-medication")
+  (evaluate "q35-literal-library-ref")
   )
