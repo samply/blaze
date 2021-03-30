@@ -13,6 +13,7 @@ cat <<END
   "type" : {
     "coding" : [
       {
+        "system": "http://terminology.hl7.org/CodeSystem/library-type",
         "code" : "logic-library"
       }
     ]
