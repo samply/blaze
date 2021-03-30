@@ -37,6 +37,10 @@
   (ex/single-thread-executor "indexer"))
 
 
+(def ^:private resource-store-executor
+  (ex/single-thread-executor "resource-store"))
+
+
 (def ^:private clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
 
@@ -60,7 +64,8 @@
            :system-as-of-index nil
            :type-stats-index nil
            :system-stats-index nil})
-        resource-store (new-kv-resource-store (new-mem-kv-store))
+        resource-store (new-kv-resource-store (new-mem-kv-store)
+                                              resource-store-executor)
         tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
         resource-handle-cache (.build (Caffeine/newBuilder))]
     (new-node tx-log resource-handle-cache (tx-cache index-kv-store)

@@ -38,6 +38,10 @@
   (ex/single-thread-executor "indexer"))
 
 
+(def ^:private resource-store-executor
+  (ex/single-thread-executor "resource-store"))
+
+
 (defn new-index-kv-store []
   (new-mem-kv-store
     {:search-param-value-index nil
@@ -68,7 +72,8 @@
         index-kv-store (new-index-kv-store)]
     (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
                    resource-indexer-executor 1 indexer-executor index-kv-store
-                   (new-kv-resource-store (new-mem-kv-store))
+                   (new-kv-resource-store (new-mem-kv-store)
+                                          resource-store-executor)
                    search-param-registry (jt/millis 10))))
 
 

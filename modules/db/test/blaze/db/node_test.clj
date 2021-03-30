@@ -20,22 +20,25 @@
     [blaze.db.tx-log.local-spec]
     [blaze.executors :as ex]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
+    [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
+    [integrant.core :as ig]
     [java-time :as jt]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache Caffeine]
-    [java.time Clock Instant ZoneId]))
+    [java.time Clock Instant ZoneId]
+    [java.util.concurrent ExecutorService]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -57,6 +60,10 @@
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private indexer-executor
   (ex/single-thread-executor "indexer"))
+
+
+(def ^:private resource-store-executor
+  (ex/single-thread-executor "resource-store"))
 
 
 (defn new-index-kv-store []
@@ -94,7 +101,8 @@
 
 (defn new-node []
   (new-node-with
-    {:resource-store (new-kv-resource-store (new-mem-kv-store))}))
+    {:resource-store
+     (new-kv-resource-store (new-mem-kv-store) resource-store-executor)}))
 
 
 (defn new-resource-store-failing-on-get []
@@ -140,3 +148,15 @@
             (catch Exception e
               (given (ex-data (ex-cause e))
                 ::anom/category := ::anom/fault))))))))
+
+
+(deftest resource-indexer-executor-test
+  (let [system (ig/init {::node/resource-indexer-executor {}})]
+    (is (instance? ExecutorService (::node/resource-indexer-executor system)))
+    (ig/halt! system)))
+
+
+(deftest indexer-executor-test
+  (let [system (ig/init {::node/indexer-executor {}})]
+    (is (instance? ExecutorService (::node/indexer-executor system)))
+    (ig/halt! system)))

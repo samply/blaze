@@ -70,6 +70,10 @@
   (ex/single-thread-executor "indexer"))
 
 
+(def ^:private resource-store-executor
+  (ex/single-thread-executor "resource-store"))
+
+
 (defn new-index-kv-store []
   (new-mem-kv-store
     {:search-param-value-index nil
@@ -105,7 +109,8 @@
 
 (defn new-node []
   (new-node-with
-    {:resource-store (new-kv-resource-store (new-mem-kv-store))}))
+    {:resource-store
+     (new-kv-resource-store (new-mem-kv-store) resource-store-executor)}))
 
 
 (defn new-resource-store-failing-on-get []
@@ -406,7 +411,7 @@
     (with-open [node (new-node-with
                        {:resource-store
                         (-> (new-mem-kv-store)
-                            (new-kv-resource-store)
+                            (new-kv-resource-store resource-store-executor)
                             (new-random-slow-resource-store))})]
       (let [db-futures
             (mapv

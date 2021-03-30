@@ -6,11 +6,14 @@
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]
+    [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.util.concurrent ExecutorService TimeUnit]))
 
 
 (defn- parse-msg [hash e]
@@ -50,24 +53,27 @@
   (kv/multi-get kv-store (mapv bs/to-byte-array hashes)))
 
 
-(deftype KvResourceStore [kv-store]
+(deftype KvResourceStore [kv-store executor]
   rs/ResourceLookup
   (-get [_ hash]
-    (ac/supply
-      (some-> (get-content kv-store hash)
-              (conform-cbor hash))))
+    (ac/supply-async
+      #(some-> (get-content kv-store hash)
+               (conform-cbor hash))
+      executor))
 
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")
-    (ac/supply (into {} entry-thawer (multi-get-content kv-store hashes))))
+    (ac/supply-async
+      #(into {} entry-thawer (multi-get-content kv-store hashes))
+      executor))
 
   rs/ResourceStore
   (-put [_ entries]
     (ac/supply (kv/put! kv-store (into [] entry-freezer entries)))))
 
 
-(defn new-kv-resource-store [kv-store]
-  (->KvResourceStore kv-store))
+(defn new-kv-resource-store [kv-store executor]
+  (->KvResourceStore kv-store executor))
 
 
 (defmethod ig/pre-init-spec ::rs/kv [_]
@@ -75,9 +81,31 @@
 
 
 (defmethod ig/init-key ::rs/kv
-  [_ {:keys [kv-store]}]
+  [_ {:keys [kv-store executor]}]
   (log/info "Open key-value store backed resource store.")
-  (new-kv-resource-store kv-store))
+  (new-kv-resource-store kv-store executor))
 
 
 (derive ::rs/kv :blaze.db/resource-store)
+
+
+(defn- executor-init-msg [num-threads]
+  (format "Init resource store key-value executor with %d threads" num-threads))
+
+
+(defmethod ig/init-key ::executor
+  [_ {:keys [num-threads] :or {num-threads 4}}]
+  (log/info (executor-init-msg num-threads))
+  (ex/io-pool num-threads "resource-store-kv-%d"))
+
+
+(defmethod ig/halt-key! ::executor
+  [_ ^ExecutorService executor]
+  (log/info "Stopping resource store key-value executor...")
+  (.shutdown executor)
+  (if (.awaitTermination executor 10 TimeUnit/SECONDS)
+    (log/info "Resource store key-value executor was stopped successfully")
+    (log/warn "Got timeout while stopping the resource store key-value executor")))
+
+
+(derive ::executor :blaze.metrics/thread-pool-executor)
