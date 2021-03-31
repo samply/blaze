@@ -299,6 +299,8 @@
    :blaze.db.resource-store.kv/executor
    {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" int? 4]}
 
+   :blaze.db.resource-store.kv/resource-bytes {}
+
    ;;
    ;; In-Memory, Volatile Key-Value Store Resource Store Backend
    ;;
@@ -467,6 +469,8 @@
    :blaze.db.resource-store.kv/executor
    {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" int? 4]}
 
+   :blaze.db.resource-store.kv/resource-bytes {}
+
    ;;
    ;; RocksDB Key-Value Store Resource Store Backend
    ;;
@@ -486,6 +490,9 @@
       :level0-file-num-compaction-trigger 2
       :min-write-buffer-number-to-merge 2
       :max-bytes-for-level-base-in-mb 256
+      ;; According to Synthea test data, a resource has an average size of
+      ;; 1300 bytes. So a block with a size of 16 kb will hold about 10
+      ;; resources in average.
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :bloom-filter? true}}}
 

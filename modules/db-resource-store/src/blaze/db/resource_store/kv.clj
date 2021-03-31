@@ -8,12 +8,22 @@
     [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
+    [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.util.concurrent ExecutorService TimeUnit]))
+
+
+(defhistogram resource-bytes
+  "Stored resource sizes in bytes in key-value resource store."
+  {:namespace "blaze"
+   :subsystem "db"
+   :name "resource_store_kv_resource_bytes"}
+  (take 16 (iterate #(* 2 %) 32)))
 
 
 (defn- parse-msg [hash e]
@@ -42,7 +52,9 @@
 (def ^:private entry-freezer
   (map
     (fn [[k v]]
-      [(bs/to-byte-array k) (fhir-spec/unform-cbor v)])))
+      (let [content (fhir-spec/unform-cbor v)]
+        (prom/observe! resource-bytes (alength content))
+        [(bs/to-byte-array k) content]))))
 
 
 (defn- get-content [kv-store hash]
@@ -109,3 +121,7 @@
 
 
 (derive ::executor :blaze.metrics/thread-pool-executor)
+
+
+(reg-collector ::resource-bytes
+  resource-bytes)
