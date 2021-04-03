@@ -59,7 +59,7 @@
     {:mvn/version "1.1.0"}
 
     org.openjdk.jol/jol-core
-    {:mvn/version "0.14"}}
+    {:mvn/version "0.15"}}
 
    :main-opts
    ["-m" "kaocha.runner"]}
@@ -78,6 +78,6 @@
     {:mvn/version "1.1.0"}
 
     org.openjdk.jol/jol-core
-    {:mvn/version "0.14"}}
+    {:mvn/version "0.15"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

@@ -211,4 +211,70 @@
             ;; 1 is the T of the transaction of the resource creation
             (is (= "W/\"1\"" (get headers "ETag"))))
 
-          (is (= :fhir/OperationOutcome (:fhir/type body))))))))
+          (is (= :fhir/OperationOutcome (:fhir/type body)))))))
+
+  (testing "conditional create"
+    (testing "with non-matching query"
+      (testing "on empty database"
+        (let [{:keys [status]}
+              ((handler-with [])
+               {::reitit/router router
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                :headers {"if-none-exist" "identifier=212154"}
+                :body {:fhir/type :fhir/Patient}})]
+
+          (testing "the patient is created"
+            (is (= 201 status)))))
+
+      (testing "on non-matching patient"
+        (let [{:keys [status]}
+              ((handler-with
+                 [[[:put {:fhir/type :fhir/Patient :id "0"
+                          :identifier
+                          [(type/map->Identifier {:value "094808"})]}]]])
+               {::reitit/router router
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+                :headers {"if-none-exist" "identifier=212154"}
+                :body {:fhir/type :fhir/Patient}})]
+
+          (testing "the patient is created"
+            (is (= 201 status))))))
+
+    (testing "with matching patient"
+      (let [{:keys [status body]}
+            ((handler-with
+               [[[:put {:fhir/type :fhir/Patient :id "0"
+                        :identifier
+                        [(type/map->Identifier {:value "095156"})]}]]])
+             {::reitit/router router
+              ::reitit/match {:data {:fhir.resource/type "Patient"}}
+              :headers {"if-none-exist" "identifier=095156"}
+              :body {:fhir/type :fhir/Patient}})]
+
+        (testing "the existing patient is returned"
+          (is (= 200 status))
+
+          (given body
+            :fhir/type := :fhir/Patient
+            :id := "0"))))
+
+    (testing "with multiple matching patients"
+      (let [{:keys [status body]}
+            ((handler-with
+               [[[:put {:fhir/type :fhir/Patient :id "0"
+                        :birthDate #fhir/date"2020"}]
+                 [:put {:fhir/type :fhir/Patient :id "1"
+                        :birthDate #fhir/date"2020"}]]])
+             {::reitit/router router
+              ::reitit/match {:data {:fhir.resource/type "Patient"}}
+              :headers {"if-none-exist" "birthdate=2020"}
+              :body {:fhir/type :fhir/Patient}})]
+
+        (testing "a precondition failure is returned"
+          (is (= 412 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"conflict"
+            [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))

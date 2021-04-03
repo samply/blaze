@@ -41,6 +41,12 @@
 
   The collection of `tx-ops` has to be non-empty.
 
+  A transaction op can be one of the following:
+
+  * [:create resource clauses?]
+  * [:put resource t?]
+  * [:delete type id]
+
   Returns a CompletableFuture that completes with the database after the
   transaction in case of success or completes exceptionally with an anomaly in
   case of a transaction error or other errors."

@@ -2,6 +2,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
@@ -21,31 +22,27 @@
        (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
 
 
-(defn- build-created-response-msg [type id vid]
-  (format "build-created-response of %s/%s with vid = %s" type id vid))
-
-
-(defn build-created-response
-  "Builds a 201 Created response of resource with `type` and `id` from `db`.
-
-  The `router` is used to generate the absolute URL of the Location header and
-  `return-preference` is used to decide which type of body is returned."
-  [router return-preference db type id]
-  (let [handle (d/resource-handle db type id)
-        tx (d/tx db (:t handle))
-        vid (str (:blaze.db/t tx))]
-    (log/trace (build-created-response-msg type id vid))
+(defn build-response
+  [router return-preference db old-handle {:keys [id] :as new-handle}]
+  (let [type (name (type/type new-handle))
+        tx (d/tx db (:t new-handle))
+        vid (str (:blaze.db/t tx))
+        created (or (nil? old-handle) (identical? :delete (:op old-handle)))]
+    (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
     (-> (cond
           (= "minimal" return-preference)
           (ac/completed-future nil)
           (= "OperationOutcome" return-preference)
           (ac/completed-future {:fhir/type :fhir/OperationOutcome})
           :else
-          (d/pull db handle))
+          (d/pull db new-handle))
         (ac/then-apply
           (fn [body]
-            (-> (ring/created
-                  (fhir-util/versioned-instance-url router type id vid)
-                  body)
-                (ring/header "Last-Modified" (last-modified tx))
-                (ring/header "ETag" (str "W/\"" vid "\""))))))))
+            (cond->
+              (-> (ring/response body)
+                  (ring/status (if created 201 200))
+                  (ring/header "Last-Modified" (last-modified tx))
+                  (ring/header "ETag" (str "W/\"" vid "\"")))
+              created
+              (ring/header
+                "Location" (fhir-util/versioned-instance-url router type id vid))))))))

@@ -208,16 +208,107 @@
           [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :create))))
 
+  (testing "conditional create"
+    (testing "one Patient"
+      (testing "on empty database"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:create
+               {:fhir/type :fhir/Patient :id "0"}
+               [["identifier" "111033"]]]])
+
+          (testing "the Patient was created"
+            (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id"1"
+              [meta :blaze.db/op] := :create))))
+
+      (testing "on non-matching Patient"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :identifier [(type/map->Identifier {:value "094808"})]}]])
+
+          @(d/transact
+             node
+             [[:create
+               {:fhir/type :fhir/Patient :id "1"}
+               [["identifier" "111033"]]]])
+
+          (testing "the Patient was created"
+            (given @(d/pull node (d/resource-handle (d/db node) "Patient" "1"))
+              :fhir/type := :fhir/Patient
+              :id := "1"
+              [:meta :versionId] := #fhir/id"2"
+              [meta :blaze.db/op] := :create))))
+
+      (testing "on matching Patient"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :identifier [(type/map->Identifier {:value "111033"})]}]])
+
+          @(d/transact
+             node
+             [[:create
+               {:fhir/type :fhir/Patient :id "1"}
+               [["identifier" "111033"]]]])
+
+          (testing "no new patient is created"
+            (is (= 1 (d/type-total (d/db node) "Patient"))))))
+
+      (testing "on multiple matching Patients"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :birthDate #fhir/date"2020"}]
+              [:put {:fhir/type :fhir/Patient :id "1"
+                     :birthDate #fhir/date"2020"}]])
+
+          (testing "causes a transaction abort with conflict"
+            (given
+              (catch-cause-ex-data
+                @(d/transact
+                   node
+                   [[:create
+                     {:fhir/type :fhir/Patient :id "1"}
+                     [["birthdate" "2020"]]]]))
+              ::anom/category := ::anom/conflict))))
+
+      (testing "on deleting the matching Patient"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :identifier [(type/map->Identifier {:value "153229"})]}]])
+
+          (testing "causes a transaction abort with conflict"
+            (given
+              (catch-cause-ex-data
+                @(d/transact
+                   node
+                   [[:create
+                     {:fhir/type :fhir/Patient :id "1"}
+                     [["identifier" "153229"]]]
+                    [:delete "Patient" "0"]]))
+              ::anom/category := ::anom/conflict))))))
+
   (testing "put"
     (testing "one Patient"
       (with-open [node (new-node)]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :put)))
+        (testing "the Patient was created"
+          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :put))))
 
     (testing "one Patient with one Observation"
       (with-open [node (new-node)]
@@ -229,18 +320,20 @@
                    :subject (type/map->Reference {:reference "Patient/0"})}]
             [:put {:fhir/type :fhir/Patient :id "0"}]])
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :put)
+        (testing "the Patient was created"
+          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :put))
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
-          :fhir/type := :fhir/Observation
-          :id := "0"
-          [:subject :reference] := "Patient/0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :put)))
+        (testing "the Observation was created"
+          (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
+            :fhir/type := :fhir/Observation
+            :id := "0"
+            [:subject :reference] := "Patient/0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :put))))
 
     (testing "updating one Patient"
       (with-open [node (new-node)]

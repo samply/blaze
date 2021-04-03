@@ -193,61 +193,93 @@
   (fn [_ _ {{:keys [method]} :request}] (type/value method)))
 
 
-(defmethod build-response-entry "POST"
-  [{:keys [router return-preference]}
-   db
-   {{:fhir/keys [type] :keys [id]} :resource}]
-  (let [handle (d/resource-handle db (name type) id)
+(defn- created-entry [router db {:keys [id] :as handle}]
+  (let [type (name (type/type handle))
         tx (d/tx db (:t handle))
-        vid (str (:blaze.db/t tx))
-        entry {:fhir/type :fhir.Bundle/entry
-               :response
-               {:fhir/type :fhir.Bundle.entry/response
-                :status "201"
-                :etag (str "W/\"" vid "\"")
-                :lastModified (:blaze.db.tx/instant tx)
-                :location
-                (type/->Uri (fhir-util/versioned-instance-url router (name type) id vid))}}]
-    (if (= "representation" return-preference)
-      (-> (d/pull db handle)
-          (ac/then-apply #(assoc entry :resource %)))
-      (ac/completed-future entry))))
+        vid (str (:blaze.db/t tx))]
+    [handle
+     {:fhir/type :fhir.Bundle/entry
+      :response
+      {:fhir/type :fhir.Bundle.entry/response
+       :status "201"
+       :etag (str "W/\"" vid "\"")
+       :lastModified (:blaze.db.tx/instant tx)
+       :location
+       (type/->Uri (fhir-util/versioned-instance-url router type id vid))}}]))
+
+
+(defn- noop-entry [db handle]
+  (let [tx (d/tx db (:t handle))
+        vid (str (:blaze.db/t tx))]
+    [handle
+     {:fhir/type :fhir.Bundle/entry
+      :response
+      {:fhir/type :fhir.Bundle.entry/response
+       :status "200"
+       :etag (str "W/\"" vid "\"")
+       :lastModified (:blaze.db.tx/instant tx)}}]))
+
+
+(defmethod build-response-entry "POST"
+  [{:keys [router]} db {{:fhir/keys [type] :keys [id]} :resource
+                        {if-none-exist :ifNoneExist} :request}]
+  (let [type (name type)]
+    (if-let [handle (d/resource-handle db type id)]
+      (created-entry router db handle)
+      (let [handle (first (d/type-query db type (fhir-util/clauses if-none-exist)))]
+        (noop-entry db handle)))))
 
 
 (defmethod build-response-entry "PUT"
-  [{:keys [router return-preference]}
-   db
-   {{:fhir/keys [type] :keys [id]} :resource}]
+  [{:keys [router]} db {{:fhir/keys [type] :keys [id]} :resource}]
   (let [{:keys [num-changes] :as handle} (d/resource-handle db (name type) id)
         tx (d/tx db (:t handle))
-        vid (str (:blaze.db/t tx))
-        entry {:fhir/type :fhir.Bundle/entry
-               :response
-               (cond->
-                 {:fhir/type :fhir.Bundle.entry/response
-                  :status (if (= 1 num-changes) "201" "200")
-                  :etag (str "W/\"" vid "\"")
-                  :lastModified (:blaze.db.tx/instant tx)}
-                 (= 1 num-changes)
-                 (assoc
-                   :location
-                   (type/->Uri (fhir-util/versioned-instance-url router (name type) id vid))))}]
-    (if (= "representation" return-preference)
-      (-> (d/pull db handle)
-          (ac/then-apply #(assoc entry :resource %)))
-      (ac/completed-future entry))))
+        vid (str (:blaze.db/t tx))]
+    [handle
+     {:fhir/type :fhir.Bundle/entry
+      :response
+      (cond->
+        {:fhir/type :fhir.Bundle.entry/response
+         :status (if (= 1 num-changes) "201" "200")
+         :etag (str "W/\"" vid "\"")
+         :lastModified (:blaze.db.tx/instant tx)}
+        (= 1 num-changes)
+        (assoc
+          :location
+          (type/->Uri
+            (fhir-util/versioned-instance-url router (name type) id vid))))}]))
 
 
 (defmethod build-response-entry "DELETE"
   [_ db _]
   (let [t (d/basis-t db)]
-    (ac/completed-future
-      {:fhir/type :fhir.Bundle/entry
-       :response
-       {:fhir/type :fhir.Bundle.entry/response
-        :status "204"
-        :etag (str "W/\"" t "\"")
-        :lastModified (:blaze.db.tx/instant (d/tx db t))}})))
+    [nil
+     {:fhir/type :fhir.Bundle/entry
+      :response
+      {:fhir/type :fhir.Bundle.entry/response
+       :status "204"
+       :etag (str "W/\"" t "\"")
+       :lastModified (:blaze.db.tx/instant (d/tx db t))}}]))
+
+
+(defn- prepare-response-entries [context db request-entries]
+  (with-open [batch-db (d/new-batch-db db)]
+    (mapv #(build-response-entry context batch-db %) request-entries)))
+
+
+(defn- pull-response-resource [node [handle entry]]
+  (if handle
+    (-> (d/pull node handle)
+        (ac/then-apply #(assoc entry :resource %)))
+    (ac/completed-future entry)))
+
+
+(defn- pull-response-resources [node handles+entries]
+  (let [futures (mapv #(pull-response-resource node %) handles+entries)]
+    (-> (ac/all-of futures)
+        (ac/then-apply
+          (fn [_]
+            (mapv ac/join futures))))))
 
 
 (defn- strip-leading-slash [s]
@@ -309,7 +341,8 @@
 
 (defn- process-batch-entry
   [{:keys [batch-handler context-path return-preference]} idx
-   {{:keys [method url identity] if-match :ifMatch} :request
+   {{:keys [method url identity] if-match :ifMatch if-none-exist :ifNoneExist}
+    :request
     :keys [resource] :as entry}]
   (let [entry (validate-entry idx entry)]
     (if (::anom/category entry)
@@ -334,6 +367,9 @@
 
               if-match
               (assoc-in [:headers "if-match"] if-match)
+
+              if-none-exist
+              (assoc-in [:headers "if-none-exist"] if-none-exist)
 
               identity
               (assoc :identity identity)
@@ -360,18 +396,19 @@
 
 
 (defmethod process "transaction"
-  [{:keys [node executor] :as context} _ request-entries]
+  [{:keys [node executor return-preference] :as context} _ request-entries]
   (-> (d/transact node (bundle/tx-ops request-entries))
       ;; it's important to switch to the executor here, because otherwise
       ;; the central indexing thread would execute response building.
-      (ac/then-apply-async identity executor)
-      (ac/then-compose
+      (ac/then-apply-async
         (fn [db]
-          (let [futures (mapv #(build-response-entry context db %) request-entries)]
-            (-> (ac/all-of futures)
-                (ac/then-apply
-                  (fn [_]
-                    (mapv ac/join futures)))))))))
+          (prepare-response-entries context db request-entries))
+        executor)
+      (ac/then-compose
+        (fn [handles+entries]
+          (if (= "representation" return-preference)
+            (pull-response-resources node handles+entries)
+            (ac/completed-future (mapv second handles+entries)))))))
 
 
 (defn- process-context

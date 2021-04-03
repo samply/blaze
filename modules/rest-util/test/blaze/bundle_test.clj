@@ -1,6 +1,6 @@
 (ns blaze.bundle-test
   (:require
-    [blaze.bundle :refer [resolve-entry-links]]
+    [blaze.bundle :as bundle]
     [blaze.bundle-spec]
     [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
@@ -41,7 +41,7 @@
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Patient"}}]]
-      (given (resolve-entry-links entries)
+      (given (bundle/resolve-entry-links entries)
         [0 :resource :subject :reference] := "Patient/0")))
 
   (testing "Patient.generalPractitioner reference"
@@ -63,7 +63,7 @@
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Patient"}}]]
-      (given (resolve-entry-links entries)
+      (given (bundle/resolve-entry-links entries)
         [1 :resource :generalPractitioner 0 :reference] := "Organization/0")))
 
   (testing "Claim.diagnosis.diagnosisReference reference"
@@ -86,7 +86,7 @@
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Claim"}}]]
-      (given (resolve-entry-links entries)
+      (given (bundle/resolve-entry-links entries)
         [1 :resource :diagnosis 0 :diagnosisReference :reference] := "Condition/0")))
 
   (testing "preserves complex-type records"
@@ -95,7 +95,7 @@
             {:fhir/type :fhir/Observation
              :id "0"
              :code (type/map->CodeableConcept {})}}]]
-      (given (resolve-entry-links entries)
+      (given (bundle/resolve-entry-links entries)
         [0 :resource :code type/type] := :fhir/CodeableConcept))))
 
 
@@ -121,5 +121,24 @@
           :request
           {:method #fhir/code"POST"
            :url #fhir/uri"ExplanationOfBenefit"}}]]
-    (given (resolve-entry-links entries)
+    (given (bundle/resolve-entry-links entries)
       [1 :resource :contained 0 :subject :reference] := "Patient/0")))
+
+
+(deftest tx-ops-text
+  (testing "conditional create"
+    (given
+      (bundle/tx-ops
+        [{:fhir/type :fhir.Bundle/entry
+          :resource
+          {:fhir/type :fhir/Patient
+           :id "id-162512"}
+          :request
+          {:fhir/type :fhir.Bundle.entry/request
+           :method #fhir/code"POST"
+           :url #fhir/uri"Patient"
+           :ifNoneExist "birthdate=2020"}}])
+      [0 0] := :create
+      [0 1 :fhir/type] := :fhir/Patient
+      [0 1 :id] := "id-162512"
+      [0 2 0] := ["birthdate" "2020"])))

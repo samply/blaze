@@ -11,7 +11,7 @@
 
 
 (defmethod prepare-op :create
-  [[op resource]]
+  [[op resource clauses]]
   (let [hash (hash/generate resource)
         refs (references/extract-references resource)]
     {:hash-resource
@@ -23,7 +23,9 @@
         :id (:id resource)
         :hash hash}
        (seq refs)
-       (assoc :refs refs))}))
+       (assoc :refs refs)
+       (seq clauses)
+       (assoc :if-none-exist clauses))}))
 
 
 (defmethod prepare-op :put
