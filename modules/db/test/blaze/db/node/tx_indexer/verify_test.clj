@@ -20,6 +20,7 @@
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.walk :refer [postwalk]]
@@ -105,6 +106,8 @@
 (def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 (def patient-2 {:fhir/type :fhir/Patient :id "2"})
+(def patient-3 {:fhir/type :fhir/Patient :id "3"
+                :identifier [(type/map->Identifier {:value "120426"})]})
 
 
 (defn bytes->vec [x]
@@ -161,7 +164,8 @@
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
-          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0-v2) :if-match 1}])
+          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0-v2)
+            :if-match 1}])
         (let [value (rts/encode-value (hash/generate patient-0-v2) 2 :put)]
           [[:resource-as-of-index
             (rao/encode-key tid-patient (codec/id-byte-string "0") 2)
@@ -220,12 +224,53 @@
   (testing "update conflict"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      (try
+      (given
         (verify/verify-tx-cmds
           (d/db node) 2
-          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0) :if-match 0}])
-        (catch Exception e
-          (given e
-            ::anom/category := ::anom/conflict
-            ::anom/message := (format "Precondition `W/\"0\"` failed on `Patient/0`.")
-            :http/status := 412))))))
+          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)
+            :if-match 0}])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Precondition `W/\"0\"` failed on `Patient/0`."
+        :http/status := 412)))
+
+  (testing "conditional create"
+    (testing "conflict"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                  :birthDate #fhir/date"2020"}]
+                           [:put {:fhir/type :fhir/Patient :id "1"
+                                  :birthDate #fhir/date"2020"}]])
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "create" :type "Patient" :id "1"
+              :hash (hash/generate patient-0)
+              :if-none-exist [["birthdate" "2020"]]}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
+          :http/status := 412)))
+
+    (testing "match"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put patient-3]])
+        (is
+          (empty?
+            (verify/verify-tx-cmds
+              (d/db node) 2
+              [{:op "create" :type "Patient" :id "0"
+                :hash (hash/generate patient-0)
+                :if-none-exist [["identifier" "120426"]]}])))))
+
+    (testing "conflict because matching resource is deleted"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put patient-3]])
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "delete" :type "Patient" :id "3"
+              :hash (hash/generate patient-3)}
+             {:op "create" :type "Patient" :id "0"
+              :hash (hash/generate patient-0)
+              :if-none-exist [["identifier" "120426"]]}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Duplicate transaction commands `create Patient?identifier=120426 (resolved to id 3)` and `delete Patient/3`.")))))

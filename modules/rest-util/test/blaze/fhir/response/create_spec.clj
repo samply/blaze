@@ -6,6 +6,9 @@
     [reitit.core :as reitit]))
 
 
-(s/fdef create/build-created-response
-  :args (s/cat :router reitit/router? :return-preference (s/nilable string?)
-               :db :blaze.db/db :type string? :id string?))
+(s/fdef create/build-response
+  :args (s/cat :router reitit/router?
+               :return-preference (s/nilable string?)
+               :db :blaze.db/db
+               :old-handle (s/nilable :blaze.db/resource-handle)
+               :new-handle :blaze.db/resource-handle))

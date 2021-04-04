@@ -34,6 +34,10 @@
   (s/and int? #(<= 0 % 0xFFFFFFFFFFFFFF)))
 
 
+(s/def :blaze.db.tx-cmd/if-none-exist
+  (s/coll-of :blaze.db.query/clause :min-count 1))
+
+
 (s/def :blaze.db.tx-cmd/if-match
   :blaze.db/t)
 
@@ -46,7 +50,8 @@
                    :blaze.db.tx-cmd/type
                    :blaze.resource/id
                    :blaze.resource/hash]
-          :opt-un [:blaze.db.tx-cmd/refs]))
+          :opt-un [:blaze.db.tx-cmd/refs
+                   :blaze.db.tx-cmd/if-none-exist]))
 
 
 (defmethod tx-cmd "put" [_]

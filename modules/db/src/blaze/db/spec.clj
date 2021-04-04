@@ -62,7 +62,9 @@
 
 (defmethod tx-op :create
   [_]
-  (s/cat :op #{:create} :resource :blaze/resource))
+  (s/cat :op #{:create}
+         :resource :blaze/resource
+         :if-none-exist (s/? (s/coll-of :blaze.db.query/clause :min-count 1))))
 
 
 (defmethod tx-op :put

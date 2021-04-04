@@ -86,8 +86,10 @@
 
 
 (defmethod entry-tx-op "POST"
-  [{:keys [resource]}]
-  [:create resource])
+  [{:keys [resource] {if-none-exist :ifNoneExist} :request}]
+  (cond-> [:create resource]
+    if-none-exist
+    (conj (fhir-util/clauses if-none-exist))))
 
 
 (defmethod entry-tx-op "PUT"

@@ -219,7 +219,36 @@
           (is (= "/Patient/0/_history/1" (get headers "Location"))))
 
         (testing "Contains no body"
-          (is (nil? body))))))
+          (is (nil? body)))))
+
+    (testing "with return=representation Prefer header"
+      (let [{:keys [status headers body]}
+            ((handler-with [])
+              {::reitit/router router
+               :path-params {:id "0"}
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               :headers {"prefer" "return=representation"}
+               :body {:fhir/type :fhir/Patient :id "0"}})]
+
+        (testing "Returns 201"
+          (is (= 201 status)))
+
+        (testing "Location header"
+          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "VersionId in ETag header"
+          (is (= "W/\"1\"" (get headers "ETag"))))
+
+        (testing "Location header"
+          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+
+        (testing "Contains body"
+          (given body
+            :fhir/type := :fhir/Patient
+            :id := "0")))))
 
   (testing "On recreated, previously deleted resource"
     (testing "with no Prefer header"

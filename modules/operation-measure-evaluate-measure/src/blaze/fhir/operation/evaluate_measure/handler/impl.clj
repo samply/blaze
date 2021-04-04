@@ -59,8 +59,9 @@
                     ;; indexing thread would execute response building.
                     (ac/then-apply-async identity executor)
                     (ac/then-compose
-                      #(response/build-created-response
-                         router return-preference % "MeasureReport" id))
+                      #(response/build-response
+                         router return-preference % nil
+                         (d/resource-handle % "MeasureReport" id)))
                     (ac/exceptionally handler-util/error-response)))))))))
 
 

@@ -27,10 +27,15 @@
 (set! *warn-on-reflection* true)
 
 
-(defrecord BatchDb [node context]
+(defrecord BatchDb [node basis-t context]
   p/Db
   (-node [_]
     node)
+
+  (-basis-t [_]
+    basis-t)
+
+
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
@@ -291,10 +296,11 @@
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^Closeable
-  [{:keys [kv-store rh-cache] :as node} t]
+  [{:keys [kv-store rh-cache] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
     (->BatchDb
       node
+      basis-t
       (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
         {:snapshot snapshot
          :raoi raoi

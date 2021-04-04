@@ -3,6 +3,7 @@
   (:require
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [reitit.core :as reitit]))
 
 
@@ -101,3 +102,9 @@
     (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
       (when t
         (Long/parseLong t)))))
+
+
+(defn clauses [query]
+  (mapv
+    #(let [[k v] (str/split % #"=")] (into [k] (str/split v #",")))
+    (str/split query #"&")))
