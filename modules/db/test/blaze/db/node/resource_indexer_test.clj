@@ -18,7 +18,7 @@
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
@@ -50,21 +50,22 @@
 
 
 (deftest index-condition-resource
-  (let [resource {:fhir/type :fhir/Condition :id "id-204446"
-                  :code
-                  (type/map->CodeableConcept
-                    {:coding
-                     [(type/map->Coding
-                        {:system #fhir/uri"system-204435"
-                         :code #fhir/code"code-204441"})]})
-                  :onset #fhir/dateTime"2020-01-30"
-                  :subject
-                  (type/map->Reference
-                    {:reference "Patient/id-145552"})
-                  :meta
-                  (type/map->Meta
-                    {:versionId #fhir/id"1"
-                     :profile [#fhir/canonical"url-164445"]})}
+  (let [resource
+        {:fhir/type :fhir/Condition :id "id-204446"
+         :code
+         #fhir/CodeableConcept
+             {:coding
+              [#fhir/Coding
+                  {:system #fhir/uri"system-204435"
+                   :code #fhir/code"code-204441"}]}
+         :onset #fhir/dateTime"2020-01-30"
+         :subject
+         #fhir/Reference
+             {:reference "Patient/id-145552"}
+         :meta
+         #fhir/Meta
+             {:versionId #fhir/id"1"
+              :profile [#fhir/canonical"url-164445"]}}
         hash (hash/generate resource)
         rl (reify
              rs/ResourceLookup
@@ -169,26 +170,26 @@
   (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                   :status #fhir/code"status-193613"
                   :category
-                  [(type/map->CodeableConcept
-                     {:coding
-                      [(type/map->Coding
-                         {:system #fhir/uri"system-193558"
-                          :code #fhir/code"code-193603"})]})]
+                  [#fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                           {:system #fhir/uri"system-193558"
+                            :code #fhir/code"code-193603"}]}]
                   :code
-                  (type/map->CodeableConcept
-                    {:coding
-                     [(type/map->Coding
-                        {:system #fhir/uri"system-193821"
-                         :code #fhir/code"code-193824"})]})
+                  #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                           {:system #fhir/uri"system-193821"
+                            :code #fhir/code"code-193824"}]}
                   :subject
-                  (type/map->Reference
-                    {:reference "Patient/id-180857"})
+                  #fhir/Reference
+                      {:reference "Patient/id-180857"}
                   :effective #fhir/dateTime"2005-06-17"
                   :value
-                  (type/map->Quantity
-                    {:code #fhir/code"kg/m2"
-                   :system #fhir/uri"http://unitsofmeasure.org"
-                   :value 23.42M})}
+                  #fhir/Quantity
+                      {:code #fhir/code"kg/m2"
+                       :system #fhir/uri"http://unitsofmeasure.org"
+                       :value 23.42M}}
         hash (hash/generate resource)
         rl (reify
              rs/ResourceLookup

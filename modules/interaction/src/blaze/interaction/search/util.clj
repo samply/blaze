@@ -4,12 +4,12 @@
     [blaze.handler.fhir.util :as fhir-util]))
 
 
-(def match
-  (type/map->BundleEntrySearch {:mode #fhir/code"match"}))
+(def ^:const match
+  #fhir/BundleEntrySearch{:mode #fhir/code"match"})
 
 
-(def include
-  (type/map->BundleEntrySearch {:mode #fhir/code"include"}))
+(def ^:const include
+  #fhir/BundleEntrySearch{:mode #fhir/code"include"})
 
 
 (defn entry

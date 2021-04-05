@@ -7,7 +7,8 @@
     [com.google.common.hash PrimitiveSink]
     [com.fasterxml.jackson.core JsonGenerator]
     [com.fasterxml.jackson.databind JsonSerializer SerializerProvider]
-    [com.fasterxml.jackson.databind.ser.std StdSerializer]))
+    [com.fasterxml.jackson.databind.ser.std StdSerializer]
+    [java.io Writer]))
 
 
 (defn- serializer-sym [name]
@@ -44,6 +45,10 @@
                     (~(if (= 'id field) `system/-hash-into `p/-hash-into)
                       ~field ~sink-sym)))
                fields)))
+
+       (defmethod print-method ~name [x# ~(with-meta 'w {:tag `Writer})]
+         (.write ~'w ~(str "#fhir/" name))
+         (print-method (into {} (remove (comp nil? val)) x#) ~'w))
 
        (def ~(serializer-sym name)
          (proxy [StdSerializer] [~name]

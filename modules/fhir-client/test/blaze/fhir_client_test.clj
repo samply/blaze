@@ -3,7 +3,7 @@
     [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.fhir-client-spec]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -136,7 +136,7 @@
   (testing "with meta versionId"
     (let [http-client (HttpClientMock.)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta (type/map->Meta {:versionId #fhir/id"180040"})}]
+                    :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -151,7 +151,7 @@
   (testing "stale update"
     (let [http-client (HttpClientMock.)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta (type/map->Meta {:versionId #fhir/id"180040"})}]
+                    :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")

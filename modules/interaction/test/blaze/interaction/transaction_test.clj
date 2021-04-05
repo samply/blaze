@@ -384,7 +384,7 @@
                     ((handler-with
                        [[[:put {:fhir/type :fhir/Patient :id "0"
                                 :identifier
-                                [(type/map->Identifier {:value "095156"})]}]]])
+                                [#fhir/Identifier{:value "095156"}]}]]])
                      {:body
                       {:fhir/type :fhir/Bundle
                        :type (type/->Code type)
@@ -422,7 +422,7 @@
                     ((handler-with
                        [[[:put {:fhir/type :fhir/Patient :id "0"
                                 :identifier
-                                [(type/map->Identifier {:value "095156"})]}]]])
+                                [#fhir/Identifier{:value "095156"}]}]]])
                      {:headers {"prefer" "return=representation"}
                       :body
                       {:fhir/type :fhir/Bundle
@@ -466,7 +466,7 @@
                   ((handler-with
                      [[[:put {:fhir/type :fhir/Patient :id "0"
                               :identifier
-                              [(type/map->Identifier {:value "095156"})]}]]])
+                              [#fhir/Identifier{:value "095156"}]}]]])
                    {:body
                     {:fhir/type :fhir/Bundle
                      :type (type/->Code type)
@@ -504,7 +504,7 @@
                   ((handler-with
                      [[[:put {:fhir/type :fhir/Patient :id "0"
                               :identifier
-                              [(type/map->Identifier {:value "095156"})]}]]])
+                              [#fhir/Identifier{:value "095156"}]}]]])
                    {:headers {"prefer" "return=representation"}
                     :body
                     {:fhir/type :fhir/Bundle
@@ -935,8 +935,8 @@
                    :resource
                    {:fhir/type :fhir/Observation :id "0"
                     :subject
-                    (type/map->Reference
-                      {:reference "Patient/0"})}
+                    #fhir/Reference
+                        {:reference "Patient/0"}}
                    :request
                    {:fhir/type :fhir.Bundle.entry/request
                     :method #fhir/code"POST"
@@ -1301,9 +1301,7 @@
                  [{:fhir/type :fhir.Bundle/entry
                    :resource
                    {:fhir/type :fhir/Observation
-                    :subject
-                    (type/map->Reference
-                      {:reference "Patient/0"})}
+                    :subject #fhir/Reference{:reference "Patient/0"}}
                    :request
                    {:fhir/type :fhir.Bundle.entry/request
                     :method #fhir/code"POST"

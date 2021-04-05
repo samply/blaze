@@ -529,8 +529,8 @@
                       :entry
                       [{:fhir/type :fhir.List/entry
                         :item
-                        (type/map->Reference
-                          {:reference "Patient/0"})}]}]]])
+                        #fhir/Reference
+                            {:reference "Patient/0"}}]}]]])
            {::reitit/router router
             ::reitit/match {:data {:fhir.resource/type "Patient"}}
             :params {"_list" "0"}})]

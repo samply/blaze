@@ -66,9 +66,7 @@
 
 
 (def ^:private string-extension
-  (type/map->Extension
-    {:url #fhir/uri"foo"
-     :valueString "bar"}))
+  #fhir/Extension{:url #fhir/uri"foo" :valueString "bar"})
 
 
 (deftest nil-test
@@ -205,7 +203,9 @@
   (testing "to-xml"
     (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/uri"105846"))))
   (testing "equals"
-    (is (= #fhir/uri"142334" #fhir/uri"142334")))
+    (is (= #fhir/uri"142334" #fhir/uri"142334"))
+    (is (not= #fhir/uri"142334" #fhir/uri"215930"))
+    (is (not= #fhir/uri"142334" "142334")))
   (testing "print"
     (is (= "#fhir/uri\"142600\"" (pr-str #fhir/uri"142600"))))
   (testing "instance size"
@@ -231,7 +231,9 @@
   (testing "to-xml"
     (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/url"105846"))))
   (testing "equals"
-    (is (= #fhir/url"142334" #fhir/url"142334")))
+    (is (= #fhir/url"142334" #fhir/url"142334"))
+    (is (not= #fhir/url"142334" #fhir/url"220025"))
+    (is (not= #fhir/url"142334" "142334")))
   (testing "print"
     (is (= "#fhir/url\"142600\"" (pr-str #fhir/url"142600"))))
   (testing "instance size"
@@ -257,7 +259,9 @@
   (testing "to-xml"
     (is (= (sexp [nil {:value "105846"}]) (type/to-xml #fhir/canonical"105846"))))
   (testing "equals"
-    (is (= #fhir/canonical"142334" #fhir/canonical"142334")))
+    (is (= #fhir/canonical"142334" #fhir/canonical"142334"))
+    (is (not= #fhir/canonical"142334" #fhir/canonical"220056"))
+    (is (not= #fhir/canonical"142334" "142334")))
   (testing "print"
     (is (= "#fhir/canonical\"142600\"" (pr-str #fhir/canonical"142600"))))
   (testing "instance size"
@@ -284,7 +288,9 @@
   (testing "to-xml"
     (is (= (sexp [nil {:value "MTA1NjE0Cg=="}]) (type/to-xml #fhir/base64Binary"MTA1NjE0Cg=="))))
   (testing "equals"
-    (is (= #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"MTA1NjE0Cg==")))
+    (is (= #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"MTA1NjE0Cg=="))
+    (is (not= #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"YQo="))
+    (is (not= #fhir/base64Binary"MTA1NjE0Cg==" "MTA1NjE0Cg==")))
   (testing "instance size"
     (is (= 56 (total-size #fhir/base64Binary"")))
     (is (= 64 (total-size #fhir/base64Binary"YQo=")))
@@ -356,7 +362,9 @@
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020"}]) (type/to-xml #fhir/date"2020"))))
     (testing "equals"
-      (is (= #fhir/date"2020" #fhir/date"2020")))
+      (is (= #fhir/date"2020" #fhir/date"2020"))
+      (is (not= #fhir/date"2020" #fhir/date"2021"))
+      (is (not= #fhir/date"2020" "2020")))
     (testing "instance size"
       (is (= 16 (total-size #fhir/date"2020"))))
     (testing "hash-into"
@@ -378,7 +386,9 @@
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020-01"}]) (type/to-xml #fhir/date"2020-01"))))
     (testing "equals"
-      (is (= #fhir/date"2020-01" #fhir/date"2020-01")))
+      (is (= #fhir/date"2020-01" #fhir/date"2020-01"))
+      (is (not= #fhir/date"2020-01" #fhir/date"2020-02"))
+      (is (not= #fhir/date"2020-01" "2020-01")))
     (testing "instance size"
       (is (= 24 (total-size #fhir/date"2020-01"))))
     (testing "hash-into"
@@ -401,7 +411,9 @@
       (is (= (sexp [nil {:value "2020-01-01"}])
              (type/to-xml #fhir/date"2020-01-01"))))
     (testing "equals"
-      (is (= #fhir/date"2020-01-01" #fhir/date"2020-01-01")))
+      (is (= #fhir/date"2020-01-01" #fhir/date"2020-01-01"))
+      (is (not= #fhir/date"2020-01-01" #fhir/date"2020-01-02"))
+      (is (not= #fhir/date"2020-01-01" "2020-01-01")))
     (testing "instance size"
       (is (= 24 (total-size #fhir/date"2020-01-01"))))
     (testing "hash-into"
@@ -425,7 +437,9 @@
     (testing "to-xml"
       (is (= (sexp [nil {:value "2020"}]) (type/to-xml #fhir/dateTime"2020"))))
     (testing "equals"
-      (is (= #fhir/dateTime"2020" #fhir/dateTime"2020")))
+      (is (= #fhir/dateTime"2020" #fhir/dateTime"2020"))
+      (is (not= #fhir/dateTime"2020" #fhir/dateTime"2021"))
+      (is (not= #fhir/dateTime"2020" "2020")))
     (testing "instance size"
       (is (= 32 (total-size #fhir/dateTime"2020"))))
     (testing "hash-into"
@@ -451,7 +465,9 @@
       (is (= (sexp [nil {:value "2020-01"}])
              (type/to-xml #fhir/dateTime"2020-01"))))
     (testing "equals"
-      (is (= #fhir/dateTime"2020-01" #fhir/dateTime"2020-01")))
+      (is (= #fhir/dateTime"2020-01" #fhir/dateTime"2020-01"))
+      (is (not= #fhir/dateTime"2020-01" #fhir/dateTime"2020-02"))
+      (is (not= #fhir/dateTime"2020-01" "2020-01")))
     (testing "instance size"
       (is (= 40 (total-size #fhir/dateTime"2020-01"))))
     (testing "hash-into"
@@ -669,13 +685,13 @@
 
 
 (def gender-extension
-  (type/map->Extension
-    {:url #fhir/uri"http://fhir.de/StructureDefinition/gender-amtlich-de"
-     :value
-     (type/map->Coding
-       {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-        :code #fhir/code"D"
-        :display "divers"})}))
+  #fhir/Extension
+      {:url #fhir/uri"http://fhir.de/StructureDefinition/gender-amtlich-de"
+       :value
+       #fhir/Coding
+           {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+            :code #fhir/code"D"
+            :display "divers"}})
 
 
 (def extended-gender-code
@@ -917,316 +933,317 @@
 
 (deftest extension-test
   (testing "type"
-    (is (= :fhir/Extension (type/type (type/map->Extension {})))))
+    (is (= :fhir/Extension (type/type #fhir/Extension{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->Extension {})
+      #fhir/Extension{}
       "9b6ea882"
 
-      (type/map->Extension {:id "id-204201"})
+      #fhir/Extension{:id "id-204201"}
       "495cd278"
 
-      (type/map->Extension
-        {:extension [(type/map->Extension {})]})
+      #fhir/Extension{:extension [#fhir/Extension{}]}
       "af661e95"
 
-      (type/map->Extension
-        {:extension
-         [(type/map->Extension {})
-          (type/map->Extension {})]})
+      #fhir/Extension{:extension [#fhir/Extension{} #fhir/Extension{}]}
       "96fd01bd"
 
-      (type/map->Extension
-        {:url "url-130945"})
+      #fhir/Extension{:url "url-130945"}
       "8204427a"
 
-      (type/map->Extension
-        {:value #fhir/code"value-130953"})
+      #fhir/Extension{:value #fhir/code"value-130953"}
       "befce87a"))
 
   (testing "instance size"
-    (is (= 48 (total-size (type/map->Extension {}))))))
+    (is (= 48 (total-size #fhir/Extension{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Extension{} "#fhir/Extension{}"
+      #fhir/Extension{:id "212329"} "#fhir/Extension{:id \"212329\"}")))
 
 
 (deftest coding-test
   (testing "type"
-    (is (= :fhir/Coding (type/type (type/map->Coding {})))))
+    (is (= :fhir/Coding (type/type #fhir/Coding{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->Coding {})
+      #fhir/Coding{}
       "24e7e891"
 
-      (type/map->Coding {:id "id-204201"})
+      #fhir/Coding{:id "id-204201"}
       "c1c82c65"
 
-      (type/map->Coding
-        {:extension [(type/map->Extension {})]})
+      #fhir/Coding{:extension [#fhir/Extension{}]}
       "e1d440bb"
 
-      (type/map->Coding
-        {:system #fhir/uri"system-202808"})
+      #fhir/Coding{:system #fhir/uri"system-202808"}
       "da808d2d"
 
-      (type/map->Coding
-        {:version #fhir/uri"version-154317"})
+      #fhir/Coding{:version #fhir/uri"version-154317"}
       "93fc58d9"
 
-      (type/map->Coding
-        {:code #fhir/code"code-202828"})
+      #fhir/Coding{:code #fhir/code"code-202828"}
       "74e3328d"
 
-      (type/map->Coding
-        {:display "display-154256"})
+      #fhir/Coding{:display "display-154256"}
       "baac923d"))
 
   (testing "instance size"
-    (is (= 56 (total-size (type/map->Coding {}))))))
+    (is (= 56 (total-size #fhir/Coding{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Coding{} "#fhir/Coding{}"
+      #fhir/Coding{:id "212329"} "#fhir/Coding{:id \"212329\"}")))
 
 
 (deftest codeable-concept-test
   (testing "type"
-    (is (= :fhir/CodeableConcept (type/type (type/map->CodeableConcept {})))))
+    (is (= :fhir/CodeableConcept (type/type #fhir/CodeableConcept{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->CodeableConcept {})
+      #fhir/CodeableConcept{}
       "9b6ea882"
 
-      (type/map->CodeableConcept {:id "id-141755"})
+      #fhir/CodeableConcept{:id "id-141755"}
       "d9ac742f"
 
-      (type/map->CodeableConcept
-        {:extension [(type/map->Extension {})]})
+      #fhir/CodeableConcept{:extension [#fhir/Extension{}]}
       "af661e95"
 
-      (type/map->CodeableConcept
-        {:coding
-         [(type/map->Coding {})]})
+      #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
       "9c4509ed"
 
-      (type/map->CodeableConcept
-        {:text "text-153829"})
+      #fhir/CodeableConcept{:text "text-153829"}
       "fe2e61f1"))
 
   (testing "instance size"
-    (is (= 48 (total-size (type/map->CodeableConcept {}))))))
+    (is (= 48 (total-size #fhir/CodeableConcept{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/CodeableConcept{} "#fhir/CodeableConcept{}"
+      #fhir/CodeableConcept{:id "212329"} "#fhir/CodeableConcept{:id \"212329\"}")))
 
 
 (deftest quantity-test
   (testing "type"
-    (is (= :fhir/Quantity (type/type (type/map->Quantity {})))))
+    (is (= :fhir/Quantity (type/type #fhir/Quantity{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->Quantity {})
+      #fhir/Quantity{}
       "1ddef3ed"
 
-      (type/map->Quantity {:id "id-141848"})
+      #fhir/Quantity{:id "id-141848"}
       "abb59da1"
 
-      (type/map->Quantity
-        {:extension [(type/map->Extension {})]})
+      #fhir/Quantity{:extension [#fhir/Extension{}]}
       "4f5028ac"
 
-      (type/map->Quantity
-        {:value 1M})
+      #fhir/Quantity{:value 1M}
       "4adf97ab"
 
-      (type/map->Quantity
-        {:comparator #fhir/code"comparator-153342"})
+      #fhir/Quantity{:comparator #fhir/code"comparator-153342"}
       "6339e3e8"
 
-      (type/map->Quantity
-        {:unit "unit-153351"})
+      #fhir/Quantity{:unit "unit-153351"}
       "d8f92891"
 
-      (type/map->Quantity
-        {:system #fhir/uri"system-153337"})
+      #fhir/Quantity{:system #fhir/uri"system-153337"}
       "98f918ba"
 
-      (type/map->Quantity
-        {:code #fhir/code"code-153427"})
+      #fhir/Quantity{:code #fhir/code"code-153427"}
       "7ff49528"))
 
   (testing "instance size"
-    (is (= 56 (total-size (type/map->Quantity {}))))))
+    (is (= 56 (total-size #fhir/Quantity{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Quantity{} "#fhir/Quantity{}"
+      #fhir/Quantity{:id "212329"} "#fhir/Quantity{:id \"212329\"}")))
 
 
 (deftest period-test
   (testing "type"
-    (is (= :fhir/Period (type/type (type/map->Period {})))))
+    (is (= :fhir/Period (type/type #fhir/Period{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->Period {})
+      #fhir/Period{}
       "e5f76205"
 
-      (type/map->Period {:id "id-130710"})
+      #fhir/Period{:id "id-130710"}
       "29c53420"
 
-      (type/map->Period
-        {:extension [(type/map->Extension {})]})
+      #fhir/Period{:extension [#fhir/Extension{}]}
       "92e4ba37"
 
-      (type/map->Period
-        {:start #fhir/dateTime"2020"})
+      #fhir/Period{:start #fhir/dateTime"2020"}
       "f1b7c952"
 
-      (type/map->Period
-        {:end #fhir/dateTime"2020"})
+      #fhir/Period{:end #fhir/dateTime"2020"}
       "434787dd"))
 
   (testing "instance size"
-    (is (= 48 (total-size (type/map->Period {}))))))
+    (is (= 48 (total-size #fhir/Period{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Period{} "#fhir/Period{}"
+      #fhir/Period{:id "212329"} "#fhir/Period{:id \"212329\"}")))
 
 
 (deftest identifier-test
   (testing "type"
-    (is (= :fhir/Identifier (type/type (type/map->Identifier {})))))
+    (is (= :fhir/Identifier (type/type #fhir/Identifier{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->Identifier {})
+      #fhir/Identifier{}
       "14336e1c"
 
-      (type/map->Identifier {:id "id-130739"})
+      #fhir/Identifier{:id "id-130739"}
       "57c166f0"
 
-      (type/map->Identifier
-        {:extension [(type/map->Extension {})]})
+      #fhir/Identifier{:extension [#fhir/Extension{}]}
       "810b77ff"
 
-      (type/map->Identifier
-        {:use #fhir/code"use-155144"})
+      #fhir/Identifier{:use #fhir/code"use-155144"}
       "4bf89602"
 
-      (type/map->Identifier
-        {:type (type/map->CodeableConcept {})})
+      #fhir/Identifier{:type #fhir/CodeableConcept{}}
       "736db874"
 
-      (type/map->Identifier
-        {:system #fhir/uri"system-145514"})
+      #fhir/Identifier{:system #fhir/uri"system-145514"}
       "acbabb5d"
 
-      (type/map->Identifier
-        {:value "value-145509"})
+      #fhir/Identifier{:value "value-145509"}
       "de7e521f"
 
-      (type/map->Identifier
-        {:period (type/map->Period {})})
+      #fhir/Identifier{:period #fhir/Period{}}
       "8a73bfa3"
 
-      (type/map->Identifier
-        {:assigner (type/map->Reference {})})
+      #fhir/Identifier{:assigner #fhir/Reference{}}
       "aa994e1e"))
 
   (testing "instance size"
-    (is (= 64 (total-size (type/map->Identifier {}))))))
+    (is (= 64 (total-size #fhir/Identifier{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Identifier{} "#fhir/Identifier{}"
+      #fhir/Identifier{:id "212329"} "#fhir/Identifier{:id \"212329\"}")))
 
 
 (deftest reference-test
   (testing "type"
-    (is (= :fhir/Reference (type/type (type/map->Reference {})))))
+    (is (= :fhir/Reference (type/type #fhir/Reference{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->Reference {})
+      #fhir/Reference{}
       "6498613c"
 
-      (type/map->Reference {:id "id-130802"})
+      #fhir/Reference{:id "id-130802"}
       "a48cca5a"
 
-      (type/map->Reference
-        {:extension [(type/map->Extension {})]})
+      #fhir/Reference{:extension [#fhir/Extension{}]}
       "210e3eb7"
 
-      (type/map->Reference
-        {:reference "Patient/0"})
+      #fhir/Reference{:reference "Patient/0"}
       "cd80b8ac"
 
-      (type/map->Reference
-        {:type #fhir/uri"type-161222"})
+      #fhir/Reference{:type #fhir/uri"type-161222"}
       "2fe271cd"
 
-      (type/map->Reference
-        {:identifier (type/map->Identifier {})})
+      #fhir/Reference{:identifier #fhir/Identifier{}}
       "eb066d27"
 
-      (type/map->Reference
-        {:display "display-161314"})
+      #fhir/Reference{:display "display-161314"}
       "543cf75f"))
 
   (testing "instance size"
-    (is (= 56 (total-size (type/map->Reference {}))))))
+    (is (= 56 (total-size #fhir/Reference{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Reference{} "#fhir/Reference{}"
+      #fhir/Reference{:id "212329"} "#fhir/Reference{:id \"212329\"}")))
 
 
 (deftest meta-test
   (testing "type"
-    (is (= :fhir/Meta (type/type (type/map->Meta {})))))
+    (is (= :fhir/Meta (type/type #fhir/Meta{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->Meta {})
+      #fhir/Meta{}
       "cbae28fd"
 
-      (type/map->Meta {:id "id-130825"})
+      #fhir/Meta{:id "id-130825"}
       "c2c18a00"
 
-      (type/map->Meta
-        {:extension [(type/map->Extension {})]})
+      #fhir/Meta{:extension [#fhir/Extension{}]}
       "aaf41f94"
 
-      (type/map->Meta
-        {:versionId #fhir/id"versionId-161415"})
+      #fhir/Meta{:versionId #fhir/id"versionId-161415"}
       "9edaa9b"
 
-      (type/map->Meta
-        {:lastUpdated Instant/EPOCH})
+      (type/map->Meta {:lastUpdated Instant/EPOCH})
       "38b8dfe3"
 
-      (type/map->Meta
-        {:source #fhir/uri"source-161629"})
+      #fhir/Meta{:source #fhir/uri"source-161629"}
       "bc99bc82"
 
-      (type/map->Meta
-        {:profile [#fhir/canonical"profile-uri-145024"]})
+      #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
       "b13c3d52"
 
-      (type/map->Meta
-        {:security [(type/map->Coding {})]})
+      #fhir/Meta{:security [#fhir/Coding{}]}
       "9b7633bc"
 
-      (type/map->Meta
-        {:tag [(type/map->Coding {})]})
+      #fhir/Meta{:tag [#fhir/Coding{}]}
       "96e4e336"))
 
   (testing "instance size"
-    (is (= 64 (total-size (type/map->Meta {}))))))
+    (is (= 64 (total-size #fhir/Meta{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Meta{} "#fhir/Meta{}"
+      #fhir/Meta{:id "212329"} "#fhir/Meta{:id \"212329\"}")))
 
 
 (deftest bundle-entry-search-test
   (testing "type"
-    (is (= :fhir.Bundle.entry/search (type/type (type/map->BundleEntrySearch {})))))
+    (is (= :fhir.Bundle.entry/search (type/type #fhir/BundleEntrySearch{}))))
 
   (testing "hash-into"
     (are [u hex] (= hex (murmur3 u))
-      (type/map->BundleEntrySearch {})
+      #fhir/BundleEntrySearch{}
       "f945531f"
 
-      (type/map->BundleEntrySearch {:id "id-130825"})
+      #fhir/BundleEntrySearch{:id "id-130825"}
       "6b1b9201"
 
-      (type/map->BundleEntrySearch
-        {:extension [(type/map->Extension {})]})
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{}]}
       "f24daf4f"
 
-      (type/map->BundleEntrySearch {:mode #fhir/code"match"})
+      #fhir/BundleEntrySearch{:mode #fhir/code"match"}
       "5912b48c"
 
-      (type/map->BundleEntrySearch {:score 1M})
+      #fhir/BundleEntrySearch{:score 1M}
       "2b2509dc"))
 
   (testing "instance size"
-    (is (= 48 (total-size (type/map->BundleEntrySearch {}))))))
+    (is (= 48 (total-size #fhir/BundleEntrySearch{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/BundleEntrySearch{} "#fhir/BundleEntrySearch{}"
+      #fhir/BundleEntrySearch{:id "212329"} "#fhir/BundleEntrySearch{:id \"212329\"}")))

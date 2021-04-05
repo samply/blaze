@@ -5,7 +5,7 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry-spec]
     [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -57,8 +57,5 @@
   (is (= [["Patient" "id-1"]]
          (sr/linked-compartments
            search-param-registry
-           {:fhir/type :fhir/Condition
-            :id "id-0"
-            :subject
-            (type/map->Reference
-              {:reference "Patient/id-1"})}))))
+           {:fhir/type :fhir/Condition :id "id-0"
+            :subject #fhir/Reference{:reference "Patient/id-1"}}))))

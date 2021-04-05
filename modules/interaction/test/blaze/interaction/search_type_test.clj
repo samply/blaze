@@ -595,8 +595,8 @@
                       :entry
                       [{:fhir/type :fhir.List/entry
                         :item
-                        (type/map->Reference
-                          {:reference "Patient/0"})}]}]]])
+                        #fhir/Reference
+                            {:reference "Patient/0"}}]}]]])
            {::reitit/router router
             ::reitit/match {:data {:fhir.resource/type "Patient"}}
             :params {"_list" "0"}})]
@@ -630,49 +630,49 @@
                [:put {:fhir/type :fhir/Patient :id "1"}]
                [:put {:fhir/type :fhir/Observation :id "0"
                       :subject
-                      (type/map->Reference
-                        {:reference "Patient/0"})
+                      #fhir/Reference
+                          {:reference "Patient/0"}
                       :code
-                      (type/map->CodeableConcept
-                        {:coding
-                         [(type/map->Coding
-                            {:system #fhir/uri"http://loinc.org"
-                             :code #fhir/code"8480-6"})]})
+                      #fhir/CodeableConcept
+                          {:coding
+                           [#fhir/Coding
+                               {:system #fhir/uri"http://loinc.org"
+                                :code #fhir/code"8480-6"}]}
                       :value
-                      (type/map->Quantity
-                        {:value 130M
-                         :code #fhir/code"mm[Hg]"
-                         :system #fhir/uri"http://unitsofmeasure.org"})}]
+                      #fhir/Quantity
+                          {:value 130M
+                           :code #fhir/code"mm[Hg]"
+                           :system #fhir/uri"http://unitsofmeasure.org"}}]
                [:put {:fhir/type :fhir/Observation :id "1"
                       :subject
-                      (type/map->Reference
-                        {:reference "Patient/0"})
+                      #fhir/Reference
+                          {:reference "Patient/0"}
                       :code
-                      (type/map->CodeableConcept
-                        {:coding
-                         [(type/map->Coding
-                            {:system #fhir/uri"http://loinc.org"
-                             :code #fhir/code"8480-6"})]})
+                      #fhir/CodeableConcept
+                          {:coding
+                           [#fhir/Coding
+                               {:system #fhir/uri"http://loinc.org"
+                                :code #fhir/code"8480-6"}]}
                       :value
-                      (type/map->Quantity
-                        {:value 150M
-                         :code #fhir/code"mm[Hg]"
-                         :system #fhir/uri"http://unitsofmeasure.org"})}]
+                      #fhir/Quantity
+                          {:value 150M
+                           :code #fhir/code"mm[Hg]"
+                           :system #fhir/uri"http://unitsofmeasure.org"}}]
                [:put {:fhir/type :fhir/Observation :id "2"
                       :subject
-                      (type/map->Reference
-                        {:reference "Patient/1"})
+                      #fhir/Reference
+                          {:reference "Patient/1"}
                       :code
-                      (type/map->CodeableConcept
-                        {:coding
-                         [(type/map->Coding
-                            {:system #fhir/uri"http://loinc.org"
-                             :code #fhir/code"8480-6"})]})
+                      #fhir/CodeableConcept
+                          {:coding
+                           [#fhir/Coding
+                               {:system #fhir/uri"http://loinc.org"
+                                :code #fhir/code"8480-6"}]}
                       :value
-                      (type/map->Quantity
-                        {:value 100M
-                         :code #fhir/code"mm[Hg]"
-                         :system #fhir/uri"http://unitsofmeasure.org"})}]]])
+                      #fhir/Quantity
+                          {:value 100M
+                           :code #fhir/code"mm[Hg]"
+                           :system #fhir/uri"http://unitsofmeasure.org"}}]]])
            {::reitit/router router
             ::reitit/match {:data {:fhir.resource/type "Patient"}}
             :params {"_has:Observation:patient:code-value-quantity" "8480-6$ge130"}})]
@@ -703,13 +703,9 @@
     (let [{:keys [status body]}
           ((handler-with
              [[[:put {:fhir/type :fhir/Patient :id "0"
-                      :identifier
-                      [(type/map->Identifier
-                         {:value "0"})]}]
+                      :identifier [#fhir/Identifier{:value "0"}]}]
                [:put {:fhir/type :fhir/Patient :id "1"
-                      :identifier
-                      [(type/map->Identifier
-                         {:value "1"})]}]]])
+                      :identifier [#fhir/Identifier{:value "1"}]}]]])
            {::reitit/router router
             ::reitit/match patient-match
             :params {"identifier" "0"}})]
@@ -742,27 +738,27 @@
                       :communication
                       [{:fhir/type :fhir.Patient/communication
                         :language
-                        (type/map->CodeableConcept
-                          {:coding
-                           [(type/map->Coding
-                              {:system #fhir/uri"urn:ietf:bcp:47"
-                               :code #fhir/code"de"})]})}
+                        #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                                 {:system #fhir/uri"urn:ietf:bcp:47"
+                                  :code #fhir/code"de"}]}}
                        {:fhir/type :fhir.Patient/communication
                         :language
-                        (type/map->CodeableConcept
-                          {:coding
-                           [(type/map->Coding
-                              {:system #fhir/uri"urn:ietf:bcp:47"
-                               :code #fhir/code"en"})]})}]}]
+                        #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                                 {:system #fhir/uri"urn:ietf:bcp:47"
+                                  :code #fhir/code"en"}]}}]}]
                [:put {:fhir/type :fhir/Patient :id "1"
                       :communication
                       [{:fhir/type :fhir.Patient/communication
                         :language
-                        (type/map->CodeableConcept
-                          {:coding
-                           [(type/map->Coding
-                              {:system #fhir/uri"urn:ietf:bcp:47"
-                               :code #fhir/code"de"})]})}]}]]])
+                        #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                                 {:system #fhir/uri"urn:ietf:bcp:47"
+                                  :code #fhir/code"de"}]}}]}]]])
            {::reitit/router router
             ::reitit/match patient-match
             :params {"language" ["de" "en"]}})]
@@ -976,20 +972,20 @@
                       :entry
                       [{:fhir/type :fhir.List/entry
                         :item
-                        (type/map->Reference
-                          {:identifier
-                           (type/map->Identifier
-                             {:system #fhir/uri"system-122917"
-                              :value "value-122931"})})}]}]
+                        #fhir/Reference
+                            {:identifier
+                             #fhir/Identifier
+                                 {:system #fhir/uri"system-122917"
+                                  :value "value-122931"}}}]}]
                [:put {:fhir/type :fhir/List :id "id-143814"
                       :entry
                       [{:fhir/type :fhir.List/entry
                         :item
-                        (type/map->Reference
-                          {:identifier
-                           (type/map->Identifier
-                             {:system #fhir/uri"system-122917"
-                              :value "value-143818"})})}]}]]])
+                        #fhir/Reference
+                            {:identifier
+                             #fhir/Identifier
+                                 {:system #fhir/uri"system-122917"
+                                  :value "value-143818"}}}]}]]])
            {::reitit/router router
             ::reitit/match list-match
             :params {"item:identifier" "system-122917|value-143818"}})]
@@ -1022,54 +1018,54 @@
                       :component
                       [{:fhir/type :fhir.Observation/component
                         :code
-                        (type/map->CodeableConcept
-                          {:coding
-                           [(type/map->Coding
-                              {:system #fhir/uri"http://loinc.org"
-                               :code #fhir/code"8480-6"})]})
+                        #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                                 {:system #fhir/uri"http://loinc.org"
+                                  :code #fhir/code"8480-6"}]}
                         :value
-                        (type/map->Quantity
-                          {:value 140M
-                           :system #fhir/uri"http://unitsofmeasure.org"
-                           :code #fhir/code"mm[Hg]"})}
+                        #fhir/Quantity
+                            {:value 140M
+                             :system #fhir/uri"http://unitsofmeasure.org"
+                             :code #fhir/code"mm[Hg]"}}
                        {:fhir/type :fhir.Observation/component
                         :code
-                        (type/map->CodeableConcept
-                          {:coding
-                           [(type/map->Coding
-                              {:system #fhir/uri"http://loinc.org"
-                               :code #fhir/code"8462-4"})]})
+                        #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                                 {:system #fhir/uri"http://loinc.org"
+                                  :code #fhir/code"8462-4"}]}
                         :value
-                        (type/map->Quantity
-                          {:value 90M
-                           :system #fhir/uri"http://unitsofmeasure.org"
-                           :code #fhir/code"mm[Hg]"})}]}]]
+                        #fhir/Quantity
+                            {:value 90M
+                             :system #fhir/uri"http://unitsofmeasure.org"
+                             :code #fhir/code"mm[Hg]"}}]}]]
               [[:put {:fhir/type :fhir/Observation :id "id-123130"
                       :component
                       [{:fhir/type :fhir.Observation/component
                         :code
-                        (type/map->CodeableConcept
-                          {:coding
-                           [(type/map->Coding
-                              {:system #fhir/uri"http://loinc.org"
-                               :code #fhir/code"8480-6"})]})
+                        #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                                 {:system #fhir/uri"http://loinc.org"
+                                  :code #fhir/code"8480-6"}]}
                         :value
-                        (type/map->Quantity
-                          {:value 150M
-                           :system #fhir/uri"http://unitsofmeasure.org"
-                           :code #fhir/code"mm[Hg]"})}
+                        #fhir/Quantity
+                            {:value 150M
+                             :system #fhir/uri"http://unitsofmeasure.org"
+                             :code #fhir/code"mm[Hg]"}}
                        {:fhir/type :fhir.Observation/component
                         :code
-                        (type/map->CodeableConcept
-                          {:coding
-                           [(type/map->Coding
-                              {:system #fhir/uri"http://loinc.org"
-                               :code #fhir/code"8462-4"})]})
+                        #fhir/CodeableConcept
+                            {:coding
+                             [#fhir/Coding
+                                 {:system #fhir/uri"http://loinc.org"
+                                  :code #fhir/code"8462-4"}]}
                         :value
-                        (type/map->Quantity
-                          {:value 100M
-                           :system #fhir/uri"http://unitsofmeasure.org"
-                           :code #fhir/code"mm[Hg]"})}]}]]])
+                        #fhir/Quantity
+                            {:value 100M
+                             :system #fhir/uri"http://unitsofmeasure.org"
+                             :code #fhir/code"mm[Hg]"}}]}]]])
            {::reitit/router router
             ::reitit/match observation-match
             :params
@@ -1098,11 +1094,11 @@
           ((handler-with
              [[[:put {:fhir/type :fhir/Condition :id "0"
                       :code
-                      (type/map->CodeableConcept
-                        {:coding
-                         [(type/map->Coding
-                            {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
-                             :code #fhir/code"C71.4"})]})}]]])
+                      #fhir/CodeableConcept
+                          {:coding
+                           [#fhir/Coding
+                               {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                                :code #fhir/code"C71.4"}]}}]]])
            {::reitit/router router
             ::reitit/match condition-match
             :params {"code" "C71.4,C71.4"}})]
@@ -1133,22 +1129,22 @@
           ((handler-with
              [[[:put {:fhir/type :fhir/Condition :id "0"
                       :code
-                      (type/map->CodeableConcept
-                        {:coding
-                         [(type/map->Coding
-                            {:code #fhir/code"0"})]})}]
+                      #fhir/CodeableConcept
+                          {:coding
+                           [#fhir/Coding
+                               {:code #fhir/code"0"}]}}]
                [:put {:fhir/type :fhir/Condition :id "2"
                       :code
-                      (type/map->CodeableConcept
-                        {:coding
-                         [(type/map->Coding
-                            {:code #fhir/code"0"})]})}]
+                      #fhir/CodeableConcept
+                          {:coding
+                           [#fhir/Coding
+                               {:code #fhir/code"0"}]}}]
                [:put {:fhir/type :fhir/Condition :id "1"
                       :code
-                      (type/map->CodeableConcept
-                        {:coding
-                         [(type/map->Coding
-                            {:code #fhir/code"1"})]})}]]])
+                      #fhir/CodeableConcept
+                          {:coding
+                           [#fhir/Coding
+                               {:code #fhir/code"1"}]}}]]])
            {::reitit/router router
             ::reitit/match condition-match
             :params {"code" "0,1" "_count" "2"
@@ -1174,9 +1170,7 @@
             ((handler-with
                [[[:put {:fhir/type :fhir/Patient :id "0"}]
                  [:put {:fhir/type :fhir/Observation :id "0"
-                        :subject
-                        (type/map->Reference
-                          {:reference "Patient/0"})}]]])
+                        :subject #fhir/Reference{:reference "Patient/0"}}]]])
              {::reitit/router router
               ::reitit/match observation-match
               :params {"_include" "Observation:subject"}})]
@@ -1216,9 +1210,7 @@
               ((handler-with
                  [[[:put {:fhir/type :fhir/Patient :id "0"}]
                    [:put {:fhir/type :fhir/Observation :id "0"
-                          :subject
-                          (type/map->Reference
-                            {:reference "Patient/0"})}]]])
+                          :subject #fhir/Reference{:reference "Patient/0"}}]]])
                {::reitit/router router
                 ::reitit/match observation-match
                 :params {"_include" "Observation:subject:Group"}})]
@@ -1248,13 +1240,9 @@
               ((handler-with
                  [[[:put {:fhir/type :fhir/Patient :id "0"}]
                    [:put {:fhir/type :fhir/Observation :id "1"
-                          :subject
-                          (type/map->Reference
-                            {:reference "Patient/0"})}]
+                          :subject #fhir/Reference{:reference "Patient/0"}}]
                    [:put {:fhir/type :fhir/Observation :id "2"
-                          :subject
-                          (type/map->Reference
-                            {:reference "Patient/0"})}]]])
+                          :subject #fhir/Reference{:reference "Patient/0"}}]]])
                {::reitit/router router
                 ::reitit/match observation-match
                 :params {"_include" "Observation:subject"}})]
@@ -1296,16 +1284,10 @@
               ((handler-with
                  [[[:put {:fhir/type :fhir/Patient :id "0"}]
                    [:put {:fhir/type :fhir/Encounter :id "1"
-                          :subject
-                          (type/map->Reference
-                            {:reference "Patient/0"})}]
+                          :subject #fhir/Reference{:reference "Patient/0"}}]
                    [:put {:fhir/type :fhir/Observation :id "2"
-                          :subject
-                          (type/map->Reference
-                            {:reference "Patient/0"})
-                          :encounter
-                          (type/map->Reference
-                            {:reference "Encounter/1"})}]]])
+                          :subject #fhir/Reference{:reference "Patient/0"}
+                          :encounter #fhir/Reference{:reference "Encounter/1"}}]]])
                {::reitit/router router
                 ::reitit/match observation-match
                 :params
@@ -1348,13 +1330,13 @@
                            [[[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "1"
                                     :subject
-                                    (type/map->Reference
-                                      {:reference "Patient/0"})}]
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}]
                              [:put {:fhir/type :fhir/Patient :id "2"}]
                              [:put {:fhir/type :fhir/Observation :id "3"
                                     :subject
-                                    (type/map->Reference
-                                      {:reference "Patient/2"})}]]])]
+                                    #fhir/Reference
+                                        {:reference "Patient/2"}}]]])]
           (let [{:keys [status body]}
                 @((handler node)
                   {::reitit/router router
@@ -1434,12 +1416,12 @@
             ((handler-with
                [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
                         :medication
-                        (type/map->Reference
-                          {:reference "Medication/0"})}]
+                        #fhir/Reference
+                            {:reference "Medication/0"}}]
                  [:put {:fhir/type :fhir/Medication :id "0"
                         :manufacturer
-                        (type/map->Reference
-                          {:reference "Organization/0"})}]
+                        #fhir/Reference
+                            {:reference "Organization/0"}}]
                  [:put {:fhir/type :fhir/Organization :id "0"}]]])
              {::reitit/router router
               ::reitit/match medication-statement-match
@@ -1484,12 +1466,12 @@
             ((handler-with
                [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
                         :medication
-                        (type/map->Reference
-                          {:reference "Medication/0"})}]
+                        #fhir/Reference
+                            {:reference "Medication/0"}}]
                  [:put {:fhir/type :fhir/Medication :id "0"
                         :manufacturer
-                        (type/map->Reference
-                          {:reference "Organization/0"})}]
+                        #fhir/Reference
+                            {:reference "Organization/0"}}]
                  [:put {:fhir/type :fhir/Organization :id "0"}]]])
              {::reitit/router router
               ::reitit/match medication-statement-match
@@ -1529,8 +1511,8 @@
                [[[:put {:fhir/type :fhir/Patient :id "0"}]
                  [:put {:fhir/type :fhir/Observation :id "1"
                         :subject
-                        (type/map->Reference
-                          {:reference "Patient/0"})}]]])
+                        #fhir/Reference
+                            {:reference "Patient/0"}}]]])
              {::reitit/router router
               ::reitit/match patient-match
               :params {"_revinclude" "Observation:subject"}})]
@@ -1571,12 +1553,12 @@
                  [[[:put {:fhir/type :fhir/Patient :id "0"}]
                    [:put {:fhir/type :fhir/Observation :id "1"
                           :subject
-                          (type/map->Reference
-                            {:reference "Patient/0"})}]
+                          #fhir/Reference
+                              {:reference "Patient/0"}}]
                    [:put {:fhir/type :fhir/Condition :id "2"
                           :subject
-                          (type/map->Reference
-                            {:reference "Patient/0"})}]]])
+                          #fhir/Reference
+                              {:reference "Patient/0"}}]]])
                {::reitit/router router
                 ::reitit/match patient-match
                 :params
