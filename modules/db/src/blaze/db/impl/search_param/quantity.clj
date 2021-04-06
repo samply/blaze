@@ -344,10 +344,21 @@
       values)))
 
 
+(defn- fix-expr
+  "https://github.com/samply/blaze/issues/366"
+  [url expression]
+  (case url
+    "http://hl7.org/fhir/SearchParameter/Observation-component-value-quantity"
+    "Observation.component.value.ofType(Quantity)"
+    "http://hl7.org/fhir/SearchParameter/Observation-combo-value-quantity"
+    "(Observation.value as Quantity) | (Observation.value as SampledData) | Observation.component.value.ofType(Quantity) | Observation.component.value.ofType(SampledData)"
+    expression))
+
+
 (defmethod sr/search-param "quantity"
   [_ {:keys [name url type base code expression]}]
   (if expression
-    (when-ok [expression (fhir-path/compile expression)]
+    (when-ok [expression (fhir-path/compile (fix-expr url expression))]
       (->SearchParamQuantity name url type base code (codec/c-hash code)
                              expression))
     {::anom/category ::anom/unsupported

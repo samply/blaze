@@ -220,10 +220,21 @@
       values)))
 
 
+(defn- fix-expr
+  "https://github.com/samply/blaze/issues/366"
+  [url expression]
+  (case url
+    "http://hl7.org/fhir/SearchParameter/Observation-component-value-concept"
+    "Observation.component.value.ofType(CodeableConcept)"
+    "http://hl7.org/fhir/SearchParameter/Observation-combo-value-concept"
+    "(Observation.value as CodeableConcept) | Observation.component.value.ofType(CodeableConcept)"
+    expression))
+
+
 (defmethod sr/search-param "token"
   [_ {:keys [name url type base code expression]}]
   (if expression
-    (when-ok [expression (fhir-path/compile expression)]
+    (when-ok [expression (fhir-path/compile (fix-expr url expression))]
       (->SearchParamToken name url type base code (codec/c-hash code) expression))
     {::anom/category ::anom/unsupported
      ::anom/message (u/missing-expression-msg url)}))

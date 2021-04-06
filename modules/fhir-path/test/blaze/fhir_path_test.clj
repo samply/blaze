@@ -9,11 +9,13 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+    [juxt.iota :refer [given]]
+    [taoensso.timbre :as log])
   (:refer-clojure :exclude [eval]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
@@ -237,7 +239,7 @@
       ::anom/category := ::anom/incorrect
       ::anom/message := "missing criteria in `where` function in expression `Patient.telecom.where()`"))
 
-  (testing "returns matching item"
+  (testing "returns one matching item"
     (given
       (eval
         "Patient.telecom.where(use = 'home')"
@@ -249,6 +251,24 @@
            :value "value-170758"}]})
       [0 :use] := #fhir/code"home"
       [0 :value] := "value-170758"))
+
+  (testing "returns two matching items"
+    (given
+      (eval
+        "Patient.telecom.where(use = 'home')"
+        {:fhir/type :fhir/Patient
+         :id "id-162953"
+         :telecom
+         [{:fhir/type :fhir/ContactPoint
+           :use #fhir/code"home"
+           :value "value-170758"}
+          {:fhir/type :fhir/ContactPoint
+           :use #fhir/code"home"
+           :value "value-145928"}]})
+      [0 :use] := #fhir/code"home"
+      [0 :value] := "value-170758"
+      [1 :use] := #fhir/code"home"
+      [1 :value] := "value-145928"))
 
   (testing "returns empty collection on non-matching item"
     (is
@@ -262,13 +282,67 @@
              :use #fhir/code"home"
              :value "value-170758"}]}))))
 
+  (testing "returns empty collection on empty criteria result"
+    (is
+      (empty?
+        (eval
+          "Patient.telecom.where({})"
+          {:fhir/type :fhir/Patient
+           :id "id-162953"
+           :telecom
+           [{:fhir/type :fhir/ContactPoint
+             :use #fhir/code"home"
+             :value "value-170758"}]}))))
+
   (testing "returns empty collection on empty input"
     (is
       (empty?
         (eval
           "Patient.telecom.where(use = 'home')"
           {:fhir/type :fhir/Patient
-           :id "id-162953"})))))
+           :id "id-162953"}))))
+
+  (testing "return error on multiple criteria result"
+    (given
+      (eval
+        "Patient.address.where(line)"
+        {:fhir/type :fhir/Patient
+         :id "id-162953"
+         :address
+         [{:fhir/type :fhir/Address
+           :line ["a" "b"]}]})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "multiple result items `[\"a\" \"b\"]` while evaluating where function criteria"))
+
+  (testing "return error on non-boolean criteria result"
+    (given
+      (eval
+        "Patient.telecom.where(use)"
+        {:fhir/type :fhir/Patient
+         :id "id-162953"
+         :telecom
+         [{:fhir/type :fhir/ContactPoint
+           :use #fhir/code"home"
+           :value "value-170758"}]})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "non-boolean result `#fhir/code\"home\"` of type `:fhir/code` while evaluating where function criteria")))
+
+
+;; 5.2.4. ofType(type : type specifier) : collection
+(deftest of-type-function-test
+  (testing "returns two matching items"
+    (given
+      (eval
+        "Observation.component.value.ofType(Quantity)"
+        {:fhir/type :fhir/Observation
+         :component
+         [{:fhir/type :fhir.Observation/component
+           :value #fhir/Quantity{:value 150M}}
+          {:fhir/type :fhir.Observation/component
+           :value #fhir/Quantity{:value 100M}}]})
+      [0 :value] := 150M
+      [1 :value] := 100M)))
+
 
 
 ;; 5.3. Subsetting
@@ -405,8 +479,7 @@
         (first
           (eval
             "Patient.birthDate is date"
-            {:fhir/type :fhir/Patient
-             :id "foo"
+            {:fhir/type :fhir/Patient :id "foo"
              :birthDate #fhir/date"2020"})))))
 
   (testing "single item with non-matching type returns false"
@@ -415,9 +488,16 @@
         (first
           (eval
             "Patient.birthDate is string"
-            {:fhir/type :fhir/Patient
-             :id "foo"
+            {:fhir/type :fhir/Patient :id "foo"
              :birthDate #fhir/date"2020"})))))
+
+  (testing "empty collection returns empty collection"
+    (is
+      (empty?
+        (first
+          (eval
+            "Patient.birthDate is string"
+            {:fhir/type :fhir/Patient :id "foo"})))))
 
   (testing "multiple item returns an error"
     (given
@@ -429,6 +509,88 @@
           #fhir/Identifier{:value "value-163928"}]})
       ::anom/category := ::anom/incorrect
       ::anom/message := "is type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
+
+
+;; 6.3.3 as type specifier
+(deftest as-type-specifier-test
+  (testing "single item with matching type returns the item"
+    (is
+      (=
+        #fhir/date"2020"
+        (first
+          (eval
+            "Patient.birthDate as date"
+            {:fhir/type :fhir/Patient :id "foo"
+             :birthDate #fhir/date"2020"})))))
+
+  (testing "single item with non-matching type returns an empty collection"
+    (is
+      (empty?
+        (first
+          (eval
+            "Patient.birthDate as string"
+            {:fhir/type :fhir/Patient :id "foo"
+             :birthDate #fhir/date"2020"})))))
+
+  (testing "empty collection returns empty collection"
+    (is
+      (empty?
+        (first
+          (eval
+            "Patient.birthDate as string"
+            {:fhir/type :fhir/Patient :id "foo"})))))
+
+  (testing "multiple item returns an error"
+    (given
+      (eval
+        "Patient.identifier as string"
+        {:fhir/type :fhir/Patient :id "id-162953"
+         :identifier
+         [#fhir/Identifier{:value "value-163922"}
+          #fhir/Identifier{:value "value-163928"}]})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "as type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
+
+
+;; 6.3.4 as(type : type specifier)
+(deftest as-type-function-test
+  (testing "single item with matching type returns the item"
+    (is
+      (=
+        #fhir/date"2020"
+        (first
+          (eval
+            "Patient.birthDate.as(date)"
+            {:fhir/type :fhir/Patient :id "foo"
+             :birthDate #fhir/date"2020"})))))
+
+  (testing "single item with non-matching type returns an empty collection"
+    (is
+      (empty?
+        (first
+          (eval
+            "Patient.birthDate.as(string)"
+            {:fhir/type :fhir/Patient :id "foo"
+             :birthDate #fhir/date"2020"})))))
+
+  (testing "empty collection returns empty collection"
+    (is
+      (empty?
+        (first
+          (eval
+            "Patient.birthDate as string"
+            {:fhir/type :fhir/Patient :id "foo"})))))
+
+  (testing "multiple item returns an error"
+    (given
+      (eval
+        "Patient.identifier.as(string)"
+        {:fhir/type :fhir/Patient :id "id-162953"
+         :identifier
+         [#fhir/Identifier{:value "value-163922"}
+          #fhir/Identifier{:value "value-163928"}]})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "as type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
 
 
 
