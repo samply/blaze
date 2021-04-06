@@ -124,8 +124,8 @@
   (fn [_ _ _ {:keys [op]}] op))
 
 
-(defn- resource-exists? [db-before type id]
-  (when-let [{:keys [op]} (d/resource-handle db-before type id)]
+(defn- resource-exists? [db type id]
+  (when-let [{:keys [op]} (d/resource-handle db type id)]
     (not (identical? :delete op))))
 
 
@@ -212,7 +212,7 @@
   (with-open [_ (prom/timer duration-seconds "verify-put")]
     (check-referential-integrity! db-before res [type id] refs)
     (let [tid (codec/tid type)
-          {:keys [num-changes] :or {num-changes 0} old-t :t}
+          {:keys [num-changes op] :or {num-changes 0} old-t :t}
           (d/resource-handle db-before type id)]
       (if (or (nil? if-match) (= if-match old-t))
         (cond->
@@ -220,7 +220,7 @@
               (update :entries into (index-entries tid id t hash (inc num-changes) :put))
               (update :new-resources conj [type id])
               (update-in [:stats tid :num-changes] (fnil inc 0)))
-          (nil? old-t)
+          (or (nil? old-t) (identical? :delete op))
           (update-in [:stats tid :total] (fnil inc 0)))
         (throw-precondition-failed if-match type id)))))
 
