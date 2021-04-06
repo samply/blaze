@@ -62,9 +62,9 @@
     :id "1"
     :url #fhir/uri"0"
     :content
-    [{:fhir/type :fhir/Attachment
-      :contentType #fhir/code"text/cql"
-      :data (type/->Base64Binary (b64-encode query))}]}
+    [(type/map->Attachment
+       {:contentType #fhir/code"text/cql"
+        :data (type/->Base64Binary (b64-encode query))})]}
    :request
    {:method #fhir/code"PUT"
     :url #fhir/uri"Library/1"}})

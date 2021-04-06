@@ -291,6 +291,8 @@
     (is (= #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"MTA1NjE0Cg=="))
     (is (not= #fhir/base64Binary"MTA1NjE0Cg==" #fhir/base64Binary"YQo="))
     (is (not= #fhir/base64Binary"MTA1NjE0Cg==" "MTA1NjE0Cg==")))
+  (testing "print"
+    (is (= "#fhir/base64Binary\"YQo=\"" (pr-str #fhir/base64Binary"YQo="))))
   (testing "instance size"
     (is (= 56 (total-size #fhir/base64Binary"")))
     (is (= 64 (total-size #fhir/base64Binary"YQo=")))
@@ -929,6 +931,54 @@
   (testing "instance size"
     (is (= 56 (total-size #fhir/xhtml"")))
     (is (= 64 (total-size #fhir/xhtml"175718")))))
+
+
+(deftest attachment-test
+  (testing "type"
+    (is (= :fhir/Attachment (type/type #fhir/Attachment{}))))
+
+  (testing "hash-into"
+    (are [u hex] (= hex (murmur3 u))
+      #fhir/Attachment{}
+      "af56fc23"
+
+      #fhir/Attachment{:id "id-204201"}
+      "fb9177d8"
+
+      #fhir/Attachment{:extension [#fhir/Extension{}]}
+      "4947bc16"
+
+      #fhir/Attachment{:contentType #fhir/code"text/plain"}
+      "21d5985e"
+
+      #fhir/Attachment{:language #fhir/code"de"}
+      "223e2e7f"
+
+      #fhir/Attachment{:data #fhir/base64Binary"MTA1NjE0Cg=="}
+      "d2a23543"
+
+      #fhir/Attachment{:url #fhir/url"url-210424"}
+      "67f9de2f"
+
+      #fhir/Attachment{:size #fhir/unsignedInt 1}
+      "180724c5"
+
+      #fhir/Attachment{:hash #fhir/base64Binary"MTA1NjE0Cg=="}
+      "26e1ef66"
+
+      #fhir/Attachment{:title "title-210622"}
+      "fce4d064"
+
+      #fhir/Attachment{:creation #fhir/dateTime"2021"}
+      "1f9bf068"))
+
+  (testing "instance size"
+    (is (= 72 (total-size #fhir/Attachment{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Attachment{} "#fhir/Attachment{}"
+      #fhir/Attachment{:id "212329"} "#fhir/Attachment{:id \"212329\"}")))
 
 
 (deftest extension-test

@@ -1007,6 +1007,107 @@
              (s2/unform :fhir.xml/xhtml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))))
 
 
+(deftest attachment-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (are [x] (s2/valid? :fhir/Attachment x)
+        #fhir/Attachment{}
+        #fhir/Attachment{:contentType #fhir/code"text/plain"}))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Attachment x))
+        #fhir/Attachment{:contentType "text/plain"})))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Attachment json))
+        {}
+        #fhir/Attachment{}
+
+        {:contentType "text/plain"}
+        #fhir/Attachment{:contentType #fhir/code"text/plain"}
+
+        {:contentType 1}
+        ::s2/invalid)))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        #fhir/Attachment{}
+        {}
+
+        #fhir/Attachment{:id "id-155426"}
+        {:id "id-155426"}
+
+        #fhir/Attachment{:extension [#fhir/Extension{}]}
+        {:extension [{}]}
+
+        #fhir/Attachment{:extension [#fhir/Extension{} #fhir/Extension{}]}
+        {:extension [{} {}]}
+
+        #fhir/Attachment{:contentType #fhir/code"text/plain"}
+        {:contentType "text/plain"}
+
+        #fhir/Attachment{:language #fhir/code"de"}
+        {:language "de"}
+
+        #fhir/Attachment{:data #fhir/base64Binary"MTA1NjE0Cg=="}
+        {:data "MTA1NjE0Cg=="}
+
+        #fhir/Attachment{:url #fhir/url"url-210424"}
+        {:url "url-210424"}
+
+        #fhir/Attachment{:size #fhir/unsignedInt 1}
+        {:size 1}
+
+        #fhir/Attachment{:hash #fhir/base64Binary"MTA1NjE0Cg=="}
+        {:hash "MTA1NjE0Cg=="}
+
+        #fhir/Attachment{:title "title-210622"}
+        {:title "title-210622"}
+
+        #fhir/Attachment{:creation #fhir/dateTime"2021"}
+        {:creation "2021"}))
+
+    (testing "XML"
+      (are [fhir xml] (= xml (fhir-spec/unform-xml fhir))
+        #fhir/Attachment{}
+        (sexp [])
+
+        #fhir/Attachment{:id "id-155426"}
+        (sexp [nil {:id "id-155426"}])
+
+        #fhir/Attachment{:extension [#fhir/Extension{}]}
+        (sexp [nil {} [::f/extension]])
+
+        #fhir/Attachment{:extension [#fhir/Extension{} #fhir/Extension{}]}
+        (sexp [nil {} [::f/extension] [::f/extension]])
+
+        #fhir/Attachment{:contentType #fhir/code"text/plain"}
+        (sexp [nil {} [::f/contentType {:value "text/plain"}]])
+
+        #fhir/Attachment{:language #fhir/code"de"}
+        (sexp [nil {} [::f/language {:value "de"}]])
+
+        #fhir/Attachment{:data #fhir/base64Binary"MTA1NjE0Cg=="}
+        (sexp [nil {} [::f/data {:value "MTA1NjE0Cg=="}]])
+
+        #fhir/Attachment{:url #fhir/url"url-210424"}
+        (sexp [nil {} [::f/url {:value "url-210424"}]])
+
+        #fhir/Attachment{:size #fhir/unsignedInt 1}
+        (sexp [nil {} [::f/size {:value "1"}]])
+
+        #fhir/Attachment{:hash #fhir/base64Binary"MTA1NjE0Cg=="}
+        (sexp [nil {} [::f/hash {:value "MTA1NjE0Cg=="}]])
+
+        #fhir/Attachment{:title "title-210622"}
+        (sexp [nil {} [::f/title {:value "title-210622"}]])
+
+        #fhir/Attachment{:creation #fhir/dateTime"2021"}
+        (sexp [nil {} [::f/creation {:value "2021"}]])))))
+
+
 (deftest extension-test
   (testing "FHIR spec"
     (testing "valid"
@@ -1029,9 +1130,8 @@
         #fhir/Extension{:url "foo" :value #fhir/Reference{}}
 
         {:url "foo" :valueCodeableConcept {}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{}})))
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{}}))
 
-  (testing "conforming"
     (testing "CBOR"
       (are [json fhir] (= fhir (s2/conform :fhir.cbor/Extension json))
         {:url "foo" :valueCode "bar"}
@@ -1106,10 +1206,7 @@
         #fhir/Extension{:value {:fhir/type :fhir/Address}}
         {:valueAddress {}}
 
-        #fhir/Extension
-            {:value
-             {:fhir/type :fhir/Address
-              :city "foo"}}
+        #fhir/Extension{:value {:fhir/type :fhir/Address :city "foo"}}
         {:valueAddress {:city "foo"}}))))
 
 
@@ -1155,7 +1252,33 @@
         {:code "code-190226"}
 
         #fhir/Coding{:display "display-190327"}
-        {:display "display-190327"}))))
+        {:display "display-190327"}))
+
+    (testing "XML"
+      (are [fhir xml] (= xml (fhir-spec/unform-xml fhir))
+        #fhir/Coding{}
+        (sexp [])
+
+        #fhir/Coding{:id "id-101320"}
+        (sexp [nil {:id "id-101320"}])
+
+        #fhir/Coding{:extension [#fhir/Extension{}]}
+        (sexp [nil {} [::f/extension]])
+
+        #fhir/Coding{:extension [#fhir/Extension{} #fhir/Extension{}]}
+        (sexp [nil {} [::f/extension] [::f/extension]])
+
+        #fhir/Coding{:system #fhir/uri"system-185812"}
+        (sexp [nil {} [::f/system {:value "system-185812"}]])
+
+        #fhir/Coding{:version #fhir/uri"version-185951"}
+        (sexp [nil {} [::f/version {:value "version-185951"}]])
+
+        #fhir/Coding{:code #fhir/uri"code-190226"}
+        (sexp [nil {} [::f/code {:value "code-190226"}]])
+
+        #fhir/Coding{:display #fhir/uri"display-190327"}
+        (sexp [nil {} [::f/display {:value "display-190327"}]])))))
 
 
 (deftest codeable-concept-test
@@ -1361,9 +1484,8 @@
         {:period {}}
 
         #fhir/Identifier{:assigner #fhir/Reference{}}
-        {:assigner {}})))
+        {:assigner {}}))
 
-  (testing "unforming"
     (testing "XML"
       (are [fhir xml] (= xml (fhir-spec/unform-xml fhir))
         #fhir/Identifier{}

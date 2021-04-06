@@ -66,9 +66,9 @@
 
 
 (def library-content
-  {:fhir/type :fhir/Attachment
-   :contentType #fhir/code"text/cql"
-   :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
+  #fhir/Attachment
+      {:contentType #fhir/code"text/cql"
+       :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
 
 
 (deftest handler-test
@@ -220,14 +220,14 @@
 
   (testing "non text/cql content type"
     (let [{:keys [status body]}
-          ((handler-with [[[:put {:fhir/type :fhir/Measure :id "0"
-                                  :url #fhir/uri"url-182051"
-                                  :library [#fhir/canonical"library-url-094115"]}]
-                           [:put {:fhir/type :fhir/Library :id "0"
-                                  :url #fhir/uri"library-url-094115"
-                                  :content
-                                  [{:fhir/type :fhir/Attachment
-                                    :contentType #fhir/code"text/plain"}]}]]])
+          ((handler-with
+             [[[:put {:fhir/type :fhir/Measure :id "0"
+                      :url #fhir/uri"url-182051"
+                      :library [#fhir/canonical"library-url-094115"]}]
+               [:put {:fhir/type :fhir/Library :id "0"
+                      :url #fhir/uri"library-url-094115"
+                      :content
+                      [#fhir/Attachment{:contentType #fhir/code"text/plain"}]}]]])
            {::reitit/router router
             :params
             {"measure" "url-182051"
@@ -247,14 +247,14 @@
 
   (testing "missing data in library content"
     (let [{:keys [status body]}
-          ((handler-with [[[:put {:fhir/type :fhir/Measure :id "0"
-                                  :url #fhir/uri"url-182039"
-                                  :library [#fhir/canonical"library-url-094115"]}]
-                           [:put {:fhir/type :fhir/Library :id "0"
-                                  :url #fhir/uri"library-url-094115"
-                                  :content
-                                  [{:fhir/type :fhir/Attachment
-                                    :contentType #fhir/code"text/cql"}]}]]])
+          ((handler-with
+             [[[:put {:fhir/type :fhir/Measure :id "0"
+                      :url #fhir/uri"url-182039"
+                      :library [#fhir/canonical"library-url-094115"]}]
+               [:put {:fhir/type :fhir/Library :id "0"
+                      :url #fhir/uri"library-url-094115"
+                      :content
+                      [#fhir/Attachment{:contentType #fhir/code"text/cql"}]}]]])
            {::reitit/router router
             :params
             {"measure" "url-182039"
@@ -293,9 +293,9 @@
                       {:fhir/type :fhir/Library :id "0"
                        :url #fhir/uri"library-url-094115"
                        :content
-                       [{:fhir/type :fhir/Attachment
-                         :contentType #fhir/code"text/cql"
-                         :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
+                       [#fhir/Attachment
+                           {:contentType #fhir/code"text/cql"
+                            :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
                      [:put
                       {:fhir/type :fhir/Patient
                        :id "0"

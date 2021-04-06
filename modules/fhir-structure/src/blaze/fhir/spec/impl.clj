@@ -326,7 +326,8 @@
      :max (:max elem-def)
      :spec-form
      (case key
-       (:fhir/Extension
+       (:fhir/Attachment
+         :fhir/Extension
          :fhir/Coding
          :fhir/CodeableConcept
          :fhir/Quantity
@@ -446,7 +447,8 @@
      :modifier :json
      :spec-form
      (case key
-       (:fhir.json/Extension
+       (:fhir.json/Attachment
+         :fhir.json/Extension
          :fhir.json/Coding
          :fhir.json/CodeableConcept
          :fhir.json/Quantity
@@ -577,7 +579,8 @@
      :modifier :xml
      :spec-form
      (case key
-       (:fhir.xml/Extension
+       (:fhir.xml/Attachment
+         :fhir.xml/Extension
          :fhir.xml/Coding
          :fhir.xml/CodeableConcept
          :fhir.xml/Quantity
@@ -616,7 +619,8 @@
      :modifier :cbor
      :spec-form
      (case key
-       (:fhir.cbor/Extension
+       (:fhir.cbor/Attachment
+         :fhir.cbor/Extension
          :fhir.cbor/Coding
          :fhir.cbor/CodeableConcept
          :fhir.cbor/Quantity

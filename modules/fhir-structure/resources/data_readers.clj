@@ -15,6 +15,7 @@
  fhir/positiveInt blaze.fhir.spec.type/->PositiveInt
  fhir/uuid blaze.fhir.spec.type/->Uuid
  fhir/xhtml blaze.fhir.spec.type/->Xhtml
+ fhir/Attachment blaze.fhir.spec.type/map->Attachment
  fhir/Extension blaze.fhir.spec.type/map->Extension
  fhir/Coding blaze.fhir.spec.type/map->Coding
  fhir/CodeableConcept blaze.fhir.spec.type/map->CodeableConcept
