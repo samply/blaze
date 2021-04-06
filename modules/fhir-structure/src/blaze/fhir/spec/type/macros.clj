@@ -58,7 +58,7 @@
              (.writeStartObject ~'gen ~value-sym)
              ~@(map
                  (fn [field]
-                   `(when-let [~field (~(symbol (str "." field)) ~value-sym-tag)]
+                   `(when-let [~field (~(symbol (str ".-" field)) ~value-sym-tag)]
                       ~@(let [serializer (get field-serializers field)]
                           (case serializer
                             :string

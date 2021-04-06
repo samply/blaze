@@ -344,6 +344,12 @@
       (.writeString gen ^String (.value base64-binary)))))
 
 
+(defmethod print-method Base64Binary [^Base64Binary base64Binary ^Writer w]
+  (.write w "#fhir/base64Binary\"")
+  (.write w (str base64Binary))
+  (.write w "\""))
+
+
 (defn xml->Base64Binary
   {:arglists '([element])}
   [{{:keys [_id value]} :attrs _extensions :content}]
@@ -1072,6 +1078,25 @@
 (declare extension-serializer)
 
 
+(defcomplextype Attachment [id extension contentType language data url size
+                            hash title creation]
+  :hash-num 46
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   contentType code-serializer
+   language code-serializer
+   data base64-binary-serializer
+   url url-serializer
+   size unsigned-int-serializer
+   hash base64-binary-serializer
+   title :string
+   creation :dynamic})
+
+
+(declare attachment-serializer)
+
+
 (defcomplextype Extension [id extension url value]
   :hash-num 39
   :field-serializers
@@ -1216,6 +1241,7 @@
     (.addSerializer PositiveInt positive-int-serializer)
     (.addSerializer UUID uuid-serializer)
     (.addSerializer Xhtml xhtml-serializer)
+    (.addSerializer Attachment attachment-serializer)
     (.addSerializer Extension extension-serializer)
     (.addSerializer Coding coding-serializer)
     (.addSerializer CodeableConcept codeable-concept-serializer)
