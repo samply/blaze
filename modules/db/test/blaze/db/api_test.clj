@@ -636,6 +636,16 @@
         (is (coll/empty? (d/type-list (d/db node) "Patient")))
         (is (zero? (d/type-total (d/db node) "Patient"))))))
 
+  (testing "a node with one recreated patient"
+    (with-open [node (new-node)]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:delete "Patient" "0"]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+      (testing "has one list entry"
+        (is (= 1 (count (d/type-list (d/db node) "Patient"))))
+        (is (= 1 (d/type-total (d/db node) "Patient"))))))
+
   (testing "a node with two patients in two transactions"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])

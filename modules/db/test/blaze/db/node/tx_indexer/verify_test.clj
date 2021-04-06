@@ -141,6 +141,7 @@
   (testing "adding a second version of a patient to a store containing it already"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
@@ -161,6 +162,7 @@
   (testing "adding a second version of a patient to a store containing it already incl. matcher"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
@@ -182,6 +184,7 @@
   (testing "deleting the existing patient"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
@@ -204,6 +207,7 @@
   (testing "adding a second patient to a store containing already one"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
@@ -224,6 +228,7 @@
   (testing "update conflict"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (given
         (verify/verify-tx-cmds
           (d/db node) 2
@@ -240,6 +245,7 @@
                                   :birthDate #fhir/date"2020"}]
                            [:put {:fhir/type :fhir/Patient :id "1"
                                   :birthDate #fhir/date"2020"}]])
+
         (given
           (verify/verify-tx-cmds
             (d/db node) 2
@@ -253,6 +259,7 @@
     (testing "match"
       (with-open [node (new-node)]
         @(d/transact node [[:put patient-3]])
+
         (is
           (empty?
             (verify/verify-tx-cmds
@@ -264,6 +271,7 @@
     (testing "conflict because matching resource is deleted"
       (with-open [node (new-node)]
         @(d/transact node [[:put patient-3]])
+
         (given
           (verify/verify-tx-cmds
             (d/db node) 2
@@ -273,4 +281,27 @@
               :hash (hash/generate patient-0)
               :if-none-exist [["identifier" "120426"]]}])
           ::anom/category := ::anom/conflict
-          ::anom/message := "Duplicate transaction commands `create Patient?identifier=120426 (resolved to id 3)` and `delete Patient/3`.")))))
+          ::anom/message := "Duplicate transaction commands `create Patient?identifier=120426 (resolved to id 3)` and `delete Patient/3`.")))
+
+    (testing "on recreation"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put patient-0]])
+        @(d/transact node [[:delete "Patient" "0"]])
+
+        (is-entries=
+          (verify/verify-tx-cmds
+            (d/db node) 3
+            [{:op "put" :type "Patient" :id "0"
+              :hash (hash/generate patient-0)}])
+          (let [value (rts/encode-value (hash/generate patient-0) 3 :put)]
+            [[:resource-as-of-index
+              (rao/encode-key tid-patient (codec/id-byte-string "0") 3)
+              value]
+             [:type-as-of-index
+              (tao/encode-key tid-patient 3 (codec/id-byte-string "0"))
+              value]
+             [:system-as-of-index
+              (sao/encode-key 3 tid-patient (codec/id-byte-string "0"))
+              value]
+             (type-stats/index-entry tid-patient 3 {:total 1 :num-changes 3})
+             (system-stats/index-entry 3 {:total 1 :num-changes 3})]))))))
