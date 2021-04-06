@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#vsearch"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [blaze.interaction.search-compartment]
     [blaze.interaction.search-compartment-spec]
     [blaze.interaction.search.nav-spec]
@@ -135,11 +135,11 @@
         (testing "where the unknown search parameter is the only one"
           (testing "normal result"
             (let [{:keys [status body]}
-                  ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                                   [:put {:fhir/type :fhir/Observation :id "0"
-                                          :subject
-                                          (type/map->Reference
-                                            {:reference "Patient/0"})}]]])
+                  ((handler-with
+                     [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                       [:put {:fhir/type :fhir/Observation :id "0"
+                              :subject
+                              #fhir/Reference{:reference "Patient/0"}}]]])
                    {:path-params {:id "0" :type "Observation"}
                     ::reitit/router router
                     ::reitit/match match
@@ -172,8 +172,8 @@
                   ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]
                                    [:put {:fhir/type :fhir/Observation :id "0"
                                           :subject
-                                          (type/map->Reference
-                                            {:reference "Patient/0"})}]]])
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]]])
                    {:path-params {:id "0" :type "Observation"}
                     ::reitit/router router
                     ::reitit/match match
@@ -208,13 +208,13 @@
                                    [:put {:fhir/type :fhir/Observation :id "0"
                                           :status #fhir/code"final"
                                           :subject
-                                          (type/map->Reference
-                                            {:reference "Patient/0"})}]
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]
                                    [:put {:fhir/type :fhir/Observation :id "1"
                                           :status #fhir/code"preliminary"
                                           :subject
-                                          (type/map->Reference
-                                            {:reference "Patient/0"})}]]])
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]]])
                    {:path-params {:id "0" :type "Observation"}
                     ::reitit/router router
                     ::reitit/match match
@@ -245,13 +245,13 @@
                                    [:put {:fhir/type :fhir/Observation :id "0"
                                           :status #fhir/code"final"
                                           :subject
-                                          (type/map->Reference
-                                            {:reference "Patient/0"})}]
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]
                                    [:put {:fhir/type :fhir/Observation :id "1"
                                           :status #fhir/code"preliminary"
                                           :subject
-                                          (type/map->Reference
-                                            {:reference "Patient/0"})}]]])
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]]])
                    {:path-params {:id "0" :type "Observation"}
                     ::reitit/router router
                     ::reitit/match match
@@ -296,14 +296,10 @@
             [[[:put {:fhir/type :fhir/Patient :id "0"}]
               [:put {:fhir/type :fhir/Observation :id "0"
                      :status #fhir/code"final"
-                     :subject
-                     (type/map->Reference
-                       {:reference "Patient/0"})}]
+                     :subject #fhir/Reference{:reference "Patient/0"}}]
               [:put {:fhir/type :fhir/Observation :id "1"
                      :status #fhir/code"preliminary"
-                     :subject
-                     (type/map->Reference
-                       {:reference "Patient/0"})}]]])
+                     :subject #fhir/Reference{:reference "Patient/0"}}]]])
           request
           {:path-params {:id "0" :type "Observation"}
            ::reitit/router router

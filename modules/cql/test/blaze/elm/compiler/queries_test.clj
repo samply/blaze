@@ -12,7 +12,7 @@
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]])
@@ -175,8 +175,7 @@
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]]])]
+                                #fhir/Reference{:reference "Patient/0"}}]]])]
       (let [elm {:alias "O1"
                :type "WithEquiv"
                :expression
@@ -201,9 +200,7 @@
           eval-context {:db (d/db node)}
           xform (queries/-create xform-factory eval-context nil)
           lhs-entity {:fhir/type :fhir/Observation
-                      :subject
-                      (type/map->Reference
-                        {:reference "Patient/0"})}]
+                      :subject #fhir/Reference{:reference "Patient/0"}}]
       (is (= [lhs-entity] (into [] xform [lhs-entity]))))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
@@ -211,8 +208,7 @@
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]]])]
+                                #fhir/Reference{:reference "Patient/0"}}]]])]
       (let [elm {:alias "O"
                :type "WithEquiv"
                :expression
@@ -231,5 +227,5 @@
           xform-factory (queries/compile-with-equiv-clause compile-context elm)
           eval-context {:db (d/db node)}
           xform (queries/-create xform-factory eval-context nil)
-          lhs-entity (type/map->Reference {:reference "Patient/0"})]
+          lhs-entity #fhir/Reference{:reference "Patient/0"}]
       (is (= [lhs-entity] (into [] xform [lhs-entity])))))))

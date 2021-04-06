@@ -339,7 +339,7 @@
                            :criteria (cql-expression "InInitialPopulation")}]
                          :stratifier
                          [{:fhir/type :fhir.Measure.group/stratifier
-                           :code (type/map->CodeableConcept {:text "gender"})
+                           :code #fhir/CodeableConcept{:text "gender"}
                            :criteria (cql-expression "Gender")}]}]}]
                      [:put
                       {:fhir/type :fhir/Library :id "0"

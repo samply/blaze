@@ -28,8 +28,8 @@
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]]])]
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]]])]
       (let [db (d/db node)
             include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
             observations (d/type-list db "Observation")]
@@ -44,8 +44,8 @@
                          [[[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "0"
                                   :subject
-                                  (type/map->Reference
-                                    {:reference "Patient/0"})}]]])]
+                                  #fhir/Reference
+                                      {:reference "Patient/0"}}]]])]
         (let [db (d/db node)
               include-defs {:direct
                             {:forward
@@ -62,15 +62,15 @@
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Encounter :id "1"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]
                          [:put {:fhir/type :fhir/Observation :id "2"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})
+                                #fhir/Reference
+                                    {:reference "Patient/0"}
                                 :encounter
-                                (type/map->Reference
-                                  {:reference "Encounter/1"})}]]])]
+                                #fhir/Reference
+                                    {:reference "Encounter/1"}}]]])]
       (let [db (d/db node)
             include-defs {:direct
                           {:forward
@@ -89,8 +89,8 @@
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Observation :id "1"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]]])]
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]]])]
       (let [db (d/db node)
             include-defs {:direct
                           {:reverse

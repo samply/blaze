@@ -12,7 +12,7 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -96,10 +96,10 @@
              :id "id-155558"
              :status #fhir/code"final"
              :value
-             (type/map->Quantity
-               {:value 140M
-                :code #fhir/code"mm[Hg]"
-                :system #fhir/uri"http://unitsofmeasure.org"})}
+             #fhir/Quantity
+                 {:value 140M
+                  :code #fhir/code"mm[Hg]"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
@@ -160,9 +160,9 @@
              :id "id-155558"
              :status #fhir/code"final"
              :value
-             (type/map->Quantity
-               {:value 140M
-                :unit "mmHg"})}
+             #fhir/Quantity
+                 {:value 140M
+                  :unit "mmHg"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
@@ -207,10 +207,10 @@
              :id "id-155558"
              :status #fhir/code"final"
              :value
-             (type/map->Quantity
-               {:value 120M
-                :unit "mm[Hg]"
-                :code #fhir/code"mm[Hg]"})}
+             #fhir/Quantity
+                 {:value 120M
+                  :unit "mm[Hg]"
+                  :code #fhir/code"mm[Hg]"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
@@ -255,10 +255,10 @@
              :id "id-155558"
              :status #fhir/code"final"
              :value
-             (type/map->Quantity
-               {:value 120M
-                :unit "mmHg"
-                :code #fhir/code"mm[Hg]"})}
+             #fhir/Quantity
+                 {:value 120M
+                  :unit "mmHg"
+                  :code #fhir/code"mm[Hg]"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries

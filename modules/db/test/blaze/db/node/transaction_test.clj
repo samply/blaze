@@ -2,7 +2,7 @@
   (:require
     [blaze.db.node.transaction :as tx]
     [blaze.db.node.transaction-spec]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]))
@@ -25,9 +25,7 @@
     (testing "with references"
       (given (tx/prepare-ops
                [[:create {:fhir/type :fhir/Observation :id "0"
-                          :subject
-                          (type/map->Reference
-                            {:reference "Patient/0"})}]])
+                          :subject #fhir/Reference{:reference "Patient/0"}}]])
         [0 0 :op] := "create"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
@@ -35,9 +33,7 @@
         [0 0 :refs] := [["Patient" "0"]]
         [1 0 0] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [1 0 1] := {:fhir/type :fhir/Observation :id "0"
-                    :subject
-                    (type/map->Reference
-                      {:reference "Patient/0"})}))
+                    :subject #fhir/Reference{:reference "Patient/0"}}))
 
     (testing "conditional"
       (given (tx/prepare-ops

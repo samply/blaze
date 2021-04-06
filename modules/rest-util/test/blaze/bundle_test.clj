@@ -29,8 +29,8 @@
             {:fhir/type :fhir/Observation
              :id "0"
              :subject
-             (type/map->Reference
-               {:reference "urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"})}
+             #fhir/Reference
+                 {:reference "urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"}}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Observation"}}
@@ -58,8 +58,8 @@
             {:fhir/type :fhir/Patient
              :id "0"
              :generalPractitioner
-             [(type/map->Reference
-                {:reference "urn:uuid:44dded80-aaf1-4988-ace4-5f3a2c9935a7"})]}
+             [#fhir/Reference
+                 {:reference "urn:uuid:44dded80-aaf1-4988-ace4-5f3a2c9935a7"}]}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Patient"}}]]
@@ -81,8 +81,8 @@
              :id "0"
              :diagnosis
              [{:diagnosisReference
-               (type/map->Reference
-                 {:reference "urn:uuid:69857788-8691-45b9-bc97-654fb93ba615"})}]}
+               #fhir/Reference
+                   {:reference "urn:uuid:69857788-8691-45b9-bc97-654fb93ba615"}}]}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Claim"}}]]
@@ -92,9 +92,8 @@
   (testing "preserves complex-type records"
     (let [entries
           [{:resource
-            {:fhir/type :fhir/Observation
-             :id "0"
-             :code (type/map->CodeableConcept {})}}]]
+            {:fhir/type :fhir/Observation :id "0"
+             :code #fhir/CodeableConcept{}}}]]
       (given (bundle/resolve-entry-links entries)
         [0 :resource :code type/type] := :fhir/CodeableConcept))))
 
@@ -103,21 +102,18 @@
   (let [entries
         [{:fullUrl #fhir/uri"urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"
           :resource
-          {:fhir/type :fhir/Patient
-           :id "0"}
+          {:fhir/type :fhir/Patient :id "0"}
           :request
           {:method #fhir/code"POST"
            :url #fhir/uri"Patient"}}
          {:fullUrl #fhir/uri"urn:uuid:d0f40d1f-2f95-4990-a994-8182cfe71bc2"
           :resource
-          {:fhir/type :fhir/ExplanationOfBenefit
-           :id "0"
+          {:fhir/type :fhir/ExplanationOfBenefit :id "0"
            :contained
-           [{:fhir/type :fhir/ServiceRequest
-             :id "0"
+           [{:fhir/type :fhir/ServiceRequest :id "0"
              :subject
-             (type/map->Reference
-               {:reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"})}]}
+             #fhir/Reference
+                 {:reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
           :request
           {:method #fhir/code"POST"
            :url #fhir/uri"ExplanationOfBenefit"}}]]

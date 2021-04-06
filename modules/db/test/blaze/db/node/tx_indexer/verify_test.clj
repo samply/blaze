@@ -20,7 +20,7 @@
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.walk :refer [postwalk]]
@@ -107,7 +107,7 @@
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 (def patient-2 {:fhir/type :fhir/Patient :id "2"})
 (def patient-3 {:fhir/type :fhir/Patient :id "3"
-                :identifier [(type/map->Identifier {:value "120426"})]})
+                :identifier [#fhir/Identifier{:value "120426"}]})
 
 
 (defn bytes->vec [x]

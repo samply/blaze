@@ -7,7 +7,7 @@
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]])
@@ -93,9 +93,9 @@
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 identifier
-                (type/map->Identifier
-                  {:system #fhir/uri"foo"
-                   :value "bar"})
+                #fhir/Identifier
+                    {:system #fhir/uri"foo"
+                     :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
@@ -112,9 +112,9 @@
                  :scope "R"
                  :type "Property"}
                 identifier
-                (type/map->Identifier
-                  {:system #fhir/uri"foo"
-                 :value "bar"})
+                #fhir/Identifier
+                    {:system #fhir/uri"foo"
+                     :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
@@ -132,9 +132,9 @@
                  :scope "R"
                  :type "Property"}
                 extension
-                (type/map->Extension
-                  {:url "foo"
-                   :valueString "bar"})
+                #fhir/Extension
+                    {:url "foo"
+                     :valueString "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :extension [extension]}
@@ -214,9 +214,9 @@
                  :type "Property"
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 identifier
-                (type/map->Identifier
-                  {:system #fhir/uri"foo"
-                 :value "bar"})
+                #fhir/Identifier
+                    {:system #fhir/uri"foo"
+                     :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
@@ -234,9 +234,9 @@
                  :scope "R"
                  :type "Property"}
                 identifier
-                (type/map->Identifier
-                  {:system #fhir/uri"foo"
-                 :value "bar"})
+                #fhir/Identifier
+                    {:system #fhir/uri"foo"
+                     :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
@@ -321,9 +321,9 @@
                :type "Property"
                :life/source-type "{http://hl7.org/fhir}Patient"}
               identifier
-              (type/map->Identifier
-                {:system #fhir/uri"foo"
-               :value "bar"})
+              #fhir/Identifier
+                  {:system #fhir/uri"foo"
+                   :value "bar"}
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
@@ -338,9 +338,9 @@
                :source #elm/expression-ref "Patient"
                :type "Property"}
               identifier
-              (type/map->Identifier
-                {:system #fhir/uri"foo"
-               :value "bar"})
+              #fhir/Identifier
+                  {:system #fhir/uri"foo"
+                   :value "bar"}
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}

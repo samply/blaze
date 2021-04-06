@@ -191,8 +191,7 @@
            ;; reference dependency ordering algorithm
            [[:create
              {:fhir/type :fhir/Observation :id "0"
-              :subject
-              (type/map->Reference {:reference "Patient/0"})}]
+              :subject #fhir/Reference{:reference "Patient/0"}}]
             [:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -230,7 +229,7 @@
           @(d/transact
              node
              [[:put {:fhir/type :fhir/Patient :id "0"
-                     :identifier [(type/map->Identifier {:value "094808"})]}]])
+                     :identifier [#fhir/Identifier{:value "094808"}]}]])
 
           @(d/transact
              node
@@ -250,7 +249,7 @@
           @(d/transact
              node
              [[:put {:fhir/type :fhir/Patient :id "0"
-                     :identifier [(type/map->Identifier {:value "111033"})]}]])
+                     :identifier [#fhir/Identifier{:value "111033"}]}]])
 
           @(d/transact
              node
@@ -285,7 +284,7 @@
           @(d/transact
              node
              [[:put {:fhir/type :fhir/Patient :id "0"
-                     :identifier [(type/map->Identifier {:value "153229"})]}]])
+                     :identifier [#fhir/Identifier{:value "153229"}]}]])
 
           (testing "causes a transaction abort with conflict"
             (given
@@ -317,7 +316,7 @@
            ;; the create ops are purposely disordered in order to test the
            ;; reference dependency ordering algorithm
            [[:put {:fhir/type :fhir/Observation :id "0"
-                   :subject (type/map->Reference {:reference "Patient/0"})}]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (testing "the Patient was created"
@@ -357,13 +356,13 @@
                    :id "0"
                    :entry
                    [{:fhir/type :fhir.List/entry
-                     :item (type/map->Reference {:reference "Observation/0"})}
+                     :item #fhir/Reference{:reference "Observation/0"}}
                     {:fhir/type :fhir.List/entry
-                     :item (type/map->Reference {:reference "Observation/1"})}]}]
+                     :item #fhir/Reference{:reference "Observation/1"}}]}]
             [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject (type/map->Reference {:reference "Patient/0"})}]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject (type/map->Reference {:reference "Patient/0"})}]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -430,8 +429,7 @@
                       [[:put {:fhir/type :fhir/Patient :id "0" :active false}]
                        [:create {:fhir/type :fhir/Observation :id "0"
                                  :subject
-                                 (type/map->Reference
-                                   {:reference "Patient/1"})}]])
+                                 #fhir/Reference{:reference "Patient/1"}}]])
                     (ac/exceptionally (comp ex-data ex-cause)))
           ::anom/category := ::anom/conflict))
 
@@ -458,9 +456,9 @@
             (catch-cause-ex-data
               @(d/transact
                  node
-                 [[:create {:fhir/type :fhir/Observation :id "0"
-                            :subject
-                            (type/map->Reference {:reference "Patient/0"})}]]))
+                 [[:create
+                   {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}}]]))
             ::anom/category := ::anom/conflict
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
 
@@ -470,9 +468,9 @@
             (catch-cause-ex-data
               @(d/transact
                  node
-                 [[:put {:fhir/type :fhir/Observation :id "0"
-                         :subject
-                         (type/map->Reference {:reference "Patient/0"})}]]))
+                 [[:put
+                   {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}}]]))
             ::anom/category := ::anom/conflict
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
@@ -491,11 +489,9 @@
                  {:fhir/type :fhir/List :id "0"
                   :entry
                   [{:fhir/type :fhir.List/entry
-                    :item
-                    (type/map->Reference {:reference "Observation/0"})}
+                    :item #fhir/Reference{:reference "Observation/0"}}
                    {:fhir/type :fhir.List/entry
-                    :item
-                    (type/map->Reference {:reference "Observation/1"})}]}]
+                    :item #fhir/Reference{:reference "Observation/1"}}]}]
                 [:delete "Observation" "1"]]))
           ::anom/category := ::anom/conflict
           ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
@@ -886,12 +882,12 @@
                                   :entry
                                   [{:fhir/type :fhir.List/entry
                                     :item
-                                    (type/map->Reference
-                                      {:reference "Patient/0"})}
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}
                                    {:fhir/type :fhir.List/entry
                                     :item
-                                    (type/map->Reference
-                                      {:reference "Observation/0"})}]}]])
+                                    #fhir/Reference
+                                        {:reference "Observation/0"}}]}]])
 
         (testing "returns only the patient referenced in the list"
           (given (pull-type-query node "Patient" [["_list" "0"]])
@@ -915,16 +911,16 @@
                                   :entry
                                   [{:fhir/type :fhir.List/entry
                                     :item
-                                    (type/map->Reference
-                                      {:reference "Patient/0"})}
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}
                                    {:fhir/type :fhir.List/entry
                                     :item
-                                    (type/map->Reference
-                                      {:reference "Patient/2"})}
+                                    #fhir/Reference
+                                        {:reference "Patient/2"}}
                                    {:fhir/type :fhir.List/entry
                                     :item
-                                    (type/map->Reference
-                                      {:reference "Patient/3"})}]}]])
+                                    #fhir/Reference
+                                        {:reference "Patient/3"}}]}]])
 
         (testing "it is possible to start with the second patient"
           (given (pull-type-query node "Patient" [["_list" "0"]] "2")
@@ -940,49 +936,49 @@
                                 :active true}]
                          [:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})
+                                #fhir/Reference
+                                    {:reference "Patient/0"}
                                 :code
-                                (type/map->CodeableConcept
-                                  {:coding
-                                   [(type/map->Coding
-                                      {:system #fhir/uri"http://loinc.org"
-                                       :code #fhir/code"8480-6"})]})
+                                #fhir/CodeableConcept
+                                    {:coding
+                                     [#fhir/Coding
+                                         {:system #fhir/uri"http://loinc.org"
+                                          :code #fhir/code"8480-6"}]}
                                 :value
-                                (type/map->Quantity
-                                  {:value 130M
-                                   :code #fhir/code"mm[Hg]"
-                                   :system #fhir/uri"http://unitsofmeasure.org"})}]
+                                #fhir/Quantity
+                                    {:value 130M
+                                     :code #fhir/code"mm[Hg]"
+                                     :system #fhir/uri"http://unitsofmeasure.org"}}]
                          [:put {:fhir/type :fhir/Observation :id "O1"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})
+                                #fhir/Reference
+                                    {:reference "Patient/0"}
                                 :code
-                                (type/map->CodeableConcept
-                                  {:coding
-                                   [(type/map->Coding
-                                      {:system #fhir/uri"http://loinc.org"
-                                       :code #fhir/code"8480-6"})]})
+                                #fhir/CodeableConcept
+                                    {:coding
+                                     [#fhir/Coding
+                                         {:system #fhir/uri"http://loinc.org"
+                                          :code #fhir/code"8480-6"}]}
                                 :value
-                                (type/map->Quantity
-                                  {:value 150M
-                                   :code #fhir/code"mm[Hg]"
-                                   :system #fhir/uri"http://unitsofmeasure.org"})}]
+                                #fhir/Quantity
+                                    {:value 150M
+                                     :code #fhir/code"mm[Hg]"
+                                     :system #fhir/uri"http://unitsofmeasure.org"}}]
                          [:put {:fhir/type :fhir/Observation :id "O2"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/1"})
+                                #fhir/Reference
+                                    {:reference "Patient/1"}
                                 :code
-                                (type/map->CodeableConcept
-                                  {:coding
-                                   [(type/map->Coding
-                                      {:system #fhir/uri"http://loinc.org"
-                                       :code #fhir/code"8480-6"})]})
+                                #fhir/CodeableConcept
+                                    {:coding
+                                     [#fhir/Coding
+                                         {:system #fhir/uri"http://loinc.org"
+                                          :code #fhir/code"8480-6"}]}
                                 :value
-                                (type/map->Quantity
-                                  {:value 100M
-                                   :code #fhir/code"mm[Hg]"
-                                   :system #fhir/uri"http://unitsofmeasure.org"})}]])
+                                #fhir/Quantity
+                                    {:value 100M
+                                     :code #fhir/code"mm[Hg]"
+                                     :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "select the Patient with >= 130 mm[Hg]"
         (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
@@ -1037,11 +1033,8 @@
          [[:put {:fhir/type :fhir/Patient
                  :id "id-0"
                  :meta
-                 (type/map->Meta
-                   {:profile [#fhir/canonical"profile-uri-145024"]})
-                 :identifier
-                 [(type/map->Identifier
-                    {:value "0"})]
+                 #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
+                 :identifier [#fhir/Identifier{:value "0"}]
                  :active false
                  :gender #fhir/code"male"
                  :birthDate #fhir/date"2020-02-08"
@@ -1563,19 +1556,19 @@
          [[:put {:fhir/type :fhir/Specimen
                  :id "id-0"
                  :type
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
-                        :code #fhir/code"dna"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
+                           :code #fhir/code"dna"}]}
                  :collection
                  {:fhir/type :fhir.Specimen/collection
                   :bodySite
-                  (type/map->CodeableConcept
-                    {:coding
-                     [(type/map->Coding
-                        {:system #fhir/uri"urn:oid:2.16.840.1.113883.6.43.1"
-                         :code #fhir/code"C77.4"})]})}}]])
+                  #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                           {:system #fhir/uri"urn:oid:2.16.840.1.113883.6.43.1"
+                            :code #fhir/code"C77.4"}]}}}]])
 
       (testing "bodysite"
         (testing "using system|code"
@@ -1687,14 +1680,14 @@
           [:put {:fhir/type :fhir/Condition
                  :id "id-0"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
-                        :code #fhir/code"C71.4"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                           :code #fhir/code"C71.4"}]}
                  :subject
-                 (type/map->Reference
-                   {:reference "Patient/id-0"})}]
+                 #fhir/Reference
+                     {:reference "Patient/id-0"}}]
           [:put {:fhir/type :fhir/Condition
                  :id "id-1"}]])
 
@@ -1719,34 +1712,34 @@
          node
          [[:put {:fhir/type :fhir/Condition :id "0"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:code #fhir/code"0"})]})}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"0"}]}}]
           [:put {:fhir/type :fhir/Condition :id "3"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:code #fhir/code"0"})]})}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"0"}]}}]
           [:put {:fhir/type :fhir/Condition :id "4"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:code #fhir/code"0"})]})}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"0"}]}}]
           [:put {:fhir/type :fhir/Condition :id "1"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:code #fhir/code"1"})]})}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"1"}]}}]
           [:put {:fhir/type :fhir/Condition :id "2"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:code #fhir/code"1"})]})}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"1"}]}}]])
 
       (testing "code"
         (testing "starting with ID `1` does not return Conditions with ID `3`
@@ -1772,43 +1765,43 @@
                  :id "id-0"
                  :status #fhir/code"final"
                  :effective
-                 (type/map->Period
-                   {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                    :end #fhir/dateTime"2021-02-23T16:00:00+01:00"})
+                 #fhir/Period
+                     {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                      :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
                  :value
-                 (type/map->Quantity
-                   {:value 0M
-                    :unit "kg/m²"
-                    :code #fhir/code"kg/m2"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]
+                 #fhir/Quantity
+                     {:value 0M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
                  :effective #fhir/dateTime"2021-02-25"
                  :value
-                 (type/map->Quantity
-                   {:value 1M
-                    :unit "kg/m²"
-                    :code #fhir/code"kg/m2"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]
+                 #fhir/Quantity
+                     {:value 1M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-2"
                  :status #fhir/code"final"
                  :value
-                 (type/map->Quantity
-                   {:value 2.11M
-                    :unit "kg/m²"
-                    :code #fhir/code"kg/m2"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]
+                 #fhir/Quantity
+                     {:value 2.11M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-3"
                  :status #fhir/code"final"
                  :value
-                 (type/map->Quantity
-                   {:value 3M
-                    :unit "kg/m²"
-                    :code #fhir/code"kg/m2"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]])
+                 #fhir/Quantity
+                     {:value 3M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "date"
         (testing "with year precision"
@@ -2145,20 +2138,20 @@
                  :id "id-0"
                  :status #fhir/code"final"
                  :value
-                 (type/map->Quantity
-                   {:value 23.42M
-                    :unit "kg/m²"
-                    :code #fhir/code"kg/m2"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]
+                 #fhir/Quantity
+                     {:value 23.42M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
                  :value
-                 (type/map->Quantity
-                   {:value 23.42M
-                    :unit "kg/m²"
-                    :code #fhir/code"kg/m2"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]])
+                 #fhir/Quantity
+                     {:value 23.42M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "full result"
         (let [clauses [["value-quantity" "23.42"]]]
@@ -2180,21 +2173,21 @@
          [[:put {:fhir/type :fhir/Observation
                  :id "id-0"
                  :value
-                 (type/map->Quantity
-                   {:value 0M
-                    :unit "m"
-                    :code #fhir/code"m"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]
+                 #fhir/Quantity
+                     {:value 0M
+                      :unit "m"
+                      :code #fhir/code"m"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/TestScript
                  :id "id-0"
                  :useContext
                  [{:fhir/type :fhir/UsageContext
                    :value
-                   (type/map->Quantity
-                     {:value 0M
-                      :unit "m"
-                      :code #fhir/code"m"
-                      :system #fhir/uri"http://unitsofmeasure.org"})}]}]])
+                   #fhir/Quantity
+                       {:value 0M
+                        :unit "m"
+                        :code #fhir/code"m"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]}]])
 
       (testing "ResourceSearchParamValue index looks like it should"
         (is (= (r-sp-v-tu/decode-index-entries
@@ -2244,58 +2237,58 @@
                  :id "id-0"
                  :status #fhir/code"final"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://loinc.org"
-                        :code #fhir/code"8480-6"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8480-6"}]}
                  :value
-                 (type/map->Quantity
-                   {:value 130M
-                    :code #fhir/code"mm[Hg]"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]
+                 #fhir/Quantity
+                     {:value 130M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://loinc.org"
-                        :code #fhir/code"8480-6"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8480-6"}]}
                  :value
-                 (type/map->Quantity
-                   {:value 150M
-                    :code #fhir/code"mm[Hg]"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]
+                 #fhir/Quantity
+                     {:value 150M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-2"
                  :status #fhir/code"final"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://loinc.org"
-                        :code #fhir/code"8462-4"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8462-4"}]}
                  :value
-                 (type/map->Quantity
-                   {:value 90M
-                    :code #fhir/code"mm[Hg]"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]
+                 #fhir/Quantity
+                     {:value 90M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-3"
                  :status #fhir/code"final"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://loinc.org"
-                        :code #fhir/code"8462-4"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8462-4"}]}
                  :value
-                 (type/map->Quantity
-                   {:value 70M
-                    :code #fhir/code"mm[Hg]"
-                    :system #fhir/uri"http://unitsofmeasure.org"})}]])
+                 #fhir/Quantity
+                     {:value 70M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "as first clause"
         (let [clauses [["code-value-quantity" "8480-6$ge140"]]]
@@ -2436,53 +2429,53 @@
                  :id "id-0"
                  :status #fhir/code"final"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://loinc.org"
-                        :code #fhir/code"94564-2"
-                        :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"94564-2"
+                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
                  :value
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://snomed.info/sct"
-                        :code #fhir/code"260373001"
-                        :display "Detected (qualifier value)"})]})}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://snomed.info/sct"
+                           :code #fhir/code"260373001"
+                           :display "Detected (qualifier value)"}]}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://loinc.org"
-                        :code #fhir/code"94564-2"
-                        :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"94564-2"
+                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
                  :value
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://snomed.info/sct"
-                        :code #fhir/code"260415000"
-                        :display "Not detected (qualifier value)"})]})}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://snomed.info/sct"
+                           :code #fhir/code"260415000"
+                           :display "Not detected (qualifier value)"}]}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-2"
                  :status #fhir/code"final"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://loinc.org"
-                        :code #fhir/code"94564-2"
-                        :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"94564-2"
+                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
                  :value
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"http://snomed.info/sct"
-                        :code #fhir/code"260373001"
-                        :display "Detected (qualifier value)"})]})}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://snomed.info/sct"
+                           :code #fhir/code"260373001"
+                           :display "Detected (qualifier value)"}]}}]])
 
       (testing "as first clause"
         (testing "code as system|code"
@@ -2597,15 +2590,15 @@
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       (type/map->Reference
-                         {:reference "Patient/0"})}]}]
+                       #fhir/Reference
+                           {:reference "Patient/0"}}]}]
               [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       (type/map->Reference
-                         {:reference "Patient/1"})}]}]])
+                       #fhir/Reference
+                           {:reference "Patient/1"}}]}]])
 
           (let [clauses [["item" "Patient/1"]]]
             (given (pull-type-query node "List" clauses)
@@ -2621,21 +2614,21 @@
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       (type/map->Reference
-                         {:identifier
-                          (type/map->Identifier
-                            {:system #fhir/uri"system-122917"
-                             :value "value-122931"})})}]}]
+                       #fhir/Reference
+                           {:identifier
+                            #fhir/Identifier
+                                {:system #fhir/uri"system-122917"
+                                 :value "value-122931"}}}]}]
               [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       (type/map->Reference
-                         {:identifier
-                          (type/map->Identifier
-                            {:system #fhir/uri"system-122917"
-                             :value "value-143818"})})}]}]])
+                       #fhir/Reference
+                           {:identifier
+                            #fhir/Identifier
+                                {:system #fhir/uri"system-122917"
+                                 :value "value-143818"}}}]}]])
 
           (let [clauses [["item:identifier" "system-122917|value-122931"]]]
             (given (pull-type-query node "List" clauses)
@@ -2650,35 +2643,35 @@
              [[:put {:fhir/type :fhir/List
                      :id "id-123058"
                      :code
-                     (type/map->CodeableConcept
-                       {:coding
-                        [(type/map->Coding
-                           {:system #fhir/uri"system-152812"
-                            :code #fhir/code"code-152819"})]})
+                     #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                              {:system #fhir/uri"system-152812"
+                               :code #fhir/code"code-152819"}]}
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       (type/map->Reference
-                         {:identifier
-                          (type/map->Identifier
-                            {:system #fhir/uri"system-122917"
-                             :value "value-122931"})})}]}]
+                       #fhir/Reference
+                           {:identifier
+                            #fhir/Identifier
+                                {:system #fhir/uri"system-122917"
+                                 :value "value-122931"}}}]}]
               [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :code
-                     (type/map->CodeableConcept
-                       {:coding
-                        [(type/map->Coding
-                           {:system #fhir/uri"system-152812"
-                            :code #fhir/code"code-152819"})]})
+                     #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                              {:system #fhir/uri"system-152812"
+                               :code #fhir/code"code-152819"}]}
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       (type/map->Reference
-                         {:identifier
-                          (type/map->Identifier
-                            {:system #fhir/uri"system-122917"
-                             :value "value-143818"})})}]}]])
+                       #fhir/Reference
+                           {:identifier
+                            #fhir/Identifier
+                                {:system #fhir/uri"system-122917"
+                                 :value "value-143818"}}}]}]])
 
           (let [clauses [["code" "system-152812|code-152819"]
                          ["item:identifier" "system-122917|value-143818"]]]
@@ -2851,8 +2844,8 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation")
         count := 1
@@ -2865,12 +2858,12 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation")
         count := 2
@@ -2886,8 +2879,8 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
       @(d/transact node [[:delete "Observation" "0"]])
 
       (is (coll/empty? (d/list-compartment-resource-handles
@@ -2898,16 +2891,16 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "2"
                                 :subject
-                                (type/map->Reference
-                                  {:reference "Patient/0"})}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation" "1")
         [0 :fhir/type] := :fhir/Observation
@@ -2942,15 +2935,13 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system-191514"
-                        :code #fhir/code"code-191518"})]})}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}}]])
 
       (given @(pull-compartment-query
                 node "Patient" "0" "Observation"
@@ -2963,9 +2954,7 @@
     (let [observation
           (fn [id code]
             {:fhir/type :fhir/Observation :id id
-             :subject
-             (type/map->Reference
-               {:reference "Patient/0"})
+             :subject #fhir/Reference{:reference "Patient/0"}
              :code
              (type/map->CodeableConcept
                {:coding
@@ -2991,9 +2980,7 @@
     (let [observation
           (fn [id code]
             {:fhir/type :fhir/Observation :id id
-             :subject
-             (type/map->Reference
-               {:reference "Patient/0"})
+             :subject #fhir/Reference{:reference "Patient/0"}
              :code
              (type/map->CodeableConcept
                {:coding
@@ -3033,15 +3020,13 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system"
-                        :code #fhir/code"code"})]})}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code"}]}}]])
       @(d/transact
          node
          [[:delete "Observation" "0"]])
@@ -3054,9 +3039,7 @@
     (let [observation
           (fn [id code]
             {:fhir/type :fhir/Observation :id id
-             :subject
-             (type/map->Reference
-               {:reference "Patient/0"})
+             :subject #fhir/Reference{:reference "Patient/0"}
              :code
              (type/map->CodeableConcept
                {:coding
@@ -3086,15 +3069,13 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system-191514"
-                        :code #fhir/code"code-191518"})]})}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}}]])
 
       (given @(pull-compartment-query
                 node "Patient" "0" "Observation"
@@ -3109,21 +3090,19 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system-191514"
-                        :code #fhir/code"code-191518"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}
                  :value
-                 (type/map->Quantity
-                   {:code #fhir/code"kg/m2"
-                    :unit "kg/m²"
-                    :system #fhir/uri"http://unitsofmeasure.org"
-                    :value 42M})}]])
+                 #fhir/Quantity
+                     {:code #fhir/code"kg/m2"
+                      :unit "kg/m²"
+                      :system #fhir/uri"http://unitsofmeasure.org"
+                      :value 42M}}]])
 
       (testing "matches second criteria"
         (given @(pull-compartment-query
@@ -3171,54 +3150,46 @@
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Condition :id "1"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system"
-                        :code #fhir/code"code-a"})]})
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code-a"}]}
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
           [:put {:fhir/type :fhir/Condition :id "2"
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system"
-                        :code #fhir/code"code-b"})]})
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code-b"}]}
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "3"
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system"
-                        :code #fhir/code"code-a"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code-a"}]}
                  :value
-                 (type/map->Quantity
-                   {:code #fhir/code"kg/m2"
-                    :system #fhir/uri"http://unitsofmeasure.org"
-                    :value 42M})}]
+                 #fhir/Quantity
+                     {:code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"
+                      :value 42M}}]
           [:put {:fhir/type :fhir/Observation :id "4"
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system"
-                        :code #fhir/code"code-b"})]})
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code-b"}]}
                  :value
-                 (type/map->Quantity
-                   {:code #fhir/code"kg/m2"
-                    :system #fhir/uri"http://unitsofmeasure.org"
-                    :value 23M})}]])
+                 #fhir/Quantity
+                     {:code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"
+                      :value 23M}}]])
 
       (testing "token search parameter"
         (testing "as first clause"
@@ -3284,15 +3255,13 @@
        node
        [[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               (type/map->Reference
-                 {:reference "Patient/0"})
+               :subject #fhir/Reference{:reference "Patient/0"}
                :code
-               (type/map->CodeableConcept
-                 {:coding
-                  [(type/map->Coding
-                     {:system #fhir/uri"system-191514"
-                      :code #fhir/code"code-191518"})]})}]])
+               #fhir/CodeableConcept
+                   {:coding
+                    [#fhir/Coding
+                        {:system #fhir/uri"system-191514"
+                         :code #fhir/code"code-191518"}]}}]])
 
     (given @(let [query (d/compile-compartment-query
                           node "Patient" "Observation"
@@ -3665,8 +3634,8 @@
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "0"
                                     :subject
-                                    (type/map->Reference
-                                      {:reference "Patient/0"})}]])
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}]])
 
           (let [db (d/db node)
                 observation (d/resource-handle db "Observation" "0")]
@@ -3689,11 +3658,11 @@
                            [:put {:fhir/type :fhir/Encounter :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "0"
                                   :subject
-                                  (type/map->Reference
-                                    {:reference "Patient/0"})
+                                  #fhir/Reference
+                                      {:reference "Patient/0"}
                                   :encounter
-                                  (type/map->Reference
-                                    {:reference "Encounter/0"})}]])
+                                  #fhir/Reference
+                                      {:reference "Encounter/0"}}]])
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
@@ -3707,8 +3676,8 @@
         @(d/transact node [[:put {:fhir/type :fhir/Group :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "0"
                                   :subject
-                                  (type/map->Reference
-                                    {:reference "Group/0"})}]])
+                                  #fhir/Reference
+                                      {:reference "Group/0"}}]])
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
@@ -3736,11 +3705,11 @@
       (with-open [node (new-node)]
         @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                   :code
-                                  (type/map->CodeableConcept
-                                    {:coding
-                                     [(type/map->Coding
-                                        {:system #fhir/uri"http://loinc.org"
-                                         :code #fhir/code"8480-6"})]})}]])
+                                  #fhir/CodeableConcept
+                                      {:coding
+                                       [#fhir/Coding
+                                           {:system #fhir/uri"http://loinc.org"
+                                            :code #fhir/code"8480-6"}]}}]])
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
@@ -3767,12 +3736,12 @@
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "1"
                                     :subject
-                                    (type/map->Reference
-                                      {:reference "Patient/0"})}]
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}]
                              [:put {:fhir/type :fhir/Observation :id "2"
                                     :subject
-                                    (type/map->Reference
-                                      {:reference "Patient/0"})}]])
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}]])
 
           (let [db (d/db node)
                 patients (d/resource-handle db "Patient" "0")]
@@ -3789,11 +3758,11 @@
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "0"
                                   :code
-                                  (type/map->CodeableConcept
-                                    {:coding
-                                     [(type/map->Coding
-                                        {:system #fhir/uri"http://loinc.org"
-                                         :code #fhir/code"8480-6"})]})}]])
+                                  #fhir/CodeableConcept
+                                      {:coding
+                                       [#fhir/Coding
+                                           {:system #fhir/uri"http://loinc.org"
+                                            :code #fhir/code"8480-6"}]}}]])
 
         (let [db (d/db node)
               patients (d/resource-handle db "Patient" "0")]
@@ -3847,14 +3816,14 @@
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})
+                 #fhir/Reference
+                     {:reference "Patient/0"}
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system-191514"
-                        :code #fhir/code"code-191518"})]})}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}}]])
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(let [query (d/compile-compartment-query
@@ -3871,15 +3840,13 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 (type/map->Reference
-                   {:reference "Patient/0"})
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 (type/map->CodeableConcept
-                   {:coding
-                    [(type/map->Coding
-                       {:system #fhir/uri"system-191514"
-                        :code #fhir/code"code-191518"})]})}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}}]])
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(let [query (d/compile-compartment-query-lenient

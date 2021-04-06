@@ -121,17 +121,17 @@
 
   (testing "Encounter"
     (testing "date"
-      (let [patient {:fhir/type :fhir/Encounter
-                     :id "id-160224"
-                     :period
-                     (type/map->Period
-                       {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"
-                        :end #fhir/dateTime"2019-11-17T00:44:29+01:00"})}
-            hash (hash/generate patient)
+      (let [encounter
+            {:fhir/type :fhir/Encounter :id "id-160224"
+             :period
+             #fhir/Period
+                 {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"
+                  :end #fhir/dateTime"2019-11-17T00:44:29+01:00"}}
+            hash (hash/generate encounter)
             [[_ k0]]
             (search-param/index-entries
               (sr/get search-param-registry "date" "Encounter")
-              hash patient [])]
+              hash encounter [])]
 
         (testing "the entry is about the lower bound of the start and the upper
                   bound of the end of the period"
@@ -149,16 +149,16 @@
             :hash-prefix (codec/hash-prefix hash))))
 
       (testing "without start"
-        (let [patient {:fhir/type :fhir/Encounter
-                       :id "id-160224"
-                       :period
-                       (type/map->Period
-                         {:end #fhir/dateTime"2019-11-17"})}
-              hash (hash/generate patient)
+        (let [encounter
+              {:fhir/type :fhir/Encounter :id "id-160224"
+               :period
+               #fhir/Period
+                   {:end #fhir/dateTime"2019-11-17"}}
+              hash (hash/generate encounter)
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "date" "Encounter")
-                hash patient [])]
+                hash encounter [])]
 
           (testing "the entry is about the min bound as lower bound and the
                     upper bound of the end of the period"
@@ -172,16 +172,16 @@
               :hash-prefix (codec/hash-prefix hash)))))
 
       (testing "Encounter date without end"
-        (let [patient {:fhir/type :fhir/Encounter
-                       :id "id-160224"
-                       :period
-                       (type/map->Period
-                         {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"})}
-              hash (hash/generate patient)
+        (let [encounter
+              {:fhir/type :fhir/Encounter :id "id-160224"
+               :period
+               #fhir/Period
+                   {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"}}
+              hash (hash/generate encounter)
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "date" "Encounter")
-                hash patient [])]
+                hash encounter [])]
 
           (testing "the entry is about the lower bound of the start and the max
                     upper bound"

@@ -7,7 +7,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type]
     [blaze.interaction.create]
     [blaze.interaction.create-spec]
     [blaze.luid :refer [luid]]
@@ -92,9 +92,7 @@
           ((handler-with [])
            {::reitit/match {:data {:fhir.resource/type "Observation"}}
             :body {:fhir/type :fhir/Observation :id "0"
-                   :subject
-                   (type/map->Reference
-                     {:reference "Patient/0"})}})]
+                   :subject #fhir/Reference{:reference "Patient/0"}}})]
 
       (is (= 409 status))
 
@@ -231,7 +229,7 @@
               ((handler-with
                  [[[:put {:fhir/type :fhir/Patient :id "0"
                           :identifier
-                          [(type/map->Identifier {:value "094808"})]}]]])
+                          [#fhir/Identifier{:value "094808"}]}]]])
                {::reitit/router router
                 ::reitit/match {:data {:fhir.resource/type "Patient"}}
                 :headers {"if-none-exist" "identifier=212154"}
@@ -245,7 +243,7 @@
             ((handler-with
                [[[:put {:fhir/type :fhir/Patient :id "0"
                         :identifier
-                        [(type/map->Identifier {:value "095156"})]}]]])
+                        [#fhir/Identifier{:value "095156"}]}]]])
              {::reitit/router router
               ::reitit/match {:data {:fhir.resource/type "Patient"}}
               :headers {"if-none-exist" "identifier=095156"}

@@ -36,11 +36,6 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defn primitive? [x]
-  (when-let [type (p/-type x)]
-    (Character/isLowerCase ^char (first (name type)))))
-
-
 (defn type [x]
   (p/-type x))
 
