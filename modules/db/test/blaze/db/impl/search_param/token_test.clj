@@ -61,7 +61,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "_id" "Observation")
-            hash observation [])]
+            [] hash observation)]
 
       (testing "SearchParamValueResource key"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -91,7 +91,7 @@
                      :code #fhir/code"code-171327"}]}}
           hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-          (search-param/index-entries code-param hash observation [])]
+          (search-param/index-entries code-param [] hash observation)]
 
       (testing "first SearchParamValueResource key is about `code`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -152,7 +152,7 @@
                     {:code #fhir/code"code-134035"}]}}
           hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3]]
-          (search-param/index-entries code-param hash observation [])]
+          (search-param/index-entries code-param [] hash observation)]
 
       (testing "first SearchParamValueResource key is about `code`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -197,7 +197,7 @@
                     {:system #fhir/uri"system-171339"}]}}
           hash (hash/generate observation)
           [[_ k0] [_ k1]]
-          (search-param/index-entries code-param hash observation [])]
+          (search-param/index-entries code-param [] hash observation)]
 
       (testing "first SearchParamValueResource key is about `system|`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -226,7 +226,7 @@
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "identifier" "Patient")
-            hash patient [])]
+            [] hash patient)]
 
       (testing "first SearchParamValueResource key is about `value`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -286,7 +286,7 @@
           [[_ k0] [_ k1] [_ k2] [_ k3]]
           (search-param/index-entries
             (sr/get search-param-registry "identifier" "Patient")
-            hash patient [])]
+            [] hash patient)]
 
       (testing "first SearchParamValueResource key is about `value`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -330,7 +330,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "identifier" "Patient")
-            hash patient [])]
+            [] hash patient)]
 
       (testing "second SearchParamValueResource key is about `system|`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -355,7 +355,7 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "deceased" "Patient")
-              hash patient [])]
+              [] hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -381,7 +381,7 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "deceased" "Patient")
-              hash patient [])]
+              [] hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -408,7 +408,7 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "deceased" "Patient")
-              hash patient [])]
+              [] hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -441,7 +441,7 @@
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "bodysite" "Specimen")
-            hash specimen [])]
+            [] hash specimen)]
 
       (testing "first SearchParamValueResource key is about `code`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -502,7 +502,7 @@
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "class" "Encounter")
-            hash specimen [])]
+            [] hash specimen)]
 
       (testing "first SearchParamValueResource key is about `code`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -562,7 +562,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "series" "ImagingStudy")
-            hash specimen [])]
+            [] hash specimen)]
 
       (testing "SearchParamValueResource key is about `id`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -588,7 +588,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "version" "CodeSystem")
-            hash resource [])]
+            [] hash resource)]
 
       (testing "SearchParamValueResource key"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -613,5 +613,5 @@
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "_id" "Patient")
-                 hash resource [])
+                 [] hash resource)
           ::anom/category := ::anom/fault)))))

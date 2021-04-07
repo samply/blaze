@@ -55,7 +55,7 @@
 
 
 (s/fdef ac/supply-async
-  :args (s/cat :f fn? :executor ex/executor?)
+  :args (s/cat :f fn? :executor (s/? ex/executor?))
   :ret ac/completable-future?)
 
 

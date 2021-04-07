@@ -14,6 +14,7 @@
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
+    [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
     [blaze.db.search-param-registry :as sr]
@@ -54,10 +55,6 @@
 
 
 (def ^:private search-param-registry (sr/init-search-param-registry))
-
-
-(def ^:private resource-indexer-executor
-  (ex/cpu-bound-pool "resource-indexer-%d"))
 
 
 ;; TODO: with this shared executor, it's not possible to run test in parallel
@@ -103,26 +100,14 @@
         resource-handle-cache (.build (Caffeine/newBuilder))
         index-kv-store (new-index-kv-store)]
     (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
-                   resource-indexer-executor 1 indexer-executor index-kv-store
-                   resource-store search-param-registry (jt/millis 10))))
+                   indexer-executor index-kv-store resource-store
+                   search-param-registry (jt/millis 10))))
 
 
 (defn new-node []
   (new-node-with
     {:resource-store
      (new-kv-resource-store (new-mem-kv-store) resource-store-executor)}))
-
-
-(defn new-resource-store-failing-on-get []
-  (reify
-    rs/ResourceLookup
-    (-get [_ _]
-      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))
-    (-multi-get [_ _]
-      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))
-    rs/ResourceStore
-    (-put [_ _]
-      (ac/completed-future nil))))
 
 
 (defn new-resource-store-failing-on-put []
@@ -527,11 +512,14 @@
         (given
           (catch-cause-ex-data
             @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
-          ::anom/category := ::anom/fault)))
+          ::anom/category := ::anom/fault))))
 
-    (testing "on get"
-      (with-open [node (new-node-with
-                         {:resource-store (new-resource-store-failing-on-get)})]
+  (testing "with failing resource indexer"
+    (with-redefs
+      [resource-indexer/index-resources
+       (fn [_ _]
+         (ac/failed-future (ex-anom {::anom/category ::anom/fault})))]
+      (with-open [node (new-node)]
         (given
           (catch-cause-ex-data
             @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))

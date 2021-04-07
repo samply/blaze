@@ -17,13 +17,13 @@
   {:mvn/version "30.1.1-jre"}
 
   com.fasterxml.jackson.core/jackson-core
-  {:mvn/version "2.12.2"}
+  {:mvn/version "2.12.3"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.12.2"}
+  {:mvn/version "2.12.3"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.12.2"}
+  {:mvn/version "2.12.3"}
 
   com.taoensso/timbre
   {:mvn/version "5.1.2"}
@@ -32,7 +32,7 @@
   {:mvn/version "2020.03.26-3"}
 
   metosin/jsonista
-  {:mvn/version "0.3.1"}
+  {:mvn/version "0.3.2"}
 
   org.clojure/alpha.spec
   {:git/url "https://github.com/alexanderkiel/spec-alpha2.git"

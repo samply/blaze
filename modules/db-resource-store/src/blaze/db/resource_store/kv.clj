@@ -3,6 +3,7 @@
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
+    [blaze.coll.core :as coll]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]
@@ -81,7 +82,7 @@
 
   rs/ResourceStore
   (-put [_ entries]
-    (ac/supply (kv/put! kv-store (into [] entry-freezer entries)))))
+    (ac/supply (kv/put! kv-store (coll/eduction entry-freezer entries)))))
 
 
 (defn new-kv-resource-store [kv-store executor]

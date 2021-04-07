@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.byte-string :as bs]
+    [blaze.coll.core :as coll]
     [blaze.db.impl.protocols :as p]
     [blaze.fhir-path :as fhir-path]
     [clojure.string :as str]))
@@ -18,14 +19,23 @@
 (defn- component-index-values
   [resolver main-value {:keys [expression search-param]}]
   (when-ok [values (fhir-path/eval resolver expression main-value)]
-    (into
-      []
-      (comp (filter (fn [[modifier]] (nil? modifier)))
-                   (map (fn [[_ value]] value)))
-      (p/-compile-index-values search-param values))))
+    (coll/eduction
+      (comp
+        (p/-index-value-compiler search-param)
+        (filter (fn [[modifier]] (nil? modifier)))
+        (map (fn [[_ value]] value)))
+      values)))
 
 
-(defn index-values [resolver main-value c1 c2]
-  (for [v1 (component-index-values resolver main-value c1)
-        v2 (component-index-values resolver main-value c2)]
-    [nil (bs/concat v1 v2)]))
+(defn index-values [resolver c1 c2]
+  (mapcat
+    (fn [main-value]
+      (reduce
+        (fn [res v1]
+          (reduce
+            (fn [res v2]
+              (conj res [nil (bs/concat v1 v2)]))
+            res
+            (component-index-values resolver main-value c2)))
+        []
+        (component-index-values resolver main-value c1)))))

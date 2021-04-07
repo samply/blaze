@@ -104,7 +104,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -167,7 +167,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -215,7 +215,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -263,7 +263,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -320,5 +320,5 @@
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "value-quantity" "Observation")
-                 hash resource [])
+                 [] hash resource)
           ::anom/category := ::anom/fault)))))

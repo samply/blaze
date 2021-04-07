@@ -99,12 +99,17 @@
   "Returns a CompletableFuture that is asynchronously completed by a task
   running in `executor` with the value obtained by calling the function `f`
   with no arguments."
-  [f executor]
-  (CompletableFuture/supplyAsync
-    (reify Supplier
-      (get [_]
-        (f)))
-    executor))
+  ([f]
+   (CompletableFuture/supplyAsync
+     (reify Supplier
+       (get [_]
+         (f)))))
+  ([f executor]
+   (CompletableFuture/supplyAsync
+     (reify Supplier
+       (get [_]
+         (f)))
+     executor)))
 
 
 (defn completion-stage? [x]

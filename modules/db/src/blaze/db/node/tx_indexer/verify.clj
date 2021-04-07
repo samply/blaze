@@ -12,7 +12,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang ExceptionInfo]))
+    [clojure.lang ExceptionInfo IReduceInit]))
 
 
 (set! *warn-on-reflection* true)
@@ -244,44 +244,48 @@
     (not (identical? :delete op))))
 
 
-(defn- throw-referential-integrity-anomaly-delete [[src-type src-id] type id]
-  (throw-anom
-    ::anom/conflict
-    (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`." type id src-type src-id)))
+(defn- ref-integrity-del-msg [src-type src-id type id]
+  (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`."
+          type id src-type src-id))
+
+
+(defn- throw-referential-integrity-anomaly-delete [src-type src-id type id]
+  (throw-anom ::anom/conflict (ref-integrity-del-msg src-type src-id type id)))
+
+
+(defn- ref-integrity-msg [type id]
+  (format "Referential integrity violated. Resource `%s/%s` doesn't exist."
+          type id))
 
 
 (defn- throw-referential-integrity-anomaly [type id]
-  (throw-anom
-    ::anom/conflict
-    (format "Referential integrity violated. Resource `%s/%s` doesn't exist." type id)))
-
-
-(defmacro dovec [[sym form] & body]
-  `(let [coll# (vec ~form)
-         n# (count coll#)]
-     (loop [i# 0]
-       (when (< i# n#)
-         (let [~sym (nth coll# i#)]
-           ~@body)
-         (recur (inc i#))))))
+  (throw-anom ::anom/conflict (ref-integrity-msg type id)))
 
 
 (defn- check-referential-integrity*!
-  [db new-resources del-resources source references]
-  (dovec [[type id :as reference] references]
-    (cond
-      (contains? del-resources reference)
-      (throw-referential-integrity-anomaly-delete source type id)
+  [db new-resources del-resources src-type src-id references]
+  (.reduce
+    ^IReduceInit references
+    (fn [_ [type id :as reference]]
+      (cond
+        (contains? del-resources reference)
+        (throw-referential-integrity-anomaly-delete src-type src-id type id)
 
-      (and (not (contains? new-resources reference))
-           (not (resource-exists? db type id)))
-      (throw-referential-integrity-anomaly type id))))
+        (and (not (contains? new-resources reference))
+             (not (resource-exists? db type id)))
+        (throw-referential-integrity-anomaly type id)))
+    nil))
 
 
 (defn- check-referential-integrity!
   [db {:keys [new-resources del-resources]} cmds]
-  (dovec [{:keys [type id refs]} cmds]
-    (check-referential-integrity*! db new-resources del-resources [type id] refs)))
+  (.reduce
+    ^IReduceInit cmds
+    (fn [_ {:keys [type id refs]}]
+      (when refs
+        (check-referential-integrity*!
+          db new-resources del-resources type id refs)))
+    nil))
 
 
 (defn- verify-tx-cmds* [db-before t cmds]

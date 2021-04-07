@@ -1,6 +1,7 @@
 (ns blaze.db.search-param-registry
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.coll.core :as coll]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.java.io :as io]
@@ -72,24 +73,32 @@
              :id id}))))))
 
 
+(defn- extract-id [^String s]
+  (let [idx (.indexOf s 47)]
+    (when (pos? idx)
+      (let [type (.substring s 0 idx)]
+        (when (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
+          (let [id (.substring s (unchecked-inc-int idx))]
+            (when (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))
+              id)))))))
+
+
 ;; TODO: the search-param needs to have an :expression which isn't certain
 (defn- compartment-ids
   "Returns all compartments `resource` is part of, according to `search-param`."
   {:arglists '([search-param resource])}
   [{:keys [expression]} resource]
   (when-ok [values (fhir-path/eval stub-resolver expression resource)]
-    (into
-      []
+    (coll/eduction
       (mapcat
         (fn [value]
-          (case (fhir-spec/fhir-type value)
-            :fhir/Reference
-            (let [{:keys [reference]} value]
-              (when reference
-                (let [res (s/conform :blaze.fhir/local-ref reference)]
-                  (when-not (s/invalid? res)
-                    (rest res))))))))
+          (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
+            (some-> value :reference extract-id vector))))
       values)))
+
+
+(defn- vals-into [to from]
+  (transduce (map val) conj to from))
 
 
 (deftype MemSearchParamRegistry [index compartment-index]
@@ -102,15 +111,20 @@
         (-get this code)))
 
   (-list-by-type [_ type]
-    (into (vec (vals (clojure.core/get index "Resource")))
-          (vals (clojure.core/get index type))))
+    (-> (vals-into [] (index "Resource"))
+        (vals-into (index type))))
 
   (-linked-compartments [_ resource]
-    (mapcat
-      (fn [{:keys [def-code search-param]}]
-        ;; TODO: use search-params compartment-ids
-        (map (fn [id] [def-code id]) (compartment-ids search-param resource)))
-      (clojure.core/get compartment-index (name (fhir-spec/fhir-type resource))))))
+    (transduce
+      (mapcat
+        (fn [{:keys [def-code search-param]}]
+          ;; TODO: use search-params compartment-ids
+          (coll/eduction
+            (map (fn [id] [def-code id]))
+            (compartment-ids search-param resource))))
+      conj
+      #{}
+      (compartment-index (name (fhir-spec/fhir-type resource))))))
 
 
 (def ^:private object-mapper

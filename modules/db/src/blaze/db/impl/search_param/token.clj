@@ -20,126 +20,131 @@
 (set! *warn-on-reflection* true)
 
 
-(defmulti token-index-entries
-  "Returns index entries for `value` from a resource.
-
-  The supplied function `entries-fn` takes a value and is used to create the
-  actual index entries. Multiple such `entries-fn` results can be combined to
-  one coll of entries."
-  {:arglists '([url entries-fn value])}
-  (fn [_ _ value] (fhir-spec/fhir-type value)))
+(defmulti index-entries
+  "Returns index entries for `value` from a resource."
+  {:arglists '([url value])}
+  (fn [_ value] (fhir-spec/fhir-type value)))
 
 
-(defmethod token-index-entries :fhir/id
-  [_ entries-fn id]
+(defmethod index-entries :fhir/id
+  [_ id]
   (when-let [value (type/value id)]
-    (entries-fn nil (codec/v-hash value))))
+    [[nil (codec/v-hash value)]]))
 
 
-(defmethod token-index-entries :fhir/string
-  [_ entries-fn s]
+(defmethod index-entries :fhir/string
+  [_ s]
   (when-let [value (type/value s)]
-    (entries-fn nil (codec/v-hash value))))
+    [[nil (codec/v-hash value)]]))
 
 
-(defmethod token-index-entries :fhir/uri
-  [_ entries-fn uri]
+(defmethod index-entries :fhir/uri
+  [_ uri]
   (when-let [value (type/value uri)]
-    (entries-fn nil (codec/v-hash value))))
+    [[nil (codec/v-hash value)]]))
 
 
-(defmethod token-index-entries :fhir/boolean
-  [_ entries-fn boolean]
+(defmethod index-entries :fhir/boolean
+  [_ boolean]
   (when-some [value (type/value boolean)]
-    (entries-fn nil (codec/v-hash (str value)))))
+    [[nil (codec/v-hash (str value))]]))
 
 
-(defmethod token-index-entries :fhir/canonical
-  [_ entries-fn uri]
+(defmethod index-entries :fhir/canonical
+  [_ uri]
   (when-let [value (type/value uri)]
-    (entries-fn nil (codec/v-hash value))))
+    [[nil (codec/v-hash value)]]))
 
 
-(defmethod token-index-entries :fhir/code
-  [_ entries-fn code]
+(defmethod index-entries :fhir/code
+  [_ code]
   ;; TODO: system
   (when-let [value (type/value code)]
-    (entries-fn nil (codec/v-hash value))))
+    [[nil (codec/v-hash value)]]))
 
 
-(defn token-coding-entries [entries-fn {:keys [code system]}]
+(defn token-coding-entries [{:keys [code system]}]
   (let [code (type/value code)
         system (type/value system)]
     (cond-> []
       code
-      (into (entries-fn nil (codec/v-hash code)))
+      (conj [nil (codec/v-hash code)])
       system
-      (into (entries-fn nil (codec/v-hash (str system "|"))))
+      (conj [nil (codec/v-hash (str system "|"))])
       (and code system)
-      (into (entries-fn nil (codec/v-hash (str system "|" code))))
+      (conj [nil (codec/v-hash (str system "|" code))])
       (and code (nil? system))
-      (into (entries-fn nil (codec/v-hash (str "|" code)))))))
+      (conj [nil (codec/v-hash (str "|" code))]))))
 
 
-(defmethod token-index-entries :fhir/Coding
-  [_ entries-fn coding]
-  (token-coding-entries entries-fn coding))
+(defmethod index-entries :fhir/Coding
+  [_ coding]
+  (token-coding-entries coding))
 
 
-(defmethod token-index-entries :fhir/CodeableConcept
-  [_ entries-fn {:keys [coding]}]
-  (into [] (mapcat #(token-coding-entries entries-fn %)) coding))
+(defmethod index-entries :fhir/CodeableConcept
+  [_ {:keys [coding]}]
+  (coll/eduction (mapcat token-coding-entries) coding))
 
 
-(defn- token-identifier-entries [entries-fn modifier {:keys [value system]}]
+(defn- identifier-entries [modifier {:keys [value system]}]
   (let [value (type/value value)
         system (type/value system)]
     (cond-> []
       value
-      (into (entries-fn modifier (codec/v-hash value)))
+      (conj [modifier (codec/v-hash value)])
       system
-      (into (entries-fn modifier (codec/v-hash (str system "|"))))
+      (conj [modifier (codec/v-hash (str system "|"))])
       (and value system)
-      (into (entries-fn modifier (codec/v-hash (str system "|" value))))
+      (conj [modifier (codec/v-hash (str system "|" value))])
       (and value (nil? system))
-      (into (entries-fn modifier (codec/v-hash (str "|" value)))))))
+      (conj [modifier (codec/v-hash (str "|" value))]))))
 
 
-(defmethod token-index-entries :fhir/Identifier
-  [_ entries-fn identifier]
-  (token-identifier-entries entries-fn nil identifier))
+(defmethod index-entries :fhir/Identifier
+  [_ identifier]
+  (identifier-entries nil identifier))
 
 
-(defn- token-literal-reference-entries [entries-fn reference]
+(defn- split-literal-ref [^String s]
+  (let [idx (.indexOf s 47)]
+    (when (pos? idx)
+      (let [type (.substring s 0 idx)]
+        (when (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
+          (let [id (.substring s (unchecked-inc-int idx))]
+            (when (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))
+              [type id])))))))
+
+
+(defn- literal-reference-entries [reference]
   (when-let [value (type/value reference)]
-    (let [res (s/conform :blaze.fhir/local-ref value)]
-      (if (s/invalid? res)
-        (entries-fn nil (codec/v-hash value))
-        (let [[type id] res]
-          (-> (entries-fn nil (codec/v-hash id))
-              (into (entries-fn nil (codec/v-hash (str type "/" id))))
-              (into (entries-fn nil (codec/tid-id
-                                      (codec/tid type)
-                                      (codec/id-byte-string id))))))))))
+    (if-let [[type id] (split-literal-ref value)]
+      [[nil (codec/v-hash id)]
+       [nil (codec/v-hash (str type "/" id))]
+       [nil (codec/tid-id (codec/tid type)
+                          (codec/id-byte-string id))]]
+      [[nil (codec/v-hash value)]])))
 
 
-(defmethod token-index-entries :fhir/Reference
-  [_ entries-fn {:keys [reference identifier]}]
-  (cond-> []
-    reference
-    (into (token-literal-reference-entries entries-fn reference))
-    identifier
-    (into (token-identifier-entries entries-fn "identifier" identifier))))
+(defmethod index-entries :fhir/Reference
+  [_ {:keys [reference identifier]}]
+  (coll/eduction
+    cat
+    (cond-> []
+      reference
+      (conj (literal-reference-entries reference))
+      identifier
+      (conj (identifier-entries "identifier" identifier)))))
 
 
-(defmethod token-index-entries :fhir/ContactPoint
-  [_ entries-fn {:keys [value]}]
+(defmethod index-entries :fhir/ContactPoint
+  [_ {:keys [value]}]
   (when-let [value (type/value value)]
-    (entries-fn nil (codec/v-hash value))))
+    [[nil (codec/v-hash value)]]))
 
 
-(defmethod token-index-entries :default
-  [url _ value]
+(defmethod index-entries :default
+  [url value]
   (log/warn (u/format-skip-indexing-msg value url "token")))
 
 
@@ -206,18 +211,10 @@
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (p/-compile-index-values search-param values)))
+      (coll/eduction (p/-index-value-compiler search-param) values)))
 
-  (-compile-index-values [_ values]
-    (into
-      []
-      (mapcat
-        #(token-index-entries
-           url
-           (fn [modifier value]
-             [[modifier value]])
-           %))
-      values)))
+  (-index-value-compiler [_]
+    (mapcat (partial index-entries url))))
 
 
 (defn- fix-expr

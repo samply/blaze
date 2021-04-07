@@ -82,7 +82,7 @@
                      :birthDate #fhir/date"2020-02-04"}
             hash (hash/generate patient)
             [[_ k0]]
-            (search-param/index-entries birth-date-param hash patient [])]
+            (search-param/index-entries birth-date-param [] hash patient)]
 
         (testing "the entry is about both bounds of `2020-02-04`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -103,7 +103,7 @@
             [[_ k0]]
             (search-param/index-entries
               (sr/get search-param-registry "death-date" "Patient")
-              hash patient [])]
+              [] hash patient)]
 
         (testing "the entry is about both bounds of `2020-01-01T00:00:00Z`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -131,7 +131,7 @@
             [[_ k0]]
             (search-param/index-entries
               (sr/get search-param-registry "date" "Encounter")
-              hash encounter [])]
+              [] hash encounter)]
 
         (testing "the entry is about the lower bound of the start and the upper
                   bound of the end of the period"
@@ -158,7 +158,7 @@
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "date" "Encounter")
-                hash encounter [])]
+                [] hash encounter)]
 
           (testing "the entry is about the min bound as lower bound and the
                     upper bound of the end of the period"
@@ -181,7 +181,7 @@
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "date" "Encounter")
-                hash encounter [])]
+                [] hash encounter)]
 
           (testing "the entry is about the lower bound of the start and the max
                     upper bound"
@@ -205,7 +205,7 @@
             [[_ k0]]
             (search-param/index-entries
               (sr/get search-param-registry "issued" "DiagnosticReport")
-              hash patient [])]
+              [] hash patient)]
 
         (testing "the entry is about both bounds of `2019-11-17T00:14:29.917+01:00`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -228,5 +228,5 @@
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "issued" "DiagnosticReport")
-                 hash resource [])
+                 [] hash resource)
           ::anom/category := ::anom/fault)))))

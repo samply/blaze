@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param
   (:require
     [blaze.anomaly :refer [conj-anom when-ok]]
-    [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -18,8 +17,7 @@
     [blaze.db.impl.search-param.util :as u]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
-    [clojure.spec.alpha :as s]
-    [taoensso.timbre :as log]))
+    [clojure.spec.alpha :as s]))
 
 
 (set! *warn-on-reflection* true)
@@ -131,26 +129,22 @@
 
 
 (defn index-entries
-  "Returns search index entries of `resource` with `hash` or an anomaly in case
-  of errors."
-  [{:keys [code c-hash] :as search-param} hash resource linked-compartments]
+  "Returns search index entries of `resource` with `hash` for `search-param` or
+  an anomaly in case of errors."
+  {:arglists '([search-param linked-compartments hash resource])}
+  [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
   (when-ok [values (p/-index-values search-param stub-resolver resource)]
     (let [{:keys [id]} resource
           type (name (fhir-spec/fhir-type resource))
           tid (codec/tid type)
           id (codec/id-byte-string id)]
-      (into
-        []
+      (coll/eduction
         (mapcat
-          (fn search-param-entry [[modifier value]]
-            (log/trace "search-param-entry" code type (codec/id-string id)
-                       (bs/hex hash) (bs/hex value))
+          (fn index-entry [[modifier value]]
             (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-              (into
-                [(sp-vr/index-entry c-hash tid value id hash)
-                 (r-sp-v/index-entry tid id hash c-hash value)]
+              (transduce
                 (map
-                  (fn [[code comp-id]]
+                  (fn index-compartment-entry [[code comp-id]]
                     (c-sp-vr/index-entry
                       [(codec/c-hash code)
                        (codec/id-byte-string comp-id)]
@@ -159,5 +153,8 @@
                       value
                       id
                       hash)))
+                conj
+                [(sp-vr/index-entry c-hash tid value id hash)
+                 (r-sp-v/index-entry tid id hash c-hash value)]
                 linked-compartments))))
         values))))

@@ -6,47 +6,48 @@ A part of the environment variables depends on the storage variant chosen. The s
 
 ### In-memory
 
-| Name | Default | Since | Description |
-| :--- | :--- | :--- | :--- |
-| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
+| Name | Default | Since | Depr ¹ | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | v0.11 |  The number of resources which are indexed in a batch. (Deprecated) |
+
+¹ Deprecated
 
 ### Standalone
 
 The three database directories must not exist on the first start of Blaze and will be created by Blaze itself. It's possible to put this three directories on different disks in order to improve performance.
 
-| Name | Default | Since | Description |
-| :--- | :--- | :--- | :--- |
-| INDEX\_DB\_DIR | index \* | v0.8 | The directory were the index database files are stored.  |
-| TRANSACTION\_DB\_DIR | transaction \* | v0.8 | The directory were the transaction log files are stored. This directory must not exist on the first start of Blaze and will be created by Blaze. |
-| RESOURCE\_DB\_DIR | resource \* | v0.8 | The directory were the resource files are stored. This directory must not exist on the first start of Blaze and will be created by 
-| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
-| DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
-| DB\_RESOURCE\_CACHE\_SIZE | 100000 | v0.8 | The size of the resource cache of the DB in number of resources. |
-| DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
-| DB\_RESOURCE\_INDEXER\_THREADS | 4 | v0.8 | The number threads used for indexing resources. |
-| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
- 
-\* In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
+| Name | Default | Since | Depr ¹ | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| INDEX\_DB\_DIR | index ² | v0.8 | | The directory were the index database files are stored.  |
+| TRANSACTION\_DB\_DIR | transaction ² | v0.8 | |  The directory were the transaction log files are stored. This directory must not exist on the first start of Blaze and will be created by Blaze. |
+| RESOURCE\_DB\_DIR | resource ² | v0.8 | |  The directory were the resource files are stored. This directory must not exist on the first start of Blaze and will be created by 
+| DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | |  The size of the [block cache][2] of the DB in MB. |
+| DB\_RESOURCE\_CACHE\_SIZE | 100000 | v0.8 | |  The size of the resource cache of the DB in number of resources. |
+| DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | |  The maximum number of the [background jobs][3] used for DB compactions. |
+| DB\_RESOURCE\_INDEXER\_THREADS | 4 | v0.8 | v0.11 |  The number threads used for indexing resources. (Deprecated) |
+| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | v0.11 |  The number of resources which are indexed in a batch. (Deprecated) |
+
+¹ Deprecated, ² In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
 
 ### Distributed
 
 The distributed storage variant only uses the index database locally. 
 
-| Name | Default | Since | Description |
-| :--- | :--- | :--- | :--- |
-| INDEX\_DB\_DIR | index \* | v0.8 | The directory were the index database files are stored.  |
-| DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | The size of the [block cache][9] of the DB in MB. |
-| DB\_RESOURCE\_CACHE\_SIZE | 100000 | v0.8 | The size of the resource cache of the DB in number of resources. |
-| DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | The maximum number of the [background jobs][10] used for DB compactions. |
-| DB\_RESOURCE\_INDEXER\_THREADS | 4 | v0.8 | The number threads used for indexing resources. |
-| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | The number of resources which are indexed in a batch. |
-| DB\_KAFKA\_BOOTSTRAP\_SERVERS | localhost:9092 | v0.8 | A comma separated list of bootstrap servers for the Kafka transaction log. |
-| DB\_KAFKA\_MAX\_REQUEST\_SIZE | 1048576 | v0.8 | The maximum size of a encoded transaction able to send to the Kafka transaction log in bytes. |
-| DB\_CASSANDRA\_CONTACT\_POINTS | localhost:9042 | v0.8 | A comma separated list of contact points for the Cassandra resource store. |
-| DB\_CASSANDRA\_KEY\_SPACE | blaze | v0.8 | The Cassandra key space were the `resources` table is located. |
-| DB\_CASSANDRA\_PUT\_CONSISTENCY\_LEVEL | TWO | v0.8 | Cassandra consistency level for resource put (insert) operations. Has to be set to `ONE` on a non-replicated keyspace. |
+| Name | Default | Since | Depr ¹ | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| INDEX\_DB\_DIR | index ² | v0.8 | | The directory were the index database files are stored.  |
+| DB\_BLOCK\_CACHE\_SIZE | 128 | v0.8 | | The size of the [block cache][2] of the DB in MB. |
+| DB\_RESOURCE\_CACHE\_SIZE | 100000 | v0.8 | | The size of the resource cache of the DB in number of resources. |
+| DB\_MAX\_BACKGROUND\_JOBS | 4 | v0.8 | | The maximum number of the [background jobs][3] used for DB compactions. |
+| DB\_RESOURCE\_INDEXER\_THREADS | 4 | v0.8 | v0.11 |  The number threads used for indexing resources. (Deprecated) |
+| DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | v0.11 |  The number of resources which are indexed in a batch. (Deprecated) |
+| DB\_KAFKA\_BOOTSTRAP\_SERVERS | localhost:9092 | v0.8 | | A comma separated list of bootstrap servers for the Kafka transaction log. |
+| DB\_KAFKA\_MAX\_REQUEST\_SIZE | 1048576 | v0.8 | | The maximum size of a encoded transaction able to send to the Kafka transaction log in bytes. |
+| DB\_CASSANDRA\_CONTACT\_POINTS | localhost:9042 | v0.8 | | A comma separated list of contact points for the Cassandra resource store. |
+| DB\_CASSANDRA\_KEY\_SPACE | blaze | v0.8 | | The Cassandra key space were the `resources` table is located. |
+| DB\_CASSANDRA\_PUT\_CONSISTENCY\_LEVEL | TWO | v0.8 | | Cassandra consistency level for resource put (insert) operations. Has to be set to `ONE` on a non-replicated keyspace. |
 
-\* In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
+¹ Deprecated, ² In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
 
 More information about distributed deployment are available [here](distributed.md). 
 
@@ -67,7 +68,7 @@ More information about distributed deployment are available [here](distributed.m
 | LOG\_LEVEL | info | v0.6 | one of trace, debug, info, warn or error |
 | JAVA\_TOOL\_OPTIONS | — |  | JVM options \(Docker only\) |
 | FHIR\_OPERATION\_EVALUATE\_MEASURE\_THREADS | 4 | v0.8 | The maximum number of parallel $evaluate-measure executions. Not the same as the number of threads used for measure evaluation which equal to the number of available processors. |
-| OPENID\_PROVIDER\_URL | - | v0.11 | [OpenID Connect][2] provider URL to enable [authentication][3] |
+| OPENID\_PROVIDER\_URL | - | v0.11 | [OpenID Connect][4] provider URL to enable [authentication][5] |
 
 ### Common JAVA_TOOL_OPTIONS
 
@@ -78,5 +79,7 @@ More information about distributed deployment are available [here](distributed.m
 | -Dhttp.proxyPort | 80 | v0.11 | The port of the proxy server. |
 
 [1]: <https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies>
-[2]: <https://openid.net/connect/>
-[3]: <../authentication.md>
+[2]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
+[3]: <https://github.com/facebook/rocksdb/wiki/Thread-Pool>
+[4]: <https://openid.net/connect/>
+[5]: <../authentication.md>

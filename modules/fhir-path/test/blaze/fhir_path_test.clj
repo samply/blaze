@@ -370,14 +370,13 @@
 (deftest union-test
   (is
     (=
-      (set
-        (eval
-          "Patient.gender | Patient.birthDate"
-          {:fhir/type :fhir/Patient
-           :id "id-162953"
-           :gender #fhir/code"female"
-           :birthDate #fhir/date"2020"}))
-      #{#fhir/date"2020" #fhir/code"female"})))
+      (eval
+        "Patient.gender | Patient.birthDate"
+        {:fhir/type :fhir/Patient
+         :id "id-162953"
+         :gender #fhir/code"female"
+         :birthDate #fhir/date"2020"})
+      [#fhir/code"female" #fhir/date"2020"])))
 
 
 
