@@ -3,7 +3,9 @@
     [blaze.byte-string :as bs]
     [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
-    [blaze.fhir.spec :as fhir-spec]))
+    [blaze.fhir.spec :as fhir-spec])
+  (:import
+    [clojure.lang IReduceInit Indexed]))
 
 
 (set! *warn-on-reflection* true)
@@ -40,13 +42,13 @@
       handle)))
 
 
-(defn- contains-hash-prefix? [triples hash-prefix]
-  (reduce
+(defn- contains-hash-prefix? [tuples hash-prefix]
+  (.reduce
+    ^IReduceInit tuples
     (fn [_ tuple]
-      (when (= hash-prefix (nth tuple 1))
+      (when (.equals ^Object hash-prefix (.nth ^Indexed tuple 1))
         (reduced true)))
-    nil
-    triples))
+    nil))
 
 
 (defn- resource-handle-mapper* [{:keys [resource-handle]} tid]

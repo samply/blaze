@@ -84,13 +84,6 @@
 (comment
   (def node (:blaze.db/node system))
   (def db (d/db node))
-
-  (into [] (map :id) (d/type-list db "Patient"))
-
-  (.hash (d/resource-handle db "Patient" "01f5d727-e75c-4662-aecd-df2ffccd2e27"))
-
-  @(blaze.db.node/load-tx-result node 21228)
-
   )
 
 ;; Kafka Transaction Log

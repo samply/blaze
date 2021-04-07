@@ -1,6 +1,5 @@
 (ns blaze.db.node.resource-indexer-test
   (:require
-    [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.byte-string-spec]
     [blaze.db.impl.codec :as codec]
@@ -13,19 +12,19 @@
     [blaze.db.kv.mem-spec]
     [blaze.db.node.resource-indexer :as ri :refer [new-resource-indexer]]
     [blaze.db.node.resource-indexer-spec]
-    [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
-    [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
+    [clojure.test :as test :refer [deftest is testing]]
+    [taoensso.timbre :as log])
   (:import
     [java.time ZoneId LocalDate]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
@@ -67,14 +66,9 @@
              {:versionId #fhir/id"1"
               :profile [#fhir/canonical"url-164445"]}}
         hash (hash/generate resource)
-        rl (reify
-             rs/ResourceLookup
-             (-multi-get [_ _]
-               (ac/completed-future {hash resource})))
         kv-store (init-kv-store)
-        i (new-resource-indexer rl search-param-registry kv-store
-                                (ex/single-thread-executor) 1)]
-    @(ri/index-resources i [hash])
+        i (new-resource-indexer search-param-registry kv-store)]
+    @(ri/index-resources i {hash resource})
 
     (testing "SearchParamValueResource index"
       (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
@@ -191,14 +185,9 @@
                        :system #fhir/uri"http://unitsofmeasure.org"
                        :value 23.42M}}
         hash (hash/generate resource)
-        rl (reify
-             rs/ResourceLookup
-             (-multi-get [_ _]
-               (ac/completed-future {hash resource})))
         kv-store (init-kv-store)
-        i (new-resource-indexer rl search-param-registry kv-store
-                                (ex/single-thread-executor) 1)]
-    @(ri/index-resources i [hash])
+        i (new-resource-indexer search-param-registry kv-store)]
+    @(ri/index-resources i {hash resource})
 
     (testing "SearchParamValueResource index"
       (is (every? #{["Observation" "id-192702" #blaze/byte-string"651D1F37"]}

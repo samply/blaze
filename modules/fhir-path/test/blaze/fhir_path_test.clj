@@ -155,7 +155,17 @@
                       :family "Doe"
                       :given ["John" "Foo"]}]})
         ::anom/category := ::anom/incorrect
-        ::anom/message := "unable to evaluate `[\"John\" \"Foo\"]` as singleton")))
+        ::anom/message := "unable to evaluate `[\"John\" \"Foo\"]` as singleton"))
+
+    (testing "with non-convertible type"
+      (given (eval "Patient.name.family + ', ' + Patient.name"
+                   {:fhir/type :fhir/Patient
+                    :id "foo"
+                    :name
+                    [{:fhir/type :fhir/HumanName
+                      :family "Doe"}]})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "unable to evaluate `[{:fhir/type :fhir/HumanName, :family \"Doe\"}]` as singleton")))
 
   (testing "and expression"
     (testing "with one telecom"
@@ -368,16 +378,33 @@
 
 ;; 5.4.1. union(other : collection)
 (deftest union-test
+  (let [patient
+        {:fhir/type :fhir/Patient :id "foo"
+         :name
+         [{:fhir/type :fhir/HumanName
+           :family "Doe"}
+          {:fhir/type :fhir/HumanName
+           :family "Bolton"}]}]
+    (are [expr res] (= res (eval expr patient))
+      "{} | {}" []
+      "1 | {}" [1]
+      "{} | 1" [1]
+      "1 | 1" [1]
+      "Patient.name.family | {}" ["Doe" "Bolton"]
+      "Patient.name.family | 'Wade'" ["Wade" "Doe" "Bolton"]
+      "{} | Patient.name.family" ["Doe" "Bolton"]
+      "'Wade' | Patient.name.family" ["Wade" "Doe" "Bolton"]
+      "Patient.name.family | Patient.name.family" ["Doe" "Bolton"]))
+
   (is
     (=
-      (set
-        (eval
-          "Patient.gender | Patient.birthDate"
-          {:fhir/type :fhir/Patient
-           :id "id-162953"
-           :gender #fhir/code"female"
-           :birthDate #fhir/date"2020"}))
-      #{#fhir/date"2020" #fhir/code"female"})))
+      (eval
+        "Patient.gender | Patient.birthDate"
+        {:fhir/type :fhir/Patient
+         :id "id-162953"
+         :gender #fhir/code"female"
+         :birthDate #fhir/date"2020"})
+      [#fhir/code"female" #fhir/date"2020"])))
 
 
 
@@ -553,7 +580,7 @@
 
 
 ;; 6.3.4 as(type : type specifier)
-(deftest as-type-function-test
+(deftest as-function-test
   (testing "single item with matching type returns the item"
     (is
       (=
@@ -578,7 +605,7 @@
       (empty?
         (first
           (eval
-            "Patient.birthDate as string"
+            "Patient.birthDate.as(string)"
             {:fhir/type :fhir/Patient :id "foo"})))))
 
   (testing "multiple item returns an error"

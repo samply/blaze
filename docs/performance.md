@@ -1,5 +1,15 @@
 # Performance
 
+## Transaction Bundle Upload - Summary
+
+| CPU         | # Cores | RAM (GB) | Xmx | MBJ | -c |# Resources | Duration (s) | Resources/s |
+|-------------|---------|----------|-----|-----|----|------------|--------------|-------------|
+| i7-6700     |       8 |       32 |  4g |   4 |  4 |  1,057,270 |          275 |        3845 |
+| i7-6700     |       8 |       32 |  4g |   4 |  4 |  9,382,617 |         4464 |        2102 |
+| E5-2687W v4 |       8 |       64 |  4g |   4 |  4 |  9,409,036 |         2275 |        4136 |
+| E5-2687W v4 |      12 |       64 |  4g |   8 |  8 |  9,409,036 |         1825 |        6150 |
+
+
 ## Transaction Bundle Upload - Datacenter Server
 
 ### Test Data
@@ -109,6 +119,168 @@ The upload resulted in the following resource counts:
 That are 171,536,553 resources in 13 hours and 5 minutes or about 3,600 resources per second.
 
 The size of the database directory after the import was 234 GiB or about 1,43 kB per resource which is less than the uncompressed JSON transaction bundles.
+
+## Transaction Bundle Upload - TODO
+
+### Test System
+
+Dell PowerEdge R630 with 8 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz, 128 GB RAM, 500 GB on Dell SC4020 Storage with 1.92TB SAS SSD's.
+
+### Upload Method
+
+Command line tool `blazectl` v0.6.0 with concurrency of 8.
+
+```text
+Uploads          [total, concurrency]     1258, 8
+Success          [ratio]                  100.00 %
+Duration         [total]                  4m46s
+Requ. Latencies  [mean, 50, 95, 99, max]  1.804s, 1.493s, 3.64s, 9.379s 18.165s
+Proc. Latencies  [mean, 50, 95, 99, max]  1.804s, 1.493s, 3.64s, 9.379s 18.165s
+Bytes In         [total, mean]            175.64 MiB, 142.97 KiB
+Bytes Out        [total, mean]            2.29 GiB, 1.86 MiB
+Status Codes     [code:count]             200:1258
+```
+
+## Transaction Bundle Upload - TODO
+
+### Test System
+
+Dell PowerEdge R630 with 12 Cores of Intel(R) Xeon(R) CPU E5-2687W v4 @ 3.00GHz, 128 GB RAM, 500 GB on Dell SC4020 Storage with 1.92TB SAS SSD's.
+
+### Upload Method
+
+Command line tool `blazectl` v0.6.0 with concurrency of 8.
+
+```text
+Uploads          [total, concurrency]     11935, 8
+Success          [ratio]                  100.00 %
+Duration         [total]                  36m12s
+Requ. Latencies  [mean, 50, 95, 99, max]  1.449s, 1.185s, 3.23s, 6.905s 17.535s
+Proc. Latencies  [mean, 50, 95, 99, max]  1.449s, 1.185s, 3.23s, 6.905s 17.535s
+Bytes In         [total, mean]            1.54 GiB, 135.48 KiB
+Bytes Out        [total, mean]            20.61 GiB, 1.77 MiB
+Status Codes     [code:count]             200:11935
+```
+
+The upload resulted in the following resource counts:
+
+```text
+AllergyIntolerance                :    5672
+CarePlan                          :   54647
+CareTeam                          :   54647
+Claim                             : 1190336
+Condition                         :  155914
+Device                            :    2256
+DiagnosticReport                  :  895428
+DocumentReference                 :  587661
+Encounter                         :  587661
+ExplanationOfBenefit              :  587661
+ImagingStudy                      :    8055
+Immunization                      :  158607
+Location                          :    5463
+Medication                        :   14677
+MedicationAdministration          :   14677
+MedicationRequest                 :  602675
+Observation                       : 3881205
+Organization                      :    5463
+Patient                           :   11933
+Practitioner                      :    5470
+PractitionerRole                  :    5470
+Procedure                         :  417649
+Provenance                        :   11933
+SupplyDelivery                    :  139316
+-------------------------------------------
+total                             : 9404476
+```
+
+The size of the database directory after the import was 13 GiB.
+
+## Transaction Bundle Upload - Developer Desktop
+
+### Test Data
+
+[Synthea][1] Test Data was generated with a Docker image created from the following Dockerfile:
+
+```dockerfile
+FROM gcr.io/distroless/java-debian10:11
+
+WORKDIR /gen
+
+ADD https://github.com/synthetichealth/synthea/releases/download/v2.7.0/synthea-with-dependencies.jar synthea.jar
+```
+
+and the following command:
+
+```sh
+docker run -v $(pwd)/output:/gen/output/fhir synthea-gen synthea.jar -s 3256262546 -cs 3726451 -r 20210101 -p 1000 --exporter.use_uuid_filenames=true
+```
+
+### Test System
+
+4 Cores w/ hyper threading Intel i7-6700 CPU @ 3.40GHz, 32 GB RAM, 128 GB SATA SSD SK hynix SC311
+
+### Start Script
+
+```sh
+docker run --name blaze --rm -v blaze-data:/app/data \
+  -e JAVA_TOOL_OPTIONS="-Xmx4g" \
+  -e LOG_LEVEL=debug \
+  -p 8080:8080 \
+  -p 8081:8081 \
+  -e DB_RESOURCE_INDEXER_THREADS=8 \
+  -d ghcr.io/samply/blaze:364dfdccc8a7d1d68c5c0eed615d0290228d4ee5
+```
+
+### Upload Method
+
+Command line tool `blazectl` v0.6.0 with concurrency of 4.
+
+```text
+Uploads          [total, concurrency]     1258, 4
+Success          [ratio]                  100.00 %
+Duration         [total]                  5m27s
+Requ. Latencies  [mean, 50, 95, 99, max]  1.034s, 812ms, 2.466s, 4.852s 15.173s
+Proc. Latencies  [mean, 50, 95, 99, max]  1.034s, 812ms, 2.466s, 4.852s 15.173s
+Bytes In         [total, mean]            175.65 MiB, 142.97 KiB
+Bytes Out        [total, mean]            2.29 GiB, 1.86 MiB
+Status Codes     [code:count]             200:1258
+```
+
+The upload resulted in the following resource counts:
+
+| Metric | Count |
+| :--- | ---: |
+| AllergyIntolerance | 700 |
+| CarePlan | 5754 |
+| CareTeam | 5754 |
+| Claim | 133212 |
+| Condition | 16499 |
+| Device | 298 |
+| DiagnosticReport | 100832 |
+| DocumentReference | 65355 |
+| Encounter | 65355 |
+| ExplanationOfBenefit | 65355 |
+| ImagingStudy | 886 |
+| Immunization | 16706 |
+| Location | 1201 |
+| Medication | 1531 |
+| MedicationAdministration | 1531 |
+| MedicationRequest | 67857 |
+| Observation | 441519 |
+| Organization | 1201 |
+| Patient | 1256 |
+| Practitioner | 1202 |
+| PractitionerRole | 1202 |
+| Procedure | 44527 |
+| Provenance | 1256 |
+| SupplyDelivery | 16281 |
+| **total** | **1,057,270** |
+
+That are 1,057,270 resources in 5 minutes and 27 seconds or about 3,200 resources per second.
+
+### Notes
+
+CPU Utilization was about 6 cores and max disk utilization was about 30 %. 
 
 ## Transaction Bundle Upload - Developer Laptop
 

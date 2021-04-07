@@ -86,7 +86,7 @@
   (-matches? [search-param context resource-handle modifier compiled-values])
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
-  (-compile-index-values [_ values]))
+  (-index-value-compiler [_]))
 
 
 (defprotocol Pull

@@ -34,4 +34,4 @@
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
-      (into [] (mapcat #(cc/index-values resolver % c1 c2)) values))))
+      (coll/eduction (cc/index-values resolver c1 c2) values))))

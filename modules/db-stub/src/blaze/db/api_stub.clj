@@ -23,10 +23,6 @@
 (def ^:private search-param-registry (sr/init-search-param-registry))
 
 
-(def ^:private resource-indexer-executor
-  (ex/cpu-bound-pool "resource-indexer-%d"))
-
-
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private local-tx-log-executor
   (ex/single-thread-executor "local-tx-log"))
@@ -69,8 +65,8 @@
         tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
         resource-handle-cache (.build (Caffeine/newBuilder))]
     (new-node tx-log resource-handle-cache (tx-cache index-kv-store)
-              resource-indexer-executor 1 indexer-executor index-kv-store
-              resource-store search-param-registry (jt/millis 10))))
+              indexer-executor index-kv-store resource-store
+              search-param-registry (jt/millis 10))))
 
 
 (defn- submit-txs [node txs]

@@ -59,35 +59,31 @@
         ::anom/message (invalid-decimal-value-msg code value)))))
 
 
-(defmulti quantity-index-entries
-  "Returns index entries for `value` from a resource.
-
-  The supplied function `entries-fn` takes a unit and a value and is used to
-  create the actual index entries. Multiple such `entries-fn` results can be
-  combined to one coll of entries."
-  {:arglists '([url entries-fn value])}
-  (fn [_ _ value] (fhir-spec/fhir-type value)))
+(defmulti index-entries
+  "Returns index entries for `value` from a resource."
+  {:arglists '([url value])}
+  (fn [_ value] (fhir-spec/fhir-type value)))
 
 
-(defmethod quantity-index-entries :fhir/Quantity
-  [_ entries-fn {:keys [value system code unit]}]
+(defmethod index-entries :fhir/Quantity
+  [_ {:keys [value system code unit]}]
   (let [value (type/value value)
         system (type/value system)
         code (type/value code)
         unit (type/value unit)]
     (cond-> []
       value
-      (into (entries-fn nil value))
+      (conj [nil (codec/quantity nil value)])
       code
-      (into (entries-fn code value))
+      (conj [nil (codec/quantity code value)])
       (and unit (not= unit code))
-      (into (entries-fn unit value))
+      (conj [nil (codec/quantity unit value)])
       (and system code)
-      (into (entries-fn (str system "|" code) value)))))
+      (conj [nil (codec/quantity (str system "|" code) value)]))))
 
 
-(defmethod quantity-index-entries :default
-  [url _ value]
+(defmethod index-entries :default
+  [url value]
   (log/warn (u/format-skip-indexing-msg value url "quantity")))
 
 
@@ -330,18 +326,10 @@
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (p/-compile-index-values search-param values)))
+      (coll/eduction (p/-index-value-compiler search-param) values)))
 
-  (-compile-index-values [_ values]
-    (into
-      []
-      (mapcat
-        #(quantity-index-entries
-           url
-           (fn [unit value]
-             [[nil (codec/quantity unit value)]])
-           %))
-      values)))
+  (-index-value-compiler [_]
+    (mapcat (partial index-entries url))))
 
 
 (defn- fix-expr

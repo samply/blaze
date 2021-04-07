@@ -1,7 +1,10 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/db-protocols
+ {blaze/coll
+  {:local/root "../coll"}
+
+  blaze/db-protocols
   {:local/root "../db-protocols"}
 
   blaze/fhir-path

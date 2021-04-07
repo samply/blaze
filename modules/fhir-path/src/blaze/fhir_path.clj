@@ -8,7 +8,7 @@
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang ExceptionInfo PersistentVector]
+    [clojure.lang Counted ExceptionInfo PersistentVector]
     [java.io StringReader]
     [org.antlr.v4.runtime CharStreams CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -105,19 +105,16 @@
 
 
 (defn- singleton [type coll]
-  (let [[first second] coll]
-    (cond
-      (and (some? first) (nil? second) (convertible? type first))
-      (convert type first)
+  (case (.count ^Counted coll)
+    1 (let [first (nth coll 0)]
+        (cond
+          (convertible? type first) (convert type first)
+          (identical? :fhir/boolean type) true
+          :else (throw-anom ::anom/incorrect (singleton-evaluation-msg coll))))
 
-      (and (some? first) (nil? second) (identical? :fhir/boolean type))
-      true
+    0 []
 
-      (nil? first)
-      []
-
-      :else
-      (throw-anom ::anom/incorrect (singleton-evaluation-msg coll)))))
+    (throw-anom ::anom/incorrect (singleton-evaluation-msg coll))))
 
 
 (defrecord StartExpression []
@@ -179,15 +176,12 @@
 (defrecord IsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
-    (let [[first second :as coll] (-eval expression context coll)]
-      (cond
-        (nil? first)
-        []
+    (let [coll (-eval expression context coll)]
+      (case (.count ^Counted coll)
+        0 []
 
-        (nil? second)
-        [(identical? type-specifier (fhir-spec/fhir-type first))]
+        1 [(identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))]
 
-        :else
         (throw-anom ::anom/incorrect (is-type-specifier-msg coll))))))
 
 
@@ -199,22 +193,31 @@
 (defrecord AsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
-    (let [[first second :as coll] (-eval expression context coll)]
-      (cond
-        (nil? first)
-        []
+    (let [coll (-eval expression context coll)]
+      (case (.count ^Counted coll)
+        0 []
 
-        (nil? second)
-        (if (identical? type-specifier (fhir-spec/fhir-type first)) [first] [])
+        1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
+            coll
+            [])
 
-        :else
         (throw-anom ::anom/incorrect (as-type-specifier-msg coll))))))
 
 
-(defrecord UnionExpression [expressions]
+(defrecord UnionExpression [e1 e2]
   Expression
-  (-eval [_ context x]
-    (into #{} (mapcat #(-eval % context x)) expressions)))
+  (-eval [_ context coll]
+    (let [^Counted c1 (-eval e1 context coll)
+          ^Counted c2 (-eval e2 context coll)]
+      (case (.count c1)
+        0 (case (.count c2)
+            (0 1) c2
+            (vec (set c2)))
+        1 (case (.count c2)
+            0 c1
+            1 (if (= c1 c2) c1 (conj c1 (nth c2 0)))
+            (vec (conj (set c2) (nth c1 0))))
+        (vec (reduce conj (set c1) c2))))))
 
 
 (defrecord EqualExpression [left-expr right-expr]
@@ -269,16 +272,14 @@
 (defrecord AsFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ coll]
-    (let [[first second] coll]
-      (cond
-        (nil? first)
-        []
+    (case (.count ^Counted coll)
+      0 []
 
-        (nil? second)
-        (if (identical? type-specifier (fhir-spec/fhir-type first)) [first] [])
+      1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
+          coll
+          [])
 
-        :else
-        (throw-anom ::anom/incorrect (as-type-specifier-msg coll))))))
+      (throw-anom ::anom/incorrect (as-type-specifier-msg coll)))))
 
 
 ;; See: http://hl7.org/fhirpath/#wherecriteria-expression-collection
@@ -297,18 +298,16 @@
   (-eval [_ context coll]
     (filterv
       (fn [item]
-        (let [[first second :as res] (-eval criteria context [item])]
-          (cond
-            (nil? first)
-            false
+        (let [coll (-eval criteria context [item])]
+          (case (.count ^Counted coll)
+            0 false
 
-            (nil? second)
-            (if (identical? :system/boolean (system/type first))
-              first
-              (throw-anom ::anom/incorrect (non-boolean-result-msg first)))
+            1 (let [first (nth coll 0)]
+                (if (identical? :system/boolean (system/type first))
+                  first
+                  (throw-anom ::anom/incorrect (non-boolean-result-msg first))))
 
-            :else
-            (throw-anom ::anom/incorrect (multiple-result-msg res)))))
+            (throw-anom ::anom/incorrect (multiple-result-msg coll)))))
       coll)))
 
 
@@ -347,13 +346,14 @@
 
 
 (defmethod resolve :default [_ item]
-  (log/debug (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item)) (pr-str item))))
+  (log/debug (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item))
+                     (pr-str item))))
 
 
 (defrecord ResolveFunctionExpression []
   Expression
   (-eval [_ context coll]
-    (mapcat (partial resolve context) coll)))
+    (reduce #(reduce conj %1 (resolve context %2)) [] coll)))
 
 
 (defprotocol FPCompiler
@@ -447,7 +447,12 @@
 
   fhirpathParser$UnionExpressionContext
   (-compile [ctx]
-    (->UnionExpression (mapv -compile (.expression ctx))))
+    (let [[e1 e2 :as exprs] (.expression ctx)]
+      (when-not (= 2 (count exprs))
+        (throw-anom
+          ::anom/fault
+          (format "UnionExpressionContext with %d expressions" (count exprs))))
+      (->UnionExpression (-compile e1) (-compile e2))))
 
   fhirpathParser$EqualityExpressionContext
   (-compile [ctx]

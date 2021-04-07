@@ -33,40 +33,44 @@
   (codec/date-ub default-zone-id date-time))
 
 
-(defmulti date-index-entries (fn [_ _ value] (fhir-spec/fhir-type value)))
+(defmulti index-entries
+  "Returns index entries for `value` from a resource."
+  {:arglists '([url value])}
+  (fn [_ value] (fhir-spec/fhir-type value)))
 
 
-(defmethod date-index-entries :fhir/date
-  [_ entries-fn date]
+(defmethod index-entries :fhir/date
+  [_ date]
   (when-let [value (type/value date)]
-    (entries-fn (date-lb value) (date-ub value))))
+    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
 
 
-(defmethod date-index-entries :fhir/dateTime
-  [_ entries-fn date-time]
+(defmethod index-entries :fhir/dateTime
+  [_ date-time]
   (when-let [value (type/value date-time)]
-    (entries-fn (date-lb value) (date-ub value))))
+    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
 
 
-(defmethod date-index-entries :fhir/instant
-  [_ entries-fn date-time]
+(defmethod index-entries :fhir/instant
+  [_ date-time]
   (when-let [value (type/value date-time)]
-    (entries-fn (date-lb value) (date-ub value))))
+    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
 
 
-(defmethod date-index-entries :fhir/Period
-  [_ entries-fn {:keys [start end]}]
-  (entries-fn
-    (if-let [start (type/value start)]
-      (date-lb start)
-      codec/date-min-bound)
-    (if-let [end (type/value end)]
-      (date-ub end)
-      codec/date-max-bound)))
+(defmethod index-entries :fhir/Period
+  [_ {:keys [start end]}]
+  [[nil
+    (codec/date-lb-ub
+      (if-let [start (type/value start)]
+        (date-lb start)
+        codec/date-min-bound)
+      (if-let [end (type/value end)]
+        (date-ub end)
+        codec/date-max-bound))]])
 
 
-(defmethod date-index-entries :default
-  [url _ value]
+(defmethod index-entries :default
+  [url value]
   (log/warn (u/format-skip-indexing-msg value url "date")))
 
 
@@ -242,18 +246,10 @@
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (p/-compile-index-values search-param values)))
+      (coll/eduction (p/-index-value-compiler search-param) values)))
 
-  (-compile-index-values [_ values]
-    (into
-      []
-      (mapcat
-        #(date-index-entries
-           url
-           (fn [lb ub]
-             [[nil (codec/date-lb-ub lb ub)]])
-           %))
-      values)))
+  (-index-value-compiler [_]
+    (mapcat (partial index-entries url))))
 
 
 (defmethod sr/search-param "date"

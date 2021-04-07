@@ -2,6 +2,9 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/coll
+  {:local/root "../coll"}
+
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
