@@ -1,6 +1,6 @@
 (ns blaze.fhir.spec.type
   (:require
-    [blaze.fhir.spec.type.macros :refer [defcomplextype]]
+    [blaze.fhir.spec.type.macros :as macros :refer [defcomplextype]]
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
     [clojure.alpha.spec :as s2]
@@ -55,6 +55,10 @@
   (p/-hash-into x sink))
 
 
+(defn references [x]
+  (p/-references x))
+
+
 
 ;; ---- nil -------------------------------------------------------------------
 
@@ -64,7 +68,8 @@
   (-type [_])
   (-value [_])
   (-to-xml [_])
-  (-hash-into [_ _]))
+  (-hash-into [_ _])
+  (-references [_]))
 
 
 
@@ -73,7 +78,8 @@
 ;; Other instances have no type.
 (extend-protocol p/FhirType
   Object
-  (-type [_]))
+  (-type [_])
+  (-references [_]))
 
 
 
@@ -87,7 +93,8 @@
   (-hash-into [b sink]
     (.putByte ^PrimitiveSink sink (byte 0))                 ; :fhir/boolean
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into b sink)))
+    (system/-hash-into b sink))
+  (-references [_]))
 
 
 (defn xml->Boolean
@@ -107,7 +114,8 @@
   (-hash-into [i sink]
     (.putByte ^PrimitiveSink sink (byte 1))                 ; :fhir/integer
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into i sink)))
+    (system/-hash-into i sink))
+  (-references [_]))
 
 
 (defn xml->Integer
@@ -127,7 +135,8 @@
   (-hash-into [i sink]
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :fhir/long
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into i sink)))
+    (system/-hash-into i sink))
+  (-references [_]))
 
 
 (defn xml->Long
@@ -147,7 +156,8 @@
   (-hash-into [s sink]
     (.putByte ^PrimitiveSink sink (byte 3))                 ; :fhir/string
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into s sink)))
+    (system/-hash-into s sink))
+  (-references [_]))
 
 
 (defn xml->String
@@ -171,7 +181,8 @@
   (-hash-into [d sink]
     (.putByte ^PrimitiveSink sink (byte 4))                 ; :fhir/decimal
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into d sink)))
+    (system/-hash-into d sink))
+  (-references [_]))
 
 
 (defn xml->Decimal
@@ -196,6 +207,7 @@
     (.putByte ^PrimitiveSink sink (byte 5))                 ; :fhir/uri
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
 
   Object
   (equals [_ x]
@@ -240,6 +252,7 @@
     (.putByte ^PrimitiveSink sink (byte 6))                 ; :fhir/url
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
 
   Object
   (equals [_ x]
@@ -284,6 +297,7 @@
     (.putByte ^PrimitiveSink sink (byte 7))                 ; :fhir/canonical
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
 
   Object
   (equals [_ x]
@@ -328,6 +342,7 @@
     (.putByte ^PrimitiveSink sink (byte 8))                 ; :fhir/base64Binary
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
 
   Object
   (equals [_ x]
@@ -378,6 +393,7 @@
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
 
   Object
   (equals [_ x]
@@ -402,7 +418,8 @@
   (-hash-into [instant sink]
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into (p/-value instant) sink)))
+    (system/-hash-into (p/-value instant) sink))
+  (-references [_]))
 
 
 (defn ->Instant [s]
@@ -434,6 +451,7 @@
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
+  (-references [_])
 
   YearMonth
   (-type [_] :fhir/date)
@@ -443,6 +461,7 @@
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
+  (-references [_])
 
   LocalDate
   (-type [_] :fhir/date)
@@ -451,7 +470,8 @@
   (-hash-into [date sink]
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into date sink)))
+    (system/-hash-into date sink))
+  (-references [_]))
 
 
 (defn ->Date [value]
@@ -494,6 +514,7 @@
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into year sink))
+  (-references [_])
 
   DateTimeYearMonth
   (-type [_] :fhir/dateTime)
@@ -503,6 +524,7 @@
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into year-month sink))
+  (-references [_])
 
   DateTimeYearMonthDay
   (-type [_] :fhir/dateTime)
@@ -511,7 +533,8 @@
   (-hash-into [year-month-day sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into year-month-day sink)))
+    (system/-hash-into year-month-day sink))
+  (-references [_]))
 
 
 (def ^:private date-time-year-serializer
@@ -548,6 +571,7 @@
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date-time sink))
+  (-references [_])
 
   LocalDateTime
   (-type [_] :fhir/dateTime)
@@ -557,7 +581,8 @@
   (-hash-into [date-time sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into date-time sink)))
+    (system/-hash-into date-time sink))
+  (-references [_]))
 
 
 (defrecord ExtendedDateTime [id extension value]
@@ -574,7 +599,9 @@
       (.putByte ^PrimitiveSink sink (byte 1))               ; :extension
       (p/-hash-into extension sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink)))
+    (system/-hash-into value sink))
+  (-references [_]
+    (p/-references extension)))
 
 
 (def ^:private extended-date-time-serializer
@@ -627,7 +654,8 @@
   (-hash-into [time sink]
     (.putByte ^PrimitiveSink sink (byte 12))                ; :fhir/time
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into time sink)))
+    (system/-hash-into time sink))
+  (-references [_]))
 
 
 (defn ->Time [s]
@@ -656,6 +684,7 @@
     (.putByte ^PrimitiveSink sink (byte 13))                ; :fhir/code
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Code x) (= value (.value ^Code x))))
@@ -691,13 +720,19 @@
       (.putByte ^PrimitiveSink sink (byte 1))               ; :extension
       (p/-hash-into extension sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink)))
+    (system/-hash-into value sink))
+  (-references [_]
+    (p/-references extension)))
 
 
 (def ^:private extended-code-serializer
   (proxy [StdSerializer] [ExtendedCode]
     (serialize [^ExtendedCode extended-code ^JsonGenerator gen _]
       (.writeString gen ^String (.value extended-code)))))
+
+
+(defn tagged-literal->Code [x]
+  (if (string? x) (->Code x) (map->ExtendedCode x)))
 
 
 (defn xml->Code
@@ -725,6 +760,7 @@
     (.putByte ^PrimitiveSink sink (byte 14))                ; :fhir/oid
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Oid x) (= value (.value ^Oid x))))
@@ -768,6 +804,7 @@
     (.putByte ^PrimitiveSink sink (byte 15))                ; :fhir/id
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Id x) (= value (.value ^Id x))))
@@ -811,6 +848,7 @@
     (.putByte ^PrimitiveSink sink (byte 16))                ; :fhir/markdown
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Markdown x) (= value (.value ^Markdown x))))
@@ -854,6 +892,7 @@
     (.putByte ^PrimitiveSink sink (byte 17))                ; :fhir/unsignedInt
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? UnsignedInt x) (= value (.value ^UnsignedInt x))))
@@ -888,7 +927,9 @@
       (.putByte ^PrimitiveSink sink (byte 1))               ; :extension
       (p/-hash-into extension sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink)))
+    (system/-hash-into value sink))
+  (-references [_]
+    (p/-references extension)))
 
 
 (defn xml->UnsignedInt
@@ -915,6 +956,7 @@
     (.putByte ^PrimitiveSink sink (byte 18))                ; :fhir/positiveInt
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? PositiveInt x) (= value (.value ^PositiveInt x))))
@@ -949,7 +991,9 @@
       (.putByte ^PrimitiveSink sink (byte 1))               ; :extension
       (p/-hash-into extension sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink)))
+    (system/-hash-into value sink))
+  (-references [_]
+    (p/-references extension)))
 
 
 (defn xml->PositiveInt
@@ -976,7 +1020,8 @@
     (.putByte ^PrimitiveSink sink (byte 19))                ; :fhir/uuid
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (.putLong ^PrimitiveSink sink (.getMostSignificantBits uuid))
-    (.putLong ^PrimitiveSink sink (.getLeastSignificantBits uuid))))
+    (.putLong ^PrimitiveSink sink (.getLeastSignificantBits uuid)))
+  (-references [_]))
 
 
 (def ^:private uuid-serializer
@@ -1011,6 +1056,7 @@
     (.putByte ^PrimitiveSink sink (byte 20))                ; :fhir/xhtml
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Xhtml x) (= value (.value ^Xhtml x))))
@@ -1056,11 +1102,14 @@
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
     (reduce (fn [_ x] (p/-hash-into x sink)) nil xs))
+  (-references [xs]
+    (transduce (mapcat p/-references) conj [] xs))
   Keyword
   (-type [_])
   (-value [_])
   (-hash-into [k sink]
     (.putInt ^PrimitiveSink sink (.hasheq k)))
+  (-references [_])
   Map
   (-type [m]
     (:fhir/type m))
@@ -1072,7 +1121,9 @@
         (p/-hash-into k sink)
         (p/-hash-into (k m) sink))
       nil
-      (sort (keys m)))))
+      (sort (keys m))))
+  (-references [m]
+    (transduce (mapcat p/-references) conj [] (vals m))))
 
 
 (declare extension-serializer)
@@ -1178,8 +1229,27 @@
 (declare identifier-serializer)
 
 
+(defn- valid-ref? [[type id]]
+  (and (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
+       (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))))
+
+
+(defn- reference-reference [ref]
+  (let [ref (str/split ref #"/" 2)]
+    (when (valid-ref? ref)
+      [ref])))
+
+
 (defcomplextype Reference [id extension reference type identifier display]
   :hash-num 43
+  :references
+  (-references [_]
+    (-> (transient (or (some-> reference reference-reference) []))
+        (macros/into! (p/-references extension))
+        (macros/into! (p/-references type))
+        (macros/into! (p/-references identifier))
+        (macros/into! (p/-references display))
+        (persistent!)))
   :field-serializers
   {id :string
    extension ^{:cardinality :many} extension-serializer

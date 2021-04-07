@@ -1,10 +1,10 @@
 (ns blaze.db.node.transaction
   (:require
     [blaze.db.impl.codec :as codec]
-    [blaze.db.tx-log.local.references :as references]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
-    [blaze.fhir.spec :as fhir-spec]))
+    [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]))
 
 
 (defmulti prepare-op first)
@@ -13,7 +13,7 @@
 (defmethod prepare-op :create
   [[op resource clauses]]
   (let [hash (hash/generate resource)
-        refs (references/extract-references resource)]
+        refs (type/references resource)]
     {:hash-resource
      [hash resource]
      :blaze.db/tx-cmd
@@ -31,7 +31,7 @@
 (defmethod prepare-op :put
   [[op resource matches]]
   (let [hash (hash/generate resource)
-        refs (references/extract-references resource)]
+        refs (type/references resource)]
     {:hash-resource
      [hash resource]
      :blaze.db/tx-cmd

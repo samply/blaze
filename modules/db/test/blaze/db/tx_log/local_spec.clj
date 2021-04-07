@@ -6,7 +6,6 @@
     [blaze.db.resource-store.spec]
     [blaze.db.spec]
     [blaze.db.tx-log.local :as tx-log]
-    [blaze.db.tx-log.local.references-spec]
     [blaze.executors :as ex]
     [clojure.spec.alpha :as s])
   (:import

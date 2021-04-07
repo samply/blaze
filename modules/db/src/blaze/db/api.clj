@@ -14,6 +14,8 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p])
+  (:import
+    [java.io Closeable])
   (:refer-clojure :exclude [sync]))
 
 
@@ -449,6 +451,7 @@
 
   The batch database has to be closed after usage, because it holds resources
   that have to be freed."
+  ^Closeable
   [db]
   (p/-new-batch-db db))
 

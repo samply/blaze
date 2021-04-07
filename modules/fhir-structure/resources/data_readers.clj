@@ -7,7 +7,7 @@
  fhir/date blaze.fhir.spec.type/->Date
  fhir/dateTime blaze.fhir.spec.type/->DateTime
  fhir/time blaze.fhir.spec.type/->Time
- fhir/code blaze.fhir.spec.type/->Code
+ fhir/code blaze.fhir.spec.type/tagged-literal->Code
  fhir/oid blaze.fhir.spec.type/->Oid
  fhir/id blaze.fhir.spec.type/->Id
  fhir/markdown blaze.fhir.spec.type/->Markdown

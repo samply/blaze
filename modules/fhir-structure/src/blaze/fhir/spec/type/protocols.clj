@@ -5,4 +5,5 @@
   (-type [_])
   (-value [_])
   (-to-xml [_])
-  (-hash-into [_ sink]))
+  (-hash-into [_ sink])
+  (-references [_]))
