@@ -9,12 +9,13 @@
     [blaze.db.kv.spec]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [loom.alg]
-    [loom.graph]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [clojure.lang ExceptionInfo]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defhistogram duration-seconds
@@ -124,46 +125,8 @@
   (fn [_ _ _ {:keys [op]}] op))
 
 
-(defn- resource-exists? [db type id]
-  (when-let [{:keys [op]} (d/resource-handle db type id)]
-    (not (identical? :delete op))))
-
-
-(defn- throw-referential-integrity-anomaly-delete [[src-type src-id] type id]
-  (throw-anom
-    ::anom/conflict
-    (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`." type id src-type src-id)))
-
-
-(defn- throw-referential-integrity-anomaly [type id]
-  (throw-anom
-    ::anom/conflict
-    (format "Referential integrity violated. Resource `%s/%s` doesn't exist." type id)))
-
-
-(defn- check-referential-integrity!
-  [db-before {:keys [new-resources del-resources]} source references]
-  (doseq [[type id :as reference] references]
-    (cond
-      (contains? del-resources reference)
-      (throw-referential-integrity-anomaly-delete source type id)
-
-      (and (not (contains? new-resources reference))
-           (not (resource-exists? db-before type id)))
-      (throw-referential-integrity-anomaly type id))))
-
-
-(defn- format-references [references]
-  (->> references
-       (map (fn [[type id]] (format "%s/%s" type id)))
-       (str/join ", ")))
-
-
-(defn- verify-tx-cmd-create-msg [type id references]
-  (if (seq references)
-    (format "verify-tx-cmd :create %s/%s references: %s" type id
-            (format-references references))
-    (format "verify-tx-cmd :create %s/%s" type id)))
+(defn- verify-tx-cmd-create-msg [type id]
+  (format "verify-tx-cmd :create %s/%s" type id))
 
 
 (defn- id-collision-msg [type id]
@@ -180,11 +143,10 @@
 
 
 (defmethod verify-tx-cmd "create"
-  [db-before t res {:keys [type id hash refs]}]
-  (log/trace (verify-tx-cmd-create-msg type id refs))
+  [db-before t res {:keys [type id hash]}]
+  (log/trace (verify-tx-cmd-create-msg type id))
   (with-open [_ (prom/timer duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
-    (check-referential-integrity! db-before res [type id] refs)
     (let [tid (codec/tid type)]
       (-> res
           (update :entries into (index-entries tid id t hash 1 :create))
@@ -207,10 +169,9 @@
 
 
 (defmethod verify-tx-cmd "put"
-  [db-before t res {:keys [type id hash refs if-match]}]
+  [db-before t res {:keys [type id hash if-match]}]
   (log/trace (verify-tx-cmd-put-msg type id if-match))
   (with-open [_ (prom/timer duration-seconds "verify-put")]
-    (check-referential-integrity! db-before res [type id] refs)
     (let [tid (codec/tid type)
           {:keys [num-changes op] :or {num-changes 0} old-t :t}
           (d/resource-handle db-before type id)]
@@ -278,11 +239,57 @@
     (conj (system-stats db-before t stats))))
 
 
+(defn- resource-exists? [db type id]
+  (when-let [{:keys [op]} (d/resource-handle db type id)]
+    (not (identical? :delete op))))
+
+
+(defn- throw-referential-integrity-anomaly-delete [[src-type src-id] type id]
+  (throw-anom
+    ::anom/conflict
+    (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`." type id src-type src-id)))
+
+
+(defn- throw-referential-integrity-anomaly [type id]
+  (throw-anom
+    ::anom/conflict
+    (format "Referential integrity violated. Resource `%s/%s` doesn't exist." type id)))
+
+
+(defmacro dovec [[sym form] & body]
+  `(let [coll# (vec ~form)
+         n# (count coll#)]
+     (loop [i# 0]
+       (when (< i# n#)
+         (let [~sym (nth coll# i#)]
+           ~@body)
+         (recur (inc i#))))))
+
+
+(defn- check-referential-integrity*!
+  [db new-resources del-resources source references]
+  (dovec [[type id :as reference] references]
+    (cond
+      (contains? del-resources reference)
+      (throw-referential-integrity-anomaly-delete source type id)
+
+      (and (not (contains? new-resources reference))
+           (not (resource-exists? db type id)))
+      (throw-referential-integrity-anomaly type id))))
+
+
+(defn- check-referential-integrity!
+  [db {:keys [new-resources del-resources]} cmds]
+  (dovec [{:keys [type id refs]} cmds]
+    (check-referential-integrity*! db new-resources del-resources [type id] refs)))
+
+
 (defn- verify-tx-cmds* [db-before t cmds]
   (try
     (let [cmds (resolve-ids db-before cmds)]
       (detect-duplicate-commands! cmds)
       (let [res (verify-tx-cmds** db-before t cmds)]
+        (check-referential-integrity! db-before res cmds)
         (post-process-res db-before t res)))
     (catch ExceptionInfo e
       (if (::anom/category (ex-data e))

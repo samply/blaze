@@ -232,16 +232,16 @@
   (testing "Patient with gender extension"
     (is (= {:fhir/type :fhir/Patient
             :gender
-            (type/->ExtendedCode
-              nil
-              [#fhir/Extension
-                  {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
-                   :value
-                   #fhir/Coding
-                       {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                        :code #fhir/code"D"
-                        :display "divers"}}]
-              "other")}
+            #fhir/code
+                {:extension
+                 [#fhir/Extension
+                     {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
+                      :value
+                      #fhir/Coding
+                          {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+                           :code #fhir/code"D"
+                           :display "divers"}}]
+                 :value "other"}}
            (conform-xml
              [:Patient
               [:gender
@@ -440,16 +440,16 @@
            (fhir-spec/unform-xml
              {:fhir/type :fhir/Patient
               :gender
-              (type/->ExtendedCode
-                nil
-                [#fhir/Extension
-                    {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
-                     :value
-                     #fhir/Coding
-                         {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                          :code #fhir/code"D"
-                          :display "divers"}}]
-                "other")}))))
+              #fhir/code
+                  {:extension
+                   [#fhir/Extension
+                       {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
+                        :value
+                        #fhir/Coding
+                            {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+                             :code #fhir/code"D"
+                             :display "divers"}}]
+                   :value "other"}}))))
 
   (testing "Patient with Narrative"
     (let [xml (sexp [::f/Patient {:xmlns "http://hl7.org/fhir"}
@@ -814,8 +814,7 @@
 
 
 (def extended-code
-  (type/->ExtendedCode
-    nil [#fhir/Extension{:url "bar" :value "baz"}] "foo"))
+  #fhir/code{:extension [#fhir/Extension{:url "bar" :value "baz"}] :value "foo"})
 
 
 (deftest fhir-code
@@ -1721,6 +1720,38 @@
 
         #fhir/BundleEntrySearch{:score 1.1M}
         {:score 1.1M}))))
+
+
+(deftest list-test
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      {:fhir/type :fhir/List
+       :entry
+       [{:fhir/type :fhir.List/entry
+         :item #fhir/Reference{:reference "Patient/0"}}
+        {:fhir/type :fhir.List/entry
+         :item #fhir/Reference{:reference "Patient/1"}}]}
+      [["Patient" "0"]
+       ["Patient" "1"]])))
+
+
+(deftest observation-test
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      {:fhir/type :fhir/Observation
+       :subject #fhir/Reference{:reference "Patient/0"}}
+      [["Patient" "0"]])))
+
+
+(deftest provenance-test
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      {:fhir/type :fhir/Provenance
+       :target
+       [#fhir/Reference{:reference "Patient/204750"}
+        #fhir/Reference{:reference "Observation/204754"}]}
+      [["Patient" "204750"]
+       ["Observation" "204754"]])))
 
 
 (deftest primitive-val-test

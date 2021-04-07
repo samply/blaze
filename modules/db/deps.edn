@@ -1,9 +1,5 @@
 {:deps
- {aysylu/loom
-  {:mvn/version "1.0.2"
-   :exclusions [org.clojure/clojurescript]}
-
-  blaze/async
+ {blaze/async
   {:local/root "../async"}
 
   blaze/byte-string

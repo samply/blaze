@@ -12,6 +12,11 @@
   :ret (s/nilable system/value?))
 
 
+(s/fdef type/references
+  :args (s/cat :x any?)
+  :ret (s/coll-of :blaze.db/local-ref))
+
+
 (s/fdef type/->Date
   :args (s/cat :value string?)
   :ret (s/or :date type/date? :invalid s2/invalid?))

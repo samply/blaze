@@ -26,8 +26,12 @@
     (dyn-serialize* gen provider value)))
 
 
+(defn into! [to from]
+  (reduce conj! to from))
+
+
 (defmacro defcomplextype
-  [name [& fields] & {:keys [fhir-type hash-num field-serializers]}]
+  [name [& fields] & {:keys [fhir-type hash-num references field-serializers]}]
   (let [sink-sym (gensym "sink")
         sink-sym-tag (with-meta sink-sym {:tag `PrimitiveSink})
         value-sym (gensym "value")
@@ -44,7 +48,16 @@
                     (.putByte ~sink-sym-tag (byte ~idx))
                     (~(if (= 'id field) `system/-hash-into `p/-hash-into)
                       ~field ~sink-sym)))
-               fields)))
+               fields))
+         ~(or references
+              `(-references [~'_]
+                            (-> (transient [])
+                                ~@(keep
+                                    (fn [field]
+                                      (when-not (= 'id field)
+                                        `(into! (p/-references ~field))))
+                                    fields)
+                                (persistent!)))))
 
        (defmethod print-method ~name [x# ~(with-meta 'w {:tag `Writer})]
          (.write ~'w ~(str "#fhir/" name))

@@ -424,13 +424,14 @@
            [[:create {:fhir/type :fhir/Patient :id "0" :active true}]]))
 
       (testing "updating that patient to active=false in a failing transaction"
-        (given @(-> (d/transact
-                      node
-                      [[:put {:fhir/type :fhir/Patient :id "0" :active false}]
-                       [:create {:fhir/type :fhir/Observation :id "0"
-                                 :subject
-                                 #fhir/Reference{:reference "Patient/1"}}]])
-                    (ac/exceptionally (comp ex-data ex-cause)))
+        (given
+          (catch-cause-ex-data
+            @(d/transact
+               node
+               [[:put {:fhir/type :fhir/Patient :id "0" :active false}]
+                [:create {:fhir/type :fhir/Observation :id "0"
+                          :subject
+                          #fhir/Reference{:reference "Patient/1"}}]]))
           ::anom/category := ::anom/conflict))
 
       (testing "creating a second patient in order to add a successful transaction on top"
@@ -523,15 +524,17 @@
     (testing "on put"
       (with-open [node (new-node-with
                          {:resource-store (new-resource-store-failing-on-put)})]
-        (given @(-> (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                    (ac/exceptionally (comp ex-data ex-cause)))
+        (given
+          (catch-cause-ex-data
+            @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
           ::anom/category := ::anom/fault)))
 
     (testing "on get"
       (with-open [node (new-node-with
                          {:resource-store (new-resource-store-failing-on-get)})]
-        (given @(-> (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                    (ac/exceptionally (comp ex-data ex-cause)))
+        (given
+          (catch-cause-ex-data
+            @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
           ::anom/category := ::anom/fault)))))
 
 

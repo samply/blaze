@@ -1,7 +1,6 @@
 (ns blaze.db.node.tx-indexer
   (:require
     [blaze.db.api :as d]
-    [blaze.db.node.tx-indexer.sort :as sort]
     [blaze.db.node.tx-indexer.verify :as verify]
     [taoensso.timbre :as log]))
 
@@ -10,4 +9,4 @@
   [db-before {:keys [t tx-cmds]}]
   (log/trace "verify transaction commands with t =" t
              "based on db with t =" (d/basis-t db-before))
-  (verify/verify-tx-cmds db-before t (sort/sort-by-references tx-cmds)))
+  (verify/verify-tx-cmds db-before t tx-cmds))

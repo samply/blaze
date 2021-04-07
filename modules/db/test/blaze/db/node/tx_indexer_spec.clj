@@ -2,7 +2,6 @@
   (:require
     [blaze.db.kv.spec]
     [blaze.db.node.tx-indexer :as tx-indexer]
-    [blaze.db.node.tx-indexer.sort-spec]
     [blaze.db.node.tx-indexer.verify-spec]
     [blaze.db.spec]
     [blaze.db.tx-log.spec]
