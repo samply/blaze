@@ -67,6 +67,7 @@ More information about distributed deployment are available [here](distributed.m
 | LOG\_LEVEL | info | v0.6 | one of trace, debug, info, warn or error |
 | JAVA\_TOOL\_OPTIONS | — |  | JVM options \(Docker only\) |
 | FHIR\_OPERATION\_EVALUATE\_MEASURE\_THREADS | 4 | v0.8 | The maximum number of parallel $evaluate-measure executions. Not the same as the number of threads used for measure evaluation which equal to the number of available processors. |
+| OPENID\_PROVIDER\_URL | - | v0.11 | [OpenID Connect][2] provider URL to enable [authentication][3] |
 
 ### Common JAVA_TOOL_OPTIONS
 
@@ -77,3 +78,5 @@ More information about distributed deployment are available [here](distributed.m
 | -Dhttp.proxyPort | 80 | v0.11 | The port of the proxy server. |
 
 [1]: <https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies>
+[2]: <https://openid.net/connect/>
+[3]: <../authentication.md>

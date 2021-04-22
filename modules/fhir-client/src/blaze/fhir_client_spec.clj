@@ -5,6 +5,7 @@
     [blaze.async.flow :as flow]
     [blaze.async.flow-spec]
     [blaze.fhir-client :as fhir-client]
+    [blaze.fhir-client.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s])
   (:import
@@ -12,29 +13,31 @@
 
 
 (s/fdef fhir-client/metadata
-  :args (s/cat :base-uri string? :opts (s/? map?))
+  :args (s/cat :base-uri string? :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/read
   :args (s/cat :base-uri string? :type :fhir.type/name :id :blaze.resource/id
-               :opts (s/? map?))
+               :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/update
-  :args (s/cat :base-uri string? :resource :blaze/resource :opts (s/? map?))
+  :args (s/cat :base-uri string? :resource :blaze/resource
+               :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/execute-type-get
   :args (s/cat :base-uri string? :type :fhir.type/name :name string?
-               :opts (s/? map?))
+               :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/search-type-publisher
-  :args (s/cat :base-uri string? :type :fhir.type/name :opts (s/? map?))
+  :args (s/cat :base-uri string? :type :fhir.type/name
+               :opts (s/? :blaze.fhir-client/options))
   :ret flow/publisher?)
 
 
@@ -44,12 +47,13 @@
 
 
 (s/fdef fhir-client/search-type
-  :args (s/cat :base-uri string? :type :fhir.type/name :opts (s/? map?))
+  :args (s/cat :base-uri string? :type :fhir.type/name
+               :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/search-system
-  :args (s/cat :base-uri string? :opts (s/? map?))
+  :args (s/cat :base-uri string? :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
 

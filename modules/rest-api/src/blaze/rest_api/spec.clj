@@ -3,17 +3,16 @@
     [blaze.executors :as ex]
     [blaze.spec]
     [blaze.structure-definition]
+    [buddy.auth.protocols :as p]
     [clojure.spec.alpha :as s]
-    [integrant.core :as ig])
-  (:import
-    [buddy.auth.protocols IAuthentication]))
+    [integrant.core :as ig]))
 
 
 (set! *warn-on-reflection* true)
 
 
 (s/def :blaze.rest-api/auth-backends
-  (s/coll-of #(satisfies? IAuthentication %)))
+  (s/coll-of #(satisfies? p/IAuthentication %)))
 
 
 (s/def :blaze.rest-api/search-system-handler

@@ -43,6 +43,7 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 * [Tuning Guide](docs/tuning-guide.md)
 * [Tooling](docs/tooling.md)
 * [CQL Queries](docs/cql-queries.md)
+* [Authentication](docs/authentication.md)
 * [Implementation](docs/implementation/README.md)
 
 ## YourKit Profiler

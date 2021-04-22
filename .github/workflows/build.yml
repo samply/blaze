@@ -45,6 +45,7 @@ jobs:
         - operation-measure-evaluate-measure
         - rest-api
         - rest-util
+        - scheduler
         - search-param-registry
 
         java-version:
@@ -104,6 +105,7 @@ jobs:
         - operation-measure-evaluate-measure
         - rest-api
         - rest-util
+        - scheduler
         - search-param-registry
 
     runs-on: ubuntu-20.04
@@ -303,3 +305,36 @@ jobs:
 
     - name: Docker Stop
       run: docker stop blaze
+
+  openid-auth-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.CR_PAT }}
+
+    - name: Run Keycloak and Blaze
+      run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d
+
+    - name: Sleep 90s
+      run: sleep 90
+
+    - name: Docker Logs Keycloak
+      run: docker-compose -f .github/openid-auth-test/docker-compose.yml logs keycloak
+
+    - name: Docker Logs Blaze
+      run: docker-compose -f .github/openid-auth-test/docker-compose.yml logs blaze
+
+    - name: Unauthenticated Request
+      run: test "MSG_AUTH_REQUIRED" = "$(curl -s http://localhost:8080/fhir | jq -r .issue[0].details.coding[0].code)"
+
+    - name: Authenticated Request
+      run: .github/scripts/authenticated-request.sh

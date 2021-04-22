@@ -2,6 +2,9 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/http-client
+  {:local/root "../http-client"}
+
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
