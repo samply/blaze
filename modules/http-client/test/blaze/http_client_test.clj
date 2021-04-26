@@ -27,9 +27,7 @@
 
 
 (defn- http-client [opts]
-  (-> (ig/init
-        {:blaze/http-client opts})
-      (:blaze/http-client)))
+  (-> {:blaze/http-client opts} ig/init :blaze/http-client))
 
 
 (extend-protocol Datafiable

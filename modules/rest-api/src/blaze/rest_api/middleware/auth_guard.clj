@@ -1,8 +1,8 @@
 (ns blaze.rest-api.middleware.auth-guard
   (:require
     [blaze.async.comp :as ac]
-    [blaze.fhir.spec.type]
-    [buddy.auth :refer [authenticated?]]
+    [blaze.fhir.spec.type :as type]
+    [buddy.auth :as auth]
     [ring.util.response :as ring]))
 
 
@@ -16,7 +16,7 @@
   "If the request is unauthenticated return a 401 response."
   [handler]
   (fn [request]
-    (if (authenticated? request)
+    (if (auth/authenticated? request)
       (handler request)
       (ac/completed-future
         (-> (ring/response
@@ -25,5 +25,7 @@
                [{:fhir/type :fhir.OperationOutcome/issue
                  :severity #fhir/code"error"
                  :code #fhir/code"login"
-                 :details #fhir/CodeableConcept{:coding [msg-auth-required]}}]})
+                 :details
+                 (type/map->CodeableConcept
+                   {:coding [msg-auth-required]})}]})
             (ring/status 401))))))

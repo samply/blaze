@@ -658,4 +658,10 @@
    :toggle "OPENID_PROVIDER_URL"
    :config
    {:blaze.openid-auth/backend
-    {:openid-provider/url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}}}]}
+    {:http-client #blaze/ref :blaze/http-client
+     :scheduler #blaze/ref :blaze/scheduler
+     :provider-url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}
+
+    :blaze/http-client {}
+
+    :blaze/scheduler {}}}]}
