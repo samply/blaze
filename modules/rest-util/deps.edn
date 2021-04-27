@@ -15,7 +15,7 @@
   {:mvn/version "0.5.13"}
 
   ring/ring-core
-  {:mvn/version "1.9.2"
+  {:mvn/version "1.9.3"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
