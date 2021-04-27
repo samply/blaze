@@ -7,6 +7,7 @@
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
+    [blaze.db.impl.search-param.quantity :as spq]
     [blaze.db.impl.search-param.quantity-spec]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
@@ -21,11 +22,12 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -104,7 +106,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -167,7 +169,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -215,7 +217,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -263,7 +265,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -320,5 +322,8 @@
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "value-quantity" "Observation")
-                 hash resource [])
-          ::anom/category := ::anom/fault)))))
+                 [] hash resource)
+          ::anom/category := ::anom/fault))))
+
+  (testing "skip warning"
+    (is (nil? (spq/index-entries "" nil)))))

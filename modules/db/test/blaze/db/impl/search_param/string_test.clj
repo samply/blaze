@@ -7,6 +7,7 @@
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
+    [blaze.db.impl.search-param.string :as sps]
     [blaze.db.impl.search-param.string-spec]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
@@ -21,11 +22,12 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -59,8 +61,8 @@
                      :name [{:fhir/type :fhir/HumanName}]}
             hash (hash/generate patient)]
 
-        (is (empty? (search-param/index-entries phonetic-param
-                                                hash patient [])))))
+        (is (empty? (search-param/index-entries phonetic-param []
+                                                hash patient)))))
 
     (let [patient {:fhir/type :fhir/Patient
                    :id "id-122929"
@@ -69,7 +71,7 @@
                      :family "family-102508"}]}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
-          (search-param/index-entries phonetic-param hash patient [])]
+          (search-param/index-entries phonetic-param [] hash patient)]
 
       (testing "SearchParamValueResource key"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -98,7 +100,7 @@
           [[_ k0] [_ k1] [_ k2] [_ k3]]
           (search-param/index-entries
             (sr/get search-param-registry "address" "Patient")
-            hash patient [])]
+            [] hash patient)]
 
       (testing "first entry is about `line`"
         (testing "SearchParamValueResource key"
@@ -142,7 +144,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "description" "ActivityDefinition")
-            hash resource [])]
+            [] hash resource)]
 
       (testing "SearchParamValueResource key"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -167,5 +169,8 @@
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "description" "ActivityDefinition")
-                 hash resource [])
-          ::anom/category := ::anom/fault)))))
+                 [] hash resource)
+          ::anom/category := ::anom/fault))))
+
+  (testing "skip warning"
+    (is (nil? (sps/index-entries "" nil)))))

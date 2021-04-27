@@ -14,8 +14,7 @@
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+    [juxt.iota :refer [given]])
   (:import
     [java.time ZoneId]))
 
@@ -25,7 +24,7 @@
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -65,7 +64,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "_profile" "Patient")
-            hash patient [])]
+            [] hash patient)]
 
       (testing "SearchParamValueResource key"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -91,7 +90,7 @@
         (empty?
           (search-param/index-entries
             (sr/get search-param-registry "patient" "Specimen")
-            hash specimen [])))))
+            [] hash specimen)))))
 
   (testing "ActivityDefinition url"
     (let [resource {:fhir/type :fhir/ActivityDefinition
@@ -101,7 +100,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "url" "ActivityDefinition")
-            hash resource [])]
+            [] hash resource)]
 
       (testing "SearchParamValueResource key"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -129,7 +128,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "item" "List")
-              hash resource [])]
+              [] hash resource)]
 
         (testing "first SearchParamValueResource key is about `id`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -195,7 +194,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "item" "List")
-              hash resource [])]
+              [] hash resource)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -256,7 +255,7 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "item" "List")
-              hash resource [])]
+              [] hash resource)]
 
         (testing "first SearchParamValueResource key is about `id`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))

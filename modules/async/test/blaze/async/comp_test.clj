@@ -94,7 +94,10 @@
 
 (deftest supply-async-test
   (testing "successful"
-    (is (= 1 @(ac/supply-async (constantly 1) (ex/single-thread-executor)))))
+    (is (= 1 @(ac/supply-async (constantly 1))))
+
+    (testing "with executor"
+      (is (= 1 @(ac/supply-async (constantly 1) (ex/single-thread-executor))))))
 
   (testing "error"
     (let [f (ac/supply-async (fn [] (throw (ex-info "e" {})))
@@ -102,7 +105,15 @@
       (try
         @f
         (catch Exception e
-          (is (= "e" (ex-message (ex-cause e)))))))))
+          (is (= "e" (ex-message (ex-cause e)))))))
+
+    (testing "with executor"
+      (let [f (ac/supply-async (fn [] (throw (ex-info "e" {})))
+                               (ex/single-thread-executor))]
+        (try
+          @f
+          (catch Exception e
+            (is (= "e" (ex-message (ex-cause e))))))))))
 
 
 (deftest then-apply-test

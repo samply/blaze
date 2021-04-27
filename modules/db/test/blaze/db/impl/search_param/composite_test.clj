@@ -141,7 +141,7 @@
            [_ k6] [_ k7] [_ k8] [_ k9] [_ k10] [_ k11]
            [_ k12] [_ k13] [_ k14] [_ k15] [_ k16] [_ k17]]
           (search-param/index-entries code-value-quantity-param
-                                      hash observation [])]
+                                      [] hash observation)]
 
       (testing "`code` followed by `value`"
         (testing "SearchParamValueResource key"
@@ -258,7 +258,7 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    code-value-quantity-param
-                   hash resource [])
+                   [] hash resource)
             ::anom/category := ::anom/fault))))
 
     (testing "code-value-concept"
@@ -268,5 +268,5 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    code-value-concept-param
-                   hash resource [])
+                   [] hash resource)
             ::anom/category := ::anom/fault))))))

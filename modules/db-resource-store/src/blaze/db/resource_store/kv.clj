@@ -3,9 +3,11 @@
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
+    [blaze.coll.core :as coll]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.kv.spec]
     [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.module :refer [reg-collector]]
@@ -81,7 +83,7 @@
 
   rs/ResourceStore
   (-put [_ entries]
-    (ac/supply (kv/put! kv-store (into [] entry-freezer entries)))))
+    (ac/supply (kv/put! kv-store (coll/eduction entry-freezer entries)))))
 
 
 (defn new-kv-resource-store [kv-store executor]
@@ -89,7 +91,7 @@
 
 
 (defmethod ig/pre-init-spec ::rs/kv [_]
-  (s/keys :req-un [:blaze.db/kv-store]))
+  (s/keys :req-un [:blaze.db/kv-store ::executor]))
 
 
 (defmethod ig/init-key ::rs/kv

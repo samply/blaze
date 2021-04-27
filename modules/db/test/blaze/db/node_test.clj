@@ -12,9 +12,11 @@
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
+    [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
+    [blaze.db.resource-store.kv :as rs-kv :refer [new-kv-resource-store]]
     [blaze.db.search-param-registry :as sr]
+    [blaze.db.tx-cache]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local :refer [new-local-tx-log]]
     [blaze.db.tx-log.local-spec]
@@ -46,10 +48,6 @@
 
 
 (def ^:private search-param-registry (sr/init-search-param-registry))
-
-
-(def ^:private resource-indexer-executor
-  (ex/cpu-bound-pool "resource-indexer-%d"))
 
 
 ;; TODO: with this shared executor, it's not possible to run test in parallel
@@ -95,8 +93,8 @@
         resource-handle-cache (.build (Caffeine/newBuilder))
         index-kv-store (new-index-kv-store)]
     (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
-                   resource-indexer-executor 1 indexer-executor index-kv-store
-                   resource-store search-param-registry (jt/millis 10))))
+                   indexer-executor index-kv-store resource-store
+                   search-param-registry (jt/millis 10))))
 
 
 (defn new-node []
@@ -150,9 +148,51 @@
                 ::anom/category := ::anom/fault))))))))
 
 
-(deftest resource-indexer-executor-test
-  (let [system (ig/init {::node/resource-indexer-executor {}})]
-    (is (instance? ExecutorService (::node/resource-indexer-executor system)))
+(defn init-system []
+  (ig/init
+    {:blaze.db/node
+     {:tx-log (ig/ref :blaze.db.tx-log/local)
+      :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
+      :tx-cache (ig/ref :blaze.db/tx-cache)
+      :indexer-executor (ig/ref ::node/indexer-executor)
+      :kv-store (ig/ref :blaze.db/index-kv-store)
+      :resource-store (ig/ref :blaze.db/resource-store)
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)}
+     :blaze.db.tx-log/local
+     {:kv-store (ig/ref :blaze.db/transaction-kv-store)}
+     [:blaze.db.kv/mem :blaze.db/transaction-kv-store]
+     {:column-families {}}
+     :blaze.db/resource-handle-cache {}
+     :blaze.db/tx-cache
+     {:kv-store (ig/ref :blaze.db/index-kv-store)}
+     ::node/indexer-executor {}
+     [:blaze.db.kv/mem :blaze.db/index-kv-store]
+     {:column-families
+      {:search-param-value-index nil
+       :resource-value-index nil
+       :compartment-search-param-value-index nil
+       :compartment-resource-type-index nil
+       :active-search-params nil
+       :tx-success-index {:reverse-comparator? true}
+       :tx-error-index nil
+       :t-by-instant-index {:reverse-comparator? true}
+       :resource-as-of-index nil
+       :type-as-of-index nil
+       :system-as-of-index nil
+       :type-stats-index nil
+       :system-stats-index nil}}
+     ::rs/kv
+     {:kv-store (ig/ref :blaze.db/resource-kv-store)
+      :executor (ig/ref ::rs-kv/executor)}
+     ::rs-kv/executor {}
+     [:blaze.db.kv/mem :blaze.db/resource-kv-store]
+     {:column-families {}}
+     :blaze.db/search-param-registry {}}))
+
+
+(deftest init-test
+  (let [system (init-system)]
+    (is (satisfies? p/Node (:blaze.db/node system)))
     (ig/halt! system)))
 
 

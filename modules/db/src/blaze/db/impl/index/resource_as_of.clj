@@ -403,6 +403,23 @@
         vb))))
 
 
+;; For performance reasons, we use that special Key class instead of a a simple
+;; triple vector
+(deftype Key [^long tid ^Object id ^long t]
+  Object
+  (equals [_ x]
+    (and (instance? Key x)
+         (= tid ^long (.-tid ^Key x))
+         (.equals id (.-id ^Key x))
+         (= t ^long  (.-t ^Key x))))
+  (hashCode [_]
+    (-> tid
+        (unchecked-multiply-int 31)
+        (unchecked-add-int (.hashCode id))
+        (unchecked-multiply-int 31)
+        (unchecked-add-int t))))
+
+
 (defn resource-handle
   "Returns a function which can be called with a `tid`, an `id` and an optional
   `t` which will lookup the resource handle in `raoi`.
@@ -413,13 +430,14 @@
         kb (bb/allocate-direct max-key-size)
         vb (bb/allocate-direct value-size)
         rh (reify Function
-             (apply [_ [tid id t]]
-               (resource-handle** raoi tb kb vb tid id t)))]
+             (apply [_ key]
+               (resource-handle** raoi tb kb vb (.-tid ^Key key)
+                                  (.-id ^Key  key) (.-t ^Key key))))]
     (fn resource-handle
       ([tid id]
        (resource-handle tid id t))
       ([tid id t]
-       (.get ^Cache rh-cache [tid id t] rh)))))
+       (.get ^Cache rh-cache (Key. tid id t) rh)))))
 
 
 (defn num-of-instance-changes

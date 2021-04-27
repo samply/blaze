@@ -4,7 +4,6 @@
   Caffeine is used because it have better performance characteristics as a
   ConcurrentHashMap."
   (:require
-    [blaze.async.comp :as ac]
     [blaze.db.cache-collector :as cc]
     [blaze.db.resource-cache.spec]
     [blaze.db.resource-store :as rs]
@@ -14,20 +13,11 @@
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache
-     AsyncCache AsyncCacheLoader AsyncLoadingCache Caffeine]
+     AsyncCacheLoader AsyncLoadingCache Caffeine]
     [java.util.concurrent ForkJoinPool]))
 
 
 (set! *warn-on-reflection* true)
-
-
-(defn- put-stored [^AsyncCache cache entries]
-  (fn [_ e]
-    (.putAll
-      (.synchronous cache)
-      (cond-> entries
-        e
-        (select-keys (:successfully-stored-hashes (ex-data e)))))))
 
 
 (deftype ResourceCache [^AsyncLoadingCache cache resource-store put-executor]
@@ -40,8 +30,7 @@
 
   rs/ResourceStore
   (-put [_ entries]
-    (-> (rs/put resource-store entries)
-        (ac/when-complete-async (put-stored cache entries) put-executor)))
+    (rs/put resource-store entries))
 
   cc/StatsCache
   (-stats [_]

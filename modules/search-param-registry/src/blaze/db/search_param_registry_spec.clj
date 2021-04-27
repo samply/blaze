@@ -15,7 +15,7 @@
 (s/fdef sr/list-by-type
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
                :type string?)
-  :ret (s/coll-of :blaze.db/search-param))
+  :ret (s/coll-of :blaze.db/search-param :kind vector?))
 
 
 (s/fdef sr/linked-compartments

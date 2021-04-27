@@ -1,6 +1,5 @@
 (ns blaze.db.node.resource-indexer
   (:require
-    [blaze.anomaly :refer [throw-anom]]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
@@ -8,13 +7,9 @@
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
-    [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
-    [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
-    [clojure.set :as set]
-    [clojure.spec.alpha :as s]
-    [clojure.string :as str]
+    [clojure.core.reducers :as r]
     [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log]))
@@ -32,6 +27,28 @@
   "op")
 
 
+(def ^:private available-processors
+  (.availableProcessors (Runtime/getRuntime)))
+
+
+(def ^:private num-work-units
+  "The target number of work units carried out in parallel while indexing a coll
+  of resources.
+
+  The idea is, that we want to have 4 work units per available processor.
+  The number of 4 was chosen for the following reason. Individual work units
+  will vary greatly in size because the number of index entries of a resource
+  will vary based on the number of search parameters activated for this resource
+  type and data available. Choosing one work unit per processor would mean that
+  each processor gets one work unit and the biggest work unit will dominate the
+  overall time needed."
+  (* 4 available-processors))
+
+
+(defn- batch-size [num-resources]
+  (max (quot num-resources num-work-units) 1))
+
+
 (defn- compartment-resource-type-entry
   "Returns an entry into the :compartment-resource-type-index where `resource`
   is linked to `compartment`."
@@ -43,93 +60,70 @@
     (codec/id-byte-string id)))
 
 
+(defn- conj-compartment-resource-type-entries! [res resource compartments]
+  (transduce
+    (map #(compartment-resource-type-entry % resource))
+    conj!
+    res
+    compartments))
+
+
 (defn- skip-indexing-msg [search-param resource cause-msg]
   (format "Skip indexing for search parameter `%s` on resource `%s/%s`. Cause: %s"
           (:url search-param) (name (fhir-spec/fhir-type resource))
           (:id resource) cause-msg))
 
 
-(defn- index-entries [linked-compartments search-param hash resource]
-  (let [res (search-param/index-entries search-param hash resource
-                                        linked-compartments)]
+(defn- index-entries [search-param linked-compartments hash resource]
+  (let [res (search-param/index-entries search-param linked-compartments
+                                        hash resource)]
     (if (::anom/category res)
       (log/warn (skip-indexing-msg search-param resource (::anom/message res)))
       res)))
 
 
-(defn- calc-search-params [search-param-registry hash resource]
+(defn- conj-index-entries! [search-param-registry res [hash resource]]
+  (log/trace "index-resource with hash" (bs/hex hash))
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
     (let [compartments (sr/linked-compartments search-param-registry resource)]
-      (-> (into
-            []
-            (map #(compartment-resource-type-entry % resource))
-            compartments)
-          (into
-            (mapcat #(index-entries compartments % hash resource))
-            (sr/list-by-type search-param-registry
-                             (name (fhir-spec/fhir-type resource))))))))
+      (transduce
+        (mapcat #(index-entries % compartments hash resource))
+        conj!
+        (conj-compartment-resource-type-entries! res resource compartments)
+        (sr/list-by-type search-param-registry (name (:fhir/type resource)))))))
 
 
-(defn- index-resource [search-param-registry [hash resource]]
-  (log/trace "index-resource with hash" (bs/hex hash))
-  (calc-search-params search-param-registry hash resource))
-
-
-(defn- put [store entries]
+(defn- put! [store entries]
   (with-open [_ (prom/timer duration-seconds "put")]
     (kv/put! store entries)))
 
 
-(defn- missing-hashes-msg [missing-hashes]
-  (format "Stop resource indexing because the resources with the following hashes are missing: %s"
-          (str/join "," missing-hashes)))
-
-
-(defn- index-resources**
-  [{:keys [search-param-registry kv-store]} hashes resources]
-  (let [missing-hashes (set/difference (set hashes) (set (keys resources)))]
-    (if (empty? missing-hashes)
-      (->> (into [] (mapcat #(index-resource search-param-registry %)) resources)
-           (put kv-store))
-      (throw-anom ::anom/fault (missing-hashes-msg missing-hashes)))))
-
-
-(defn- index-resources*
-  [{:keys [resource-lookup executor] :as indexer} hashes]
-  (log/trace "index batch of" (count hashes) "resource(s)")
-  (-> (rs/multi-get resource-lookup hashes)
-      (ac/then-apply-async #(index-resources** indexer hashes %) executor)))
-
-
-(defn- batch-index-resources [{:keys [batch-size] :as indexer} hashes]
-  (into
-    []
-    (comp
-      (partition-all batch-size)
-      (map #(index-resources* indexer %)))
-    hashes))
+(defn- batch-index-resources
+  ""
+  [{:keys [kv-store search-param-registry]} entries]
+  (->> entries
+       (r/fold
+         (batch-size (count entries))
+         (fn combine
+           ([] (transient []))
+           ([index-entries-a index-entries-b]
+            (put! kv-store (persistent! index-entries-a))
+            (put! kv-store (persistent! index-entries-b))
+            (transient [])))
+         (partial conj-index-entries! search-param-registry))
+       (persistent!)
+       (put! kv-store)))
 
 
 (defn index-resources
-  "Returns a CompletableFuture that will complete after all resources with
-  `hashes` are indexed."
-  [resource-indexer hashes]
-  (log/trace "index" (count hashes) "resource(s)")
-  (ac/all-of (batch-index-resources resource-indexer hashes)))
-
-
-(s/def :blaze.db.node/resource-indexer-executor
-  ex/executor?)
-
-
-(s/def :blaze.db.node/resource-indexer-batch-size
-  nat-int?)
+  "Returns a CompletableFuture that will complete after all resources of
+   `entries` are indexed."
+  [resource-indexer entries]
+  (log/trace "index" (count entries) "resource(s)")
+  (ac/supply-async #(batch-index-resources resource-indexer (vec entries))))
 
 
 (defn new-resource-indexer
-  [resource-lookup search-param-registry kv-store executor batch-size]
-  {:resource-lookup resource-lookup
-   :search-param-registry search-param-registry
-   :kv-store kv-store
-   :executor executor
-   :batch-size batch-size})
+  [search-param-registry kv-store]
+  {:search-param-registry search-param-registry
+   :kv-store kv-store})
