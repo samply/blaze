@@ -1,12 +1,16 @@
 # CQL Queries
 
+## Command Line
+
+If you like to use the command line, please look into [this section](cql-queries/command-line.md).
+
 ## Install the Quality Reporting UI
 
 The most accessible way to create and execute CQL queries is to use the Quality Reporting UI. The Quality Reporting UI is a desktop application which you can download [here](https://github.com/samply/blaze-quality-reporting-ui).
 
 ## Run Blaze
 
-If you don't already have Blaze running, you can read about how to do it in [Deployment](deployment/). If you have Docker available just run:
+If you don't already have Blaze running, you can read about how to do it in [Deployment](deployment/README.md). If you have Docker available just run:
 
 ```
 docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11.0-beta.1
