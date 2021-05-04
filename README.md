@@ -37,6 +37,7 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 
 ## Documentation
 
+* [Deployment](docs/deployment/README.md)
 * [Importing Data](docs/importing-data.md)
 * [Conformance](docs/conformance.md)
 * [Performance](docs/performance.md)
@@ -44,6 +45,7 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 * [Tooling](docs/tooling.md)
 * [CQL Queries](docs/cql-queries.md)
 * [Authentication](docs/authentication.md)
+* [Architecture](docs/architecture.md)
 * [Implementation](docs/implementation/README.md)
 
 ## YourKit Profiler
