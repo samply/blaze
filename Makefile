@@ -27,4 +27,7 @@ uberjar:
 outdated:
 	clojure -M:outdated
 
-.PHONY: $(MODULES) lint-root lint test-root test test-coverage clean-root clean uberjar outdated
+deps-tree:
+	clojure -Stree
+
+.PHONY: $(MODULES) lint-root lint test-root test test-coverage clean-root clean uberjar outdated deps-tree
