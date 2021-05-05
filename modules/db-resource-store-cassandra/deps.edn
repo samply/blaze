@@ -9,7 +9,7 @@
   {:local/root "../module-base"}
 
   com.datastax.oss/java-driver-core
-  {:mvn/version "4.11.0"}}
+  {:mvn/version "4.11.1"}}
 
  :aliases
  {:test
