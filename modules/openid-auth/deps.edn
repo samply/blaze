@@ -9,10 +9,10 @@
   {:local/root "../scheduler"}
 
   buddy/buddy-auth
-  {:mvn/version "2.2.0"}
+  {:mvn/version "3.0.1"}
 
   buddy/buddy-sign
-  {:mvn/version "3.3.0"}}
+  {:mvn/version "3.4.1"}}
 
  :aliases
  {:test
