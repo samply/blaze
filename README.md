@@ -22,7 +22,7 @@ In order to run Blaze just execute the following:
 
 ### Docker
 
-```bash
+```sh
 docker volume create blaze-data
 docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11.0-beta.1
 ```

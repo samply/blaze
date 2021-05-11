@@ -1,7 +1,0 @@
-version: '2'
-
-services:
-  cassandra:
-    image: 'cassandra:3'
-    ports:
-    - '9042:9042'

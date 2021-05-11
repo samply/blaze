@@ -5,6 +5,7 @@
     [blaze.byte-string :as bs]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.cassandra.config :as c]
+    [blaze.db.resource-store.cassandra.log :as l]
     [blaze.db.resource-store.cassandra.spec]
     [blaze.db.resource-store.cassandra.statement :as statement]
     [blaze.fhir.spec :as fhir-spec]
@@ -16,7 +17,8 @@
     [taoensso.timbre :as log])
   (:import
     [clojure.lang ExceptionInfo]
-    [com.datastax.oss.driver.api.core CqlSession DriverTimeoutException]
+    [com.datastax.oss.driver.api.core
+     CqlSession DriverTimeoutException RequestThrottlingException]
     [com.datastax.oss.driver.api.core.config DriverConfigLoader]
     [com.datastax.oss.driver.api.core.cql
      AsyncResultSet PreparedStatement Row Statement]
@@ -58,7 +60,7 @@
             (retryable? (ex-data (ex-cause e)))
             (if (= num-retry max-retries)
               (ac/failed-future e)
-              (let [delay (long (* (Math/pow 2.0 num-retry) 20))]
+              (let [delay (long (* (Math/pow 2.0 num-retry) 100))]
                 (log/warn (format "Wait %d ms before retrying an action." delay))
                 (-> (ac/future)
                     (ac/complete-on-timeout!
@@ -118,6 +120,11 @@
 (defn- map-execute-get-error [hash e]
   (condp identical? (class e)
     DriverTimeoutException
+    (ex-anom
+      #::anom{:category ::anom/busy
+              :message (str "Cassandra " (ex-message e))
+              :blaze.resource/hash hash})
+    RequestThrottlingException
     (ex-anom
       #::anom{:category ::anom/busy
               :message (str "Cassandra " (ex-message e))
@@ -239,11 +246,6 @@
                    ::request-timeout]))
 
 
-(defn- init-msg [contact-points put-consistency-level]
-  (format "Open cassandra backed resource store with a put consistency level of %s and the following contact points: %s"
-          put-consistency-level contact-points))
-
-
 (defn- session
   [{:keys [contact-points username password key-space]
     :or {contact-points "localhost:9042" key-space "blaze"
@@ -259,10 +261,8 @@
 
 
 (defmethod ig/init-key ::rs/cassandra
-  [_ {:keys [contact-points put-consistency-level]
-      :or {put-consistency-level "TWO"}
-      :as config}]
-  (log/info (init-msg contact-points put-consistency-level))
+  [_ {:keys [put-consistency-level] :or {put-consistency-level "TWO"} :as config}]
+  (log/info (l/init-msg config))
   (let [options (c/options config)
         session (session config options)]
     (->CassandraResourceStore

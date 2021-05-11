@@ -13,19 +13,23 @@
   (.availableProcessors (Runtime/getRuntime)))
 
 
+(defn- config-msg [config]
+  (->> (sort-by key config)
+       (map (fn [[k v]] (str k " = " v)))
+       (str/join ",\n      ")))
+
+
 (defn init! [config]
   (try
     (system/init! config)
     (catch Exception e
       (log/error
         (cond->
-          (format "Error while initializing Blaze `%s`"
-                  (or (str/trim (str/replace (ex-message e) #"\s+" " "))
-                      "unknown"))
+          (str "Error while initializing Blaze.\n\n    " (ex-message e))
           (ex-cause e)
-          (str " cause `" (ex-message (ex-cause e)) "`")
+          (str "\n\n    Cause: " (ex-message (ex-cause e)))
           (seq config)
-          (str " config: " config)))
+          (str "\n\n    Config:\n      " (config-msg config))))
       (System/exit 1))))
 
 

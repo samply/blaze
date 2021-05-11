@@ -7,7 +7,7 @@ EXPECTED_NUM_CONDITIONS=$(curl -s "${BASE}/Condition?_summary=count" | jq -r .to
 EXPECTED_NUM_ENCOUNTERS=$(curl -s "${BASE}/Encounter?_summary=count" | jq -r .total)
 EXPECTED_NUM_PROCEDURES=$(curl -s "${BASE}/Procedure?_summary=count" | jq -r .total)
 
-./blazectl --server $BASE download -t Patient -q '_revinclude=Observation:subject&_revinclude=Condition:subject&_revinclude=Procedure:subject&_revinclude=Encounter:subject&_count=1000' -o output.ndjson
+./blazectl --server $BASE download -t Patient -q '_revinclude=Observation:subject&_revinclude=Condition:subject&_revinclude=Procedure:subject&_revinclude=Encounter:subject' -o output.ndjson
 
 ACTUAL_NUM_PATIENTS=$(cat output.ndjson | jq -r .resourceType | grep Patient | wc -l | xargs | cut -d ' ' -f1)
 ACTUAL_NUM_OBSERVATIONS=$(cat output.ndjson | jq -r .resourceType | grep Observation | wc -l | xargs | cut -d ' ' -f1)

@@ -6,7 +6,7 @@ Blaze runs on the JVM and comes as single JAR file. Download the most recent ver
 
 After the download, you can start blaze with the following command (Linux, macOS):
 
-```bash
+```sh
 java -jar blaze-0.11.0-beta.1-standalone.jar -m blaze.core
 ```
 
@@ -16,7 +16,7 @@ Blaze can be run with durable storage by setting the environment variables `STOR
 
 Under Linux/macOS:
 
-```bash
+```sh
 STORAGE=standalone java -jar blaze-0.11.0-beta.1-standalone.jar -m blaze.core
 ```
 
@@ -81,13 +81,13 @@ The output should look like this:
 
 In order to test connectivity, query the health endpoint:
 
-```bash
+```sh
 curl http://localhost:8080/health
 ```
 
 After that please note that the [FHIR RESTful API](https://www.hl7.org/fhir/http.html) is available under `http://localhost:8080/fhir`. A good start is to query the [CapabilityStatement](https://www.hl7.org/fhir/capabilitystatement.html) of Blaze using [jq](https://stedolan.github.io/jq/) to select only the software key of the JSON output:
 
-```bash
+```sh
 curl -H 'Accept:application/fhir+json' -s http://localhost:8080/fhir/metadata | jq .software
 ```
 
