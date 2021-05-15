@@ -4,26 +4,24 @@
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.cassandra.config :as c]
     [blaze.db.resource-store.cassandra.spec]
+    [blaze.db.resource-store.cassandra.statement :as statement]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [com.datastax.oss.driver.api.core
-     ConsistencyLevel CqlSession DefaultConsistencyLevel]
+    [com.datastax.oss.driver.api.core CqlSession]
+    [com.datastax.oss.driver.api.core.config DriverConfigLoader]
     [com.datastax.oss.driver.api.core.cql
-     AsyncResultSet PreparedStatement Row SimpleStatement Statement]
+     AsyncResultSet PreparedStatement Row Statement]
     [java.io Closeable]
-    [java.net InetSocketAddress]
     [java.nio ByteBuffer]
-    [java.util.concurrent TimeUnit]
-    [com.datastax.oss.driver.api.core.config
-     DriverConfigLoader OptionsMap TypedDriverOption]))
+    [java.util.concurrent TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -178,69 +176,20 @@
     (.close ^CqlSession session)))
 
 
-(defn- build-contact-points [contact-points]
-  (map
-    #(let [[hostname port] (str/split % #":" 2)]
-       (InetSocketAddress. ^String hostname (Integer/parseInt port)))
-    (str/split contact-points #",")))
-
-
-(def ^:private ^SimpleStatement get-statement
-  "The get statement retrieves the content according to the `hash`.
-
-  The consistency level is set to ONE because reads are retried if nothing was
-  found. Because rows are never updated, strong consistency isn't needed."
-  (-> (SimpleStatement/builder "select content from resources where hash = ?")
-      (.setConsistencyLevel ConsistencyLevel/ONE)
-      (.build)))
-
-
 (defn- prepare-get-statement [^CqlSession session]
-  (.prepare session get-statement))
-
-
-(defn- put-statement
-  "The put statement upserts the `hash` and `content` of a resource into the
-  `resources` table.
-
-  The consistency level can be set to ONE or TWO depending on durability
-  requirements. Strong consistency of QUORUM isn't needed, because rows are
-  never updated. Reads will retry until they see a hash."
-  ^SimpleStatement
-  [consistency-level]
-  (-> (SimpleStatement/builder "insert into resources (hash, content) values (?, ?)")
-      (.setConsistencyLevel consistency-level)
-      (.build)))
+  (.prepare session statement/get-statement))
 
 
 (defn- prepare-put-statement [^CqlSession session consistency-level]
-  (.prepare session (put-statement consistency-level)))
-
-
-(defn new-cassandra-resource-store
-  [contact-points key-space put-consistency-level
-   max-concurrent-requests max-request-queue-size]
-  (let [options (doto (OptionsMap/driverDefaults)
-                  (.put TypedDriverOption/REQUEST_THROTTLER_CLASS "ConcurrencyLimitingRequestThrottler")
-                  (.put TypedDriverOption/REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS (int max-concurrent-requests))
-                  (.put TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE (int max-request-queue-size)))
-        session (-> (CqlSession/builder)
-                    (.withConfigLoader (DriverConfigLoader/fromMap options))
-                    (.addContactPoints (build-contact-points contact-points))
-                    (.withLocalDatacenter "datacenter1")
-                    (.withKeyspace ^String key-space)
-                    (.build))]
-    (->CassandraResourceStore
-      session
-      (prepare-get-statement session)
-      (prepare-put-statement session put-consistency-level))))
+  (.prepare session (statement/put-statement consistency-level)))
 
 
 (defmethod ig/pre-init-spec ::rs/cassandra [_]
-  (s/keys :req-un [::contact-points ::key-space]
-          :opt-un [::put-consistency-level
-                   ::max-concurrent-requests
-                   ::max-request-queue-size]))
+  (s/keys :opt-un [::contact-points ::key-space
+                   ::username ::password
+                   ::put-consistency-level
+                   ::max-concurrent-read-requests
+                   ::max-read-request-queue-size]))
 
 
 (defn- init-msg [contact-points put-consistency-level]
@@ -248,18 +197,31 @@
           put-consistency-level contact-points))
 
 
+(defn- session
+  [{:keys [contact-points username password key-space]
+    :or {contact-points "localhost:9042" key-space "blaze"
+         username "cassandra" password "cassandra"}}
+   options]
+  (-> (CqlSession/builder)
+      (.withConfigLoader (DriverConfigLoader/fromMap options))
+      (.addContactPoints (c/build-contact-points contact-points))
+      (.withAuthCredentials username password)
+      (.withLocalDatacenter "datacenter1")
+      (.withKeyspace ^String key-space)
+      (.build)))
+
+
 (defmethod ig/init-key ::rs/cassandra
-  [_ {:keys [contact-points key-space put-consistency-level
-             max-concurrent-read-requests max-read-request-queue-size]
-      :or {put-consistency-level "TWO"
-           max-concurrent-read-requests 1024
-           max-read-request-queue-size 100000}}]
+  [_ {:keys [contact-points put-consistency-level]
+      :or {put-consistency-level "TWO"}
+      :as config}]
   (log/info (init-msg contact-points put-consistency-level))
-  (new-cassandra-resource-store
-    contact-points key-space
-    (DefaultConsistencyLevel/valueOf put-consistency-level)
-    max-concurrent-read-requests
-    max-read-request-queue-size))
+  (let [options (c/options config)
+        session (session config options)]
+    (->CassandraResourceStore
+      session
+      (prepare-get-statement session)
+      (prepare-put-statement session put-consistency-level))))
 
 
 (defmethod ig/halt-key! ::rs/cassandra

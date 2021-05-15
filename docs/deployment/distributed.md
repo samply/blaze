@@ -31,7 +31,7 @@ docker run -it --rm --network cassandra_default cassandra:3 cqlsh cassandra
 ### Keyspace
 
 ```
-create keyspace blaze WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 3};
+CREATE KEYSPACE blaze WITH replication = {'class': 'SimpleStrategy', 'replication_factor' : 3};
 ```
 
 ### Table
