@@ -20,15 +20,16 @@
     [java.net InetSocketAddress]
     [java.nio ByteBuffer]
     [java.util.concurrent CompletionStage])
-  (:refer-clojure :exclude [get hash]))
+  (:refer-clojure :exclude [hash]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -75,7 +76,7 @@
   (byte-array [0xA1]))
 
 
-(deftest get
+(deftest get-test
   (testing "parsing error"
     (let [hash (hash "0")
           row (row-with 0 (invalid-content))
@@ -86,7 +87,7 @@
                 (throw (Error.)))
               (ac/completed-future (resultset-with row))))
           get-statement
-          (prepared-statement-with [(str hash)] bound-get-statement)
+          (prepared-statement-with [(bs/hex hash)] bound-get-statement)
           store (store session get-statement nil)]
 
       (try
@@ -104,7 +105,7 @@
                 (throw (Error.)))
               (ac/completed-future (resultset-with nil))))
           get-statement
-          (prepared-statement-with [(str hash)] bound-get-statement)
+          (prepared-statement-with [(bs/hex hash)] bound-get-statement)
           store (store session get-statement nil)]
 
       (is (nil? @(rs/get store hash)))))
@@ -116,7 +117,7 @@
             (^CompletionStage executeAsync [_ ^Statement _]
               (ac/failed-future (Exception. "msg-141754"))))
           get-statement
-          (prepared-statement-with [(str hash)] bound-get-statement)
+          (prepared-statement-with [(bs/hex hash)] bound-get-statement)
           store (store session get-statement nil)]
 
       (try
@@ -135,13 +136,13 @@
                 (throw (Error.)))
               (ac/completed-future (resultset-with row))))
           get-statement
-          (prepared-statement-with [(str hash)] bound-get-statement)
+          (prepared-statement-with [(bs/hex hash)] bound-get-statement)
           store (store session get-statement nil)]
 
       (is (= content @(rs/get store hash))))))
 
 
-(deftest multi-get
+(deftest multi-get-test
   (testing "not found"
     (let [hash (hash "0")
           session
@@ -151,7 +152,7 @@
                 (throw (Error.)))
               (ac/completed-future (resultset-with nil))))
           get-statement
-          (prepared-statement-with [(str hash)] bound-get-statement)
+          (prepared-statement-with [(bs/hex hash)] bound-get-statement)
           store (store session get-statement nil)]
 
       (is (empty? @(rs/multi-get store [hash])))))
@@ -167,7 +168,7 @@
                 (throw (Error.)))
               (ac/completed-future (resultset-with row))))
           get-statement
-          (prepared-statement-with [(str hash)] bound-get-statement)
+          (prepared-statement-with [(bs/hex hash)] bound-get-statement)
           store (store session get-statement nil)]
 
       (is (= {hash content} @(rs/multi-get store [hash]))))))
@@ -188,7 +189,7 @@
       endpoint)))
 
 
-(deftest put
+(deftest put-test
   (testing "execute error"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
@@ -199,7 +200,7 @@
               (ac/failed-future (Exception. "error-150216"))))
           put-statement
           (prepared-statement-with
-            [(str hash) encoded-resource]
+            [(bs/hex hash) encoded-resource]
             bound-put-statement)
           store (store session nil put-statement)]
 
@@ -218,7 +219,7 @@
               (ac/completed-future nil)))
           put-statement
           (prepared-statement-with
-            [(str hash) encoded-resource]
+            [(bs/hex hash) encoded-resource]
             bound-put-statement)
           store (store session nil put-statement)]
 

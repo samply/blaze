@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
+    [blaze.byte-string :as bs]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.cassandra.spec]
     [blaze.fhir.spec :as fhir-spec]
@@ -80,7 +81,7 @@
 
 
 (defn- bind-get [^PreparedStatement statement hash]
-  (.bind statement (object-array [(str hash)])))
+  (.bind statement (object-array [(bs/hex hash)])))
 
 
 (defn- execute [^CqlSession session op ^Statement statement]
@@ -132,7 +133,7 @@
 (defn- bind-put [^PreparedStatement statement hash resource]
   (let [content (ByteBuffer/wrap (fhir-spec/unform-cbor resource))]
     (prom/observe! resource-bytes (.capacity content))
-    (.bind statement (object-array [(str hash) content]))))
+    (.bind statement (object-array [(bs/hex hash) content]))))
 
 
 (defn- execute-put [session statement [hash resource]]
