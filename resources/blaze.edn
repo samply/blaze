@@ -575,6 +575,8 @@
    ;;
    :blaze.db.resource-store/cassandra
    {:contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
+    :username #blaze/cfg ["DB_CASSANDRA_USERNAME" string? "cassandra"]
+    :password #blaze/cfg ["DB_CASSANDRA_PASSWORD" string? "cassandra"]
     :key-space #blaze/cfg ["DB_CASSANDRA_KEY_SPACE" string? "blaze"]
     :put-consistency-level #blaze/cfg ["DB_CASSANDRA_PUT_CONSISTENCY_LEVEL" string? "TWO"]
     :max-concurrent-requests #blaze/cfg ["DB_CASSANDRA_MAX_CONCURRENT_REQUESTS" nat-int? 1024]

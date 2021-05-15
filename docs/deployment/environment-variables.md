@@ -43,9 +43,11 @@ The distributed storage variant only uses the index database locally.
 | DB\_RESOURCE\_INDEXER\_BATCH\_SIZE | 1 | v0.8 | v0.11 |  The number of resources which are indexed in a batch. (Deprecated) |
 | DB\_KAFKA\_BOOTSTRAP\_SERVERS | localhost:9092 | v0.8 | | A comma separated list of bootstrap servers for the Kafka transaction log. |
 | DB\_KAFKA\_MAX\_REQUEST\_SIZE | 1048576 | v0.8 | | The maximum size of a encoded transaction able to send to the Kafka transaction log in bytes. |
-| DB\_CASSANDRA\_CONTACT\_POINTS | localhost:9042 | v0.8 | | A comma separated list of contact points for the Cassandra resource store. |
-| DB\_CASSANDRA\_KEY\_SPACE | blaze | v0.8 | | The Cassandra key space were the `resources` table is located. |
-| DB\_CASSANDRA\_PUT\_CONSISTENCY\_LEVEL | TWO | v0.8 | | Cassandra consistency level for resource put (insert) operations. Has to be set to `ONE` on a non-replicated keyspace. |
+| DB_CASSANDRA_CONTACT_POINTS | localhost:9042 | v0.8 | | A comma separated list of contact points for the Cassandra resource store. |
+| DB_CASSANDRA_USERNAME | cassandra | v0.11 | | The username for the Cassandra authentication. |
+| DB_CASSANDRA_PASSWORD | cassandra | v0.11 | | The password for the Cassandra authentication. |
+| DB_CASSANDRA_KEY_SPACE | blaze | v0.8 | | The Cassandra key space were the `resources` table is located. |
+| DB_CASSANDRA_PUT_CONSISTENCY_LEVEL | TWO | v0.8 | | Cassandra consistency level for resource put (insert) operations. Has to be set to `ONE` on a non-replicated keyspace. |
 
 ¹ Deprecated, ² In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
 
