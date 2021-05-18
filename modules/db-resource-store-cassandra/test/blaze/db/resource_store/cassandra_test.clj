@@ -12,12 +12,13 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom]
     [cuerdas.core :as str]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [com.datastax.oss.driver.api.core CqlSession]
+    [com.datastax.oss.driver.api.core CqlSession DriverTimeoutException]
     [com.datastax.oss.driver.api.core.cql PreparedStatement BoundStatement
                                           Statement Row AsyncResultSet SimpleStatement]
     [com.datastax.oss.driver.api.core.metadata Node EndPoint]
@@ -171,7 +172,37 @@
       (try
         @(rs/get store hash)
         (catch Exception e
-          (is (= "msg-141754" (ex-message (ex-cause e)))))
+          (given (ex-cause e)
+            ex-message := "msg-141754"
+            [ex-data ::anom/category] := ::anom/fault
+            [ex-data :blaze.resource/hash] := hash))
+        (finally
+          (ig/halt! system)))))
+
+  (testing "DriverTimeoutException"
+    (let [hash (hash "0")
+          session
+          (reify CqlSession
+            (^PreparedStatement prepare [_ ^SimpleStatement statement]
+              (cond
+                (= statement/get-statement statement)
+                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (= (statement/put-statement "TWO") statement)
+                nil
+                :else
+                (throw (Error.))))
+            (^CompletionStage executeAsync [_ ^Statement _]
+              (ac/failed-future (DriverTimeoutException. "msg-115452")))
+            (close [_]))
+          {store ::rs/cassandra :as system} (system session)]
+
+      (try
+        @(rs/get store hash)
+        (catch Exception e
+          (given (ex-cause e)
+            ex-message := "Cassandra msg-115452"
+            [ex-data ::anom/category] := ::anom/busy
+            [ex-data :blaze.resource/hash] := hash))
         (finally
           (ig/halt! system)))))
 
