@@ -24,6 +24,7 @@
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [reitit.ring]
+    [ring.middleware.params :refer [wrap-params]]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]))
@@ -58,7 +59,7 @@
      ["/Patient"
       {:name :Patient/type
        :fhir.resource/type "Patient"
-       :get (search-type/handler node)
+       :get (wrap-params (search-type/handler node))
        :post (create/handler node executor)}]
      ["/Patient/{id}"
       {:name :Patient/instance
@@ -1388,7 +1389,8 @@
 
     (testing "and search-type interaction"
       (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
-            ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]]])
+            ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]
+                             [:create {:fhir/type :fhir/Patient :id "1"}]]])
              {:body
               {:fhir/type :fhir/Bundle
                :type #fhir/code"batch"
@@ -1405,6 +1407,7 @@
           (given resource
             :fhir/type := :fhir/Bundle
             :type := #fhir/code"searchset"
+            [:entry count] := 1
             [:entry 0 :resource :fhir/type] := :fhir/Patient
             [:entry 0 :resource :id] := "0"
             [:entry 0 :resource :meta :versionId] := #fhir/id"1"
@@ -1412,4 +1415,31 @@
 
         (testing "entry response"
           (given response
-            :status := "200"))))))
+            :status := "200")))
+
+      (testing "with _summary=count"
+        (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+              ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]
+                               [:create {:fhir/type :fhir/Patient :id "1"}]]])
+               {:body
+                {:fhir/type :fhir/Bundle
+                 :type #fhir/code"batch"
+                 :entry
+                 [{:fhir/type :fhir.Bundle/entry
+                   :request
+                   {:fhir/type :fhir.Bundle.entry/request
+                    :method #fhir/code"GET"
+                    :url #fhir/uri"Patient?_summary=count"}}]}})]
+
+          (is (= 200 status))
+
+          (testing "entry resource"
+            (given resource
+              :fhir/type := :fhir/Bundle
+              :type := #fhir/code"searchset"
+              :total := #fhir/unsignedInt 2
+              :entry :? empty?))
+
+          (testing "entry response"
+            (given response
+              :status := "200")))))))

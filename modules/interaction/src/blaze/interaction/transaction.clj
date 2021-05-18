@@ -388,7 +388,8 @@
 
 (defmethod process "batch"
   [context _ request-entries]
-  (let [futures (vec (map-indexed (partial process-batch-entry context) request-entries))]
+  (let [process-entry (partial process-batch-entry context)
+        futures (vec (map-indexed process-entry request-entries))]
     (-> (ac/all-of futures)
         (ac/then-apply
           (fn [_]

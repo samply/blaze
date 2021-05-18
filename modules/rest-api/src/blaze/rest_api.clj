@@ -23,9 +23,14 @@
     [reitit.core :as reitit]
     [reitit.ring]
     [reitit.ring.spec]
-    [ring.middleware.params :refer [wrap-params]]
+    [ring.middleware.params :as ring-params]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
+
+
+(def ^:private wrap-params
+  {:name :params
+   :wrap ring-params/wrap-params})
 
 
 (def ^:private wrap-auth-guard
@@ -77,7 +82,7 @@
      (resolve-pattern resource-patterns structure-definition)]
     [(str "/" name)
      {:middleware
-      (cond-> []
+      (cond-> [wrap-params]
         (seq auth-backends)
         (conj wrap-auth-guard))
       :fhir.resource/type name}
@@ -138,7 +143,7 @@
     :fhir.compartment/code code
     :conflicting true
     :middleware
-    (cond-> []
+    (cond-> [wrap-params]
       (seq auth-backends)
       (conj wrap-auth-guard))
     :get search-handler}])
@@ -174,7 +179,7 @@
        [""
         (cond->
           {:middleware
-           (cond-> []
+           (cond-> [wrap-params]
              (seq auth-backends)
              (conj wrap-auth-guard))}
           (some? search-system-handler)
@@ -189,7 +194,7 @@
        ["/_history"
         (cond->
           {:middleware
-           (cond-> []
+           (cond-> [wrap-params]
              (seq auth-backends)
              (conj wrap-auth-guard))}
           (some? history-system-handler)
@@ -200,7 +205,7 @@
             (when system-handler
               [[(str "/$" code)
                 {:middleware
-                 (cond-> []
+                 (cond-> [wrap-params]
                    (seq auth-backends)
                    (conj wrap-auth-guard))
                  :get system-handler
@@ -216,7 +221,7 @@
                   [(str "/" resource-type "/$" code)
                    {:conflicting true
                     :middleware
-                    (cond-> []
+                    (cond-> [wrap-params]
                       (seq auth-backends)
                       (conj wrap-auth-guard))
                     :get type-handler
@@ -232,7 +237,7 @@
                 (fn [resource-type]
                   [(str "/" resource-type "/{id}/$" code)
                    {:middleware
-                    (cond-> []
+                    (cond-> [wrap-params]
                       (seq auth-backends)
                       (conj wrap-auth-guard))
                     :get instance-handler
@@ -424,7 +429,6 @@
            (seq auth-backends)
            (conj #(apply wrap-authentication % auth-backends)))})
       (wrap-output)
-      (wrap-params)
       (wrap-log)))
 
 

@@ -150,27 +150,27 @@
                 (reitit/match-by-path (router []) path)
                 [:result request-method :data :middleware])
               (mapv (comp :name #(if (sequential? %) (first %) %)))))
-      "" :get []
-      "" :post [:resource :wrap-batch-handler]
-      "/_history" :get []
-      "/Patient" :get []
-      "/Patient" :post [:resource]
-      "/Patient/_history" :get []
-      "/Patient/_search" :post []
-      "/Patient/0" :get []
-      "/Patient/0" :put [:resource]
-      "/Patient/0" :delete []
-      "/Patient/0/_history" :get []
-      "/Patient/0/_history/42" :get []
-      "/Patient/0/Condition" :get []
-      "/Patient/0/Observation" :get []
-      "/$compact-db" :get []
-      "/$compact-db" :post []
-      "/Measure/$evaluate-measure" :get []
-      "/Measure/$evaluate-measure" :post []
-      "/Measure/0/$evaluate-measure" :get []
-      "/Measure/0/$evaluate-measure" :post []
-      "/Measure/0" :get [])
+      "" :get [:params]
+      "" :post [:params :resource :wrap-batch-handler]
+      "/_history" :get [:params]
+      "/Patient" :get [:params]
+      "/Patient" :post [:params :resource]
+      "/Patient/_history" :get [:params]
+      "/Patient/_search" :post [:params]
+      "/Patient/0" :get [:params]
+      "/Patient/0" :put [:params :resource]
+      "/Patient/0" :delete [:params]
+      "/Patient/0/_history" :get [:params]
+      "/Patient/0/_history/42" :get [:params]
+      "/Patient/0/Condition" :get [:params]
+      "/Patient/0/Observation" :get [:params]
+      "/$compact-db" :get [:params]
+      "/$compact-db" :post [:params]
+      "/Measure/$evaluate-measure" :get [:params]
+      "/Measure/$evaluate-measure" :post [:params]
+      "/Measure/0/$evaluate-measure" :get [:params]
+      "/Measure/0/$evaluate-measure" :post [:params]
+      "/Measure/0" :get [:params])
 
     (testing "with auth backends"
       (are [path request-method middleware]
@@ -179,10 +179,10 @@
                   (reitit/match-by-path (router [:auth-backend]) path)
                   [:result request-method :data :middleware])
                 (mapv (comp :name #(if (sequential? %) (first %) %)))))
-        "" :get [:auth-guard]
-        "" :post [:auth-guard :resource :wrap-batch-handler]
-        "/$compact-db" :get [:auth-guard]
-        "/$compact-db" :post [:auth-guard])))
+        "" :get [:params :auth-guard]
+        "" :post [:params :auth-guard :resource :wrap-batch-handler]
+        "/$compact-db" :get [:params :auth-guard]
+        "/$compact-db" :post [:params :auth-guard])))
 
   (testing "Patient instance POST is not allowed"
     (given @((reitit.ring/ring-handler (router []) handler-util/default-handler)
