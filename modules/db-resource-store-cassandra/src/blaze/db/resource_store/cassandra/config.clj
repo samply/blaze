@@ -1,6 +1,7 @@
 (ns blaze.db.resource-store.cassandra.config
   (:require
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [java-time :as jt])
   (:import
     [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
     [java.net InetSocketAddress]))
@@ -10,13 +11,16 @@
 
 
 (defn options
-  [{:keys [max-concurrent-read-requests max-read-request-queue-size]
+  [{:keys [max-concurrent-read-requests max-read-request-queue-size
+           request-timeout]
     :or {max-concurrent-read-requests 1024
-         max-read-request-queue-size 100000}}]
+         max-read-request-queue-size 100000
+         request-timeout 2000}}]
   (doto (OptionsMap/driverDefaults)
     (.put TypedDriverOption/REQUEST_THROTTLER_CLASS "ConcurrencyLimitingRequestThrottler")
     (.put TypedDriverOption/REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS (int max-concurrent-read-requests))
-    (.put TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE (int max-read-request-queue-size))))
+    (.put TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE (int max-read-request-queue-size))
+    (.put TypedDriverOption/REQUEST_TIMEOUT (jt/millis request-timeout))))
 
 
 (defn build-contact-points [contact-points]

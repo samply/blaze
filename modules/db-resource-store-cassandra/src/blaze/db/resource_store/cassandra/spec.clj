@@ -32,3 +32,8 @@
 
 (s/def :blaze.db.resource-store.cassandra/max-read-request-queue-size
   nat-int?)
+
+
+;; in milliseconds
+(s/def :blaze.db.resource-store.cassandra/request-timeout
+  pos-int?)

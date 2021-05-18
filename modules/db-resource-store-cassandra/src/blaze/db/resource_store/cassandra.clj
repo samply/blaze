@@ -202,7 +202,8 @@
                    ::username ::password
                    ::put-consistency-level
                    ::max-concurrent-read-requests
-                   ::max-read-request-queue-size]))
+                   ::max-read-request-queue-size
+                   ::request-timeout]))
 
 
 (defn- init-msg [contact-points put-consistency-level]

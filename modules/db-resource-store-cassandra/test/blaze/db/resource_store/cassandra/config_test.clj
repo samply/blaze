@@ -2,7 +2,8 @@
   (:require
     [blaze.db.resource-store.cassandra.config :as c]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest are testing]])
+    [clojure.test :as test :refer [deftest are testing]]
+    [java-time :as jt])
   (:import
     [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
     [java.net InetSocketAddress]))
@@ -31,11 +32,15 @@
         1024
 
         TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE
-        100000)))
+        100000
+
+        TypedDriverOption/REQUEST_TIMEOUT
+        (jt/millis 2000))))
 
   (testing "custom values"
     (let [^OptionsMap options (c/options {:max-concurrent-read-requests 32
-                                          :max-read-request-queue-size 1000})]
+                                          :max-read-request-queue-size 1000
+                                          :request-timeout 5000})]
       (are [k v] (= v (.get options k))
         TypedDriverOption/REQUEST_THROTTLER_CLASS
         "ConcurrencyLimitingRequestThrottler"
@@ -44,7 +49,10 @@
         32
 
         TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE
-        1000))))
+        1000
+
+        TypedDriverOption/REQUEST_TIMEOUT
+        (jt/millis 5000)))))
 
 
 (deftest build-contact-points-test
