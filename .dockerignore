@@ -1,7 +1,2 @@
 *
-!modules
-!resources
-!src
-!Dockerfile
-!deps.edn
-!pom.xml
+!target

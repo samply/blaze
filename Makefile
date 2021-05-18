@@ -1,4 +1,3 @@
-VERSION := "0.11.0-beta.1"
 MODULES := $(wildcard modules/*)
 
 $(MODULES):
@@ -22,7 +21,7 @@ clean-root:
 clean: $(MODULES) clean-root
 
 uberjar:
-	clojure -X:depstar uberjar :jar target/blaze-${VERSION}-standalone.jar
+	clojure -X:depstar uberjar :jar target/blaze-standalone.jar
 
 outdated:
 	clojure -M:outdated
