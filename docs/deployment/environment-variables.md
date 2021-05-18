@@ -48,6 +48,7 @@ The distributed storage variant only uses the index database locally.
 | DB_CASSANDRA_PASSWORD | cassandra | v0.11 | | The password for the Cassandra authentication. |
 | DB_CASSANDRA_KEY_SPACE | blaze | v0.8 | | The Cassandra key space were the `resources` table is located. |
 | DB_CASSANDRA_PUT_CONSISTENCY_LEVEL | TWO | v0.8 | | Cassandra consistency level for resource put (insert) operations. Has to be set to `ONE` on a non-replicated keyspace. |
+| DB_CASSANDRA_REQUEST_TIMEOUT | 2000 | v0.11 | | Timeout in milliseconds for all requests to the Cassandra cluster. |
 
 ¹ Deprecated, ² In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
 
