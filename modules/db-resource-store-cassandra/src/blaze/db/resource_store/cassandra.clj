@@ -15,7 +15,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [com.datastax.oss.driver.api.core CqlSession]
+    [com.datastax.oss.driver.api.core CqlSession DriverTimeoutException]
     [com.datastax.oss.driver.api.core.config DriverConfigLoader]
     [com.datastax.oss.driver.api.core.cql
      AsyncResultSet PreparedStatement Row Statement]
@@ -115,13 +115,26 @@
       (ac/then-apply-async #(read-content % hash))))
 
 
+(defn- map-execute-get-error [hash e]
+  (condp identical? (class e)
+    DriverTimeoutException
+    (ex-anom
+      #::anom{:category ::anom/busy
+              :message (str "Cassandra " (ex-message e))
+              :blaze.resource/hash hash})
+    (ex-anom
+      #::anom{:category ::anom/fault
+              :message (ex-message e)
+              :blaze.resource/hash hash})))
+
+
 (defn- execute-get [session statement hash]
   (-> (retry #(execute-get* session statement hash) 5)
       (ac/exceptionally
         (fn [e]
           (if (= ::anom/not-found (::anom/category (ex-data (ex-cause e))))
             nil
-            (throw e))))))
+            (throw (map-execute-get-error hash (ex-cause e))))))))
 
 
 (defn- execute-multi-get [session get-statement hashes]
