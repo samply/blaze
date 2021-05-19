@@ -11,15 +11,15 @@
 
 
 (defn options
-  [{:keys [max-concurrent-read-requests max-read-request-queue-size
+  [{:keys [max-concurrent-requests max-request-queue-size
            request-timeout]
-    :or {max-concurrent-read-requests 1024
-         max-read-request-queue-size 100000
+    :or {max-concurrent-requests 1024
+         max-request-queue-size 100000
          request-timeout 2000}}]
   (doto (OptionsMap/driverDefaults)
     (.put TypedDriverOption/REQUEST_THROTTLER_CLASS "ConcurrencyLimitingRequestThrottler")
-    (.put TypedDriverOption/REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS (int max-concurrent-read-requests))
-    (.put TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE (int max-read-request-queue-size))
+    (.put TypedDriverOption/REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS (int max-concurrent-requests))
+    (.put TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE (int max-request-queue-size))
     (.put TypedDriverOption/REQUEST_TIMEOUT (jt/millis request-timeout))))
 
 
