@@ -231,6 +231,34 @@
       (try
         (is (= content @(rs/get store hash)))
         (finally
+          (ig/halt! system)))))
+
+  (testing "success after one retry due to timeout"
+    (let [content {:fhir/type :fhir/Patient :id "0"}
+          hash (hash/generate content)
+          row (row-with 0 (fhir-spec/unform-cbor content))
+          throw-timeout? (volatile! true)
+          session
+          (reify CqlSession
+            (^PreparedStatement prepare [_ ^SimpleStatement statement]
+              (cond
+                (= statement/get-statement statement)
+                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (= (statement/put-statement "TWO") statement)
+                nil
+                :else
+                (throw (Error.))))
+            (^CompletionStage executeAsync [_ ^Statement statement]
+              (if @throw-timeout?
+                (do (vreset! throw-timeout? false)
+                    (ac/failed-future (DriverTimeoutException. "foo")))
+                (ac/completed-future (resultset-with row))))
+            (close [_]))
+          {store ::rs/cassandra :as system} (system session)]
+
+      (try
+        (is (= content @(rs/get store hash)))
+        (finally
           (ig/halt! system))))))
 
 

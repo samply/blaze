@@ -15,6 +15,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
+    [clojure.lang ExceptionInfo]
     [com.datastax.oss.driver.api.core CqlSession DriverTimeoutException]
     [com.datastax.oss.driver.api.core.config DriverConfigLoader]
     [com.datastax.oss.driver.api.core.cql
@@ -46,7 +47,7 @@
 
 
 (defn- retryable? [{::anom/keys [category]}]
-  (= ::anom/not-found category))
+  (#{::anom/not-found ::anom/busy} category))
 
 
 (defn- retry* [future-fn max-retries num-retry]
@@ -95,7 +96,10 @@
 
 
 (defn- parse-anom [hash e]
-  (ex-anom #::anom{:category ::anom/fault :message (parse-msg hash e)}))
+  (ex-anom
+    #::anom{:category ::anom/fault
+            :message (parse-msg hash e)
+            :blaze.resource/hash hash}))
 
 
 (defn- conform-cbor [bytes hash]
@@ -111,11 +115,6 @@
     (throw (ex-anom {::anom/category ::anom/not-found}))))
 
 
-(defn- execute-get* [session statement hash]
-  (-> (execute session "get" (bind-get statement hash))
-      (ac/then-apply-async #(read-content % hash))))
-
-
 (defn- map-execute-get-error [hash e]
   (condp identical? (class e)
     DriverTimeoutException
@@ -123,19 +122,26 @@
       #::anom{:category ::anom/busy
               :message (str "Cassandra " (ex-message e))
               :blaze.resource/hash hash})
+    ExceptionInfo
+    e
     (ex-anom
       #::anom{:category ::anom/fault
               :message (ex-message e)
               :blaze.resource/hash hash})))
 
 
+(defn- execute-get* [session statement hash]
+  (-> (execute session "get" (bind-get statement hash))
+      (ac/then-apply-async #(read-content % hash))
+      (ac/exceptionally
+        #(throw (map-execute-get-error hash (ex-cause %))))))
+
+
 (defn- execute-get [session statement hash]
   (-> (retry #(execute-get* session statement hash) 5)
       (ac/exceptionally
-        (fn [e]
-          (if (= ::anom/not-found (::anom/category (ex-data (ex-cause e))))
-            nil
-            (throw (map-execute-get-error hash (ex-cause e))))))))
+        #(when-not (= ::anom/not-found (::anom/category (ex-data (ex-cause %))))
+           (throw %)))))
 
 
 (defn- execute-multi-get [session get-statement hashes]
