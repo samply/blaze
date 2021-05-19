@@ -18,10 +18,11 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [com.datastax.oss.driver.api.core CqlSession DriverTimeoutException]
+    [com.datastax.oss.driver.api.core CqlSession DriverTimeoutException ConsistencyLevel]
     [com.datastax.oss.driver.api.core.cql PreparedStatement BoundStatement
                                           Statement Row AsyncResultSet SimpleStatement]
     [com.datastax.oss.driver.api.core.metadata Node EndPoint]
+    [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException WriteType]
     [java.net InetSocketAddress]
     [java.nio ByteBuffer]
     [java.util.concurrent CompletionStage])
@@ -326,6 +327,72 @@
         @(rs/put store {hash resource})
         (catch Exception e
           (is (= "error-150216" (ex-message (ex-cause e)))))
+        (finally
+          (ig/halt! system)))))
+
+  (testing "DriverTimeoutException"
+    (let [resource {:fhir/type :fhir/Patient :id "0"}
+          hash (hash/generate resource)
+          encoded-resource (ByteBuffer/wrap (fhir-spec/unform-cbor resource))
+          session
+          (reify CqlSession
+            (^PreparedStatement prepare [_ ^SimpleStatement statement]
+              (cond
+                (= statement/get-statement statement)
+                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (= (statement/put-statement "TWO") statement)
+                (prepared-statement-with
+                  [(bs/hex hash) encoded-resource]
+                  bound-put-statement)
+                :else
+                (throw (Error.))))
+            (^CompletionStage executeAsync [_ ^Statement _]
+              (ac/failed-future (DriverTimeoutException. "msg-123234")))
+            (close [_]))
+          {store ::rs/cassandra :as system} (system session)]
+
+      (try
+        @(rs/put store {hash resource})
+        (catch Exception e
+          (given (ex-cause e)
+            ex-message := "Cassandra msg-123234"
+            [ex-data ::anom/category] := ::anom/busy
+            [ex-data :blaze.resource/hash] := hash
+            [ex-data :fhir/type] := :fhir/Patient
+            [ex-data :blaze.resource/id] := "0"))
+        (finally
+          (ig/halt! system)))))
+
+  (testing "WriteTimeoutException"
+    (let [resource {:fhir/type :fhir/Patient :id "0"}
+          hash (hash/generate resource)
+          encoded-resource (ByteBuffer/wrap (fhir-spec/unform-cbor resource))
+          session
+          (reify CqlSession
+            (^PreparedStatement prepare [_ ^SimpleStatement statement]
+              (cond
+                (= statement/get-statement statement)
+                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (= (statement/put-statement "TWO") statement)
+                (prepared-statement-with
+                  [(bs/hex hash) encoded-resource]
+                  bound-put-statement)
+                :else
+                (throw (Error.))))
+            (^CompletionStage executeAsync [_ ^Statement _]
+              (ac/failed-future (WriteTimeoutException. nil ConsistencyLevel/TWO 1 2 WriteType/SIMPLE)))
+            (close [_]))
+          {store ::rs/cassandra :as system} (system session)]
+
+      (try
+        @(rs/put store {hash resource})
+        (catch Exception e
+          (given (ex-cause e)
+            ex-message := "Cassandra timeout during SIMPLE write query at consistency TWO (2 replica were required but only 1 acknowledged the write)"
+            [ex-data ::anom/category] := ::anom/busy
+            [ex-data :blaze.resource/hash] := hash
+            [ex-data :fhir/type] := :fhir/Patient
+            [ex-data :blaze.resource/id] := "0"))
         (finally
           (ig/halt! system)))))
 

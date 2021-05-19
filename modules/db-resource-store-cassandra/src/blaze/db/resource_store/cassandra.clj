@@ -19,6 +19,7 @@
     [com.datastax.oss.driver.api.core.config DriverConfigLoader]
     [com.datastax.oss.driver.api.core.cql
      AsyncResultSet PreparedStatement Row Statement]
+    [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException]
     [java.io Closeable]
     [java.nio ByteBuffer]
     [java.util.concurrent TimeUnit]))
@@ -147,8 +148,34 @@
     (.bind statement (object-array [(bs/hex hash) content]))))
 
 
+(defn- map-execute-put-error [hash {:fhir/keys [type] :keys [id]} e]
+  (condp identical? (class e)
+    DriverTimeoutException
+    (ex-anom
+      #::anom{:category ::anom/busy
+              :message (str "Cassandra " (ex-message e))
+              :blaze.resource/hash hash
+              :fhir/type type
+              :blaze.resource/id id})
+    WriteTimeoutException
+    (ex-anom
+      #::anom{:category ::anom/busy
+              :message (ex-message e)
+              :blaze.resource/hash hash
+              :fhir/type type
+              :blaze.resource/id id})
+    (ex-anom
+      #::anom{:category ::anom/fault
+              :message (ex-message e)
+              :blaze.resource/hash hash
+              :fhir/type type
+              :blaze.resource/id id})))
+
+
 (defn- execute-put [session statement [hash resource]]
-  (execute session "put" (bind-put statement hash resource)))
+  (-> (execute session "put" (bind-put statement hash resource))
+      (ac/exceptionally
+        #(throw (map-execute-put-error hash resource (ex-cause %))))))
 
 
 (defn- execute-multi-put [session statement entries]
