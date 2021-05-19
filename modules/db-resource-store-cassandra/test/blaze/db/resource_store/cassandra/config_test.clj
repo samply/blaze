@@ -38,8 +38,8 @@
         (jt/millis 2000))))
 
   (testing "custom values"
-    (let [^OptionsMap options (c/options {:max-concurrent-read-requests 32
-                                          :max-read-request-queue-size 1000
+    (let [^OptionsMap options (c/options {:max-concurrent-requests 32
+                                          :max-request-queue-size 1000
                                           :request-timeout 5000})]
       (are [k v] (= v (.get options k))
         TypedDriverOption/REQUEST_THROTTLER_CLASS
