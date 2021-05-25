@@ -37,3 +37,7 @@
    (if (::anom/category x)
      (reduced x)
      (conj xs x))))
+
+
+(defn exceptionally [x f]
+  (if (::anom/category x) (f x) x))

@@ -21,11 +21,12 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -270,3 +271,32 @@
                    code-value-concept-param
                    [] hash resource)
             ::anom/category := ::anom/fault))))))
+
+
+(deftest create-test
+  (testing "not found component"
+    (given (sr/search-param
+             {}
+             {:type "composite"
+              :component
+              [{:definition "url-210148"}]})
+      ::anom/category := ::anom/unsupported
+      :url := "url-210148"))
+
+  (testing "FHIRPath compilation error"
+    (with-redefs
+      [fhir-path/compile
+       (fn [_]
+         {::anom/category ::anom/fault})]
+      (given (sr/search-param
+               {"url-210148"
+                {:type "token"}
+                "url-211659"
+                {:type "token"}}
+               {:type "composite"
+                :component
+                [{:definition "url-210148"
+                  :expression "expr-211649"}
+                 {:definition "url-211659"}]})
+        ::anom/category := ::anom/unsupported
+        :expression := "expr-211649"))))

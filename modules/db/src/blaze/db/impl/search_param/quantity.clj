@@ -65,7 +65,7 @@
   (fn [_ value] (fhir-spec/fhir-type value)))
 
 
-(defn index-quantity-entries
+(defn- index-quantity-entries
   [{:keys [value system code unit]}]
   (let [value (type/value value)
         system (type/value system)

@@ -1691,8 +1691,8 @@
                  #fhir/Reference
                      {:reference "Patient/id-0"}
                  :onset
-                     {:fhir/type :fhir/Age
-                      :value 63M}}]
+                 {:fhir/type :fhir/Age
+                  :value 63M}}]
           [:put {:fhir/type :fhir/Condition
                  :id "id-1"}]])
 
@@ -2719,7 +2719,88 @@
         [2 :id] := "id-2"
         [3 :id] := "id-3"
         [4 :id] := "id-4"
-        [5 :id] := "id-5"))))
+        [5 :id] := "id-5")))
+
+  (testing "type number"
+    (testing "decimal"
+      (with-open [node (new-node)]
+        @(d/transact
+           node
+           [[:put {:fhir/type :fhir/RiskAssessment
+                   :id "id-0"
+                   :method
+                   #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                            {:system #fhir/uri"system-164844"
+                             :code #fhir/code"code-164847"}]}
+                   :prediction
+                   [{:fhir/type :fhir.RiskAssessment/prediction
+                     :probability 0.9M}]}]
+            [:put {:fhir/type :fhir/RiskAssessment
+                   :id "id-1"
+                   :status #fhir/code"final"
+                   :prediction
+                   [{:fhir/type :fhir.RiskAssessment/prediction
+                     :probability 0.1M}]}]
+            [:put {:fhir/type :fhir/RiskAssessment
+                   :id "id-2"
+                   :method
+                   #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                            {:system #fhir/uri"system-164844"
+                             :code #fhir/code"code-164847"}]}
+                   :prediction
+                   [{:fhir/type :fhir.RiskAssessment/prediction
+                     :probability 0.5M}]}]])
+
+        (given (pull-type-query node "RiskAssessment" [["probability" "ge0.5"]])
+          count := 2
+          [0 :id] := "id-2"
+          [1 :id] := "id-0")
+
+        (testing "it is possible to start with the second risk assessment"
+          (given (pull-type-query node "RiskAssessment" [["probability" "ge0.5"]] "id-0")
+            count := 1
+            [0 :id] := "id-0"))
+
+        (testing "as second clause"
+          (given (pull-type-query node "RiskAssessment" [["method" "code-164847"]
+                                                         ["probability" "ge0.5"]])
+            count := 2
+            [0 :id] := "id-0"
+            [1 :id] := "id-2")
+
+          (testing "it is possible to start with the second risk assessment"
+            (given (pull-type-query node "RiskAssessment" [["method" "code-164847"]
+                                                           ["probability" "ge0.5"]]
+                                    "id-2")
+              count := 1
+              [0 :id] := "id-2")))))
+
+    (testing "integer"
+      (with-open [node (new-node)]
+        @(d/transact
+           node
+           [[:put {:fhir/type :fhir/MolecularSequence
+                   :id "id-0"
+                   :variant
+                   [{:fhir/type :fhir.MolecularSequence/variant
+                     :start #fhir/integer 1}]}]
+            [:put {:fhir/type :fhir/MolecularSequence
+                   :id "id-1"
+                   :variant
+                   [{:fhir/type :fhir.MolecularSequence/variant
+                     :start #fhir/integer 2}]}]])
+
+        (given (pull-type-query node "MolecularSequence" [["variant-start" "1"]])
+          count := 1
+          [0 :id] := "id-0")
+
+        (given (pull-type-query node "MolecularSequence" [["variant-start" "2"]])
+          count := 1
+          [0 :id] := "id-1")))))
 
 
 (deftest compile-type-query-test
