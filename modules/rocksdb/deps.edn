@@ -6,4 +6,4 @@
   {:local/root "../module-base"}
 
   org.rocksdb/rocksdbjni
-  {:mvn/version "6.19.3"}}}
+  {:mvn/version "6.20.3"}}}
