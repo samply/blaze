@@ -64,7 +64,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.822'
+        tools-deps: '1.10.3.849'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.5
@@ -121,7 +121,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.822'
+        tools-deps: '1.10.3.849'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.5
@@ -164,7 +164,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.822'
+        tools-deps: '1.10.3.849'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.5
@@ -193,7 +193,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.822'
+        tools-deps: '1.10.3.849'
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2.1.5
