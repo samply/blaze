@@ -26,7 +26,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.829"}
+    {:mvn/version "1.0.861"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

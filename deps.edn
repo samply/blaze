@@ -79,7 +79,7 @@
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.829"}
+    {:mvn/version "1.0.861"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
