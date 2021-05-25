@@ -518,12 +518,13 @@
     (with-redefs
       [resource-indexer/index-resources
        (fn [_ _]
-         (ac/failed-future (ex-anom {::anom/category ::anom/fault})))]
+         (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
       (with-open [node (new-node)]
         (given
           (catch-cause-ex-data
             @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
-          ::anom/category := ::anom/fault)))))
+          ::anom/category := ::anom/fault
+          ::x ::y)))))
 
 
 (deftest tx-test

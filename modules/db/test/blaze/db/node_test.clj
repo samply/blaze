@@ -12,6 +12,7 @@
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
+    [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv :as rs-kv :refer [new-kv-resource-store]]
@@ -145,7 +146,24 @@
                      (p/-tx-result node t))))
             (catch Exception e
               (given (ex-data (ex-cause e))
-                ::anom/category := ::anom/fault))))))))
+                ::anom/category := ::anom/fault))))))
+
+    (testing "with failing resource indexer"
+      (with-redefs
+        [resource-indexer/index-resources
+         (fn [_ _]
+           (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
+        (with-open [node (new-node)]
+          (try
+            @(-> (p/-submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+                 (ac/then-compose
+                   (fn [t]
+                     (Thread/sleep 100)
+                     (p/-tx-result node t))))
+            (catch Exception e
+              (given (ex-data (ex-cause e))
+                ::anom/category := ::anom/fault
+                ::x ::y))))))))
 
 
 (defn init-system []
