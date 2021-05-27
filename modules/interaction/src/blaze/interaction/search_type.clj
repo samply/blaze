@@ -71,8 +71,14 @@
 
 (defn- build-page [db include-defs page-size handles]
   (if (:direct include-defs)
-    (->> (include/add-includes db include-defs handles)
-         (include/build-page page-size))
+    (let [handles (into [] (take (inc page-size)) handles)]
+      (if (< page-size (count handles))
+        (let [page-handles (pop handles)]
+          {:matches page-handles
+           :includes (include/add-includes db include-defs page-handles)
+           :next-match (peek handles)})
+        {:matches handles
+         :includes (include/add-includes db include-defs handles)}))
     (build-matches-only-page page-size handles)))
 
 

@@ -1341,7 +1341,7 @@
                 @((handler node)
                   {::reitit/router router
                    ::reitit/match observation-match
-                   :params {"_include" "Observation:subject" "_count" "2"}})]
+                   :params {"_include" "Observation:subject" "_count" "1"}})]
 
             (is (= 200 status))
 
@@ -1355,7 +1355,7 @@
               (is (= #fhir/unsignedInt 2 (:total body))))
 
             (testing "has a next link"
-              (is (= #fhir/uri"/Observation?_include=Observation%3Asubject&_count=2&__t=1&__page-id=3"
+              (is (= #fhir/uri"/Observation?_include=Observation%3Asubject&_count=1&__t=1&__page-id=3"
                      (link-url body "next"))))
 
             (testing "the bundle contains two entries"
