@@ -1,18 +1,14 @@
-FROM busybox as build
+FROM adoptopenjdk:11-jre-hotspot
 
-RUN mkdir -p /app/data
-
-FROM gcr.io/distroless/java-debian10:11
-
-COPY --from=build --chown=nonroot:nonroot /app /app
-COPY --chown=nonroot:nonroot target/blaze-standalone.jar /app/
+RUN mkdir -p /app/data && chown 1001:1001 /app/data
+COPY target/blaze-standalone.jar /app/
 
 WORKDIR /app
-USER nonroot
+USER 1001
 
 ENV STORAGE="standalone"
 ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
 
-CMD ["blaze-standalone.jar", "-m", "blaze.core"]
+CMD ["java", "-jar", "blaze-standalone.jar", "-m", "blaze.core"]
