@@ -9,15 +9,17 @@
     [juxt.iota :refer [given]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
-  (:import [java.nio.charset StandardCharsets]))
+  (:import
+    [java.nio.charset StandardCharsets]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -49,15 +51,19 @@
       "text/json"))
 
   (testing "_format overrides"
-    (are [format]
+    (are [accept format]
       (given @(resource-handler
-                {:headers {"accept" "application/fhir+xml"}
+                {:headers {"accept" accept}
                  :query-params {"_format" format}})
         [:body bytes->str] := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
-      "application/json+xml"
-      "application/json"
-      "text/json"
-      "json")))
+      "application/fhir+xml" "application/json+xml"
+      "application/fhir+xml" "application/json"
+      "application/fhir+xml" "text/json"
+      "application/fhir+xml" "json"
+      "*/*" "application/json+xml"
+      "*/*" "application/json"
+      "*/*" "text/json"
+      "*/*" "json")))
 
 
 (deftest xml-test
@@ -71,13 +77,17 @@
       "text/xml"))
 
   (testing "_format overrides"
-    (are [format]
+    (are [accept format]
       (given @(resource-handler
-                {:headers {"accept" "application/fhir+json"}
+                {:headers {"accept" accept}
                  :query-params {"_format" format}})
         [:body bytes->str] :=
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient>")
-      "application/fhir+xml"
-      "application/xml"
-      "text/xml"
-      "xml")))
+      "application/fhir+json" "application/fhir+xml"
+      "application/fhir+json" "application/xml"
+      "application/fhir+json" "text/xml"
+      "application/fhir+json" "xml"
+      "*/*" "application/fhir+xml"
+      "*/*" "application/xml"
+      "*/*" "text/xml"
+      "*/*" "xml")))

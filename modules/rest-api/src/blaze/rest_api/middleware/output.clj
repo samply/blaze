@@ -58,17 +58,3 @@
   (fn [request]
     (-> (handler request)
         (ac/then-apply #(handle-response request %)))))
-
-
-(comment
-  (def json "{\"category\":[{\"coding\":[{\"code\":\"vital-signs\",\"display\":\"vital-signs\",\"system\":\"http://terminology.hl7.org/CodeSystem/observation-category\"}]}],\"code\":{\"coding\":[{\"code\":\"39156-5\",\"display\":\"Body Mass Index\",\"system\":\"http://loinc.org\"}],\"text\":\"Body Mass Index\"},\"effectiveDateTime\":\"2011-02-23T09:13:01+01:00\",\"encounter\":{\"reference\":\"Encounter/C53O522JS4MRTJV6\"},\"id\":\"C53O522JS4MRTJWC\",\"issued\":\"2011-02-23T09:13:01.071+01:00\",\"meta\":{\"lastUpdated\":\"2021-02-04T21:24:33.605Z\",\"versionId\":\"1456\"},\"resourceType\":\"Observation\",\"status\":\"final\",\"subject\":{\"reference\":\"Patient/C53O522JS4MRTJVQ\"},\"valueQuantity\":{\"code\":\"kg/m2\",\"system\":\"http://unitsofmeasure.org\",\"unit\":\"kg/m2\",\"value\":16.065926382869083}}")
-
-  (def resource (fhir-spec/conform-json (fhir-spec/parse-json json)))
-
-  (= (count (String. (generate-json resource)))
-     (count json))
-
-  ;; cheshire: 310 ms
-  ;; jsonista: 110 ms
-  (time (dotimes [_ 10000] (generate-json resource)))
-  )

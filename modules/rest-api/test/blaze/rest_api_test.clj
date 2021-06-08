@@ -2,10 +2,12 @@
   (:require
     [blaze.db.impl.search-param]
     [blaze.db.search-param-registry :as sr]
+    [blaze.executors :as ex]
     [blaze.handler.util :as handler-util]
     [blaze.rest-api :as rest-api]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
+    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [reitit.ring]
@@ -13,11 +15,12 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn fixture [f]
   (st/instrument)
-  (log/with-level :trace (f))
+  (f)
   (st/unstrument))
 
 
@@ -364,3 +367,20 @@
       [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :definition] :=
       #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")))
+
+
+(defn- real-handler []
+  (-> (ig/init
+        {:blaze/rest-api
+         {:base-url "http://localhost:8080"
+          :version "0.1.0"
+          :structure-definitions []
+          :search-param-registry search-param-registry
+          :blaze.rest-api.json-parse/executor (ex/single-thread-executor)}})
+      (:blaze/rest-api)))
+
+
+(deftest format-override-test
+  (testing "XML"
+    (given @((real-handler) {:request-method :get :uri "/metadata" :query-string "_format=xml"})
+      [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8")))

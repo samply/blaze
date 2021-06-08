@@ -74,7 +74,7 @@
 
   Returns nil if the resource has no match in `resource-patterns`.
 
-  Route data contains resource type."
+  Route data contains the resource type under :fhir.resource/type."
   {:arglists '([auth-backends parse-executor resource-patterns structure-definition])}
   [auth-backends parse-executor resource-patterns {:keys [name] :as structure-definition}]
   (when-let
@@ -429,6 +429,7 @@
            (seq auth-backends)
            (conj #(apply wrap-authentication % auth-backends)))})
       (wrap-output)
+      (ring-params/wrap-params)
       (wrap-log)))
 
 
