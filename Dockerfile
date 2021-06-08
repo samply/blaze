@@ -1,4 +1,4 @@
-FROM adoptopenjdk:11-jre-hotspot
+FROM adoptopenjdk:15-jre-hotspot
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
 COPY target/blaze-standalone.jar /app/
