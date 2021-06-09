@@ -50,7 +50,7 @@
   {:mvn/version "4.1.65.Final"}
 
   io.prometheus/simpleclient_hotspot
-  {:mvn/version "0.10.0"}
+  {:mvn/version "0.11.0"}
 
   org.clojars.akiel/spec-coerce
   {:mvn/version "0.4.0"}
@@ -102,7 +102,7 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "0.14.1"}
+    {:mvn/version "0.15.1"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "1.7.30"}}
