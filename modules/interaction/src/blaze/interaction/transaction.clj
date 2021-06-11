@@ -425,7 +425,8 @@
 (defn- process-entries
   "Processes `entries` according the batch or transaction rules.
 
-  Returns a CompletableFuture that will complete with the response entries."
+  Returns a CompletableFuture that will complete with the response entries or
+  complete exceptionally with an anomaly in case of errors."
   [node executor {{:keys [type]} :body :as request} entries]
   (process (process-context node executor request) (type/value type) entries))
 

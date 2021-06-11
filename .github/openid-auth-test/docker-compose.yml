@@ -10,10 +10,10 @@ services:
     - "8090:8080"
     volumes:
     - "${GITHUB_WORKSPACE}/.github/openid-auth-test/realm.json:/tmp/realm.json"
+
   blaze:
     image: "ghcr.io/samply/blaze:${GITHUB_SHA}"
     environment:
-      BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/auth/realms/blaze"
     ports:
@@ -22,5 +22,6 @@ services:
     - "blaze-data:/app/data"
     depends_on:
     - keycloak
+
 volumes:
   blaze-data:

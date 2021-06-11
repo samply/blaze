@@ -4,13 +4,13 @@ Blaze comes as a web application which needs one Docker volume to store its data
 
 ## Volume
 
-```bash
+```sh
 docker volume create blaze-data
 ```
 
 ## Blaze
 
-```bash
+```sh
 docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11.0-beta.1
 ```
 
@@ -34,13 +34,13 @@ Blaze should log something like this:
 
 In order to test connectivity, query the health endpoint:
 
-```bash
+```sh
 curl http://localhost:8080/health
 ```
 
 After that please note that the [FHIR RESTful API](https://www.hl7.org/fhir/http.html) is available under `http://localhost:8080/fhir`. A good start is to query the [CapabilityStatement](https://www.hl7.org/fhir/capabilitystatement.html) of Blaze using [jq](https://stedolan.github.io/jq/) to select only the software key of the JSON output:
 
-```bash
+```sh
 curl -H 'Accept:application/fhir+json' -s http://localhost:8080/fhir/metadata | jq .software
 ```
 

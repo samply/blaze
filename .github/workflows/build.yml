@@ -335,9 +335,6 @@ jobs:
     - name: Evaluate CQL Query 15
       run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql http://localhost:8080/fhir
 
-    - name: Docker Stop
-      run: docker stop blaze
-
   openid-auth-test:
     needs: build
     runs-on: ubuntu-20.04
@@ -370,3 +367,111 @@ jobs:
 
     - name: Authenticated Request
       run: .github/scripts/authenticated-request.sh
+
+  distributed-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.CR_PAT }}
+
+    - name: Setup Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'zulu'
+        java-version: 11
+
+    - name: Download Synthea
+      run: curl -sLO https://github.com/synthetichealth/synthea/releases/download/v2.7.0/synthea-with-dependencies.jar
+
+    - name: Generate Data
+      run: java -jar synthea-with-dependencies.jar -p 100
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Run Zookeeper, Kafka, Cassandra and Blaze
+      run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
+
+    - name: Sleep 2 Minutes
+      run: sleep 120
+
+    - name: Docker Logs Zookepper
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
+
+    - name: Docker Logs Kafka
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs kafka
+
+    - name: Docker Logs Cassandra 1
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-1
+
+    - name: Docker Logs Cassandra 2
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
+
+    - name: Docker Logs Blaze
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Load Data
+      run: ./blazectl --server http://localhost:8080/fhir upload output/fhir
+
+    - name: Count Resources
+      run: ./blazectl --server http://localhost:8080/fhir count-resources
+
+    - name: Download Patient Resources
+      run: .github/scripts/download-resources.sh Patient
+
+    - name: Download Patient Resources - Including Observation, Condition, Encounter and Procedure
+      run: .github/scripts/revinclude.sh
+
+    - name: Download Observation Resources
+      run: .github/scripts/download-resources.sh Observation
+
+    - name: Download Observation Resources - Including Patients
+      run: ./blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
+
+    - name: Download Observation Resources - Including Encounters and Patients
+      run: ./blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
+
+    - name: Download Observation Resources - Including Encounters and Encounter Patients
+      run: ./blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
+
+    - name: Download Condition Resources
+      run: .github/scripts/download-resources.sh Condition
+
+    - name: Download Condition Resources - Including Subjects
+      run: ./blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
+
+    - name: Download Condition Resources - Including Encounters
+      run: ./blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
+
+    - name: Download DiagnosticReport Resources
+      run: .github/scripts/download-resources.sh DiagnosticReport
+
+    - name: Download MedicationRequest Resources - Including Medications
+      run: ./blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+
+    - name: Evaluate CQL Query 1
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql http://localhost:8080/fhir
+
+    - name: Evaluate CQL Query 2
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql http://localhost:8080/fhir
+
+    - name: Evaluate CQL Query 7
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7-query.cql http://localhost:8080/fhir
+
+    - name: Evaluate CQL Query 14
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql http://localhost:8080/fhir
+
+    - name: Evaluate CQL Query 15
+      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql http://localhost:8080/fhir

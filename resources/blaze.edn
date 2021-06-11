@@ -566,7 +566,14 @@
    ;;
    :blaze.db.tx-log/kafka
    {:bootstrap-servers #blaze/cfg ["DB_KAFKA_BOOTSTRAP_SERVERS" string? "localhost:9092"]
-    :max-request-size #blaze/cfg ["DB_KAFKA_MAX_REQUEST_SIZE" nat-int? 1048576]}
+    :max-request-size #blaze/cfg ["DB_KAFKA_MAX_REQUEST_SIZE" nat-int? 1048576]
+    :compression-type #blaze/cfg ["DB_KAFKA_COMPRESSION_TYPE" string? "snappy"]
+    :security-protocol #blaze/cfg ["DB_KAFKA_SECURITY_PROTOCOL" string? "PLAINTEXT"]
+    :ssl-truststore-location #blaze/cfg ["DB_KAFKA_SSL_TRUSTSTORE_LOCATION" string?]
+    :ssl-truststore-password #blaze/cfg ["DB_KAFKA_SSL_TRUSTSTORE_PASSWORD" string?]
+    :ssl-keystore-location #blaze/cfg ["DB_KAFKA_SSL_KEYSTORE_LOCATION" string?]
+    :ssl-keystore-password #blaze/cfg ["DB_KAFKA_SSL_KEYSTORE_PASSWORD" string?]
+    :ssl-key-password #blaze/cfg ["DB_KAFKA_SSL_KEY_PASSWORD" string?]}
 
    :blaze.db.tx-log.kafka/duration-seconds {}
 
