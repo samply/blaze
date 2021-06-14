@@ -4,6 +4,10 @@
 
 If you like to use the command line, please look into [this section](cql-queries/command-line.md).
 
+## API Documentation
+
+If yopu like to use the CQL Evaluation API directly, please read the [CQL API Documentation](cql-queries/api.md).
+
 ## Install the Quality Reporting UI
 
 The most accessible way to create and execute CQL queries is to use the Quality Reporting UI. The Quality Reporting UI is a desktop application which you can download [here](https://github.com/samply/blaze-quality-reporting-ui).

@@ -85,7 +85,7 @@ post() {
 }
 
 evaluate-measure() {
-  time curl -s "${BASE}/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2019"
+  time curl -s "${BASE}/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030"
 }
 
 usage()

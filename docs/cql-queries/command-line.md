@@ -31,5 +31,3 @@ Count: 0
 ```
 
 if no data was imported.
-
-
