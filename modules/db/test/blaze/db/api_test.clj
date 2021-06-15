@@ -1689,7 +1689,10 @@
                            :code #fhir/code"C71.4"}]}
                  :subject
                  #fhir/Reference
-                     {:reference "Patient/id-0"}}]
+                     {:reference "Patient/id-0"}
+                 :onset
+                     {:fhir/type :fhir/Age
+                      :value 63M}}]
           [:put {:fhir/type :fhir/Condition
                  :id "id-1"}]])
 
@@ -1707,7 +1710,12 @@
         (testing "starting"
           (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
             count := 1
-            [0 :id] := "id-0"))))
+            [0 :id] := "id-0")))
+
+      (testing "onset-age"
+        (given (pull-type-query node "Condition" [["onset-age" "63"]])
+          count := 1
+          [0 :id] := "id-0")))
 
     (with-open [node (new-node)]
       @(d/transact

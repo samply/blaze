@@ -65,21 +65,31 @@
   (fn [_ value] (fhir-spec/fhir-type value)))
 
 
-(defmethod index-entries :fhir/Quantity
-  [_ {:keys [value system code unit]}]
+(defn index-quantity-entries
+  [{:keys [value system code unit]}]
   (let [value (type/value value)
         system (type/value system)
         code (type/value code)
         unit (type/value unit)]
     (cond-> []
-      value
-      (conj [nil (codec/quantity nil value)])
-      code
-      (conj [nil (codec/quantity code value)])
-      (and unit (not= unit code))
-      (conj [nil (codec/quantity unit value)])
-      (and system code)
-      (conj [nil (codec/quantity (str system "|" code) value)]))))
+            value
+            (conj [nil (codec/quantity nil value)])
+            code
+            (conj [nil (codec/quantity code value)])
+            (and unit (not= unit code))
+            (conj [nil (codec/quantity unit value)])
+            (and system code)
+            (conj [nil (codec/quantity (str system "|" code) value)]))))
+
+
+(defmethod index-entries :fhir/Quantity
+  [_ quantity]
+   (index-quantity-entries quantity))
+
+
+(defmethod index-entries :fhir/Age
+  [_ quantity]
+  (index-quantity-entries quantity))
 
 
 (defmethod index-entries :default
