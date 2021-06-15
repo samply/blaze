@@ -181,34 +181,9 @@
         (extract "resource" (read-bundle (str package "/profiles-resources.json")))))))
 
 
-(defn read-search-parameters []
-  (into
-    []
-    (map :resource)
-    (:entry (read-bundle "blaze/fhir/r4/search-parameters.json"))))
-
-
 (defmethod ig/init-key :blaze/structure-definition
   [_ _]
   (let [structure-definitions (read-structure-definitions)]
     (log/info "Read structure definitions resulting in:"
               (count structure-definitions) "structure definitions")
     structure-definitions))
-
-
-(defmethod ig/init-key :blaze/search-parameter
-  [_ _]
-  (let [search-parameters (read-search-parameters)]
-    (log/info "Read search-parameters resulting in:"
-              (count search-parameters) "search-parameters")
-    search-parameters))
-
-
-(comment
-  (filter (comp #{"Specimen-bodysite"} :id) (read-search-parameters))
-  (filter (comp #{"SearchParameter-base"} :id) (read-search-parameters))
-  (filter (comp #{"clinical-date"} :id) (read-search-parameters))
-  (filter (comp #{"Observation-code-value-quantity"} :id) (read-search-parameters))
-
-  (map #(select-keys % [:id :base]) (filter (comp #{"code"} :code) (read-search-parameters)))
-  )
