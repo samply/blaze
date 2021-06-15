@@ -68,7 +68,7 @@ services:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
-      DB_KAFKA_MAX_REQUEST_SIZE: "3145728"
+      DB_KAFKA_MAX_REQUEST_SIZE: "5242880"
       DB_KAFKA_SECURITY_PROTOCOL: "SSL"
       DB_KAFKA_SSL_TRUSTSTORE_LOCATION: "/app/kafka.truststore.jks"
       DB_KAFKA_SSL_TRUSTSTORE_PASSWORD: "password"
