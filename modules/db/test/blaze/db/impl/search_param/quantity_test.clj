@@ -71,13 +71,15 @@
       "0" (codec/quantity nil -0.5M) (codec/quantity nil 0.5M)
       "0.0" (codec/quantity nil -0.05M) (codec/quantity nil 0.05M)))
 
-  (testing "ge"
-    (are [value exact-value]
-      (given (compile-quantity-value value)
-        :op := :ge
-        :exact-value := exact-value)
+  (testing "gt lt ge le"
+    (doseq [op [:gt :lt :ge :le]]
+      (are [value exact-value]
+        (given (compile-quantity-value value)
+          :op := op
+          :exact-value := exact-value)
 
-      "ge23" (codec/quantity nil 23.00M)))
+        (str (name op) "23") (codec/quantity nil 23M)
+        (str (name op) "0.1") (codec/quantity nil 0.1M))))
 
   (testing "invalid decimal value"
     (given (search-param/compile-values value-quantity-param nil ["a"])

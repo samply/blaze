@@ -133,7 +133,31 @@ The `SearchParamValueResource` index contains all values from resources that are
 * `id` - the logical id of the resource
 * `content-hash` - a 4-byte prefix of the content-hash of the resource version
 
-The way the `SearchParamValueResource` index is used depends on the type of the search parameter. The following sections will explain this in detail for each type:
+The way the `SearchParamValueResource` index is used, depends on the type of the search parameter. The following sections will explain this in detail for each type:
+
+##### Number
+
+**TODO: continue...**
+
+##### Date/DateTime
+
+Search parameters of type `date` are used to search in data elements with date/time and period data types. All date types stand for an interval of a start point in time up to an end point in time. So date search uses interval arithmetic to find hits. For each value of a resource, both the lower bound and the upper bound are stored in the index with different prefixes. For the different modifier, the search works the following way:
+
+###### Equal (eq)
+
+The value interval `v` has to intersect with the query interval `q`. In order to do so, the following must hold:
+* the lower bound or upper bound of `v` is in `q`, or
+* `v` completely encloses `q`.
+
+We start by scanning through the index with the lower bound prefix, starting at the lower bound of `q` and ending at the upper bound of `q`. After that, we repeat the same process with the upper bound prefix, not adding any duplicates.
+
+###### Less Than or Equal
+
+**TODO: continue...**
+
+##### String
+
+**TODO: continue...**
 
 ##### Token
 
@@ -145,7 +169,7 @@ In order to facilitate different forms of searches specified in the [FHIR Spec][
 * `|code` - the code if the resource doesn't specify a system
 * `system|` - the system independent of the code, used to find all resources with any code in that system
 
-After concatenation, the strings are hashed with the [Murmur3][7] algorithm in its 32-bit variant, yielding a 4-byte wide value. The hashing is done to save space and ensure that all values are of the same length. 
+After concatenation, the strings are hashed with the [Murmur3][7] algorithm in its 32-bit variant, yielding a 4-byte wide value. The hashing is done to save space and ensure that all values are of the same length.
 
 ###### Example
 
@@ -163,25 +187,25 @@ In case one searches for female patients, Blaze will seek into the index with th
 
 That tuples are further processed against the `ResourceAsOf` index in order to check whether the resource versions are valid regarding to the current `t`.
 
-##### Date
-
-Search parameters of type `date` are used to search in data elements with date/time and period data types. All date types stand for an interval of a start point in time up to an end point in time. So date search uses interval arithmetic to find hits. For each value of a resource, both the lower bound and the upper bound are stored in the index with different prefixes. For the different modifier, the search works the following way:
-
-###### Equal (eq)
-
-The value interval `v` has to intersect with the query interval `q`. In order to do so, the following must hold:
-* the lower bound or upper bound of `v` is in `q`, or
-* `v` completely encloses `q`.
-
-We start by scanning through the index with the lower bound prefix, starting at the lower bound of `q` and ending at the upper bound of `q`. After that, we repeat the same process with the upper bound prefix, not adding any duplicates.
-
-###### Less Than or Equal
-
-
+##### Reference
 
 **TODO: continue...**
 
+##### Composite
 
+**TODO: continue...**
+
+##### Quantity
+
+**TODO: continue...**
+
+##### URI
+
+**TODO: continue...**
+
+##### Special
+
+**TODO: continue...**
 
 [1]: <https://www.datomic.com>
 [2]: <https://opencrux.com/main/index.html>

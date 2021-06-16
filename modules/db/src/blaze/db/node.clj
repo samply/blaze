@@ -1,7 +1,7 @@
 (ns blaze.db.node
   "Local Database Node"
   (:require
-    [blaze.anomaly :refer [when-ok ex-anom]]
+    [blaze.anomaly :refer [ex-anom if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.impl.batch-db :as batch-db]
@@ -58,25 +58,28 @@
   (take 16 (iterate #(* 2 %) 1)))
 
 
-(defn- resolve-search-param [search-param-registry type code]
-  (if-let [search-param (sr/get search-param-registry code type)]
+(defn- search-param-not-found-msg [code type]
+  (format "The search-param with code `%s` and type `%s` was not found."
+          code type))
+
+
+(defn- resolve-search-param [registry type code]
+  (if-let [search-param (sr/get registry code type)]
     search-param
     {::anom/category ::anom/not-found
-     ::anom/message (format "The search-param with code `%s` and type `%s` was not found." code type)}))
+     ::anom/message (search-param-not-found-msg code type)}))
 
 
-(defn- resolve-search-params [search-param-registry type clauses lenient?]
+(defn- resolve-search-params [registry type clauses lenient?]
   (reduce
     (fn [ret [code & values]]
       (let [[code modifier] (str/split code #":" 2)
-            values (distinct values)
-            res (resolve-search-param search-param-registry type code)]
-        (if (::anom/category res)
-          (if lenient? ret (reduced res))
-          (let [compiled-values (search-param/compile-values res modifier values)]
-            (if (::anom/category compiled-values)
-              (reduced compiled-values)
-              (conj ret [res modifier values compiled-values]))))))
+            values (distinct values)]
+        (if-ok [search-param (resolve-search-param registry type code)]
+          (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
+            (conj ret [search-param modifier values compiled-values])
+            (reduced compiled-values))
+          (if lenient? ret (reduced search-param)))))
     []
     clauses))
 
@@ -223,16 +226,15 @@
 
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
-    (let [res (validation/validate-ops tx-ops)]
-      (if (::anom/category res)
-        (CompletableFuture/failedFuture (ex-info "" res))
-        (let [[tx-cmds entries] (tx/prepare-ops tx-ops)]
-          (-> (rs/put resource-store entries)
-              (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds)))
-              (ac/then-apply
-                (fn [t]
-                  (swap! tx-resource-cache assoc t entries)
-                  t)))))))
+    (if-ok [res (validation/validate-ops tx-ops)]
+      (let [[tx-cmds entries] (tx/prepare-ops tx-ops)]
+        (-> (rs/put resource-store entries)
+            (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds)))
+            (ac/then-apply
+              (fn [t]
+                (swap! tx-resource-cache assoc t entries)
+                t))))
+      (CompletableFuture/failedFuture (ex-info "" res))))
 
   (-tx-result [node t]
     (let [watcher (add-watcher! state t)

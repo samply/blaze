@@ -143,11 +143,13 @@
      "onset-date"
      "patient"
      "phonetic"
+     "probability"
      "series"
      "status"
      "subject"
      "url"
      "value-quantity"
+     "variant-start"
      "version"]))
 
 
