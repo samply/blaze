@@ -32,6 +32,9 @@
 (test/use-fixtures :each fixture)
 
 
+(def ^:private base-url "base-url-144600")
+
+
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]]
@@ -56,7 +59,10 @@
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node) request))))
+      @((handler node)
+        (assoc request
+          :blaze/base-url base-url
+          ::reitit/router router)))))
 
 
 (defn- link-url [body link-relation]
@@ -67,8 +73,7 @@
   (testing "with one patient"
     (let [{:keys [status body]}
           ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-            {::reitit/router router
-             ::reitit/match match})]
+            {::reitit/match match})]
 
       (is (= 200 status))
 
@@ -81,14 +86,14 @@
       (is (= #fhir/unsignedInt 1 (:total body)))
 
       (testing "has self link"
-        (is (= #fhir/uri"/Patient/_history?__t=1&__page-t=1&__page-id=0"
+        (is (= #fhir/uri"base-url-144600/Patient/_history?__t=1&__page-t=1&__page-id=0"
                (link-url body "self"))))
 
       (testing "the bundle contains one entry"
         (is (= 1 (count (:entry body)))))
 
       (given (-> body :entry first)
-        :fullUrl := #fhir/uri"/Patient/0"
+        :fullUrl := #fhir/uri"base-url-144600/Patient/0"
         [:request :method] := #fhir/code"PUT"
         [:request :url] := #fhir/uri"/Patient/0"
         [:resource :id] := "0"

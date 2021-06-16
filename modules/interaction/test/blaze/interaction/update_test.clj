@@ -7,6 +7,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
+    [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.update]
     [blaze.interaction.update-spec]
@@ -45,16 +46,22 @@
       (:blaze.interaction/update)))
 
 
-(defn- handler-with [txs]
-  (fn [request]
-    (with-open [node (mem-node-with txs)]
-      @((handler node) request))))
+(def ^:private base-url "base-url-134013")
 
 
 (def ^:private router
   (reitit/router
     [["/Patient" {:name :Patient/type}]]
     {:syntax :bracket}))
+
+
+(defn- handler-with [txs]
+  (fn [request]
+    (with-open [node (mem-node-with txs)]
+      @((handler node)
+        (assoc request
+          :blaze/base-url base-url
+          ::reitit/router router)))))
 
 
 (def ^:private operation-outcome
@@ -171,8 +178,7 @@
     (testing "with no Prefer header"
       (let [{:keys [status headers body]}
             ((handler-with [])
-              {::reitit/router router
-               :path-params {:id "0"}
+              {:path-params {:id "0"}
                ::reitit/match {:data {:fhir.resource/type "Patient"}}
                :body {:fhir/type :fhir/Patient :id "0"}})]
 
@@ -180,7 +186,7 @@
           (is (= 201 status)))
 
         (testing "Location header"
-          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+          (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
 
         (testing "Transaction time in Last-Modified header"
           (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -189,7 +195,7 @@
           (is (= "W/\"1\"" (get headers "ETag"))))
 
         (testing "Location header"
-          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+          (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
 
         (testing "Contains the resource as body"
           (given body
@@ -201,8 +207,7 @@
     (testing "with return=minimal Prefer header"
       (let [{:keys [status headers body]}
             ((handler-with [])
-              {::reitit/router router
-               :path-params {:id "0"}
+              {:path-params {:id "0"}
                ::reitit/match {:data {:fhir.resource/type "Patient"}}
                :headers {"prefer" "return=minimal"}
                :body {:fhir/type :fhir/Patient :id "0"}})]
@@ -211,7 +216,7 @@
           (is (= 201 status)))
 
         (testing "Location header"
-          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+          (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
 
         (testing "Transaction time in Last-Modified header"
           (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -220,7 +225,7 @@
           (is (= "W/\"1\"" (get headers "ETag"))))
 
         (testing "Location header"
-          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+          (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
 
         (testing "Contains no body"
           (is (nil? body)))))
@@ -228,8 +233,7 @@
     (testing "with return=representation Prefer header"
       (let [{:keys [status headers body]}
             ((handler-with [])
-              {::reitit/router router
-               :path-params {:id "0"}
+              {:path-params {:id "0"}
                ::reitit/match {:data {:fhir.resource/type "Patient"}}
                :headers {"prefer" "return=representation"}
                :body {:fhir/type :fhir/Patient :id "0"}})]
@@ -238,7 +242,7 @@
           (is (= 201 status)))
 
         (testing "Location header"
-          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+          (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
 
         (testing "Transaction time in Last-Modified header"
           (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -247,7 +251,7 @@
           (is (= "W/\"1\"" (get headers "ETag"))))
 
         (testing "Location header"
-          (is (= "/Patient/0/_history/1" (get headers "Location"))))
+          (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
 
         (testing "Contains body"
           (given body
@@ -259,8 +263,7 @@
       (let [{:keys [status headers body]}
             ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]]
                             [[:delete "Patient" "0"]]])
-              {::reitit/router router
-               :path-params {:id "0"}
+              {:path-params {:id "0"}
                ::reitit/match {:data {:fhir.resource/type "Patient"}}
                :body {:fhir/type :fhir/Patient :id "0"}})]
 
@@ -268,7 +271,7 @@
           (is (= 201 status)))
 
         (testing "Location header"
-          (is (= "/Patient/0/_history/3" (get headers "Location"))))
+          (is (= "base-url-134013/Patient/0/_history/3" (get headers "Location"))))
 
         (testing "Transaction time in Last-Modified header"
           (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -277,7 +280,7 @@
           (is (= "W/\"3\"" (get headers "ETag"))))
 
         (testing "Location header"
-          (is (= "/Patient/0/_history/3" (get headers "Location"))))
+          (is (= "base-url-134013/Patient/0/_history/3" (get headers "Location"))))
 
         (testing "Contains the resource as body"
           (given body

@@ -127,7 +127,7 @@
 (def ^:private router
   (reitit/router
     [[""
-      {:blaze/base-url "base-url"}
+      {}
       ["/Patient" {:name :Patient/type}]
       ["/Patient/{id}" {:name :Patient/instance}]
       ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]]
@@ -135,16 +135,19 @@
 
 
 (deftest type-url
-  (is (= "base-url/Patient" (fhir-util/type-url router "Patient"))))
+  (is (= "http://localhost:8080/Patient"
+         (fhir-util/type-url "http://localhost:8080" router "Patient"))))
 
 
 (deftest instance-url
-  (is (= "base-url/Patient/0" (fhir-util/instance-url router "Patient" "0"))))
+  (is (= "http://localhost:8080/Patient/0"
+         (fhir-util/instance-url "http://localhost:8080" router "Patient" "0"))))
 
 
 (deftest versioned-instance-url
-  (is (= "base-url/Patient/0/_history/1"
-         (fhir-util/versioned-instance-url router "Patient" "0" "1"))))
+  (is (= "http://localhost:8080/Patient/0/_history/1"
+         (fhir-util/versioned-instance-url "http://localhost:8080" router
+                                           "Patient" "0" "1"))))
 
 
 (deftest etag->t

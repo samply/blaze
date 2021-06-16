@@ -44,18 +44,19 @@
 
 
 (s/fdef util/type-url
-  :args (s/cat :router reitit/router? :type :fhir.type/name)
+  :args (s/cat :base-url string? :router reitit/router? :type :fhir.type/name)
   :ret string?)
 
 
 (s/fdef util/instance-url
-  :args (s/cat :router reitit/router? :type :fhir.type/name :id :blaze.resource/id)
+  :args (s/cat :base-url string? :router reitit/router? :type :fhir.type/name
+               :id :blaze.resource/id)
   :ret string?)
 
 
 (s/fdef util/versioned-instance-url
-  :args (s/cat :router reitit/router? :type :fhir.type/name :id :blaze.resource/id
-               :vid string?)
+  :args (s/cat :base-url string? :router reitit/router? :type :fhir.type/name
+               :id :blaze.resource/id :vid string?)
   :ret string?)
 
 

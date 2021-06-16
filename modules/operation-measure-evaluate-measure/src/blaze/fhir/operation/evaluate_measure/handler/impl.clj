@@ -37,10 +37,10 @@
 
 (defn- handle
   [clock node db executor
-   {::reitit/keys [router] :keys [request-method headers]}
+   {:blaze/keys [base-url] ::reitit/keys [router] :keys [request-method headers]}
    params measure]
   (-> (ac/supply-async
-        #(evaluate-measure (now clock) db router measure params)
+        #(evaluate-measure (now clock) db base-url router measure params)
         executor)
       (ac/then-compose
         (fn process-result [result]
@@ -60,7 +60,7 @@
                     (ac/then-apply-async identity executor)
                     (ac/then-compose
                       #(response/build-response
-                         router return-preference % nil
+                         base-url router return-preference % nil
                          (d/resource-handle % "MeasureReport" id)))
                     (ac/exceptionally handler-util/error-response)))))))))
 

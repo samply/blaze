@@ -461,10 +461,10 @@
           (log/debug (evaluate-groups-msg id subject-type duration)))))))
 
 
-(defn- canonical [router {:keys [id url version]}]
+(defn- canonical [base-url router {:keys [id url version]}]
   (if-let [url (type/value url)]
     (cond-> url version (str "|" version))
-    (fhir-util/instance-url router "Measure" id)))
+    (fhir-util/instance-url base-url router "Measure" id)))
 
 
 (defn- get-code [codings system]
@@ -502,8 +502,8 @@
 
   Returns an already completed MeasureReport which isn't persisted or an anomaly
   in case of errors."
-  {:arglists '([now db router measure params])}
-  [now db router {:keys [id] groups :group :as measure}
+  {:arglists '([now db base-url router measure params])}
+  [now db base-url router {:keys [id] groups :group :as measure}
    {:keys [report-type] [start end] :period}]
   (when-ok [library (compile-primary-library db measure)]
     (let [context {:db db :now now :library library
@@ -511,7 +511,8 @@
                    :report-type report-type}]
       (when-ok [result (evaluate-groups context id groups)]
         (cond->
-          {:resource (measure-report report-type (canonical router measure) now
-                                     start end result)}
+          {:resource
+           (measure-report report-type (canonical base-url router measure) now
+                           start end result)}
           (seq (:tx-ops result))
           (assoc :tx-ops (:tx-ops result)))))))

@@ -52,6 +52,7 @@
 (defn- handler-intern [node executor]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
+        :blaze/keys [base-url]
         ::reitit/keys [router]}]
     (let [return-preference (handler-util/preference headers "return")
           id (luid)
@@ -66,10 +67,10 @@
             (fn [db-after]
               (if-let [handle (d/resource-handle db-after type id)]
                 (response/build-response
-                  router return-preference db-after nil handle)
+                  base-url router return-preference db-after nil handle)
                 (let [handle (first (d/type-query db-after type conditional-clauses))]
                   (response/build-response
-                    router return-preference db-after handle handle)))))
+                    base-url router return-preference db-after handle handle)))))
           (ac/exceptionally handler-util/error-response)))))
 
 

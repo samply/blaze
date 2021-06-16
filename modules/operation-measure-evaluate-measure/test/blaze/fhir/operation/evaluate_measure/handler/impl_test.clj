@@ -3,6 +3,7 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure.handler.impl :refer [handler]]
+    [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.log]
     [blaze.luid :refer [luid]]
@@ -31,6 +32,10 @@
 (def clock (Clock/fixed Instant/EPOCH (ZoneOffset/ofHours 1)))
 (defonce executor (ex/single-thread-executor))
 
+
+(def ^:private base-url "base-url-144638")
+
+
 (def router
   (reitit/router
     [["/MeasureReport" {:name :MeasureReport/type}]]
@@ -40,7 +45,10 @@
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler clock node executor) request))))
+      @((handler clock node executor)
+        (assoc request
+          :blaze/base-url base-url
+          ::reitit/router router)))))
 
 
 (defn- scoring-concept [code]
@@ -155,8 +163,7 @@
     (let [{:keys [status body]}
           ((handler-with [[[:put {:fhir/type :fhir/Measure :id "0"
                                   :url #fhir/uri"url-182126"}]]])
-           {::reitit/router router
-            :params
+           {:params
             {"measure" "url-182126"
              "periodStart" (Year/of 2014)
              "periodEnd" (Year/of 2015)}})]
@@ -177,8 +184,7 @@
           ((handler-with [[[:put {:fhir/type :fhir/Measure :id "0"
                                   :url #fhir/uri"url-181501"
                                   :library [#fhir/canonical"library-url-094115"]}]]])
-           {::reitit/router router
-            :params
+           {:params
             {"measure" "url-181501"
              "periodStart" (Year/of 2014)
              "periodEnd" (Year/of 2015)}})]
@@ -201,8 +207,7 @@
                                   :library [#fhir/canonical"library-url-094115"]}]
                            [:put {:fhir/type :fhir/Library :id "0"
                                   :url #fhir/uri"library-url-094115"}]]])
-           {::reitit/router router
-            :params
+           {:params
             {"measure" "url-182104"
              "periodStart" (Year/of 2014)
              "periodEnd" (Year/of 2015)}})]
@@ -228,8 +233,7 @@
                       :url #fhir/uri"library-url-094115"
                       :content
                       [#fhir/Attachment{:contentType #fhir/code"text/plain"}]}]]])
-           {::reitit/router router
-            :params
+           {:params
             {"measure" "url-182051"
              "periodStart" (Year/of 2014)
              "periodEnd" (Year/of 2015)}})]
@@ -255,8 +259,7 @@
                       :url #fhir/uri"library-url-094115"
                       :content
                       [#fhir/Attachment{:contentType #fhir/code"text/cql"}]}]]])
-           {::reitit/router router
-            :params
+           {:params
             {"measure" "url-182039"
              "periodStart" (Year/of 2014)
              "periodEnd" (Year/of 2015)}})]
@@ -300,8 +303,7 @@
                       {:fhir/type :fhir/Patient
                        :id "0"
                        :gender #fhir/code"male"}]]])
-                 {::reitit/router router
-                  :request-method :get
+                 {:request-method :get
                   :params
                   {"measure" "url-181501"
                    "periodStart" (Year/of 2014)
@@ -357,8 +359,7 @@
                       {:fhir/type :fhir/Patient
                        :id "2"
                        :gender #fhir/code"female"}]]])
-                 {::reitit/router router
-                  :request-method :get
+                 {:request-method :get
                   :params
                   {"measure" "url-181501"
                    "periodStart" (Year/of 2014)
@@ -404,8 +405,7 @@
                      [:put {:fhir/type :fhir/Library :id "0"
                             :url #fhir/uri"library-url-094115"
                             :content [library-content]}]]])
-                 {::reitit/router router
-                  :request-method :post
+                 {:request-method :post
                   :params
                   {"measure" "url-181501"
                    "periodStart" (Year/of 2014)
@@ -414,7 +414,7 @@
             (is (= 201 status))
 
             (testing "Location header"
-              (is (= "/MeasureReport/C5OC2PO45UVYCD2A/_history/2"
+              (is (= "base-url-144638/MeasureReport/C5OC2PO45UVYCD2A/_history/2"
                      (get headers "Location"))))
 
             (given body
@@ -436,8 +436,7 @@
                    [:put {:fhir/type :fhir/Library :id "0"
                           :url #fhir/uri"library-url-094115"
                           :content [library-content]}]]])
-               {::reitit/router router
-                :request-method :get
+               {:request-method :get
                 :path-params {:id "0"}
                 :params
                 {"periodStart" (Year/of 2014)
@@ -465,8 +464,7 @@
                      [:put {:fhir/type :fhir/Library :id "0"
                             :url #fhir/uri"library-url-094115"
                             :content [library-content]}]]])
-                 {::reitit/router router
-                  :request-method :post
+                 {:request-method :post
                   :path-params {:id "0"}
                   :params
                   {"periodStart" (Year/of 2014)
@@ -475,7 +473,7 @@
             (is (= 201 status))
 
             (testing "Location header"
-              (is (= "/MeasureReport/C5OC2QYKLM577GLL/_history/2"
+              (is (= "base-url-144638/MeasureReport/C5OC2QYKLM577GLL/_history/2"
                      (get headers "Location"))))
 
             (given body

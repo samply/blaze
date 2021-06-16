@@ -38,6 +38,7 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 ## Documentation
 
 * [Deployment](docs/deployment/README.md)
+* [FHIR RESTful API](docs/api.md)
 * [Importing Data](docs/importing-data.md)
 * [Conformance](docs/conformance.md)
 * [Performance](docs/performance.md)

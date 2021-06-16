@@ -31,6 +31,9 @@
 (test/use-fixtures :each fixture)
 
 
+(def ^:private base-url "base-url-114650")
+
+
 (def ^:private router
   (reitit/router
     [["/Patient" {:name :Patient/type}]]
@@ -54,7 +57,10 @@
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node) request))))
+      @((handler node)
+        (assoc request
+          :blaze/base-url base-url
+          ::reitit/router router)))))
 
 
 (defn- link-url [body link-relation]
@@ -68,8 +74,7 @@
         (testing "normal result"
           (let [{:keys [status body]}
                 ((handler-with [])
-                 {::reitit/router router
-                  ::reitit/match match
+                 {::reitit/match match
                   :headers {"prefer" "handling=strict"}
                   :params {"foo" "bar"}})]
 
@@ -84,8 +89,7 @@
         (testing "summary result"
           (let [{:keys [status body]}
                 ((handler-with [])
-                 {::reitit/router router
-                  ::reitit/match match
+                 {::reitit/match match
                   :headers {"prefer" "handling=strict"}
                   :params {"foo" "bar" "_summary" "count"}})]
 
@@ -103,8 +107,7 @@
           (testing "normal result"
             (let [{:keys [status body]}
                   ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-                   {::reitit/router router
-                    ::reitit/match match
+                   {::reitit/match match
                     :headers {"prefer" "handling=lenient"}
                     :params {"foo" "bar"}})]
 
@@ -132,8 +135,7 @@
           (testing "summary result"
             (let [{:keys [status body]}
                   ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-                   {::reitit/router router
-                    ::reitit/match match
+                   {::reitit/match match
                     :headers {"prefer" "handling=lenient"}
                     :params {"foo" "bar" "_summary" "count"}})]
 
@@ -164,8 +166,7 @@
                   ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]
                                    [:put {:fhir/type :fhir/Patient :id "1"
                                           :active true}]]])
-                   {::reitit/router router
-                    ::reitit/match match
+                   {::reitit/match match
                     :headers {"prefer" "handling=lenient"}
                     :params {"foo" "bar" "active" "true"}})]
 
@@ -192,8 +193,7 @@
                   ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]
                                    [:put {:fhir/type :fhir/Patient :id "1"
                                           :active true}]]])
-                   {::reitit/router router
-                    ::reitit/match match
+                   {::reitit/match match
                     :headers {"prefer" "handling=lenient"}
                     :params {"foo" "bar" "active" "true" "_summary" "count"}})]
 
@@ -218,8 +218,7 @@
   (testing "Returns all existing resources"
     (let [{:keys [status body]}
           ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-           {::reitit/router router
-            ::reitit/match match})]
+           {::reitit/match match})]
 
       (is (= 200 status))
 
@@ -233,14 +232,14 @@
         (is (= #fhir/unsignedInt 1 (:total body))))
 
       (testing "has a self link"
-        (is (= #fhir/uri"?_count=50&__t=1&__page-type=Patient&__page-id=0"
+        (is (= #fhir/uri"base-url-114650?_count=50&__t=1&__page-type=Patient&__page-id=0"
                (link-url body "self"))))
 
       (testing "the bundle contains one entry"
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"/Patient/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-114650/Patient/0" (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -252,8 +251,7 @@
   (testing "with param _summary equal to count"
     (let [{:keys [status body]}
           ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-           {::reitit/router router
-            ::reitit/match match
+           {::reitit/match match
             :params {"_summary" "count"}})]
 
       (is (= 200 status))
@@ -268,7 +266,7 @@
         (is (= #fhir/unsignedInt 1 (:total body))))
 
       (testing "has a self link"
-        (is (= #fhir/uri"?_summary=count&_count=50&__t=1"
+        (is (= #fhir/uri"base-url-114650?_summary=count&_count=50&__t=1"
                (link-url body "self"))))
 
       (testing "the bundle contains no entries"
@@ -277,8 +275,7 @@
   (testing "with param _count equal to zero"
     (let [{:keys [status body]}
           ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-           {::reitit/router router
-            ::reitit/match match
+           {::reitit/match match
             :params {"_count" "0"}})]
 
       (is (= 200 status))
@@ -293,7 +290,7 @@
         (is (= #fhir/unsignedInt 1 (:total body))))
 
       (testing "has a self link"
-        (is (= #fhir/uri"?_count=0&__t=1" (link-url body "self"))))
+        (is (= #fhir/uri"base-url-114650?_count=0&__t=1" (link-url body "self"))))
 
       (testing "the bundle contains no entries"
         (is (empty? (:entry body))))))
@@ -306,7 +303,8 @@
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
               @((handler node)
-                {::reitit/router router
+                {:blaze/base-url base-url
+                 ::reitit/router router
                  ::reitit/match match
                  :params {"_count" "1"}})]
 
@@ -314,11 +312,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"?_count=1&__t=1&__page-type=Patient&__page-id=0"
+            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -327,7 +325,8 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @((handler node)
-                {::reitit/router router
+                {:blaze/base-url base-url
+                 ::reitit/router router
                  ::reitit/match match
                  :params {"_count" "1" "__t" "1" "__page-type" "Patient"
                           "__page-id" "0"}})]
@@ -336,11 +335,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"?_count=1&__t=1&__page-type=Patient&__page-id=0"
+            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -349,7 +348,8 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @((handler node)
-                {::reitit/router router
+                {:blaze/base-url base-url
+                 ::reitit/router router
                  ::reitit/match match
                  :params {"_count" "1" "__t" "1" "__page-type" "Patient"
                           "__page-id" "1"}})]
@@ -358,7 +358,7 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "self"))))
 
           (testing "has no next link"
@@ -376,8 +376,7 @@
       (testing "search for active patients with _summary=count"
         (let [{:keys [body]}
               @((handler node)
-                {::reitit/router router
-                 ::reitit/match match
+                {::reitit/match match
                  :params {"active" "true" "_summary" "count"}})]
 
           (testing "their is a total count because we used _summary=count"
@@ -386,8 +385,7 @@
       (testing "search for active patients with _count=1"
         (let [{:keys [body]}
               @((handler node)
-                {::reitit/router router
-                 ::reitit/match match
+                {::reitit/match match
                  :params {"active" "true" "_count" "1"}})]
 
           (testing "their is no total count because we have clauses and we have
@@ -408,8 +406,7 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @((handler node)
-                {::reitit/router router
-                 ::reitit/match match
+                {::reitit/match match
                  :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "1"}})]
 
           (testing "their is no total count because we have clauses and we have
@@ -430,8 +427,7 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @((handler node)
-                {::reitit/router router
-                 ::reitit/match match
+                {::reitit/match match
                  :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
           (testing "their is no total count because we have clauses and we have
@@ -454,8 +450,7 @@
           ((handler-with
              [[[:put {:fhir/type :fhir/Patient :id "0"}]
                [:put {:fhir/type :fhir/Patient :id "1"}]]])
-           {::reitit/router router
-            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+           {::reitit/match {:data {:fhir.resource/type "Patient"}}
             :params {"_id" "0"}})]
 
       (is (= 200 status))
@@ -486,8 +481,7 @@
              [[[:put {:fhir/type :fhir/Patient :id "0"}]
                [:put {:fhir/type :fhir/Patient :id "1"}]
                [:put {:fhir/type :fhir/Patient :id "2"}]]])
-           {::reitit/router router
-            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+           {::reitit/match {:data {:fhir.resource/type "Patient"}}
             :params {"_id" "0,2"}})]
 
       (is (= 200 status))
@@ -531,8 +525,7 @@
                         :item
                         #fhir/Reference
                             {:reference "Patient/0"}}]}]]])
-           {::reitit/router router
-            ::reitit/match {:data {:fhir.resource/type "Patient"}}
+           {::reitit/match {:data {:fhir.resource/type "Patient"}}
             :params {"_list" "0"}})]
 
       (is (= 200 status))

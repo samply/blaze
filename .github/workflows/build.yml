@@ -335,6 +335,12 @@ jobs:
     - name: Evaluate CQL Query 15
       run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql http://localhost:8080/fhir
 
+    - name: Forwarded Header
+      run: .github/scripts/forwarded-header.sh
+
+    - name: X-Forwarded Headers
+      run: .github/scripts/x-forwarded-headers.sh
+
   openid-auth-test:
     needs: build
     runs-on: ubuntu-20.04
@@ -475,3 +481,9 @@ jobs:
 
     - name: Evaluate CQL Query 15
       run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql http://localhost:8080/fhir
+
+    - name: Forwarded Header
+      run: .github/scripts/forwarded-header.sh
+
+    - name: X-Forwarded Headers
+      run: .github/scripts/x-forwarded-headers.sh
