@@ -184,13 +184,13 @@
   ([context c-hash tid {:keys [op lower-bound upper-bound]}]
    (case op
      :eq (eq-keys! context c-hash tid lower-bound upper-bound)
-     :ge (ge-keys! context c-hash tid lower-bound)
-     :le (le-keys! context c-hash tid upper-bound)))
+     (:ge :gt) (ge-keys! context c-hash tid lower-bound)
+     (:le :lt) (le-keys! context c-hash tid upper-bound)))
   ([context c-hash tid {:keys [op lower-bound upper-bound]} start-id]
    (case op
      :eq (eq-keys! context c-hash tid lower-bound upper-bound start-id)
-     :ge (ge-keys! context c-hash tid lower-bound start-id)
-     :le (le-keys! context c-hash tid upper-bound start-id))))
+     (:ge :gt) (ge-keys! context c-hash tid lower-bound start-id)
+     (:le :lt) (le-keys! context c-hash tid upper-bound start-id))))
 
 
 (defn- matches?
@@ -201,8 +201,8 @@
           v-ub (codec/date-lb-ub->ub v)]
       (case op
         :eq (eq-overlaps? v-lb v-ub q-lb q-ub)
-        :ge (ge-overlaps? v-lb v-ub q-lb)
-        :le (le-overlaps? v-lb v-ub q-ub)))))
+        (:ge :gt) (ge-overlaps? v-lb v-ub q-lb)
+        (:le :lt) (le-overlaps? v-lb v-ub q-ub)))))
 
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
@@ -215,10 +215,10 @@
           {:op op
            :lower-bound (date-lb date-time-value)
            :upper-bound (date-ub date-time-value)}
-          :ge
+          (:ge :gt)
           {:op op
            :lower-bound (date-lb date-time-value)}
-          :le
+          (:le :lt)
           {:op op
            :upper-bound (date-ub date-time-value)}
           {::anom/category ::anom/unsupported
