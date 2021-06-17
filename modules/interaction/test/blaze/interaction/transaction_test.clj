@@ -50,6 +50,9 @@
 (defonce executor (ex/single-thread-executor))
 
 
+(def ^:private base-url "base-url-115515")
+
+
 (defn router [node]
   (reitit.ring/router
     [["/Observation"
@@ -90,6 +93,7 @@
       (let [router (router node)]
         @((handler node)
           (assoc request
+            :blaze/base-url base-url
             ::reitit/router router
             :batch-handler (batch-handler router)))))))
 
@@ -193,7 +197,7 @@
                 (testing "entry response"
                   (given response
                     :status := "201"
-                    :location := #fhir/uri"/Patient/0/_history/1"
+                    :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
                     :etag := "W/\"1\""
                     :lastModified := Instant/EPOCH))))
 
@@ -225,7 +229,7 @@
                 (testing "entry response"
                   (given response
                     :status := "201"
-                    :location := #fhir/uri"/Patient/0/_history/1"
+                    :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
                     :etag := "W/\"1\""
                     :lastModified := Instant/EPOCH))))))
 
@@ -338,7 +342,7 @@
                 (testing "entry response"
                   (given response
                     :status := "201"
-                    :location := #fhir/uri"/Patient/AAAAAGEP4AAADCIB/_history/1"
+                    :location := #fhir/uri"base-url-115515/Patient/AAAAAGEP4AAADCIB/_history/1"
                     :etag := "W/\"1\""
                     :lastModified := Instant/EPOCH))))
 
@@ -370,7 +374,7 @@
                 (testing "entry response"
                   (given response
                     :status := "201"
-                    :location := #fhir/uri"/Patient/AAAAAGEP4AAADCIB/_history/1"
+                    :location := #fhir/uri"base-url-115515/Patient/AAAAAGEP4AAADCIB/_history/1"
                     :etag := "W/\"1\""
                     :lastModified := Instant/EPOCH)))))))
 
@@ -1225,7 +1229,7 @@
           (testing "entry response"
             (given response
               :status := "201"
-              :location := #fhir/uri"/Patient/0/_history/1"
+              :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
               :etag := "W/\"1\""
               :lastModified := Instant/EPOCH))))
 
@@ -1257,7 +1261,7 @@
           (testing "entry response"
             (given response
               :status := "201"
-              :location := #fhir/uri"/Patient/0/_history/1"
+              :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
               :etag := "W/\"1\""
               :lastModified := Instant/EPOCH)))))
 

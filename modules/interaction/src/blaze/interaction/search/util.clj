@@ -13,10 +13,10 @@
 
 
 (defn entry
-  ([router resource]
-   (entry router resource match))
-  ([router {:fhir/keys [type] :keys [id] :as resource} mode]
+  ([base-url router resource]
+   (entry base-url router resource match))
+  ([base-url router {:fhir/keys [type] :keys [id] :as resource} mode]
    {:fhir/type :fhir.Bundle/entry
-    :fullUrl (type/->Uri (fhir-util/instance-url router (name type) id))
+    :fullUrl (type/->Uri (fhir-util/instance-url base-url router (name type) id))
     :resource resource
     :search mode}))

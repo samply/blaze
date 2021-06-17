@@ -7,7 +7,8 @@
 
 
 (s/fdef nav/url
-  :args (s/cat :match some?
+  :args (s/cat :base-url string?
+               :match some?
                :params (s/nilable ::params-spec/params)
                :clauses (s/nilable (s/coll-of :blaze.db.query/clause))
                :t :blaze.db/t

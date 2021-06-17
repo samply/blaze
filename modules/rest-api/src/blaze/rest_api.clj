@@ -11,6 +11,7 @@
     [blaze.rest-api.middleware.auth-guard :as auth-guard]
     [blaze.rest-api.middleware.batch-handler :as batch-handler]
     [blaze.rest-api.middleware.cors :as cors]
+    [blaze.rest-api.middleware.forwarded :as forwarded]
     [blaze.rest-api.middleware.log :refer [wrap-log]]
     [blaze.rest-api.middleware.output :as output :refer [wrap-output]]
     [blaze.rest-api.middleware.resource :as resource]
@@ -31,6 +32,11 @@
 (def ^:private wrap-params
   {:name :params
    :wrap ring-params/wrap-params})
+
+
+(def ^:private wrap-forwarded
+  {:name :forwarded
+   :wrap forwarded/wrap-forwarded})
 
 
 (def ^:private wrap-auth-guard
@@ -82,7 +88,7 @@
      (resolve-pattern resource-patterns structure-definition)]
     [(str "/" name)
      {:middleware
-      (cond-> [wrap-params]
+      (cond-> []
         (seq auth-backends)
         (conj wrap-auth-guard))
       :fhir.resource/type name}
@@ -143,7 +149,7 @@
     :fhir.compartment/code code
     :conflicting true
     :middleware
-    (cond-> [wrap-params]
+    (cond-> []
       (seq auth-backends)
       (conj wrap-auth-guard))
     :get search-handler}])
@@ -174,12 +180,12 @@
    capabilities-handler
    batch-handler-promise]
   (-> [""
-       {:blaze/base-url base-url
+       {:middleware [wrap-params [wrap-forwarded base-url]]
         :blaze/context-path context-path}
        [""
         (cond->
           {:middleware
-           (cond-> [wrap-params]
+           (cond-> []
              (seq auth-backends)
              (conj wrap-auth-guard))}
           (some? search-system-handler)
@@ -194,7 +200,7 @@
        ["/_history"
         (cond->
           {:middleware
-           (cond-> [wrap-params]
+           (cond-> []
              (seq auth-backends)
              (conj wrap-auth-guard))}
           (some? history-system-handler)
@@ -205,7 +211,7 @@
             (when system-handler
               [[(str "/$" code)
                 {:middleware
-                 (cond-> [wrap-params]
+                 (cond-> []
                    (seq auth-backends)
                    (conj wrap-auth-guard))
                  :get system-handler
@@ -221,7 +227,7 @@
                   [(str "/" resource-type "/$" code)
                    {:conflicting true
                     :middleware
-                    (cond-> [wrap-params]
+                    (cond-> []
                       (seq auth-backends)
                       (conj wrap-auth-guard))
                     :get type-handler
@@ -237,7 +243,7 @@
                 (fn [resource-type]
                   [(str "/" resource-type "/{id}/$" code)
                    {:middleware
-                    (cond-> [wrap-params]
+                    (cond-> []
                       (seq auth-backends)
                       (conj wrap-auth-guard))
                     :get instance-handler
@@ -368,8 +374,7 @@
 
 (defn capabilities-handler
   [{:keys
-    [base-url
-     version
+    [version
      context-path
      structure-definitions
      search-param-registry
@@ -392,11 +397,11 @@
          {:name "Blaze"
           :version version}
          :implementation
-         {:description (str "Blaze running at " base-url context-path)
-          :url (type/->Url (str base-url context-path))}
+         {:description "Blaze"}
          :fhirVersion #fhir/code"4.0.1"
-         :format [#fhir/code"application/fhir+json"
-                  #fhir/code"application/xml+json"]
+         :format
+         [#fhir/code"application/fhir+json"
+          #fhir/code"application/xml+json"]
          :rest
          [{:mode #fhir/code"server"
            :resource
@@ -414,8 +419,13 @@
              (conj {:code #fhir/code"transaction"} {:code #fhir/code"batch"})
              (some? history-system-handler)
              (conj {:code #fhir/code"history-system"}))}]}]
-    (fn [_]
-      (ac/completed-future (ring/response capability-statement)))))
+    (fn [{:blaze/keys [base-url]}]
+      (ac/completed-future
+        (ring/response
+          (assoc-in
+            capability-statement
+            [:implementation :url]
+            (type/->Url (str base-url context-path))))))))
 
 
 (defn handler
@@ -468,8 +478,7 @@
 
 (defmethod ig/init-key :blaze/rest-api
   [_ {:keys [base-url context-path] :as config}]
-  (log/info
-    "Init FHIR RESTful API with base URL:" (str base-url context-path))
+  (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path))
   (handler config))
 
 

@@ -69,8 +69,7 @@
 
 
 (defn url
-  {:arglists '([match params clauses t offset])}
-  [{{:blaze/keys [base-url]} :data :as match} params clauses t offset]
+  [base-url match params clauses t offset]
   (let [query-params (-> (query-params params clauses) (assoc "__t" t) (merge offset))
         path (reitit/match->path match query-params)]
     (str base-url path)))

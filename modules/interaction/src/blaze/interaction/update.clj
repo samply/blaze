@@ -63,6 +63,7 @@
         {:keys [id]} :path-params
         :keys [body]
         {:strs [if-match] :as headers} :headers
+        :blaze/keys [base-url]
         ::reitit/keys [router]}]
     (let [db-before (d/db node)]
       (-> (ac/supply (validate-resource type id body))
@@ -74,7 +75,8 @@
           (ac/then-compose
             (fn [db-after]
               (response/build-response
-                router (handler-util/preference headers "return") db-after
+                base-url router (handler-util/preference headers "return")
+                db-after
                 (d/resource-handle db-before type id)
                 (d/resource-handle db-after type id))))
           (ac/exceptionally handler-util/error-response)))))

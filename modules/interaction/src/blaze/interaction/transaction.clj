@@ -193,7 +193,7 @@
   (fn [_ _ {{:keys [method]} :request}] (type/value method)))
 
 
-(defn- created-entry [router db {:keys [id] :as handle}]
+(defn- created-entry [base-url router db {:keys [id] :as handle}]
   (let [type (name (type/type handle))
         tx (d/tx db (:t handle))
         vid (str (:blaze.db/t tx))]
@@ -205,7 +205,8 @@
        :etag (str "W/\"" vid "\"")
        :lastModified (:blaze.db.tx/instant tx)
        :location
-       (type/->Uri (fhir-util/versioned-instance-url router type id vid))}}]))
+       (type/->Uri (fhir-util/versioned-instance-url base-url router type id
+                                                     vid))}}]))
 
 
 (defn- noop-entry [db handle]
@@ -221,17 +222,17 @@
 
 
 (defmethod build-response-entry "POST"
-  [{:keys [router]} db {{:fhir/keys [type] :keys [id]} :resource
-                        {if-none-exist :ifNoneExist} :request}]
+  [{:keys [base-url router]} db {{:fhir/keys [type] :keys [id]} :resource
+                                 {if-none-exist :ifNoneExist} :request}]
   (let [type (name type)]
     (if-let [handle (d/resource-handle db type id)]
-      (created-entry router db handle)
+      (created-entry base-url router db handle)
       (let [handle (first (d/type-query db type (fhir-util/clauses if-none-exist)))]
         (noop-entry db handle)))))
 
 
 (defmethod build-response-entry "PUT"
-  [{:keys [router]} db {{:fhir/keys [type] :keys [id]} :resource}]
+  [{:keys [base-url router]} db {{:fhir/keys [type] :keys [id]} :resource}]
   (let [{:keys [num-changes] :as handle} (d/resource-handle db (name type) id)
         tx (d/tx db (:t handle))
         vid (str (:blaze.db/t tx))]
@@ -247,7 +248,8 @@
         (assoc
           :location
           (type/->Uri
-            (fhir-util/versioned-instance-url router (name type) id vid))))}]))
+            (fhir-util/versioned-instance-url base-url router (name type) id
+                                              vid))))}]))
 
 
 (defmethod build-response-entry "DELETE"
@@ -340,7 +342,7 @@
 
 
 (defn- process-batch-entry
-  [{:keys [batch-handler context-path return-preference]} idx
+  [{:keys [batch-handler base-url context-path return-preference]} idx
    {{:keys [method url identity] if-match :ifMatch if-none-exist :ifNoneExist}
     :request
     :keys [resource] :as entry}]
@@ -357,7 +359,8 @@
             request
             (cond->
               {:uri (str context-path "/" url)
-               :request-method method}
+               :request-method method
+               :blaze/base-url base-url}
 
               query-string
               (assoc :query-string query-string)
@@ -413,9 +416,12 @@
 
 
 (defn- process-context
-  [node executor {:keys [batch-handler headers] ::reitit/keys [router match]}]
+  [node executor
+   {:keys [batch-handler headers] :blaze/keys [base-url]
+    ::reitit/keys [router match]}]
   {:node node
    :executor executor
+   :base-url base-url
    :router router
    :batch-handler batch-handler
    :context-path (-> match :data :blaze/context-path)

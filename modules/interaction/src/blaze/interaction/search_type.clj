@@ -82,9 +82,9 @@
     (build-matches-only-page page-size handles)))
 
 
-(defn- entries [router matches includes]
-  (-> (mapv #(search-util/entry router % search-util/match) matches)
-      (into (map #(search-util/entry router % search-util/include)) includes)))
+(defn- entries [base-url router matches includes]
+  (-> (mapv #(search-util/entry base-url router % search-util/match) matches)
+      (into (map #(search-util/entry base-url router % search-util/include)) includes)))
 
 
 (defn- page-data
@@ -95,7 +95,7 @@
   :next-handle - the resource handle of the first resource of the next page
   :clauses - the actually used clauses"
   {:arglists '([context db])}
-  [{:keys [router] {:keys [include-defs page-size]} :params :as context} db]
+  [{:keys [base-url router] {:keys [include-defs page-size]} :params :as context} db]
   (let [{:keys [handles clauses] :as res} (handles-and-clauses context db)]
     (if (::anom/category res)
       (ac/failed-future (ex-anom res))
@@ -108,6 +108,7 @@
               (fn [_]
                 {:entries
                  (entries
+                   base-url
                    router
                    (mapcat deref match-futures)
                    (mapcat deref include-futures))
@@ -121,10 +122,10 @@
     {"__page-id" id}))
 
 
-(defn- self-link [{:keys [match params]} clauses t first-entry]
+(defn- self-link [{:keys [base-url match params]} clauses t first-entry]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url match params clauses t
+   :url (type/->Uri (nav/url base-url match params clauses t
                              (self-link-offset first-entry)))})
 
 
@@ -132,10 +133,10 @@
   {"__page-id" (:id next-handle)})
 
 
-(defn- next-link [{:keys [match params]} clauses t next-handle]
+(defn- next-link [{:keys [base-url match params]} clauses t next-handle]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (type/->Uri (nav/url match params clauses t
+   :url (type/->Uri (nav/url base-url match params clauses t
                              (next-link-offset next-handle)))})
 
 
@@ -213,10 +214,11 @@
     (search-normal context db)))
 
 
-(defn- context [router match type headers params]
+(defn- context [base-url router match type headers params]
   (let [handling (handler-util/preference headers "handling")]
     (when-ok [params (params/decode handling params)]
-      {:router router
+      {:base-url base-url
+       :router router
        :match match
        :type type
        :preference/handling handling
@@ -226,8 +228,9 @@
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data :as match} ::reitit/match
         :keys [headers params]
+        :blaze/keys [base-url]
         ::reitit/keys [router]}]
-    (let [context (context router match type headers params)]
+    (let [context (context base-url router match type headers params)]
       (if (::anom/category context)
         (ac/completed-future (handler-util/error-response context))
         (-> (handler-util/db node (fhir-util/t params))

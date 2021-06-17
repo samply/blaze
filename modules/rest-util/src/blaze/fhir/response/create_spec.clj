@@ -7,7 +7,8 @@
 
 
 (s/fdef create/build-response
-  :args (s/cat :router reitit/router?
+  :args (s/cat :base-url string?
+               :router reitit/router?
                :return-preference (s/nilable string?)
                :db :blaze.db/db
                :old-handle (s/nilable :blaze.db/resource-handle)

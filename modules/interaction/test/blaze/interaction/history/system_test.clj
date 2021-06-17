@@ -32,6 +32,9 @@
 (test/use-fixtures :each fixture)
 
 
+(def ^:private base-url "base-url-135844")
+
+
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]]
@@ -55,7 +58,10 @@
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node) request))))
+      @((handler node)
+        (assoc request
+          :blaze/base-url base-url
+          ::reitit/router router)))))
 
 
 (defn- link-url [body link-relation]
@@ -67,8 +73,7 @@
 
     (let [{:keys [status body]}
           ((handler-with [])
-            {::reitit/router router
-             ::reitit/match match})]
+            {::reitit/match match})]
 
       (is (= 200 status))
 
@@ -85,8 +90,7 @@
   (testing "with one patient"
     (let [{:keys [status body]}
           ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-            {::reitit/router router
-             ::reitit/match match})]
+            {::reitit/match match})]
 
       (is (= 200 status))
 
@@ -99,14 +103,14 @@
       (is (= #fhir/unsignedInt 1 (:total body)))
 
       (testing "has a self link"
-        (is (= #fhir/uri"/_history?__t=1&__page-t=1&__page-type=Patient&__page-id=0"
+        (is (= #fhir/uri"base-url-135844/_history?__t=1&__page-t=1&__page-type=Patient&__page-id=0"
                (link-url body "self"))))
 
       (testing "the bundle contains one entry"
         (is (= 1 (count (:entry body)))))
 
       (given (-> body :entry first)
-        :fullUrl := #fhir/uri"/Patient/0"
+        :fullUrl := #fhir/uri"base-url-135844/Patient/0"
         [:request :method] := #fhir/code"PUT"
         [:request :url] := #fhir/uri"/Patient/0"
         [:resource :id] := "0"
@@ -122,12 +126,11 @@
             ((handler-with
                 [[[:put {:fhir/type :fhir/Patient :id "0"}]
                   [:put {:fhir/type :fhir/Patient :id "1"}]]])
-              {::reitit/router router
-               ::reitit/match match
+              {::reitit/match match
                :query-params {"_count" "1"}})]
 
         (testing "hash next link"
-          (is (= #fhir/uri"/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1"
+          (is (= #fhir/uri"base-url-135844/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1"
                  (link-url body "next"))))))
 
     (testing "calling the second page shows the patient with the higher id"
@@ -135,8 +138,7 @@
             ((handler-with
                 [[[:put {:fhir/type :fhir/Patient :id "0"}]
                   [:put {:fhir/type :fhir/Patient :id "1"}]]])
-              {::reitit/router router
-               ::reitit/match match
+              {::reitit/match match
                :path-params {:id "0"}
                :query-params {"_count" "1" "__t" "1" "__page-t" "1"
                               "__page-type" "Patient" "__page-id" "1"}})]
@@ -149,8 +151,7 @@
             ((handler-with
                 [[[:put {:fhir/type :fhir/Patient :id "0"}]
                   [:put {:fhir/type :fhir/Patient :id "1"}]]])
-              {::reitit/router router
-               ::reitit/match match
+              {::reitit/match match
                :path-params {:id "0"}
                :query-params {"_count" "1" "__t" "1" "__page-t" "1" "__page-id" "1"}})]
 
@@ -163,13 +164,12 @@
             ((handler-with
                 [[[:put {:fhir/type :fhir/Patient :id "0"}]]
                  [[:put {:fhir/type :fhir/Patient :id "1"}]]])
-              {::reitit/router router
-               ::reitit/match match
+              {::reitit/match match
                :query-params {"_count" "1"}})]
 
         (is (= "next" (-> body :link second :relation)))
 
-        (is (= #fhir/uri"/_history?_count=1&__t=2&__page-t=1&__page-type=Patient&__page-id=0"
+        (is (= #fhir/uri"base-url-135844/_history?_count=1&__t=2&__page-t=1&__page-type=Patient&__page-id=0"
                (-> body :link second :url)))))
 
     (testing "calling the second page shows the patient from the first transaction"
@@ -177,8 +177,7 @@
             ((handler-with
                 [[[:put {:fhir/type :fhir/Patient :id "0"}]]
                  [[:put {:fhir/type :fhir/Patient :id "1"}]]])
-              {::reitit/router router
-               ::reitit/match match
+              {::reitit/match match
                :path-params {:id "0"}
                :query-params {"_count" "1" "__t" "2" "__page-t" "1"
                               "__page-type" "Patient" "__page-id" "0"}})]

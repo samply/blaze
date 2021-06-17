@@ -22,8 +22,15 @@
        (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
 
 
+(defn- location-header [response base-url router type id vid]
+  (ring/header
+    response
+    "Location"
+    (fhir-util/versioned-instance-url base-url router type id vid)))
+
+
 (defn build-response
-  [router return-preference db old-handle {:keys [id] :as new-handle}]
+  [base-url router return-preference db old-handle {:keys [id] :as new-handle}]
   (let [type (name (type/type new-handle))
         tx (d/tx db (:t new-handle))
         vid (str (:blaze.db/t tx))
@@ -44,5 +51,4 @@
                   (ring/header "Last-Modified" (last-modified tx))
                   (ring/header "ETag" (str "W/\"" vid "\"")))
               created
-              (ring/header
-                "Location" (fhir-util/versioned-instance-url router type id vid))))))))
+              (location-header base-url router type id vid)))))))

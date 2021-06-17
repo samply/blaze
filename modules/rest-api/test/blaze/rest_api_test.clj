@@ -3,6 +3,7 @@
     [blaze.db.impl.search-param]
     [blaze.db.search-param-registry :as sr]
     [blaze.executors :as ex]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.util :as handler-util]
     [blaze.rest-api :as rest-api]
     [clojure.spec.test.alpha :as st]
@@ -86,10 +87,10 @@
          {:code "compact-db"
           :system-handler (handler ::compact-db)}
       #:blaze.rest-api.operation
-         {:code "evaluate-measure"
-          :resource-types ["Measure"]
-          :type-handler (handler ::evaluate-measure-type)
-          :instance-handler (handler ::evaluate-measure-instance)}]}
+          {:code "evaluate-measure"
+           :resource-types ["Measure"]
+           :type-handler (handler ::evaluate-measure-type)
+           :instance-handler (handler ::evaluate-measure-instance)}]}
     (fn [_])))
 
 
@@ -153,27 +154,27 @@
                 (reitit/match-by-path (router []) path)
                 [:result request-method :data :middleware])
               (mapv (comp :name #(if (sequential? %) (first %) %)))))
-      "" :get [:params]
-      "" :post [:params :resource :wrap-batch-handler]
-      "/_history" :get [:params]
-      "/Patient" :get [:params]
-      "/Patient" :post [:params :resource]
-      "/Patient/_history" :get [:params]
-      "/Patient/_search" :post [:params]
-      "/Patient/0" :get [:params]
-      "/Patient/0" :put [:params :resource]
-      "/Patient/0" :delete [:params]
-      "/Patient/0/_history" :get [:params]
-      "/Patient/0/_history/42" :get [:params]
-      "/Patient/0/Condition" :get [:params]
-      "/Patient/0/Observation" :get [:params]
-      "/$compact-db" :get [:params]
-      "/$compact-db" :post [:params]
-      "/Measure/$evaluate-measure" :get [:params]
-      "/Measure/$evaluate-measure" :post [:params]
-      "/Measure/0/$evaluate-measure" :get [:params]
-      "/Measure/0/$evaluate-measure" :post [:params]
-      "/Measure/0" :get [:params])
+      "" :get [:params :forwarded]
+      "" :post [:params :forwarded :resource :wrap-batch-handler]
+      "/_history" :get [:params :forwarded]
+      "/Patient" :get [:params :forwarded]
+      "/Patient" :post [:params :forwarded :resource]
+      "/Patient/_history" :get [:params :forwarded]
+      "/Patient/_search" :post [:params :forwarded]
+      "/Patient/0" :get [:params :forwarded]
+      "/Patient/0" :put [:params :forwarded :resource]
+      "/Patient/0" :delete [:params :forwarded]
+      "/Patient/0/_history" :get [:params :forwarded]
+      "/Patient/0/_history/42" :get [:params :forwarded]
+      "/Patient/0/Condition" :get [:params :forwarded]
+      "/Patient/0/Observation" :get [:params :forwarded]
+      "/$compact-db" :get [:params :forwarded]
+      "/$compact-db" :post [:params :forwarded]
+      "/Measure/$evaluate-measure" :get [:params :forwarded]
+      "/Measure/$evaluate-measure" :post [:params :forwarded]
+      "/Measure/0/$evaluate-measure" :get [:params :forwarded]
+      "/Measure/0/$evaluate-measure" :post [:params :forwarded]
+      "/Measure/0" :get [:params :forwarded])
 
     (testing "with auth backends"
       (are [path request-method middleware]
@@ -182,10 +183,10 @@
                   (reitit/match-by-path (router [:auth-backend]) path)
                   [:result request-method :data :middleware])
                 (mapv (comp :name #(if (sequential? %) (first %) %)))))
-        "" :get [:params :auth-guard]
-        "" :post [:params :auth-guard :resource :wrap-batch-handler]
-        "/$compact-db" :get [:params :auth-guard]
-        "/$compact-db" :post [:params :auth-guard])))
+        "" :get [:params :forwarded :auth-guard]
+        "" :post [:params :forwarded :auth-guard :resource :wrap-batch-handler]
+        "/$compact-db" :get [:params :forwarded :auth-guard]
+        "/$compact-db" :post [:params :forwarded :auth-guard])))
 
   (testing "Patient instance POST is not allowed"
     (given @((reitit.ring/ring-handler (router []) handler-util/default-handler)
@@ -243,12 +244,11 @@
   (testing "minimal config"
     (given
       (-> @((rest-api/capabilities-handler
-              {:base-url "base-url-131713"
-               :version "version-131640"
+              {:version "version-131640"
                :structure-definitions
                [{:kind "resource" :name "Patient"}]
                :search-param-registry search-param-registry})
-            {})
+            {:blaze/base-url "base-url-131713"})
           :body)
       :fhir/type := :fhir/CapabilityStatement
       :status := #fhir/code"active"
@@ -266,8 +266,7 @@
   (testing "minimal config + search-system"
     (given
       (-> @((rest-api/capabilities-handler
-              {:base-url "base-url-131713"
-               :version "version-131640"
+              {:version "version-131640"
                :structure-definitions
                [{:kind "resource" :name "Patient"}]
                :search-param-registry search-param-registry
@@ -280,8 +279,7 @@
   (testing "minimal config + history-system"
     (given
       (-> @((rest-api/capabilities-handler
-              {:base-url "base-url-131713"
-               :version "version-131640"
+              {:version "version-131640"
                :structure-definitions
                [{:kind "resource" :name "Patient"}]
                :search-param-registry search-param-registry
@@ -294,8 +292,7 @@
   (testing "Patient interaction"
     (given
       (-> @((rest-api/capabilities-handler
-              {:base-url "base-url-131713"
-               :version "version-131640"
+              {:version "version-131640"
                :structure-definitions
                [{:kind "resource" :name "Patient"}]
                :search-param-registry search-param-registry
@@ -315,8 +312,7 @@
   (testing "Observation interaction"
     (given
       (-> @((rest-api/capabilities-handler
-              {:base-url "base-url-131713"
-               :version "version-131640"
+              {:version "version-131640"
                :structure-definitions
                [{:kind "resource" :name "Observation"}]
                :search-param-registry search-param-registry
@@ -340,8 +336,7 @@
   (testing "one operation"
     (given
       (-> @((rest-api/capabilities-handler
-              {:base-url "base-url-131713"
-               :version "version-131640"
+              {:version "version-131640"
                :structure-definitions
                [{:kind "resource" :name "Measure"}]
                :search-param-registry search-param-registry
@@ -384,3 +379,14 @@
   (testing "XML"
     (given @((real-handler) {:request-method :get :uri "/metadata" :query-string "_format=xml"})
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8")))
+
+
+(deftest base-url-test
+  (testing "metadata"
+    (given @((real-handler) {:request-method :get :uri "/metadata"})
+      [:body fhir-spec/parse-json :implementation :url] := "http://localhost:8080")
+
+    (testing "with X-Forwarded-Host header"
+      (given @((real-handler)
+               {:request-method :get :uri "/metadata" :headers {"X-Forwarded-Host" "blaze.de"}})
+        [:body fhir-spec/parse-json :implementation :url] := "http://blaze.de"))))

@@ -7,6 +7,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
+    [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
     [blaze.interaction.create-spec]
@@ -37,6 +38,9 @@
 (def executor (ex/single-thread-executor))
 
 
+(def ^:private base-url "base-url-134418")
+
+
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]]
@@ -54,7 +58,10 @@
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node) request))))
+      @((handler node)
+        (assoc request
+          :blaze/base-url base-url
+          ::reitit/router router)))))
 
 
 (deftest handler-test
@@ -109,14 +116,13 @@
         [luid (constantly "C5OCZL276FGI3QCL")]
         (let [{:keys [status headers body]}
               ((handler-with [])
-               {::reitit/router router
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               {::reitit/match {:data {:fhir.resource/type "Patient"}}
                 :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
           (testing "Location header"
-            (is (= "/Patient/C5OCZL276FGI3QCL/_history/1"
+            (is (= "base-url-134418/Patient/C5OCZL276FGI3QCL/_history/1"
                    (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
@@ -137,15 +143,14 @@
         [luid (constantly "C5OCZOCCRNUQOESF")]
         (let [{:keys [status headers body]}
               ((handler-with [])
-               {::reitit/router router
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               {::reitit/match {:data {:fhir.resource/type "Patient"}}
                 :headers {"prefer" "return=minimal"}
                 :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
           (testing "Location header"
-            (is (= "/Patient/C5OCZOCCRNUQOESF/_history/1"
+            (is (= "base-url-134418/Patient/C5OCZOCCRNUQOESF/_history/1"
                    (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
@@ -162,15 +167,14 @@
         [luid (constantly "C5OCZPIRR7XVOD2A")]
         (let [{:keys [status headers body]}
               ((handler-with [])
-               {::reitit/router router
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               {::reitit/match {:data {:fhir.resource/type "Patient"}}
                 :headers {"prefer" "return=representation"}
                 :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
           (testing "Location header"
-            (is (= "/Patient/C5OCZPIRR7XVOD2A/_history/1"
+            (is (= "base-url-134418/Patient/C5OCZPIRR7XVOD2A/_history/1"
                    (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
@@ -191,15 +195,14 @@
         [luid (constantly "C5OCZQ32A6MGMNR6")]
         (let [{:keys [status headers body]}
               ((handler-with [])
-               {::reitit/router router
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               {::reitit/match {:data {:fhir.resource/type "Patient"}}
                 :headers {"prefer" "return=OperationOutcome"}
                 :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
           (testing "Location header"
-            (is (= "/Patient/C5OCZQ32A6MGMNR6/_history/1"
+            (is (= "base-url-134418/Patient/C5OCZQ32A6MGMNR6/_history/1"
                    (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
@@ -216,8 +219,7 @@
       (testing "on empty database"
         (let [{:keys [status]}
               ((handler-with [])
-               {::reitit/router router
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               {::reitit/match {:data {:fhir.resource/type "Patient"}}
                 :headers {"if-none-exist" "identifier=212154"}
                 :body {:fhir/type :fhir/Patient}})]
 
@@ -230,8 +232,7 @@
                  [[[:put {:fhir/type :fhir/Patient :id "0"
                           :identifier
                           [#fhir/Identifier{:value "094808"}]}]]])
-               {::reitit/router router
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}
+               {::reitit/match {:data {:fhir.resource/type "Patient"}}
                 :headers {"if-none-exist" "identifier=212154"}
                 :body {:fhir/type :fhir/Patient}})]
 
@@ -244,8 +245,7 @@
                [[[:put {:fhir/type :fhir/Patient :id "0"
                         :identifier
                         [#fhir/Identifier{:value "095156"}]}]]])
-             {::reitit/router router
-              ::reitit/match {:data {:fhir.resource/type "Patient"}}
+             {::reitit/match {:data {:fhir.resource/type "Patient"}}
               :headers {"if-none-exist" "identifier=095156"}
               :body {:fhir/type :fhir/Patient}})]
 
@@ -263,8 +263,7 @@
                         :birthDate #fhir/date"2020"}]
                  [:put {:fhir/type :fhir/Patient :id "1"
                         :birthDate #fhir/date"2020"}]]])
-             {::reitit/router router
-              ::reitit/match {:data {:fhir.resource/type "Patient"}}
+             {::reitit/match {:data {:fhir.resource/type "Patient"}}
               :headers {"if-none-exist" "birthdate=2020"}
               :body {:fhir/type :fhir/Patient}})]
 
