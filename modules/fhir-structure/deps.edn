@@ -55,9 +55,6 @@
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
 
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}
-
     org.openjdk.jol/jol-core
     {:mvn/version "0.16"}}
 
@@ -73,9 +70,6 @@
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}
 
     org.openjdk.jol/jol-core
     {:mvn/version "0.16"}}
