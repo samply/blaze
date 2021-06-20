@@ -7,7 +7,10 @@
     [juxt.iota :refer [given]]))
 
 
-(defn fixture [f]
+(st/instrument)
+
+
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))

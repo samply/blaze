@@ -19,14 +19,11 @@
     [java.time.temporal Temporal]))
 
 
-(set! *warn-on-reflection* true)
-
-
 (st/instrument)
 (tu/instrument-compile)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (tu/instrument-compile)
   (f)

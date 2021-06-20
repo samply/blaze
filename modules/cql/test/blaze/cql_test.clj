@@ -26,7 +26,7 @@
 (st/instrument)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (st/instrument
     `compile

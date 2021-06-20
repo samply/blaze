@@ -20,7 +20,10 @@
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 
-(defn fixture [f]
+(st/instrument)
+
+
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))

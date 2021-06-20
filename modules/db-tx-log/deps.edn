@@ -17,10 +17,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "1.0.861"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
