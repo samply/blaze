@@ -106,49 +106,6 @@
 
 
 
-;; ---- FHIR Search Parameter -------------------------------------------------
-
-(s/def :SearchParameter/name
-  string?)
-
-
-(s/def :SearchParameter/experimental
-  boolean?)
-
-
-(s/def :SearchParameter/code
-  string?)
-
-
-(s/def :SearchParameter/base
-  (s/coll-of string?))
-
-
-(s/def :SearchParameter/type
-  #{"number"
-    "date"
-    "string"
-    "token"
-    "reference"
-    "composite"
-    "quantity"
-    "uri"
-    "special"})
-
-
-(s/def :SearchParameter/expression
-  string?)
-
-
-(s/def :fhir.un/SearchParameter
-  (s/keys :req-un [:SearchParameter/code
-                   :SearchParameter/base
-                   :SearchParameter/type]
-          :opt-un [:SearchParameter/experimental
-                   :SearchParameter/expression]))
-
-
-
 ;; ---- Read ------------------------------------------------------------------
 
 (def ^:private json-object-mapper
