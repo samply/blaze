@@ -2,13 +2,20 @@
 
 ## Transaction Bundle Upload - Summary
 
-| CPU         | # Cores | RAM (GB) | Xmx | MBJ | -c |# Resources | Duration (s) | Resources/s |
-|-------------|---------|----------|-----|-----|----|------------|--------------|-------------|
-| i7-6700     |       8 |       32 |  4g |   4 |  4 |  1,057,270 |          275 |        3845 |
-| i7-6700     |       8 |       32 |  4g |   4 |  4 |  9,382,617 |         4464 |        2102 |
-| E5-2687W v4 |       8 |       64 |  4g |   4 |  4 |  9,409,036 |         2275 |        4136 |
-| E5-2687W v4 |      12 |       64 |  4g |   8 |  8 |  9,409,036 |         1825 |        6150 |
+| CPU         | # Cores | RAM (GB) | Xmx | MBJ³ | -c¹ |# Resources | Disk Util.² | Duration (s) | Resources/s |
+|-------------|--------:|---------:|----:|-----:|----:|-----------:|------------:|-------------:|------------:|
+| i7-6700     |       8 |       32 |  4g |    4 /   4 |  1,057,270 |          25 |          255 |        4146 |
+| i7-6700     |       8 |       32 |  4g |    4 /   4 |  9,382,617 |          80 |         5130 |        1829 |
+| E5-2687W v4 |       8 |       64 |  4g |    4 /   4 |  9,409,036 |             |         2275 |        4136 |
+| E5-2687W v4 |      12 |       64 |  4g |    8 /   8 |  9,409,036 |             |         1825 |        6150 |
+| E5-2687W v4 |      24 |      128 |  4g |    4 /   4 |  9,437,276 |          13 |         2569 |        3673 |
+| E5-2687W v4 |      24 |      128 |  4g |    4 /   4 | 93,841,101 |          22 |        33287 |        2819 |
+| E5-2687W v4 |      24 |      128 |  4g |    4 /   8 | 93,841,101 |          22 |        31747 |        2956 |
+| E5-2687W v4 |      24 |      128 |  4g |   16 /   8 | 93,841,101 |          41 |        12191 |        7698 |
 
+¹ blazectl upload concurrency
+² average disk utilization in percent during import
+³ DB_MAX_BACKGROUND_JOBS
 
 ## Transaction Bundle Upload - Datacenter Server
 
@@ -223,25 +230,23 @@ docker run -v $(pwd)/output:/gen/output/fhir synthea-gen synthea.jar -s 32562625
 
 ```sh
 docker run --name blaze --rm -v blaze-data:/app/data \
-  -e JAVA_TOOL_OPTIONS="-Xmx4g" \
-  -e LOG_LEVEL=debug \
-  -p 8080:8080 \
-  -p 8081:8081 \
-  -e DB_RESOURCE_INDEXER_THREADS=8 \
-  -d ghcr.io/samply/blaze:364dfdccc8a7d1d68c5c0eed615d0290228d4ee5
+    -e JAVA_TOOL_OPTIONS="-Xmx4g" \
+    -e LOG_LEVEL=debug \
+    -p 8080:8080 \
+    -d samply/blaze:0.11.0
 ```
 
 ### Upload Method
 
-Command line tool `blazectl` v0.6.0 with concurrency of 4.
+Command line tool `blazectl` v0.7.0 with concurrency of 4.
 
 ```text
 Uploads          [total, concurrency]     1258, 4
 Success          [ratio]                  100.00 %
-Duration         [total]                  5m27s
-Requ. Latencies  [mean, 50, 95, 99, max]  1.034s, 812ms, 2.466s, 4.852s 15.173s
-Proc. Latencies  [mean, 50, 95, 99, max]  1.034s, 812ms, 2.466s, 4.852s 15.173s
-Bytes In         [total, mean]            175.65 MiB, 142.97 KiB
+Duration         [total]                  4m15s
+Requ. Latencies  [mean, 50, 95, 99, max]  808ms, 615ms, 1.965s, 4.193s 16.655s
+Proc. Latencies  [mean, 50, 95, 99, max]  808ms, 615ms, 1.965s, 4.193s 16.655s
+Bytes In         [total, mean]            177.28 MiB, 144.31 KiB
 Bytes Out        [total, mean]            2.29 GiB, 1.86 MiB
 Status Codes     [code:count]             200:1258
 ```
@@ -276,7 +281,7 @@ The upload resulted in the following resource counts:
 | SupplyDelivery | 16281 |
 | **total** | **1,057,270** |
 
-That are 1,057,270 resources in 5 minutes and 27 seconds or about 3,200 resources per second.
+That are 1,057,270 resources in 4 minutes and 15 seconds or about 4,100 resources per second.
 
 ### Notes
 
