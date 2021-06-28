@@ -8,24 +8,35 @@
     [blaze.db.resource-store-spec]
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
     [blaze.db.resource-store.kv-spec]
+    [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
-    [cheshire.core :as cheshire]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cuerdas.core :as str]
+    [integrant.core :as ig]
     [taoensso.timbre :as log])
+  (:import
+    [java.util.concurrent ExecutorService])
   (:refer-clojure :exclude [hash]))
 
 
-(defn fixture [f]
+(st/instrument)
+(log/set-level! :trace)
+
+
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
+
+
+(def executor
+  (ex/single-thread-executor))
 
 
 (defn hash [s]
@@ -40,7 +51,7 @@
 
 
 (defn encode-resource [resource]
-  (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))
+  (fhir-spec/unform-cbor resource))
 
 
 (deftest get-test
@@ -48,15 +59,15 @@
     (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
           kv-store (new-mem-kv-store)
-          store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (bs/to-byte-array hash) (encode-resource content))
+          store (new-kv-resource-store kv-store executor)]
+      (kv/put! kv-store (bs/to-byte-array hash) (fhir-spec/unform-cbor content))
 
       (is (= content @(rs/get store hash)))))
 
   (testing "parsing error"
     (let [hash (hash "0")
           kv-store (new-mem-kv-store)
-          store (new-kv-resource-store kv-store)]
+          store (new-kv-resource-store kv-store executor)]
       (kv/put! kv-store (bs/to-byte-array hash) (invalid-content))
 
       (try
@@ -68,7 +79,7 @@
   (testing "not-found"
     (let [hash (hash "0")
           kv-store (new-mem-kv-store)
-          store (new-kv-resource-store kv-store)]
+          store (new-kv-resource-store kv-store executor)]
 
       (is (nil? @(rs/get store hash)))))
 
@@ -78,7 +89,7 @@
           (reify kv/KvStore
             (-get [_ _]
               (throw (Exception. "msg-154312"))))
-          store (new-kv-resource-store kv-store)]
+          store (new-kv-resource-store kv-store executor)]
 
       (try
         @(rs/get store hash)
@@ -91,8 +102,8 @@
     (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)
           kv-store (new-mem-kv-store)
-          store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (bs/to-byte-array hash) (encode-resource content))
+          store (new-kv-resource-store kv-store executor)]
+      (kv/put! kv-store (bs/to-byte-array hash) (fhir-spec/unform-cbor content))
 
       (is (= {hash content} @(rs/multi-get store [hash])))))
 
@@ -102,9 +113,9 @@
           content-1 {:fhir/type :fhir/Patient :id "1"}
           hash-1 (hash/generate content-1)
           kv-store (new-mem-kv-store)
-          store (new-kv-resource-store kv-store)]
-      (kv/put! kv-store (bs/to-byte-array hash-0) (encode-resource content-0))
-      (kv/put! kv-store (bs/to-byte-array hash-1) (encode-resource content-1))
+          store (new-kv-resource-store kv-store executor)]
+      (kv/put! kv-store (bs/to-byte-array hash-0) (fhir-spec/unform-cbor content-0))
+      (kv/put! kv-store (bs/to-byte-array hash-1) (fhir-spec/unform-cbor content-1))
 
       (is (= {hash-0 content-0 hash-1 content-1}
              @(rs/multi-get store [hash-0 hash-1])))))
@@ -112,7 +123,7 @@
   (testing "parsing error"
     (let [hash (hash "0")
           kv-store (new-mem-kv-store)
-          store (new-kv-resource-store kv-store)]
+          store (new-kv-resource-store kv-store executor)]
       (kv/put! kv-store (bs/to-byte-array hash) (invalid-content))
 
       (try
@@ -124,7 +135,7 @@
   (testing "not-found"
     (let [hash (hash "0")
           kv-store (new-mem-kv-store)
-          store (new-kv-resource-store kv-store)]
+          store (new-kv-resource-store kv-store executor)]
 
       (is (= {} @(rs/multi-get store [hash])))))
 
@@ -134,7 +145,7 @@
           (reify kv/KvStore
             (-multi-get [_ _]
               (throw (Exception. "msg-154826"))))
-          store (new-kv-resource-store kv-store)]
+          store (new-kv-resource-store kv-store executor)]
 
       (try
         @(rs/multi-get store [hash])
@@ -146,7 +157,13 @@
   (let [content {:fhir/type :fhir/Patient :id "0"}
         hash (hash/generate content)
         kv-store (new-mem-kv-store)
-        store (new-kv-resource-store kv-store)]
+        store (new-kv-resource-store kv-store executor)]
     (rs/put store {hash content})
 
     (is (= content @(rs/get store hash)))))
+
+
+(deftest executor-test
+  (let [system (ig/init {:blaze.db.resource-store.kv/executor {}})]
+    (is (instance? ExecutorService (:blaze.db.resource-store.kv/executor system)))
+    (ig/halt! system)))

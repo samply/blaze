@@ -8,9 +8,9 @@
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang ExceptionInfo PersistentVector]
+    [clojure.lang Counted ExceptionInfo PersistentVector]
     [java.io StringReader]
-    [org.antlr.v4.runtime ANTLRInputStream CommonTokenStream]
+    [org.antlr.v4.runtime CharStreams CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
     [org.cqframework.cql.gen
      fhirpathLexer fhirpathParser
@@ -29,6 +29,7 @@
      fhirpathParser$BooleanLiteralContext
      fhirpathParser$StringLiteralContext
      fhirpathParser$NumberLiteralContext
+     fhirpathParser$DateLiteralContext
      fhirpathParser$DateTimeLiteralContext
      fhirpathParser$MemberInvocationContext
      fhirpathParser$FunctionInvocationContext
@@ -70,16 +71,14 @@
   (try
     (-eval expr {:resolver resolver} [value])
     (catch ExceptionInfo e
-      (if-let [ex-data (ex-data e)]
-        (if (::anom/category ex-data)
-          ex-data
-          (throw e))
+      (if (::anom/category (ex-data e))
+        (assoc (ex-data e) :expression expr :value value)
         (throw e)))))
 
 
 ;; See: http://hl7.org/fhirpath/index.html#conversion
 (defn- convertible? [type item]
-  (if (= (fhir-spec/fhir-type item) type)
+  (if (identical? type (fhir-spec/fhir-type item))
     true
     (case [(fhir-spec/fhir-type item) type]
       ([:fhir/integer :fhir/decimal]
@@ -90,7 +89,7 @@
 
 ;; See: http://hl7.org/fhirpath/index.html#conversion
 (defn- convert [type item]
-  (if (= (fhir-spec/fhir-type item) type)
+  (if (identical? type (fhir-spec/fhir-type item))
     item
     (case [(fhir-spec/fhir-type item) type]
       [:fhir/integer :fhir/decimal]
@@ -101,19 +100,21 @@
 
 
 ;; See: http://hl7.org/fhirpath/index.html#singleton-evaluation-of-collections
+(defn- singleton-evaluation-msg [coll]
+  (format "unable to evaluate `%s` as singleton" (pr-str coll)))
+
+
 (defn- singleton [type coll]
-  (cond
-    (and (= 1 (count coll)) (convertible? type (first coll)))
-    (convert type (first coll))
+  (case (.count ^Counted coll)
+    1 (let [first (nth coll 0)]
+        (cond
+          (convertible? type first) (convert type first)
+          (identical? :fhir/boolean type) true
+          :else (throw-anom ::anom/incorrect (singleton-evaluation-msg coll))))
 
-    (and (= 1 (count coll)) (= :fhir/boolean type))
-    true
+    0 []
 
-    (empty? coll)
-    []
-
-    :else
-    (throw-anom ::anom/incorrect (format "unable to evaluate `%s` as singleton" (pr-str coll)))))
+    (throw-anom ::anom/incorrect (singleton-evaluation-msg coll))))
 
 
 (defrecord StartExpression []
@@ -125,7 +126,7 @@
 (defrecord TypedStartExpression [spec]
   Expression
   (-eval [_ _ coll]
-    (filterv #(= spec (fhir-spec/fhir-type %)) coll)))
+    (filterv #(identical? spec (fhir-spec/fhir-type %)) coll)))
 
 
 (defrecord GetChildrenExpression [key]
@@ -167,31 +168,56 @@
         :else [(str left right)]))))
 
 
+(defn- is-type-specifier-msg [coll]
+  (format "is type specifier with more than one item at the left side `%s`"
+          (pr-str coll)))
+
+
 (defrecord IsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
-      (cond
-        (= 1 (count coll))
-        [(if (= type-specifier (fhir-spec/fhir-type (first coll))) true false)]
+      (case (.count ^Counted coll)
+        0 []
 
-        (empty? coll)
-        []
+        1 [(identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))]
 
-        :else
-        (throw-anom ::anom/incorrect (format "is type specifier with more than one item at the left side `%s`" (pr-str coll)))))))
+        (throw-anom ::anom/incorrect (is-type-specifier-msg coll))))))
+
+
+(defn- as-type-specifier-msg [coll]
+  (format "as type specifier with more than one item at the left side `%s`"
+          (pr-str coll)))
 
 
 (defrecord AsTypeExpression [expression type-specifier]
   Expression
-  (-eval [_ context x]
-    (filterv #(= type-specifier (fhir-spec/fhir-type %)) (-eval expression context x))))
+  (-eval [_ context coll]
+    (let [coll (-eval expression context coll)]
+      (case (.count ^Counted coll)
+        0 []
+
+        1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
+            coll
+            [])
+
+        (throw-anom ::anom/incorrect (as-type-specifier-msg coll))))))
 
 
-(defrecord UnionExpression [expressions]
+(defrecord UnionExpression [e1 e2]
   Expression
-  (-eval [_ context x]
-    (into #{} (mapcat #(-eval % context x)) expressions)))
+  (-eval [_ context coll]
+    (let [^Counted c1 (-eval e1 context coll)
+          ^Counted c2 (-eval e2 context coll)]
+      (case (.count c1)
+        0 (case (.count c2)
+            (0 1) c2
+            (vec (set c2)))
+        1 (case (.count c2)
+            0 c1
+            1 (if (= c1 c2) c1 (conj c1 (nth c2 0)))
+            (vec (conj (set c2) (nth c1 0))))
+        (vec (reduce conj (set c1) c2))))))
 
 
 (defrecord EqualExpression [left-expr right-expr]
@@ -245,29 +271,50 @@
 
 (defrecord AsFunctionExpression [type-specifier]
   Expression
-  (-eval [_ _ x]
-    (filterv #(= type-specifier (fhir-spec/fhir-type %)) x)))
+  (-eval [_ _ coll]
+    (case (.count ^Counted coll)
+      0 []
+
+      1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
+          coll
+          [])
+
+      (throw-anom ::anom/incorrect (as-type-specifier-msg coll)))))
 
 
 ;; See: http://hl7.org/fhirpath/#wherecriteria-expression-collection
+(defn- non-boolean-result-msg [x]
+  (format "non-boolean result `%s` of type `%s` while evaluating where function criteria"
+          (pr-str x) (fhir-spec/fhir-type x)))
+
+
+(defn- multiple-result-msg [x]
+  (format "multiple result items `%s` while evaluating where function criteria"
+          (pr-str x)))
+
+
 (defrecord WhereFunctionExpression [criteria]
   Expression
   (-eval [_ context coll]
     (filterv
       (fn [item]
-        (let [res (-eval criteria context [item])]
-          (cond
-            (= 1 (count res))
-            (if (identical? :system/boolean (system/type (first res)))
-              (first res)
-              (throw-anom ::anom/incorrect (format "non-boolean result `%s` of type `%s` while evaluating where function criteria" (pr-str (first res)) (fhir-spec/fhir-type (first res)))))
+        (let [coll (-eval criteria context [item])]
+          (case (.count ^Counted coll)
+            0 false
 
-            (empty? res)
-            false
+            1 (let [first (nth coll 0)]
+                (if (identical? :system/boolean (system/type first))
+                  first
+                  (throw-anom ::anom/incorrect (non-boolean-result-msg first))))
 
-            :else
-            (throw-anom ::anom/incorrect "multiple result items `%s` while evaluating where function criteria" (pr-str res)))))
+            (throw-anom ::anom/incorrect (multiple-result-msg coll)))))
       coll)))
+
+
+(defrecord OfTypeFunctionExpression [type-specifier]
+  Expression
+  (-eval [_ _ coll]
+    (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll)))
 
 
 (defrecord ExistsFunctionExpression []
@@ -299,13 +346,14 @@
 
 
 (defmethod resolve :default [_ item]
-  (log/debug (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item)) (pr-str item))))
+  (log/debug (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item))
+                     (pr-str item))))
 
 
 (defrecord ResolveFunctionExpression []
   Expression
   (-eval [_ context coll]
-    (mapcat (partial resolve context) coll)))
+    (reduce #(reduce conj %1 (resolve context %2)) [] coll)))
 
 
 (defprotocol FPCompiler
@@ -328,6 +376,13 @@
   (if-let [criteria-ctx (some-> paramsCtx (.expression 0))]
     (->WhereFunctionExpression (-compile criteria-ctx))
     (throw-anom ::anom/incorrect "missing criteria in `where` function")))
+
+
+(defmethod function-expression "ofType"
+  [_ ^fhirpathParser$ParamListContext paramsCtx]
+  (if-let [type-specifier-ctx (some-> paramsCtx (.expression 0))]
+    (->OfTypeFunctionExpression (-compile-as-type-specifier type-specifier-ctx))
+    (throw-anom ::anom/incorrect "missing type specifier in `as` function")))
 
 
 (defmethod function-expression "exists"
@@ -392,7 +447,12 @@
 
   fhirpathParser$UnionExpressionContext
   (-compile [ctx]
-    (->UnionExpression (mapv -compile (.expression ctx))))
+    (let [[e1 e2 :as exprs] (.expression ctx)]
+      (when-not (= 2 (count exprs))
+        (throw-anom
+          ::anom/fault
+          (format "UnionExpressionContext with %d expressions" (count exprs))))
+      (->UnionExpression (-compile e1) (-compile e2))))
 
   fhirpathParser$EqualityExpressionContext
   (-compile [ctx]
@@ -444,13 +504,16 @@
         (catch Exception _
           [(BigDecimal. text)]))))
 
+  fhirpathParser$DateLiteralContext
+  (-compile [ctx]
+    (let [text (subs (.getText (.getSymbol (.DATE ctx))) 1)]
+      [(type/->Date text)]))
+
   fhirpathParser$DateTimeLiteralContext
   (-compile [ctx]
-    (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)]
-      (try
-        [(type/->DateTime text)]
-        (catch Exception _
-          [(BigDecimal. text)]))))
+    (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)
+          text (if (str/ends-with? text "T") (subs text 0 (dec (count text))) text)]
+      [(type/->DateTime text)]))
 
   fhirpathParser$MemberInvocationContext
   (-compile [ctx]
@@ -499,15 +562,16 @@
   Returns either a compiled FHIRPath expression or an anomaly in case of errors."
   [expr]
   (let [r (StringReader. expr)
-        s (ANTLRInputStream. r)
+        s (CharStreams/fromReader r)
         l (fhirpathLexer. s)
         t (CommonTokenStream. l)
         p (fhirpathParser. t)]
     (try
       (-compile (.expression p))
-      ;(.toStringTree (.expression p) p)
       (catch Exception e
         (let [data (ex-data e)]
           (if (::anom/category data)
-            (update data ::anom/message str (format " in expression `%s`" expr))
+            (-> data
+                (update ::anom/message str (format " in expression `%s`" expr))
+                (assoc :expression expr))
             (throw e)))))))

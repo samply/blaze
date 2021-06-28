@@ -2,15 +2,19 @@
   (:require
     [blaze.db.tx-log.spec]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest]]
     [taoensso.timbre :as log]))
 
 
-(defn fixture [f]
+(st/instrument)
+(log/set-level! :trace)
+
+
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 

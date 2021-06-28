@@ -52,13 +52,13 @@
 
 
 (defn- resolve-links [context complex-value]
-  (into
-    {}
-    (map
-      (fn [[key val]]
-        (if (identical? :fhir/type key)
-          [key val]
-          [key (resolve-element-links context val)])))
+  (reduce-kv
+    (fn [m key val]
+      (if (identical? :fhir/type key)
+        m
+        (let [new-val (resolve-element-links context val)]
+          (if (identical? val new-val) m (assoc m key new-val)))))
+    complex-value
     complex-value))
 
 
@@ -86,8 +86,10 @@
 
 
 (defmethod entry-tx-op "POST"
-  [{:keys [resource]}]
-  [:create resource])
+  [{:keys [resource] {if-none-exist :ifNoneExist} :request}]
+  (cond-> [:create resource]
+    if-none-exist
+    (conj (fhir-util/clauses if-none-exist))))
 
 
 (defmethod entry-tx-op "PUT"

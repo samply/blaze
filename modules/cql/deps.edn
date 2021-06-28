@@ -5,10 +5,10 @@
   {:local/root "../db"}
 
   com.fasterxml.jackson.module/jackson-module-jaxb-annotations
-  {:mvn/version "2.11.3"}
+  {:mvn/version "2.12.3"}
 
   info.cqframework/cql-to-elm
-  {:mvn/version "1.4.9"
+  {:mvn/version "1.5.3"
    :exclusions
    [com.google.code.javaparser/javaparser
     info.cqframework/qdm
@@ -16,7 +16,8 @@
     xpp3/xpp3
     xpp3/xpp3_xpath
     org.slf4j/jcl-over-slf4j
-    org.slf4j/slf4j-api]}
+    org.slf4j/slf4j-api
+    org.jvnet.jaxb2_commons/jaxb2-basics-tools]}
 
   javax.xml.bind/jaxb-api
   {:mvn/version "2.4.0-b180830.0359"}
@@ -36,7 +37,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
+    {:mvn/version "1.0.861"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}

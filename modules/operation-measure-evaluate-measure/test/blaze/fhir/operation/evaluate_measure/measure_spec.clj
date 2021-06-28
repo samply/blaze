@@ -34,8 +34,10 @@
   (s/cat
     :now #(instance? OffsetDateTime %)
     :db :blaze.db/db
+    :base-url string?
     :router reitit/router?
     :measure :blaze/resource
     :params ::params)
-  :ret (s/or :result (s/keys :req-un [:blaze/resource :blaze.db/tx-ops])
-             :anomaly ::anom/anomaly))
+  :ret
+  (s/or :result (s/keys :req-un [:blaze/resource] :opt-un [:blaze.db/tx-ops])
+        :anomaly ::anom/anomaly))

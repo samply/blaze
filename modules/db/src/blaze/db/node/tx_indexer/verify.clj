@@ -9,12 +9,13 @@
     [blaze.db.kv.spec]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [loom.alg]
-    [loom.graph]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang ExceptionInfo]))
+    [clojure.lang ExceptionInfo IReduceInit]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defhistogram duration-seconds
@@ -26,67 +27,115 @@
   "op")
 
 
-(defmulti verify-tx-cmd
-  "Verifies one transaction command. Returns index entries and statistics of the
-  transaction outcome.
+(defmulti resolve-id
+  "Resolves all identifiers a conditional transaction command.
 
-  Should either update index entries and statistics or return a reduced value of
-  an entry into the :tx-error-index."
+  Throws an anomaly on conflicts."
+  {:arglists '([db-before cmd])}
+  (fn [_ {:keys [op]}] op))
+
+
+(defn- existing-resource-handles [db type clauses]
+  (some->> clauses (d/type-query db type) (take 2)))
+
+
+(defn- clauses->query-params [clauses]
+  (->> clauses
+       (map (fn [[param & values]] (str param "=" (str/join "," values))))
+       (str/join "&")))
+
+
+(defn- format-handle [type {:keys [id t]}]
+  (format "%s/%s/_history/%s" type id t))
+
+
+(defn- multiple-existing-resources-msg [type clauses [h1 h2]]
+  (format "Conditional create of a %s with query `%s` failed because at least the two matches `%s` and `%s` were found."
+          type (clauses->query-params clauses) (format-handle type h1)
+          (format-handle type h2)))
+
+
+(defn- throw-multiple-existing-resources-anomaly [type clauses handles]
+  (throw-anom
+    ::anom/conflict
+    (multiple-existing-resources-msg type clauses handles)
+    :http/status 412))
+
+
+(defmethod resolve-id "create"
+  [db-before {:keys [type if-none-exist] :as cmd}]
+  (let [[h1 h2] (existing-resource-handles db-before type if-none-exist)]
+    (cond
+      h2
+      (throw-multiple-existing-resources-anomaly type if-none-exist [h1 h2])
+      h1
+      (assoc cmd :op "hold" :id (:id h1))
+      :else
+      cmd)))
+
+
+(defmethod resolve-id :default
+  [_ cmd]
+  cmd)
+
+
+(defn resolve-ids
+  "Resolves all identifiers from conditional transaction commands.
+
+  Throws an anomaly on conflicts."
+  [db-before cmds]
+  (mapv #(resolve-id db-before %) cmds))
+
+
+(defmulti format-command :op)
+
+
+(defmethod format-command "hold" [{:keys [type id if-none-exist]}]
+  (format "create %s?%s (resolved to id %s)" type
+          (clauses->query-params if-none-exist) id))
+
+
+(defmethod format-command :default [{:keys [op type id]}]
+  (format "%s %s/%s" op type id))
+
+
+(defn- throw-duplicate-command-anomaly [cmd existing-cmd]
+  (throw-anom
+    ::anom/conflict
+    (format "Duplicate transaction commands `%s` and `%s`." (format-command cmd)
+            (format-command existing-cmd))))
+
+
+(defn- detect-duplicate-commands! [cmds]
+  (reduce
+    (fn [index {:keys [type id] :as cmd}]
+      (if-let [existing-cmd (get index [type id])]
+        (throw-duplicate-command-anomaly cmd existing-cmd)
+        (assoc index [type id] cmd)))
+    {}
+    cmds))
+
+
+(defmulti verify-tx-cmd
+  "Verifies one transaction command. Returns `res` with added index entries and
+  statistics of the transaction outcome.
+
+  Throws an anomaly on conflicts."
   {:arglists '([db-before t res cmd])}
   (fn [_ _ _ {:keys [op]}] op))
 
 
-(defn- resource-exists? [db-before type id]
-  (when-let [{:keys [op]} (d/resource-handle db-before type id)]
-    (not (identical? :delete op))))
+(defn- verify-tx-cmd-create-msg [type id]
+  (format "verify-tx-cmd :create %s/%s" type id))
 
 
-(defn- throw-referential-integrity-anomaly-delete [[src-type src-id] type id]
-  (throw-anom
-    ::anom/conflict
-    (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`." type id src-type src-id)))
+(defn- id-collision-msg [type id]
+  (format "Resource `%s/%s` already exists and can't be created again." type id))
 
 
-(defn- throw-referential-integrity-anomaly [type id]
-  (throw-anom
-    ::anom/conflict
-    (format "Referential integrity violated. Resource `%s/%s` doesn't exist." type id)))
-
-
-(defn- check-referential-integrity
-  [db-before {:keys [new-resources del-resources]} source references]
-  (doseq [[type id :as reference] references]
-    (cond
-      (contains? del-resources reference)
-      (throw-referential-integrity-anomaly-delete source type id)
-
-      (and (not (contains? new-resources reference))
-           (not (resource-exists? db-before type id)))
-      (throw-referential-integrity-anomaly type id))))
-
-
-(defn- format-references [references]
-  (->> references
-       (map (fn [[type id]] (format "%s/%s" type id)))
-       (str/join ", ")))
-
-
-(defn- verify-tx-cmd-create-msg [type id references]
-  (if (seq references)
-    (format "verify-tx-cmd :create %s/%s references: %s" type id
-            (format-references references))
-    (format "verify-tx-cmd :create %s/%s" type id)))
-
-
-(defn- throw-id-collision-anomaly [type id]
-  (throw-anom
-    ::anom/conflict
-    (format "Resource `%s/%s` already exists and can't be created again." type id)))
-
-
-(defn- check-id-collision [db-before type id]
-  (when (d/resource-handle db-before type id)
-    (throw-id-collision-anomaly type id)))
+(defn- check-id-collision! [db type id]
+  (when (d/resource-handle db type id)
+    (throw-anom ::anom/conflict (id-collision-msg type id))))
 
 
 (defn- index-entries [tid id t hash num-changes op]
@@ -94,11 +143,10 @@
 
 
 (defmethod verify-tx-cmd "create"
-  [db-before t res {:keys [type id hash refs]}]
-  (log/trace (verify-tx-cmd-create-msg type id refs))
+  [db-before t res {:keys [type id hash]}]
+  (log/trace (verify-tx-cmd-create-msg type id))
   (with-open [_ (prom/timer duration-seconds "verify-create")]
-    (check-id-collision db-before type id)
-    (check-referential-integrity db-before res [type id] refs)
+    (check-id-collision! db-before type id)
     (let [tid (codec/tid type)]
       (-> res
           (update :entries into (index-entries tid id t hash 1 :create))
@@ -121,12 +169,11 @@
 
 
 (defmethod verify-tx-cmd "put"
-  [db-before t res {:keys [type id hash refs if-match]}]
+  [db-before t res {:keys [type id hash if-match]}]
   (log/trace (verify-tx-cmd-put-msg type id if-match))
   (with-open [_ (prom/timer duration-seconds "verify-put")]
-    (check-referential-integrity db-before res [type id] refs)
     (let [tid (codec/tid type)
-          {:keys [num-changes] :or {num-changes 0} old-t :t}
+          {:keys [num-changes op] :or {num-changes 0} old-t :t}
           (d/resource-handle db-before type id)]
       (if (or (nil? if-match) (= if-match old-t))
         (cond->
@@ -134,7 +181,7 @@
               (update :entries into (index-entries tid id t hash (inc num-changes) :put))
               (update :new-resources conj [type id])
               (update-in [:stats tid :num-changes] (fnil inc 0)))
-          (nil? old-t)
+          (or (nil? old-t) (identical? :delete op))
           (update-in [:stats tid :total] (fnil inc 0)))
         (throw-precondition-failed if-match type id)))))
 
@@ -151,6 +198,11 @@
           (update :del-resources conj [type id])
           (update-in [:stats tid :num-changes] (fnil inc 0))
           (update-in [:stats tid :total] (fnil dec 0))))))
+
+
+(defmethod verify-tx-cmd :default
+  [_ _ res _]
+  res)
 
 
 (defn- verify-tx-cmds** [db-before t tx-cmds]
@@ -187,10 +239,62 @@
     (conj (system-stats db-before t stats))))
 
 
-(defn- verify-tx-cmds* [db-before t tx-cmds]
+(defn- resource-exists? [db type id]
+  (when-let [{:keys [op]} (d/resource-handle db type id)]
+    (not (identical? :delete op))))
+
+
+(defn- ref-integrity-del-msg [src-type src-id type id]
+  (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`."
+          type id src-type src-id))
+
+
+(defn- throw-referential-integrity-anomaly-delete [src-type src-id type id]
+  (throw-anom ::anom/conflict (ref-integrity-del-msg src-type src-id type id)))
+
+
+(defn- ref-integrity-msg [type id]
+  (format "Referential integrity violated. Resource `%s/%s` doesn't exist."
+          type id))
+
+
+(defn- throw-referential-integrity-anomaly [type id]
+  (throw-anom ::anom/conflict (ref-integrity-msg type id)))
+
+
+(defn- check-referential-integrity*!
+  [db new-resources del-resources src-type src-id references]
+  (.reduce
+    ^IReduceInit references
+    (fn [_ [type id :as reference]]
+      (cond
+        (contains? del-resources reference)
+        (throw-referential-integrity-anomaly-delete src-type src-id type id)
+
+        (and (not (contains? new-resources reference))
+             (not (resource-exists? db type id)))
+        (throw-referential-integrity-anomaly type id)))
+    nil))
+
+
+(defn- check-referential-integrity!
+  [db {:keys [new-resources del-resources]} cmds]
+  (.reduce
+    ^IReduceInit cmds
+    (fn [_ {:keys [type id refs]}]
+      (when refs
+        (check-referential-integrity*!
+          db new-resources del-resources type id refs)))
+    nil))
+
+
+(defn- verify-tx-cmds* [db-before t cmds]
   (try
-    (let [res (verify-tx-cmds** db-before t tx-cmds)]
-      (post-process-res db-before t res))
+    (let [cmds (resolve-ids db-before cmds)]
+      (detect-duplicate-commands! cmds)
+      (let [res (verify-tx-cmds** db-before t cmds)]
+        (check-referential-integrity! db-before res cmds)
+        (post-process-res db-before t res)))
     (catch ExceptionInfo e
       (if (::anom/category (ex-data e))
         (ex-data e)
@@ -199,11 +303,10 @@
 
 (defn verify-tx-cmds
   "Verifies transaction commands. Returns index entries of the transaction
-  outcome which can be successful or fail. Can be put into `kv-store` without
-  further processing.
+  outcome if it is successful or an anomaly if it fails.
 
-  The `t` and `tx-instant` are for the new transaction to commit."
-  [db-before t tx-cmds]
+  The `t` is for the new transaction to commit."
+  [db-before t cmds]
   (with-open [_ (prom/timer duration-seconds "verify-tx-cmds")
               batch-db-before (d/new-batch-db db-before)]
-    (verify-tx-cmds* batch-db-before t tx-cmds)))
+    (verify-tx-cmds* batch-db-before t cmds)))

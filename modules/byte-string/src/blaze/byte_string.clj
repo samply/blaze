@@ -1,10 +1,10 @@
 (ns blaze.byte-string
-  (:require
-    [cheshire.generate :refer [JSONable]])
   (:import
     [com.google.common.io BaseEncoding]
     [com.google.protobuf ByteString]
     [com.fasterxml.jackson.core JsonGenerator]
+    [com.fasterxml.jackson.databind.module SimpleModule]
+    [com.fasterxml.jackson.databind.ser.std StdSerializer]
     [java.io Writer]
     [java.nio ByteBuffer]
     [java.nio.charset Charset])
@@ -50,7 +50,9 @@
   (ByteString/copyFrom (.decode (BaseEncoding/base16) s)))
 
 
-(defn nth [bs index]
+(defn nth
+  "Returns the byte at `index` from `bs`."
+  [bs index]
   (.byteAt ^ByteString bs index))
 
 
@@ -81,8 +83,11 @@
   (neg? (.compare (ByteString/unsignedLexicographicalComparator) a b)))
 
 
-(defn <= [a b]
-  (clojure.core/<= (.compare (ByteString/unsignedLexicographicalComparator) a b) 0))
+(defn <=
+  ([a b]
+   (clojure.core/<= (.compare (ByteString/unsignedLexicographicalComparator) a b) 0))
+  ([a b c]
+   (and (<= a b) (<= b c))))
 
 
 (defn > [a b]
@@ -93,7 +98,9 @@
   (clojure.core/>= (.compare (ByteString/unsignedLexicographicalComparator) a b) 0))
 
 
-(defn hex [bs]
+(defn hex
+  "Returns an upper-case hexadecimal string representation of `bs`."
+  [bs]
   (.encode (BaseEncoding/base16) (.toByteArray ^ByteString bs)))
 
 
@@ -109,10 +116,15 @@
   (.asReadOnlyByteBuffer ^ByteString bs))
 
 
-(extend-protocol JSONable
-  ByteString
-  (to-json [byte-string jg]
-    (.writeBinary ^JsonGenerator jg (.toByteArray byte-string))))
+(def ^:private serializer
+  (proxy [StdSerializer] [ByteString]
+    (serialize [^ByteString bs ^JsonGenerator gen _]
+      (.writeBinary gen (.toByteArray bs)))))
+
+
+(def object-mapper-module
+  (doto (SimpleModule. "ByteString")
+    (.addSerializer ByteString serializer)))
 
 
 (defmethod print-method ByteString [^ByteString bs ^Writer w]

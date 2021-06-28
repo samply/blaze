@@ -1,62 +1,54 @@
 (ns blaze.openid-auth
-  "Verifies a signed JWT using OpenID Connect to provide
-   the public key used to sign the token."
   (:require
-    [buddy.auth.backends :as backends]
-    [buddy.core.keys :as keys]
-    [cheshire.core :as json]
+    [blaze.openid-auth.impl :as impl]
+    [blaze.openid-auth.spec]
+    [blaze.scheduler :as sched]
+    [blaze.scheduler.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
+    [java-time :as jt]
     [taoensso.timbre :as log])
   (:import
-    [java.security PublicKey]))
+    [java.security PublicKey]
+    [java.util.concurrent Future]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(s/fdef public-key
-  :args (s/cat :jwks-json string?)
-  :ret (s/nilable #(instance? PublicKey %)))
+(defn- schedule [{:keys [scheduler http-client provider-url]} secret-state]
+  (sched/schedule-at-fixed-rate
+    scheduler
+    #(try
+       (log/info "Fetch public key from" provider-url "...")
+       (let [^PublicKey public-key (impl/fetch-public-key http-client provider-url)]
+         (reset! secret-state public-key)
+         (log/info "Done fetching public key from" provider-url
+                   (str "algorithm=" (.getAlgorithm public-key))
+                   (str "format=" (.getFormat public-key))))
+       (catch Exception e
+         (log/error (format "Error while fetching public key from %s:"
+                            provider-url)
+                    (ex-message e) (pr-str (ex-data e)))))
+    (jt/seconds 1) (jt/seconds 60)))
 
 
-(defn public-key
-  "Take a the first jwk from jwks-json string and
-   convert it into a PublicKey."
-  [jwks-json]
-  (some-> jwks-json
-          (json/parse-string keyword)
-          :keys
-          first
-          keys/jwk->public-key))
 
-
-(s/fdef jwks-json
-  :args (s/cat :url string?)
-  :ret map?)
-
-
-(defn jwks-json [url]
-  (let [well-known "/.well-known/openid-configuration"
-        jwks-json (some-> url
-                          (str well-known)
-                          slurp
-                          json/parse-string
-                          (get "jwks_uri")
-                          slurp)]
-    (if (some? jwks-json)
-      jwks-json
-      (throw (ex-info "No jwk found"
-                      {:cause (str "No jwk found at " url well-known)})))))
+(defmethod ig/pre-init-spec :blaze.openid-auth/backend [_]
+  (s/keys :req-un [:blaze/http-client :blaze/scheduler ::provider-url]))
 
 
 (defmethod ig/init-key :blaze.openid-auth/backend
-  [_ {:openid-provider/keys [url]}]
-  (log/info "Enabled authentication using OpenID provider:" url)
-  (backends/jws
-    {:token-name "Bearer"
-     :secret (-> url jwks-json public-key)
-     :options {:alg :rs256}}))
+  [_ {:keys [provider-url] :as context}]
+  (log/info "Start OpenID authentication backend with provider:" provider-url)
+  (let [secret-state (atom nil)]
+    (impl/->Backend (schedule context secret-state) secret-state)))
+
+
+(defmethod ig/halt-key! :blaze.openid-auth/backend
+  [_ {:keys [future]}]
+  (log/info "Stop OpenID authentication backend")
+  (.cancel ^Future future false))
 
 
 (derive :blaze.openid-auth/backend :blaze.auth/backend)

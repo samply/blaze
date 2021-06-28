@@ -1,4 +1,3 @@
-VERSION := "0.10.3"
 MODULES := $(wildcard modules/*)
 
 $(MODULES):
@@ -16,7 +15,18 @@ test: $(MODULES) test-root
 
 test-coverage: $(MODULES)
 
-uberjar:
-	clojure -Sforce -M:depstar -m hf.depstar.uberjar target/blaze-${VERSION}-standalone.jar
+clean-root:
+	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: $(MODULES) lint-root lint test-root test test-coverage uberjar
+clean: $(MODULES) clean-root
+
+uberjar:
+	clojure -X:depstar uberjar :jar target/blaze-standalone.jar
+
+outdated:
+	clojure -M:outdated
+
+deps-tree:
+	clojure -Stree
+
+.PHONY: $(MODULES) lint-root lint test-root test test-coverage clean-root clean uberjar outdated deps-tree

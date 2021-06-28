@@ -2,58 +2,37 @@
   (:require
     [blaze.fhir.hash.spec]
     [blaze.fhir.spec.impl :as impl]
+    [blaze.fhir.spec.spec]
     [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [clojure.walk :as walk])
+    [clojure.walk :as walk]
+    [jsonista.core :as j])
   (:import
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.util.regex Pattern]))
 
-
-;; ---- Specs -----------------------------------------------------------------
-
-(s/def :fhir.type/name
-  (s/and string? #(re-matches #"[A-Z]([A-Za-z0-9_]){0,254}" %)))
-
-
-(s/def :fhir/type
-  (s/and
-    keyword?
-    #(some-> (namespace %) (str/starts-with? "fhir"))
-    #(s/valid? :fhir.type/name (name %))))
-
-
-(s/def :blaze.resource/id
-  (s/and string? #(re-matches #"[A-Za-z0-9\-\.]{1,64}" %)))
-
-
-(s/def :blaze.fhir/local-ref
-  (s/and string?
-         (s/conformer #(str/split % #"/" 2))
-         (s/tuple :fhir.type/name :blaze.resource/id)))
-
-
-(s/def :blaze/resource
-  #(s2/valid? :fhir/Resource %))
-
-
-
-;; ---- Functions -------------------------------------------------------------
 
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
 
 
-(defn valid-json?
-  "Determines whether the resource is valid."
-  {:arglists '([resource])}
-  [{type :resourceType :as resource}]
-  (if type
-    (if-let [spec (s2/get-spec (keyword "fhir.json" type))]
-      (s2/valid? spec resource)
-      false)
-    false))
+(def ^:private json-object-mapper
+  (j/object-mapper
+    {:decode-key-fn true
+     :bigdecimals true
+     :modules [type/fhir-module]}))
+
+
+(defn parse-json
+  "Parses a JSON representation of a resource in `source` into an intermediate
+  representation which can be conformed using `conform-json`.
+
+  Possible `source` types are byte array, File, URL, String, Reader and
+  InputStream."
+  [source]
+  (j/read-value source json-object-mapper))
 
 
 (defn conform-json
@@ -67,6 +46,23 @@
           (when-not (s2/invalid? resource)
             resource))))
     ::s/invalid))
+
+
+(def ^:private cbor-object-mapper
+  (j/object-mapper
+    {:factory (CBORFactory.)
+     :decode-key-fn true
+     :modules [type/fhir-module]}))
+
+
+(defn parse-cbor
+  "Parses a CBOR representation of a resource in `source` into an intermediate
+  representation which can be conformed using `conform-json`.
+
+  Possible `source` types are byte array, File, URL, String, Reader and
+  InputStream."
+  [source]
+  (j/read-value source cbor-object-mapper))
 
 
 (defn conform-cbor
@@ -95,28 +91,34 @@
     ::s/invalid))
 
 
+(defn- transform-type-key [type-key modifier]
+  (let [ns (namespace type-key)
+        ns-parts (cons (str "fhir." modifier) (rest (str/split ns #"\.")))]
+    (keyword (str/join "." ns-parts) (name type-key))))
+
+
 (defn unform-json
   "Returns the JSON representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.json" (name (type/-type resource)))]
+  (let [key (transform-type-key (type/type resource) "json")]
     (if-let [spec (s2/get-spec key)]
-      (s2/unform spec resource)
+      (j/write-value-as-bytes (s2/unform spec resource) json-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
 
 
 (defn unform-cbor
   "Returns the CBOR representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.cbor" (name (type/-type resource)))]
+  (let [key (transform-type-key (type/type resource) "cbor")]
     (if-let [spec (s2/get-spec key)]
-      (s2/unform spec resource)
+      (j/write-value-as-bytes (s2/unform spec resource) cbor-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
 
 
 (defn unform-xml
   "Returns the XML representation of `resource`."
   [resource]
-  (let [key (keyword "fhir.xml" (name (type/-type resource)))]
+  (let [key (keyword "fhir.xml" (name (type/type resource)))]
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
@@ -126,7 +128,7 @@
   "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if
   `x` has no FHIR type."
   [x]
-  (type/-type x))
+  (type/type x))
 
 
 (defn to-date-time [x]

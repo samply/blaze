@@ -7,10 +7,13 @@
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
+    [blaze.db.impl.search-param.token :as spt]
     [blaze.db.impl.search-param.token-spec]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -19,11 +22,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -59,7 +62,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "_id" "Observation")
-            hash observation [])]
+            [] hash observation)]
 
       (testing "SearchParamValueResource key"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -82,14 +85,14 @@
           {:fhir/type :fhir/Observation
            :id "id-183201"
            :code
-           {:fhir/type :fhir/CodeableConcept
-            :coding
-            [{:fhir/type :fhir/Coding
-              :system #fhir/uri"system-171339"
-              :code #fhir/code"code-171327"}]}}
+           #fhir/CodeableConcept
+               {:coding
+                [#fhir/Coding
+                    {:system #fhir/uri"system-171339"
+                     :code #fhir/code"code-171327"}]}}
           hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-          (search-param/index-entries code-param hash observation [])]
+          (search-param/index-entries code-param [] hash observation)]
 
       (testing "first SearchParamValueResource key is about `code`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -144,13 +147,13 @@
           {:fhir/type :fhir/Observation
            :id "id-183201"
            :code
-           {:fhir/type :fhir/CodeableConcept
-            :coding
-            [{:fhir/type :fhir/Coding
-              :code #fhir/code"code-134035"}]}}
+           #fhir/CodeableConcept
+               {:coding
+                [#fhir/Coding
+                    {:code #fhir/code"code-134035"}]}}
           hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3]]
-          (search-param/index-entries code-param hash observation [])]
+          (search-param/index-entries code-param [] hash observation)]
 
       (testing "first SearchParamValueResource key is about `code`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -189,13 +192,13 @@
           {:fhir/type :fhir/Observation
            :id "id-183201"
            :code
-           {:fhir/type :fhir/CodeableConcept
-            :coding
-            [{:fhir/type :fhir/Coding
-              :system #fhir/uri"system-171339"}]}}
+           #fhir/CodeableConcept
+               {:coding
+                [#fhir/Coding
+                    {:system #fhir/uri"system-171339"}]}}
           hash (hash/generate observation)
           [[_ k0] [_ k1]]
-          (search-param/index-entries code-param hash observation [])]
+          (search-param/index-entries code-param [] hash observation)]
 
       (testing "first SearchParamValueResource key is about `system|`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -214,17 +217,17 @@
           :v-hash := (codec/v-hash "system-171339|")))))
 
   (testing "Patient identifier"
-    (let [patient {:fhir/type :fhir/Patient
-                   :id "id-122929"
-                   :identifier
-                   [{:fhir/type :fhir/Identifier
-                     :system #fhir/uri"system-123000"
-                     :value "value-123005"}]}
+    (let [patient
+          {:fhir/type :fhir/Patient :id "id-122929"
+           :identifier
+           [#fhir/Identifier
+               {:system #fhir/uri"system-123000"
+                :value "value-123005"}]}
           hash (hash/generate patient)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "identifier" "Patient")
-            hash patient [])]
+            [] hash patient)]
 
       (testing "first SearchParamValueResource key is about `value`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -275,16 +278,16 @@
           :v-hash := (codec/v-hash "system-123000|value-123005")))))
 
   (testing "Patient identifier without system"
-    (let [patient {:fhir/type :fhir/Patient
-                   :id "id-122929"
-                   :identifier
-                   [{:fhir/type :fhir/Identifier
-                     :value "value-140132"}]}
+    (let [patient
+          {:fhir/type :fhir/Patient :id "id-122929"
+           :identifier
+           [#fhir/Identifier
+               {:value "value-140132"}]}
           hash (hash/generate patient)
           [[_ k0] [_ k1] [_ k2] [_ k3]]
           (search-param/index-entries
             (sr/get search-param-registry "identifier" "Patient")
-            hash patient [])]
+            [] hash patient)]
 
       (testing "first SearchParamValueResource key is about `value`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -319,16 +322,16 @@
           :v-hash := (codec/v-hash "|value-140132")))))
 
   (testing "Patient identifier with system only"
-    (let [patient {:fhir/type :fhir/Patient
-                   :id "id-122929"
-                   :identifier
-                   [{:fhir/type :fhir/Identifier
-                     :system #fhir/uri"system-140316"}]}
+    (let [patient
+          {:fhir/type :fhir/Patient :id "id-122929"
+           :identifier
+           [#fhir/Identifier
+               {:system #fhir/uri"system-140316"}]}
           hash (hash/generate patient)
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "identifier" "Patient")
-            hash patient [])]
+            [] hash patient)]
 
       (testing "second SearchParamValueResource key is about `system|`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -348,13 +351,12 @@
 
   (testing "Patient deceased"
     (testing "no value"
-      (let [patient {:fhir/type :fhir/Patient
-                     :id "id-142629"}
+      (let [patient {:fhir/type :fhir/Patient :id "id-142629"}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "deceased" "Patient")
-              hash patient [])]
+              [] hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -380,7 +382,7 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "deceased" "Patient")
-              hash patient [])]
+              [] hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -407,7 +409,7 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "deceased" "Patient")
-              hash patient [])]
+              [] hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -431,16 +433,16 @@
                     :collection
                     {:fhir/type :fhir.Specimen/collection
                      :bodySite
-                     {:fhir/type :fhir/CodeableConcept
-                      :coding
-                      [{:fhir/type :fhir/Coding
-                        :system #fhir/uri"system-103824"
-                        :code #fhir/code"code-103812"}]}}}
+                     #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                              {:system #fhir/uri"system-103824"
+                               :code #fhir/code"code-103812"}]}}}
           hash (hash/generate specimen)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "bodysite" "Specimen")
-            hash specimen [])]
+            [] hash specimen)]
 
       (testing "first SearchParamValueResource key is about `code`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -491,17 +493,17 @@
           :v-hash := (codec/v-hash "system-103824|code-103812")))))
 
   (testing "Encounter class"
-    (let [specimen {:fhir/type :fhir/Encounter
-                    :id "id-105153"
-                    :class
-                    {:fhir/type :fhir/Coding
-                     :system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
-                     :code #fhir/code"AMB"}}
+    (let [specimen
+          {:fhir/type :fhir/Encounter :id "id-105153"
+           :class
+           #fhir/Coding
+               {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                :code #fhir/code"AMB"}}
           hash (hash/generate specimen)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
           (search-param/index-entries
             (sr/get search-param-registry "class" "Encounter")
-            hash specimen [])]
+            [] hash specimen)]
 
       (testing "first SearchParamValueResource key is about `code`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -561,7 +563,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "series" "ImagingStudy")
-            hash specimen [])]
+            [] hash specimen)]
 
       (testing "SearchParamValueResource key is about `id`"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -587,7 +589,7 @@
           [[_ k0] [_ k1]]
           (search-param/index-entries
             (sr/get search-param-registry "version" "CodeSystem")
-            hash resource [])]
+            [] hash resource)]
 
       (testing "SearchParamValueResource key"
         (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -612,5 +614,8 @@
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "_id" "Patient")
-                 hash resource [])
-          ::anom/category := ::anom/fault)))))
+                 [] hash resource)
+          ::anom/category := ::anom/fault))))
+
+  (testing "skip warning"
+    (is (nil? (spt/index-entries "" nil)))))

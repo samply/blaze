@@ -1,11 +1,16 @@
 (ns blaze.db.resource-cache-test
   (:require
     [blaze.async.comp :as ac]
+    [blaze.db.kv.mem]
     [blaze.db.resource-cache]
     [blaze.db.resource-cache-spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store-spec]
+    [blaze.db.resource-store.kv :as rs-kv]
+    [blaze.db.test-util :refer [given-thrown]]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [integrant.core :as ig]
@@ -14,11 +19,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -52,81 +57,66 @@
 
 
 (defn- cache [resource-store max-size]
-  (-> (ig/init
-        {:blaze.db/resource-cache
-         {:resource-store resource-store
-          :max-size max-size}})
-      (:blaze.db/resource-cache)))
+  (-> {:blaze.db/resource-cache
+       {:resource-store resource-store
+        :max-size max-size}}
+      ig/init
+      :blaze.db/resource-cache))
 
 
-(deftest get
-  (testing ""
-    (let [cache (cache resource-store 0)]
-      (are [patient patient-hash] (= patient @(rs/get cache patient-hash))
-        patient-0 patient-0-hash
-        patient-1 patient-1-hash))))
+(deftest init-test
+  (testing "missing store"
+    (given-thrown (ig/init {:blaze.db/resource-cache {}})
+      :key := :blaze.db/resource-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))))
+
+  (testing "invalid store"
+    (given-thrown (ig/init {:blaze.db/resource-cache {:resource-store nil}})
+      :key := :blaze.db/resource-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (satisfies? rs/ResourceLookup ~'%))))
+
+  (testing "invalid max-size"
+    (given-thrown (cache resource-store nil)
+      :key := :blaze.db/resource-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `nat-int?)))
 
 
-(deftest multi-get
-  (testing ""
-    (let [cache (cache resource-store 0)]
+(deftest get-test
+  (let [cache (cache resource-store 0)]
+    (are [patient patient-hash] (= patient @(rs/get cache patient-hash))
+      patient-0 patient-0-hash
+      patient-1 patient-1-hash)))
+
+
+(deftest multi-get-test
+  (let [cache (cache resource-store 0)]
+    (is (= {patient-0-hash patient-0
+            patient-1-hash patient-1}
+           @(rs/multi-get cache [patient-0-hash patient-1-hash])))))
+
+
+(defn- init-system []
+  (ig/init
+    {:blaze.db/resource-cache
+     {:resource-store (ig/ref ::rs/kv)
+      :max-size 0}
+     ::rs/kv
+     {:kv-store (ig/ref :blaze.db.kv/mem)
+      :executor (ig/ref ::rs-kv/executor)}
+     ::rs-kv/executor {}
+     :blaze.db.kv/mem {}}))
+
+
+(deftest put-test
+  (let [{:blaze.db/keys [resource-cache] ::rs/keys [kv] :as system} (init-system)]
+    (try
+      (is (nil? @(rs/put resource-cache {patient-0-hash patient-0
+                                         patient-1-hash patient-1})))
       (is (= {patient-0-hash patient-0
               patient-1-hash patient-1}
-             @(rs/multi-get cache [patient-0-hash patient-1-hash]))))))
-
-
-(deftest put
-  (testing "on no storage success"
-    (let [resource-store (reify
-                           rs/ResourceLookup
-                           rs/ResourceStore
-                           (-put [_ _]
-                             (ac/failed-future (ex-info "" {}))))
-          cache (cache resource-store 1)
-          entries {patient-0-hash patient-0}]
-      (try
-        @(rs/put cache entries)
-        (catch Exception e
-          (is (empty? (:successfully-stored-hashes (ex-data (ex-cause e)))))))))
-
-  (testing "on partial storage success"
-    (let [resource-store (reify
-                           rs/ResourceLookup
-                           rs/ResourceStore
-                           (-put [_ _]
-                             (-> (ex-info
-                                   "" {:successfully-stored-hashes
-                                       #{patient-0-hash}})
-                                 (ac/failed-future))))
-          cache (cache resource-store 1)
-          entries {patient-0-hash patient-0
-                   patient-1-hash patient-1}]
-      (try
-        @(rs/put cache entries)
-        (catch Exception e
-          (testing "storing patient-0 was successful, so it is returned in ex-data"
-            (let [ex-data (ex-data (ex-cause e))]
-              (is (= #{patient-0-hash} (:successfully-stored-hashes ex-data)))))))
-
-      (testing "storing patient-0 was successful, so it is cached"
-        (is (= patient-0 @(rs/get cache patient-0-hash))))))
-
-  (testing "on successful storage of all entries"
-    (let [resource-store (reify
-                           rs/ResourceLookup
-                           rs/ResourceStore
-                           (-put [_ _]
-                             (ac/completed-future nil)))
-          cache (cache resource-store 2)
-          entries {patient-0-hash patient-0
-                   patient-1-hash patient-1}
-          result @(rs/put cache entries)]
-
-      (testing "storing was successful"
-        (is (nil? result)))
-
-      (testing "storing patient-0 was successful, so it is cached"
-        (is (= patient-0 @(rs/get cache patient-0-hash))))
-
-      (testing "storing patient-1 was successful, so it is cached"
-        (is (= patient-1 @(rs/get cache patient-1-hash)))))))
+             @(rs/multi-get kv [patient-0-hash patient-1-hash])))
+      (finally
+        (ig/halt! system)))))

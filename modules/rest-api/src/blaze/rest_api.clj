@@ -11,6 +11,7 @@
     [blaze.rest-api.middleware.auth-guard :as auth-guard]
     [blaze.rest-api.middleware.batch-handler :as batch-handler]
     [blaze.rest-api.middleware.cors :as cors]
+    [blaze.rest-api.middleware.forwarded :as forwarded]
     [blaze.rest-api.middleware.log :refer [wrap-log]]
     [blaze.rest-api.middleware.output :as output :refer [wrap-output]]
     [blaze.rest-api.middleware.resource :as resource]
@@ -23,9 +24,19 @@
     [reitit.core :as reitit]
     [reitit.ring]
     [reitit.ring.spec]
-    [ring.middleware.params :refer [wrap-params]]
+    [ring.middleware.params :as ring-params]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
+
+
+(def ^:private wrap-params
+  {:name :params
+   :wrap ring-params/wrap-params})
+
+
+(def ^:private wrap-forwarded
+  {:name :forwarded
+   :wrap forwarded/wrap-forwarded})
 
 
 (def ^:private wrap-auth-guard
@@ -69,7 +80,7 @@
 
   Returns nil if the resource has no match in `resource-patterns`.
 
-  Route data contains resource type."
+  Route data contains the resource type under :fhir.resource/type."
   {:arglists '([auth-backends parse-executor resource-patterns structure-definition])}
   [auth-backends parse-executor resource-patterns {:keys [name] :as structure-definition}]
   (when-let
@@ -169,7 +180,7 @@
    capabilities-handler
    batch-handler-promise]
   (-> [""
-       {:blaze/base-url base-url
+       {:middleware [wrap-params [wrap-forwarded base-url]]
         :blaze/context-path context-path}
        [""
         (cond->
@@ -242,8 +253,7 @@
       (into
         (comp
           structure-definition-filter
-          (map #(resource-route auth-backends executor resource-patterns %))
-          (remove nil?))
+          (keep #(resource-route auth-backends executor resource-patterns %)))
         structure-definitions)
       (into
         (map #(compartment-route auth-backends %))
@@ -327,7 +337,7 @@
          :versioning #fhir/code"versioned"
          :readHistory true
          :updateCreate true
-         :conditionalCreate false
+         :conditionalCreate true
          :conditionalRead #fhir/code"not-supported"
          :conditionalUpdate false
          :conditionalDelete #fhir/code"not-supported"
@@ -336,8 +346,7 @@
           #fhir/code"enforced"
           #fhir/code"local"]
          :searchParam
-         (into
-           []
+         (transduce
            (map
              (fn [{:keys [name url type]}]
                (cond-> {:name name :type (type/->Code type)}
@@ -345,6 +354,8 @@
                  (assoc :definition (type/->Canonical url))
                  (= "quantity" type)
                  (assoc :documentation quantity-documentation))))
+           conj
+           []
            (sr/list-by-type search-param-registry name))}
 
         (seq operations)
@@ -363,8 +374,7 @@
 
 (defn capabilities-handler
   [{:keys
-    [base-url
-     version
+    [version
      context-path
      structure-definitions
      search-param-registry
@@ -382,16 +392,16 @@
          :copyright
          #fhir/markdown"Copyright 2019 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License."
          :kind #fhir/code"instance"
-         :date #fhir/dateTime"2020-12-15"
+         :date #fhir/dateTime"2021-06-27"
          :software
          {:name "Blaze"
           :version version}
          :implementation
-         {:description (str "Blaze running at " base-url context-path)
-          :url (type/->Url (str base-url context-path))}
+         {:description "Blaze"}
          :fhirVersion #fhir/code"4.0.1"
-         :format [#fhir/code"application/fhir+json"
-                  #fhir/code"application/xml+json"]
+         :format
+         [#fhir/code"application/fhir+json"
+          #fhir/code"application/xml+json"]
          :rest
          [{:mode #fhir/code"server"
            :resource
@@ -399,8 +409,7 @@
              []
              (comp
                structure-definition-filter
-               (map #(capability-resource resource-patterns operations search-param-registry %))
-               (remove nil?))
+               (keep #(capability-resource resource-patterns operations search-param-registry %)))
              structure-definitions)
            :interaction
            (cond-> []
@@ -410,8 +419,13 @@
              (conj {:code #fhir/code"transaction"} {:code #fhir/code"batch"})
              (some? history-system-handler)
              (conj {:code #fhir/code"history-system"}))}]}]
-    (fn [_]
-      (ac/completed-future (ring/response capability-statement)))))
+    (fn [{:blaze/keys [base-url]}]
+      (ac/completed-future
+        (ring/response
+          (assoc-in
+            capability-statement
+            [:implementation :url]
+            (type/->Url (str base-url context-path))))))))
 
 
 (defn handler
@@ -425,7 +439,7 @@
            (seq auth-backends)
            (conj #(apply wrap-authentication % auth-backends)))})
       (wrap-output)
-      (wrap-params)
+      (ring-params/wrap-params)
       (wrap-log)))
 
 
@@ -464,8 +478,7 @@
 
 (defmethod ig/init-key :blaze/rest-api
   [_ {:keys [base-url context-path] :as config}]
-  (log/info
-    "Init FHIR RESTful API with base URL:" (str base-url context-path))
+  (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path))
   (handler config))
 
 

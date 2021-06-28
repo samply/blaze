@@ -1,7 +1,10 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/db-protocols
+ {blaze/coll
+  {:local/root "../coll"}
+
+  blaze/db-protocols
   {:local/root "../db-protocols"}
 
   blaze/fhir-path
@@ -16,13 +19,10 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
+    {:mvn/version "1.0.861"}
 
     org.clojars.akiel/iota
-    {:mvn/version "0.1"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "0.1"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -36,12 +36,4 @@
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}
-
-  :namespace-graph
-  {:extra-deps
-   {clj-kondo/tools
-    {:git/url "https://github.com/borkdude/clj-kondo"
-     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
-     :deps/root "analysis"}}
-   :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

@@ -9,10 +9,12 @@
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+    [blaze.db.impl.index.tx-success :as tsi]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
+    [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
     [blaze.db.search-param-registry :as sr]
@@ -20,8 +22,9 @@
     [blaze.db.tx-log.local :refer [new-local-tx-log]]
     [blaze.db.tx-log.local-spec]
     [blaze.executors :as ex]
+    [blaze.fhir.spec.type :as type]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
+    [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [java-time :as jt]
     [juxt.iota :refer [given]]
@@ -32,23 +35,16 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
 
 (test/use-fixtures :each fixture)
-
-
-(defmacro catch-ex-data [& body]
-  `(try
-     ~@body
-     (catch Exception e#
-       (ex-data e#))))
 
 
 (defmacro catch-cause-ex-data [& body]
@@ -61,10 +57,6 @@
 (def ^:private search-param-registry (sr/init-search-param-registry))
 
 
-(def ^:private resource-indexer-executor
-  (ex/cpu-bound-pool "resource-indexer-%d"))
-
-
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private local-tx-log-executor
   (ex/single-thread-executor "local-tx-log"))
@@ -73,6 +65,10 @@
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private indexer-executor
   (ex/single-thread-executor "indexer"))
+
+
+(def ^:private resource-store-executor
+  (ex/single-thread-executor "resource-store"))
 
 
 (defn new-index-kv-store []
@@ -95,29 +91,23 @@
 (def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
 
+(defn- tx-cache [index-kv-store]
+  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+
+
 (defn new-node-with [{:keys [resource-store]}]
   (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))]
-    (node/new-node tx-log resource-handle-cache resource-indexer-executor 1
-                   indexer-executor (new-index-kv-store) resource-store
+        resource-handle-cache (.build (Caffeine/newBuilder))
+        index-kv-store (new-index-kv-store)]
+    (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
+                   indexer-executor index-kv-store resource-store
                    search-param-registry (jt/millis 10))))
 
 
 (defn new-node []
   (new-node-with
-    {:resource-store (new-kv-resource-store (new-mem-kv-store))}))
-
-
-(defn new-resource-store-failing-on-get []
-  (reify
-    rs/ResourceLookup
-    (-get [_ _]
-      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))
-    (-multi-get [_ _]
-      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))
-    rs/ResourceStore
-    (-put [_ _]
-      (ac/completed-future nil))))
+    {:resource-store
+     (new-kv-resource-store (new-mem-kv-store) resource-store-executor)}))
 
 
 (defn new-resource-store-failing-on-put []
@@ -186,9 +176,7 @@
            ;; reference dependency ordering algorithm
            [[:create
              {:fhir/type :fhir/Observation :id "0"
-              :subject
-              {:fhir/type :fhir/Reference
-               :reference "Patient/0"}}]
+              :subject #fhir/Reference{:reference "Patient/0"}}]
             [:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -204,16 +192,107 @@
           [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :create))))
 
+  (testing "conditional create"
+    (testing "one Patient"
+      (testing "on empty database"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:create
+               {:fhir/type :fhir/Patient :id "0"}
+               [["identifier" "111033"]]]])
+
+          (testing "the Patient was created"
+            (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id"1"
+              [meta :blaze.db/op] := :create))))
+
+      (testing "on non-matching Patient"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :identifier [#fhir/Identifier{:value "094808"}]}]])
+
+          @(d/transact
+             node
+             [[:create
+               {:fhir/type :fhir/Patient :id "1"}
+               [["identifier" "111033"]]]])
+
+          (testing "the Patient was created"
+            (given @(d/pull node (d/resource-handle (d/db node) "Patient" "1"))
+              :fhir/type := :fhir/Patient
+              :id := "1"
+              [:meta :versionId] := #fhir/id"2"
+              [meta :blaze.db/op] := :create))))
+
+      (testing "on matching Patient"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :identifier [#fhir/Identifier{:value "111033"}]}]])
+
+          @(d/transact
+             node
+             [[:create
+               {:fhir/type :fhir/Patient :id "1"}
+               [["identifier" "111033"]]]])
+
+          (testing "no new patient is created"
+            (is (= 1 (d/type-total (d/db node) "Patient"))))))
+
+      (testing "on multiple matching Patients"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :birthDate #fhir/date"2020"}]
+              [:put {:fhir/type :fhir/Patient :id "1"
+                     :birthDate #fhir/date"2020"}]])
+
+          (testing "causes a transaction abort with conflict"
+            (given
+              (catch-cause-ex-data
+                @(d/transact
+                   node
+                   [[:create
+                     {:fhir/type :fhir/Patient :id "1"}
+                     [["birthdate" "2020"]]]]))
+              ::anom/category := ::anom/conflict))))
+
+      (testing "on deleting the matching Patient"
+        (with-open [node (new-node)]
+          @(d/transact
+             node
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :identifier [#fhir/Identifier{:value "153229"}]}]])
+
+          (testing "causes a transaction abort with conflict"
+            (given
+              (catch-cause-ex-data
+                @(d/transact
+                   node
+                   [[:create
+                     {:fhir/type :fhir/Patient :id "1"}
+                     [["identifier" "153229"]]]
+                    [:delete "Patient" "0"]]))
+              ::anom/category := ::anom/conflict))))))
+
   (testing "put"
     (testing "one Patient"
       (with-open [node (new-node)]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :put)))
+        (testing "the Patient was created"
+          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :put))))
 
     (testing "one Patient with one Observation"
       (with-open [node (new-node)]
@@ -222,21 +301,23 @@
            ;; the create ops are purposely disordered in order to test the
            ;; reference dependency ordering algorithm
            [[:put {:fhir/type :fhir/Observation :id "0"
-                   :subject {:fhir/type :fhir/Reference :reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Patient :id "0"}]])
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :put)
+        (testing "the Patient was created"
+          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :put))
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
-          :fhir/type := :fhir/Observation
-          :id := "0"
-          [:subject :reference] := "Patient/0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :put)))
+        (testing "the Observation was created"
+          (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
+            :fhir/type := :fhir/Observation
+            :id := "0"
+            [:subject :reference] := "Patient/0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :put))))
 
     (testing "updating one Patient"
       (with-open [node (new-node)]
@@ -260,17 +341,13 @@
                    :id "0"
                    :entry
                    [{:fhir/type :fhir.List/entry
-                     :item
-                     {:fhir/type :fhir/Reference
-                      :reference "Observation/0"}}
+                     :item #fhir/Reference{:reference "Observation/0"}}
                     {:fhir/type :fhir.List/entry
-                     :item
-                     {:fhir/type :fhir/Reference
-                      :reference "Observation/1"}}]}]
+                     :item #fhir/Reference{:reference "Observation/1"}}]}]
             [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject {:fhir/type :fhir/Reference :reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject {:fhir/type :fhir/Reference :reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -332,14 +409,14 @@
            [[:create {:fhir/type :fhir/Patient :id "0" :active true}]]))
 
       (testing "updating that patient to active=false in a failing transaction"
-        (given @(-> (d/transact
-                      node
-                      [[:put {:fhir/type :fhir/Patient :id "0" :active false}]
-                       [:create {:fhir/type :fhir/Observation :id "0"
-                                 :subject
-                                 {:fhir/type :fhir/Reference
-                                  :reference "Patient/1"}}]])
-                    (ac/exceptionally (comp ex-data ex-cause)))
+        (given
+          (catch-cause-ex-data
+            @(d/transact
+               node
+               [[:put {:fhir/type :fhir/Patient :id "0" :active false}]
+                [:create {:fhir/type :fhir/Observation :id "0"
+                          :subject
+                          #fhir/Reference{:reference "Patient/1"}}]]))
           ::anom/category := ::anom/conflict))
 
       (testing "creating a second patient in order to add a successful transaction on top"
@@ -365,10 +442,9 @@
             (catch-cause-ex-data
               @(d/transact
                  node
-                 [[:create {:fhir/type :fhir/Observation :id "0"
-                            :subject
-                            {:fhir/type :fhir/Reference
-                             :reference "Patient/0"}}]]))
+                 [[:create
+                   {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}}]]))
             ::anom/category := ::anom/conflict
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
 
@@ -378,10 +454,9 @@
             (catch-cause-ex-data
               @(d/transact
                  node
-                 [[:put {:fhir/type :fhir/Observation :id "0"
-                         :subject
-                         {:fhir/type :fhir/Reference
-                          :reference "Patient/0"}}]]))
+                 [[:put
+                   {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}}]]))
             ::anom/category := ::anom/conflict
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
@@ -400,13 +475,9 @@
                  {:fhir/type :fhir/List :id "0"
                   :entry
                   [{:fhir/type :fhir.List/entry
-                    :item
-                    {:fhir/type :fhir/Reference
-                     :reference "Observation/0"}}
+                    :item #fhir/Reference{:reference "Observation/0"}}
                    {:fhir/type :fhir.List/entry
-                    :item
-                    {:fhir/type :fhir/Reference
-                     :reference "Observation/1"}}]}]
+                    :item #fhir/Reference{:reference "Observation/1"}}]}]
                 [:delete "Observation" "1"]]))
           ::anom/category := ::anom/conflict
           ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
@@ -415,7 +486,7 @@
     (with-open [node (new-node-with
                        {:resource-store
                         (-> (new-mem-kv-store)
-                            (new-kv-resource-store)
+                            (new-kv-resource-store resource-store-executor)
                             (new-random-slow-resource-store))})]
       (let [db-futures
             (mapv
@@ -438,16 +509,22 @@
     (testing "on put"
       (with-open [node (new-node-with
                          {:resource-store (new-resource-store-failing-on-put)})]
-        (given @(-> (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                    (ac/exceptionally (comp ex-data ex-cause)))
-          ::anom/category := ::anom/fault)))
+        (given
+          (catch-cause-ex-data
+            @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
+          ::anom/category := ::anom/fault))))
 
-    (testing "on get"
-      (with-open [node (new-node-with
-                         {:resource-store (new-resource-store-failing-on-get)})]
-        (given @(-> (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                    (ac/exceptionally (comp ex-data ex-cause)))
-          ::anom/category := ::anom/fault)))))
+  (testing "with failing resource indexer"
+    (with-redefs
+      [resource-indexer/index-resources
+       (fn [_ _]
+         (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
+      (with-open [node (new-node)]
+        (given
+          (catch-cause-ex-data
+            @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
+          ::anom/category := ::anom/fault
+          ::x ::y)))))
 
 
 (deftest tx-test
@@ -538,7 +615,7 @@
         (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta :fhir/type] := :fhir/Meta
+          [0 :meta type/type] := :fhir/Meta
           [0 :meta :versionId] := #fhir/id"1"
           [0 :meta :lastUpdated] := Instant/EPOCH))))
 
@@ -550,6 +627,16 @@
       (testing "doesn't contain it in the list"
         (is (coll/empty? (d/type-list (d/db node) "Patient")))
         (is (zero? (d/type-total (d/db node) "Patient"))))))
+
+  (testing "a node with one recreated patient"
+    (with-open [node (new-node)]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      @(d/transact node [[:delete "Patient" "0"]])
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+      (testing "has one list entry"
+        (is (= 1 (count (d/type-list (d/db node) "Patient"))))
+        (is (= 1 (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with two patients in two transactions"
     (with-open [node (new-node)]
@@ -775,17 +862,17 @@
 
       (testing "two active patients will be found"
         (given (pull-type-query node "Patient" [["active" "true"]])
+          count := 2
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [1 :fhir/type] := :fhir/Patient
-          [1 :id] := "2"
-          2 := nil))
+          [1 :id] := "2"))
 
       (testing "it is possible to start with the second patient"
         (given (pull-type-query node "Patient" [["active" "true"]] "2")
+          count := 1
           [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "2"
-          1 := nil))))
+          [0 :id] := "2"))))
 
   (testing "Special Search Parameter _list"
     (testing "a node with two patients, one observation and one list in one transaction"
@@ -797,12 +884,12 @@
                                   :entry
                                   [{:fhir/type :fhir.List/entry
                                     :item
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}
                                    {:fhir/type :fhir.List/entry
                                     :item
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Observation/0"}}]}]])
+                                    #fhir/Reference
+                                        {:reference "Observation/0"}}]}]])
 
         (testing "returns only the patient referenced in the list"
           (given (pull-type-query node "Patient" [["_list" "0"]])
@@ -826,16 +913,16 @@
                                   :entry
                                   [{:fhir/type :fhir.List/entry
                                     :item
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}
                                    {:fhir/type :fhir.List/entry
                                     :item
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/2"}}
+                                    #fhir/Reference
+                                        {:reference "Patient/2"}}
                                    {:fhir/type :fhir.List/entry
                                     :item
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/3"}}]}]])
+                                    #fhir/Reference
+                                        {:reference "Patient/3"}}]}]])
 
         (testing "it is possible to start with the second patient"
           (given (pull-type-query node "Patient" [["_list" "0"]] "2")
@@ -851,49 +938,49 @@
                                 :active true}]
                          [:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}
+                                #fhir/Reference
+                                    {:reference "Patient/0"}
                                 :code
-                                {:fhir/type :fhir/CodeableConcept
-                                 :coding
-                                 [{:fhir/type :fhir/Coding
-                                   :system #fhir/uri"http://loinc.org"
-                                   :code #fhir/code"8480-6"}]}
+                                #fhir/CodeableConcept
+                                    {:coding
+                                     [#fhir/Coding
+                                         {:system #fhir/uri"http://loinc.org"
+                                          :code #fhir/code"8480-6"}]}
                                 :value
-                                {:fhir/type :fhir/Quantity
-                                 :value 130M
-                                 :code #fhir/code"mm[Hg]"
-                                 :system #fhir/uri"http://unitsofmeasure.org"}}]
+                                #fhir/Quantity
+                                    {:value 130M
+                                     :code #fhir/code"mm[Hg]"
+                                     :system #fhir/uri"http://unitsofmeasure.org"}}]
                          [:put {:fhir/type :fhir/Observation :id "O1"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}
+                                #fhir/Reference
+                                    {:reference "Patient/0"}
                                 :code
-                                {:fhir/type :fhir/CodeableConcept
-                                 :coding
-                                 [{:fhir/type :fhir/Coding
-                                   :system #fhir/uri"http://loinc.org"
-                                   :code #fhir/code"8480-6"}]}
+                                #fhir/CodeableConcept
+                                    {:coding
+                                     [#fhir/Coding
+                                         {:system #fhir/uri"http://loinc.org"
+                                          :code #fhir/code"8480-6"}]}
                                 :value
-                                {:fhir/type :fhir/Quantity
-                                 :value 150M
-                                 :code #fhir/code"mm[Hg]"
-                                 :system #fhir/uri"http://unitsofmeasure.org"}}]
+                                #fhir/Quantity
+                                    {:value 150M
+                                     :code #fhir/code"mm[Hg]"
+                                     :system #fhir/uri"http://unitsofmeasure.org"}}]
                          [:put {:fhir/type :fhir/Observation :id "O2"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/1"}
+                                #fhir/Reference
+                                    {:reference "Patient/1"}
                                 :code
-                                {:fhir/type :fhir/CodeableConcept
-                                 :coding
-                                 [{:fhir/type :fhir/Coding
-                                   :system #fhir/uri"http://loinc.org"
-                                   :code #fhir/code"8480-6"}]}
+                                #fhir/CodeableConcept
+                                    {:coding
+                                     [#fhir/Coding
+                                         {:system #fhir/uri"http://loinc.org"
+                                          :code #fhir/code"8480-6"}]}
                                 :value
-                                {:fhir/type :fhir/Quantity
-                                 :value 100M
-                                 :code #fhir/code"mm[Hg]"
-                                 :system #fhir/uri"http://unitsofmeasure.org"}}]])
+                                #fhir/Quantity
+                                    {:value 100M
+                                     :code #fhir/code"mm[Hg]"
+                                     :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "select the Patient with >= 130 mm[Hg]"
         (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
@@ -948,11 +1035,8 @@
          [[:put {:fhir/type :fhir/Patient
                  :id "id-0"
                  :meta
-                 {:fhir/type :fhir/Meta
-                  :profile [#fhir/canonical"profile-uri-145024"]}
-                 :identifier
-                 [{:fhir/type :fhir/Identifier
-                   :value "0"}]
+                 #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
+                 :identifier [#fhir/Identifier{:value "0"}]
                  :active false
                  :gender #fhir/code"male"
                  :birthDate #fhir/date"2020-02-08"
@@ -991,7 +1075,13 @@
                    :city "Leipzig"}]
                  :name
                  [{:fhir/type :fhir/HumanName
-                   :family "Schmidt"}]}]])
+                   :family "Schmidt"}]}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-3"
+                 :birthDate #fhir/date"2019"}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-4"
+                 :birthDate #fhir/date"2021"}]])
 
       (testing "_id"
         (given (pull-type-query node "Patient" [["_id" "id-1"]])
@@ -1076,132 +1166,336 @@
           [0 :id] := "id-1"
           [1 :id] := "id-2"))
 
-      (testing "birthdate YYYYMMDD"
-        (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
-          [0 :id] := "id-0"
-          1 := nil))
+      (testing "birthdate"
+        (testing "with day precision"
+          (testing "overlapping three patients"
+            (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
+              count := 3
+              [0 :id] := "id-2"
+              [1 :id] := "id-1"
+              [2 :id] := "id-0")
 
-      (testing "birthdate YYYYMM"
-        (testing "full result"
-          (given (pull-type-query node "Patient" [["birthdate" "2020-02"]])
-            [0 :id] := "id-1"
-            [1 :id] := "id-0"
-            2 := nil))
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]] "id-1")
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))
 
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
-            [0 :id] := "id-0"
-            1 := nil)))
+            (testing "it is possible to start with the third patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]] "id-0")
+                count := 1
+                [0 :id] := "id-0")))
 
-      (testing "birthdate YYYY"
-        (given (pull-type-query node "Patient" [["birthdate" "2020"]])
-          [0 :id] := "id-2"
-          [1 :id] := "id-1"
-          [2 :id] := "id-0"))
+          (testing "overlapping two patients"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-1")
+              "2020-02-07"
+              "2020-02-09")
 
-      (testing "birthdate with `eq` prefix"
-        (given (pull-type-query node "Patient" [["birthdate" "eq2020-02-08"]])
-          [0 :id] := "id-0"
-          1 := nil))
+            (testing "it is possible to start with the second patient"
+              (are [date]
+                (given (pull-type-query node "Patient" [["birthdate" date]] "id-1")
+                  count := 1
+                  [0 :id] := "id-1")
+                "2020-02-07"
+                "2020-02-09")))
 
-      (testing "birthdate with `ne` prefix is unsupported"
-        (given
-          (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]])
-          ::anom/category := ::anom/unsupported
-          ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`."))
+          (testing "overlapping one patient"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 1
+                [0 :id] := "id-2")
+              "2020-01-31"
+              "2020-03-01"))
 
-      (testing "birthdate with `ge` prefix"
-        (testing "finds equal date"
-          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-08"]])
-            [0 :id] := "id-0"
-            [0 :birthDate] := #fhir/date"2020-02-08"
-            1 := nil))
+          (testing "overlapping no patient"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 0)
+              "2018-12-31"
+              "2022-01-01")))
 
-        (testing "finds greater date"
-          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02-07"]])
-            [0 :id] := "id-0"
-            [0 :birthDate] := #fhir/date"2020-02-08"
-            1 := nil))
+        (testing "with month precision"
+          (testing "overlapping three patients"
+            (given (pull-type-query node "Patient" [["birthdate" "2020-02"]])
+              count := 3
+              [0 :id] := "id-2"
+              [1 :id] := "id-1"
+              [2 :id] := "id-0")
 
-        (testing "finds more precise dates"
-          (given (pull-type-query node "Patient" [["birthdate" "ge2020-02"]])
-            [0 :id] := "id-1"
-            [0 :birthDate] := #fhir/date"2020-02"
-            [1 :id] := "id-0"
-            [1 :birthDate] := #fhir/date"2020-02-08"
-            2 := nil)))
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-1")
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))
 
-      (testing "birthdate with `le` prefix"
-        (testing "finds equal date"
-          (given (pull-type-query node "Patient" [["birthdate" "le2020-02-08"]])
-            [0 :id] := "id-0"
-            [0 :birthDate] := #fhir/date"2020-02-08"
-            1 := nil))
+            (testing "it is possible to start with the third patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
+                count := 1
+                [0 :id] := "id-0")))
 
-        (testing "finds less date"
-          (given (pull-type-query node "Patient" [["birthdate" "le2020-02-09"]])
-            [0 :id] := "id-0"
-            [0 :birthDate] := #fhir/date"2020-02-08"
-            1 := nil))
+          (testing "overlapping one patient"
+            (given (pull-type-query node "Patient" [["birthdate" "2020-03"]])
+              count := 1
+              [0 :id] := "id-2"))
 
-        (testing "finds more precise dates"
-          (given (pull-type-query node "Patient" [["birthdate" "le2020-03"]])
-            [0 :id] := "id-1"
-            [0 :birthDate] := #fhir/date"2020-02"
-            [1 :id] := "id-0"
-            [1 :birthDate] := #fhir/date"2020-02-08"
-            2 := nil)))
+          (testing "overlapping no patient"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 0)
+              "2018-12"
+              "2022-01")))
+
+        (testing "with year precision"
+          (testing "overlapping three patients"
+            (given (pull-type-query node "Patient" [["birthdate" "2020"]])
+              count := 3
+              [0 :id] := "id-2"
+              [1 :id] := "id-1"
+              [2 :id] := "id-0")
+
+            (testing "it is possible to start with the second patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020"]] "id-1")
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))
+
+            (testing "it is possible to start with the third patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020"]] "id-0")
+                count := 1
+                [0 :id] := "id-0")))
+
+          (testing "overlapping no patient"
+            (are [date]
+              (given (pull-type-query node "Patient" [["birthdate" date]])
+                count := 0)
+              "2018"
+              "2022")))
+
+        (testing "with `eq` prefix"
+          (given (pull-type-query node "Patient" [["birthdate" "eq2020-02-08"]])
+            count := 3
+            [0 :id] := "id-2"
+            [1 :id] := "id-1"
+            [2 :id] := "id-0"))
+
+        (testing "with `ne` prefix is unsupported"
+          (given
+            (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`."))
+
+        (testing "with ge/gt prefix"
+          (doseq [prefix ["ge" "gt"]]
+            (testing "with day precision"
+              (testing "overlapping four patients"
+                (testing "starting at the most specific birthdate"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-08")]])
+                    count := 4
+                    [0 :id] := "id-2"
+                    [1 :id] := "id-1"
+                    [2 :id] := "id-0"
+                    [3 :id] := "id-4")
+
+                  (testing "it is possible to start with the second patient"
+                    (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-08")]] "id-1")
+                      count := 3
+                      [0 :id] := "id-1"
+                      [1 :id] := "id-0"
+                      [2 :id] := "id-4"))
+
+                  (testing "it is possible to start with the third patient"
+                    (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-08")]] "id-0")
+                      count := 2
+                      [0 :id] := "id-0"
+                      [1 :id] := "id-4"))
+
+                  (testing "it is possible to start with the fourth patient"
+                    (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-08")]] "id-4")
+                      count := 1
+                      [0 :id] := "id-4")))
+
+                (testing "starting before the most specific birthdate"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-07")]])
+                    count := 4
+                    [0 :id] := "id-2"
+                    [1 :id] := "id-1"
+                    [2 :id] := "id-0"
+                    [3 :id] := "id-4")))
+
+              (testing "overlapping three patients"
+                (testing "starting after the most specific birthdate"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-09")]])
+                    count := 3
+                    [0 :id] := "id-2"
+                    [1 :id] := "id-1"
+                    [2 :id] := "id-4"))
+
+                (testing "starting at the last day of 2020-02"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-29")]])
+                    count := 3
+                    [0 :id] := "id-2"
+                    [1 :id] := "id-1"
+                    [2 :id] := "id-4")))
+
+              (testing "overlapping two patients"
+                (testing "starting at the first day of 2020-03"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-03-01")]])
+                    count := 2
+                    [0 :id] := "id-2"
+                    [1 :id] := "id-4"))
+
+                (testing "starting at the last day of 2020"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-12-31")]])
+                    count := 2
+                    [0 :id] := "id-2"
+                    [1 :id] := "id-4")))
+
+              (testing "overlapping one patient"
+                (testing "starting at the first day of 2021"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2021-01-01")]])
+                    count := 1
+                    [0 :id] := "id-4")))
+
+              (testing "overlapping no patient"
+                (testing "starting at the first day of 2022"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2022-01-01")]])
+                    count := 0))))))
+
+        (testing "with le/lt prefix"
+          (doseq [prefix ["le" "lt"]]
+            (testing "with day precision"
+              (testing "overlapping four patients"
+                (testing "starting at the most specific birthdate"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-08")]])
+                    count := 4
+                    [0 :id] := "id-3"
+                    [1 :id] := "id-2"
+                    [2 :id] := "id-1"
+                    [3 :id] := "id-0")
+
+                  (testing "it is possible to start with the second patient"
+                    (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-08")]] "id-2")
+                      count := 3
+                      [0 :id] := "id-2"
+                      [1 :id] := "id-1"
+                      [2 :id] := "id-0"))
+
+                  (testing "it is possible to start with the third patient"
+                    (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-08")]] "id-1")
+                      count := 2
+                      [0 :id] := "id-1"
+                      [1 :id] := "id-0"))
+
+                  (testing "it is possible to start with the fourth patient"
+                    (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-08")]] "id-0")
+                      count := 1
+                      [0 :id] := "id-0")))
+
+                (testing "starting after the most specific birthdate"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-09")]])
+                    count := 4
+                    [0 :id] := "id-3"
+                    [1 :id] := "id-2"
+                    [2 :id] := "id-1"
+                    [3 :id] := "id-0")))
+
+              (testing "overlapping three patients"
+                (testing "starting before the most specific birthdate"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-07")]])
+                    count := 3
+                    [0 :id] := "id-3"
+                    [1 :id] := "id-2"
+                    [2 :id] := "id-1"))
+
+                (testing "starting at the first day of 2020-02"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-02-01")]])
+                    count := 3
+                    [0 :id] := "id-3"
+                    [1 :id] := "id-2"
+                    [2 :id] := "id-1")))
+
+              (testing "overlapping two patients"
+                (testing "starting at the last day of 2020-01"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-01-31")]])
+                    count := 2
+                    [0 :id] := "id-3"
+                    [1 :id] := "id-2"))
+
+                (testing "starting at the first day of 2020"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2020-01-01")]])
+                    count := 2
+                    [0 :id] := "id-3"
+                    [1 :id] := "id-2")))
+
+              (testing "overlapping one patient"
+                (testing "starting at the last day of 2019"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2019-12-31")]])
+                    count := 1
+                    [0 :id] := "id-3")))
+
+              (testing "overlapping no patient"
+                (testing "starting at the last day of 2018"
+                  (given (pull-type-query node "Patient" [["birthdate" (str prefix "2018-12-31")]])
+                    count := 0)))))))
 
       (testing "gender and birthdate"
         (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                ["birthdate" "2020-02"]])
+                                                ["birthdate" "2020-02-09"]])
           count := 2
-          [0 :id] := "id-0"
-          [1 :id] := "id-1"))
+          [0 :id] := "id-1"
+          [1 :id] := "id-2"))
 
       (testing "gender and birthdate with multiple values"
         (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                ["birthdate" "2020-02" "2020"]])
+                                                ["birthdate" "2020-02-09" "2020"]])
           count := 3
           [0 :id] := "id-0"
           [1 :id] := "id-1"
           [2 :id] := "id-2"))
 
       (testing "gender and birthdate with prefix"
-        (testing "greater equal"
-          (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                  ["birthdate" "ge2020"]])
-            count := 3
-            [0 :id] := "id-0"
-            [1 :id] := "id-1"
-            [2 :id] := "id-2")
+        (testing "with ge/gt prefix"
+          (doseq [prefix ["ge" "gt"]]
+            (given (pull-type-query node "Patient" [["gender" "male" "female"]
+                                                    ["birthdate" (str prefix "2020")]])
+              count := 3
+              [0 :id] := "id-0"
+              [1 :id] := "id-1"
+              [2 :id] := "id-2")
 
-          (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                  ["birthdate" "ge2020-02"]])
-            count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-1"))
+            (given (pull-type-query node "Patient" [["gender" "male" "female"]
+                                                    ["birthdate" (str prefix "2020-02-07")]])
+              count := 3
+              [0 :id] := "id-0"
+              [1 :id] := "id-1"
+              [2 :id] := "id-2")))
 
-        (testing "less equal"
-          (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                  ["birthdate" "le2020"]])
-            count := 3
-            [0 :id] := "id-0"
-            [1 :id] := "id-1"
-            [2 :id] := "id-2")
+        (testing "with le/lt prefix"
+          (doseq [prefix ["le" "lt"]]
+            (given (pull-type-query node "Patient" [["gender" "male" "female"]
+                                                    ["birthdate" (str prefix "2020")]])
+              count := 3
+              [0 :id] := "id-0"
+              [1 :id] := "id-1"
+              [2 :id] := "id-2")
 
-          (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                  ["birthdate" "le2020-02"]])
-            count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-1")
+            (given (pull-type-query node "Patient" [["gender" "male" "female"]
+                                                    ["birthdate" (str prefix "2020-02")]])
+              count := 3
+              [0 :id] := "id-0"
+              [1 :id] := "id-1"
+              [2 :id] := "id-2")
 
-          (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                  ["birthdate" "le2021"]])
-            count := 3
-            [0 :id] := "id-0"
-            [1 :id] := "id-1"
-            [2 :id] := "id-2")))
+            (given (pull-type-query node "Patient" [["gender" "male" "female"]
+                                                    ["birthdate" (str prefix "2021")]])
+              count := 3
+              [0 :id] := "id-0"
+              [1 :id] := "id-1"
+              [2 :id] := "id-2"))))
 
       (testing "deceased"
         (given (pull-type-query node "Patient" [["deceased" "true"]])
@@ -1268,19 +1562,19 @@
          [[:put {:fhir/type :fhir/Specimen
                  :id "id-0"
                  :type
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
-                    :code #fhir/code"dna"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
+                           :code #fhir/code"dna"}]}
                  :collection
                  {:fhir/type :fhir.Specimen/collection
                   :bodySite
-                  {:fhir/type :fhir/CodeableConcept
-                   :coding
-                   [{:fhir/type :fhir/Coding
-                     :system #fhir/uri"urn:oid:2.16.840.1.113883.6.43.1"
-                     :code #fhir/code"C77.4"}]}}}]])
+                  #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                           {:system #fhir/uri"urn:oid:2.16.840.1.113883.6.43.1"
+                            :code #fhir/code"C77.4"}]}}}]])
 
       (testing "bodysite"
         (testing "using system|code"
@@ -1391,16 +1685,91 @@
                  :id "id-0"}]
           [:put {:fhir/type :fhir/Condition
                  :id "id-0"
+                 :code
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                           :code #fhir/code"C71.4"}]}
                  :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/id-0"}}]
+                 #fhir/Reference
+                     {:reference "Patient/id-0"}
+                 :onset
+                 {:fhir/type :fhir/Age
+                  :value 63M}}]
           [:put {:fhir/type :fhir/Condition
                  :id "id-1"}]])
 
       (testing "patient"
         (given (pull-type-query node "Condition" [["patient" "id-0"]])
-          [0 :id] := "id-0"
-          1 := nil))))
+          count := 1
+          [0 :id] := "id-0"))
+
+      (testing "code"
+        (testing "duplicate values have no effect (#293)"
+          (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
+            count := 1
+            [0 :id] := "id-0"))
+
+        (testing "starting"
+          (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
+            count := 1
+            [0 :id] := "id-0")))
+
+      (testing "onset-age"
+        (given (pull-type-query node "Condition" [["onset-age" "63"]])
+          count := 1
+          [0 :id] := "id-0")))
+
+    (with-open [node (new-node)]
+      @(d/transact
+         node
+         [[:put {:fhir/type :fhir/Condition :id "0"
+                 :code
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"0"}]}}]
+          [:put {:fhir/type :fhir/Condition :id "3"
+                 :code
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"0"}]}}]
+          [:put {:fhir/type :fhir/Condition :id "4"
+                 :code
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"0"}]}}]
+          [:put {:fhir/type :fhir/Condition :id "1"
+                 :code
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"1"}]}}]
+          [:put {:fhir/type :fhir/Condition :id "2"
+                 :code
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:code #fhir/code"1"}]}}]])
+
+      (testing "code"
+        (testing "starting with ID `1` does not return Conditions with ID `3`
+                  and `4` because they were already returned"
+          (given (pull-type-query node "Condition" [["code" "0" "1"]] "1")
+            count := 2
+            [0 :id] := "1"
+            [1 :id] := "2"))
+
+        (testing "starting with ID `4` does return Conditions with ID `1` and
+                  `2` even if they are smaller than `4`"
+          (given (pull-type-query node "Condition" [["code" "0" "1"]] "4")
+            count := 3
+            [0 :id] := "4"
+            [1 :id] := "1"
+            [2 :id] := "2")))))
 
   (testing "Observation"
     (with-open [node (new-node)]
@@ -1409,39 +1778,93 @@
          [[:put {:fhir/type :fhir/Observation
                  :id "id-0"
                  :status #fhir/code"final"
+                 :effective
+                 #fhir/Period
+                     {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                      :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 0M
-                  :unit "kg/m²"
-                  :code #fhir/code"kg/m2"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+                 #fhir/Quantity
+                     {:value 0M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
+                 :effective #fhir/dateTime"2021-02-25"
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 1M
-                  :unit "kg/m²"
-                  :code #fhir/code"kg/m2"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+                 #fhir/Quantity
+                     {:value 1M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-2"
                  :status #fhir/code"final"
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 2.11M
-                  :unit "kg/m²"
-                  :code #fhir/code"kg/m2"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+                 #fhir/Quantity
+                     {:value 2.11M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-3"
                  :status #fhir/code"final"
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 3M
-                  :unit "kg/m²"
-                  :code #fhir/code"kg/m2"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]])
+                 #fhir/Quantity
+                     {:value 3M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
+
+      (testing "date"
+        (testing "with year precision"
+          (given (pull-type-query node "Observation" [["date" "2021"]])
+            count := 2
+            [0 :id] := "id-0"
+            [1 :id] := "id-1"))
+
+        (testing "with day precision"
+          (testing "before the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-22"]])
+              count := 0))
+
+          (testing "within the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23"]])
+              count := 1
+              [0 :id] := "id-0"))
+
+          (testing "after the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-24"]])
+              count := 0)))
+
+        (testing "with second precision"
+          (testing "before the start of the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23T15:12:44+01:00"]])
+              count := 0))
+
+          (testing "at the start of the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23T15:12:45+01:00"]])
+              count := 1
+              [0 :id] := "id-0"))
+
+          (testing "within the period"
+            (are [date]
+              (given (pull-type-query node "Observation" [["date" date]])
+                count := 1
+                [0 :id] := "id-0")
+              "2021-02-23T15:12:46+01:00"
+              "2021-02-23T15:30:00+01:00"
+              "2021-02-23T15:59:59+01:00"))
+
+          (testing "at the end of the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23T16:00:00+01:00"]])
+              count := 1
+              [0 :id] := "id-0"))
+
+          (testing "after the end of the period"
+            (given (pull-type-query node "Observation" [["date" "2021-02-23T16:00:01+01:00"]])
+              count := 0))))
 
       (testing "value-quantity"
         (testing "without unit"
@@ -1729,20 +2152,20 @@
                  :id "id-0"
                  :status #fhir/code"final"
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 23.42M
-                  :unit "kg/m²"
-                  :code #fhir/code"kg/m2"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+                 #fhir/Quantity
+                     {:value 23.42M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 23.42M
-                  :unit "kg/m²"
-                  :code #fhir/code"kg/m2"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]])
+                 #fhir/Quantity
+                     {:value 23.42M
+                      :unit "kg/m²"
+                      :code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "full result"
         (let [clauses [["value-quantity" "23.42"]]]
@@ -1764,47 +2187,47 @@
          [[:put {:fhir/type :fhir/Observation
                  :id "id-0"
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 0M
-                  :unit "m"
-                  :code #fhir/code"m"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+                 #fhir/Quantity
+                     {:value 0M
+                      :unit "m"
+                      :code #fhir/code"m"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/TestScript
                  :id "id-0"
                  :useContext
                  [{:fhir/type :fhir/UsageContext
                    :value
-                   {:fhir/type :fhir/Quantity
-                    :value 0M
-                    :unit "m"
-                    :code #fhir/code"m"
-                    :system #fhir/uri"http://unitsofmeasure.org"}}]}]])
+                   #fhir/Quantity
+                       {:value 0M
+                        :unit "m"
+                        :code #fhir/code"m"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]}]])
 
       (testing "ResourceSearchParamValue index looks like it should"
         (is (= (r-sp-v-tu/decode-index-entries
                  (:kv-store node)
                  :type :id :hash-prefix :code :v-hash)
-               [["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+               [["Observation" "id-0" #blaze/byte-string"36A9F36D"
                  "value-quantity" #blaze/byte-string"0000000080"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"36A9F36D"
                  "value-quantity" #blaze/byte-string"5C38E45A80"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"36A9F36D"
                  "value-quantity" #blaze/byte-string"9B780D9180"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"36A9F36D"
                  "combo-value-quantity" #blaze/byte-string"0000000080"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"36A9F36D"
                  "combo-value-quantity" #blaze/byte-string"5C38E45A80"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"36A9F36D"
                  "combo-value-quantity" #blaze/byte-string"9B780D9180"]
-                ["Observation" "id-0" #blaze/byte-string"7B68D1DB"
+                ["Observation" "id-0" #blaze/byte-string"36A9F36D"
                  "_id" #blaze/byte-string"165494C5"]
-                ["TestScript" "id-0" #blaze/byte-string"10FA3621"
+                ["TestScript" "id-0" #blaze/byte-string"51E67D28"
                  "context-quantity" #blaze/byte-string"0000000080"]
-                ["TestScript" "id-0" #blaze/byte-string"10FA3621"
+                ["TestScript" "id-0" #blaze/byte-string"51E67D28"
                  "context-quantity" #blaze/byte-string"5C38E45A80"]
-                ["TestScript" "id-0" #blaze/byte-string"10FA3621"
+                ["TestScript" "id-0" #blaze/byte-string"51E67D28"
                  "context-quantity" #blaze/byte-string"9B780D9180"]
-                ["TestScript" "id-0" #blaze/byte-string"10FA3621"
+                ["TestScript" "id-0" #blaze/byte-string"51E67D28"
                  "_id" #blaze/byte-string"165494C5"]])))
 
 
@@ -1828,58 +2251,58 @@
                  :id "id-0"
                  :status #fhir/code"final"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8480-6"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8480-6"}]}
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 130M
-                  :code #fhir/code"mm[Hg]"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+                 #fhir/Quantity
+                     {:value 130M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8480-6"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8480-6"}]}
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 150M
-                  :code #fhir/code"mm[Hg]"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+                 #fhir/Quantity
+                     {:value 150M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-2"
                  :status #fhir/code"final"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8462-4"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8462-4"}]}
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 90M
-                  :code #fhir/code"mm[Hg]"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]
+                 #fhir/Quantity
+                     {:value 90M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-3"
                  :status #fhir/code"final"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8462-4"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"8462-4"}]}
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :value 70M
-                  :code #fhir/code"mm[Hg]"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}]])
+                 #fhir/Quantity
+                     {:value 70M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
 
       (testing "as first clause"
         (let [clauses [["code-value-quantity" "8480-6$ge140"]]]
@@ -2020,53 +2443,53 @@
                  :id "id-0"
                  :status #fhir/code"final"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"94564-2"
-                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"94564-2"
+                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
                  :value
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://snomed.info/sct"
-                    :code #fhir/code"260373001"
-                    :display "Detected (qualifier value)"}]}}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://snomed.info/sct"
+                           :code #fhir/code"260373001"
+                           :display "Detected (qualifier value)"}]}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-1"
                  :status #fhir/code"final"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"94564-2"
-                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"94564-2"
+                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
                  :value
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://snomed.info/sct"
-                    :code #fhir/code"260415000"
-                    :display "Not detected (qualifier value)"}]}}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://snomed.info/sct"
+                           :code #fhir/code"260415000"
+                           :display "Not detected (qualifier value)"}]}}]
           [:put {:fhir/type :fhir/Observation
                  :id "id-2"
                  :status #fhir/code"final"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"94564-2"
-                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://loinc.org"
+                           :code #fhir/code"94564-2"
+                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
                  :value
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"http://snomed.info/sct"
-                    :code #fhir/code"260373001"
-                    :display "Detected (qualifier value)"}]}}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"http://snomed.info/sct"
+                           :code #fhir/code"260373001"
+                           :display "Detected (qualifier value)"}]}}]])
 
       (testing "as first clause"
         (testing "code as system|code"
@@ -2181,15 +2604,15 @@
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       {:fhir/type :fhir/Reference
-                        :reference "Patient/0"}}]}]
+                       #fhir/Reference
+                           {:reference "Patient/0"}}]}]
               [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       {:fhir/type :fhir/Reference
-                        :reference "Patient/1"}}]}]])
+                       #fhir/Reference
+                           {:reference "Patient/1"}}]}]])
 
           (let [clauses [["item" "Patient/1"]]]
             (given (pull-type-query node "List" clauses)
@@ -2205,21 +2628,21 @@
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       {:fhir/type :fhir/Reference
-                        :identifier
-                        {:fhir/type :fhir/Identifier
-                         :system #fhir/uri"system-122917"
-                         :value "value-122931"}}}]}]
+                       #fhir/Reference
+                           {:identifier
+                            #fhir/Identifier
+                                {:system #fhir/uri"system-122917"
+                                 :value "value-122931"}}}]}]
               [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       {:fhir/type :fhir/Reference
-                        :identifier
-                        {:fhir/type :fhir/Identifier
-                         :system #fhir/uri"system-122917"
-                         :value "value-143818"}}}]}]])
+                       #fhir/Reference
+                           {:identifier
+                            #fhir/Identifier
+                                {:system #fhir/uri"system-122917"
+                                 :value "value-143818"}}}]}]])
 
           (let [clauses [["item:identifier" "system-122917|value-122931"]]]
             (given (pull-type-query node "List" clauses)
@@ -2234,41 +2657,154 @@
              [[:put {:fhir/type :fhir/List
                      :id "id-123058"
                      :code
-                     {:fhir/type :fhir/CodeableConcept
-                      :coding
-                      [{:fhir/type :fhir/Coding
-                        :system #fhir/uri"system-152812"
-                        :code #fhir/code"code-152819"}]}
+                     #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                              {:system #fhir/uri"system-152812"
+                               :code #fhir/code"code-152819"}]}
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       {:fhir/type :fhir/Reference
-                        :identifier
-                        {:fhir/type :fhir/Identifier
-                         :system #fhir/uri"system-122917"
-                         :value "value-122931"}}}]}]
+                       #fhir/Reference
+                           {:identifier
+                            #fhir/Identifier
+                                {:system #fhir/uri"system-122917"
+                                 :value "value-122931"}}}]}]
               [:put {:fhir/type :fhir/List
                      :id "id-143814"
                      :code
-                     {:fhir/type :fhir/CodeableConcept
-                      :coding
-                      [{:fhir/type :fhir/Coding
-                        :system #fhir/uri"system-152812"
-                        :code #fhir/code"code-152819"}]}
+                     #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                              {:system #fhir/uri"system-152812"
+                               :code #fhir/code"code-152819"}]}
                      :entry
                      [{:fhir/type :fhir.List/entry
                        :item
-                       {:fhir/type :fhir/Reference
-                        :identifier
-                        {:fhir/type :fhir/Identifier
-                         :system #fhir/uri"system-122917"
-                         :value "value-143818"}}}]}]])
+                       #fhir/Reference
+                           {:identifier
+                            #fhir/Identifier
+                                {:system #fhir/uri"system-122917"
+                                 :value "value-143818"}}}]}]])
 
           (let [clauses [["code" "system-152812|code-152819"]
                          ["item:identifier" "system-122917|value-143818"]]]
             (given (pull-type-query node "List" clauses)
               [0 :id] := "id-143814"
-              1 := nil)))))))
+              1 := nil))))))
+
+  (testing "Date order"
+    (with-open [node (new-node)]
+      @(d/transact
+         node
+         [[:put {:fhir/type :fhir/Patient
+                 :id "id-0"
+                 :birthDate #fhir/date"1900"}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-1"
+                 :birthDate #fhir/date"1960"}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-2"
+                 :birthDate #fhir/date"1970"}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-3"
+                 :birthDate #fhir/date"1980"}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-4"
+                 :birthDate #fhir/date"2020"}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-5"
+                 :birthDate #fhir/date"2100"}]])
+
+      (given (pull-type-query node "Patient" [["birthdate" "ge1900"]])
+        count := 6
+        [0 :id] := "id-0"
+        [1 :id] := "id-1"
+        [2 :id] := "id-2"
+        [3 :id] := "id-3"
+        [4 :id] := "id-4"
+        [5 :id] := "id-5")))
+
+  (testing "type number"
+    (testing "decimal"
+      (with-open [node (new-node)]
+        @(d/transact
+           node
+           [[:put {:fhir/type :fhir/RiskAssessment
+                   :id "id-0"
+                   :method
+                   #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                            {:system #fhir/uri"system-164844"
+                             :code #fhir/code"code-164847"}]}
+                   :prediction
+                   [{:fhir/type :fhir.RiskAssessment/prediction
+                     :probability 0.9M}]}]
+            [:put {:fhir/type :fhir/RiskAssessment
+                   :id "id-1"
+                   :status #fhir/code"final"
+                   :prediction
+                   [{:fhir/type :fhir.RiskAssessment/prediction
+                     :probability 0.1M}]}]
+            [:put {:fhir/type :fhir/RiskAssessment
+                   :id "id-2"
+                   :method
+                   #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                            {:system #fhir/uri"system-164844"
+                             :code #fhir/code"code-164847"}]}
+                   :prediction
+                   [{:fhir/type :fhir.RiskAssessment/prediction
+                     :probability 0.5M}]}]])
+
+        (given (pull-type-query node "RiskAssessment" [["probability" "ge0.5"]])
+          count := 2
+          [0 :id] := "id-2"
+          [1 :id] := "id-0")
+
+        (testing "it is possible to start with the second risk assessment"
+          (given (pull-type-query node "RiskAssessment" [["probability" "ge0.5"]] "id-0")
+            count := 1
+            [0 :id] := "id-0"))
+
+        (testing "as second clause"
+          (given (pull-type-query node "RiskAssessment" [["method" "code-164847"]
+                                                         ["probability" "ge0.5"]])
+            count := 2
+            [0 :id] := "id-0"
+            [1 :id] := "id-2")
+
+          (testing "it is possible to start with the second risk assessment"
+            (given (pull-type-query node "RiskAssessment" [["method" "code-164847"]
+                                                           ["probability" "ge0.5"]]
+                                    "id-2")
+              count := 1
+              [0 :id] := "id-2")))))
+
+    (testing "integer"
+      (with-open [node (new-node)]
+        @(d/transact
+           node
+           [[:put {:fhir/type :fhir/MolecularSequence
+                   :id "id-0"
+                   :variant
+                   [{:fhir/type :fhir.MolecularSequence/variant
+                     :start #fhir/integer 1}]}]
+            [:put {:fhir/type :fhir/MolecularSequence
+                   :id "id-1"
+                   :variant
+                   [{:fhir/type :fhir.MolecularSequence/variant
+                     :start #fhir/integer 2}]}]])
+
+        (given (pull-type-query node "MolecularSequence" [["variant-start" "1"]])
+          count := 1
+          [0 :id] := "id-0")
+
+        (given (pull-type-query node "MolecularSequence" [["variant-start" "2"]])
+          count := 1
+          [0 :id] := "id-1")))))
 
 
 (deftest compile-type-query-test
@@ -2403,8 +2939,8 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation")
         count := 1
@@ -2417,12 +2953,12 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation")
         count := 2
@@ -2438,8 +2974,8 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
       @(d/transact node [[:delete "Observation" "0"]])
 
       (is (coll/empty? (d/list-compartment-resource-handles
@@ -2450,16 +2986,16 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "2"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]])
+                                #fhir/Reference
+                                    {:reference "Patient/0"}}]])
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation" "1")
         [0 :fhir/type] := :fhir/Observation
@@ -2494,15 +3030,13 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system-191514"
-                    :code #fhir/code"code-191518"}]}}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}}]])
 
       (given @(pull-compartment-query
                 node "Patient" "0" "Observation"
@@ -2515,15 +3049,13 @@
     (let [observation
           (fn [id code]
             {:fhir/type :fhir/Observation :id id
-             :subject
-             {:fhir/type :fhir/Reference
-              :reference "Patient/0"}
+             :subject #fhir/Reference{:reference "Patient/0"}
              :code
-             {:fhir/type :fhir/CodeableConcept
-              :coding
-              [{:fhir/type :fhir/Coding
-                :system #fhir/uri"system"
-                :code code}]}})]
+             (type/map->CodeableConcept
+               {:coding
+                [(type/map->Coding
+                   {:system #fhir/uri"system"
+                    :code code})]})})]
       (with-open [node (new-node)]
         @(d/transact
            node
@@ -2543,15 +3075,13 @@
     (let [observation
           (fn [id code]
             {:fhir/type :fhir/Observation :id id
-             :subject
-             {:fhir/type :fhir/Reference
-              :reference "Patient/0"}
+             :subject #fhir/Reference{:reference "Patient/0"}
              :code
-             {:fhir/type :fhir/CodeableConcept
-              :coding
-              [{:fhir/type :fhir/Coding
-                :system #fhir/uri"system"
-                :code code}]}})]
+             (type/map->CodeableConcept
+               {:coding
+                [(type/map->Coding
+                   {:system #fhir/uri"system"
+                    :code code})]})})]
       (with-open [node (new-node)]
         @(d/transact
            node
@@ -2585,15 +3115,13 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system"
-                    :code #fhir/code"code"}]}}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code"}]}}]])
       @(d/transact
          node
          [[:delete "Observation" "0"]])
@@ -2606,15 +3134,13 @@
     (let [observation
           (fn [id code]
             {:fhir/type :fhir/Observation :id id
-             :subject
-             {:fhir/type :fhir/Reference
-              :reference "Patient/0"}
+             :subject #fhir/Reference{:reference "Patient/0"}
              :code
-             {:fhir/type :fhir/CodeableConcept
-              :coding
-              [{:fhir/type :fhir/Coding
-                :system #fhir/uri"system"
-                :code code}]}})]
+             (type/map->CodeableConcept
+               {:coding
+                [(type/map->Coding
+                   {:system #fhir/uri"system"
+                    :code code})]})})]
       (with-open [node (new-node)]
         @(d/transact
            node
@@ -2638,15 +3164,13 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system-191514"
-                    :code #fhir/code"code-191518"}]}}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}}]])
 
       (given @(pull-compartment-query
                 node "Patient" "0" "Observation"
@@ -2661,21 +3185,19 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system-191514"
-                    :code #fhir/code"code-191518"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :code #fhir/code"kg/m2"
-                  :unit "kg/m²"
-                  :system #fhir/uri"http://unitsofmeasure.org"
-                  :value 42M}}]])
+                 #fhir/Quantity
+                     {:code #fhir/code"kg/m2"
+                      :unit "kg/m²"
+                      :system #fhir/uri"http://unitsofmeasure.org"
+                      :value 42M}}]])
 
       (testing "matches second criteria"
         (given @(pull-compartment-query
@@ -2723,54 +3245,46 @@
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Condition :id "1"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system"
-                    :code #fhir/code"code-a"}]}
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code-a"}]}
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
           [:put {:fhir/type :fhir/Condition :id "2"
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system"
-                    :code #fhir/code"code-b"}]}
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}}]
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code-b"}]}
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
           [:put {:fhir/type :fhir/Observation :id "3"
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system"
-                    :code #fhir/code"code-a"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code-a"}]}
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :code #fhir/code"kg/m2"
-                  :system #fhir/uri"http://unitsofmeasure.org"
-                  :value 42M}}]
+                 #fhir/Quantity
+                     {:code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"
+                      :value 42M}}]
           [:put {:fhir/type :fhir/Observation :id "4"
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system"
-                    :code #fhir/code"code-b"}]}
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system"
+                           :code #fhir/code"code-b"}]}
                  :value
-                 {:fhir/type :fhir/Quantity
-                  :code #fhir/code"kg/m2"
-                  :system #fhir/uri"http://unitsofmeasure.org"
-                  :value 23M}}]])
+                 #fhir/Quantity
+                     {:code #fhir/code"kg/m2"
+                      :system #fhir/uri"http://unitsofmeasure.org"
+                      :value 23M}}]])
 
       (testing "token search parameter"
         (testing "as first clause"
@@ -2836,15 +3350,13 @@
        node
        [[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               {:fhir/type :fhir/Reference
-                :reference "Patient/0"}
+               :subject #fhir/Reference{:reference "Patient/0"}
                :code
-               {:fhir/type :fhir/CodeableConcept
-                :coding
-                [{:fhir/type :fhir/Coding
-                  :system #fhir/uri"system-191514"
-                  :code #fhir/code"code-191518"}]}}]])
+               #fhir/CodeableConcept
+                   {:coding
+                    [#fhir/Coding
+                        {:system #fhir/uri"system-191514"
+                         :code #fhir/code"code-191518"}]}}]])
 
     (given @(let [query (d/compile-compartment-query
                           node "Patient" "Observation"
@@ -3209,6 +3721,149 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))))
 
 
+(deftest include-test
+  (testing "Observation"
+    (doseq [code ["subject" "patient"]]
+      (testing code
+        (with-open [node (new-node)]
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Observation :id "0"
+                                    :subject
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}]])
+
+          (let [db (d/db node)
+                observation (d/resource-handle db "Observation" "0")]
+
+            (testing "without target type"
+              (given (d/include db observation code)
+                count := 1
+                [0 type/type] := :fhir/Patient
+                [0 :id] := "0"))
+
+            (testing "with target type"
+              (given (d/include db observation code "Patient")
+                count := 1
+                [0 type/type] := :fhir/Patient
+                [0 :id] := "0"))))))
+
+    (testing "encounter"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                           [:put {:fhir/type :fhir/Encounter :id "0"}]
+                           [:put {:fhir/type :fhir/Observation :id "0"
+                                  :subject
+                                  #fhir/Reference
+                                      {:reference "Patient/0"}
+                                  :encounter
+                                  #fhir/Reference
+                                      {:reference "Encounter/0"}}]])
+
+        (let [db (d/db node)
+              observation (d/resource-handle db "Observation" "0")]
+          (given (d/include db observation "encounter")
+            count := 1
+            [0 type/type] := :fhir/Encounter
+            [0 :id] := "0"))))
+
+    (testing "with Group subject"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Group :id "0"}]
+                           [:put {:fhir/type :fhir/Observation :id "0"
+                                  :subject
+                                  #fhir/Reference
+                                      {:reference "Group/0"}}]])
+
+        (let [db (d/db node)
+              observation (d/resource-handle db "Observation" "0")]
+
+          (testing "returns group with subject param"
+            (given (d/include db observation "subject")
+              count := 1
+              [0 type/type] := :fhir/Group
+              [0 :id] := "0"))
+
+          (testing "returns nothing with patient param"
+            (given (d/include db observation "patient")
+              count := 0))
+
+          (testing "returns group with subject param and Group target type"
+            (given (d/include db observation "subject" "Group")
+              count := 1
+              [0 type/type] := :fhir/Group
+              [0 :id] := "0"))
+
+          (testing "returns nothing with subject param and Patient target type"
+            (is (empty? (d/include db observation "subject" "Patient")))))))
+
+    (testing "non-reference search parameter code"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
+                                  :code
+                                  #fhir/CodeableConcept
+                                      {:coding
+                                       [#fhir/Coding
+                                           {:system #fhir/uri"http://loinc.org"
+                                            :code #fhir/code"8480-6"}]}}]])
+
+        (let [db (d/db node)
+              observation (d/resource-handle db "Observation" "0")]
+          (is (empty? (d/include db observation "code")))))))
+
+  (testing "Patient"
+    (testing "non-reference search parameter family"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                  :name
+                                  [{:fhir/type :fhir/HumanName
+                                    :family "Müller"}]}]])
+
+        (let [db (d/db node)
+              patient (d/resource-handle db "Patient" "0")]
+          (is (empty? (d/include db patient "family"))))))))
+
+
+(deftest rev-include-test
+  (testing "Patient"
+    (doseq [code ["subject" "patient"]]
+      (testing code
+        (with-open [node (new-node)]
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                             [:put {:fhir/type :fhir/Observation :id "1"
+                                    :subject
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}]
+                             [:put {:fhir/type :fhir/Observation :id "2"
+                                    :subject
+                                    #fhir/Reference
+                                        {:reference "Patient/0"}}]])
+
+          (let [db (d/db node)
+                patients (d/resource-handle db "Patient" "0")]
+
+            (given (d/rev-include db patients "Observation" code)
+              count := 2
+              [0 type/type] := :fhir/Observation
+              [0 :id] := "1"
+              [1 type/type] := :fhir/Observation
+              [1 :id] := "2")))))
+
+    (testing "non-reference search parameter code"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
+                           [:put {:fhir/type :fhir/Observation :id "0"
+                                  :code
+                                  #fhir/CodeableConcept
+                                      {:coding
+                                       [#fhir/Coding
+                                           {:system #fhir/uri"http://loinc.org"
+                                            :code #fhir/code"8480-6"}]}}]])
+
+        (let [db (d/db node)
+              patients (d/resource-handle db "Patient" "0")]
+          (is (empty? (d/rev-include db patients "Observation" "code"))))))))
+
+
 (deftest new-batch-db-test
   (testing "resource-handle"
     (with-open [node (new-node)]
@@ -3256,14 +3911,14 @@
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}
+                 #fhir/Reference
+                     {:reference "Patient/0"}
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system-191514"
-                    :code #fhir/code"code-191518"}]}}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}}]])
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(let [query (d/compile-compartment-query
@@ -3280,15 +3935,13 @@
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 {:fhir/type :fhir/Reference
-                  :reference "Patient/0"}
+                 :subject #fhir/Reference{:reference "Patient/0"}
                  :code
-                 {:fhir/type :fhir/CodeableConcept
-                  :coding
-                  [{:fhir/type :fhir/Coding
-                    :system #fhir/uri"system-191514"
-                    :code #fhir/code"code-191518"}]}}]])
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-191514"
+                           :code #fhir/code"code-191518"}]}}]])
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(let [query (d/compile-compartment-query-lenient

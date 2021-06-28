@@ -1,10 +1,9 @@
 (ns blaze.cql-translator
   (:require
     [blaze.elm.spec]
-    [cheshire.core :as json]
-    [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
-    [cognitect.anomalies :as anom])
+    [cognitect.anomalies :as anom]
+    [jsonista.core :as j])
   (:import
     [org.cqframework.cql.cql2elm
      CqlTranslator CqlTranslator$Options
@@ -12,8 +11,7 @@
      ModelInfoProvider ModelInfoLoader]
     [java.util Locale]
     [javax.xml.bind JAXB]
-    [org.hl7.elm_modelinfo.r1 ModelInfo]
-    [org.hl7.elm.r1 VersionedIdentifier]))
+    [org.hl7.elm_modelinfo.r1 ModelInfo]))
 
 
 (set! *warn-on-reflection* true)
@@ -22,11 +20,8 @@
 (defn- load-model-info [name]
   (let [res (io/resource name)
         ^ModelInfo modelInfo (JAXB/unmarshal res ^Class ModelInfo)
-        id (doto (VersionedIdentifier.)
-             (.setId (.getName modelInfo))
-             (.setVersion (.getVersion modelInfo)))
-        provider (reify ModelInfoProvider (load [_] modelInfo))]
-    (ModelInfoLoader/registerModelInfoProvider id provider)))
+        provider (reify ModelInfoProvider (load [_ _] modelInfo))]
+    (.registerModelInfoProvider (ModelInfoLoader.) provider)))
 
 
 (defn- options [locators?]
@@ -38,6 +33,12 @@
 
 ;; Our special model info with Specimen context
 (load-model-info "blaze/fhir-modelinfo-4.0.0.xml")
+
+
+(def ^:private json-object-mapper
+  (j/object-mapper
+    {:decode-key-fn true
+     :bigdecimals true}))
 
 
 (defn translate
@@ -57,6 +58,4 @@
        ::anom/message (apply str (map ex-message errors))
        :cql cql
        :errors errors}
-      (:library
-        (binding [*use-bigdecimals?* true]
-          (json/parse-string (.toJson translator) keyword))))))
+      (:library (j/read-value (.toJson translator) json-object-mapper)))))

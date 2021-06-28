@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param
   (:require
     [blaze.anomaly :refer [conj-anom when-ok]]
-    [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -12,14 +11,14 @@
     [blaze.db.impl.search-param.date]
     [blaze.db.impl.search-param.has]
     [blaze.db.impl.search-param.list]
+    [blaze.db.impl.search-param.number]
     [blaze.db.impl.search-param.quantity]
     [blaze.db.impl.search-param.string]
     [blaze.db.impl.search-param.token]
     [blaze.db.impl.search-param.util :as u]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
-    [clojure.spec.alpha :as s]
-    [taoensso.timbre :as log]))
+    [clojure.spec.alpha :as s]))
 
 
 (set! *warn-on-reflection* true)
@@ -37,16 +36,53 @@
     values))
 
 
+(defn- drop-done-values
+  "Drops all values of a conjunction that are already done in respect to
+  `string-start-id`.
+
+  This is done by looking at the first resource handle and ensure that it is
+  actually the one meant to find."
+  [string-start-id resource-handles values]
+  (drop-while
+    #(let [resource-handle (coll/first (resource-handles %))]
+       (not= string-start-id (:id resource-handle)))
+    values))
+
+
+(defn- map-2
+  "Like `map` but applies `f-first` to the first item of coll and `f-rest` to
+  all other items in coll."
+  [f-first f-rest]
+  (map-indexed
+    (fn [idx x]
+      (if (zero? idx)
+        (f-first x)
+        (f-rest x)))))
+
+
+(defn- mapcat-2 [f-first f-rest]
+  (comp (map-2 f-first f-rest) cat))
+
+
 (defn resource-handles
-  "Returns a reducible collection of resource handles."
-  ([search-param context tid modifier compiled-values]
+  "Returns a reducible collection of resource handles.
+
+  Concatenates resource handles of each value in compiled `values`."
+  ([search-param context tid modifier values]
    (coll/eduction
      (mapcat #(p/-resource-handles search-param context tid modifier %))
-     compiled-values))
-  ([search-param context tid modifier compiled-values start-id]
-   (coll/eduction
-     (mapcat #(p/-resource-handles search-param context tid modifier % start-id))
-     compiled-values)))
+     values))
+  ([search-param context tid modifier values start-id]
+   (let [resource-handles-start
+         #(p/-resource-handles search-param context tid modifier % start-id)]
+     (->> (drop-done-values
+            (codec/id-string start-id)
+            resource-handles-start
+            values)
+          (coll/eduction
+            (mapcat-2
+              resource-handles-start
+              #(p/-resource-handles search-param context tid modifier %)))))))
 
 
 (defn- compartment-keys
@@ -94,35 +130,32 @@
 
 
 (defn index-entries
-  "Returns search index entries of `resource` with `hash` or an anomaly in case
-  of errors."
-  [{:keys [type code c-hash] :as search-param} hash resource linked-compartments]
-  (case type
-    "date"
-    (p/-index-entries search-param stub-resolver hash resource linked-compartments)
-    (when-ok [values (p/-index-values search-param stub-resolver resource)]
-      (let [{:keys [id]} resource
-            type (name (fhir-spec/fhir-type resource))
-            tid (codec/tid type)]
-        (into
-          []
-          (mapcat
-            (fn search-param-entry [[modifier value]]
-              (log/trace "search-param-entry" code type id (bs/hex hash) (bs/hex value))
-              (let [c-hash (c-hash-w-modifier c-hash code modifier)
-                    id (codec/id-byte-string id)]
-                (into
-                  [(sp-vr/index-entry c-hash tid value id hash)
-                   (r-sp-v/index-entry tid id hash c-hash value)]
-                  (map
-                    (fn [[code comp-id]]
-                      (c-sp-vr/index-entry
-                        [(codec/c-hash code)
-                         (codec/id-byte-string comp-id)]
-                        c-hash
-                        tid
-                        value
-                        id
-                        hash)))
-                  linked-compartments))))
-          values)))))
+  "Returns search index entries of `resource` with `hash` for `search-param` or
+  an anomaly in case of errors."
+  {:arglists '([search-param linked-compartments hash resource])}
+  [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
+  (when-ok [values (p/-index-values search-param stub-resolver resource)]
+    (let [{:keys [id]} resource
+          type (name (fhir-spec/fhir-type resource))
+          tid (codec/tid type)
+          id (codec/id-byte-string id)]
+      (coll/eduction
+        (mapcat
+          (fn index-entry [[modifier value]]
+            (let [c-hash (c-hash-w-modifier c-hash code modifier)]
+              (transduce
+                (map
+                  (fn index-compartment-entry [[code comp-id]]
+                    (c-sp-vr/index-entry
+                      [(codec/c-hash code)
+                       (codec/id-byte-string comp-id)]
+                      c-hash
+                      tid
+                      value
+                      id
+                      hash)))
+                conj
+                [(sp-vr/index-entry c-hash tid value id hash)
+                 (r-sp-v/index-entry tid id hash c-hash value)]
+                linked-compartments))))
+        values))))

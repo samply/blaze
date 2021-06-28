@@ -9,5 +9,12 @@
   (satisfies? TerminologyService x))
 
 
-(defn expand-value-set [terminology-service params]
+(defn expand-value-set
+  "Possible params are:
+   * url
+   * valueSetVersion
+   * filter
+
+  See also: https://www.hl7.org/fhir/valueset-operation-expand.html"
+  [terminology-service params]
   (-expand-value-set terminology-service params))

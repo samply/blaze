@@ -8,6 +8,7 @@
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal :as elm]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -21,7 +22,7 @@
 (tu/instrument-compile)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (tu/instrument-compile)
   (f)
@@ -56,7 +57,7 @@
 ;; only, as defined by the evaluation environment. Whereas for the Unfiltered
 ;; context, the data is returned for the entire source.
 (deftest compile-retrieve-test
-  (testing "Patient content"
+  (testing "Patient context"
     (testing "Patient"
       (with-open [node (mem-node-with
                          [[[:put {:fhir/type :fhir/Patient :id "0"}]]])]
@@ -77,8 +78,7 @@
                          [[[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "1"
                                   :subject
-                                  {:fhir/type :fhir/Reference
-                                   :reference "Patient/0"}}]]])]
+                                  #fhir/Reference{:reference "Patient/0"}}]]])]
         (let [context
               {:node node
                :eval-context "Patient"
@@ -96,18 +96,16 @@
                            [[[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "0"
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]
+                                    #fhir/Reference{:reference "Patient/0"}}]
                              [:put {:fhir/type :fhir/Observation :id "1"
                                     :code
-                                    {:fhir/type :fhir/CodeableConcept
-                                     :coding
-                                     [{:fhir/type :fhir/Coding
-                                       :system #fhir/uri"system-192253"
-                                       :code #fhir/code"code-192300"}]}
+                                    #fhir/CodeableConcept
+                                        {:coding
+                                         [#fhir/Coding
+                                             {:system #fhir/uri"system-192253"
+                                              :code #fhir/code"code-192300"}]}
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]]])]
+                                    #fhir/Reference{:reference "Patient/0"}}]]])]
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -134,28 +132,25 @@
                            [[[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "0"
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]
+                                    #fhir/Reference{:reference "Patient/0"}}]
                              [:put {:fhir/type :fhir/Observation :id "1"
                                     :code
-                                    {:fhir/type :fhir/CodeableConcept
-                                     :coding
-                                     [{:fhir/type :fhir/Coding
-                                       :system #fhir/uri"system-192253"
-                                       :code #fhir/code"code-192300"}]}
+                                    #fhir/CodeableConcept
+                                        {:coding
+                                         [#fhir/Coding
+                                             {:system #fhir/uri"system-192253"
+                                              :code #fhir/code"code-192300"}]}
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]
+                                    #fhir/Reference{:reference "Patient/0"}}]
                              [:put {:fhir/type :fhir/Observation :id "2"
                                     :code
-                                    {:fhir/type :fhir/CodeableConcept
-                                     :coding
-                                     [{:fhir/type :fhir/Coding
-                                       :system #fhir/uri"system-192253"
-                                       :code #fhir/code"code-140541"}]}
+                                    #fhir/CodeableConcept
+                                        {:coding
+                                         [#fhir/Coding
+                                             {:system #fhir/uri"system-192253"
+                                              :code #fhir/code"code-140541"}]}
                                     :subject
-                                    {:fhir/type :fhir/Reference
-                                     :reference "Patient/0"}}]]])]
+                                    #fhir/Reference{:reference "Patient/0"}}]]])]
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -186,8 +181,7 @@
                          [[[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Specimen :id "0"
                                   :subject
-                                  {:fhir/type :fhir/Reference
-                                   :reference "Patient/0"}}]]])]
+                                  #fhir/Reference{:reference "Patient/0"}}]]])]
         (let [context
               {:node node
                :eval-context "Specimen"
@@ -200,7 +194,35 @@
             [0 fhir-spec/fhir-type] := :fhir/Patient
             [0 :id] := "0")))))
 
-  (testing "Unspecified context")
+  (testing "Unfiltered context"
+    (testing "Medication"
+      (with-open [node (mem-node-with
+                         [[[:put {:fhir/type :fhir/Medication :id "0"
+                                  :code
+                                  #fhir/CodeableConcept
+                                      {:coding
+                                       [#fhir/Coding
+                                           {:system #fhir/uri"system-225806"
+                                            :code #fhir/code"code-225809"}]}}]]])]
+        (let [context
+              {:node node
+               :eval-context "Unfiltered"
+               :library
+               {:codeSystems
+                {:def
+                 [{:name "sys-def-225944"
+                   :id "system-225806"}]}}}
+              elm (elm/retrieve
+                    {:type "Medication"
+                     :codes #elm/list[#elm/code["sys-def-225944"
+                                                "code-225809"]]})
+              expr (c/compile context elm)
+              db (d/db node)]
+
+          (given (core/-eval expr {:db db} nil nil)
+            count := 1
+            [0 fhir-spec/fhir-type] := :fhir/Medication
+            [0 :id] := "0")))))
 
   (testing "with related context"
     (testing "with pre-compiled database query"

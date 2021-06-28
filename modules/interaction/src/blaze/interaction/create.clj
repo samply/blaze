@@ -8,6 +8,7 @@
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.response.create :as response]
+    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create.spec]
     [blaze.luid :refer [luid]]
@@ -42,21 +43,34 @@
     :else body))
 
 
+(defn- create-op [resource conditional-clauses]
+  (cond-> [:create resource]
+    (seq conditional-clauses)
+    (conj conditional-clauses)))
+
+
 (defn- handler-intern [node executor]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
+        :blaze/keys [base-url]
         ::reitit/keys [router]}]
     (let [return-preference (handler-util/preference headers "return")
-          id (luid)]
+          id (luid)
+          conditional-clauses (some-> headers (get "if-none-exist") fhir-util/clauses)]
       (-> (ac/supply (validate-resource type body))
           (ac/then-apply #(assoc % :id id))
-          (ac/then-compose #(d/transact node [[:create %]]))
+          (ac/then-compose #(d/transact node [(create-op % conditional-clauses)]))
           ;; it's important to switch to the executor here, because otherwise
           ;; the central indexing thread would execute response building.
           (ac/then-apply-async identity executor)
           (ac/then-compose
-            #(response/build-created-response
-               router return-preference % type id))
+            (fn [db-after]
+              (if-let [handle (d/resource-handle db-after type id)]
+                (response/build-response
+                  base-url router return-preference db-after nil handle)
+                (let [handle (first (d/type-query db-after type conditional-clauses))]
+                  (response/build-response
+                    base-url router return-preference db-after handle handle)))))
           (ac/exceptionally handler-util/error-response)))))
 
 

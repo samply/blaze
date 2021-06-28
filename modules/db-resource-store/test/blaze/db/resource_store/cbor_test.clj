@@ -3,13 +3,18 @@
   encoding for the Resource Store."
   (:require
     [blaze.fhir.spec]
-    [cheshire.core :as cheshire]
     [clj-cbor.core :as cbor]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]))
+    [clojure.test :as test :refer [are deftest testing]]
+    [jsonista.core :as j])
+  (:import
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
 
-(defn fixture [f]
+(st/instrument)
+
+
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))
@@ -18,9 +23,13 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest encode-cbor-cheshire-test
+(def ^:private cbor-object-mapper
+  (j/object-mapper {:factory (CBORFactory.)}))
+
+
+(deftest encode-cbor-jsonista-test
   (testing "primitive types"
-    (are [x hex] (= hex (mapv #(bit-and % 0xFF) (cheshire/generate-cbor x)))
+    (are [x hex] (= hex (mapv #(bit-and % 0xFF) (j/write-value-as-bytes x cbor-object-mapper)))
       ;; Major type 0: unsigned integer
       0 [2r00000000]
       1 [2r00000001]
@@ -42,7 +51,7 @@
       "\n" [2r01100001 0x0a]
 
       ;; Major type 4: array of data items
-      [] [2r10011111 0xff]                                  ; Indefinite lengths variant
+      [] [2r10000000]
 
       ;; Major type 5: map of pairs of data items
       {} [2r10111111 0xff]                                  ; Indefinite lengths variant
@@ -114,36 +123,37 @@
 
 (comment
   (require '[criterium.core :refer [bench quick-bench]]
-           '[blaze.fhir.spec :as fhir-spec])
+           '[blaze.fhir.spec :as fhir-spec]
+           '[blaze.fhir.spec.type :as type])
 
   (def observation
     {:category
-     [{:coding
-       [{:code #fhir/code"vital-signs"
-         :system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"
-         :fhir/type :fhir/Coding}]
-       :fhir/type :fhir/CodeableConcept}]
+     [#fhir/CodeableConcept
+         {:coding
+          [#fhir/Coding
+              {:code #fhir/code"vital-signs"
+               :system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"}]}]
      :meta
-     {:profile [#fhir/canonical"https://fhir.bbmri.de/StructureDefinition/Bmi"]
-      :fhir/type :fhir/Meta}
+     #fhir/Meta
+         {:profile [#fhir/canonical"https://fhir.bbmri.de/StructureDefinition/Bmi"]}
      :fhir/type :fhir/Observation
      :value
-     {:code #fhir/code"kg/m2"
-      :system #fhir/uri"http://unitsofmeasure.org"
-      :unit "kg/m2"
-      :value 36.6M
-      :fhir/type :fhir/Quantity}
+     #fhir/Quantity
+         {:code #fhir/code"kg/m2"
+          :system #fhir/uri"http://unitsofmeasure.org"
+          :unit "kg/m2"
+          :value 36.6M}
      :status #fhir/code"final"
      :effective #fhir/dateTime"2005-06-17"
      :id "0-bmi"
      :code
-     {:coding
-      [{:code #fhir/code"39156-5" :system #fhir/uri"http://loinc.org" :fhir/type :fhir/Coding}]
-      :fhir/type :fhir/CodeableConcept}
-     :subject
-     {:reference "Patient/0" :fhir/type :fhir/Reference}})
+     #fhir/CodeableConcept
+         {:coding
+          [#fhir/Coding
+              {:code #fhir/code"39156-5" :system #fhir/uri"http://loinc.org"}]}
+     :subject #fhir/Reference{:reference "Patient/0"}})
 
-  (count (cheshire/generate-cbor (fhir-spec/unform-cbor observation)))
-  (count (cbor/encode (fhir-spec/unform-cbor observation)))
+  ;; 418
+  (count (fhir-spec/unform-cbor observation))
 
   )

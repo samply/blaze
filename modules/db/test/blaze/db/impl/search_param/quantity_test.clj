@@ -7,10 +7,13 @@
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
+    [blaze.db.impl.search-param.quantity :as spq]
     [blaze.db.impl.search-param.quantity-spec]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -19,11 +22,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -68,13 +71,15 @@
       "0" (codec/quantity nil -0.5M) (codec/quantity nil 0.5M)
       "0.0" (codec/quantity nil -0.05M) (codec/quantity nil 0.05M)))
 
-  (testing "ge"
-    (are [value exact-value]
-      (given (compile-quantity-value value)
-        :op := :ge
-        :exact-value := exact-value)
+  (testing "gt lt ge le"
+    (doseq [op [:gt :lt :ge :le]]
+      (are [value exact-value]
+        (given (compile-quantity-value value)
+          :op := op
+          :exact-value := exact-value)
 
-      "ge23" (codec/quantity nil 23.00M)))
+        (str (name op) "23") (codec/quantity nil 23M)
+        (str (name op) "0.1") (codec/quantity nil 0.1M))))
 
   (testing "invalid decimal value"
     (given (search-param/compile-values value-quantity-param nil ["a"])
@@ -95,15 +100,15 @@
              :id "id-155558"
              :status #fhir/code"final"
              :value
-             {:fhir/type :fhir/Quantity
-              :value 140M
-              :code #fhir/code"mm[Hg]"
-              :system #fhir/uri"http://unitsofmeasure.org"}}
+             #fhir/Quantity
+                 {:value 140M
+                  :code #fhir/code"mm[Hg]"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -159,14 +164,14 @@
              :id "id-155558"
              :status #fhir/code"final"
              :value
-             {:fhir/type :fhir/Quantity
-              :value 140M
-              :unit "mmHg"}}
+             #fhir/Quantity
+                 {:value 140M
+                  :unit "mmHg"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -206,15 +211,15 @@
              :id "id-155558"
              :status #fhir/code"final"
              :value
-             {:fhir/type :fhir/Quantity
-              :value 120M
-              :unit "mm[Hg]"
-              :code #fhir/code"mm[Hg]"}}
+             #fhir/Quantity
+                 {:value 120M
+                  :unit "mm[Hg]"
+                  :code #fhir/code"mm[Hg]"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -254,15 +259,15 @@
              :id "id-155558"
              :status #fhir/code"final"
              :value
-             {:fhir/type :fhir/Quantity
-              :value 120M
-              :unit "mmHg"
-              :code #fhir/code"mm[Hg]"}}
+             #fhir/Quantity
+                 {:value 120M
+                  :unit "mmHg"
+                  :code #fhir/code"mm[Hg]"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "value-quantity" "Observation")
-              hash observation [])]
+              [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -319,5 +324,8 @@
       (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "value-quantity" "Observation")
-                 hash resource [])
-          ::anom/category := ::anom/fault)))))
+                 [] hash resource)
+          ::anom/category := ::anom/fault))))
+
+  (testing "skip warning"
+    (is (nil? (spq/index-entries "" nil)))))

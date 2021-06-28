@@ -14,5 +14,5 @@
 
 (s/fdef handler-util/db
   :args (s/cat :node :blaze.db/node :t (s/nilable :blaze.db/t))
-  :ret (s/or :future ac/completable-future? :db :blaze.db/db))
+  :ret ac/completable-future?)
 

@@ -1,64 +1,28 @@
 (ns blaze.fhir-client.impl
   (:require
-    [blaze.anomaly :refer [throw-anom ex-anom]]
+    [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.async.flow :as flow]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
-    [cheshire.core :as json]
-    [cheshire.parse :refer [*use-bigdecimals?*]]
-    [clojure.string :as str]
+    [clojure.java.io :as io]
     [cognitect.anomalies :as anom]
+    [hato.client :as hc]
+    [hato.middleware :as hm]
     [taoensso.timbre :as log])
   (:import
-    [java.io BufferedWriter]
-    [java.net URI]
-    [java.net.http HttpClient HttpRequest HttpResponse$BodyHandler
-                   HttpResponse$ResponseInfo
-                   HttpResponse$BodySubscribers HttpResponse HttpRequest$BodyPublishers]
-    [java.nio.charset StandardCharsets]
+    [java.nio ByteBuffer]
+    [java.nio.channels SeekableByteChannel]
     [java.nio.file Path Files StandardOpenOption]
-    [java.util.concurrent Flow$Subscriber Flow$Subscription]
-    [java.util.function Function])
+    [java.util.concurrent Flow$Subscriber Flow$Subscription])
   (:refer-clojure :exclude [update]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn- parse-body [body]
-  (binding [*use-bigdecimals?* true]
-    (try
-      (json/parse-string body keyword)
-      (catch Exception e
-        (throw-anom ::anom/fault (ex-message e))))))
-
-
-(defn- json-subscriber []
-  (-> (HttpResponse$BodySubscribers/ofString StandardCharsets/UTF_8)
-      (HttpResponse$BodySubscribers/mapping
-        (reify Function
-          (apply [_ body]
-            (fhir-spec/conform-json (parse-body body)))))))
-
-
-(defn- header [^HttpResponse$ResponseInfo response-info name]
-  (let [value (.firstValue (.headers response-info) name)]
-    (when (.isPresent value)
-      (.get value))))
-
-
 (defn- json? [content-type]
-  (or (str/starts-with? content-type "application/fhir+json")
-      (str/starts-with? content-type "application/json")))
-
-
-(def ^:private body-handler
-  (reify HttpResponse$BodyHandler
-    (apply [_ response-info]
-      (if (some-> (header response-info "content-type") json?)
-        (json-subscriber)
-        (HttpResponse$BodySubscribers/discarding)))))
+  (some-> content-type name #{"fhir+json" "json"}))
 
 
 (defn- category [status]
@@ -72,61 +36,78 @@
     :else ::anom/fault))
 
 
-(defn- anomaly [^HttpResponse response]
-  (cond->
-    {::anom/category (category (.statusCode response))
-     ::anom/message (format "Unexpected response status %d." (.statusCode response))}
-    (= :fhir/OperationOutcome (fhir-spec/fhir-type (.body response)))
-    (assoc :fhir/issues (:issue (.body response)))))
+(defn- anomaly [e]
+  (let [response (ex-data e)]
+    (cond->
+      {::anom/category (category (:status response))
+       ::anom/message (format "Unexpected response status %d." (:status response))}
+      (= :fhir/OperationOutcome (fhir-spec/fhir-type (:body response)))
+      (assoc :fhir/issues (:issue (:body response))))))
 
 
-(defn- to-body [^HttpResponse response]
-  (if (< (.statusCode response) 400)
-    (.body response)
-    (throw (ex-anom (anomaly response)))))
+(defn- handle-error [e]
+  (throw (ex-anom (anomaly e))))
 
 
-(def default-http-client
-  (-> (HttpClient/newBuilder)
-      (.build)))
+(defmethod hm/coerce-response-body :fhir
+  [_ {:keys [body content-type] :as resp}]
+  (let [charset (or (-> resp :content-type-params :charset) "UTF-8")]
+    (if (json? content-type)
+      (with-open [r (io/reader body :encoding charset)]
+        (assoc resp :body (fhir-spec/conform-json (fhir-spec/parse-json r))))
+      resp)))
+
+
+(def ^:private cache-control
+  "Especially important with HAPI
+
+  See: https://hapifhir.io/hapi-fhir/docs/server_jpa/configuration.html#search-result-caching"
+  {"cache-control" "no-cache"})
 
 
 (defn fetch
   "Returns a CompletableFuture that completes with the resource at `uri` in case
   of success or completes exceptionally with an anomaly in case of an error."
-  [http-client uri]
-  (let [request (-> (HttpRequest/newBuilder)
-                    (.uri (URI/create uri))
-                    (.header "Accept" "application/fhir+json")
-                    ;; Especially important with HAPI
-                    ;; https://hapifhir.io/hapi-fhir/docs/server_jpa/configuration.html#search-result-caching
-                    (.header "Cache-Control" "no-cache")
-                    (.build))]
-    (-> (.sendAsync ^HttpClient http-client request body-handler)
-        (ac/then-apply to-body))))
+  [uri opts]
+  (log/trace "Fetch" uri)
+  (hc/get
+    uri
+    (merge
+      {:accept :fhir+json
+       :headers cache-control
+       :as :fhir
+       :async? true}
+      opts)
+    :body
+    handle-error))
 
 
 (defn- etag [resource]
   (str "W/\"" (-> resource :meta :versionId) "\""))
 
 
-(defn- body-publisher [resource]
-  (HttpRequest$BodyPublishers/ofString
-    (json/generate-string (fhir-spec/unform-json resource) {:key-fn name})))
+(defn- generate-body [resource]
+  (fhir-spec/unform-json resource))
 
 
-(defn update
-  [{:keys [base-uri http-client]} {:fhir/keys [type] :keys [id] :as resource}]
-  (log/trace "update" (str base-uri "/" (name type) "/" id))
-  (let [request (-> (HttpRequest/newBuilder)
-                    (.uri (URI/create (str base-uri "/" (name type) "/" id)))
-                    (.header "Content-Type" "application/fhir+json")
-                    (.header "Accept" "application/fhir+json")
-                    (.header "If-Match" (etag resource))
-                    (.PUT (body-publisher resource))
-                    (.build))]
-    (-> (.sendAsync ^HttpClient http-client request body-handler)
-        (ac/then-apply to-body))))
+(defn- if-match [etag]
+  {"if-match" etag})
+
+
+(defn update [uri resource opts]
+  (log/trace "Update" uri)
+  (hc/put
+    uri
+    (merge
+      {:accept :fhir+json
+       :content-type :fhir+json
+       :headers (if-match (etag resource))
+       :body (generate-body resource)
+       :as :fhir
+       :async? true}
+      opts)
+    :body
+    handle-error))
 
 
 (defn- next-url [page]
@@ -134,12 +115,11 @@
 
 
 (deftype PagingSubscription
-  [^Flow$Subscriber subscriber http-client volatile-uri]
+  [^Flow$Subscriber subscriber volatile-uri opts]
   Flow$Subscription
   (request [_ _]
     (when-let [uri @volatile-uri]
-      (log/trace "fetch" uri)
-      (-> (fetch http-client uri)
+      (-> (fetch uri opts)
           (ac/when-complete
             (fn [page e]
               (if e
@@ -154,12 +134,16 @@
   (cancel [_]))
 
 
-(defn paging-subscription [subscriber http-client uri]
-  (->PagingSubscription subscriber http-client (volatile! uri)))
+(defn paging-subscription [subscriber uri opts]
+  (->PagingSubscription subscriber (volatile! uri) opts))
 
 
-(defn- writer ^BufferedWriter [file & open-options]
-  (Files/newBufferedWriter file StandardCharsets/UTF_8 (into-array open-options)))
+(defn- byte-channel ^SeekableByteChannel [file & open-options]
+  (Files/newByteChannel file (into-array open-options)))
+
+
+(defn- new-file-byte-channel ^SeekableByteChannel [file]
+  (byte-channel file StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE))
 
 
 (deftype Spitter
@@ -172,8 +156,8 @@
     (flow/request! subscription 1)
     (let [file (.resolve ^Path dir ^String (filename-fn x))]
       (swap! filenames conj (.toAbsolutePath file))
-      (with-open [w (writer file StandardOpenOption/CREATE_NEW)]
-        (json/generate-stream (fhir-spec/unform-json x) w))))
+      (with-open [bc (new-file-byte-channel file)]
+        (.write bc (ByteBuffer/wrap (fhir-spec/unform-json x))))))
   (onError [_ e]
     (flow/cancel! subscription)
     (ac/complete-exceptionally! future e))

@@ -2,6 +2,7 @@
   (:require
     [blaze.fhir.spec.impl :as impl]
     [blaze.fhir.spec.impl-spec]
+    [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.util :as u]
     [clojure.alpha.spec :as s2]
@@ -19,7 +20,10 @@
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 
-(defn fixture [f]
+(st/instrument)
+
+
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))
@@ -56,7 +60,7 @@
                 (fn [~'e] (impl/xml-value-matches? "true|false" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->Boolean type/-to-xml))}
+                (s2/conformer type/xml->Boolean type/to-xml))}
             {:key :fhir.cbor/boolean
              :spec-form `any?}])))
 
@@ -66,7 +70,7 @@
            [{:key :fhir/integer
              :spec-form `(fn [~'x] (instance? Integer ~'x))}
             {:key :fhir.json/integer
-             :spec-form `(s2/and int? (s2/conformer int type/-to-json))}
+             :spec-form `(s2/and int? (s2/conformer int identity))}
             {:key :fhir.xml/integer
              :spec-form
              `(s2/and
@@ -74,9 +78,9 @@
                 (fn [~'e] (impl/xml-value-matches? "-?([0]|([1-9][0-9]*))" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->Integer type/-to-xml))}
+                (s2/conformer type/xml->Integer type/to-xml))}
             {:key :fhir.cbor/integer
-             :spec-form `(s2/conformer int type/-to-json)}])))
+             :spec-form `(s2/conformer int identity)}])))
 
   (testing "string"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "string"))
@@ -84,11 +88,7 @@
            [{:key :fhir/string
              :spec-form `type/string?}
             {:key :fhir.json/string
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "[ \\r\\n\\t\\S]+" ~'s))
-                (s2/conformer identity type/-to-json))}
+             :spec-form `(specs/regex "[ \\r\\n\\t\\S]+" identity)}
             {:key :fhir.xml/string
              :spec-form
              `(s2/and
@@ -96,7 +96,7 @@
                 (fn [~'e] (impl/xml-value-matches? "[ \\r\\n\\t\\S]+" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->String type/-to-xml))}
+                (s2/conformer type/xml->String type/to-xml))}
             {:key :fhir.cbor/string
              :spec-form `any?}])))
 
@@ -114,7 +114,7 @@
                 (fn [~'e] (impl/xml-value-matches? "-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->Decimal type/-to-xml))}
+                (s2/conformer type/xml->Decimal type/to-xml))}
             {:key :fhir.cbor/decimal
              :spec-form `any?}])))
 
@@ -124,11 +124,7 @@
            [{:key :fhir/uri
              :spec-form `type/uri?}
             {:key :fhir.json/uri
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "\\S*" ~'s))
-                (s2/conformer type/->Uri type/-to-json))}
+             :spec-form `(specs/regex "\\S*" type/->Uri)}
             {:key :fhir.xml/uri
              :spec-form
              `(s2/and
@@ -136,9 +132,9 @@
                 (fn [~'e] (impl/xml-value-matches? "\\S*" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->Uri type/-to-xml))}
+                (s2/conformer type/xml->Uri type/to-xml))}
             {:key :fhir.cbor/uri
-             :spec-form `(s2/conformer type/->Uri type/-to-json)}])))
+             :spec-form `(s2/conformer type/->Uri identity)}])))
 
   (testing "canonical"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "canonical"))
@@ -146,11 +142,7 @@
            [{:key :fhir/canonical
              :spec-form `type/canonical?}
             {:key :fhir.json/canonical
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "\\S*" ~'s))
-                (s2/conformer type/->Canonical type/-to-json))}
+             :spec-form `(specs/regex "\\S*" type/->Canonical)}
             {:key :fhir.xml/canonical
              :spec-form
              `(s2/and
@@ -158,9 +150,9 @@
                 (fn [~'e] (impl/xml-value-matches? "\\S*" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->Canonical type/-to-xml))}
+                (s2/conformer type/xml->Canonical type/to-xml))}
             {:key :fhir.cbor/canonical
-             :spec-form `(s2/conformer type/->Canonical type/-to-json)}])))
+             :spec-form `(s2/conformer type/->Canonical identity)}])))
 
   (testing "base64Binary"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "base64Binary"))
@@ -168,11 +160,7 @@
            [{:key :fhir/base64Binary
              :spec-form `type/base64Binary?}
             {:key :fhir.json/base64Binary
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "([0-9a-zA-Z\\\\+/=]{4})+" ~'s))
-                (s2/conformer type/->Base64Binary type/-to-json))}
+             :spec-form `(specs/regex "([0-9a-zA-Z\\\\+/=]{4})+" type/->Base64Binary)}
             {:key :fhir.xml/base64Binary
              :spec-form
              `(s2/and
@@ -180,9 +168,9 @@
                 (fn [~'e] (impl/xml-value-matches? "([0-9a-zA-Z\\\\+/=]{4})+" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->Base64Binary type/-to-xml))}
+                (s2/conformer type/xml->Base64Binary type/to-xml))}
             {:key :fhir.cbor/base64Binary
-             :spec-form `(s2/conformer type/->Base64Binary type/-to-json)}])))
+             :spec-form `(s2/conformer type/->Base64Binary identity)}])))
 
   (testing "code"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "code"))
@@ -190,11 +178,7 @@
            [{:key :fhir/code
              :spec-form `type/code?}
             {:key :fhir.json/code
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "[^\\s]+(\\s[^\\s]+)*" ~'s))
-                (s2/conformer type/->Code type/-to-json))}
+             :spec-form `(specs/regex "[^\\s]+(\\s[^\\s]+)*" type/->Code)}
             {:key :fhir.xml/code
              :spec-form
              `(s2/and
@@ -202,9 +186,9 @@
                 (fn [~'e] (impl/xml-value-matches? "[^\\s]+(\\s[^\\s]+)*" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->Code type/-to-xml))}
+                (s2/conformer type/xml->Code type/to-xml))}
             {:key :fhir.cbor/code
-             :spec-form `(s2/conformer type/->Code type/-to-json)}])))
+             :spec-form `(s2/conformer type/->Code identity)}])))
 
   (testing "unsignedInt"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "unsignedInt"))
@@ -212,7 +196,7 @@
            [{:key :fhir/unsignedInt
              :spec-form `type/unsignedInt?}
             {:key :fhir.json/unsignedInt
-             :spec-form `(s2/and int? (s2/conformer type/->UnsignedInt type/-to-json))}
+             :spec-form `(s2/and int? (s2/conformer type/->UnsignedInt identity))}
             {:key :fhir.xml/unsignedInt
              :spec-form
              `(s2/and
@@ -220,9 +204,9 @@
                 (fn [~'e] (impl/xml-value-matches? "[0]|([1-9][0-9]*)" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->UnsignedInt type/-to-xml))}
+                (s2/conformer type/xml->UnsignedInt type/to-xml))}
             {:key :fhir.cbor/unsignedInt
-             :spec-form `(s2/conformer type/->UnsignedInt type/-to-json)}])))
+             :spec-form `(s2/conformer type/->UnsignedInt identity)}])))
 
   (testing "positiveInt"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "positiveInt"))
@@ -230,7 +214,7 @@
            [{:key :fhir/positiveInt
              :spec-form `type/positiveInt?}
             {:key :fhir.json/positiveInt
-             :spec-form `(s2/and int? (s2/conformer type/->PositiveInt type/-to-json))}
+             :spec-form `(s2/and int? (s2/conformer type/->PositiveInt identity))}
             {:key :fhir.xml/positiveInt
              :spec-form
              `(s2/and
@@ -238,9 +222,9 @@
                 (fn [~'e] (impl/xml-value-matches? "[1-9][0-9]*" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->PositiveInt type/-to-xml))}
+                (s2/conformer type/xml->PositiveInt type/to-xml))}
             {:key :fhir.cbor/positiveInt
-             :spec-form `(s2/conformer type/->PositiveInt type/-to-json)}])))
+             :spec-form `(s2/conformer type/->PositiveInt identity)}])))
 
   (testing "uuid"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "uuid"))
@@ -248,11 +232,7 @@
            [{:key :fhir/uuid
              :spec-form `uuid?}
             {:key :fhir.json/uuid
-             :spec-form
-             `(s2/and
-                string?
-                (fn [~'s] (re-matches "urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" ~'s))
-                (s2/conformer type/->Uuid type/-to-json))}
+             :spec-form `(specs/regex "urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" type/->Uuid)}
             {:key :fhir.xml/uuid
              :spec-form
              `(s2/and
@@ -260,9 +240,9 @@
                 (fn [~'e] (impl/xml-value-matches? "urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" ~'e))
                 (s2/conformer identity impl/set-extension-tag)
                 (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
-                (s2/conformer type/xml->Uuid type/-to-xml))}
+                (s2/conformer type/xml->Uuid type/to-xml))}
             {:key :fhir.cbor/uuid
-             :spec-form `(s2/conformer type/->Uuid type/-to-json)}])))
+             :spec-form `(s2/conformer type/->Uuid identity)}])))
 
   (testing "xhtml"
     (is (= (impl/primitive-type->spec-defs (primitive-type "xhtml"))
@@ -272,14 +252,14 @@
              :spec-form
              `(s2/and
                 string?
-                (s2/conformer type/->Xhtml type/-to-json))}
+                (s2/conformer type/->Xhtml identity))}
             {:key :fhir.xml/xhtml
              :spec-form
              `(s2/and
                 impl/element?
-                (s2/conformer type/xml->Xhtml type/-to-xml))}
+                (s2/conformer type/xml->Xhtml type/to-xml))}
             {:key :fhir.cbor/xhtml
-             :spec-form `(s2/conformer type/->Xhtml type/-to-json)}]))))
+             :spec-form `(s2/conformer type/->Xhtml identity)}]))))
 
 
 (defn- complex-type [name]
@@ -303,7 +283,7 @@
     (testing "has a type checker"
       (given (group-by :key (impl/struct-def->spec-def (complex-type "UsageContext")))
         [:fhir/UsageContext 0 :spec-form 1]
-        := `(fn [~'m] (identical? :fhir/UsageContext (type/-type ~'m)))))
+        := `(fn [~'m] (identical? :fhir/UsageContext (type/type ~'m)))))
     (testing "has a schema form"
       (given (group-by :key (impl/struct-def->spec-def (complex-type "UsageContext")))
         [:fhir/UsageContext 0 :spec-form 2]
@@ -398,20 +378,21 @@
       [:fhir.xml.Bundle/entry 0 :spec-form]
       := `(s2/and
             (s2/conformer
-              (fn [~'e] (blaze.fhir.spec.impl/conform-xml :fhir.Bundle/entry ~'e))
+              blaze.fhir.spec.impl/conform-xml
               (fn [~'m]
-                (xml-node/element*
-                  nil
-                  (select-keys ~'m [:id])
-                  (-> []
-                    (impl/conj-all ::f/extension (:extension ~'m))
-                    (impl/conj-all ::f/modifierExtension (:modifierExtension ~'m))
-                    (impl/conj-all ::f/link (:link ~'m))
-                    (impl/conj-when (some-> ~'m :fullUrl (assoc :tag ::f/fullUrl)))
-                    (impl/conj-when (:resource ~'m))
-                    (impl/conj-when (some-> ~'m :search (assoc :tag ::f/search)))
-                    (impl/conj-when (some-> ~'m :request (assoc :tag ::f/request)))
-                    (impl/conj-when (some-> ~'m :response (assoc :tag ::f/response)))))))
+                (when ~'m
+                  (xml-node/element*
+                    nil
+                    (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
+                    (-> []
+                        (impl/conj-all ::f/extension (:extension ~'m))
+                        (impl/conj-all ::f/modifierExtension (:modifierExtension ~'m))
+                        (impl/conj-all ::f/link (:link ~'m))
+                        (impl/conj-when (some-> ~'m :fullUrl (assoc :tag ::f/fullUrl)))
+                        (impl/conj-when (:resource ~'m))
+                        (impl/conj-when (some-> ~'m :search (assoc :tag ::f/search)))
+                        (impl/conj-when (some-> ~'m :request (assoc :tag ::f/request)))
+                        (impl/conj-when (some-> ~'m :response (assoc :tag ::f/response))))))))
             (s2/schema
               {:id :fhir.xml.Bundle.entry/id
                :extension (s2/and
@@ -427,7 +408,10 @@
                :resource :fhir.xml.Bundle.entry/resource
                :search :fhir.xml.Bundle.entry/search
                :request :fhir.xml.Bundle.entry/request
-               :response :fhir.xml.Bundle.entry/response}))))
+               :response :fhir.xml.Bundle.entry/response})
+            (s2/conformer
+              (fn [~'m] (assoc ~'m :fhir/type :fhir.Bundle/entry))
+              identity))))
 
   (testing "JSON representation of Bundle.entry.resource"
     (given (group-by :key (impl/struct-def->spec-def (resource "Bundle")))
@@ -449,10 +433,10 @@
 
   (testing "XML representation of Coding"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Coding")))
-      [:fhir.xml/Coding 0 :spec-form 1 2 2]
+      [:fhir.xml/Coding 0 :spec-form 1 2 2 2]
       := `(xml-node/element*
             nil
-            (select-keys ~'m [:id])
+            (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
             (->
               []
               (impl/conj-all ::f/extension (:extension ~'m))
@@ -464,7 +448,8 @@
 
   (testing "XML representation of Measure unformer XML attributes"
     (given (group-by :key (impl/struct-def->spec-def (resource "Measure")))
-      [:fhir.xml/Measure 0 :spec-form 1 2 2 2] := `(assoc (select-keys ~'m []) :xmlns "http://hl7.org/fhir")))
+      [:fhir.xml/Measure 0 :spec-form 1 2 2 2 2] :=
+      `(assoc (blaze.fhir.spec.impl/select-non-nil-keys ~'m []) :xmlns "http://hl7.org/fhir")))
 
   (testing "XML representation of Measure.url"
     (given (group-by :key (impl/struct-def->spec-def (resource "Measure")))

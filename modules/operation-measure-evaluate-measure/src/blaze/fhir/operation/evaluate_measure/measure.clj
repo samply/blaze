@@ -9,6 +9,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.luid :refer [luid]]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom]
     [taoensso.timbre :as log])
@@ -98,8 +99,23 @@
                     id (* duration 1e3))))))))
 
 
+(defn- first-library-by-url [db url]
+  (coll/first (d/type-query db "Library" [["url" url]])))
+
+
+(defn- non-deleted-library-handle [db id]
+  (when-let [handle (d/resource-handle db "Library" id)]
+    (when-not (= (:op handle) :delete) handle)))
+
+
+(defn- find-library-handle [db library-ref]
+  (if-let [handle (first-library-by-url db library-ref)]
+    handle
+    (non-deleted-library-handle db (peek (str/split library-ref #"/")))))
+
+
 (defn- find-library [db library-ref]
-  (when-let [handle (coll/first (d/type-query db "Library" [["url" library-ref]]))]
+  (when-let [handle (find-library-handle db library-ref)]
     @(d/pull db handle)))
 
 
@@ -149,8 +165,7 @@
        (fn [subject-id]
          {:fhir/type :fhir.List/entry
           :item
-          {:fhir/type :fhir/Reference
-           :reference (str subject-type "/" subject-id)}})
+          (type/map->Reference {:reference (str subject-type "/" subject-id)})})
        result)}]])
 
 
@@ -171,8 +186,7 @@
          {:fhir/type fhir-type
           :count (count result)
           :subjectResults
-          {:fhir/type :fhir/Reference
-           :reference (str "List/" list-id)}}
+          (type/map->Reference {:reference (str "List/" list-id)})}
          code
          (assoc :code code))
        :tx-ops
@@ -208,8 +222,7 @@
 
 
 (defn- value-concept [value]
-  {:fhir/type :fhir/CodeableConcept
-   :text (str (if (nil? value) "null" value))})
+  (type/map->CodeableConcept {:text (str (if (nil? value) "null" value))}))
 
 
 (defn- stratum* [population value]
@@ -433,6 +446,11 @@
     groups))
 
 
+(defn- evaluate-groups-msg [id subject-type duration]
+  (format "Evaluated Measure with ID `%s` and subject type `%s` in %.0f ms."
+          id subject-type (* duration 1e3)))
+
+
 (defn- evaluate-groups [{:keys [subject-type] :as context} id groups]
   (log/debug (format "Start evaluating Measure with ID `%s`..." id))
   (let [timer (prom/timer evaluate-duration-seconds subject-type)]
@@ -440,15 +458,13 @@
       (evaluate-groups* context groups)
       (finally
         (let [duration (prom/observe-duration! timer)]
-          (log/debug
-            (format "Evaluated Measure with ID `%s` and subject type `%s` in %.0f ms."
-                    id subject-type (* duration 1e3))))))))
+          (log/debug (evaluate-groups-msg id subject-type duration)))))))
 
 
-(defn- canonical [router {:keys [id url version]}]
+(defn- canonical [base-url router {:keys [id url version]}]
   (if-let [url (type/value url)]
     (cond-> url version (str "|" version))
-    (fhir-util/instance-url router "Measure" id)))
+    (fhir-util/instance-url base-url router "Measure" id)))
 
 
 (defn- get-code [codings system]
@@ -473,10 +489,9 @@
      :measure (type/->Canonical measure-ref)
      :date now
      :period
-     ;; TODO: find a way to transform directly without using strings
-     {:fhir/type :fhir/Period
-      :start (type/->DateTime (str start))
-      :end (type/->DateTime (str end))}}
+     (type/map->Period
+       {:start (type/->DateTime (str start))
+        :end (type/->DateTime (str end))})}
 
     (seq (:result result))
     (assoc :group (:result result))))
@@ -487,15 +502,17 @@
 
   Returns an already completed MeasureReport which isn't persisted or an anomaly
   in case of errors."
-  {:arglists '([now db router measure params])}
-  [now db router {:keys [id] groups :group :as measure}
+  {:arglists '([now db base-url router measure params])}
+  [now db base-url router {:keys [id] groups :group :as measure}
    {:keys [report-type] [start end] :period}]
   (when-ok [library (compile-primary-library db measure)]
     (let [context {:db db :now now :library library
                    :subject-type (subject-type measure)
                    :report-type report-type}]
       (when-ok [result (evaluate-groups context id groups)]
-        {:resource
-         (measure-report report-type (canonical router measure) now
-                         start end result)
-         :tx-ops (:tx-ops result)}))))
+        (cond->
+          {:resource
+           (measure-report report-type (canonical base-url router measure) now
+                           start end result)}
+          (seq (:tx-ops result))
+          (assoc :tx-ops (:tx-ops result)))))))

@@ -4,10 +4,8 @@
     [blaze.handler.fhir.util-spec]
     [blaze.interaction.history.type :as type]
     [blaze.middleware.fhir.metrics-spec]
-    [clojure.spec.alpha :as s]
-    [ring.core.spec]))
+    [clojure.spec.alpha :as s]))
 
 
 (s/fdef type/handler
-  :args (s/cat :node :blaze.db/node)
-  :ret :ring/handler)
+  :args (s/cat :node :blaze.db/node))

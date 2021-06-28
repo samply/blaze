@@ -48,6 +48,10 @@
 
   (-total-num-of-system-changes [db since])
 
+  (-include [db resource-handle code] [db resource-handle code target-type])
+
+  (-rev-include [db resource-handle source-type code])
+
   (-new-batch-db [db]))
 
 
@@ -81,13 +85,13 @@
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matches? [search-param context resource-handle modifier compiled-values])
   (-compartment-ids [_ resolver resource])
-  ;; TODO: remove if not needed anymore for the data search param
-  (-index-entries [_ resolver hash resource linked-compartments])
   (-index-values [_ resolver resource])
-  (-compile-index-values [_ values]))
+  (-index-value-compiler [_]))
 
 
 (defprotocol Pull
   (-pull [pull resource-handle])
 
-  (-pull-content [pull resource-handle]))
+  (-pull-content [pull resource-handle])
+
+  (-pull-many [pull resource-handles]))

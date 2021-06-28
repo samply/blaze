@@ -2,28 +2,30 @@
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
+    [blaze.byte-string :as bs]
     [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.cassandra.config :as c]
+    [blaze.db.resource-store.cassandra.log :as l]
     [blaze.db.resource-store.cassandra.spec]
+    [blaze.db.resource-store.cassandra.statement :as statement]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.module :refer [reg-collector]]
-    [cheshire.core :as cheshire]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
+    [clojure.lang ExceptionInfo]
     [com.datastax.oss.driver.api.core
-     ConsistencyLevel CqlSession DefaultConsistencyLevel]
+     CqlSession DriverTimeoutException RequestThrottlingException]
+    [com.datastax.oss.driver.api.core.config DriverConfigLoader]
     [com.datastax.oss.driver.api.core.cql
-     AsyncResultSet PreparedStatement Row SimpleStatement Statement]
+     AsyncResultSet PreparedStatement Row Statement]
+    [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException]
     [java.io Closeable]
-    [java.net InetSocketAddress]
     [java.nio ByteBuffer]
-    [java.util.concurrent TimeUnit]
-    [com.datastax.oss.driver.api.core.config
-     DriverConfigLoader OptionsMap TypedDriverOption]))
+    [java.util.concurrent TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -47,7 +49,7 @@
 
 
 (defn- retryable? [{::anom/keys [category]}]
-  (= ::anom/not-found category))
+  (#{::anom/not-found ::anom/busy} category))
 
 
 (defn- retry* [future-fn max-retries num-retry]
@@ -58,7 +60,7 @@
             (retryable? (ex-data (ex-cause e)))
             (if (= num-retry max-retries)
               (ac/failed-future e)
-              (let [delay (long (* (Math/pow 2.0 num-retry) 20))]
+              (let [delay (long (* (Math/pow 2.0 num-retry) 100))]
                 (log/warn (format "Wait %d ms before retrying an action." delay))
                 (-> (ac/future)
                     (ac/complete-on-timeout!
@@ -81,7 +83,7 @@
 
 
 (defn- bind-get [^PreparedStatement statement hash]
-  (.bind statement (object-array [(str hash)])))
+  (.bind statement (object-array [(bs/hex hash)])))
 
 
 (defn- execute [^CqlSession session op ^Statement statement]
@@ -96,34 +98,57 @@
 
 
 (defn- parse-anom [hash e]
-  (ex-anom #::anom{:category ::anom/fault :message (parse-msg hash e)}))
+  (ex-anom
+    #::anom{:category ::anom/fault
+            :message (parse-msg hash e)
+            :blaze.resource/hash hash}))
 
 
-(defn- parse-cbor [bytes hash]
+(defn- conform-cbor [bytes hash]
   (try
-    (cheshire/parse-cbor bytes keyword)
+    (fhir-spec/conform-cbor (fhir-spec/parse-cbor bytes))
     (catch Exception e
       (throw (parse-anom hash e)))))
 
 
 (defn- read-content [^AsyncResultSet rs hash]
   (if-let [^Row row (.one rs)]
-    (fhir-spec/conform-cbor (parse-cbor (.array (.getByteBuffer row 0)) hash))
+    (conform-cbor (.array (.getByteBuffer row 0)) hash)
     (throw (ex-anom {::anom/category ::anom/not-found}))))
+
+
+(defn- map-execute-get-error [hash e]
+  (condp identical? (class e)
+    DriverTimeoutException
+    (ex-anom
+      #::anom{:category ::anom/busy
+              :message (str "Cassandra " (ex-message e))
+              :blaze.resource/hash hash})
+    RequestThrottlingException
+    (ex-anom
+      #::anom{:category ::anom/busy
+              :message (str "Cassandra " (ex-message e))
+              :blaze.resource/hash hash})
+    ExceptionInfo
+    e
+    (ex-anom
+      #::anom{:category ::anom/fault
+              :message (ex-message e)
+              :blaze.resource/hash hash})))
 
 
 (defn- execute-get* [session statement hash]
   (-> (execute session "get" (bind-get statement hash))
-      (ac/then-apply-async #(read-content % hash))))
+      (ac/then-apply-async #(read-content % hash))
+      (ac/exceptionally
+        #(throw (map-execute-get-error hash (ex-cause %))))))
 
 
 (defn- execute-get [session statement hash]
   (-> (retry #(execute-get* session statement hash) 5)
       (ac/exceptionally
-        (fn [e]
-          (if (= ::anom/not-found (::anom/category (ex-data (ex-cause e))))
-            nil
-            (throw e))))))
+        #(when-not (= ::anom/not-found (::anom/category (ex-data (ex-cause %))))
+           (throw %)))))
 
 
 (defn- execute-multi-get [session get-statement hashes]
@@ -131,13 +156,39 @@
 
 
 (defn- bind-put [^PreparedStatement statement hash resource]
-  (let [content (ByteBuffer/wrap (cheshire/generate-cbor (fhir-spec/unform-cbor resource)))]
+  (let [content (ByteBuffer/wrap (fhir-spec/unform-cbor resource))]
     (prom/observe! resource-bytes (.capacity content))
-    (.bind statement (object-array [(str hash) content]))))
+    (.bind statement (object-array [(bs/hex hash) content]))))
+
+
+(defn- map-execute-put-error [hash {:fhir/keys [type] :keys [id]} e]
+  (condp identical? (class e)
+    DriverTimeoutException
+    (ex-anom
+      #::anom{:category ::anom/busy
+              :message (str "Cassandra " (ex-message e))
+              :blaze.resource/hash hash
+              :fhir/type type
+              :blaze.resource/id id})
+    WriteTimeoutException
+    (ex-anom
+      #::anom{:category ::anom/busy
+              :message (ex-message e)
+              :blaze.resource/hash hash
+              :fhir/type type
+              :blaze.resource/id id})
+    (ex-anom
+      #::anom{:category ::anom/fault
+              :message (ex-message e)
+              :blaze.resource/hash hash
+              :fhir/type type
+              :blaze.resource/id id})))
 
 
 (defn- execute-put [session statement [hash resource]]
-  (execute session "put" (bind-put statement hash resource)))
+  (-> (execute session "put" (bind-put statement hash resource))
+      (ac/exceptionally
+        #(throw (map-execute-put-error hash resource (ex-cause %))))))
 
 
 (defn- execute-multi-put [session statement entries]
@@ -178,88 +229,46 @@
     (.close ^CqlSession session)))
 
 
-(defn- build-contact-points [contact-points]
-  (map
-    #(let [[hostname port] (str/split % #":" 2)]
-       (InetSocketAddress. ^String hostname (Integer/parseInt port)))
-    (str/split contact-points #",")))
-
-
-(def ^:private ^SimpleStatement get-statement
-  "The get statement retrieves the content according to the `hash`.
-
-  The consistency level is set to ONE because reads are retried if nothing was
-  found. Because rows are never updated, strong consistency isn't needed."
-  (-> (SimpleStatement/builder "select content from resources where hash = ?")
-      (.setConsistencyLevel ConsistencyLevel/ONE)
-      (.build)))
-
-
 (defn- prepare-get-statement [^CqlSession session]
-  (.prepare session get-statement))
-
-
-(defn- put-statement
-  "The put statement upserts the `hash` and `content` of a resource into the
-  `resources` table.
-
-  The consistency level can be set to ONE or TWO depending on durability
-  requirements. Strong consistency of QUORUM isn't needed, because rows are
-  never updated. Reads will retry until they see a hash."
-  ^SimpleStatement
-  [consistency-level]
-  (-> (SimpleStatement/builder "insert into resources (hash, content) values (?, ?)")
-      (.setConsistencyLevel consistency-level)
-      (.build)))
+  (.prepare session statement/get-statement))
 
 
 (defn- prepare-put-statement [^CqlSession session consistency-level]
-  (.prepare session (put-statement consistency-level)))
+  (.prepare session (statement/put-statement consistency-level)))
 
 
-(defn new-cassandra-resource-store
-  [contact-points key-space put-consistency-level
-   max-concurrent-requests max-request-queue-size]
-  (let [options (doto (OptionsMap/driverDefaults)
-                  (.put TypedDriverOption/REQUEST_THROTTLER_CLASS "ConcurrencyLimitingRequestThrottler")
-                  (.put TypedDriverOption/REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS (int max-concurrent-requests))
-                  (.put TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE (int max-request-queue-size)))
-        session (-> (CqlSession/builder)
-                    (.withConfigLoader (DriverConfigLoader/fromMap options))
-                    (.addContactPoints (build-contact-points contact-points))
-                    (.withLocalDatacenter "datacenter1")
-                    (.withKeyspace ^String key-space)
-                    (.build))]
+(defmethod ig/pre-init-spec ::rs/cassandra [_]
+  (s/keys :opt-un [::contact-points ::key-space
+                   ::username ::password
+                   ::put-consistency-level
+                   ::max-concurrent-read-requests
+                   ::max-read-request-queue-size
+                   ::request-timeout]))
+
+
+(defn- session
+  [{:keys [contact-points username password key-space]
+    :or {contact-points "localhost:9042" key-space "blaze"
+         username "cassandra" password "cassandra"}}
+   options]
+  (-> (CqlSession/builder)
+      (.withConfigLoader (DriverConfigLoader/fromMap options))
+      (.addContactPoints (c/build-contact-points contact-points))
+      (.withAuthCredentials username password)
+      (.withLocalDatacenter "datacenter1")
+      (.withKeyspace ^String key-space)
+      (.build)))
+
+
+(defmethod ig/init-key ::rs/cassandra
+  [_ {:keys [put-consistency-level] :or {put-consistency-level "TWO"} :as config}]
+  (log/info (l/init-msg config))
+  (let [options (c/options config)
+        session (session config options)]
     (->CassandraResourceStore
       session
       (prepare-get-statement session)
       (prepare-put-statement session put-consistency-level))))
-
-
-(defmethod ig/pre-init-spec ::rs/cassandra [_]
-  (s/keys :req-un [::contact-points ::key-space]
-          :opt-un [::put-consistency-level
-                   ::max-concurrent-requests
-                   ::max-request-queue-size]))
-
-
-(defn- init-msg [contact-points put-consistency-level]
-  (format "Open cassandra backed resource store with a put consistency level of %s and the following contact points: %s"
-          put-consistency-level contact-points))
-
-
-(defmethod ig/init-key ::rs/cassandra
-  [_ {:keys [contact-points key-space put-consistency-level
-             max-concurrent-read-requests max-read-request-queue-size]
-      :or {put-consistency-level "TWO"
-           max-concurrent-read-requests 1024
-           max-read-request-queue-size 100000}}]
-  (log/info (init-msg contact-points put-consistency-level))
-  (new-cassandra-resource-store
-    contact-points key-space
-    (DefaultConsistencyLevel/valueOf put-consistency-level)
-    max-concurrent-read-requests
-    max-read-request-queue-size))
 
 
 (defmethod ig/halt-key! ::rs/cassandra

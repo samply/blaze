@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please refer to the [Conformance](docs/conformance.md) section and report any issues you encounter during evaluation.
 
-Latest release: [v0.10.3][5]
+Latest release: [v0.11.0][5]
 
 ## Quick Start
 
@@ -22,9 +22,9 @@ In order to run Blaze just execute the following:
 
 ### Docker
 
-```bash
+```sh
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.10.3
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11.0
 ```
 
 Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
@@ -37,12 +37,16 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 
 ## Documentation
 
+* [Deployment](docs/deployment/README.md)
+* [FHIR RESTful API](docs/api.md)
 * [Importing Data](docs/importing-data.md)
 * [Conformance](docs/conformance.md)
 * [Performance](docs/performance.md)
 * [Tuning Guide](docs/tuning-guide.md)
 * [Tooling](docs/tooling.md)
 * [CQL Queries](docs/cql-queries.md)
+* [Authentication](docs/authentication.md)
+* [Architecture](docs/architecture.md)
 * [Implementation](docs/implementation/README.md)
 
 ## YourKit Profiler
@@ -53,7 +57,7 @@ The developers of Blaze uses the YourKit profiler to optimize performance. YourK
 
 ## License
 
-Copyright 2020 The Samply Community
+Copyright 2019 - 2021 The Samply Community
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
@@ -63,7 +67,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.10.3>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.11.0>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>

@@ -13,8 +13,8 @@
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.util :as search-util]
+    [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -48,7 +48,7 @@
 (defn- entries-and-clauses
   "Returns a CompletableFuture that will complete with a vector of all entries
   of the current page plus one entry of the next page."
-  [{:keys [router] {:keys [page-size]} :params :as context} db]
+  [{:keys [base-url router] {:keys [page-size]} :params :as context} db]
   (let [{:keys [handles clauses] :as handles-and-clauses}
         (handles-and-clauses context db)]
     (if (::anom/category handles-and-clauses)
@@ -56,7 +56,7 @@
       (-> (d/pull-many db (into [] (take (inc page-size)) handles))
           (ac/then-apply
             (fn [resources]
-              {:entries (mapv #(search-util/entry router %) resources)
+              {:entries (mapv #(search-util/entry base-url router %) resources)
                :clauses clauses}))))))
 
 
@@ -65,10 +65,11 @@
     {"__page-type" (name type) "__page-id" id}))
 
 
-(defn- self-link [{:keys [match params]} clauses t entries]
+(defn- self-link [{:keys [base-url match params]} clauses t entries]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url match params clauses t (self-link-offset entries)))})
+   :url (type/->Uri (nav/url base-url match params clauses t
+                             (self-link-offset entries)))})
 
 
 (defn- next-link-offset [entries]
@@ -76,10 +77,11 @@
     {"__page-type" (name type) "__page-id" id}))
 
 
-(defn- next-link [{:keys [match params]} clauses t entries]
+(defn- next-link [{:keys [base-url match params]} clauses t entries]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (type/->Uri (nav/url match params clauses t (next-link-offset entries)))})
+   :url (type/->Uri (nav/url base-url match params clauses t
+                             (next-link-offset entries)))})
 
 
 (defn- total
@@ -107,9 +109,11 @@
                   total (total db params entries)]
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (random-uuid)
+                 :id (luid/luid)
                  :type #fhir/code"searchset"
-                 :entry (take page-size entries)
+                 :entry (if (< page-size (count entries))
+                          (pop entries)
+                          entries)
                  :link [(self-link context clauses t entries)]}
 
                 total
@@ -146,7 +150,7 @@
       (ac/failed-future (ex-anom summary-total))
       (ac/completed-future
         {:fhir/type :fhir/Bundle
-         :id (random-uuid)
+         :id (luid/luid)
          :type #fhir/code"searchset"
          :total (type/->UnsignedInt total)
          :link [(self-link context clauses t [])]}))))
@@ -158,20 +162,23 @@
     (search-normal context db)))
 
 
-(defn- context [router match type headers params]
-  (when-ok [params (params/decode params)]
-    {:router router
-     :match match
-     :type type
-     :preference/handling (handler-util/preference headers "handling")
-     :params params}))
+(defn- context [base-url router match type headers params]
+  (let [handling (handler-util/preference headers "handling")]
+    (when-ok [params (params/decode handling params)]
+      {:base-url base-url
+       :router router
+       :match match
+       :type type
+       :preference/handling handling
+       :params params})))
 
 
 (defn- handler-intern [node]
   (fn [{{{:fhir.resource/keys [type]} :data :as match} ::reitit/match
         :keys [headers params]
+        :blaze/keys [base-url]
         ::reitit/keys [router]}]
-    (let [context (context router match type headers params)]
+    (let [context (context base-url router match type headers params)]
       (if (::anom/category context)
         (ac/completed-future (handler-util/error-response context))
         (-> (handler-util/db node (fhir-util/t params))

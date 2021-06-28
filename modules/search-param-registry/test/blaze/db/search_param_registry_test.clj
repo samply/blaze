@@ -5,15 +5,19 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry-spec]
     [blaze.fhir-path :as fhir-path]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
+    [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
 
-(defn fixture [f]
+(st/instrument)
+(log/set-level! :trace)
+
+
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -40,7 +44,7 @@
 
 
 (def search-param-registry
-  (log/with-merged-config {:level :info} (sr/init-search-param-registry)))
+  (log/with-level :info (sr/init-search-param-registry)))
 
 
 (deftest get-test
@@ -51,11 +55,41 @@
 
 
 (deftest linked-compartments-test
-  (is (= [["Patient" "id-1"]]
-         (sr/linked-compartments
-           search-param-registry
-           {:fhir/type :fhir/Condition
-            :id "id-0"
-            :subject
-            {:fhir/type :fhir/Reference
-             :reference "Patient/id-1"}}))))
+  (testing "Condition subject"
+    (given (sr/linked-compartments
+             search-param-registry
+             {:fhir/type :fhir/Condition :id "id-0"
+              :subject #fhir/Reference{:reference "Patient/id-1"}})
+      count := 1
+      [0] := ["Patient" "id-1"]))
+
+  (testing "MedicationAdministration subject"
+    (given (sr/linked-compartments
+             search-param-registry
+             {:fhir/type :fhir/MedicationAdministration :id "id-0"
+              :subject #fhir/Reference{:reference "Patient/id-1"}})
+      count := 1
+      [0] := ["Patient" "id-1"]))
+
+  (testing "MedicationAdministration subject and performer"
+    (given (sr/linked-compartments
+             search-param-registry
+             {:fhir/type :fhir/MedicationAdministration :id "id-0"
+              :subject #fhir/Reference{:reference "Patient/id-1"}
+              :performer
+              [{:fhir/type :fhir.MedicationAdministration/performer
+                :actor #fhir/Reference{:reference "Patient/id-2"}}]})
+      count := 2
+      [0] := ["Patient" "id-2"]
+      [1] := ["Patient" "id-1"]))
+
+  (testing "MedicationAdministration identical subject and performer"
+    (given (sr/linked-compartments
+             search-param-registry
+             {:fhir/type :fhir/MedicationAdministration :id "id-0"
+              :subject #fhir/Reference{:reference "Patient/id-1"}
+              :performer
+              [{:fhir/type :fhir.MedicationAdministration/performer
+                :actor #fhir/Reference{:reference "Patient/id-1"}}]})
+      count := 1
+      [0] := ["Patient" "id-1"])))

@@ -1,0 +1,28 @@
+{:deps
+ {blaze/module-base
+  {:local/root "../module-base"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.861"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

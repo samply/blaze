@@ -1,29 +1,32 @@
 (ns blaze.db.tx-log.kafka
   (:require
+    [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.tx-log :as tx-log]
+    [blaze.db.tx-log.kafka.config :as c]
+    [blaze.db.tx-log.kafka.log :as l]
     [blaze.db.tx-log.kafka.spec]
     [blaze.db.tx-log.spec]
     [blaze.module :refer [reg-collector]]
-    [cheshire.core :as cheshire]
-    [cheshire.generate :refer [JSONable]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
+    [jsonista.core :as j]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
     [java.time Duration Instant]
     [java.util Map]
-    [com.fasterxml.jackson.core JsonGenerator]
-    [com.google.common.hash HashCode$BytesHashCode]
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [org.apache.kafka.clients.consumer Consumer KafkaConsumer ConsumerRecord]
     [org.apache.kafka.clients.producer Producer KafkaProducer ProducerRecord RecordMetadata Callback]
     [org.apache.kafka.common TopicPartition]
-    [org.apache.kafka.common.serialization Serializer Deserializer]
-    [org.apache.kafka.common.record TimestampType]))
+    [org.apache.kafka.common.errors RecordTooLargeException]
+    [org.apache.kafka.common.record TimestampType]
+    [org.apache.kafka.common.serialization Serializer Deserializer]))
 
 
 (set! *warn-on-reflection* true)
@@ -38,40 +41,29 @@
   "op")
 
 
-(extend-protocol JSONable
-  HashCode$BytesHashCode
-  (to-json [hash-code jg]
-    (.writeBinary ^JsonGenerator jg (.asBytes hash-code))))
+(def ^:private cbor-object-mapper
+  (j/object-mapper
+    {:factory (CBORFactory.)
+     :decode-key-fn true
+     :modules [bs/object-mapper-module]}))
 
 
 (deftype CborSerializer []
   Serializer
   (serialize [_ _ data]
-    (cheshire/generate-cbor data)))
+    (j/write-value-as-bytes data cbor-object-mapper)))
 
 
 (def ^Serializer serializer (CborSerializer.))
 
 
-(defn- default-producer-config [max-request-size]
-  {"enable.idempotence" "true"
-   "acks" "all"
-   "compression.type" "snappy"
-   "delivery.timeout.ms" "60000"
-   "max.request.size" (str max-request-size)})
-
-
-(defn- producer-config ^Map [bootstrap-servers max-request-size]
-  (assoc (default-producer-config max-request-size) "bootstrap.servers" bootstrap-servers))
-
-
-(defn create-producer [bootstrap-servers max-request-size]
-  (KafkaProducer. (producer-config bootstrap-servers max-request-size) serializer serializer))
+(defn create-producer [config]
+  (KafkaProducer. ^Map (c/producer-config config) serializer serializer))
 
 
 (defn- parse-cbor [data]
   (try
-    (cheshire/parse-cbor data keyword)
+    (j/read-value data cbor-object-mapper)
     (catch Exception e
       (log/warn (format "Error while parsing tx-data: %s" (ex-message e))))))
 
@@ -90,22 +82,12 @@
 (def ^Deserializer deserializer (CborDeserializer.))
 
 
-(def ^:private default-consumer-config
-  {"enable.auto.commit" "false"
-   "isolation.level" "read_committed"
-   "auto.offset.reset" "earliest"})
-
-
-(defn- consumer-config ^Map [bootstrap-servers]
-  (assoc default-consumer-config "bootstrap.servers" bootstrap-servers))
-
-
 (def ^:private ^TopicPartition tx-partition
   (TopicPartition. "tx" 0))
 
 
-(defn create-consumer [bootstrap-servers]
-  (doto (KafkaConsumer. (consumer-config bootstrap-servers)
+(defn create-consumer [config]
+  (doto (KafkaConsumer. ^Map (c/consumer-config config)
                         deserializer deserializer)
     (.assign [tx-partition])))
 
@@ -119,7 +101,23 @@
   (inc (.offset ^RecordMetadata metadata)))
 
 
-(deftype KafkaTxLog [bootstrap-servers ^Producer producer]
+(defn record-too-large-msg [max-request-size num-of-tx-cmds msg]
+  (format "A transaction with %d commands generated a Kafka message which is larger than the configured maximum of %d bytes. In order to prevent this error, increase the maximum message size by setting DB_KAFKA_MAX_REQUEST_SIZE to a higher number. %s"
+          num-of-tx-cmds max-request-size msg))
+
+
+(defn- producer-error
+  [e {:keys [max-request-size]} num-of-tx-cmds]
+  (condp identical? (class e)
+    RecordTooLargeException
+    (ex-anom
+      #::anom{:category ::anom/unsupported
+              :message (record-too-large-msg max-request-size num-of-tx-cmds
+                                             (ex-message e))})
+    (ex-anom #::anom{:category ::anom/fault :message (ex-message e)})))
+
+
+(deftype KafkaTxLog [config ^Producer producer]
   tx-log/TxLog
   (-submit [_ tx-cmds]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
@@ -130,13 +128,13 @@
                (onCompletion [_ metadata e]
                  (prom/observe-duration! timer)
                  (if e
-                   (ac/complete-exceptionally! future e)
+                   (ac/complete-exceptionally! future (producer-error e config (count tx-cmds)))
                    (ac/complete! future (metadata->t metadata))))))
       future))
 
   (-new-queue [_ offset]
     (log/trace "new-queue offset =" offset)
-    (let [consumer (create-consumer bootstrap-servers)]
+    (let [consumer (create-consumer config)]
       (.seek ^Consumer consumer tx-partition ^long (dec offset))
       consumer))
 
@@ -184,22 +182,22 @@
     (into [] record-transformer (.poll consumer ^Duration timeout))))
 
 
-(defn new-kafka-tx-log
-  "Creates a new local database node."
-  [bootstrap-servers max-request-size]
-  (->KafkaTxLog bootstrap-servers (create-producer bootstrap-servers max-request-size)))
-
-
 (defmethod ig/pre-init-spec :blaze.db.tx-log/kafka [_]
-  (s/keys :req-un [:blaze.db.tx-log.kafka/bootstrap-servers]
-          :opt-un [::max-request-size]))
+  (s/keys :req-un [::bootstrap-servers]
+          :opt-un [::max-request-size
+                   ::compression-type
+                   ::security-protocol
+                   ::truststore-location
+                   ::truststore-password
+                   ::keystore-location
+                   ::keystore-password
+                   ::key-password]))
 
 
 (defmethod ig/init-key :blaze.db.tx-log/kafka
-  [_ {:keys [bootstrap-servers max-request-size]
-      :or {max-request-size 1048576}}]
-  (log/info "Open Kafka transaction log with bootstrap servers:" bootstrap-servers)
-  (new-kafka-tx-log bootstrap-servers max-request-size))
+  [_ config]
+  (log/info (l/init-msg config))
+  (->KafkaTxLog config (create-producer config)))
 
 
 (defmethod ig/halt-key! :blaze.db.tx-log/kafka

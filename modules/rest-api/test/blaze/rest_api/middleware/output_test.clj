@@ -8,15 +8,17 @@
     [clojure.test :as test :refer [are deftest testing]]
     [juxt.iota :refer [given]]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.nio.charset StandardCharsets]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -35,43 +37,57 @@
         (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
 
+(defn- bytes->str [^bytes bs]
+  (String. bs StandardCharsets/UTF_8))
+
+
 (deftest json-test
   (testing "possible accept headers"
     (are [content-type]
       (given @(resource-handler {:headers {"accept" content-type}})
-        :body := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
+        [:body bytes->str] := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
       "application/fhir+json"
       "application/json"
       "text/json"))
 
   (testing "_format overrides"
-    (are [format]
+    (are [accept format]
       (given @(resource-handler
-                {:headers {"accept" "application/fhir+xml"}
+                {:headers {"accept" accept}
                  :query-params {"_format" format}})
-        :body := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
-      "application/json+xml"
-      "application/json"
-      "text/json"
-      "json")))
+        [:body bytes->str] := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
+      "application/fhir+xml" "application/json+xml"
+      "application/fhir+xml" "application/json"
+      "application/fhir+xml" "text/json"
+      "application/fhir+xml" "json"
+      "*/*" "application/json+xml"
+      "*/*" "application/json"
+      "*/*" "text/json"
+      "*/*" "json")))
 
 
 (deftest xml-test
   (testing "possible accept headers"
     (are [content-type]
       (given @(resource-handler {:headers {"accept" content-type}})
-        :body := "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient>")
+        [:body bytes->str] :=
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient>")
       "application/fhir+xml"
       "application/xml"
       "text/xml"))
 
   (testing "_format overrides"
-    (are [format]
+    (are [accept format]
       (given @(resource-handler
-                {:headers {"accept" "application/fhir+json"}
+                {:headers {"accept" accept}
                  :query-params {"_format" format}})
-        :body := "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient>")
-      "application/fhir+xml"
-      "application/xml"
-      "text/xml"
-      "xml")))
+        [:body bytes->str] :=
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient>")
+      "application/fhir+json" "application/fhir+xml"
+      "application/fhir+json" "application/xml"
+      "application/fhir+json" "text/xml"
+      "application/fhir+json" "xml"
+      "*/*" "application/fhir+xml"
+      "*/*" "application/xml"
+      "*/*" "text/xml"
+      "*/*" "xml")))

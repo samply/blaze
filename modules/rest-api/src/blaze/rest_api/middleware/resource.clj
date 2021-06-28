@@ -5,8 +5,6 @@
     [blaze.async.comp :as ac]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.util :as handler-util]
-    [cheshire.core :as json]
-    [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
@@ -31,18 +29,15 @@
 
 
 (defn- parse-json
-  "Takes a request `body` and returns the parsed JSON content with keyword keys
-  and BigDecimal numbers.
+  "Takes a request `body` and returns the parsed JSON content.
 
   Throws an anomaly on parse errors."
   [body]
-  (with-open [_ (prom/timer parse-duration-seconds "json")
-              reader (io/reader body)]
-    (binding [*use-bigdecimals?* true]
-      (try
-        (json/parse-stream reader keyword)
-        (catch Exception e
-          (throw-anom ::anom/incorrect (ex-message e)))))))
+  (with-open [_ (prom/timer parse-duration-seconds "json")]
+    (try
+      (fhir-spec/parse-json body)
+      (catch Exception e
+        (throw-anom ::anom/incorrect (ex-message e))))))
 
 
 (defn- conform-json [json]

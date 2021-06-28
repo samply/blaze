@@ -12,13 +12,10 @@
     [juxt.iota :refer [given]]))
 
 
-(set! *warn-on-reflection* true)
-
-
 (st/instrument)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))

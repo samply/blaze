@@ -9,21 +9,18 @@
   {:local/root "../fhir-structure"}
 
   org.apache.httpcomponents/httpcore
-  {:mvn/version "4.4.12"}
+  {:mvn/version "4.4.14"}
 
   metosin/reitit-ring
-  {:mvn/version "0.5.10"}
+  {:mvn/version "0.5.13"}
 
   ring/ring-core
-  {:mvn/version "1.8.0"
+  {:mvn/version "1.9.3"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
     crypto-equality/crypto-equality
-    crypto-random/crypto-random]}
-
-  ring/ring-spec
-  {:mvn/version "0.0.4"}}
+    crypto-random/crypto-random]}}
 
  :aliases
  {:test
@@ -34,13 +31,10 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
+    {:mvn/version "1.0.861"}
 
     org.clojars.akiel/iota
-    {:mvn/version "0.1"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "0.1"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -55,13 +49,7 @@
     {:mvn/version "1.2.2-SNAPSHOT"}
 
     org.clojars.akiel/iota
-    {:mvn/version "0.1"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}
-
-    ring/ring-spec
-    {:mvn/version "0.0.4"}}
+    {:mvn/version "0.1"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".+spec"]}}}

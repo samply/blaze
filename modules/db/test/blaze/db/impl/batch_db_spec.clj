@@ -10,4 +10,4 @@
 
 
 (s/fdef batch-db/new-batch-db
-  :args (s/cat :node :blaze.db/node :t :blaze.db/t))
+  :args (s/cat :node :blaze.db/node :basis-t :blaze.db/t :t :blaze.db/t))

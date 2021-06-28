@@ -38,7 +38,7 @@
                :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
-               :compiled-values (s/coll-of some? :min-count 1)
+               :values (s/coll-of some? :min-count 1)
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
@@ -69,8 +69,8 @@
 
 (s/fdef search-param/index-entries
   :args (s/cat :search-param :blaze.db/search-param
+               :linked-compartments (s/coll-of (s/tuple string? string?))
                :hash :blaze.resource/hash
-               :resource :blaze/resource
-               :linked-compartments (s/coll-of (s/tuple string? string?)))
-  :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry-w-cf)
+               :resource :blaze/resource)
+  :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry-w-cf :kind sequential?)
              :anomaly ::anom/anomaly))

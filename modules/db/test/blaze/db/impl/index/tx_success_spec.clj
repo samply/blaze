@@ -8,8 +8,8 @@
 
 
 (s/fdef tsi/tx
-  :args (s/cat :kv-store :blaze.db/kv-store :t :blaze.db/t)
-  :ret :blaze.db/tx)
+  :args (s/cat :tx-cache :blaze.db/tx-cache :t :blaze.db/t)
+  :ret (s/nilable :blaze.db/tx))
 
 
 (s/fdef tsi/last-t

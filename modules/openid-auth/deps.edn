@@ -1,29 +1,32 @@
 {:deps
- {blaze/module-base
+ {blaze/http-client
+  {:local/root "../http-client"}
+
+  blaze/module-base
   {:local/root "../module-base"}
 
+  blaze/scheduler
+  {:local/root "../scheduler"}
+
   buddy/buddy-auth
-  {:mvn/version "2.2.0"}
+  {:mvn/version "3.0.1"}
 
   buddy/buddy-sign
-  {:mvn/version "3.2.0"}
-
-  cheshire/cheshire
-  {:mvn/version "5.10.0"}
-
-  funcool/cuerdas
-  {:mvn/version "2.2.1"}}
+  {:mvn/version "3.4.1"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
+   {com.pgs-soft/HttpClientMock
+    {:mvn/version "1.0.0"}
 
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    lambdaisland/kaocha
+    {:mvn/version "1.0.861"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -31,10 +34,13 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {org.clojars.akiel/cloverage
+   {com.pgs-soft/HttpClientMock
+    {:mvn/version "1.0.0"}
+
+    org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}
 
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

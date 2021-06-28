@@ -4,7 +4,7 @@ In this section, the representation of FHIR data is discussed. In Blaze there ar
 
 ## External Serialization at the REST API
 
-Blaze supports JSON and XML serialization with JSON as default. Blaze uses [Cheshire][1] to parse and generate JSON and [Clojure data.xml][2] to parse and generate XML. 
+Blaze supports JSON and XML serialization with JSON as default. Blaze uses [jsonista][1] to parse and generate JSON and [Clojure data.xml][2] to parse and generate XML. 
 
 ### JSON
 
@@ -138,7 +138,7 @@ At the document store, FHIR resources are serialized in the CBOR format. CBOR st
 
 **TODO: continue...**
 
-[1]: <https://github.com/dakrone/cheshire>
+[1]: <https://github.com/metosin/jsonista>
 [2]: <https://github.com/clojure/data.xml>
 [3]: <https://clojure.org/reference/data_structures>
 [4]: <https://clojure.org/reference/protocols>

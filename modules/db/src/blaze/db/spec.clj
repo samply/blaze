@@ -6,19 +6,23 @@
     [blaze.db.tx-log.spec]
     [clojure.spec.alpha :as s])
   (:import
-    [com.github.benmanes.caffeine.cache Cache]))
+    [com.github.benmanes.caffeine.cache Cache LoadingCache]))
 
 
 (s/def :blaze.db/node
   #(satisfies? p/Node %))
 
 
-(s/def :blaze.db/resource-cache
-  :blaze.db/resource-store)
-
-
 (s/def :blaze.db/resource-handle-cache
   #(instance? Cache %))
+
+
+(s/def :blaze.db/tx-cache
+  #(instance? LoadingCache %))
+
+
+(s/def :blaze.db/resource-cache
+  :blaze.db/resource-store)
 
 
 (s/def :blaze.db/op
@@ -58,7 +62,9 @@
 
 (defmethod tx-op :create
   [_]
-  (s/cat :op #{:create} :resource :blaze/resource))
+  (s/cat :op #{:create}
+         :resource :blaze/resource
+         :if-none-exist (s/? (s/coll-of :blaze.db.query/clause :min-count 1))))
 
 
 (defmethod tx-op :put

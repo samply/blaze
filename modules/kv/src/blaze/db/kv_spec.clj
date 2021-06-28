@@ -96,9 +96,14 @@
 
 
 (s/fdef kv/put!
-  :args (s/alt
-          :entries (s/cat :kv-store :blaze.db/kv-store :entries (s/coll-of :blaze.db.kv/put-entry))
-          :kv (s/cat :kv-store :blaze.db/kv-store :key bytes? :value bytes?)))
+  :args
+  (s/alt
+    :entries
+    (s/cat
+      :kv-store :blaze.db/kv-store
+      :entries (s/coll-of :blaze.db.kv/put-entry :kind sequential?))
+    :kv
+    (s/cat :kv-store :blaze.db/kv-store :key bytes? :value bytes?)))
 
 
 (s/fdef kv/delete!

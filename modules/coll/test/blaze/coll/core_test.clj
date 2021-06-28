@@ -6,7 +6,10 @@
   (:refer-clojure :exclude [eduction empty? first]))
 
 
-(defn fixture [f]
+(st/instrument)
+
+
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))

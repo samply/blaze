@@ -6,7 +6,35 @@
   {:local/root "../module-base"}
 
   blaze/terminology-service
-  {:local/root "../terminology-service"}
+  {:local/root "../terminology-service"}}
 
-  org.clojure/core.cache
-  {:mvn/version "0.8.2"}}}
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {com.pgs-soft/HttpClientMock
+    {:mvn/version "1.0.0"}
+
+    lambdaisland/kaocha
+    {:mvn/version "1.0.861"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {com.pgs-soft/HttpClientMock
+    {:mvn/version "1.0.0"}
+
+    org.clojars.akiel/cloverage
+    {:mvn/version "1.2.2-SNAPSHOT"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

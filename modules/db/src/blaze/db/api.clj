@@ -14,6 +14,8 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p])
+  (:import
+    [java.io Closeable])
   (:refer-clojure :exclude [sync]))
 
 
@@ -40,6 +42,12 @@
   to commit on `node`.
 
   The collection of `tx-ops` has to be non-empty.
+
+  A transaction op can be one of the following:
+
+  * [:create resource clauses?]
+  * [:put resource t?]
+  * [:delete type id]
 
   Returns a CompletableFuture that completes with the database after the
   transaction in case of success or completes exceptionally with an anomaly in
@@ -405,6 +413,37 @@
 
 
 
+;; ---- Include ---------------------------------------------------------------
+
+(defn include
+  "Returns a reducible collection of resource handles that are reachable from
+  `resource-handle` by the search parameter with `code` and have a type of
+  `target-type` (optional).
+
+  The search parameter has to be of type reference.
+
+  One example are Patients that are reachable from resource handle of type
+  Observation by the search parameter with code subject."
+  ([db resource-handle code]
+   (p/-include db resource-handle code))
+  ([db resource-handle code target-type]
+   (p/-include db resource-handle code target-type)))
+
+
+(defn rev-include
+  "Returns a reducible collection of resource handles that point to
+  `resource-handle` by the search parameter with `code` and have a type of
+  `source-type`.
+
+  The search parameter has to be of type reference.
+
+  One example are Observations that point to resource handle of type Patient by
+  the search parameter with code subject."
+  [db resource-handle source-type code]
+  (p/-rev-include db resource-handle source-type code))
+
+
+
 ;; ---- Batch DB --------------------------------------------------------------
 
 (defn new-batch-db
@@ -412,6 +451,7 @@
 
   The batch database has to be closed after usage, because it holds resources
   that have to be freed."
+  ^Closeable
   [db]
   (p/-new-batch-db db))
 
@@ -443,6 +483,4 @@
 
   Returns a failed CompletableFuture if one pull fails."
   [node-or-db resource-handles]
-  (let [futures (mapv #(pull node-or-db %) resource-handles)]
-    (-> (ac/all-of futures)
-        (ac/then-apply (fn [_] (mapv deref futures))))))
+  (p/-pull-many node-or-db resource-handles))

@@ -15,7 +15,6 @@
     [blaze.interaction.transaction.spec]
     [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
@@ -194,61 +193,95 @@
   (fn [_ _ {{:keys [method]} :request}] (type/value method)))
 
 
-(defmethod build-response-entry "POST"
-  [{:keys [router return-preference]}
-   db
-   {{:fhir/keys [type] :keys [id]} :resource}]
-  (let [handle (d/resource-handle db (name type) id)
+(defn- created-entry [base-url router db {:keys [id] :as handle}]
+  (let [type (name (type/type handle))
         tx (d/tx db (:t handle))
-        vid (str (:blaze.db/t tx))
-        entry {:fhir/type :fhir.Bundle/entry
-               :response
-               {:fhir/type :fhir.Bundle.entry/response
-                :status "201"
-                :etag (str "W/\"" vid "\"")
-                :lastModified (:blaze.db.tx/instant tx)
-                :location
-                (type/->Uri (fhir-util/versioned-instance-url router (name type) id vid))}}]
-    (if (= "representation" return-preference)
-      (-> (d/pull db handle)
-          (ac/then-apply #(assoc entry :resource %)))
-      (ac/completed-future entry))))
+        vid (str (:blaze.db/t tx))]
+    [handle
+     {:fhir/type :fhir.Bundle/entry
+      :response
+      {:fhir/type :fhir.Bundle.entry/response
+       :status "201"
+       :etag (str "W/\"" vid "\"")
+       :lastModified (:blaze.db.tx/instant tx)
+       :location
+       (type/->Uri (fhir-util/versioned-instance-url base-url router type id
+                                                     vid))}}]))
+
+
+(defn- noop-entry [db handle]
+  (let [tx (d/tx db (:t handle))
+        vid (str (:blaze.db/t tx))]
+    [handle
+     {:fhir/type :fhir.Bundle/entry
+      :response
+      {:fhir/type :fhir.Bundle.entry/response
+       :status "200"
+       :etag (str "W/\"" vid "\"")
+       :lastModified (:blaze.db.tx/instant tx)}}]))
+
+
+(defmethod build-response-entry "POST"
+  [{:keys [base-url router]} db {{:fhir/keys [type] :keys [id]} :resource
+                                 {if-none-exist :ifNoneExist} :request}]
+  (let [type (name type)]
+    (if-let [handle (d/resource-handle db type id)]
+      (created-entry base-url router db handle)
+      (let [handle (first (d/type-query db type (fhir-util/clauses if-none-exist)))]
+        (noop-entry db handle)))))
 
 
 (defmethod build-response-entry "PUT"
-  [{:keys [router return-preference]}
-   db
-   {{:fhir/keys [type] :keys [id]} :resource}]
+  [{:keys [base-url router]} db {{:fhir/keys [type] :keys [id]} :resource}]
   (let [{:keys [num-changes] :as handle} (d/resource-handle db (name type) id)
         tx (d/tx db (:t handle))
-        vid (str (:blaze.db/t tx))
-        entry {:fhir/type :fhir.Bundle/entry
-               :response
-               (cond->
-                 {:fhir/type :fhir.Bundle.entry/response
-                  :status (if (= 1 num-changes) "201" "200")
-                  :etag (str "W/\"" vid "\"")
-                  :lastModified (:blaze.db.tx/instant tx)}
-                 (= 1 num-changes)
-                 (assoc
-                   :location
-                   (type/->Uri (fhir-util/versioned-instance-url router (name type) id vid))))}]
-    (if (= "representation" return-preference)
-      (-> (d/pull db handle)
-          (ac/then-apply #(assoc entry :resource %)))
-      (ac/completed-future entry))))
+        vid (str (:blaze.db/t tx))]
+    [handle
+     {:fhir/type :fhir.Bundle/entry
+      :response
+      (cond->
+        {:fhir/type :fhir.Bundle.entry/response
+         :status (if (= 1 num-changes) "201" "200")
+         :etag (str "W/\"" vid "\"")
+         :lastModified (:blaze.db.tx/instant tx)}
+        (= 1 num-changes)
+        (assoc
+          :location
+          (type/->Uri
+            (fhir-util/versioned-instance-url base-url router (name type) id
+                                              vid))))}]))
 
 
 (defmethod build-response-entry "DELETE"
   [_ db _]
   (let [t (d/basis-t db)]
-    (ac/completed-future
-      {:fhir/type :fhir.Bundle/entry
-       :response
-       {:fhir/type :fhir.Bundle.entry/response
-        :status "204"
-        :etag (str "W/\"" t "\"")
-        :lastModified (:blaze.db.tx/instant (d/tx db t))}})))
+    [nil
+     {:fhir/type :fhir.Bundle/entry
+      :response
+      {:fhir/type :fhir.Bundle.entry/response
+       :status "204"
+       :etag (str "W/\"" t "\"")
+       :lastModified (:blaze.db.tx/instant (d/tx db t))}}]))
+
+
+(defn- prepare-response-entries [context db request-entries]
+  (with-open [batch-db (d/new-batch-db db)]
+    (mapv #(build-response-entry context batch-db %) request-entries)))
+
+
+(defn- pull-response-resource [node [handle entry]]
+  (if handle
+    (-> (d/pull node handle)
+        (ac/then-apply #(assoc entry :resource %)))
+    (ac/completed-future entry)))
+
+
+(defn- pull-response-resources [node handles+entries]
+  (let [futures (mapv #(pull-response-resource node %) handles+entries)]
+    (-> (ac/all-of futures)
+        (ac/then-apply
+          (fn [_]
+            (mapv ac/join futures))))))
 
 
 (defn- strip-leading-slash [s]
@@ -264,8 +297,7 @@
 
 
 (defn- response-entry [response]
-  {:fhir/type :fhir.Bundle/entry
-   :response response})
+  {:fhir/type :fhir.Bundle/entry :response response})
 
 
 (defn- with-entry-location* [issues idx]
@@ -310,8 +342,9 @@
 
 
 (defn- process-batch-entry
-  [{:keys [batch-handler context-path return-preference]} idx
-   {{:keys [method url identity] if-match :ifMatch} :request
+  [{:keys [batch-handler base-url context-path return-preference]} idx
+   {{:keys [method url identity] if-match :ifMatch if-none-exist :ifNoneExist}
+    :request
     :keys [resource] :as entry}]
   (let [entry (validate-entry idx entry)]
     (if (::anom/category entry)
@@ -326,7 +359,8 @@
             request
             (cond->
               {:uri (str context-path "/" url)
-               :request-method method}
+               :request-method method
+               :blaze/base-url base-url}
 
               query-string
               (assoc :query-string query-string)
@@ -336,6 +370,9 @@
 
               if-match
               (assoc-in [:headers "if-match"] if-match)
+
+              if-none-exist
+              (assoc-in [:headers "if-none-exist"] if-none-exist)
 
               identity
               (assoc :identity identity)
@@ -354,7 +391,8 @@
 
 (defmethod process "batch"
   [context _ request-entries]
-  (let [futures (vec (map-indexed (partial process-batch-entry context) request-entries))]
+  (let [process-entry (partial process-batch-entry context)
+        futures (vec (map-indexed process-entry request-entries))]
     (-> (ac/all-of futures)
         (ac/then-apply
           (fn [_]
@@ -362,24 +400,28 @@
 
 
 (defmethod process "transaction"
-  [{:keys [node executor] :as context} _ request-entries]
+  [{:keys [node executor return-preference] :as context} _ request-entries]
   (-> (d/transact node (bundle/tx-ops request-entries))
       ;; it's important to switch to the executor here, because otherwise
       ;; the central indexing thread would execute response building.
-      (ac/then-apply-async identity executor)
-      (ac/then-compose
+      (ac/then-apply-async
         (fn [db]
-          (let [futures (mapv #(build-response-entry context db %) request-entries)]
-            (-> (ac/all-of futures)
-                (ac/then-apply
-                  (fn [_]
-                    (mapv ac/join futures)))))))))
+          (prepare-response-entries context db request-entries))
+        executor)
+      (ac/then-compose
+        (fn [handles+entries]
+          (if (= "representation" return-preference)
+            (pull-response-resources node handles+entries)
+            (ac/completed-future (mapv second handles+entries)))))))
 
 
 (defn- process-context
-  [node executor {:keys [batch-handler headers] ::reitit/keys [router match]}]
+  [node executor
+   {:keys [batch-handler headers] :blaze/keys [base-url]
+    ::reitit/keys [router match]}]
   {:node node
    :executor executor
+   :base-url base-url
    :router router
    :batch-handler batch-handler
    :context-path (-> match :data :blaze/context-path)
@@ -389,7 +431,8 @@
 (defn- process-entries
   "Processes `entries` according the batch or transaction rules.
 
-  Returns a CompletableFuture that will complete with the response entries."
+  Returns a CompletableFuture that will complete with the response entries or
+  complete exceptionally with an anomaly in case of errors."
   [node executor {{:keys [type]} :body :as request} entries]
   (process (process-context node executor request) (type/value type) entries))
 
@@ -405,7 +448,7 @@
           (fn [response-entries]
             (ring/response
               {:fhir/type :fhir/Bundle
-               :id (random-uuid)
+               :id (luid/luid)
                :type (type/->Code (str (type/value type) "-response"))
                :entry response-entries})))
         (ac/exceptionally handler-util/error-response))))

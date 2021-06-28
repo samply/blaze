@@ -2,5 +2,8 @@
  {blaze/kv
   {:local/root "../kv"}
 
+  blaze/module-base
+  {:local/root "../module-base"}
+
   org.rocksdb/rocksdbjni
-  {:mvn/version "6.12.7"}}}
+  {:mvn/version "6.20.3"}}}

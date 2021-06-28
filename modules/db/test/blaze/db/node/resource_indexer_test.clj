@@ -1,6 +1,5 @@
 (ns blaze.db.node.resource-indexer-test
   (:require
-    [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.byte-string-spec]
     [blaze.db.impl.codec :as codec]
@@ -13,20 +12,22 @@
     [blaze.db.kv.mem-spec]
     [blaze.db.node.resource-indexer :as ri :refer [new-resource-indexer]]
     [blaze.db.node.resource-indexer-spec]
-    [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
-    [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
+    [clojure.test :as test :refer [deftest is testing]]
+    [taoensso.timbre :as log])
   (:import
     [java.time ZoneId LocalDate]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))
@@ -48,34 +49,29 @@
 
 
 (deftest index-condition-resource
-  (let [resource {:fhir/type :fhir/Condition :id "id-204446"
-                  :code
-                  {:fhir/type :fhir/CodeableConcept
-                   :coding
-                   [{:fhir/type :fhir/Coding
-                     :system #fhir/uri"system-204435"
-                     :code #fhir/code"code-204441"}]}
-                  :onset #fhir/dateTime"2020-01-30"
-                  :subject
-                  {:fhir/type :fhir/Reference
-                   :reference "Patient/id-145552"}
-                  :meta
-                  {:fhir/type :fhir/Meta
-                   :versionId #fhir/id"1"
-                   :profile
-                   [#fhir/canonical"url-164445"]}}
+  (let [resource
+        {:fhir/type :fhir/Condition :id "id-204446"
+         :code
+         #fhir/CodeableConcept
+             {:coding
+              [#fhir/Coding
+                  {:system #fhir/uri"system-204435"
+                   :code #fhir/code"code-204441"}]}
+         :onset #fhir/dateTime"2020-01-30"
+         :subject
+         #fhir/Reference
+             {:reference "Patient/id-145552"}
+         :meta
+         #fhir/Meta
+             {:versionId #fhir/id"1"
+              :profile [#fhir/canonical"url-164445"]}}
         hash (hash/generate resource)
-        rl (reify
-             rs/ResourceLookup
-             (-multi-get [_ _]
-               (ac/completed-future {hash resource})))
         kv-store (init-kv-store)
-        i (new-resource-indexer rl search-param-registry kv-store
-                                (ex/single-thread-executor) 1)]
-    @(ri/index-resources i [hash])
+        i (new-resource-indexer search-param-registry kv-store)]
+    @(ri/index-resources i {hash resource})
 
     (testing "SearchParamValueResource index"
-      (is (every? #{["Condition" "id-204446" #blaze/byte-string"F6260321"]}
+      (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
                   (sp-vr-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -87,12 +83,13 @@
               ["code" (codec/v-hash "code-204441")]
               ["code" (codec/v-hash "system-204435|")]
               ["code" (codec/v-hash "system-204435|code-204441")]
-              ["onset-date" (codec/date-lb
-                              (ZoneId/systemDefault)
-                              (LocalDate/of 2020 1 30))]
-              ["onset-date" (codec/date-ub
-                              (ZoneId/systemDefault)
-                              (LocalDate/of 2020 1 30))]
+              ["onset-date" (codec/date-lb-ub
+                              (codec/date-lb
+                                (ZoneId/systemDefault)
+                                (LocalDate/of 2020 1 30))
+                              (codec/date-ub
+                                (ZoneId/systemDefault)
+                                (LocalDate/of 2020 1 30)))]
               ["subject" (codec/v-hash "Patient/id-145552")]
               ["subject" (codec/tid-id
                            (codec/tid "Patient")
@@ -102,7 +99,7 @@
               ["_id" (codec/v-hash "id-204446")]])))
 
     (testing "ResourceSearchParamValue index"
-      (is (every? #{["Condition" "id-204446" #blaze/byte-string"F6260321"]}
+      (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
                   (r-sp-v-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
@@ -114,7 +111,13 @@
               ["code" (codec/v-hash "code-204441")]
               ["code" (codec/v-hash "system-204435|")]
               ["code" (codec/v-hash "system-204435|code-204441")]
-              ["onset-date" #blaze/byte-string""]
+              ["onset-date" (codec/date-lb-ub
+                              (codec/date-lb
+                                (ZoneId/systemDefault)
+                                (LocalDate/of 2020 1 30))
+                              (codec/date-ub
+                                (ZoneId/systemDefault)
+                                (LocalDate/of 2020 1 30)))]
               ["subject" (codec/v-hash "Patient/id-145552")]
               ["subject" (codec/tid-id
                            (codec/tid "Patient")
@@ -129,7 +132,7 @@
 
     (testing "CompartmentSearchParamValueResource index"
       (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"
-                     #blaze/byte-string"F6260321"]}
+                     #blaze/byte-string"4AB29C7B"]}
                   (c-sp-vr-tu/decode-index-entries
                     kv-store :compartment :type :id :hash-prefix)))
       (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -141,6 +144,13 @@
               ["code" (codec/v-hash "code-204441")]
               ["code" (codec/v-hash "system-204435|")]
               ["code" (codec/v-hash "system-204435|code-204441")]
+              ["onset-date" (codec/date-lb-ub
+                              (codec/date-lb
+                                (ZoneId/systemDefault)
+                                (LocalDate/of 2020 1 30))
+                              (codec/date-ub
+                                (ZoneId/systemDefault)
+                                (LocalDate/of 2020 1 30)))]
               ["subject" (codec/v-hash "Patient/id-145552")]
               ["subject" (codec/tid-id
                            (codec/tid "Patient")
@@ -154,38 +164,33 @@
   (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                   :status #fhir/code"status-193613"
                   :category
-                  [{:fhir/type :fhir/CodeableConcept
-                    :coding
-                    [{:fhir/type :fhir/Coding
-                      :system #fhir/uri"system-193558"
-                      :code #fhir/code"code-193603"}]}]
+                  [#fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                           {:system #fhir/uri"system-193558"
+                            :code #fhir/code"code-193603"}]}]
                   :code
-                  {:fhir/type :fhir/CodeableConcept
-                   :coding
-                   [{:fhir/type :fhir/Coding
-                     :system #fhir/uri"system-193821"
-                     :code #fhir/code"code-193824"}]}
+                  #fhir/CodeableConcept
+                      {:coding
+                       [#fhir/Coding
+                           {:system #fhir/uri"system-193821"
+                            :code #fhir/code"code-193824"}]}
                   :subject
-                  {:fhir/type :fhir/Reference
-                   :reference "Patient/id-180857"}
+                  #fhir/Reference
+                      {:reference "Patient/id-180857"}
                   :effective #fhir/dateTime"2005-06-17"
                   :value
-                  {:fhir/type :fhir/Quantity
-                   :code #fhir/code"kg/m2"
-                   :system #fhir/uri"http://unitsofmeasure.org"
-                   :value 23.42M}}
+                  #fhir/Quantity
+                      {:code #fhir/code"kg/m2"
+                       :system #fhir/uri"http://unitsofmeasure.org"
+                       :value 23.42M}}
         hash (hash/generate resource)
-        rl (reify
-             rs/ResourceLookup
-             (-multi-get [_ _]
-               (ac/completed-future {hash resource})))
         kv-store (init-kv-store)
-        i (new-resource-indexer rl search-param-registry kv-store
-                                (ex/single-thread-executor) 1)]
-    @(ri/index-resources i [hash])
+        i (new-resource-indexer search-param-registry kv-store)]
+    @(ri/index-resources i {hash resource})
 
     (testing "SearchParamValueResource index"
-      (is (every? #{["Observation" "id-192702" #blaze/byte-string"DD3A49CC"]}
+      (is (every? #{["Observation" "id-192702" #blaze/byte-string"651D1F37"]}
                   (sp-vr-tu/decode-index-entries
                     kv-store :type :id :hash-prefix)))
       (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -211,12 +216,13 @@
                (bs/concat (codec/v-hash "code-193824")
                           (codec/quantity "http://unitsofmeasure.org|kg/m2"
                                           23.42M))]
-              ["date" (codec/date-lb
-                        (ZoneId/systemDefault)
-                        (LocalDate/of 2005 6 17))]
-              ["date" (codec/date-ub
-                        (ZoneId/systemDefault)
-                        (LocalDate/of 2005 6 17))]
+              ["date" (codec/date-lb-ub
+                        (codec/date-lb
+                          (ZoneId/systemDefault)
+                          (LocalDate/of 2005 6 17))
+                        (codec/date-ub
+                          (ZoneId/systemDefault)
+                          (LocalDate/of 2005 6 17)))]
               ["category" (codec/v-hash "system-193558|code-193603")]
               ["category" (codec/v-hash "system-193558|")]
               ["category" (codec/v-hash "code-193603")]

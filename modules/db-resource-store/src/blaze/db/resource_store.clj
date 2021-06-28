@@ -33,7 +33,7 @@
 (defn put
   "Puts `entries` which are a map of hashes to resource contents into `store`.
 
-  Returns a CompletableFuture that will comple exceptionally in case any entry
+  Returns a CompletableFuture that will complete exceptionally in case any entry
   could not be stored. The ex-data will contain a set of
   :successfully-stored-hashes."
   [store entries]

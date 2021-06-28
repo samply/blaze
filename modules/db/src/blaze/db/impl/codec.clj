@@ -47,7 +47,7 @@
       (.get mem x))))
 
 
-(def tid
+(def ^{:arglists '([type])} tid
   "Internal type identifier.
 
   Returns an integer."
@@ -143,11 +143,13 @@
      "onset-date"
      "patient"
      "phonetic"
+     "probability"
      "series"
      "status"
      "subject"
      "url"
      "value-quantity"
+     "variant-start"
      "version"]))
 
 
@@ -271,9 +273,6 @@
   (.toEpochSecond (.atZone date-time zone-id)))
 
 
-(def ^:private ^:const ^long ub-offset 0xf0000000000)
-
-
 (defprotocol DateLowerBound
   (-date-lb [date-time zone-id]))
 
@@ -311,21 +310,6 @@
   (-date-lb date-time zone-id))
 
 
-(def ^:private ^:const ^long ub-first-byte 0xb0)
-
-
-(defn date-lb?
-  "Tests whether `bs` starting at `offset` represent a date lower bound."
-  [bs offset]
-  (< (bit-and ^long (bs/nth bs offset) 0xff) ub-first-byte))
-
-
-(defn date-ub?
-  "Tests whether `bs` starting at `offset` represent a date upper bound."
-  [bs offset]
-  (>= (bit-and ^long (bs/nth bs offset) 0xff) ub-first-byte))
-
-
 (defprotocol DateUpperBound
   (-date-ub [date-time zone-id]))
 
@@ -333,28 +317,28 @@
 (extend-protocol DateUpperBound
   Year
   (-date-ub [year zone-id]
-    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears year 1) 1)) zone-id)))))
+    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears year 1) 1)) zone-id))))
   DateTimeYear
   (-date-ub [year zone-id]
-    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears ^Year (.year year) 1) 1)) zone-id)))))
+    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears ^Year (.year year) 1) 1)) zone-id))))
   YearMonth
   (-date-ub [year-month zone-id]
-    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1)) zone-id)))))
+    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1)) zone-id))))
   DateTimeYearMonth
   (-date-ub [year-month zone-id]
-    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.-year_month year-month) 1) 1)) zone-id)))))
+    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.-year_month year-month) 1) 1)) zone-id))))
   LocalDate
   (-date-ub [date zone-id]
-    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.plusDays date 1)) zone-id)))))
+    (number (dec (epoch-seconds (.atStartOfDay (.plusDays date 1)) zone-id))))
   DateTimeYearMonthDay
   (-date-ub [date zone-id]
-    (number (+ ub-offset (dec (epoch-seconds (.atStartOfDay (.plusDays ^LocalDate (.date date) 1)) zone-id)))))
+    (number (dec (epoch-seconds (.atStartOfDay (.plusDays ^LocalDate (.date date) 1)) zone-id))))
   LocalDateTime
   (-date-ub [date-time zone-id]
-    (number (+ ub-offset (epoch-seconds date-time zone-id))))
+    (number (epoch-seconds date-time zone-id)))
   OffsetDateTime
   (-date-ub [date-time _]
-    (number (+ ub-offset (.toEpochSecond date-time)))))
+    (number (.toEpochSecond date-time))))
 
 
 (defn date-ub
@@ -372,20 +356,22 @@
 
 
 (defn date-lb-ub [lb ub]
-  (-> (bb/allocate (+ 1 (bs/size lb) (bs/size ub)))
-      (bb/put-byte! (bs/size lb))
+  (-> (bb/allocate (+ 2 (bs/size lb) (bs/size ub)))
       (bb/put-byte-string! lb)
+      (bb/put-byte! 0)
       (bb/put-byte-string! ub)
+      (bb/put-byte! (bs/size lb))
       (bb/flip!)
       (bs/from-byte-buffer)))
 
 
 (defn date-lb-ub->lb [lb-ub]
-  (bs/subs lb-ub 1 (inc ^long (bs/nth lb-ub 0))))
+  (bs/subs lb-ub 0 (bs/nth lb-ub (dec (bs/size lb-ub)))))
 
 
 (defn date-lb-ub->ub [lb-ub]
-  (bs/subs lb-ub (inc ^long (bs/nth lb-ub 0)) (bs/size lb-ub)))
+  (let [lb-size-idx (dec (bs/size lb-ub))]
+    (bs/subs lb-ub (inc ^long (bs/nth lb-ub lb-size-idx)) lb-size-idx)))
 
 
 (defn quantity [unit value]

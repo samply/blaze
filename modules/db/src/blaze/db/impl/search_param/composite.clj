@@ -1,6 +1,6 @@
 (ns blaze.db.impl.search-param.composite
   (:require
-    [blaze.anomaly :refer [conj-anom when-ok]]
+    [blaze.anomaly :as ba :refer [conj-anom if-ok when-ok]]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param.composite.token-quantity :as tq]
     [blaze.db.impl.search-param.composite.token-token :as tt]
@@ -29,10 +29,9 @@
 
 
 (defn- compile-expression [{:keys [expression] :as component}]
-  (let [res (fhir-path/compile expression)]
-    (if (::anom/category res)
-      (assoc res :expression expression)
-      (assoc component :expression res))))
+  (if-ok [res (fhir-path/compile expression)]
+    (assoc component :expression res)
+    (assoc res :expression expression)))
 
 
 (defn- compile-expressions [components]
@@ -65,12 +64,12 @@
         (case (:type (:search-param c2))
           "token"
           (tt/->SearchParamCompositeTokenToken name url type base code
-                                            (codec/c-hash code)
-                                            main-expression c1 c2)
+                                               (codec/c-hash code)
+                                               main-expression c1 c2)
           "quantity"
           (tq/->SearchParamCompositeTokenQuantity name url type base code
-                                               (codec/c-hash code)
-                                               main-expression c1 c2))))))
+                                                  (codec/c-hash code)
+                                                  main-expression c1 c2))))))
 
 
 (defn- handle-anomaly [{:keys [url type]} anomaly]
@@ -80,7 +79,5 @@
 
 (defmethod sr/search-param "composite"
   [index search-param]
-  (let [res (create-search-param index search-param)]
-    (if (::anom/category res)
-      (handle-anomaly search-param res)
-      res)))
+  (-> (create-search-param index search-param)
+      (ba/exceptionally #(handle-anomaly search-param %))))

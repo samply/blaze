@@ -17,7 +17,7 @@
 (st/instrument)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))
@@ -95,35 +95,30 @@
 (deftest date-ub
   (testing "year"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (Year/of 1969) "B00EFFFFFFFFFF"
-      (system/date-time 1969) "B00EFFFFFFFFFF"))
+      (Year/of 1969) "7F"
+      (system/date-time 1969) "7F"))
 
   (testing "year-month"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (YearMonth/of 1969 12) "B00EFFFFFFFFFF"
-      (system/date-time 1969 12) "B00EFFFFFFFFFF"))
+      (YearMonth/of 1969 12) "7F"
+      (system/date-time 1969 12) "7F"))
 
   (testing "local-date"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (LocalDate/of 1969 12 31) "B00EFFFFFFFFFF"
-      (system/date-time 1969 12 31) "B00EFFFFFFFFFF"))
+      (LocalDate/of 1969 12 31) "7F"
+      (system/date-time 1969 12 31) "7F"))
 
   (testing "local-date-time"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (LocalDateTime/of 1969 12 31 23 59 59) "B00EFFFFFFFFFF"))
+      (LocalDateTime/of 1969 12 31 23 59 59) "7F"))
 
   (testing "offset-date-time"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 ZoneOffset/UTC) "B00EFFFFFFFFFF"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) "B00EFFFFFFE3DF"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) "B00EFFFFFFF1EF"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -1)) "B00F0000000E0F"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "B00F0000001C1F")))
-
-
-(deftest date
-  (testing "upper bounds are always bigger than lower bounds"
-    (is (bs/< (codec/date-lb zo (Year/of 9999)) (codec/date-ub zo (Year/of 1))))))
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 ZoneOffset/UTC) "7F"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) "6FE3DF"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) "6FF1EF"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -1)) "900E0F"
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "901C1F")))
 
 
 (deftest date-lb-ub
@@ -138,16 +133,6 @@
           (codec/date-lb-ub->ub
             (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
           (codec/date-ub zo (Year/of 2020))))))
-
-
-(deftest date-lb?
-  (is (codec/date-lb? (codec/date-lb zo (Year/of 9999)) 0))
-  (is (not (codec/date-lb? (codec/date-ub zo (Year/of 1)) 0))))
-
-
-(deftest date-ub?
-  (is (codec/date-ub? (codec/date-ub zo (Year/of 1)) 0))
-  (is (not (codec/date-ub? (codec/date-lb zo (Year/of 9999)) 0))))
 
 
 (deftest number

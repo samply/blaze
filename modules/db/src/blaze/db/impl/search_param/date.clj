@@ -33,120 +33,143 @@
   (codec/date-ub default-zone-id date-time))
 
 
-(defmulti date-index-entries (fn [_ _ value] (fhir-spec/fhir-type value)))
+(defmulti index-entries
+  "Returns index entries for `value` from a resource."
+  {:arglists '([url value])}
+  (fn [_ value] (fhir-spec/fhir-type value)))
 
 
-(defmethod date-index-entries :fhir/date
-  [_ entries-fn date]
+(defmethod index-entries :fhir/date
+  [_ date]
   (when-let [value (type/value date)]
-    (entries-fn (date-lb value) (date-ub value))))
+    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
 
 
-(defmethod date-index-entries :fhir/dateTime
-  [_ entries-fn date-time]
+(defmethod index-entries :fhir/dateTime
+  [_ date-time]
   (when-let [value (type/value date-time)]
-    (entries-fn (date-lb value) (date-ub value))))
+    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
 
 
-(defmethod date-index-entries :fhir/instant
-  [_ entries-fn date-time]
+(defmethod index-entries :fhir/instant
+  [_ date-time]
   (when-let [value (type/value date-time)]
-    (entries-fn (date-lb value) (date-ub value))))
+    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
 
 
-(defmethod date-index-entries :fhir/Period
-  [_ entries-fn {:keys [start end]}]
-  (entries-fn
-    (if-let [start (type/value start)]
-      (date-lb start)
-      codec/date-min-bound)
-    (if-let [end (type/value end)]
-      (date-ub end)
-      codec/date-max-bound)))
+(defmethod index-entries :fhir/Period
+  [_ {:keys [start end]}]
+  [[nil
+    (codec/date-lb-ub
+      (if-let [start (type/value start)]
+        (date-lb start)
+        codec/date-min-bound)
+      (if-let [end (type/value end)]
+        (date-ub end)
+        codec/date-max-bound))]])
 
 
-(defmethod date-index-entries :default
-  [url _ value]
+(defmethod index-entries :default
+  [url value]
   (log/warn (u/format-skip-indexing-msg value url "date")))
 
 
-(def ^:private ^:const ^long date-key-offset
-  (+ codec/c-hash-size codec/tid-size))
+(defn- resource-value!
+  "Returns the value of the resource with `tid` and `id` according to the
+  search parameter with `c-hash`.
+
+  Changes the state of `context`. Calling this function requires exclusive
+  access to `context`."
+  {:arglists '([context c-hash tid id])}
+  [{:keys [rsvi resource-handle]} c-hash tid id]
+  (r-sp-v/next-value! rsvi (resource-handle tid id) c-hash))
 
 
-(defn- date-key-lb? [[prefix]]
-  (codec/date-lb? prefix date-key-offset))
+(defn- eq-overlaps?
+  "Returns true if the interval `v` overlaps with the interval `q`."
+  [v-lb v-ub q-lb q-ub]
+  (or (bs/<= q-lb v-lb q-ub)
+      (bs/<= q-lb v-ub q-ub)
+      (and (bs/< v-lb q-lb) (bs/< q-ub v-ub))))
 
 
-(defn- date-key-ub? [[prefix]]
-  (codec/date-ub? prefix date-key-offset))
+(defn- eq-filter [q-lb a-lb]
+  (filter
+    (fn [[value]]
+      (let [v-lb (codec/date-lb-ub->lb value)
+            v-ub (codec/date-lb-ub->ub value)]
+        (eq-overlaps? v-lb v-ub q-lb a-lb)))))
 
 
-(defn- eq-key-valid? [{:keys [snapshot]} c-hash tid ub [prefix id hash-prefix]]
-  (and (date-key-lb? [prefix])
-       (when-let [v (r-sp-v/get-value snapshot tid id hash-prefix c-hash)]
-         (bs/<= (codec/date-lb-ub->ub v) ub))))
-
-
-(defn- start-key [{:keys [snapshot resource-handle]} c-hash tid value start-id]
-  (if start-id
-    (let [{:keys [hash]} (resource-handle tid start-id)]
-      (sp-vr/encode-seek-key
-        c-hash
-        tid
-        (codec/date-lb-ub->lb (r-sp-v/get-value snapshot tid start-id hash c-hash))
-        start-id))
-    (sp-vr/encode-seek-key c-hash tid (date-lb value))))
-
-
-(defn- take-while-eq-key-valid [context c-hash tid value]
-  (let [upper-bound (date-ub value)]
-    (take-while #(eq-key-valid? context c-hash tid upper-bound %))))
+(defn- all-keys! [{:keys [svri] :as context} c-hash tid start-id]
+  (sp-vr/all-keys! svri c-hash tid (resource-value! context c-hash tid start-id)
+                   start-id))
 
 
 (defn- eq-keys!
-  "Returns a reducible collection of decoded SearchParamValueResource keys of
-  values equal to `value` starting at `start-id` (optional).
+  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  keys with overlapping date/time intervals with the interval specified by
+  `lower-bound` and `upper-bound` starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid lower-bound upper-bound]
+   (coll/eduction
+     (eq-filter lower-bound upper-bound)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid lower-bound upper-bound start-id]
+   (coll/eduction
+     (eq-filter lower-bound upper-bound)
+     (all-keys! context c-hash tid start-id))))
 
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  ([{:keys [svri] :as context} c-hash tid value]
-   (coll/eduction
-     (take-while-eq-key-valid context c-hash tid value)
-     (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid (date-lb value)))))
-  ([{:keys [svri] :as context} c-hash tid value start-id]
-   (coll/eduction
-     (take-while-eq-key-valid context c-hash tid value)
-     (sp-vr/keys! svri (start-key context c-hash tid value start-id)))))
+
+(defn- ge-overlaps? [v-lb v-ub q-lb]
+  (or (bs/<= q-lb v-lb) (bs/<= q-lb v-ub)))
+
+
+(defn- ge-filter [q-lb]
+  (filter
+    (fn [[value]]
+      (let [v-lb (codec/date-lb-ub->lb value)
+            v-ub (codec/date-lb-ub->ub value)]
+        (ge-overlaps? v-lb v-ub q-lb)))))
 
 
 (defn- ge-keys!
-  "Returns a reducible collection of decoded SearchParamValueResource keys of
-  values greater or equal to `value` starting at `start-id` (optional).
-
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  ([{:keys [svri]} c-hash tid value]
+  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  keys with overlapping date/time intervals with the interval specified by
+  `lower-bound` and an infinite upper bound starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid lower-bound]
    (coll/eduction
-     (take-while date-key-lb?)
-     (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid (date-lb value)))))
-  ([{:keys [svri] :as context} c-hash tid value start-id]
+     (ge-filter lower-bound)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid lower-bound start-id]
    (coll/eduction
-     (take-while date-key-lb?)
-     (sp-vr/keys! svri (start-key context c-hash tid value start-id)))))
+     (ge-filter lower-bound)
+     (all-keys! context c-hash tid start-id))))
 
 
-(defn- le-start-key [_ c-hash tid value]
-  (sp-vr/encode-seek-key-for-prev c-hash tid (date-ub value)))
+(defn- le-overlaps? [v-lb v-ub q-ub]
+  (or (bs/<= v-ub q-ub) (bs/<= v-lb q-ub)))
+
+
+(defn- le-filter [q-ub]
+  (filter
+    (fn [[value]]
+      (let [v-lb (codec/date-lb-ub->lb value)
+            v-ub (codec/date-lb-ub->ub value)]
+        (le-overlaps? v-lb v-ub q-ub)))))
 
 
 (defn- le-keys!
-  "Returns a reducible collection of decoded SearchParamValueResource keys of
-  values less or equal to `value` starting at `start-id` (optional).
-
-  Decoded keys consist of the triple [prefix id hash-prefix]."
-  [{:keys [svri] :as context} c-hash tid value]
-  (coll/eduction
-    (take-while date-key-ub?)
-    (sp-vr/keys-prev! svri (le-start-key context c-hash tid value))))
+  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  keys with overlapping date/time intervals with the interval specified by
+  an infinite lower bound and `upper-bound` starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid upper-bound]
+   (coll/eduction
+     (le-filter upper-bound)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid upper-bound start-id]
+   (coll/eduction
+     (le-filter upper-bound)
+     (all-keys! context c-hash tid start-id))))
 
 
 (defn- invalid-date-time-value-msg [code value]
@@ -158,79 +181,75 @@
 
 
 (defn- resource-keys!
-  ([context c-hash tid [op value]]
+  ([context c-hash tid {:keys [op lower-bound upper-bound]}]
    (case op
-     :eq (eq-keys! context c-hash tid value)
-     :ge (ge-keys! context c-hash tid value)
-     :le (le-keys! context c-hash tid value)))
-  ([context c-hash tid [op value] start-id]
+     :eq (eq-keys! context c-hash tid lower-bound upper-bound)
+     (:ge :gt) (ge-keys! context c-hash tid lower-bound)
+     (:le :lt) (le-keys! context c-hash tid upper-bound)))
+  ([context c-hash tid {:keys [op lower-bound upper-bound]} start-id]
    (case op
-     :eq (eq-keys! context c-hash tid value start-id)
-     :ge (ge-keys! context c-hash tid value start-id)
-     :le (le-keys! context c-hash tid value))))
+     :eq (eq-keys! context c-hash tid lower-bound upper-bound start-id)
+     (:ge :gt) (ge-keys! context c-hash tid lower-bound start-id)
+     (:le :lt) (le-keys! context c-hash tid upper-bound start-id))))
 
 
-(defn- matches? [{:keys [snapshot]} c-hash {:keys [tid id hash]} [op value]]
-  (when-let [v (r-sp-v/get-value snapshot tid (codec/id-byte-string id)
-                                 hash c-hash)]
-    (case op
-      :eq (and (bs/<= (date-lb value) (codec/date-lb-ub->lb v))
-               (bs/<= (codec/date-lb-ub->ub v) (date-ub value)))
-      :ge (bs/<= (date-lb value) (codec/date-lb-ub->lb v))
-      :le (bs/<= (codec/date-lb-ub->ub v) (date-ub value)))))
+(defn- matches?
+  [{:keys [rsvi]} c-hash resource-handle
+   {:keys [op] q-lb :lower-bound q-ub :upper-bound}]
+  (when-let [v (r-sp-v/next-value! rsvi resource-handle c-hash)]
+    (let [v-lb (codec/date-lb-ub->lb v)
+          v-ub (codec/date-lb-ub->ub v)]
+      (case op
+        :eq (eq-overlaps? v-lb v-ub q-lb q-ub)
+        (:ge :gt) (ge-overlaps? v-lb v-ub q-lb)
+        (:le :lt) (le-overlaps? v-lb v-ub q-ub)))))
 
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
-      (case op
-        (:eq :ge :le)
-        (if-ok [date-time-value (system/parse-date-time value)]
-          [op date-time-value]
-          (assoc date-time-value
-            ::anom/message
-            (invalid-date-time-value-msg code value)))
-        {::anom/category ::anom/unsupported
-         ::anom/message (unsupported-prefix-msg code op)})))
+      (if-ok [date-time-value (system/parse-date-time value)]
+        (case op
+          :eq
+          {:op op
+           :lower-bound (date-lb date-time-value)
+           :upper-bound (date-ub date-time-value)}
+          (:ge :gt)
+          {:op op
+           :lower-bound (date-lb date-time-value)}
+          (:le :lt)
+          {:op op
+           :upper-bound (date-ub date-time-value)}
+          {::anom/category ::anom/unsupported
+           ::anom/message (unsupported-prefix-msg code op)})
+        (assoc date-time-value
+          ::anom/message
+          (invalid-date-time-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
       (comp
-        (map (fn [[_ id hash-prefix]] [id hash-prefix]))
+        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
         (u/resource-handle-mapper context tid))
       (resource-keys! context c-hash tid value)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
       (comp
-        (map (fn [[_ id hash-prefix]] [id hash-prefix]))
+        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
         (u/resource-handle-mapper context tid))
       (resource-keys! context c-hash tid value start-id)))
 
   (-matches? [_ context resource-handle _ values]
-    (some #(matches? context c-hash resource-handle %) values))
+    (some? (some #(matches? context c-hash resource-handle %) values)))
 
-  (-index-entries [_ resolver hash resource _]
+  (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (let [{:keys [id]} resource
-            type (clojure.core/name (fhir-spec/fhir-type resource))
-            tid (codec/tid type)
-            id (codec/id-byte-string id)]
-        (into
-          []
-          (mapcat
-            (partial
-              date-index-entries
-              url
-              (fn search-param-date-entry [lb ub]
-                (log/trace "search-param-value-entry" "date" code type id
-                           (bs/hex hash))
-                [(sp-vr/index-entry c-hash tid lb id hash)
-                 (sp-vr/index-entry c-hash tid ub id hash)
-                 (r-sp-v/index-entry-special tid id hash c-hash
-                                             (codec/date-lb-ub lb ub))])))
-          values)))))
+      (coll/eduction (p/-index-value-compiler search-param) values)))
+
+  (-index-value-compiler [_]
+    (mapcat (partial index-entries url))))
 
 
 (defmethod sr/search-param "date"

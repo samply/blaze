@@ -1,8 +1,13 @@
 (ns blaze.fhir.util
   (:require
-    [cheshire.core :as json]
     [clojure.java.io :as io]
+    [jsonista.core :as j]
     [taoensso.timbre :as log]))
+
+
+(def ^:private object-mapper
+  (j/object-mapper
+    {:decode-key-fn true}))
 
 
 (defn read-bundle
@@ -10,7 +15,7 @@
   [resource-name]
   (log/trace (format "Read FHIR bundle `%s`." resource-name))
   (with-open [rdr (io/reader (io/resource resource-name))]
-    (json/parse-stream rdr keyword)))
+    (j/read-value rdr object-mapper)))
 
 
 (defn extract-all [bundle]

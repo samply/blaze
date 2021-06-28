@@ -4,8 +4,7 @@
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.spec.type :as type]
-    [clojure.core.protocols :refer [Datafiable]]
-    [clojure.datafy :refer [datafy]]
+    [blaze.http.util :as hu]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [io.aviso.exception :as aviso]
@@ -13,37 +12,13 @@
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
-    [org.apache.http HeaderElement]
-    [org.apache.http.message BasicHeaderValueParser]
     [java.util.concurrent CompletionException]))
-
-
-(set! *warn-on-reflection* true)
-
-
-(extend-protocol Datafiable
-  HeaderElement
-  (datafy [element]
-    {:name (str/lower-case (.getName element))
-     :value (.getValue element)}))
-
-
-(defn parse-header-value
-  "Parses the header value string `s` into elements which have a :name and a
-  :value.
-
-  The element name is converted to lower-case."
-  [s]
-  (when s
-    (->> (BasicHeaderValueParser/parseElements
-           s BasicHeaderValueParser/INSTANCE)
-         (into [] (map datafy)))))
 
 
 (defn preference
   "Returns the value of the preference with `name` from Ring `headers`."
   [headers name]
-  (->> (parse-header-value (get headers "prefer"))
+  (->> (hu/parse-header-value (get headers "prefer"))
        (some #(when (= name (:name %)) (:value %)))))
 
 

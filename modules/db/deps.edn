@@ -1,9 +1,5 @@
 {:deps
- {aysylu/loom
-  {:mvn/version "1.0.2"
-   :exclusions [org.clojure/clojurescript]}
-
-  blaze/async
+ {blaze/async
   {:local/root "../async"}
 
   blaze/byte-string
@@ -34,10 +30,7 @@
   {:local/root "../search-param-registry"}
 
   clj-fuzzy/clj-fuzzy
-  {:mvn/version "0.4.1"}
-
-  com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "2.8.6"}}
+  {:mvn/version "0.4.1"}}
 
  :aliases
  {:test
@@ -45,7 +38,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.641"}
+    {:mvn/version "1.0.861"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}
@@ -76,20 +69,4 @@
     {:mvn/version "1.1.0"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
-               "-e" ".+spec"]}
-
-  :unused-vars
-  {:extra-deps
-   {clj-kondo/tools
-    {:git/url "https://github.com/borkdude/clj-kondo"
-     :sha "47ce3f9e3a4bf88a4942f4b5a2bcdd0e278dcc8b"
-     :deps/root "analysis"}}
-   :main-opts ["-m" "clj-kondo.tools.unused-vars"]}
-
-  :namespace-graph
-  {:extra-deps
-   {clj-kondo/tools
-    {:git/url "https://github.com/borkdude/clj-kondo"
-     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
-     :deps/root "analysis"}}
-   :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}
+               "-e" ".+spec"]}}}

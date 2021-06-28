@@ -20,11 +20,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -32,9 +32,12 @@
 (test/use-fixtures :each fixture)
 
 
+(def ^:private base-url "base-url-135814")
+
+
 (def router
   (reitit/router
-    [["/Patient/{id}" {:name :Patient/instance}]]
+    [["/Patient" {:name :Patient/type}]]
     {:syntax :bracket}))
 
 
@@ -56,15 +59,17 @@
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node) request))))
+      @((handler node)
+        (assoc request
+          :blaze/base-url base-url
+          ::reitit/router router)))))
 
 
 (deftest handler-test
   (testing "returns not found on empty node"
     (let [{:keys [status body]}
           ((handler-with [])
-            {::reitit/router router
-             ::reitit/match match
+            {::reitit/match match
              :path-params {:id "0"}})]
 
       (is (= 404 status))
@@ -77,8 +82,7 @@
   (testing "returns history with one patient"
     (let [{:keys [status body]}
           ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-            {::reitit/router router
-             ::reitit/match match
+            {::reitit/match match
              :path-params {:id "0"}})]
 
       (is (= 200 status))
@@ -97,10 +101,10 @@
 
       (is (= "self" (-> body :link first :relation)))
 
-      (is (= #fhir/uri"/Patient/0/_history?__t=1&__page-t=1" (-> body :link first :url)))
+      (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=1&__page-t=1" (-> body :link first :url)))
 
       (given (-> body :entry first)
-        :fullUrl := #fhir/uri"/Patient/0"
+        :fullUrl := #fhir/uri"base-url-135814/Patient/0"
         [:request :method] := #fhir/code"PUT"
         [:request :url] := #fhir/uri"/Patient/0"
         [:resource :id] := "0"
@@ -114,8 +118,7 @@
     (let [{:keys [status body]}
           ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]
                            [[:delete "Patient" "0"]]])
-            {::reitit/router router
-             ::reitit/match match
+            {::reitit/match match
              :path-params {:id "0"}})]
 
       (is (= 200 status))
@@ -134,11 +137,11 @@
 
       (is (= "self" (-> body :link first :relation)))
 
-      (is (= #fhir/uri"/Patient/0/_history?__t=2&__page-t=2" (-> body :link first :url)))
+      (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=2&__page-t=2" (-> body :link first :url)))
 
       (testing "first entry"
         (given (-> body :entry first)
-          :fullUrl := #fhir/uri"/Patient/0"
+          :fullUrl := #fhir/uri"base-url-135814/Patient/0"
           [:request :method] := #fhir/code"DELETE"
           [:request :url] := #fhir/uri"/Patient/0"
           [:response :status] := "204"
@@ -147,7 +150,7 @@
 
       (testing "second entry"
         (given (-> body :entry second)
-          :fullUrl := #fhir/uri"/Patient/0"
+          :fullUrl := #fhir/uri"base-url-135814/Patient/0"
           [:request :method] := #fhir/code"PUT"
           [:request :url] := #fhir/uri"/Patient/0"
           [:resource :id] := "0"
@@ -162,14 +165,13 @@
           ((handler-with
               [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
                [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]])
-            {::reitit/router router
-             ::reitit/match match
+            {::reitit/match match
              :path-params {:id "0"}
              :query-params {"_count" "1"}})]
 
       (is (= "next" (-> body :link second :relation)))
 
-      (is (= #fhir/uri"/Patient/0/_history?_count=1&__t=2&__page-t=1"
+      (is (= #fhir/uri"base-url-135814/Patient/0/_history?_count=1&__t=2&__page-t=1"
              (-> body :link second :url)))))
 
   (testing "with two versions, calling the second page"
@@ -177,8 +179,7 @@
           ((handler-with
               [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
                [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]])
-            {::reitit/router router
-             ::reitit/match match
+            {::reitit/match match
              :path-params {:id "0"}
              :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
 

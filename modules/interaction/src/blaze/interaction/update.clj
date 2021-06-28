@@ -6,6 +6,7 @@
     [blaze.anomaly :refer [throw-anom]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
+    [blaze.fhir.response.create :as response]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.update.spec]
@@ -14,22 +15,7 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log])
-  (:import
-    [java.time ZonedDateTime ZoneId]
-    [java.time.format DateTimeFormatter]))
-
-
-(set! *warn-on-reflection* true)
-
-
-(def ^:private gmt (ZoneId/of "GMT"))
-
-
-(defn- last-modified [{:blaze.db.tx/keys [instant]}]
-  (->> (ZonedDateTime/ofInstant instant gmt)
-       (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
+    [taoensso.timbre :as log]))
 
 
 (defn- validate-resource [type id body]
@@ -66,34 +52,6 @@
     :else body))
 
 
-(defn- build-response
-  [router headers type id old-before db-after]
-  (let [old-handle (d/resource-handle old-before type id)
-        new-handle (d/resource-handle db-after type id)
-        return-preference (handler-util/preference headers "return")
-        tx (d/tx db-after (:t new-handle))
-        vid (str (:blaze.db/t tx))
-        created (or (nil? old-handle) (identical? :delete (:op old-handle)))]
-    (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
-    (-> (cond
-          (= "minimal" return-preference)
-          (ac/completed-future nil)
-          (= "OperationOutcome" return-preference)
-          (ac/completed-future {:fhir/type :fhir/OperationOutcome})
-          :else
-          (d/pull db-after new-handle))
-        (ac/then-apply
-          (fn [body]
-            (cond->
-              (-> (ring/response body)
-                  (ring/status (if created 201 200))
-                  (ring/header "Last-Modified" (last-modified tx))
-                  (ring/header "ETag" (str "W/\"" vid "\"")))
-              created
-              (ring/header
-                "Location" (fhir-util/versioned-instance-url router type id vid))))))))
-
-
 (defn- tx-op [resource if-match-t]
   (cond-> [:put resource]
     if-match-t
@@ -105,6 +63,7 @@
         {:keys [id]} :path-params
         :keys [body]
         {:strs [if-match] :as headers} :headers
+        :blaze/keys [base-url]
         ::reitit/keys [router]}]
     (let [db-before (d/db node)]
       (-> (ac/supply (validate-resource type id body))
@@ -114,8 +73,12 @@
           ;; the central indexing thread would execute response building.
           (ac/then-apply-async identity executor)
           (ac/then-compose
-            #(build-response
-               router headers type id db-before %))
+            (fn [db-after]
+              (response/build-response
+                base-url router (handler-util/preference headers "return")
+                db-after
+                (d/resource-handle db-before type id)
+                (d/resource-handle db-after type id))))
           (ac/exceptionally handler-util/error-response)))))
 
 

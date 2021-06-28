@@ -2,6 +2,7 @@
   (:require
     [blaze.db.api :as d]
     [blaze.db.api-spec]
+    [blaze.db.impl.index.tx-success :as tsi]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :refer [new-node]]
@@ -22,10 +23,6 @@
 (def ^:private search-param-registry (sr/init-search-param-registry))
 
 
-(def ^:private resource-indexer-executor
-  (ex/cpu-bound-pool "resource-indexer-%d"))
-
-
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private local-tx-log-executor
   (ex/single-thread-executor "local-tx-log"))
@@ -36,7 +33,16 @@
   (ex/single-thread-executor "indexer"))
 
 
+(def ^:private resource-store-executor
+  (ex/single-thread-executor "resource-store"))
+
+
 (def ^:private clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+
+
+(defn- tx-cache [index-kv-store]
+  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+
 
 (defn mem-node ^Closeable []
   (let [index-kv-store
@@ -54,10 +60,11 @@
            :system-as-of-index nil
            :type-stats-index nil
            :system-stats-index nil})
-        resource-store (new-kv-resource-store (new-mem-kv-store))
+        resource-store (new-kv-resource-store (new-mem-kv-store)
+                                              resource-store-executor)
         tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
         resource-handle-cache (.build (Caffeine/newBuilder))]
-    (new-node tx-log resource-handle-cache resource-indexer-executor 1
+    (new-node tx-log resource-handle-cache (tx-cache index-kv-store)
               indexer-executor index-kv-store resource-store
               search-param-registry (jt/millis 10))))
 

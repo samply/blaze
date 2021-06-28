@@ -7,7 +7,7 @@ codesystem StorageTemperature: 'https://fhir.bbmri.de/CodeSystem/StorageTemperat
 context Specimen
 
 define InInitialPopulation:
-  exists(
+  exists
     from Specimen.extension E
     where E.url = 'https://fhir.bbmri.de/StructureDefinition/StorageTemperature'
-      and E.value.coding contains Code 'temperatureRoom' from StorageTemperature)
+      and E.value.coding contains Code 'temperatureRoom' from StorageTemperature

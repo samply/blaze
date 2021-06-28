@@ -7,7 +7,7 @@ test:
 test-coverage:
 	clojure -M:test-coverage
 
-unused-vars:
-	clojure -M:unused-vars src test
+clean:
+	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: lint test test-coverage unused-vars
+.PHONY: lint test test-coverage clean

@@ -1,8 +1,11 @@
 (ns blaze.fhir.spec.type
   (:require
+    [blaze.fhir.spec.type.macros :as macros :refer [defcomplextype]]
+    [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
     [clojure.alpha.spec :as s2]
     [clojure.data.xml :as xml]
+    [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
     [clojure.string :as str])
   (:import
@@ -11,72 +14,87 @@
     [clojure.lang Keyword]
     [com.google.common.hash PrimitiveSink]
     [java.io Writer]
-    [java.nio.charset StandardCharsets]
     [java.time
      Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
      ZoneOffset]
     [java.time.format DateTimeFormatter DateTimeParseException]
-    [java.util List Map UUID])
-  (:refer-clojure :exclude [decimal? string? uri?]))
+    [java.util List Map UUID]
+    [com.fasterxml.jackson.core JsonGenerator]
+    [com.fasterxml.jackson.databind.module SimpleModule]
+    [com.fasterxml.jackson.databind JsonSerializer SerializerProvider]
+    [com.fasterxml.jackson.databind.ser.std StdSerializer]
+    [com.fasterxml.jackson.datatype.jsr310.ser
+     LocalDateSerializer OffsetDateTimeSerializer YearSerializer
+     YearMonthSerializer])
+  (:refer-clojure :exclude [decimal? string? type uri? uuid?]))
+
+
+(xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defprotocol FhirType
-  (-type [_])
-  (-value [_])
-  (-to-json [_])
-  (-to-xml [_])
-  (-hash-into [_ sink]))
-
-
-(defn primitive? [x]
-  (when-let [type (-type x)]
-    (Character/isLowerCase ^char (first (name type)))))
+(defn type [x]
+  (p/-type x))
 
 
 (defn value
   "Returns the possible value of the primitive value `x` as FHIRPath system
   type."
   [x]
-  (-value x))
+  (p/-value x))
+
+
+(defn to-xml [x]
+  (p/-to-xml x))
+
+
+(defn hash-into [x sink]
+  (p/-hash-into x sink))
+
+
+(defn references [x]
+  (p/-references x))
 
 
 
-;; ---- Object and nil --------------------------------------------------------
+;; ---- nil -------------------------------------------------------------------
 
-;; Be sure all methods can be called on every Object and nil. Every call
-;; will produce nil.
-(extend-protocol FhirType
-  Object
-  (-type [_])
-  (-value [_])
-  (-to-json [_])
-  (-to-xml [_])
-  (-hash-into [_ _])
+;; Be sure all methods can be called on nil.
+(extend-protocol p/FhirType
   nil
   (-type [_])
   (-value [_])
-  (-to-json [_])
   (-to-xml [_])
-  (-hash-into [_ _]))
+  (-hash-into [_ _])
+  (-references [_]))
+
+
+
+;; ---- Object -------------------------------------------------------------------
+
+;; Other instances have no type.
+(extend-protocol p/FhirType
+  Object
+  (-type [_])
+  (-references [_]))
 
 
 
 ;; ---- boolean ---------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Boolean
   (-type [_] :fhir/boolean)
   (-value [b] b)
-  (-to-json [b] b)
   (-to-xml [b] (xml-node/element nil {:value (str b)}))
   (-hash-into [b sink]
     (.putByte ^PrimitiveSink sink (byte 0))                 ; :fhir/boolean
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into b sink)))
+    (system/-hash-into b sink))
+  (-references [_]))
 
 
 (defn xml->Boolean
@@ -88,16 +106,16 @@
 
 ;; ---- integer ---------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Integer
   (-type [_] :fhir/integer)
   (-value [i] i)
-  (-to-json [i] i)
   (-to-xml [i] (xml-node/element nil {:value (str i)}))
   (-hash-into [i sink]
     (.putByte ^PrimitiveSink sink (byte 1))                 ; :fhir/integer
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into i sink)))
+    (system/-hash-into i sink))
+  (-references [_]))
 
 
 (defn xml->Integer
@@ -109,16 +127,16 @@
 
 ;; ---- long ---------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Long
   (-type [_] :fhir/long)
   (-value [i] i)
-  (-to-json [i] i)
   (-to-xml [i] (xml-node/element nil {:value (str i)}))
   (-hash-into [i sink]
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :fhir/long
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into i sink)))
+    (system/-hash-into i sink))
+  (-references [_]))
 
 
 (defn xml->Long
@@ -130,16 +148,16 @@
 
 ;; ---- string ----------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   String
   (-type [_] :fhir/string)
   (-value [s] s)
-  (-to-json [s] s)
   (-to-xml [s] (xml-node/element nil {:value (str s)}))
   (-hash-into [s sink]
     (.putByte ^PrimitiveSink sink (byte 3))                 ; :fhir/string
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into s sink)))
+    (system/-hash-into s sink))
+  (-references [_]))
 
 
 (defn xml->String
@@ -149,22 +167,22 @@
 
 
 (defn string? [x]
-  (identical? :fhir/string (-type x)))
+  (identical? :fhir/string (p/-type x)))
 
 
 
 ;; ---- decimal ---------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   BigDecimal
   (-type [_] :fhir/decimal)
   (-value [d] d)
-  (-to-json [d] d)
   (-to-xml [d] (xml-node/element nil {:value (str d)}))
   (-hash-into [d sink]
     (.putByte ^PrimitiveSink sink (byte 4))                 ; :fhir/decimal
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into d sink)))
+    (system/-hash-into d sink))
+  (-references [_]))
 
 
 (defn xml->Decimal
@@ -174,22 +192,23 @@
 
 
 (defn decimal? [x]
-  (identical? :fhir/decimal (-type x)))
+  (identical? :fhir/decimal (p/-type x)))
 
 
 
 ;; ---- uri -------------------------------------------------------------------
 
 (deftype Uri [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/uri)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 5))                 ; :fhir/uri
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
+
   Object
   (equals [_ x]
     (and (instance? Uri x) (= value (.value ^Uri x))))
@@ -197,6 +216,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(def ^:private ^JsonSerializer uri-serializer
+  (proxy [StdSerializer] [Uri]
+    (serialize [^Uri uri ^JsonGenerator gen _]
+      (.writeString gen ^String (.value uri)))))
 
 
 (defmethod print-method Uri [^Uri uri ^Writer w]
@@ -219,15 +244,16 @@
 ;; ---- url -------------------------------------------------------------------
 
 (deftype Url [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/url)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 6))                 ; :fhir/url
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
+
   Object
   (equals [_ x]
     (and (instance? Url x) (= value (.value ^Url x))))
@@ -235,6 +261,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(def ^:private url-serializer
+  (proxy [StdSerializer] [Url]
+    (serialize [^Url url ^JsonGenerator gen _]
+      (.writeString gen ^String (.value url)))))
 
 
 (defmethod print-method Url [^Url url ^Writer w]
@@ -257,15 +289,16 @@
 ;; ---- canonical -------------------------------------------------------------
 
 (deftype Canonical [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/canonical)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 7))                 ; :fhir/canonical
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
+
   Object
   (equals [_ x]
     (and (instance? Canonical x) (= value (.value ^Canonical x))))
@@ -273,6 +306,12 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(def ^:private ^JsonSerializer canonical-serializer
+  (proxy [StdSerializer] [Canonical]
+    (serialize [^Canonical canonical ^JsonGenerator gen _]
+      (.writeString gen ^String (.value canonical)))))
 
 
 (defmethod print-method Canonical [^Canonical canonical ^Writer w]
@@ -295,15 +334,16 @@
 ;; ---- base64Binary ----------------------------------------------------------
 
 (deftype Base64Binary [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/base64Binary)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 8))                 ; :fhir/base64Binary
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
+
   Object
   (equals [_ x]
     (and (instance? Base64Binary x) (= value (.value ^Base64Binary x))))
@@ -311,6 +351,18 @@
     (.hashCode value))
   (toString [_]
     (str value)))
+
+
+(def ^:private base64-binary-serializer
+  (proxy [StdSerializer] [Base64Binary]
+    (serialize [^Base64Binary base64-binary ^JsonGenerator gen _]
+      (.writeString gen ^String (.value base64-binary)))))
+
+
+(defmethod print-method Base64Binary [^Base64Binary base64Binary ^Writer w]
+  (.write w "#fhir/base64Binary\"")
+  (.write w (str base64Binary))
+  (.write w "\""))
 
 
 (defn xml->Base64Binary
@@ -326,17 +378,23 @@
 
 ;; ---- instant ---------------------------------------------------------------
 
+
+(defn- format-offset-date-time [date-time]
+  (.format DateTimeFormatter/ISO_DATE_TIME date-time))
+
+
 ;; Implementation of a FHIR instant with a variable ZoneOffset.
 (deftype OffsetInstant [^OffsetDateTime value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/instant)
   (-value [_] value)
-  (-to-json [_] (-to-json value))
-  (-to-xml [_] (xml-node/element nil {:value (-to-json value)}))
+  (-to-xml [_] (xml-node/element nil {:value (format-offset-date-time value)}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
+
   Object
   (equals [_ x]
     (and (instance? OffsetInstant x) (= value (.value ^OffsetInstant x))))
@@ -346,16 +404,22 @@
     (str value)))
 
 
-(extend-protocol FhirType
+(def ^:private offset-instant-serializer
+  (proxy [StdSerializer] [OffsetInstant]
+    (serialize [^OffsetInstant offset-instant gen provider]
+      (.serialize OffsetDateTimeSerializer/INSTANCE (.value offset-instant) gen provider))))
+
+
+(extend-protocol p/FhirType
   Instant
   (-type [_] :fhir/instant)
   (-value [instant] (.atOffset instant ZoneOffset/UTC))
-  (-to-json [instant] (str instant))
   (-to-xml [instant] (xml-node/element nil {:value (str instant)}))
   (-hash-into [instant sink]
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into (-value instant) sink)))
+    (system/-hash-into (p/-value instant) sink))
+  (-references [_]))
 
 
 (defn ->Instant [s]
@@ -372,40 +436,42 @@
 
 
 (defn instant? [x]
-  (identical? :fhir/instant (-type x)))
+  (identical? :fhir/instant (p/-type x)))
 
 
 
 ;; -- date --------------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   Year
   (-type [_] :fhir/date)
   (-value [date] date)
-  (-to-json [date] (str date))
   (-to-xml [date] (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
+  (-references [_])
+
   YearMonth
   (-type [_] :fhir/date)
   (-value [date] date)
-  (-to-json [date] (str date))
   (-to-xml [date] (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
+  (-references [_])
+
   LocalDate
   (-type [_] :fhir/date)
   (-value [date] date)
-  (-to-json [date] (str date))
   (-to-xml [date] (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into date sink)))
+    (system/-hash-into date sink))
+  (-references [_]))
 
 
 (defn ->Date [value]
@@ -423,7 +489,7 @@
 
 
 (defn date? [x]
-  (identical? :fhir/date (-type x)))
+  (identical? :fhir/date (p/-type x)))
 
 
 (defprotocol ConvertToDateTime
@@ -439,73 +505,110 @@
 
 ;; -- dateTime ----------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   DateTimeYear
   (-type [_] :fhir/dateTime)
   (-value [year] year)
-  (-to-json [year] (str year))
   (-to-xml [year] (xml-node/element nil {:value (str year)}))
   (-hash-into [year sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into year sink))
+  (-references [_])
+
   DateTimeYearMonth
   (-type [_] :fhir/dateTime)
   (-value [year-month] year-month)
-  (-to-json [year-month] (str year-month))
   (-to-xml [year-month] (xml-node/element nil {:value (str year-month)}))
   (-hash-into [year-month sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into year-month sink))
+  (-references [_])
+
   DateTimeYearMonthDay
   (-type [_] :fhir/dateTime)
   (-value [year-month-day] year-month-day)
-  (-to-json [year-month-day] (str year-month-day))
   (-to-xml [year-month-day] (xml-node/element nil {:value (str year-month-day)}))
   (-hash-into [year-month-day sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into year-month-day sink)))
+    (system/-hash-into year-month-day sink))
+  (-references [_]))
 
 
-(extend-protocol FhirType
+(def ^:private date-time-year-serializer
+  (proxy [StdSerializer] [DateTimeYear]
+    (serialize [^DateTimeYear date-time-year gen provider]
+      (.serialize YearSerializer/INSTANCE (.year date-time-year) gen provider))))
+
+
+(def ^:private date-time-year-month-serializer
+  (proxy [StdSerializer] [DateTimeYearMonth]
+    (serialize [^DateTimeYearMonth date-time-year-month gen provider]
+      (.serialize YearMonthSerializer/INSTANCE (.year_month date-time-year-month)
+                  gen provider))))
+
+
+(def ^:private date-time-year-month-day-serializer
+  (proxy [StdSerializer] [DateTimeYearMonthDay]
+    (serialize [^DateTimeYearMonthDay date-time-year-month gen provider]
+      (.serialize LocalDateSerializer/INSTANCE (.date date-time-year-month)
+                  gen provider))))
+
+
+(defn- format-local-date-time [date-time]
+  (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time))
+
+
+(extend-protocol p/FhirType
   OffsetDateTime
   (-type [_] :fhir/dateTime)
   (-value [date-time] date-time)
-  (-to-json [date-time] (.format DateTimeFormatter/ISO_DATE_TIME date-time))
-  (-to-xml [date-time] (xml-node/element nil {:value (-to-json date-time)}))
+  (-to-xml [date-time]
+    (xml-node/element nil {:value (format-offset-date-time date-time)}))
   (-hash-into [date-time sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date-time sink))
+  (-references [_])
+
   LocalDateTime
   (-type [_] :fhir/dateTime)
   (-value [date-time] date-time)
-  (-to-json [date-time] (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time))
-  (-to-xml [date-time] (xml-node/element nil {:value (-to-json date-time)}))
+  (-to-xml [date-time]
+    (xml-node/element nil {:value (format-local-date-time date-time)}))
   (-hash-into [date-time sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into date-time sink)))
+    (system/-hash-into date-time sink))
+  (-references [_]))
 
 
-(defrecord ExtendedDateTime [id extensions value]
-  FhirType
+(defrecord ExtendedDateTime [id extension value]
+  p/FhirType
   (-type [_] :fhir/dateTime)
   (-value [_] value)
-  (-to-json [_] (str value))
-  (-to-xml [_] (xml-node/element* id {:value (str value)} extensions))
+  (-to-xml [_] (xml-node/element* id {:value (str value)} extension))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 11))                ; :fhir/dateTime
     (when id
       (.putByte ^PrimitiveSink sink (byte 0))               ; :id
       (system/-hash-into id sink))
-    (when extensions
-      (.putByte ^PrimitiveSink sink (byte 1))               ; :extensions
-      (-hash-into extensions sink))
+    (when extension
+      (.putByte ^PrimitiveSink sink (byte 1))               ; :extension
+      (p/-hash-into extension sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink)))
+    (system/-hash-into value sink))
+  (-references [_]
+    (p/-references extension)))
+
+
+(def ^:private extended-date-time-serializer
+  (proxy [StdSerializer] [ExtendedDateTime]
+    (serialize [^ExtendedDateTime extended-date-time gen ^SerializerProvider provider]
+      (let [value (.value extended-date-time)]
+        (.serialize (.findValueSerializer provider (class value)) value gen provider)))))
 
 
 (defn ->DateTime
@@ -533,22 +636,26 @@
 
 
 (defn date-time? [x]
-  (identical? :fhir/dateTime (-type x)))
+  (identical? :fhir/dateTime (p/-type x)))
 
 
 
 ;; ---- time ------------------------------------------------------------------
 
-(extend-protocol FhirType
+(defn- format-time [time]
+  (.format DateTimeFormatter/ISO_LOCAL_TIME time))
+
+
+(extend-protocol p/FhirType
   LocalTime
   (-type [_] :fhir/time)
   (-value [time] time)
-  (-to-json [time] (.format DateTimeFormatter/ISO_LOCAL_TIME time))
-  (-to-xml [time] (xml-node/element nil {:value (-to-json time)}))
+  (-to-xml [time] (xml-node/element nil {:value (format-time time)}))
   (-hash-into [time sink]
     (.putByte ^PrimitiveSink sink (byte 12))                ; :fhir/time
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into time sink)))
+    (system/-hash-into time sink))
+  (-references [_]))
 
 
 (defn ->Time [s]
@@ -562,22 +669,22 @@
 
 
 (defn time? [x]
-  (identical? :fhir/time (-type x)))
+  (identical? :fhir/time (p/-type x)))
 
 
 
 ;; ---- code ------------------------------------------------------------------
 
 (deftype Code [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/code)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 13))                ; :fhir/code
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Code x) (= value (.value ^Code x))))
@@ -587,28 +694,45 @@
     value))
 
 
+(def ^:private ^JsonSerializer code-serializer
+  (proxy [StdSerializer] [Code]
+    (serialize [^Code code ^JsonGenerator gen _]
+      (.writeString gen ^String (.value code)))))
+
+
 (defmethod print-method Code [code ^Writer w]
   (.write w "#fhir/code\"")
-  (.write w ^String (-value code))
+  (.write w ^String (p/-value code))
   (.write w "\""))
 
 
-(defrecord ExtendedCode [id extensions value]
-  FhirType
+(defrecord ExtendedCode [id extension value]
+  p/FhirType
   (-type [_] :fhir/code)
   (-value [_] value)
-  (-to-json [_] (str value))
-  (-to-xml [_] (xml-node/element* nil {:value value} extensions))
+  (-to-xml [_] (xml-node/element* nil {:value value} extension))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 13))                ; :fhir/code
     (when id
       (.putByte ^PrimitiveSink sink (byte 0))               ; :id
       (system/-hash-into id sink))
-    (when extensions
-      (.putByte ^PrimitiveSink sink (byte 1))               ; :extensions
-      (-hash-into extensions sink))
+    (when extension
+      (.putByte ^PrimitiveSink sink (byte 1))               ; :extension
+      (p/-hash-into extension sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink)))
+    (system/-hash-into value sink))
+  (-references [_]
+    (p/-references extension)))
+
+
+(def ^:private extended-code-serializer
+  (proxy [StdSerializer] [ExtendedCode]
+    (serialize [^ExtendedCode extended-code ^JsonGenerator gen _]
+      (.writeString gen ^String (.value extended-code)))))
+
+
+(defn tagged-literal->Code [x]
+  (if (string? x) (->Code x) (map->ExtendedCode x)))
 
 
 (defn xml->Code
@@ -621,22 +745,22 @@
 
 
 (defn code? [x]
-  (identical? :fhir/code (-type x)))
+  (identical? :fhir/code (p/-type x)))
 
 
 
 ;; ---- oid -------------------------------------------------------------------
 
 (deftype Oid [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/oid)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 14))                ; :fhir/oid
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Oid x) (= value (.value ^Oid x))))
@@ -646,9 +770,15 @@
     value))
 
 
+(def ^:private oid-serializer
+  (proxy [StdSerializer] [Oid]
+    (serialize [^Oid oid ^JsonGenerator gen _]
+      (.writeString gen ^String (.value oid)))))
+
+
 (defmethod print-method Oid [id ^Writer w]
   (.write w "#fhir/oid\"")
-  (.write w ^String (-value id))
+  (.write w ^String (p/-value id))
   (.write w "\""))
 
 
@@ -659,22 +789,22 @@
 
 
 (defn oid? [x]
-  (identical? :fhir/oid (-type x)))
+  (identical? :fhir/oid (p/-type x)))
 
 
 
 ;; ---- id --------------------------------------------------------------------
 
 (deftype Id [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/id)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 15))                ; :fhir/id
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Id x) (= value (.value ^Id x))))
@@ -684,9 +814,15 @@
     value))
 
 
+(def ^:private ^JsonSerializer id-serializer
+  (proxy [StdSerializer] [Id]
+    (serialize [^Id id ^JsonGenerator gen _]
+      (.writeString gen ^String (.value id)))))
+
+
 (defmethod print-method Id [id ^Writer w]
   (.write w "#fhir/id\"")
-  (.write w ^String (-value id))
+  (.write w ^String (p/-value id))
   (.write w "\""))
 
 
@@ -697,22 +833,22 @@
 
 
 (defn id? [x]
-  (identical? :fhir/id (-type x)))
+  (identical? :fhir/id (p/-type x)))
 
 
 
 ;; ---- markdown --------------------------------------------------------------
 
 (deftype Markdown [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/markdown)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value value}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 16))                ; :fhir/markdown
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Markdown x) (= value (.value ^Markdown x))))
@@ -722,9 +858,15 @@
     (str value)))
 
 
+(def ^:private markdown-serializer
+  (proxy [StdSerializer] [Markdown]
+    (serialize [^Markdown markdown ^JsonGenerator gen _]
+      (.writeString gen ^String (.value markdown)))))
+
+
 (defmethod print-method Markdown [markdown ^Writer w]
   (.write w "#fhir/markdown\"")
-  (.write w ^String (-value markdown))
+  (.write w ^String (p/-value markdown))
   (.write w "\""))
 
 
@@ -735,22 +877,22 @@
 
 
 (defn markdown? [x]
-  (identical? :fhir/markdown (-type x)))
+  (identical? :fhir/markdown (p/-type x)))
 
 
 
 ;; ---- unsignedInt -----------------------------------------------------------
 
 (deftype UnsignedInt [^int value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/unsignedInt)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value (Integer/toString value)}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 17))                ; :fhir/unsignedInt
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? UnsignedInt x) (= value (.value ^UnsignedInt x))))
@@ -760,27 +902,34 @@
     (Integer/toString value)))
 
 
-(defmethod print-method UnsignedInt [unsignedInt ^Writer w]
+(def ^:private unsigned-int-serializer
+  (proxy [StdSerializer] [UnsignedInt]
+    (serialize [^UnsignedInt unsigned-int ^JsonGenerator gen _]
+      (.writeNumber gen ^int (.value unsigned-int)))))
+
+
+(defmethod print-method UnsignedInt [unsigned-int ^Writer w]
   (.write w "#fhir/unsignedInt ")
-  (.write w (str unsignedInt)))
+  (.write w (str unsigned-int)))
 
 
-(defrecord ExtendedUnsignedInt [id extensions ^int value]
-  FhirType
+(defrecord ExtendedUnsignedInt [id extension ^int value]
+  p/FhirType
   (-type [_] :fhir/unsignedInt)
   (-value [_] value)
-  (-to-json [_] value)
-  (-to-xml [_] (xml-node/element* nil {:value (Integer/toString value)} extensions))
+  (-to-xml [_] (xml-node/element* nil {:value (Integer/toString value)} extension))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 17))                ; :fhir/unsignedInt
     (when id
       (.putByte ^PrimitiveSink sink (byte 0))               ; :id
       (system/-hash-into id sink))
-    (when extensions
-      (.putByte ^PrimitiveSink sink (byte 1))               ; :extensions
-      (-hash-into extensions sink))
+    (when extension
+      (.putByte ^PrimitiveSink sink (byte 1))               ; :extension
+      (p/-hash-into extension sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink)))
+    (system/-hash-into value sink))
+  (-references [_]
+    (p/-references extension)))
 
 
 (defn xml->UnsignedInt
@@ -792,22 +941,22 @@
 
 
 (defn unsignedInt? [x]
-  (identical? :fhir/unsignedInt (-type x)))
+  (identical? :fhir/unsignedInt (p/-type x)))
 
 
 
 ;; ---- positiveInt -----------------------------------------------------------
 
 (deftype PositiveInt [^int value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/positiveInt)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (xml-node/element nil {:value (Integer/toString value)}))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 18))                ; :fhir/positiveInt
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? PositiveInt x) (= value (.value ^PositiveInt x))))
@@ -817,27 +966,34 @@
     (Integer/toString value)))
 
 
-(defmethod print-method PositiveInt [positiveInt ^Writer w]
+(def ^:private positive-int-serializer
+  (proxy [StdSerializer] [PositiveInt]
+    (serialize [^PositiveInt positive-int ^JsonGenerator gen _]
+      (.writeNumber gen ^int (.value positive-int)))))
+
+
+(defmethod print-method PositiveInt [positive-int ^Writer w]
   (.write w "#fhir/positiveInt ")
-  (.write w (str positiveInt)))
+  (.write w (str positive-int)))
 
 
-(defrecord ExtendedPositiveInt [id extensions ^int value]
-  FhirType
+(defrecord ExtendedPositiveInt [id extension ^int value]
+  p/FhirType
   (-type [_] :fhir/positiveInt)
   (-value [_] value)
-  (-to-json [_] value)
-  (-to-xml [_] (xml-node/element* nil {:value (Integer/toString value)} extensions))
+  (-to-xml [_] (xml-node/element* nil {:value (Integer/toString value)} extension))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 18))                ; :fhir/positiveInt
     (when id
       (.putByte ^PrimitiveSink sink (byte 0))               ; :id
       (system/-hash-into id sink))
-    (when extensions
-      (.putByte ^PrimitiveSink sink (byte 1))               ; :extensions
-      (-hash-into extensions sink))
+    (when extension
+      (.putByte ^PrimitiveSink sink (byte 1))               ; :extension
+      (p/-hash-into extension sink))
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink)))
+    (system/-hash-into value sink))
+  (-references [_]
+    (p/-references extension)))
 
 
 (defn xml->PositiveInt
@@ -849,23 +1005,29 @@
 
 
 (defn positiveInt? [x]
-  (identical? :fhir/positiveInt (-type x)))
+  (identical? :fhir/positiveInt (p/-type x)))
 
 
 
 ;; ---- uuid ------------------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   UUID
   (-type [_] :fhir/uuid)
   (-value [uuid] (str "urn:uuid:" uuid))
-  (-to-json [uuid] (str "urn:uuid:" uuid))
   (-to-xml [uuid] (xml-node/element nil {:value (str "urn:uuid:" uuid)}))
   (-hash-into [uuid sink]
     (.putByte ^PrimitiveSink sink (byte 19))                ; :fhir/uuid
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (.putLong ^PrimitiveSink sink (.getMostSignificantBits uuid))
-    (.putLong ^PrimitiveSink sink (.getLeastSignificantBits uuid))))
+    (.putLong ^PrimitiveSink sink (.getLeastSignificantBits uuid)))
+  (-references [_]))
+
+
+(def ^:private uuid-serializer
+  (proxy [StdSerializer] [UUID]
+    (serialize [^UUID uuid ^JsonGenerator gen _]
+      (.writeString gen (str "urn:uuid:" uuid)))))
 
 
 (defn ->Uuid [s]
@@ -878,19 +1040,23 @@
   (->Uuid value))
 
 
+(defn uuid? [x]
+  (clojure.core/uuid? x))
+
+
 
 ;; ---- xhtml -----------------------------------------------------------------
 
 (deftype Xhtml [value]
-  FhirType
+  p/FhirType
   (-type [_] :fhir/xhtml)
   (-value [_] value)
-  (-to-json [_] value)
   (-to-xml [_] (update (xml/parse-str value) :attrs assoc :xmlns "http://www.w3.org/1999/xhtml"))
   (-hash-into [_ sink]
     (.putByte ^PrimitiveSink sink (byte 20))                ; :fhir/xhtml
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
+  (-references [_])
   Object
   (equals [_ x]
     (and (instance? Xhtml x) (= value (.value ^Xhtml x))))
@@ -900,9 +1066,15 @@
     (str value)))
 
 
+(def ^:private xhtml-serializer
+  (proxy [StdSerializer] [Xhtml]
+    (serialize [^Xhtml xhtml ^JsonGenerator gen _]
+      (.writeString gen ^String (.value xhtml)))))
+
+
 (defmethod print-method Xhtml [xhtml ^Writer w]
   (.write w "#fhir/xhtml\"")
-  (.write w ^String (-value xhtml))
+  (.write w ^String (p/-value xhtml))
   (.write w "\""))
 
 
@@ -923,28 +1095,232 @@
 
 ;; ---- Complex Types --------------------------------------------------------
 
-(extend-protocol FhirType
+(extend-protocol p/FhirType
   List
   (-type [_])
   (-value [_])
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
-    (doseq [x xs]
-      (-hash-into x sink)))
+    (reduce (fn [_ x] (p/-hash-into x sink)) nil xs))
+  (-references [xs]
+    (transduce (mapcat p/-references) conj [] xs))
   Keyword
   (-type [_])
   (-value [_])
   (-hash-into [k sink]
-    (.putString ^PrimitiveSink sink (name k) StandardCharsets/UTF_8))
+    (.putInt ^PrimitiveSink sink (.hasheq k)))
+  (-references [_])
   Map
   (-type [m]
     (:fhir/type m))
   (-value [_])
   (-hash-into [m sink]
     (.putByte ^PrimitiveSink sink (byte 37))
-    (doseq [[k v] (into (sorted-map) m)]
-      (.putString ^PrimitiveSink sink (name k) StandardCharsets/UTF_8)
-      (-hash-into v sink))))
+    (reduce
+      (fn [_ k]
+        (p/-hash-into k sink)
+        (p/-hash-into (k m) sink))
+      nil
+      (sort (keys m))))
+  (-references [m]
+    (transduce (mapcat p/-references) conj [] (vals m))))
+
+
+(declare extension-serializer)
+
+
+(defcomplextype Attachment [id extension contentType language data url size
+                            hash title creation]
+  :hash-num 46
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   contentType code-serializer
+   language code-serializer
+   data base64-binary-serializer
+   url url-serializer
+   size unsigned-int-serializer
+   hash base64-binary-serializer
+   title :string
+   creation :dynamic})
+
+
+(declare attachment-serializer)
+
+
+(defcomplextype Extension [id extension url value]
+  :hash-num 39
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   url :string
+   value :dynamic-type})
+
+
+(defcomplextype Coding [id extension system version code display]
+  :hash-num 38
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   system uri-serializer
+   version :string
+   code code-serializer
+   display :string})
+
+
+(declare coding-serializer)
+
+
+(defcomplextype CodeableConcept [id extension coding text]
+  :hash-num 39
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   coding ^{:cardinality :many} coding-serializer
+   text :string})
+
+
+(declare codeable-concept-serializer)
+
+
+(defcomplextype Quantity [id extension value comparator unit system code]
+  :hash-num 40
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   value :decimal
+   comparator code-serializer
+   unit :string
+   system uri-serializer
+   code code-serializer})
+
+
+(declare quantity-serializer)
+
+
+(defcomplextype Period [id extension start end]
+  :hash-num 41
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   start :dynamic
+   end :dynamic})
+
+
+(declare period-serializer)
+
+
+(declare reference-serializer)
+
+
+(defcomplextype Identifier [id extension use type system value period assigner]
+  :hash-num 42
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   use code-serializer
+   type codeable-concept-serializer
+   system uri-serializer
+   value :string
+   period period-serializer
+   assigner reference-serializer})
+
+
+(declare identifier-serializer)
+
+
+(defn- valid-ref? [[type id]]
+  (and (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
+       (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))))
+
+
+(defn- reference-reference [ref]
+  (let [ref (str/split ref #"/" 2)]
+    (when (valid-ref? ref)
+      [ref])))
+
+
+(defcomplextype Reference [id extension reference type identifier display]
+  :hash-num 43
+  :references
+  (-references [_]
+    (-> (transient (or (some-> reference reference-reference) []))
+        (macros/into! (p/-references extension))
+        (macros/into! (p/-references type))
+        (macros/into! (p/-references identifier))
+        (macros/into! (p/-references display))
+        (persistent!)))
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   reference :string
+   type uri-serializer
+   identifier identifier-serializer
+   display :string})
+
+
+(defcomplextype Meta [id extension versionId lastUpdated source profile security tag]
+  :hash-num 44
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   versionId id-serializer
+   lastUpdated :dynamic
+   source uri-serializer
+   profile ^{:cardinality :many} canonical-serializer
+   security ^{:cardinality :many} coding-serializer
+   tag ^{:cardinality :many} coding-serializer})
+
+
+(declare meta-serializer)
+
+
+(defcomplextype BundleEntrySearch [id extension mode score]
+  :fhir-type :fhir.Bundle.entry/search
+  :hash-num 45
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   mode code-serializer
+   score :decimal})
+
+
+(declare bundle-entry-search-serializer)
+
+
+
+;; ---- Jackson Databind Module -----------------------------------------------
+
+(def fhir-module
+  (doto (SimpleModule. "FHIR")
+    (.addSerializer Uri uri-serializer)
+    (.addSerializer Url url-serializer)
+    (.addSerializer Canonical canonical-serializer)
+    (.addSerializer Base64Binary base64-binary-serializer)
+    (.addSerializer OffsetInstant offset-instant-serializer)
+    (.addSerializer DateTimeYear date-time-year-serializer)
+    (.addSerializer DateTimeYearMonth date-time-year-month-serializer)
+    (.addSerializer DateTimeYearMonthDay date-time-year-month-day-serializer)
+    (.addSerializer ExtendedDateTime extended-date-time-serializer)
+    (.addSerializer Code code-serializer)
+    (.addSerializer ExtendedCode extended-code-serializer)
+    (.addSerializer Oid oid-serializer)
+    (.addSerializer Id id-serializer)
+    (.addSerializer Markdown markdown-serializer)
+    (.addSerializer UnsignedInt unsigned-int-serializer)
+    (.addSerializer PositiveInt positive-int-serializer)
+    (.addSerializer UUID uuid-serializer)
+    (.addSerializer Xhtml xhtml-serializer)
+    (.addSerializer Attachment attachment-serializer)
+    (.addSerializer Extension extension-serializer)
+    (.addSerializer Coding coding-serializer)
+    (.addSerializer CodeableConcept codeable-concept-serializer)
+    (.addSerializer Quantity quantity-serializer)
+    (.addSerializer Period period-serializer)
+    (.addSerializer Identifier identifier-serializer)
+    (.addSerializer Reference reference-serializer)
+    (.addSerializer Meta meta-serializer)
+    (.addSerializer BundleEntrySearch bundle-entry-search-serializer)))
 
 
 

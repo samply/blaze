@@ -21,7 +21,10 @@
 (set! *warn-on-reflection* true)
 
 
-(defmulti string-index-entries (fn [_ _ value] (fhir-spec/fhir-type value)))
+(defmulti index-entries
+  "Returns index entries for `value` from a resource."
+  {:arglists '([url value])}
+  (fn [_ value] (fhir-spec/fhir-type value)))
 
 
 (defn- normalize-string [s]
@@ -32,59 +35,67 @@
       (str/lower-case)))
 
 
-(defmethod string-index-entries :fhir/string
-  [_ entries-fn s]
-  (when-let [value (type/value s)]
-    (entries-fn (normalize-string value))))
+(defn- index-entry
+  ([value]
+   (index-entry normalize-string value))
+  ([f value]
+   (when-let [s (type/value value)]
+     [nil (codec/string (f s))])))
 
 
-(defmethod string-index-entries :fhir/markdown
-  [_ entries-fn s]
-  (when-let [value (type/value s)]
-    (entries-fn (normalize-string value))))
+(defmethod index-entries :fhir/string
+  [_ s]
+  (some-> (index-entry s) vector))
 
 
-(defn- string-entries [entries-fn values]
-  (into
-    []
-    (comp
-      (remove nil?)
-      (map normalize-string)
-      (mapcat entries-fn))
-    values))
+(defmethod index-entries :fhir/markdown
+  [_ s]
+  (some-> (index-entry s) vector))
 
 
-(defmethod string-index-entries :fhir/Address
-  [_ entries-fn {:keys [line city district state postalCode country]}]
-  (string-entries entries-fn (conj line city district state postalCode country)))
+(defmethod index-entries :fhir/Address
+  [_ {:keys [line city district state postalCode country]}]
+  (coll/eduction
+    (keep index-entry)
+    (reduce conj line [city district state postalCode country])))
 
 
-(defmethod string-index-entries :fhir/HumanName
-  [url entries-fn {:keys [family given]}]
+(defmethod index-entries :fhir/HumanName
+  [url {:keys [family given]}]
   (if (str/ends-with? url "phonetic")
-    (some-> family type/value phonetics/soundex entries-fn)
-    (string-entries entries-fn (conj (mapv type/value given) (type/value family)))))
+    (some-> (index-entry phonetics/soundex family) vector)
+    (coll/eduction
+      (keep index-entry)
+      (conj given family))))
 
 
-(defmethod string-index-entries :default
-  [url _ value]
+(defmethod index-entries :default
+  [url value]
   (log/warn (u/format-skip-indexing-msg value url "string")))
 
 
-(defn- resource-value
+(defn- resource-value!
   "Returns the value of the resource with `tid` and `id` according to the
-  search parameter with `c-hash`."
+  search parameter with `c-hash`.
+
+  Changes the state of `context`. Calling this function requires exclusive
+  access to `context`."
+  {:arglists '([context c-hash tid id])}
   [{:keys [rsvi resource-handle]} c-hash tid id]
   (r-sp-v/next-value! rsvi (resource-handle tid id) c-hash))
 
 
 (defn- resource-keys!
   "Returns a reducible collection of `[id hash-prefix]` tuples starting at
-  `start-id` (optional)."
+  `start-id` (optional).
+
+  Changes the state of `context`. Calling this function requires exclusive
+  access to `context`."
+  {:arglists '([context c-hash tid value] [context c-hash tid value start-id])}
   ([{:keys [svri]} c-hash tid value]
    (sp-vr/prefix-keys! svri c-hash tid value value))
   ([{:keys [svri] :as context} c-hash tid _value start-id]
-   (let [start-value (resource-value context c-hash tid start-id)]
+   (let [start-value (resource-value! context c-hash tid start-id)]
      (assert start-value)
      (sp-vr/prefix-keys! svri c-hash tid start-value start-value start-id))))
 
@@ -112,19 +123,14 @@
     (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value value))
 
   (-matches? [_ context resource-handle _ values]
-    (some #(matches? context c-hash resource-handle %) values))
+    (some? (some #(matches? context c-hash resource-handle %) values)))
 
-  (-index-values [_ resolver resource]
+  (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (into
-        []
-        (mapcat
-          #(string-index-entries
-             url
-             (fn [value]
-               [[nil (codec/string value)]])
-             %))
-        values))))
+      (coll/eduction (p/-index-value-compiler search-param) values)))
+
+  (-index-value-compiler [_]
+    (mapcat (partial index-entries url))))
 
 
 (defmethod sr/search-param "string"

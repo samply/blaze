@@ -76,8 +76,15 @@
     (log/info "Loaded the following namespaces:" (str/join ", " loaded-ns))))
 
 
+(defrecord RefMap [key]
+  ig/RefLike
+  (ref-key [_] key)
+  (ref-resolve [_ config resolvef]
+    (into {} (map (fn [[k v]] [k (resolvef k v)])) (ig/find-derived config key))))
+
+
 (def ^:private root-config
-  {:blaze/version "0.10.3"
+  {:blaze/version "0.11.0"
 
    :blaze/structure-definition {}
 
@@ -112,7 +119,7 @@
     :version (ig/ref :blaze/version)}
 
    :blaze/thread-pool-executor-collector
-   {:executors (ig/refmap :blaze.metrics/thread-pool-executor)}
+   {:executors (->RefMap :blaze.metrics/thread-pool-executor)}
 
    :blaze.metrics/registry
    {:collectors (ig/refset :blaze.metrics/collector)}

@@ -160,15 +160,11 @@
   :blaze.db/node
   {:tx-log #blaze/ref :blaze.db/tx-log
    :resource-handle-cache #blaze/ref :blaze.db/resource-handle-cache
-   :resource-indexer-executor #blaze/ref :blaze.db.node/resource-indexer-executor
-   :resource-indexer-batch-size #blaze/cfg ["DB_RESOURCE_INDEXER_BATCH_SIZE" int? 1]
+   :tx-cache #blaze/ref :blaze.db/tx-cache
    :indexer-executor #blaze/ref :blaze.db.node/indexer-executor
    :resource-store #blaze/ref :blaze.db/resource-cache
    :kv-store #blaze/ref :blaze.db/index-kv-store
    :search-param-registry #blaze/ref :blaze.db/search-param-registry}
-
-  :blaze.db.node/resource-indexer-executor
-  {:num-threads #blaze/cfg ["DB_RESOURCE_INDEXER_THREADS" int? 4]}
 
   :blaze.db.node/indexer-executor {}
 
@@ -180,6 +176,7 @@
   :blaze.db/cache-collector
   {:caches
    {"resource-handle-cache" #blaze/ref :blaze.db/resource-handle-cache
+    "tx-cache" #blaze/ref :blaze.db/tx-cache
     "resource-cache" #blaze/ref :blaze.db/resource-cache}}
 
   ;;
@@ -197,6 +194,17 @@
   {:max-size #blaze/cfg ["DB_RESOURCE_HANDLE_CACHE_SIZE" nat-int? 100000]}
 
   ;;
+  ;; Transaction Cache
+  ;;
+  ;; The transaction cache holds transaction data that currently only consists
+  ;; of the instant at which the transaction happened. Transaction data is keyed
+  ;; by t.
+  ;;
+  :blaze.db/tx-cache
+  {:kv-store #blaze/ref :blaze.db/index-kv-store
+   :max-size #blaze/cfg ["DB_TRANSACTION_CACHE_SIZE" nat-int? 100000]}
+
+  ;;
   ;; Resource Cache
   ;;
   ;; The resource cache holds already decoded FHIR resources keyed by their
@@ -210,7 +218,7 @@
   ;;
   :blaze.db/resource-cache
   {:resource-store #blaze/ref :blaze.db/resource-store
-   :max-size #blaze/cfg ["DB_RESOURCE_CACHE_SIZE" nat-int? 10000]}
+   :max-size #blaze/cfg ["DB_RESOURCE_CACHE_SIZE" nat-int? 100000]}
 
   ;;
   ;; Search Param Registry
@@ -251,18 +259,11 @@
    ;;
    ;; Local Transaction Log for Single Node Deployments
    ;;
-   ;; Currently the only option. Can be referred by the super key
-   ;; :blaze.db/tx-log. The local transaction log uses the transaction and
-   ;; resource indexer directly. The env var DB_RESOURCE_INDEXER_BATCH_SIZE can
-   ;; be used to specify the size of batches which are created to index
-   ;; resources. Larger batches reduce control overhead but reduce parallelism on
-   ;; small transactions. Don't change the default of one unless you know that it
-   ;; improves performance. The metric duration-seconds is exported.
+   ;; Can be referred by the super key :blaze.db/tx-log. The local transaction
+   ;; log uses a key-value store to persist transactions.
    ;;
    :blaze.db.tx-log/local
-   {:kv-store #blaze/ref :blaze.db/transaction-kv-store
-    :resource-indexer-batch-size #blaze/cfg ["DB_RESOURCE_INDEXER_BATCH_SIZE" int? 1]
-    :resource-store #blaze/ref :blaze.db/resource-store}
+   {:kv-store #blaze/ref :blaze.db/transaction-kv-store}
 
    :blaze.db.tx-log.local/duration-seconds {}
 
@@ -280,7 +281,13 @@
    ;; Key-Value Resource Store
    ;;
    :blaze.db.resource-store/kv
-   {:kv-store #blaze/ref :blaze.db/resource-kv-store}
+   {:kv-store #blaze/ref :blaze.db/resource-kv-store
+    :executor #blaze/ref :blaze.db.resource-store.kv/executor}
+
+   :blaze.db.resource-store.kv/executor
+   {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" int? 4]}
+
+   :blaze.db.resource-store.kv/resource-bytes {}
 
    ;;
    ;; In-Memory, Volatile Key-Value Store Resource Store Backend
@@ -308,92 +315,56 @@
      #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:search-param-value-index
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 256
+     {:write-buffer-size-in-mb 32
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-value-index
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 256
+     {:write-buffer-size-in-mb 32
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-search-param-value-index
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 256
+     {:write-buffer-size-in-mb 32
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-resource-type-index
-     {:write-buffer-size-in-mb 64
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 128
+     {:write-buffer-size-in-mb 4
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :active-search-params
      {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :tx-success-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 8
+     {:write-buffer-size-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :reverse-comparator? true}
 
      :tx-error-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 8
+     {:write-buffer-size-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :t-by-instant-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 8
+     {:write-buffer-size-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :reverse-comparator? true}
 
      :resource-as-of-index
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 256
+     {:write-buffer-size-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :type-as-of-index
-     {:write-buffer-size-in-mb 64
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 128
+     {:write-buffer-size-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :system-as-of-index
-     {:write-buffer-size-in-mb 64
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 128
+     {:write-buffer-size-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :type-stats-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 8
+     {:write-buffer-size-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :system-stats-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 8
+     {:write-buffer-size-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store/stats] {}
@@ -401,18 +372,11 @@
    ;;
    ;; Local Transaction Log for Single Node Deployments
    ;;
-   ;; Currently the only option. Can be referred by the super key
-   ;; :blaze.db/tx-log. The local transaction log uses the transaction and
-   ;; resource indexer directly. The env var DB_RESOURCE_INDEXER_BATCH_SIZE can
-   ;; be used to specify the size of batches which are created to index
-   ;; resources. Larger batches reduce control overhead but reduce parallelism on
-   ;; small transactions. Don't change the default of one unless you know that it
-   ;; improves performance. The metric duration-seconds is exported.
+   ;; Can be referred by the super key :blaze.db/tx-log. The local transaction
+   ;; log uses a key-value store to persist transactions.
    ;;
    :blaze.db.tx-log/local
-   {:kv-store #blaze/ref :blaze.db/transaction-kv-store
-    :resource-indexer-batch-size #blaze/cfg ["DB_RESOURCE_INDEXER_BATCH_SIZE" int? 1]
-    :resource-store #blaze/ref :blaze.db/resource-store}
+   {:kv-store #blaze/ref :blaze.db/transaction-kv-store}
 
    :blaze.db.tx-log.local/duration-seconds {}
 
@@ -432,10 +396,7 @@
      #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:default
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 256
+     {:write-buffer-size-in-mb 4
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.transaction-kv-store/stats] {}
@@ -444,7 +405,13 @@
    ;; Key-Value Resource Store
    ;;
    :blaze.db.resource-store/kv
-   {:kv-store #blaze/ref :blaze.db/resource-kv-store}
+   {:kv-store #blaze/ref :blaze.db/resource-kv-store
+    :executor #blaze/ref :blaze.db.resource-store.kv/executor}
+
+   :blaze.db.resource-store.kv/executor
+   {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" int? 4]}
+
+   :blaze.db.resource-store.kv/resource-bytes {}
 
    ;;
    ;; RocksDB Key-Value Store Resource Store Backend
@@ -460,11 +427,10 @@
      #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:default
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :min-write-buffer-number-to-merge 2
-      :max-bytes-for-level-base-in-mb 256
+     {:write-buffer-size-in-mb 32
+      ;; According to Synthea test data, a resource has an average size of
+      ;; 1300 bytes. So a block with a size of 16 kb will hold about 10
+      ;; resources in average.
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :bloom-filter? true}}}
 
@@ -600,7 +566,14 @@
    ;;
    :blaze.db.tx-log/kafka
    {:bootstrap-servers #blaze/cfg ["DB_KAFKA_BOOTSTRAP_SERVERS" string? "localhost:9092"]
-    :max-request-size #blaze/cfg ["DB_KAFKA_MAX_REQUEST_SIZE" nat-int? 1048576]}
+    :max-request-size #blaze/cfg ["DB_KAFKA_MAX_REQUEST_SIZE" nat-int? 1048576]
+    :compression-type #blaze/cfg ["DB_KAFKA_COMPRESSION_TYPE" string? "snappy"]
+    :security-protocol #blaze/cfg ["DB_KAFKA_SECURITY_PROTOCOL" string? "PLAINTEXT"]
+    :ssl-truststore-location #blaze/cfg ["DB_KAFKA_SSL_TRUSTSTORE_LOCATION" string?]
+    :ssl-truststore-password #blaze/cfg ["DB_KAFKA_SSL_TRUSTSTORE_PASSWORD" string?]
+    :ssl-keystore-location #blaze/cfg ["DB_KAFKA_SSL_KEYSTORE_LOCATION" string?]
+    :ssl-keystore-password #blaze/cfg ["DB_KAFKA_SSL_KEYSTORE_PASSWORD" string?]
+    :ssl-key-password #blaze/cfg ["DB_KAFKA_SSL_KEY_PASSWORD" string?]}
 
    :blaze.db.tx-log.kafka/duration-seconds {}
 
@@ -609,10 +582,13 @@
    ;;
    :blaze.db.resource-store/cassandra
    {:contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
+    :username #blaze/cfg ["DB_CASSANDRA_USERNAME" string? "cassandra"]
+    :password #blaze/cfg ["DB_CASSANDRA_PASSWORD" string? "cassandra"]
     :key-space #blaze/cfg ["DB_CASSANDRA_KEY_SPACE" string? "blaze"]
     :put-consistency-level #blaze/cfg ["DB_CASSANDRA_PUT_CONSISTENCY_LEVEL" string? "TWO"]
     :max-concurrent-requests #blaze/cfg ["DB_CASSANDRA_MAX_CONCURRENT_REQUESTS" nat-int? 1024]
-    :max-request-queue-size #blaze/cfg ["DB_CASSANDRA_MAX_REQUEST_QUEUE_SIZE" nat-int? 100000]}
+    :max-request-queue-size #blaze/cfg ["DB_CASSANDRA_MAX_REQUEST_QUEUE_SIZE" nat-int? 100000]
+    :request-timeout #blaze/cfg ["DB_CASSANDRA_REQUEST_TIMEOUT" pos-int? 2000]}
 
    :blaze.db.resource-store.cassandra/duration-seconds {}
 
@@ -630,4 +606,10 @@
    :toggle "OPENID_PROVIDER_URL"
    :config
    {:blaze.openid-auth/backend
-    {:openid-provider/url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}}}]}
+    {:http-client #blaze/ref :blaze/http-client
+     :scheduler #blaze/ref :blaze/scheduler
+     :provider-url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}
+
+    :blaze/http-client {}
+
+    :blaze/scheduler {}}}]}

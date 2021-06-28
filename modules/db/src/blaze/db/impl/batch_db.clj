@@ -4,16 +4,20 @@
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
   (:require
+    [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
     [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.t-by-instant :as ti]
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.impl.search-param.util :as u]
     [blaze.db.kv :as kv])
   (:import
     [java.io Closeable Writer]
@@ -23,10 +27,15 @@
 (set! *warn-on-reflection* true)
 
 
-(defrecord BatchDb [node context]
+(defrecord BatchDb [node basis-t context]
   p/Db
   (-node [_]
     node)
+
+  (-basis-t [_]
+    basis-t)
+
+
 
   ;; ---- Instance-Level Functions --------------------------------------------
 
@@ -145,6 +154,37 @@
 
 
 
+  ;; ---- Include ---------------------------------------------------------------
+
+  (-include [_ resource-handle code]
+    (let [{:keys [tid id hash]} resource-handle
+          {:keys [rsvi]} context]
+      (coll/eduction
+        (u/reference-resource-handle-mapper context)
+        (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash
+                             (codec/c-hash code)))))
+
+  (-include [_ resource-handle code target-type]
+    (let [{:keys [tid id hash]} resource-handle
+          {:keys [rsvi]} context]
+      (coll/eduction
+        (u/reference-resource-handle-mapper context (codec/tid target-type))
+        (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash
+                             (codec/c-hash code)))))
+
+
+  (-rev-include [_ resource-handle source-type code]
+    (let [{:keys [tid id]} resource-handle
+          {:keys [svri]} context
+          reference (codec/v-hash (str (codec/tid->type tid) "/" id))
+          source-tid (codec/tid source-type)]
+      (coll/eduction
+        (u/resource-handle-mapper context source-tid)
+        (sp-vr/prefix-keys! svri (codec/c-hash code) source-tid
+                            reference reference))))
+
+
+
   ;; ---- Transaction ---------------------------------------------------------
 
   p/Tx
@@ -181,6 +221,9 @@
 
   (-pull-content [_ resource-handle]
     (p/-pull-content node resource-handle))
+
+  (-pull-many [_ resource-handles]
+    (p/-pull-many node resource-handles))
 
   Closeable
   (close [_]
@@ -253,10 +296,11 @@
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^Closeable
-  [{:keys [kv-store rh-cache] :as node} t]
+  [{:keys [kv-store rh-cache] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
     (->BatchDb
       node
+      basis-t
       (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
         {:snapshot snapshot
          :raoi raoi

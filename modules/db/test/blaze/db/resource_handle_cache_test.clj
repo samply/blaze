@@ -1,8 +1,10 @@
 (ns blaze.db.resource-handle-cache-test
   (:require
     [blaze.db.resource-handle-cache]
+    [blaze.db.test-util :refer [given-thrown]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is]]
+    [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -10,11 +12,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -30,4 +32,11 @@
 
 
 (deftest init-test
-  (is (instance? Cache (cache 0))))
+  (testing "invalid max-size"
+    (given-thrown (cache nil)
+      :key := :blaze.db/resource-handle-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `nat-int?))
+
+  (testing "success"
+    (is (instance? Cache (cache 0)))))

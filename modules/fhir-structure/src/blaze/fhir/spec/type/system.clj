@@ -375,9 +375,10 @@
 
 (defn parse-date-time* [s]
   (condp < (count s)
-    13 (if (re-find #"(Z|[+-]\d{2}:)" s)
+    13 (try
          (OffsetDateTime/parse s)
-         (LocalDateTime/parse s))
+         (catch Exception _
+           (LocalDateTime/parse s)))
     10 (LocalDateTime/parse (str s ":00"))
     7 (DateTimeYearMonthDay. (LocalDate/parse s))
     4 (DateTimeYearMonth. (YearMonth/parse s))

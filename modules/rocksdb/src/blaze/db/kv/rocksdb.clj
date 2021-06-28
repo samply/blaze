@@ -8,15 +8,16 @@
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
+    [clojure.lang Indexed]
     [java.lang AutoCloseable]
     [java.io Closeable]
     [java.nio ByteBuffer]
-    [java.util ArrayList]
+    [java.util ArrayList EnumSet]
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
      DBOptions ColumnFamilyDescriptor CompressionType ColumnFamilyOptions
      BlockBasedTableConfig Statistics LRUCache BloomFilter CompactRangeOptions
-     Snapshot ReadOptions BuiltinComparator]))
+     Snapshot ReadOptions BuiltinComparator StatsLevel HistogramType]))
 
 
 (set! *warn-on-reflection* true)
@@ -66,7 +67,7 @@
 
 
 (defn- get-cfh ^ColumnFamilyHandle [cfhs column-family]
-  (or (get cfhs column-family)
+  (or (cfhs column-family)
       (throw-anom
         ::anom/not-found
         (format "column family `%s` not found" (name column-family)))))
@@ -93,6 +94,17 @@
     (.releaseSnapshot db snapshot)))
 
 
+(defprotocol Rocks
+  (-get-property [_ name] [_ column-family name]))
+
+
+(defn get-property
+  ([store name]
+   (-get-property store name))
+  ([store column-family name]
+   (-get-property store column-family name)))
+
+
 (deftype RocksKvStore [^RocksDB db ^Options opts ^WriteOptions write-opts cfhs]
   kv/KvStore
   (-new-snapshot [_]
@@ -117,10 +129,15 @@
 
   (-put [_ entries]
     (with-open [wb (WriteBatch.)]
-      (doseq [[column-family k v] entries]
-        (if (keyword? column-family)
-          (.put wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
-          (.put wb ^bytes column-family ^bytes k)))
+      (reduce
+        (fn [_ ^Indexed entry]
+          (let [column-family (.nth entry 0)]
+            (if (keyword? column-family)
+              (.put wb (get-cfh cfhs column-family) ^bytes (.nth entry 1)
+                    ^bytes (.nth entry 2))
+              (.put wb ^bytes column-family ^bytes (.nth entry 1)))))
+        nil
+        entries)
       (.write db write-opts wb)))
 
   (-put [_ key value]
@@ -149,6 +166,13 @@
             :delete (.delete wb ^bytes column-family))))
       (.write db write-opts wb)))
 
+  Rocks
+  (-get-property [_ name]
+    (.getProperty db name))
+
+  (-get-property [_ column-family name]
+    (.getProperty db (get-cfh cfhs column-family) name))
+
   Closeable
   (close [_]
     (.close db)
@@ -157,6 +181,10 @@
 
 
 (defn compact-range
+  "Range compaction of database.
+
+  Note: After the database has been compacted, all data will have been pushed
+  down to the last level containing any data."
   ([store]
    (.compactRange ^RocksDB (.db ^RocksKvStore store)))
   ([^RocksKvStore store column-family change-level target-level]
@@ -192,11 +220,11 @@
                  block-size
                  bloom-filter?
                  reverse-comparator?]
-          :or {write-buffer-size-in-mb 4
+          :or {write-buffer-size-in-mb 64
                max-write-buffer-number 2
                level0-file-num-compaction-trigger 4
                min-write-buffer-number-to-merge 1
-               max-bytes-for-level-base-in-mb 10
+               max-bytes-for-level-base-in-mb 256
                block-size (bit-shift-left 4 10)
                bloom-filter? false
                reverse-comparator? false}}]]
@@ -242,7 +270,7 @@
                (.setStatistics ^Statistics stats)
                (.setMaxBackgroundJobs ^long max-background-jobs)
                (.setCompactionReadaheadSize ^long compaction-readahead-size)
-               (.setBytesPerSync 1048576)
+               (.setEnablePipelinedWrite true)
                (.setCreateIfMissing true)
                (.setCreateMissingColumnFamilies true))
         cfds (map (partial column-family-descriptor block-cache) column-families)
@@ -300,7 +328,8 @@
 (defmethod ig/init-key ::stats
   [_ _]
   (log/info "Init RocksDB statistics")
-  (Statistics.))
+  (doto (Statistics. (EnumSet/allOf HistogramType))
+    (.setStatsLevel StatsLevel/EXCEPT_DETAILED_TIMERS)))
 
 
 (defmethod ig/halt-key! ::stats

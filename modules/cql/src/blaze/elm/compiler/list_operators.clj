@@ -194,10 +194,7 @@
                 end-index (or (core/-eval end-index context resource scopes) (count source))]
             (if (or (neg? start-index) (< end-index start-index))
               []
-              (subvec
-                source
-                start-index
-                end-index))))))))
+              (subvec source start-index end-index))))))))
 
 
 (defrecord SortByDirectionExpression [source comp]

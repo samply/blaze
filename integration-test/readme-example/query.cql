@@ -1,7 +1,7 @@
 using FHIR version '4.0.0'
 
 context Patient
-context Unspecified
+context Unfiltered
 
 define NumberOfPatients:
   Count([Patient])

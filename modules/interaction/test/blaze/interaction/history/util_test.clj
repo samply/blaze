@@ -1,5 +1,6 @@
 (ns blaze.interaction.history.util-test
   (:require
+    [blaze.fhir.spec.type]
     [blaze.interaction.history.util :as history-util]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -9,7 +10,10 @@
     [java.time Instant]))
 
 
-(defn fixture [f]
+(st/instrument)
+
+
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))
@@ -63,17 +67,16 @@
   (testing "Initial version with server assigned id"
     (given
       (history-util/build-entry
+        "http://localhost:8080"
         router
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta
-           {:fhir/type :fhir/Meta
-            :versionId #fhir/id"1"}}
+           :meta #fhir/Meta{:versionId #fhir/id"1"}}
           {:blaze.db/op :create
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"/Patient/0"
+      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
       [:request :method] := #fhir/code"POST"
       [:request :url] := #fhir/uri"/Patient"
       [:resource :fhir/type] := :fhir/Patient
@@ -86,17 +89,16 @@
   (testing "Initial version with client assigned id"
     (given
       (history-util/build-entry
+        "http://localhost:8080"
         router
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta
-           {:fhir/type :fhir/Meta
-            :versionId #fhir/id"1"}}
+           :meta #fhir/Meta{:versionId #fhir/id"1"}}
           {:blaze.db/op :put
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"/Patient/0"
+      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
       [:request :method] := #fhir/code"PUT"
       [:request :url] := #fhir/uri"/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
@@ -109,17 +111,16 @@
   (testing "Non-initial version"
     (given
       (history-util/build-entry
+        "http://localhost:8080"
         router
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta
-           {:fhir/type :fhir/Meta
-            :versionId #fhir/id"2"}}
+           :meta #fhir/Meta{:versionId #fhir/id"2"}}
           {:blaze.db/op :put
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"/Patient/0"
+      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
       [:request :method] := #fhir/code"PUT"
       [:request :url] := #fhir/uri"/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
@@ -132,17 +133,16 @@
   (testing "Deleted version"
     (given
       (history-util/build-entry
+        "http://localhost:8080"
         router
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta
-           {:fhir/type :fhir/Meta
-            :versionId #fhir/id"2"}}
+           :meta #fhir/Meta{:versionId #fhir/id"2"}}
           {:blaze.db/op :delete
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"/Patient/0"
+      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
       [:request :method] := #fhir/code"DELETE"
       [:request :url] := #fhir/uri"/Patient/0"
       [:response :status] := "204"

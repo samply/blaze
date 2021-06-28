@@ -1,7 +1,6 @@
 (ns blaze.spec
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.spec.gen.alpha :as sg]
     [clojure.string :as str]))
 
 
@@ -22,73 +21,6 @@
 
 
 ;; ---- FHIR ------------------------------------------------------------------
-
-(s/def :fhir.coding/system
-  (s/with-gen string? #(s/gen #{"http://loinc.org"})))
-
-(s/def :fhir.coding/code
-  (s/with-gen string? #(s/gen #{"39156-5" "29463-7"})))
-
-(s/def :fhir/coding
-  (s/keys :req-un [:fhir.coding/system :fhir.coding/code]))
-
-(s/def :fhir.observation/resourceType
-  #{"Observation"})
-
-(s/def :fhir.observation/id
-  (s/with-gen string? #(sg/fmap str (sg/uuid))))
-
-(s/def :fhir.observation/status
-  #{"final"})
-
-(s/def :fhir.codeable-concept/coding
-  (s/every :fhir/coding :min-count 1 :max-count 1))
-
-(s/def :fhir/codeable-concept
-  (s/keys :req-un [:fhir.codeable-concept/coding]))
-
-(s/def :fhir.observation/code
-  :fhir/codeable-concept)
-
-(s/def :fhir.patient/reference
-  string?)
-
-(s/def :fhir.reference/patient
-  (s/keys :req-un [:fhir.patient/reference]))
-
-(s/def :fhir.observation/subject
-  :fhir.reference/patient)
-
-(s/def :fhir.quantity/value
-  (s/with-gen double? #(sg/double* {:min 0 :max 100})))
-
-(s/def :fhir.observation/valueQuantity
-  (s/keys :req-un [:fhir.quantity/value]))
-
-(s/def :fhir/observation
-  (s/keys :req-un [:fhir.observation/resourceType
-                   :fhir.observation/id
-                   :fhir.observation/status
-                   :fhir.observation/code
-                   :fhir.observation/subject
-                   :fhir.observation/valueQuantity]))
-
-
-(s/def :fhir.resource/type
-  string?)
-
-
-(s/def :fhir/resourceType
-  :fhir.resource/type)
-
-
-(s/def :fhir/id
-  string?)
-
-
-(s/def :fhir/resource
-  (s/keys :req-un [:fhir/resourceType :fhir/id]))
-
 
 (s/def :fhir/issue
   #{"invalid"

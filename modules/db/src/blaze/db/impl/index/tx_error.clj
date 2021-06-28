@@ -1,18 +1,19 @@
 (ns blaze.db.impl.index.tx-error
   (:require
     [blaze.db.impl.byte-buffer :as bb]
+    [blaze.db.impl.index.cbor :as cbor]
     [blaze.db.kv :as kv]
-    [cheshire.core :as cheshire]
     [cognitect.anomalies :as anom]))
 
 
 (defn- decode-tx-error
   "Returns an anomaly."
   [bytes]
-  (let [{:keys [category message http-status]} (cheshire/parse-cbor bytes keyword)]
+  (let [{:keys [category message http-status]} (cbor/read bytes)]
     (cond->
-      {::anom/category (keyword "cognitect.anomalies" category)
-       ::anom/message message}
+      {::anom/category (keyword "cognitect.anomalies" category)}
+      message
+      (assoc ::anom/message message)
       http-status
       (assoc :http/status http-status))))
 
@@ -34,8 +35,7 @@
 
 
 (defn- encode-tx-error [{::anom/keys [category message] :http/keys [status]}]
-  (cheshire/generate-cbor
-    {:category (name category) :message message :http-status status}))
+  (cbor/write {:category (name category) :message message :http-status status}))
 
 
 (defn index-entry [t anomaly]

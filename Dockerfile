@@ -1,22 +1,14 @@
-FROM clojure:openjdk-11-tools-deps-1.10.1.727 as build
+FROM adoptopenjdk:15-jre-hotspot
 
-COPY . /build/
-
-WORKDIR /build
-RUN clojure -M:depstar -m hf.depstar.uberjar target/blaze-standalone.jar
-
-RUN mkdir -p /app/data
-
-FROM gcr.io/distroless/java:11
+RUN mkdir -p /app/data && chown 1001:1001 /app/data
+COPY target/blaze-standalone.jar /app/
 
 WORKDIR /app
+USER 1001
 
-COPY --from=build --chown=nonroot:nonroot /app ./
-COPY --from=build --chown=nonroot:nonroot /build/target/ ./
-
-USER nonroot
 ENV STORAGE="standalone"
 ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
-CMD ["blaze-standalone.jar", "-m", "blaze.core"]
+
+CMD ["java", "-jar", "blaze-standalone.jar", "-m", "blaze.core"]

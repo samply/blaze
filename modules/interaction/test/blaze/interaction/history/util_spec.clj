@@ -20,6 +20,7 @@
 (s/fdef util/nav-url
   :args
   (s/cat
+    :base-url string?
     :match :fhir.router/match
     :query-params (s/nilable :ring.request/query-params)
     :t :blaze.db/t
@@ -29,4 +30,5 @@
 
 
 (s/fdef util/build-entry
-  :args (s/cat :router reitit/router? :resource :blaze/resource))
+  :args (s/cat :base-url string? :router reitit/router?
+               :resource :blaze/resource))

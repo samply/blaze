@@ -6,35 +6,41 @@
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
+    [blaze.db.impl.index.tx-success :as tsi]
     [blaze.db.impl.protocols :as p]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
+    [blaze.db.node.resource-indexer :as resource-indexer]
+    [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
+    [blaze.db.resource-store.kv :as rs-kv :refer [new-kv-resource-store]]
     [blaze.db.search-param-registry :as sr]
+    [blaze.db.tx-cache]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local :refer [new-local-tx-log]]
     [blaze.db.tx-log.local-spec]
     [blaze.executors :as ex]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
+    [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
+    [integrant.core :as ig]
     [java-time :as jt]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache Caffeine]
-    [java.time Clock Instant ZoneId]))
+    [java.time Clock Instant ZoneId]
+    [java.util.concurrent ExecutorService]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -45,10 +51,6 @@
 (def ^:private search-param-registry (sr/init-search-param-registry))
 
 
-(def ^:private resource-indexer-executor
-  (ex/cpu-bound-pool "resource-indexer-%d"))
-
-
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private local-tx-log-executor
   (ex/single-thread-executor "local-tx-log"))
@@ -57,6 +59,10 @@
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private indexer-executor
   (ex/single-thread-executor "indexer"))
+
+
+(def ^:private resource-store-executor
+  (ex/single-thread-executor "resource-store"))
 
 
 (defn new-index-kv-store []
@@ -79,17 +85,23 @@
 (def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
 
+(defn- tx-cache [index-kv-store]
+  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+
+
 (defn new-node-with [{:keys [resource-store]}]
   (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))]
-    (node/new-node tx-log resource-handle-cache resource-indexer-executor 1
-                   indexer-executor (new-index-kv-store) resource-store
+        resource-handle-cache (.build (Caffeine/newBuilder))
+        index-kv-store (new-index-kv-store)]
+    (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
+                   indexer-executor index-kv-store resource-store
                    search-param-registry (jt/millis 10))))
 
 
 (defn new-node []
   (new-node-with
-    {:resource-store (new-kv-resource-store (new-mem-kv-store))}))
+    {:resource-store
+     (new-kv-resource-store (new-mem-kv-store) resource-store-executor)}))
 
 
 (defn new-resource-store-failing-on-get []
@@ -134,4 +146,75 @@
                      (p/-tx-result node t))))
             (catch Exception e
               (given (ex-data (ex-cause e))
-                ::anom/category := ::anom/fault))))))))
+                ::anom/category := ::anom/fault))))))
+
+    (testing "with failing resource indexer"
+      (with-redefs
+        [resource-indexer/index-resources
+         (fn [_ _]
+           (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
+        (with-open [node (new-node)]
+          (try
+            @(-> (p/-submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+                 (ac/then-compose
+                   (fn [t]
+                     (Thread/sleep 100)
+                     (p/-tx-result node t))))
+            (catch Exception e
+              (given (ex-data (ex-cause e))
+                ::anom/category := ::anom/fault
+                ::x ::y))))))))
+
+
+(defn init-system []
+  (ig/init
+    {:blaze.db/node
+     {:tx-log (ig/ref :blaze.db.tx-log/local)
+      :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
+      :tx-cache (ig/ref :blaze.db/tx-cache)
+      :indexer-executor (ig/ref ::node/indexer-executor)
+      :kv-store (ig/ref :blaze.db/index-kv-store)
+      :resource-store (ig/ref :blaze.db/resource-store)
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)}
+     :blaze.db.tx-log/local
+     {:kv-store (ig/ref :blaze.db/transaction-kv-store)}
+     [:blaze.db.kv/mem :blaze.db/transaction-kv-store]
+     {:column-families {}}
+     :blaze.db/resource-handle-cache {}
+     :blaze.db/tx-cache
+     {:kv-store (ig/ref :blaze.db/index-kv-store)}
+     ::node/indexer-executor {}
+     [:blaze.db.kv/mem :blaze.db/index-kv-store]
+     {:column-families
+      {:search-param-value-index nil
+       :resource-value-index nil
+       :compartment-search-param-value-index nil
+       :compartment-resource-type-index nil
+       :active-search-params nil
+       :tx-success-index {:reverse-comparator? true}
+       :tx-error-index nil
+       :t-by-instant-index {:reverse-comparator? true}
+       :resource-as-of-index nil
+       :type-as-of-index nil
+       :system-as-of-index nil
+       :type-stats-index nil
+       :system-stats-index nil}}
+     ::rs/kv
+     {:kv-store (ig/ref :blaze.db/resource-kv-store)
+      :executor (ig/ref ::rs-kv/executor)}
+     ::rs-kv/executor {}
+     [:blaze.db.kv/mem :blaze.db/resource-kv-store]
+     {:column-families {}}
+     :blaze.db/search-param-registry {}}))
+
+
+(deftest init-test
+  (let [system (init-system)]
+    (is (satisfies? p/Node (:blaze.db/node system)))
+    (ig/halt! system)))
+
+
+(deftest indexer-executor-test
+  (let [system (ig/init {::node/indexer-executor {}})]
+    (is (instance? ExecutorService (::node/indexer-executor system)))
+    (ig/halt! system)))

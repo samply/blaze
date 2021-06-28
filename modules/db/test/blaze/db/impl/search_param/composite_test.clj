@@ -11,6 +11,8 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -19,11 +21,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -125,22 +127,22 @@
            :id "id-155558"
            :status #fhir/code"final"
            :code
-           {:fhir/type :fhir/CodeableConcept
-            :coding
-            [{:fhir/type :fhir/Coding
-              :system #fhir/uri"http://loinc.org"
-              :code #fhir/code"8480-6"}]}
+           #fhir/CodeableConcept
+               {:coding
+                [#fhir/Coding
+                    {:system #fhir/uri"http://loinc.org"
+                     :code #fhir/code"8480-6"}]}
            :value
-           {:fhir/type :fhir/Quantity
-            :value 100M
-            :code #fhir/code"mm[Hg]"
-            :system #fhir/uri"http://unitsofmeasure.org"}}
+           #fhir/Quantity
+               {:value 100M
+                :code #fhir/code"mm[Hg]"
+                :system #fhir/uri"http://unitsofmeasure.org"}}
           hash (hash/generate observation)
           [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]
            [_ k6] [_ k7] [_ k8] [_ k9] [_ k10] [_ k11]
            [_ k12] [_ k13] [_ k14] [_ k15] [_ k16] [_ k17]]
           (search-param/index-entries code-value-quantity-param
-                                      hash observation [])]
+                                      [] hash observation)]
 
       (testing "`code` followed by `value`"
         (testing "SearchParamValueResource key"
@@ -257,7 +259,7 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    code-value-quantity-param
-                   hash resource [])
+                   [] hash resource)
             ::anom/category := ::anom/fault))))
 
     (testing "code-value-concept"
@@ -267,5 +269,34 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    code-value-concept-param
-                   hash resource [])
+                   [] hash resource)
             ::anom/category := ::anom/fault))))))
+
+
+(deftest create-test
+  (testing "not found component"
+    (given (sr/search-param
+             {}
+             {:type "composite"
+              :component
+              [{:definition "url-210148"}]})
+      ::anom/category := ::anom/unsupported
+      :url := "url-210148"))
+
+  (testing "FHIRPath compilation error"
+    (with-redefs
+      [fhir-path/compile
+       (fn [_]
+         {::anom/category ::anom/fault})]
+      (given (sr/search-param
+               {"url-210148"
+                {:type "token"}
+                "url-211659"
+                {:type "token"}}
+               {:type "composite"
+                :component
+                [{:definition "url-210148"
+                  :expression "expr-211649"}
+                 {:definition "url-211659"}]})
+        ::anom/category := ::anom/unsupported
+        :expression := "expr-211649"))))

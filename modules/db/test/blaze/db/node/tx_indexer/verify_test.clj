@@ -6,6 +6,7 @@
     [blaze.db.impl.index.rts-as-of :as rts]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
+    [blaze.db.impl.index.tx-success :as tsi]
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
@@ -18,6 +19,8 @@
     [blaze.db.tx-log.local :refer [new-local-tx-log]]
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
+    [blaze.fhir.hash-spec]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.walk :refer [postwalk]]
@@ -32,7 +35,7 @@
 (st/instrument)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))
@@ -44,10 +47,6 @@
 (def ^:private search-param-registry (sr/init-search-param-registry))
 
 
-(def ^:private resource-indexer-executor
-  (ex/cpu-bound-pool "resource-indexer-%d"))
-
-
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private local-tx-log-executor
   (ex/single-thread-executor "local-tx-log"))
@@ -56,6 +55,10 @@
 ;; TODO: with this shared executor, it's not possible to run test in parallel
 (def ^:private indexer-executor
   (ex/single-thread-executor "indexer"))
+
+
+(def ^:private resource-store-executor
+  (ex/single-thread-executor "resource-store"))
 
 
 (defn new-index-kv-store []
@@ -78,12 +81,18 @@
 (def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
 
+(defn- tx-cache [index-kv-store]
+  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+
+
 (defn new-node []
   (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))]
-    (node/new-node tx-log resource-handle-cache resource-indexer-executor 1
-                   indexer-executor (new-index-kv-store)
-                   (new-kv-resource-store (new-mem-kv-store))
+        resource-handle-cache (.build (Caffeine/newBuilder))
+        index-kv-store (new-index-kv-store)]
+    (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
+                   indexer-executor index-kv-store
+                   (new-kv-resource-store (new-mem-kv-store)
+                                          resource-store-executor)
                    search-param-registry (jt/millis 10))))
 
 
@@ -93,6 +102,8 @@
 (def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 (def patient-2 {:fhir/type :fhir/Patient :id "2"})
+(def patient-3 {:fhir/type :fhir/Patient :id "3"
+                :identifier [#fhir/Identifier{:value "120426"}]})
 
 
 (defn bytes->vec [x]
@@ -126,6 +137,7 @@
   (testing "adding a second version of a patient to a store containing it already"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
@@ -146,10 +158,12 @@
   (testing "adding a second version of a patient to a store containing it already incl. matcher"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
-          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0-v2) :if-match 1}])
+          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0-v2)
+            :if-match 1}])
         (let [value (rts/encode-value (hash/generate patient-0-v2) 2 :put)]
           [[:resource-as-of-index
             (rao/encode-key tid-patient (codec/id-byte-string "0") 2)
@@ -166,6 +180,7 @@
   (testing "deleting the existing patient"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
@@ -188,6 +203,7 @@
   (testing "adding a second patient to a store containing already one"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 2
@@ -208,12 +224,80 @@
   (testing "update conflict"
     (with-open [node (new-node)]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      (try
+
+      (given
         (verify/verify-tx-cmds
           (d/db node) 2
-          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0) :if-match 0}])
-        (catch Exception e
-          (given e
-            ::anom/category := ::anom/conflict
-            ::anom/message := (format "Precondition `W/\"0\"` failed on `Patient/0`.")
-            :http/status := 412))))))
+          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)
+            :if-match 0}])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Precondition `W/\"0\"` failed on `Patient/0`."
+        :http/status := 412)))
+
+  (testing "conditional create"
+    (testing "conflict"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                  :birthDate #fhir/date"2020"}]
+                           [:put {:fhir/type :fhir/Patient :id "1"
+                                  :birthDate #fhir/date"2020"}]])
+
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "create" :type "Patient" :id "1"
+              :hash (hash/generate patient-0)
+              :if-none-exist [["birthdate" "2020"]]}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
+          :http/status := 412)))
+
+    (testing "match"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put patient-3]])
+
+        (is
+          (empty?
+            (verify/verify-tx-cmds
+              (d/db node) 2
+              [{:op "create" :type "Patient" :id "0"
+                :hash (hash/generate patient-0)
+                :if-none-exist [["identifier" "120426"]]}])))))
+
+    (testing "conflict because matching resource is deleted"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put patient-3]])
+
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "delete" :type "Patient" :id "3"
+              :hash (hash/generate patient-3)}
+             {:op "create" :type "Patient" :id "0"
+              :hash (hash/generate patient-0)
+              :if-none-exist [["identifier" "120426"]]}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Duplicate transaction commands `create Patient?identifier=120426 (resolved to id 3)` and `delete Patient/3`.")))
+
+    (testing "on recreation"
+      (with-open [node (new-node)]
+        @(d/transact node [[:put patient-0]])
+        @(d/transact node [[:delete "Patient" "0"]])
+
+        (is-entries=
+          (verify/verify-tx-cmds
+            (d/db node) 3
+            [{:op "put" :type "Patient" :id "0"
+              :hash (hash/generate patient-0)}])
+          (let [value (rts/encode-value (hash/generate patient-0) 3 :put)]
+            [[:resource-as-of-index
+              (rao/encode-key tid-patient (codec/id-byte-string "0") 3)
+              value]
+             [:type-as-of-index
+              (tao/encode-key tid-patient 3 (codec/id-byte-string "0"))
+              value]
+             [:system-as-of-index
+              (sao/encode-key 3 tid-patient (codec/id-byte-string "0"))
+              value]
+             (type-stats/index-entry tid-patient 3 {:total 1 :num-changes 3})
+             (system-stats/index-entry 3 {:total 1 :num-changes 3})]))))))

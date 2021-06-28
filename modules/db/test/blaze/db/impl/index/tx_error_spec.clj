@@ -1,6 +1,7 @@
 (ns blaze.db.impl.index.tx-error-spec
   (:require
     [blaze.db.impl.index.tx-error :as te]
+    [blaze.db.kv.spec]
     [blaze.db.tx-log.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))

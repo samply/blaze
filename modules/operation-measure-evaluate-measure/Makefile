@@ -7,7 +7,7 @@ test:
 test-coverage:
 	clojure -M:test-coverage
 
-clear:
-	rm -r .clj-kondo/.cache .cpcache target
+clean:
+	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: lint test test-coverage clear
+.PHONY: lint test test-coverage clean

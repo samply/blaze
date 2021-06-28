@@ -66,16 +66,6 @@
   :ret byte-string?)
 
 
-(s/fdef codec/date-lb?
-  :args (s/cat :bs byte-string? :offset nat-int?)
-  :ret boolean?)
-
-
-(s/fdef codec/date-ub?
-  :args (s/cat :bs byte-string? :offset nat-int?)
-  :ret boolean?)
-
-
 (s/fdef codec/date-ub
   :args (s/cat :zone-id #(instance? ZoneId %)
                :date-time (s/or :date system/date? :date-time system/date-time?))

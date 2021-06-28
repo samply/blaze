@@ -7,11 +7,21 @@
  fhir/date blaze.fhir.spec.type/->Date
  fhir/dateTime blaze.fhir.spec.type/->DateTime
  fhir/time blaze.fhir.spec.type/->Time
- fhir/code blaze.fhir.spec.type/->Code
+ fhir/code blaze.fhir.spec.type/tagged-literal->Code
  fhir/oid blaze.fhir.spec.type/->Oid
  fhir/id blaze.fhir.spec.type/->Id
  fhir/markdown blaze.fhir.spec.type/->Markdown
  fhir/unsignedInt blaze.fhir.spec.type/->UnsignedInt
  fhir/positiveInt blaze.fhir.spec.type/->PositiveInt
  fhir/uuid blaze.fhir.spec.type/->Uuid
- fhir/xhtml blaze.fhir.spec.type/->Xhtml}
+ fhir/xhtml blaze.fhir.spec.type/->Xhtml
+ fhir/Attachment blaze.fhir.spec.type/map->Attachment
+ fhir/Extension blaze.fhir.spec.type/map->Extension
+ fhir/Coding blaze.fhir.spec.type/map->Coding
+ fhir/CodeableConcept blaze.fhir.spec.type/map->CodeableConcept
+ fhir/Quantity blaze.fhir.spec.type/map->Quantity
+ fhir/Period blaze.fhir.spec.type/map->Period
+ fhir/Identifier blaze.fhir.spec.type/map->Identifier
+ fhir/Reference blaze.fhir.spec.type/map->Reference
+ fhir/Meta blaze.fhir.spec.type/map->Meta
+ fhir/BundleEntrySearch blaze.fhir.spec.type/map->BundleEntrySearch}

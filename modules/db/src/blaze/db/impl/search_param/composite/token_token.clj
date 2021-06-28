@@ -30,8 +30,8 @@
       (spt/resource-keys! context c-hash tid value start-id)))
 
   (-matches? [_ context resource-handle _ values]
-    (some #(spt/matches? context c-hash resource-handle %) values))
+    (some? (some #(spt/matches? context c-hash resource-handle %) values)))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
-      (into [] (mapcat #(cc/index-values resolver % c1 c2)) values))))
+      (coll/eduction (cc/index-values resolver c1 c2) values))))

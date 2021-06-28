@@ -4,8 +4,11 @@
   https://www.hl7.org/fhir/http.html#vsearch"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.fhir.spec.type]
     [blaze.interaction.search-compartment]
     [blaze.interaction.search-compartment-spec]
+    [blaze.interaction.search.nav-spec]
+    [blaze.interaction.search.params-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
@@ -15,11 +18,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -27,17 +30,19 @@
 (test/use-fixtures :each fixture)
 
 
+(def ^:private base-url "base-url-114238")
+
+
 (def router
   (reitit/router
     [["/Patient/{id}/{type}" {:name :Patient/compartment}]
-     ["/Observation/{id}" {:name :Observation/instance}]]
+     ["/Observation" {:name :Observation/type}]]
     {:syntax :bracket}))
 
 
 (def match
   {:data
-   {:blaze/base-url ""
-    :blaze/context-path ""
+   {:blaze/context-path ""
     :fhir.compartment/code "Patient"}
    :path "/Patient/0/Observation"})
 
@@ -52,7 +57,10 @@
 (defn- handler-with [txs]
   (fn [request]
     (with-open [node (mem-node-with txs)]
-      @((handler node) request))))
+      @((handler node)
+        (assoc request
+          :blaze/base-url base-url
+          ::reitit/router router)))))
 
 
 (defn- link-url [body link-relation]
@@ -64,7 +72,6 @@
     (let [{:keys [status body]}
           ((handler-with [])
            {:path-params {:id "<invalid>" :type "Observation"}
-            ::reitit/router router
             ::reitit/match match})]
 
       (is (= 400 status))
@@ -79,7 +86,6 @@
     (let [{:keys [status body]}
           ((handler-with [])
            {:path-params {:id "0" :type "<invalid>"}
-            ::reitit/router router
             ::reitit/match match})]
 
       (is (= 400 status))
@@ -97,7 +103,6 @@
           (let [{:keys [status body]}
                 ((handler-with [])
                  {:path-params {:id "0" :type "Observation"}
-                  ::reitit/router router
                   ::reitit/match match
                   :headers {"prefer" "handling=strict"}
                   :params {"foo" "bar"}})]
@@ -114,7 +119,6 @@
           (let [{:keys [status body]}
                 ((handler-with [])
                  {:path-params {:id "0" :type "Observation"}
-                  ::reitit/router router
                   ::reitit/match match
                   :headers {"prefer" "handling=strict"}
                   :params {"foo" "bar" "_summary" "count"}})]
@@ -132,13 +136,12 @@
         (testing "where the unknown search parameter is the only one"
           (testing "normal result"
             (let [{:keys [status body]}
-                  ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                                   [:put {:fhir/type :fhir/Observation :id "0"
-                                          :subject
-                                          {:fhir/type :fhir/Reference
-                                           :reference "Patient/0"}}]]])
+                  ((handler-with
+                     [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                       [:put {:fhir/type :fhir/Observation :id "0"
+                              :subject
+                              #fhir/Reference{:reference "Patient/0"}}]]])
                    {:path-params {:id "0" :type "Observation"}
-                    ::reitit/router router
                     ::reitit/match match
                     :headers {"prefer" "handling=lenient"}
                     :params {"foo" "bar"}})]
@@ -161,7 +164,7 @@
                 (is (= 1 (count (:entry body)))))
 
               (testing "has a self link"
-                (is (= #fhir/uri"/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+                (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
                        (link-url body "self"))))))
 
           (testing "summary result"
@@ -169,10 +172,9 @@
                   ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]
                                    [:put {:fhir/type :fhir/Observation :id "0"
                                           :subject
-                                          {:fhir/type :fhir/Reference
-                                           :reference "Patient/0"}}]]])
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]]])
                    {:path-params {:id "0" :type "Observation"}
-                    ::reitit/router router
                     ::reitit/match match
                     :headers {"prefer" "handling=lenient"}
                     :params {"foo" "bar" "_summary" "count"}})]
@@ -195,7 +197,7 @@
                 (is (empty? (:entry body))))
 
               (testing "has a self link"
-                (is (= #fhir/uri"/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
+                (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
                        (link-url body "self")))))))
 
         (testing "with another search parameter"
@@ -205,15 +207,14 @@
                                    [:put {:fhir/type :fhir/Observation :id "0"
                                           :status #fhir/code"final"
                                           :subject
-                                          {:fhir/type :fhir/Reference
-                                           :reference "Patient/0"}}]
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]
                                    [:put {:fhir/type :fhir/Observation :id "1"
                                           :status #fhir/code"preliminary"
                                           :subject
-                                          {:fhir/type :fhir/Reference
-                                           :reference "Patient/0"}}]]])
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]]])
                    {:path-params {:id "0" :type "Observation"}
-                    ::reitit/router router
                     ::reitit/match match
                     :headers {"prefer" "handling=lenient"}
                     :params {"foo" "bar" "status" "preliminary"}})]
@@ -233,7 +234,7 @@
                 (is (= 1 (count (:entry body)))))
 
               (testing "has a self link"
-                (is (= #fhir/uri"/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
+                (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
                        (link-url body "self"))))))
 
           (testing "summary result"
@@ -242,15 +243,14 @@
                                    [:put {:fhir/type :fhir/Observation :id "0"
                                           :status #fhir/code"final"
                                           :subject
-                                          {:fhir/type :fhir/Reference
-                                           :reference "Patient/0"}}]
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]
                                    [:put {:fhir/type :fhir/Observation :id "1"
                                           :status #fhir/code"preliminary"
                                           :subject
-                                          {:fhir/type :fhir/Reference
-                                           :reference "Patient/0"}}]]])
+                                          #fhir/Reference
+                                              {:reference "Patient/0"}}]]])
                    {:path-params {:id "0" :type "Observation"}
-                    ::reitit/router router
                     ::reitit/match match
                     :headers {"prefer" "handling=lenient"}
                     :params {"foo" "bar" "status" "preliminary" "_summary" "count"}})]
@@ -270,14 +270,13 @@
                 (is (empty? (:entry body))))
 
               (testing "has a self link"
-                (is (= #fhir/uri"/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
+                (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
                        (link-url body "self"))))))))))
 
   (testing "Returns an empty Bundle on Non-Existing Compartment"
     (let [{:keys [status body]}
           ((handler-with [])
            {:path-params {:id "0" :type "Observation"}
-            ::reitit/router router
             ::reitit/match match})]
 
       (is (= 200 status))
@@ -293,17 +292,12 @@
             [[[:put {:fhir/type :fhir/Patient :id "0"}]
               [:put {:fhir/type :fhir/Observation :id "0"
                      :status #fhir/code"final"
-                     :subject
-                     {:fhir/type :fhir/Reference
-                      :reference "Patient/0"}}]
+                     :subject #fhir/Reference{:reference "Patient/0"}}]
               [:put {:fhir/type :fhir/Observation :id "1"
                      :status #fhir/code"preliminary"
-                     :subject
-                     {:fhir/type :fhir/Reference
-                      :reference "Patient/0"}}]]])
+                     :subject #fhir/Reference{:reference "Patient/0"}}]]])
           request
           {:path-params {:id "0" :type "Observation"}
-           ::reitit/router router
            ::reitit/match match}]
 
       (testing "with _summary=count"
@@ -358,7 +352,7 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+            (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
                    (link-url body "self"))))
 
           (testing "the bundle contains two entries"
@@ -366,12 +360,12 @@
 
           (testing "the first entry"
             (given (-> body :entry first)
-              :fullUrl := #fhir/uri"/Observation/0"
+              :fullUrl := #fhir/uri"base-url-114238/Observation/0"
               [:resource :fhir/type] := :fhir/Observation
               [:resource :id] := "0"))
 
           (testing "the second entry"
             (given (-> body :entry second)
-              :fullUrl := #fhir/uri"/Observation/1"
+              :fullUrl := #fhir/uri"base-url-114238/Observation/1"
               [:resource :fhir/type] := :fhir/Observation
               [:resource :id] := "1")))))))

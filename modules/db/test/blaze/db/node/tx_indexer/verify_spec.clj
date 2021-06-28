@@ -14,5 +14,8 @@
 
 
 (s/fdef verify/verify-tx-cmds
-  :args (s/cat :db-before :blaze.db/db :t :blaze.db/t :tx-cmds :blaze.db/tx-cmds)
-  :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry) :anomaly ::anom/anomaly))
+  :args (s/cat :db-before :blaze.db/db
+               :t :blaze.db/t
+               :cmds :blaze.db/tx-cmds)
+  :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry)
+             :anomaly ::anom/anomaly))

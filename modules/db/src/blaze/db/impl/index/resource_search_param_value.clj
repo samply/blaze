@@ -6,8 +6,7 @@
     [blaze.db.bytes :as bytes]
     [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.iterators :as i]
-    [blaze.db.kv :as kv]))
+    [blaze.db.impl.iterators :as i]))
 
 
 (set! *warn-on-reflection* true)
@@ -64,7 +63,10 @@
 
 (defn next-value!
   "Returns the decoded value of the key that is at or past the key encoded from
-  `resource-handle`, `c-hash` and `value` and still starts with `prefix-value`."
+  `resource-handle`, `c-hash` and `value` and still starts with `prefix-value`.
+
+  Changes the state of `iter`. Calling this function requires exclusive access
+  to `iter`. Doesn't close `iter`."
   {:arglists
    '([iter resource-handle c-hash]
      [iter resource-handle c-hash prefix-value value])}
@@ -108,22 +110,7 @@
      (i/prefix-keys! iter prefix-key decode-value start-key))))
 
 
-(defn get-value
-  "Special get for the value with partial key [tid id hash c-hash]."
-  [snapshot tid id hash c-hash]
-  (bs/from-byte-array
-    (kv/snapshot-get
-      snapshot :resource-value-index
-      (bb/array (encode-key-buf tid id hash c-hash)))))
-
-
 (defn index-entry [tid id hash c-hash value]
   [:resource-value-index
    (bb/array (encode-key-buf tid id hash c-hash value))
    bytes/empty])
-
-
-(defn index-entry-special [tid id hash c-hash value]
-  [:resource-value-index
-   (bb/array (encode-key-buf tid id hash c-hash))
-   (bs/to-byte-array value)])

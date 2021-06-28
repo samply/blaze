@@ -12,6 +12,7 @@
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]])
@@ -23,7 +24,7 @@
 (tu/instrument-compile)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (tu/instrument-compile)
   (f)
@@ -133,7 +134,7 @@
                      :source
                      [{:alias "P"
                        :expression retrieve}]}]
-          (given (core/-eval (c/compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)
+          (given (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil)
             [0 fhir-spec/fhir-type] := :fhir/Patient
             [0 :id] := "0"))
 
@@ -142,14 +143,14 @@
                      [{:alias "P"
                        :expression retrieve}]
                      :where where}]
-          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil))))
+          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil))))
 
         (let [query {:type "Query"
                      :source
                      [{:alias "P"
                        :expression retrieve}]
                      :return {:expression return}}]
-          (is (nil? (first (core/-eval (c/compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil)))))
+          (is (nil? (first (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil)))))
 
         (let [query {:type "Query"
                      :source
@@ -157,7 +158,7 @@
                        :expression retrieve}]
                      :where where
                      :return {:expression return}}]
-          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unspecified"} query) {:db db} nil nil))))))))
+          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil))))))))
 
 
 ;; 10.3. AliasRef
@@ -174,8 +175,7 @@
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]]])]
+                                #fhir/Reference{:reference "Patient/0"}}]]])]
       (let [elm {:alias "O1"
                :type "WithEquiv"
                :expression
@@ -195,14 +195,12 @@
                  :life/scopes #{"O1"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context
-          {:node node :life/single-query-scope "O0" :eval-context "Unspecified"}
+          {:node node :life/single-query-scope "O0" :eval-context "Unfiltered"}
           xform-factory (queries/compile-with-equiv-clause compile-context elm)
           eval-context {:db (d/db node)}
           xform (queries/-create xform-factory eval-context nil)
           lhs-entity {:fhir/type :fhir/Observation
-                      :subject
-                      {:fhir/type :fhir/Reference
-                       :reference "Patient/0"}}]
+                      :subject #fhir/Reference{:reference "Patient/0"}}]
       (is (= [lhs-entity] (into [] xform [lhs-entity]))))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
@@ -210,8 +208,7 @@
                        [[[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
-                                {:fhir/type :fhir/Reference
-                                 :reference "Patient/0"}}]]])]
+                                #fhir/Reference{:reference "Patient/0"}}]]])]
       (let [elm {:alias "O"
                :type "WithEquiv"
                :expression
@@ -226,9 +223,9 @@
                  :life/scopes #{"O"}
                  :life/source-type "{http://hl7.org/fhir}Observation"}]}
           compile-context
-          {:node node :life/single-query-scope "P" :eval-context "Unspecified"}
+          {:node node :life/single-query-scope "P" :eval-context "Unfiltered"}
           xform-factory (queries/compile-with-equiv-clause compile-context elm)
           eval-context {:db (d/db node)}
           xform (queries/-create xform-factory eval-context nil)
-          lhs-entity {:fhir/type :fhir/Reference :reference "Patient/0"}]
+          lhs-entity #fhir/Reference{:reference "Patient/0"}]
       (is (= [lhs-entity] (into [] xform [lhs-entity])))))))

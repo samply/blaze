@@ -3,6 +3,7 @@
   (:require
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [reitit.core :as reitit]))
 
 
@@ -24,14 +25,14 @@
 
 
 (def ^:private ^:const default-page-size 50)
-(def ^:private ^:const max-page-size 500)
+(def ^:private ^:const max-page-size 10000)
 
 
 (defn page-size
   "Returns the page size taken from a possible `_count` query param.
 
   Returns the value from the first valid `_count` query param or the default
-  value of 50. Limits values to 500."
+  value of 50. Limits values to 10000."
   {:arglists '([query-params])}
   [{v "_count"}]
   (if-let [count (some #(when (re-matches #"\d+" %) %) (to-seq v))]
@@ -73,28 +74,26 @@
 
 (defn type-url
   "Returns the URL of a resource type like `[base]/[type]`."
-  [router type]
-  (let [{:keys [path] {:blaze/keys [base-url]} :data}
-        (reitit/match-by-name router (keyword type "type"))]
+  [base-url router type]
+  (let [{:keys [path]} (reitit/match-by-name router (keyword type "type"))]
     (str base-url path)))
 
 
 (defn instance-url
   "Returns the URL of a instance (resource) like `[base]/[type]/[id]`."
-  [router type id]
-  (let [{:keys [path] {:blaze/keys [base-url]} :data}
-        (reitit/match-by-name router (keyword type "instance") {:id id})]
-    (str base-url path)))
+  [base-url router type id]
+  ;; URL's are build by hand here, because id's do not need to be URL encoded
+  ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
+  (str (type-url base-url router type) "/" id))
 
 
 (defn versioned-instance-url
   "Returns the URL of a versioned instance (resource) like
   `[base]/[type]/[id]/_history/[vid]`."
-  [router type id vid]
-  (let [{:keys [path] {:blaze/keys [base-url]} :data}
-        (reitit/match-by-name
-          router (keyword type "versioned-instance") {:id id :vid vid})]
-    (str base-url path)))
+  [base-url router type id vid]
+  ;; URL's are build by hand here, because id's do not need to be URL encoded
+  ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
+  (str (instance-url base-url router type id) "/_history/" vid))
 
 
 (defn etag->t [etag]
@@ -102,3 +101,9 @@
     (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
       (when t
         (Long/parseLong t)))))
+
+
+(defn clauses [query]
+  (mapv
+    #(let [[k v] (str/split % #"=")] (into [k] (str/split v #",")))
+    (str/split query #"&")))

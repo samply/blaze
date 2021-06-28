@@ -1,0 +1,104 @@
+version: '3.7'
+services:
+  zookeeper:
+    image: "docker.io/bitnami/zookeeper:3"
+    volumes:
+    - "zookeeper-data:/bitnami"
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+
+  kafka:
+    image: "docker.io/bitnami/kafka:2"
+    hostname: "kafka"
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:SSL"
+      KAFKA_CFG_LISTENERS: "CLIENT://:9092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
+      KAFKA_CERTIFICATE_PASSWORD: "password"
+      KAFKA_CFG_TLS_TYPE: "JKS"
+      # It's important to create the tx topic ourself, because it needs to use
+      # LogAppendTime timestamps
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+    - './kafka.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro'
+    - './kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro'
+    - "kafka-data:/bitnami"
+    depends_on:
+    - zookeeper
+
+  kafka-topic-creator:
+    image: "docker.io/bitnami/kafka:2"
+    command: /opt/bitnami/kafka/bin/kafka-init.sh
+    volumes:
+    - "./kafka-init.sh:/opt/bitnami/kafka/bin/kafka-init.sh:ro"
+    - "./kafka-init.conf:/opt/bitnami/kafka/config/kafka-init.conf:ro"
+    - './kafka-topic-creator.keystore.jks:/opt/bitnami/kafka/config/certs/kafka-topic-creator.keystore.jks:ro'
+    - './kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro'
+    depends_on:
+    - zookeeper
+    - kafka
+
+  cassandra-1:
+    image: "docker.io/bitnami/cassandra:3"
+    volumes:
+    - "./cassandra-init.cql:/docker-entrypoint-initdb.d/cassandra-init.cql:ro"
+    - 'cassandra-1-data:/bitnami'
+    environment:
+      CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
+      CASSANDRA_PASSWORD_SEEDER: "yes"
+      MAX_HEAP_SIZE: "1G"
+      HEAP_NEWSIZE: "100M"
+
+  cassandra-2:
+    image: "docker.io/bitnami/cassandra:3"
+    volumes:
+    - 'cassandra-2-data:/bitnami'
+    environment:
+      CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
+      MAX_HEAP_SIZE: "1G"
+      HEAP_NEWSIZE: "100M"
+
+  blaze:
+    image: "ghcr.io/samply/blaze:${GITHUB_SHA}"
+    hostname: "blaze"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      STORAGE: "distributed"
+      DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
+      DB_KAFKA_SECURITY_PROTOCOL: "SSL"
+      DB_KAFKA_SSL_TRUSTSTORE_LOCATION: "/app/kafka.truststore.jks"
+      DB_KAFKA_SSL_TRUSTSTORE_PASSWORD: "password"
+      DB_KAFKA_SSL_KEYSTORE_LOCATION: "/app/blaze.keystore.jks"
+      DB_KAFKA_SSL_KEYSTORE_PASSWORD: "password"
+      DB_KAFKA_SSL_KEY_PASSWORD: "password"
+      DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
+      DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
+      DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
+      DB_CASSANDRA_MAX_REQUEST_QUEUE_SIZE: "1000000"
+      DB_RESOURCE_CACHE_SIZE: "1000"
+      LOG_LEVEL: "debug"
+    ports:
+    - "8080:8080"
+    volumes:
+    - './blaze.keystore.jks:/app/blaze.keystore.jks:ro'
+    - './kafka.truststore.jks:/app/kafka.truststore.jks:ro'
+    - "blaze-data:/app/data"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.75'
+    depends_on:
+    - kafka-topic-creator
+    - cassandra-1
+    - cassandra-2
+
+volumes:
+  zookeeper-data:
+  kafka-data:
+  cassandra-1-data:
+  cassandra-2-data:
+  blaze-data:

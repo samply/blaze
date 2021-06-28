@@ -16,7 +16,7 @@
 (tu/instrument-compile)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (tu/instrument-compile)
   (f)

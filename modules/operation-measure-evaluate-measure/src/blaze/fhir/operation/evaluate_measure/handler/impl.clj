@@ -32,15 +32,15 @@
 
 
 (defn- tx-ops [{:keys [tx-ops resource]} id]
-  (conj tx-ops [:create (assoc resource :id id)]))
+  (conj (or tx-ops []) [:create (assoc resource :id id)]))
 
 
 (defn- handle
   [clock node db executor
-   {::reitit/keys [router] :keys [request-method headers]}
+   {:blaze/keys [base-url] ::reitit/keys [router] :keys [request-method headers]}
    params measure]
   (-> (ac/supply-async
-        #(evaluate-measure (now clock) db router measure params)
+        #(evaluate-measure (now clock) db base-url router measure params)
         executor)
       (ac/then-compose
         (fn process-result [result]
@@ -59,8 +59,9 @@
                     ;; indexing thread would execute response building.
                     (ac/then-apply-async identity executor)
                     (ac/then-compose
-                      #(response/build-created-response
-                         router return-preference % "MeasureReport" id))
+                      #(response/build-response
+                         base-url router return-preference % nil
+                         (d/resource-handle % "MeasureReport" id)))
                     (ac/exceptionally handler-util/error-response)))))))))
 
 

@@ -13,6 +13,7 @@ cat <<END
   "type" : {
     "coding" : [
       {
+        "system": "http://terminology.hl7.org/CodeSystem/library-type",
         "code" : "logic-library"
       }
     ]
@@ -84,7 +85,7 @@ post() {
 }
 
 evaluate-measure() {
-  time curl -s "${BASE}/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2019"
+  time curl -s "${BASE}/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030"
 }
 
 usage()

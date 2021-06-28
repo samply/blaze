@@ -9,8 +9,6 @@
     [blaze.fhir.spec.type :as type]
     [blaze.log]
     [blaze.luid :refer [luid]]
-    [cheshire.core :as json]
-    [cheshire.parse :refer [*use-bigdecimals?*]]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -25,11 +23,11 @@
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
-  (log/set-level! :trace)
   (f)
   (st/unstrument))
 
@@ -62,24 +60,20 @@
 (defn- library-entry [query]
   {:resource
    {:fhir/type :fhir/Library
-    :id "0"
+    :id "1"
     :url #fhir/uri"0"
     :content
-    [{:fhir/type :fhir/Attachment
-      :contentType #fhir/code"text/cql"
-      :data (type/->Base64Binary (b64-encode query))}]}
+    [(type/map->Attachment
+       {:contentType #fhir/code"text/cql"
+        :data (type/->Base64Binary (b64-encode query))})]}
    :request
    {:method #fhir/code"PUT"
-    :url #fhir/uri"Library/0"}})
-
-
-(defn- parse-json [s]
-  (binding [*use-bigdecimals?* true] (json/parse-string s keyword)))
+    :url #fhir/uri"Library/1"}})
 
 
 (defn- read-data [name]
   (let [raw (slurp-resource (str name "-data.json"))
-        bundle (fhir-spec/conform-json (parse-json raw))
+        bundle (fhir-spec/conform-json (fhir-spec/parse-json raw))
         library (library-entry (slurp-resource (str name "-query.cql")))]
     (update bundle :entry conj library)))
 
@@ -91,7 +85,7 @@
    (with-open [node (node-with (read-data name))]
      (let [db (d/db node)
            period [(Year/of 2000) (Year/of 2020)]]
-       (evaluate-measure now db router
+       (evaluate-measure now db "" router
                          @(d/pull node (d/resource-handle db "Measure" "0"))
                          {:period period :report-type report-type})))))
 
@@ -145,7 +139,9 @@
     "q18-specimen-bmi" 1
     "q24" 1
     "q28-relationship-procedure-condition" 1
-    "q33-incompatible-quantities" 1)
+    "q33-incompatible-quantities" 1
+    "q34-medication" 1
+    "q35-literal-library-ref" 1)
 
   (with-redefs [luid (take-from! (new-ids))]
     (let [result (evaluate "q1" "subject-list")]
@@ -301,5 +297,5 @@
 
 (comment
   (log/set-level! :trace)
-  (evaluate "q33-incompatible-quantities")
+  (evaluate "q35-literal-library-ref")
   )

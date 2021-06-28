@@ -10,8 +10,8 @@
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.util :as search-util]
+    [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [blaze.uuid :refer [random-uuid]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -40,21 +40,21 @@
 
 
 (defn- entries
-  [{:keys [router] {:keys [page-offset page-size]} :params} resources]
+  [{:keys [base-url router] {:keys [page-offset page-size]} :params} resources]
   (into
     []
     (comp
       (drop page-offset)
       (take (inc page-size))
-      (map #(search-util/entry router %)))
+      (map #(search-util/entry base-url router %)))
     resources))
 
 
 (defn- self-link
-  [{:keys [match] {:keys [page-offset] :as params} :params} clauses t]
+  [{:keys [base-url match] {:keys [page-offset] :as params} :params} clauses t]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url match params clauses t
+   :url (type/->Uri (nav/url base-url match params clauses t
                              {"__page-offset" page-offset}))})
 
 
@@ -62,10 +62,10 @@
   {"__page-offset" (+ page-offset (dec (count entries)))})
 
 
-(defn- next-link [{:keys [match params]} clauses t entries]
+(defn- next-link [{:keys [base-url match params]} clauses t entries]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (type/->Uri (nav/url match params clauses t
+   :url (type/->Uri (nav/url base-url match params clauses t
                              (next-link-offset params entries)))})
 
 
@@ -82,10 +82,12 @@
               (let [entries (entries context resources)]
                 (cond->
                   {:fhir/type :fhir/Bundle
-                   :id (random-uuid)
+                   :id (luid/luid)
                    :type #fhir/code"searchset"
                    :total (type/->UnsignedInt (count handles))
-                   :entry (take page-size entries)
+                   :entry (if (< page-size (count entries))
+                            (pop entries)
+                            entries)
                    :link [(self-link context clauses t)]}
 
                   (< page-size (count entries))
@@ -101,7 +103,7 @@
       (ac/failed-future (ex-anom handles-and-clauses))
       (ac/completed-future
         {:fhir/type :fhir/Bundle
-         :id (random-uuid)
+         :id (luid/luid)
          :type #fhir/code"searchset"
          :total (type/->UnsignedInt (count handles))
          :link [(self-link context clauses t)]}))))
@@ -113,7 +115,7 @@
     (search-normal context db)))
 
 
-(defn- context [router match code id type headers params]
+(defn- context [base-url router match code id type headers params]
   (cond
     (not (s/valid? :blaze.resource/id id))
     {::anom/category ::anom/incorrect
@@ -126,22 +128,25 @@
      :fhir/issue "value"}
 
     :else
-    (when-ok [params (params/decode params)]
-      {:router router
-       :match match
-       :code code
-       :id id
-       :type type
-       :preference/handling (handler-util/preference headers "handling")
-       :params params})))
+    (let [handling (handler-util/preference headers "handling")]
+     (when-ok [params (params/decode handling params)]
+       {:base-url base-url
+        :router router
+        :match match
+        :code code
+        :id id
+        :type type
+        :preference/handling handling
+        :params params}))))
 
 
 (defn- handler-intern [node]
   (fn [{{{:fhir.compartment/keys [code]} :data :as match} ::reitit/match
         {:keys [id type]} :path-params
         :keys [headers params]
+        :blaze/keys [base-url]
         ::reitit/keys [router]}]
-    (let [context (context router match code id type headers params)]
+    (let [context (context base-url router match code id type headers params)]
       (if (::anom/category context)
         (ac/completed-future (handler-util/error-response context))
         (-> (handler-util/db node (fhir-util/t params))

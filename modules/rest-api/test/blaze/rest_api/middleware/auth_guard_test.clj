@@ -11,7 +11,7 @@
 (st/instrument)
 
 
-(defn fixture [f]
+(defn- fixture [f]
   (st/instrument)
   (f)
   (st/unstrument))
@@ -33,4 +33,6 @@
       :status := 401
       [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"login")))
+      [:body :issue 0 :code] := #fhir/code"login"
+      [:body :issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+      [:body :issue 0 :details :coding 0 :code] := #fhir/code"MSG_AUTH_REQUIRED")))

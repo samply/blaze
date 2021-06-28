@@ -893,7 +893,7 @@
 
 
 (defmethod expression :elm.spec.type/case [_]
-  (s/keys :req-un [:elm/caseItem :elm/else] :op-un [:elm.case/comparand]))
+  (s/keys :req-un [:elm/caseItem :elm/else] :opt-un [:elm.case/comparand]))
 
 
 ;; 15.2. If

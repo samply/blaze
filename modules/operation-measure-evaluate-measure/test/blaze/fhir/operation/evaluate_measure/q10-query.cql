@@ -5,10 +5,10 @@ include FHIRHelpers version '4.0.0'
 codesystem StorageTemperature: 'https://fhir.bbmri.de/CodeSystem/StorageTemperature'
 
 define InInitialPopulation:
-  exists(
+  exists
     from [Specimen] S
     where
-      exists(
+      exists
         from S.extension E
         where E.url = 'https://fhir.bbmri.de/StructureDefinition/StorageTemperature'
-        and E.value.coding contains Code 'temperatureRoom' from StorageTemperature))
+        and E.value.coding contains Code 'temperatureRoom' from StorageTemperature

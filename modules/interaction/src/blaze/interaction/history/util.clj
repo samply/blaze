@@ -43,10 +43,10 @@
   `query-params` and the extra paging params calculated from `t`, `page-t`,
   `type` and `id`."
   {:arglists
-   '([match query-params t page-t]
-     [match query-params t page-t id]
-     [match query-params t page-t type id])}
-  [{{:blaze/keys [base-url]} :data :as match} query-params t page-t & more]
+   '([base-url match query-params t page-t]
+     [base-url match query-params t page-t id]
+     [base-url match query-params t page-t type id])}
+  [base-url match query-params t page-t & more]
   (let [path (reitit/match->path
                match
                (cond-> (assoc query-params "__t" t "__page-t" page-t)
@@ -64,10 +64,10 @@
     :delete #fhir/code"DELETE"}))
 
 
-(defn- url [router type id resource]
+(defn- url [base-url router type id resource]
   (if (-> resource meta :blaze.db/op #{:create})
-    (fhir-util/type-url router type)
-    (fhir-util/instance-url router type id)))
+    (fhir-util/type-url base-url router type)
+    (fhir-util/instance-url base-url router type id)))
 
 
 (defn- status [resource]
@@ -79,13 +79,13 @@
       (if (= 1 (-> meta :blaze.db/num-changes)) "201" "200"))))
 
 
-(defn build-entry [router {:fhir/keys [type] :keys [id] :as resource}]
+(defn build-entry [base-url router {:fhir/keys [type] :keys [id] :as resource}]
   (cond->
-    {:fullUrl (type/->Uri (fhir-util/instance-url router (name type) id))
+    {:fullUrl (type/->Uri (fhir-util/instance-url base-url router (name type) id))
      :request
      {:fhir/type :fhir.Bundle.entry/request
       :method (method resource)
-      :url (type/->Uri (url router (name type) id resource))}
+      :url (type/->Uri (url "" router (name type) id resource))}
      :response
      {:fhir/type :fhir.Bundle.entry/response
       :status (status resource)

@@ -7,10 +7,7 @@
 
    :extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.0.700"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "1.0.861"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -21,12 +18,4 @@
    {org.clojars.akiel/cloverage
     {:mvn/version "1.2.2-SNAPSHOT"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}
-
-  :namespace-graph
-  {:extra-deps
-   {clj-kondo/tools
-    {:git/url "https://github.com/borkdude/clj-kondo"
-     :sha "1ed3b11025b7f3a582e6db099ba10a888fe0fc2c"
-     :deps/root "analysis"}}
-   :main-opts ["-m" "clj-kondo.tools.namespace-graph"]}}}
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

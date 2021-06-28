@@ -3,7 +3,9 @@
     [blaze.byte-string :as bs]
     [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
-    [blaze.fhir.spec :as fhir-spec]))
+    [blaze.fhir.spec :as fhir-spec])
+  (:import
+    [clojure.lang IReduceInit Indexed]))
 
 
 (set! *warn-on-reflection* true)
@@ -16,14 +18,14 @@
   returns a tuple of operator and value. The default operator :eq is returned if
   no prefix was given."
   [value]
-  (if (re-matches #"^(eq|ne|gt|lt|ge|le|sa|eb|ap).*" value)
+  (if (re-find #"^(eq|ne|gt|lt|ge|le|sa|eb|ap)" value)
     [(keyword (subs value 0 2)) (subs value 2)]
     [:eq value]))
 
 
 (defn format-skip-indexing-msg [value url type]
   (format "Skip indexing value `%s` of type `%s` for search parameter `%s` with type `%s` because the rule is missing."
-          (pr-str value) (fhir-spec/fhir-type value) url type))
+          (str value) (fhir-spec/fhir-type value) url type))
 
 
 (def by-id-grouper
@@ -40,24 +42,22 @@
       handle)))
 
 
-(defn- contains-hash-prefix? [triples hash-prefix]
-  (reduce
+(defn- contains-hash-prefix? [tuples hash-prefix]
+  (.reduce
+    ^IReduceInit tuples
     (fn [_ tuple]
-      (when (= hash-prefix (nth tuple 1))
+      (when (.equals ^Object hash-prefix (.nth ^Indexed tuple 1))
         (reduced true)))
-    nil
-    triples))
+    nil))
 
 
 (defn- resource-handle-mapper* [{:keys [resource-handle]} tid]
-  (comp
-    (map
-      (fn [[id tuples]]
-        (when-let [{:keys [hash] :as resource-handle} (resource-handle tid id)]
-          (let [hash-prefix (codec/hash-prefix hash)]
-            (when (contains-hash-prefix? tuples hash-prefix)
-              resource-handle)))))
-    (remove nil?)))
+  (keep
+    (fn [[id tuples]]
+      (when-let [{:keys [hash] :as resource-handle} (resource-handle tid id)]
+        (let [hash-prefix (codec/hash-prefix hash)]
+          (when (contains-hash-prefix? tuples hash-prefix)
+            resource-handle))))))
 
 
 (defn resource-handle-mapper [context tid]
@@ -73,15 +73,23 @@
 
 (defn reference-resource-handle-mapper
   "Returns a transducer that filters all upstream values for reference tid-id
-  values with `tid`, returning the non-deleted resource handles of the
-  referenced resources."
-  [{:keys [resource-handle]} tid]
-  (comp
-    ;; other index entries are all v-hashes
-    (filter #(< codec/v-hash-size (bs/size %)))
-    (map bs/as-read-only-byte-buffer)
-    ;; the type has to match
-    (filter #(= ^long tid (bb/get-int! %)))
-    (map bs/from-byte-buffer)
-    (map #(non-deleted-resource-handle resource-handle tid %))
-    (remove nil?)))
+  values with `tid` (optional), returning the non-deleted resource handles of
+  the referenced resources."
+  ([{:keys [resource-handle]}]
+   (comp
+     ;; other index entries are all v-hashes
+     (filter #(< codec/v-hash-size (bs/size %)))
+     (map bs/as-read-only-byte-buffer)
+     (keep
+       #(let [tid (bb/get-int! %)
+              id (bs/from-byte-buffer %)]
+          (non-deleted-resource-handle resource-handle tid id)))))
+  ([{:keys [resource-handle]} tid]
+   (comp
+     ;; other index entries are all v-hashes
+     (filter #(< codec/v-hash-size (bs/size %)))
+     (map bs/as-read-only-byte-buffer)
+     ;; the type has to match
+     (filter #(= ^long tid (bb/get-int! %)))
+     (map bs/from-byte-buffer)
+     (keep #(non-deleted-resource-handle resource-handle tid %)))))
