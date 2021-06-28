@@ -1,6 +1,16 @@
 name: Build
 
-on: push
+on:
+  schedule:
+    - cron: '0 10 * * *' # everyday at 10am
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - 'master'
 
 jobs:
   lint:
@@ -216,10 +226,18 @@ jobs:
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v1
+      if: github.event_name != 'pull_request'
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
         password: ${{ secrets.CR_PAT }}
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      if: github.event_name != 'pull_request'
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
@@ -227,18 +245,34 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
+    - name: Docker meta
+      id: docker-meta
+      uses: docker/metadata-action@v3
+      with:
+        images: |
+          samply/blaze
+          ghcr.io/samply/blaze
+        tags: |
+          type=schedule
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,format=long
+
     - name: Build and push
       uses: docker/build-push-action@v2
       with:
         context: .
         platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ghcr.io/samply/blaze:${{ github.sha }}
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.docker-meta.outputs.tags }}
+        labels: ${{ steps.docker-meta.outputs.labels }}
 
     - name: Scan Container Image
       uses: azure/container-scan@v0
       with:
-        image-name: ghcr.io/samply/blaze:${{ github.sha }}
+        image-name: ghcr.io/samply/blaze:sha-${{ github.sha }}
 
   integration-test:
     needs: build
@@ -253,10 +287,10 @@ jobs:
         password: ${{ secrets.CR_PAT }}
 
     - name: Pull Docker Image
-      run: docker pull ghcr.io/samply/blaze:${{ github.sha }}
+      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
 
     - name: Run Blaze
-      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:${{ github.sha }}
+      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
     - name: Check out Git repository
       uses: actions/checkout@v2

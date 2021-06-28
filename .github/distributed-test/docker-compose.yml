@@ -62,7 +62,7 @@ services:
       HEAP_NEWSIZE: "100M"
 
   blaze:
-    image: "ghcr.io/samply/blaze:${GITHUB_SHA}"
+    image: "ghcr.io/samply/blaze:sha-${GITHUB_SHA}"
     hostname: "blaze"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
