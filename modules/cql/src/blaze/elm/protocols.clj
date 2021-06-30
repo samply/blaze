@@ -266,7 +266,9 @@
   "Converts an object into something usable as DateTime relative to `now`.
 
   Converts OffsetDateTime and Instant to LocalDateTime so that we can compare
-  temporal fields directly."
+  temporal fields directly.
+
+  Returns nil if not convertable."
   (to-date-time [x now]))
 
 

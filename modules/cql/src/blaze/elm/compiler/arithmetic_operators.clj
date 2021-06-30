@@ -56,7 +56,7 @@
   (format "Incorrect type `%s`." name))
 
 
-(defn incorrect-type-ns-msg [ns]
+(defn- incorrect-type-ns-msg [ns]
   (format "Incorrect type namespace `%s`." ns))
 
 

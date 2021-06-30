@@ -2,9 +2,11 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :as c]
+    [blaze.elm.compiler.arithmetic-operators-spec]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.date-time :as date-time]
+    [blaze.elm.date-time-spec]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
