@@ -266,7 +266,6 @@
          compaction-readahead-size 0}}
    column-families]
   (let [opts (doto (DBOptions.)
-               (.setStatsDumpPeriodSec 0)
                (.setStatistics ^Statistics stats)
                (.setMaxBackgroundJobs ^long max-background-jobs)
                (.setCompactionReadaheadSize ^long compaction-readahead-size)
