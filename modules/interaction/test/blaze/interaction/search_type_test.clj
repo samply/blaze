@@ -584,6 +584,39 @@
           :fhir/type := :fhir/Patient
           :id := "2"))))
 
+  (testing "_profile search"
+    (let [{:keys [status body]}
+          ((handler-with
+             [[[:put {:fhir/type :fhir/Patient :id "0"}]
+               [:put
+                {:fhir/type :fhir/Patient :id "1"
+                 :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-151511"]}}]]])
+           {::reitit/match {:data {:fhir.resource/type "Patient"}}
+            :params {"_profile" "profile-uri-151511"}})]
+
+      (is (= 200 status))
+
+      (testing "the body contains a bundle"
+        (is (= :fhir/Bundle (:fhir/type body))))
+
+      (testing "the bundle type is searchset"
+        (is (= #fhir/code"searchset" (:type body))))
+
+      (testing "the total count is 1"
+        (is (= #fhir/unsignedInt 1 (:total body))))
+
+      (testing "the bundle contains one entry"
+        (is (= 1 (count (:entry body)))))
+
+      (testing "the entry has the right fullUrl"
+        (is (= #fhir/uri"base-url-113047/Patient/1" (-> body :entry first :fullUrl))))
+
+      (testing "the entry has the right resource"
+        (given (-> body :entry first :resource)
+          :fhir/type := :fhir/Patient
+          [:meta :profile 0] := #fhir/canonical"profile-uri-151511"
+          :id := "1"))))
+
   (testing "_list search"
     (let [{:keys [status body]}
           ((handler-with
