@@ -68,7 +68,7 @@
  {:depstar
   {:replace-deps
    {com.github.seancorfield/depstar
-    {:mvn/version "2.0.216"}}
+    {:mvn/version "2.1.245"}}
    :ns-default hf.depstar}
 
   :test
