@@ -10,7 +10,7 @@
 
   integrant/integrant
   {:git/url "https://github.com/weavejester/integrant.git"
-   :sha "b4f77b0fe9618c5d65bf2cafd27510e8e6ba7cdd"}
+   :sha "32a46f5dca8a6b563a6dddf88bec887be3201b08"}
 
   io.prometheus/simpleclient
   {:mvn/version "0.11.0"}
