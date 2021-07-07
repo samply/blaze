@@ -217,6 +217,7 @@
                  level0-file-num-compaction-trigger
                  min-write-buffer-number-to-merge
                  max-bytes-for-level-base-in-mb
+                 target-file-size-base-in-mb
                  block-size
                  bloom-filter?
                  reverse-comparator?]
@@ -225,6 +226,7 @@
                level0-file-num-compaction-trigger 4
                min-write-buffer-number-to-merge 1
                max-bytes-for-level-base-in-mb 256
+               target-file-size-base-in-mb 64
                block-size (bit-shift-left 4 10)
                bloom-filter? false
                reverse-comparator? false}}]]
@@ -240,6 +242,7 @@
          (.setMaxBytesForLevelBase (bit-shift-left ^long max-bytes-for-level-base-in-mb 20))
          (.setLevel0FileNumCompactionTrigger ^long level0-file-num-compaction-trigger)
          (.setMinWriteBufferNumberToMerge ^long min-write-buffer-number-to-merge)
+         (.setTargetFileSizeBase (bit-shift-left ^long target-file-size-base-in-mb 20))
          (.setTableFormatConfig
            (cond->
              (doto (BlockBasedTableConfig.)
