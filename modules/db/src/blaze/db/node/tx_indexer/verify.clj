@@ -36,7 +36,7 @@
 
 
 (defn- existing-resource-handles [db type clauses]
-  (some->> clauses (d/type-query db type) (take 2)))
+  (into [] (take 2) (d/type-query db type clauses)))
 
 
 (defn- clauses->query-params [clauses]
@@ -64,7 +64,7 @@
 
 (defmethod resolve-id "create"
   [db-before {:keys [type if-none-exist] :as cmd}]
-  (let [[h1 h2] (existing-resource-handles db-before type if-none-exist)]
+  (let [[h1 h2] (some->> if-none-exist (existing-resource-handles db-before type))]
     (cond
       h2
       (throw-multiple-existing-resources-anomaly type if-none-exist [h1 h2])

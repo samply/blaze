@@ -31,7 +31,7 @@
 (defn validate-ops
   "Validates transactions operators for any duplicate resource.
 
-  Returns an anomaly if their is any duplicate resource."
+  Returns an anomaly if there is any duplicate resource."
   [tx-ops]
   (transduce
     (map extract-type-id)

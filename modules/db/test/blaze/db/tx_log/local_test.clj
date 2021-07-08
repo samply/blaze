@@ -6,8 +6,9 @@
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log.local :as local :refer [new-local-tx-log]]
+    [blaze.db.tx-log.local :refer [new-local-tx-log]]
     [blaze.db.tx-log.local-spec]
+    [blaze.db.tx-log.local.codec :as codec]
     [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
@@ -144,7 +145,7 @@
     (testing "with invalid key followed by valid entry"
       (let [kv-store (new-mem-kv-store)]
         (kv/put! kv-store (byte-array 0) (byte-array 0))
-        (kv/put! kv-store (local/encode-key 1) (local/encode-tx-data
+        (kv/put! kv-store (codec/encode-key 1) (codec/encode-tx-data
                                               (Instant/ofEpochSecond 0)
                                               [{:op "create" :type "Patient" :id "0"
                                                 :hash patient-hash-0}]))
@@ -165,7 +166,7 @@
       (let [kv-store (new-mem-kv-store)]
         (kv/put! kv-store (byte-array 0) (byte-array 0))
         (kv/put! kv-store (byte-array 1) (byte-array 0))
-        (kv/put! kv-store (local/encode-key 1) (local/encode-tx-data
+        (kv/put! kv-store (codec/encode-key 1) (codec/encode-tx-data
                                               (Instant/ofEpochSecond 0)
                                               [{:op "create" :type "Patient" :id "0"
                                                 :hash patient-hash-0}]))

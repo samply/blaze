@@ -193,8 +193,8 @@
 (defn kvs!
   "Returns a reducible collection of decoded keys and values of `iter`.
 
-  The `decode` function has to return a tuple of direct ByteBuffers, the first
-  for the key and the second for the value, when called with no argument. The
+  When called with no argument, the `decode` function has to return a tuple of
+  direct ByteBuffers, the first for the key and the second for the value. The
   ByteBuffer will be used for each key and value read and will be passed to the
   decode function for decoding into a value which will end up in the collection.
 
