@@ -38,16 +38,16 @@ There are two different sets of indices, ones which depend on the database value
 
 ### Indices depending on t
 
-| Name | Key Parts | Value |
-|---|---|---|
+| Name         | Key Parts | Value                         |
+|--------------|-----------|-------------------------------|
 | ResourceAsOf | type id t | content-hash, num-changes, op |
-| TypeAsOf | type t id | content-hash, num-changes, op |
-| SystemAsOf | t type id | content-hash, num-changes, op |
-| TxSuccess | t | instant |
-| TxError | t | anomaly |
-| TByInstant | instant | t |
-| TypeStats | type t | total, num-changes |
-| SystemStats | t | total, num-changes |
+| TypeAsOf     | type t id | content-hash, num-changes, op |
+| SystemAsOf   | t type id | content-hash, num-changes, op |
+| TxSuccess    | t         | instant                       |
+| TxError      | t         | anomaly                       |
+| TByInstant   | instant   | t                             |
+| TypeStats    | type t    | total, num-changes            |
+| SystemStats  | t         | total, num-changes            |
 
 #### ResourceAsOf
 
@@ -60,22 +60,22 @@ The `ResourceAsOf` index is used to access the version of a resource at a partic
 The following `ResourceAsOf` index:
 
 | Key (type, id, t) | Value (content-hash, num-changes, op) |
-|---|---|
-| Patient, 0, 1 | ba9c9b24, 1, create |
-| Patient, 0, 3 | b7e3e5f8, 2, update |
-| Patient, 1, 2 | 6744ed32, 1, create |
-| Patient, 0, 4 | -, 3, delete |
+|-------------------|---------------------------------------|
+| Patient, 0, 1     | ba9c9b24, 1, create                   |
+| Patient, 0, 3     | b7e3e5f8, 2, update                   |
+| Patient, 1, 2     | 6744ed32, 1, create                   |
+| Patient, 0, 4     | -, 3, delete                          |
 
 provides the basis for the following database values:
 
-| t | type | id | content-hash |
-|---|---|---|---|
-| 1 | Patient | 0 | ba9c9b24 |
-| 2 | Patient | 0 | ba9c9b24 | 
-| 2 | Patient | 1 | 6744ed32 |
-| 3 | Patient | 0 | b7e3e5f8 |
-| 3 | Patient | 1 | 6744ed32 |
-| 4 | Patient | 1 | 6744ed32 |
+| t   | type    | id  | content-hash |
+|-----|---------|-----|--------------|
+| 1   | Patient | 0   | ba9c9b24     |
+| 2   | Patient | 0   | ba9c9b24     | 
+| 2   | Patient | 1   | 6744ed32     |
+| 3   | Patient | 0   | b7e3e5f8     |
+| 3   | Patient | 1   | 6744ed32     |
+| 4   | Patient | 1   | 6744ed32     |
 
 The database value with `t=1` contains one patient with `id=0` and content hash `ba9c9b24`, because the second patient was created later at `t=2`. The index access algorithm will not find an entry for the patient with `id=1` on a database value with `t=1` because there is no index key with `type=Patient`, `id=1` and `t<=1`. However, the database value with `t=2` will contain the patient with `id=1` and additionally contains the patient with `id=0` because there is a key with `type=Patient`, `id=0` and `t<=2`. Next, the database value with `t=3` still contains the same content hash for the patient with `id=1` and reflects the update on patient with `id=0` because the key `(Patient, 0, 3)` is now the one with the greatest `t<=3`, resulting in the content hash `b7e3e5f8`. Finally, the database value with `t=4` doesn't contain the patient with `id=0` anymore, because it was deleted. As can be seen in the index, deleting a resource is done by adding the information that it was deleted at some point in time.
 
@@ -115,14 +115,14 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name | Key Parts | Value |
-|---|---|---|
-| SearchParamValueResource | search-param, type, value, id, content-hash | - |
-| ResourceSearchParamValue | type, id, content-hash, search-param, value | - |
-| CompartmentSearchParamValueResource | co-c-hash, co-res-id, sp-c-hash, tid, value, id, hash-prefix | - |
-| CompartmentResource | co-c-hash, co-res-id, tid, id | - |
-| SearchParam | code, tid | id |
-| ActiveSearchParams | id | - |
+| Name                                | Key Parts                                                    | Value |
+|-------------------------------------|--------------------------------------------------------------|-------|
+| SearchParamValueResource            | search-param, type, value, id, content-hash                  | -     |
+| ResourceSearchParamValue            | type, id, content-hash, search-param, value                  | -     |
+| CompartmentSearchParamValueResource | co-c-hash, co-res-id, sp-c-hash, tid, value, id, hash-prefix | -     |
+| CompartmentResource                 | co-c-hash, co-res-id, tid, id                                | -     |
+| SearchParam                         | code, tid                                                    | id    |
+| ActiveSearchParams                  | id                                                           | -     |
 
 #### SearchParamValueResource
 
@@ -176,10 +176,10 @@ After concatenation, the strings are hashed with the [Murmur3][7] algorithm in i
 For this example, we don't use the hashed versions of the key parts except for the content-hash.
 
 | Key (search-param, type, value, id, content-hash) |
-|---|
-| gender, Patient, female, 1, 6744ed32 |
-| gender, Patient, female, 2, b7e3e5f8 |
-| gender, Patient, male, 0, ba9c9b24 |
+|---------------------------------------------------|
+| gender, Patient, female, 1, 6744ed32              |
+| gender, Patient, female, 2, b7e3e5f8              |
+| gender, Patient, male, 0, ba9c9b24                |
 
 In case one searches for female patients, Blaze will seek into the index with the key prefix (gender, Patient, female) and scan over it while the prefix stays the same. The result will be the `[id, hash]` tuples:
 * `[1, 6744ed32]` and
@@ -212,6 +212,12 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 * a transaction bundle is POST'ed to one arbitrary node
 * this node submits the transaction commands to the central transaction log
 * all nodes (inkl. the transaction submitter) receive the transaction commands from the central transaction log
+
+## Clojure API
+
+### Transaction Operations
+
+Transaction operations are used 
 
 **TODO: continue...**
 

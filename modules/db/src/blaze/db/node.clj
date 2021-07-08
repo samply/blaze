@@ -12,6 +12,7 @@
     [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param :as search-param]
+    [blaze.db.node.tx-indexer.verify :as verify]
     [blaze.db.kv :as kv]
     [blaze.db.node.protocols :as np]
     [blaze.db.node.resource-indexer :as resource-indexer :refer [new-resource-indexer]]
@@ -121,11 +122,6 @@
     future))
 
 
-(defn- index-tx [db-before tx-data]
-  (with-open [_ (prom/timer duration-seconds "index-transactions")]
-    (tx-indexer/index-tx db-before tx-data)))
-
-
 (defn- advance-t! [state t]
   (log/trace "advance state to t =" t)
   (swap! state assoc :t t))
@@ -168,6 +164,28 @@
   (advance-t! state t))
 
 
+(defn- hashes [tx-cmds]
+  (into [] (keep :hash) tx-cmds))
+
+
+(defn- fetch-resources
+  "Returns a CompletableFuture that will complete with all resources of
+   `tx-data`."
+  {:arglists '([node tx-data])}
+  [{:keys [resource-store]} {:keys [tx-cmds] resources :local-payload}]
+  (or (some-> resources ac/completed-future)
+      (rs/multi-get resource-store (hashes tx-cmds))))
+
+
+(defn- attach-resources* [resources {:keys [hash] :as tx-cmd}]
+  (assoc tx-cmd :resource (resources hash)))
+
+
+(defn- attach-resources [node {:keys [tx-cmds] :as tx-data}]
+  (-> (fetch-resources node tx-data)
+      (ac/then-apply #(mapv (partial attach-resources* %) tx-cmds))))
+
+
 (defn- index-tx-data!
   "This is the main transaction handling function.
 
@@ -175,15 +193,16 @@
   [{:keys [kv-store] :as node} {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (prom/observe! transaction-sizes (count tx-cmds))
-  (let [timer (prom/timer duration-seconds "index-resources")
-        future (resource-indexer/index-resources node tx-data)
-        result (index-tx (np/-db node) tx-data)]
-    (if (ba/anomaly? result)
-      (commit-error! node t result)
-      (do
-        (store-tx-entries! kv-store result)
-        (wait-for-resources future timer)
-        (commit-success! node t instant)))))
+  (-> (attach-resources node tx-data)
+      (ac/then-apply
+        (fn [tx-cmds]
+          (if-ok [tx-cmds (verify/verify-commands (np/-db node) tx-cmds)]
+            (let [timer (prom/timer duration-seconds "index-resources")
+                  future (resource-indexer/index-resources node tx-data)]
+              (store-tx-entries! kv-store (verify/tx-entries (np/-db node) t tx-cmds))
+              (wait-for-resources future timer)
+              (commit-success! node t instant))
+            (partial commit-error! node t))))))
 
 
 (defn- poll! [node queue poll-timeout]

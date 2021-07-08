@@ -9,4 +9,4 @@
   [db-before {:keys [t tx-cmds]}]
   (log/trace "verify transaction commands with t =" t
              "based on db with t =" (d/basis-t db-before))
-  (verify/verify-tx-cmds db-before t tx-cmds))
+  (verify/tx-entries db-before t tx-cmds))

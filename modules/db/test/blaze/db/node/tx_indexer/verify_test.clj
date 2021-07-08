@@ -14,19 +14,12 @@
     [blaze.db.impl.index.type-as-of-test-util :as tao-tu]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.impl.index.type-stats-test-util :as ts-tu]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
-    [blaze.db.node]
     [blaze.db.node.tx-indexer.verify :as verify]
     [blaze.db.node.tx-indexer.verify-spec]
     [blaze.db.resource-handle-cache]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :as rs-kv]
     [blaze.db.search-param-registry]
-    [blaze.db.tx-cache]
-    [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log.local]
+    [blaze.db.test-util :refer [system with-system-data]]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
@@ -36,9 +29,6 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.walk :as walk]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
@@ -111,6 +101,7 @@
 
 
 (def tid-patient (codec/tid "Patient"))
+(def tid-observation (codec/tid "Observation"))
 
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
 (def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
@@ -133,11 +124,19 @@
   (bs/from-byte-array (byte-array 32)))
 
 
+(def ^:private patient-hash
+  #blaze/byte-string"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F")
+
+
+(def ^:private observation-hash
+  #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378")
+
+
 (deftest verify-tx-cmds-test
   (testing "adding one patient to an empty store"
     (with-system [{:blaze.db/keys [node]} system]
       (is-entries=
-        (verify/verify-tx-cmds
+        (verify/tx-entries
           (d/db node) 1
           [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)}])
         (let [value (rts/encode-value (hash/generate patient-0) 1 :put)]
@@ -154,11 +153,11 @@
            (system-stats/index-entry 1 {:total 1 :num-changes 1})]))))
 
   (testing "adding a second version of a patient to a store containing it already"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (is-entries=
-        (verify/verify-tx-cmds
+        (verify/tx-entries
           (d/db node) 2
           [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0-v2)}])
         (let [value (rts/encode-value (hash/generate patient-0-v2) 2 :put)]
@@ -175,11 +174,11 @@
            (system-stats/index-entry 2 {:total 1 :num-changes 2})]))))
 
   (testing "adding a second version of a patient to a store containing it already incl. matcher"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (is-entries=
-        (verify/verify-tx-cmds
+        (verify/tx-entries
           (d/db node) 2
           [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0-v2)
             :if-match 1}])
@@ -198,7 +197,7 @@
 
   (testing "deleting a patient from an empty store"
     (with-system [{:blaze.db/keys [node]} system]
-      (given (verify/verify-tx-cmds
+      (given (verify/tx-entries
                (d/db node) 1
                [{:op "delete" :type "Patient" :id "0"}])
         [0 #(drop 1 %) rao-tu/decode-index-entry] :=
@@ -222,11 +221,11 @@
          {:total 0 :num-changes 1}])))
 
   (testing "deleting an already deleted patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:delete "Patient" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:delete "Patient" "0"]]]
 
       (given
-        (verify/verify-tx-cmds
+        (verify/tx-entries
           (d/db node) 2
           [{:op "delete" :type "Patient" :id "0"}])
 
@@ -251,11 +250,11 @@
          {:total 0 :num-changes 2}])))
 
   (testing "deleting an existing patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (given
-        (verify/verify-tx-cmds
+        (verify/tx-entries
           (d/db node) 2
           [{:op "delete" :type "Patient" :id "0"}])
 
@@ -280,11 +279,11 @@
          {:total 0 :num-changes 2}])))
 
   (testing "adding a second patient to a store containing already one"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (is-entries=
-        (verify/verify-tx-cmds
+        (verify/tx-entries
           (d/db node) 2
           [{:op "put" :type "Patient" :id "1" :hash (hash/generate patient-1)}])
         (let [value (rts/encode-value (hash/generate patient-1) 1 :put)]
@@ -300,82 +299,25 @@
            (type-stats/index-entry tid-patient 2 {:total 2 :num-changes 2})
            (system-stats/index-entry 2 {:total 2 :num-changes 2})]))))
 
-  (testing "update conflict"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+  (testing "on recreation"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put patient-0]]
+       [[:delete "Patient" "0"]]]
 
-      (given
-        (verify/verify-tx-cmds
-          (d/db node) 2
-          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)
-            :if-match 0}])
-        ::anom/category := ::anom/conflict
-        ::anom/message := "Precondition `W/\"0\"` failed on `Patient/0`."
-        :http/status := 412)))
-
-  (testing "conditional create"
-    (testing "conflict"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                  :birthDate #fhir/date"2020"}]
-                           [:put {:fhir/type :fhir/Patient :id "1"
-                                  :birthDate #fhir/date"2020"}]])
-
-        (given
-          (verify/verify-tx-cmds
-            (d/db node) 2
-            [{:op "create" :type "Patient" :id "1"
-              :hash (hash/generate patient-0)
-              :if-none-exist [["birthdate" "2020"]]}])
-          ::anom/category := ::anom/conflict
-          ::anom/message := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
-          :http/status := 412)))
-
-    (testing "match"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put patient-3]])
-
-        (is
-          (empty?
-            (verify/verify-tx-cmds
-              (d/db node) 2
-              [{:op "create" :type "Patient" :id "0"
-                :hash (hash/generate patient-0)
-                :if-none-exist [["identifier" "120426"]]}])))))
-
-    (testing "conflict because matching resource is deleted"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put patient-3]])
-
-        (given
-          (verify/verify-tx-cmds
-            (d/db node) 2
-            [{:op "delete" :type "Patient" :id "3"}
-             {:op "create" :type "Patient" :id "0"
-              :hash (hash/generate patient-0)
-              :if-none-exist [["identifier" "120426"]]}])
-          ::anom/category := ::anom/conflict
-          ::anom/message := "Duplicate transaction commands `create Patient?identifier=120426 (resolved to id 3)` and `delete Patient/3`.")))
-
-    (testing "on recreation"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put patient-0]])
-        @(d/transact node [[:delete "Patient" "0"]])
-
-        (is-entries=
-          (verify/verify-tx-cmds
-            (d/db node) 3
-            [{:op "put" :type "Patient" :id "0"
-              :hash (hash/generate patient-0)}])
-          (let [value (rts/encode-value (hash/generate patient-0) 3 :put)]
-            [[:resource-as-of-index
-              (rao/encode-key tid-patient (codec/id-byte-string "0") 3)
-              value]
-             [:type-as-of-index
-              (tao/encode-key tid-patient 3 (codec/id-byte-string "0"))
-              value]
-             [:system-as-of-index
-              (sao/encode-key 3 tid-patient (codec/id-byte-string "0"))
-              value]
-             (type-stats/index-entry tid-patient 3 {:total 1 :num-changes 3})
-             (system-stats/index-entry 3 {:total 1 :num-changes 3})]))))))
+      (is-entries=
+        (verify/tx-entries
+          (d/db node) 3
+          [{:op "put" :type "Patient" :id "0"
+            :hash (hash/generate patient-0)}])
+        (let [value (rts/encode-value (hash/generate patient-0) 3 :put)]
+          [[:resource-as-of-index
+            (rao/encode-key tid-patient (codec/id-byte-string "0") 3)
+            value]
+           [:type-as-of-index
+            (tao/encode-key tid-patient 3 (codec/id-byte-string "0"))
+            value]
+           [:system-as-of-index
+            (sao/encode-key 3 tid-patient (codec/id-byte-string "0"))
+            value]
+           (type-stats/index-entry tid-patient 3 {:total 1 :num-changes 3})
+           (system-stats/index-entry 3 {:total 1 :num-changes 3})])))))

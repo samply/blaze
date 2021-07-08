@@ -74,6 +74,8 @@
   "Splits `tx-ops` into a tuple of :blaze.db/tx-cmds and a map of resource
   hashes to resource contents.
 
+  Resource contents
+
   Puts :refs into the returned :blaze.db/tx-cmds if
   :blaze.db/enforce-referential-integrity is true in `context` which is the
   default."

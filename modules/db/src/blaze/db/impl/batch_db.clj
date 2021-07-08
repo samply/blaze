@@ -9,6 +9,7 @@
     [blaze.db.impl.index :as index]
     [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.index.system-as-of :as sao]
@@ -29,13 +30,51 @@
 (set! *warn-on-reflection* true)
 
 
-(defrecord BatchDb [node basis-t context]
+(defmulti resource-handle (fn [_ _ _ _ {:keys [op]}] op))
+
+
+(defmethod resource-handle "create"
+  [_ t tid _ {:keys [id hash]}]
+  (rh/->ResourceHandle tid id t hash 1 :create))
+
+
+(defmethod resource-handle "put"
+  [db t tid id' {:keys [id hash]}]
+  (let [{:keys [num-changes] :or {num-changes 0}} (p/-resource-handle db tid id')]
+    (rh/->ResourceHandle tid id t hash (inc num-changes) :put)))
+
+
+(defmethod resource-handle "delete"
+  [db t tid id' {:keys [id hash]}]
+  (let [{:keys [num-changes] :or {num-changes 0}} (p/-resource-handle db tid id')]
+    (rh/->ResourceHandle tid id t hash (inc num-changes) :delete)))
+
+
+(defrecord WithDb [db t tx-cmds]
+  p/Db
+  (-resource-handle [_ tid id]
+    (if-let [tx-cmd (get tx-cmds [tid id])]
+      (resource-handle db t tid id tx-cmd)
+      (p/-resource-handle db tid id))))
+
+
+(defn- index-tx-cmds [tx-cmds]
+  (reduce
+    (fn [m {:keys [type id] :as tx-cmd}]
+      (assoc m [(codec/tid type) (codec/id-byte-string id)] tx-cmd))
+    {} tx-cmds))
+
+
+(defrecord BatchDb [node basis-t t context]
   p/Db
   (-node [_]
     node)
 
   (-basis-t [_]
     basis-t)
+
+  (-with [db tx-cmds]
+    (->WithDb db (inc t) (index-tx-cmds tx-cmds)))
 
 
 
@@ -296,12 +335,14 @@
   A batch database can be used instead of a normal database. It's functionally
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
-  ^AutoCloseable
+  {:arglists '([node basis-t t])
+   :tag AutoCloseable}
   [{:keys [kv-store rh-cache] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
     (->BatchDb
       node
       basis-t
+      t
       (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
         {:snapshot snapshot
          :raoi raoi

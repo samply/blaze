@@ -10,20 +10,13 @@
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
-    [blaze.db.node]
     [blaze.db.node-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
-    [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :as rs-kv]
     [blaze.db.search-param-registry]
-    [blaze.db.tx-cache]
-    [blaze.db.tx-log :as tx-log]
+    [blaze.db.test-util :refer [system with-system-data]]
     [blaze.db.tx-log-spec]
-    [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo]
@@ -33,7 +26,6 @@
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -280,6 +272,31 @@
           (testing "no new patient is created"
             (is (= 1 (d/type-total (d/db node) "Patient"))))))
 
+      (testing "on matching Patient and Observation referring to it"
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier [#fhir/Identifier{:value "111033"}]}]]]
+
+          @(d/transact
+             node
+             [[:create
+               {:fhir/type :fhir/Patient :id "1"}
+               [["identifier" "111033"]]]
+              [:create
+               {:fhir/type :fhir/Observation :id "0"
+                :subject #fhir/Reference{:reference "Patient?identifier=111033"}}]])
+
+          (testing "no new patient is created"
+            (is (= 1 (d/type-total (d/db node) "Patient"))))
+
+          #_(testing "the Observation was created"
+              (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
+                :fhir/type := :fhir/Observation
+                :id := "0"
+                [:meta :versionId] := #fhir/id"2"
+                [meta :blaze.db/op] := :create
+                [:subject :reference] := "Patient/0"))))
+
       (testing "on multiple matching Patients"
         (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
@@ -299,18 +316,16 @@
               ::anom/category := ::anom/conflict))))
 
       (testing "on deleting the matching Patient"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/Patient :id "0"
-                     :identifier [#fhir/Identifier{:value "153229"}]}]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier [#fhir/Identifier{:value "153229"}]}]]]
 
           (testing "causes a transaction abort with conflict"
             (given-failed-future
               (d/transact
                 node
                 [[:create
-                  {:fhir/type :fhir/Patient :id "1"}
+                  {:fhir/type :fhir/Patient :id "foo"}
                   [["identifier" "153229"]]]
                  [:delete "Patient" "0"]])
               ::anom/category := ::anom/conflict))))))
@@ -504,11 +519,9 @@
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
     (testing "creating a List were the entry item will be deleted in the same transaction"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact
-           node
-           [[:create {:fhir/type :fhir/Observation :id "0"}]
-            [:create {:fhir/type :fhir/Observation :id "1"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:create {:fhir/type :fhir/Observation :id "0"}]
+          [:create {:fhir/type :fhir/Observation :id "1"}]]]
 
         (given-failed-future
           (d/transact
@@ -522,12 +535,12 @@
                  :item #fhir/Reference{:reference "Observation/1"}}]}]
              [:delete "Observation" "1"]])
           ::anom/category := ::anom/conflict
-          ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
+          ::anom/message := "Referential integrity violated. Resource `Observation/1` doesn't exist."))))
 
   (testing "not enforcing referential integrity"
     (testing "creating an Observation were the subject doesn't exist"
       (testing "create"
-        (with-system [{:blaze.db/keys [node]} (create-system {:enforce-referential-integrity false})]
+        (with-system [{:blaze.db/keys [node]} (assoc-in system [:blaze.db/node :enforce-referential-integrity] false)]
           @(d/transact
              node
              [[:create

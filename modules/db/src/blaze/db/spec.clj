@@ -84,10 +84,18 @@
          :id :blaze.resource/id))
 
 
+;; Transaction Operation
+;;
+;; Exapmples:
+;;  * [:create {:fhir/type :fhir/Patient :id "0"}]
+;;  * [:create {:fhir/type :fhir/Patient :id "0"} [["identifier" "foo"]]]
+;;  * [:put {:fhir/type :fhir/Patient :id "0"}]
+;;  * [:delete "Patient" "0"]
 (s/def :blaze.db/tx-op
   (s/multi-spec tx-op first))
 
 
+;; Transaction Operations
 (s/def :blaze.db/tx-ops
   (s/coll-of :blaze.db/tx-op :kind vector? :min-count 1))
 

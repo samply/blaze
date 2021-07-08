@@ -19,12 +19,13 @@
   #{"create" "put" "delete"})
 
 
-(s/def :blaze.db.tx-cmd/type
-  :fhir.type/name)
+(s/def :blaze.db.tx-cmd/ref
+  (s/or :local-ref :blaze.fhir/local-ref-tuple
+        :conditional-ref (s/tuple :fhir.resource/type :blaze.db.query/clauses)))
 
 
 (s/def :blaze.db.tx-cmd/refs
-  (s/coll-of :blaze.fhir/local-ref-tuple))
+  (s/coll-of :blaze.db.tx-cmd/ref))
 
 
 (s/def :blaze.db/t
@@ -44,7 +45,7 @@
 
 (defmethod tx-cmd "create" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type
+                   :fhir.resource/type
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
@@ -53,7 +54,7 @@
 
 (defmethod tx-cmd "put" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type
+                   :fhir.resource/type
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
@@ -62,7 +63,7 @@
 
 (defmethod tx-cmd "delete" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type
+                   :fhir.resource/type
                    :blaze.resource/id]
           :opt-un [:blaze.db.tx-cmd/if-match]))
 

@@ -13,7 +13,12 @@
     [cognitect.anomalies :as anom]))
 
 
-(s/fdef verify/verify-tx-cmds
+(s/fdef verify/verify-commands
+  :args (s/cat :db-before :blaze.db/db :commands :blaze.db/tx-cmds)
+  :ret (s/or :commands :blaze.db/tx-cmds :anomaly ::anom/anomaly))
+
+
+(s/fdef verify/tx-entries
   :args (s/cat :db-before :blaze.db/db :t :blaze.db/t :cmds :blaze.db/tx-cmds)
   :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry)
              :anomaly ::anom/anomaly))

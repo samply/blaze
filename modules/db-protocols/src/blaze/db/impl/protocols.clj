@@ -10,6 +10,8 @@
 
   (-as-of-t [db])
 
+  (-with [db tx-cmds])
+
   (-resource-handle [db tid id])
 
   (-type-list [db tid] [db tid start-id])
