@@ -37,11 +37,11 @@
 
     (testing "conditional"
       (given (tx/prepare-ops
-               [[:create {:fhir/type :fhir/Patient :id "0"}
+               [[:create {:fhir/type :fhir/Patient :id "id-220036"}
                  [["identifier" "115508"]]]])
         [0 0 :op] := "create"
         [0 0 :type] := "Patient"
-        [0 0 :id] := "0"
+        [0 0 :id] := "id-220036"
         [0 0 :if-none-exist] := [["identifier" "115508"]])))
 
   (testing "one put"

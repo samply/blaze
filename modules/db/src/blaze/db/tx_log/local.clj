@@ -12,21 +12,19 @@
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.impl.byte-buffer :as bb]
-    [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]
+    [blaze.db.tx-log.local.codec :as codec]
     [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [java-time :as jt]
-    [jsonista.core :as j]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.io Closeable]
     [java.time Clock Instant]
     [java.util.concurrent
@@ -45,56 +43,6 @@
   "op")
 
 
-(def ^:private cbor-object-mapper
-  (j/object-mapper
-    {:factory (CBORFactory.)
-     :decode-key-fn true
-     :modules [bs/object-mapper-module]}))
-
-
-(defn- parse-cbor [value t]
-  (try
-    (j/read-value value cbor-object-mapper)
-    (catch Exception e
-      (log/warn (format "Skip transaction with point in time of %d because their was an error while parsing tx-data: %s" t (ex-message e))))))
-
-
-(defn- decode-hash [tx-cmd]
-  (update tx-cmd :hash bs/from-byte-array))
-
-
-(defn- decode-instant [x]
-  (when (int? x)
-    (Instant/ofEpochMilli x)))
-
-
-(defn- decode-tx-data
-  ([]
-   [(bb/allocate-direct codec/t-size)
-    (bb/allocate-direct 1024)])
-  ([kb vb]
-   (let [t (bb/get-long! kb)
-         value (byte-array (bb/remaining vb))]
-     (bb/copy-into-byte-array! vb value 0 (bb/remaining vb))
-     (-> (parse-cbor value t)
-         (update :tx-cmds #(mapv decode-hash %))
-         (update :instant decode-instant)
-         (assoc :t t)))))
-
-
-(defn encode-key [t]
-  (-> (bb/allocate Long/BYTES)
-      (bb/put-long! t)
-      (bb/array)))
-
-
-(defn encode-tx-data [instant tx-cmds]
-  (j/write-value-as-bytes
-    {:instant (.toEpochMilli ^Instant instant)
-     :tx-cmds tx-cmds}
-    cbor-object-mapper))
-
-
 (def ^:private ^:const max-poll-size 50)
 
 
@@ -102,7 +50,8 @@
   (log/trace "fetch tx-data from storage offset =" offset)
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]
-    (into [] (take max-poll-size) (i/kvs! iter decode-tx-data (bs/from-byte-array (encode-key offset))))))
+    (let [key (bs/from-byte-array (codec/encode-key offset))]
+      (into [] (take max-poll-size) (i/kvs! iter codec/decode-tx-data key)))))
 
 
 (defn- poll [^BlockingQueue queue timeout]
@@ -129,7 +78,7 @@
 
 (defn- store-tx-data! [kv-store {:keys [t instant tx-cmds]}]
   (log/trace "store transaction data with t =" t)
-  (kv/put! kv-store (encode-key t) (encode-tx-data instant tx-cmds)))
+  (kv/put! kv-store (codec/encode-key t) (codec/encode-tx-data instant tx-cmds)))
 
 
 (defn- transfer-tx-data! [queues tx-data]

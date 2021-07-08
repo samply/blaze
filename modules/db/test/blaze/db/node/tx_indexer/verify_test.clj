@@ -26,13 +26,15 @@
     [clojure.walk :refer [postwalk]]
     [cognitect.anomalies :as anom]
     [java-time :as jt]
-    [juxt.iota :refer [given]])
+    [juxt.iota :refer [given]]
+    [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache Caffeine]
     [java.time Clock Instant ZoneId]))
 
 
 (st/instrument)
+(log/set-level! :trace)
 
 
 (defn- fixture [f]
