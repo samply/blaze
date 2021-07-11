@@ -26,7 +26,7 @@
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -95,7 +95,7 @@
         index-kv-store (new-index-kv-store)]
     (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
                    indexer-executor index-kv-store resource-store
-                   search-param-registry (jt/millis 10))))
+                   search-param-registry (time/millis 10))))
 
 
 (defn new-node []

@@ -11,7 +11,7 @@
     [blaze.executors :as ex]
     [clojure.test :refer [deftest is testing]]
     [criterium.core :as criterium]
-    [java-time :as jt]
+    [java-time :as time]
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache Caffeine]
@@ -70,7 +70,7 @@
                    indexer-executor index-kv-store
                    (new-kv-resource-store (new-mem-kv-store)
                                           resource-store-executor)
-                   search-param-registry (jt/millis 10))))
+                   search-param-registry (time/millis 10))))
 
 
 (deftest transact-test

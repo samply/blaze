@@ -12,7 +12,7 @@
     [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.tools.reader.edn :as edn]
-    [clojure.walk :refer [postwalk]]
+    [clojure.walk :as walk]
     [integrant.core :as ig]
     [spec-coerce.alpha :refer [coerce]]
     [taoensso.timbre :as log])
@@ -61,7 +61,7 @@
   "Resolves config entries to there actual values with the help of an
   environment."
   [config env]
-  (postwalk
+  (walk/postwalk
     (fn [x]
       (if (instance? Cfg x)
         (when-let [value (get-blank env (:env-var x) (:default x))]

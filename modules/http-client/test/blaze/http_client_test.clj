@@ -6,7 +6,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -44,11 +44,11 @@
 (deftest http-client-test
   (testing "without options"
     (given (datafy (http-client {}))
-      :connect-timeout := (jt/millis 5000)))
+      :connect-timeout := (time/millis 5000)))
 
   (testing "with 2 seconds connect timeout"
     (given (datafy (http-client {:connect-timeout 2000}))
-      :connect-timeout := (jt/millis 2000)))
+      :connect-timeout := (time/millis 2000)))
 
   (testing "fails with string connect timeout"
     (is (thrown? Exception (http-client {:connect-timeout "2000"})))))

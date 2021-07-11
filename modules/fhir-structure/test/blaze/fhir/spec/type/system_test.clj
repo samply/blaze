@@ -5,7 +5,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
-    [java-time :as jt])
+    [java-time :as time])
   (:import
     [com.google.common.hash Hashing]
     [java.time LocalDate LocalDateTime Year YearMonth OffsetDateTime
@@ -398,36 +398,36 @@
   (testing "Temporal"
     (testing "after?"
       (testing "year"
-        (are [a b] (jt/after? a b)
+        (are [a b] (time/after? a b)
           (system/date-time 2021) (system/date-time 2020)))
 
       (testing "year-month"
-        (are [a b] (jt/after? a b)
+        (are [a b] (time/after? a b)
           (system/date-time 2020 2) (system/date-time 2020 1)))
 
       (testing "year-month-day"
-        (are [a b] (jt/after? a b)
+        (are [a b] (time/after? a b)
           (system/date-time 2020 1 2) (system/date-time 2020 1 1))))
 
     (testing "plus"
       (testing "year"
-        (are [o amount res] (= res (jt/plus o amount))
-          (system/date-time 2020) (jt/years 0) (system/date-time 2020)
-          (system/date-time 2020) (jt/years 1) (system/date-time 2021)))
+        (are [o amount res] (= res (time/plus o amount))
+          (system/date-time 2020) (time/years 0) (system/date-time 2020)
+          (system/date-time 2020) (time/years 1) (system/date-time 2021)))
 
       (testing "year-month"
-        (are [o amount res] (= res (jt/plus o amount))
-          (system/date-time 2020 1) (jt/months 0) (system/date-time 2020 1)
-          (system/date-time 2020 1) (jt/months 1) (system/date-time 2020 2)))
+        (are [o amount res] (= res (time/plus o amount))
+          (system/date-time 2020 1) (time/months 0) (system/date-time 2020 1)
+          (system/date-time 2020 1) (time/months 1) (system/date-time 2020 2)))
 
       (testing "year-month-day"
-        (are [o amount res] (= res (jt/plus o amount))
-          (system/date-time 2020 1 1) (jt/days 0) (system/date-time 2020 1 1)
-          (system/date-time 2020 1 1) (jt/days 1) (system/date-time 2020 1 2))))
+        (are [o amount res] (= res (time/plus o amount))
+          (system/date-time 2020 1 1) (time/days 0) (system/date-time 2020 1 1)
+          (system/date-time 2020 1 1) (time/days 1) (system/date-time 2020 1 2))))
 
     (testing "time-between"
       (testing "year"
-        (are [o e n] (= n (jt/time-between o e :years))
+        (are [o e n] (= n (time/time-between o e :years))
           (system/date-time 2020) (system/date-time 2020) 0
           (system/date-time 2020) (system/date-time 2021) 1
           (system/date-time 2020) (Year/of 2020) 0
@@ -436,7 +436,7 @@
           (Year/of 2020) (system/date-time 2021) 1))
 
       (testing "year-month"
-        (are [o e n] (= n (jt/time-between o e :months))
+        (are [o e n] (= n (time/time-between o e :months))
           (system/date-time 2020 1)
           (system/date-time 2020 1) 0
           (system/date-time 2020 1)
@@ -447,7 +447,7 @@
           (YearMonth/of 2020 1) (system/date-time 2020 2) 1))
 
       (testing "year-month-day"
-        (are [o e n] (= n (jt/time-between o e :days))
+        (are [o e n] (= n (time/time-between o e :days))
           (system/date-time 2020 1 1)
           (system/date-time 2020 1 1) 0
           (system/date-time 2020 1 1)
@@ -458,7 +458,7 @@
           (LocalDate/of 2020 1 1) (system/date-time 2020 1 2) 1))))
 
   (testing "TemporalAccessor"
-    (are [o ps] (every? #(jt/supports? o %) ps)
+    (are [o ps] (every? #(time/supports? o %) ps)
       (system/date-time 2020)
       [:year]
 
@@ -468,7 +468,7 @@
       (system/date-time 2020 1 1)
       [:year :month-of-year :day-of-month])
 
-    (are [o p v] (= v (jt/value (jt/property o p)))
+    (are [o p v] (= v (time/value (time/property o p)))
       (system/date-time 2020) :year 2020
       (system/date-time 2020 1) :year 2020
       (system/date-time 2020 1) :month-of-year 1

@@ -21,7 +21,7 @@
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
@@ -56,7 +56,7 @@
 
 (defn- poll [^BlockingQueue queue timeout]
   (log/trace "poll in-memory queue with timeout =" timeout)
-  (.poll queue (jt/as timeout :millis) TimeUnit/MILLISECONDS))
+  (.poll queue (time/as timeout :millis) TimeUnit/MILLISECONDS))
 
 
 (deftype LocalQueue [kv-store offset queue queue-start unsubscribe!]

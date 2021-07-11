@@ -5,7 +5,7 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.spec]
     [clojure.spec.alpha :as s]
-    [java-time :as jt]))
+    [java-time :as time]))
 
 
 ;; returns a CompletableFuture of :blaze.db/t
@@ -20,5 +20,5 @@
 
 
 (s/fdef tx-log/poll
-  :args (s/cat :queue ::tx-log/queue :timeout jt/duration?)
+  :args (s/cat :queue ::tx-log/queue :timeout time/duration?)
   :ret (s/nilable (s/coll-of :blaze.db/tx-data)))

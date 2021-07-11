@@ -9,7 +9,7 @@
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -125,13 +125,13 @@
                (throw (Error.))))
            tx-log/Queue
            (-poll [_ timeout]
-             (when-not (= (jt/millis 10) timeout)
+             (when-not (= (time/millis 10) timeout)
                (throw (Error.))))
            Closeable
            (close [_])))]
       (with-open [tx-log (tx-log)
                   queue (tx-log/new-queue tx-log 1)]
-        (is (empty? (tx-log/poll queue (jt/millis 10))))))))
+        (is (empty? (tx-log/poll queue (time/millis 10))))))))
 
 
 (defn invalid-cbor-content

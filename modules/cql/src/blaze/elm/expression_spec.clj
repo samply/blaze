@@ -5,11 +5,11 @@
     [blaze.elm.expression :as expr]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
-    [java-time :as jt]))
+    [java-time :as time]))
 
 
 (s/def ::now
-  jt/offset-date-time?)
+  time/offset-date-time?)
 
 
 (s/def ::library-context

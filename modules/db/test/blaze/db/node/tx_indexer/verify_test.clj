@@ -23,9 +23,9 @@
     [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [clojure.walk :refer [postwalk]]
+    [clojure.walk :as walk]
     [cognitect.anomalies :as anom]
-    [java-time :as jt]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -95,7 +95,7 @@
                    indexer-executor index-kv-store
                    (new-kv-resource-store (new-mem-kv-store)
                                           resource-store-executor)
-                   search-param-registry (jt/millis 10))))
+                   search-param-registry (time/millis 10))))
 
 
 (def tid-patient (codec/tid "Patient"))
@@ -113,7 +113,7 @@
 
 
 (defmacro is-entries= [a b]
-  `(is (= (postwalk bytes->vec ~a) (postwalk bytes->vec ~b))))
+  `(is (= (walk/postwalk bytes->vec ~a) (walk/postwalk bytes->vec ~b))))
 
 
 (deftest verify-tx-cmds

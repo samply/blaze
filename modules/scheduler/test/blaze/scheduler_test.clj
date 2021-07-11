@@ -5,7 +5,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is]]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [taoensso.timbre :as log]))
 
 
@@ -34,7 +34,7 @@
   (let [scheduler (init-scheduler)
         state (atom 0)]
     (sched/schedule-at-fixed-rate scheduler #(swap! state inc)
-                                  (jt/millis 100) (jt/millis 100))
+                                  (time/millis 100) (time/millis 100))
     (is (zero? @state))
     (Thread/sleep 120)
     (is (= 1 @state))

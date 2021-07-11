@@ -13,7 +13,7 @@
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
-    [java-time :as jt])
+    [java-time :as time])
   (:import
     [java.time Year YearMonth]
     [java.time.temporal Temporal]))
@@ -841,7 +841,7 @@
 ;; information on the rationale for defining the TimeOfDay operator in this way.
 (deftest compile-time-of-day-test
   (are [res] (= res (core/-eval (c/compile {} {:type "TimeOfDay"}) {:now tu/now} nil nil))
-    (jt/local-time tu/now)))
+             (time/local-time tu/now)))
 
 
 ;; 18.22. Today
@@ -852,4 +852,4 @@
 ;; way.
 (deftest compile-today-test
   (are [res] (= res (core/-eval (c/compile {} {:type "Today"}) {:now tu/now} nil nil))
-    (jt/local-date tu/now)))
+             (time/local-date tu/now)))

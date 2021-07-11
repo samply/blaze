@@ -13,7 +13,7 @@
     [blaze.db.tx-log.local :refer [new-local-tx-log]]
     [blaze.executors :as ex]
     [clojure.spec.alpha :as s]
-    [java-time :as jt])
+    [java-time :as time])
   (:import
     [com.github.benmanes.caffeine.cache Caffeine]
     [java.io Closeable]
@@ -66,7 +66,7 @@
         resource-handle-cache (.build (Caffeine/newBuilder))]
     (new-node tx-log resource-handle-cache (tx-cache index-kv-store)
               indexer-executor index-kv-store resource-store
-              search-param-registry (jt/millis 10))))
+              search-param-registry (time/millis 10))))
 
 
 (defn- submit-txs [node txs]

@@ -30,7 +30,7 @@
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
@@ -372,7 +372,7 @@
              resource-store search-param-registry]}]
   (log/info "Open local database node")
   (new-node tx-log resource-handle-cache tx-cache indexer-executor kv-store
-            resource-store search-param-registry (jt/seconds 1)))
+            resource-store search-param-registry (time/seconds 1)))
 
 
 (defmethod ig/halt-key! :blaze.db/node
