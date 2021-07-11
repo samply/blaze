@@ -1,4 +1,5 @@
 (ns blaze.db.search-param-registry
+  (:refer-clojure :exclude [get])
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.coll.core :as coll]
@@ -9,8 +10,7 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [jsonista.core :as j]
-    [taoensso.timbre :as log])
-  (:refer-clojure :exclude [get]))
+    [taoensso.timbre :as log]))
 
 
 (defmulti search-param

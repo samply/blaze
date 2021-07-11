@@ -9,6 +9,7 @@
     We use date and time values with and without time zone information here.
     Every local (without time zone) date or time is meant relative to the time
     zone of the :now timestamp in the evaluation context."
+  (:refer-clojure :exclude [comparator compile])
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.db.api-spec]
@@ -37,8 +38,7 @@
     [blaze.elm.spec]
     [blaze.elm.tuple]
     [blaze.elm.type-infer :as type-infer]
-    [cognitect.anomalies :as anom])
-  (:refer-clojure :exclude [comparator compile]))
+    [cognitect.anomalies :as anom]))
 
 
 (set! *warn-on-reflection* true)

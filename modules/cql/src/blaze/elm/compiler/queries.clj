@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler.queries
   "10. Queries"
+  (:refer-clojure :exclude [comparator])
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.coll.core :as coll]
@@ -10,8 +11,7 @@
     [blaze.fhir.spec]
     [cognitect.anomalies :as anom])
   (:import
-    [java.util Comparator])
-  (:refer-clojure :exclude [comparator]))
+    [java.util Comparator]))
 
 
 (set! *warn-on-reflection* true)

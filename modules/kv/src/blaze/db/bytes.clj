@@ -1,7 +1,7 @@
 (ns blaze.db.bytes
+  (:refer-clojure :exclude [= empty])
   (:import
-    [java.util Arrays])
-  (:refer-clojure :exclude [= empty]))
+    [java.util Arrays]))
 
 
 (set! *warn-on-reflection* true)

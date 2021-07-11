@@ -1,4 +1,5 @@
 (ns blaze.db.resource-cache-test
+  (:refer-clojure :exclude [get])
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.kv.mem]
@@ -14,8 +15,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [integrant.core :as ig]
-    [taoensso.timbre :as log])
-  (:refer-clojure :exclude [get]))
+    [taoensso.timbre :as log]))
 
 
 (st/instrument)

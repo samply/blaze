@@ -1,4 +1,5 @@
 (ns blaze.fhir.spec.type
+  (:refer-clojure :exclude [decimal? string? type uri? uuid?])
   (:require
     [blaze.fhir.spec.type.macros :as macros :refer [defcomplextype]]
     [blaze.fhir.spec.type.protocols :as p]
@@ -25,8 +26,7 @@
     [com.fasterxml.jackson.databind.ser.std StdSerializer]
     [com.fasterxml.jackson.datatype.jsr310.ser
      LocalDateSerializer OffsetDateTimeSerializer YearSerializer
-     YearMonthSerializer])
-  (:refer-clojure :exclude [decimal? string? type uri? uuid?]))
+     YearMonthSerializer]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")

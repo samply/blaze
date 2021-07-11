@@ -7,13 +7,13 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
+  (:refer-clojure :exclude [min max])
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.elm.protocols :as p]
     [cognitect.anomalies :as anom])
   (:import
-    [java.math RoundingMode])
-  (:refer-clojure :exclude [min max]))
+    [java.math RoundingMode]))
 
 
 (set! *warn-on-reflection* true)

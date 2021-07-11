@@ -1,4 +1,5 @@
 (ns blaze.db.resource-store.kv-test
+  (:refer-clojure :exclude [hash])
   (:require
     [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
@@ -18,8 +19,7 @@
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent ExecutorService])
-  (:refer-clojure :exclude [hash]))
+    [java.util.concurrent ExecutorService]))
 
 
 (st/instrument)

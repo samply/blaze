@@ -1,9 +1,9 @@
 (ns blaze.db.impl.index.cbor
+  (:refer-clojure :exclude [read])
   (:require
     [jsonista.core :as j])
   (:import
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory])
-  (:refer-clojure :exclude [read]))
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
 
 (def ^:private cbor-object-mapper

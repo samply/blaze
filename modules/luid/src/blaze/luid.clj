@@ -1,4 +1,5 @@
 (ns blaze.luid
+  (:refer-clojure :exclude [next])
   (:require
     ;; Needed for Cloverage. See: https://github.com/cloverage/cloverage/issues/312
     [clojure.core])
@@ -6,8 +7,7 @@
     [java.time Clock]
     [java.util Random]
     [java.util.concurrent ThreadLocalRandom]
-    [com.google.common.io BaseEncoding])
-  (:refer-clojure :exclude [next]))
+    [com.google.common.io BaseEncoding]))
 
 
 (set! *warn-on-reflection* true)

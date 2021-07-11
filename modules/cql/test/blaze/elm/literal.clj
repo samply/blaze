@@ -1,10 +1,10 @@
 (ns blaze.elm.literal
+  (:refer-clojure
+    :exclude [and boolean count distinct flatten list max min not or time])
   (:require
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str])
-  (:refer-clojure :exclude [and boolean count distinct flatten list max min not
-                            or time]))
+    [clojure.string :as str]))
 
 
 ;; 1. Simple Values

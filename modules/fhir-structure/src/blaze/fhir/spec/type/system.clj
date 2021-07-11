@@ -9,6 +9,7 @@
    * DateTime
    * Time
    * Quantity"
+  (:refer-clojure :exclude [boolean? decimal? integer? string? type])
   (:require
     [cognitect.anomalies :as anom]
     [java-time.core :as jt.c])
@@ -17,8 +18,7 @@
     [java.nio.charset StandardCharsets]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
     [java.time.temporal Temporal TemporalUnit TemporalAccessor TemporalField]
-    [java.time.format DateTimeParseException])
-  (:refer-clojure :exclude [boolean? decimal? integer? string? type]))
+    [java.time.format DateTimeParseException]))
 
 
 (set! *warn-on-reflection* true)

@@ -1,4 +1,5 @@
 (ns blaze.fhir-client.impl
+  (:refer-clojure :exclude [update])
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
@@ -14,8 +15,7 @@
     [java.nio ByteBuffer]
     [java.nio.channels SeekableByteChannel]
     [java.nio.file Path Files StandardOpenOption]
-    [java.util.concurrent Flow$Subscriber Flow$Subscription])
-  (:refer-clojure :exclude [update]))
+    [java.util.concurrent Flow$Subscriber Flow$Subscription]))
 
 
 (set! *warn-on-reflection* true)

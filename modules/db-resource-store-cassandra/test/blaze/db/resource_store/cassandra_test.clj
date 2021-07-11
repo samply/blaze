@@ -1,4 +1,5 @@
 (ns blaze.db.resource-store.cassandra-test
+  (:refer-clojure :exclude [hash])
   (:require
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
@@ -25,8 +26,7 @@
     [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException WriteType]
     [java.net InetSocketAddress]
     [java.nio ByteBuffer]
-    [java.util.concurrent CompletionStage])
-  (:refer-clojure :exclude [hash]))
+    [java.util.concurrent CompletionStage]))
 
 
 (st/instrument)
