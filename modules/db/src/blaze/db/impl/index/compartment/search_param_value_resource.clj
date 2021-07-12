@@ -37,8 +37,8 @@
       (bb/put-int! sp-c-hash)
       (bb/put-int! tid)
       (bb/put-byte-string! value)
-      (bb/flip!)
-      (bs/from-byte-buffer)))
+      bb/flip!
+      bs/from-byte-buffer))
 
 
 (defn prefix-keys!
@@ -69,7 +69,7 @@
       (bb/put-byte-string! id)
       (bb/put-byte! (bs/size id))
       (bb/put-byte-string! (codec/hash-prefix hash))
-      (bb/array)))
+      bb/array))
 
 
 (defn index-entry [compartment c-hash tid value id hash]

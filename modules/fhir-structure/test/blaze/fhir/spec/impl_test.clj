@@ -48,7 +48,7 @@
 (deftest primitive-type->spec-defs
   (testing "boolean"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "boolean"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/boolean
              :spec-form `boolean?}
             {:key :fhir.json/boolean
@@ -66,7 +66,7 @@
 
   (testing "integer"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "integer"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/integer
              :spec-form `(fn [~'x] (instance? Integer ~'x))}
             {:key :fhir.json/integer
@@ -84,7 +84,7 @@
 
   (testing "string"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "string"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/string
              :spec-form `type/string?}
             {:key :fhir.json/string
@@ -102,7 +102,7 @@
 
   (testing "decimal"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "decimal"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/decimal
              :spec-form `type/decimal?}
             {:key :fhir.json/decimal
@@ -120,7 +120,7 @@
 
   (testing "uri"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "uri"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/uri
              :spec-form `type/uri?}
             {:key :fhir.json/uri
@@ -138,7 +138,7 @@
 
   (testing "canonical"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "canonical"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/canonical
              :spec-form `type/canonical?}
             {:key :fhir.json/canonical
@@ -156,7 +156,7 @@
 
   (testing "base64Binary"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "base64Binary"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/base64Binary
              :spec-form `type/base64Binary?}
             {:key :fhir.json/base64Binary
@@ -174,7 +174,7 @@
 
   (testing "code"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "code"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/code
              :spec-form `type/code?}
             {:key :fhir.json/code
@@ -192,7 +192,7 @@
 
   (testing "unsignedInt"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "unsignedInt"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/unsignedInt
              :spec-form `type/unsignedInt?}
             {:key :fhir.json/unsignedInt
@@ -210,7 +210,7 @@
 
   (testing "positiveInt"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "positiveInt"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/positiveInt
              :spec-form `type/positiveInt?}
             {:key :fhir.json/positiveInt
@@ -228,7 +228,7 @@
 
   (testing "uuid"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "uuid"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/uuid
              :spec-form `uuid?}
             {:key :fhir.json/uuid

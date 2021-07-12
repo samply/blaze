@@ -487,7 +487,7 @@
                        {:resource-store
                         (-> (new-mem-kv-store)
                             (new-kv-resource-store resource-store-executor)
-                            (new-random-slow-resource-store))})]
+                            new-random-slow-resource-store)})]
       (let [db-futures
             (mapv
               #(d/transact node [[:create {:fhir/type :fhir/Patient :id (str %)}]])

@@ -1,8 +1,16 @@
 # Development
 
+## Style Guide
+
+The Clojure code in this project follows the [Clojure Style Guide][2].
+
+### Exceptions:
+
+* we use two empty lines between top-level forms
+
 ## Pure Functions
 
-For most parts Blaze is implemented using pure functions. Pure function depend only on there arguments and only produce an output without doing any side effects. Pure functions have one important property, they are referentially transparent, meaning it doesn't matter when or how often they are called.
+For most parts Blaze is implemented using pure functions. Pure function depend only on their arguments and only produce an output without doing any side effects. Pure functions have one important property, they are referentially transparent, meaning it doesn't matter when or how often they are called.
 
 ## Components
 
@@ -55,3 +63,4 @@ Every public function should have a spec. Function specs are declared in a names
 It is important that we don't use reflection. In order to see reflection warnings ```(set! *warn-on-reflection* true)``` should be used in every namespace which does Java interop.
 
 [1]: <https://github.com/weavejester/integrant>
+[2]: <https://github.com/bbatsov/clojure-style-guide>

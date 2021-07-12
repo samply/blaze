@@ -10,8 +10,7 @@
   "Returns an anomaly."
   [bytes]
   (let [{:keys [category message http-status]} (cbor/read bytes)]
-    (cond->
-      {::anom/category (keyword "cognitect.anomalies" category)}
+    (cond-> {::anom/category (keyword "cognitect.anomalies" category)}
       message
       (assoc ::anom/message message)
       http-status
@@ -19,9 +18,7 @@
 
 
 (defn- encode-key [t]
-  (-> (bb/allocate Long/BYTES)
-      (bb/put-long! t)
-      (bb/array)))
+  (-> (bb/allocate Long/BYTES) (bb/put-long! t) bb/array))
 
 
 (defn tx-error
@@ -30,8 +27,7 @@
 
   Successful transactions are returned by `blaze.db.impl.index.tx-success/tx`."
   [kv-store t]
-  (some-> (kv/get kv-store :tx-error-index (encode-key t))
-          (decode-tx-error)))
+  (some-> (kv/get kv-store :tx-error-index (encode-key t)) decode-tx-error))
 
 
 (defn- encode-tx-error [{::anom/keys [category message] :http/keys [status]}]

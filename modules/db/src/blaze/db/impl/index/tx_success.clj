@@ -20,9 +20,7 @@
 
 
 (defn encode-key [t]
-  (-> (bb/allocate Long/BYTES)
-      (bb/put-long! t)
-      (bb/array)))
+  (-> (bb/allocate Long/BYTES) (bb/put-long! t) bb/array))
 
 
 (defn cache-loader [kv-store]

@@ -232,8 +232,9 @@
 
 
 (defn- stratum [context population-code [value result]]
-  (-> (population context :fhir.MeasureReport.group.stratifier.stratum/population
-                  population-code result)
+  (-> (population
+        context :fhir.MeasureReport.group.stratifier.stratum/population
+        population-code result)
       (update :result stratum* value)))
 
 
@@ -333,8 +334,7 @@
           (if (::anom/category result)
             (reduced result)
             (let [[code expression-name] result]
-              (-> results
-                  (update :codes conj code)
+              (-> (update results :codes conj code)
                   (update :expression-names conj expression-name)))))))
     {:codes []
      :expression-names []}
@@ -355,8 +355,9 @@
 
 
 (defn- multi-component-stratum [context codes population-code [values result]]
-  (-> (population context :fhir.MeasureReport.group.stratifier.stratum/population
-                  population-code result)
+  (-> (population
+        context :fhir.MeasureReport.group.stratifier.stratum/population
+        population-code result)
       (update :result multi-component-stratum* codes values)))
 
 
@@ -367,9 +368,9 @@
 
 
 (defn- multi-component-stratifier [context codes population-code strata]
-  (-> (transduce (map #(multi-component-stratum context codes population-code %))
-                 reduce-op
-                 strata)
+  (-> (transduce
+        (map #(multi-component-stratum context codes population-code %))
+        reduce-op strata)
       (update :result multi-component-stratifier* codes)))
 
 
@@ -467,7 +468,7 @@
     (fhir-util/instance-url base-url router "Measure" id)))
 
 
-(defn- get-code [codings system]
+(defn- get-first-code [codings system]
   (some
     #(when (= system (-> % :system type/value))
        (-> % :code type/value))
@@ -475,7 +476,7 @@
 
 
 (defn- subject-type [{{codings :coding} :subject}]
-  (or (get-code codings "http://hl7.org/fhir/resource-types") "Patient"))
+  (or (get-first-code codings "http://hl7.org/fhir/resource-types") "Patient"))
 
 
 (defn- measure-report [report-type measure-ref now start end result]

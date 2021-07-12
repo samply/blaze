@@ -91,8 +91,9 @@
   "Stores `tx-cmds` and transfers them to pollers on queues.
 
   Uses `state` to increment the point in time `t`. Stores transaction data
-  consisting of the new `t`, the current time and `tx-cmds`. Has to be run in a
-  single thread in order to deliver transaction data in order."
+  consisting of the new `t`, the current time taken from `clock` and `tx-cmds`.
+  Has to be run in a single thread in order to deliver transaction data in
+  order."
   [kv-store clock state tx-cmds]
   (log/trace "submit" (count tx-cmds) "tx-cmds")
   (let [{:keys [t queues]} (swap! state update :t inc)

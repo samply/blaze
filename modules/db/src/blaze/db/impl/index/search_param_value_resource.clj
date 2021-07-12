@@ -60,15 +60,15 @@
    (-> (bb/allocate base-key-size)
        (bb/put-int! c-hash)
        (bb/put-int! tid)
-       (bb/flip!)
-       (bs/from-byte-buffer)))
+       bb/flip!
+       bs/from-byte-buffer))
   ([c-hash tid value]
    (-> (bb/allocate (key-size value))
        (bb/put-int! c-hash)
        (bb/put-int! tid)
        (bb/put-byte-string! value)
-       (bb/flip!)
-       (bs/from-byte-buffer)))
+       bb/flip!
+       bs/from-byte-buffer))
   ([c-hash tid value id]
    (-> (bb/allocate (key-size value id))
        (bb/put-int! c-hash)
@@ -77,8 +77,8 @@
        (bb/put-byte! 0)
        (bb/put-byte-string! id)
        (bb/put-byte! (bs/size id))
-       (bb/flip!)
-       (bs/from-byte-buffer))))
+       bb/flip!
+       bs/from-byte-buffer)))
 
 
 (defn encode-seek-key-for-prev
@@ -202,7 +202,7 @@
       (bb/put-byte-string! id)
       (bb/put-byte! (bs/size id))
       (bb/put-byte-string! (codec/hash-prefix hash))
-      (bb/array)))
+      bb/array))
 
 
 (defn index-entry [c-hash tid value id hash]

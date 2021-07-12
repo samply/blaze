@@ -23,12 +23,12 @@
 (defn- link [base-url match query-params t relation resource-handle]
   {:fhir/type :fhir.Bundle/link
    :relation relation
-   :url
-   (type/->Uri
-     (history-util/nav-url base-url match query-params t
-                           (:t resource-handle)
-                           (-> resource-handle fhir-spec/fhir-type name)
-                           (:id resource-handle)))})
+   :url (-> (history-util/nav-url
+              base-url match query-params t
+              (:t resource-handle)
+              (-> resource-handle fhir-spec/fhir-type name)
+              (:id resource-handle))
+            type/->Uri)})
 
 
 (defn- build-response

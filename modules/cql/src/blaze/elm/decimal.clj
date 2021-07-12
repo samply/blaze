@@ -124,8 +124,8 @@
               (.divide x y)
               (catch ArithmeticException _
                 (.divide x y max-scale RoundingMode/HALF_UP)))
-            (constrain-scale)
-            (check-overflow))))))
+            constrain-scale
+            check-overflow)))))
 
 
 ;; 16.5. Exp
@@ -135,9 +135,7 @@
 (extend-protocol p/Exp
   Number
   (exp [x]
-    (-> (BigDecimal/valueOf (Math/exp x))
-        (constrain-scale)
-        (check-overflow))))
+    (-> (BigDecimal/valueOf (Math/exp x)) constrain-scale check-overflow)))
 
 
 ;; 16.6. Floor
@@ -163,8 +161,8 @@
   (log [x base]
     (when (and (pos? x) (some? base) (pos? base) (not (== 1 base)))
       (-> (BigDecimal/valueOf (/ (Math/log x) (Math/log base)))
-          (constrain-scale)
-          (check-overflow)))))
+          constrain-scale
+          check-overflow))))
 
 
 ;; 16.8. Ln
@@ -178,9 +176,7 @@
   Number
   (ln [x]
     (when (pos? x)
-      (-> (BigDecimal/valueOf (Math/log x))
-          (constrain-scale)
-          (check-overflow)))))
+      (-> (BigDecimal/valueOf (Math/log x)) constrain-scale check-overflow))))
 
 
 ;; 16.11. Modulo
@@ -193,9 +189,7 @@
   BigDecimal
   (multiply [x y]
     (when y
-      (-> (.multiply x (p/to-decimal y))
-          (constrain-scale)
-          (check-overflow)))))
+      (-> (.multiply x (p/to-decimal y)) constrain-scale check-overflow))))
 
 
 ;; 16.13. Negate
@@ -212,8 +206,8 @@
   (power [x exp]
     (when exp
       (-> (BigDecimal/valueOf (Math/pow x exp))
-          (constrain-scale)
-          (check-overflow)))))
+          constrain-scale
+          check-overflow))))
 
 
 ;; 16.15. Predecessor

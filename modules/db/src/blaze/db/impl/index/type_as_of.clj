@@ -66,7 +66,7 @@
       (bb/put-int! tid)
       (bb/put-long! (codec/descending-long ^long t))
       (bb/put-byte-string! id)
-      (bb/array)))
+      bb/array))
 
 
 (defn- start-key [tid start-t start-id]
@@ -75,7 +75,7 @@
     (-> (bb/allocate (+ codec/tid-size codec/t-size))
         (bb/put-int! tid)
         (bb/put-long! (codec/descending-long ^long start-t))
-        (bb/array))))
+        bb/array)))
 
 
 (defn type-history

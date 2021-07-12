@@ -200,12 +200,12 @@
   ([tid]
    (-> (bb/allocate Integer/BYTES)
        (bb/put-int! tid)
-       (bb/flip!)
-       (bs/from-byte-buffer)))
+       bb/flip!
+       bs/from-byte-buffer))
   ([tid start-id t]
    (-> (encode-key-buf tid start-id t)
-       (bb/flip!)
-       (bs/from-byte-buffer))))
+       bb/flip!
+       bs/from-byte-buffer)))
 
 
 (defn type-list

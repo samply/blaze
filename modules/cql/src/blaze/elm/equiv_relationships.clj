@@ -47,11 +47,11 @@
   Returns a map with :equal-expr and :rest-expr. Retains the whole expression in
   :rest-expr if no equal expression is found."
   [{:keys [type] :as expression}]
-  (cond
-    (= "Equal" type)
+  (case type
+    "Equal"
     {:equal-expr expression}
 
-    (= "And" type)
+    "And"
     (let [[operand-1 operand-2] (:operand expression)
           {:keys [equal-expr rest-expr]} (split-by-first-equal-expression operand-1)]
       (if equal-expr
@@ -69,7 +69,6 @@
                operand-1)}
             {:rest-expr expression}))))
 
-    :else
     {:rest-expr expression}))
 
 

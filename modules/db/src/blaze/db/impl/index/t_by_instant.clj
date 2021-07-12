@@ -28,15 +28,11 @@
 
 
 (defn- encode-key [instant]
-  (-> (bb/allocate Long/BYTES)
-      (bb/put-long! (inst-ms instant))
-      (bb/array)))
+  (-> (bb/allocate Long/BYTES) (bb/put-long! (inst-ms instant)) bb/array))
 
 
 (defn- encode-value [t]
-  (-> (bb/allocate Long/BYTES)
-      (bb/put-long! t)
-      (bb/array)))
+  (-> (bb/allocate Long/BYTES) (bb/put-long! t) bb/array))
 
 
 (defn index-entry

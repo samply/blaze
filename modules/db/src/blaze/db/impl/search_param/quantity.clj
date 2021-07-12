@@ -72,19 +72,19 @@
         code (type/value code)
         unit (type/value unit)]
     (cond-> []
-            value
-            (conj [nil (codec/quantity nil value)])
-            code
-            (conj [nil (codec/quantity code value)])
-            (and unit (not= unit code))
-            (conj [nil (codec/quantity unit value)])
-            (and system code)
-            (conj [nil (codec/quantity (str system "|" code) value)]))))
+      value
+      (conj [nil (codec/quantity nil value)])
+      code
+      (conj [nil (codec/quantity code value)])
+      (and unit (not= unit code))
+      (conj [nil (codec/quantity unit value)])
+      (and system code)
+      (conj [nil (codec/quantity (str system "|" code) value)]))))
 
 
 (defmethod index-entries :fhir/Quantity
   [_ quantity]
-   (index-quantity-entries quantity))
+  (index-quantity-entries quantity))
 
 
 (defmethod index-entries :fhir/Age

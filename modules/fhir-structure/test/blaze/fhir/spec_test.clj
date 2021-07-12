@@ -336,8 +336,8 @@
 
 (defn- conform-unform-cbor [resource]
   (-> (fhir-spec/unform-cbor resource)
-      (fhir-spec/parse-cbor)
-      (fhir-spec/conform-cbor)))
+      fhir-spec/parse-cbor
+      fhir-spec/conform-cbor))
 
 
 (deftest unform-cbor-test

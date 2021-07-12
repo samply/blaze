@@ -52,7 +52,7 @@
   (-> (ig/init
         {:blaze.interaction.history/system
          {:node node}})
-      (:blaze.interaction.history/system)))
+      :blaze.interaction.history/system))
 
 
 (defn- handler-with [txs]

@@ -211,6 +211,7 @@
         (zero? byte)
         (do (reset! byte-buffer)
             size)
+
         (pos? (remaining byte-buffer))
         (recur (bit-and (get-byte! byte-buffer) 0xFF) (inc size))
 

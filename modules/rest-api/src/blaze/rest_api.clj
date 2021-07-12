@@ -438,9 +438,9 @@
          (cond-> [wrap-cors]
            (seq auth-backends)
            (conj #(apply wrap-authentication % auth-backends)))})
-      (wrap-output)
-      (ring-params/wrap-params)
-      (wrap-log)))
+      wrap-output
+      ring-params/wrap-params
+      wrap-log))
 
 
 (defn- json-parse-executor-init-msg []

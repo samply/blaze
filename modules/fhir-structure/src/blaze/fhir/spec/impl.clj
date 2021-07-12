@@ -144,13 +144,16 @@
   `(s/or ~@(mapcat #(choice-pair path %) types)))
 
 
+(defn- choice-spec-def* [modifier path code min max]
+  {:key (path-parts->key' (str "fhir." (name modifier)) (split-path (str/replace path "[x]" (str/capital code))))
+   :modifier modifier
+   :min min
+   :max max
+   :spec-form (keyword (str "fhir." (name modifier)) code)})
+
+
 (defn- choice-spec-def [modifier path path-parts code min max]
-  (cond->
-    {:key (path-parts->key' (str "fhir." (name modifier)) (split-path (str/replace path "[x]" (str/capital code))))
-     :modifier modifier
-     :min min
-     :max max
-     :spec-form (keyword (str "fhir." (name modifier)) code)}
+  (cond-> (choice-spec-def* modifier path code min max)
     (identical? :json modifier)
     (assoc :choice-group (keyword (last path-parts)))))
 
@@ -349,7 +352,9 @@
 
 (defn- resource-type-annotating-conformer-form [type]
   `(s/conformer
-     (fn [~'m] (-> (assoc ~'m :fhir/type ~(keyword "fhir" type)) (dissoc :resourceType)))
+     (fn [~'m]
+       (-> (assoc ~'m :fhir/type ~(keyword "fhir" type))
+           (dissoc :resourceType)))
      (fn [~'m] (-> (dissoc ~'m :fhir/type) (assoc :resourceType ~type)))))
 
 
@@ -406,10 +411,8 @@
 
 
 (defn- json-type-conformer-form [kind parent-path-parts path-part]
-  (cond
-    (= "resource" kind)
+  (if (= "resource" kind)
     (resource-type-annotating-conformer-form path-part)
-    :else
     (type-annotating-conformer-form (spec-key "fhir" parent-path-parts path-part))))
 
 

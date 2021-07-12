@@ -52,7 +52,7 @@
         {:blaze.interaction/create
          {:node node
           :executor executor}})
-      (:blaze.interaction/create)))
+      :blaze.interaction/create))
 
 
 (defn- handler-with [txs]

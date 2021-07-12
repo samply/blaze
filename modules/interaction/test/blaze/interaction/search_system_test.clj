@@ -51,7 +51,7 @@
   (-> (ig/init
         {:blaze.interaction/search-system
          {:node node}})
-      (:blaze.interaction/search-system)))
+      :blaze.interaction/search-system))
 
 
 (defn- handler-with [txs]
@@ -239,7 +239,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-114650/Patient/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-114650/Patient/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)

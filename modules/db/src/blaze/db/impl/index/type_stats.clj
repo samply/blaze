@@ -69,14 +69,14 @@
   (-> (bb/allocate key-size)
       (bb/put-int! tid)
       (bb/put-long! (codec/descending-long ^long t))
-      (bb/array)))
+      bb/array))
 
 
 (defn- encode-value [{:keys [total num-changes]}]
   (-> (bb/allocate value-size)
       (bb/put-long! total)
       (bb/put-long! num-changes)
-      (bb/array)))
+      bb/array))
 
 
 (defn index-entry

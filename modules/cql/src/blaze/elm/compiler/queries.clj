@@ -147,10 +147,10 @@
 (deftype AscComparator []
   Comparator
   (compare [_ x y]
-    (let [less (p/less x y)]
+    (let [c (p/less x y)]
       (cond
-        (true? less) -1
-        (false? less) 1
+        (true? c) -1
+        (false? c) 1
         (nil? x) -1
         (nil? y) 1
         :else 0))))
@@ -162,10 +162,10 @@
 (deftype DescComparator []
   Comparator
   (compare [_ x y]
-    (let [less (p/less x y)]
+    (let [c (p/less x y)]
       (cond
-        (true? less) 1
-        (false? less) -1
+        (true? c) 1
+        (false? c) -1
         (nil? x) 1
         (nil? y) -1
         :else 0))))

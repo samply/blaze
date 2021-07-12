@@ -38,7 +38,7 @@
       (ac/completed-future (clojure.core/get entries hash)))
     (-multi-get [_ hashes]
       (-> (into {} (map #(vector % (clojure.core/get entries %))) hashes)
-          (ac/completed-future)))
+          ac/completed-future))
     rs/ResourceStore))
 
 

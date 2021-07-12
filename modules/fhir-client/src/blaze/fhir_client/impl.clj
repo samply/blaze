@@ -36,13 +36,16 @@
     :else ::anom/fault))
 
 
+(defn- anomaly* [response]
+  {::anom/category (category (:status response))
+   ::anom/message (format "Unexpected response status %d." (:status response))})
+
+
 (defn- anomaly [e]
   (let [response (ex-data e)]
-    (cond->
-      {::anom/category (category (:status response))
-       ::anom/message (format "Unexpected response status %d." (:status response))}
-      (= :fhir/OperationOutcome (fhir-spec/fhir-type (:body response)))
-      (assoc :fhir/issues (:issue (:body response))))))
+    (cond-> (anomaly* response)
+      (identical? :fhir/OperationOutcome (-> response :body fhir-spec/fhir-type))
+      (assoc :fhir/issues (-> response :body :issue)))))
 
 
 (defn- handle-error [e]

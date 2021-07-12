@@ -571,7 +571,6 @@
       (catch Exception e
         (let [data (ex-data e)]
           (if (::anom/category data)
-            (-> data
-                (update ::anom/message str (format " in expression `%s`" expr))
+            (-> (update data ::anom/message str (format " in expression `%s`" expr))
                 (assoc :expression expr))
             (throw e)))))))

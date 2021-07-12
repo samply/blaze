@@ -20,8 +20,7 @@
 ;; TODO: The list type argument is missing in the doc.
 (defmethod core/compile* :elm.compiler.type/coalesce
   [context {operands :operand}]
-  (condp = (count operands)
-    1
+  (if (= 1 (count operands))
     (let [operand (first operands)]
       (if (= "List" (:type operand))
         (let [operand (core/compile* context operand)]
@@ -38,7 +37,6 @@
           (reify core/Expression
             (-eval [_ context resource scope]
               (core/-eval operand context resource scope))))))
-
     (let [operands (mapv #(core/compile* context %) operands)]
       (reify core/Expression
         (-eval [_ context resource scope]

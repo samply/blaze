@@ -67,6 +67,7 @@
                       nil delay TimeUnit/MILLISECONDS)
                     (ac/then-compose
                       (fn [_] (retry* future-fn max-retries (inc num-retry)))))))
+
             (some? e)
             (ac/failed-future e)
 

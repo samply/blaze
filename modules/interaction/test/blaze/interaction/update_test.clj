@@ -43,7 +43,7 @@
         {:blaze.interaction/update
          {:node node
           :executor executor}})
-      (:blaze.interaction/update)))
+      :blaze.interaction/update))
 
 
 (def ^:private base-url "base-url-134013")

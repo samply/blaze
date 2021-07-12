@@ -96,7 +96,7 @@
   (-> (ig/init
         {:blaze.interaction/search-type
          {:node node}})
-      (:blaze.interaction/search-type)))
+      :blaze.interaction/search-type))
 
 
 (defn- handler-with [txs]
@@ -284,7 +284,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Patient/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/Patient/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -609,7 +610,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Patient/1" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/Patient/1"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -646,7 +648,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Patient/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/Patient/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -721,7 +724,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Patient/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/Patient/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -753,7 +757,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Patient/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/Patient/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -805,7 +810,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Patient/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/Patient/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (is (= "0" (-> body :entry first :resource :id))))))
@@ -830,7 +836,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Library/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/Library/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -889,7 +896,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/MeasureReport/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/MeasureReport/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -1028,7 +1036,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/List/id-143814" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/List/id-143814"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -1139,7 +1148,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Condition/0" (-> body :entry first :fullUrl))))
+        (is (= #fhir/uri"base-url-113047/Condition/0"
+               (-> body :entry first :fullUrl))))
 
       (testing "the entry has the right resource"
         (given (-> body :entry first :resource)
@@ -1182,7 +1192,8 @@
         (is (= 1 (count (:entry body)))))
 
       (testing "the entry has the right fullUrl"
-        (is (= #fhir/uri"base-url-113047/Condition/1" (-> body :entry first :fullUrl))))))
+        (is (= #fhir/uri"base-url-113047/Condition/1"
+               (-> body :entry first :fullUrl))))))
 
   (testing "Include Resources"
     (testing "direct include"

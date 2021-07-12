@@ -53,7 +53,7 @@
   (-> (ig/init
         {:blaze.interaction.history/instance
          {:node node}})
-      (:blaze.interaction.history/instance)))
+      :blaze.interaction.history/instance))
 
 
 (defn- handler-with [txs]
@@ -101,7 +101,8 @@
 
       (is (= "self" (-> body :link first :relation)))
 
-      (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=1&__page-t=1" (-> body :link first :url)))
+      (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=1&__page-t=1"
+             (-> body :link first :url)))
 
       (given (-> body :entry first)
         :fullUrl := #fhir/uri"base-url-135814/Patient/0"
@@ -137,7 +138,8 @@
 
       (is (= "self" (-> body :link first :relation)))
 
-      (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=2&__page-t=2" (-> body :link first :url)))
+      (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=2&__page-t=2"
+             (-> body :link first :url)))
 
       (testing "first entry"
         (given (-> body :entry first)

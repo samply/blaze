@@ -372,7 +372,7 @@
           :structure-definitions []
           :search-param-registry search-param-registry
           :blaze.rest-api.json-parse/executor (ex/single-thread-executor)}})
-      (:blaze/rest-api)))
+      :blaze/rest-api))
 
 
 (deftest format-override-test

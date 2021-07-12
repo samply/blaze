@@ -21,11 +21,9 @@
 
 (defn- prefix-with [{:keys [op] :as quantity-value} token-value]
   (if (identical? :eq op)
-    (-> quantity-value
-        (update :lower-bound prefix-with* token-value)
+    (-> (update quantity-value :lower-bound prefix-with* token-value)
         (update :upper-bound prefix-with* token-value))
-    (-> quantity-value
-        (update :exact-value prefix-with* token-value))))
+    (update quantity-value :exact-value prefix-with* token-value)))
 
 
 (def ^:private ^:const ^long prefix-length

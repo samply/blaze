@@ -82,7 +82,7 @@
   (-> (ig/init
         {:blaze.db.tx-log/local
          {:kv-store kv-store}})
-      (:blaze.db.tx-log/local)))
+      :blaze.db.tx-log/local))
 
 
 (deftest init-test

@@ -102,8 +102,7 @@
         (let [db (d/db node)]
           (if-let [{:keys [op] :as measure-handle} (find-measure-handle db request)]
             (if (identical? :delete op)
-              (-> (handler-util/operation-outcome
-                    {:fhir/issue "deleted"})
+              (-> (handler-util/operation-outcome {:fhir/issue "deleted"})
                   (ring/response)
                   (ring/status 410)
                   (ac/completed-future))

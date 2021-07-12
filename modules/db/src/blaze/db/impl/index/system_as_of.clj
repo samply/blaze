@@ -65,22 +65,24 @@
       (bb/put-long! (codec/descending-long ^long t))
       (bb/put-int! tid)
       (bb/put-byte-string! id)
-      (bb/array)))
+      bb/array))
 
 
 (defn- start-key [start-t start-tid start-id]
   (cond
     start-id
     (encode-key start-t start-tid start-id)
+
     start-tid
     (-> (bb/allocate (+ codec/t-size codec/tid-size))
         (bb/put-long! (codec/descending-long ^long start-t))
         (bb/put-int! start-tid)
-        (bb/array))
+        bb/array)
+
     :else
     (-> (bb/allocate Long/BYTES)
         (bb/put-long! (codec/descending-long ^long start-t))
-        (bb/array))))
+        bb/array)))
 
 
 (defn system-history
