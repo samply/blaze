@@ -1,9 +1,13 @@
 (ns blaze.db.impl.index.tx-error
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.index.cbor :as cbor]
     [blaze.db.kv :as kv]
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom])
+  (:import
+    [com.google.common.primitives Longs]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn- decode-tx-error
@@ -17,8 +21,8 @@
       (assoc :http/status http-status))))
 
 
-(defn- encode-key [t]
-  (-> (bb/allocate Long/BYTES) (bb/put-long! t) bb/array))
+(defn- encode-key [^long t]
+  (Longs/toByteArray t))
 
 
 (defn tx-error

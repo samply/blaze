@@ -8,7 +8,8 @@
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i])
   (:import
-    [clojure.lang IReduceInit]))
+    [clojure.lang IReduceInit]
+    [com.google.common.primitives Longs]))
 
 
 (set! *warn-on-reflection* true)
@@ -80,9 +81,7 @@
         bb/array)
 
     :else
-    (-> (bb/allocate Long/BYTES)
-        (bb/put-long! (codec/descending-long ^long start-t))
-        bb/array)))
+    (Longs/toByteArray (codec/descending-long ^long start-t))))
 
 
 (defn system-history

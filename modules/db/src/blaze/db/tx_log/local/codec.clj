@@ -7,7 +7,11 @@
     [taoensso.timbre :as log])
   (:import
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
+    [com.google.common.primitives Longs]
     [java.time Instant]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (def ^:private cbor-object-mapper
@@ -18,7 +22,7 @@
 
 
 (defn encode-key [t]
-  (-> (bb/allocate Long/BYTES) (bb/put-long! t) bb/array))
+  (Longs/toByteArray t))
 
 
 (defn encode-tx-data [instant tx-cmds]

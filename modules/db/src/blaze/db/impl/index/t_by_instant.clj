@@ -2,7 +2,9 @@
   "Functions for accessing the TByInstant index."
   (:require
     [blaze.db.impl.byte-buffer :as bb]
-    [blaze.db.kv :as kv]))
+    [blaze.db.kv :as kv])
+  (:import
+    [com.google.common.primitives Longs]))
 
 
 (set! *warn-on-reflection* true)
@@ -28,11 +30,11 @@
 
 
 (defn- encode-key [instant]
-  (-> (bb/allocate Long/BYTES) (bb/put-long! (inst-ms instant)) bb/array))
+  (Longs/toByteArray (inst-ms instant)))
 
 
-(defn- encode-value [t]
-  (-> (bb/allocate Long/BYTES) (bb/put-long! t) bb/array))
+(defn- encode-value [^long t]
+  (Longs/toByteArray t))
 
 
 (defn index-entry

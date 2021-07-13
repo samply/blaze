@@ -10,17 +10,21 @@
     [blaze.db.kv :as kv])
   (:import
     [com.github.benmanes.caffeine.cache CacheLoader LoadingCache]
+    [com.google.common.primitives Longs]
     [java.time Instant]))
 
 
-(defn- decode-tx [bytes t]
-  (let [{:keys [inst]} (cbor/read bytes)]
+(set! *warn-on-reflection* true)
+
+
+(defn- decode-tx [value-bytes t]
+  (let [{:keys [inst]} (cbor/read value-bytes)]
     {:blaze.db/t t
      :blaze.db.tx/instant (Instant/ofEpochMilli inst)}))
 
 
-(defn encode-key [t]
-  (-> (bb/allocate Long/BYTES) (bb/put-long! t) bb/array))
+(defn- encode-key [^long t]
+  (Longs/toByteArray t))
 
 
 (defn cache-loader [kv-store]
