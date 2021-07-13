@@ -72,7 +72,10 @@
       bb/array))
 
 
-(defn index-entry [compartment c-hash tid value id hash]
+(defn index-entry
+  "Returns an entry of the CompartmentSearchParamValueResource index build from
+  `compartment`, `c-hash`, `tid`, `value`, `id` and `hash`."
+  [compartment c-hash tid value id hash]
   [:compartment-search-param-value-index
    (encode-key compartment c-hash tid value id hash)
    bytes/empty])

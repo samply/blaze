@@ -6,8 +6,9 @@
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
-    [blaze.db.impl.index.tx-success :as tsi]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.kv :as kv]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
@@ -86,7 +87,7 @@
 
 
 (defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+  (.build (Caffeine/newBuilder) (tx-success/cache-loader index-kv-store)))
 
 
 (defn new-node-with [{:keys [resource-store]}]
@@ -151,7 +152,7 @@
     (testing "with failing resource indexer"
       (with-redefs
         [resource-indexer/index-resources
-         (fn [_ _]
+         (fn [_ _ _]
            (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
         (with-open [node (new-node)]
           (try
@@ -166,7 +167,15 @@
                 ::x ::y))))))))
 
 
-(defn init-system []
+(defmethod ig/init-key ::filled-index-kv-store
+  [_ {:keys [column-families]}]
+  (let [store (new-mem-kv-store column-families)]
+    (kv/put! store [(tx-success/index-entry 1 Instant/EPOCH)])
+    store))
+
+
+(defn init-system
+  [& {:keys [index-kv-store-key] :or {index-kv-store-key :blaze.db.kv/mem}}]
   (ig/init
     {:blaze.db/node
      {:tx-log (ig/ref :blaze.db.tx-log/local)
@@ -184,7 +193,7 @@
      :blaze.db/tx-cache
      {:kv-store (ig/ref :blaze.db/index-kv-store)}
      ::node/indexer-executor {}
-     [:blaze.db.kv/mem :blaze.db/index-kv-store]
+     [index-kv-store-key :blaze.db/index-kv-store]
      {:column-families
       {:search-param-value-index nil
        :resource-value-index nil
@@ -209,9 +218,15 @@
 
 
 (deftest init-test
-  (let [system (init-system)]
-    (is (satisfies? p/Node (:blaze.db/node system)))
-    (ig/halt! system)))
+  (testing "with empty stores"
+    (let [system (init-system)]
+      (is (= 0 (d/basis-t (d/db (:blaze.db/node system)))))
+      (ig/halt! system)))
+
+  (testing "with filled stores"
+    (let [system (init-system :index-kv-store-key ::filled-index-kv-store)]
+      (is (= 1 (d/basis-t (d/db (:blaze.db/node system)))))
+      (ig/halt! system))))
 
 
 (deftest indexer-executor-test

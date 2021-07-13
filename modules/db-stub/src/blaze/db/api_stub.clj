@@ -2,7 +2,7 @@
   (:require
     [blaze.db.api :as d]
     [blaze.db.api-spec]
-    [blaze.db.impl.index.tx-success :as tsi]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :refer [new-node]]
@@ -37,14 +37,14 @@
   (ex/single-thread-executor "resource-store"))
 
 
-(def ^:private clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+(def ^:private default-clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
 
 
 (defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+  (.build (Caffeine/newBuilder) (tx-success/cache-loader index-kv-store)))
 
 
-(defn mem-node ^Closeable []
+(defn mem-node ^Closeable [& {:keys [clock] :or {clock default-clock}}]
   (let [index-kv-store
         (new-mem-kv-store
           {:search-param-value-index nil
@@ -74,11 +74,11 @@
     @(d/transact node tx-ops)))
 
 
-(defn mem-node-with ^Closeable [txs]
-  (doto (mem-node)
+(defn mem-node-with ^Closeable [txs & [:as opts]]
+  (doto (apply mem-node opts)
     (submit-txs txs)))
 
 
 (s/fdef mem-node-with
-  :args (s/cat :txs (s/coll-of :blaze.db/tx-ops))
+  :args (s/cat :txs (s/coll-of :blaze.db/tx-ops) :opts (s/* any?))
   :ret :blaze.db/node)

@@ -20,7 +20,7 @@
     [clojure.test :as test :refer [deftest is testing]]
     [taoensso.timbre :as log])
   (:import
-    [java.time ZoneId LocalDate]))
+    [java.time Instant LocalDate ZoneId]))
 
 
 (st/instrument)
@@ -68,7 +68,7 @@
         hash (hash/generate resource)
         kv-store (init-kv-store)
         i (new-resource-indexer search-param-registry kv-store)]
-    @(ri/index-resources i {hash resource})
+    @(ri/index-resources i Instant/EPOCH {hash resource})
 
     (testing "SearchParamValueResource index"
       (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
@@ -96,7 +96,8 @@
                            (codec/id-byte-string "id-145552"))]
               ["subject" (codec/v-hash "id-145552")]
               ["_profile" (codec/v-hash "url-164445")]
-              ["_id" (codec/v-hash "id-204446")]])))
+              ["_id" (codec/v-hash "id-204446")]
+              ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
     (testing "ResourceSearchParamValue index"
       (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
@@ -124,7 +125,8 @@
                            (codec/id-byte-string "id-145552"))]
               ["subject" (codec/v-hash "id-145552")]
               ["_profile" (codec/v-hash "url-164445")]
-              ["_id" (codec/v-hash "id-204446")]])))
+              ["_id" (codec/v-hash "id-204446")]
+              ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
     (testing "CompartmentResource index"
       (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id)
@@ -157,7 +159,8 @@
                            (codec/id-byte-string "id-145552"))]
               ["subject" (codec/v-hash "id-145552")]
               ["_profile" (codec/v-hash "url-164445")]
-              ["_id" (codec/v-hash "id-204446")]])))))
+              ["_id" (codec/v-hash "id-204446")]
+              ["_lastUpdated" #blaze/byte-string"80008001"]])))))
 
 
 (deftest index-observation-resource
@@ -187,7 +190,7 @@
         hash (hash/generate resource)
         kv-store (init-kv-store)
         i (new-resource-indexer search-param-registry kv-store)]
-    @(ri/index-resources i {hash resource})
+    @(ri/index-resources i Instant/EPOCH {hash resource})
 
     (testing "SearchParamValueResource index"
       (is (every? #{["Observation" "id-192702" #blaze/byte-string"651D1F37"]}
@@ -272,4 +275,5 @@
                            (codec/id-byte-string "id-180857"))]
               ["subject" (codec/v-hash "Patient/id-180857")]
               ["status" (codec/v-hash "status-193613")]
-              ["_id" (codec/v-hash "id-192702")]])))))
+              ["_id" (codec/v-hash "id-192702")]
+              ["_lastUpdated" #blaze/byte-string"80008001"]])))))

@@ -6,7 +6,7 @@
     [blaze.db.impl.index.rts-as-of :as rts]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
-    [blaze.db.impl.index.tx-success :as tsi]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
@@ -84,7 +84,7 @@
 
 
 (defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+  (.build (Caffeine/newBuilder) (tx-success/cache-loader index-kv-store)))
 
 
 (defn new-node []

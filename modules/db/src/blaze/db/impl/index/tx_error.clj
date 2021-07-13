@@ -38,6 +38,8 @@
   (cbor/write {:category (name category) :message message :http-status status}))
 
 
-(defn index-entry [t anomaly]
+(defn index-entry
+  "Returns an entry of the TxError index build from `t` and `anomaly`."
+  [t anomaly]
   [:tx-error-index (encode-key t) (encode-tx-error anomaly)])
 

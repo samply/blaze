@@ -37,18 +37,18 @@
   (testing "valid"
     (are [x] (s2/valid? :fhir/Resource x)
       {:fhir/type :fhir/Condition :id "id-204446"
+       :meta
+       #fhir/Meta
+           {:versionId #fhir/id"1"
+            :profile [#fhir/canonical"url-164445"]}
        :code
        #fhir/CodeableConcept
            {:coding
             [#fhir/Coding
                 {:system #fhir/uri"system-204435"
                  :code #fhir/code"code-204441"}]}
-       :onset #fhir/dateTime"2020-01-30"
        :subject #fhir/Reference{:reference "Patient/id-145552"}
-       :meta
-       #fhir/Meta
-           {:versionId #fhir/id"1"
-            :profile [#fhir/canonical"url-164445"]}})))
+       :onset #fhir/dateTime"2020-01-30"})))
 
 
 (deftest fhir-type-test
@@ -1577,7 +1577,8 @@
     (testing "valid"
       (are [x] (s2/valid? :fhir/Meta x)
         #fhir/Meta{}
-        #fhir/Meta{:versionId #fhir/id"1"}))
+        #fhir/Meta{:versionId #fhir/id"1"}
+        (type/map->Meta {:lastUpdated Instant/EPOCH})))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Meta x))
@@ -1593,7 +1594,10 @@
         #fhir/Meta{:versionId #fhir/id"1"}
 
         {:versionId 1}
-        ::s2/invalid)))
+        ::s2/invalid
+
+        {:lastUpdated "1970-01-01T00:00:00Z"}
+        (type/map->Meta {:lastUpdated Instant/EPOCH}))))
 
   (testing "unforming"
     (testing "JSON"

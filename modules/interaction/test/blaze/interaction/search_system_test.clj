@@ -54,9 +54,9 @@
       :blaze.interaction/search-system))
 
 
-(defn- handler-with [txs]
+(defn- handler-with [txs & [:as opts]]
   (fn [request]
-    (with-open [node (mem-node-with txs)]
+    (with-open [node (apply mem-node-with txs opts)]
       @((handler node)
         (assoc request
           :blaze/base-url base-url
@@ -514,6 +514,51 @@
         (given (-> body :entry second :resource)
           :fhir/type := :fhir/Patient
           :id := "2"))))
+
+  #_(testing "_lastUpdated search"
+    (testing "the resource is created at EPOCH"
+      (let [{:keys [status body]}
+            ((handler-with
+               [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+               :clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+             {::reitit/match match
+              :params {"_lastUpdated" "1970-01-01"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is 1"
+          (is (= #fhir/unsignedInt 1 (:total body))))
+
+        (testing "the bundle contains one entry"
+          (is (= 1 (count (:entry body)))))))
+
+    (testing "no resource is created after EPOCH"
+      (let [{:keys [status body]}
+            ((handler-with
+               [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+               :clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+             {::reitit/match match
+              :params {"_lastUpdated" "gt1970-01-02"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is 0"
+          (is (= #fhir/unsignedInt 0 (:total body))))
+
+        (testing "the bundle contains no entry"
+          (is (zero? (count (:entry body))))))))
 
   #_(testing "_list search"
     (let [{:keys [status body]}

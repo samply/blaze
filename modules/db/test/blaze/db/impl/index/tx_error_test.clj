@@ -1,6 +1,6 @@
 (ns blaze.db.impl.index.tx-error-test
   (:require
-    [blaze.db.impl.index.tx-error :as te]
+    [blaze.db.impl.index.tx-error :as tx-error]
     [blaze.db.impl.index.tx-error-spec]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem :as mem]
@@ -37,15 +37,15 @@
 (deftest tx-test
   (testing "finds the transaction error"
     (let [kv-store (new-mem-kv-store-with
-                     [(te/index-entry 1 {::anom/category ::anom/fault})])]
-      (given (te/tx-error kv-store 1)
+                     [(tx-error/index-entry 1 {::anom/category ::anom/fault})])]
+      (given (tx-error/tx-error kv-store 1)
         ::anom/category := ::anom/fault)))
 
   (testing "doesn't find a non-existing transaction error"
     (let [kv-store (new-mem-kv-store-with
-                     [(te/index-entry 1 {::anom/category ::anom/fault})])]
-      (is (nil? (te/tx-error kv-store 2)))))
+                     [(tx-error/index-entry 1 {::anom/category ::anom/fault})])]
+      (is (nil? (tx-error/tx-error kv-store 2)))))
 
   (testing "nothing is found on empty db"
     (let [kv-store (new-mem-kv-store)]
-      (is (nil? (te/tx-error kv-store 1))))))
+      (is (nil? (tx-error/tx-error kv-store 1))))))

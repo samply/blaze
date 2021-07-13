@@ -205,5 +205,8 @@
       bb/array))
 
 
-(defn index-entry [c-hash tid value id hash]
+(defn index-entry
+  "Returns an entry of the SearchParamValueResource index build from `c-hash`,
+  `tid`, `value`, `id` and `hash`."
+  [c-hash tid value id hash]
   [:search-param-value-index (encode-key c-hash tid value id hash) bytes/empty])

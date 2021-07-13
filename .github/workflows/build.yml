@@ -344,6 +344,9 @@ jobs:
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
+    - name: Search Observation _lastUpdated
+      run: .github/scripts/search-patient-last-updated.sh
+
     - name: Search Observation _profile
       run: .github/scripts/search-observation-profile.sh
 
@@ -481,6 +484,9 @@ jobs:
 
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+
+    - name: Search Observation _lastUpdated
+      run: .github/scripts/search-patient-last-updated.sh
 
     - name: Search Observation _profile
       run: .github/scripts/search-observation-profile.sh

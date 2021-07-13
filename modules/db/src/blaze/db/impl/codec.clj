@@ -120,6 +120,7 @@
     {}
     (map (fn [code] [(c-hash code) code]))
     ["_id"
+     "_lastUpdated"
      "_profile"
      "address"
      "birthdate"

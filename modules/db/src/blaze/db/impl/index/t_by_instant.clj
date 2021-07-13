@@ -38,6 +38,6 @@
 
 
 (defn index-entry
-  "Returns the index entry for `instant` and `t`."
+  "Returns an entry of the TByInstant index build from `instant` and `t`."
   [instant t]
   [:t-by-instant-index (encode-key instant) (encode-value t)])

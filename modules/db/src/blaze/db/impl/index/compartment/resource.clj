@@ -88,7 +88,10 @@
        (encode-key compartment tid start-id)))))
 
 
-(defn index-entry [compartment tid id]
+(defn index-entry
+  "Returns an entry of the CompartmentResource index build from `compartment`,
+  `tid` and `id`."
+  [compartment tid id]
   [:compartment-resource-type-index
    (bb/array (encode-key-buf compartment tid id))
    bytes/empty])

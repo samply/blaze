@@ -7,9 +7,9 @@
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db :as db]
-    [blaze.db.impl.index.t-by-instant :as ti]
-    [blaze.db.impl.index.tx-error :as te]
-    [blaze.db.impl.index.tx-success :as tsi]
+    [blaze.db.impl.index.t-by-instant :as t-by-instant]
+    [blaze.db.impl.index.tx-error :as tx-error]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
@@ -105,9 +105,9 @@
 
 
 (defn- load-tx-result [{:keys [tx-cache kv-store] :as node} t]
-  (if (tsi/tx tx-cache t)
+  (if (tx-success/tx tx-cache t)
     (ac/completed-future (db/db node t))
-    (if-let [anomaly (te/tx-error kv-store t)]
+    (if-let [anomaly (tx-error/tx-error kv-store t)]
       (ac/failed-future
         (ex-info (format "Transaction with point in time %d errored." t)
                  anomaly))
@@ -121,11 +121,6 @@
 (defn- index-tx [db-before tx-data]
   (with-open [_ (prom/timer duration-seconds "index-transactions")]
     (tx-indexer/index-tx db-before tx-data)))
-
-
-(defn- store-tx-entries [kv-store entries]
-  (with-open [_ (prom/timer duration-seconds "store-tx-entries")]
-    (kv/put! kv-store entries)))
 
 
 (defn- advance-t! [state t]
@@ -143,47 +138,70 @@
 
 
 (defn- index-resources
-  [{:keys [tx-resource-cache resource-store resource-indexer]} t tx-cmds]
+  [{:keys [tx-resource-cache resource-store resource-indexer]}
+   {:keys [t tx-cmds] last-updated :instant}]
   (if-let [resources (@tx-resource-cache t)]
-    (resource-indexer/index-resources resource-indexer resources)
+    (do (swap! tx-resource-cache dissoc t)
+        (resource-indexer/index-resources
+          resource-indexer last-updated resources))
     (-> (rs/multi-get resource-store (hashes tx-cmds))
-        (ac/then-compose #(resource-indexer/index-resources resource-indexer %)))))
+        (ac/then-compose
+          #(resource-indexer/index-resources resource-indexer last-updated %)))))
+
+
+(defn- commit-error! [{:keys [kv-store state]} t anomaly]
+  (kv/put! kv-store [(tx-error/index-entry t anomaly)])
+  (advance-error-t! state t))
+
+
+(defn- store-tx-entries! [kv-store entries]
+  (with-open [_ (prom/timer duration-seconds "store-tx-entries")]
+    (kv/put! kv-store entries)))
+
+
+(defn- wait-for-resources [future timer]
+  (try
+    (log/trace "wait until resources are indexed...")
+    (ac/join future)
+    (log/trace "done indexing all resources")
+    (catch Exception e
+      (log/error "Error while resource indexing: " (ex-message (ex-cause e)))
+      (throw e))
+    (finally
+      (prom/observe-duration! timer))))
 
 
 (defn- tx-success-entries [t instant]
-  [(tsi/index-entry t instant)
-   (ti/index-entry instant t)])
+  [(tx-success/index-entry t instant)
+   (t-by-instant/index-entry instant t)])
 
 
-(defn- index-tx-data
-  [{:keys [kv-store state tx-resource-cache] :as node}
-   {:keys [t instant tx-cmds] :as tx-data}]
+(defn- commit-success! [{:keys [kv-store state]} t instant]
+  (kv/put! kv-store (tx-success-entries t instant))
+  (advance-t! state t))
+
+
+(defn- index-tx-data!
+  "This is the main transaction handling function.
+
+  If indexes resources and transaction data and commits either success or error."
+  [{:keys [kv-store] :as node} {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
-        future (index-resources node t tx-cmds)
+        future (index-resources node tx-data)
         result (index-tx (d/db node) tx-data)]
-    (swap! tx-resource-cache dissoc t)
     (if (::anom/category result)
-      (do (kv/put! kv-store [(te/index-entry t result)])
-          (advance-error-t! state t))
-      (do (store-tx-entries kv-store result)
-          (try
-            (log/trace "wait until resources are indexed...")
-            (ac/join future)
-            (log/trace "done indexing all resources")
-            (catch Exception e
-              (log/error "Error while resource indexing: " (ex-message (ex-cause e)))
-              (throw e))
-            (finally
-              (prom/observe-duration! timer)))
-          (kv/put! kv-store (tx-success-entries t instant))
-          (advance-t! state t)))))
+      (commit-error! node t result)
+      (do
+        (store-tx-entries! kv-store result)
+        (wait-for-resources future timer)
+        (commit-success! node t instant)))))
 
 
-(defn- poll [node queue poll-timeout]
+(defn- poll! [node queue poll-timeout]
   (log/trace "poll transaction queue")
-  (reduce #(index-tx-data node %2) nil (tx-log/poll queue poll-timeout)))
+  (reduce #(index-tx-data! node %2) nil (tx-log/poll queue poll-timeout)))
 
 
 (defn- max-t [state]
@@ -206,7 +224,7 @@
 
 
 (defn- enhance-resource [tx-cache {:keys [t] :as handle} resource]
-  (let [tx (tsi/tx tx-cache t)]
+  (let [tx (tx-success/tx tx-cache t)]
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
 
@@ -255,7 +273,7 @@
 
   p/Tx
   (-tx [_ t]
-    (tsi/tx tx-cache t))
+    (tx-success/tx tx-cache t))
 
   p/QueryCompiler
   (-compile-type-query [_ type clauses]
@@ -313,7 +331,7 @@
         (with-open [queue (tx-log/new-queue tx-log offset)]
           (while @run?
             (try
-              (poll node queue poll-timeout)
+              (poll! node queue poll-timeout)
               (catch Exception e
                 (swap! state assoc :e e)
                 (throw e))))))
@@ -337,6 +355,11 @@
           (swap! error (ex-cause e))))))
 
 
+(defn- initial-state [kv-store]
+  {:t (or (tx-success/last-t kv-store) 0)
+   :error-t 0})
+
+
 (defn new-node
   "Creates a new local database node."
   [tx-log resource-handle-cache tx-cache indexer-executor kv-store
@@ -345,8 +368,7 @@
         indexer-abort-reason (atom nil)
         node (->Node tx-log resource-handle-cache tx-cache kv-store
                      resource-store search-param-registry resource-indexer
-                     (atom {:t (or (tsi/last-t kv-store) 0)
-                            :error-t 0})
+                     (atom (initial-state kv-store))
                      (atom {})
                      (volatile! true)
                      poll-timeout

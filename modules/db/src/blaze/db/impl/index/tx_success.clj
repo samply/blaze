@@ -54,11 +54,16 @@
         (bb/get-long! buf)))))
 
 
-(defn- encode-tx
-  "A map is encoded in CBOR format to be able to add additional data later."
+(defn- encode-value
+  "Encodes the value of the TxSuccess index.
+
+  Currently only the `instant` is encoded. A map is used in CBOR format to be
+  able to add additional data later."
   [instant]
   (cbor/write {:inst (inst-ms instant)}))
 
 
-(defn index-entry [t instant]
-  [:tx-success-index (encode-key t) (encode-tx instant)])
+(defn index-entry
+  "Returns an entry of the TxSuccess index build from `t` and `instant`."
+  [t instant]
+  [:tx-success-index (encode-key t) (encode-value instant)])

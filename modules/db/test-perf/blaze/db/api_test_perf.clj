@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.db.api :as d]
-    [blaze.db.impl.index.tx-success :as tsi]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.node :as node]
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
@@ -59,7 +59,7 @@
 
 
 (defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+  (.build (Caffeine/newBuilder) (tx-success/cache-loader index-kv-store)))
 
 
 (defn new-node []

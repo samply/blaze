@@ -8,7 +8,7 @@
 
 (defn- remove-query-param? [[k]]
   (and (str/starts-with? k "_")
-       (not (#{"_id" "_list" "_profile"} k))
+       (not (#{"_id" "_list" "_profile" "_lastUpdated"} k))
        (not (str/starts-with? k "_has"))))
 
 
