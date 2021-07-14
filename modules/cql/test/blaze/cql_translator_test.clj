@@ -28,18 +28,18 @@
   (testing "Simple Retrieve"
     (given-translation
       "library Test
-        using FHIR version '3.0.0'
-        define Patients: [Patient]"
+       using FHIR version '3.0.0'
+       define Patients: [Patient]"
       [0 :expression :type] := "Retrieve"
       [0 :expression :dataType] := "{http://hl7.org/fhir}Patient"))
 
   (testing "Retrieve with Code"
     (given-translation
       "library Test
-        using FHIR version '3.0.0'
-        codesystem test: 'test'
-        code T0: '0' from test
-        define Observations: [Observation: T0]"
+       using FHIR version '3.0.0'
+       codesystem test: 'test'
+       code T0: '0' from test
+       define Observations: [Observation: T0]"
       [0 :expression :type] := "Retrieve"
       [0 :expression :dataType] := "{http://hl7.org/fhir}Observation"
       [0 :expression :codes :type] := "ToList"
@@ -52,6 +52,16 @@
        using FHIR version '4.0.0'
        define Patients: [Patient]"
       "library Test
-      using FHIR version '4.0.0'
-      context Specimen
-      define Specimens: [Specimen]")))
+       using FHIR version '4.0.0'
+       context Specimen
+       define Specimens: [Specimen]"))
+
+  (testing "With Parameters"
+    (given
+      (translate
+        "library Test
+         parameter MeasurementPeriod Interval<DateTime>")
+      [:parameters :def 0 :name] := "MeasurementPeriod"
+      [:parameters :def 0 :resultTypeSpecifier :type] := "IntervalTypeSpecifier"
+      [:parameters :def 0 :resultTypeSpecifier :pointType :type] := "NamedTypeSpecifier"
+      [:parameters :def 0 :resultTypeSpecifier :pointType :name] := "{urn:hl7-org:elm-types:r1}DateTime")))

@@ -534,6 +534,14 @@
 
 
 
+;; 7. Parameters
+
+;; 7.2. ParameterRef
+(defmethod expression :elm.spec.type/parameter-ref [_]
+  (s/keys :opt-un [:elm/name :elm/libraryName]))
+
+
+
 ;; 8. Expressions
 
 ;; 8.2. OperatorExpression

@@ -16,8 +16,13 @@
   (s/map-of string? :blaze.elm.compiler/expression))
 
 
+(s/def ::parameters
+  (s/map-of string? any?))
+
+
 (s/def :blaze.elm.expression/context
-  (s/keys :req-un [:blaze.db/db ::now] :opt-un [::library-context]))
+  (s/keys :req-un [:blaze.db/db ::now]
+          :opt-un [::library-context ::parameters]))
 
 
 (s/def :blaze.elm.expression/scope

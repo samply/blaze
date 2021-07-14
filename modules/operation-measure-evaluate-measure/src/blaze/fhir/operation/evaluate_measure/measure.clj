@@ -4,7 +4,7 @@
     [blaze.coll.core :as coll]
     [blaze.cql-translator :as cql-translator]
     [blaze.db.api :as d]
-    [blaze.elm.compiler :as compiler]
+    [blaze.elm.compiler.library :as library]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
@@ -78,7 +78,7 @@
         (assoc library
           :fhir/issue "value"
           :fhir.issue/expression "Measure.library")
-        (compiler/compile-library node library {})))))
+        (library/compile-library node library {})))))
 
 
 (defn- compile-library

@@ -82,6 +82,14 @@
 
 
 
+;; 7. Parameters
+
+;; 7.2. ParameterRef
+(defn parameter-ref [name]
+  {:type "ParameterRef" :name name})
+
+
+
 ;; 9. Reusing Logic
 
 ;; 9.2. ExpressionRef
