@@ -1,4 +1,5 @@
 (ns blaze.fhir-client.impl
+  (:refer-clojure :exclude [update])
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
@@ -14,8 +15,7 @@
     [java.nio ByteBuffer]
     [java.nio.channels SeekableByteChannel]
     [java.nio.file Path Files StandardOpenOption]
-    [java.util.concurrent Flow$Subscriber Flow$Subscription])
-  (:refer-clojure :exclude [update]))
+    [java.util.concurrent Flow$Subscriber Flow$Subscription]))
 
 
 (set! *warn-on-reflection* true)
@@ -36,13 +36,16 @@
     :else ::anom/fault))
 
 
+(defn- anomaly* [response]
+  {::anom/category (category (:status response))
+   ::anom/message (format "Unexpected response status %d." (:status response))})
+
+
 (defn- anomaly [e]
   (let [response (ex-data e)]
-    (cond->
-      {::anom/category (category (:status response))
-       ::anom/message (format "Unexpected response status %d." (:status response))}
-      (= :fhir/OperationOutcome (fhir-spec/fhir-type (:body response)))
-      (assoc :fhir/issues (:issue (:body response))))))
+    (cond-> (anomaly* response)
+      (identical? :fhir/OperationOutcome (-> response :body fhir-spec/fhir-type))
+      (assoc :fhir/issues (-> response :body :issue)))))
 
 
 (defn- handle-error [e]

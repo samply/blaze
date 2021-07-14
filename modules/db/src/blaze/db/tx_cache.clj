@@ -4,7 +4,7 @@
   Caffeine is used because it have better performance characteristics as a
   ConcurrentHashMap."
   (:require
-    [blaze.db.impl.index.tx-success :as tsi]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.kv.spec]
     [blaze.db.tx-cache.spec]
     [clojure.spec.alpha :as s]
@@ -23,7 +23,7 @@
   (-> (Caffeine/newBuilder)
       (.maximumSize max-size)
       (.recordStats)
-      (.build (tsi/cache-loader kv-store))))
+      (.build (tx-success/cache-loader kv-store))))
 
 
 (defmethod ig/pre-init-spec :blaze.db/tx-cache [_]

@@ -1,7 +1,7 @@
 (ns blaze.elm.expression
+  (:refer-clojure :exclude [eval])
   (:require
-    [blaze.elm.compiler.core :as core])
-  (:refer-clojure :exclude [eval]))
+    [blaze.elm.compiler.core :as core]))
 
 
 (defn eval [expression context resource scope]

@@ -31,11 +31,15 @@
 (set! *warn-on-reflection* true)
 
 
+(defn- strip-leading-slash [s]
+  (if (str/starts-with? s "/") (subs s 1) s))
+
+
 (defn- validate-entry
   {:arglists '([db idx entry])}
   [idx {:keys [resource] {:keys [method url] :as request} :request :as entry}]
   (let [method (type/value method)
-        [url] (some-> (type/value url) (str/split #"\?"))
+        [url] (some-> (type/value url) strip-leading-slash (str/split #"\?"))
         [type id] (some-> url bundle/match-url)]
     (cond
       (nil? request)
@@ -280,14 +284,7 @@
   (let [futures (mapv #(pull-response-resource node %) handles+entries)]
     (-> (ac/all-of futures)
         (ac/then-apply
-          (fn [_]
-            (mapv ac/join futures))))))
-
-
-(defn- strip-leading-slash [s]
-  (if (str/starts-with? s "/")
-    (subs s 1)
-    s))
+          (fn [_] (mapv ac/join futures))))))
 
 
 (defn- convert-http-date
@@ -395,8 +392,7 @@
         futures (vec (map-indexed process-entry request-entries))]
     (-> (ac/all-of futures)
         (ac/then-apply
-          (fn [_]
-            (mapv ac/join futures))))))
+          (fn [_] (mapv ac/join futures))))))
 
 
 (defmethod process "transaction"

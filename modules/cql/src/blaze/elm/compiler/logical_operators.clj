@@ -60,9 +60,8 @@
 
 ;; 13.3 Not
 (defunop not [operand]
-  (cond
-    (true? operand) false
-    (false? operand) true))
+  (when (some? operand)
+    (not operand)))
 
 
 ;; 13.4. Or

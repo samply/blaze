@@ -68,8 +68,8 @@
     (assoc "_count" page-size)))
 
 
-(defn url
-  [base-url match params clauses t offset]
-  (let [query-params (-> (query-params params clauses) (assoc "__t" t) (merge offset))
-        path (reitit/match->path match query-params)]
-    (str base-url path)))
+(defn url [base-url match params clauses t offset]
+  (let [query-params (-> (query-params params clauses)
+                         (assoc "__t" t)
+                         (merge offset))]
+    (str base-url (reitit/match->path match query-params))))

@@ -8,6 +8,7 @@
 
 
   Instance-level, Type-level, system-level, compartment-level."
+  (:refer-clojure :exclude [sync])
   (:require
     [blaze.anomaly :refer [when-ok]]
     [blaze.async.comp :as ac]
@@ -15,8 +16,7 @@
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p])
   (:import
-    [java.io Closeable])
-  (:refer-clojure :exclude [sync]))
+    [java.io Closeable]))
 
 
 (defn db

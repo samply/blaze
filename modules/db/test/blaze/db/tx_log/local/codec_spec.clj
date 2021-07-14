@@ -12,7 +12,7 @@
 
 
 (s/fdef codec/encode-tx-data
-  :args (s/cat :instant inst? :tx-cmds :blaze.db/tx-cmds)
+  :args (s/cat :instant :blaze.db.tx/instant :tx-cmds :blaze.db/tx-cmds)
   :ret bytes?)
 
 

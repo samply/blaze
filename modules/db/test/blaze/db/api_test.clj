@@ -9,7 +9,7 @@
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
-    [blaze.db.impl.index.tx-success :as tsi]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
@@ -26,7 +26,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
-    [java-time :as jt]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -92,7 +92,7 @@
 
 
 (defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+  (.build (Caffeine/newBuilder) (tx-success/cache-loader index-kv-store)))
 
 
 (defn new-node-with [{:keys [resource-store]}]
@@ -101,7 +101,7 @@
         index-kv-store (new-index-kv-store)]
     (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
                    indexer-executor index-kv-store resource-store
-                   search-param-registry (jt/millis 10))))
+                   search-param-registry (time/millis 10))))
 
 
 (defn new-node []
@@ -487,7 +487,7 @@
                        {:resource-store
                         (-> (new-mem-kv-store)
                             (new-kv-resource-store resource-store-executor)
-                            (new-random-slow-resource-store))})]
+                            new-random-slow-resource-store)})]
       (let [db-futures
             (mapv
               #(d/transact node [[:create {:fhir/type :fhir/Patient :id (str %)}]])
@@ -517,7 +517,7 @@
   (testing "with failing resource indexer"
     (with-redefs
       [resource-indexer/index-resources
-       (fn [_ _]
+       (fn [_ _ _]
          (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
       (with-open [node (new-node)]
         (given
@@ -1085,18 +1085,27 @@
 
       (testing "_id"
         (given (pull-type-query node "Patient" [["_id" "id-1"]])
-          [0 :id] := "id-1"
-          1 := nil))
+          count := 1
+          [0 :id] := "id-1"))
+
+      (testing "_lastUpdated"
+        (testing "all resources are created at EPOCH"
+          (given (pull-type-query node "Patient" [["_lastUpdated" "1970-01-01"]])
+            count := 5))
+
+        (testing "no resource is created after EPOCH"
+          (given (pull-type-query node "Patient" [["_lastUpdated" "gt1970-01-02"]])
+            count := 0)))
 
       (testing "_profile"
         (given (pull-type-query node "Patient" [["_profile" "profile-uri-145024"]])
-          [0 :id] := "id-0"
-          1 := nil))
+          count := 1
+          [0 :id] := "id-0"))
 
       (testing "active"
         (given (pull-type-query node "Patient" [["active" "true"]])
-          [0 :id] := "id-1"
-          1 := nil))
+          count := 1
+          [0 :id] := "id-1"))
 
       (testing "gender and active"
         (given (pull-type-query node "Patient" [["gender" "female"]
@@ -2221,6 +2230,8 @@
                  "combo-value-quantity" #blaze/byte-string"9B780D9180"]
                 ["Observation" "id-0" #blaze/byte-string"36A9F36D"
                  "_id" #blaze/byte-string"165494C5"]
+                ["Observation" "id-0" #blaze/byte-string"36A9F36D"
+                 "_lastUpdated" #blaze/byte-string"80008001"]
                 ["TestScript" "id-0" #blaze/byte-string"51E67D28"
                  "context-quantity" #blaze/byte-string"0000000080"]
                 ["TestScript" "id-0" #blaze/byte-string"51E67D28"
@@ -2228,7 +2239,9 @@
                 ["TestScript" "id-0" #blaze/byte-string"51E67D28"
                  "context-quantity" #blaze/byte-string"9B780D9180"]
                 ["TestScript" "id-0" #blaze/byte-string"51E67D28"
-                 "_id" #blaze/byte-string"165494C5"]])))
+                 "_id" #blaze/byte-string"165494C5"]
+                ["TestScript" "id-0" #blaze/byte-string"51E67D28"
+                 "_lastUpdated" #blaze/byte-string"80008001"]])))
 
 
       (testing "TestScript would be found"

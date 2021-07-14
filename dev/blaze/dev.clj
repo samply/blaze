@@ -14,7 +14,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.tools.namespace.repl :refer [refresh]]
     [criterium.core :refer [bench quick-bench]]
-    [java-time :as jt]
+    [java-time :as time]
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache Cache]))
@@ -91,7 +91,7 @@
   (def tx-log (::tx-log/kafka system))
 
   (with-open [queue (tx-log/new-queue tx-log 0)]
-    (tx-log/poll queue (jt/seconds 1)))
+    (tx-log/poll queue (time/seconds 1)))
   )
 
 ;; Cassandra Resource Store

@@ -51,7 +51,7 @@
   (-> (ig/init
         {:blaze.interaction/search-compartment
          {:node node}})
-      (:blaze.interaction/search-compartment)))
+      :blaze.interaction/search-compartment))
 
 
 (defn- handler-with [txs]

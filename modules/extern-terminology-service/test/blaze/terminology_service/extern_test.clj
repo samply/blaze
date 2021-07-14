@@ -30,7 +30,7 @@
         {:blaze.terminology-service/extern
          {:base-uri base-uri
           :http-client http-client}})
-      (:blaze.terminology-service/extern)))
+      :blaze.terminology-service/extern))
 
 
 (deftest terminology-service-test

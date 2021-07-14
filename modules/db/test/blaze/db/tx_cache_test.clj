@@ -31,7 +31,7 @@
         {:blaze.db/tx-cache
          {:kv-store kv-store
           :max-size max-size}})
-      (:blaze.db/tx-cache)))
+      :blaze.db/tx-cache))
 
 
 (deftest failing-init-test

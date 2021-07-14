@@ -49,6 +49,10 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 * [Architecture](docs/architecture.md)
 * [Implementation](docs/implementation/README.md)
 
+## Development
+
+Pull requests are welcome. Please consider the [development](DEVELOPMENT.md) documentation before creating one.
+
 ## YourKit Profiler
 
 ![YourKit logo](https://www.yourkit.com/images/yklogo.png)
@@ -73,4 +77,4 @@ Unless required by applicable law or agreed to in writing, software distributed 
 [8]: <https://www.yourkit.com/youmonitor/>
 [9]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [10]: <https://github.com/facebook/rocksdb/wiki/RocksDB-Basics#multi-threaded-compactions>
-[12]: <https://touchstone.aegis.net/touchstone/conformance/history?suite=FHIR4-0-1-Basic-Server&supportedOnly=true&suiteType=HL7_FHIR_SERVER&ownedBy=ALL&ps=10&published=true&pPass=0&strSVersion=1&format=ALL>
+[12]: <https://touchstone.aegis.net/touchstone/conformance/history?suite=FHIR4-0-1-Basic-Server&supportedOnly=true&suiteType=HL7_FHIR_SERVER&ownedBy=ALL&ps=10&published=true&pPass=0&strSVersion=6&format=ALL>

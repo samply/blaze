@@ -1,5 +1,6 @@
 (ns blaze.fhir-path-test
   "See: http://hl7.org/fhirpath/index.html"
+  (:refer-clojure :exclude [eval])
   (:require
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir-path-spec]
@@ -10,8 +11,7 @@
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
-  (:refer-clojure :exclude [eval]))
+    [taoensso.timbre :as log]))
 
 
 (st/instrument)

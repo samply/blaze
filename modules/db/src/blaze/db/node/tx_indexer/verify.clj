@@ -66,12 +66,9 @@
   [db-before {:keys [type if-none-exist] :as cmd}]
   (let [[h1 h2] (some->> if-none-exist (existing-resource-handles db-before type))]
     (cond
-      h2
-      (throw-multiple-existing-resources-anomaly type if-none-exist [h1 h2])
-      h1
-      (assoc cmd :op "hold" :id (:id h1))
-      :else
-      cmd)))
+      h2 (throw-multiple-existing-resources-anomaly type if-none-exist [h1 h2])
+      h1 (assoc cmd :op "hold" :id (:id h1))
+      :else cmd)))
 
 
 (defmethod resolve-id :default
@@ -148,8 +145,7 @@
   (with-open [_ (prom/timer duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
     (let [tid (codec/tid type)]
-      (-> res
-          (update :entries into (index-entries tid id t hash 1 :create))
+      (-> (update res :entries into (index-entries tid id t hash 1 :create))
           (update :new-resources conj [type id])
           (update-in [:stats tid :num-changes] (fnil inc 0))
           (update-in [:stats tid :total] (fnil inc 0))))))
@@ -177,8 +173,7 @@
           (d/resource-handle db-before type id)]
       (if (or (nil? if-match) (= if-match old-t))
         (cond->
-          (-> res
-              (update :entries into (index-entries tid id t hash (inc num-changes) :put))
+          (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :put))
               (update :new-resources conj [type id])
               (update-in [:stats tid :num-changes] (fnil inc 0)))
           (or (nil? old-t) (identical? :delete op))
@@ -193,8 +188,7 @@
     (let [tid (codec/tid type)
           {:keys [num-changes] :or {num-changes 0}}
           (d/resource-handle db-before type id)]
-      (-> res
-          (update :entries into (index-entries tid id t hash (inc num-changes) :delete))
+      (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :delete))
           (update :del-resources conj [type id])
           (update-in [:stats tid :num-changes] (fnil inc 0))
           (update-in [:stats tid :total] (fnil dec 0))))))

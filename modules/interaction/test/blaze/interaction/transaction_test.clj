@@ -84,7 +84,7 @@
         {:blaze.interaction/transaction
          {:node node
           :executor executor}})
-      (:blaze.interaction/transaction)))
+      :blaze.interaction/transaction))
 
 
 (defn- handler-with [txs]
@@ -1231,7 +1231,34 @@
               :status := "201"
               :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
               :etag := "W/\"1\""
-              :lastModified := Instant/EPOCH))))
+              :lastModified := Instant/EPOCH)))
+
+        (testing "leading slash in URL is removed"
+          (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+                ((handler-with [])
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :resource
+                     {:fhir/type :fhir/Patient :id "0"}
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :method #fhir/code"PUT"
+                      :url #fhir/uri"/Patient/0"}}]}})]
+
+            (is (= 200 status))
+
+            (testing "entry resource"
+              (is (nil? resource)))
+
+            (testing "entry response"
+              (given response
+                :status := "201"
+                :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
+                :etag := "W/\"1\""
+                :lastModified := Instant/EPOCH)))))
 
       (testing "with representation return preference"
         (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}

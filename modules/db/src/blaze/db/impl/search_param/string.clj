@@ -28,11 +28,10 @@
 
 
 (defn- normalize-string [s]
-  (-> s
-      (str/trim)
+  (-> (str/trim s)
       (str/replace #"[\p{Punct}]" " ")
       (str/replace #"\s+" " ")
-      (str/lower-case)))
+      str/lower-case))
 
 
 (defn- index-entry

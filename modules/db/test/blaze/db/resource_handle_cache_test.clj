@@ -28,7 +28,7 @@
   (-> (ig/init
         {:blaze.db/resource-handle-cache
          {:max-size max-size}})
-      (:blaze.db/resource-handle-cache)))
+      :blaze.db/resource-handle-cache))
 
 
 (deftest init-test

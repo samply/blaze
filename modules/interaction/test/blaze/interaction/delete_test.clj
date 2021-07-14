@@ -36,7 +36,7 @@
         {:blaze.interaction/delete
          {:node node
           :executor executor}})
-      (:blaze.interaction/delete)))
+      :blaze.interaction/delete))
 
 
 (defn- handler-with [txs]

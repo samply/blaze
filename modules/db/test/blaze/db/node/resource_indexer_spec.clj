@@ -21,6 +21,7 @@
 
 (s/fdef resource-indexer/index-resources
   :args (s/cat :resource-indexer :blaze.db.node/resource-indexer
+               :last-updated inst?
                :entries (s/map-of :blaze.resource/hash (s/nilable :blaze/resource)))
   :ret ac/completable-future?)
 

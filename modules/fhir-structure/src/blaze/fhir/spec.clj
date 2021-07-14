@@ -204,14 +204,17 @@
                    val)))))
 
 
+(defn- issue [pred val via]
+  {:fhir.issues/severity "error"
+   :fhir.issues/code "invariant"
+   :fhir.issues/diagnostics (diagnostics-from-problem pred val via)})
+
+
 (defn- generate-issue
   "Returns an issue of type map for the given arguments."
   {:arglists '([resource problem])}
   [resource {:keys [val via in pred]}]
-  (cond->
-    {:fhir.issues/severity "error"
-     :fhir.issues/code "invariant"
-     :fhir.issues/diagnostics (diagnostics-from-problem pred val via)}
+  (cond-> (issue pred val via)
     (:resourceType resource)
     (assoc :fhir.issues/expression (fhir-path in resource))))
 

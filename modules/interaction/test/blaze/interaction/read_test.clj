@@ -35,7 +35,7 @@
   (-> (ig/init
         {:blaze.interaction/read
          {:node node}})
-      (:blaze.interaction/read)))
+      :blaze.interaction/read))
 
 
 (defn- handler-with [txs]

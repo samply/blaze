@@ -187,8 +187,7 @@
                         {:expression expression})))
 
       (some? timezone-offset)
-      (cond
-        (some? hour)
+      (if (some? hour)
         (reify core/Expression
           (-eval [_ {:keys [now] :as context} resource scope]
             (to-local-date-time-with-offset
@@ -201,8 +200,6 @@
               (or (core/-eval second context resource scope) 0)
               (or (core/-eval millisecond context resource scope) 0)
               (core/-eval timezone-offset context resource scope))))
-
-        :else
         (throw (ex-info "Need at least an hour if timezone offset is given."
                         {:expression expression})))
 

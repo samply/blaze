@@ -42,14 +42,24 @@
     (.toByteArray out)))
 
 
-(defn handle-response [request {:keys [body] :as response}]
-  (if body
-    (if (xml-response? request)
-      (-> (update response :body generate-xml)
-          (ring/content-type "application/fhir+xml;charset=utf-8"))
-      (-> (update response :body generate-json)
-          (ring/content-type "application/fhir+json;charset=utf-8")))
-    response))
+(defn- encode-response-xml [response]
+  (-> (update response :body generate-xml)
+      (ring/content-type "application/fhir+xml;charset=utf-8")))
+
+
+(defn- encode-response-json [response]
+  (-> (update response :body generate-json)
+      (ring/content-type "application/fhir+json;charset=utf-8")))
+
+
+(defn- encode-response [request response]
+  (if (xml-response? request)
+    (encode-response-xml response)
+    (encode-response-json response)))
+
+
+(defn- handle-response [request {:keys [body] :as response}]
+  (cond->> response body (encode-response request)))
 
 
 (defn wrap-output

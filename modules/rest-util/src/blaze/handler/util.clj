@@ -197,33 +197,60 @@
     (ac/completed-future (d/db node))))
 
 
+(def ^:private not-found-issue
+  {:severity #fhir/code"error"
+   :code #fhir/code"not-found"})
+
+
+(def ^:private not-found-outcome
+  {:fhir/type :fhir/OperationOutcome
+   :issue [not-found-issue]})
+
+
+(defn- not-found-handler [_]
+  (-> (ring/not-found not-found-outcome) ac/completed-future))
+
+
+(defn- method-not-allowed-msg [{:keys [uri request-method]}]
+  (format "Method %s not allowed on `%s` endpoint."
+          (str/upper-case (name request-method)) uri))
+
+
+(defn- method-not-allowed-issue [request]
+  {:severity #fhir/code"error"
+   :code #fhir/code"processing"
+   :diagnostics (method-not-allowed-msg request)})
+
+
+(defn- method-not-allowed-outcome [request]
+  {:fhir/type :fhir/OperationOutcome
+   :issue [(method-not-allowed-issue request)]})
+
+
+(defn- method-not-allowed-handler [request]
+  (-> (ring/response (method-not-allowed-outcome request))
+      (ring/status 405)
+      ac/completed-future))
+
+
+(def ^:private not-acceptable-issue
+  {:severity #fhir/code"error"
+   :code #fhir/code"structure"})
+
+
+(def ^:private not-acceptable-outcome
+  {:fhir/type :fhir/OperationOutcome
+   :issue [not-acceptable-issue]})
+
+
+(defn- not-acceptable-handler [_]
+  (-> (ring/response not-acceptable-outcome)
+      (ring/status 406)
+      ac/completed-future))
+
+
 (def default-handler
   (reitit.ring/create-default-handler
-    {:not-found
-     (fn [_]
-       (ac/completed-future
-         (ring/not-found
-           {:fhir/type :fhir/OperationOutcome
-            :issue
-            [{:severity #fhir/code"error"
-              :code #fhir/code"not-found"}]})))
-     :method-not-allowed
-     (fn [{:keys [uri request-method]}]
-       (-> (ring/response
-             {:fhir/type :fhir/OperationOutcome
-              :issue
-              [{:severity #fhir/code"error"
-                :code #fhir/code"processing"
-                :diagnostics (format "Method %s not allowed on `%s` endpoint."
-                                     (str/upper-case (name request-method)) uri)}]})
-           (ring/status 405)
-           (ac/completed-future)))
-     :not-acceptable
-     (fn [_]
-       (-> (ring/response
-             {:fhir/type :fhir/OperationOutcome
-              :issue
-              [{:severity #fhir/code"error"
-                :code #fhir/code"structure"}]})
-           (ring/status 406)
-           (ac/completed-future)))}))
+    {:not-found not-found-handler
+     :method-not-allowed method-not-allowed-handler
+     :not-acceptable not-acceptable-handler}))

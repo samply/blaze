@@ -82,10 +82,12 @@
       res)))
 
 
-(defn- conj-index-entries! [search-param-registry res [hash resource]]
+(defn- conj-index-entries!
+  [search-param-registry last-updated res [hash resource]]
   (log/trace "index-resource with hash" (bs/hex hash))
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
-    (let [compartments (sr/linked-compartments search-param-registry resource)]
+    (let [resource (update resource :meta (fnil assoc #fhir/Meta{}) :lastUpdated last-updated)
+          compartments (sr/linked-compartments search-param-registry resource)]
       (transduce
         (mapcat #(index-entries % compartments hash resource))
         conj!
@@ -99,8 +101,7 @@
 
 
 (defn- batch-index-resources
-  ""
-  [{:keys [kv-store search-param-registry]} entries]
+  [{:keys [kv-store search-param-registry]} last-updated entries]
   (->> entries
        (r/fold
          (batch-size (count entries))
@@ -110,17 +111,21 @@
             (put! kv-store (persistent! index-entries-a))
             (put! kv-store (persistent! index-entries-b))
             (transient [])))
-         (partial conj-index-entries! search-param-registry))
+         (partial conj-index-entries! search-param-registry last-updated))
        (persistent!)
        (put! kv-store)))
 
 
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources of
-   `entries` are indexed."
-  [resource-indexer entries]
+   `entries` are indexed.
+
+   `last-updated` is used to index the _lastUpdated search parameter because the
+   property doesn't exist in the resource itself."
+  [resource-indexer last-updated entries]
   (log/trace "index" (count entries) "resource(s)")
-  (ac/supply-async #(batch-index-resources resource-indexer (vec entries))))
+  (ac/supply-async
+    #(batch-index-resources resource-indexer last-updated (vec entries))))
 
 
 (defn new-resource-indexer

@@ -17,7 +17,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [jsonista.core :as j]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
@@ -82,7 +82,7 @@
   (-> (ig/init
         {:blaze.db.tx-log/local
          {:kv-store kv-store}})
-      (:blaze.db.tx-log/local)))
+      :blaze.db.tx-log/local))
 
 
 (deftest init-test
@@ -97,7 +97,7 @@
   (testing "an empty transaction log has no transaction data"
     (let [tx-log (new-local-tx-log (new-mem-kv-store) clock executor)
                 queue (tx-log/new-queue tx-log 1)]
-      (is (empty? (tx-log/poll queue (jt/millis 10))))))
+      (is (empty? (tx-log/poll queue (time/millis 10))))))
 
   (testing "with one submitted command in one transaction"
     (let [tx-log (new-local-tx-log (new-mem-kv-store) clock executor)]
@@ -105,7 +105,7 @@
                                :hash patient-hash-0}])
 
       (with-open [queue (tx-log/new-queue tx-log 1)]
-        (given (first (tx-log/poll queue (jt/millis 10)))
+        (given (first (tx-log/poll queue (time/millis 10)))
           :t := 1
           :instant := (Instant/ofEpochSecond 0)
           [:tx-cmds 0 :op] := "create"
@@ -122,7 +122,7 @@
                                :refs [["Patient" "0"]]}])
 
       (with-open [queue (tx-log/new-queue tx-log 1)]
-        (given (second (tx-log/poll queue (jt/millis 10)))
+        (given (second (tx-log/poll queue (time/millis 10)))
           :t := 2
           :instant := (Instant/ofEpochSecond 0)
           [:tx-cmds 0 :op] := "create"
@@ -140,7 +140,7 @@
 
           (testing "the invalid transaction data is ignored"
             (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (jt/millis 10)))))))))
+              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
 
     (testing "with invalid key followed by valid entry"
       (let [kv-store (new-mem-kv-store)]
@@ -154,7 +154,7 @@
 
           (testing "the invalid transaction data is ignored"
             (with-open [queue (tx-log/new-queue tx-log 0)]
-              (given (first (tx-log/poll queue (jt/millis 10)))
+              (given (first (tx-log/poll queue (time/millis 10)))
                 :t := 1
                 :instant := (Instant/ofEpochSecond 0)
                 [:tx-cmds 0 :op] := "create"
@@ -175,7 +175,7 @@
 
           (testing "the invalid transaction data is ignored"
             (with-open [queue (tx-log/new-queue tx-log 0)]
-              (given (first (tx-log/poll queue (jt/millis 10)))
+              (given (first (tx-log/poll queue (time/millis 10)))
                 :t := 1
                 :instant := (Instant/ofEpochSecond 0)
                 [:tx-cmds 0 :op] := "create"
@@ -191,7 +191,7 @@
 
           (testing "the invalid transaction data is ignored"
             (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (jt/millis 10)))))))))
+              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
 
     (testing "with invalid cbor value"
       (let [kv-store (new-mem-kv-store)]
@@ -201,7 +201,7 @@
 
           (testing "the invalid transaction data is ignored"
             (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (jt/millis 10)))))))))
+              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
 
     (testing "with invalid instant value"
       (let [kv-store (new-mem-kv-store)]
@@ -211,7 +211,7 @@
 
           (testing "the invalid transaction data is ignored"
             (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (jt/millis 10)))))))))
+              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
 
     (testing "with invalid tx-cmd value"
       (let [kv-store (new-mem-kv-store)]
@@ -221,7 +221,7 @@
 
           (testing "the invalid transaction data is ignored"
             (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (jt/millis 10)))))))))
+              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
 
     (testing "with failing kv-store"
       (let [tx-log (new-local-tx-log (new-failing-kv-store) clock executor)]
@@ -231,4 +231,4 @@
               (is (= "put-error" result))))
 
         (with-open [queue (tx-log/new-queue tx-log 1)]
-          (is (empty? (tx-log/poll queue (jt/millis 10)))))))))
+          (is (empty? (tx-log/poll queue (time/millis 10)))))))))

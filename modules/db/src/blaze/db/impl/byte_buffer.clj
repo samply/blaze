@@ -1,8 +1,8 @@
 (ns blaze.db.impl.byte-buffer
+  (:refer-clojure :exclude [reset!])
   (:import
     [com.google.protobuf ByteString]
-    [java.nio ByteBuffer])
-  (:refer-clojure :exclude [reset!]))
+    [java.nio ByteBuffer]))
 
 
 (set! *warn-on-reflection* true)
@@ -211,6 +211,7 @@
         (zero? byte)
         (do (reset! byte-buffer)
             size)
+
         (pos? (remaining byte-buffer))
         (recur (bit-and (get-byte! byte-buffer) 0xFF) (inc size))
 

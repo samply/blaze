@@ -10,19 +10,21 @@
     [blaze.db.kv :as kv])
   (:import
     [com.github.benmanes.caffeine.cache CacheLoader LoadingCache]
+    [com.google.common.primitives Longs]
     [java.time Instant]))
 
 
-(defn- decode-tx [bytes t]
-  (let [{:keys [inst]} (cbor/read bytes)]
+(set! *warn-on-reflection* true)
+
+
+(defn- decode-tx [value-bytes t]
+  (let [{:keys [inst]} (cbor/read value-bytes)]
     {:blaze.db/t t
      :blaze.db.tx/instant (Instant/ofEpochMilli inst)}))
 
 
-(defn encode-key [t]
-  (-> (bb/allocate Long/BYTES)
-      (bb/put-long! t)
-      (bb/array)))
+(defn- encode-key [^long t]
+  (Longs/toByteArray t))
 
 
 (defn cache-loader [kv-store]
@@ -52,11 +54,16 @@
         (bb/get-long! buf)))))
 
 
-(defn- encode-tx
-  "A map is encoded in CBOR format to be able to add additional data later."
+(defn- encode-value
+  "Encodes the value of the TxSuccess index.
+
+  Currently only the `instant` is encoded. A map is used in CBOR format to be
+  able to add additional data later."
   [instant]
   (cbor/write {:inst (inst-ms instant)}))
 
 
-(defn index-entry [t instant]
-  [:tx-success-index (encode-key t) (encode-tx instant)])
+(defn index-entry
+  "Returns an entry of the TxSuccess index build from `t` and `instant`."
+  [t instant]
+  [:tx-success-index (encode-key t) (encode-value instant)])

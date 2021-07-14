@@ -1,6 +1,5 @@
 (ns blaze.elm.compiler.comparison-operators-test
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.comparison-operators]
     [blaze.elm.compiler.core :as core]
@@ -834,34 +833,25 @@
       {:type "Null"} #elm/boolean"false" false
       {:type "Null"} {:type "Null"} nil))
 
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Dynamic"
-        ;; dynamic-resource will evaluate to true
-        (are [x y res] (= res (core/-eval (c/compile context (elm/and [x y])) {} true nil))
-          #elm/boolean"true" tu/dynamic-resource true
-          tu/dynamic-resource #elm/boolean"true" true
-          tu/dynamic-resource tu/dynamic-resource true
+  (testing "Dynamic"
+    (are [x y res] (= res (tu/dynamic-compile-eval (elm/and [x y])))
+      #elm/boolean"true" #elm/parameter-ref"true" true
+      #elm/parameter-ref"true" #elm/boolean"true" true
+      #elm/parameter-ref"true" #elm/parameter-ref"true" true
+      #elm/parameter-ref"true" {:type "Null"} nil
+      {:type "Null"} #elm/parameter-ref"true" nil
 
-          tu/dynamic-resource {:type "Null"} nil
-          {:type "Null"} tu/dynamic-resource nil)
+      #elm/boolean"true" #elm/parameter-ref"false" false
+      #elm/parameter-ref"false" #elm/boolean"true" false
+      #elm/parameter-ref"false" #elm/parameter-ref"false" false
+      #elm/parameter-ref"false" {:type "Null"} false
+      {:type "Null"} #elm/parameter-ref"false" false
 
-        ;; dynamic-resource will evaluate to false
-        (are [x y res] (= res (core/-eval (c/compile context (elm/and [x y])) {} false nil))
-          #elm/boolean"true" tu/dynamic-resource false
-          tu/dynamic-resource #elm/boolean"true" false
-          tu/dynamic-resource tu/dynamic-resource false
-
-          tu/dynamic-resource {:type "Null"} false
-          {:type "Null"} tu/dynamic-resource false)
-
-        ;; dynamic-resource will evaluate to nil
-        (are [x y res] (= res (core/-eval (c/compile context (elm/and [x y])) {} nil nil))
-          #elm/boolean"false" tu/dynamic-resource false
-          tu/dynamic-resource #elm/boolean"false" false
-          #elm/boolean"true" tu/dynamic-resource nil
-          tu/dynamic-resource #elm/boolean"true" nil
-          tu/dynamic-resource tu/dynamic-resource nil)))))
+      #elm/boolean"false" #elm/parameter-ref"nil" false
+      #elm/parameter-ref"nil" #elm/boolean"false" false
+      #elm/boolean"true" #elm/parameter-ref"nil" nil
+      #elm/parameter-ref"nil" #elm/boolean"true" nil
+      #elm/parameter-ref"nil" #elm/parameter-ref"nil" nil)))
 
 
 ;; 13.2. Implies
@@ -902,20 +892,11 @@
       #elm/boolean"false" true
       {:type "Null"} nil))
 
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Dynamic"
-        ;; dynamic-resource will evaluate to true
-        (are [x res] (= res (core/-eval (c/compile context (elm/not x)) {} true nil))
-          tu/dynamic-resource false)
-
-        ;; dynamic-resource will evaluate to false
-        (are [x res] (= res (core/-eval (c/compile context (elm/not x)) {} false nil))
-          tu/dynamic-resource true)
-
-        ;; dynamic-resource will evaluate to nil
-        (are [x res] (= res (core/-eval (c/compile context (elm/not x)) {} nil nil))
-          tu/dynamic-resource nil)))))
+  (testing "Dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/not x)))
+      #elm/parameter-ref"true" false
+      #elm/parameter-ref"false" true
+      #elm/parameter-ref"nil" nil)))
 
 
 ;; 13.4. Or
@@ -940,34 +921,25 @@
       {:type "Null"} #elm/boolean"false" nil
       {:type "Null"} {:type "Null"} nil))
 
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Dynamic"
-        ;; dynamic-resource will evaluate to true
-        (are [x y res] (= res (core/-eval (c/compile context (elm/or [x y])) {} true nil))
-          #elm/boolean"false" tu/dynamic-resource true
-          tu/dynamic-resource #elm/boolean"false" true
-          tu/dynamic-resource tu/dynamic-resource true
+  (testing "Dynamic"
+    (are [x y res] (= res (tu/dynamic-compile-eval (elm/or [x y])))
+      #elm/boolean"false" #elm/parameter-ref"true" true
+      #elm/parameter-ref"true" #elm/boolean"false" true
+      #elm/parameter-ref"true" #elm/parameter-ref"true" true
+      #elm/parameter-ref"true" {:type "Null"} true
+      {:type "Null"} #elm/parameter-ref"true" true
 
-          tu/dynamic-resource {:type "Null"} true
-          {:type "Null"} tu/dynamic-resource true)
+      #elm/boolean"false" #elm/parameter-ref"false" false
+      #elm/parameter-ref"false" #elm/boolean"false" false
+      #elm/parameter-ref"false" #elm/parameter-ref"false" false
+      #elm/parameter-ref"false" {:type "Null"} nil
+      {:type "Null"} #elm/parameter-ref"false" nil
 
-        ;; dynamic-resource will evaluate to false
-        (are [x y res] (= res (core/-eval (c/compile context (elm/or [x y])) {} false nil))
-          #elm/boolean"false" tu/dynamic-resource false
-          tu/dynamic-resource #elm/boolean"false" false
-          tu/dynamic-resource tu/dynamic-resource false
-
-          tu/dynamic-resource {:type "Null"} nil
-          {:type "Null"} tu/dynamic-resource nil)
-
-        ;; dynamic-resource will evaluate to nil
-        (are [x y res] (= res (core/-eval (c/compile context (elm/or [x y])) {} nil nil))
-          #elm/boolean"true" tu/dynamic-resource true
-          tu/dynamic-resource #elm/boolean"true" true
-          #elm/boolean"false" tu/dynamic-resource nil
-          tu/dynamic-resource #elm/boolean"false" nil
-          tu/dynamic-resource tu/dynamic-resource nil)))))
+      #elm/boolean"true" #elm/parameter-ref"nil" true
+      #elm/parameter-ref"nil" #elm/boolean"true" true
+      #elm/boolean"false" #elm/parameter-ref"nil" nil
+      #elm/parameter-ref"nil" #elm/boolean"false" nil
+      #elm/parameter-ref"nil" #elm/parameter-ref"nil" nil)))
 
 
 ;; 13.5. Xor
@@ -993,38 +965,24 @@
       {:type "Null"} #elm/boolean"false" nil
       {:type "Null"} {:type "Null"} nil))
 
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Dynamic"
-        ;; dynamic-resource will evaluate to true
-        (are [x y res] (= res (core/-eval (c/compile context (elm/xor [x y])) {} true nil))
-          #elm/boolean"true" tu/dynamic-resource false
-          tu/dynamic-resource #elm/boolean"true" false
+  (testing "Dynamic"
+    (are [x y res] (= res (tu/dynamic-compile-eval (elm/xor [x y])))
+      #elm/boolean"true" #elm/parameter-ref"true" false
+      #elm/parameter-ref"true" #elm/boolean"true" false
+      #elm/boolean"false" #elm/parameter-ref"true" true
+      #elm/parameter-ref"true" #elm/boolean"false" true
+      #elm/parameter-ref"true" #elm/parameter-ref"true" false
 
-          #elm/boolean"false" tu/dynamic-resource true
-          tu/dynamic-resource #elm/boolean"false" true
+      #elm/boolean"true" #elm/parameter-ref"false" true
+      #elm/parameter-ref"false" #elm/boolean"true" true
+      #elm/boolean"false" #elm/parameter-ref"false" false
+      #elm/parameter-ref"false" #elm/boolean"false" false
+      #elm/parameter-ref"false" #elm/parameter-ref"false" false
 
-          tu/dynamic-resource tu/dynamic-resource false)
-
-        ;; dynamic-resource will evaluate to false
-        (are [x y res] (= res (core/-eval (c/compile context (elm/xor [x y])) {} false nil))
-          #elm/boolean"true" tu/dynamic-resource true
-          tu/dynamic-resource #elm/boolean"true" true
-
-          #elm/boolean"false" tu/dynamic-resource false
-          tu/dynamic-resource #elm/boolean"false" false
-
-          tu/dynamic-resource tu/dynamic-resource false)
-
-        ;; dynamic-resource will evaluate to nil
-        (are [x y res] (= res (core/-eval (c/compile context (elm/xor [x y])) {} nil nil))
-          #elm/boolean"true" tu/dynamic-resource nil
-          tu/dynamic-resource #elm/boolean"true" nil
-
-          #elm/boolean"false" tu/dynamic-resource nil
-          tu/dynamic-resource #elm/boolean"false" nil
-
-          {:type "Null"} tu/dynamic-resource nil
-          tu/dynamic-resource {:type "Null"} nil
-
-          tu/dynamic-resource tu/dynamic-resource nil)))))
+      #elm/boolean"true" #elm/parameter-ref"nil" nil
+      #elm/parameter-ref"nil" #elm/boolean"true" nil
+      #elm/boolean"false" #elm/parameter-ref"nil" nil
+      #elm/parameter-ref"nil" #elm/boolean"false" nil
+      {:type "Null"} #elm/parameter-ref"nil" nil
+      #elm/parameter-ref"nil" {:type "Null"} nil
+      #elm/parameter-ref"nil" #elm/parameter-ref"nil" nil)))

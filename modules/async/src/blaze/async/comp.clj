@@ -2,10 +2,10 @@
   "This namespace provides functions to work with CompletableFutures.
 
   https://www.baeldung.com/java-completablefuture"
+  (:refer-clojure :exclude [future])
   (:import
     [java.util.concurrent CompletionStage CompletableFuture]
-    [java.util.function BiConsumer Function BiFunction Supplier])
-  (:refer-clojure :exclude [future]))
+    [java.util.function BiConsumer Function BiFunction Supplier]))
 
 
 (set! *warn-on-reflection* true)

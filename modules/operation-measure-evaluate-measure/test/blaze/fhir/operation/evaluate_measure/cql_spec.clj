@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.cql-spec
   (:require
     [blaze.db.spec]
-    [blaze.elm.compiler-spec]
+    [blaze.elm.compiler.library-spec]
     [blaze.elm.expression-spec]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.spec]

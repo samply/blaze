@@ -44,8 +44,8 @@
       (bb/put-byte-string! co-res-id)
       (bb/put-byte! 0)
       (bb/put-int! tid)
-      (bb/flip!)
-      (bs/from-byte-buffer)))
+      bb/flip!
+      bs/from-byte-buffer))
 
 
 (defn- encode-key-buf
@@ -62,9 +62,7 @@
 (defn- encode-key
   "Encodes the full key."
   [compartment tid id]
-  (-> (encode-key-buf compartment tid id)
-      (bb/flip!)
-      (bs/from-byte-buffer)))
+  (-> (encode-key-buf compartment tid id) bb/flip! bs/from-byte-buffer))
 
 
 (defn resource-handles!
@@ -90,7 +88,10 @@
        (encode-key compartment tid start-id)))))
 
 
-(defn index-entry [compartment tid id]
+(defn index-entry
+  "Returns an entry of the CompartmentResource index build from `compartment`,
+  `tid` and `id`."
+  [compartment tid id]
   [:compartment-resource-type-index
    (bb/array (encode-key-buf compartment tid id))
    bytes/empty])

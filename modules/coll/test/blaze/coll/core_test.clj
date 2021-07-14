@@ -1,9 +1,9 @@
 (ns blaze.coll.core-test
+  (:refer-clojure :exclude [eduction empty? first])
   (:require
     [blaze.coll.core :as coll]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
-  (:refer-clojure :exclude [eduction empty? first]))
+    [clojure.test :as test :refer [deftest is testing]]))
 
 
 (st/instrument)
@@ -45,4 +45,13 @@
 
 (deftest eduction
   (testing "eductions are sequential"
-    (is (sequential? (coll/eduction (map identity) [1])))))
+    (is (sequential? (coll/eduction (map identity) [1]))))
+
+  (testing "eductions can be reduced"
+    (is (= [2 3] (reduce conj [] (coll/eduction (map inc) [1 2])))))
+
+  (testing "eductions are seqable"
+    (is (= (list 2 3) (seq (coll/eduction (map inc) [1 2])))))
+
+  (testing "eductions are counted"
+    (is (= 2 (count (coll/eduction (map inc) [1 2]))))))

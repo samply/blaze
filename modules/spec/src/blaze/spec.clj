@@ -5,8 +5,7 @@
 
 
 (s/def :blaze/base-url
-  (s/and string?
-         #(not (str/ends-with? % "/"))))
+  (s/and string? (complement #(str/ends-with? % "/"))))
 
 
 (s/def :blaze/context-path
@@ -16,7 +15,7 @@
       :empty str/blank?
       :non-empty (s/and
                    #(str/starts-with? % "/")
-                   #(not (str/ends-with? % "/"))))))
+                   (complement #(str/ends-with? % "/"))))))
 
 
 

@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler.queries
   "10. Queries"
+  (:refer-clojure :exclude [comparator])
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.coll.core :as coll]
@@ -10,8 +11,7 @@
     [blaze.fhir.spec]
     [cognitect.anomalies :as anom])
   (:import
-    [java.util Comparator])
-  (:refer-clojure :exclude [comparator]))
+    [java.util Comparator]))
 
 
 (set! *warn-on-reflection* true)
@@ -147,10 +147,10 @@
 (deftype AscComparator []
   Comparator
   (compare [_ x y]
-    (let [less (p/less x y)]
+    (let [c (p/less x y)]
       (cond
-        (true? less) -1
-        (false? less) 1
+        (true? c) -1
+        (false? c) 1
         (nil? x) -1
         (nil? y) 1
         :else 0))))
@@ -162,10 +162,10 @@
 (deftype DescComparator []
   Comparator
   (compare [_ x y]
-    (let [less (p/less x y)]
+    (let [c (p/less x y)]
       (cond
-        (true? less) 1
-        (false? less) -1
+        (true? c) 1
+        (false? c) -1
         (nil? x) 1
         (nil? y) -1
         :else 0))))

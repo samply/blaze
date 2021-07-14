@@ -29,7 +29,7 @@
   (-> (bb/allocate value-size)
       (bb/put-byte-string! hash)
       (bb/put-long! (state num-changes op))
-      (bb/array)))
+      bb/array))
 
 
 (defn index-entries [tid id t hash num-changes op]

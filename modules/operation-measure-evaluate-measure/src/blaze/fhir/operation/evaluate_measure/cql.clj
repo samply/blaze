@@ -62,8 +62,7 @@
   [combine-op context]
   (fn batch-db-combine-op
     ([]
-     (-> (update context :db d/new-batch-db)
-         (assoc ::result (combine-op))))
+     (-> (update context :db d/new-batch-db) (assoc ::result (combine-op))))
     ([context]
      (close-batch-db! context)
      (combine-op (::result context)))

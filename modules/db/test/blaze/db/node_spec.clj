@@ -14,7 +14,7 @@
     [blaze.db.spec]
     [blaze.db.tx-log-spec]
     [clojure.spec.alpha :as s]
-    [java-time :as jt]))
+    [java-time :as time]))
 
 
 (s/fdef node/new-node
@@ -25,4 +25,4 @@
                :kv-store :blaze.db/kv-store
                :resource-store :blaze.db/resource-store
                :search-param-registry :blaze.db/search-param-registry
-               :poll-timeout jt/duration?))
+               :poll-timeout time/duration?))

@@ -1,6 +1,5 @@
 (ns blaze.elm.compiler.test-util
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.literal :as elm]
@@ -69,6 +68,23 @@
 (def now (OffsetDateTime/now (ZoneOffset/ofHours 0)))
 
 
+(def dynamic-compile-ctx
+  {:library
+   {:parameters
+    {:def
+     [{:name "true"}
+      {:name "false"}
+      {:name "nil"}]}}})
+
+
+(def dynamic-eval-ctx
+  {:parameters {"true" true "false" false "nil" nil}})
+
+
+(defn dynamic-compile-eval [elm]
+  (core/-eval (c/compile dynamic-compile-ctx elm) dynamic-eval-ctx nil nil))
+
+
 (defn binary-operand [type]
   {:type type :operand [{:type "Null"} {:type "Null"}]})
 
@@ -92,11 +108,8 @@
 
 (defmacro testing-unary-dynamic-null [elm-constructor]
   `(testing "Dynamic Null"
-     (with-open [node# (mem-node-with [])]
-       (let [context# {:eval-context "Patient" :node node#}
-             elm# (~elm-constructor (elm/singleton-from patient-retrieve-elm))
-             expr# (c/compile context# elm#)]
-         (is (nil? (core/-eval expr# {} nil nil)))))))
+     (let [elm# (~elm-constructor #elm/parameter-ref"nil")]
+       (is (nil? (dynamic-compile-eval elm#))))))
 
 
 (defmacro testing-unary-null [elm-constructor]
@@ -113,24 +126,19 @@
 
 
 (defmacro testing-binary-dynamic-null [elm-constructor non-null-op-1 non-null-op-2]
-  `(with-open [node# (mem-node-with [])]
-     (let [context# {:eval-context "Patient" :node node#}]
-       (testing "Dynamic Null"
-         (let [elm# (~elm-constructor
-                      [(elm/singleton-from patient-retrieve-elm)
-                       (elm/singleton-from patient-retrieve-elm)])
-               expr# (c/compile context# elm#)]
-           (is (nil? (core/-eval expr# {} nil nil))))
-         (let [elm# (~elm-constructor
-                      [~non-null-op-1
-                       (elm/singleton-from patient-retrieve-elm)])
-               expr# (c/compile context# elm#)]
-           (is (nil? (core/-eval expr# {} nil nil))))
-         (let [elm# (~elm-constructor
-                      [(elm/singleton-from patient-retrieve-elm)
-                       ~non-null-op-2])
-               expr# (c/compile context# elm#)]
-           (is (nil? (core/-eval expr# {} nil nil))))))))
+  `(testing "Dynamic Null"
+     (let [elm# (~elm-constructor
+                  [#elm/parameter-ref"nil"
+                   #elm/parameter-ref"nil"])]
+       (is (nil? (dynamic-compile-eval elm#))))
+     (let [elm# (~elm-constructor
+                  [~non-null-op-1
+                   #elm/parameter-ref"nil"])]
+       (is (nil? (dynamic-compile-eval elm#))))
+     (let [elm# (~elm-constructor
+                  [#elm/parameter-ref"nil"
+                   ~non-null-op-2])]
+       (is (nil? (dynamic-compile-eval elm#))))))
 
 
 (defmacro testing-binary-null
@@ -159,8 +167,3 @@
 
 (defn compile-binop-precision [constructor op-constructor op-1 op-2 precision]
   (c/compile {} (constructor [(op-constructor op-1) (op-constructor op-2) precision])))
-
-
-(def dynamic-resource
-  "ELM expression returning the current resource."
-  (elm/singleton-from patient-retrieve-elm))

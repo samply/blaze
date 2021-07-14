@@ -1,6 +1,5 @@
 (ns blaze.elm.compiler.arithmetic-operators-test
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.arithmetic-operators-spec]
     [blaze.elm.compiler.core :as core]
@@ -813,38 +812,40 @@
 ;; Precision determines the decimal place at which the rounding will occur. If
 ;; precision is not specified or null, 0 is assumed.
 (deftest compile-round-test
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Without precision"
-        (testing "Static"
-          (are [x res] (= res (c/compile {} (elm/round [x])))
-            #elm/integer"1" 1M
-            #elm/decimal"1" 1M
-            #elm/decimal"0.5" 1M
-            #elm/decimal"0.4" 0M
-            #elm/decimal"-0.4" 0M
-            #elm/decimal"-0.5" -1M
-            #elm/decimal"-0.6" -1M
-            #elm/decimal"-1.1" -1M
-            #elm/decimal"-1.5" -2M
-            #elm/decimal"-1.6" -2M
-            {:type "Null"} nil))
+  (testing "Without precision"
+    (testing "Static"
+      (are [x res] (= res (c/compile {} (elm/round [x])))
+        #elm/integer"1" 1M
+        #elm/decimal"1" 1M
+        #elm/decimal"0.5" 1M
+        #elm/decimal"0.4" 0M
+        #elm/decimal"-0.4" 0M
+        #elm/decimal"-0.5" -1M
+        #elm/decimal"-0.6" -1M
+        #elm/decimal"-1.1" -1M
+        #elm/decimal"-1.5" -2M
+        #elm/decimal"-1.6" -2M
+        {:type "Null"} nil))
 
-        (testing "Dynamic Null"
-          (let [elm (elm/round [(elm/singleton-from tu/patient-retrieve-elm)])
-                expr (c/compile context elm)]
-            (is (nil? (core/-eval expr {} nil nil))))))
+    (testing "Dynamic Null"
+      (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+            elm #elm/round[#elm/parameter-ref"x"]
+            expr (c/compile compile-ctx elm)
+            eval-ctx {:parameters {"x" nil}}]
+        (is (nil? (core/-eval expr eval-ctx nil nil))))))
 
-      (testing "With precision"
-        (testing "Static"
-          (are [x precision res] (= res (c/compile {} (elm/round [x precision])))
-            #elm/decimal"3.14159" #elm/integer"3" 3.142M
-            {:type "Null"} #elm/integer"3" nil))
+  (testing "With precision"
+    (testing "Static"
+      (are [x precision res] (= res (c/compile {} (elm/round [x precision])))
+        #elm/decimal"3.14159" #elm/integer"3" 3.142M
+        {:type "Null"} #elm/integer"3" nil))
 
-        (testing "Dynamic Null"
-          (let [elm (elm/round [(elm/singleton-from tu/patient-retrieve-elm) #elm/integer"3"])
-                expr (c/compile context elm)]
-            (is (nil? (core/-eval expr {} nil nil)))))))))
+    (testing "Dynamic Null"
+      (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+            elm #elm/round[#elm/parameter-ref"x" #elm/integer"3"]
+            expr (c/compile compile-ctx elm)
+            eval-ctx {:parameters {"x" nil}}]
+        (is (nil? (core/-eval expr eval-ctx nil nil)))))))
 
 
 ;; 16.17. Subtract

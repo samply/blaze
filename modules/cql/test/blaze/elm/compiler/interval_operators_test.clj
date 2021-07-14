@@ -1,6 +1,5 @@
 (ns blaze.elm.compiler.interval-operators-test
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.interval-operators]
@@ -81,17 +80,15 @@
       #elm/interval [#elm/integer"1" #elm/integer"2" :>] (interval 1 1)
       #elm/interval [:< #elm/integer"1" #elm/integer"3" :>] (interval 2 2)))
 
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Dynamic"
-        (are [elm res] (= res (core/-eval (c/compile context elm) {} nil nil))
-          (elm/interval [:< (elm/as ["{urn:hl7-org:elm-types:r1}Integer" (elm/singleton-from tu/patient-retrieve-elm)])
-                         #elm/integer"1"])
-          (interval nil 1)
+  (testing "Dynamic"
+    (are [elm res] (= res (tu/dynamic-compile-eval elm))
+      (elm/interval [:< (elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref"nil"])
+                     #elm/integer"1"])
+      (interval nil 1)
 
-          (elm/interval [#elm/integer"1"
-                         (elm/as ["{urn:hl7-org:elm-types:r1}Integer" (elm/singleton-from tu/patient-retrieve-elm)]) :>])
-          (interval 1 nil)))))
+      (elm/interval [#elm/integer"1"
+                     (elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref"nil"]) :>])
+      (interval 1 nil)))
 
   (testing "Invalid interval"
     (are [elm] (thrown? Exception (core/-eval (c/compile {} elm) {} nil nil))

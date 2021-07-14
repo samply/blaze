@@ -1,29 +1,26 @@
 (ns blaze.handler.app
   (:require
-    [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.ring]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
 
 
-(defn router [health-handler]
+(defn- options-handler [_]
+  (-> (ring/response nil)
+      (ring/status 405)))
+
+
+(defn- router [health-handler]
   (reitit.ring/router
     [["/health"
       {:head health-handler
        :get health-handler}]]
     {:syntax :bracket
-     :reitit.ring/default-options-endpoint
-     {:handler
-      (fn [_]
-        (-> (ring/response nil)
-            (ring/status 405)))}}))
+     :reitit.ring/default-options-endpoint {:handler options-handler}}))
 
 
-(s/fdef handler
-  :args (s/cat :rest-api fn? :health-handler fn?))
-
-(defn handler
+(defn- handler
   "Whole app Ring handler."
   [rest-api health-handler]
   (reitit.ring/ring-handler

@@ -10,6 +10,7 @@
     [blaze.db.kv :as kv])
   (:import
     [com.github.benmanes.caffeine.cache Cache]
+    [com.google.common.primitives Ints]
     [java.util.function Function]))
 
 
@@ -198,14 +199,11 @@
 
 (defn- start-key
   ([tid]
-   (-> (bb/allocate Integer/BYTES)
-       (bb/put-int! tid)
-       (bb/flip!)
-       (bs/from-byte-buffer)))
+   (-> (Ints/toByteArray tid) bs/from-byte-array))
   ([tid start-id t]
    (-> (encode-key-buf tid start-id t)
-       (bb/flip!)
-       (bs/from-byte-buffer))))
+       bb/flip!
+       bs/from-byte-buffer)))
 
 
 (defn type-list

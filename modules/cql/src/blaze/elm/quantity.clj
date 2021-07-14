@@ -27,7 +27,7 @@
   (try
     (.parse ucum-format s)
     (catch Throwable t
-      (throw (ex-info (str "Problem while parsing the unit `" s "`.")
+      (throw (ex-info (format "Problem while parsing the unit `%s`." s)
                       (cond->
                         {::anom/category ::anom/incorrect
                          :unit s}

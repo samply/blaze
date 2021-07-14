@@ -1,5 +1,6 @@
 (ns blaze.cql-test
   "https://cql.hl7.org/2019May/tests.html"
+  (:refer-clojure :exclude [compile eval])
   (:require
     [blaze.cql-translator :refer [translate]]
     [blaze.cql-translator-spec]
@@ -19,8 +20,7 @@
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom])
   (:import
-    [java.time OffsetDateTime])
-  (:refer-clojure :exclude [compile eval]))
+    [java.time OffsetDateTime]))
 
 
 (st/instrument)

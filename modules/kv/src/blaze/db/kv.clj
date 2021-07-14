@@ -1,7 +1,8 @@
 (ns blaze.db.kv
   "Protocols for key-value store backend implementations."
   (:refer-clojure :exclude [get key])
-  (:import [java.io Closeable]))
+  (:import
+    [java.io Closeable]))
 
 
 (defprotocol KvIterator

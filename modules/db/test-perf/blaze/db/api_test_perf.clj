@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.db.api :as d]
-    [blaze.db.impl.index.tx-success :as tsi]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.kv.mem :refer [new-mem-kv-store]]
     [blaze.db.node :as node]
     [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
@@ -11,7 +11,7 @@
     [blaze.executors :as ex]
     [clojure.test :refer [deftest is testing]]
     [criterium.core :as criterium]
-    [java-time :as jt]
+    [java-time :as time]
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache Caffeine]
@@ -59,7 +59,7 @@
 
 
 (defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
+  (.build (Caffeine/newBuilder) (tx-success/cache-loader index-kv-store)))
 
 
 (defn new-node []
@@ -70,7 +70,7 @@
                    indexer-executor index-kv-store
                    (new-kv-resource-store (new-mem-kv-store)
                                           resource-store-executor)
-                   search-param-registry (jt/millis 10))))
+                   search-param-registry (time/millis 10))))
 
 
 (deftest transact-test

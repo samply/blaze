@@ -9,16 +9,16 @@
    * DateTime
    * Time
    * Quantity"
+  (:refer-clojure :exclude [boolean? decimal? integer? string? type])
   (:require
     [cognitect.anomalies :as anom]
-    [java-time.core :as jt.c])
+    [java-time.core :as time-core])
   (:import
     [com.google.common.hash PrimitiveSink]
     [java.nio.charset StandardCharsets]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
     [java.time.temporal Temporal TemporalUnit TemporalAccessor TemporalField]
-    [java.time.format DateTimeParseException])
-  (:refer-clojure :exclude [boolean? decimal? integer? string? type]))
+    [java.time.format DateTimeParseException]))
 
 
 (set! *warn-on-reflection* true)
@@ -211,7 +211,7 @@
       (instance? DateTimeYear x) (.equals year (.-year ^DateTimeYear x))
       (instance? Year x) (.equals year x)))
 
-  jt.c/Ordered
+  time-core/Ordered
   (single-before? [_ x]
     (and (instance? DateTimeYear x) (.isBefore ^Year year (.-year ^DateTimeYear x))))
   (single-after? [_ x]
@@ -260,7 +260,7 @@
       (.equals year-month (.-year_month ^DateTimeYearMonth x))
       (instance? YearMonth x) (.equals year-month x)))
 
-  jt.c/Ordered
+  time-core/Ordered
   (single-before? [_ x]
     (and (instance? DateTimeYearMonth x)
          (.isBefore ^YearMonth year-month (.-year_month ^DateTimeYearMonth x))))
@@ -313,7 +313,7 @@
       (.equals date (.-date ^DateTimeYearMonthDay x))
       (instance? LocalDate x) (.equals date x)))
 
-  jt.c/Ordered
+  time-core/Ordered
   (single-before? [_ x]
     (and (instance? DateTimeYearMonthDay x)
          (.isBefore ^LocalDate date (.-date ^DateTimeYearMonthDay x))))

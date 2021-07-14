@@ -1,6 +1,5 @@
 (ns blaze.elm.compiler.nullological-operators-test
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
@@ -62,20 +61,11 @@
       #elm/boolean"false" true
       {:type "Null"} false))
 
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Dynamic"
-        ;; dynamic-resource will evaluate to true
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-false x)) {} true nil))
-          tu/dynamic-resource false)
-
-        ;; dynamic-resource will evaluate to false
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-false x)) {} false nil))
-          tu/dynamic-resource true)
-
-        ;; dynamic-resource will evaluate to nil
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-false x)) {} nil nil))
-          tu/dynamic-resource false)))))
+  (testing "Dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/is-false x)))
+      #elm/parameter-ref"true" false
+      #elm/parameter-ref"false" true
+      #elm/parameter-ref"nil" false)))
 
 
 ;; 14.4. IsNull
@@ -90,20 +80,11 @@
       #elm/boolean"false" false
       {:type "Null"} true))
 
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Dynamic"
-        ;; dynamic-resource will evaluate to true
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-null x)) {} true nil))
-          tu/dynamic-resource false)
-
-        ;; dynamic-resource will evaluate to false
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-null x)) {} false nil))
-          tu/dynamic-resource false)
-
-        ;; dynamic-resource will evaluate to nil
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-null x)) {} nil nil))
-          tu/dynamic-resource true)))))
+  (testing "Dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/is-null x)))
+      #elm/parameter-ref"true" false
+      #elm/parameter-ref"false" false
+      #elm/parameter-ref"nil" true)))
 
 
 ;; 14.5. IsTrue
@@ -118,17 +99,8 @@
       #elm/boolean"false" false
       {:type "Null"} false))
 
-  (with-open [node (mem-node-with [])]
-    (let [context {:eval-context "Patient" :node node}]
-      (testing "Dynamic"
-        ;; dynamic-resource will evaluate to true
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-true x)) {} true nil))
-          tu/dynamic-resource true)
-
-        ;; dynamic-resource will evaluate to false
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-true x)) {} false nil))
-          tu/dynamic-resource false)
-
-        ;; dynamic-resource will evaluate to nil
-        (are [x res] (= res (core/-eval (c/compile context (elm/is-true x)) {} nil nil))
-          tu/dynamic-resource false)))))
+  (testing "Dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/is-true x)))
+      #elm/parameter-ref"true" true
+      #elm/parameter-ref"false" false
+      #elm/parameter-ref"nil" false)))

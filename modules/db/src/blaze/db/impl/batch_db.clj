@@ -13,7 +13,7 @@
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
-    [blaze.db.impl.index.t-by-instant :as ti]
+    [blaze.db.impl.index.t-by-instant :as t-by-instant]
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.impl.protocols :as p]
@@ -99,12 +99,12 @@
   (-instance-history [_ tid id start-t since]
     (let [{:keys [snapshot raoi t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (ti/t-by-instant snapshot)) 0)]
+          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
       (rao/instance-history raoi tid id start-t end-t)))
 
   (-total-num-of-instance-changes [_ tid id since]
     (let [{:keys [snapshot resource-handle t]} context
-          end-t (or (some->> since (ti/t-by-instant snapshot)) 0)]
+          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
       (rao/num-of-instance-changes resource-handle tid id t end-t)))
 
 
@@ -114,7 +114,7 @@
   (-type-history [_ tid start-t start-id since]
     (let [{:keys [snapshot t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (ti/t-by-instant snapshot)) 0)]
+          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [taoi (kv/new-iterator snapshot :type-as-of-index)]
@@ -124,7 +124,7 @@
   (-total-num-of-type-changes [_ type since]
     (let [{:keys [snapshot t]} context
           tid (codec/tid type)
-          end-t (some->> since (ti/t-by-instant snapshot))]
+          end-t (some->> since (t-by-instant/t-by-instant snapshot))]
       (with-open [snapshot (kv/new-snapshot (:kv-store node))
                   iter (type-stats/new-iterator snapshot)]
         (- (:num-changes (type-stats/get! iter tid t) 0)
@@ -137,7 +137,7 @@
   (-system-history [_ start-t start-tid start-id since]
     (let [{:keys [snapshot t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (ti/t-by-instant snapshot)) 0)]
+          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [saoi (kv/new-iterator snapshot :system-as-of-index)]
@@ -146,7 +146,7 @@
 
   (-total-num-of-system-changes [_ since]
     (let [{:keys [snapshot t]} context
-          end-t (some->> since (ti/t-by-instant snapshot))]
+          end-t (some->> since (t-by-instant/t-by-instant snapshot))]
       (with-open [snapshot (kv/new-snapshot (:kv-store node))
                   iter (system-stats/new-iterator snapshot)]
         (- (:num-changes (system-stats/get! iter t) 0)
@@ -243,8 +243,7 @@
 (defn- decode-clauses [clauses]
   (mapv
     (fn [[search-param modifier values]]
-      (cons (cond-> (:code search-param) modifier (str ":" modifier))
-            values))
+      (cons (cond-> (:code search-param) modifier (str ":" modifier)) values))
     clauses))
 
 
