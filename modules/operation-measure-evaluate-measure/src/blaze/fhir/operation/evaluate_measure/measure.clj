@@ -455,11 +455,10 @@
 (defn- evaluate-groups [{:keys [subject-type] :as context} id groups]
   (log/debug (format "Start evaluating Measure with ID `%s`..." id))
   (let [timer (prom/timer evaluate-duration-seconds subject-type)]
-    (try
-      (evaluate-groups* context groups)
-      (finally
-        (let [duration (prom/observe-duration! timer)]
-          (log/debug (evaluate-groups-msg id subject-type duration)))))))
+    (when-ok [groups (evaluate-groups* context groups)]
+      (let [duration (prom/observe-duration! timer)]
+        (log/debug (evaluate-groups-msg id subject-type duration))
+        [groups duration]))))
 
 
 (defn- canonical [base-url router {:keys [id url version]}]
@@ -479,9 +478,21 @@
   (or (get-first-code codings "http://hl7.org/fhir/resource-types") "Patient"))
 
 
-(defn- measure-report [report-type measure-ref now start end result]
+(defn eval-duration [duration]
+  (type/map->Extension
+    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
+     :value
+     (type/map->Quantity
+       {:code #fhir/code"s"
+        :system #fhir/uri"http://unitsofmeasure.org"
+        :unit "s"
+        :value (bigdec duration)})}))
+
+
+(defn- measure-report [report-type measure-ref now start end result duration]
   (cond->
     {:fhir/type :fhir/MeasureReport
+     :extension [(eval-duration duration)]
      :status #fhir/code"complete"
      :type
      (if (= "subject-list" report-type)
@@ -510,10 +521,10 @@
     (let [context {:db db :now now :library library
                    :subject-type (subject-type measure)
                    :report-type report-type}]
-      (when-ok [result (evaluate-groups context id groups)]
+      (when-ok [[groups duration] (evaluate-groups context id groups)]
         (cond->
           {:resource
            (measure-report report-type (canonical base-url router measure) now
-                           start end result)}
-          (seq (:tx-ops result))
-          (assoc :tx-ops (:tx-ops result)))))))
+                           start end groups duration)}
+          (seq (:tx-ops groups))
+          (assoc :tx-ops (:tx-ops groups)))))))

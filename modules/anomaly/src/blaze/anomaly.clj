@@ -16,11 +16,11 @@
   (throw (ex-anom (assoc kvs ::anom/category category ::anom/message message))))
 
 
-(defmacro when-ok [[sym form] & body]
-  `(let [~sym ~form]
-     (if (::anom/category ~sym)
-       ~sym
-       (do ~@body))))
+(defmacro when-ok [[binding-form form] & body]
+  `(let [res# ~form]
+     (if (::anom/category res#)
+       res#
+       (let [~binding-form res#] ~@body))))
 
 
 (defmacro if-ok [[sym form] then else]
