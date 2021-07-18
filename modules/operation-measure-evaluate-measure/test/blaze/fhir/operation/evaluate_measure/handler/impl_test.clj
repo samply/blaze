@@ -313,6 +313,11 @@
 
             (given body
               :fhir/type := :fhir/MeasureReport
+              [:extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
+              [:extension 0 :value :code] := #fhir/code"s"
+              [:extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
+              [:extension 0 :value :unit] := "s"
+              [:extension 0 :value :value] :instanceof BigDecimal
               :status := #fhir/code"complete"
               :type := #fhir/code"summary"
               :measure := #fhir/canonical"url-181501"

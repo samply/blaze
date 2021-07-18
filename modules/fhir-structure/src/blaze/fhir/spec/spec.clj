@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec.spec
   (:require
+    [blaze.fhir.spec.impl]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]))
