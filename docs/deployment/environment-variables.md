@@ -72,7 +72,8 @@ More information about distributed deployment are available [here](distributed.m
 | CONNECTION_TIMEOUT | 5 s | v0.6.3 | connection timeout for outbound HTTP requests |
 | REQUEST_TIMEOUT | 30 s | v0.6.3 | REMOVED |
 | TERM_SERVICE_URI | [http://tx.fhir.org/r4](http://tx.fhir.org/r4) | v0.6 | Base URI of the terminology service |
-| BASE_URL | http://localhost:8080 |  | The URL under which Blaze is accessible by clients. The [FHIR RESTful API](https://www.hl7.org/fhir/http.html) will be accessible under `BASE_URL/fhir`. Possible X-Forwarded-Host, X-Forwarded-Proto and Forwarded request headers will override this URL. |
+| BASE_URL | http://localhost:8080 |  | The URL under which Blaze is accessible by clients. The [FHIR RESTful API](https://www.hl7.org/fhir/http.html) will be accessible under `BASE_URL/CONTEXT_PATH`. Possible X-Forwarded-Host, X-Forwarded-Proto and Forwarded request headers will override this URL. |
+| CONTEXT_PATH | /fhir | v0.11.0 | Context path under which the FHIR RESTful API will be accessible. |
 | SERVER_PORT | 8080 |  | The port of the main HTTP server |
 | METRICS_SERVER_PORT | 8081 | v0.6 | The port of the Prometheus metrics server |
 | LOG_LEVEL | info | v0.6 | one of trace, debug, info, warn or error |
