@@ -38,16 +38,16 @@
   {:local/root "modules/thread-pool-executor-collector"}
 
   io.netty/netty-codec-http
-  {:mvn/version "4.1.65.Final"}
+  {:mvn/version "4.1.66.Final"}
 
   io.netty/netty-handler-proxy
-  {:mvn/version "4.1.65.Final"}
+  {:mvn/version "4.1.66.Final"}
 
   io.netty/netty-resolver-dns
-  {:mvn/version "4.1.65.Final"}
+  {:mvn/version "4.1.66.Final"}
 
   io.netty/netty-transport-native-epoll$linux-x86_64
-  {:mvn/version "4.1.65.Final"}
+  {:mvn/version "4.1.66.Final"}
 
   io.prometheus/simpleclient_hotspot
   {:mvn/version "0.11.0"}
@@ -59,16 +59,16 @@
   {:mvn/version "1.10.3"}
 
   org.clojure/tools.reader
-  {:mvn/version "1.3.5"}
+  {:mvn/version "1.3.6"}
 
   org.slf4j/slf4j-nop
-  {:mvn/version "1.7.31"}}
+  {:mvn/version "1.7.32"}}
 
  :aliases
  {:depstar
   {:replace-deps
    {com.github.seancorfield/depstar
-    {:mvn/version "2.1.245"}}
+    {:mvn/version "2.1.267"}}
    :ns-default hf.depstar}
 
   :test
@@ -99,10 +99,10 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "0.15.3"}
+    {:mvn/version "0.16.0"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "1.7.31"}}
+    {:mvn/version "1.7.32"}}
 
    :main-opts
    ["-m" "antq.core"

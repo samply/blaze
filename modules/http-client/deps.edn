@@ -3,7 +3,7 @@
   {:local/root "../module-base"}
 
   hato/hato
-  {:mvn/version "0.8.1"}}
+  {:mvn/version "0.8.2"}}
 
  :aliases
  {:test
