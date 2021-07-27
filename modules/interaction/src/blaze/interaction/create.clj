@@ -8,9 +8,9 @@
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.response.create :as response]
-    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create.spec]
+    [blaze.interaction.util :as iu]
     [blaze.luid :refer [luid]]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
@@ -56,7 +56,7 @@
         ::reitit/keys [router]}]
     (let [return-preference (handler-util/preference headers "return")
           id (luid)
-          conditional-clauses (some-> headers (get "if-none-exist") fhir-util/clauses)]
+          conditional-clauses (some-> headers (get "if-none-exist") iu/clauses)]
       (-> (ac/supply (validate-resource type body))
           (ac/then-apply #(assoc % :id id))
           (ac/then-compose #(d/transact node [(create-op % conditional-clauses)]))

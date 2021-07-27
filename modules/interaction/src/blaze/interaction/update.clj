@@ -7,9 +7,9 @@
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.response.create :as response]
-    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.update.spec]
+    [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -68,7 +68,7 @@
     (let [db-before (d/db node)]
       (-> (ac/supply (validate-resource type id body))
           (ac/then-compose
-            #(d/transact node [(tx-op % (fhir-util/etag->t if-match))]))
+            #(d/transact node [(tx-op % (iu/etag->t if-match))]))
           ;; it's important to switch to the executor here, because otherwise
           ;; the central indexing thread would execute response building.
           (ac/then-apply-async identity executor)

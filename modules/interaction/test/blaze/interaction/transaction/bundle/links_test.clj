@@ -1,16 +1,14 @@
-(ns blaze.bundle-test
+(ns blaze.interaction.transaction.bundle.links-test
   (:require
-    [blaze.bundle :as bundle]
-    [blaze.bundle-spec]
     [blaze.fhir.spec.type :as type]
+    [blaze.interaction.transaction.bundle.links :as links]
+    [blaze.interaction.transaction.bundle.links-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
+    [juxt.iota :refer [given]]))
 
 
 (st/instrument)
-(log/set-level! :trace)
 
 
 (defn- fixture [f]
@@ -42,7 +40,7 @@
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Patient"}}]]
-      (given (bundle/resolve-entry-links entries)
+      (given (links/resolve-entry-links entries)
         [0 :resource :subject :reference] := "Patient/0")))
 
   (testing "Patient.generalPractitioner reference"
@@ -64,7 +62,7 @@
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Patient"}}]]
-      (given (bundle/resolve-entry-links entries)
+      (given (links/resolve-entry-links entries)
         [1 :resource :generalPractitioner 0 :reference] := "Organization/0")))
 
   (testing "Claim.diagnosis.diagnosisReference reference"
@@ -87,7 +85,7 @@
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Claim"}}]]
-      (given (bundle/resolve-entry-links entries)
+      (given (links/resolve-entry-links entries)
         [1 :resource :diagnosis 0 :diagnosisReference :reference] := "Condition/0")))
 
   (testing "preserves complex-type records"
@@ -95,7 +93,7 @@
           [{:resource
             {:fhir/type :fhir/Observation :id "0"
              :code #fhir/CodeableConcept{}}}]]
-      (given (bundle/resolve-entry-links entries)
+      (given (links/resolve-entry-links entries)
         [0 :resource :code type/type] := :fhir/CodeableConcept))))
 
 
@@ -118,88 +116,5 @@
           :request
           {:method #fhir/code"POST"
            :url #fhir/uri"ExplanationOfBenefit"}}]]
-    (given (bundle/resolve-entry-links entries)
+    (given (links/resolve-entry-links entries)
       [1 :resource :contained 0 :subject :reference] := "Patient/0")))
-
-
-(deftest tx-ops-test
-  (testing "create"
-    (given
-      (bundle/tx-ops
-        [{:fhir/type :fhir.Bundle/entry
-          :resource
-          {:fhir/type :fhir/Patient
-           :id "id-220129"}
-          :request
-          {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"POST"
-           :url #fhir/uri"Patient"}}])
-      [0 count] := 2
-      [0 0] := :create
-      [0 1 :fhir/type] := :fhir/Patient
-      [0 1 :id] := "id-220129"))
-
-  (testing "conditional create"
-    (given
-      (bundle/tx-ops
-        [{:fhir/type :fhir.Bundle/entry
-          :resource
-          {:fhir/type :fhir/Patient
-           :id "id-220200"}
-          :request
-          {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"POST"
-           :url #fhir/uri"Patient"
-           :ifNoneExist "birthdate=2020"}}])
-      [0 0] := :create
-      [0 1 :fhir/type] := :fhir/Patient
-      [0 1 :id] := "id-220200"
-      [0 2 count] := 1
-      [0 2 0] := ["birthdate" "2020"]))
-
-  (testing "update"
-    (given
-      (bundle/tx-ops
-        [{:fhir/type :fhir.Bundle/entry
-          :resource
-          {:fhir/type :fhir/Patient
-           :id "id-214728"}
-          :request
-          {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"PUT"
-           :url #fhir/uri"Patient/id-214728"}}])
-      [0 count] := 2
-      [0 0] := :put
-      [0 1 :fhir/type] := :fhir/Patient
-      [0 1 :id] := "id-214728"))
-
-  (testing "version aware update"
-    (given
-      (bundle/tx-ops
-        [{:fhir/type :fhir.Bundle/entry
-          :resource
-          {:fhir/type :fhir/Patient
-           :id "id-214728"}
-          :request
-          {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"PUT"
-           :url #fhir/uri"Patient/id-214728"
-           :ifMatch "W/\"215150\""}}])
-      [0 count] := 3
-      [0 0] := :put
-      [0 1 :fhir/type] := :fhir/Patient
-      [0 1 :id] := "id-214728"
-      [0 2] := 215150))
-
-  (testing "delete"
-    (given
-      (bundle/tx-ops
-        [{:fhir/type :fhir.Bundle/entry
-          :request
-          {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"DELETE"
-           :url #fhir/uri"Patient/id-215232"}}])
-      [0 count] := 3
-      [0 0] := :delete
-      [0 1] := "Patient"
-      [0 2] := "id-215232")))

@@ -1,23 +1,7 @@
-(ns blaze.bundle
-  "FHIR Bundle specific stuff."
+(ns blaze.interaction.transaction.bundle.links
   (:require
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.handler.fhir.util :as fhir-util]
-    [reitit.core :as reitit]))
-
-
-(def ^:private router
-  (reitit/router
-    [["{type}" :type]
-     ["{type}/{id}" :resource]]
-    {:syntax :bracket}))
-
-
-(defn match-url [url]
-  (let [match (reitit/match-by-path router url)
-        {:keys [type id]} (:path-params match)]
-    [type id]))
+    [blaze.fhir.spec.type :as type]))
 
 
 (defn- resolve-link [index link]
@@ -80,31 +64,3 @@
           (assoc entry :resource (resolve-links {:index index} resource))
           entry))
       entries)))
-
-
-(defmulti entry-tx-op (fn [{{:keys [method]} :request}] (type/value method)))
-
-
-(defmethod entry-tx-op "POST"
-  [{:keys [resource] {if-none-exist :ifNoneExist} :request}]
-  (cond-> [:create resource]
-    if-none-exist
-    (conj (fhir-util/clauses if-none-exist))))
-
-
-(defmethod entry-tx-op "PUT"
-  [{{if-match :ifMatch} :request :keys [resource]}]
-  (let [t (fhir-util/etag->t if-match)]
-    (cond-> [:put resource] t (conj t))))
-
-
-(defmethod entry-tx-op "DELETE"
-  [{{:keys [url]} :request}]
-  (let [[type id] (match-url (type/value url))]
-    [:delete type id]))
-
-
-(defn tx-ops
-  "Returns transaction operations of all `entries` of a transaction bundle."
-  [entries]
-  (mapv entry-tx-op (resolve-entry-links entries)))

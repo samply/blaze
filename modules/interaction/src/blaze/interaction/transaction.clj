@@ -5,14 +5,16 @@
   (:require
     [blaze.anomaly :refer [throw-anom ex-anom]]
     [blaze.async.comp :as ac]
-    [blaze.bundle :as bundle]
     [blaze.db.api :as d]
     [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
+    [blaze.interaction.transaction.bundle :as bundle]
+    [blaze.interaction.transaction.bundle.url :as url]
     [blaze.interaction.transaction.spec]
+    [blaze.interaction.util :as iu]
     [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
@@ -40,7 +42,7 @@
   [idx {:keys [resource] {:keys [method url] :as request} :request :as entry}]
   (let [method (type/value method)
         [url] (some-> (type/value url) strip-leading-slash (str/split #"\?"))
-        [type id] (some-> url bundle/match-url)]
+        [type id] (some-> url url/match-url)]
     (cond
       (nil? request)
       {::anom/category ::anom/incorrect
@@ -231,7 +233,7 @@
   (let [type (name type)]
     (if-let [handle (d/resource-handle db type id)]
       (created-entry base-url router db handle)
-      (let [handle (first (d/type-query db type (fhir-util/clauses if-none-exist)))]
+      (let [handle (first (d/type-query db type (iu/clauses if-none-exist)))]
         (noop-entry db handle)))))
 
 

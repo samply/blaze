@@ -1,6 +1,5 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-test
   (:require
-    [blaze.bundle :as bundle]
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
@@ -45,8 +44,20 @@
     {:syntax :bracket}))
 
 
+(defmulti entry-tx-op (fn [{{:keys [method]} :request}] (type/value method)))
+
+
+(defmethod entry-tx-op "PUT"
+  [{:keys [resource]}]
+  [:put resource])
+
+
+(defn- tx-ops [entries]
+  (mapv entry-tx-op entries))
+
+
 (defn- node-with [{:keys [entry]}]
-  (mem-node-with [(bundle/tx-ops entry)]))
+  (mem-node-with [(tx-ops entry)]))
 
 
 (defn- slurp-resource [name]

@@ -148,17 +148,3 @@
   (is (= "http://localhost:8080/Patient/0/_history/1"
          (fhir-util/versioned-instance-url "http://localhost:8080" router
                                            "Patient" "0" "1"))))
-
-
-(deftest etag->t
-  (testing "accepts nil"
-    (is (nil? (fhir-util/etag->t nil))))
-
-  (testing "valid ETag"
-    (is (= 1 (fhir-util/etag->t "W/\"1\""))))
-
-  (testing "invalid ETag"
-    (are [s] (nil? (fhir-util/etag->t s))
-      "foo"
-      "W/1"
-      "W/\"a\"")))
