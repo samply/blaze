@@ -32,6 +32,7 @@ jobs:
     needs: [ lint ]
 
     strategy:
+      max-parallel: 8
       matrix:
         module:
         - async
@@ -93,6 +94,7 @@ jobs:
     needs: [ test ]
 
     strategy:
+      max-parallel: 2
       matrix:
         module:
         - async
