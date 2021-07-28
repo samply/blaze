@@ -23,7 +23,7 @@ jobs:
         version: '2021.07.28'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2
 
     - name: Lint
       run: make lint
@@ -77,15 +77,14 @@ jobs:
       with:
         tools-deps: '1.10.3.855'
 
-    - name: Cache Local Maven Repo
-      uses: actions/cache@v2.1.6
-      with:
-        path: |
-          ~/.m2/repository
-        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-repo-test-${{ matrix.module }}
-
     - name: Check out Git repository
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Test
       run: make -C modules/${{ matrix.module }} test
@@ -134,15 +133,14 @@ jobs:
       with:
         tools-deps: '1.10.3.855'
 
-    - name: Cache Local Maven Repo
-      uses: actions/cache@v2.1.6
-      with:
-        path: |
-          ~/.m2/repository
-        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-repo-test-coverage-${{ matrix.module }}
-
     - name: Check out Git repository
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-11-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Test Coverage
       run: make -C modules/${{ matrix.module }} test-coverage
@@ -178,15 +176,14 @@ jobs:
       with:
         tools-deps: '1.10.3.855'
 
-    - name: Cache Local Maven Repo
-      uses: actions/cache@v2.1.6
-      with:
-        path: |
-          ~/.m2/repository
-        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-repo-test-root
-
     - name: Check out Git repository
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
 
     - name: Test
       run: make test-root
@@ -207,15 +204,14 @@ jobs:
       with:
         tools-deps: '1.10.3.855'
 
-    - name: Cache Local Maven Repo
-      uses: actions/cache@v2.1.6
-      with:
-        path: |
-          ~/.m2/repository
-        key: ${{ runner.os }}-maven-repo-build
-
     - name: Check out Git repository
       uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-build-${{ hashFiles('**/deps.edn') }}
 
     - name: Build Uberjar
       run: make uberjar
