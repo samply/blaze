@@ -1,5 +1,6 @@
-(ns blaze.db.test-util
+(ns blaze.interaction.test-util
   (:require
+    [blaze.log]
     [clojure.test :refer [is]]
     [juxt.iota :refer [given]]))
 

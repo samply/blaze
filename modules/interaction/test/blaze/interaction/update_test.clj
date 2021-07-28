@@ -9,9 +9,9 @@
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
+    [blaze.interaction.test-util :refer [given-thrown]]
     [blaze.interaction.update]
-    [blaze.interaction.update-spec]
-    [blaze.log]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
@@ -66,6 +66,29 @@
 
 (def ^:private operation-outcome
   #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome")
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.interaction/update nil})
+      :key := :blaze.interaction/update
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.interaction/update {}})
+      :key := :blaze.interaction/update
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+
+  (testing "invalid executor"
+    (given-thrown (ig/init {:blaze.interaction/update {:executor "foo"}})
+      :key := :blaze.interaction/update
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `ex/executor?
+      [:explain ::s/problems 1 :val] := "foo")))
 
 
 (deftest handler-test

@@ -1,5 +1,8 @@
 {:deps
- {com.google.guava/guava
+ {blaze/spec
+  {:local/root "../spec"}
+
+  com.google.guava/guava
   {:mvn/version "30.1.1-jre"}}
 
  :aliases
@@ -7,7 +10,10 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
+   {clojure.java-time/clojure.java-time
+    {:mvn/version "0.3.2"}
+
+    lambdaisland/kaocha
     {:mvn/version "1.0.861"}
 
     org.clojars.akiel/iota
@@ -26,8 +32,11 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
+   {clojure.java-time/clojure.java-time
+    {:mvn/version "0.3.2"}
+
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}

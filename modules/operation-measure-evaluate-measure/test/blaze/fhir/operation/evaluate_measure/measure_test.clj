@@ -7,7 +7,6 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.log]
-    [blaze.luid :refer [luid]]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -17,8 +16,8 @@
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant OffsetDateTime ZoneOffset Year]
-    [java.util Base64]))
+    [java.time Clock Instant Year ZoneId]
+    [java.util Base64 Random]))
 
 
 (st/instrument)
@@ -34,7 +33,12 @@
 (test/use-fixtures :each fixture)
 
 
-(def now (OffsetDateTime/ofInstant Instant/EPOCH (ZoneOffset/ofHours 0)))
+(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+
+
+(def fixed-random
+  (proxy [Random] []
+    (nextLong [] 0)))
 
 
 (def router
@@ -94,9 +98,10 @@
    (evaluate name "population"))
   ([name report-type]
    (with-open [node (node-with (read-data name))]
-     (let [db (d/db node)
+     (let [context {:clock clock :rng-fn (constantly fixed-random)}
+           db (d/db node)
            period [(Year/of 2000) (Year/of 2020)]]
-       (evaluate-measure now db "" router
+       (evaluate-measure context db "" router
                          @(d/pull node (d/resource-handle db "Measure" "0"))
                          {:period period :report-type report-type})))))
 
@@ -118,14 +123,6 @@
         :group first
         :stratifier first
         :stratum)))
-
-
-(defn- new-ids []
-  (atom (map str (range))))
-
-
-(defn- take-from! [xs]
-  #(let [x (first @xs)] (swap! xs rest) x))
 
 
 (deftest integration-test
@@ -154,19 +151,18 @@
     "q34-medication" 1
     "q35-literal-library-ref" 1)
 
-  (with-redefs [luid (take-from! (new-ids))]
-    (let [result (evaluate "q1" "subject-list")]
-      (testing "MeasureReport is valid"
-        (is (s/valid? :blaze/resource (:resource result))))
+  (let [result (evaluate "q1" "subject-list")]
+    (testing "MeasureReport is valid"
+      (is (s/valid? :blaze/resource (:resource result))))
 
-      (given (first-population result)
-        :count := 1
-        [:subjectResults :reference] := "List/0")
+    (given (first-population result)
+      :count := 1
+      [:subjectResults :reference] := "List/AAAAAAAAAAAAAAAA")
 
-      (given (second (first (:tx-ops result)))
-        :fhir/type := :fhir/List
-        :id := "0"
-        [:entry 0 :item :reference] := "Patient/0")))
+    (given (second (first (:tx-ops result)))
+      :fhir/type := :fhir/List
+      :id := "AAAAAAAAAAAAAAAA"
+      [:entry 0 :item :reference] := "Patient/0"))
 
   (let [result (evaluate "q19-stratifier-ageclass")]
     (testing "MeasureReport is valid"
@@ -181,32 +177,31 @@
       [1 :value :text] := "70"
       [1 :population 0 :count] := 2))
 
-  (with-redefs [luid (take-from! (new-ids))]
-    (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
-      (testing "MeasureReport is valid"
-        (is (s/valid? :blaze/resource (:resource result))))
+  (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
+    (testing "MeasureReport is valid"
+      (is (s/valid? :blaze/resource (:resource result))))
 
-      (testing "MeasureReport type is `subject-list`"
-        (is (= #fhir/code"subject-list" (-> result :resource :type))))
+    (testing "MeasureReport type is `subject-list`"
+      (is (= #fhir/code"subject-list" (-> result :resource :type))))
 
-      (given (first-stratifier-strata result)
-        [0 :value :text] := "10"
-        [0 :population 0 :count] := 1
-        [0 :population 0 :subjectResults :reference] := "List/1"
-        [1 :value :text] := "70"
-        [1 :population 0 :count] := 2
-        [1 :population 0 :subjectResults :reference] := "List/2")
+    (given (first-stratifier-strata result)
+      [0 :value :text] := "10"
+      [0 :population 0 :count] := 1
+      [0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
+      [1 :value :text] := "70"
+      [1 :population 0 :count] := 2
+      [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC")
 
-      (given (:tx-ops result)
-        [1 1 :fhir/type] := :fhir/List
-        [1 1 :id] := "1"
-        [1 1 :status] := #fhir/code"current"
-        [1 1 :mode] := #fhir/code"working"
-        [1 1 :entry 0 :item :reference] := "Patient/0"
-        [2 1 :fhir/type] := :fhir/List
-        [2 1 :id] := "2"
-        [2 1 :entry 0 :item :reference] := "Patient/1"
-        [2 1 :entry 1 :item :reference] := "Patient/2")))
+    (given (:tx-ops result)
+      [1 1 :fhir/type] := :fhir/List
+      [1 1 :id] := "AAAAAAAAAAAAAAAB"
+      [1 1 :status] := #fhir/code"current"
+      [1 1 :mode] := #fhir/code"working"
+      [1 1 :entry 0 :item :reference] := "Patient/0"
+      [2 1 :fhir/type] := :fhir/List
+      [2 1 :id] := "AAAAAAAAAAAAAAAC"
+      [2 1 :entry 0 :item :reference] := "Patient/1"
+      [2 1 :entry 1 :item :reference] := "Patient/2"))
 
   (given (first-stratifier-strata (evaluate "q20-stratifier-city"))
     [0 :value :text] := "Jena"
@@ -233,38 +228,37 @@
     [2 :component 1 :value :text] := "male"
     [2 :population 0 :count] := 1)
 
-  (with-redefs [luid (take-from! (new-ids))]
-    (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
-      (testing "MeasureReport is valid"
-        (is (s/valid? :blaze/resource (:resource result))))
+  (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
+    (testing "MeasureReport is valid"
+      (is (s/valid? :blaze/resource (:resource result))))
 
-      (given (first-stratifier-strata result)
-        [0 :component 0 :code :text] := "age-class"
-        [0 :component 0 :value :text] := "10"
-        [0 :component 1 :code :text] := "gender"
-        [0 :component 1 :value :text] := "male"
-        [0 :population 0 :count] := 1
-        [0 :population 0 :subjectResults :reference] := "List/1"
-        [1 :component 0 :value :text] := "70"
-        [1 :component 1 :value :text] := "female"
-        [1 :population 0 :count] := 2
-        [1 :population 0 :subjectResults :reference] := "List/3"
-        [2 :component 0 :value :text] := "70"
-        [2 :component 1 :value :text] := "male"
-        [2 :population 0 :count] := 1
-        [2 :population 0 :subjectResults :reference] := "List/2")
+    (given (first-stratifier-strata result)
+      [0 :component 0 :code :text] := "age-class"
+      [0 :component 0 :value :text] := "10"
+      [0 :component 1 :code :text] := "gender"
+      [0 :component 1 :value :text] := "male"
+      [0 :population 0 :count] := 1
+      [0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
+      [1 :component 0 :value :text] := "70"
+      [1 :component 1 :value :text] := "female"
+      [1 :population 0 :count] := 2
+      [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAD"
+      [2 :component 0 :value :text] := "70"
+      [2 :component 1 :value :text] := "male"
+      [2 :population 0 :count] := 1
+      [2 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC")
 
-      (given (:tx-ops result)
-        [1 1 :fhir/type] := :fhir/List
-        [1 1 :id] := "1"
-        [1 1 :entry 0 :item :reference] := "Patient/0"
-        [2 1 :fhir/type] := :fhir/List
-        [2 1 :id] := "2"
-        [2 1 :entry 0 :item :reference] := "Patient/1"
-        [3 1 :fhir/type] := :fhir/List
-        [3 1 :id] := "3"
-        [3 1 :entry 0 :item :reference] := "Patient/2"
-        [3 1 :entry 1 :item :reference] := "Patient/3")))
+    (given (:tx-ops result)
+      [1 1 :fhir/type] := :fhir/List
+      [1 1 :id] := "AAAAAAAAAAAAAAAB"
+      [1 1 :entry 0 :item :reference] := "Patient/0"
+      [2 1 :fhir/type] := :fhir/List
+      [2 1 :id] := "AAAAAAAAAAAAAAAC"
+      [2 1 :entry 0 :item :reference] := "Patient/1"
+      [3 1 :fhir/type] := :fhir/List
+      [3 1 :id] := "AAAAAAAAAAAAAAAD"
+      [3 1 :entry 0 :item :reference] := "Patient/2"
+      [3 1 :entry 1 :item :reference] := "Patient/3"))
 
   (given (first-stratifier-strata (evaluate "q25-stratifier-collection"))
     [0 :value :text] := "Organization/collection-0"

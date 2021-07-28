@@ -6,15 +6,19 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.fhir.spec.type]
     [blaze.interaction.search-compartment]
-    [blaze.interaction.search-compartment-spec]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
+    [blaze.interaction.test-util :refer [given-thrown]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [java.time Clock Instant ZoneId]
+    [java.util Random]))
 
 
 (st/instrument)
@@ -30,7 +34,16 @@
 (test/use-fixtures :each fixture)
 
 
+(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+
+
 (def ^:private base-url "base-url-114238")
+
+
+(defn fixed-random [n]
+  (proxy [Random] []
+    (nextLong []
+      n)))
 
 
 (def router
@@ -50,7 +63,9 @@
 (defn- handler [node]
   (-> (ig/init
         {:blaze.interaction/search-compartment
-         {:node node}})
+         {:node node
+          :clock clock
+          :rng-fn (fn [] (fixed-random 0))}})
       :blaze.interaction/search-compartment))
 
 
@@ -65,6 +80,31 @@
 
 (defn- link-url [body link-relation]
   (->> body :link (filter (comp #{link-relation} :relation)) first :url))
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.interaction/search-compartment nil})
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.interaction/search-compartment {}})
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "invalid node"
+    (given-thrown (ig/init {:blaze.interaction/search-compartment {:node "foo"}})
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 2 :pred] := `blaze.db.spec/node?
+      [:explain ::s/problems 2 :val] := "foo")))
 
 
 (deftest handler-test

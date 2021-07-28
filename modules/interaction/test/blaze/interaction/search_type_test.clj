@@ -6,9 +6,10 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.fhir.spec.type :as type]
     [blaze.interaction.search-type]
-    [blaze.interaction.search-type-spec]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
+    [blaze.interaction.test-util :refer [given-thrown]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
@@ -16,7 +17,8 @@
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock Instant ZoneId]))
+    [java.time Clock Instant ZoneId]
+    [java.util Random]))
 
 
 (st/instrument)
@@ -32,7 +34,16 @@
 (test/use-fixtures :each fixture)
 
 
+(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+
+
 (def ^:private base-url "base-url-113047")
+
+
+(defn fixed-random [n]
+  (proxy [Random] []
+    (nextLong []
+      n)))
 
 
 (def ^:private router
@@ -95,7 +106,9 @@
 (defn- handler [node]
   (-> (ig/init
         {:blaze.interaction/search-type
-         {:node node}})
+         {:node node
+          :clock clock
+          :rng-fn (fn [] (fixed-random 0))}})
       :blaze.interaction/search-type))
 
 
@@ -110,6 +123,31 @@
 
 (defn- link-url [body link-relation]
   (->> body :link (filter (comp #{link-relation} :relation)) first :url))
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.interaction/search-type nil})
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.interaction/search-type {}})
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "invalid node"
+    (given-thrown (ig/init {:blaze.interaction/search-type {:node "foo"}})
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 2 :pred] := `blaze.db.spec/node?
+      [:explain ::s/problems 2 :val] := "foo")))
 
 
 (deftest handler-test
@@ -161,8 +199,8 @@
               (testing "the body contains a bundle"
                 (is (= :fhir/Bundle (:fhir/type body))))
 
-              (testing "the bundle contains an id"
-                (is (string? (:id body))))
+              (testing "the bundle id is an LUID"
+                (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
               (testing "the bundle type is searchset"
                 (is (= #fhir/code"searchset" (:type body))))
@@ -189,8 +227,8 @@
               (testing "the body contains a bundle"
                 (is (= :fhir/Bundle (:fhir/type body))))
 
-              (testing "the bundle contains an id"
-                (is (string? (:id body))))
+              (testing "the bundle id is an LUID"
+                (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
               (testing "the bundle type is searchset"
                 (is (= #fhir/code"searchset" (:type body))))
@@ -220,6 +258,9 @@
               (testing "the body contains a bundle"
                 (is (= :fhir/Bundle (:fhir/type body))))
 
+              (testing "the bundle id is an LUID"
+                (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
               (testing "the bundle type is searchset"
                 (is (= #fhir/code"searchset" (:type body))))
 
@@ -246,6 +287,9 @@
 
               (testing "the body contains a bundle"
                 (is (= :fhir/Bundle (:fhir/type body))))
+
+              (testing "the bundle id is an LUID"
+                (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
               (testing "the bundle type is searchset"
                 (is (= #fhir/code"searchset" (:type body))))

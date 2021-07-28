@@ -6,7 +6,8 @@
     [blaze.db.api-stub :refer [mem-node-with]]
     [blaze.executors :as ex]
     [blaze.interaction.delete]
-    [blaze.interaction.delete-spec]
+    [blaze.interaction.test-util :refer [given-thrown]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
@@ -43,6 +44,29 @@
   (fn [request]
     (with-open [node (mem-node-with txs)]
       @((handler node) request))))
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.interaction/delete nil})
+      :key := :blaze.interaction/delete
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.interaction/delete {}})
+      :key := :blaze.interaction/delete
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+
+  (testing "invalid executor"
+    (given-thrown (ig/init {:blaze.interaction/delete {:executor "foo"}})
+      :key := :blaze.interaction/delete
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `ex/executor?
+      [:explain ::s/problems 1 :val] := "foo")))
 
 
 (deftest handler-test

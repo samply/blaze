@@ -10,8 +10,8 @@
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
-    [blaze.interaction.create-spec]
-    [blaze.luid :refer [luid]]
+    [blaze.interaction.test-util :refer [given-thrown]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
@@ -19,7 +19,8 @@
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
+    [java.time Clock Instant ZoneId]
+    [java.util Random]))
 
 
 (st/instrument)
@@ -38,7 +39,16 @@
 (def executor (ex/single-thread-executor))
 
 
+(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+
+
 (def ^:private base-url "base-url-134418")
+
+
+(def fixed-random
+  (proxy [Random] []
+    (nextLong []
+      0)))
 
 
 (def router
@@ -51,7 +61,9 @@
   (-> (ig/init
         {:blaze.interaction/create
          {:node node
-          :executor executor}})
+          :executor executor
+          :clock clock
+          :rng-fn (constantly fixed-random)}})
       :blaze.interaction/create))
 
 
@@ -62,6 +74,33 @@
         (assoc request
           :blaze/base-url base-url
           ::reitit/router router)))))
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.interaction/create nil})
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.interaction/create {}})
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "invalid executor"
+    (given-thrown (ig/init {:blaze.interaction/create {:executor "foo"}})
+      :key := :blaze.interaction/create
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 3 :pred] := `ex/executor?
+      [:explain ::s/problems 3 :val] := "foo")))
 
 
 (deftest handler-test
@@ -112,107 +151,99 @@
 
   (testing "On newly created resource"
     (testing "with no Prefer header"
-      (with-redefs
-        [luid (constantly "C5OCZL276FGI3QCL")]
-        (let [{:keys [status headers body]}
-              ((handler-with [])
-               {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                :body {:fhir/type :fhir/Patient}})]
+      (let [{:keys [status headers body]}
+            ((handler-with [])
+             {::reitit/match {:data {:fhir.resource/type "Patient"}}
+              :body {:fhir/type :fhir/Patient}})]
 
-          (is (= 201 status))
+        (is (= 201 status))
 
-          (testing "Location header"
-            (is (= "base-url-134418/Patient/C5OCZL276FGI3QCL/_history/1"
-                   (get headers "Location"))))
+        (testing "Location header"
+          (is (= "base-url-134418/Patient/AAAAAAAAAAAAAAAA/_history/1"
+                 (get headers "Location"))))
 
-          (testing "Transaction time in Last-Modified header"
-            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-          (testing "Version in ETag header"
-            ;; 1 is the T of the transaction of the resource creation
-            (is (= "W/\"1\"" (get headers "ETag"))))
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
 
-          (given body
-            :fhir/type := :fhir/Patient
-            :id := "C5OCZL276FGI3QCL"
-            [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH))))
+        (given body
+          :fhir/type := :fhir/Patient
+          :id := "AAAAAAAAAAAAAAAA"
+          [:meta :versionId] := #fhir/id"1"
+          [:meta :lastUpdated] := Instant/EPOCH)))
 
     (testing "with return=minimal Prefer header"
-      (with-redefs
-        [luid (constantly "C5OCZOCCRNUQOESF")]
-        (let [{:keys [status headers body]}
-              ((handler-with [])
-               {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                :headers {"prefer" "return=minimal"}
-                :body {:fhir/type :fhir/Patient}})]
+      (let [{:keys [status headers body]}
+            ((handler-with [])
+             {::reitit/match {:data {:fhir.resource/type "Patient"}}
+              :headers {"prefer" "return=minimal"}
+              :body {:fhir/type :fhir/Patient}})]
 
-          (is (= 201 status))
+        (is (= 201 status))
 
-          (testing "Location header"
-            (is (= "base-url-134418/Patient/C5OCZOCCRNUQOESF/_history/1"
-                   (get headers "Location"))))
+        (testing "Location header"
+          (is (= "base-url-134418/Patient/AAAAAAAAAAAAAAAA/_history/1"
+                 (get headers "Location"))))
 
-          (testing "Transaction time in Last-Modified header"
-            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-          (testing "Version in ETag header"
-            ;; 1 is the T of the transaction of the resource creation
-            (is (= "W/\"1\"" (get headers "ETag"))))
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
 
-          (is (nil? body)))))
+        (is (nil? body))))
 
     (testing "with return=representation Prefer header"
-      (with-redefs
-        [luid (constantly "C5OCZPIRR7XVOD2A")]
-        (let [{:keys [status headers body]}
-              ((handler-with [])
-               {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                :headers {"prefer" "return=representation"}
-                :body {:fhir/type :fhir/Patient}})]
+      (let [{:keys [status headers body]}
+            ((handler-with [])
+             {::reitit/match {:data {:fhir.resource/type "Patient"}}
+              :headers {"prefer" "return=representation"}
+              :body {:fhir/type :fhir/Patient}})]
 
-          (is (= 201 status))
+        (is (= 201 status))
 
-          (testing "Location header"
-            (is (= "base-url-134418/Patient/C5OCZPIRR7XVOD2A/_history/1"
-                   (get headers "Location"))))
+        (testing "Location header"
+          (is (= "base-url-134418/Patient/AAAAAAAAAAAAAAAA/_history/1"
+                 (get headers "Location"))))
 
-          (testing "Transaction time in Last-Modified header"
-            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-          (testing "Version in ETag header"
-            ;; 1 is the T of the transaction of the resource creation
-            (is (= "W/\"1\"" (get headers "ETag"))))
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
 
-          (given body
-            :fhir/type := :fhir/Patient
-            :id := "C5OCZPIRR7XVOD2A"
-            [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH))))
+        (given body
+          :fhir/type := :fhir/Patient
+          :id := "AAAAAAAAAAAAAAAA"
+          [:meta :versionId] := #fhir/id"1"
+          [:meta :lastUpdated] := Instant/EPOCH)))
 
     (testing "with return=OperationOutcome Prefer header"
-      (with-redefs
-        [luid (constantly "C5OCZQ32A6MGMNR6")]
-        (let [{:keys [status headers body]}
-              ((handler-with [])
-               {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                :headers {"prefer" "return=OperationOutcome"}
-                :body {:fhir/type :fhir/Patient}})]
+      (let [{:keys [status headers body]}
+            ((handler-with [])
+             {::reitit/match {:data {:fhir.resource/type "Patient"}}
+              :headers {"prefer" "return=OperationOutcome"}
+              :body {:fhir/type :fhir/Patient}})]
 
-          (is (= 201 status))
+        (is (= 201 status))
 
-          (testing "Location header"
-            (is (= "base-url-134418/Patient/C5OCZQ32A6MGMNR6/_history/1"
-                   (get headers "Location"))))
+        (testing "Location header"
+          (is (= "base-url-134418/Patient/AAAAAAAAAAAAAAAA/_history/1"
+                 (get headers "Location"))))
 
-          (testing "Transaction time in Last-Modified header"
-            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-          (testing "Version in ETag header"
-            ;; 1 is the T of the transaction of the resource creation
-            (is (= "W/\"1\"" (get headers "ETag"))))
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
 
-          (is (= :fhir/OperationOutcome (:fhir/type body)))))))
+        (is (= :fhir/OperationOutcome (:fhir/type body))))))
 
   (testing "conditional create"
     (testing "with non-matching query"

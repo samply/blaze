@@ -52,7 +52,7 @@
     (ac/completed-future (d/db node))))
 
 
-(defn- handler-intern [node]
+(defn- handler [{:keys [node]}]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id vid]} :path-params}]
     (-> (db node vid type id)
@@ -89,17 +89,12 @@
         (ac/then-apply #(assoc % :fhir/interaction-name (if vid "vread" "read"))))))
 
 
-(defn handler [node]
-  (-> (handler-intern node)
-      (wrap-interaction-name)
-      (wrap-observe-request-duration)))
-
-
 (defmethod ig/pre-init-spec :blaze.interaction/read [_]
   (s/keys :req-un [:blaze.db/node]))
 
 
-(defmethod ig/init-key :blaze.interaction/read
-  [_ {:keys [node]}]
+(defmethod ig/init-key :blaze.interaction/read [_ context]
   (log/info "Init FHIR read interaction handler")
-  (handler node))
+  (-> (handler context)
+      (wrap-interaction-name)
+      (wrap-observe-request-duration)))

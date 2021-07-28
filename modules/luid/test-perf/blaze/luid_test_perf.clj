@@ -6,6 +6,8 @@
 
 
 (comment
-  (criterium/quick-bench (luid/luid))
+  (let [clock (Clock/systemUTC)
+        rng (ThreadLocalRandom/current)]
+    (criterium/quick-bench (luid/luid clock rng)))
 
   )

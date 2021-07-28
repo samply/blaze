@@ -14,6 +14,9 @@
   blaze/rest-util
   {:local/root "../rest-util"}
 
+  blaze/spec
+  {:local/root "../spec"}
+
   blaze/thread-pool-executor-collector
   {:local/root "../thread-pool-executor-collector"}}
 
@@ -40,8 +43,8 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
-    org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}

@@ -40,16 +40,16 @@
           token-value (cc/compile-component-value c1 v1)]
       (if-ok [quantity-value (cc/compile-component-value c2 v2)]
         (prefix-with quantity-value token-value)
-        (case (::spq/category quantity-value)
+        #(case (::spq/category %)
           ::spq/invalid-decimal-value
-          (assoc quantity-value
+          (assoc %
             ::anom/message (spq/invalid-decimal-value-msg code v2))
           ::spq/unsupported-prefix
-          (assoc quantity-value
+          (assoc %
             ::anom/message
             (spq/unsupported-prefix-msg
-              code (::spq/unsupported-prefix quantity-value)))
-          quantity-value))))
+              code (::spq/unsupported-prefix %)))
+          %))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
@@ -68,4 +68,3 @@
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
       (coll/eduction (cc/index-values resolver c1 c2) values))))
-

@@ -1,6 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :refer [if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.fhir.spec.type.system :as system]
     [blaze.handler.util :as handler-util]
@@ -33,8 +33,6 @@
 
 (defn wrap-coerce-params [handler]
   (fn [request]
-    (let [request (params-request request)]
-      (if (::anom/category request)
-        (ac/completed-future
-          (handler-util/error-response request))
-        (handler request)))))
+    (if-ok [request (params-request request)]
+      (handler request)
+      (comp ac/completed-future handler-util/error-response))))

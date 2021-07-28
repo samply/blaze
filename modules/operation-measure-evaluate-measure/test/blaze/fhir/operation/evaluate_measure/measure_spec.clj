@@ -6,11 +6,11 @@
     [blaze.fhir.operation.evaluate-measure.measure :as measure]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
     [blaze.fhir.spec]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [reitit.core :as reitit])
   (:import
-    [java.time OffsetDateTime]
     [java.time.temporal Temporal]))
 
 
@@ -32,7 +32,7 @@
 (s/fdef measure/evaluate-measure
   :args
   (s/cat
-    :now #(instance? OffsetDateTime %)
+    :context (s/keys :req-un [:blaze/clock :blaze/rng-fn])
     :db :blaze.db/db
     :base-url string?
     :router reitit/router?

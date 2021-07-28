@@ -92,8 +92,8 @@
         (if-ok [search-param (resolve-search-param registry type code)]
           (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
             (conj ret [search-param modifier values compiled-values])
-            (reduced compiled-values))
-          (if lenient? ret (reduced search-param)))))
+            reduced)
+          #(if lenient? ret (reduced %)))))
     []
     clauses))
 

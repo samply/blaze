@@ -1,6 +1,6 @@
 (ns blaze.interaction.search-compartment
   (:require
-    [blaze.anomaly :refer [ex-anom when-ok]]
+    [blaze.anomaly :as ba :refer [ex-anom if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.spec]
@@ -10,8 +10,9 @@
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.util :as search-util]
-    [blaze.luid :as luid]
+    [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -82,7 +83,7 @@
               (let [entries (entries context resources)]
                 (cond->
                   {:fhir/type :fhir/Bundle
-                   :id (luid/luid)
+                   :id (iu/luid context)
                    :type #fhir/code"searchset"
                    :total (type/->UnsignedInt (count handles))
                    :entry (if (< page-size (count entries))
@@ -103,7 +104,7 @@
       (ac/failed-future (ex-anom handles-and-clauses))
       (ac/completed-future
         {:fhir/type :fhir/Bundle
-         :id (luid/luid)
+         :id (iu/luid context)
          :type #fhir/code"searchset"
          :total (type/->UnsignedInt (count handles))
          :link [(self-link context clauses t)]}))))
@@ -115,7 +116,13 @@
     (search-normal context db)))
 
 
-(defn- context [base-url router match code id type headers params]
+(defn- search-context
+  [context
+   {{{:fhir.compartment/keys [code]} :data :as match} ::reitit/match
+    {:keys [id type]} :path-params
+    :keys [headers params]
+    :blaze/keys [base-url]
+    ::reitit/keys [router]}]
   (cond
     (not (s/valid? :blaze.resource/id id))
     {::anom/category ::anom/incorrect
@@ -129,42 +136,33 @@
 
     :else
     (let [handling (handler-util/preference headers "handling")]
-     (when-ok [params (params/decode handling params)]
-       {:base-url base-url
-        :router router
-        :match match
-        :code code
-        :id id
-        :type type
-        :preference/handling handling
-        :params params}))))
+      (when-ok [params (params/decode handling params)]
+        (assoc context
+          :base-url base-url
+          :router router
+          :match match
+          :code code
+          :id id
+          :type type
+          :preference/handling handling
+          :params params)))))
 
 
-(defn- handler-intern [node]
-  (fn [{{{:fhir.compartment/keys [code]} :data :as match} ::reitit/match
-        {:keys [id type]} :path-params
-        :keys [headers params]
-        :blaze/keys [base-url]
-        ::reitit/keys [router]}]
-    (let [context (context base-url router match code id type headers params)]
-      (if (::anom/category context)
-        (ac/completed-future (handler-util/error-response context))
-        (-> (handler-util/db node (fhir-util/t params))
-            (ac/then-compose #(search context %))
-            (ac/then-apply ring/response)
-            (ac/exceptionally handler-util/error-response))))))
-
-
-(defn handler [node]
-  (-> (handler-intern node)
-      (wrap-observe-request-duration "search-compartment")))
+(defn- handler [{:keys [node] :as context}]
+  (fn [{:keys [params] :as request}]
+    (if-ok [context (search-context context request)]
+      (-> (handler-util/db node (fhir-util/t params))
+          (ac/then-compose #(search context %))
+          (ac/then-apply ring/response)
+          (ac/exceptionally handler-util/error-response))
+      (comp ac/completed-future handler-util/error-response))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/search-compartment [_]
-  (s/keys :req-un [:blaze.db/node]))
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 
-(defmethod ig/init-key :blaze.interaction/search-compartment
-  [_ {:keys [node]}]
+(defmethod ig/init-key :blaze.interaction/search-compartment [_ context]
   (log/info "Init FHIR search-compartment interaction handler")
-  (handler node))
+  (-> (handler context)
+      (wrap-observe-request-duration "search-compartment")))

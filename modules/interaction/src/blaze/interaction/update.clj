@@ -58,7 +58,7 @@
     (conj if-match-t)))
 
 
-(defn- handler-intern [node executor]
+(defn- handler [{:keys [node executor]}]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params
         :keys [body]
@@ -82,16 +82,11 @@
           (ac/exceptionally handler-util/error-response)))))
 
 
-(defn handler [node executor]
-  (-> (handler-intern node executor)
-      (wrap-observe-request-duration "update")))
-
-
 (defmethod ig/pre-init-spec :blaze.interaction/update [_]
   (s/keys :req-un [:blaze.db/node ::executor]))
 
 
-(defmethod ig/init-key :blaze.interaction/update
-  [_ {:keys [node executor]}]
+(defmethod ig/init-key :blaze.interaction/update [_ context]
   (log/info "Init FHIR update interaction handler")
-  (handler node executor))
+  (-> (handler context)
+      (wrap-observe-request-duration "update")))

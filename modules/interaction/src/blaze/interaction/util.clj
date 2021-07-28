@@ -1,5 +1,6 @@
 (ns blaze.interaction.util
   (:require
+    [blaze.luid :as luid]
     [clojure.string :as str]))
 
 
@@ -14,3 +15,11 @@
   (mapv
     #(let [[k v] (str/split % #"=")] (into [k] (str/split v #",")))
     (str/split query #"&")))
+
+
+(defn luid [{:keys [clock rng-fn]}]
+  (luid/luid clock (rng-fn)))
+
+
+(defn successive-luids [{:keys [clock rng-fn]}]
+  (luid/successive-luids clock (rng-fn)))

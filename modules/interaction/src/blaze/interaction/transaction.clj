@@ -15,8 +15,8 @@
     [blaze.interaction.transaction.bundle.url :as url]
     [blaze.interaction.transaction.spec]
     [blaze.interaction.util :as iu]
-    [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
@@ -143,25 +143,21 @@
     entries))
 
 
-(defn- prepare-entry
-  [res {{:keys [method]} :request :keys [resource] :as entry}]
-  (let [method (type/value method)]
-    (log/trace "prepare-entry" method (some-> resource :fhir/type name) (:id resource))
-    (cond
-      (= "POST" method)
-      (let [[luid-state luid] (luid/next (:luid-state res))]
-        (-> (assoc res :luid-state luid-state)
-            (update :entries conj (assoc-in entry [:resource :id] luid))))
+(defn- prepare-entry [res {{:keys [method]} :request :as entry}]
+  (case (type/value method)
+    "POST"
+    (let [entry (update entry :resource assoc :id (first (:luids res)))]
+      (-> (update res :luids next)
+          (update :entries conj entry)))
 
-      :else
-      (update res :entries conj entry))))
+    (update res :entries conj entry)))
 
 
 (defn- validate-and-prepare-bundle
   "Validates the bundle and returns its entries.
 
   Throws an anomaly in case of errors."
-  [{resource-type :fhir/type :keys [type] entries :entry :as bundle}]
+  [context {resource-type :fhir/type :keys [type] entries :entry :as bundle}]
   (let [type (type/value type)]
     (cond
       (nil? bundle)
@@ -188,8 +184,11 @@
         (let [entries (validate-entries entries)]
           (if (::anom/category entries)
             (throw (ex-anom entries))
-            (let [init {:luid-state (luid/init) :entries []}]
-              (:entries (reduce prepare-entry init entries)))))
+            (-> (reduce
+                  prepare-entry
+                  {:luids (iu/successive-luids context) :entries []}
+                  entries)
+                :entries)))
         entries))))
 
 
@@ -414,16 +413,15 @@
 
 
 (defn- process-context
-  [node executor
+  [context
    {:keys [batch-handler headers] :blaze/keys [base-url]
     ::reitit/keys [router match]}]
-  {:node node
-   :executor executor
-   :base-url base-url
-   :router router
-   :batch-handler batch-handler
-   :context-path (-> match :data :blaze/context-path)
-   :return-preference (handler-util/preference headers "return")})
+  (assoc context
+    :base-url base-url
+    :router router
+    :batch-handler batch-handler
+    :context-path (-> match :data :blaze/context-path)
+    :return-preference (handler-util/preference headers "return")))
 
 
 (defn- process-entries
@@ -431,22 +429,22 @@
 
   Returns a CompletableFuture that will complete with the response entries or
   complete exceptionally with an anomaly in case of errors."
-  [node executor {{:keys [type]} :body :as request} entries]
-  (process (process-context node executor request) (type/value type) entries))
+  [context {{:keys [type]} :body :as request} entries]
+  (process (process-context context request) (type/value type) entries))
 
 
-(defn- handler-intern [node executor]
+(defn- handler [{:keys [executor] :as context}]
   (fn [{{:keys [type] :as bundle} :body :as request}]
-    (-> (ac/supply-async #(validate-and-prepare-bundle bundle) executor)
+    (-> (ac/supply-async #(validate-and-prepare-bundle context bundle) executor)
         (ac/then-compose
           #(if (empty? %)
              (ac/completed-future [])
-             (process-entries node executor request %)))
+             (process-entries context request %)))
         (ac/then-apply
           (fn [response-entries]
             (ring/response
               {:fhir/type :fhir/Bundle
-               :id (luid/luid)
+               :id (iu/luid context)
                :type (type/->Code (str (type/value type) "-response"))
                :entry response-entries})))
         (ac/exceptionally handler-util/error-response))))
@@ -459,20 +457,15 @@
       (ac/then-apply #(assoc % :fhir/interaction-name (type/value type))))))
 
 
-(defn handler [node executor]
-  (-> (handler-intern node executor)
+(defmethod ig/pre-init-spec :blaze.interaction/transaction [_]
+  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]))
+
+
+(defmethod ig/init-key :blaze.interaction/transaction [_ context]
+  (log/info "Init FHIR transaction interaction handler")
+  (-> (handler context)
       (wrap-interaction-name)
       (wrap-observe-request-duration)))
-
-
-(defmethod ig/pre-init-spec :blaze.interaction/transaction [_]
-  (s/keys :req-un [:blaze.db/node ::executor]))
-
-
-(defmethod ig/init-key :blaze.interaction/transaction
-  [_ {:keys [node executor]}]
-  (log/info "Init FHIR transaction interaction handler")
-  (handler node executor))
 
 
 (defn- executor-init-msg []
@@ -480,8 +473,7 @@
           (.availableProcessors (Runtime/getRuntime))))
 
 
-(defmethod ig/init-key ::executor
-  [_ _]
+(defmethod ig/init-key ::executor [_ _]
   (log/info (executor-init-msg))
   (ex/cpu-bound-pool "blaze-transaction-interaction-%d"))
 

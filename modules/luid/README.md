@@ -6,7 +6,7 @@ This module contains an implementation of identifiers as an alternative to UUID'
 * lexicographically sortable (generates monotonically greater identifiers with time)
 * short string representation, compatible with the FHIR ID constraints
 
-
+**TODO**: Explain why to use our own implementation over ULID's.
 
 
 [1]: <https://github.com/ulid/spec> 

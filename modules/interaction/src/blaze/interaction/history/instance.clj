@@ -10,8 +10,9 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
-    [blaze.luid :as luid]
+    [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -28,7 +29,7 @@
 
 
 (defn- build-response
-  [base-url router match db query-params t total version-handles]
+  [context db base-url router match query-params t total version-handles]
   (let [page-size (fhir-util/page-size query-params)
         paged-version-handles (into [] (take (inc page-size)) version-handles)
         self-link #(link base-url match query-params t "self" %)
@@ -40,7 +41,7 @@
             (ring/response
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (luid/luid)
+                 :id (iu/luid context)
                  :type #fhir/code"history"
                  :total (type/->UnsignedInt total)
                  :link []
@@ -55,39 +56,38 @@
                 (update :link conj (next-link (peek paged-version-handles))))))))))
 
 
-(defn- handle [base-url router match query-params db type id]
+(defn- handle
+  [context
+   db
+   {:blaze/keys [base-url]
+    ::reitit/keys [router match] :keys [query-params]
+    {{:fhir.resource/keys [type]} :data} ::reitit/match
+    {:keys [id]} :path-params}]
   (if (d/resource-handle db type id)
     (let [t (or (d/as-of-t db) (d/basis-t db))
           page-t (history-util/page-t query-params)
           since (history-util/since query-params)
           total (d/total-num-of-instance-changes db type id since)
           version-handles (d/instance-history db type id page-t since)]
-      (build-response base-url router match db query-params t total version-handles))
+      (build-response context db base-url router match query-params t total
+                      version-handles))
     (ac/completed-future
       (handler-util/error-response
         {::anom/category ::anom/not-found
          :fhir/issue "not-found"}))))
 
 
-(defn- handler-intern [node]
-  (fn [{:blaze/keys [base-url]
-        ::reitit/keys [router match] :keys [query-params]
-        {{:fhir.resource/keys [type]} :data} ::reitit/match
-        {:keys [id]} :path-params}]
+(defn- handler [{:keys [node] :as context}]
+  (fn [{:keys [query-params] :as request}]
     (-> (handler-util/db node (fhir-util/t query-params))
-        (ac/then-compose #(handle base-url router match query-params % type id)))))
-
-
-(defn handler [node]
-  (-> (handler-intern node)
-      (wrap-observe-request-duration "history-instance")))
+        (ac/then-compose #(handle context % request)))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction.history/instance [_]
-  (s/keys :req-un [:blaze.db/node]))
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 
-(defmethod ig/init-key :blaze.interaction.history/instance
-  [_ {:keys [node]}]
+(defmethod ig/init-key :blaze.interaction.history/instance [_ context]
   (log/info "Init FHIR history instance interaction handler")
-  (handler node))
+  (-> (handler context)
+      (wrap-observe-request-duration "history-instance")))

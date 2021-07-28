@@ -10,8 +10,12 @@
     [com.github.benmanes.caffeine.cache Cache LoadingCache]))
 
 
+(defn node? [x]
+  (satisfies? np/Node x))
+
+
 (s/def :blaze.db/node
-  #(satisfies? np/Node %))
+  node?)
 
 
 (s/def :blaze.db/resource-handle-cache

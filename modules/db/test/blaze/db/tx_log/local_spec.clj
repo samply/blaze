@@ -7,12 +7,11 @@
     [blaze.db.spec]
     [blaze.db.tx-log.local :as tx-log]
     [blaze.executors :as ex]
-    [clojure.spec.alpha :as s])
-  (:import
-    [java.time Clock]))
+    [blaze.spec]
+    [clojure.spec.alpha :as s]))
 
 
 (s/fdef tx-log/new-local-tx-log
   :args (s/cat :kv-store :blaze.db/kv-store
-               :clock #(instance? Clock %)
+               :clock :blaze/clock
                :executor ex/executor?))

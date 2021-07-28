@@ -6,8 +6,10 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.spec]
     [blaze.interaction.read]
-    [blaze.interaction.read-spec]
+    [blaze.interaction.test-util :refer [given-thrown]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
@@ -46,6 +48,27 @@
 
 (def ^:private match
   {:data {:fhir.resource/type "Patient"}})
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.interaction/read nil})
+      :key := :blaze.interaction/read
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.interaction/read {}})
+      :key := :blaze.interaction/read
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
+
+  (testing "invalid node"
+    (given-thrown (ig/init {:blaze.interaction/read {:node "foo"}})
+      :key := :blaze.interaction/read
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `blaze.db.spec/node?
+      [:explain ::s/problems 0 :val] := "foo")))
 
 
 (deftest handler-test

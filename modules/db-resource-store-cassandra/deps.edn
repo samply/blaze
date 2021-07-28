@@ -28,8 +28,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
+   {cloverage/cloverage
+    {:mvn/version "1.2.2"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}

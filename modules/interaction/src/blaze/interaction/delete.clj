@@ -42,7 +42,7 @@
   (build-response* (d/tx db (d/basis-t db))))
 
 
-(defn- handler-intern [node executor]
+(defn- handler [{:keys [node executor]}]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
     (let [db (d/db node)]
@@ -61,16 +61,11 @@
              :fhir/issue "not-found"}))))))
 
 
-(defn handler [node executor]
-  (-> (handler-intern node executor)
-      (wrap-observe-request-duration "delete")))
-
-
 (defmethod ig/pre-init-spec :blaze.interaction/delete [_]
   (s/keys :req-un [:blaze.db/node ::executor]))
 
 
-(defmethod ig/init-key :blaze.interaction/delete
-  [_ {:keys [node executor]}]
+(defmethod ig/init-key :blaze.interaction/delete [_ context]
   (log/info "Init FHIR delete interaction handler")
-  (handler node executor))
+  (-> (handler context)
+      (wrap-observe-request-duration "delete")))

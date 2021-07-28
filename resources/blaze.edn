@@ -80,17 +80,25 @@
   ;; provides read and write access to the actual resources.
   ;;
   :blaze.interaction.history/system
-  {:node #blaze/ref :blaze.db/node}
+  {:node #blaze/ref :blaze.db/node
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction.history/type
-  {:node #blaze/ref :blaze.db/node}
+  {:node #blaze/ref :blaze.db/node
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction.history/instance
-  {:node #blaze/ref :blaze.db/node}
+  {:node #blaze/ref :blaze.db/node
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/create
   {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.server/executor}
+   :executor #blaze/ref :blaze.server/executor
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/delete
   {:node #blaze/ref :blaze.db/node
@@ -100,17 +108,25 @@
   {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction/search-system
-  {:node #blaze/ref :blaze.db/node}
+  {:node #blaze/ref :blaze.db/node
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/search-type
-  {:node #blaze/ref :blaze.db/node}
+  {:node #blaze/ref :blaze.db/node
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/search-compartment
-  {:node #blaze/ref :blaze.db/node}
+  {:node #blaze/ref :blaze.db/node
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/transaction
   {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.interaction.transaction/executor}
+   :executor #blaze/ref :blaze.interaction.transaction/executor
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction.transaction/executor {}
 
@@ -129,7 +145,9 @@
   ;;
   :blaze.fhir.operation.evaluate-measure/handler
   {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor}
+   :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.fhir.operation.evaluate-measure/executor
   {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" int? 4]}
