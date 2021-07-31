@@ -1,7 +1,7 @@
 (ns blaze.fhir.response.create-test
   (:require
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.response.create :refer [build-response]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -29,7 +29,9 @@
 
 
 (deftest build-response-test
-  (with-open [node (mem-node-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])]
+  (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
     (let [db (d/db node)
           resource-handle (d/resource-handle db "Patient" "0")
           resource @(d/pull db resource-handle)]

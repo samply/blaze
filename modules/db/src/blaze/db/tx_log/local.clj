@@ -26,7 +26,7 @@
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
-    [java.time Clock Instant]
+    [java.time Instant]
     [java.util.concurrent
      ArrayBlockingQueue BlockingQueue ExecutorService TimeUnit]))
 
@@ -139,25 +139,20 @@
           (bb/get-long! buf))))))
 
 
-(defn new-local-tx-log
-  "Returns a transaction log which is suitable only for single node setups."
-  [kv-store clock executor]
-  (->LocalTxLog kv-store clock executor (atom {:t (or (last-t kv-store) 0)})))
-
-
 (defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]
-  (s/keys :req-un [:blaze.db/kv-store]))
+  (s/keys :req-un [:blaze.db/kv-store :blaze/clock]))
 
 
 (defmethod ig/init-key :blaze.db.tx-log/local
-  [_ {:keys [kv-store]}]
+  [_ {:keys [kv-store clock]}]
   (log/info "Open local transaction log")
-  (new-local-tx-log
+  (->LocalTxLog
     kv-store
-    (Clock/systemDefaultZone)
+    clock
     ;; it's important to have a single thread executor here. See docs of submit
     ;; function.
-    (ex/single-thread-executor "local-tx-log")))
+    (ex/single-thread-executor "local-tx-log")
+    (atom {:t (or (last-t kv-store) 0)})))
 
 
 (defmethod ig/halt-key! :blaze.db.tx-log/local

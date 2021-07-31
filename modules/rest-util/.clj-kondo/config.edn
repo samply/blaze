@@ -1,5 +1,6 @@
 {:lint-as
- {prometheus.alpha/defcounter clojure.core/def
+ {blaze.db.api-stub/with-system-data clojure.core/with-open
+  prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}
 
  :linters

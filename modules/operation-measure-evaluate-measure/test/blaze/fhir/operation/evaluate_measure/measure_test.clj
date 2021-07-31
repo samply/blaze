@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-test
   (:require
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
     [blaze.fhir.operation.evaluate-measure.measure-spec]
     [blaze.fhir.spec :as fhir-spec]
@@ -16,8 +16,8 @@
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock Instant Year ZoneId]
-    [java.util Base64 Random]))
+    [java.time Year]
+    [java.util Base64]))
 
 
 (st/instrument)
@@ -31,14 +31,6 @@
 
 
 (test/use-fixtures :each fixture)
-
-
-(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
-
-
-(def fixed-random
-  (proxy [Random] []
-    (nextLong [] 0)))
 
 
 (def router
@@ -58,10 +50,6 @@
 
 (defn- tx-ops [entries]
   (mapv entry-tx-op entries))
-
-
-(defn- node-with [{:keys [entry]}]
-  (mem-node-with [(tx-ops entry)]))
 
 
 (defn- slurp-resource [name]
@@ -93,12 +81,20 @@
     (update bundle :entry conj library)))
 
 
+(def system
+  (assoc mem-node-system
+    :blaze.test/fixed-rng-fn {}))
+
+
 (defn- evaluate
   ([name]
    (evaluate name "population"))
   ([name report-type]
-   (with-open [node (node-with (read-data name))]
-     (let [context {:clock clock :rng-fn (constantly fixed-random)}
+   (with-system-data
+     [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+     [(tx-ops (:entry (read-data name)))]
+
+     (let [context {:clock clock :rng-fn fixed-rng-fn}
            db (d/db node)
            period [(Year/of 2000) (Year/of 2020)]]
        (evaluate-measure context db "" router

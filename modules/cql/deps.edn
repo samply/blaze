@@ -36,11 +36,11 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
+    blaze/test-util
+    {:local/root "../test-util"}
+
     lambdaisland/kaocha
     {:mvn/version "1.0.861"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}
 
     org.clojure/data.xml
     {:mvn/version "0.2.0-alpha6"}
@@ -57,11 +57,11 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
+    blaze/test-util
+    {:local/root "../test-util"}
+
     cloverage/cloverage
     {:mvn/version "1.2.2"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}
 
     org.clojure/data.xml
     {:mvn/version "0.2.0-alpha6"}

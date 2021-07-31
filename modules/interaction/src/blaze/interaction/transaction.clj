@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
-    [blaze.anomaly :refer [throw-anom ex-anom]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.executors :as ex]
@@ -19,7 +19,6 @@
     [blaze.spec]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [reitit.ring]
@@ -37,110 +36,106 @@
   (if (str/starts-with? s "/") (subs s 1) s))
 
 
-(defn- validate-entry
-  {:arglists '([db idx entry])}
-  [idx {:keys [resource] {:keys [method url] :as request} :request :as entry}]
-  (let [method (type/value method)
-        [url] (some-> (type/value url) strip-leading-slash (str/split #"\?"))
+(defn- validate-entry [idx {:keys [request resource] :as entry}]
+  (let [method (some-> request :method type/value)
+        [url] (some-> request :url type/value strip-leading-slash (str/split #"\?"))
         [type id] (some-> url url/match-url)]
     (cond
       (nil? request)
-      {::anom/category ::anom/incorrect
-       ::anom/message "Missing request."
-       :fhir/issue "value"
-       :fhir.issue/expression (format "Bundle.entry[%d]" idx)}
+      (ba/incorrect
+        "Missing request."
+        :fhir/issue "value"
+        :fhir.issue/expression (format "Bundle.entry[%d]" idx))
 
       (nil? url)
-      {::anom/category ::anom/incorrect
-       ::anom/message "Missing url."
-       :fhir/issue "value"
-       :fhir.issue/expression (format "Bundle.entry[%d].request" idx)}
+      (ba/incorrect
+        "Missing url."
+        :fhir/issue "value"
+        :fhir.issue/expression (format "Bundle.entry[%d].request" idx))
 
       (nil? method)
-      {::anom/category ::anom/incorrect
-       ::anom/message "Missing method."
-       :fhir/issue "value"
-       :fhir.issue/expression (format "Bundle.entry[%d].request" idx)}
+      (ba/incorrect
+        "Missing method."
+        :fhir/issue "value"
+        :fhir.issue/expression (format "Bundle.entry[%d].request" idx))
 
       (not (#{"GET" "HEAD" "POST" "PUT" "DELETE" "PATCH"} method))
-      {::anom/category ::anom/incorrect
-       ::anom/message (str "Unknown method `" method "`.")
-       :fhir/issue "value"
-       :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx)}
+      (ba/incorrect
+        (format "Unknown method `%s`." method)
+        :fhir/issue "value"
+        :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx))
 
       (not (#{"GET" "POST" "PUT" "DELETE"} method))
-      {::anom/category ::anom/unsupported
-       ::anom/message (str "Unsupported method `" method "`.")
-       :fhir/issue "not-supported"
-       :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx)}
+      (ba/unsupported
+        (format "Unsupported method `%s`." method)
+        :fhir/issue "not-supported"
+        :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx))
 
       (nil? type)
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (format "Can't parse type from `entry.request.url` `%s`." url)
-       :fhir/issue "value"
-       :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}
+      (ba/incorrect
+        (format "Can't parse type from `entry.request.url` `%s`." url)
+        :fhir/issue "value"
+        :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx))
 
       (not (fhir-spec/type-exists? type))
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (format "Unknown type `%s` in bundle entry URL `%s`." type url)
-       :fhir/issue "value"
-       :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)}
+      (ba/incorrect
+        (format "Unknown type `%s` in bundle entry URL `%s`." type url)
+        :fhir/issue "value"
+        :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx))
 
-      (and (#{"POST" "PUT"} method) (not= type (some-> resource :fhir/type name)))
-      {::anom/category ::anom/incorrect
-       :fhir/issue "invariant"
-       :fhir.issue/expression
-       [(format "Bundle.entry[%d].request.url" idx)
-        (format "Bundle.entry[%d].resource.resourceType" idx)]
-       :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"}
+      (and (#{"POST" "PUT"} method) (nil? (:fhir/type resource)))
+      (ba/incorrect
+        "Resource type is missing."
+        :fhir/issue "required"
+        :fhir.issue/expression
+        [(format "Bundle.entry[%d].resource.resourceType" idx)])
+
+      (and (#{"POST" "PUT"} method) (not= type (-> resource :fhir/type name)))
+      (ba/incorrect
+        (format "Type mismatch between resource type `%s` and URL `%s`."
+                (-> resource :fhir/type name) url)
+        :fhir/issue "invariant"
+        :fhir.issue/expression
+        [(format "Bundle.entry[%d].request.url" idx)
+         (format "Bundle.entry[%d].resource.resourceType" idx)]
+        :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")
 
       (and (= "PUT" method) (nil? id))
-      {::anom/category ::anom/incorrect
-       ::anom/message (format "Can't parse id from URL `%s`." url)
-       :fhir/issue "value"
-       :fhir.issue/expression
-       [(format "Bundle.entry[%d].request.url" idx)]}
+      (ba/incorrect
+        (format "Can't parse id from URL `%s`." url)
+        :fhir/issue "value"
+        :fhir.issue/expression [(format "Bundle.entry[%d].request.url" idx)])
 
       (and (= "PUT" method) (not (contains? resource :id)))
-      {::anom/category ::anom/incorrect
-       :fhir/issue "required"
-       :fhir.issue/expression
-       [(format "Bundle.entry[%d].resource.id" idx)]
-       :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"}
+      (ba/incorrect
+        "Resource id is missing."
+        :fhir/issue "required"
+        :fhir.issue/expression [(format "Bundle.entry[%d].resource.id" idx)]
+        :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING")
 
       (and (= "PUT" method) (not (s/valid? :blaze.resource/id (:id resource))))
-      {::anom/category ::anom/incorrect
-       :fhir/issue "value"
-       :fhir.issue/expression
-       [(format "Bundle.entry[%d].resource.id" idx)]
-       :fhir/operation-outcome "MSG_ID_INVALID"}
+      (ba/incorrect
+        (format "Resource id `%s` is invalid." (:id resource))
+        :fhir/issue "value"
+        :fhir.issue/expression [(format "Bundle.entry[%d].resource.id" idx)]
+        :fhir/operation-outcome "MSG_ID_INVALID")
 
       (and (= "PUT" method) (not= id (:id resource)))
-      {::anom/category ::anom/incorrect
-       :fhir/issue "invariant"
-       :fhir.issue/expression
-       [(format "Bundle.entry[%d].request.url" idx)
-        (format "Bundle.entry[%d].resource.id" idx)]
-       :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"}
+      (ba/incorrect
+        (format "Id mismatch between resource id `%s` and URL `%s`."
+                (:id resource) url)
+        :fhir/issue "invariant"
+        :fhir.issue/expression
+        [(format "Bundle.entry[%d].request.url" idx)
+         (format "Bundle.entry[%d].resource.id" idx)]
+        :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH")
 
       :else
       (assoc entry :blaze/type type :blaze/id id))))
 
 
-(defn- validate-entries
-  [entries]
-  (transduce
-    (map-indexed vector)
-    (completing
-      (fn [res [idx entry]]
-        (let [entry (validate-entry idx entry)]
-          (if (::anom/category entry)
-            (reduced entry)
-            (conj res entry)))))
-    []
-    entries))
+(defn- validate-entries [entries]
+  (transduce (ba/map-indexed validate-entry) conj [] entries))
 
 
 (defn- prepare-entry [res {{:keys [method]} :request :as entry}]
@@ -156,39 +151,34 @@
 (defn- validate-and-prepare-bundle
   "Validates the bundle and returns its entries.
 
-  Throws an anomaly in case of errors."
+  Returns an anomaly in case of errors."
   [context {resource-type :fhir/type :keys [type] entries :entry :as bundle}]
   (let [type (type/value type)]
     (cond
       (nil? bundle)
-      (throw-anom
-        ::anom/incorrect
+      (ba/incorrect
         "Missing Bundle."
         :fhir/issue "invalid")
 
       (not= :fhir/Bundle resource-type)
-      (throw-anom
-        ::anom/incorrect
+      (ba/incorrect
         (format "Expected a Bundle resource but got a %s resource."
-                (some-> resource-type name))
+                (name resource-type))
         :fhir/issue "value")
 
       (not (#{"batch" "transaction"} type))
-      (throw-anom
-        ::anom/incorrect
+      (ba/incorrect
         (format "Expected a Bundle type of batch or transaction but was `%s`." type)
         :fhir/issue "value")
 
       :else
       (if (= "transaction" type)
-        (let [entries (validate-entries entries)]
-          (if (::anom/category entries)
-            (throw (ex-anom entries))
-            (-> (reduce
-                  prepare-entry
-                  {:luids (iu/successive-luids context) :entries []}
-                  entries)
-                :entries)))
+        (when-ok [entries (validate-entries entries)]
+          (-> (reduce
+                prepare-entry
+                {:luids (iu/successive-luids context) :entries []}
+                entries)
+              :entries))
         entries))))
 
 
@@ -340,70 +330,78 @@
 
 
 (defn- process-batch-entry
+  "Returns a CompletableFuture that will complete with the response entry of
+  processing `entry`."
+  {:arglists '([context idx entry])}
   [{:keys [batch-handler base-url context-path return-preference]} idx
    {{:keys [method url identity] if-match :ifMatch if-none-exist :ifNoneExist}
     :request
     :keys [resource] :as entry}]
-  (let [entry (validate-entry idx entry)]
-    (if (::anom/category entry)
-      (ac/completed-future
-        (response-entry (handler-util/bundle-error-response entry)))
-      (let [url (strip-leading-slash (str/trim (type/value url)))
-            [url query-string] (str/split url #"\?")
-            method (keyword (str/lower-case (type/value method)))
-            return-preference (or return-preference
-                                  (when (#{:post :put} method)
-                                    "minimal"))
-            request
-            (cond->
-              {:uri (str context-path "/" url)
-               :request-method method
-               :blaze/base-url base-url}
+  (if-ok [_ (validate-entry idx entry)]
+    (let [url (-> url type/value strip-leading-slash)
+          [url query-string] (str/split url #"\?")
+          method (keyword (str/lower-case (type/value method)))
+          return-preference (or return-preference
+                                (when (#{:post :put} method)
+                                  "minimal"))
+          request
+          (cond->
+            {:uri (str context-path "/" url)
+             :request-method method
+             :blaze/base-url base-url}
 
-              query-string
-              (assoc :query-string query-string)
+            query-string
+            (assoc :query-string query-string)
 
-              return-preference
-              (assoc-in [:headers "prefer"] (str "return=" return-preference))
+            return-preference
+            (assoc-in [:headers "prefer"] (str "return=" return-preference))
 
-              if-match
-              (assoc-in [:headers "if-match"] if-match)
+            if-match
+            (assoc-in [:headers "if-match"] if-match)
 
-              if-none-exist
-              (assoc-in [:headers "if-none-exist"] if-none-exist)
+            if-none-exist
+            (assoc-in [:headers "if-none-exist"] if-none-exist)
 
-              identity
-              (assoc :identity identity)
+            identity
+            (assoc :identity identity)
 
-              resource
-              (assoc :body resource))]
-        (-> (batch-handler request)
-            (ac/then-apply (bundle-response idx))
-            (ac/exceptionally bundle-error-response))))))
+            resource
+            (assoc :body resource))]
+      (-> (batch-handler request)
+          (ac/then-apply (bundle-response idx))
+          (ac/exceptionally bundle-error-response)))
+    (comp ac/completed-future bundle-error-response)))
 
 
-(defmulti process
-  {:arglists '([context type request-entries])}
-  (fn [_ type _] type))
+(defmulti process-entries
+  "Processes `entries` according the batch or transaction rules.
+
+  In case of a batch bundle, returns a CompletableFuture that will complete with
+  the response entries.
+
+  In case of a transaction bundle, returns a CompletableFuture that will
+  complete with the response entries or complete exceptionally with an anomaly
+  in case of errors."
+  {:arglists '([context request entries])}
+  (fn [_ {{:keys [type]} :body} _] (type/value type)))
 
 
-(defmethod process "batch"
-  [context _ request-entries]
-  (let [process-entry (partial process-batch-entry context)
-        futures (vec (map-indexed process-entry request-entries))]
+(defmethod process-entries "batch"
+  [context _ entries]
+  (let [futures (map-indexed (partial process-batch-entry context) entries)]
     (-> (ac/all-of futures)
         (ac/then-apply
           (fn [_] (mapv ac/join futures))))))
 
 
-(defmethod process "transaction"
-  [{:keys [node executor return-preference] :as context} _ request-entries]
-  (-> (d/transact node (bundle/tx-ops request-entries))
+(defmethod process-entries "transaction"
+  [{:keys [node executor return-preference] :as context} _ entries]
+  (-> (d/transact node (bundle/tx-ops entries))
       ;; it's important to switch to the executor here, because otherwise
       ;; the central indexing thread would execute response building.
       (ac/then-apply-async
         (fn [db]
-          (prepare-response-entries context db request-entries))
+          (prepare-response-entries context db entries))
         executor)
       (ac/then-compose
         (fn [handles+entries]
@@ -424,22 +422,13 @@
     :return-preference (handler-util/preference headers "return")))
 
 
-(defn- process-entries
-  "Processes `entries` according the batch or transaction rules.
-
-  Returns a CompletableFuture that will complete with the response entries or
-  complete exceptionally with an anomaly in case of errors."
-  [context {{:keys [type]} :body :as request} entries]
-  (process (process-context context request) (type/value type) entries))
-
-
-(defn- handler [{:keys [executor] :as context}]
+(defn- handler [context]
   (fn [{{:keys [type] :as bundle} :body :as request}]
-    (-> (ac/supply-async #(validate-and-prepare-bundle context bundle) executor)
+    (-> (ba/completion-stage (validate-and-prepare-bundle context bundle))
         (ac/then-compose
           #(if (empty? %)
              (ac/completed-future [])
-             (process-entries context request %)))
+             (process-entries (process-context context request) request %)))
         (ac/then-apply
           (fn [response-entries]
             (ring/response

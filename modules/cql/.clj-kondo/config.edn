@@ -1,5 +1,7 @@
 {:lint-as
  {blaze.anomaly/when-ok clojure.core/let
+  blaze.db.api-stub/with-system-data clojure.core/with-open
+  blaze.test-util/with-system clojure.core/with-open
   blaze.elm.compiler.macros/defunop clojure.core/defn
   blaze.elm.compiler.macros/defbinop clojure.core/defn
   blaze.elm.compiler.macros/defternop clojure.core/defn

@@ -5,7 +5,7 @@
 
 
 (s/def :blaze.db/kv-store
-  #(satisfies? kv/KvStore %))
+  kv/store?)
 
 
 (s/def :blaze.db/kv-snapshot
@@ -16,14 +16,18 @@
   #(satisfies? kv/KvIterator %))
 
 
-(s/def :blaze.db.kv/put-entry-wo-cf
+(s/def ::kv/put-entry-wo-cf
   (s/tuple bytes? bytes?))
 
 
-(s/def :blaze.db.kv/put-entry-w-cf
+(s/def ::kv/put-entry-w-cf
   (s/tuple keyword? bytes? bytes?))
 
 
-(s/def :blaze.db.kv/put-entry
-  (s/or :kv :blaze.db.kv/put-entry-wo-cf
-        :cf-kv :blaze.db.kv/put-entry-w-cf))
+(s/def ::kv/put-entry
+  (s/or :kv ::kv/put-entry-wo-cf
+        :cf-kv ::kv/put-entry-w-cf))
+
+
+(s/def ::kv/column-families
+  (s/map-of keyword (s/nilable map?)))

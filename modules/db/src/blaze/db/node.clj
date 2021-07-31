@@ -261,7 +261,7 @@
     (if-failed [e (validation/validate-ops tx-ops)]
       (CompletableFuture/failedFuture (ex-info "" e))
       (let [[tx-cmds entries] (tx/prepare-ops tx-ops)]
-        (-> (rs/put resource-store entries)
+        (-> (rs/put! resource-store entries)
             (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds)))
             (ac/then-apply
               (fn [t]
@@ -374,23 +374,6 @@
    :error-t 0})
 
 
-(defn new-node
-  "Creates a new local database node."
-  [tx-log resource-handle-cache tx-cache indexer-executor kv-store
-   resource-store search-param-registry poll-timeout]
-  (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
-        indexer-abort-reason (atom nil)
-        node (->Node tx-log resource-handle-cache tx-cache kv-store
-                     resource-store search-param-registry resource-indexer
-                     (atom (initial-state kv-store))
-                     (atom {})
-                     (volatile! true)
-                     poll-timeout
-                     (ac/future))]
-    (execute indexer-executor node indexer-abort-reason)
-    node))
-
-
 (defmethod ig/pre-init-spec :blaze.db/node [_]
   (s/keys
     :req-un
@@ -405,10 +388,20 @@
 
 (defmethod ig/init-key :blaze.db/node
   [_ {:keys [tx-log resource-handle-cache tx-cache indexer-executor kv-store
-             resource-store search-param-registry]}]
+             resource-store search-param-registry poll-timeout]
+      :or {poll-timeout (time/seconds 1)}}]
   (log/info "Open local database node")
-  (new-node tx-log resource-handle-cache tx-cache indexer-executor kv-store
-            resource-store search-param-registry (time/seconds 1)))
+  (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
+        indexer-abort-reason (atom nil)
+        node (->Node tx-log resource-handle-cache tx-cache kv-store
+                     resource-store search-param-registry resource-indexer
+                     (atom (initial-state kv-store))
+                     (atom {})
+                     (volatile! true)
+                     poll-timeout
+                     (ac/future))]
+    (execute indexer-executor node indexer-abort-reason)
+    node))
 
 
 (defmethod ig/halt-key! :blaze.db/node

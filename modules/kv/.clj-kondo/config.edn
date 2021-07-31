@@ -1,4 +1,8 @@
-{:linters
+{:lint-as
+ {blaze.db.kv.mem-test/with-system-data clojure.core/with-open
+  blaze.test-util/with-system clojure.core/with-open}
+
+ :linters
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in

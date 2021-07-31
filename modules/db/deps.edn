@@ -40,11 +40,11 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
+   {blaze/test-util
+    {:local/root "../test-util"}
 
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}
+    lambdaisland/kaocha
+    {:mvn/version "1.0.861"}
 
     org.clojure/test.check
     {:mvn/version "1.1.0"}}
@@ -55,18 +55,21 @@
   {:extra-paths ["test-perf"]
 
    :extra-deps
-   {criterium/criterium
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    criterium/criterium
     {:mvn/version "0.4.6"}}}
 
   :test-coverage
   {:extra-paths ["test"]
 
    :extra-deps
-   {cloverage/cloverage
-    {:mvn/version "1.2.2"}
+   {blaze/test-util
+    {:local/root "../test-util"}
 
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}
 
     org.clojure/test.check
     {:mvn/version "1.1.0"}}

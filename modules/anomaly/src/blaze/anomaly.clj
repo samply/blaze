@@ -1,7 +1,21 @@
 (ns blaze.anomaly
-  (:refer-clojure :exclude [map])
+  (:refer-clojure :exclude [map map-indexed])
   (:require
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom])
+  (:import
+    [java.util.concurrent CompletableFuture]))
+
+
+(defn anomaly? [x]
+  (some? (::anom/category x)))
+
+
+(defn incorrect [msg & kvs]
+  (apply assoc {::anom/category ::anom/incorrect ::anom/message msg} kvs))
+
+
+(defn unsupported [msg & kvs]
+  (apply assoc {::anom/category ::anom/unsupported ::anom/message msg} kvs))
 
 
 (defn ex-anom
@@ -9,6 +23,12 @@
   `category` and `message` as data."
   [anom]
   (ex-info (::anom/message anom "") anom))
+
+
+(defn completion-stage [x]
+  (if (anomaly? x)
+    (CompletableFuture/failedFuture (ex-anom x))
+    (CompletableFuture/completedFuture x)))
 
 
 (defn throw-anom
@@ -68,3 +88,7 @@
 
 (defn exceptionally [x f]
   (if (::anom/category x) (f x) x))
+
+
+(defn map-indexed [f]
+  (comp (clojure.core/map-indexed f) (halt-when anomaly?)))

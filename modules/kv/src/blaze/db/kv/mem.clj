@@ -5,6 +5,8 @@
   (:require
     [blaze.anomaly :refer [throw-anom]]
     [blaze.db.kv :as kv]
+    [blaze.db.kv.spec]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
@@ -179,6 +181,7 @@
         ks)))
 
   (-put [_ entries]
+    (log/trace "put" (count entries) "entries")
     (swap! db put-entries entries)
     nil)
 
@@ -215,15 +218,11 @@
   (into {} (map init-column-family) column-families))
 
 
-(defn new-mem-kv-store
-  "Initializes an in-memory key-value store with optional column families."
-  ([]
-   (new-mem-kv-store {}))
-  ([column-families]
-   (->MemKvStore (atom (init-db (assoc column-families :default nil))))))
+(defmethod ig/pre-init-spec ::kv/mem [_]
+  (s/keys :req-un [::kv/column-families]))
 
 
-(defmethod ig/init-key :blaze.db.kv/mem
+(defmethod ig/init-key ::kv/mem
   [_ {:keys [column-families]}]
   (log/info "Open volatile, in-memory key-value store")
-  (new-mem-kv-store column-families))
+  (->MemKvStore (atom (init-db (assoc column-families :default nil)))))

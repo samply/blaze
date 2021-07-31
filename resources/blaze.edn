@@ -281,7 +281,8 @@
    ;; log uses a key-value store to persist transactions.
    ;;
    :blaze.db.tx-log/local
-   {:kv-store #blaze/ref :blaze.db/transaction-kv-store}
+   {:kv-store #blaze/ref :blaze.db/transaction-kv-store
+    :clock #blaze/ref :blaze/clock}
 
    :blaze.db.tx-log.local/duration-seconds {}
 
@@ -297,6 +298,8 @@
 
    ;;
    ;; Key-Value Resource Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
    ;;
    :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
@@ -418,7 +421,8 @@
    ;; log uses a key-value store to persist transactions.
    ;;
    :blaze.db.tx-log/local
-   {:kv-store #blaze/ref :blaze.db/transaction-kv-store}
+   {:kv-store #blaze/ref :blaze.db/transaction-kv-store
+    :clock #blaze/ref :blaze/clock}
 
    :blaze.db.tx-log.local/duration-seconds {}
 
@@ -447,6 +451,8 @@
 
    ;;
    ;; Key-Value Resource Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
    ;;
    :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
@@ -613,6 +619,8 @@
 
    ;;
    ;; Cassandra Resource Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
    ;;
    :blaze.db.resource-store/cassandra
    {:contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]

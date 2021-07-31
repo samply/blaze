@@ -1,5 +1,7 @@
 (ns blaze.db.cache-collector
   (:require
+    [blaze.db.cache-collector.protocols :as p]
+    [blaze.db.cache-collector.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig])
   (:import
@@ -11,11 +13,7 @@
 (set! *warn-on-reflection* true)
 
 
-(defprotocol StatsCache
-  (-stats [_]))
-
-
-(extend-protocol StatsCache
+(extend-protocol p/StatsCache
   Cache
   (-stats [cache]
     (.stats cache)))
@@ -112,24 +110,7 @@
 
 
 (def ^:private mapper
-  (map (fn [[name cache]] [name (-stats cache)])))
-
-
-(defn cache-collector
-  "Creates a cache collector with `name` from `cache`."
-  [caches]
-  (proxy [Collector] []
-    (collect []
-      (let [stats (into [] mapper caches)]
-        [(hits-total stats)
-         (loads-total stats)
-         (load-failures-total stats)
-         (load-seconds-total stats)
-         (load-evictions-total stats)]))))
-
-
-(s/def ::caches
-  (s/map-of string? #(satisfies? StatsCache %)))
+  (map (fn [[name cache]] [name (p/-stats cache)])))
 
 
 (defmethod ig/pre-init-spec :blaze.db/cache-collector [_]
@@ -138,7 +119,14 @@
 
 (defmethod ig/init-key :blaze.db/cache-collector
   [_ {:keys [caches]}]
-  (cache-collector caches))
+  (proxy [Collector] []
+    (collect []
+      (let [stats (into [] mapper caches)]
+        [(hits-total stats)
+         (loads-total stats)
+         (load-failures-total stats)
+         (load-seconds-total stats)
+         (load-evictions-total stats)]))))
 
 
 (derive :blaze.db/cache-collector :blaze.metrics/collector)

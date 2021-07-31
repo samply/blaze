@@ -1,4 +1,5 @@
 (ns blaze.db.resource-store.kv
+  "A resource store implementation that uses a kev-value store as backend."
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
@@ -83,11 +84,9 @@
 
   rs/ResourceStore
   (-put [_ entries]
-    (ac/supply (kv/put! kv-store (coll/eduction entry-freezer entries)))))
-
-
-(defn new-kv-resource-store [kv-store executor]
-  (->KvResourceStore kv-store executor))
+    (ac/supply-async
+      #(kv/put! kv-store (coll/eduction entry-freezer entries))
+      executor)))
 
 
 (defmethod ig/pre-init-spec ::rs/kv [_]
@@ -97,7 +96,7 @@
 (defmethod ig/init-key ::rs/kv
   [_ {:keys [kv-store executor]}]
   (log/info "Open key-value store backed resource store.")
-  (new-kv-resource-store kv-store executor))
+  (->KvResourceStore kv-store executor))
 
 
 (derive ::rs/kv :blaze.db/resource-store)

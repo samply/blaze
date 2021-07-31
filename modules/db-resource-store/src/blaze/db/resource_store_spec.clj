@@ -20,7 +20,7 @@
   :ret ac/completable-future?)
 
 
-(s/fdef rs/put
+(s/fdef rs/put!
   :args (s/cat :store :blaze.db/resource-store
                :entries (s/map-of :blaze.resource/hash :blaze/resource))
   :ret ac/completable-future?)

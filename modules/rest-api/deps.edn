@@ -25,11 +25,11 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
+   {blaze/test-util
+    {:local/root "../test-util"}
 
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    lambdaisland/kaocha
+    {:mvn/version "1.0.861"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -37,11 +37,11 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {cloverage/cloverage
-    {:mvn/version "1.2.2"}
+   {blaze/test-util
+    {:local/root "../test-util"}
 
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" "blaze.rest-api.spec"]}}}

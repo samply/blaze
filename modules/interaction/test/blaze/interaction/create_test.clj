@@ -5,12 +5,12 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
-    [blaze.interaction.test-util :refer [given-thrown]]
+    [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -19,8 +19,7 @@
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock Instant ZoneId]
-    [java.util Random]))
+    [java.time Instant]))
 
 
 (st/instrument)
@@ -36,44 +35,13 @@
 (test/use-fixtures :each fixture)
 
 
-(def executor (ex/single-thread-executor))
-
-
-(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
-
-
-(def ^:private base-url "base-url-134418")
-
-
-(def fixed-random
-  (proxy [Random] []
-    (nextLong []
-      0)))
+(def base-url "base-url-134418")
 
 
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]]
     {:syntax :bracket}))
-
-
-(defn- handler [node]
-  (-> (ig/init
-        {:blaze.interaction/create
-         {:node node
-          :executor executor
-          :clock clock
-          :rng-fn (constantly fixed-random)}})
-      :blaze.interaction/create))
-
-
-(defn- handler-with [txs]
-  (fn [request]
-    (with-open [node (mem-node-with txs)]
-      @((handler node)
-        (assoc request
-          :blaze/base-url base-url
-          ::reitit/router router)))))
 
 
 (deftest init-test
@@ -93,216 +61,262 @@
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {:blaze.interaction/create {:executor "foo"}})
+    (given-thrown (ig/init {:blaze.interaction/create {:executor ::invalid}})
       :key := :blaze.interaction/create
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:explain ::s/problems 3 :pred] := `ex/executor?
-      [:explain ::s/problems 3 :val] := "foo")))
+      [:explain ::s/problems 3 :val] := ::invalid)))
+
+
+(def system
+  (assoc mem-node-system
+    :blaze.interaction/create
+    {:node (ig/ref :blaze.db/node)
+     :executor (ig/ref :blaze.test/executor)
+     :clock (ig/ref :blaze.test/clock)
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+    :blaze.test/executor {}
+    :blaze.test/fixed-rng-fn {}))
+
+
+(defn wrap-defaults [handler]
+  (fn [request]
+    @(handler
+       (assoc request
+         :blaze/base-url base-url
+         ::reitit/router router))))
+
+
+(defmacro with-handler [[handler-binding] & body]
+  `(with-system [{handler# :blaze.interaction/create} system]
+     (let [~handler-binding (wrap-defaults handler#)]
+       ~@body)))
+
+
+(defmacro with-handler-data [[handler-binding] txs & body]
+  `(with-system-data [{handler# :blaze.interaction/create} system]
+     ~txs
+     (let [~handler-binding (wrap-defaults handler#)]
+       ~@body)))
 
 
 (deftest handler-test
   (testing "Returns Error on missing body"
-    (let [{:keys [status body]}
-          ((handler-with [])
-           {::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            (handler
+              {::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
-      (is (= 400 status))
+        (is (= 400 status))
 
-      (given body
-        :fhir/type := :fhir/OperationOutcome
-        [:issue 0 :severity] := #fhir/code"error"
-        [:issue 0 :code] := #fhir/code"invalid"
-        [:issue 0 :diagnostics] := "Missing HTTP body.")))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"invalid"
+          [:issue 0 :diagnostics] := "Missing HTTP body."))))
 
   (testing "Returns Error on type mismatch"
-    (let [{:keys [status body]}
-          ((handler-with [])
-           {::reitit/match {:data {:fhir.resource/type "Patient"}}
-            :body {:fhir/type :fhir/Observation}})]
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            (handler
+              {::reitit/match {:data {:fhir.resource/type "Patient"}}
+               :body {:fhir/type :fhir/Observation}})]
 
-      (is (= 400 status))
+        (is (= 400 status))
 
-      (given body
-        :fhir/type := :fhir/OperationOutcome
-        [:issue 0 :severity] := #fhir/code"error"
-        [:issue 0 :code] := #fhir/code"invariant"
-        [:issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-        [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
-        [:issue 0 :diagnostics] := "Resource type `Observation` doesn't match the endpoint type `Patient`.")))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"invariant"
+          [:issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+          [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
+          [:issue 0 :diagnostics] := "Resource type `Observation` doesn't match the endpoint type `Patient`."))))
 
   (testing "Returns Error violated referential integrity"
-    (let [{:keys [status body]}
-          ((handler-with [])
-           {::reitit/match {:data {:fhir.resource/type "Observation"}}
-            :body {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}})]
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            (handler
+              {::reitit/match {:data {:fhir.resource/type "Observation"}}
+               :body {:fhir/type :fhir/Observation :id "0"
+                      :subject #fhir/Reference{:reference "Patient/0"}}})]
 
-      (is (= 409 status))
+        (is (= 409 status))
 
-      (given body
-        :fhir/type := :fhir/OperationOutcome
-        [:issue 0 :severity] := #fhir/code"error"
-        [:issue 0 :code] := #fhir/code"conflict"
-        [:issue 0 :diagnostics] :=
-        "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"conflict"
+          [:issue 0 :diagnostics] :=
+          "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
   (testing "On newly created resource"
     (testing "with no Prefer header"
-      (let [{:keys [status headers body]}
-            ((handler-with [])
-             {::reitit/match {:data {:fhir.resource/type "Patient"}}
-              :body {:fhir/type :fhir/Patient}})]
+      (with-handler [handler]
+        (let [{:keys [status headers body]}
+              (handler
+                {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :body {:fhir/type :fhir/Patient}})]
 
-        (is (= 201 status))
+          (is (= 201 status))
 
-        (testing "Location header"
-          (is (= "base-url-134418/Patient/AAAAAAAAAAAAAAAA/_history/1"
-                 (get headers "Location"))))
+          (testing "Location header"
+            (is (= (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
+                   (get headers "Location"))))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+          (testing "Transaction time in Last-Modified header"
+            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (testing "Version in ETag header"
-          ;; 1 is the T of the transaction of the resource creation
-          (is (= "W/\"1\"" (get headers "ETag"))))
+          (testing "Version in ETag header"
+            ;; 1 is the T of the transaction of the resource creation
+            (is (= "W/\"1\"" (get headers "ETag"))))
 
-        (given body
-          :fhir/type := :fhir/Patient
-          :id := "AAAAAAAAAAAAAAAA"
-          [:meta :versionId] := #fhir/id"1"
-          [:meta :lastUpdated] := Instant/EPOCH)))
+          (given body
+            :fhir/type := :fhir/Patient
+            :id := "AAAAAAAAAAAAAAAA"
+            [:meta :versionId] := #fhir/id"1"
+            [:meta :lastUpdated] := Instant/EPOCH))))
 
     (testing "with return=minimal Prefer header"
-      (let [{:keys [status headers body]}
-            ((handler-with [])
-             {::reitit/match {:data {:fhir.resource/type "Patient"}}
-              :headers {"prefer" "return=minimal"}
-              :body {:fhir/type :fhir/Patient}})]
+      (with-handler [handler]
+        (let [{:keys [status headers body]}
+              (handler
+                {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :headers {"prefer" "return=minimal"}
+                 :body {:fhir/type :fhir/Patient}})]
 
-        (is (= 201 status))
+          (is (= 201 status))
 
-        (testing "Location header"
-          (is (= "base-url-134418/Patient/AAAAAAAAAAAAAAAA/_history/1"
-                 (get headers "Location"))))
+          (testing "Location header"
+            (is (= (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
+                   (get headers "Location"))))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+          (testing "Transaction time in Last-Modified header"
+            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (testing "Version in ETag header"
-          ;; 1 is the T of the transaction of the resource creation
-          (is (= "W/\"1\"" (get headers "ETag"))))
+          (testing "Version in ETag header"
+            ;; 1 is the T of the transaction of the resource creation
+            (is (= "W/\"1\"" (get headers "ETag"))))
 
-        (is (nil? body))))
+          (is (nil? body)))))
 
     (testing "with return=representation Prefer header"
-      (let [{:keys [status headers body]}
-            ((handler-with [])
-             {::reitit/match {:data {:fhir.resource/type "Patient"}}
-              :headers {"prefer" "return=representation"}
-              :body {:fhir/type :fhir/Patient}})]
+      (with-handler [handler]
+        (let [{:keys [status headers body]}
+              (handler
+                {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :headers {"prefer" "return=representation"}
+                 :body {:fhir/type :fhir/Patient}})]
 
-        (is (= 201 status))
+          (is (= 201 status))
 
-        (testing "Location header"
-          (is (= "base-url-134418/Patient/AAAAAAAAAAAAAAAA/_history/1"
-                 (get headers "Location"))))
+          (testing "Location header"
+            (is (= (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
+                   (get headers "Location"))))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+          (testing "Transaction time in Last-Modified header"
+            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (testing "Version in ETag header"
-          ;; 1 is the T of the transaction of the resource creation
-          (is (= "W/\"1\"" (get headers "ETag"))))
+          (testing "Version in ETag header"
+            ;; 1 is the T of the transaction of the resource creation
+            (is (= "W/\"1\"" (get headers "ETag"))))
 
-        (given body
-          :fhir/type := :fhir/Patient
-          :id := "AAAAAAAAAAAAAAAA"
-          [:meta :versionId] := #fhir/id"1"
-          [:meta :lastUpdated] := Instant/EPOCH)))
+          (given body
+            :fhir/type := :fhir/Patient
+            :id := "AAAAAAAAAAAAAAAA"
+            [:meta :versionId] := #fhir/id"1"
+            [:meta :lastUpdated] := Instant/EPOCH))))
 
     (testing "with return=OperationOutcome Prefer header"
-      (let [{:keys [status headers body]}
-            ((handler-with [])
-             {::reitit/match {:data {:fhir.resource/type "Patient"}}
-              :headers {"prefer" "return=OperationOutcome"}
-              :body {:fhir/type :fhir/Patient}})]
+      (with-handler [handler]
+        (let [{:keys [status headers body]}
+              (handler
+                {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :headers {"prefer" "return=OperationOutcome"}
+                 :body {:fhir/type :fhir/Patient}})]
 
-        (is (= 201 status))
+          (is (= 201 status))
 
-        (testing "Location header"
-          (is (= "base-url-134418/Patient/AAAAAAAAAAAAAAAA/_history/1"
-                 (get headers "Location"))))
+          (testing "Location header"
+            (is (= (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
+                   (get headers "Location"))))
 
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+          (testing "Transaction time in Last-Modified header"
+            (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-        (testing "Version in ETag header"
-          ;; 1 is the T of the transaction of the resource creation
-          (is (= "W/\"1\"" (get headers "ETag"))))
+          (testing "Version in ETag header"
+            ;; 1 is the T of the transaction of the resource creation
+            (is (= "W/\"1\"" (get headers "ETag"))))
 
-        (is (= :fhir/OperationOutcome (:fhir/type body))))))
+          (is (= :fhir/OperationOutcome (:fhir/type body)))))))
 
   (testing "conditional create"
     (testing "with non-matching query"
       (testing "on empty database"
-        (let [{:keys [status]}
-              ((handler-with [])
-               {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                :headers {"if-none-exist" "identifier=212154"}
-                :body {:fhir/type :fhir/Patient}})]
+        (with-handler [handler]
+          (let [{:keys [status]}
+                (handler
+                  {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                   :headers {"if-none-exist" "identifier=212154"}
+                   :body {:fhir/type :fhir/Patient}})]
 
-          (testing "the patient is created"
-            (is (= 201 status)))))
+            (testing "the patient is created"
+              (is (= 201 status))))))
 
       (testing "on non-matching patient"
-        (let [{:keys [status]}
-              ((handler-with
-                 [[[:put {:fhir/type :fhir/Patient :id "0"
-                          :identifier
-                          [#fhir/Identifier{:value "094808"}]}]]])
-               {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                :headers {"if-none-exist" "identifier=212154"}
-                :body {:fhir/type :fhir/Patient}})]
+        (with-handler-data [handler]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier
+                   [#fhir/Identifier{:value "094808"}]}]]]
 
-          (testing "the patient is created"
-            (is (= 201 status))))))
+          (let [{:keys [status]}
+                (handler
+                  {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                   :headers {"if-none-exist" "identifier=212154"}
+                   :body {:fhir/type :fhir/Patient}})]
+
+            (testing "the patient is created"
+              (is (= 201 status)))))))
 
     (testing "with matching patient"
-      (let [{:keys [status body]}
-            ((handler-with
-               [[[:put {:fhir/type :fhir/Patient :id "0"
-                        :identifier
-                        [#fhir/Identifier{:value "095156"}]}]]])
-             {::reitit/match {:data {:fhir.resource/type "Patient"}}
-              :headers {"if-none-exist" "identifier=095156"}
-              :body {:fhir/type :fhir/Patient}})]
+      (with-handler-data [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :identifier
+                 [#fhir/Identifier{:value "095156"}]}]]]
 
-        (testing "the existing patient is returned"
-          (is (= 200 status))
+        (let [{:keys [status body]}
+              (handler
+                {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :headers {"if-none-exist" "identifier=095156"}
+                 :body {:fhir/type :fhir/Patient}})]
 
-          (given body
-            :fhir/type := :fhir/Patient
-            :id := "0"))))
+          (testing "the existing patient is returned"
+            (is (= 200 status))
+
+            (given body
+              :fhir/type := :fhir/Patient
+              :id := "0")))))
 
     (testing "with multiple matching patients"
-      (let [{:keys [status body]}
-            ((handler-with
-               [[[:put {:fhir/type :fhir/Patient :id "0"
-                        :birthDate #fhir/date"2020"}]
-                 [:put {:fhir/type :fhir/Patient :id "1"
-                        :birthDate #fhir/date"2020"}]]])
-             {::reitit/match {:data {:fhir.resource/type "Patient"}}
-              :headers {"if-none-exist" "birthdate=2020"}
-              :body {:fhir/type :fhir/Patient}})]
+      (with-handler-data [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :birthDate #fhir/date"2020"}]
+          [:put {:fhir/type :fhir/Patient :id "1"
+                 :birthDate #fhir/date"2020"}]]]
 
-        (testing "a precondition failure is returned"
-          (is (= 412 status))
+        (let [{:keys [status body]}
+              (handler
+                {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 :headers {"if-none-exist" "birthdate=2020"}
+                 :body {:fhir/type :fhir/Patient}})]
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"conflict"
-            [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
+          (testing "a precondition failure is returned"
+            (is (= 412 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"conflict"
+              [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found.")))))))

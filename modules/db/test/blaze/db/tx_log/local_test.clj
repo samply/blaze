@@ -3,16 +3,17 @@
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
-    [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
     [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log.local :refer [new-local-tx-log]]
+    [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
     [blaze.db.tx-log.local.codec :as codec]
     [blaze.db.tx-log.spec]
-    [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.log]
+    [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -24,7 +25,7 @@
   (:import
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.io Closeable]
-    [java.time Clock Instant ZoneId]))
+    [java.time Instant]))
 
 
 (st/instrument)
@@ -47,8 +48,6 @@
      :modules [bs/object-mapper-module]}))
 
 
-(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
-(def executor (ex/single-thread-executor "local-tx-log"))
 (def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
 (def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
 
@@ -59,7 +58,7 @@
   (byte-array [0xA1]))
 
 
-(defn new-failing-kv-store []
+(defmethod ig/init-key ::failing-kv-store [_ _]
   (reify kv/KvStore
     (-new-snapshot [_]
       (reify
@@ -78,15 +77,36 @@
       (throw (Exception. "put-error")))))
 
 
-(defn- tx-log [kv-store]
-  (-> (ig/init
-        {:blaze.db.tx-log/local
-         {:kv-store kv-store}})
-      :blaze.db.tx-log/local))
+(def system
+  {::tx-log/local
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)
+    :clock (ig/ref :blaze.test/clock)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
+   :blaze.test/clock {}})
+
+
+(def failing-kv-store-system
+  {::tx-log/local
+   {:kv-store (ig/ref ::failing-kv-store)
+    :clock (ig/ref :blaze.test/clock)}
+   ::failing-kv-store {}
+   :blaze.test/clock {}})
 
 
 (deftest init-test
-  (is (s/valid? :blaze.db/tx-log (tx-log (new-mem-kv-store)))))
+  (testing "nil config"
+    (given-thrown (ig/init {::tx-log/local nil})
+      :key := ::tx-log/local
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {::tx-log/local {}})
+      :key := ::tx-log/local
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock)))))
 
 
 (defn- write-cbor [x]
@@ -95,12 +115,12 @@
 
 (deftest tx-log-test
   (testing "an empty transaction log has no transaction data"
-    (let [tx-log (new-local-tx-log (new-mem-kv-store) clock executor)
-                queue (tx-log/new-queue tx-log 1)]
-      (is (empty? (tx-log/poll queue (time/millis 10))))))
+    (with-system [{tx-log ::tx-log/local} system]
+      (with-open [queue (tx-log/new-queue tx-log 1)]
+        (is (empty? (tx-log/poll queue (time/millis 10)))))))
 
   (testing "with one submitted command in one transaction"
-    (let [tx-log (new-local-tx-log (new-mem-kv-store) clock executor)]
+    (with-system [{tx-log ::tx-log/local} system]
       @(tx-log/submit tx-log [{:op "create" :type "Patient" :id "0"
                                :hash patient-hash-0}])
 
@@ -114,7 +134,7 @@
           [:tx-cmds 0 :hash] := patient-hash-0))))
 
   (testing "with two submitted commands in two transactions"
-    (let [tx-log (new-local-tx-log (new-mem-kv-store) clock executor)]
+    (with-system [{tx-log ::tx-log/local} system]
       @(tx-log/submit tx-log [{:op "create" :type "Patient" :id "0"
                                :hash patient-hash-0}])
       @(tx-log/submit tx-log [{:op "create" :type "Observation" :id "0"
@@ -133,98 +153,98 @@
 
   (testing "with invalid transaction data"
     (testing "with invalid key"
-      (let [kv-store (new-mem-kv-store)]
+      (with-system [{tx-log ::tx-log/local
+                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
+                    system]
         (kv/put! kv-store (byte-array 0) (byte-array 0))
 
-        (let [tx-log (new-local-tx-log kv-store clock executor)]
-
-          (testing "the invalid transaction data is ignored"
-            (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
+        (testing "the invalid transaction data is ignored"
+          (with-open [queue (tx-log/new-queue tx-log 1)]
+            (is (empty? (tx-log/poll queue (time/millis 10))))))))
 
     (testing "with invalid key followed by valid entry"
-      (let [kv-store (new-mem-kv-store)]
+      (with-system [{tx-log ::tx-log/local
+                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
+                    system]
         (kv/put! kv-store (byte-array 0) (byte-array 0))
         (kv/put! kv-store (codec/encode-key 1) (codec/encode-tx-data
-                                              (Instant/ofEpochSecond 0)
-                                              [{:op "create" :type "Patient" :id "0"
-                                                :hash patient-hash-0}]))
+                                                 (Instant/ofEpochSecond 0)
+                                                 [{:op "create" :type "Patient" :id "0"
+                                                   :hash patient-hash-0}]))
 
-        (let [tx-log (new-local-tx-log kv-store clock executor)]
-
-          (testing "the invalid transaction data is ignored"
-            (with-open [queue (tx-log/new-queue tx-log 0)]
-              (given (first (tx-log/poll queue (time/millis 10)))
-                :t := 1
-                :instant := (Instant/ofEpochSecond 0)
-                [:tx-cmds 0 :op] := "create"
-                [:tx-cmds 0 :type] := "Patient"
-                [:tx-cmds 0 :id] := "0"
-                [:tx-cmds 0 :hash] := patient-hash-0))))))
+        (testing "the invalid transaction data is ignored"
+          (with-open [queue (tx-log/new-queue tx-log 0)]
+            (given (first (tx-log/poll queue (time/millis 10)))
+              :t := 1
+              :instant := (Instant/ofEpochSecond 0)
+              [:tx-cmds 0 :op] := "create"
+              [:tx-cmds 0 :type] := "Patient"
+              [:tx-cmds 0 :id] := "0"
+              [:tx-cmds 0 :hash] := patient-hash-0)))))
 
     (testing "with two invalid keys followed by valid entry"
-      (let [kv-store (new-mem-kv-store)]
+      (with-system [{tx-log ::tx-log/local
+                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
+                    system]
         (kv/put! kv-store (byte-array 0) (byte-array 0))
         (kv/put! kv-store (byte-array 1) (byte-array 0))
         (kv/put! kv-store (codec/encode-key 1) (codec/encode-tx-data
-                                              (Instant/ofEpochSecond 0)
-                                              [{:op "create" :type "Patient" :id "0"
-                                                :hash patient-hash-0}]))
+                                                 (Instant/ofEpochSecond 0)
+                                                 [{:op "create" :type "Patient" :id "0"
+                                                   :hash patient-hash-0}]))
 
-        (let [tx-log (new-local-tx-log kv-store clock executor)]
-
-          (testing "the invalid transaction data is ignored"
-            (with-open [queue (tx-log/new-queue tx-log 0)]
-              (given (first (tx-log/poll queue (time/millis 10)))
-                :t := 1
-                :instant := (Instant/ofEpochSecond 0)
-                [:tx-cmds 0 :op] := "create"
-                [:tx-cmds 0 :type] := "Patient"
-                [:tx-cmds 0 :id] := "0"
-                [:tx-cmds 0 :hash] := patient-hash-0))))))
+        (testing "the invalid transaction data is ignored"
+          (with-open [queue (tx-log/new-queue tx-log 0)]
+            (given (first (tx-log/poll queue (time/millis 10)))
+              :t := 1
+              :instant := (Instant/ofEpochSecond 0)
+              [:tx-cmds 0 :op] := "create"
+              [:tx-cmds 0 :type] := "Patient"
+              [:tx-cmds 0 :id] := "0"
+              [:tx-cmds 0 :hash] := patient-hash-0)))))
 
     (testing "with empty value"
-      (let [kv-store (new-mem-kv-store)]
+      (with-system [{tx-log ::tx-log/local
+                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
+                    system]
         (kv/put! kv-store (byte-array Long/BYTES) (byte-array 0))
 
-        (let [tx-log (new-local-tx-log kv-store clock executor)]
-
-          (testing "the invalid transaction data is ignored"
-            (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
+        (testing "the invalid transaction data is ignored"
+          (with-open [queue (tx-log/new-queue tx-log 1)]
+            (is (empty? (tx-log/poll queue (time/millis 10))))))))
 
     (testing "with invalid cbor value"
-      (let [kv-store (new-mem-kv-store)]
+      (with-system [{tx-log ::tx-log/local
+                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
+                    system]
         (kv/put! kv-store (byte-array Long/BYTES) (invalid-cbor-content))
 
-        (let [tx-log (new-local-tx-log kv-store clock executor)]
-
-          (testing "the invalid transaction data is ignored"
-            (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
+        (testing "the invalid transaction data is ignored"
+          (with-open [queue (tx-log/new-queue tx-log 1)]
+            (is (empty? (tx-log/poll queue (time/millis 10))))))))
 
     (testing "with invalid instant value"
-      (let [kv-store (new-mem-kv-store)]
+      (with-system [{tx-log ::tx-log/local
+                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
+                    system]
         (kv/put! kv-store (byte-array Long/BYTES) (write-cbor {:instant ""}))
 
-        (let [tx-log (new-local-tx-log kv-store clock executor)]
-
-          (testing "the invalid transaction data is ignored"
-            (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
+        (testing "the invalid transaction data is ignored"
+          (with-open [queue (tx-log/new-queue tx-log 1)]
+            (is (empty? (tx-log/poll queue (time/millis 10))))))))
 
     (testing "with invalid tx-cmd value"
-      (let [kv-store (new-mem-kv-store)]
+      (with-system [{tx-log ::tx-log/local
+                     kv-store [::kv/mem :blaze.db/transaction-kv-store]}
+                    system]
         (kv/put! kv-store (byte-array Long/BYTES) (write-cbor {:tx-cmds [{}]}))
 
-        (let [tx-log (new-local-tx-log kv-store clock executor)]
-
-          (testing "the invalid transaction data is ignored"
-            (with-open [queue (tx-log/new-queue tx-log 1)]
-              (is (empty? (tx-log/poll queue (time/millis 10)))))))))
+        (testing "the invalid transaction data is ignored"
+          (with-open [queue (tx-log/new-queue tx-log 1)]
+            (is (empty? (tx-log/poll queue (time/millis 10))))))))
 
     (testing "with failing kv-store"
-      (let [tx-log (new-local-tx-log (new-failing-kv-store) clock executor)]
+      (with-system [{tx-log ::tx-log/local} failing-kv-store-system]
         (-> (let [result @(-> (tx-log/submit tx-log [{:op "create" :type "Patient"
                                                       :id "0" :hash patient-hash-0}])
                               (ac/exceptionally (comp ex-message ex-cause)))]

@@ -306,7 +306,7 @@
   string?)
 
 
-(defmethod ig/pre-init-spec :blaze.db.kv/rocksdb [_]
+(defmethod ig/pre-init-spec ::kv/rocksdb [_]
   (s/keys :req-un [::dir]))
 
 
@@ -315,13 +315,13 @@
           dir (pr-str opts)))
 
 
-(defmethod ig/init-key :blaze.db.kv/rocksdb
+(defmethod ig/init-key ::kv/rocksdb
   [_ {:keys [dir block-cache stats opts column-families]}]
   (log/info (init-log-msg dir opts))
   (init-rocksdb-kv-store dir block-cache stats opts (merge {:default nil} column-families)))
 
 
-(defmethod ig/halt-key! :blaze.db.kv/rocksdb
+(defmethod ig/halt-key! ::kv/rocksdb
   [_ store]
   (log/info "Close RocksDB key-value store")
   (.close ^Closeable store))

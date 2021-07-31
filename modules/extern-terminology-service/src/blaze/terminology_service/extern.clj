@@ -54,10 +54,6 @@
     (.get cache params)))
 
 
-(defn- terminology-service [base-uri http-client]
-  (->TerminologyService (cache base-uri http-client)))
-
-
 (defmethod ig/pre-init-spec :blaze.terminology-service/extern [_]
   (s/keys :req-un [::base-uri :blaze/http-client]))
 
@@ -65,7 +61,7 @@
 (defmethod ig/init-key :blaze.terminology-service/extern
   [_ {:keys [base-uri http-client]}]
   (log/info (str "Init terminology server connection: " base-uri))
-  (terminology-service base-uri http-client))
+  (->TerminologyService (cache base-uri http-client)))
 
 
 (derive :blaze.terminology-service/extern :blaze/terminology-service)
