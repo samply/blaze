@@ -371,6 +371,9 @@ jobs:
     - name: X-Forwarded Headers
       run: .github/scripts/x-forwarded-headers.sh
 
+    - name: Delete
+      run: .github/scripts/delete.sh
+
   openid-auth-test:
     needs: build
     runs-on: ubuntu-20.04
@@ -511,3 +514,6 @@ jobs:
 
     - name: X-Forwarded Headers
       run: .github/scripts/x-forwarded-headers.sh
+
+    - name: Delete
+      run: .github/scripts/delete.sh

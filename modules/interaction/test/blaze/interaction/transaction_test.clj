@@ -95,14 +95,14 @@
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {:blaze.interaction/transaction {:executor ::node}})
+    (given-thrown (ig/init {:blaze.interaction/transaction {:executor ::invalid}})
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:explain ::s/problems 3 :pred] := `ex/executor?
-      [:explain ::s/problems 3 :val] := ::node)))
+      [:explain ::s/problems 3 :val] := ::invalid)))
 
 
 (deftest init-executor-test

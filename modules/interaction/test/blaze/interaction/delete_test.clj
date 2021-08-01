@@ -11,7 +11,6 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
-    [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
 
@@ -44,12 +43,12 @@
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {:blaze.interaction/delete {:executor ::executor}})
+    (given-thrown (ig/init {:blaze.interaction/delete {:executor ::invalid}})
       :key := :blaze.interaction/delete
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:explain ::s/problems 1 :pred] := `ex/executor?
-      [:explain ::s/problems 1 :val] := ::executor)))
+      [:explain ::s/problems 1 :val] := ::invalid)))
 
 
 (def system
@@ -74,19 +73,23 @@
 
 
 (deftest handler-test
-  (testing "Returns Not Found on non-existing resource"
+  (testing "Returns No Content on non-existing resource"
     (with-handler [handler]
-      (let [{:keys [status body]}
+      (let [{:keys [status headers body]}
             (handler
               {:path-params {:id "0"}
                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
-        (is (= 404 status))
+        (is (= 204 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"))))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource update
+          (is (= "W/\"1\"" (get headers "ETag"))))
+
+        (is (nil? body)))))
 
 
   (testing "Returns No Content on successful deletion"
@@ -126,7 +129,7 @@
           (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
         (testing "Version in ETag header"
-          ;; 2 is the T of the transaction of the resource update
-          (is (= "W/\"2\"" (get headers "ETag"))))
+          ;; 3 is the T of the transaction of the resource update
+          (is (= "W/\"3\"" (get headers "ETag"))))
 
         (is (nil? body))))))

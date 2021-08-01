@@ -79,12 +79,12 @@
       [:explain ::s/problems 1 :val] := ::kv-store))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {::rs/kv {:executor ::executor}})
+    (given-thrown (ig/init {::rs/kv {:executor ::invalid}})
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 1 :pred] := `ex/executor?
-      [:explain ::s/problems 1 :val] := ::executor)))
+      [:explain ::s/problems 1 :val] := ::invalid)))
 
 
 (def system

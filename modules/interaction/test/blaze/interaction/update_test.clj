@@ -67,12 +67,12 @@
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {:blaze.interaction/update {:executor ::executor}})
+    (given-thrown (ig/init {:blaze.interaction/update {:executor ::invalid}})
       :key := :blaze.interaction/update
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:explain ::s/problems 1 :pred] := `ex/executor?
-      [:explain ::s/problems 1 :val] := ::executor)))
+      [:explain ::s/problems 1 :val] := ::invalid)))
 
 
 (def system

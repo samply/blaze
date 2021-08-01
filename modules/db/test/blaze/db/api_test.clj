@@ -388,12 +388,20 @@
           [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put))))
 
-  #_(testing "delete"
+  (testing "delete"
     (testing "on empty database"
       (with-system [{:blaze.db/keys [node]} system]
         (let [db @(d/transact node [[:delete "Patient" "0"]])]
-          ;; TODO: finish
-          (d/resource-handle db "Patient" "0")))))
+          (testing "the patient is deleted"
+            (given (d/resource-handle db "Patient" "0")
+              :op := :delete)))
+
+        (testing "doing a second delete"
+          (let [db @(d/transact node [[:delete "Patient" "0"]])]
+            (testing "the patient is still deleted and has two changes"
+              (given (d/resource-handle db "Patient" "0")
+                :op := :delete
+                :num-changes := 2)))))))
 
   (testing "a transaction with duplicate resources fails"
     (testing "two puts"

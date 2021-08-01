@@ -186,12 +186,14 @@
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
   (with-open [_ (prom/timer duration-seconds "verify-delete")]
     (let [tid (codec/tid type)
-          {:keys [num-changes] :or {num-changes 0}}
+          {:keys [num-changes op] :or {num-changes 0}}
           (d/resource-handle db-before type id)]
-      (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :delete))
-          (update :del-resources conj [type id])
-          (update-in [:stats tid :num-changes] (fnil inc 0))
-          (update-in [:stats tid :total] (fnil dec 0))))))
+      (cond->
+        (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :delete))
+            (update :del-resources conj [type id])
+            (update-in [:stats tid :num-changes] (fnil inc 0)))
+        (and op (not (identical? :delete op)))
+        (update-in [:stats tid :total] (fnil dec 0))))))
 
 
 (defmethod verify-tx-cmd :default
@@ -208,9 +210,13 @@
     tx-cmds))
 
 
+(def ^:private empty-stats
+  {:total 0 :num-changes 0})
+
+
 (defn- type-stat-entry!
   [iter t new-t [tid increments]]
-  (let [current-stats (type-stats/get! iter tid t)]
+  (let [current-stats (or (type-stats/get! iter tid t) empty-stats)]
     (type-stats/index-entry tid new-t (merge-with + current-stats increments))))
 
 
@@ -223,7 +229,7 @@
 (defn- system-stats [{{:keys [snapshot t]} :context} new-t stats]
   (with-open [_ (prom/timer duration-seconds "system-stats")
               iter (system-stats/new-iterator snapshot)]
-    (let [current-stats (system-stats/get! iter t)]
+    (let [current-stats (or (system-stats/get! iter t) empty-stats)]
       (system-stats/index-entry new-t (apply merge-with + current-stats (vals stats))))))
 
 
