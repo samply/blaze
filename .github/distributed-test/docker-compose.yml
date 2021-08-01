@@ -19,24 +19,25 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
       KAFKA_CERTIFICATE_PASSWORD: "password"
       KAFKA_CFG_TLS_TYPE: "JKS"
-      # It's important to create the tx topic ourself, because it needs to use
+      KAFKA_TLS_TRUSTSTORE_FILE: "/opt/bitnami/kafka/config/certs/kafka.truststore.jks"
+      # It's important to create the tx topic ourselves, because it needs to use
       # LogAppendTime timestamps
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
     volumes:
-    - './kafka.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro'
-    - './kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro'
+    - "./kafka.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro"
+    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
     - "kafka-data:/bitnami"
     depends_on:
     - zookeeper
 
   kafka-topic-creator:
     image: "docker.io/bitnami/kafka:2"
-    command: /opt/bitnami/kafka/bin/kafka-init.sh
+    command: "/opt/bitnami/kafka/bin/kafka-init.sh"
     volumes:
     - "./kafka-init.sh:/opt/bitnami/kafka/bin/kafka-init.sh:ro"
     - "./kafka-init.conf:/opt/bitnami/kafka/config/kafka-init.conf:ro"
-    - './kafka-topic-creator.keystore.jks:/opt/bitnami/kafka/config/certs/kafka-topic-creator.keystore.jks:ro'
-    - './kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro'
+    - "./kafka-topic-creator.keystore.jks:/opt/bitnami/kafka/config/certs/kafka-topic-creator.keystore.jks:ro"
+    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
     depends_on:
     - zookeeper
     - kafka
@@ -45,7 +46,7 @@ services:
     image: "docker.io/bitnami/cassandra:3"
     volumes:
     - "./cassandra-init.cql:/docker-entrypoint-initdb.d/cassandra-init.cql:ro"
-    - 'cassandra-1-data:/bitnami'
+    - "cassandra-1-data:/bitnami"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
       CASSANDRA_PASSWORD_SEEDER: "yes"
@@ -55,7 +56,7 @@ services:
   cassandra-2:
     image: "docker.io/bitnami/cassandra:3"
     volumes:
-    - 'cassandra-2-data:/bitnami'
+    - "cassandra-2-data:/bitnami"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
       MAX_HEAP_SIZE: "1G"
@@ -84,8 +85,8 @@ services:
     ports:
     - "8080:8080"
     volumes:
-    - './blaze.keystore.jks:/app/blaze.keystore.jks:ro'
-    - './kafka.truststore.jks:/app/kafka.truststore.jks:ro'
+    - "./blaze.keystore.jks:/app/blaze.keystore.jks:ro"
+    - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-data:/app/data"
     deploy:
       resources:
