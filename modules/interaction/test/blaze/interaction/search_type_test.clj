@@ -164,7 +164,7 @@
                      :headers {"prefer" "handling=strict"}
                      :params {"foo" "bar"}})]
 
-              (is (= 404 status))
+              (is (= 400 status))
 
               (given body
                 :fhir/type := :fhir/OperationOutcome
@@ -179,7 +179,7 @@
                      :headers {"prefer" "handling=strict"}
                      :params {"foo" "bar" "_summary" "count"}})]
 
-              (is (= 404 status))
+              (is (= 400 status))
 
               (given body
                 :fhir/type := :fhir/OperationOutcome

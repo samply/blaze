@@ -81,7 +81,8 @@
   (if-let [search-param (sr/get registry code type)]
     search-param
     {::anom/category ::anom/not-found
-     ::anom/message (search-param-not-found-msg code type)}))
+     ::anom/message (search-param-not-found-msg code type)
+     :http/status 400}))
 
 
 (defn- resolve-search-params [registry type clauses lenient?]
