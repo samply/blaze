@@ -1,0 +1,40 @@
+version: '3.2'
+services:
+  blaze:
+    image: "samply/blaze:0.11.0"
+    environment:
+      BASE_URL: "http://localhost:8080"
+      JAVA_TOOL_OPTIONS: "-Xmx4g"
+      LOG_LEVEL: debug
+    ports:
+    - "8080:8080"
+    volumes:
+    - "blaze-data:/app/data"
+
+  hapi:
+    image: "hapiproject/hapi:v5.4.1"
+    ports:
+    - "8090:8080"
+    environment:
+      CATALINA_OPTS: "-Xmx4g"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://hapi-db:5432/fhir?currentSchema=public"
+      SPRING_DATASOURCE_USERNAME: "postgres"
+      SPRING_DATASOURCE_PASSWORD: "postgres"
+      SPRING_DATASOURCE_DRIVERCLASSNAME: "org.postgresql.Driver"
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: "org.hibernate.dialect.PostgreSQL10Dialect"
+      HAPI_FHIR_SERVER_ADDRESS: "http://localhost:8090/fhir"
+      HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED: "true"
+    depends_on:
+    - hapi-db
+
+  hapi-db:
+    image: "postgres:12.4-alpine"
+    environment:
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "fhir"
+    volumes:
+    - "hapi-data:/var/lib/postgresql/data"
+
+volumes:
+  blaze-data:
+  hapi-data:

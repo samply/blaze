@@ -1,0 +1,38 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "request": {
+        "method": "POST",
+        "url": "Subscription"
+      },
+      "resource": {
+        "resourceType": "Subscription",
+        "status": "requested",
+        "criteria": "Patient?",
+        "channel": {
+          "type": "rest-hook",
+          "endpoint": "http://blaze:8080/fhir",
+          "payload": "application/fhir+json"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "Subscription"
+      },
+      "resource": {
+        "resourceType": "Subscription",
+        "status": "requested",
+        "criteria": "Observation?",
+        "channel": {
+          "type": "rest-hook",
+          "endpoint": "http://blaze:8080/fhir",
+          "payload": "application/fhir+json"
+        }
+      }
+    }
+  ]
+}
