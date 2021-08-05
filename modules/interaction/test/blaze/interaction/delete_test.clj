@@ -6,7 +6,7 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.interaction.delete]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -59,26 +59,21 @@
     :blaze.test/executor {}))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.interaction/delete} system]
-     (let [~handler-binding #(-> % handler# deref)]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{handler# :blaze.interaction/delete} system]
      ~txs
-     (let [~handler-binding #(-> % handler# deref)]
+     (let [~handler-binding handler#]
        ~@body)))
 
 
 (deftest handler-test
   (testing "Returns No Content on non-existing resource"
     (with-handler [handler]
+      []
       (let [{:keys [status headers body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
         (is (= 204 status))
 
@@ -93,13 +88,13 @@
 
 
   (testing "Returns No Content on successful deletion"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status headers body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
         (is (= 204 status))
 
@@ -114,14 +109,14 @@
 
 
   (testing "Returns No Content on already deleted resource"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
       (let [{:keys [status headers body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
         (is (= 204 status))
 

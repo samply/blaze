@@ -10,7 +10,8 @@
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.update]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -85,32 +86,27 @@
 
 (defn wrap-defaults [handler]
   (fn [request]
-    @(handler
-       (assoc request
-         :blaze/base-url base-url
-         ::reitit/router router))))
+    (handler
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.interaction/update} system]
-     (let [~handler-binding (wrap-defaults handler#)]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{handler# :blaze.interaction/update} system]
      ~txs
-     (let [~handler-binding (wrap-defaults handler#)]
+     (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
        ~@body)))
 
 
 (deftest handler-test
   (testing "on missing body"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match patient-match})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match patient-match})]
 
         (testing "returns error"
           (is (= 400 status))
@@ -123,11 +119,12 @@
 
   (testing "on type mismatch"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match patient-match
-               :body {:fhir/type :fhir/Observation}})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match patient-match
+                :body {:fhir/type :fhir/Observation}})]
 
         (testing "returns error"
           (is (= 400 status))
@@ -142,11 +139,12 @@
 
   (testing "on missing id"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match patient-match
-               :body {:fhir/type :fhir/Patient}})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match patient-match
+                :body {:fhir/type :fhir/Patient}})]
 
         (testing "returns error"
           (is (= 400 status))
@@ -162,11 +160,12 @@
 
   (testing "on ID mismatch"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match patient-match
-               :body {:fhir/type :fhir/Patient :id "1"}})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match patient-match
+                :body {:fhir/type :fhir/Patient :id "1"}})]
 
         (testing "returns error"
           (is (= 400 status))
@@ -180,16 +179,16 @@
             [:issue 0 :diagnostics] := "The resource id `1` doesn't match the endpoints id `0`.")))))
 
   (testing "on optimistic locking failure"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match patient-match
-               :headers {"if-match" "W/\"1\""}
-               :body {:fhir/type :fhir/Patient :id "0"}})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match patient-match
+                :headers {"if-match" "W/\"1\""}
+                :body {:fhir/type :fhir/Patient :id "0"}})]
 
         (testing "returns error"
           (is (= 412 status))
@@ -202,12 +201,13 @@
 
   (testing "on violated referential integrity"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
-            (handler
-              {:path-params {:id "0"}
-               ::reitit/match {:data {:fhir.resource/type "Observation"}}
-               :body {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference "Patient/0"}}})]
+            @(handler
+               {:path-params {:id "0"}
+                ::reitit/match {:data {:fhir.resource/type "Observation"}}
+                :body {:fhir/type :fhir/Observation :id "0"
+                       :subject #fhir/Reference{:reference "Patient/0"}}})]
 
         (testing "returns error"
           (is (= 409 status))
@@ -221,11 +221,12 @@
   (testing "on newly created resource"
     (testing "with no Prefer header"
       (with-handler [handler]
+        []
         (let [{:keys [status headers body]}
-              (handler
-                {:path-params {:id "0"}
-                 ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient :id "0"}})]
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :body {:fhir/type :fhir/Patient :id "0"}})]
 
           (testing "Returns 201"
             (is (= 201 status)))
@@ -251,12 +252,13 @@
 
     (testing "with return=minimal Prefer header"
       (with-handler [handler]
+        []
         (let [{:keys [status headers body]}
-              (handler
-                {:path-params {:id "0"}
-                 ::reitit/match patient-match
-                 :headers {"prefer" "return=minimal"}
-                 :body {:fhir/type :fhir/Patient :id "0"}})]
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :headers {"prefer" "return=minimal"}
+                  :body {:fhir/type :fhir/Patient :id "0"}})]
 
           (testing "Returns 201"
             (is (= 201 status)))
@@ -278,12 +280,13 @@
 
     (testing "with return=representation Prefer header"
       (with-handler [handler]
+        []
         (let [{:keys [status headers body]}
-              (handler
-                {:path-params {:id "0"}
-                 ::reitit/match patient-match
-                 :headers {"prefer" "return=representation"}
-                 :body {:fhir/type :fhir/Patient :id "0"}})]
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :headers {"prefer" "return=representation"}
+                  :body {:fhir/type :fhir/Patient :id "0"}})]
 
           (testing "Returns 201"
             (is (= 201 status)))
@@ -307,15 +310,15 @@
 
   (testing "on recreated, previously deleted resource"
     (testing "with no Prefer header"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:create {:fhir/type :fhir/Patient :id "0"}]]
          [[:delete "Patient" "0"]]]
 
         (let [{:keys [status headers body]}
-              (handler
-                {:path-params {:id "0"}
-                 ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient :id "0"}})]
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :body {:fhir/type :fhir/Patient :id "0"}})]
 
           (testing "Returns 201"
             (is (= 201 status)))
@@ -342,15 +345,15 @@
 
   (testing "on successful update of an existing resource"
     (testing "with no Prefer header"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status headers body]}
-              (handler
-                {:path-params {:id "0"}
-                 ::reitit/match patient-match
-                 :body {:fhir/type :fhir/Patient :id "0"
-                        :birthDate #fhir/date"2020"}})]
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :body {:fhir/type :fhir/Patient :id "0"
+                         :birthDate #fhir/date"2020"}})]
 
           (testing "Returns 200"
             (is (= 200 status)))

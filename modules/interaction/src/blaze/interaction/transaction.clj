@@ -284,6 +284,32 @@
   (Instant/from (.parse DateTimeFormatter/RFC_1123_DATE_TIME s)))
 
 
+(defn- bundle-response
+  [{:keys [status body]
+    {etag "ETag"
+     last-modified "Last-Modified"
+     location "Location"}
+    :headers}]
+  (cond->
+    {:fhir/type :fhir.Bundle/entry
+     :response
+     (cond->
+       {:fhir/type :fhir.Bundle.entry/response
+        :status (str status)}
+
+       etag
+       (assoc :etag etag)
+
+       last-modified
+       (assoc :lastModified (convert-http-date last-modified))
+
+       location
+       (assoc :location (type/->Uri location)))}
+
+    body
+    (assoc :resource body)))
+
+
 (defn- response-entry [response]
   {:fhir/type :fhir.Bundle/entry :response response})
 
@@ -296,81 +322,61 @@
   (update outcome :issue with-entry-location* idx))
 
 
-(defn- bundle-response [idx]
-  (fn [{:keys [status body]
-        {etag "ETag"
-         last-modified "Last-Modified"
-         location "Location"}
-        :headers}]
+(defn- bundle-error-response [idx]
+  (comp
+    response-entry
+    (fn [error]
+      (-> (handler-util/bundle-error-response error)
+          (update :outcome with-entry-location idx)))))
+
+
+(defn- batch-request
+  [{:keys [base-url context-path return-preference db]}
+   {{:keys [method url identity] if-match :ifMatch if-none-exist :ifNoneExist}
+    :request :keys [resource]}]
+  (let [url (-> url type/value strip-leading-slash)
+        [url query-string] (str/split url #"\?")
+        method (keyword (str/lower-case (type/value method)))
+        return-preference (or return-preference
+                              (when (#{:post :put} method)
+                                "minimal"))]
     (cond->
-      {:fhir/type :fhir.Bundle/entry
-       :response
-       (cond->
-         {:fhir/type :fhir.Bundle.entry/response
-          :status (str status)}
+      {:uri (str context-path "/" url)
+       :request-method method
+       :blaze/base-url base-url}
 
-         etag
-         (assoc :etag etag)
+      query-string
+      (assoc :query-string query-string)
 
-         last-modified
-         (assoc :lastModified (convert-http-date last-modified))
+      return-preference
+      (assoc-in [:headers "prefer"] (str "return=" return-preference))
 
-         location
-         (assoc :location (type/->Uri location))
+      if-match
+      (assoc-in [:headers "if-match"] if-match)
 
-         (<= 400 status)
-         (assoc :outcome (with-entry-location body idx)))}
+      if-none-exist
+      (assoc-in [:headers "if-none-exist"] if-none-exist)
 
-      (and (#{200 201} status) body)
-      (assoc :resource body))))
+      identity
+      (assoc :identity identity)
 
+      resource
+      (assoc :body resource)
 
-(def ^:private bundle-error-response
-  (comp response-entry handler-util/bundle-error-response))
+      db
+      (assoc :blaze/db db))))
 
 
 (defn- process-batch-entry
   "Returns a CompletableFuture that will complete with the response entry of
   processing `entry`."
-  {:arglists '([context idx entry])}
-  [{:keys [batch-handler base-url context-path return-preference]} idx
-   {{:keys [method url identity] if-match :ifMatch if-none-exist :ifNoneExist}
-    :request
-    :keys [resource] :as entry}]
+  [{:keys [batch-handler] :as context} idx entry]
   (if-ok [_ (validate-entry idx entry)]
-    (let [url (-> url type/value strip-leading-slash)
-          [url query-string] (str/split url #"\?")
-          method (keyword (str/lower-case (type/value method)))
-          return-preference (or return-preference
-                                (when (#{:post :put} method)
-                                  "minimal"))
-          request
-          (cond->
-            {:uri (str context-path "/" url)
-             :request-method method
-             :blaze/base-url base-url}
-
-            query-string
-            (assoc :query-string query-string)
-
-            return-preference
-            (assoc-in [:headers "prefer"] (str "return=" return-preference))
-
-            if-match
-            (assoc-in [:headers "if-match"] if-match)
-
-            if-none-exist
-            (assoc-in [:headers "if-none-exist"] if-none-exist)
-
-            identity
-            (assoc :identity identity)
-
-            resource
-            (assoc :body resource))]
-      (-> (batch-handler request)
-          (ac/then-apply (bundle-response idx))
-          (ac/exceptionally bundle-error-response)))
-    (comp ac/completed-future bundle-error-response)))
+    (-> (batch-handler (batch-request context entry))
+        (ac/then-apply bundle-response)
+        (ac/exceptionally (bundle-error-response idx)))
+    (comp ac/completed-future response-entry
+          handler-util/bundle-error-response)))
 
 
 (defmulti process-entries
@@ -435,8 +441,7 @@
               {:fhir/type :fhir/Bundle
                :id (iu/luid context)
                :type (type/->Code (str (type/value type) "-response"))
-               :entry response-entries})))
-        (ac/exceptionally handler-util/error-response))))
+               :entry response-entries}))))))
 
 
 (defn- wrap-interaction-name [handler]

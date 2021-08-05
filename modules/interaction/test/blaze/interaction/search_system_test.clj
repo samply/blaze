@@ -9,7 +9,8 @@
     [blaze.interaction.search.params-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -90,30 +91,25 @@
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-       (assoc request
-         :blaze/base-url base-url
-         ::reitit/router router
-         ::reitit/match match))))
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router
+        ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{node# :blaze.db/node
-                  handler# :blaze.interaction/search-system} system]
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{node# :blaze.db/node
                        handler# :blaze.interaction/search-system} system]
      ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                wrap-error)]
        ~@body)))
 
 
 (deftest handler-test
   (testing "on empty database"
     (with-handler [handler]
+      []
       (testing "Returns all existing resources"
         (let [{:keys [status body]}
               @(handler {})]
@@ -140,7 +136,7 @@
             (is (zero? (count (:entry body)))))))))
 
   (testing "with one patient"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "Returns all existing resources"
@@ -226,7 +222,7 @@
             (is (empty? (:entry body))))))))
 
   (testing "with two patients"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
@@ -251,8 +247,8 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @(handler
-                {:params {"_count" "1" "__t" "1" "__page-type" "Patient"
-                          "__page-id" "0"}})]
+                 {:params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                           "__page-id" "0"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -271,8 +267,8 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
-                {:params {"_count" "1" "__t" "1" "__page-type" "Patient"
-                          "__page-id" "1"}})]
+                 {:params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                           "__page-id" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))

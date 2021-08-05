@@ -3,12 +3,12 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
@@ -69,10 +69,10 @@
             version-handles (d/instance-history db type id page-t since)]
         (build-response context db base-url router match query-params t total
                         version-handles))
-      (ac/completed-future
-        (handler-util/error-response
-          {::anom/category ::anom/not-found
-           :fhir/issue "not-found"})))))
+      (-> {::anom/category ::anom/not-found
+           :fhir/issue "not-found"}
+          ba/ex-anom
+          ac/failed-future))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction.history/instance [_]

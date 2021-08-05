@@ -3,7 +3,7 @@
     [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.fhir.db :as db]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
     [blaze.rest-api.capabilities :as capabilities]
@@ -21,29 +21,14 @@
     [reitit.core :as reitit]
     [reitit.ring]
     [reitit.ring.spec]
-    [ring.middleware.params :as ring-params]
+    [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
-
-
-(def ^:private wrap-params
-  {:name :params
-   :wrap ring-params/wrap-params})
 
 
 (def ^:private wrap-cors
   {:name :cors
    :wrap cors/wrap-cors})
-
-
-(def ^:private wrap-resource
-  {:name :resource
-   :wrap resource/wrap-resource})
-
-
-(def ^:private wrap-db
-  {:name :db
-   :wrap db/wrap-db})
 
 
 (defn batch-handler
@@ -57,7 +42,7 @@
        :reitit.middleware/transform
        (fn [middleware]
          (filterv (comp not #{:resource} :name) middleware))})
-    handler-util/default-handler))
+    handler-util/default-batch-handler))
 
 
 (defn- allowed-methods [{{:keys [result]} ::reitit/match}]
@@ -98,8 +83,9 @@
          (cond-> [wrap-cors]
            (seq auth-backends)
            (conj #(apply wrap-authentication % auth-backends)))})
+      wrap-error
       wrap-output
-      ring-params/wrap-params
+      wrap-params
       wrap-log))
 
 

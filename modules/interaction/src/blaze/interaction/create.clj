@@ -69,8 +69,7 @@
                   base-url router return-preference db-after nil handle)
                 (let [handle (first (d/type-query db-after type conditional-clauses))]
                   (response/build-response
-                    base-url router return-preference db-after handle handle)))))
-          (ac/exceptionally handler-util/error-response)))))
+                    base-url router return-preference db-after handle handle)))))))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/create [_]

@@ -1,6 +1,7 @@
 (ns blaze.handler.util
   "HTTP/REST Handler Utils"
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.fhir.spec.type :as type]
     [blaze.http.util :as hu]
@@ -90,6 +91,7 @@
 (defn- category->status [category]
   (case category
     ::anom/incorrect 400
+    ::anom/forbidden 403
     ::anom/not-found 404
     ::anom/unsupported 422
     ::anom/conflict 409
@@ -110,6 +112,39 @@
   (reduce #(apply ring/header %1 %2) response headers))
 
 
+(defn- error-response* [{::anom/keys [category] :as error} f]
+  (cond
+    category
+    (do
+      (when-not (:blaze/stacktrace error)
+        (case category
+          ::anom/fault
+          (log/error error)
+          (log/warn error)))
+      (f error))
+
+    (instance? CompletionException error)
+    (error-response* (ex-cause error) f)
+
+    (instance? Throwable error)
+    (if (::anom/category (ex-data error))
+      (error-response*
+        (merge
+          {::anom/message (ex-message error)}
+          (ex-data error))
+        f)
+      (do
+        (log/error (log/stacktrace error))
+        (error-response*
+          {::anom/category ::anom/fault
+           ::anom/message (ex-message error)
+           :blaze/stacktrace (format-exception error)}
+          f)))
+
+    :else
+    (error-response* {::anom/category ::anom/fault} f)))
+
+
 (defn error-response
   "Converts `error` into a OperationOutcome response.
 
@@ -123,73 +158,26 @@
       - will go into `OperationOutcome.issue.details` as code with system
         http://terminology.hl7.org/CodeSystem/operation-outcome
   * :fhir.issue/expression - will go into `OperationOutcome.issue.expression`"
-  {:arglists '([error])}
-  [{::anom/keys [category] :http/keys [status] :as error}]
-  (cond
-    category
-    (do
-      (when-not (:blaze/stacktrace error)
-        (case category
-          ::anom/fault
-          (log/error error)
-          (log/warn error)))
+  [error]
+  (error-response*
+    error
+    (fn [{::anom/keys [category] :http/keys [status] :as error}]
       (-> (ring/response (operation-outcome error))
           (headers error)
-          (ring/status (or status (category->status category)))))
-
-    (instance? CompletionException error)
-    (error-response (ex-cause error))
-
-    (instance? Throwable error)
-    (if (::anom/category (ex-data error))
-      (error-response
-        (merge
-          {::anom/message (ex-message error)}
-          (ex-data error)))
-      (do
-        (log/error (log/stacktrace error))
-        (error-response
-          {::anom/category ::anom/fault
-           ::anom/message (ex-message error)
-           :blaze/stacktrace (format-exception error)})))
-
-    :else
-    (error-response {::anom/category ::anom/fault})))
+          (ring/status (or status (category->status category)))))))
 
 
 (defn bundle-error-response
   "Returns an error response suitable for bundles.
 
   Accepts anomalies and exceptions."
-  {:arglists '([error])}
-  [{::anom/keys [category] :as error}]
-  (cond
-    category
-    (do
-      (when-not (:blaze/stacktrace error)
-        (case category
-          ::anom/fault
-          (log/error error)
-          (log/warn error)))
+  [error]
+  (error-response*
+    error
+    (fn [{::anom/keys [category] :http/keys [status] :as error}]
       {:fhir/type :fhir.Bundle.entry/response
-       :status (str (category->status category))
-       :outcome (operation-outcome error)})
-
-    (instance? Throwable error)
-    (if (::anom/category (ex-data error))
-      (bundle-error-response
-        (merge
-          {::anom/message (ex-message error)}
-          (ex-data error)))
-      (do
-        (log/error (log/stacktrace error))
-        (bundle-error-response
-          {::anom/category ::anom/fault
-           ::anom/message (ex-message error)
-           :blaze/stacktrace (format-exception error)})))
-
-    :else
-    (bundle-error-response {::anom/category ::anom/fault})))
+       :status (str (or status (category->status category)))
+       :outcome (operation-outcome error)})))
 
 
 (def ^:private not-found-issue
@@ -249,3 +237,18 @@
     {:not-found not-found-handler
      :method-not-allowed method-not-allowed-handler
      :not-acceptable not-acceptable-handler}))
+
+
+(defn- method-not-allowed-batch-handler [request]
+  (-> {::anom/category ::anom/forbidden
+       ::anom/message (method-not-allowed-msg request)
+       :http/status 405
+       :fhir/issue "processing"}
+      ba/ex-anom
+      ac/failed-future))
+
+
+(def default-batch-handler
+  "A handler returning failed futures."
+  (reitit.ring/create-default-handler
+    {:method-not-allowed method-not-allowed-batch-handler}))

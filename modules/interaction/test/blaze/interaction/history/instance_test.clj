@@ -10,7 +10,8 @@
     [blaze.interaction.history.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -88,30 +89,25 @@
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-       (assoc request
-         :blaze/base-url base-url
-         ::reitit/router router
-         ::reitit/match match))))
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router
+        ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{node# :blaze.db/node
-                  handler# :blaze.interaction.history/instance} system]
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{node# :blaze.db/node
                        handler# :blaze.interaction.history/instance} system]
      ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                wrap-error)]
        ~@body)))
 
 
 (deftest handler-test
   (testing "returns not found on empty node"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]
 
@@ -123,7 +119,7 @@
           [:issue 0 :code] := #fhir/code"not-found"))))
 
   (testing "returns history with one patient"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status body]}
@@ -162,13 +158,13 @@
           [:response :lastModified] := Instant/EPOCH))))
 
   (testing "returns history with one currently deleted patient"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
       (let [{:keys [status body]}
             @(handler
-              {:path-params {:id "0"}})]
+               {:path-params {:id "0"}})]
 
         (is (= 200 status))
 
@@ -213,14 +209,14 @@
             [:response :lastModified] := Instant/EPOCH)))))
 
   (testing "contains a next link on node with two versions and _count=1"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
 
       (let [{:keys [body]}
             @(handler
-              {:path-params {:id "0"}
-               :query-params {"_count" "1"}})]
+               {:path-params {:id "0"}
+                :query-params {"_count" "1"}})]
 
         (is (= "next" (-> body :link second :relation)))
 
@@ -228,14 +224,14 @@
                (-> body :link second :url))))))
 
   (testing "with two versions, calling the second page"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
 
       (let [{:keys [body]}
             @(handler
-              {:path-params {:id "0"}
-               :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
+               {:path-params {:id "0"}
+                :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
 
         (testing "the total count is still two"
           (is (= #fhir/unsignedInt 2 (:total body))))

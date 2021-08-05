@@ -4,7 +4,6 @@
     [blaze.anomaly :refer [throw-anom ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.handler.util :as handler-util]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
@@ -133,5 +132,4 @@
   [handler executor]
   (fn [request]
     (-> (handle-request request executor)
-        (ac/then-compose handler)
-        (ac/exceptionally handler-util/error-response))))
+        (ac/then-compose handler))))

@@ -47,6 +47,12 @@
   (conj (or tx-ops []) [:create (assoc resource :id id)]))
 
 
+(defn- throw-when [x]
+  (if (ba/anomaly? x)
+    (throw (ba/ex-anom x))
+    x))
+
+
 (defn- handle*
   [{:keys [node executor] :as context} db
    {:blaze/keys [base-url]
@@ -55,29 +61,26 @@
     ::keys [params]}
    measure]
   (-> (ac/supply-async
-        #(measure/evaluate-measure context db base-url router measure params)
+        #(throw-when (measure/evaluate-measure context db base-url router measure params))
         executor)
       (ac/then-compose
         (fn process-result [result]
-          (if (::anom/category result)
-            (ac/completed-future (handler-util/error-response result))
-            (cond
-              (= :get request-method)
-              (ac/completed-future (ring/response (:resource result)))
+          (cond
+            (= :get request-method)
+            (ac/completed-future (ring/response (:resource result)))
 
-              (= :post request-method)
-              (let [id (luid context)
-                    return-preference (handler-util/preference headers "return")]
-                (-> (d/transact node (tx-ops result id))
-                    ;; it's important to switch to the transaction
-                    ;; executor here, because otherwise the central
-                    ;; indexing thread would execute response building.
-                    (ac/then-apply-async identity executor)
-                    (ac/then-compose
-                      #(response/build-response
-                         base-url router return-preference % nil
-                         (d/resource-handle % "MeasureReport" id)))
-                    (ac/exceptionally handler-util/error-response)))))))))
+            (= :post request-method)
+            (let [id (luid context)
+                  return-preference (handler-util/preference headers "return")]
+              (-> (d/transact node (tx-ops result id))
+                  ;; it's important to switch to the transaction
+                  ;; executor here, because otherwise the central
+                  ;; indexing thread would execute response building.
+                  (ac/then-apply-async identity executor)
+                  (ac/then-compose
+                    #(response/build-response
+                       base-url router return-preference % nil
+                       (d/resource-handle % "MeasureReport" id))))))))))
 
 
 (defn- find-measure-handle*
@@ -105,8 +108,7 @@
   (fn [{:blaze/keys [db] :as request}]
     (-> (ba/completion-stage (find-measure-handle db request))
         (ac/then-compose (partial d/pull db))
-        (ac/then-compose (partial handle* context db request))
-        (ac/exceptionally handler-util/error-response))))
+        (ac/then-compose (partial handle* context db request)))))
 
 
 (defn- conform-params
@@ -132,7 +134,7 @@
   (fn [request]
     (if-ok [params (conform-params request)]
       (handler (assoc request ::params params))
-      (comp ac/completed-future handler-util/error-response))))
+      (comp ac/failed-future ba/ex-anom))))
 
 
 (defmethod ig/pre-init-spec ::handler [_]

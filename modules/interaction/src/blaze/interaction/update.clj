@@ -81,8 +81,7 @@
               base-url router (handler-util/preference headers "return")
               db-after
               (d/resource-handle (db-before db-after) type id)
-              (d/resource-handle db-after type id))))
-        (ac/exceptionally handler-util/error-response))))
+              (d/resource-handle db-after type id)))))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/update [_]
