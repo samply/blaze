@@ -108,7 +108,6 @@
         :router router
         :match match
         :type type
-        :preference/handling handling
         :params params))))
 
 

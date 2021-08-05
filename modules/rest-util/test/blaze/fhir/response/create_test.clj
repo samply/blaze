@@ -3,6 +3,7 @@
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.response.create :refer [build-response]]
+    [blaze.fhir.response.create-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [reitit.core :as reitit]
@@ -62,7 +63,8 @@
 
         (testing "with return=minimal Prefer header"
           (let [{:keys [body]}
-                @(build-response "http://localhost:8080" router "minimal" db nil
+                @(build-response "http://localhost:8080" router
+                                 :blaze.preference.return/minimal db nil
                                  resource-handle)]
 
             (testing "Contains no body"
@@ -70,7 +72,8 @@
 
         (testing "with return=representation Prefer header"
           (let [{:keys [body]}
-                @(build-response "http://localhost:8080" router "representation"
+                @(build-response "http://localhost:8080" router
+                                 :blaze.preference.return/representation
                                  db nil resource-handle)]
 
             (testing "Contains the resource as body"
@@ -98,7 +101,8 @@
 
         (testing "with return=minimal Prefer header"
           (let [{:keys [body]}
-                @(build-response "http://localhost:8080" router "minimal" db
+                @(build-response "http://localhost:8080" router
+                                 :blaze.preference.return/minimal db
                                  resource-handle resource-handle)]
 
             (testing "Contains no body"
@@ -106,7 +110,8 @@
 
         (testing "with return=representation Prefer header"
           (let [{:keys [body]}
-                @(build-response "http://localhost:8080" router "representation"
+                @(build-response "http://localhost:8080" router
+                                 :blaze.preference.return/representation
                                  db resource-handle resource-handle)]
 
             (testing "Contains the resource as body"

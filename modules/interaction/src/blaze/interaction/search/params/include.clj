@@ -17,7 +17,7 @@
        (cond-> {:code code}
          target-type
          (assoc :target-type target-type))]
-      (when (= "strict" handling)
+      (when (identical? :blaze.preference.handling/strict handling)
         {::anom/category ::anom/incorrect
          ::anom/message (missing-code-msg source-type)}))))
 
@@ -42,7 +42,7 @@
   (let [[source-type code target-type] (str/split v #":")]
     (if code
       [(or target-type :any) {:source-type source-type :code code}]
-      (when (= "strict" handling)
+      (when (identical? :blaze.preference.handling/strict handling)
         {::anom/category ::anom/incorrect
          ::anom/message (missing-code-msg source-type)}))))
 

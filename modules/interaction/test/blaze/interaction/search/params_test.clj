@@ -22,5 +22,5 @@
 
 (deftest decode-test
   (testing "invalid include parameter"
-    (given (params/decode "strict" {"_include" "Observation"})
+    (given (params/decode :blaze.preference.handling/strict {"_include" "Observation"})
       ::anom/category := ::anom/incorrect)))

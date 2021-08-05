@@ -195,7 +195,7 @@
   CompletionStage returned by the function `f`.
 
   When `stage` completes normally, the function `f` is invoked with `stage`'s
-  result as the argument, returning another CompletionStage.  When that stage
+  result as the argument, returning another CompletionStage. When that stage
   completes normally, the CompletionStage returned by this method is completed
   with the same value.
 
@@ -207,6 +207,33 @@
     (reify Function
       (apply [_ x]
         (f x)))))
+
+
+(defn then-compose-async
+  "Returns a CompletionStage that is completed with the same value as the
+  CompletionStage returned by the function `f`, executed using the optional
+  `executor`.
+
+  When `stage` completes normally, the function `f` is invoked with `stage`'s
+  result as the argument, returning another CompletionStage. When that stage
+  completes normally, the CompletionStage returned by this method is completed
+  with the same value.
+
+  To ensure progress, the function `f` must arrange eventual completion of its
+  result."
+  ([stage f]
+   (.thenComposeAsync
+     ^CompletionStage stage
+     (reify Function
+       (apply [_ x]
+         (f x)))))
+  ([stage f executor]
+   (.thenComposeAsync
+     ^CompletionStage stage
+     (reify Function
+       (apply [_ x]
+         (f x)))
+     executor)))
 
 
 (defn handle

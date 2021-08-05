@@ -281,4 +281,21 @@
             (is (nil? (link-url body "next"))))
 
           (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body))))))))))
+            (is (= 1 (count (:entry body)))))))))
+
+  (testing "Include Resources"
+    (testing "invalid include parameter"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:headers {"prefer" "handling=strict"}
+                  :params {"_include" "Observation"}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`."))))))
