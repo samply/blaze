@@ -5,6 +5,8 @@
     [blaze.db.tx-log.kafka :as kafka]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.test-util :refer [given-thrown with-system]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -42,10 +44,29 @@
 (def tx-cmd {:op "create" :type "Patient" :id "0" :hash patient-hash-0})
 
 
-(defn tx-log []
-  (-> {:blaze.db.tx-log/kafka {:bootstrap-servers bootstrap-servers}}
-      ig/init
-      :blaze.db.tx-log/kafka))
+(def system
+  {::tx-log/kafka {:bootstrap-servers bootstrap-servers}})
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::tx-log/kafka nil})
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {::tx-log/kafka {}})
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :bootstrap-servers))))
+
+  (testing "invalid bootstrap servers"
+    (given-thrown (ig/init {::tx-log/kafka {:bootstrap-servers ::invalid}})
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `string?
+      [:explain ::s/problems 0 :val] := ::invalid)))
 
 
 (deftest tx-log-test
@@ -61,9 +82,9 @@
              (.onCompletion callback (RecordMetadata. nil 0 0 0 nil 0 0) nil))
            Closeable
            (close [_])))]
-      (with-open [tx-log (tx-log)]
+      (with-system [{tx-log ::tx-log/kafka} system]
         (is (= 1 @(tx-log/submit tx-log [tx-cmd])))))
-(int (/ (- 1522581 1048576) 1024))
+
     (testing "RecordTooLargeException"
       (with-redefs
         [kafka/create-producer
@@ -77,12 +98,10 @@
                               (RecordTooLargeException. "msg-173357")))
              Closeable
              (close [_])))]
-        (with-open [tx-log (tx-log)]
+        (with-system [{tx-log ::tx-log/kafka} system]
           (given @(-> (tx-log/submit tx-log [tx-cmd]) (ac/exceptionally ex-data))
             ::anom/category := ::anom/unsupported
             ::anom/message := "A transaction with 1 commands generated a Kafka message which is larger than the configured maximum of null bytes. In order to prevent this error, increase the maximum message size by setting DB_KAFKA_MAX_REQUEST_SIZE to a higher number. msg-173357"))))
-
-    (* 3 1024 1024)
 
     (testing "AuthorizationException"
       (with-redefs
@@ -97,7 +116,7 @@
                               (AuthorizationException. "msg-175337")))
              Closeable
              (close [_])))]
-        (with-open [tx-log (tx-log)]
+        (with-system [{tx-log ::tx-log/kafka} system]
           (given @(-> (tx-log/submit tx-log [tx-cmd]) (ac/exceptionally ex-data))
             ::anom/category := ::anom/fault
             ::anom/message := "msg-175337")))))
@@ -129,9 +148,9 @@
                (throw (Error.))))
            Closeable
            (close [_])))]
-      (with-open [tx-log (tx-log)
-                  queue (tx-log/new-queue tx-log 1)]
-        (is (empty? (tx-log/poll queue (time/millis 10))))))))
+      (with-system [{tx-log ::tx-log/kafka} system]
+        (let [queue (tx-log/new-queue tx-log 1)]
+          (is (empty? (tx-log/poll queue (time/millis 10)))))))))
 
 
 (defn invalid-cbor-content

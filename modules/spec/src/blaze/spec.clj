@@ -1,7 +1,10 @@
 (ns blaze.spec
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]))
+    [clojure.string :as str])
+  (:import
+    [java.time Clock]
+    [java.util Random]))
 
 
 (s/def :blaze/base-url
@@ -16,6 +19,18 @@
       :non-empty (s/and
                    #(str/starts-with? % "/")
                    (complement #(str/ends-with? % "/"))))))
+
+
+(s/def :blaze/clock
+  #(instance? Clock %))
+
+
+(s/def :blaze/rng
+  #(instance? Random %))
+
+
+(s/def :blaze/rng-fn
+  fn?)
 
 
 

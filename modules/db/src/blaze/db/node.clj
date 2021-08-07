@@ -1,9 +1,8 @@
 (ns blaze.db.node
   "Local Database Node"
   (:require
-    [blaze.anomaly :refer [ex-anom if-ok when-ok]]
+    [blaze.anomaly :refer [ex-anom if-failed if-ok when-ok]]
     [blaze.async.comp :as ac]
-    [blaze.db.api :as d]
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db :as db]
@@ -13,6 +12,7 @@
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
+    [blaze.db.node.protocols :as np]
     [blaze.db.node.resource-indexer :as resource-indexer :refer [new-resource-indexer]]
     [blaze.db.node.spec]
     [blaze.db.node.transaction :as tx]
@@ -41,6 +41,20 @@
 (set! *warn-on-reflection* true)
 
 
+(defn submit-tx [node tx-ops]
+  (np/-submit-tx node tx-ops))
+
+
+(defn tx-result
+  "Waits for the transaction with `t` to happen on `node`.
+
+  Returns a CompletableFuture that completes with the database after the
+  transaction in case of success or completes exceptionally with an anomaly in
+  case of a transaction error or other errors."
+  [node t]
+  (np/-tx-result node t))
+
+
 (defhistogram duration-seconds
   "Node durations."
   {:namespace "blaze"
@@ -67,7 +81,8 @@
   (if-let [search-param (sr/get registry code type)]
     search-param
     {::anom/category ::anom/not-found
-     ::anom/message (search-param-not-found-msg code type)}))
+     ::anom/message (search-param-not-found-msg code type)
+     :http/status 400}))
 
 
 (defn- resolve-search-params [registry type clauses lenient?]
@@ -78,8 +93,8 @@
         (if-ok [search-param (resolve-search-param registry type code)]
           (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
             (conj ret [search-param modifier values compiled-values])
-            (reduced compiled-values))
-          (if lenient? ret (reduced search-param)))))
+            reduced)
+          #(if lenient? ret (reduced %)))))
     []
     clauses))
 
@@ -190,7 +205,7 @@
   (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
         future (index-resources node tx-data)
-        result (index-tx (d/db node) tx-data)]
+        result (index-tx (np/-db node) tx-data)]
     (if (::anom/category result)
       (commit-error! node t result)
       (do
@@ -232,27 +247,27 @@
 (defrecord Node [tx-log rh-cache tx-cache kv-store resource-store
                  search-param-registry resource-indexer state tx-resource-cache
                  run? poll-timeout finished]
-  p/Node
+  np/Node
   (-db [node]
     (db/db node (:t @state)))
 
   (-sync [node t]
     (if (<= t (:t @state))
-      (ac/completed-future (d/db node))
+      (ac/completed-future (np/-db node))
       (-> (add-watcher! state t)
           (ac/then-apply (fn [_] (db/db node t))))))
 
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
-    (if-ok [res (validation/validate-ops tx-ops)]
+    (if-failed [e (validation/validate-ops tx-ops)]
+      (CompletableFuture/failedFuture (ex-info "" e))
       (let [[tx-cmds entries] (tx/prepare-ops tx-ops)]
-        (-> (rs/put resource-store entries)
+        (-> (rs/put! resource-store entries)
             (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds)))
             (ac/then-apply
               (fn [t]
                 (swap! tx-resource-cache assoc t entries)
-                t))))
-      (CompletableFuture/failedFuture (ex-info "" res))))
+                t))))))
 
   (-tx-result [node t]
     (let [watcher (add-watcher! state t)
@@ -360,23 +375,6 @@
    :error-t 0})
 
 
-(defn new-node
-  "Creates a new local database node."
-  [tx-log resource-handle-cache tx-cache indexer-executor kv-store
-   resource-store search-param-registry poll-timeout]
-  (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
-        indexer-abort-reason (atom nil)
-        node (->Node tx-log resource-handle-cache tx-cache kv-store
-                     resource-store search-param-registry resource-indexer
-                     (atom (initial-state kv-store))
-                     (atom {})
-                     (volatile! true)
-                     poll-timeout
-                     (ac/future))]
-    (execute indexer-executor node indexer-abort-reason)
-    node))
-
-
 (defmethod ig/pre-init-spec :blaze.db/node [_]
   (s/keys
     :req-un
@@ -391,10 +389,20 @@
 
 (defmethod ig/init-key :blaze.db/node
   [_ {:keys [tx-log resource-handle-cache tx-cache indexer-executor kv-store
-             resource-store search-param-registry]}]
+             resource-store search-param-registry poll-timeout]
+      :or {poll-timeout (time/seconds 1)}}]
   (log/info "Open local database node")
-  (new-node tx-log resource-handle-cache tx-cache indexer-executor kv-store
-            resource-store search-param-registry (time/seconds 1)))
+  (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
+        indexer-abort-reason (atom nil)
+        node (->Node tx-log resource-handle-cache tx-cache kv-store
+                     resource-store search-param-registry resource-indexer
+                     (atom (initial-state kv-store))
+                     (atom {})
+                     (volatile! true)
+                     poll-timeout
+                     (ac/future))]
+    (execute indexer-executor node indexer-abort-reason)
+    node))
 
 
 (defmethod ig/halt-key! :blaze.db/node

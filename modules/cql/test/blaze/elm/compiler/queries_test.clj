@@ -1,7 +1,7 @@
 (ns blaze.elm.compiler.queries-test
   (:require
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.elm.code :as code]
     [blaze.elm.code-spec]
     [blaze.elm.compiler :as c]
@@ -113,7 +113,9 @@
         (is (not (instance? IPersistentCollection res))))))
 
   (testing "Retrieve queries"
-    (with-open [node (mem-node-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
       (let [db (d/db node)
             retrieve {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
             where {:type "Equal"
@@ -171,11 +173,12 @@
 ;; 10.12. With
 (deftest compile-with-clause-test
   (testing "Equiv With with two Observations comparing there subjects."
-    (with-open [node (mem-node-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Observation :id "0"
-                                :subject
-                                #fhir/Reference{:reference "Patient/0"}}]]])]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference{:reference "Patient/0"}}]]]
+
       (let [elm {:alias "O1"
                :type "WithEquiv"
                :expression
@@ -204,11 +207,12 @@
       (is (= [lhs-entity] (into [] xform [lhs-entity]))))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
-    (with-open [node (mem-node-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Observation :id "0"
-                                :subject
-                                #fhir/Reference{:reference "Patient/0"}}]]])]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference{:reference "Patient/0"}}]]]
+
       (let [elm {:alias "O"
                :type "WithEquiv"
                :expression

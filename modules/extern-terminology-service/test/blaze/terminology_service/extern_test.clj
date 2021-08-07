@@ -2,8 +2,10 @@
   (:require
     [blaze.terminology-service :as ts]
     [blaze.terminology-service.extern]
+    [blaze.test-util :refer [given-thrown with-system]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest]]
+    [clojure.test :as test :refer [deftest testing]]
     [integrant.core :as ig]
     [jsonista.core :as j]
     [juxt.iota :refer [given]]
@@ -25,17 +27,42 @@
 (test/use-fixtures :each fixture)
 
 
-(defn- terminology-service [base-uri http-client]
-  (-> (ig/init
-        {:blaze.terminology-service/extern
-         {:base-uri base-uri
-          :http-client http-client}})
-      :blaze.terminology-service/extern))
+(defmethod ig/init-key ::http-client [_ _]
+  (HttpClientMock.))
+
+
+(def system
+  {::ts/extern
+   {:base-uri "http://localhost:8080/fhir"
+    :http-client (ig/ref ::http-client)}
+   ::http-client {}})
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::ts/extern nil})
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {::ts/extern {}})
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :http-client))))
+
+  (testing "invalid base-uri"
+    (given-thrown (ig/init {::ts/extern {:base-uri ::invalid}})
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
+      [:explain ::s/problems 1 :pred] := `string?
+      [:explain ::s/problems 1 :val] := ::invalid)))
 
 
 (deftest terminology-service-test
-  (let [http-client (HttpClientMock.)
-        ts (terminology-service "http://localhost:8080/fhir" http-client)]
+  (with-system [{ts ::ts/extern ::keys [http-client]} system]
 
     (-> (.onGet http-client "http://localhost:8080/fhir/ValueSet/$expand?url=http://hl7.org/fhir/ValueSet/administrative-gender")
         (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))

@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-    [blaze.anomaly :refer [ex-anom when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.spec]
@@ -13,51 +13,28 @@
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.util :as search-util]
-    [blaze.luid :as luid]
+    [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
 
 
-(defn- handles-and-clauses
-  [{#_:preference/keys #_[handling] #_:or #_{handling "strict"}
-    {:keys [#_clauses page-type page-id]} :params}
-   db]
-  {:handles (if (and page-type page-id)
-              (d/system-list db page-type page-id)
-              (d/system-list db))}
-  #_(cond
-      (empty? clauses)
-      {:handles (d/system-list db page-type page-id)}
-
-      (= "strict" handling)
-      (when-ok [handles (d/system-query db clauses page-type page-id)]
-        {:handles handles
-         :clauses clauses})
-
-      :else
-      (let [query (d/compile-system-query-lenient db clauses)]
-        {:handles (d/execute-query db query page-type page-id)
-         :clauses (d/query-clauses query)})))
+(defn- handles [{{:keys [page-type page-id]} :params} db]
+  (if (and page-type page-id)
+    (d/system-list db page-type page-id)
+    (d/system-list db)))
 
 
-(defn- entries-and-clauses
-  "Returns a CompletableFuture that will complete with a vector of all entries
-  of the current page plus one entry of the next page."
+(defn- entries
   [{:keys [base-url router] {:keys [page-size]} :params :as context} db]
-  (let [{:keys [handles clauses] :as handles-and-clauses}
-        (handles-and-clauses context db)]
-    (if (::anom/category handles-and-clauses)
-      (ac/failed-future (ex-anom handles-and-clauses))
-      (-> (d/pull-many db (into [] (take (inc page-size)) handles))
-          (ac/then-apply
-            (fn [resources]
-              {:entries (mapv #(search-util/entry base-url router %) resources)
-               :clauses clauses}))))))
+  (let [handles (handles context db)]
+    (-> (d/pull-many db (into [] (take (inc page-size)) handles))
+        (ac/then-apply
+          (fn [resources]
+            (mapv #(search-util/entry base-url router %) resources))))))
 
 
 (defn- self-link-offset [[{first-resource :resource}]]
@@ -65,10 +42,10 @@
     {"__page-type" (name type) "__page-id" id}))
 
 
-(defn- self-link [{:keys [base-url match params]} clauses t entries]
+(defn- self-link [{:keys [base-url match params]} t entries]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url base-url match params clauses t
+   :url (type/->Uri (nav/url base-url match params [] t
                              (self-link-offset entries)))})
 
 
@@ -77,83 +54,40 @@
     {"__page-type" (name type) "__page-id" id}))
 
 
-(defn- next-link [{:keys [base-url match params]} clauses t entries]
+(defn- next-link [{:keys [base-url match params]} t entries]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (type/->Uri (nav/url base-url match params clauses t
+   :url (type/->Uri (nav/url base-url match params [] t
                              (next-link-offset entries)))})
-
-
-(defn- total
-  "Calculates the total number of resources returned.
-
-  If we have no clauses (returning all resources), we can use `d/system-total`.
-  Secondly, if the number of entries found is not more than one page in size,
-  we can use that number. Otherwise there is no cheap way to calculate the
-  number of matching resources, so we don't report it."
-  [db {:keys [clauses page-size page-id]} entries]
-  (cond
-    (empty? clauses)
-    (d/system-total db)
-
-    (and (nil? page-id) (<= (count entries) page-size))
-    (count entries)))
 
 
 (defn- search-normal [{:keys [params] :as context} db]
   (let [t (or (d/as-of-t db) (d/basis-t db))]
-    (-> (entries-and-clauses context db)
+    (-> (entries context db)
         (ac/then-apply
-          (fn [{:keys [entries clauses]}]
-            (let [page-size (:page-size params)
-                  total (total db params entries)]
+          (fn [entries]
+            (let [page-size (:page-size params)]
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (luid/luid)
+                 :id (iu/luid context)
                  :type #fhir/code"searchset"
+                 :total (type/->UnsignedInt (d/system-total db))
                  :entry (if (< page-size (count entries))
                           (pop entries)
                           entries)
-                 :link [(self-link context clauses t entries)]}
-
-                total
-                (assoc :total (type/->UnsignedInt total))
+                 :link [(self-link context t entries)]}
 
                 (< page-size (count entries))
-                (update :link conj (next-link context clauses t entries)))))))))
-
-
-(defn- summary-total
-  [_ #_{:preference/keys [handling] :or {handling "strict"}
-        {:keys [clauses]} :params}
-   db]
-  {:total (d/system-total db)}
-  #_(cond
-      (empty? clauses)
-      {:total (d/system-total db)}
-
-      (= "strict" handling)
-      (when-ok [handles (d/system-query db clauses)]
-        {:total (coll/count 0 handles)
-         :clauses clauses})
-
-      :else
-      (let [query (d/compile-system-query-lenient db type clauses)]
-        {:total (coll/count (d/execute-query db query))
-         :clauses (d/query-clauses query)})))
+                (update :link conj (next-link context t entries)))))))))
 
 
 (defn- search-summary [context db]
-  (let [t (or (d/as-of-t db) (d/basis-t db))
-        {:keys [total clauses] :as summary-total} (summary-total context db)]
-    (if (::anom/category summary-total)
-      (ac/failed-future (ex-anom summary-total))
-      (ac/completed-future
-        {:fhir/type :fhir/Bundle
-         :id (luid/luid)
-         :type #fhir/code"searchset"
-         :total (type/->UnsignedInt total)
-         :link [(self-link context clauses t [])]}))))
+  (ac/completed-future
+    {:fhir/type :fhir/Bundle
+     :id (iu/luid context)
+     :type #fhir/code"searchset"
+     :total (type/->UnsignedInt (d/system-total db))
+     :link [(self-link context (or (d/as-of-t db) (d/basis-t db)) [])]}))
 
 
 (defn- search [{:keys [params] :as context} db]
@@ -162,41 +96,38 @@
     (search-normal context db)))
 
 
-(defn- context [base-url router match type headers params]
+(defn- search-context
+  [context
+   {{{:fhir.resource/keys [type]} :data :as match} ::reitit/match
+    :keys [headers params]
+    :blaze/keys [base-url]
+    ::reitit/keys [router]}]
   (let [handling (handler-util/preference headers "handling")]
     (when-ok [params (params/decode handling params)]
-      {:base-url base-url
-       :router router
-       :match match
-       :type type
-       :preference/handling handling
-       :params params})))
+      (assoc context
+        :base-url base-url
+        :router router
+        :match match
+        :type type
+        :preference/handling handling
+        :params params))))
 
 
-(defn- handler-intern [node]
-  (fn [{{{:fhir.resource/keys [type]} :data :as match} ::reitit/match
-        :keys [headers params]
-        :blaze/keys [base-url]
-        ::reitit/keys [router]}]
-    (let [context (context base-url router match type headers params)]
-      (if (::anom/category context)
-        (ac/completed-future (handler-util/error-response context))
-        (-> (handler-util/db node (fhir-util/t params))
-            (ac/then-compose #(search context %))
-            (ac/then-apply ring/response)
-            (ac/exceptionally handler-util/error-response))))))
-
-
-(defn handler [node]
-  (-> (handler-intern node)
-      (wrap-observe-request-duration "search-system")))
+(defn- handler [{:keys [node] :as context}]
+  (fn [{:keys [params] :as request}]
+    (if-ok [context (search-context context request)]
+      (-> (handler-util/db node (fhir-util/t params))
+          (ac/then-compose #(search context %))
+          (ac/then-apply ring/response)
+          (ac/exceptionally handler-util/error-response))
+      (comp ac/completed-future handler-util/error-response))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/search-system [_]
-  (s/keys :req-un [:blaze.db/node]))
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 
-(defmethod ig/init-key :blaze.interaction/search-system
-  [_ {:keys [node]}]
+(defmethod ig/init-key :blaze.interaction/search-system [_ context]
   (log/info "Init FHIR search-system interaction handler")
-  (handler node))
+  (-> (handler context)
+      (wrap-observe-request-duration "search-system")))

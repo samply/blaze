@@ -223,9 +223,7 @@
            :upper-bound (date-ub date-time-value)}
           {::anom/category ::anom/unsupported
            ::anom/message (unsupported-prefix-msg code op)})
-        (assoc date-time-value
-          ::anom/message
-          (invalid-date-time-value-msg code value)))))
+        #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction

@@ -1,7 +1,7 @@
 (ns blaze.interaction.search.include-test
   (:require
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.spec.type :as type]
     [blaze.interaction.search.include :as include]
     [blaze.interaction.search.include-spec]
@@ -24,12 +24,13 @@
 
 (deftest add-includes-test
   (testing "one direct forward include"
-    (with-open [node (mem-node-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Observation :id "0"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]]])]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference
+                   {:reference "Patient/0"}}]]]
+
       (let [db (d/db node)
             include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
             observations (d/type-list db "Observation")]
@@ -38,12 +39,13 @@
           [0 type/type] := :fhir/Patient)))
 
     (testing "with non-matching target type"
-      (with-open [node (mem-node-with
-                         [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                           [:put {:fhir/type :fhir/Observation :id "0"
-                                  :subject
-                                  #fhir/Reference
-                                      {:reference "Patient/0"}}]]])]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 #fhir/Reference
+                     {:reference "Patient/0"}}]]]
+
         (let [db (d/db node)
               include-defs {:direct
                             {:forward
@@ -53,19 +55,20 @@
           (is (empty? (include/add-includes db include-defs observations)))))))
 
   (testing "two direct forward includes with the same type"
-    (with-open [node (mem-node-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Encounter :id "1"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]
-                         [:put {:fhir/type :fhir/Observation :id "2"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}
-                                :encounter
-                                #fhir/Reference
-                                    {:reference "Encounter/1"}}]]])]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Encounter :id "1"
+               :subject
+               #fhir/Reference
+                   {:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :subject
+               #fhir/Reference
+                   {:reference "Patient/0"}
+               :encounter
+               #fhir/Reference
+                   {:reference "Encounter/1"}}]]]
+
       (let [db (d/db node)
             include-defs {:direct
                           {:forward
@@ -78,12 +81,13 @@
           [1 type/type] := :fhir/Encounter))))
 
   (testing "one direct reverse include"
-    (with-open [node (mem-node-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Observation :id "1"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]]])]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject
+               #fhir/Reference
+                   {:reference "Patient/0"}}]]]
+
       (let [db (d/db node)
             include-defs {:direct
                           {:reverse

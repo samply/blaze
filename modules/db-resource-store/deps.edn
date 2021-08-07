@@ -19,7 +19,10 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {criterium/criterium
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    criterium/criterium
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
@@ -34,8 +37,11 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}
 
     mvxcvi/clj-cbor
     {:mvn/version "1.1.0"}}

@@ -56,7 +56,7 @@
       ["3" "4"] 3)))
 
 
-(def ^:private router
+(def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]
      ["/Patient/{id}" {:name :Patient/instance}]]

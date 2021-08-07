@@ -18,7 +18,7 @@
 (test/use-fixtures :each fixture)
 
 
-(def ^:private match
+(def match
   {:data
    {:blaze/base-url ""
     :blaze/context-path ""

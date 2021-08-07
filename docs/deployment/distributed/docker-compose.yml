@@ -19,24 +19,25 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
       KAFKA_CERTIFICATE_PASSWORD: "password"
       KAFKA_CFG_TLS_TYPE: "JKS"
-      # It's important to create the tx topic ourself, because it needs to use
+      KAFKA_TLS_TRUSTSTORE_FILE: "/opt/bitnami/kafka/config/certs/kafka.truststore.jks"
+      # It's important to create the tx topic ourselves, because it needs to use
       # LogAppendTime timestamps
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
     volumes:
-    - './kafka.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro'
-    - './kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro'
+    - "./kafka.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro"
+    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
     - "kafka-data:/bitnami"
     depends_on:
     - zookeeper
 
   kafka-topic-creator:
     image: "docker.io/bitnami/kafka:2"
-    command: /opt/bitnami/kafka/bin/kafka-init.sh
+    command: "/opt/bitnami/kafka/bin/kafka-init.sh"
     volumes:
     - "./kafka-init.sh:/opt/bitnami/kafka/bin/kafka-init.sh:ro"
     - "./kafka-init.conf:/opt/bitnami/kafka/config/kafka-init.conf:ro"
-    - './kafka-topic-creator.keystore.jks:/opt/bitnami/kafka/config/certs/kafka-topic-creator.keystore.jks:ro'
-    - './kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro'
+    - "./kafka-topic-creator.keystore.jks:/opt/bitnami/kafka/config/certs/kafka-topic-creator.keystore.jks:ro"
+    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
     depends_on:
     - zookeeper
     - kafka
@@ -45,7 +46,7 @@ services:
     image: "docker.io/bitnami/cassandra:3"
     volumes:
     - "./cassandra-init.cql:/docker-entrypoint-initdb.d/cassandra-init.cql:ro"
-    - 'cassandra-1-data:/bitnami'
+    - "cassandra-1-data:/bitnami"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       CASSANDRA_PASSWORD_SEEDER: "yes"
@@ -55,7 +56,7 @@ services:
   cassandra-2:
     image: "docker.io/bitnami/cassandra:3"
     volumes:
-    - 'cassandra-2-data:/bitnami'
+    - "cassandra-2-data:/bitnami"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "4G"
@@ -64,14 +65,14 @@ services:
   cassandra-3:
     image: "docker.io/bitnami/cassandra:3"
     volumes:
-    - 'cassandra-3-data:/bitnami'
+    - "cassandra-3-data:/bitnami"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
       MAX_HEAP_SIZE: "4G"
       HEAP_NEWSIZE: "200M"
 
   blaze-1:
-    image: "ghcr.io/samply/blaze:c1958af39eacc7e0eb9db658e2c6258e2d946578"
+    image: "samply/blaze:0.11.0"
     hostname: "blaze-1"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
@@ -87,8 +88,8 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
       LOG_LEVEL: "debug"
     volumes:
-    - './blaze-1.keystore.jks:/app/blaze-1.keystore.jks:ro'
-    - './kafka.truststore.jks:/app/kafka.truststore.jks:ro'
+    - "./blaze-1.keystore.jks:/app/blaze-1.keystore.jks:ro"
+    - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-1-data:/app/data"
     deploy:
       resources:
@@ -101,7 +102,7 @@ services:
     - cassandra-3
 
   blaze-2:
-    image: "ghcr.io/samply/blaze:c1958af39eacc7e0eb9db658e2c6258e2d946578"
+    image: "samply/blaze:0.11.0"
     hostname: "blaze-2"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
@@ -117,8 +118,8 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
       LOG_LEVEL: "debug"
     volumes:
-    - './blaze-2.keystore.jks:/app/blaze-2.keystore.jks:ro'
-    - './kafka.truststore.jks:/app/kafka.truststore.jks:ro'
+    - "./blaze-2.keystore.jks:/app/blaze-2.keystore.jks:ro"
+    - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-2-data:/app/data"
     deploy:
       resources:
@@ -135,7 +136,7 @@ services:
     ports:
     - "8080:8080"
     volumes:
-    - './haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro'
+    - "./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro"
     depends_on:
     - blaze-1
     - blaze-2

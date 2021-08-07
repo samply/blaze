@@ -8,10 +8,9 @@
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.response.create :as response]
-    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create.spec]
-    [blaze.luid :refer [luid]]
+    [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -49,14 +48,14 @@
     (conj conditional-clauses)))
 
 
-(defn- handler-intern [node executor]
+(defn- handler [{:keys [node executor] :as context}]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
         :blaze/keys [base-url]
         ::reitit/keys [router]}]
     (let [return-preference (handler-util/preference headers "return")
-          id (luid)
-          conditional-clauses (some-> headers (get "if-none-exist") fhir-util/clauses)]
+          id (iu/luid context)
+          conditional-clauses (some-> headers (get "if-none-exist") iu/clauses)]
       (-> (ac/supply (validate-resource type body))
           (ac/then-apply #(assoc % :id id))
           (ac/then-compose #(d/transact node [(create-op % conditional-clauses)]))
@@ -74,16 +73,11 @@
           (ac/exceptionally handler-util/error-response)))))
 
 
-(defn handler [node executor]
-  (-> (handler-intern node executor)
-      (wrap-observe-request-duration "create")))
-
-
 (defmethod ig/pre-init-spec :blaze.interaction/create [_]
-  (s/keys :req-un [:blaze.db/node ::executor]))
+  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]))
 
 
-(defmethod ig/init-key :blaze.interaction/create
-  [_ {:keys [node executor]}]
+(defmethod ig/init-key :blaze.interaction/create [_ context]
   (log/info "Init FHIR create interaction handler")
-  (handler node executor))
+  (-> (handler context)
+      (wrap-observe-request-duration "create")))

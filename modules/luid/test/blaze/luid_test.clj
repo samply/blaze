@@ -1,44 +1,33 @@
 (ns blaze.luid-test
   (:require
     [blaze.luid :as luid]
-    [clojure.test :refer [deftest is testing]])
+    [blaze.luid-spec]
+    [clojure.spec.test.alpha :as st]
+    [clojure.test :as test :refer [deftest is testing]]
+    [java-time :as time]
+    [juxt.iota :refer [given]])
   (:import
-    [java.time Instant]))
+    [java.time Clock Instant ZoneId]
+    [java.util Random]
+    [java.util.concurrent ThreadLocalRandom]))
 
 
-(def millis-2020
-  (.toEpochMilli (Instant/parse "2020-01-01T00:00:00Z")))
+(st/instrument)
 
 
-(deftest internal-luid-test
-  (testing "maximum time"
-    (testing "maximum entropy"
-      (is (= (apply str (repeat 16 \7))
-             (luid/internal-luid 0xFFFFFFFFFFF 0xFFFFFFFFF))))
+(defn- fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
 
-    (testing "zero entropy"
-      (is (= "777777776AAAAAAA"
-             (luid/internal-luid 0xFFFFFFFFFFF 0)))))
 
-  (testing "zero time"
-    (testing "maximum entropy"
-      (is (= "AAAAAAAAB7777777"
-             (luid/internal-luid 0 0xFFFFFFFFF))))
-
-    (testing "zero entropy"
-      (is (= (apply str (repeat 16 \A))
-             (luid/internal-luid 0 0)))))
-
-  (testing "start of 2020"
-    (testing "half entropy"
-      (is (= "C326M3UAB3777777"
-             (luid/internal-luid millis-2020 0xEFFFFFFFF))))))
+(test/use-fixtures :each fixture)
 
 
 (deftest luid-test
   (testing "length is 16 chars"
     (dotimes [_ 1000]
-      (is (= 16 (count (luid/luid)))))))
+      (is (= 16 (count (luid/luid (Clock/systemUTC) (ThreadLocalRandom/current))))))))
 
 
 (defn p [k bit]
@@ -60,3 +49,26 @@
     (testing "it takes between 3100 and 3200 occasions to reach"
       (testing "a 90% probability of a collision"
         (is (< 3100 (n 0.9 (p 10000 36)) 3200))))))
+
+
+(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+
+
+(defn fixed-random [n]
+  (proxy [Random] []
+    (nextLong []
+      n)))
+
+
+(deftest successive-luids-test
+  (testing "first 3 LUID's"
+    (given (take 3 (luid/successive-luids clock (fixed-random 0)))
+      0 := (luid/luid clock (fixed-random 0))
+      1 := (luid/luid clock (fixed-random 1))
+      2 := (luid/luid clock (fixed-random 2))))
+
+  (testing "increments timestamp on entropy exhaustion"
+    (given (take 3 (luid/successive-luids clock (fixed-random 0xFFFFFFFFF)))
+      0 := (luid/luid clock (fixed-random 0xFFFFFFFFF))
+      1 := (luid/luid (Clock/offset clock (time/millis 1)) (fixed-random 0))
+      2 := (luid/luid (Clock/offset clock (time/millis 1)) (fixed-random 1)))))

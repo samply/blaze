@@ -9,29 +9,33 @@
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
-    [blaze.db.impl.index.tx-success :as tx-success]
-    [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv :as kv]
+    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
-    [blaze.db.node :as node]
+    [blaze.db.node]
     [blaze.db.node-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
+    [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
-    [blaze.db.search-param-registry :as sr]
+    [blaze.db.resource-store.kv :as rs-kv]
+    [blaze.db.search-param-registry]
+    [blaze.db.tx-cache]
+    [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
-    [blaze.db.tx-log.local :refer [new-local-tx-log]]
+    [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
-    [blaze.executors :as ex]
     [blaze.fhir.spec.type :as type]
+    [blaze.log]
+    [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
+    [integrant.core :as ig]
     [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [com.github.benmanes.caffeine.cache Caffeine]
-    [java.time Clock Instant ZoneId]))
+    [java.time Instant]))
 
 
 (st/instrument)
@@ -54,25 +58,33 @@
        (ex-data (ex-cause e#)))))
 
 
-(def ^:private search-param-registry (sr/init-search-param-registry))
+(def system
+  {:blaze.db/node
+   {:tx-log (ig/ref :blaze.db/tx-log)
+    :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
+    :tx-cache (ig/ref :blaze.db/tx-cache)
+    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+    :resource-store (ig/ref :blaze.db/resource-store)
+    :kv-store (ig/ref :blaze.db/index-kv-store)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :poll-timeout (time/millis 10)}
 
+   ::tx-log/local
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)
+    :clock (ig/ref :blaze.test/clock)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
+   :blaze.test/clock {}
 
-;; TODO: with this shared executor, it's not possible to run test in parallel
-(def ^:private local-tx-log-executor
-  (ex/single-thread-executor "local-tx-log"))
+   :blaze.db/resource-handle-cache {}
 
+   :blaze.db/tx-cache
+   {:kv-store (ig/ref :blaze.db/index-kv-store)}
 
-;; TODO: with this shared executor, it's not possible to run test in parallel
-(def ^:private indexer-executor
-  (ex/single-thread-executor "indexer"))
+   :blaze.db.node/indexer-executor {}
 
-
-(def ^:private resource-store-executor
-  (ex/single-thread-executor "resource-store"))
-
-
-(defn new-index-kv-store []
-  (new-mem-kv-store
+   [::kv/mem :blaze.db/index-kv-store]
+   {:column-families
     {:search-param-value-index nil
      :resource-value-index nil
      :compartment-search-param-value-index nil
@@ -85,40 +97,19 @@
      :type-as-of-index nil
      :system-as-of-index nil
      :type-stats-index nil
-     :system-stats-index nil}))
+     :system-stats-index nil}}
+
+   ::rs/kv
+   {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :executor (ig/ref ::rs-kv/executor)}
+   [::kv/mem :blaze.db/resource-kv-store]
+   {:column-families {}}
+   ::rs-kv/executor {}
+
+   :blaze.db/search-param-registry {}})
 
 
-(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
-
-
-(defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tx-success/cache-loader index-kv-store)))
-
-
-(defn new-node-with [{:keys [resource-store]}]
-  (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))
-        index-kv-store (new-index-kv-store)]
-    (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
-                   indexer-executor index-kv-store resource-store
-                   search-param-registry (time/millis 10))))
-
-
-(defn new-node []
-  (new-node-with
-    {:resource-store
-     (new-kv-resource-store (new-mem-kv-store) resource-store-executor)}))
-
-
-(defn new-resource-store-failing-on-put []
-  (reify
-    rs/ResourceLookup
-    rs/ResourceStore
-    (-put [_ _]
-      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))))
-
-
-(defn new-random-slow-resource-store [resource-store]
+(defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
   (reify
     rs/ResourceLookup
     (-get [_ hash]
@@ -130,25 +121,44 @@
     rs/ResourceStore
     (-put [_ entries]
       (Thread/sleep (long (* 100 (Math/random))))
-      (rs/put resource-store entries))))
+      (rs/put! resource-store entries))))
+
+
+(def slow-resource-store-system
+  (-> (assoc-in system [:blaze.db/node :resource-store] (ig/ref ::slow-resource-store))
+      (assoc ::slow-resource-store {:resource-store (ig/ref :blaze.db/resource-store)})))
+
+
+(defmethod ig/init-key ::resource-store-failing-on-put [_ _]
+  (reify
+    rs/ResourceLookup
+    rs/ResourceStore
+    (-put [_ _]
+      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))))
+
+
+(def resource-store-failing-on-put-system
+  (-> (assoc-in system [:blaze.db/node :resource-store]
+                (ig/ref ::resource-store-failing-on-put))
+      (assoc ::resource-store-failing-on-put {})))
 
 
 (deftest sync-test
   (testing "on already available database"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
       (is (= 1 (d/basis-t @(d/sync node 1))))))
 
   (testing "on unavailable database"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (let [future (d/sync node 1)]
         @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (is (= 1 (d/basis-t @future))))))
 
   (testing "on database being available after two transactions"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (let [future (d/sync node 2)]
         @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
         @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]])
@@ -159,7 +169,7 @@
 (deftest transact-test
   (testing "create"
     (testing "one Patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -169,7 +179,7 @@
           [meta :blaze.db/op] := :create)))
 
     (testing "one Patient with one Observation"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            ;; the create ops are purposely disordered in order to test the
@@ -195,7 +205,7 @@
   (testing "conditional create"
     (testing "one Patient"
       (testing "on empty database"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
              node
              [[:create
@@ -210,7 +220,7 @@
               [meta :blaze.db/op] := :create))))
 
       (testing "on non-matching Patient"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
              node
              [[:put {:fhir/type :fhir/Patient :id "0"
@@ -230,7 +240,7 @@
               [meta :blaze.db/op] := :create))))
 
       (testing "on matching Patient"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
              node
              [[:put {:fhir/type :fhir/Patient :id "0"
@@ -246,7 +256,7 @@
             (is (= 1 (d/type-total (d/db node) "Patient"))))))
 
       (testing "on multiple matching Patients"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
              node
              [[:put {:fhir/type :fhir/Patient :id "0"
@@ -265,7 +275,7 @@
               ::anom/category := ::anom/conflict))))
 
       (testing "on deleting the matching Patient"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
              node
              [[:put {:fhir/type :fhir/Patient :id "0"
@@ -284,7 +294,7 @@
 
   (testing "put"
     (testing "one Patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (testing "the Patient was created"
@@ -295,7 +305,7 @@
             [meta :blaze.db/op] := :put))))
 
     (testing "one Patient with one Observation"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            ;; the create ops are purposely disordered in order to test the
@@ -320,7 +330,7 @@
             [meta :blaze.db/op] := :put))))
 
     (testing "updating one Patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]])
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]])
 
@@ -332,7 +342,7 @@
           [meta :blaze.db/op] := :put)))
 
     (testing "Diamond Reference Dependencies"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            ;; the create ops are purposely disordered in order to test the
@@ -378,9 +388,24 @@
           [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put))))
 
+  (testing "delete"
+    (testing "on empty database"
+      (with-system [{:blaze.db/keys [node]} system]
+        (let [db @(d/transact node [[:delete "Patient" "0"]])]
+          (testing "the patient is deleted"
+            (given (d/resource-handle db "Patient" "0")
+              :op := :delete)))
+
+        (testing "doing a second delete"
+          (let [db @(d/transact node [[:delete "Patient" "0"]])]
+            (testing "the patient is still deleted and has two changes"
+              (given (d/resource-handle db "Patient" "0")
+                :op := :delete
+                :num-changes := 2)))))))
+
   (testing "a transaction with duplicate resources fails"
     (testing "two puts"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         (given
           (catch-cause-ex-data
             @(d/transact
@@ -391,7 +416,7 @@
           ::anom/message := "Duplicate resource `Patient/0`.")))
 
     (testing "one put and one delete"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         (given
           (catch-cause-ex-data
             @(d/transact
@@ -401,8 +426,8 @@
           ::anom/category := ::anom/incorrect
           ::anom/message := "Duplicate resource `Patient/0`."))))
 
-  (testing "failed transactions don't leaf behind any inspectable data"
-    (with-open [node (new-node)]
+  (testing "failed transactions don't leave behind any inspectable data"
+    (with-system [{:blaze.db/keys [node]} system]
       (testing "creating an active patient successfully"
         @(d/transact
            node
@@ -437,7 +462,7 @@
   (testing "a transaction violating referential integrity fails"
     (testing "creating an Observation were the subject doesn't exist"
       (testing "create"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           (given
             (catch-cause-ex-data
               @(d/transact
@@ -449,7 +474,7 @@
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
 
       (testing "put"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           (given
             (catch-cause-ex-data
               @(d/transact
@@ -461,7 +486,7 @@
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
     (testing "creating a List were the entry item will be deleted in the same transaction"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            [[:create {:fhir/type :fhir/Observation :id "0"}]
@@ -483,11 +508,7 @@
           ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
 
   (testing "creating 10 transactions in parallel"
-    (with-open [node (new-node-with
-                       {:resource-store
-                        (-> (new-mem-kv-store)
-                            (new-kv-resource-store resource-store-executor)
-                            new-random-slow-resource-store)})]
+    (with-system [{:blaze.db/keys [node]} slow-resource-store-system]
       (let [db-futures
             (mapv
               #(d/transact node [[:create {:fhir/type :fhir/Patient :id (str %)}]])
@@ -507,8 +528,7 @@
 
   (testing "with failing resource storage"
     (testing "on put"
-      (with-open [node (new-node-with
-                         {:resource-store (new-resource-store-failing-on-put)})]
+      (with-system [{:blaze.db/keys [node]} resource-store-failing-on-put-system]
         (given
           (catch-cause-ex-data
             @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
@@ -519,7 +539,7 @@
       [resource-indexer/index-resources
        (fn [_ _ _]
          (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         (given
           (catch-cause-ex-data
             @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
@@ -528,7 +548,7 @@
 
 
 (deftest tx-test
-  (with-open [node (new-node)]
+  (with-system [{:blaze.db/keys [node]} system]
     @(d/transact node [[:put {:fhir/type :fhir/Patient :id "id-142136"}]])
 
     (let [db (d/db node)]
@@ -541,17 +561,17 @@
 
 (deftest resource-handle-test
   (testing "a new node does not contain a resource"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
 
   (testing "a resource handle is actually one"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
       (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
 
   (testing "a node contains a resource after a create transaction"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "pull"
@@ -571,7 +591,7 @@
         (is (= 1 (:num-changes (d/resource-handle (d/db node) "Patient" "0")))))))
 
   (testing "a node contains a resource after a put transaction"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -582,7 +602,7 @@
         [meta :blaze.db/num-changes] := 1)))
 
   (testing "a deleted resource is flagged"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
@@ -599,12 +619,12 @@
 
 (deftest type-list-and-total-test
   (testing "a new node has no patients"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/type-list (d/db node) "Patient")))
       (is (zero? (d/type-total (d/db node) "Patient")))))
 
   (testing "a node with one patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one list entry"
@@ -620,7 +640,7 @@
           [0 :meta :lastUpdated] := Instant/EPOCH))))
 
   (testing "a node with one deleted patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
@@ -629,7 +649,7 @@
         (is (zero? (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with one recreated patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
@@ -639,7 +659,7 @@
         (is (= 1 (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with two patients in two transactions"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
 
@@ -667,7 +687,7 @@
         (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
 
   (testing "a node with two patients in one transaction"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Patient :id "1"}]])
 
@@ -695,7 +715,7 @@
         (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
 
   (testing "a node with one updated patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
@@ -711,7 +731,7 @@
           [0 :meta :versionId] := #fhir/id"2"))))
 
   (testing "a node with resources of different types"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
 
@@ -725,7 +745,7 @@
 
   (testing "the database is immutable"
     (testing "while updating a patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
         (let [db (d/db node)]
@@ -744,7 +764,7 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (let [db (d/db node)]
@@ -763,7 +783,7 @@
                 [0 :meta :versionId] := #fhir/id"1")))))))
 
   (testing "resources will be returned in lexical id order"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Patient :id "00"}]])
 
@@ -783,11 +803,11 @@
 
 (deftest type-query-test
   (testing "a new node has no patients"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]])))))
 
   (testing "a node with one patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (testing "the patient can be found"
@@ -809,7 +829,7 @@
             ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))))
 
   (testing "a node with two patients in one transaction"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
                          [:put {:fhir/type :fhir/Patient :id "1" :active false}]])
 
@@ -833,7 +853,7 @@
           [1 :id] := "1"))))
 
   (testing "does not find the deleted active patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
                          [:put {:fhir/type :fhir/Patient :id "1" :active true}]])
       @(d/transact node [[:delete "Patient" "1"]])
@@ -844,7 +864,7 @@
         [0 :id] := "0")))
 
   (testing "does not find the updated patient that is no longer active"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
                          [:put {:fhir/type :fhir/Patient :id "1" :active true}]])
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :active false}]])
@@ -855,7 +875,7 @@
         [0 :id] := "0")))
 
   (testing "a node with three patients in one transaction"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
                          [:put {:fhir/type :fhir/Patient :id "1" :active false}]
                          [:put {:fhir/type :fhir/Patient :id "2" :active true}]])
@@ -876,7 +896,7 @@
 
   (testing "Special Search Parameter _list"
     (testing "a node with two patients, one observation and one list in one transaction"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Patient :id "1"}]
                            [:put {:fhir/type :fhir/Observation :id "0"}]
@@ -904,7 +924,7 @@
             1 := nil))))
 
     (testing "a node with three patients and one list in one transaction"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Patient :id "1"}]
                            [:put {:fhir/type :fhir/Patient :id "2"}]
@@ -931,7 +951,7 @@
             [1 :id] := "3")))))
 
   (testing "Special Search Parameter _has"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                 :active true}]
                          [:put {:fhir/type :fhir/Patient :id "1"
@@ -1017,19 +1037,19 @@
 
     (testing "errors"
       (testing "main search param not found"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           (given (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))
 
       (testing "chain search param not found"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           (given (d/type-query (d/db node) "Patient" [["_has:Observation:foo:code" ""]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
 
   (testing "Patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient
@@ -1538,7 +1558,7 @@
           1 := nil))))
 
   (testing "Practitioner"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Practitioner
@@ -1565,7 +1585,7 @@
             [0 :id] := "id-0")))))
 
   (testing "Specimen"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Specimen
@@ -1632,7 +1652,7 @@
               0 := nil))))))
 
   (testing "ActivityDefinition"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/ActivityDefinition
@@ -1654,7 +1674,7 @@
           [0 :id] := "id-0"))))
 
   (testing "CodeSystem"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/CodeSystem
@@ -1670,7 +1690,7 @@
           1 := nil))))
 
   (testing "MedicationKnowledge"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/MedicationKnowledge
@@ -1687,7 +1707,7 @@
           1 := nil))))
 
   (testing "Condition"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient
@@ -1730,7 +1750,7 @@
           count := 1
           [0 :id] := "id-0")))
 
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Condition :id "0"
@@ -1781,7 +1801,7 @@
             [2 :id] := "2")))))
 
   (testing "Observation"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Observation
@@ -2154,7 +2174,7 @@
             [0 :id] := "id-2")))))
 
   (testing "Observation"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Observation
@@ -2190,7 +2210,7 @@
             [0 :id] := "id-1")))))
 
   (testing "quantity search doesn't overshoot into other types"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Observation
@@ -2257,7 +2277,7 @@
             [0 :id] := "id-0")))))
 
   (testing "Observation code-value-quantity"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Observation
@@ -2449,7 +2469,7 @@
                     [0 :id] := "id-1")))))))))
 
   (testing "Observation code-value-concept"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Observation
@@ -2589,7 +2609,7 @@
                 [1 :id] := "id-2")))))))
 
   (testing "MeasureReport"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/MeasureReport
@@ -2605,7 +2625,7 @@
   (testing "List"
     (testing "item"
       (testing "with no modifier"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
              node
              [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -2633,7 +2653,7 @@
               1 := nil))))
 
       (testing "with identifier modifier"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
              node
              [[:put {:fhir/type :fhir/List
@@ -2664,7 +2684,7 @@
 
     (testing "code and item"
       (testing "with identifier modifier"
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact
              node
              [[:put {:fhir/type :fhir/List
@@ -2707,7 +2727,7 @@
               1 := nil))))))
 
   (testing "Date order"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient
@@ -2740,7 +2760,7 @@
 
   (testing "type number"
     (testing "decimal"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            [[:put {:fhir/type :fhir/RiskAssessment
@@ -2797,7 +2817,7 @@
               [0 :id] := "id-2")))))
 
     (testing "integer"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            [[:put {:fhir/type :fhir/MolecularSequence
@@ -2822,7 +2842,7 @@
 
 (deftest compile-type-query-test
   (testing "a node with one patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (testing "the patient can be found"
@@ -2841,7 +2861,7 @@
 
 (deftest compile-type-query-lenient-test
   (testing "a node with one patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (testing "the patient can be found"
@@ -2867,11 +2887,11 @@
 
 (deftest system-list-and-total-test
   (testing "a new node has no resources"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (zero? (d/system-total (d/db node))))))
 
   (testing "a node with one patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one list entry"
@@ -2885,7 +2905,7 @@
           [0 :meta :versionId] := #fhir/id"1"))))
 
   (testing "a node with one deleted patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
@@ -2894,7 +2914,7 @@
         (is (zero? (d/system-total (d/db node)))))))
 
   (testing "a node with two resources in two transactions"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
 
@@ -2943,12 +2963,12 @@
 
 (deftest list-compartment-resources-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/list-compartment-resource-handles
                          (d/db node) "Patient" "0" "Observation")))))
 
   (testing "a node contains one Observation in the Patient/0 compartment"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
@@ -2962,7 +2982,7 @@
         [0 :meta :versionId] := #fhir/id"2")))
 
   (testing "a node contains two resources in the Patient/0 compartment"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
@@ -2983,7 +3003,7 @@
         [1 :meta :versionId] := #fhir/id"3")))
 
   (testing "a deleted resource does not show up"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
@@ -2995,7 +3015,7 @@
                          (d/db node) "Patient" "0" "Observation")))))
 
   (testing "it is possible to start at a later id"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                 :subject
@@ -3020,7 +3040,7 @@
         2 := nil)))
 
   (testing "Unknown compartment is not a problem"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/list-compartment-resource-handles
                          (d/db node) "foo" "bar" "Condition"))))))
 
@@ -3032,13 +3052,13 @@
 
 (deftest compartment-query-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/compartment-query
                          (d/db node) "Patient" "0" "Observation"
                          [["code" "foo"]])))))
 
   (testing "returns the Observation in the Patient/0 compartment"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3069,7 +3089,7 @@
                 [(type/map->Coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3095,7 +3115,7 @@
                 [(type/map->Coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3123,7 +3143,7 @@
           [2 :meta :versionId] := #fhir/id"2"))))
 
   (testing "doesn't return deleted resources"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3154,7 +3174,7 @@
                 [(type/map->Coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
            [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3172,7 +3192,7 @@
           [0 :id] := "1"))))
 
   (testing "returns the Observation in the Patient/0 compartment on the second criteria value"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3193,7 +3213,7 @@
         [0 :id] := "0")))
 
   (testing "with one patient and one observation"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3229,19 +3249,19 @@
                  ["value-quantity" "23"]]))))))
 
   (testing "returns an anomaly on unknown search param code"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (given (d/compartment-query (d/db node) "Patient" "0" "Observation"
                                   [["unknown" "foo"]])
         ::anom/category := ::anom/not-found)))
 
   (testing "Unknown compartment is not a problem"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/compartment-query
                          (d/db node) "foo" "bar" "Condition"
                          [["code" "baz"]])))))
 
   (testing "Unknown type is not a problem"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient
@@ -3252,7 +3272,7 @@
         ::anom/message := "The search-param with code `code` and type `Foo` was not found.")))
 
   (testing "Patient compartment"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3358,7 +3378,7 @@
 
 
 (deftest compile-compartment-query-test
-  (with-open [node (new-node)]
+  (with-system [{:blaze.db/keys [node]} system]
     @(d/transact
        node
        [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3385,12 +3405,12 @@
 
 (deftest instance-history-test
   (testing "a new node has an empty instance history"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/instance-history (d/db node) "Patient" "0")))
       (is (zero? (d/total-num-of-instance-changes (d/db node) "Patient" "0")))))
 
   (testing "a node with one patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one history entry"
@@ -3408,7 +3428,7 @@
         (is (zero? (d/total-num-of-instance-changes (d/db node) "Patient" "1"))))))
 
   (testing "a node with one deleted patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
@@ -3431,7 +3451,7 @@
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with two versions"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
@@ -3453,7 +3473,7 @@
 
   (testing "the database is immutable"
     (testing "while updating a patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
         (let [db (d/db node)]
@@ -3477,12 +3497,12 @@
 
 (deftest type-history-test
   (testing "a new node has an empty type history"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/type-history (d/db node) "Patient")))
       (is (zero? (d/total-num-of-type-changes (d/db node) "Patient")))))
 
   (testing "a node with one patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one history entry"
@@ -3500,7 +3520,7 @@
         (is (zero? (d/total-num-of-type-changes (d/db node) "Observation"))))))
 
   (testing "a node with one deleted patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
@@ -3523,7 +3543,7 @@
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with two patients in two transactions"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
 
@@ -3544,7 +3564,7 @@
         (is (coll/empty? (d/type-history (d/db node) "Patient" 0))))))
 
   (testing "a node with two patients in one transaction"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Patient :id "1"}]])
 
@@ -3563,7 +3583,7 @@
 
   (testing "the database is immutable"
     (testing "while updating a patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
         (let [db (d/db node)]
@@ -3582,7 +3602,7 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (let [db (d/db node)]
@@ -3605,12 +3625,12 @@
 
 (deftest system-history-test
   (testing "a new node has an empty system history"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/system-history (d/db node))))
       (is (zero? (d/total-num-of-system-changes (d/db node))))))
 
   (testing "a node with one patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (testing "has one history entry"
@@ -3624,7 +3644,7 @@
           [0 :meta :versionId] := #fhir/id"1"))))
 
   (testing "a node with one deleted patient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:delete "Patient" "0"]])
 
@@ -3647,7 +3667,7 @@
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with one patient and one observation in two transactions"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
       @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
 
@@ -3665,7 +3685,7 @@
           [0 :fhir/type] := :fhir/Patient))))
 
   (testing "a node with one patient and one observation in one transaction"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Observation :id "0"}]])
 
@@ -3683,7 +3703,7 @@
           [0 :fhir/type] := :fhir/Patient))))
 
   (testing "a node with two patients in one transaction"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                          [:put {:fhir/type :fhir/Patient :id "1"}]])
 
@@ -3697,7 +3717,7 @@
 
   (testing "the database is immutable"
     (testing "while updating a patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
 
         (let [db (d/db node)]
@@ -3716,7 +3736,7 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
         (let [db (d/db node)]
@@ -3738,7 +3758,7 @@
   (testing "Observation"
     (doseq [code ["subject" "patient"]]
       (testing code
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "0"
                                     :subject
@@ -3761,7 +3781,7 @@
                 [0 :id] := "0"))))))
 
     (testing "encounter"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Encounter :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "0"
@@ -3780,7 +3800,7 @@
             [0 :id] := "0"))))
 
     (testing "with Group subject"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Group :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "0"
                                   :subject
@@ -3810,7 +3830,7 @@
             (is (empty? (d/include db observation "subject" "Patient")))))))
 
     (testing "non-reference search parameter code"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
                                   :code
                                   #fhir/CodeableConcept
@@ -3825,7 +3845,7 @@
 
   (testing "Patient"
     (testing "non-reference search parameter family"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                   :name
                                   [{:fhir/type :fhir/HumanName
@@ -3840,7 +3860,7 @@
   (testing "Patient"
     (doseq [code ["subject" "patient"]]
       (testing code
-        (with-open [node (new-node)]
+        (with-system [{:blaze.db/keys [node]} system]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                              [:put {:fhir/type :fhir/Observation :id "1"
                                     :subject
@@ -3862,7 +3882,7 @@
               [1 :id] := "2")))))
 
     (testing "non-reference search parameter code"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
                            [:put {:fhir/type :fhir/Observation :id "0"
                                   :code
@@ -3879,7 +3899,7 @@
 
 (deftest new-batch-db-test
   (testing "resource-handle"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
@@ -3888,7 +3908,7 @@
           :id := "0"))))
 
   (testing "type-list-and-total"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
@@ -3896,7 +3916,7 @@
         (is (= 1 (d/type-total batch-db "Patient"))))))
 
   (testing "compile-type-query"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
@@ -3907,7 +3927,7 @@
           [0 :id] := "0"))))
 
   (testing "compile-type-query-lenient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
@@ -3918,7 +3938,7 @@
           [0 :id] := "0"))))
 
   (testing "compile-compartment-query"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -3943,7 +3963,7 @@
           [0 :id] := "0"))))
 
   (testing "compile-compartment-query-lenient"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact
          node
          [[:put {:fhir/type :fhir/Patient :id "0"}]

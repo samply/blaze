@@ -3,34 +3,40 @@
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.index.resource-as-of-test-util :as rao-tu]
     [blaze.db.impl.index.rts-as-of :as rts]
     [blaze.db.impl.index.system-as-of :as sao]
+    [blaze.db.impl.index.system-as-of-test-util :as sao-tu]
     [blaze.db.impl.index.system-stats :as system-stats]
-    [blaze.db.impl.index.tx-success :as tx-success]
+    [blaze.db.impl.index.system-stats-test-util :as ss-tu]
     [blaze.db.impl.index.type-as-of :as tao]
+    [blaze.db.impl.index.type-as-of-test-util :as tao-tu]
     [blaze.db.impl.index.type-stats :as type-stats]
-    [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.impl.index.type-stats-test-util :as ts-tu]
+    [blaze.db.kv :as kv]
+    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
-    [blaze.db.node :as node]
+    [blaze.db.node]
     [blaze.db.node.tx-indexer.verify :as verify]
     [blaze.db.node.tx-indexer.verify-spec]
-    [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
-    [blaze.db.search-param-registry :as sr]
-    [blaze.db.tx-log.local :refer [new-local-tx-log]]
-    [blaze.executors :as ex]
+    [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.kv :as rs-kv]
+    [blaze.db.search-param-registry]
+    [blaze.db.tx-log :as tx-log]
+    [blaze.db.tx-log.local]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
+    [blaze.log]
+    [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.walk :as walk]
     [cognitect.anomalies :as anom]
+    [integrant.core :as ig]
     [java-time :as time]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
-  (:import
-    [com.github.benmanes.caffeine.cache Caffeine]
-    [java.time Clock Instant ZoneId]))
+    [taoensso.timbre :as log]))
 
 
 (st/instrument)
@@ -46,25 +52,33 @@
 (test/use-fixtures :each fixture)
 
 
-(def ^:private search-param-registry (sr/init-search-param-registry))
+(def system
+  {:blaze.db/node
+   {:tx-log (ig/ref :blaze.db/tx-log)
+    :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
+    :tx-cache (ig/ref :blaze.db/tx-cache)
+    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+    :resource-store (ig/ref :blaze.db/resource-store)
+    :kv-store (ig/ref :blaze.db/index-kv-store)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :poll-timeout (time/millis 10)}
 
+   ::tx-log/local
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)
+    :clock (ig/ref :blaze.test/clock)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
+   :blaze.test/clock {}
 
-;; TODO: with this shared executor, it's not possible to run test in parallel
-(def ^:private local-tx-log-executor
-  (ex/single-thread-executor "local-tx-log"))
+   :blaze.db/resource-handle-cache {}
 
+   :blaze.db/tx-cache
+   {:kv-store (ig/ref :blaze.db/index-kv-store)}
 
-;; TODO: with this shared executor, it's not possible to run test in parallel
-(def ^:private indexer-executor
-  (ex/single-thread-executor "indexer"))
+   :blaze.db.node/indexer-executor {}
 
-
-(def ^:private resource-store-executor
-  (ex/single-thread-executor "resource-store"))
-
-
-(defn new-index-kv-store []
-  (new-mem-kv-store
+   [::kv/mem :blaze.db/index-kv-store]
+   {:column-families
     {:search-param-value-index nil
      :resource-value-index nil
      :compartment-search-param-value-index nil
@@ -77,25 +91,16 @@
      :type-as-of-index nil
      :system-as-of-index nil
      :type-stats-index nil
-     :system-stats-index nil}))
+     :system-stats-index nil}}
 
+   ::rs/kv
+   {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :executor (ig/ref ::rs-kv/executor)}
+   [::kv/mem :blaze.db/resource-kv-store]
+   {:column-families {}}
+   ::rs-kv/executor {}
 
-(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
-
-
-(defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tx-success/cache-loader index-kv-store)))
-
-
-(defn new-node []
-  (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))
-        index-kv-store (new-index-kv-store)]
-    (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
-                   indexer-executor index-kv-store
-                   (new-kv-resource-store (new-mem-kv-store)
-                                          resource-store-executor)
-                   search-param-registry (time/millis 10))))
+   :blaze.db/search-param-registry {}})
 
 
 (def tid-patient (codec/tid "Patient"))
@@ -118,7 +123,7 @@
 
 (deftest verify-tx-cmds
   (testing "adding one patient to an empty store"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       (is-entries=
         (verify/verify-tx-cmds
           (d/db node) 1
@@ -137,7 +142,7 @@
            (system-stats/index-entry 1 {:total 1 :num-changes 1})]))))
 
   (testing "adding a second version of a patient to a store containing it already"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (is-entries=
@@ -158,7 +163,7 @@
            (system-stats/index-entry 2 {:total 1 :num-changes 2})]))))
 
   (testing "adding a second version of a patient to a store containing it already incl. matcher"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (is-entries=
@@ -179,31 +184,94 @@
            (type-stats/index-entry tid-patient 2 {:total 1 :num-changes 2})
            (system-stats/index-entry 2 {:total 1 :num-changes 2})]))))
 
-  (testing "deleting the existing patient"
-    (with-open [node (new-node)]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+  (testing "deleting a patient from an empty store"
+    (let [hash (hash/generate (codec/deleted-resource "Patient" "0"))]
+      (with-system [{:blaze.db/keys [node]} system]
+        (given (verify/verify-tx-cmds
+                 (d/db node) 1
+                 [{:op "delete" :type "Patient" :id "0" :hash hash}])
+          [0 #(drop 1 %) rao-tu/decode-index-entry] :=
+          [{:type "Patient" :id "0" :t 1}
+           {:hash hash :num-changes 1 :op :delete}]
 
-      (is-entries=
-        (verify/verify-tx-cmds
-          (d/db node) 2
-          [{:op "delete" :type "Patient" :id "0"
-            :hash (hash/generate (codec/deleted-resource "Patient" "0"))}])
-        (let [value (rts/encode-value (hash/generate (codec/deleted-resource "Patient" "0"))
-                                      2 :delete)]
-          [[:resource-as-of-index
-            (rao/encode-key tid-patient (codec/id-byte-string "0") 2)
-            value]
-           [:type-as-of-index
-            (tao/encode-key tid-patient 2 (codec/id-byte-string "0"))
-            value]
-           [:system-as-of-index
-            (sao/encode-key 2 tid-patient (codec/id-byte-string "0"))
-            value]
-           (type-stats/index-entry tid-patient 2 {:total 0 :num-changes 2})
-           (system-stats/index-entry 2 {:total 0 :num-changes 2})]))))
+          [1 #(drop 1 %) tao-tu/decode-index-entry] :=
+          [{:type "Patient" :t 1 :id "0"}
+           {:hash hash :num-changes 1 :op :delete}]
+
+          [2 #(drop 1 %) sao-tu/decode-index-entry] :=
+          [{:t 1 :type "Patient" :id "0"}
+           {:hash hash :num-changes 1 :op :delete}]
+
+          [3 #(drop 1 %) ts-tu/decode-index-entry] :=
+          [{:type "Patient" :t 1}
+           {:total 0 :num-changes 1}]
+
+          [4 #(drop 1 %) ss-tu/decode-index-entry] :=
+          [{:t 1}
+           {:total 0 :num-changes 1}]))))
+
+  (testing "deleting an already deleted patient"
+    (let [hash (hash/generate (codec/deleted-resource "Patient" "0"))]
+      (with-system [{:blaze.db/keys [node]} system]
+        @(d/transact node [[:delete "Patient" "0"]])
+
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "delete" :type "Patient" :id "0" :hash hash}])
+
+          [0 #(drop 1 %) rao-tu/decode-index-entry] :=
+          [{:type "Patient" :id "0" :t 2}
+           {:hash hash :num-changes 2 :op :delete}]
+
+          [1 #(drop 1 %) tao-tu/decode-index-entry] :=
+          [{:type "Patient" :t 2 :id "0"}
+           {:hash hash :num-changes 2 :op :delete}]
+
+          [2 #(drop 1 %) sao-tu/decode-index-entry] :=
+          [{:t 2 :type "Patient" :id "0"}
+           {:hash hash :num-changes 2 :op :delete}]
+
+          [3 #(drop 1 %) ts-tu/decode-index-entry] :=
+          [{:type "Patient" :t 2}
+           {:total 0 :num-changes 2}]
+
+          [4 #(drop 1 %) ss-tu/decode-index-entry] :=
+          [{:t 2}
+           {:total 0 :num-changes 2}]))))
+
+  (testing "deleting an existing patient"
+    (let [hash (hash/generate (codec/deleted-resource "Patient" "0"))]
+      (with-system [{:blaze.db/keys [node]} system]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "delete" :type "Patient" :id "0" :hash hash}])
+
+          [0 #(drop 1 %) rao-tu/decode-index-entry] :=
+          [{:type "Patient" :id "0" :t 2}
+           {:hash hash :num-changes 2 :op :delete}]
+
+          [1 #(drop 1 %) tao-tu/decode-index-entry] :=
+          [{:type "Patient" :t 2 :id "0"}
+           {:hash hash :num-changes 2 :op :delete}]
+
+          [2 #(drop 1 %) sao-tu/decode-index-entry] :=
+          [{:t 2 :type "Patient" :id "0"}
+           {:hash hash :num-changes 2 :op :delete}]
+
+          [3 #(drop 1 %) ts-tu/decode-index-entry] :=
+          [{:type "Patient" :t 2}
+           {:total 0 :num-changes 2}]
+
+          [4 #(drop 1 %) ss-tu/decode-index-entry] :=
+          [{:t 2}
+           {:total 0 :num-changes 2}]))))
 
   (testing "adding a second patient to a store containing already one"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (is-entries=
@@ -224,7 +292,7 @@
            (system-stats/index-entry 2 {:total 2 :num-changes 2})]))))
 
   (testing "update conflict"
-    (with-open [node (new-node)]
+    (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
       (given
@@ -238,7 +306,7 @@
 
   (testing "conditional create"
     (testing "conflict"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                   :birthDate #fhir/date"2020"}]
                            [:put {:fhir/type :fhir/Patient :id "1"
@@ -255,7 +323,7 @@
           :http/status := 412)))
 
     (testing "match"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put patient-3]])
 
         (is
@@ -267,7 +335,7 @@
                 :if-none-exist [["identifier" "120426"]]}])))))
 
     (testing "conflict because matching resource is deleted"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put patient-3]])
 
         (given
@@ -282,7 +350,7 @@
           ::anom/message := "Duplicate transaction commands `create Patient?identifier=120426 (resolved to id 3)` and `delete Patient/3`.")))
 
     (testing "on recreation"
-      (with-open [node (new-node)]
+      (with-system [{:blaze.db/keys [node]} system]
         @(d/transact node [[:put patient-0]])
         @(d/transact node [[:delete "Patient" "0"]])
 

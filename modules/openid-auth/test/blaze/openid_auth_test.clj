@@ -1,9 +1,12 @@
 (ns blaze.openid-auth-test
   (:require
     [blaze.openid-auth :as openid-auth]
+    [blaze.openid-auth.spec]
+    [blaze.test-util :refer [given-thrown with-system]]
     [buddy.auth.protocols :as p]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is]]
+    [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -23,22 +26,38 @@
 (test/use-fixtures :each fixture)
 
 
-(defn backend [http-client url]
-  (-> {::openid-auth/backend
-       {:http-client http-client
-        :scheduler (ig/ref :blaze/scheduler)
-        :provider-url url}
-       :blaze/scheduler {}}
-      ig/init))
+(defmethod ig/init-key ::http-client [_ _]
+  (let [http-client (HttpClientMock.)]
+    (-> (.onGet http-client "http://localhost:8080/.well-known/openid-configuration")
+        (.doReturnStatus 404))))
+
+
+(def system
+  {::openid-auth/backend
+   {:http-client (ig/ref ::http-client)
+    :scheduler (ig/ref :blaze/scheduler)
+    :provider-url "http://localhost:8080"}
+   ::http-client {}
+   :blaze/scheduler {}})
 
 
 (deftest init-test
-  (let [http-client (HttpClientMock.)]
-    (-> (.onGet http-client "http://localhost:8080/.well-known/openid-configuration")
-        (.doReturnStatus 404))
+  (testing "nil config"
+    (given-thrown (ig/init {::openid-auth/backend nil})
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
 
-    (let [{::openid-auth/keys [backend] :as system}
-          (backend http-client "http://localhost:8080")]
-      (is (satisfies? p/IAuthentication backend))
-      (Thread/sleep 2000)
-      (ig/halt! system))))
+  (testing "missing config"
+    (given-thrown (ig/init {::openid-auth/backend {}})
+      :key := ::openid-auth/backend
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :provider-url)))))
+
+
+(deftest backend-test
+  (with-system [{::openid-auth/keys [backend]} system]
+    (is (satisfies? p/IAuthentication backend))
+    (Thread/sleep 2000)))

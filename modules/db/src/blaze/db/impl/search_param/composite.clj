@@ -29,9 +29,9 @@
 
 
 (defn- compile-expression [{:keys [expression] :as component}]
-  (if-ok [res (fhir-path/compile expression)]
-    (assoc component :expression res)
-    (assoc res :expression expression)))
+  (if-ok [expr (fhir-path/compile expression)]
+    (assoc component :expression expr)
+    #(assoc % :expression expression)))
 
 
 (defn- compile-expressions [components]

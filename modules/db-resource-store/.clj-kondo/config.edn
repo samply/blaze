@@ -1,5 +1,6 @@
 {:lint-as
- {prometheus.alpha/defhistogram clojure.core/def}
+ {blaze.test-util/with-system clojure.core/with-open
+  prometheus.alpha/defhistogram clojure.core/def}
 
  :linters
  {:unsorted-required-namespaces

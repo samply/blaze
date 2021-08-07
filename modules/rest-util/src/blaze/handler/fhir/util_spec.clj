@@ -58,8 +58,3 @@
   :args (s/cat :base-url string? :router reitit/router? :type :fhir.type/name
                :id :blaze.resource/id :vid string?)
   :ret string?)
-
-
-(s/fdef util/etag->t
-  :args (s/cat :etag (s/nilable string?))
-  :ret (s/nilable :blaze.db/t))

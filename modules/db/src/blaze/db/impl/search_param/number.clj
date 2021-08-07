@@ -49,9 +49,9 @@
          ::category ::unsupported-prefix
          ::unsupported-prefix op
          ::anom/message (unsupported-prefix-msg code op)})
-      (assoc decimal-value
-        ::category ::invalid-decimal-value
-        ::anom/message (invalid-decimal-value-msg code value)))))
+      #(assoc %
+         ::category ::invalid-decimal-value
+         ::anom/message (invalid-decimal-value-msg code value)))))
 
 
 (defmulti index-entries

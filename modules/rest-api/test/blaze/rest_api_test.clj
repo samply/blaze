@@ -2,10 +2,11 @@
   (:require
     [blaze.db.impl.search-param]
     [blaze.db.search-param-registry :as sr]
-    [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.util :as handler-util]
     [blaze.rest-api :as rest-api]
+    [blaze.test-util :refer [given-thrown with-system]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [integrant.core :as ig]
@@ -364,29 +365,52 @@
       #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")))
 
 
-(defn- real-handler []
-  (-> (ig/init
-        {:blaze/rest-api
-         {:base-url "http://localhost:8080"
-          :version "0.1.0"
-          :structure-definitions []
-          :search-param-registry search-param-registry
-          :blaze.rest-api.json-parse/executor (ex/single-thread-executor)}})
-      :blaze/rest-api))
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze/rest-api nil})
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze/rest-api {}})
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze.rest-api.json-parse/executor))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definitions))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry)))))
+
+
+(def system
+  {:blaze/rest-api
+   {:base-url "http://localhost:8080"
+    :version "0.1.0"
+    :structure-definitions []
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :blaze.rest-api.json-parse/executor (ig/ref :blaze.test/executor)}
+   :blaze.db/search-param-registry {}
+   :blaze.test/executor {}})
 
 
 (deftest format-override-test
   (testing "XML"
-    (given @((real-handler) {:request-method :get :uri "/metadata" :query-string "_format=xml"})
-      [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8")))
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given @(rest-api {:request-method :get :uri "/metadata" :query-string "_format=xml"})
+        [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"))))
 
 
 (deftest base-url-test
   (testing "metadata"
-    (given @((real-handler) {:request-method :get :uri "/metadata"})
-      [:body fhir-spec/parse-json :implementation :url] := "http://localhost:8080")
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given @(rest-api {:request-method :get :uri "/metadata"})
+        [:body fhir-spec/parse-json :implementation :url] := "http://localhost:8080"))
 
     (testing "with X-Forwarded-Host header"
-      (given @((real-handler)
-               {:request-method :get :uri "/metadata" :headers {"X-Forwarded-Host" "blaze.de"}})
-        [:body fhir-spec/parse-json :implementation :url] := "http://blaze.de"))))
+      (with-system [{:blaze/keys [rest-api]} system]
+        (given @(rest-api
+                  {:request-method :get
+                   :uri "/metadata"
+                   :headers {"X-Forwarded-Host" "blaze.de"}})
+          [:body fhir-spec/parse-json :implementation :url] := "http://blaze.de")))))

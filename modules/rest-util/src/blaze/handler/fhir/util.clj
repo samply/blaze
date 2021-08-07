@@ -3,7 +3,6 @@
   (:require
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [reitit.core :as reitit]))
 
 
@@ -94,16 +93,3 @@
   ;; URL's are build by hand here, because id's do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (instance-url base-url router type id) "/_history/" vid))
-
-
-(defn etag->t [etag]
-  (when etag
-    (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
-      (when t
-        (Long/parseLong t)))))
-
-
-(defn clauses [query]
-  (mapv
-    #(let [[k v] (str/split % #"=")] (into [k] (str/split v #",")))
-    (str/split query #"&")))

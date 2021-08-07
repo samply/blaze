@@ -11,8 +11,9 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
-    [blaze.luid :as luid]
+    [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -32,7 +33,7 @@
 
 
 (defn- build-response
-  [base-url router match db query-params t total version-handles]
+  [context db base-url router match query-params t total version-handles]
   (let [page-size (fhir-util/page-size query-params)
         paged-version-handles (into [] (take (inc page-size)) version-handles)
         self-link #(link base-url match query-params t "self" %)
@@ -44,7 +45,7 @@
             (ring/response
               (cond->
                 {:fhir/type :fhir/Bundle
-                 :id (luid/luid)
+                 :id (iu/luid context)
                  :type #fhir/code"history"
                  :total (type/->UnsignedInt total)
                  :entry
@@ -58,7 +59,10 @@
                 (update :link (fnil conj []) (next-link (peek paged-version-handles))))))))))
 
 
-(defn- handle [base-url router match query-params db]
+(defn- handle
+  [context
+   db
+   {:blaze/keys [base-url] ::reitit/keys [router match] :keys [query-params]}]
   (let [t (or (d/as-of-t db) (d/basis-t db))
         page-t (history-util/page-t query-params)
         page-type (when page-t (fhir-util/page-type query-params))
@@ -66,25 +70,21 @@
         since (history-util/since query-params)
         total (d/total-num-of-system-changes db since)
         version-handles (d/system-history db page-t page-type page-id since)]
-    (build-response base-url router match db query-params t total version-handles)))
+    (build-response context db base-url router match query-params t total
+                    version-handles)))
 
 
-(defn- handler-intern [node]
-  (fn [{:blaze/keys [base-url] ::reitit/keys [router match] :keys [query-params]}]
+(defn- handler [{:keys [node] :as context}]
+  (fn [{:keys [query-params] :as request}]
     (-> (handler-util/db node (fhir-util/t query-params))
-        (ac/then-compose #(handle base-url router match query-params %)))))
-
-
-(defn handler [node]
-  (-> (handler-intern node)
-      (wrap-observe-request-duration "history-system")))
+        (ac/then-compose #(handle context % request)))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction.history/system [_]
-  (s/keys :req-un [:blaze.db/node]))
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 
-(defmethod ig/init-key :blaze.interaction.history/system
-  [_ {:keys [node]}]
+(defmethod ig/init-key :blaze.interaction.history/system [_ context]
   (log/info "Init FHIR history system interaction handler")
-  (handler node))
+  (-> (handler context)
+      (wrap-observe-request-duration "history-system")))

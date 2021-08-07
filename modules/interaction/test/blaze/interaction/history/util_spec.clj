@@ -3,6 +3,7 @@
     [blaze.db.api-spec]
     [blaze.handler.fhir.util-spec]
     [blaze.interaction.history.util :as util]
+    [blaze.interaction.spec]
     [clojure.spec.alpha :as s]
     [reitit.core :as reitit]))
 

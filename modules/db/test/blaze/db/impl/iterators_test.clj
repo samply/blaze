@@ -5,8 +5,9 @@
     [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
-    [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
+    [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 
@@ -23,11 +24,8 @@
 (test/use-fixtures :each fixture)
 
 
-(defn- new-mem-kv-store-with
-  [entries]
-  (let [kv-store (new-mem-kv-store)]
-    (kv/put! kv-store entries)
-    kv-store))
+(def system
+  {::kv/mem {:column-families {}}})
 
 
 (defn- ba [& bytes]
@@ -46,17 +44,23 @@
 
 (deftest keys-test
   (testing "normal read"
-    (let [kv-store (new-mem-kv-store-with
-                     [[(ba 0x00) bytes/empty]
-                      [(ba 0x01) bytes/empty]])
-          iter (kv/new-iterator (kv/new-snapshot kv-store))]
-      (is (= [[0x00] [0x01]]
-             (into [] (i/keys! iter decode-1 (bs/from-hex "00")))))))
+    (with-system [{kv-store ::kv/mem} system]
+      (kv/put!
+        kv-store
+        [[(ba 0x00) bytes/empty]
+         [(ba 0x01) bytes/empty]])
+
+      (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+        (is (= [[0x00] [0x01]]
+               (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))
 
   (testing "too small ByteBuffer will be replaced with a larger one"
-    (let [kv-store (new-mem-kv-store-with
-                     [[(ba 0x00) bytes/empty]
-                      [(ba 0x00 0x01) bytes/empty]])
-          iter (kv/new-iterator (kv/new-snapshot kv-store))]
-      (is (= [[0x00] [0x00 0x01]]
-             (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))
+    (with-system [{kv-store ::kv/mem} system]
+      (kv/put!
+        kv-store
+        [[(ba 0x00) bytes/empty]
+         [(ba 0x00 0x01) bytes/empty]])
+
+      (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+        (is (= [[0x00] [0x00 0x01]]
+               (into [] (i/keys! iter decode-1 (bs/from-hex "00")))))))))

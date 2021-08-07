@@ -1,7 +1,7 @@
 (ns blaze.elm.compiler.external-data-test
   (:require
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.external-data]
@@ -9,6 +9,7 @@
     [blaze.elm.literal :as elm]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
+    [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -59,8 +60,9 @@
 (deftest compile-retrieve-test
   (testing "Patient context"
     (testing "Patient"
-      (with-open [node (mem-node-with
-                         [[[:put {:fhir/type :fhir/Patient :id "0"}]]])]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
         (let [context
               {:node node
                :eval-context "Patient"
@@ -74,11 +76,12 @@
             [0 :id] := "0"))))
 
     (testing "Observation"
-      (with-open [node (mem-node-with
-                         [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                           [:put {:fhir/type :fhir/Observation :id "1"
-                                  :subject
-                                  #fhir/Reference{:reference "Patient/0"}}]]])]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "1"
+                 :subject
+                 #fhir/Reference{:reference "Patient/0"}}]]]
+
         (let [context
               {:node node
                :eval-context "Patient"
@@ -92,20 +95,21 @@
             [0 :id] := "1")))
 
       (testing "with one code"
-        (with-open [node (mem-node-with
-                           [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                             [:put {:fhir/type :fhir/Observation :id "0"
-                                    :subject
-                                    #fhir/Reference{:reference "Patient/0"}}]
-                             [:put {:fhir/type :fhir/Observation :id "1"
-                                    :code
-                                    #fhir/CodeableConcept
-                                        {:coding
-                                         [#fhir/Coding
-                                             {:system #fhir/uri"system-192253"
-                                              :code #fhir/code"code-192300"}]}
-                                    :subject
-                                    #fhir/Reference{:reference "Patient/0"}}]]])]
+        (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject
+                   #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "1"
+                   :code
+                   #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                            {:system #fhir/uri"system-192253"
+                             :code #fhir/code"code-192300"}]}
+                   :subject
+                   #fhir/Reference{:reference "Patient/0"}}]]]
+
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -128,29 +132,30 @@
               [0 :id] := "1"))))
 
       (testing "with two codes"
-        (with-open [node (mem-node-with
-                           [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                             [:put {:fhir/type :fhir/Observation :id "0"
-                                    :subject
-                                    #fhir/Reference{:reference "Patient/0"}}]
-                             [:put {:fhir/type :fhir/Observation :id "1"
-                                    :code
-                                    #fhir/CodeableConcept
-                                        {:coding
-                                         [#fhir/Coding
-                                             {:system #fhir/uri"system-192253"
-                                              :code #fhir/code"code-192300"}]}
-                                    :subject
-                                    #fhir/Reference{:reference "Patient/0"}}]
-                             [:put {:fhir/type :fhir/Observation :id "2"
-                                    :code
-                                    #fhir/CodeableConcept
-                                        {:coding
-                                         [#fhir/Coding
-                                             {:system #fhir/uri"system-192253"
-                                              :code #fhir/code"code-140541"}]}
-                                    :subject
-                                    #fhir/Reference{:reference "Patient/0"}}]]])]
+        (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject
+                   #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "1"
+                   :code
+                   #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                            {:system #fhir/uri"system-192253"
+                             :code #fhir/code"code-192300"}]}
+                   :subject
+                   #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "2"
+                   :code
+                   #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                            {:system #fhir/uri"system-192253"
+                             :code #fhir/code"code-140541"}]}
+                   :subject
+                   #fhir/Reference{:reference "Patient/0"}}]]]
+
           (let [context
                 {:node node
                  :eval-context "Patient"
@@ -177,11 +182,12 @@
 
   (testing "Specimen context"
     (testing "Patient"
-      (with-open [node (mem-node-with
-                         [[[:put {:fhir/type :fhir/Patient :id "0"}]
-                           [:put {:fhir/type :fhir/Specimen :id "0"
-                                  :subject
-                                  #fhir/Reference{:reference "Patient/0"}}]]])]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Specimen :id "0"
+                 :subject
+                 #fhir/Reference{:reference "Patient/0"}}]]]
+
         (let [context
               {:node node
                :eval-context "Specimen"
@@ -196,14 +202,15 @@
 
   (testing "Unfiltered context"
     (testing "Medication"
-      (with-open [node (mem-node-with
-                         [[[:put {:fhir/type :fhir/Medication :id "0"
-                                  :code
-                                  #fhir/CodeableConcept
-                                      {:coding
-                                       [#fhir/Coding
-                                           {:system #fhir/uri"system-225806"
-                                            :code #fhir/code"code-225809"}]}}]]])]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        [[[:put {:fhir/type :fhir/Medication :id "0"
+                 :code
+                 #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                          {:system #fhir/uri"system-225806"
+                           :code #fhir/code"code-225809"}]}}]]]
+
         (let [context
               {:node node
                :eval-context "Unfiltered"
@@ -226,7 +233,7 @@
 
   (testing "with related context"
     (testing "with pre-compiled database query"
-      (with-open [node (mem-node-with [])]
+      (with-system [{:blaze.db/keys [node]} mem-node-system]
         (let [library {:codeSystems
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
@@ -244,4 +251,3 @@
   (testing "with unsupported type namespace"
     (let [elm {:type "Retrieve" :dataType "{foo}Bar"}]
       (is (thrown-anom? ::anom/unsupported (c/compile {} elm))))))
-

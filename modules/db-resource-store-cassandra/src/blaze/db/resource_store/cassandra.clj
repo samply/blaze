@@ -274,6 +274,7 @@
 
 (defmethod ig/halt-key! ::rs/cassandra
   [_ store]
+  (log/info "Close Cassandra resource store")
   (.close ^Closeable store))
 
 

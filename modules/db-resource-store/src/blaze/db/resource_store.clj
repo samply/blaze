@@ -30,8 +30,8 @@
   (-put [store entries]))
 
 
-(defn put
-  "Puts `entries` which are a map of hashes to resource contents into `store`.
+(defn put!
+  "Puts `entries`, a map of resource hashes to resource contents, into `store`.
 
   Returns a CompletableFuture that will complete exceptionally in case any entry
   could not be stored. The ex-data will contain a set of

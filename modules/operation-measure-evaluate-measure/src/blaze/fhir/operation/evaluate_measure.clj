@@ -1,42 +1,145 @@
 (ns blaze.fhir.operation.evaluate-measure
   "Main entry point into the $evaluate-measure operation."
   (:require
-    [blaze.executors :as ex :refer [executor?]]
-    [blaze.fhir.operation.evaluate-measure.handler.impl :as impl]
+    [blaze.async.comp :as ac]
+    [blaze.coll.core :as coll]
+    [blaze.db.api :as d]
+    [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure.measure :as measure]
+    [blaze.fhir.operation.evaluate-measure.measure.spec]
     [blaze.fhir.operation.evaluate-measure.middleware.params
      :refer [wrap-coerce-params]]
+    [blaze.fhir.operation.evaluate-measure.spec]
+    [blaze.fhir.response.create :as response]
+    [blaze.handler.util :as handler-util]
+    [blaze.luid :as luid]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.module :refer [reg-collector]]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
+    [reitit.core :as reitit]
+    [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
-    [java.time Clock]
     [java.util.concurrent ExecutorService TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn handler [clock conn executor]
-  (-> (impl/handler clock conn executor)
-      (wrap-coerce-params)
-      (wrap-observe-request-duration "operation-evaluate-measure")))
+(defn- invalid-report-type-msg [report-type]
+  (format "The reportType `%s` is invalid. Please use one of `subject`, `subject-list` or `population`."
+          report-type))
 
 
-(s/def ::executor
-  executor?)
+(def ^:private no-subject-list-on-get-msg
+  "The reportType `subject-list` is not supported for GET requests. Please use POST.")
+
+
+(defn- luid [{:keys [clock rng-fn]}]
+  (luid/luid clock (rng-fn)))
+
+
+(defn- tx-ops [{:keys [tx-ops resource]} id]
+  (conj (or tx-ops []) [:create (assoc resource :id id)]))
+
+
+(defn- handle
+  [{:keys [node executor] :as context} db
+   {:blaze/keys [base-url] ::reitit/keys [router] :keys [request-method headers]}
+   params measure]
+  (-> (ac/supply-async
+        #(measure/evaluate-measure context db base-url router measure params)
+        executor)
+      (ac/then-compose
+        (fn process-result [result]
+          (if (::anom/category result)
+            (ac/completed-future (handler-util/error-response result))
+            (cond
+              (= :get request-method)
+              (ac/completed-future (ring/response (:resource result)))
+
+              (= :post request-method)
+              (let [id (luid context)
+                    return-preference (handler-util/preference headers "return")]
+                (-> (d/transact node (tx-ops result id))
+                    ;; it's important to switch to the transaction
+                    ;; executor here, because otherwise the central
+                    ;; indexing thread would execute response building.
+                    (ac/then-apply-async identity executor)
+                    (ac/then-compose
+                      #(response/build-response
+                         base-url router return-preference % nil
+                         (d/resource-handle % "MeasureReport" id)))
+                    (ac/exceptionally handler-util/error-response)))))))))
+
+
+(defn- find-measure-handle
+  [db {{:keys [id]} :path-params {:strs [measure]} :params}]
+  (cond
+    id
+    (d/resource-handle db "Measure" id)
+
+    measure
+    (coll/first (d/type-query db "Measure" [["url" measure]]))))
+
+
+(defn- conform-params
+  [{:keys [request-method]
+    {:strs [subject periodStart periodEnd reportType]} :params}]
+  (let [report-type (or reportType (if subject "subject" "population"))]
+    (cond
+      (not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type report-type))
+      {::anom/category ::anom/incorrect
+       ::anom/message (invalid-report-type-msg report-type)
+       :fhir/issue "value"}
+
+      (and (= :get request-method) (= "subject-list" report-type))
+      {::anom/category ::anom/unsupported
+       ::anom/message no-subject-list-on-get-msg}
+
+      :else
+      (let [period [periodStart periodEnd]]
+        {:period period :report-type report-type}))))
+
+
+(defn handler [{:keys [node] :as context}]
+  (fn [request]
+    (let [result (conform-params request)]
+      (if (::anom/category result)
+        (ac/completed-future (handler-util/error-response result))
+        (let [db (d/db node)]
+          (if-let [{:keys [op] :as measure-handle} (find-measure-handle db request)]
+            (if (identical? :delete op)
+              (-> (handler-util/operation-outcome {:fhir/issue "deleted"})
+                  (ring/response)
+                  (ring/status 410)
+                  (ac/completed-future))
+              (-> (d/pull db measure-handle)
+                  (ac/then-compose
+                    #(handle
+                       context
+                       db
+                       request
+                       result
+                       %))))
+            (ac/completed-future
+              (handler-util/error-response
+                {::anom/category ::anom/not-found
+                 :fhir/issue "not-found"}))))))))
 
 
 (defmethod ig/pre-init-spec ::handler [_]
-  (s/keys :req-un [:blaze.db/node ::executor]))
+  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]))
 
 
-(defmethod ig/init-key ::handler
-  [_ {:keys [node executor]}]
+(defmethod ig/init-key ::handler [_ context]
   (log/info "Init FHIR $evaluate-measure operation handler")
-  (handler (Clock/systemDefaultZone) node executor))
+  (-> (handler context)
+      (wrap-coerce-params)
+      (wrap-observe-request-duration "operation-evaluate-measure")))
 
 
 (defn- executor-init-msg [num-threads]

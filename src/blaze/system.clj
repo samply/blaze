@@ -17,7 +17,9 @@
     [spec-coerce.alpha :refer [coerce]]
     [taoensso.timbre :as log])
   (:import
-    [java.io PushbackReader]))
+    [java.io PushbackReader]
+    [java.time Clock]
+    [java.util.concurrent ThreadLocalRandom]))
 
 
 
@@ -85,6 +87,10 @@
 
 (def ^:private root-config
   {:blaze/version "0.11.0"
+
+   :blaze/clock {}
+
+   :blaze/rng-fn {}
 
    :blaze/structure-definition {}
 
@@ -191,6 +197,16 @@
 (defmethod ig/init-key :blaze/version
   [_ version]
   version)
+
+
+(defmethod ig/init-key :blaze/clock
+  [_ _]
+  (Clock/systemDefaultZone))
+
+
+(defmethod ig/init-key :blaze/rng-fn
+  [_ _]
+  (fn [] (ThreadLocalRandom/current)))
 
 
 #_(defmethod ig/init-key :fhir-capabilities-handler

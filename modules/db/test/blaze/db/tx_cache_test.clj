@@ -1,9 +1,9 @@
 (ns blaze.db.tx-cache-test
   (:require
     [blaze.db.kv :as kv]
-    [blaze.db.kv.mem :refer [new-mem-kv-store]]
-    [blaze.db.test-util :refer [given-thrown]]
+    [blaze.db.kv.mem]
     [blaze.db.tx-cache]
+    [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -26,15 +26,19 @@
 (test/use-fixtures :each fixture)
 
 
-(defn- cache [kv-store max-size]
-  (-> (ig/init
-        {:blaze.db/tx-cache
-         {:kv-store kv-store
-          :max-size max-size}})
-      :blaze.db/tx-cache))
+(def system
+  {:blaze.db/tx-cache
+   {:kv-store (ig/ref ::kv/mem)}
+   ::kv/mem {:column-families {}}})
 
 
-(deftest failing-init-test
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.db/tx-cache nil})
+      :key := :blaze.db/tx-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
   (testing "missing store"
     (given-thrown (ig/init {:blaze.db/tx-cache {}})
       :key := :blaze.db/tx-cache
@@ -45,15 +49,18 @@
     (given-thrown (ig/init {:blaze.db/tx-cache {:kv-store nil}})
       :key := :blaze.db/tx-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn [~'%] (satisfies? kv/KvStore ~'%))))
+      [:explain ::s/problems 0 :pred] := `blaze.db.kv/store?))
 
   (testing "invalid max-size"
-    (given-thrown (ig/init {:blaze.db/tx-cache {:kv-store (new-mem-kv-store) :max-size nil}})
+    (given-thrown (ig/init {:blaze.db/tx-cache
+                            {:kv-store (ig/ref ::kv/mem)
+                             :max-size nil}
+                            ::kv/mem {:column-families {}}})
       :key := :blaze.db/tx-cache
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `nat-int?)))
 
 
 (deftest empty-store-test
-  (let [^LoadingCache cache (cache (new-mem-kv-store) 0)]
-    (is (nil? (.get cache 0)))))
+  (with-system [{cache :blaze.db/tx-cache} system]
+    (is (nil? (.get ^LoadingCache cache 0)))))

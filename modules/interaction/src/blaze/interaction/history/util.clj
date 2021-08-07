@@ -3,7 +3,6 @@
     [blaze.db.api-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.interaction.spec]
     [reitit.core :as reitit])
   (:import
     [java.time Instant OffsetDateTime]

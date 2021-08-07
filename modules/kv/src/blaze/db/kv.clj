@@ -1,5 +1,7 @@
 (ns blaze.db.kv
-  "Protocols for key-value store backend implementations."
+  "Protocols for key-value store backend implementations.
+
+  All functions block the current thread while doing I/O."
   (:refer-clojure :exclude [get key])
   (:import
     [java.io Closeable]))
@@ -199,7 +201,9 @@
 
 
 (defn get
-  "Returns the value if there is any, nil otherwise."
+  "Returns the value of `key` in `column-family` (optional) or nil if not found.
+
+  Blocks the current thread."
   ([store key]
    (-get store key))
   ([store column-family key]

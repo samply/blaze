@@ -60,12 +60,11 @@
 
 
 (def ^:private split
-  (juxt #(mapv :blaze.db/tx-cmd %)
-        #(into {} (map :hash-resource) %)))
+  (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
 
 
 (defn prepare-ops
-  "Splits each transaction operator into a collection of :blaze.db/tx-cmd and a
-  map of hash to resource."
+  "Splits `tx-ops` into a tuple of :blaze.db/tx-cmds and a map of resource
+  hashes to resource contents."
   [tx-ops]
   (split (mapv prepare-op tx-ops)))
