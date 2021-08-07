@@ -14,11 +14,17 @@
   :ret ac/completable-future?)
 
 
+;; returns a CompletableFuture of :blaze.db/t
+(s/fdef tx-log/last-t
+  :args (s/cat :tx-log :blaze.db/tx-log)
+  :ret ac/completable-future?)
+
+
 (s/fdef tx-log/new-queue
   :args (s/cat :tx-log :blaze.db/tx-log :offset :blaze.db/t)
   :ret ::tx-log/queue)
 
 
-(s/fdef tx-log/poll
+(s/fdef tx-log/poll!
   :args (s/cat :queue ::tx-log/queue :timeout time/duration?)
   :ret (s/nilable (s/coll-of :blaze.db/tx-data)))

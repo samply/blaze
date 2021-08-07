@@ -1,13 +1,10 @@
 (ns blaze.db.api
   "Public Database API.
 
-  A Database node provides access to a set of databases.
+  A database node provides access to a set of database values.
 
-  A Database is an immutable, indexed set of Resources at a certain point in
-  time.
-
-
-  Instance-level, Type-level, system-level, compartment-level."
+  A database value is an immutable, indexed set of resources at a certain point
+  in time `t`."
   (:refer-clojure :exclude [sync])
   (:require
     [blaze.anomaly :refer [when-ok]]
@@ -21,21 +18,28 @@
 
 
 (defn db
-  "Returns the most recent database known to this node.
+  "Retrieves the most recent available value of the database for reading.
 
-  Does not block."
+  Does not communicate with the transaction log, nor block."
   [node]
   (np/-db node))
 
 
 (defn sync
-  "Returns a CompletionStage that completes when the database with at least the
-  point in time `t` is available.
+  "Used to coordinate with other nodes.
 
-  The database could be of a newer point in time. Please use `as-of` afterwards
-  if you want a database with exactly `t`."
-  [node t]
-  (np/-sync node t))
+  When called with `t`, returns a CompletionStage that completes with the
+  database value with at least the point in time `t` is available. Does not
+  communicate with the transaction log. Simply waits for the database value
+  becoming available.
+
+  When called without `t`, returns a CompletionStage that completes with the
+  database value guaranteed to include all transactions that were complete at
+  the time sync was called. Communicates with the transaction log."
+  ([node]
+   (np/-sync node))
+  ([node t]
+   (np/-sync node t)))
 
 
 (defn transact

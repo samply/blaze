@@ -37,21 +37,41 @@
   :ret boolean?)
 
 
+(s/fdef ac/or-timeout!
+  :args (s/cat :future ac/completable-future? :timeout pos-int?
+               :unit #(instance? TimeUnit %))
+  :ret ac/completable-future?)
+
+
 (s/fdef ac/complete-on-timeout!
-  :args (s/cat :future ac/completable-future? :x any? :timeout int?
+  :args (s/cat :future ac/completable-future? :x any? :timeout pos-int?
                :unit #(instance? TimeUnit %))
   :ret ac/completable-future?)
 
 
 (s/fdef ac/complete-exceptionally!
-  :args (s/cat :future ac/completable-future?
-               :e #(instance? Throwable %))
+  :args (s/cat :future ac/completable-future? :e #(instance? Throwable %))
   :ret boolean?)
+
+
+(s/fdef ac/delayed-executor
+  :args (s/cat :delay pos-int? :unit #(instance? TimeUnit %))
+  :ret ex/executor?)
 
 
 (s/fdef ac/join
   :args (s/cat :future ac/completable-future?)
   :ret any?)
+
+
+(s/fdef ac/canceled?
+  :args (s/cat :future ac/completable-future?)
+  :ret boolean?)
+
+
+(s/fdef ac/cancel!
+  :args (s/cat :future ac/completable-future?)
+  :ret boolean?)
 
 
 (s/fdef ac/supply-async

@@ -6,7 +6,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [java.util.concurrent TimeUnit]))
+    [java.util.concurrent TimeUnit TimeoutException]))
 
 
 (st/instrument)
@@ -27,10 +27,10 @@
 
   (testing "on failed future"
     (try
-      @(ac/failed-future (ex-info "e" {:a :b}))
+      @(ac/failed-future (ex-info "e" {::a ::b}))
       (catch Exception e
         (is (= "e" (ex-message (ex-cause e))))
-        (is (= :b (:a (ex-data (ex-cause e)))))))))
+        (is (= ::b (::a (ex-data (ex-cause e)))))))))
 
 
 (deftest all-of-test
@@ -56,19 +56,33 @@
           (is (= "e" (ex-message (ex-cause e)))))))))
 
 
-(deftest complete-on-timeout!-test
+(deftest or-timeout!-test
   (testing "with timeout happen"
     (let [f (ac/future)]
-      (ac/complete-on-timeout! f :a 1 TimeUnit/MILLISECONDS)
+      (ac/or-timeout! f 1 TimeUnit/MILLISECONDS)
       (Thread/sleep 10)
-      (ac/complete! f :b)
-      (is (= :a @f))))
+      (is (= TimeoutException (class @(ac/exceptionally f identity))))))
 
   (testing "without timeout happen"
     (let [f (ac/future)]
-      (ac/complete-on-timeout! f :a 10 TimeUnit/MILLISECONDS)
-      (ac/complete! f :b)
-      (is (= :b @f)))))
+      (ac/or-timeout! f 10 TimeUnit/MILLISECONDS)
+      (ac/complete! f ::b)
+      (is (= ::b @f)))))
+
+
+(deftest complete-on-timeout!-test
+  (testing "with timeout happen"
+    (let [f (ac/future)]
+      (ac/complete-on-timeout! f ::a 1 TimeUnit/MILLISECONDS)
+      (Thread/sleep 10)
+      (ac/complete! f ::b)
+      (is (= ::a @f))))
+
+  (testing "without timeout happen"
+    (let [f (ac/future)]
+      (ac/complete-on-timeout! f ::a 10 TimeUnit/MILLISECONDS)
+      (ac/complete! f ::b)
+      (is (= ::b @f)))))
 
 
 (deftest join-test
@@ -77,10 +91,10 @@
 
   (testing "on failed future"
     (try
-      (ac/join (ac/failed-future (ex-info "e" {:a :b})))
+      (ac/join (ac/failed-future (ex-info "e" {::a ::b})))
       (catch Exception e
         (is (= "e" (ex-message (ex-cause e))))
-        (is (= :b (:a (ex-data (ex-cause e)))))))))
+        (is (= ::b (::a (ex-data (ex-cause e)))))))))
 
 
 (deftest supply-test
@@ -161,11 +175,25 @@
       (is (= "e" @f')))))
 
 
-(deftest exceptionally-test
+(deftest complete-exceptionally-test
   (let [f (ac/future)
         f' (ac/exceptionally f (fn [e] (ex-message e)))]
     (ac/complete-exceptionally! f (ex-info "e" {}))
     (is (= "e" @f'))))
+
+
+(deftest delayed-executor-test
+  (let [f (ac/supply-async (constantly ::a) (ac/delayed-executor 100 TimeUnit/MILLISECONDS))]
+    (is (not (ac/done? f)))
+    (is (= ::a @f))))
+
+
+(deftest cancel-test
+  (let [f (ac/supply-async (constantly ::a) (ac/delayed-executor 100 TimeUnit/MILLISECONDS))]
+    (is (not (ac/done? f)))
+    (ac/cancel! f)
+    (is (ac/canceled? f))
+    (is (ac/done? f))))
 
 
 (deftest when-complete-test

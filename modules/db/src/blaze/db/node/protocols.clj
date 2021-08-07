@@ -3,6 +3,6 @@
 
 (defprotocol Node
   (-db [node])
-  (-sync [node t])
+  (-sync [node] [node t])
   (-submit-tx [node tx-ops])
   (-tx-result [node t]))

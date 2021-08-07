@@ -16,13 +16,13 @@
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
-    [java.time Instant]
-    [org.apache.kafka.clients.consumer Consumer ConsumerRecord]
+    [java.time Duration]
+    [org.apache.kafka.clients.consumer Consumer ConsumerRecords]
     [org.apache.kafka.clients.producer Producer RecordMetadata]
     [org.apache.kafka.common TopicPartition]
     [org.apache.kafka.common.errors
      AuthorizationException RecordTooLargeException]
-    [org.apache.kafka.common.record TimestampType]))
+    [java.util Map]))
 
 
 (st/instrument)
@@ -45,7 +45,10 @@
 
 
 (def system
-  {::tx-log/kafka {:bootstrap-servers bootstrap-servers}})
+  {::tx-log/kafka
+   {:bootstrap-servers bootstrap-servers
+    :last-t-executor (ig/ref ::kafka/last-t-executor)}
+   ::kafka/last-t-executor {}})
 
 
 (deftest init-test
@@ -59,14 +62,32 @@
     (given-thrown (ig/init {::tx-log/kafka {}})
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :bootstrap-servers))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :bootstrap-servers))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
 
   (testing "invalid bootstrap servers"
     (given-thrown (ig/init {::tx-log/kafka {:bootstrap-servers ::invalid}})
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `string?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))
+      [:explain ::s/problems 1 :pred] := `string?
+      [:explain ::s/problems 1 :val] := ::invalid)))
+
+
+(defn- no-op-producer [{servers :bootstrap-servers}]
+  (assert (= bootstrap-servers servers))
+  (reify
+    Producer
+    Closeable
+    (close [_])))
+
+
+(defn- no-op-consumer [{servers :bootstrap-servers}]
+  (assert (= bootstrap-servers servers))
+  (reify
+    Consumer
+    Closeable
+    (close [_])))
 
 
 (deftest tx-log-test
@@ -74,14 +95,14 @@
     (with-redefs
       [kafka/create-producer
        (fn [{servers :bootstrap-servers}]
-         (when-not (= bootstrap-servers servers)
-           (throw (Error.)))
+         (assert (= bootstrap-servers servers))
          (reify
            Producer
            (send [_ _ callback]
              (.onCompletion callback (RecordMetadata. nil 0 0 0 nil 0 0) nil))
            Closeable
-           (close [_])))]
+           (close [_])))
+       kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} system]
         (is (= 1 @(tx-log/submit tx-log [tx-cmd])))))
 
@@ -89,15 +110,15 @@
       (with-redefs
         [kafka/create-producer
          (fn [{servers :bootstrap-servers}]
-           (when-not (= bootstrap-servers servers)
-             (throw (Error.)))
+           (assert (= bootstrap-servers servers))
            (reify
              Producer
              (send [_ _ callback]
                (.onCompletion callback nil
                               (RecordTooLargeException. "msg-173357")))
              Closeable
-             (close [_])))]
+             (close [_])))
+         kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
           (given @(-> (tx-log/submit tx-log [tx-cmd]) (ac/exceptionally ex-data))
             ::anom/category := ::anom/unsupported
@@ -107,15 +128,15 @@
       (with-redefs
         [kafka/create-producer
          (fn [{servers :bootstrap-servers}]
-           (when-not (= bootstrap-servers servers)
-             (throw (Error.)))
+           (assert (= bootstrap-servers servers))
            (reify
              Producer
              (send [_ _ callback]
                (.onCompletion callback nil
                               (AuthorizationException. "msg-175337")))
              Closeable
-             (close [_])))]
+             (close [_])))
+         kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
           (given @(-> (tx-log/submit tx-log [tx-cmd]) (ac/exceptionally ex-data))
             ::anom/category := ::anom/fault
@@ -123,34 +144,40 @@
 
   (testing "an empty transaction log has no transaction data"
     (with-redefs
-      [kafka/create-producer
-       (fn [{servers :bootstrap-servers}]
-         (when-not (= bootstrap-servers servers)
-           (throw (Error.)))
-         (reify
-           Producer
-           Closeable
-           (close [_])))
+      [kafka/create-producer no-op-producer
        kafka/create-consumer
        (fn [{servers :bootstrap-servers}]
-         (when-not (= bootstrap-servers servers)
-           (throw (Error.)))
+         (assert (= bootstrap-servers servers))
          (reify
            Consumer
            (^void seek [_ ^TopicPartition partition ^long offset]
-             (when-not (= (TopicPartition. "tx" 0) partition)
-               (throw (Error.)))
-             (when-not (= 0 offset)
-               (throw (Error.))))
-           tx-log/Queue
-           (-poll [_ timeout]
-             (when-not (= (time/millis 10) timeout)
-               (throw (Error.))))
+             (assert (= (TopicPartition. "tx" 0) partition))
+             (assert (= 0 offset)))
+           (^ConsumerRecords poll [_ ^Duration duration]
+             (assert (= (time/seconds 1) duration))
+             (ConsumerRecords. (Map/of)))
+           Closeable
+           (close [_])))
+       kafka/create-last-t-consumer no-op-consumer]
+      (with-system [{tx-log ::tx-log/kafka} system]
+        (with-open [queue (tx-log/new-queue tx-log 1)]
+          (is (empty? (tx-log/poll! queue (time/seconds 1))))))))
+
+  (testing "last-t"
+    (with-redefs
+      [kafka/create-producer no-op-producer
+       kafka/create-last-t-consumer
+       (fn [{servers :bootstrap-servers}]
+         (assert (= bootstrap-servers servers))
+         (reify
+           Consumer
+           (endOffsets [_ partitions]
+             (assert (= (TopicPartition. "tx" 0) (first partitions)))
+             (Map/of (first partitions) 104614))
            Closeable
            (close [_])))]
       (with-system [{tx-log ::tx-log/kafka} system]
-        (let [queue (tx-log/new-queue tx-log 1)]
-          (is (empty? (tx-log/poll queue (time/millis 10)))))))))
+        (is (= 104614 @(tx-log/last-t tx-log)))))))
 
 
 (defn invalid-cbor-content
@@ -192,23 +219,3 @@
         :type := "Patient"
         :id := "0"
         :hash := hash-patient-0))))
-
-
-(defn consumer-record [offset timestamp timestamp-type value]
-  (ConsumerRecord. "tx" 0 offset timestamp timestamp-type 0 0 0 nil value))
-
-
-(deftest record-transformer-test
-  (testing "skips record with wrong timestamp type"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-      (is (empty? (into [] kafka/record-transformer [(consumer-record 0 0 TimestampType/CREATE_TIME [cmd])])))))
-
-  (testing "skips record with invalid transaction commands"
-    (is (empty? (into [] kafka/record-transformer [(consumer-record 0 0 TimestampType/LOG_APPEND_TIME [{:op "create"}])]))))
-
-  (testing "success"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-      (given (first (into [] kafka/record-transformer [(consumer-record 0 0 TimestampType/LOG_APPEND_TIME [cmd])]))
-        :t := 1
-        :instant := (Instant/ofEpochSecond 0)
-        :tx-cmds := [cmd]))))

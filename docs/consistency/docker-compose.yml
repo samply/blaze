@@ -1,0 +1,231 @@
+version: '3.7'
+services:
+  zookeeper-1:
+    image: "docker.io/bitnami/zookeeper:3"
+    environment:
+      ZOO_SERVER_ID: "1"
+      ZOO_SERVERS: "0.0.0.0:2888:3888,zookeeper-2:2888:3888,zookeeper-3:2888:3888"
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+    - "zookeeper-1-data:/bitnami/zookeeper"
+
+  zookeeper-2:
+    image: "docker.io/bitnami/zookeeper:3"
+    environment:
+      ZOO_SERVER_ID: "2"
+      ZOO_SERVERS: "zookeeper-1:2888:3888,0.0.0.0:2888:3888,zookeeper-3:2888:3888"
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+    - "zookeeper-2-data:/bitnami/zookeeper"
+
+  zookeeper-3:
+    image: "docker.io/bitnami/zookeeper:3"
+    environment:
+      ZOO_SERVER_ID: "3"
+      ZOO_SERVERS: "zookeeper-1:2888:3888,zookeeper-2:2888:3888,0.0.0.0:2888:3888"
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    volumes:
+    - "zookeeper-3-data:/bitnami/zookeeper"
+
+  kafka-1:
+    image: "docker.io/bitnami/kafka:2"
+    hostname: "kafka-1"
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:SSL"
+      KAFKA_CFG_LISTENERS: "CLIENT://:9092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka-1:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
+      KAFKA_CERTIFICATE_PASSWORD: "password"
+      KAFKA_CFG_TLS_TYPE: "JKS"
+      KAFKA_TLS_TRUSTSTORE_FILE: "/opt/bitnami/kafka/config/certs/kafka.truststore.jks"
+      # It's important to create the tx topic ourselves, because it needs to use
+      # LogAppendTime timestamps
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+    - "./kafka-1.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro"
+    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
+    - "kafka-1-data:/bitnami/kafka"
+    depends_on:
+    - zookeeper-1
+    - zookeeper-2
+    - zookeeper-3
+
+  kafka-2:
+    image: "docker.io/bitnami/kafka:2"
+    hostname: "kafka-2"
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:SSL"
+      KAFKA_CFG_LISTENERS: "CLIENT://:9092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka-2:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
+      KAFKA_CERTIFICATE_PASSWORD: "password"
+      KAFKA_CFG_TLS_TYPE: "JKS"
+      KAFKA_TLS_TRUSTSTORE_FILE: "/opt/bitnami/kafka/config/certs/kafka.truststore.jks"
+      # It's important to create the tx topic ourselves, because it needs to use
+      # LogAppendTime timestamps
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+    - "./kafka-2.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro"
+    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
+    - "kafka-2-data:/bitnami/kafka"
+    depends_on:
+    - zookeeper-1
+    - zookeeper-2
+    - zookeeper-3
+
+  kafka-3:
+    image: "docker.io/bitnami/kafka:2"
+    hostname: "kafka-3"
+    environment:
+      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper-1:2181,zookeeper-2:2181,zookeeper-3:2181"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:SSL"
+      KAFKA_CFG_LISTENERS: "CLIENT://:9092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka-3:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
+      KAFKA_CERTIFICATE_PASSWORD: "password"
+      KAFKA_CFG_TLS_TYPE: "JKS"
+      KAFKA_TLS_TRUSTSTORE_FILE: "/opt/bitnami/kafka/config/certs/kafka.truststore.jks"
+      # It's important to create the tx topic ourselves, because it needs to use
+      # LogAppendTime timestamps
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+    - "./kafka-3.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro"
+    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
+    - "kafka-3-data:/bitnami/kafka"
+    depends_on:
+    - zookeeper-1
+    - zookeeper-2
+    - zookeeper-3
+
+  kafka-topic-creator:
+    image: "docker.io/bitnami/kafka:2"
+    command: "/opt/bitnami/kafka/bin/kafka-init.sh"
+    volumes:
+    - "./kafka-init.sh:/opt/bitnami/kafka/bin/kafka-init.sh:ro"
+    - "./kafka-init.conf:/opt/bitnami/kafka/config/kafka-init.conf:ro"
+    - "./kafka-topic-creator.keystore.jks:/opt/bitnami/kafka/config/certs/kafka-topic-creator.keystore.jks:ro"
+    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
+    depends_on:
+    - zookeeper-1
+    - zookeeper-2
+    - zookeeper-3
+    - kafka-1
+    - kafka-2
+    - kafka-3
+
+  cassandra-1:
+    image: "docker.io/bitnami/cassandra:3"
+    volumes:
+    - "./cassandra-init.cql:/docker-entrypoint-initdb.d/cassandra-init.cql:ro"
+    - "./cassandra-init.sh:/docker-entrypoint-initdb.d/cassandra-init.sh:ro"
+    - "cassandra-1-data:/bitnami"
+    environment:
+      CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
+      CASSANDRA_PASSWORD_SEEDER: "yes"
+      MAX_HEAP_SIZE: "4G"
+      HEAP_NEWSIZE: "200M"
+
+  cassandra-2:
+    image: "docker.io/bitnami/cassandra:3"
+    volumes:
+    - "cassandra-2-data:/bitnami"
+    environment:
+      CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
+      MAX_HEAP_SIZE: "4G"
+      HEAP_NEWSIZE: "200M"
+
+  cassandra-3:
+    image: "docker.io/bitnami/cassandra:3"
+    volumes:
+    - "cassandra-3-data:/bitnami"
+    environment:
+      CASSANDRA_SEEDS: "cassandra-1,cassandra-2,cassandra-3"
+      MAX_HEAP_SIZE: "4G"
+      HEAP_NEWSIZE: "200M"
+
+  blaze-1:
+    image: "samply/blaze:jepsen"
+    hostname: "blaze-1"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx4g -Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'"
+      STORAGE: "distributed"
+      DB_KAFKA_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      DB_KAFKA_MAX_REQUEST_SIZE: "3145728"
+      DB_KAFKA_SECURITY_PROTOCOL: "SSL"
+      DB_KAFKA_SSL_TRUSTSTORE_LOCATION: "/app/kafka.truststore.jks"
+      DB_KAFKA_SSL_TRUSTSTORE_PASSWORD: "password"
+      DB_KAFKA_SSL_KEYSTORE_LOCATION: "/app/blaze-1.keystore.jks"
+      DB_KAFKA_SSL_KEYSTORE_PASSWORD: "password"
+      DB_KAFKA_SSL_KEY_PASSWORD: "password"
+      DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
+      LOG_LEVEL: "debug"
+      BASE_URL: "http://localhost:8080"
+    ports:
+    - "8081:8081"
+    volumes:
+    - "./blaze-1.keystore.jks:/app/blaze-1.keystore.jks:ro"
+    - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
+    - "blaze-1-data:/app/data"
+    depends_on:
+    - kafka-topic-creator
+    - cassandra-1
+    - cassandra-2
+    - cassandra-3
+
+  blaze-2:
+    image: "samply/blaze:jepsen"
+    hostname: "blaze-2"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx4g"
+      STORAGE: "distributed"
+      DB_KAFKA_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
+      DB_KAFKA_MAX_REQUEST_SIZE: "3145728"
+      DB_KAFKA_SECURITY_PROTOCOL: "SSL"
+      DB_KAFKA_SSL_TRUSTSTORE_LOCATION: "/app/kafka.truststore.jks"
+      DB_KAFKA_SSL_TRUSTSTORE_PASSWORD: "password"
+      DB_KAFKA_SSL_KEYSTORE_LOCATION: "/app/blaze-2.keystore.jks"
+      DB_KAFKA_SSL_KEYSTORE_PASSWORD: "password"
+      DB_KAFKA_SSL_KEY_PASSWORD: "password"
+      DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
+      LOG_LEVEL: "debug"
+      BASE_URL: "http://localhost:8090"
+    ports:
+    - "8091:8081"
+    volumes:
+    - "./blaze-2.keystore.jks:/app/blaze-2.keystore.jks:ro"
+    - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
+    - "blaze-2-data:/app/data"
+    depends_on:
+    - kafka-topic-creator
+    - cassandra-1
+    - cassandra-2
+    - cassandra-3
+
+  ingress:
+    image: "haproxy:2.3"
+    ports:
+    - "8080:8080"
+    volumes:
+    - "./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro"
+    - "/dev/log:/dev/log"
+    depends_on:
+    - blaze-1
+    - blaze-2
+
+volumes:
+  zookeeper-1-data:
+  zookeeper-2-data:
+  zookeeper-3-data:
+  kafka-1-data:
+  kafka-2-data:
+  kafka-3-data:
+  cassandra-1-data:
+  cassandra-2-data:
+  cassandra-3-data:
+  blaze-1-data:
+  blaze-2-data:

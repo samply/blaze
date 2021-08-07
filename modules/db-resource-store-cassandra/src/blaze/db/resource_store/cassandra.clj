@@ -124,17 +124,20 @@
     (ex-anom
       #::anom{:category ::anom/busy
               :message (str "Cassandra " (ex-message e))
+              :op :get
               :blaze.resource/hash hash})
     RequestThrottlingException
     (ex-anom
       #::anom{:category ::anom/busy
               :message (str "Cassandra " (ex-message e))
+              :op :get
               :blaze.resource/hash hash})
     ExceptionInfo
     e
     (ex-anom
       #::anom{:category ::anom/fault
               :message (ex-message e)
+              :op :get
               :blaze.resource/hash hash})))
 
 
@@ -168,6 +171,7 @@
     (ex-anom
       #::anom{:category ::anom/busy
               :message (str "Cassandra " (ex-message e))
+              :op :put
               :blaze.resource/hash hash
               :fhir/type type
               :blaze.resource/id id})
@@ -175,21 +179,27 @@
     (ex-anom
       #::anom{:category ::anom/busy
               :message (ex-message e)
+              :op :put
               :blaze.resource/hash hash
               :fhir/type type
               :blaze.resource/id id})
     (ex-anom
       #::anom{:category ::anom/fault
               :message (ex-message e)
+              :op :put
               :blaze.resource/hash hash
               :fhir/type type
               :blaze.resource/id id})))
 
 
-(defn- execute-put [session statement [hash resource]]
+(defn- execute-put* [session statement [hash resource]]
   (-> (execute session "put" (bind-put statement hash resource))
       (ac/exceptionally
         #(throw (map-execute-put-error hash resource (ex-cause %))))))
+
+
+(defn- execute-put [session statement entry]
+  (retry #(execute-put* session statement entry) 5))
 
 
 (defn- execute-multi-put [session statement entries]

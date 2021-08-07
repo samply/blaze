@@ -80,18 +80,15 @@
   ;; provides read and write access to the actual resources.
   ;;
   :blaze.interaction.history/system
-  {:node #blaze/ref :blaze.db/node
-   :clock #blaze/ref :blaze/clock
+  {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction.history/type
-  {:node #blaze/ref :blaze.db/node
-   :clock #blaze/ref :blaze/clock
+  {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction.history/instance
-  {:node #blaze/ref :blaze.db/node
-   :clock #blaze/ref :blaze/clock
+  {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/create
@@ -104,22 +101,18 @@
   {:node #blaze/ref :blaze.db/node
    :executor #blaze/ref :blaze.server/executor}
 
-  :blaze.interaction/read
-  {:node #blaze/ref :blaze.db/node}
+  :blaze.interaction/read {}
 
   :blaze.interaction/search-system
-  {:node #blaze/ref :blaze.db/node
-   :clock #blaze/ref :blaze/clock
+  {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/search-type
-  {:node #blaze/ref :blaze.db/node
-   :clock #blaze/ref :blaze/clock
+  {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/search-compartment
-  {:node #blaze/ref :blaze.db/node
-   :clock #blaze/ref :blaze/clock
+  {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/transaction
@@ -606,6 +599,7 @@
    ;;
    :blaze.db.tx-log/kafka
    {:bootstrap-servers #blaze/cfg ["DB_KAFKA_BOOTSTRAP_SERVERS" string? "localhost:9092"]
+    :last-t-executor #blaze/ref :blaze.db.tx-log.kafka/last-t-executor
     :max-request-size #blaze/cfg ["DB_KAFKA_MAX_REQUEST_SIZE" nat-int? 1048576]
     :compression-type #blaze/cfg ["DB_KAFKA_COMPRESSION_TYPE" string? "snappy"]
     :security-protocol #blaze/cfg ["DB_KAFKA_SECURITY_PROTOCOL" string? "PLAINTEXT"]
@@ -615,6 +609,7 @@
     :ssl-keystore-password #blaze/cfg ["DB_KAFKA_SSL_KEYSTORE_PASSWORD" string?]
     :ssl-key-password #blaze/cfg ["DB_KAFKA_SSL_KEY_PASSWORD" string?]}
 
+   :blaze.db.tx-log.kafka/last-t-executor {}
    :blaze.db.tx-log.kafka/duration-seconds {}
 
    ;;

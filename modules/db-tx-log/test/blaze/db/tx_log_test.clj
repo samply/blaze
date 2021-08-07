@@ -39,6 +39,13 @@
                   :hash patient-hash-0}])))))
 
 
+(deftest last-t-test
+  (let [tx-log (reify tx-log/TxLog
+                 (-last-t [_]
+                   (ac/completed-future 161253)))]
+    (is (= 161253 @(tx-log/last-t tx-log)))))
+
+
 (def tx-data {:t 1
               :instant Instant/EPOCH
               :tx-cmds
@@ -58,4 +65,4 @@
                      Closeable
                      (close [_]))))]
     (with-open [queue (tx-log/new-queue tx-log 1)]
-      (is (= [tx-data] (tx-log/poll queue (time/millis 100)))))))
+      (is (= [tx-data] (tx-log/poll! queue (time/millis 100)))))))

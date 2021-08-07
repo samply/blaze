@@ -11,11 +11,9 @@
 
   (-submit [tx-log tx-cmds])
 
+  (-last-t [tx-log])
+
   (-new-queue [tx-log offset]))
-
-
-(defprotocol Queue
-  (-poll [queue timeout]))
 
 
 (defn submit
@@ -25,11 +23,17 @@
   potentially valid transaction or complete exceptionally with an anomaly in
   case of errors.
 
-  Note: This function only ensures that the transaction is commited into the log
-  and will be handled in the future. So a positive return value doesn't mean
-  that the transaction itself was sucessful."
+  Note: This function only ensures that the transaction is committed into the
+  log and will be handled in the future. So a positive return value doesn't mean
+  that the transaction itself was successful."
   [tx-log tx-cmds]
   (-submit tx-log tx-cmds))
+
+
+(defn last-t
+  "Returns the last `t` submitted to `tx-log`."
+  [tx-log]
+  (-last-t tx-log))
 
 
 (defn new-queue
@@ -41,7 +45,12 @@
   (-new-queue tx-log offset))
 
 
-(defn poll
-  "Returns a coll of transaction commands."
+(defprotocol Queue
+  (-poll [queue timeout]))
+
+
+(defn poll!
+  "Retrieves and removes the head, a collection of transaction data, of `queue`,
+  waiting up to `timeout` if necessary for transaction data to become available."
   [queue timeout]
   (-poll queue timeout))

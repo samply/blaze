@@ -25,8 +25,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
+   {blaze/db-stub
+    {:local/root "../db-stub"}
 
     lambdaisland/kaocha
     {:mvn/version "1.0.861"}}
@@ -37,8 +37,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
+   {blaze/db-stub
+    {:local/root "../db-stub"}
 
     cloverage/cloverage
     {:mvn/version "1.2.2"}}
