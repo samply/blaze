@@ -507,24 +507,25 @@
           ::anom/category := ::anom/conflict
           ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
 
-  (testing "creating 10 transactions in parallel"
+  (testing "creating 100 transactions in parallel"
     (with-system [{:blaze.db/keys [node]} slow-resource-store-system]
       (let [db-futures
             (mapv
               #(d/transact node [[:create {:fhir/type :fhir/Patient :id (str %)}]])
-              (range 10))]
+              (range 100))]
 
         (testing "wait for all transactions finishing"
           @(ac/all-of db-futures))
 
-        (testing "every database contains an increasing number of patients"
-          (is
-            (every?
-              true?
-              (map-indexed
-                (fn [i db-future]
-                  (= (inc i) (d/type-total @db-future "Patient")))
-                db-futures)))))))
+        (testing "since we created a patient in every transaction"
+          (testing "the number of patients equals the t of the database"
+            (let [db (d/db node)]
+              (is
+                (every?
+                  true?
+                  (map
+                    #(= % (d/type-total (d/as-of db %) "Patient"))
+                    (range 100))))))))))
 
   (testing "with failing resource storage"
     (testing "on put"
