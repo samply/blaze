@@ -86,7 +86,8 @@
 
 
 (defn- etag [resource]
-  (str "W/\"" (-> resource :meta :versionId) "\""))
+  (when-let [version-id (-> resource :meta :versionId)]
+    (str "W/\"" version-id "\"")))
 
 
 (defn- generate-body [resource]
@@ -104,7 +105,7 @@
     (merge
       {:accept :fhir+json
        :content-type :fhir+json
-       :headers (if-match (etag resource))
+       :headers (some-> (etag resource) if-match)
        :body (generate-body resource)
        :as :fhir
        :async? true}
