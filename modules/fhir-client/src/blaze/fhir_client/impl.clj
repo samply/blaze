@@ -27,6 +27,7 @@
 
 (defn- category [status]
   (cond
+    nil ::anom/fault
     (= 404 status) ::anom/not-found
     (#{409 412} status) ::anom/conflict
     (#{401 403} status) ::anom/forbidden
