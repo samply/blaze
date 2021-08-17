@@ -11,9 +11,10 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [com.pgssoft.httpclient HttpClientMock]
+    [com.pgssoft.httpclient HttpClientMock Condition]
     [java.nio.file Files Path]
-    [java.nio.file.attribute FileAttribute]))
+    [java.nio.file.attribute FileAttribute]
+    [org.hamcrest Matchers]))
 
 
 (st/instrument)
@@ -120,12 +121,19 @@
         ::anom/category := ::anom/busy))))
 
 
+(defn- empty-header-condition [name]
+  (reify Condition
+    (matches [_ request]
+      (.isEmpty (.firstValue (.headers request) name)))))
+
+
 (deftest update-test
   (testing "without meta versionId"
     (let [http-client (HttpClientMock.)
           resource {:fhir/type :fhir/Patient :id "0"}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
+          (.with (empty-header-condition "If-Match"))
           (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
