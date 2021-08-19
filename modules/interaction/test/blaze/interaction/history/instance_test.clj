@@ -8,11 +8,14 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.interaction.history.instance]
     [blaze.interaction.history.util-spec]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
     [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -61,18 +64,16 @@
     (given-thrown (ig/init {:blaze.interaction.history/instance {}})
       :key := :blaze.interaction.history/instance
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
-  (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction.history/instance {:node ::executor}})
+  (testing "invalid clock"
+    (given-thrown (ig/init {:blaze.interaction.history/instance {:clock ::invalid}})
       :key := :blaze.interaction.history/instance
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 2 :pred] := `blaze.db.spec/node?
-      [:explain ::s/problems 2 :val] := ::executor)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 1 :pred] := `time/clock?
+      [:explain ::s/problems 1 :val] := ::invalid)))
 
 
 (def system
@@ -86,7 +87,7 @@
 
 (defn wrap-defaults [handler]
   (fn [request]
-    @(handler
+    (handler
        (assoc request
          :blaze/base-url base-url
          ::reitit/router router
@@ -94,15 +95,17 @@
 
 
 (defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.interaction.history/instance} system]
-     (let [~handler-binding (wrap-defaults handler#)]
+  `(with-system [{node# :blaze.db/node
+                  handler# :blaze.interaction.history/instance} system]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
 (defmacro with-handler-data [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction.history/instance} system]
+  `(with-system-data [{node# :blaze.db/node
+                       handler# :blaze.interaction.history/instance} system]
      ~txs
-     (let [~handler-binding (wrap-defaults handler#)]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
@@ -110,7 +113,7 @@
   (testing "returns not found on empty node"
     (with-handler [handler]
       (let [{:keys [status body]}
-            (handler {:path-params {:id "0"}})]
+            @(handler {:path-params {:id "0"}})]
 
         (is (= 404 status))
 
@@ -124,7 +127,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status body]}
-            (handler {:path-params {:id "0"}})]
+            @(handler {:path-params {:id "0"}})]
 
         (is (= 200 status))
 
@@ -164,7 +167,7 @@
        [[:delete "Patient" "0"]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:path-params {:id "0"}})]
 
         (is (= 200 status))
@@ -215,7 +218,7 @@
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
 
       (let [{:keys [body]}
-            (handler
+            @(handler
               {:path-params {:id "0"}
                :query-params {"_count" "1"}})]
 
@@ -230,7 +233,7 @@
        [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
 
       (let [{:keys [body]}
-            (handler
+            @(handler
               {:path-params {:id "0"}
                :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
 

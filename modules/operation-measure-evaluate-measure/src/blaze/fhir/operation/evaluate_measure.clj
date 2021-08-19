@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure
   "Main entry point into the $evaluate-measure operation."
   (:require
+    [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.api :as d]
@@ -46,10 +47,13 @@
   (conj (or tx-ops []) [:create (assoc resource :id id)]))
 
 
-(defn- handle
+(defn- handle*
   [{:keys [node executor] :as context} db
-   {:blaze/keys [base-url] ::reitit/keys [router] :keys [request-method headers]}
-   params measure]
+   {:blaze/keys [base-url]
+    ::reitit/keys [router]
+    :keys [request-method headers]
+    ::keys [params]}
+   measure]
   (-> (ac/supply-async
         #(measure/evaluate-measure context db base-url router measure params)
         executor)
@@ -76,7 +80,7 @@
                     (ac/exceptionally handler-util/error-response)))))))))
 
 
-(defn- find-measure-handle
+(defn- find-measure-handle*
   [db {{:keys [id]} :path-params {:strs [measure]} :params}]
   (cond
     id
@@ -84,6 +88,25 @@
 
     measure
     (coll/first (d/type-query db "Measure" [["url" measure]]))))
+
+
+(defn- find-measure-handle [db request]
+  (if-let [{:keys [op] :as measure-handle} (find-measure-handle* db request)]
+    (if (identical? :delete op)
+      {::anom/category ::anom/not-found
+       :http/status 410
+       :fhir/issue "deleted"}
+      measure-handle)
+    {::anom/category ::anom/not-found
+     :fhir/issue "not-found"}))
+
+
+(defn- handler [context]
+  (fn [{:blaze/keys [db] :as request}]
+    (-> (ba/completion-stage (find-measure-handle db request))
+        (ac/then-compose (partial d/pull db))
+        (ac/then-compose (partial handle* context db request))
+        (ac/exceptionally handler-util/error-response))))
 
 
 (defn- conform-params
@@ -105,30 +128,11 @@
         {:period period :report-type report-type}))))
 
 
-(defn handler [{:keys [node] :as context}]
+(defn wrap-conform-params [handler]
   (fn [request]
-    (let [result (conform-params request)]
-      (if (::anom/category result)
-        (ac/completed-future (handler-util/error-response result))
-        (let [db (d/db node)]
-          (if-let [{:keys [op] :as measure-handle} (find-measure-handle db request)]
-            (if (identical? :delete op)
-              (-> (handler-util/operation-outcome {:fhir/issue "deleted"})
-                  (ring/response)
-                  (ring/status 410)
-                  (ac/completed-future))
-              (-> (d/pull db measure-handle)
-                  (ac/then-compose
-                    #(handle
-                       context
-                       db
-                       request
-                       result
-                       %))))
-            (ac/completed-future
-              (handler-util/error-response
-                {::anom/category ::anom/not-found
-                 :fhir/issue "not-found"}))))))))
+    (if-ok [params (conform-params request)]
+      (handler (assoc request ::params params))
+      (comp ac/completed-future handler-util/error-response))))
 
 
 (defmethod ig/pre-init-spec ::handler [_]
@@ -138,6 +142,7 @@
 (defmethod ig/init-key ::handler [_ context]
   (log/info "Init FHIR $evaluate-measure operation handler")
   (-> (handler context)
+      (wrap-conform-params)
       (wrap-coerce-params)
       (wrap-observe-request-duration "operation-evaluate-measure")))
 

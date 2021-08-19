@@ -83,11 +83,6 @@
          :id :blaze.resource/id))
 
 
-(defmethod tx-op :get [_]
-  (s/cat :op #{:get}
-         :url string?))
-
-
 (s/def :blaze.db/tx-op
   (s/multi-spec tx-op first))
 

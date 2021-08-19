@@ -1,5 +1,6 @@
 (ns blaze.handler.fhir.util
   "Utilities for FHIR interactions."
+  (:refer-clojure :exclude [sync])
   (:require
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
@@ -19,8 +20,7 @@
   if their is any."
   {:arglists '([query-params])}
   [{v "__t"}]
-  (when-let [t (some #(when (re-matches #"\d+" %) %) (to-seq v))]
-    (Long/parseLong t)))
+  (some #(when (re-matches #"\d+" %) (Long/parseLong %)) (to-seq v)))
 
 
 (def ^:private ^:const default-page-size 50)

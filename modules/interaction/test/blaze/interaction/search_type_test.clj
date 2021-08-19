@@ -8,11 +8,14 @@
     [blaze.interaction.search-type]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
     [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -108,47 +111,46 @@
     (given-thrown (ig/init {:blaze.interaction/search-type {}})
       :key := :blaze.interaction/search-type
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
-  (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction/search-type {:node ::node}})
+  (testing "invalid clock"
+    (given-thrown (ig/init {:blaze.interaction/search-type {:clock ::invalid}})
       :key := :blaze.interaction/search-type
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 2 :pred] := `blaze.db.spec/node?
-      [:explain ::s/problems 2 :val] := ::node)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 1 :pred] := `time/clock?
+      [:explain ::s/problems 1 :val] := ::invalid)))
 
 
 (def system
   (assoc mem-node-system
     :blaze.interaction/search-type
-    {:node (ig/ref :blaze.db/node)
-     :clock (ig/ref :blaze.test/clock)
+    {:clock (ig/ref :blaze.test/clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
     :blaze.test/fixed-rng-fn {}))
 
 
 (defn wrap-defaults [handler]
   (fn [request]
-    @(handler
+    (handler
        (assoc request
          :blaze/base-url base-url
          ::reitit/router router))))
 
 
 (defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.interaction/search-type} system]
-     (let [~handler-binding (wrap-defaults handler#)]
+  `(with-system [{node# :blaze.db/node
+                  handler# :blaze.interaction/search-type} system]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
 (defmacro with-handler-data [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction/search-type} system]
+  `(with-system-data [{node# :blaze.db/node
+                       handler# :blaze.interaction/search-type} system]
      ~txs
-     (let [~handler-binding (wrap-defaults handler#)]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
@@ -159,7 +161,7 @@
         (with-handler [handler]
           (testing "normal result"
             (let [{:keys [status body]}
-                  (handler
+                  @(handler
                     {::reitit/match patient-match
                      :headers {"prefer" "handling=strict"}
                      :params {"foo" "bar"}})]
@@ -174,7 +176,7 @@
 
           (testing "summary result"
             (let [{:keys [status body]}
-                  (handler
+                  @(handler
                     {::reitit/match patient-match
                      :headers {"prefer" "handling=strict"}
                      :params {"foo" "bar" "_summary" "count"}})]
@@ -195,7 +197,7 @@
 
             (testing "normal result"
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {::reitit/match patient-match
                        :headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar"}})]
@@ -223,7 +225,7 @@
 
             (testing "summary result"
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {::reitit/match patient-match
                        :headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "_summary" "count"}})]
@@ -257,7 +259,7 @@
 
             (testing "normal result"
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {::reitit/match patient-match
                        :headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "active" "true"}})]
@@ -285,7 +287,7 @@
 
             (testing "summary result"
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {::reitit/match patient-match
                        :headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "active" "true" "_summary" "count"}})]
@@ -317,7 +319,7 @@
 
       (testing "Returns all existing resources of type"
         (let [{:keys [status body]}
-              (handler {::reitit/match patient-match})]
+              @(handler {::reitit/match patient-match})]
 
           (is (= 200 status))
 
@@ -355,7 +357,7 @@
 
       (testing "with param _summary equal to count"
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_summary" "count"}})]
 
@@ -379,7 +381,7 @@
 
       (testing "with param _count equal to zero"
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_count" "0"}})]
 
@@ -408,7 +410,7 @@
 
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_count" "1"}})]
 
@@ -428,7 +430,7 @@
 
       (testing "following the self link"
         (let [{:keys [body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
 
@@ -448,7 +450,7 @@
 
       (testing "following the next link"
         (let [{:keys [body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
 
@@ -474,7 +476,7 @@
       (testing "search for active patients with _summary=count"
         (testing "with strict handling"
           (let [{:keys [body]}
-                (handler
+                @(handler
                   {::reitit/match patient-match
                    :headers {"prefer" "handling=strict"}
                    :params {"active" "true" "_summary" "count"}})]
@@ -484,7 +486,7 @@
 
         (testing "with default handling"
           (let [{:keys [body]}
-                (handler
+                @(handler
                   {::reitit/match patient-match
                    :params {"active" "true" "_summary" "count"}})]
 
@@ -493,7 +495,7 @@
 
       (testing "search for active patients with _count=1"
         (let [{:keys [body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"active" "true" "_count" "1"}})]
 
@@ -514,7 +516,7 @@
 
       (testing "following the self link"
         (let [{:keys [body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "1"}})]
 
@@ -535,7 +537,7 @@
 
       (testing "following the next link"
         (let [{:keys [body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
@@ -560,7 +562,7 @@
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match patient-match
                :params {"_id" "0"}})]
 
@@ -594,7 +596,7 @@
           [:put {:fhir/type :fhir/Patient :id "2"}]]]
 
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_id" "0,2"}})]
 
@@ -635,7 +637,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (testing "the resource is created at EPOCH"
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_lastUpdated" "1970-01-01"}})]
 
@@ -655,7 +657,7 @@
 
       (testing "no resource is created after EPOCH"
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_lastUpdated" "gt1970-01-02"}})]
 
@@ -683,7 +685,7 @@
               {:profile [#fhir/canonical"profile-uri-151511"]}}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match patient-match
                :params {"_profile" "profile-uri-151511"}})]
 
@@ -723,7 +725,7 @@
                      {:reference "Patient/0"}}]}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match patient-match
                :params {"_list" "0"}})]
 
@@ -801,7 +803,7 @@
                     :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match patient-match
                :params {"_has:Observation:patient:code-value-quantity" "8480-6$ge130"}})]
 
@@ -836,7 +838,7 @@
                :identifier [#fhir/Identifier{:value "1"}]}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match patient-match
                :params {"identifier" "0"}})]
 
@@ -891,7 +893,7 @@
                            :code #fhir/code"de"}]}}]}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match patient-match
                :params {"language" ["de" "en"]}})]
 
@@ -922,7 +924,7 @@
         [:put {:fhir/type :fhir/Library :id "1" :title "b"}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match {:data {:fhir.resource/type "Library"}}
                :params {"title" "A"}})]
 
@@ -954,7 +956,7 @@
                :measure #fhir/canonical"http://server.com/Measure/1"}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match measure-report-match
                :params {"measure" "http://server.com/Measure/0"}})]
 
@@ -1002,7 +1004,7 @@
                            :value "value-143818"}}}]}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match list-match
                :params {"item:identifier" "system-122917|value-143818"}})]
 
@@ -1084,7 +1086,7 @@
                       :code #fhir/code"mm[Hg]"}}]}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match observation-match
                :params
                {"combo-code-value-quantity"
@@ -1118,7 +1120,7 @@
                          :code #fhir/code"C71.4"}]}}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match condition-match
                :params {"code" "C71.4,C71.4"}})]
 
@@ -1166,7 +1168,7 @@
                         {:code #fhir/code"1"}]}}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {::reitit/match condition-match
                :params {"code" "0,1" "_count" "2"
                         "__t" "1" "__page-id" "1"}})]
@@ -1194,7 +1196,7 @@
                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match observation-match
                  :params {"_include" "Observation:subject"}})]
 
@@ -1235,7 +1237,7 @@
                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
           (let [{:keys [status body]}
-                (handler
+                @(handler
                   {::reitit/match observation-match
                    :params {"_include" "Observation:subject:Group"}})]
 
@@ -1268,7 +1270,7 @@
                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
           (let [{:keys [status body]}
-                (handler
+                @(handler
                   {::reitit/match observation-match
                    :params {"_include" "Observation:subject"}})]
 
@@ -1314,7 +1316,7 @@
                    :encounter #fhir/Reference{:reference "Encounter/1"}}]]]
 
           (let [{:keys [status body]}
-                (handler
+                @(handler
                   {::reitit/match observation-match
                    :params
                    {"_include" ["Observation:subject" "Observation:encounter"]}})]
@@ -1365,7 +1367,7 @@
                        {:reference "Patient/2"}}]]]
 
           (let [{:keys [status body]}
-                (handler
+                @(handler
                   {::reitit/match observation-match
                    :params {"_include" "Observation:subject" "_count" "1"}})]
 
@@ -1401,7 +1403,7 @@
 
             (testing "second page"
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {::reitit/match observation-match
                        :params {"_include" "Observation:subject" "_count" "2"
                                 "__t" "1" "__page-id" "3"}})]
@@ -1449,7 +1451,7 @@
           [:put {:fhir/type :fhir/Organization :id "0"}]]]
 
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match medication-statement-match
                  :params
                  {"_include" "MedicationStatement:medication"
@@ -1501,7 +1503,7 @@
 
 
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match medication-statement-match
                  :params
                  {"_include"
@@ -1542,7 +1544,7 @@
                      {:reference "Patient/0"}}]]]
 
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :params {"_revinclude" "Observation:subject"}})]
 
@@ -1589,7 +1591,7 @@
                        {:reference "Patient/0"}}]]]
 
           (let [{:keys [status body]}
-                (handler
+                @(handler
                   {::reitit/match patient-match
                    :params
                    {"_revinclude" ["Observation:subject" "Condition:subject"]}})]
@@ -1633,7 +1635,7 @@
     (testing "invalid include parameter"
       (with-handler [handler]
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {::reitit/match patient-match
                  :headers {"prefer" "handling=strict"}
                  :params {"_include" "Observation"}})]

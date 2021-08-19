@@ -15,6 +15,8 @@
     [blaze.interaction.search-type]
     [blaze.interaction.transaction]
     [blaze.interaction.update]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
     [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -51,8 +53,8 @@
 
 
 (defmethod ig/init-key ::router
-  [_ {:keys [create-handler search-type-handler read-handler delete-handler
-             update-handler]}]
+  [_ {:keys [node create-handler search-type-handler
+             read-handler delete-handler update-handler]}]
   (reitit.ring/router
     [["/Observation"
       {:name :Observation/type
@@ -61,12 +63,13 @@
      ["/Patient"
       {:name :Patient/type
        :fhir.resource/type "Patient"
-       :get (wrap-params search-type-handler)
+       :get {:middleware [[wrap-db node]]
+             :handler (wrap-params search-type-handler)}
        :post create-handler}]
      ["/Patient/{id}"
       {:name :Patient/instance
        :fhir.resource/type "Patient"
-       :get read-handler
+       :get {:middleware [[wrap-db node]] :handler read-handler}
        :delete delete-handler
        :put update-handler}]
      ["/Patient/{id}/_history/{vid}"
@@ -145,7 +148,8 @@
      :executor (ig/ref :blaze.test/executor)}
 
     ::router
-    {:create-handler (ig/ref :blaze.interaction/create)
+    {:node (ig/ref :blaze.db/node)
+     :create-handler (ig/ref :blaze.interaction/create)
      :search-type-handler (ig/ref :blaze.interaction/search-type)
      :read-handler (ig/ref :blaze.interaction/read)
      :delete-handler (ig/ref :blaze.interaction/delete)

@@ -25,7 +25,7 @@
 
 (s/fdef util/t
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
-  :ret (s/nilable nat-int?))
+  :ret (s/nilable :blaze.db/t))
 
 
 (s/fdef util/page-size

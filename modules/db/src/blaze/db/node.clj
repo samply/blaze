@@ -99,23 +99,26 @@
     clauses))
 
 
-(defn- add-watcher!
-  "Adds a watcher to `state` and returns a CompletableFuture that will complete
-  with nil if `t` is reached or complete exceptionally in case the indexing
-  errored."
-  [state t]
+(defn- add-watcher
+  "Adds a watcher to `node` and returns a CompletableFuture that will complete
+  with the database value of at least the point in time `t` if `t` is reached or
+  complete exceptionally in case the indexing errored."
+  [{:keys [state] :as node} t]
   (let [future (ac/future)]
     (add-watch
       state future
       (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
         (cond
           (<= t (max new-t new-error-t))
-          (do (ac/complete! future nil)
+          (do (ac/complete! future (db/db node (max new-t t)))
               (remove-watch state future))
 
           e
           (do (ac/complete-exceptionally! future e)
-              (remove-watch state future)))))
+              (remove-watch state future))
+
+          (ac/canceled? future)
+          (remove-watch state future))))
     future))
 
 
@@ -216,7 +219,7 @@
 
 (defn- poll! [node queue poll-timeout]
   (log/trace "poll transaction queue")
-  (reduce #(index-tx-data! node %2) nil (tx-log/poll queue poll-timeout)))
+  (reduce #(index-tx-data! node %2) nil (tx-log/poll! queue poll-timeout)))
 
 
 (defn- max-t [state]
@@ -251,11 +254,14 @@
   (-db [node]
     (db/db node (:t @state)))
 
+  (-sync [node]
+    (-> (tx-log/last-t tx-log)
+        (ac/then-compose #(np/-sync node %))))
+
   (-sync [node t]
     (if (<= t (:t @state))
       (ac/completed-future (np/-db node))
-      (-> (add-watcher! state t)
-          (ac/then-apply (fn [_] (db/db node t))))))
+      (add-watcher node t)))
 
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
@@ -270,7 +276,7 @@
                 t))))))
 
   (-tx-result [node t]
-    (let [watcher (add-watcher! state t)
+    (let [watcher (add-watcher node t)
           current-state @state
           current-t (max-t current-state)]
       (log/trace "call tx-result: t =" t "current-t =" current-t)

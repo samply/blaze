@@ -16,7 +16,7 @@
 
 
 (s/fdef d/sync
-  :args (s/cat :node :blaze.db/node :t :blaze.db/t)
+  :args (s/cat :node :blaze.db/node :t (s/? :blaze.db/t))
   :ret ac/completable-future?)
 
 

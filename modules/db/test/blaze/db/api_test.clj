@@ -163,7 +163,20 @@
         @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
         @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]])
 
-        (is (= 2 (d/basis-t @future)))))))
+        (is (= 2 (d/basis-t @future)))))
+
+    (testing "without t"
+      (with-system [{:blaze.db/keys [node]} system]
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]])
+        (is (= 2 (d/basis-t @(d/sync node)))))))
+
+  (testing "cancelling"
+    (with-system [{:blaze.db/keys [node]} system]
+      (let [future (d/sync node 2)]
+        (ac/cancel! future)
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+        (is (ac/canceled? future))))))
 
 
 (deftest transact-test

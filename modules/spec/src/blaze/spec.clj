@@ -1,9 +1,9 @@
 (ns blaze.spec
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [java-time :as time])
   (:import
-    [java.time Clock]
     [java.util Random]))
 
 
@@ -22,7 +22,7 @@
 
 
 (s/def :blaze/clock
-  #(instance? Clock %))
+  time/clock?)
 
 
 (s/def :blaze/rng

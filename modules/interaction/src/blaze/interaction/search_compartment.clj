@@ -5,7 +5,6 @@
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
-    [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.params :as params]
@@ -148,18 +147,17 @@
           :params params)))))
 
 
-(defn- handler [{:keys [node] :as context}]
-  (fn [{:keys [params] :as request}]
+(defn- handler [context]
+  (fn [{:blaze/keys [db] :as request}]
     (if-ok [context (search-context context request)]
-      (-> (handler-util/db node (fhir-util/t params))
-          (ac/then-compose #(search context %))
+      (-> (search context db)
           (ac/then-apply ring/response)
           (ac/exceptionally handler-util/error-response))
       (comp ac/completed-future handler-util/error-response))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/search-compartment [_]
-  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
 
 
 (defmethod ig/init-key :blaze.interaction/search-compartment [_ context]

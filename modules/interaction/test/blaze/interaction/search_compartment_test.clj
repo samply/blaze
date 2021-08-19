@@ -8,11 +8,14 @@
     [blaze.interaction.search-compartment]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
     [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
@@ -63,18 +66,16 @@
     (given-thrown (ig/init {:blaze.interaction/search-compartment {}})
       :key := :blaze.interaction/search-compartment
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
-  (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction/search-compartment {:node ::node}})
+  (testing "invalid clock"
+    (given-thrown (ig/init {:blaze.interaction/search-compartment {:clock ::invalid}})
       :key := :blaze.interaction/search-compartment
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 2 :pred] := `blaze.db.spec/node?
-      [:explain ::s/problems 2 :val] := ::node)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 1 :pred] := `time/clock?
+      [:explain ::s/problems 1 :val] := ::invalid)))
 
 
 (def system
@@ -90,7 +91,7 @@
 
 (defn wrap-defaults [handler]
   (fn [request]
-    @(handler
+    (handler
        (assoc request
          :blaze/base-url base-url
          ::reitit/router router
@@ -98,15 +99,17 @@
 
 
 (defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.interaction/search-compartment} system]
-     (let [~handler-binding (wrap-defaults handler#)]
+  `(with-system [{node# :blaze.db/node
+                  handler# :blaze.interaction/search-compartment} system]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
 (defmacro with-handler-data [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction/search-compartment} system]
+  `(with-system-data [{node# :blaze.db/node
+                       handler# :blaze.interaction/search-compartment} system]
      ~txs
-     (let [~handler-binding (wrap-defaults handler#)]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
@@ -114,7 +117,7 @@
   (testing "Returns an Error on Invalid Id"
     (with-handler [handler]
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:path-params {:id "<invalid>" :type "Observation"}})]
 
         (is (= 400 status))
@@ -128,7 +131,7 @@
   (testing "Returns an Error on Invalid Type"
     (with-handler [handler]
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:path-params {:id "0" :type "<invalid>"}})]
 
         (is (= 400 status))
@@ -145,7 +148,7 @@
         (testing "normal result"
           (with-handler [handler]
             (let [{:keys [status body]}
-                  (handler
+                  @(handler
                     {:path-params {:id "0" :type "Observation"}
                      :headers {"prefer" "handling=strict"}
                      :params {"foo" "bar"}})]
@@ -161,7 +164,7 @@
         (testing "summary result"
           (with-handler [handler]
             (let [{:keys [status body]}
-                  (handler
+                  @(handler
                     {:path-params {:id "0" :type "Observation"}
                      :headers {"prefer" "handling=strict"}
                      :params {"foo" "bar" "_summary" "count"}})]
@@ -185,7 +188,7 @@
                        #fhir/Reference{:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {:path-params {:id "0" :type "Observation"}
                        :headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar"}})]
@@ -220,7 +223,7 @@
                            {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {:path-params {:id "0" :type "Observation"}
                        :headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "_summary" "count"}})]
@@ -262,7 +265,7 @@
                            {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {:path-params {:id "0" :type "Observation"}
                        :headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "status" "preliminary"}})]
@@ -300,7 +303,7 @@
                            {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
-                    (handler
+                    @(handler
                       {:path-params {:id "0" :type "Observation"}
                        :headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "status" "preliminary" "_summary" "count"}})]
@@ -326,7 +329,7 @@
   (testing "Returns an empty Bundle on Non-Existing Compartment"
     (with-handler [handler]
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:path-params {:id "0" :type "Observation"}})]
 
         (is (= 200 status))
@@ -350,7 +353,7 @@
 
         (testing "with _summary=count"
           (let [{:keys [status body]}
-                (handler (assoc-in request [:params "_summary"] "count"))]
+                @(handler (assoc-in request [:params "_summary"] "count"))]
 
             (is (= 200 status))
 
@@ -368,7 +371,7 @@
 
         (testing "with _summary=count and status=final"
           (let [{:keys [status body]}
-                (handler (-> (assoc-in request [:params "_summary"] "count")
+                @(handler (-> (assoc-in request [:params "_summary"] "count")
                              (assoc-in [:params "status"] "final")))]
 
             (is (= 200 status))
@@ -386,7 +389,7 @@
               (is (empty? (:entry body))))))
 
         (testing "with no query param"
-          (let [{:keys [status body]} (handler request)]
+          (let [{:keys [status body]} @(handler request)]
 
             (is (= 200 status))
 

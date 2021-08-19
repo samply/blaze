@@ -116,6 +116,9 @@
          (submit! kv-store clock state tx-cmds))
       executor))
 
+  (-last-t [_]
+    (ac/completed-future (:t @state)))
+
   (-new-queue [_ offset]
     (let [key (Object.)
           queue (ArrayBlockingQueue. 10)

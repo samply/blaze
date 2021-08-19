@@ -8,7 +8,6 @@
     [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.handler.util :as handler-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
@@ -55,30 +54,23 @@
                 (update :link (fnil conj []) (next-link (peek paged-version-handles))))))))))
 
 
-(defn- handle
-  [context
-   db
-   {:blaze/keys [base-url]
-    ::reitit/keys [router match] :keys [query-params]
-    {{:fhir.resource/keys [type]} :data} ::reitit/match}]
-  (let [t (or (d/as-of-t db) (d/basis-t db))
-        page-t (history-util/page-t query-params)
-        page-id (when page-t (fhir-util/page-id query-params))
-        since (history-util/since query-params)
-        total (d/total-num-of-type-changes db type since)
-        version-handles (d/type-history db type page-t page-id since)]
-    (build-response context db base-url router match query-params t total
-                    version-handles)))
-
-
-(defn- handler [{:keys [node] :as context}]
-  (fn [{:keys [query-params] :as request}]
-    (-> (handler-util/db node (fhir-util/t query-params))
-        (ac/then-compose #(handle context % request)))))
+(defn- handler [context]
+  (fn [{:blaze/keys [base-url db]
+        ::reitit/keys [router match]
+        :keys [query-params]
+        {{:fhir.resource/keys [type]} :data} ::reitit/match}]
+    (let [t (or (d/as-of-t db) (d/basis-t db))
+          page-t (history-util/page-t query-params)
+          page-id (when page-t (fhir-util/page-id query-params))
+          since (history-util/since query-params)
+          total (d/total-num-of-type-changes db type since)
+          version-handles (d/type-history db type page-t page-id since)]
+      (build-response context db base-url router match query-params t total
+                      version-handles))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction.history/type [_]
-  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
 
 
 (defmethod ig/init-key :blaze.interaction.history/type [_ context]

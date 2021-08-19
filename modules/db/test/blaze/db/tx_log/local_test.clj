@@ -117,7 +117,7 @@
   (testing "an empty transaction log has no transaction data"
     (with-system [{tx-log ::tx-log/local} system]
       (with-open [queue (tx-log/new-queue tx-log 1)]
-        (is (empty? (tx-log/poll queue (time/millis 10)))))))
+        (is (empty? (tx-log/poll! queue (time/millis 10)))))))
 
   (testing "with one submitted command in one transaction"
     (with-system [{tx-log ::tx-log/local} system]
@@ -125,7 +125,7 @@
                                :hash patient-hash-0}])
 
       (with-open [queue (tx-log/new-queue tx-log 1)]
-        (given (first (tx-log/poll queue (time/millis 10)))
+        (given (first (tx-log/poll! queue (time/millis 10)))
           :t := 1
           :instant := (Instant/ofEpochSecond 0)
           [:tx-cmds 0 :op] := "create"
@@ -142,7 +142,7 @@
                                :refs [["Patient" "0"]]}])
 
       (with-open [queue (tx-log/new-queue tx-log 1)]
-        (given (second (tx-log/poll queue (time/millis 10)))
+        (given (second (tx-log/poll! queue (time/millis 10)))
           :t := 2
           :instant := (Instant/ofEpochSecond 0)
           [:tx-cmds 0 :op] := "create"
@@ -160,7 +160,7 @@
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll queue (time/millis 10))))))))
+            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
 
     (testing "with invalid key followed by valid entry"
       (with-system [{tx-log ::tx-log/local
@@ -174,7 +174,7 @@
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 0)]
-            (given (first (tx-log/poll queue (time/millis 10)))
+            (given (first (tx-log/poll! queue (time/millis 10)))
               :t := 1
               :instant := (Instant/ofEpochSecond 0)
               [:tx-cmds 0 :op] := "create"
@@ -195,7 +195,7 @@
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 0)]
-            (given (first (tx-log/poll queue (time/millis 10)))
+            (given (first (tx-log/poll! queue (time/millis 10)))
               :t := 1
               :instant := (Instant/ofEpochSecond 0)
               [:tx-cmds 0 :op] := "create"
@@ -211,7 +211,7 @@
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll queue (time/millis 10))))))))
+            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
 
     (testing "with invalid cbor value"
       (with-system [{tx-log ::tx-log/local
@@ -221,7 +221,7 @@
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll queue (time/millis 10))))))))
+            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
 
     (testing "with invalid instant value"
       (with-system [{tx-log ::tx-log/local
@@ -231,7 +231,7 @@
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll queue (time/millis 10))))))))
+            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
 
     (testing "with invalid tx-cmd value"
       (with-system [{tx-log ::tx-log/local
@@ -241,7 +241,7 @@
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
-            (is (empty? (tx-log/poll queue (time/millis 10))))))))
+            (is (empty? (tx-log/poll! queue (time/millis 10))))))))
 
     (testing "with failing kv-store"
       (with-system [{tx-log ::tx-log/local} failing-kv-store-system]
@@ -251,4 +251,4 @@
               (is (= "put-error" result))))
 
         (with-open [queue (tx-log/new-queue tx-log 1)]
-          (is (empty? (tx-log/poll queue (time/millis 10)))))))))
+          (is (empty? (tx-log/poll! queue (time/millis 10)))))))))

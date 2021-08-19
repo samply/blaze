@@ -8,11 +8,11 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.db.spec]
     [blaze.interaction.read]
-    [blaze.test-util :refer [given-thrown with-system]]
-    [clojure.spec.alpha :as s]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
+    [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -33,31 +33,8 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest init-test
-  (testing "nil config"
-    (given-thrown (ig/init {:blaze.interaction/read nil})
-      :key := :blaze.interaction/read
-      :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
-
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.interaction/read {}})
-      :key := :blaze.interaction/read
-      :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
-
-  (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction/read {:node ::node}})
-      :key := :blaze.interaction/read
-      :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `blaze.db.spec/node?
-      [:explain ::s/problems 0 :val] := ::node)))
-
-
 (def system
-  (assoc mem-node-system
-    :blaze.interaction/read
-    {:node (ig/ref :blaze.db/node)}))
+  (assoc mem-node-system :blaze.interaction/read {}))
 
 
 (def match
@@ -66,28 +43,29 @@
 
 (defn wrap-defaults [handler]
   (fn [request]
-    @(handler (assoc request ::reitit/match match))))
+    (handler (assoc request ::reitit/match match))))
 
 
 (defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.interaction/read} system]
-     (let [~handler-binding (wrap-defaults handler#)]
+  `(with-system [{node# :blaze.db/node
+                  handler# :blaze.interaction/read} system]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
 (defmacro with-handler-data [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction/read} system]
+  `(with-system-data [{node# :blaze.db/node
+                       handler# :blaze.interaction/read} system]
      ~txs
-     (let [~handler-binding (wrap-defaults handler#)]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
 (deftest handler-test
-  (testing "Returns Not Found on Non-Existing Resource"
+  (testing "returns Not-Found on non-existing resource"
     (with-handler [handler]
       (let [{:keys [status body]}
-            (handler
-              {:path-params {:id "0"}})]
+            @(handler {:path-params {:id "0"}})]
 
         (is (= 404 status))
 
@@ -97,12 +75,10 @@
           [:issue 0 :code] := #fhir/code"not-found"
           [:issue 0 :diagnostics] := "Resource `/Patient/0` not found"))))
 
-
-  (testing "Returns Not Found on Invalid Version ID"
+  (testing "returns Not-Found on invalid version id"
     (with-handler [handler]
       (let [{:keys [status body]}
-            (handler
-              {:path-params {:id "0" :vid "a"}})]
+            @(handler {:path-params {:id "0" :vid "a"}})]
 
         (is (= 404 status))
 
@@ -112,15 +88,13 @@
           [:issue 0 :code] := #fhir/code"not-found"
           [:issue 0 :diagnostics] := "Resource `/Patient/0` with versionId `a` was not found."))))
 
-
-  (testing "Returns Gone on Deleted Resource"
+  (testing "returns Gone on deleted resource"
     (with-handler-data [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
       (let [{:keys [status body headers]}
-            (handler
-              {:path-params {:id "0"}})]
+            @(handler {:path-params {:id "0"}})]
 
         (is (= 410 status))
 
@@ -132,14 +106,12 @@
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"deleted"))))
 
-
-  (testing "Returns Existing Resource"
+  (testing "returns existing resource"
     (with-handler-data [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status headers body]}
-            (handler
-              {:path-params {:id "0"}})]
+            @(handler {:path-params {:id "0"}})]
 
         (is (= 200 status))
 
@@ -156,14 +128,12 @@
           [:meta :versionId] := #fhir/id"1"
           [:meta :lastUpdated] := Instant/EPOCH))))
 
-
-  (testing "Returns Existing Resource on versioned read"
+  (testing "returns existing resource on versioned read"
     (with-handler-data [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status headers body]}
-            (handler
-              {:path-params {:id "0" :vid "1"}})]
+            @(handler {:path-params {:id "0" :vid "1"}})]
 
         (is (= 200 status))
 

@@ -58,9 +58,18 @@
   (.complete ^CompletableFuture future x))
 
 
+(defn or-timeout!
+  "Exceptionally completes `future` with a TimeoutException if not otherwise
+  completed before `timeout` in `unit`.
+
+  Returns `future` itself."
+  [future timeout unit]
+  (.orTimeout ^CompletableFuture future timeout unit))
+
+
 (defn complete-on-timeout!
-  "Completes `future` with `x` if not otherwise completed before the given
-  timeout.
+  "Completes `future` with `x` if not otherwise completed before `timeout` in
+  `unit`.
 
   Returns `future` itself."
   [future x timeout unit]
@@ -77,10 +86,45 @@
   (.completeExceptionally ^CompletableFuture future e))
 
 
+(defn delayed-executor
+  "Returns a new Executor that submits a task to the default executor after
+  `delay` in `unit`.
+
+  Each delay commences upon invocation of the returned executor's `execute`
+  method."
+  [delay unit]
+  (CompletableFuture/delayedExecutor delay unit))
+
+
 (defn join
   "Like `clojure.core/deref` but faster."
   [future]
   (.join ^CompletableFuture future))
+
+
+(defn done?
+  "Returns true if `future` completed either: normally, exceptionally, or via
+  cancellation."
+  [future]
+  (.isDone ^CompletableFuture future))
+
+
+(defn canceled?
+  "Returns true if `future` was cancelled before it completed normally."
+  [future]
+  (.isCancelled ^CompletableFuture future))
+
+
+(defn cancel!
+  "If not already completed, completes `future` with a CancellationException.
+
+  Dependent CompletableFutures that have not already completed will also
+  complete exceptionally, with a CompletionException caused by this
+  CancellationException.
+
+  Returns true if `future` is now cancelled."
+  [future]
+  (.cancel ^CompletableFuture future false))
 
 
 (defmacro supply

@@ -4,6 +4,8 @@
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
     [blaze.fhir.spec.type :as type]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
     [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -106,22 +108,24 @@
 
 (defn wrap-defaults [handler]
   (fn [request]
-    @(handler
+    (handler
        (assoc request
          :blaze/base-url base-url
          ::reitit/router router))))
 
 
 (defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# ::evaluate-measure/handler} system]
-     (let [~handler-binding (wrap-defaults handler#)]
+  `(with-system [{node# :blaze.db/node
+                  handler# ::evaluate-measure/handler} system]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
 (defmacro with-handler-data [[handler-binding] txs & body]
-  `(with-system-data [{handler# ::evaluate-measure/handler} system]
+  `(with-system-data [{node# :blaze.db/node
+                       handler# ::evaluate-measure/handler} system]
      ~txs
-     (let [~handler-binding (wrap-defaults handler#)]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
@@ -130,7 +134,7 @@
     (testing "periodStart"
       (with-handler [handler]
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {:path-params {:id "0"}
                  :params {"periodEnd" "2015"}})]
 
@@ -149,7 +153,7 @@
     (testing "periodEnd"
       (with-handler [handler]
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {:path-params {:id "0"}
                  :params {"periodStart" "2014"}})]
 
@@ -169,7 +173,7 @@
     (testing "on type endpoint"
       (with-handler [handler]
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {:path-params {:id "0"}
                  :params {"periodStart" "2014" "periodEnd" "2015"}})]
 
@@ -184,7 +188,7 @@
     (testing "on instance endpoint"
       (with-handler [handler]
         (let [{:keys [status body]}
-              (handler
+              @(handler
                 {:params
                  {"measure" "url-181501"
                   "periodStart" "2014"
@@ -205,7 +209,7 @@
        [[:delete "Measure" "0"]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:path-params {:id "0"}
                :params {"periodStart" "2014" "periodEnd" "2015"}})]
 
@@ -221,7 +225,7 @@
   (testing "invalid report type"
     (with-handler [handler]
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:request-method :get
                :params
                {"measure" "url-181501"
@@ -242,7 +246,7 @@
   (testing "report type of subject-list is not possible with a GET request"
     (with-handler [handler]
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:request-method :get
                :params
                {"measure" "url-181501"
@@ -266,7 +270,7 @@
                :url #fhir/uri"url-182126"}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:params
                {"measure" "url-182126"
                 "periodStart" "2014"
@@ -290,7 +294,7 @@
                :library [#fhir/canonical"library-url-094115"]}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:params
                {"measure" "url-181501"
                 "periodStart" "2014"
@@ -316,7 +320,7 @@
                :url #fhir/uri"library-url-094115"}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:params
                {"measure" "url-182104"
                 "periodStart" "2014"
@@ -344,7 +348,7 @@
                [#fhir/Attachment{:contentType #fhir/code"text/plain"}]}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:params
                {"measure" "url-182051"
                 "periodStart" "2014"
@@ -372,7 +376,7 @@
                [#fhir/Attachment{:contentType #fhir/code"text/cql"}]}]]]
 
       (let [{:keys [status body]}
-            (handler
+            @(handler
               {:params
                {"measure" "url-182039"
                 "periodStart" "2014"
@@ -418,7 +422,7 @@
                 :gender #fhir/code"male"}]]]
 
             (let [{:keys [status body]}
-                  (handler
+                  @(handler
                     {:request-method :get
                      :params
                      {"measure" "url-181501"
@@ -481,7 +485,7 @@
                 :gender #fhir/code"female"}]]]
 
             (let [{:keys [status body]}
-                  (handler
+                  @(handler
                     {:request-method :get
                      :params
                      {"measure" "url-181501"
@@ -527,7 +531,7 @@
                    :content [library-content]}]]]
 
           (let [{:keys [status headers body]}
-                (handler
+                @(handler
                   {:request-method :post
                    :params
                    {"measure" "url-181501"
@@ -560,7 +564,7 @@
                    :content [library-content]}]]]
 
           (let [{:keys [status body]}
-                (handler
+                @(handler
                   {:request-method :get
                    :path-params {:id "0"}
                    :params
@@ -588,7 +592,7 @@
                    :content [library-content]}]]]
 
           (let [{:keys [status headers body]}
-                (handler
+                @(handler
                   {:request-method :post
                    :path-params {:id "0"}
                    :params

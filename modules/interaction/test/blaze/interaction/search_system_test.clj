@@ -7,11 +7,14 @@
     [blaze.interaction.search-system]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
     [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -63,18 +66,16 @@
     (given-thrown (ig/init {:blaze.interaction/search-system {}})
       :key := :blaze.interaction/search-system
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
-  (testing "invalid node"
-    (given-thrown (ig/init {:blaze.interaction/search-system {:node ::node}})
+  (testing "invalid clock"
+    (given-thrown (ig/init {:blaze.interaction/search-system {:clock ::invalid}})
       :key := :blaze.interaction/search-system
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 2 :pred] := `blaze.db.spec/node?
-      [:explain ::s/problems 2 :val] := ::node)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 1 :pred] := `time/clock?
+      [:explain ::s/problems 1 :val] := ::invalid)))
 
 
 (def system
@@ -88,7 +89,7 @@
 
 (defn wrap-defaults [handler]
   (fn [request]
-    @(handler
+    (handler
        (assoc request
          :blaze/base-url base-url
          ::reitit/router router
@@ -96,15 +97,17 @@
 
 
 (defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.interaction/search-system} system]
-     (let [~handler-binding (wrap-defaults handler#)]
+  `(with-system [{node# :blaze.db/node
+                  handler# :blaze.interaction/search-system} system]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
 (defmacro with-handler-data [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction/search-system} system]
+  `(with-system-data [{node# :blaze.db/node
+                       handler# :blaze.interaction/search-system} system]
      ~txs
-     (let [~handler-binding (wrap-defaults handler#)]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
        ~@body)))
 
 
@@ -113,7 +116,7 @@
     (with-handler [handler]
       (testing "Returns all existing resources"
         (let [{:keys [status body]}
-              (handler {})]
+              @(handler {})]
 
           (is (= 200 status))
 
@@ -142,7 +145,7 @@
 
       (testing "Returns all existing resources"
         (let [{:keys [status body]}
-              (handler {})]
+              @(handler {})]
 
           (is (= 200 status))
 
@@ -178,7 +181,7 @@
 
       (testing "with param _summary equal to count"
         (let [{:keys [status body]}
-              (handler {:params {"_summary" "count"}})]
+              @(handler {:params {"_summary" "count"}})]
 
           (is (= 200 status))
 
@@ -203,7 +206,7 @@
 
       (testing "with param _count equal to zero"
         (let [{:keys [status body]}
-              (handler {:params {"_count" "0"}})]
+              @(handler {:params {"_count" "0"}})]
 
           (is (= 200 status))
 
@@ -229,7 +232,7 @@
 
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
-              (handler {:params {"_count" "1"}})]
+              @(handler {:params {"_count" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -247,7 +250,7 @@
 
       (testing "following the self link"
         (let [{:keys [body]}
-              (handler
+              @(handler
                 {:params {"_count" "1" "__t" "1" "__page-type" "Patient"
                           "__page-id" "0"}})]
 
@@ -267,7 +270,7 @@
 
       (testing "following the next link"
         (let [{:keys [body]}
-              (handler
+              @(handler
                 {:params {"_count" "1" "__t" "1" "__page-type" "Patient"
                           "__page-id" "1"}})]
 

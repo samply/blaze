@@ -91,7 +91,7 @@
   (def tx-log (::tx-log/kafka system))
 
   (with-open [queue (tx-log/new-queue tx-log 0)]
-    (tx-log/poll queue (time/seconds 1)))
+    (tx-log/poll! queue (time/seconds 1)))
   )
 
 ;; Cassandra Resource Store

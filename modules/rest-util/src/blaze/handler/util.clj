@@ -2,7 +2,6 @@
   "HTTP/REST Handler Utils"
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.api :as d]
     [blaze.fhir.spec.type :as type]
     [blaze.http.util :as hu]
     [clojure.string :as str]
@@ -107,6 +106,10 @@
     (aviso/format-exception e)))
 
 
+(defn- headers [response {:http/keys [headers]}]
+  (reduce #(apply ring/header %1 %2) response headers))
+
+
 (defn error-response
   "Converts `error` into a OperationOutcome response.
 
@@ -131,6 +134,7 @@
           (log/error error)
           (log/warn error)))
       (-> (ring/response (operation-outcome error))
+          (headers error)
           (ring/status (or status (category->status category)))))
 
     (instance? CompletionException error)
@@ -186,15 +190,6 @@
 
     :else
     (bundle-error-response {::anom/category ::anom/fault})))
-
-
-(defn db
-  "Returns a CompletableFuture that will complete with the value of the
-  database, optionally as of some point in time `t`."
-  [node t]
-  (if t
-    (-> (d/sync node t) (ac/then-apply #(d/as-of % t)))
-    (ac/completed-future (d/db node))))
 
 
 (def ^:private not-found-issue
