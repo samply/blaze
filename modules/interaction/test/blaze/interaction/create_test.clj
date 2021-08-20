@@ -10,7 +10,8 @@
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -84,31 +85,26 @@
 
 (defn wrap-defaults [handler]
   (fn [request]
-    @(handler
-       (assoc request
-         :blaze/base-url base-url
-         ::reitit/router router))))
+    (handler
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.interaction/create} system]
-     (let [~handler-binding (wrap-defaults handler#)]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{handler# :blaze.interaction/create} system]
      ~txs
-     (let [~handler-binding (wrap-defaults handler#)]
+     (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
        ~@body)))
 
 
 (deftest handler-test
   (testing "Returns Error on missing body"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
-            (handler
-              {::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+            @(handler
+               {::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
         (is (= 400 status))
 
@@ -120,10 +116,11 @@
 
   (testing "Returns Error on type mismatch"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
-            (handler
-              {::reitit/match {:data {:fhir.resource/type "Patient"}}
-               :body {:fhir/type :fhir/Observation}})]
+            @(handler
+               {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                :body {:fhir/type :fhir/Observation}})]
 
         (is (= 400 status))
 
@@ -137,11 +134,12 @@
 
   (testing "Returns Error violated referential integrity"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
-            (handler
-              {::reitit/match {:data {:fhir.resource/type "Observation"}}
-               :body {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference{:reference "Patient/0"}}})]
+            @(handler
+               {::reitit/match {:data {:fhir.resource/type "Observation"}}
+                :body {:fhir/type :fhir/Observation :id "0"
+                       :subject #fhir/Reference{:reference "Patient/0"}}})]
 
         (is (= 409 status))
 
@@ -155,10 +153,11 @@
   (testing "On newly created resource"
     (testing "with no Prefer header"
       (with-handler [handler]
+        []
         (let [{:keys [status headers body]}
-              (handler
-                {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :body {:fhir/type :fhir/Patient}})]
+              @(handler
+                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                  :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -181,11 +180,12 @@
 
     (testing "with return=minimal Prefer header"
       (with-handler [handler]
+        []
         (let [{:keys [status headers body]}
-              (handler
-                {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :headers {"prefer" "return=minimal"}
-                 :body {:fhir/type :fhir/Patient}})]
+              @(handler
+                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                  :headers {"prefer" "return=minimal"}
+                  :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -204,11 +204,12 @@
 
     (testing "with return=representation Prefer header"
       (with-handler [handler]
+        []
         (let [{:keys [status headers body]}
-              (handler
-                {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :headers {"prefer" "return=representation"}
-                 :body {:fhir/type :fhir/Patient}})]
+              @(handler
+                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                  :headers {"prefer" "return=representation"}
+                  :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -231,11 +232,12 @@
 
     (testing "with return=OperationOutcome Prefer header"
       (with-handler [handler]
+        []
         (let [{:keys [status headers body]}
-              (handler
-                {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :headers {"prefer" "return=OperationOutcome"}
-                 :body {:fhir/type :fhir/Patient}})]
+              @(handler
+                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                  :headers {"prefer" "return=OperationOutcome"}
+                  :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -256,41 +258,42 @@
     (testing "with non-matching query"
       (testing "on empty database"
         (with-handler [handler]
+          []
           (let [{:keys [status]}
-                (handler
-                  {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                   :headers {"if-none-exist" "identifier=212154"}
-                   :body {:fhir/type :fhir/Patient}})]
+                @(handler
+                   {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                    :headers {"if-none-exist" "identifier=212154"}
+                    :body {:fhir/type :fhir/Patient}})]
 
             (testing "the patient is created"
               (is (= 201 status))))))
 
       (testing "on non-matching patient"
-        (with-handler-data [handler]
+        (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"
                    :identifier
                    [#fhir/Identifier{:value "094808"}]}]]]
 
           (let [{:keys [status]}
-                (handler
-                  {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                   :headers {"if-none-exist" "identifier=212154"}
-                   :body {:fhir/type :fhir/Patient}})]
+                @(handler
+                   {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                    :headers {"if-none-exist" "identifier=212154"}
+                    :body {:fhir/type :fhir/Patient}})]
 
             (testing "the patient is created"
               (is (= 201 status)))))))
 
     (testing "with matching patient"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :identifier
                  [#fhir/Identifier{:value "095156"}]}]]]
 
         (let [{:keys [status body]}
-              (handler
-                {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :headers {"if-none-exist" "identifier=095156"}
-                 :body {:fhir/type :fhir/Patient}})]
+              @(handler
+                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                  :headers {"if-none-exist" "identifier=095156"}
+                  :body {:fhir/type :fhir/Patient}})]
 
           (testing "the existing patient is returned"
             (is (= 200 status))
@@ -300,17 +303,17 @@
               :id := "0")))))
 
     (testing "with multiple matching patients"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :birthDate #fhir/date"2020"}]
           [:put {:fhir/type :fhir/Patient :id "1"
                  :birthDate #fhir/date"2020"}]]]
 
         (let [{:keys [status body]}
-              (handler
-                {::reitit/match {:data {:fhir.resource/type "Patient"}}
-                 :headers {"if-none-exist" "birthdate=2020"}
-                 :body {:fhir/type :fhir/Patient}})]
+              @(handler
+                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                  :headers {"if-none-exist" "birthdate=2020"}
+                  :body {:fhir/type :fhir/Patient}})]
 
           (testing "a precondition failure is returned"
             (is (= 412 status))

@@ -1,9 +1,8 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params
   (:require
-    [blaze.anomaly :refer [if-ok when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.fhir.spec.type.system :as system]
-    [blaze.handler.util :as handler-util]
     [cognitect.anomalies :as anom]))
 
 
@@ -35,4 +34,4 @@
   (fn [request]
     (if-ok [request (params-request request)]
       (handler request)
-      (comp ac/completed-future handler-util/error-response))))
+      (comp ac/failed-future ba/ex-anom))))

@@ -9,6 +9,7 @@
     [blaze.middleware.fhir.db-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]])
   (:import
     [java.util.concurrent TimeUnit]))
@@ -30,9 +31,24 @@
 (def handler (comp ac/completed-future :blaze/db))
 
 
+(defn- wrap-error [handler]
+  (fn [request]
+    (-> (handler request)
+        (ac/exceptionally ex-cause))))
+
+
 (deftest wrap-db-test
   (testing "uses existing database value"
     (is (= ::db @((db/wrap-db handler ::node) {:blaze/db ::db}))))
+
+  (testing "with invalid vid"
+    (with-redefs
+      [d/sync
+       (fn [node]
+         (assert (= ::node node))
+         (ac/completed-future ::db))]
+
+      (is (= ::db @((db/wrap-db handler ::node) {:path-params {:vid "a"}})))))
 
   (testing "uses the vid for database value acquisition"
     (with-redefs
@@ -75,5 +91,17 @@
            (assert (= ::node node))
            (ac/supply-async (constantly ::db) (ac/delayed-executor 3 TimeUnit/SECONDS)))]
 
-        (given @((db/wrap-db handler ::node) {})
-          :status := 503)))))
+        (given @((-> handler (db/wrap-db ::node) wrap-error) {})
+          [ex-data ::anom/category] := ::anom/busy)))
+
+    (testing "returns other errors"
+      (with-redefs
+        [d/sync
+         (fn [node]
+           (assert (= ::node node))
+           (ac/completed-future ::db))]
+
+        (given @((-> (fn [_] (ac/failed-future (Exception. "msg-114913")))
+                  (db/wrap-db ::node)
+                  wrap-error) {})
+          ex-message := "msg-114913")))))

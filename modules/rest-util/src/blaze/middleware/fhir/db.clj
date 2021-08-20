@@ -4,10 +4,10 @@
   It uses the optional query param __t and vid from path to acquire the right
   database value."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.handler.util :as handler-util]
     [cognitect.anomalies :as anom])
   (:import
     [java.util.concurrent TimeoutException TimeUnit]))
@@ -35,6 +35,5 @@
             (fn [e]
               (condp identical? (class (ex-cause e))
                 TimeoutException
-                (handler-util/error-response
-                  {::anom/category ::anom/busy})
+                (ba/throw-anom ::anom/busy "")
                 (throw e))))))))

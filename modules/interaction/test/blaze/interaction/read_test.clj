@@ -10,7 +10,7 @@
     [blaze.interaction.read]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :refer [with-system]]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -46,24 +46,19 @@
     (handler (assoc request ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{node# :blaze.db/node
-                  handler# :blaze.interaction/read} system]
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{node# :blaze.db/node
                        handler# :blaze.interaction/read} system]
      ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                wrap-error)]
        ~@body)))
 
 
 (deftest handler-test
   (testing "returns Not-Found on non-existing resource"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]
 
@@ -73,10 +68,11 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `/Patient/0` not found"))))
+          [:issue 0 :diagnostics] := "Resource `Patient/0` was not found."))))
 
   (testing "returns Not-Found on invalid version id"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0" :vid "a"}})]
 
@@ -86,10 +82,10 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `/Patient/0` with versionId `a` was not found."))))
+          [:issue 0 :diagnostics] := "Resource `Patient/0` with versionId `a` was not found."))))
 
   (testing "returns Gone on deleted resource"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
@@ -104,10 +100,11 @@
         (given body
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"deleted"))))
+          [:issue 0 :code] := #fhir/code"deleted"
+          [:issue 0 :diagnostics] := "Resource `Patient/0` was deleted."))))
 
   (testing "returns existing resource"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status headers body]}
@@ -129,7 +126,7 @@
           [:meta :lastUpdated] := Instant/EPOCH))))
 
   (testing "returns existing resource on versioned read"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status headers body]}

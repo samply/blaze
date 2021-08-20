@@ -53,6 +53,7 @@
     "duplicate"
     "multiple-matches"
     "not-found"
+    "deleted"
     "too-long"
     "code-invalid"
     "extension"

@@ -10,7 +10,8 @@
     [blaze.interaction.search.params-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -92,33 +93,28 @@
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-       (assoc request
-         :blaze/base-url base-url
-         ::reitit/router router
-         ::reitit/match match))))
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router
+        ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{node# :blaze.db/node
-                  handler# :blaze.interaction/search-compartment} system]
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{node# :blaze.db/node
                        handler# :blaze.interaction/search-compartment} system]
      ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                wrap-error)]
        ~@body)))
 
 
 (deftest handler-test
   (testing "Returns an Error on Invalid Id"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler
-              {:path-params {:id "<invalid>" :type "Observation"}})]
+               {:path-params {:id "<invalid>" :type "Observation"}})]
 
         (is (= 400 status))
 
@@ -130,9 +126,10 @@
 
   (testing "Returns an Error on Invalid Type"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler
-              {:path-params {:id "0" :type "<invalid>"}})]
+               {:path-params {:id "0" :type "<invalid>"}})]
 
         (is (= 400 status))
 
@@ -147,11 +144,12 @@
       (testing "returns error"
         (testing "normal result"
           (with-handler [handler]
+            []
             (let [{:keys [status body]}
                   @(handler
-                    {:path-params {:id "0" :type "Observation"}
-                     :headers {"prefer" "handling=strict"}
-                     :params {"foo" "bar"}})]
+                     {:path-params {:id "0" :type "Observation"}
+                      :headers {"prefer" "handling=strict"}
+                      :params {"foo" "bar"}})]
 
               (is (= 400 status))
 
@@ -163,11 +161,12 @@
 
         (testing "summary result"
           (with-handler [handler]
+            []
             (let [{:keys [status body]}
                   @(handler
-                    {:path-params {:id "0" :type "Observation"}
-                     :headers {"prefer" "handling=strict"}
-                     :params {"foo" "bar" "_summary" "count"}})]
+                     {:path-params {:id "0" :type "Observation"}
+                      :headers {"prefer" "handling=strict"}
+                      :params {"foo" "bar" "_summary" "count"}})]
 
               (is (= 400 status))
 
@@ -181,7 +180,7 @@
       (testing "returns results with a self link lacking the unknown search parameter"
         (testing "where the unknown search parameter is the only one"
           (testing "normal result"
-            (with-handler-data [handler]
+            (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :subject
@@ -189,9 +188,9 @@
 
               (let [{:keys [status body]}
                     @(handler
-                      {:path-params {:id "0" :type "Observation"}
-                       :headers {"prefer" "handling=lenient"}
-                       :params {"foo" "bar"}})]
+                       {:path-params {:id "0" :type "Observation"}
+                        :headers {"prefer" "handling=lenient"}
+                        :params {"foo" "bar"}})]
 
                 (is (= 200 status))
 
@@ -215,7 +214,7 @@
                          (link-url body "self")))))))
 
           (testing "summary result"
-            (with-handler-data [handler]
+            (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :subject
@@ -224,9 +223,9 @@
 
               (let [{:keys [status body]}
                     @(handler
-                      {:path-params {:id "0" :type "Observation"}
-                       :headers {"prefer" "handling=lenient"}
-                       :params {"foo" "bar" "_summary" "count"}})]
+                       {:path-params {:id "0" :type "Observation"}
+                        :headers {"prefer" "handling=lenient"}
+                        :params {"foo" "bar" "_summary" "count"}})]
 
                 (is (= 200 status))
 
@@ -251,7 +250,7 @@
 
         (testing "with another search parameter"
           (testing "normal result"
-            (with-handler-data [handler]
+            (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
@@ -266,9 +265,9 @@
 
               (let [{:keys [status body]}
                     @(handler
-                      {:path-params {:id "0" :type "Observation"}
-                       :headers {"prefer" "handling=lenient"}
-                       :params {"foo" "bar" "status" "preliminary"}})]
+                       {:path-params {:id "0" :type "Observation"}
+                        :headers {"prefer" "handling=lenient"}
+                        :params {"foo" "bar" "status" "preliminary"}})]
 
                 (is (= 200 status))
 
@@ -289,7 +288,7 @@
                          (link-url body "self")))))))
 
           (testing "summary result"
-            (with-handler-data [handler]
+            (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :status #fhir/code"final"
@@ -304,9 +303,9 @@
 
               (let [{:keys [status body]}
                     @(handler
-                      {:path-params {:id "0" :type "Observation"}
-                       :headers {"prefer" "handling=lenient"}
-                       :params {"foo" "bar" "status" "preliminary" "_summary" "count"}})]
+                       {:path-params {:id "0" :type "Observation"}
+                        :headers {"prefer" "handling=lenient"}
+                        :params {"foo" "bar" "status" "preliminary" "_summary" "count"}})]
 
                 (is (= 200 status))
 
@@ -328,9 +327,10 @@
 
   (testing "Returns an empty Bundle on Non-Existing Compartment"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler
-              {:path-params {:id "0" :type "Observation"}})]
+               {:path-params {:id "0" :type "Observation"}})]
 
         (is (= 200 status))
 
@@ -340,7 +340,7 @@
           :total := #fhir/unsignedInt 0))))
 
   (testing "with one Observation"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :status #fhir/code"final"
@@ -372,7 +372,7 @@
         (testing "with _summary=count and status=final"
           (let [{:keys [status body]}
                 @(handler (-> (assoc-in request [:params "_summary"] "count")
-                             (assoc-in [:params "status"] "final")))]
+                              (assoc-in [:params "status"] "final")))]
 
             (is (= 200 status))
 

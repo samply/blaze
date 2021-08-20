@@ -116,9 +116,8 @@
   (fn [{:blaze/keys [db] :as request}]
     (if-ok [context (search-context context request)]
       (-> (search context db)
-          (ac/then-apply ring/response)
-          (ac/exceptionally handler-util/error-response))
-      (comp ac/completed-future handler-util/error-response))))
+          (ac/then-apply ring/response))
+      (comp ac/failed-future ba/ex-anom))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/search-system [_]

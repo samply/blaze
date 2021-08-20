@@ -10,7 +10,7 @@
     [blaze.interaction.history.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -91,20 +91,13 @@
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-       (assoc request
-         :blaze/base-url base-url
-         ::reitit/router router
-         ::reitit/match match))))
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router
+        ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{node# :blaze.db/node
-                  handler# :blaze.interaction.history/system} system]
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{node# :blaze.db/node
                        handler# :blaze.interaction.history/system} system]
      ~txs
@@ -115,6 +108,7 @@
 (deftest handler-test
   (testing "returns empty history on empty node"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler {})]
 
@@ -133,7 +127,7 @@
         (is (empty? (:entry body))))))
 
   (testing "with one patient"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status body]}
@@ -171,7 +165,7 @@
 
   (testing "with two patients in one transaction"
     (testing "contains a next link with t = page-t"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
@@ -183,35 +177,35 @@
                    (link-url body "next")))))))
 
     (testing "calling the second page shows the patient with the higher id"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
         (let [{:keys [body]}
               @(handler
-                {:path-params {:id "0"}
-                 :query-params {"_count" "1" "__t" "1" "__page-t" "1"
-                                "__page-type" "Patient" "__page-id" "1"}})]
+                 {:path-params {:id "0"}
+                  :query-params {"_count" "1" "__t" "1" "__page-t" "1"
+                                 "__page-type" "Patient" "__page-id" "1"}})]
 
           (given (-> body :entry first)
             [:resource :id] := "1"))))
 
     (testing "a call with `page-id` but missing `page-type` just ignores `page-id`"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
         (let [{:keys [body]}
               @(handler
-                {:path-params {:id "0"}
-                 :query-params {"_count" "1" "__t" "1" "__page-t" "1" "__page-id" "1"}})]
+                 {:path-params {:id "0"}
+                  :query-params {"_count" "1" "__t" "1" "__page-t" "1" "__page-id" "1"}})]
 
           (given (-> body :entry first)
             [:resource :id] := "0")))))
 
   (testing "two patients in two transactions"
     (testing "contains a next link with page-t going to the first transaction"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]
          [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
@@ -224,15 +218,15 @@
                  (-> body :link second :url))))))
 
     (testing "calling the second page shows the patient from the first transaction"
-      (with-handler-data [handler]
+      (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]
          [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
         (let [{:keys [body]}
               @(handler
-                {:path-params {:id "0"}
-                 :query-params {"_count" "1" "__t" "2" "__page-t" "1"
-                                "__page-type" "Patient" "__page-id" "0"}})]
+                 {:path-params {:id "0"}
+                  :query-params {"_count" "1" "__t" "2" "__page-t" "1"
+                                 "__page-type" "Patient" "__page-id" "0"}})]
 
           (testing "the total count is still two"
             (is (= #fhir/unsignedInt 2 (:total body))))

@@ -1,6 +1,6 @@
 (ns blaze.interaction.search-compartment
   (:require
-    [blaze.anomaly :as ba :refer [ex-anom if-ok when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.spec]
@@ -75,7 +75,7 @@
         {:keys [handles clauses] :as handles-and-clauses}
         (handles-and-clauses context db)]
     (if (::anom/category handles-and-clauses)
-      (ac/failed-future (ex-anom handles-and-clauses))
+      (ac/failed-future (ba/ex-anom handles-and-clauses))
       (-> (d/pull-many db handles)
           (ac/then-apply
             (fn [resources]
@@ -100,7 +100,7 @@
         {:keys [handles clauses] :as handles-and-clauses}
         (handles-and-clauses context db)]
     (if (::anom/category handles-and-clauses)
-      (ac/failed-future (ex-anom handles-and-clauses))
+      (ac/failed-future (ba/ex-anom handles-and-clauses))
       (ac/completed-future
         {:fhir/type :fhir/Bundle
          :id (iu/luid context)
@@ -151,9 +151,8 @@
   (fn [{:blaze/keys [db] :as request}]
     (if-ok [context (search-context context request)]
       (-> (search context db)
-          (ac/then-apply ring/response)
-          (ac/exceptionally handler-util/error-response))
-      (comp ac/completed-future handler-util/error-response))))
+          (ac/then-apply ring/response))
+      (comp ac/failed-future ba/ex-anom))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/search-compartment [_]

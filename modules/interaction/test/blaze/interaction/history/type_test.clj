@@ -10,7 +10,7 @@
     [blaze.interaction.history.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -92,20 +92,13 @@
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-       (assoc request
-         :blaze/base-url base-url
-         ::reitit/router router
-         ::reitit/match match))))
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router
+        ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{node# :blaze.db/node
-                  handler# :blaze.interaction.history/type} system]
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{node# :blaze.db/node
                        handler# :blaze.interaction.history/type} system]
      ~txs
@@ -115,7 +108,7 @@
 
 (deftest handler-test
   (testing "with one patient"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status body]}

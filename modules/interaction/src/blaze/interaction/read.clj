@@ -7,7 +7,6 @@
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.spec]
-    [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -39,6 +38,7 @@
     (if (identical? :delete op)
       (let [tx (d/tx db t)]
         {::anom/category ::anom/not-found
+         ::anom/message (format "Resource `%s/%s` was deleted." type id)
          :http/status 410
          :http/headers
          [["Last-Modified" (last-modified tx)]
@@ -46,8 +46,15 @@
          :fhir/issue "deleted"})
       handle)
     {::anom/category ::anom/not-found
-     ::anom/message (format "Resource `/%s/%s` not found" type id)
+     ::anom/message (format "Resource `%s/%s` was not found." type id)
      :fhir/issue "not-found"}))
+
+
+(defn- response [resource]
+  (let [{:blaze.db/keys [tx]} (meta resource)]
+    (-> (ring/response resource)
+        (ring/header "Last-Modified" (last-modified tx))
+        (ring/header "ETag" (etag tx)))))
 
 
 (def ^:private handler
@@ -55,24 +62,18 @@
         {:keys [id]} :path-params :blaze/keys [db]}]
     (-> (ba/completion-stage (resource-handle db type id))
         (ac/then-compose (partial d/pull db))
-        (ac/then-apply
-          (fn [resource]
-            (let [{:blaze.db/keys [tx]} (meta resource)]
-              (-> (ring/response resource)
-                  (ring/header "Last-Modified" (last-modified tx))
-                  (ring/header "ETag" (etag tx))))))
-        (ac/exceptionally handler-util/error-response))))
+        (ac/then-apply response))))
 
 
 (defn- wrap-invalid-vid [handler]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id vid]} :path-params :as request}]
     (if (and vid (not (re-matches #"\d+" vid)))
-      (ac/completed-future
-        (handler-util/error-response
-          {::anom/category ::anom/not-found
-           ::anom/message (format "Resource `/%s/%s` with versionId `%s` was not found." type id vid)
-           :fhir/issue "not-found"}))
+      (-> {::anom/category ::anom/not-found
+           ::anom/message (format "Resource `%s/%s` with versionId `%s` was not found." type id vid)
+           :fhir/issue "not-found"}
+          ba/ex-anom
+          ac/failed-future)
       (handler request))))
 
 
@@ -85,6 +86,6 @@
 (defmethod ig/init-key :blaze.interaction/read [_ _]
   (log/info "Init FHIR read interaction handler")
   (-> handler
-      (wrap-invalid-vid)
-      (wrap-interaction-name)
-      (wrap-observe-request-duration)))
+      wrap-invalid-vid
+      wrap-interaction-name
+      wrap-observe-request-duration))

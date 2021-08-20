@@ -6,7 +6,8 @@
     [blaze.fhir.spec.type :as type]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -114,18 +115,12 @@
          ::reitit/router router))))
 
 
-(defmacro with-handler [[handler-binding] & body]
-  `(with-system [{node# :blaze.db/node
-                  handler# ::evaluate-measure/handler} system]
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
-       ~@body)))
-
-
-(defmacro with-handler-data [[handler-binding] txs & body]
+(defmacro with-handler [[handler-binding] txs & body]
   `(with-system-data [{node# :blaze.db/node
                        handler# ::evaluate-measure/handler} system]
      ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                wrap-error)]
        ~@body)))
 
 
@@ -133,6 +128,7 @@
   (testing "Fails on missing mandatory params"
     (testing "periodStart"
       (with-handler [handler]
+        []
         (let [{:keys [status body]}
               @(handler
                 {:path-params {:id "0"}
@@ -152,6 +148,7 @@
 
     (testing "periodEnd"
       (with-handler [handler]
+        []
         (let [{:keys [status body]}
               @(handler
                 {:path-params {:id "0"}
@@ -172,6 +169,7 @@
   (testing "Returns Not Found on Non-Existing Measure"
     (testing "on type endpoint"
       (with-handler [handler]
+        []
         (let [{:keys [status body]}
               @(handler
                 {:path-params {:id "0"}
@@ -187,6 +185,7 @@
 
     (testing "on instance endpoint"
       (with-handler [handler]
+        []
         (let [{:keys [status body]}
               @(handler
                 {:params
@@ -204,7 +203,7 @@
 
 
   (testing "Returns Gone on Deleted Resource"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"}]]
        [[:delete "Measure" "0"]]]
 
@@ -224,6 +223,7 @@
 
   (testing "invalid report type"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler
               {:request-method :get
@@ -245,6 +245,7 @@
 
   (testing "report type of subject-list is not possible with a GET request"
     (with-handler [handler]
+      []
       (let [{:keys [status body]}
             @(handler
               {:request-method :get
@@ -265,7 +266,7 @@
 
 
   (testing "measure without library"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
                :url #fhir/uri"url-182126"}]]]
 
@@ -288,7 +289,7 @@
 
 
   (testing "measure with non-existing library"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
                :url #fhir/uri"url-181501"
                :library [#fhir/canonical"library-url-094115"]}]]]
@@ -312,7 +313,7 @@
 
 
   (testing "missing content in library"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
                :url #fhir/uri"url-182104"
                :library [#fhir/canonical"library-url-094115"]}]
@@ -338,7 +339,7 @@
 
 
   (testing "non text/cql content type"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
                :url #fhir/uri"url-182051"
                :library [#fhir/canonical"library-url-094115"]}]
@@ -366,7 +367,7 @@
 
 
   (testing "missing data in library content"
-    (with-handler-data [handler]
+    (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
                :url #fhir/uri"url-182039"
                :library [#fhir/canonical"library-url-094115"]}]
@@ -397,7 +398,7 @@
     (testing "on type endpoint"
       (testing "as GET request"
         (testing "cohort scoring"
-          (with-handler-data [handler]
+          (with-handler [handler]
             [[[:put
                {:fhir/type :fhir/Measure :id "0"
                 :url #fhir/uri"url-181501"
@@ -451,7 +452,7 @@
                 [:group 0 :population 0 :count] := 1))))
 
         (testing "cohort scoring with stratifiers"
-          (with-handler-data [handler]
+          (with-handler [handler]
             [[[:put
                {:fhir/type :fhir/Measure :id "0"
                 :url #fhir/uri"url-181501"
@@ -522,7 +523,7 @@
                 [:group 0 :stratifier 0 :stratum 1 :value :text] := "male")))))
 
       (testing "as POST request"
-        (with-handler-data [handler]
+        (with-handler [handler]
           [[[:put {:fhir/type :fhir/Measure :id "0"
                    :url #fhir/uri"url-181501"
                    :library [#fhir/canonical"library-url-094115"]}]
@@ -555,7 +556,7 @@
 
     (testing "on instance endpoint"
       (testing "as GET request"
-        (with-handler-data [handler]
+        (with-handler [handler]
           [[[:put {:fhir/type :fhir/Measure :id "0"
                    :url #fhir/uri"url-181501"
                    :library [#fhir/canonical"library-url-094115"]}]
@@ -583,7 +584,7 @@
               [:period :end] := #fhir/dateTime"2015"))))
 
       (testing "as POST request"
-        (with-handler-data [handler]
+        (with-handler [handler]
           [[[:put {:fhir/type :fhir/Measure :id "0"
                    :url #fhir/uri"url-181501"
                    :library [#fhir/canonical"library-url-094115"]}]
