@@ -90,6 +90,8 @@ jobs:
       run: make -C modules/${{ matrix.module }} test
 
   test-coverage:
+    if: ${{ github.event_name != 'schedule' }}
+
     needs: [ test ]
 
     strategy:
