@@ -28,7 +28,7 @@
 (s/def :blaze.fhir/local-ref
   (s/and string?
          (s/conformer #(str/split % #"/" 2))
-         (s/tuple :fhir.type/name :blaze.resource/id)))
+         (s/tuple :fhir.resource/type :blaze.resource/id)))
 
 
 (s/def :blaze/resource

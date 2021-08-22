@@ -75,7 +75,7 @@ The internal representation of the example above looks like this:
  :name 
  [{:fhir/type :fhir/HumanName
    :text "John Doe"}]
- :birthDate (java.time.Year/of 2020)
+ :birthDate #fhir/date"2020"
  :deceased false}
 ```
 

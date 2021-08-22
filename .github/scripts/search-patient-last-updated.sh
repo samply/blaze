@@ -12,7 +12,6 @@ PATIENT_COUNT=$(curl -sH 'Prefer: handling=strict' "${BASE}/Patient?_lastUpdated
 
 if [ $PATIENT_COUNT -eq 0 ]; then
   echo "Success: no patents are updated after $NOW"
-  exit 0
 else
   echo "Fail: $PATIENT_COUNT patents are updated after $NOW"
   exit 1

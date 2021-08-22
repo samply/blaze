@@ -181,7 +181,11 @@
   (.matches (re-matcher #"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?" s)))
 
 
-(defn parse-date [s]
+(defn parse-date
+  "Parses `s` into a System.Date.
+
+  Returns an anomaly if `s` isn't a valid System.Date."
+  [s]
   (if (date-string? s)
     (try
       (parse-date* s)

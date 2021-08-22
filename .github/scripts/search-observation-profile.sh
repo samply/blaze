@@ -5,7 +5,6 @@ LAB_COUNT=$(curl -s "$BASE/Observation?_profile=http://hl7.org/fhir/us/core/Stru
 
 if [ "$LAB_COUNT" = "27218" ]; then
   echo "Success: lab count ($LAB_COUNT) equals the expected count"
-  exit 0
 else
   echo "Fail: lab count ($LAB_COUNT) != 27218"
   exit 1

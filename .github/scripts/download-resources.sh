@@ -10,7 +10,6 @@ SIZE=$(wc -l "$TYPE".ndjson | xargs | cut -d ' ' -f1)
 
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
   echo "Success: download size matches"
-  exit 0
 else
   echo "Fail: download size was ${SIZE} but should be ${EXPECTED_SIZE}"
   exit 1

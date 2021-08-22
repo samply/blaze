@@ -24,4 +24,6 @@
  fhir/Identifier blaze.fhir.spec.type/map->Identifier
  fhir/Reference blaze.fhir.spec.type/map->Reference
  fhir/Meta blaze.fhir.spec.type/map->Meta
- fhir/BundleEntrySearch blaze.fhir.spec.type/map->BundleEntrySearch}
+ fhir/BundleEntrySearch blaze.fhir.spec.type/map->BundleEntrySearch
+ system/date blaze.fhir.spec.type.system/parse-date
+ system/date-time blaze.fhir.spec.type.system/parse-date-time}

@@ -26,14 +26,15 @@
   (s/keys
     :req-un
     [::period
-     :blaze.fhir.operation.evaluate-measure/report-type]))
+     :blaze.fhir.operation.evaluate-measure/report-type]
+    :opt-un
+    [:blaze.fhir.operation.evaluate-measure/subject-ref]))
 
 
 (s/fdef measure/evaluate-measure
   :args
   (s/cat
-    :context (s/keys :req-un [:blaze/clock :blaze/rng-fn])
-    :db :blaze.db/db
+    :context (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze.db/db])
     :base-url string?
     :router reitit/router?
     :measure :blaze/resource
