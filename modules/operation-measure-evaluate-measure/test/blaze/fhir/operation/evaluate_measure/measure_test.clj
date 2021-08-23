@@ -16,7 +16,6 @@
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Year]
     [java.util Base64]))
 
 
@@ -94,10 +93,10 @@
      [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
      [(tx-ops (:entry (read-data name)))]
 
-     (let [context {:clock clock :rng-fn fixed-rng-fn}
-           db (d/db node)
-           period [(Year/of 2000) (Year/of 2020)]]
-       (evaluate-measure context db "" router
+     (let [db (d/db node)
+           context {:clock clock :rng-fn fixed-rng-fn :db db}
+           period [#system/date"2000" #system/date"2020"]]
+       (evaluate-measure context "" router
                          @(d/pull node (d/resource-handle db "Measure" "0"))
                          {:period period :report-type report-type})))))
 
@@ -119,6 +118,194 @@
         :group first
         :stratifier first
         :stratum)))
+
+
+(defn- population-concept [code]
+  (type/map->CodeableConcept
+    {:coding
+     [(type/map->Coding
+        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+         :code (type/->Code code)})]}))
+
+
+(defn- cql-expression [expr]
+  {:fhir/type :fhir/Expression
+   :language #fhir/code"text/cql"
+   :expression expr})
+
+
+(def library-content
+  #fhir/Attachment
+      {:contentType #fhir/code"text/cql"
+       :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
+
+
+(deftest evaluate-measure-test
+  (testing "missing criteria"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+      [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [library-content]}]]]
+
+      (let [db (d/db node)
+            context {:clock clock :rng-fn fixed-rng-fn :db db}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")}]}]}
+            params {:period [#system/date"2000" #system/date"2020"]
+                    :report-type "subject"
+                    :subject "Patient/0"}]
+        (given (evaluate-measure context "" router measure params)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Missing criteria."
+          :fhir/issue := "required"
+          :fhir.issue/expression := "Measure.group[0].population[0]"))))
+
+  (testing "single subject"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [library-content]}]]]
+
+      (let [db (d/db node)
+            context {:clock clock :rng-fn fixed-rng-fn :db db}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "InInitialPopulation")}]}]}
+            params {:period [#system/date"2000" #system/date"2020"]
+                    :report-type "subject"
+                    :subject-ref "0"}]
+        (given (:resource (evaluate-measure context "" router measure params))
+          :fhir/type := :fhir/MeasureReport
+          :status := #fhir/code"complete"
+          :type := #fhir/code"individual"
+          :measure := #fhir/canonical"/0"
+          [:subject :reference] := "Patient/0"
+          :date := #system/date-time"1970-01-01T00:00Z"
+          :period := #fhir/Period{:start #system/date-time"2000"
+                                  :end #system/date-time"2020"}
+          [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+          [:group 0 :population 0 :count] := 1)))
+
+    (testing "with stratifiers"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
+          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [library-content]}]]]
+
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]
+                         :stratifier
+                         [{:fhir/type :fhir.Measure.group/stratifier
+                           :code #fhir/CodeableConcept{:text "gender"}
+                           :criteria (cql-expression "Gender")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref "0"}]
+          (given (:resource (evaluate-measure context "" router measure params))
+            :fhir/type := :fhir/MeasureReport
+            :status := #fhir/code"complete"
+            :type := #fhir/code"individual"
+            :measure := #fhir/canonical"/0"
+            [:subject :reference] := "Patient/0"
+            :date := #system/date-time"1970-01-01T00:00Z"
+            :period := #fhir/Period{:start #system/date-time"2000"
+                                    :end #system/date-time"2020"}
+            [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+            [:group 0 :population 0 :count] := 1
+            [:group 0 :stratifier 0 :code 0 :text] := "gender"
+            [:group 0 :stratifier 0 :stratum 0 :value :text] := "male"
+            [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 1))))
+
+    (testing "invalid subject"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [library-content]}]]]
+
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref ["Observation" "0"]}]
+          (given (evaluate-measure context "" router measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Type mismatch between evaluation subject `Observation` and Measure subject `Patient`."))))
+
+    (testing "missing subject"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [library-content]}]]]
+
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref "0"}]
+          (given (evaluate-measure context "" router measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Subject with type `Patient` and id `0` was not found."))))
+
+    (testing "deleted subject"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [library-content]}]]
+         [[:delete "Patient" "0"]]]
+
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref "0"}]
+          (given (evaluate-measure context "" router measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
 
 
 (deftest integration-test

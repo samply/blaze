@@ -7,6 +7,11 @@
     [clojure.spec.alpha :as s]))
 
 
+(s/fdef type/type
+  :args (s/cat :x any?)
+  :ret (s/nilable :fhir/type))
+
+
 (s/fdef type/value
   :args (s/cat :x any?)
   :ret (s/nilable system/value?))

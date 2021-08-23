@@ -125,47 +125,6 @@
 
 
 (deftest handler-test
-  (testing "Fails on missing mandatory params"
-    (testing "periodStart"
-      (with-handler [handler]
-        []
-        (let [{:keys [status body]}
-              @(handler
-                {:path-params {:id "0"}
-                 :params {"periodEnd" "2015"}})]
-
-          (is (= 400 status))
-
-          (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-          (given (-> body :issue first)
-            :severity := #fhir/code"error"
-            :code := #fhir/code"value"
-            [:details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-            [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
-            :diagnostics := "Missing required parameter `periodStart`."
-            [:expression first] := "periodStart"))))
-
-    (testing "periodEnd"
-      (with-handler [handler]
-        []
-        (let [{:keys [status body]}
-              @(handler
-                {:path-params {:id "0"}
-                 :params {"periodStart" "2014"}})]
-
-          (is (= 400 status))
-
-          (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-          (given (-> body :issue first)
-            :severity := #fhir/code"error"
-            :code := #fhir/code"value"
-            [:details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-            [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
-            :diagnostics := "Missing required parameter `periodEnd`."
-            [:expression first] := "periodEnd")))))
-
   (testing "Returns Not Found on Non-Existing Measure"
     (testing "on type endpoint"
       (with-handler [handler]
@@ -201,7 +160,6 @@
             :severity := #fhir/code"error"
             :code := #fhir/code"not-found")))))
 
-
   (testing "Returns Gone on Deleted Resource"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"}]]
@@ -219,51 +177,6 @@
         (given (-> body :issue first)
           :severity := #fhir/code"error"
           :code := #fhir/code"deleted"))))
-
-
-  (testing "invalid report type"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-              {:request-method :get
-               :params
-               {"measure" "url-181501"
-                "reportType" "<invalid>"
-                "periodStart" "2014"
-                "periodEnd" "2015"}})]
-
-        (is (= 400 status))
-
-        (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-        (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
-          :diagnostics := "The reportType `<invalid>` is invalid. Please use one of `subject`, `subject-list` or `population`."))))
-
-
-  (testing "report type of subject-list is not possible with a GET request"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-              {:request-method :get
-               :params
-               {"measure" "url-181501"
-                "reportType" "subject-list"
-                "periodStart" "2014"
-                "periodEnd" "2015"}})]
-
-        (is (= 422 status))
-
-        (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-        (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"not-supported"
-          :diagnostics := "The reportType `subject-list` is not supported for GET requests. Please use POST."))))
-
 
   (testing "measure without library"
     (with-handler [handler]
@@ -287,7 +200,6 @@
           :diagnostics := "Missing primary library. Currently only CQL expressions together with one primary library are supported."
           [:expression first] := "Measure.library"))))
 
-
   (testing "measure with non-existing library"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
@@ -310,7 +222,6 @@
           :code := #fhir/code"value"
           :diagnostics := "Can't find the library with canonical URI `library-url-094115`."
           [:expression first] := "Measure.library"))))
-
 
   (testing "missing content in library"
     (with-handler [handler]
@@ -336,7 +247,6 @@
           :code := #fhir/code"value"
           :diagnostics := "Missing content in library with id `0`."
           [:expression first] := "Library.content"))))
-
 
   (testing "non text/cql content type"
     (with-handler [handler]
@@ -365,7 +275,6 @@
           :diagnostics := "Non `text/cql` content type of `text/plain` of first attachment in library with id `0`."
           [:expression first] := "Library.content[0].contentType"))))
 
-
   (testing "missing data in library content"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
@@ -392,7 +301,6 @@
           :code := #fhir/code"value"
           :diagnostics := "Missing embedded data of first attachment in library with id `0`."
           [:expression first] := "Library.content[0].data"))))
-
 
   (testing "Success"
     (testing "on type endpoint"

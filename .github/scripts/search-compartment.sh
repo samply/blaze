@@ -6,7 +6,6 @@ OBSERVATION_COUNT=$(curl -s "$BASE/Patient/$PATIENT_ID/Observation?_summary=coun
 
 if [ "$OBSERVATION_COUNT" = "1277" ]; then
   echo "Success: lab count ($OBSERVATION_COUNT) equals the expected count"
-  exit 0
 else
   echo "Fail: lab count ($OBSERVATION_COUNT) != 1277"
   exit 1

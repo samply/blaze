@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure
   "Main entry point into the $evaluate-measure operation."
   (:require
-    [blaze.anomaly :as ba :refer [if-ok]]
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.api :as d]
@@ -30,15 +30,6 @@
 (set! *warn-on-reflection* true)
 
 
-(defn- invalid-report-type-msg [report-type]
-  (format "The reportType `%s` is invalid. Please use one of `subject`, `subject-list` or `population`."
-          report-type))
-
-
-(def ^:private no-subject-list-on-get-msg
-  "The reportType `subject-list` is not supported for GET requests. Please use POST.")
-
-
 (defn- luid [{:keys [clock rng-fn]}]
   (luid/luid clock (rng-fn)))
 
@@ -53,15 +44,16 @@
     x))
 
 
-(defn- handle*
-  [{:keys [node executor] :as context} db
+(defn- handle
+  [{:keys [node executor] :as context}
    {:blaze/keys [base-url]
     ::reitit/keys [router]
     :keys [request-method headers]
     ::keys [params]}
    measure]
   (-> (ac/supply-async
-        #(throw-when (measure/evaluate-measure context db base-url router measure params))
+        #(throw-when (measure/evaluate-measure context base-url router
+                                               measure params))
         executor)
       (ac/then-compose
         (fn process-result [result]
@@ -108,33 +100,7 @@
   (fn [{:blaze/keys [db] :as request}]
     (-> (ba/completion-stage (find-measure-handle db request))
         (ac/then-compose (partial d/pull db))
-        (ac/then-compose (partial handle* context db request)))))
-
-
-(defn- conform-params
-  [{:keys [request-method]
-    {:strs [subject periodStart periodEnd reportType]} :params}]
-  (let [report-type (or reportType (if subject "subject" "population"))]
-    (cond
-      (not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type report-type))
-      {::anom/category ::anom/incorrect
-       ::anom/message (invalid-report-type-msg report-type)
-       :fhir/issue "value"}
-
-      (and (= :get request-method) (= "subject-list" report-type))
-      {::anom/category ::anom/unsupported
-       ::anom/message no-subject-list-on-get-msg}
-
-      :else
-      (let [period [periodStart periodEnd]]
-        {:period period :report-type report-type}))))
-
-
-(defn wrap-conform-params [handler]
-  (fn [request]
-    (if-ok [params (conform-params request)]
-      (handler (assoc request ::params params))
-      (comp ac/failed-future ba/ex-anom))))
+        (ac/then-compose (partial handle (assoc context :db db) request)))))
 
 
 (defmethod ig/pre-init-spec ::handler [_]
@@ -144,8 +110,7 @@
 (defmethod ig/init-key ::handler [_ context]
   (log/info "Init FHIR $evaluate-measure operation handler")
   (-> (handler context)
-      (wrap-conform-params)
-      (wrap-coerce-params)
+      wrap-coerce-params
       (wrap-observe-request-duration "operation-evaluate-measure")))
 
 

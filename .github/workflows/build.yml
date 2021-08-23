@@ -370,6 +370,9 @@ jobs:
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql 56
 
+    - name: Evaluate CQL Query 1 on Individual Patients
+      run: .github/scripts/evaluate-patient-q1-measure.sh
+
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
 
@@ -598,6 +601,9 @@ jobs:
 
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql 56
+
+    - name: Evaluate CQL Query 1 on Individual Patients
+      run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42

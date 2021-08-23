@@ -12,11 +12,5 @@
   {:git/url "https://github.com/weavejester/integrant.git"
    :sha "32a46f5dca8a6b563a6dddf88bec887be3201b08"}
 
-  io.prometheus/simpleclient
-  {:mvn/version "0.11.0"}
-
-  io.prometheus/simpleclient_common
-  {:mvn/version "0.11.0"}
-
   prom-metrics/prom-metrics
-  {:mvn/version "0.6-alpha.2"}}}
+  {:mvn/version "0.6-alpha.3"}}}

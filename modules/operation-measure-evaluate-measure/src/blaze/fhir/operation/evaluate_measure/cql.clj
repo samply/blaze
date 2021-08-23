@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.cql
   (:require
+    [blaze.anomaly :refer [when-ok]]
     [blaze.db.api :as d]
     [blaze.elm.expression :as expr]
     [clojure.core.reducers :as r]
@@ -23,7 +24,7 @@
 
 (def eval-sequential-chunk-size
   "Size of chunks of resources to evaluate sequential. This size is used by
-  r/fold as a cut off point for the fork-join algorithm.
+  r/fold as a cut-off point for the fork-join algorithm.
 
   Each chunk of those resources if evaluated sequential and the results of
   multiple of those parallel evaluations are combined afterwards."
@@ -148,6 +149,14 @@
       (d/type-list db subject-type))))
 
 
+(defn evaluate-individual-expression
+  "Evaluates the expression with `name` according to `context`.
+
+  Returns an anomaly in case of errors."
+  [context subject-handle name]
+  (evaluate-expression-1 (unwrap-library-context context) subject-handle name))
+
+
 (defn- incorrect-stratum [{:fhir/keys [type] :keys [id]} expression-name]
   {::anom/category ::anom/incorrect
    ::anom/message
@@ -209,7 +218,7 @@
 
 (defn calc-strata
   "Returns a map of stratum to count or an anomaly."
-  {:arglists '([[context population-expression-name stratum-expression-name]])}
+  {:arglists '([context population-expression-name stratum-expression-name])}
   [{:keys [db subject-type] :as context} population-expression-name
    stratum-expression-name]
   (let [context (unwrap-library-context context)]
@@ -220,6 +229,18 @@
                             stratum-expression-name %)))
       (stratum-combine-op context)
       (d/type-list db subject-type))))
+
+
+(defn calc-individual-strata
+  "Returns a map of stratum to count or an anomaly."
+  [context subject-handle population-expression-name stratum-expression-name]
+  (let [context (unwrap-library-context context)]
+    (when-ok [included? (evaluate-expression-1 context subject-handle
+                                     population-expression-name)]
+      (when included?
+        (when-ok [stratum (evaluate-stratum-expression
+                            context subject-handle stratum-expression-name)]
+          {stratum 1})))))
 
 
 (defn- anom-conj
@@ -261,7 +282,7 @@
       subject-handles)))
 
 
-(defn calc-mult-component-strata
+(defn calc-multi-component-strata
   "Returns a map of stratum to count or an anomaly."
   {:arglists '([[context population-expression-name expression-names]])}
   [{:keys [db subject-type] :as context} population-expression-name

@@ -34,5 +34,4 @@ elif [ "$EXPECTED_NUM_PROCEDURES" != "$ACTUAL_NUM_PROCEDURES" ]; then
   exit 1
 else
   echo "Success: all download sizes match"
-  exit 0
 fi

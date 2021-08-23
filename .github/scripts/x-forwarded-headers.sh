@@ -4,7 +4,6 @@ SELF_LINK=$(curl -s -H 'X-Forwarded-Host:blaze.de' -H 'X-Forwarded-Proto:https' 
 
 if [ "https://blaze.de/fhir/Patient" = "$SELF_LINK" ]; then
   echo "Success"
-  exit 0
 else
   echo "Fail"
   exit 1

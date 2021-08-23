@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 
-# Usage: ./evaluate-measure.sh -f <query>.cql <expected-count>
-
-# Takes a CQL file, creates a Library resource from it, references that from a
-# Measure resource and calls $evaluate-measure on it.
-
 library() {
 cat <<END
 {
@@ -77,12 +72,10 @@ post() {
 }
 
 evaluate-measure() {
-  curl -s "http://localhost:8080/fhir/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030"
+  curl -s "http://localhost:8080/fhir/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030&subject=$2"
 }
 
-FILE=$1
-EXPECTED_COUNT=$2
-
+FILE="modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql"
 DATA=$(base64 "$FILE" | tr -d '\n')
 LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
@@ -90,11 +83,21 @@ MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 create-library "$LIBRARY_URI" "$DATA" | post "Library" > /dev/null
 
 MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | post "Measure" | jq -r .id)
-COUNT=$(evaluate-measure "$MEASURE_ID" | jq -r ".group[0].population[0].count")
 
-if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
+MALE_PATIENT_ID=$(curl -s 'http://localhost:8080/fhir/Patient?gender=male&_count=1' | jq -r '.entry[].resource.id')
+COUNT=$(evaluate-measure "$MEASURE_ID" "$MALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
+if [ "$COUNT" = "1" ]; then
   echo "Success: count ($COUNT) equals the expected count"
 else
-  echo "Fail: count ($LAB_COUNT) != $EXPECTED_COUNT"
+  echo "Fail: count ($COUNT) != 1"
+  exit 1
+fi
+
+FEMALE_PATIENT_ID=$(curl -s 'http://localhost:8080/fhir/Patient?gender=female&_count=1' | jq -r '.entry[].resource.id')
+COUNT=$(evaluate-measure "$MEASURE_ID" "$FEMALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
+if [ "$COUNT" = "0" ]; then
+  echo "Success: count ($COUNT) equals the expected count"
+else
+  echo "Fail: count ($COUNT) != 0"
   exit 1
 fi
