@@ -17,7 +17,7 @@ The most accessible way to create and execute CQL queries is to use the Quality 
 If you don't already have Blaze running, you can read about how to do it in [Deployment](deployment/README.md). If you have Docker available just run:
 
 ```
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11.0
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11
 ```
 
 Start the Quality Reporting UI. You should see an empty measure list.
@@ -163,4 +163,3 @@ After importing patients, the result of the initial population will be one:
 ![](cql-queries/measure-report-2.png)
 
 You can learn more about CQL queries in the [Author's Guide](https://cql.hl7.org/02-authorsguide.html) at HL7.
-

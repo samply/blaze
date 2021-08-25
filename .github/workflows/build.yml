@@ -20,10 +20,10 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2021.06.18'
+        version: '2021.08.06'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2
 
     - name: Lint
       run: make lint
@@ -32,6 +32,7 @@ jobs:
     needs: [ lint ]
 
     strategy:
+      max-parallel: 8
       matrix:
         module:
         - async
@@ -60,7 +61,7 @@ jobs:
 
         java-version:
         - '11'
-        - '15'
+        - '16'
 
     runs-on: ubuntu-20.04
 
@@ -68,23 +69,22 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'zulu'
+        distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.855'
-
-    - name: Cache Local Maven Repo
-      uses: actions/cache@v2.1.6
-      with:
-        path: |
-          ~/.m2/repository
-        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-repo-test-${{ matrix.module }}
+        tools-deps: '1.10.3.943'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Test
       run: make -C modules/${{ matrix.module }} test
@@ -95,6 +95,7 @@ jobs:
     needs: [ test ]
 
     strategy:
+      max-parallel: 2
       matrix:
         module:
         - async
@@ -127,29 +128,28 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'zulu'
-        java-version: '11'
+        distribution: 'temurin'
+        java-version: '16'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.855'
-
-    - name: Cache Local Maven Repo
-      uses: actions/cache@v2.1.6
-      with:
-        path: |
-          ~/.m2/repository
-        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-repo-test-coverage-${{ matrix.module }}
+        tools-deps: '1.10.3.943'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-16-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Test Coverage
       run: make -C modules/${{ matrix.module }} test-coverage
 
     - name: Codecov Upload
-      uses: codecov/codecov-action@v1.5.2
+      uses: codecov/codecov-action@v2
       with:
         name: ${{ matrix.module }}
         file: modules/${{ matrix.module }}/target/coverage/codecov.json
@@ -162,7 +162,7 @@ jobs:
       matrix:
         java-version:
         - '11'
-        - '15'
+        - '16'
 
     runs-on: ubuntu-20.04
 
@@ -170,23 +170,22 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'zulu'
+        distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.855'
-
-    - name: Cache Local Maven Repo
-      uses: actions/cache@v2.1.6
-      with:
-        path: |
-          ~/.m2/repository
-        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-repo-test-root
+        tools-deps: '1.10.3.943'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2.3.4
+      uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
 
     - name: Test
       run: make test-root
@@ -199,23 +198,22 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'zulu'
-        java-version: '11'
+        distribution: 'temurin'
+        java-version: '16'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.855'
-
-    - name: Cache Local Maven Repo
-      uses: actions/cache@v2.1.6
-      with:
-        path: |
-          ~/.m2/repository
-        key: ${{ runner.os }}-maven-repo-build
+        tools-deps: '1.10.3.943'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-16-maven-build-${{ hashFiles('**/deps.edn') }}
 
     - name: Build Uberjar
       run: make uberjar
@@ -279,6 +277,23 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Setup Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'temurin'
+        java-version: '16'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.3.943'
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v1
       with:
@@ -290,25 +305,10 @@ jobs:
       run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
 
     - name: Run Blaze
-      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
-    - name: Check out Git repository
-      uses: actions/checkout@v2
-
-    - name: Setup Java
-      uses: actions/setup-java@v2
-      with:
-        distribution: 'zulu'
-        java-version: 11
-
-    - name: Download Synthea
-      run: curl -sLO https://github.com/synthetichealth/synthea/releases/download/v2.7.0/synthea-with-dependencies.jar
-
-    - name: Generate Data
-      run: java -jar synthea-with-dependencies.jar -p 100
-
-    - name: Install Blazectl
-      run: .github/scripts/install-blazectl.sh
+    - name: Sleep 60s
+      run: sleep 60
 
     - name: Docker Logs
       run: docker logs blaze
@@ -317,7 +317,7 @@ jobs:
       run: .github/scripts/check-capability-statement.sh
 
     - name: Load Data
-      run: blazectl --server http://localhost:8080/fhir upload output/fhir
+      run: blazectl --server http://localhost:8080/fhir upload .github/test-data
 
     - name: Count Resources
       run: blazectl --server http://localhost:8080/fhir count-resources
@@ -355,26 +355,44 @@ jobs:
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
+    - name: Search Observation _lastUpdated
+      run: .github/scripts/search-patient-last-updated.sh
+
+    - name: Search Observation _profile
+      run: .github/scripts/search-observation-profile.sh
+
+    - name: Search Compartment
+      run: .github/scripts/search-compartment.sh
+
     - name: Evaluate CQL Query 1
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql 56
+
+    - name: Evaluate CQL Query 1 on Individual Patients
+      run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
 
     - name: Evaluate CQL Query 7
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7-query.cql 81
 
     - name: Evaluate CQL Query 14
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
 
     - name: Evaluate CQL Query 15
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 33
 
     - name: Forwarded Header
       run: .github/scripts/forwarded-header.sh
 
     - name: X-Forwarded Headers
       run: .github/scripts/x-forwarded-headers.sh
+
+    - name: Delete
+      run: .github/scripts/delete.sh
+
+    - name: Batch
+      run: .github/scripts/batch.sh
 
   openid-auth-test:
     needs: build
@@ -417,27 +435,32 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v2
 
+    - name: Setup Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'temurin'
+        java-version: '16'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.3.943'
+
+    - name: APT Update
+      run: sudo apt-get update
+
+    - name: Install Gnuplot
+      run: sudo apt-get install gnuplot
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v1
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
         password: ${{ secrets.CR_PAT }}
-
-    - name: Setup Java
-      uses: actions/setup-java@v2
-      with:
-        distribution: 'zulu'
-        java-version: 11
-
-    - name: Download Synthea
-      run: curl -sLO https://github.com/synthetichealth/synthea/releases/download/v2.7.0/synthea-with-dependencies.jar
-
-    - name: Generate Data
-      run: java -jar synthea-with-dependencies.jar -p 100
-
-    - name: Install Blazectl
-      run: .github/scripts/install-blazectl.sh
 
     - name: Run Zookeeper, Kafka, Cassandra and Blaze
       run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
@@ -457,14 +480,20 @@ jobs:
     - name: Docker Logs Cassandra 2
       run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
 
-    - name: Docker Logs Blaze
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze
+    - name: Docker Logs Blaze 1
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-1
+
+    - name: Docker Logs Blaze 2
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-2
+
+    - name: Docker Stats
+      run: docker stats --no-stream
 
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement.sh
 
     - name: Load Data
-      run: blazectl --server http://localhost:8080/fhir upload output/fhir
+      run: blazectl --server http://localhost:8080/fhir upload .github/test-data
 
     - name: Count Resources
       run: blazectl --server http://localhost:8080/fhir count-resources
@@ -502,23 +531,44 @@ jobs:
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
+    - name: Search Observation _lastUpdated
+      run: .github/scripts/search-patient-last-updated.sh
+
+    - name: Search Observation _profile
+      run: .github/scripts/search-observation-profile.sh
+
+    - name: Search Compartment
+      run: .github/scripts/search-compartment.sh
+
     - name: Evaluate CQL Query 1
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql 56
+
+    - name: Evaluate CQL Query 1 on Individual Patients
+      run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
 
     - name: Evaluate CQL Query 7
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7-query.cql 81
 
     - name: Evaluate CQL Query 14
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
 
     - name: Evaluate CQL Query 15
-      run: ./evaluate-measure.sh -f modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql http://localhost:8080/fhir
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 33
 
     - name: Forwarded Header
       run: .github/scripts/forwarded-header.sh
 
     - name: X-Forwarded Headers
       run: .github/scripts/x-forwarded-headers.sh
+
+    - name: Delete
+      run: .github/scripts/delete.sh
+
+    - name: Batch
+      run: .github/scripts/batch.sh
+
+    - name: Docker Stats
+      run: docker stats --no-stream
