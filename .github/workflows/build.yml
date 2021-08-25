@@ -62,7 +62,6 @@ jobs:
 
         java-version:
         - '11'
-        - '15'
         - '16'
 
     runs-on: ubuntu-20.04
@@ -71,7 +70,7 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt'
+        distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
@@ -86,7 +85,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
+        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Test
       run: make -C modules/${{ matrix.module }} test
@@ -130,8 +129,8 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt'
-        java-version: '11'
+        distribution: 'temurin'
+        java-version: '16'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -145,7 +144,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-11-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
+        key: ${{ runner.os }}-temurin-16-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Test Coverage
       run: make -C modules/${{ matrix.module }} test-coverage
@@ -164,7 +163,6 @@ jobs:
       matrix:
         java-version:
         - '11'
-        - '15'
         - '16'
 
     runs-on: ubuntu-20.04
@@ -173,7 +171,7 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt'
+        distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
@@ -188,7 +186,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
+        key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
 
     - name: Test
       run: make test-root
@@ -201,8 +199,8 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt'
-        java-version: '11'
+        distribution: 'temurin'
+        java-version: '16'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -216,7 +214,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-maven-build-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-16-maven-build-${{ hashFiles('**/deps.edn') }}
 
     - name: Build Uberjar
       run: make uberjar
@@ -286,8 +284,8 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt'
-        java-version: '11'
+        distribution: 'temurin'
+        java-version: '16'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -402,6 +400,17 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
+    - name: Setup Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'temurin'
+        java-version: '16'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.3.943'
+
     - name: Check out Git repository
       uses: actions/checkout@v2
 
@@ -409,18 +418,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-11-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
-
-    - name: Setup Java
-      uses: actions/setup-java@v2
-      with:
-        distribution: 'adopt'
-        java-version: '11'
-
-    - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
-      with:
-        tools-deps: '1.10.3.943'
+        key: ${{ runner.os }}-temurin-16-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update
@@ -497,8 +495,8 @@ jobs:
     - name: Setup Java
       uses: actions/setup-java@v2
       with:
-        distribution: 'adopt'
-        java-version: '11'
+        distribution: 'temurin'
+        java-version: '16'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -637,6 +635,17 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
+    - name: Setup Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'temurin'
+        java-version: '16'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.3.943'
+
     - name: Check out Git repository
       uses: actions/checkout@v2
 
@@ -644,18 +653,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-11-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
-
-    - name: Setup Java
-      uses: actions/setup-java@v2
-      with:
-        distribution: 'adopt'
-        java-version: '11'
-
-    - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
-      with:
-        tools-deps: '1.10.3.943'
+        key: ${{ runner.os }}-temurin-16-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update
