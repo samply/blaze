@@ -7,6 +7,16 @@
     [blaze.interaction.util :as iu]))
 
 
+(defn- write? [{{:keys [method]} :request}]
+  (#{"POST" "PUT" "DELETE"} (type/value method)))
+
+
+(defn writes
+  "Returns only the writes from `entries`"
+  [entries]
+  (filterv write? entries))
+
+
 (defmulti entry-tx-op (fn [{{:keys [method]} :request}] (type/value method)))
 
 

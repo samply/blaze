@@ -16,10 +16,11 @@
 
 
 (defn preference
-  "Returns the value of the preference with `name` from Ring `headers`."
+  "Returns the value of the preference with `name` as keyword from `headers` or
+  nil if there is none."
   [headers name]
   (->> (hu/parse-header-value (get headers "prefer"))
-       (some #(when (= name (:name %)) (:value %)))))
+       (some #(when (= name (:name %)) (keyword (str "blaze.preference." name) (:value %))))))
 
 
 (defn- issue-code [category]

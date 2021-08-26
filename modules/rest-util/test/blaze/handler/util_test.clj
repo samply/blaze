@@ -23,7 +23,7 @@
 
 (deftest preference-test
   (are [headers res] (= res (handler-util/preference headers "return"))
-    {"prefer" "return=representation"} "representation"))
+    {"prefer" "return=representation"} :blaze.preference.return/representation))
 
 
 (deftest operation-outcome-test

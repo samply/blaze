@@ -512,6 +512,7 @@
                   (testing "entry response"
                     (given response
                       :status := "201"
+                      :location := #fhir/uri"base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/2"
                       :etag := "W/\"2\""
                       :lastModified := Instant/EPOCH))))))
 
@@ -558,6 +559,7 @@
                   (testing "entry response"
                     (given response
                       :status := "201"
+                      :location := #fhir/uri"base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/2"
                       :etag := "W/\"2\""
                       :lastModified := Instant/EPOCH)))))))
 
@@ -600,6 +602,7 @@
                   (testing "entry response"
                     (given response
                       :status := "200"
+                      :location := nil
                       :etag := "W/\"1\""
                       :lastModified := Instant/EPOCH))))))
 
@@ -685,9 +688,9 @@
                   (given response
                     :status := "204"
                     :etag := "W/\"2\""
-                    :lastModified := Instant/EPOCH))))))))
+                    :lastModified := Instant/EPOCH)))))))
 
-    #_(testing "and read interaction"
+      (testing "and read interaction"
         (testing "returns Not-Found on non-existing resource"
           (with-handler [handler]
             []
@@ -722,7 +725,7 @@
                     :fhir/type := :fhir/OperationOutcome
                     [:issue 0 :severity] := #fhir/code"error"
                     [:issue 0 :code] := #fhir/code"not-found"
-                    [:issue 0 :diagnostics] := "Resource `/Patient/0` not found"
+                    [:issue 0 :diagnostics] := "Resource `Patient/0` was not found."
                     [:issue 0 :expression 0] := "Bundle.entry[0]"))))))
 
         (testing "returns existing resource"
@@ -762,7 +765,7 @@
                 (given response
                   :status := "200"
                   :etag := "W/\"1\""
-                  :lastModified := Instant/EPOCH)))))))
+                  :lastModified := Instant/EPOCH))))))))
 
   (testing "On transaction bundle"
     (testing "on missing request"

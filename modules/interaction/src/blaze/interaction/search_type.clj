@@ -43,14 +43,14 @@
 
 
 (defn- handles-and-clauses
-  [{:keys [type] :preference/keys [handling] :or {handling "strict"}
+  [{:keys [type] :blaze.preference/keys [handling]
     {:keys [clauses page-id]} :params}
    db]
   (cond
     (empty? clauses)
     {:handles (type-list db type page-id)}
 
-    (= "strict" handling)
+    (identical? :blaze.preference.handling/strict handling)
     (when-ok [handles (type-query db type clauses page-id)]
       {:handles handles
        :clauses clauses})
@@ -177,14 +177,14 @@
 
 
 (defn- summary-total
-  [{:keys [type] :preference/keys [handling] :or {handling "strict"}
+  [{:keys [type] :blaze.preference/keys [handling]
     {:keys [clauses]} :params}
    db]
   (cond
     (empty? clauses)
     {:total (d/type-total db type)}
 
-    (= "strict" handling)
+    (identical? :blaze.preference.handling/strict handling)
     (when-ok [handles (d/type-query db type clauses)]
       {:total (count handles)
        :clauses clauses})
@@ -222,13 +222,15 @@
     ::reitit/keys [router]}]
   (let [handling (handler-util/preference headers "handling")]
     (when-ok [params (params/decode handling params)]
-      (assoc context
-        :base-url base-url
-        :router router
-        :match match
-        :type type
-        :preference/handling handling
-        :params params))))
+      (cond->
+        (assoc context
+          :base-url base-url
+          :router router
+          :match match
+          :type type
+          :params params)
+        handling
+        (assoc :blaze.preference/handling handling)))))
 
 
 (defn- handler [context]

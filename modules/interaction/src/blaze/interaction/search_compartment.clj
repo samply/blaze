@@ -21,14 +21,14 @@
 
 
 (defn- handles-and-clauses
-  [{:keys [code id type] :preference/keys [handling] :or {handling "strict"}
+  [{:keys [code id type] :blaze.preference/keys [handling]
     {:keys [clauses]} :params}
    db]
   (cond
     (empty? clauses)
     {:handles (into [] (d/list-compartment-resource-handles db code id type))}
 
-    (= "strict" handling)
+    (identical? :blaze.preference.handling/strict handling)
     (when-ok [handles (d/compartment-query db code id type clauses)]
       {:handles (into [] handles)
        :clauses clauses})
@@ -136,15 +136,17 @@
     :else
     (let [handling (handler-util/preference headers "handling")]
       (when-ok [params (params/decode handling params)]
-        (assoc context
-          :base-url base-url
-          :router router
-          :match match
-          :code code
-          :id id
-          :type type
-          :preference/handling handling
-          :params params)))))
+        (cond->
+          (assoc context
+            :base-url base-url
+            :router router
+            :match match
+            :code code
+            :id id
+            :type type
+            :params params)
+          handling
+          (assoc :blaze.preference/handling handling))))))
 
 
 (defn- handler [context]

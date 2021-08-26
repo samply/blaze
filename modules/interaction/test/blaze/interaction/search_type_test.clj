@@ -307,6 +307,126 @@
 
                 (testing "has a self link"
                   (is (= #fhir/uri"base-url-113047/Patient?active=true&_summary=count&_count=50&__t=1"
+                         (link-url body "self"))))))))))
+
+    (testing "with default handling"
+      (testing "returns results with a self link lacking the unknown search parameter"
+        (testing "where the unknown search parameter is the only one"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (testing "normal result"
+              (let [{:keys [status body]}
+                    @(handler
+                       {::reitit/match patient-match
+                        :params {"foo" "bar"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle id is an LUID"
+                  (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 1"
+                  (is (= #fhir/unsignedInt 1 (:total body))))
+
+                (testing "the bundle contains one entry"
+                  (is (= 1 (count (:entry body)))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"base-url-113047/Patient?_count=50&__t=1&__page-id=0"
+                         (link-url body "self"))))))
+
+            (testing "summary result"
+              (let [{:keys [status body]}
+                    @(handler
+                       {::reitit/match patient-match
+                        :params {"foo" "bar" "_summary" "count"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle id is an LUID"
+                  (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 1"
+                  (is (= #fhir/unsignedInt 1 (:total body))))
+
+                (testing "the bundle contains no entries"
+                  (is (empty? (:entry body))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"base-url-113047/Patient?_summary=count&_count=50&__t=1"
+                         (link-url body "self"))))))))
+
+        (testing "with another search parameter"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]
+              [:put {:fhir/type :fhir/Patient :id "1"
+                     :active true}]]]
+
+            (testing "normal result"
+              (let [{:keys [status body]}
+                    @(handler
+                       {::reitit/match patient-match
+                        :params {"foo" "bar" "active" "true"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle id is an LUID"
+                  (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 1"
+                  (is (= #fhir/unsignedInt 1 (:total body))))
+
+                (testing "the bundle contains one entry"
+                  (is (= 1 (count (:entry body)))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"base-url-113047/Patient?active=true&_count=50&__t=1&__page-id=1"
+                         (link-url body "self"))))))
+
+            (testing "summary result"
+              (let [{:keys [status body]}
+                    @(handler
+                       {::reitit/match patient-match
+                        :params {"foo" "bar" "active" "true" "_summary" "count"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle id is an LUID"
+                  (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 1"
+                  (is (= #fhir/unsignedInt 1 (:total body))))
+
+                (testing "the bundle contains no entries"
+                  (is (empty? (:entry body))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"base-url-113047/Patient?active=true&_summary=count&_count=50&__t=1"
                          (link-url body "self")))))))))))
 
   (testing "with one patient"

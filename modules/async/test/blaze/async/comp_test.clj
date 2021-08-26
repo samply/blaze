@@ -161,6 +161,21 @@
     (is (= 1 @f'))))
 
 
+(deftest then-compose-async-test
+  (testing "with default executor"
+    (let [f (ac/future)
+          f' (ac/then-compose-async f ac/completed-future)]
+      (ac/complete! f 1)
+      (is (= 1 @f'))))
+
+  (testing "with custom executor"
+    (let [f (ac/future)
+          f' (ac/then-compose-async f ac/completed-future
+                                    (ex/single-thread-executor))]
+      (ac/complete! f 1)
+      (is (= 1 @f')))))
+
+
 (deftest handle-test
   (testing "with success"
     (let [f (ac/future)

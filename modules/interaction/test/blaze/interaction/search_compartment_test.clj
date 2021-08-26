@@ -323,6 +323,146 @@
 
                 (testing "has a self link"
                   (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
+                         (link-url body "self"))))))))))
+
+    (testing "with default handling"
+      (testing "returns results with a self link lacking the unknown search parameter"
+        (testing "where the unknown search parameter is the only one"
+          (testing "normal result"
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                [:put {:fhir/type :fhir/Observation :id "0"
+                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+              (let [{:keys [status body]}
+                    @(handler
+                       {:path-params {:id "0" :type "Observation"}
+                        :params {"foo" "bar"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle contains an id"
+                  (is (string? (:id body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 1"
+                  (is (= #fhir/unsignedInt 1 (:total body))))
+
+                (testing "the bundle contains one entry"
+                  (is (= 1 (count (:entry body)))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+                         (link-url body "self")))))))
+
+          (testing "summary result"
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                [:put {:fhir/type :fhir/Observation :id "0"
+                       :subject
+                       #fhir/Reference
+                           {:reference "Patient/0"}}]]]
+
+              (let [{:keys [status body]}
+                    @(handler
+                       {:path-params {:id "0" :type "Observation"}
+                        :params {"foo" "bar" "_summary" "count"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle contains an id"
+                  (is (string? (:id body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 1"
+                  (is (= #fhir/unsignedInt 1 (:total body))))
+
+                (testing "the bundle contains no entries"
+                  (is (empty? (:entry body))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
+                         (link-url body "self"))))))))
+
+        (testing "with another search parameter"
+          (testing "normal result"
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                [:put {:fhir/type :fhir/Observation :id "0"
+                       :status #fhir/code"final"
+                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                [:put {:fhir/type :fhir/Observation :id "1"
+                       :status #fhir/code"preliminary"
+                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+              (let [{:keys [status body]}
+                    @(handler
+                       {:path-params {:id "0" :type "Observation"}
+                        :params {"foo" "bar" "status" "preliminary"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 1"
+                  (is (= #fhir/unsignedInt 1 (:total body))))
+
+                (testing "the bundle contains one entry"
+                  (is (= 1 (count (:entry body)))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
+                         (link-url body "self")))))))
+
+          (testing "summary result"
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"}]
+                [:put {:fhir/type :fhir/Observation :id "0"
+                       :status #fhir/code"final"
+                       :subject
+                       #fhir/Reference
+                           {:reference "Patient/0"}}]
+                [:put {:fhir/type :fhir/Observation :id "1"
+                       :status #fhir/code"preliminary"
+                       :subject
+                       #fhir/Reference
+                           {:reference "Patient/0"}}]]]
+
+              (let [{:keys [status body]}
+                    @(handler
+                       {:path-params {:id "0" :type "Observation"}
+                        :params {"foo" "bar" "status" "preliminary" "_summary" "count"}})]
+
+                (is (= 200 status))
+
+                (testing "the body contains a bundle"
+                  (is (= :fhir/Bundle (:fhir/type body))))
+
+                (testing "the bundle type is searchset"
+                  (is (= #fhir/code"searchset" (:type body))))
+
+                (testing "the total count is 1"
+                  (is (= #fhir/unsignedInt 1 (:total body))))
+
+                (testing "the bundle contains no entries"
+                  (is (empty? (:entry body))))
+
+                (testing "has a self link"
+                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
                          (link-url body "self")))))))))))
 
   (testing "Returns an empty Bundle on Non-Existing Compartment"

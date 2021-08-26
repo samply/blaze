@@ -37,9 +37,9 @@
         created (or (nil? old-handle) (identical? :delete (:op old-handle)))]
     (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
     (-> (cond
-          (= "minimal" return-preference)
+          (identical? :blaze.preference.return/minimal return-preference)
           (ac/completed-future nil)
-          (= "OperationOutcome" return-preference)
+          (identical? :blaze.preference.return/OperationOutcome return-preference)
           (ac/completed-future {:fhir/type :fhir/OperationOutcome})
           :else
           (d/pull db new-handle))

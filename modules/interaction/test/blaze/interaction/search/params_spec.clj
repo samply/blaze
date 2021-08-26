@@ -10,6 +10,6 @@
 
 
 (s/fdef params/decode
-  :args (s/cat :handling (s/nilable string?)
+  :args (s/cat :handling (s/nilable (s/and keyword? #(= "blaze.preference.handling" (namespace %))))
                :query-params (s/nilable :ring.request/query-params))
   :ret ::params)

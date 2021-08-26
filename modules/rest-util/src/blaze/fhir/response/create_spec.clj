@@ -9,7 +9,7 @@
 (s/fdef create/build-response
   :args (s/cat :base-url string?
                :router reitit/router?
-               :return-preference (s/nilable string?)
+               :return-preference (s/nilable (s/and keyword? #(= "blaze.preference.return" (namespace %))))
                :db :blaze.db/db
                :old-handle (s/nilable :blaze.db/resource-handle)
                :new-handle :blaze.db/resource-handle))

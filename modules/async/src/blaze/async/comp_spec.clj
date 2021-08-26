@@ -100,6 +100,12 @@
   :ret ac/completion-stage?)
 
 
+(s/fdef ac/then-compose-async
+  :args (s/cat :stage ac/completion-stage? :f fn?
+               :executor (s/? ex/executor?))
+  :ret ac/completion-stage?)
+
+
 (s/fdef ac/handle
   :args (s/cat :stage ac/completion-stage? :f fn?)
   :ret ac/completion-stage?)

@@ -89,7 +89,8 @@
             [:direct :forward "Observation" 0 :code] := "encounter"))
 
         (testing "with strict handling"
-          (given (include/include-defs "strict" {"_include" "Observation"})
+          (given (include/include-defs :blaze.preference.handling/strict
+                                       {"_include" "Observation"})
             ::anom/category := ::anom/incorrect
             ::anom/message := "Missing search parameter code in _include search parameter with source type `Observation`.")))
 
@@ -97,7 +98,8 @@
         (is (nil? (include/include-defs nil {"_include:iterate" "Observation"})))
 
         (testing "with strict handling"
-          (given (include/include-defs "strict" {"_include:iterate" "Observation"})
+          (given (include/include-defs :blaze.preference.handling/strict
+                                       {"_include:iterate" "Observation"})
             ::anom/category := ::anom/incorrect
             ::anom/message := "Missing search parameter code in _include search parameter with source type `Observation`."))))
 
@@ -113,7 +115,8 @@
             [:direct :reverse :any 0 :code] := "encounter"))
 
         (testing "with strict handling"
-          (given (include/include-defs "strict" {"_revinclude" "Observation"})
+          (given (include/include-defs :blaze.preference.handling/strict
+                                       {"_revinclude" "Observation"})
             ::anom/category := ::anom/incorrect
             ::anom/message := "Missing search parameter code in _include search parameter with source type `Observation`.")))
 
@@ -121,6 +124,7 @@
         (is (nil? (include/include-defs nil {"_revinclude:iterate" "Observation"})))
 
         (testing "with strict handling"
-          (given (include/include-defs "strict" {"_revinclude:iterate" "Observation"})
+          (given (include/include-defs :blaze.preference.handling/strict
+                                       {"_revinclude:iterate" "Observation"})
             ::anom/category := ::anom/incorrect
             ::anom/message := "Missing search parameter code in _include search parameter with source type `Observation`."))))))
