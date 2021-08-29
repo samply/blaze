@@ -3,6 +3,7 @@
     [blaze.db.api-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
+    [blaze.interaction.util :as iu]
     [reitit.core :as reitit])
   (:import
     [java.time Instant OffsetDateTime]
@@ -42,13 +43,13 @@
   `query-params` and the extra paging params calculated from `t`, `page-t`,
   `type` and `id`."
   {:arglists
-   '([base-url match query-params t page-t]
-     [base-url match query-params t page-t id]
-     [base-url match query-params t page-t type id])}
-  [base-url match query-params t page-t & more]
+   '([context query-params t page-t]
+     [context query-params t page-t id]
+     [context query-params t page-t type id])}
+  [{:blaze/keys [base-url db] ::reitit/keys [match]} query-params page-t & more]
   (let [path (reitit/match->path
                match
-               (cond-> (assoc query-params "__t" t "__page-t" page-t)
+               (cond-> (assoc query-params "__t" (iu/t db) "__page-t" page-t)
                  (= 1 (count more))
                  (assoc "__page-id" (first more))
                  (= 2 (count more))
@@ -63,10 +64,10 @@
     :delete #fhir/code"DELETE"}))
 
 
-(defn- url [base-url router type id resource]
+(defn- url [context type id resource]
   (if (-> resource meta :blaze.db/op #{:create})
-    (fhir-util/type-url base-url router type)
-    (fhir-util/instance-url base-url router type id)))
+    (fhir-util/type-url context type)
+    (fhir-util/instance-url context type id)))
 
 
 (defn- status [resource]
@@ -78,13 +79,14 @@
       (if (= 1 (-> meta :blaze.db/num-changes)) "201" "200"))))
 
 
-(defn build-entry [base-url router {:fhir/keys [type] :keys [id] :as resource}]
+(defn build-entry [context {:fhir/keys [type] :keys [id] :as resource}]
   (cond->
-    {:fullUrl (type/->Uri (fhir-util/instance-url base-url router (name type) id))
+    {:fullUrl (type/->Uri (fhir-util/instance-url context (name type) id))
      :request
      {:fhir/type :fhir.Bundle.entry/request
       :method (method resource)
-      :url (type/->Uri (url "" router (name type) id resource))}
+      :url (type/->Uri (url (assoc context :blaze/base-url "") (name type) id
+                            resource))}
      :response
      {:fhir/type :fhir.Bundle.entry/response
       :status (status resource)

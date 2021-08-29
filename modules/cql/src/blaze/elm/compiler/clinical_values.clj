@@ -1,12 +1,11 @@
 (ns blaze.elm.compiler.clinical-values
   "3. Clinical Values"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.date-time :as date-time]
-    [blaze.elm.quantity :as quantity]
-    [cognitect.anomalies :as anom]))
+    [blaze.elm.quantity :as quantity]))
 
 
 (defn- find-code-system-def
@@ -17,17 +16,20 @@
 
 
 ;; 3.1. Code
+(defn- code-system-not-found-anom [name context expression]
+  (ba/not-found
+    (format "Can't find the code system `%s`." name)
+    :context context
+    :expression expression))
+
+
 (defmethod core/compile* :elm.compiler.type/code
   [{:keys [library] :as context}
    {{system-name :name} :system :keys [code] :as expression}]
   ;; TODO: look into other libraries (:libraryName)
   (if-let [{system :id :keys [version]} (find-code-system-def library system-name)]
     (code/to-code system version code)
-    (throw-anom
-      ::anom/not-found
-      (format "Can't find the code system `%s`." system-name)
-      :context context
-      :expression expression)))
+    (throw-anom (code-system-not-found-anom system-name context expression))))
 
 
 ;; 3.2. CodeDef

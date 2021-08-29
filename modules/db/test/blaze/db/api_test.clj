@@ -1,7 +1,8 @@
 (ns blaze.db.api-test
   "Main high-level test of all database API functions."
   (:require
-    [blaze.anomaly :refer [ex-anom when-ok]]
+    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
     [blaze.coll.core :as coll]
@@ -26,7 +27,7 @@
     [blaze.db.tx-log.local-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.log]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :refer [given-failed-future with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -49,13 +50,6 @@
 
 
 (test/use-fixtures :each fixture)
-
-
-(defmacro catch-cause-ex-data [& body]
-  `(try
-     ~@body
-     (catch Exception e#
-       (ex-data (ex-cause e#)))))
 
 
 (def system
@@ -134,7 +128,7 @@
     rs/ResourceLookup
     rs/ResourceStore
     (-put [_ _]
-      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))))
+      (ac/completed-future {::anom/category ::anom/fault}))))
 
 
 (def resource-store-failing-on-put-system
@@ -278,13 +272,12 @@
                      :birthDate #fhir/date"2020"}]])
 
           (testing "causes a transaction abort with conflict"
-            (given
-              (catch-cause-ex-data
-                @(d/transact
-                   node
-                   [[:create
-                     {:fhir/type :fhir/Patient :id "1"}
-                     [["birthdate" "2020"]]]]))
+            (given-failed-future
+              (d/transact
+                node
+                [[:create
+                  {:fhir/type :fhir/Patient :id "1"}
+                  [["birthdate" "2020"]]]])
               ::anom/category := ::anom/conflict))))
 
       (testing "on deleting the matching Patient"
@@ -295,14 +288,13 @@
                      :identifier [#fhir/Identifier{:value "153229"}]}]])
 
           (testing "causes a transaction abort with conflict"
-            (given
-              (catch-cause-ex-data
-                @(d/transact
-                   node
-                   [[:create
-                     {:fhir/type :fhir/Patient :id "1"}
-                     [["identifier" "153229"]]]
-                    [:delete "Patient" "0"]]))
+            (given-failed-future
+              (d/transact
+                node
+                [[:create
+                  {:fhir/type :fhir/Patient :id "1"}
+                  [["identifier" "153229"]]]
+                 [:delete "Patient" "0"]])
               ::anom/category := ::anom/conflict))))))
 
   (testing "put"
@@ -419,23 +411,21 @@
   (testing "a transaction with duplicate resources fails"
     (testing "two puts"
       (with-system [{:blaze.db/keys [node]} system]
-        (given
-          (catch-cause-ex-data
-            @(d/transact
-               node
-               [[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:put {:fhir/type :fhir/Patient :id "0"}]]))
+        (given-failed-future
+          (d/transact
+            node
+            [[:put {:fhir/type :fhir/Patient :id "0"}]
+             [:put {:fhir/type :fhir/Patient :id "0"}]])
           ::anom/category := ::anom/incorrect
           ::anom/message := "Duplicate resource `Patient/0`.")))
 
     (testing "one put and one delete"
       (with-system [{:blaze.db/keys [node]} system]
-        (given
-          (catch-cause-ex-data
-            @(d/transact
-               node
-               [[:put {:fhir/type :fhir/Patient :id "0"}]
-                [:delete "Patient" "0"]]))
+        (given-failed-future
+          (d/transact
+            node
+            [[:put {:fhir/type :fhir/Patient :id "0"}]
+             [:delete "Patient" "0"]])
           ::anom/category := ::anom/incorrect
           ::anom/message := "Duplicate resource `Patient/0`."))))
 
@@ -447,14 +437,13 @@
            [[:create {:fhir/type :fhir/Patient :id "0" :active true}]]))
 
       (testing "updating that patient to active=false in a failing transaction"
-        (given
-          (catch-cause-ex-data
-            @(d/transact
-               node
-               [[:put {:fhir/type :fhir/Patient :id "0" :active false}]
-                [:create {:fhir/type :fhir/Observation :id "0"
-                          :subject
-                          #fhir/Reference{:reference "Patient/1"}}]]))
+        (given-failed-future
+          (d/transact
+            node
+            [[:put {:fhir/type :fhir/Patient :id "0" :active false}]
+             [:create {:fhir/type :fhir/Observation :id "0"
+                       :subject
+                       #fhir/Reference{:reference "Patient/1"}}]])
           ::anom/category := ::anom/conflict))
 
       (testing "creating a second patient in order to add a successful transaction on top"
@@ -476,25 +465,23 @@
     (testing "creating an Observation were the subject doesn't exist"
       (testing "create"
         (with-system [{:blaze.db/keys [node]} system]
-          (given
-            (catch-cause-ex-data
-              @(d/transact
-                 node
-                 [[:create
-                   {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}}]]))
+          (given-failed-future
+            (d/transact
+              node
+              [[:create
+                {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference "Patient/0"}}]])
             ::anom/category := ::anom/conflict
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))
 
       (testing "put"
         (with-system [{:blaze.db/keys [node]} system]
-          (given
-            (catch-cause-ex-data
-              @(d/transact
-                 node
-                 [[:put
-                   {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}}]]))
+          (given-failed-future
+            (d/transact
+              node
+              [[:put
+                {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference "Patient/0"}}]])
             ::anom/category := ::anom/conflict
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
@@ -505,18 +492,17 @@
            [[:create {:fhir/type :fhir/Observation :id "0"}]
             [:create {:fhir/type :fhir/Observation :id "1"}]])
 
-        (given
-          (catch-cause-ex-data
-            @(d/transact
-               node
-               [[:create
-                 {:fhir/type :fhir/List :id "0"
-                  :entry
-                  [{:fhir/type :fhir.List/entry
-                    :item #fhir/Reference{:reference "Observation/0"}}
-                   {:fhir/type :fhir.List/entry
-                    :item #fhir/Reference{:reference "Observation/1"}}]}]
-                [:delete "Observation" "1"]]))
+        (given-failed-future
+          (d/transact
+            node
+            [[:create
+              {:fhir/type :fhir/List :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference{:reference "Observation/0"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference{:reference "Observation/1"}}]}]
+             [:delete "Observation" "1"]])
           ::anom/category := ::anom/conflict
           ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
 
@@ -543,20 +529,18 @@
   (testing "with failing resource storage"
     (testing "on put"
       (with-system [{:blaze.db/keys [node]} resource-store-failing-on-put-system]
-        (given
-          (catch-cause-ex-data
-            @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
+        (given-failed-future
+          (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
           ::anom/category := ::anom/fault))))
 
   (testing "with failing resource indexer"
     (with-redefs
       [resource-indexer/index-resources
        (fn [_ _ _]
-         (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
+         (ac/completed-future {::anom/category ::anom/fault ::x ::y}))]
       (with-system [{:blaze.db/keys [node]} system]
-        (given
-          (catch-cause-ex-data
-            @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))
+        (given-failed-future
+          (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
           ::anom/category := ::anom/fault
           ::x ::y)))))
 

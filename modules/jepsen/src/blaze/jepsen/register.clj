@@ -1,11 +1,11 @@
 (ns blaze.jepsen.register
   (:refer-clojure :exclude [read])
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.jepsen.util :as u]
     [clojure.tools.logging :refer [info]]
-    [cognitect.anomalies :as anom]
     [hato.client :as hc]
     [jepsen.checker :as checker]
     [jepsen.cli :as cli]
@@ -28,11 +28,7 @@
 (defn read [{:keys [base-uri] :as context} id]
   @(-> (fhir-client/read base-uri "Patient" id context)
        (ac/then-apply :multipleBirth)
-       (ac/exceptionally
-         (comp
-           #(when-not (= ::anom/not-found (::anom/category (ex-data %)))
-              (throw %))
-           ex-cause))))
+       (ac/exceptionally #(when-not (ba/not-found? %) %))))
 
 
 (defn write! [{:keys [base-uri] :as context} id value]

@@ -1,7 +1,8 @@
 (ns blaze.fhir-client.impl
   (:refer-clojure :exclude [update])
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.async.flow :as flow]
     [blaze.fhir.spec :as fhir-spec]
@@ -43,27 +44,32 @@
 
 
 (defn- anomaly [e]
-  (let [response (ex-data e)]
-    (cond-> (anomaly* response)
-      (identical? :fhir/OperationOutcome (-> response :body fhir-spec/fhir-type))
-      (assoc :fhir/issues (-> response :body :issue)))))
+  (let [data (ex-data e)]
+    (if (ba/anomaly? data)
+      (assoc data ::anom/category ::anom/fault)
+      (cond-> (anomaly* data)
+        (identical? :fhir/OperationOutcome (-> data :body fhir-spec/fhir-type))
+        (assoc :fhir/issues (-> data :body :issue))))))
 
 
 (defn- handle-error [e]
-  (throw (ex-anom (anomaly e))))
+  (ba/throw-when (anomaly e)))
 
 
 (defmethod hm/coerce-response-body :fhir
   [_ {:keys [body content-type] :as resp}]
   (let [charset (or (-> resp :content-type-params :charset) "UTF-8")]
     (if (json? content-type)
-      (with-open [r (io/reader body :encoding charset)]
-        (assoc resp :body (fhir-spec/conform-json (fhir-spec/parse-json r))))
+      (ba/throw-when
+        (with-open [r (io/reader body :encoding charset)]
+          (when-ok [x (fhir-spec/parse-json r)
+                    resource (fhir-spec/conform-json x)]
+            (assoc resp :body resource))))
       resp)))
 
 
 (def ^:private cache-control
-  "Especially important with HAPI
+  "Especially important to HAPI
 
   See: https://hapifhir.io/hapi-fhir/docs/server_jpa/configuration.html#search-result-caching"
   {"cache-control" "no-cache"})

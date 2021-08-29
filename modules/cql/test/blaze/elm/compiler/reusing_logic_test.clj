@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler.reusing-logic-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
@@ -7,7 +8,8 @@
     [blaze.elm.quantity :as quantity]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]]))
 
 
 (st/instrument)
@@ -31,7 +33,10 @@
 ;; the result of evaluating the referenced NamedExpression.
 (deftest compile-expression-ref-test
   (testing "Throws error on missing expression"
-    (is (thrown-anom? ::anom/incorrect (c/compile {} #elm/expression-ref "name-170312"))))
+    (given (ba/try-anomaly (c/compile {} #elm/expression-ref "name-170312"))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Expression definition `name-170312` not found."
+      :context := {}))
 
   (testing "Result Type"
     (let [library {:statements {:def [{:name "name-170312" :resultTypeName "result-type-name-173029"}]}}

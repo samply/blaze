@@ -35,6 +35,7 @@ jobs:
       max-parallel: 8
       matrix:
         module:
+        - anomaly
         - async
         - coll
         - cql
@@ -55,6 +56,8 @@ jobs:
         - luid
         - openid-auth
         - operation-measure-evaluate-measure
+        - page-store
+        - page-store-cassandra
         - rest-api
         - rest-util
         - scheduler
@@ -96,9 +99,10 @@ jobs:
     needs: [ test ]
 
     strategy:
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         module:
+        - anomaly
         - async
         - coll
         - cql
@@ -118,6 +122,8 @@ jobs:
         - luid
         - openid-auth
         - operation-measure-evaluate-measure
+        - page-store
+        - page-store-cassandra
         - rest-api
         - rest-util
         - scheduler
@@ -326,35 +332,44 @@ jobs:
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
 
+    - name: Download Male Patient Resources
+      run: .github/scripts/download-resources-query.sh Patient "gender=male"
+
+    - name: Download Female Patient Resources
+      run: .github/scripts/download-resources-query.sh Patient "gender=female"
+
     - name: Download Patient Resources - Including Observation, Condition, Encounter and Procedure
       run: .github/scripts/revinclude.sh
 
     - name: Download Observation Resources
       run: .github/scripts/download-resources.sh Observation
 
+    - name: Download Observation Resources with special LOINC Codes
+      run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9"
+
     - name: Download Observation Resources - Including Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Encounter Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
 
     - name: Download Condition Resources
       run: .github/scripts/download-resources.sh Condition
 
     - name: Download Condition Resources - Including Subjects
-      run: blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
 
     - name: Download Condition Resources - Including Encounters
-      run: blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
 
     - name: Download DiagnosticReport Resources
       run: .github/scripts/download-resources.sh DiagnosticReport
 
     - name: Download MedicationRequest Resources - Including Medications
-      run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+      run: blazectl --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
     - name: Search Observation _lastUpdated
       run: .github/scripts/search-patient-last-updated.sh
@@ -564,35 +579,44 @@ jobs:
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
 
+    - name: Download Male Patient Resources
+      run: .github/scripts/download-resources-query.sh Patient "gender=male"
+
+    - name: Download Female Patient Resources
+      run: .github/scripts/download-resources-query.sh Patient "gender=female"
+
     - name: Download Patient Resources - Including Observation, Condition, Encounter and Procedure
       run: .github/scripts/revinclude.sh
 
     - name: Download Observation Resources
       run: .github/scripts/download-resources.sh Observation
 
+    - name: Download Observation Resources with special LOINC Codes
+      run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9"
+
     - name: Download Observation Resources - Including Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Encounter Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
 
     - name: Download Condition Resources
       run: .github/scripts/download-resources.sh Condition
 
     - name: Download Condition Resources - Including Subjects
-      run: blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
 
     - name: Download Condition Resources - Including Encounters
-      run: blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
 
     - name: Download DiagnosticReport Resources
       run: .github/scripts/download-resources.sh DiagnosticReport
 
     - name: Download MedicationRequest Resources - Including Medications
-      run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+      run: blazectl --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
     - name: Search Observation _lastUpdated
       run: .github/scripts/search-patient-last-updated.sh

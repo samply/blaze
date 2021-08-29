@@ -1,6 +1,6 @@
 (ns blaze.middleware.fhir.metrics
   (:require
-    [blaze.async.comp :as ac]
+    [blaze.async.comp :refer [do-sync]]
     [prometheus.alpha :as prom]))
 
 
@@ -45,18 +45,14 @@
 (defn wrap-observe-request-duration
   ([handler]
    (fn [request]
-     (-> (handler request)
-         (ac/then-apply
-           (fn [{:fhir/keys [interaction-name] :as response}]
-             (when (string? interaction-name)
-               (inc-requests-total! interaction-name request response)
-               (observe-request-duration-seconds! request interaction-name))
-             response)))))
+     (do-sync [{:fhir/keys [interaction-name] :as response} (handler request)]
+       (when (string? interaction-name)
+         (inc-requests-total! interaction-name request response)
+         (observe-request-duration-seconds! request interaction-name))
+       response)))
   ([handler interaction-name]
    (fn [request]
-     (-> (handler request)
-         (ac/then-apply
-           (fn [response]
-             (inc-requests-total! interaction-name request response)
-             (observe-request-duration-seconds! request interaction-name)
-             response))))))
+     (do-sync [response (handler request)]
+       (inc-requests-total! interaction-name request response)
+       (observe-request-duration-seconds! request interaction-name)
+       response))))

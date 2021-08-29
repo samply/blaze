@@ -81,11 +81,21 @@
                      :handler (-> interactions :history-type
                                   :blaze.rest-api.interaction/handler)}))]
      ["/_search"
-      (cond-> {:conflicting true}
+      (cond-> {:name (keyword name "search") :conflicting true}
         (contains? interactions :search-type)
         (assoc :post {:middleware [[wrap-db node]]
                       :handler (-> interactions :search-type
                                    :blaze.rest-api.interaction/handler)}))]
+     ["/__page"
+      (cond-> {:name (keyword name "page") :conflicting true}
+        (contains? interactions :search-type)
+        (assoc
+          :get {:middleware [[wrap-db node]]
+                :handler (-> interactions :search-type
+                             :blaze.rest-api.interaction/handler)}
+          :post {:middleware [[wrap-db node]]
+                 :handler (-> interactions :search-type
+                              :blaze.rest-api.interaction/handler)}))]
      ["/{id}"
       [""
        (cond->
@@ -181,7 +191,19 @@
              (conj wrap-auth-guard))}
           (some? history-system-handler)
           (assoc :get {:middleware [[wrap-db node]]
-                       :handler history-system-handler}))]]
+                       :handler history-system-handler}))]
+       ["/__page"
+        (cond->
+          {:middleware
+           (cond-> []
+             (seq auth-backends)
+             (conj wrap-auth-guard))}
+          (some? search-system-handler)
+          (assoc
+            :get {:middleware [[wrap-db node]]
+                  :handler search-system-handler}
+            :post {:middleware [[wrap-db node]]
+                   :handler search-system-handler}))]]
       (into
         (mapcat
           (fn [{:blaze.rest-api.operation/keys [code system-handler]}]

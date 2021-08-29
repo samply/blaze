@@ -2,6 +2,7 @@
   "https://cql.hl7.org/2019May/tests.html"
   (:refer-clojure :exclude [compile eval])
   (:require
+    [blaze.anomaly :refer [if-ok]]
     [blaze.cql-translator :refer [translate]]
     [blaze.cql-translator-spec]
     [blaze.elm.compiler :refer [compile]]
@@ -17,8 +18,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom])
+    [clojure.test :as test :refer [deftest is testing]])
   (:import
     [java.time OffsetDateTime]))
 
@@ -72,15 +72,14 @@
 
 
 (defn to-elm [cql]
-  (let [elm (to-source-elm cql)]
-    (if (::anom/category elm)
-      (throw (ex-info "CQL-to-ELM translation error" elm))
-      (-> elm
-          normalizer/normalize-library
-          equiv-relationships/find-equiv-rels-library
-          deps-infer/infer-library-deps
-          type-infer/infer-library-types
-          :statements :def first :expression))))
+  (if-ok [elm (to-source-elm cql)]
+    (-> elm
+        normalizer/normalize-library
+        equiv-relationships/find-equiv-rels-library
+        deps-infer/infer-library-deps
+        type-infer/infer-library-types
+        :statements :def first :expression)
+    #(throw (ex-info "CQL-to-ELM translation error" %))))
 
 
 (defn eval-elm [now elm]

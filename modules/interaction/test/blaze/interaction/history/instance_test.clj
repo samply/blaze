@@ -5,6 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.anomaly-spec]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.interaction.history.instance]
     [blaze.interaction.history.util-spec]
@@ -47,11 +48,11 @@
 
 
 (def match
-  {:data
-   {:blaze/base-url ""
-    :blaze/context-path ""
-    :fhir.resource/type "Patient"}
-   :path "/Patient/0/_history"})
+  (reitit/map->Match
+    {:data
+     {:blaze/base-url ""
+      :fhir.resource/type "Patient"}
+     :path "/Patient/0/_history"}))
 
 
 (deftest init-test

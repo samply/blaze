@@ -1,6 +1,7 @@
 {:lint-as
  {blaze.anomaly/when-ok clojure.core/let
-  blaze.anomaly/if-ok clojure.core/if-let
+  blaze.anomaly/if-ok clojure.core/let
+  blaze.async.comp/do-sync clojure.core/let
   blaze.db.api-stub/with-system-data clojure.core/with-open
   blaze.interaction.create-test/with-handler clojure.core/fn
   blaze.interaction.create-test/with-handler-data clojure.core/fn
@@ -20,7 +21,6 @@
   blaze.interaction.search-system-test/with-handler-data clojure.core/fn
   blaze.interaction.search-type-test/with-handler clojure.core/fn
   blaze.interaction.search-type-test/with-handler-data clojure.core/fn
-  blaze.interaction.transaction/do-sync clojure.core/let
   blaze.interaction.transaction-test/with-handler clojure.core/fn
   blaze.interaction.transaction-test/with-handler-data clojure.core/fn
   blaze.interaction.update-test/with-handler clojure.core/fn

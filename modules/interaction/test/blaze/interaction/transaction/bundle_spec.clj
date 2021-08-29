@@ -2,6 +2,7 @@
   (:require
     [blaze.db.spec]
     [blaze.interaction.transaction.bundle :as bundle]
+    [blaze.interaction.util-spec]
     [clojure.spec.alpha :as s]))
 
 

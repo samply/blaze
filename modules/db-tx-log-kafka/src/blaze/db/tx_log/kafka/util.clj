@@ -1,5 +1,6 @@
 (ns blaze.db.tx-log.kafka.util
   (:require
+    [blaze.db.tx-log.spec]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [taoensso.timbre :as log])

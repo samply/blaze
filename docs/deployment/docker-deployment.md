@@ -72,4 +72,3 @@ services:
 volumes:
   blaze-data:
 ```
-

@@ -3,7 +3,7 @@
 Download all Condition resources including their referenced Patient resources.
 
 ```sh
-$ blazectl --server http://localhost:8080/fhir download -t Condition \
+$ blazectl --server http://localhost:8080/fhir download Condition \
   -q '_include=Condition:subject&_count=1000' -o Condition-Patient.ndjson
   
 Pages		[total]			2779
@@ -20,7 +20,7 @@ Bytes In	[total, mean]		3.07 GiB, 1.13 MiB
 Download all Patient resources including all Condition resources that refer to them.
 
 ```sh
-blazectl --server http://localhost:8080/fhir download -t Patient \
+blazectl --server http://localhost:8080/fhir download Patient \
   -q '_revinclude=Condition:subject&_count=1000' \
   -o Patient-Condition.ndjson
 ```
@@ -28,7 +28,7 @@ blazectl --server http://localhost:8080/fhir download -t Patient \
 Download all Patient resources including all Condition, Observation and Procedure resources that refer to them.
 
 ```sh
-blazectl --server http://localhost:8080/fhir download -t Patient \
+blazectl --server http://localhost:8080/fhir download Patient \
   -q '_revinclude=Condition:subject&_revinclude=Observation:subject&_revinclude=Procedure:subject&_count=1000' \
   -o Patient-Condition-Observation-Procedure.ndjson
 ```

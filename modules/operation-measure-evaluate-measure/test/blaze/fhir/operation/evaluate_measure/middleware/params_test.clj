@@ -29,7 +29,7 @@
 (def handler (-> (params/wrap-coerce-params ac/completed-future) wrap-error))
 
 
-(deftest wrap-coerce-params
+(deftest wrap-coerce-params-test
   (testing "period start"
     (testing "missing"
       (let [{:keys [status body]}

@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.composite
   (:require
-    [blaze.anomaly :as ba :refer [conj-anom if-ok when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param.composite.token-quantity :as tq]
     [blaze.db.impl.search-param.composite.token-token :as tt]
@@ -22,8 +23,9 @@
 
 (defn- resolve-search-params [index components]
   (transduce
-    (map #(resolve-search-param index %))
-    conj-anom
+    (comp (map (partial resolve-search-param index))
+          (halt-when ba/anomaly?))
+    conj
     []
     components))
 
@@ -36,8 +38,9 @@
 
 (defn- compile-expressions [components]
   (transduce
-    (map compile-expression)
-    conj-anom
+    (comp (map compile-expression)
+          (halt-when ba/anomaly?))
+    conj
     []
     components))
 

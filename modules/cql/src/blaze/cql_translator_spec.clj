@@ -1,5 +1,6 @@
 (ns blaze.cql-translator-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.cql-translator :as cql-translator]
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]))

@@ -1,6 +1,5 @@
 (ns blaze.db.node-test
   (:require
-    [blaze.anomaly :refer [ex-anom]]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
     [blaze.db.api :as d]
@@ -101,9 +100,9 @@
   (reify
     rs/ResourceLookup
     (-get [_ _]
-      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))
+      (ac/completed-future {::anom/category ::anom/fault}))
     (-multi-get [_ _]
-      (ac/failed-future (ex-anom {::anom/category ::anom/fault})))
+      (ac/completed-future {::anom/category ::anom/fault}))
     rs/ResourceStore
     (-put [_ _]
       (ac/completed-future nil))))
@@ -169,7 +168,7 @@
       (with-redefs
         [resource-indexer/index-resources
          (fn [_ _ _]
-           (ac/failed-future (ex-anom {::anom/category ::anom/fault ::x ::y})))]
+           (ac/completed-future {::anom/category ::anom/fault ::x ::y}))]
         (with-system [{:blaze.db/keys [node]} system]
           (try
             @(-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])

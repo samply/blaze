@@ -1,13 +1,12 @@
 (ns blaze.fhir.spec.impl
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.util :as u]
     [clojure.alpha.spec :as s]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
-    [cognitect.anomalies :as anom]
     [cuerdas.core :as str])
   (:import
     [java.net URLEncoder]
@@ -105,7 +104,7 @@
     "http://hl7.org/fhirpath/System.Integer" `int?
     "http://hl7.org/fhirpath/System.Decimal" `decimal?
     "http://hl7.org/fhirpath/System.Boolean" `boolean?
-    (throw-anom ::anom/unsupported (format "Unsupported system type `%s`." code))))
+    (throw-anom (ba/unsupported (format "Unsupported system type `%s`." code)))))
 
 
 

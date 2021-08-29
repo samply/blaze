@@ -1,5 +1,6 @@
 (ns blaze.db.node.transaction-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.db.node.transaction :as tx]
     [blaze.db.tx-log.spec]
     [blaze.fhir.hash.spec]

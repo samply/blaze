@@ -1,4 +1,8 @@
-{:linters
+{:lint-as
+ {blaze.anomaly/when-ok clojure.core/let
+  blaze.anomaly/if-ok clojure.core/let}
+
+ :linters
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in

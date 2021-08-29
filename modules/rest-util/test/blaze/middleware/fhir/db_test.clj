@@ -7,10 +7,10 @@
     [blaze.db.api :as d]
     [blaze.middleware.fhir.db :as db]
     [blaze.middleware.fhir.db-spec]
+    [blaze.test-util :refer [given-failed-future]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+    [cognitect.anomalies :as anom])
   (:import
     [java.util.concurrent TimeUnit]))
 
@@ -29,12 +29,6 @@
 
 
 (def handler (comp ac/completed-future :blaze/db))
-
-
-(defn- wrap-error [handler]
-  (fn [request]
-    (-> (handler request)
-        (ac/exceptionally ex-cause))))
 
 
 (deftest wrap-db-test
@@ -91,17 +85,5 @@
            (assert (= ::node node))
            (ac/supply-async (constantly ::db) (ac/delayed-executor 3 TimeUnit/SECONDS)))]
 
-        (given @((-> handler (db/wrap-db ::node) wrap-error) {})
-          [ex-data ::anom/category] := ::anom/busy)))
-
-    (testing "returns other errors"
-      (with-redefs
-        [d/sync
-         (fn [node]
-           (assert (= ::node node))
-           (ac/completed-future ::db))]
-
-        (given @((-> (fn [_] (ac/failed-future (Exception. "msg-114913")))
-                  (db/wrap-db ::node)
-                  wrap-error) {})
-          ex-message := "msg-114913")))))
+        (given-failed-future ((db/wrap-db handler ::node) {})
+          ::anom/category := ::anom/busy)))))

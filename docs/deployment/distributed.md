@@ -153,6 +153,7 @@ The first Cassandra node contains the following startup script, which initialize
 ```text
 CREATE KEYSPACE blaze WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor' : 3};
 CREATE TABLE blaze.resources (hash text PRIMARY KEY, content blob);
+CREATE TABLE blaze.clauses ("token" text PRIMARY KEY, content blob);
 ```
 
 The keyspace has an replication factor of three, which means that every table row is replicated three times. While a replication factor of two will work for Blaze, a replication factor of three is recommended, because it will allow for two nodes to fail for reads and one node for writes.

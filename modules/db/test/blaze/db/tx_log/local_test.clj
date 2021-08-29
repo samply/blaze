@@ -1,6 +1,5 @@
 (ns blaze.db.tx-log.local-test
   (:require
-    [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
@@ -13,10 +12,11 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.log]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [java-time :as time]
     [jsonista.core :as j]
@@ -245,10 +245,10 @@
 
     (testing "with failing kv-store"
       (with-system [{tx-log ::tx-log/local} failing-kv-store-system]
-        (-> (let [result @(-> (tx-log/submit tx-log [{:op "create" :type "Patient"
-                                                      :id "0" :hash patient-hash-0}])
-                              (ac/exceptionally (comp ex-message ex-cause)))]
-              (is (= "put-error" result))))
+        (-> (given-failed-future
+              (tx-log/submit tx-log [{:op "create" :type "Patient"
+                                      :id "0" :hash patient-hash-0}])
+              ::anom/message := "put-error"))
 
         (with-open [queue (tx-log/new-queue tx-log 1)]
           (is (empty? (tx-log/poll! queue (time/millis 10)))))))))

@@ -1,5 +1,6 @@
 (ns blaze.elm.quantity-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.elm.quantity :as q]
     [clojure.spec.alpha :as s])
   (:import

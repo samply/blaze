@@ -1,7 +1,7 @@
 (ns blaze.db.node.validation
   (:require
-    [blaze.fhir.spec :as fhir-spec]
-    [cognitect.anomalies :as anom]))
+    [blaze.anomaly :as ba]
+    [blaze.fhir.spec :as fhir-spec]))
 
 
 (defmulti extract-type-id first)
@@ -23,9 +23,9 @@
 
 
 (defn- duplicate-resource-anomaly [[type id]]
-  {::anom/category ::anom/incorrect
-   ::anom/message (format "Duplicate resource `%s/%s`." type id)
-   :fhir/issue "invariant"})
+  (ba/incorrect
+    (format "Duplicate resource `%s/%s`." type id)
+    :fhir/issue "invariant"))
 
 
 (defn validate-ops
@@ -37,7 +37,7 @@
     (map extract-type-id)
     (fn
       ([res]
-       (when (::anom/category res) res))
+       (when (ba/anomaly? res) res))
       ([index type-id]
        (if (contains? index type-id)
          (reduced (duplicate-resource-anomaly type-id))

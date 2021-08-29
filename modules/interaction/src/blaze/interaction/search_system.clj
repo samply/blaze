@@ -3,8 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.async.comp :as ac]
+    [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
@@ -14,6 +13,7 @@
     [blaze.interaction.search.util :as search-util]
     [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.page-store.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -21,19 +21,19 @@
     [taoensso.timbre :as log]))
 
 
-(defn- handles [{{:keys [page-type page-id]} :params} db]
+(defn- handles* [{:blaze/keys [db] {:keys [page-type page-id]} :params}]
   (if (and page-type page-id)
     (d/system-list db page-type page-id)
     (d/system-list db)))
 
 
-(defn- entries
-  [{:keys [base-url router] {:keys [page-size]} :params :as context} db]
-  (let [handles (handles context db)]
-    (-> (d/pull-many db (into [] (take (inc page-size)) handles))
-        (ac/then-apply
-          (fn [resources]
-            (mapv #(search-util/entry base-url router %) resources))))))
+(defn- handles [{{:keys [page-size]} :params :as context}]
+  (into [] (take (inc page-size)) (handles* context)))
+
+
+(defn- entries [{:blaze/keys [db] :as context}]
+  (do-sync [resources (d/pull-many db (handles context))]
+    (mapv (partial search-util/entry context) resources)))
 
 
 (defn- self-link-offset [[{first-resource :resource}]]
@@ -41,10 +41,10 @@
     {"__page-type" (name type) "__page-id" id}))
 
 
-(defn- self-link [{:keys [base-url match params]} t entries]
+(defn- self-link [{:keys [match params] :blaze/keys [base-url db]} entries]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url base-url match params [] t
+   :url (type/->Uri (nav/url base-url match params [] (iu/t db)
                              (self-link-offset entries)))})
 
 
@@ -53,74 +53,79 @@
     {"__page-type" (name type) "__page-id" id}))
 
 
-(defn- next-link [{:keys [base-url match params]} t entries]
-  {:fhir/type :fhir.Bundle/link
-   :relation "next"
-   :url (type/->Uri (nav/url base-url match params [] t
-                             (next-link-offset entries)))})
+(defn- next-link
+  [{:keys [page-store page-match params] :blaze/keys [base-url db]} entries]
+  (do-sync [url (nav/token-url page-store base-url page-match params []
+                               (iu/t db) (next-link-offset entries))]
+    {:fhir/type :fhir.Bundle/link
+     :relation "next"
+     :url (type/->Uri url)}))
 
 
-(defn- search-normal [{:keys [params] :as context} db]
-  (let [t (or (d/as-of-t db) (d/basis-t db))]
-    (-> (entries context db)
-        (ac/then-apply
-          (fn [entries]
-            (let [page-size (:page-size params)]
-              (cond->
-                {:fhir/type :fhir/Bundle
-                 :id (iu/luid context)
-                 :type #fhir/code"searchset"
-                 :total (type/->UnsignedInt (d/system-total db))
-                 :entry (if (< page-size (count entries))
-                          (pop entries)
-                          entries)
-                 :link [(self-link context t entries)]}
-
-                (< page-size (count entries))
-                (update :link conj (next-link context t entries)))))))))
+(defn- normal-bundle
+  [{:blaze/keys [db] {:keys [page-size]} :params :as context} entries]
+  {:fhir/type :fhir/Bundle
+   :id (iu/luid context)
+   :type #fhir/code"searchset"
+   :total (type/->UnsignedInt (d/system-total db))
+   :entry (if (< page-size (count entries))
+            (pop entries)
+            entries)
+   :link [(self-link context entries)]})
 
 
-(defn- search-summary [context db]
+(defn- search-normal [{{:keys [page-size]} :params :as context}]
+  (-> (entries context)
+      (ac/then-compose
+        (fn [entries]
+          (if (< page-size (count entries))
+            (do-sync [next-link (next-link context entries)]
+              (-> (normal-bundle context entries)
+                  (update :link conj next-link)))
+            (-> (normal-bundle context entries)
+                ac/completed-future))))))
+
+
+(defn- search-summary [{:blaze/keys [db] :as context}]
   (ac/completed-future
     {:fhir/type :fhir/Bundle
      :id (iu/luid context)
      :type #fhir/code"searchset"
      :total (type/->UnsignedInt (d/system-total db))
-     :link [(self-link context (or (d/as-of-t db) (d/basis-t db)) [])]}))
+     :link [(self-link context [])]}))
 
 
-(defn- search [{:keys [params] :as context} db]
+(defn- search [{:keys [params] :as context}]
   (if (:summary? params)
-    (search-summary context db)
-    (search-normal context db)))
+    (search-summary context)
+    (search-normal context)))
 
 
 (defn- search-context
-  [context
-   {{{:fhir.resource/keys [type]} :data :as match} ::reitit/match
-    :keys [headers params]
-    :blaze/keys [base-url]
-    ::reitit/keys [router]}]
+  [{:keys [page-store] :as context}
+   {:keys [headers params]
+    :blaze/keys [base-url db]
+    ::reitit/keys [router match]}]
   (let [handling (handler-util/preference headers "handling")]
-    (when-ok [params (params/decode handling params)]
+    (do-sync [params (params/decode page-store handling params)]
       (assoc context
-        :base-url base-url
-        :router router
+        :blaze/base-url base-url
+        :blaze/db db
+        ::reitit/router router
         :match match
-        :type type
+        :page-match (reitit/match-by-name router :page)
         :params params))))
 
 
 (defn- handler [context]
-  (fn [{:blaze/keys [db] :as request}]
-    (if-ok [context (search-context context request)]
-      (-> (search context db)
-          (ac/then-apply ring/response))
-      (comp ac/failed-future ba/ex-anom))))
+  (fn [request]
+    (-> (search-context context request)
+        (ac/then-compose search)
+        (ac/then-apply ring/response))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/search-system [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
 
 
 (defmethod ig/init-key :blaze.interaction/search-system [_ context]

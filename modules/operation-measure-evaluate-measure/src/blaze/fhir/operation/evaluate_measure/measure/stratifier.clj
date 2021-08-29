@@ -1,10 +1,10 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.stratifier
   (:require
-    [blaze.anomaly :refer [if-ok when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
-    [blaze.fhir.spec.type :as type]
-    [cognitect.anomalies :as anom]))
+    [blaze.fhir.spec.type :as type]))
 
 
 (defn- value-concept [value]
@@ -78,10 +78,10 @@
   "Extracts code and expression-name from `stratifier-component`."
   [context {:keys [code criteria]}]
   (if (nil? code)
-    {::anom/category ::anom/incorrect
-     ::anom/message "Missing code."
-     :fhir/issue "required"
-     :fhir.issue/expression (str (stratifier-component-path context) ".code")}
+    (ba/incorrect
+      "Missing code."
+      :fhir/issue "required"
+      :fhir.issue/expression (str (stratifier-component-path context) ".code"))
     (when-ok [expression (u/expression #(stratifier-component-path context)
                                        criteria)]
       [code expression])))

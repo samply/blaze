@@ -49,7 +49,7 @@
    :blaze.db/search-param-registry {}})
 
 
-(deftest index-condition-resource
+(deftest index-condition-resource-test
   (with-system [{kv-store ::kv/mem :blaze.db/keys [search-param-registry]} system]
     (let [resource
           {:fhir/type :fhir/Condition :id "id-204446"
@@ -164,7 +164,7 @@
                 ["_lastUpdated" #blaze/byte-string"80008001"]]))))))
 
 
-(deftest index-observation-resource
+(deftest index-observation-resource-test
   (with-system [{kv-store ::kv/mem :blaze.db/keys [search-param-registry]} system]
     (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                     :status #fhir/code"status-193613"

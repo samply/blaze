@@ -4,10 +4,9 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
-    [cognitect.anomalies :as anom]
     [java-time :as time])
   (:import
     [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
@@ -467,71 +466,63 @@
                       {:op :add :this this :other other})))))
 
 
+(defn- minimum-value-msg [x]
+  (format "Predecessor: argument `%s` is already the minimum value." x))
+
+
+(defn- minimum-value-anom [x]
+  (ba/incorrect (minimum-value-msg x)))
+
+
 ;; 16.15. Predecessor
 (extend-protocol p/Predecessor
   Year
   (predecessor [x]
     (if (time/after? x min-year)
       (.minusYears x 1)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   DateTimeYear
   (predecessor [x]
     (if (time/after? x date-time-min-year)
       (time/minus x (time/years 1))
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   YearMonth
   (predecessor [x]
     (if (time/after? x min-year-month)
       (.minusMonths x 1)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   DateTimeYearMonth
   (predecessor [x]
     (if (time/after? x date-time-min-year-month)
       (time/minus x (time/months 1))
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   LocalDate
   (predecessor [x]
     (if (time/after? x min-date)
       (.minusDays x 1)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   DateTimeYearMonthDay
   (predecessor [x]
     (if (time/after? x date-time-min-date)
       (time/minus x (time/days 1))
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   LocalDateTime
   (predecessor [x]
     (if (time/after? x min-date-time)
       (.minusNanos x 1000000)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   PrecisionLocalTime
   (predecessor [{:keys [local-time p-num] :as x}]
     (if (p/greater x min-time)
       (->PrecisionLocalTime (.minus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x)))))
+      (throw-anom (minimum-value-anom x)))))
 
 
 ;; 16.17. Subtract
@@ -1246,9 +1237,8 @@
 
   String
   (to-date [s _]
-    (let [date (system/parse-date s)]
-      (when-not (::anom/category date)
-        date)))
+    (-> (system/parse-date s)
+        (ba/exceptionally (constantly nil))))
 
   Year
   (to-date [this _]

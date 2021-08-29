@@ -7,9 +7,12 @@
     [blaze.interaction.search-system]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
+    [blaze.interaction.search.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.page-store-spec]
+    [blaze.page-store.local]
     [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -41,15 +44,16 @@
 
 (def router
   (reitit/router
-    [["/Patient" {:name :Patient/type}]]
+    [["/__page" {:name :page}]
+     ["/Patient" {:name :Patient/type}]]
     {:syntax :bracket}))
 
 
 (def match
-  {:data
-   {:blaze/base-url ""
-    :blaze/context-path ""}
-   :path ""})
+  (reitit/map->Match
+    {:data
+     {:blaze/base-url ""}
+     :path ""}))
 
 
 (defn- link-url [body link-relation]
@@ -68,15 +72,17 @@
       :key := :blaze.interaction/search-system
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze.interaction/search-system {:clock ::invalid}})
       :key := :blaze.interaction/search-system
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 1 :pred] := `time/clock?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:explain ::s/problems 2 :pred] := `time/clock?
+      [:explain ::s/problems 2 :val] := ::invalid)))
 
 
 (def system
@@ -84,8 +90,11 @@
     :blaze.interaction/search-system
     {:node (ig/ref :blaze.db/node)
      :clock (ig/ref :blaze.test/clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.test/fixed-rng-fn {}))
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+     :page-store (ig/ref :blaze.page-store/local)}
+    :blaze.test/fixed-rng-fn {}
+    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+    :blaze.test/fixed-rng {}))
 
 
 (defn wrap-defaults [handler]
@@ -238,7 +247,7 @@
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= #fhir/uri"base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -258,7 +267,7 @@
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= #fhir/uri"base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"

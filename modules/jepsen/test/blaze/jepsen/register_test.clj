@@ -1,5 +1,6 @@
 (ns blaze.jepsen.register-test
   (:require
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.jepsen.register :as register]

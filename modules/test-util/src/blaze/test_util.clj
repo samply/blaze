@@ -1,9 +1,11 @@
 (ns blaze.test-util
   (:require
-    [clojure.test :as test :refer [is]]
+    [blaze.anomaly :as ba]
+    [clojure.test :refer [is]]
     [integrant.core :as ig]
     [juxt.iota :refer [given]])
   (:import
+    [java.nio ByteBuffer]
     [java.time Clock Instant ZoneId]
     [java.util Random]
     [java.util.concurrent Executors ExecutorService TimeUnit]))
@@ -11,6 +13,11 @@
 
 (defmacro given-thrown [v & body]
   `(given (try ~v (is false) (catch Exception e# (ex-data e#)))
+     ~@body))
+
+
+(defmacro given-failed-future [future & body]
+  `(given (try (deref ~future) (is false) (catch Exception e# (ba/anomaly e#)))
      ~@body))
 
 
@@ -31,8 +38,18 @@
 (defmethod ig/init-key :blaze.test/fixed-rng-fn
   [_ {:keys [n] :or {n 0}}]
   #(proxy [Random] []
-     (nextLong []
-       n)))
+     (nextLong [] n)))
+
+
+(defmethod ig/init-key :blaze.test/fixed-rng
+  [_ _]
+  (let [state (atom 0)]
+    (proxy [Random] []
+      (nextBytes [byte-array]
+        (assert (= 20 (count byte-array)))
+        (let [bb (ByteBuffer/wrap byte-array)]
+          (.position bb 12)
+          (.putLong bb (swap! state inc)))))))
 
 
 (defmethod ig/init-key :blaze.test/executor

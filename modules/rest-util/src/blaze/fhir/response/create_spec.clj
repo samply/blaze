@@ -2,14 +2,14 @@
   (:require
     [blaze.db.api-spec]
     [blaze.fhir.response.create :as create]
+    [blaze.http.spec]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [reitit.core :as reitit]))
 
 
 (s/fdef create/build-response
-  :args (s/cat :base-url string?
-               :router reitit/router?
-               :return-preference (s/nilable (s/and keyword? #(= "blaze.preference.return" (namespace %))))
-               :db :blaze.db/db
+  :args (s/cat :context (s/keys :req [:blaze/base-url :blaze/db ::reitit/router]
+                                :opt [:blaze.preference/return])
                :old-handle (s/nilable :blaze.db/resource-handle)
                :new-handle :blaze.db/resource-handle))

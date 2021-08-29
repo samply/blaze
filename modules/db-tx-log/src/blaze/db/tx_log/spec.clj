@@ -3,6 +3,7 @@
     [blaze.db.resource-store.spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.fhir.spec]
+    [blaze.spec]
     [clojure.spec.alpha :as s]))
 
 
@@ -35,7 +36,7 @@
 
 
 (s/def :blaze.db.tx-cmd/if-none-exist
-  (s/coll-of :blaze.db.query/clause :min-count 1))
+  :blaze.db.query/clauses)
 
 
 (s/def :blaze.db.tx-cmd/if-match

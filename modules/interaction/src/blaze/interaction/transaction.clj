@@ -4,7 +4,8 @@
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.async.comp :as ac]
+    [blaze.anomaly-spec]
+    [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
@@ -22,6 +23,7 @@
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [reitit.ring]
+    [ring.util.codec :as ring-codec]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
@@ -134,8 +136,13 @@
       (assoc entry :blaze/type type :blaze/id id))))
 
 
+(def ^:private validate-entry-xf
+  (comp (map-indexed validate-entry)
+        (halt-when ba/anomaly?)))
+
+
 (defn- validate-entries [entries]
-  (transduce (ba/map-indexed validate-entry) conj [] entries))
+  (transduce validate-entry-xf conj [] entries))
 
 
 (defn- prepare-entry [res {{:keys [method]} :request :as entry}]
@@ -189,8 +196,8 @@
   (fn [_ _ {{:keys [method]} :request}] (type/value method)))
 
 
-(defn- location [{:keys [base-url router]} type id vid]
-  (type/->Uri (fhir-util/versioned-instance-url base-url router type id vid)))
+(defn- location [context type id vid]
+  (type/->Uri (fhir-util/versioned-instance-url context type id vid)))
 
 
 (defn- created-entry
@@ -217,13 +224,6 @@
       :lastModified (:blaze.db.tx/instant tx)}}))
 
 
-(defmacro do-sync [[binding-form expr-form] & body]
-  `(ac/then-apply
-     ~expr-form
-     (fn [~binding-form]
-       ~@body)))
-
-
 (defmethod build-response-entry "POST"
   [{:keys [return-preference db] :as context}
    _
@@ -237,7 +237,8 @@
           (assoc (created-entry context type handle) :resource resource))
         (ac/completed-future (created-entry context type handle)))
       (let [if-none-exist (-> entry :request :ifNoneExist)
-            handle (first (d/type-query db type (iu/clauses if-none-exist)))]
+            clauses (some-> if-none-exist ring-codec/form-decode iu/clauses)
+            handle (first (d/type-query db type clauses))]
         (if (identical? :blaze.preference.return/representation return-preference)
           (do-sync [resource (d/pull db handle)]
             (assoc (noop-entry db handle) :resource resource))
@@ -292,9 +293,8 @@
 
 (defn- build-response-entries [context entries]
   (let [futures (build-response-entries* context entries)]
-    (-> (ac/all-of futures)
-        (ac/then-apply
-          (fn [_] (mapv ac/join futures))))))
+    (do-sync [_ (ac/all-of futures)]
+      (mapv ac/join futures))))
 
 
 (defn- convert-http-date
@@ -350,7 +350,7 @@
 
 
 (defn- batch-request
-  [{:keys [base-url context-path return-preference db]}
+  [{:keys [context-path return-preference db] :blaze/keys [base-url]}
    {{:keys [method url identity] if-match :ifMatch if-none-exist :ifNoneExist}
     :request :keys [resource]}]
   (let [url (-> url type/value strip-leading-slash)
@@ -421,9 +421,8 @@
 (defmethod process-entries "batch"
   [context _ entries]
   (let [futures (map-indexed (partial process-batch-entry context) entries)]
-    (-> (ac/all-of futures)
-        (ac/then-apply
-          (fn [_] (mapv ac/join futures))))))
+    (do-sync [_ (ac/all-of futures)]
+      (mapv ac/join futures))))
 
 
 (defmethod process-entries "transaction"
@@ -444,27 +443,28 @@
    {:keys [batch-handler headers] :blaze/keys [base-url]
     ::reitit/keys [router match]}]
   (assoc context
-    :base-url base-url
-    :router router
+    :blaze/base-url base-url
+    ::reitit/router router
     :batch-handler batch-handler
     :context-path (-> match :data :blaze/context-path)
     :return-preference (handler-util/preference headers "return")))
 
 
+(defn- response-bundle [context type entries]
+  {:fhir/type :fhir/Bundle
+   :id (iu/luid context)
+   :type (type/->Code (str (type/value type) "-response"))
+   :entry entries})
+
+
 (defn- handler [context]
   (fn [{{:keys [type] :as bundle} :body :as request}]
-    (-> (ba/completion-stage (validate-and-prepare-bundle context bundle))
+    (-> (ac/completed-future (validate-and-prepare-bundle context bundle))
         (ac/then-compose
           #(if (empty? %)
              (ac/completed-future [])
              (process-entries (process-context context request) request %)))
-        (ac/then-apply
-          (fn [response-entries]
-            (ring/response
-              {:fhir/type :fhir/Bundle
-               :id (iu/luid context)
-               :type (type/->Code (str (type/value type) "-response"))
-               :entry response-entries}))))))
+        (ac/then-apply #(ring/response (response-bundle context type %))))))
 
 
 (defn- wrap-interaction-name [handler]

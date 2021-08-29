@@ -4,7 +4,8 @@
     [blaze.fhir.spec.type :as type]
     [blaze.interaction.transaction.bundle.links :as links]
     [blaze.interaction.transaction.bundle.url :as url]
-    [blaze.interaction.util :as iu]))
+    [blaze.interaction.util :as iu]
+    [ring.util.codec :as ring-codec]))
 
 
 (defn- write? [{{:keys [method]} :request}]
@@ -24,7 +25,7 @@
   [{:keys [resource] {if-none-exist :ifNoneExist} :request}]
   (cond-> [:create resource]
     if-none-exist
-    (conj (iu/clauses if-none-exist))))
+    (conj (-> if-none-exist ring-codec/form-decode iu/clauses))))
 
 
 (defmethod entry-tx-op "PUT"

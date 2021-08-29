@@ -46,10 +46,10 @@
 
 
 (def match
-  {:data
-   {:blaze/base-url ""
-    :blaze/context-path ""}
-   :path "/_history"})
+  (reitit/map->Match
+    {:data
+     {:blaze/base-url ""}
+     :path "/_history"}))
 
 
 (defn- link-url [body link-relation]

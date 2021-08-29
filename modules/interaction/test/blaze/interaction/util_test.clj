@@ -30,3 +30,30 @@
       "foo"
       "W/1"
       "W/\"a\"")))
+
+
+(deftest clauses-test
+  (testing "nil"
+    (is (empty? (iu/clauses nil))))
+
+  (testing "empty map"
+    (is (empty? (iu/clauses {}))))
+
+  (testing "empty key and value"
+    (is (= [["" ""]] (iu/clauses {"" ""}))))
+
+  (testing "empty key and two empty values"
+    (is (= [["" ""] ["" ""]] (iu/clauses {"" ["" ""]}))))
+
+  (testing "one key"
+    (testing "and one value"
+      (is (= [["a" "b"]] (iu/clauses {"a" "b"})))
+
+      (testing "with two parts"
+        (is (= [["a" "b" "c"]] (iu/clauses {"a" "b,c"}))))
+
+      (testing "with three parts"
+        (is (= [["a" "b" "c" "d"]] (iu/clauses {"a" "b,c,d"})))))
+
+    (testing "and two values"
+      (is (= [["a" "b"] ["a" "c"]] (iu/clauses {"a" ["b" "c"]}))))))

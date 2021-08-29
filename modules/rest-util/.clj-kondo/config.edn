@@ -1,5 +1,6 @@
 {:lint-as
- {blaze.db.api-stub/with-system-data clojure.core/with-open
+ {blaze.async.comp/do-sync clojure.core/let
+  blaze.db.api-stub/with-system-data clojure.core/with-open
   blaze.test-util/with-system clojure.core/with-open
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}

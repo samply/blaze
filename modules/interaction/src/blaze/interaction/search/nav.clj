@@ -1,5 +1,7 @@
 (ns blaze.interaction.search.nav
   (:require
+    [blaze.async.comp :as ac :refer [do-sync]]
+    [blaze.page-store :as page-store]
     [clojure.string :as str]
     [reitit.core :as reitit]))
 
@@ -10,6 +12,17 @@
       (update ret param (fnil conj []) (str/join "," values)))
     {}
     clauses))
+
+
+(defn- clauses->token-query-params [page-store token clauses]
+  (cond
+    token
+    (ac/completed-future {"__token" token})
+    (empty? clauses)
+    (ac/completed-future nil)
+    :else
+    (do-sync [token (page-store/put! page-store clauses)]
+      {"__token" token})))
 
 
 (defn- forward-include-defs->query-param-values [include-defs]
@@ -68,8 +81,27 @@
     (assoc "_count" page-size)))
 
 
+(defn- token-query-params
+  [page-store {:keys [include-defs page-size token]} clauses]
+  (do-sync [clauses-params (clauses->token-query-params page-store token clauses)]
+    (cond-> clauses-params
+      (seq include-defs)
+      (merge (include-defs->query-params include-defs))
+      page-size
+      (assoc "_count" page-size))))
+
+
 (defn url [base-url match params clauses t offset]
   (let [query-params (-> (query-params params clauses)
                          (assoc "__t" t)
                          (merge offset))]
     (str base-url (reitit/match->path match query-params))))
+
+
+(defn token-url
+  "Returns a CompletableFuture that will complete with the URL."
+  [page-store base-url match params clauses t offset]
+  (do-sync [query-params (token-query-params page-store params clauses)]
+    (str base-url (reitit/match->path match (-> query-params
+                                                (assoc "__t" t)
+                                                (merge offset))))))

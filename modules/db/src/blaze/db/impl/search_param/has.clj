@@ -1,7 +1,8 @@
 (ns blaze.db.impl.search-param.has
   "https://www.hl7.org/fhir/search.html#has"
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
@@ -9,8 +10,7 @@
     [blaze.db.impl.search-param.special :as special]
     [blaze.db.impl.search-param.util :as u]
     [blaze.fhir.spec]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom])
+    [clojure.string :as str])
   (:import
     [com.github.benmanes.caffeine.cache Cache Caffeine]
     [java.util Comparator]
@@ -21,11 +21,15 @@
 (set! *warn-on-reflection* true)
 
 
+(defn- search-param-not-found-msg [code type]
+  (format "The search-param with code `%s` and type `%s` was not found."
+          code type))
+
+
 (defn- resolve-search-param [index type code]
   (if-let [search-param (get-in index [type code])]
     search-param
-    {::anom/category ::anom/not-found
-     ::anom/message (format "The search-param with code `%s` and type `%s` was not found." code type)}))
+    (ba/not-found (search-param-not-found-msg code type))))
 
 
 (defn- resolve-resource-handles

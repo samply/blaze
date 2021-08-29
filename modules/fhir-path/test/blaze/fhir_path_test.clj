@@ -244,8 +244,7 @@
 ;; 5.2.1. where(criteria : expression) : collection
 (deftest where-function-test
   (testing "missing criteria"
-    (given
-      (fhir-path/compile "Patient.telecom.where()")
+    (given (fhir-path/compile "Patient.telecom.where()")
       ::anom/category := ::anom/incorrect
       ::anom/message := "missing criteria in `where` function in expression `Patient.telecom.where()`"))
 

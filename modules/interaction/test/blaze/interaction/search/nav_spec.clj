@@ -1,16 +1,28 @@
 (ns blaze.interaction.search.nav-spec
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.spec]
     [blaze.interaction.search.nav :as nav]
-    [blaze.interaction.search.params-spec :as params-spec]
+    [blaze.page-store.spec]
     [clojure.spec.alpha :as s]))
 
 
 (s/fdef nav/url
   :args (s/cat :base-url string?
                :match some?
-               :params (s/nilable ::params-spec/params)
+               :params (s/nilable map?)
                :clauses (s/nilable (s/coll-of :blaze.db.query/clause))
                :t :blaze.db/t
                :offset (s/nilable map?))
   :ret string?)
+
+
+(s/fdef nav/token-url
+  :args (s/cat :page-store :blaze/page-store
+               :base-url string?
+               :match some?
+               :params (s/nilable map?)
+               :clauses (s/nilable (s/coll-of :blaze.db.query/clause))
+               :t :blaze.db/t
+               :offset (s/nilable map?))
+  :ret ac/completable-future?)

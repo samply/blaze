@@ -16,7 +16,6 @@
     [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local.codec :as codec]
-    [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]

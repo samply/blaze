@@ -1,6 +1,7 @@
 (ns blaze.db.node.tx-indexer.verify
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.anomaly-spec]
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.rts-as-of :as rts]
@@ -8,11 +9,10 @@
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv.spec]
     [clojure.string :as str]
-    [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang ExceptionInfo IReduceInit]))
+    [clojure.lang IReduceInit]))
 
 
 (set! *warn-on-reflection* true)
@@ -55,9 +55,8 @@
           (format-handle type h2)))
 
 
-(defn- throw-multiple-existing-resources-anomaly [type clauses handles]
-  (throw-anom
-    ::anom/conflict
+(defn- multiple-existing-resources-anom [type clauses handles]
+  (ba/conflict
     (multiple-existing-resources-msg type clauses handles)
     :http/status 412))
 
@@ -66,7 +65,7 @@
   [db-before {:keys [type if-none-exist] :as cmd}]
   (let [[h1 h2] (some->> if-none-exist (existing-resource-handles db-before type))]
     (cond
-      h2 (throw-multiple-existing-resources-anomaly type if-none-exist [h1 h2])
+      h2 (throw-anom (multiple-existing-resources-anom type if-none-exist [h1 h2]))
       h1 (assoc cmd :op "hold" :id (:id h1))
       :else cmd)))
 
@@ -96,18 +95,16 @@
   (format "%s %s/%s" op type id))
 
 
-(defn- throw-duplicate-command-anomaly [cmd existing-cmd]
-  (throw-anom
-    ::anom/conflict
-    (format "Duplicate transaction commands `%s` and `%s`." (format-command cmd)
-            (format-command existing-cmd))))
+(defn- duplicate-tx-cmds-msg [cmd-a cmd-b]
+  (format "Duplicate transaction commands `%s` and `%s`."
+          (format-command cmd-a) (format-command cmd-b)))
 
 
 (defn- detect-duplicate-commands! [cmds]
   (reduce
     (fn [index {:keys [type id] :as cmd}]
       (if-let [existing-cmd (get index [type id])]
-        (throw-duplicate-command-anomaly cmd existing-cmd)
+        (throw-anom (ba/conflict (duplicate-tx-cmds-msg cmd existing-cmd)))
         (assoc index [type id] cmd)))
     {}
     cmds))
@@ -132,7 +129,7 @@
 
 (defn- check-id-collision! [db type id]
   (when (d/resource-handle db type id)
-    (throw-anom ::anom/conflict (id-collision-msg type id))))
+    (throw-anom (ba/conflict (id-collision-msg type id)))))
 
 
 (defn- index-entries [tid id t hash num-changes op]
@@ -157,11 +154,12 @@
     (format "verify-tx-cmd :put %s/%s" type id)))
 
 
-(defn- throw-precondition-failed [if-match type id]
-  (throw-anom
-    ::anom/conflict
-    (format "Precondition `W/\"%d\"` failed on `%s/%s`." if-match type id)
-    :http/status 412))
+(defn- precondition-failed-msg [if-match type id]
+  (format "Precondition `W/\"%d\"` failed on `%s/%s`." if-match type id))
+
+
+(defn- precondition-failed-anomaly [if-match type id]
+  (ba/conflict (precondition-failed-msg if-match type id) :http/status 412))
 
 
 (defmethod verify-tx-cmd "put"
@@ -178,7 +176,7 @@
               (update-in [:stats tid :num-changes] (fnil inc 0)))
           (or (nil? old-t) (identical? :delete op))
           (update-in [:stats tid :total] (fnil inc 0)))
-        (throw-precondition-failed if-match type id)))))
+        (throw-anom (precondition-failed-anomaly if-match type id))))))
 
 
 (defmethod verify-tx-cmd "delete"
@@ -249,17 +247,13 @@
           type id src-type src-id))
 
 
-(defn- throw-referential-integrity-anomaly-delete [src-type src-id type id]
-  (throw-anom ::anom/conflict (ref-integrity-del-msg src-type src-id type id)))
+(defn- ref-integrity-del-anom [src-type src-id type id]
+  (ba/conflict (ref-integrity-del-msg src-type src-id type id)))
 
 
 (defn- ref-integrity-msg [type id]
   (format "Referential integrity violated. Resource `%s/%s` doesn't exist."
           type id))
-
-
-(defn- throw-referential-integrity-anomaly [type id]
-  (throw-anom ::anom/conflict (ref-integrity-msg type id)))
 
 
 (defn- check-referential-integrity*!
@@ -269,11 +263,11 @@
     (fn [_ [type id :as reference]]
       (cond
         (contains? del-resources reference)
-        (throw-referential-integrity-anomaly-delete src-type src-id type id)
+        (throw-anom (ref-integrity-del-anom src-type src-id type id))
 
         (and (not (contains? new-resources reference))
              (not (resource-exists? db type id)))
-        (throw-referential-integrity-anomaly type id)))
+        (throw-anom (ba/conflict (ref-integrity-msg type id)))))
     nil))
 
 
@@ -289,16 +283,12 @@
 
 
 (defn- verify-tx-cmds* [db-before t cmds]
-  (try
+  (ba/try-anomaly
     (let [cmds (resolve-ids db-before cmds)]
       (detect-duplicate-commands! cmds)
       (let [res (verify-tx-cmds** db-before t cmds)]
         (check-referential-integrity! db-before res cmds)
-        (post-process-res db-before t res)))
-    (catch ExceptionInfo e
-      (if (::anom/category (ex-data e))
-        (ex-data e)
-        (throw e)))))
+        (post-process-res db-before t res)))))
 
 
 (defn verify-tx-cmds

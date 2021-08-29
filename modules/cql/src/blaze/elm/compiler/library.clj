@@ -1,14 +1,13 @@
 (ns blaze.elm.compiler.library
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.elm.compiler :as compiler]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
     [blaze.elm.normalizer :as normalizer]
     [blaze.elm.type-infer :as type-infer]
-    [cognitect.anomalies :as anom])
-  (:import
-    [clojure.lang ExceptionInfo]))
+    [cognitect.anomalies :as anom]))
 
 
 (defn- compile-expression-def
@@ -20,13 +19,11 @@
   {:arglists '([context expression-def])}
   [context {:keys [expression] :as expression-def}]
   (let [context (assoc context :eval-context (:context expression-def))]
-    (try
-      (assoc expression-def
-        :blaze.elm.compiler/expression (compiler/compile context expression))
-      (catch ExceptionInfo e
-        (if (::anom/category (ex-data e))
-          (assoc (ex-data e) :context context :elm/expression expression)
-          (throw e))))))
+    (-> (ba/try-anomaly
+          (assoc expression-def
+            ::compiler/expression (compiler/compile context expression)))
+        (ba/exceptionally
+          #(assoc % :context context :elm/expression expression)))))
 
 
 (defn- expr-defs [context library]

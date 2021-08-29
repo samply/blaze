@@ -18,6 +18,7 @@
     [taoensso.timbre :as log])
   (:import
     [java.io PushbackReader]
+    [java.security SecureRandom]
     [java.time Clock]
     [java.util.concurrent ThreadLocalRandom]))
 
@@ -91,6 +92,8 @@
    :blaze/clock {}
 
    :blaze/rng-fn {}
+
+   :blaze/secure-rng {}
 
    :blaze/structure-definition {}
 
@@ -207,13 +210,12 @@
 
 (defmethod ig/init-key :blaze/rng-fn
   [_ _]
-  (fn [] (ThreadLocalRandom/current)))
+  #(ThreadLocalRandom/current))
 
 
-#_(defmethod ig/init-key :fhir-capabilities-handler
-    [_ {:keys [base-url version structure-definitions]}]
-    (log/debug "Init FHIR capabilities interaction handler")
-    (fhir-capabilities-handler/handler base-url version structure-definitions))
+(defmethod ig/init-key :blaze/secure-rng
+  [_ _]
+  (SecureRandom.))
 
 
 (defn- executor-init-msg []

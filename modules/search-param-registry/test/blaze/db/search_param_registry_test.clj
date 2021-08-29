@@ -1,6 +1,7 @@
 (ns blaze.db.search-param-registry-test
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.db.impl.protocols :as p]
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry-spec]

@@ -1,9 +1,9 @@
 (ns blaze.interaction.search.params.include
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.handler.fhir.util :as fhir-util]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom]))
+    [clojure.string :as str]))
 
 
 (defn- missing-code-msg [source-type]
@@ -18,8 +18,7 @@
          target-type
          (assoc :target-type target-type))]
       (when (identical? :blaze.preference.handling/strict handling)
-        {::anom/category ::anom/incorrect
-         ::anom/message (missing-code-msg source-type)}))))
+        (ba/incorrect (missing-code-msg source-type))))))
 
 
 (defn- forward-defs [handling name query-params]
@@ -30,7 +29,7 @@
         (fn [[_k v]] (keep #(forward-value handling %) (fhir-util/to-seq v)))))
     (completing
       (fn [res x]
-        (if (::anom/category x)
+        (if (ba/anomaly? x)
           (reduced x)
           (let [[source-type include-def] x]
             (update res source-type (fnil conj []) include-def)))))
@@ -43,8 +42,7 @@
     (if code
       [(or target-type :any) {:source-type source-type :code code}]
       (when (identical? :blaze.preference.handling/strict handling)
-        {::anom/category ::anom/incorrect
-         ::anom/message (missing-code-msg source-type)}))))
+        (ba/incorrect (missing-code-msg source-type))))))
 
 
 (defn- reverse-defs [handling name query-params]
@@ -55,7 +53,7 @@
         (fn [[_k v]] (keep #(reverse-value handling %) (fhir-util/to-seq v)))))
     (completing
       (fn [res x]
-        (if (::anom/category x)
+        (if (ba/anomaly? x)
           (reduced x)
           (let [[target-type include-def] x]
             (update res target-type (fnil conj []) include-def)))))

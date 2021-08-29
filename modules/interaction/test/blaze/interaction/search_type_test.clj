@@ -8,13 +8,17 @@
     [blaze.interaction.search-type]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
+    [blaze.interaction.search.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.page-store-spec]
+    [blaze.page-store.local]
     [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [cuerdas.core :as str]
     [integrant.core :as ig]
     [java-time :as time]
     [juxt.iota :refer [given]]
@@ -43,11 +47,13 @@
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]
+     ["/Patient/__page" {:name :Patient/page}]
      ["/MeasureReport" {:name :MeasureReport/type}]
      ["/Library" {:name :Library/type}]
      ["/List" {:name :List/type}]
      ["/Condition" {:name :Condition/type}]
      ["/Observation" {:name :Observation/type}]
+     ["/Observation/__page" {:name :Observation/page}]
      ["/MedicationStatement" {:name :MedicationStatement/type}]
      ["/Medication" {:name :Medication/type}]
      ["/Organization" {:name :Organization/type}]
@@ -56,45 +62,61 @@
 
 
 (def patient-match
-  {:data
-   {:blaze/context-path ""
-    :fhir.resource/type "Patient"}
-   :path "/Patient"})
+  (reitit/map->Match
+    {:data
+     {:fhir.resource/type "Patient"}
+     :path "/Patient"}))
+
+
+(def patient-search-match
+  (reitit/map->Match
+    {:data
+     {:name :Patient/search
+      :fhir.resource/type "Patient"}
+     :path "/Patient"}))
+
+
+(def patient-page-match
+  (reitit/map->Match
+    {:data
+     {:name :Patient/page
+      :fhir.resource/type "Patient"}
+     :path "/Patient"}))
 
 
 (def measure-report-match
-  {:data
-   {:blaze/context-path ""
-    :fhir.resource/type "MeasureReport"}
-   :path "/MeasureReport"})
+  (reitit/map->Match
+    {:data
+     {:fhir.resource/type "MeasureReport"}
+     :path "/MeasureReport"}))
 
 
 (def list-match
-  {:data
-   {:blaze/context-path ""
-    :fhir.resource/type "List"}
-   :path "/List"})
+  (reitit/map->Match
+    {:data
+     {:fhir.resource/type "List"}
+     :path "/List"}))
 
 
 (def observation-match
-  {:data
-   {:blaze/context-path ""
-    :fhir.resource/type "Observation"}
-   :path "/Observation"})
+  (reitit/map->Match
+    {:data
+     {:fhir.resource/type "Observation"}
+     :path "/Observation"}))
 
 
 (def condition-match
-  {:data
-   {:blaze/context-path ""
-    :fhir.resource/type "Condition"}
-   :path "/Condition"})
+  (reitit/map->Match
+    {:data
+     {:fhir.resource/type "Condition"}
+     :path "/Condition"}))
 
 
 (def medication-statement-match
-  {:data
-   {:blaze/context-path ""
-    :fhir.resource/type "MedicationStatement"}
-   :path "/MedicationStatement"})
+  (reitit/map->Match
+    {:data
+     {:fhir.resource/type "MedicationStatement"}
+     :path "/MedicationStatement"}))
 
 
 (defn- link-url [body link-relation]
@@ -113,23 +135,28 @@
       :key := :blaze.interaction/search-type
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze.interaction/search-type {:clock ::invalid}})
       :key := :blaze.interaction/search-type
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 1 :pred] := `time/clock?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:explain ::s/problems 2 :pred] := `time/clock?
+      [:explain ::s/problems 2 :val] := ::invalid)))
 
 
 (def system
   (assoc mem-node-system
     :blaze.interaction/search-type
     {:clock (ig/ref :blaze.test/clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.test/fixed-rng-fn {}))
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+     :page-store (ig/ref :blaze.page-store/local)}
+    :blaze.test/fixed-rng-fn {}
+    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+    :blaze.test/fixed-rng {}))
 
 
 (defn wrap-defaults [handler]
@@ -429,6 +456,43 @@
                   (is (= #fhir/uri"base-url-113047/Patient?active=true&_summary=count&_count=50&__t=1"
                          (link-url body "self")))))))))))
 
+  (testing "on invalid token"
+    (testing "returns error"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-page-match
+                  :params {"__token" "invalid-token-175424" "_count" "1"
+                           "__t" "1" "__page-id" "1"}})]
+
+          (is (= 422 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Invalid token `invalid-token-175424`.")))))
+
+  (testing "on missing token"
+    (testing "returns error"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-page-match
+                  :params {"__token" (str/repeat "A" 32) "_count" "1" "__t" "1"
+                           "__page-id" "1"}})]
+
+          (is (= 422 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"not-found"
+            [:issue 0 :diagnostics] := (format "Clauses of token `%s` not found."
+                                               (str/repeat "A" 32)))))))
+
   (testing "with one patient"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
@@ -538,7 +602,7 @@
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"base-url-113047/Patient?_count=1&__t=1&__page-id=1"
+            (is (= #fhir/uri"base-url-113047/Patient/__page?_count=1&__t=1&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -558,7 +622,7 @@
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"base-url-113047/Patient?_count=1&__t=1&__page-id=1"
+            (is (= #fhir/uri"base-url-113047/Patient/__page?_count=1&__t=1&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -609,26 +673,49 @@
             (testing "their is a total count because we used _summary=count"
               (is (= #fhir/unsignedInt 2 (:total body)))))))
 
-      (testing "search for active patients with _count=1"
-        (let [{:keys [body]}
-              @(handler
-                 {::reitit/match patient-match
-                  :params {"active" "true" "_count" "1"}})]
+      (testing "on normal request"
+        (testing "search for active patients with _count=1"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :params {"active" "true" "_count" "1"}})]
 
-          (testing "their is no total count because we have clauses and we have
+            (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
-            (is (nil? (:total body))))
+              (is (nil? (:total body))))
 
-          (testing "has a self link"
-            (is (= #fhir/uri"base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=1"
-                   (link-url body "self"))))
+            (testing "has a self link"
+              (is (= #fhir/uri"base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=1"
+                     (link-url body "self"))))
 
-          (testing "has a next link"
-            (is (= #fhir/uri"base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=2"
-                   (link-url body "next"))))
+            (testing "has a next link with search params"
+              (is (= #fhir/uri"base-url-113047/Patient/__page?active=true&_count=1&__t=1&__page-id=2"
+                     (link-url body "next"))))
 
-          (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body)))))))
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body))))))))
+
+      (testing "on /_search request"
+        (testing "search for active patients with _count=1"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-search-match
+                    :params {"active" "true" "_count" "1"}})]
+
+            (testing "their is no total count because we have clauses and we have
+                    more hits than page-size"
+              (is (nil? (:total body))))
+
+            (testing "has a self link"
+              (is (= #fhir/uri"base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=1"
+                     (link-url body "self"))))
+
+            (testing "has a next link with token"
+              (is (= #fhir/uri"base-url-113047/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2"
+                     (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body))))))))
 
       (testing "following the self link"
         (let [{:keys [body]}
@@ -644,8 +731,8 @@
             (is (= #fhir/uri"base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=1"
                    (link-url body "self"))))
 
-          (testing "has a next link"
-            (is (= #fhir/uri"base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=2"
+          (testing "has a next link with search params"
+            (is (= #fhir/uri"base-url-113047/Patient/__page?active=true&_count=1&__t=1&__page-id=2"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -654,8 +741,8 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
+                 {::reitit/match patient-page-match
+                  :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
           (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
@@ -670,6 +757,61 @@
 
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))))))
+
+  (testing "with four patients"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "2" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "3" :active true}]]]
+
+      (testing "on normal request"
+        (testing "search for active patients with _count=1"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :params {"active" "true" "_count" "1"}})]
+
+            (testing "has a next link with search params"
+              (is (= #fhir/uri"base-url-113047/Patient/__page?active=true&_count=1&__t=1&__page-id=2"
+                     (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))))
+
+        (testing "following the next link"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-page-match
+                    :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
+
+            (testing "has a next link with search params"
+              (is (= #fhir/uri"base-url-113047/Patient/__page?active=true&_count=1&__t=1&__page-id=3"
+                     (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body))))))))
+
+      (testing "on /_search request"
+        (testing "search for active patients with _count=1"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-search-match
+                    :params {"active" "true" "_count" "1"}})]
+
+            (testing "has a next link with token"
+              (is (= #fhir/uri"base-url-113047/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2"
+                     (link-url body "next"))))))
+
+        (testing "following the next link"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-page-match
+                    :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
+
+            (testing "has a next link with token"
+              (is (= #fhir/uri"base-url-113047/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=3"
+                     (link-url body "next")))))))))
 
 
   (testing "_id search"
@@ -1221,8 +1363,8 @@
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))
 
-        (testing "has a next link"
-          (is (= #fhir/uri"base-url-113047/Observation?combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8480-6%24ge140%7Cmm%5BHg%5D&combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8462-4%24ge90%7Cmm%5BHg%5D&_count=1&__t=2&__page-id=id-123130"
+        (testing "has a next link with search params"
+          (is (= #fhir/uri"base-url-113047/Observation/__page?combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8480-6%24ge140%7Cmm%5BHg%5D&combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8462-4%24ge90%7Cmm%5BHg%5D&_count=1&__t=2&__page-id=id-123130"
                  (link-url body "next")))))))
 
   (testing "Duplicate OR Search Parameters have no Effect (#293)"
@@ -1499,7 +1641,7 @@
               (is (= #fhir/unsignedInt 2 (:total body))))
 
             (testing "has a next link"
-              (is (= #fhir/uri"base-url-113047/Observation?_include=Observation%3Asubject&_count=1&__t=1&__page-id=3"
+              (is (= #fhir/uri"base-url-113047/Observation/__page?_include=Observation%3Asubject&_count=1&__t=1&__page-id=3"
                      (link-url body "next"))))
 
             (testing "the bundle contains two entries"

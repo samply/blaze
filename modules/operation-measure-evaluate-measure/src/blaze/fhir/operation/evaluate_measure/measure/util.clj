@@ -1,8 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.util
   (:require
     [blaze.anomaly :as ba]
-    [blaze.fhir.spec.type :as type]
-    [cognitect.anomalies :as anom]))
+    [blaze.fhir.spec.type :as type]))
 
 
 (defn expression [population-path-fn criteria]
@@ -10,22 +9,22 @@
         expression (-> criteria :expression type/value)]
     (cond
       (nil? criteria)
-      {::anom/category ::anom/incorrect
-       ::anom/message "Missing criteria."
-       :fhir/issue "required"
-       :fhir.issue/expression (population-path-fn)}
+      (ba/incorrect
+        "Missing criteria."
+        :fhir/issue "required"
+        :fhir.issue/expression (population-path-fn))
 
       (not= "text/cql" language)
-      {::anom/category ::anom/unsupported
-       ::anom/message (format "Unsupported language `%s`." language)
-       :fhir/issue "not-supported"
-       :fhir.issue/expression (str (population-path-fn) ".criteria.language")}
+      (ba/unsupported
+        (format "Unsupported language `%s`." language)
+        :fhir/issue "not-supported"
+        :fhir.issue/expression (str (population-path-fn) ".criteria.language"))
 
       (nil? expression)
-      {::anom/category ::anom/incorrect
-       ::anom/message "Missing expression."
-       :fhir/issue "required"
-       :fhir.issue/expression (str (population-path-fn) ".criteria")}
+      (ba/incorrect
+        "Missing expression."
+        :fhir/issue "required"
+        :fhir.issue/expression (str (population-path-fn) ".criteria"))
 
       :else
       expression)))

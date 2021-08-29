@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.cql-translator :as cql-translator]
     [blaze.db.api :as d]
@@ -12,7 +13,6 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.luid :as luid]
     [clojure.string :as str]
-    [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom]
     [taoensso.timbre :as log])
   (:import
@@ -54,18 +54,26 @@
         (if data
           (String. ^bytes (.decode (Base64/getDecoder) ^String data)
                    StandardCharsets/UTF_8)
-          {::anom/category ::anom/incorrect
-           ::anom/message (format "Missing embedded data of first attachment in library with id `%s`." id)
+          (ba/incorrect
+            (format "Missing embedded data of first attachment in library with id `%s`." id)
+            :fhir/issue "value"
+            :fhir.issue/expression "Library.content[0].data")))
+      (ba/incorrect
+        (format "Non `text/cql` content type of `%s` of first attachment in library with id `%s`." contentType id)
+        :fhir/issue "value"
+        :fhir.issue/expression "Library.content[0].contentType"))
+    (ba/incorrect
+      (format "Missing content in library with id `%s`." id)
+      :fhir/issue "value"
+      :fhir.issue/expression "Library.content")))
+
+
+(defn- translate [cql-code]
+  (-> (cql-translator/translate cql-code :locators? true)
+      (ba/exceptionally
+        #(assoc %
            :fhir/issue "value"
-           :fhir.issue/expression "Library.content[0].data"}))
-      {::anom/category ::anom/incorrect
-       ::anom/message (format "Non `text/cql` content type of `%s` of first attachment in library with id `%s`." contentType id)
-       :fhir/issue "value"
-       :fhir.issue/expression "Library.content[0].contentType"})
-    {::anom/category ::anom/incorrect
-     ::anom/message (format "Missing content in library with id `%s`." id)
-     :fhir/issue "value"
-     :fhir.issue/expression "Library.content"}))
+           :fhir.issue/expression "Measure.library"))))
 
 
 (defn- compile-library*
@@ -74,14 +82,9 @@
 
   Returns an anomaly on errors."
   [node library]
-  (when-ok [cql-code (extract-cql-code library)]
-    (let [library (cql-translator/translate cql-code :locators? true)]
-      (case (::anom/category library)
-        ::anom/incorrect
-        (assoc library
-          :fhir/issue "value"
-          :fhir.issue/expression "Measure.library")
-        (library/compile-library node library {})))))
+  (when-ok [cql-code (extract-cql-code library)
+            library (translate cql-code)]
+    (library/compile-library node library {})))
 
 
 (defn- compile-library
@@ -134,16 +137,15 @@
   (if-let [library-ref (-> measure :library first type/value)]
     (if-let [library (find-library db library-ref)]
       (compile-library (d/node db) library)
-      {::anom/category ::anom/incorrect
-       ::anom/message
-       (str "Can't find the library with canonical URI `" library-ref "`.")
-       :fhir/issue "value"
-       :fhir.issue/expression "Measure.library"})
-    {::anom/category ::anom/unsupported
-     ::anom/message "Missing primary library. Currently only CQL expressions together with one primary library are supported."
-     :fhir/issue "not-supported"
-     :fhir.issue/expression "Measure.library"
-     :measure measure}))
+      (ba/incorrect
+        (format "Can't find the library with canonical URI `%s`." library-ref)
+        :fhir/issue "value"
+        :fhir.issue/expression "Measure.library"))
+    (ba/unsupported
+      "Missing primary library. Currently only CQL expressions together with one primary library are supported."
+      :fhir/issue "not-supported"
+      :fhir.issue/expression "Measure.library"
+      :measure measure)))
 
 
 (defn- compile-primary-library
@@ -229,10 +231,10 @@
         [groups duration]))))
 
 
-(defn- canonical [base-url router {:keys [id url version]}]
+(defn- canonical [context {:keys [id url version]}]
   (if-let [url (type/value url)]
     (cond-> url version (str "|" version))
-    (fhir-util/instance-url base-url router "Measure" id)))
+    (fhir-util/instance-url context "Measure" id)))
 
 
 (defn- get-first-code [codings system]
@@ -301,11 +303,9 @@
 (defn- subject-handle* [db type id]
   (if-let [{:keys [op] :as handle} (d/resource-handle db type id)]
     (if (identical? :delete op)
-      {::anom/category ::anom/incorrect
-       ::anom/message (missing-subject-msg type id)}
+      (ba/incorrect (missing-subject-msg type id))
       handle)
-    {::anom/category ::anom/incorrect
-     ::anom/message (missing-subject-msg type id)}))
+    (ba/incorrect (missing-subject-msg type id))))
 
 
 (defn- type-mismatch-msg [measure-subject-type eval-subject-type]
@@ -317,8 +317,7 @@
   (if (vector? subject-ref)
     (if (= subject-type (first subject-ref))
       (subject-handle* db subject-type (second subject-ref))
-      {::anom/category ::anom/incorrect
-       ::anom/message (type-mismatch-msg subject-type (first subject-ref))})
+      (ba/incorrect (type-mismatch-msg subject-type (first subject-ref))))
     (subject-handle* db subject-type subject-ref)))
 
 
@@ -327,8 +326,8 @@
 
   Returns an already completed MeasureReport under :resource which isn't
   persisted and optional :tx-ops or an anomaly in case of errors."
-  {:arglists '([context base-url router measure params])}
-  [{:keys [clock db] :as context} base-url router
+  {:arglists '([context measure params])}
+  [{:keys [clock db] :as context}
    {:keys [id] groups :group :as measure}
    {:keys [report-type subject-ref] [start end] :period}]
   (when-ok [library (compile-primary-library db measure)
@@ -346,8 +345,7 @@
             [groups duration] (evaluate-groups context id groups)]
     (cond->
       {:resource
-       (measure-report report-type subject-handle
-                       (canonical base-url router measure) now
-                       start end groups duration)}
+       (measure-report report-type subject-handle (canonical context measure)
+                       now start end groups duration)}
       (seq (:tx-ops groups))
       (assoc :tx-ops (:tx-ops groups)))))

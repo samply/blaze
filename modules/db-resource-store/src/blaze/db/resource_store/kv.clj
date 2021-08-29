@@ -1,7 +1,8 @@
 (ns blaze.db.resource-store.kv
   "A resource store implementation that uses a kev-value store as backend."
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
@@ -29,27 +30,42 @@
   (take 16 (iterate #(* 2 %) 32)))
 
 
-(defn- parse-msg [hash e]
+(defn- parse-msg [hash cause-msg]
   (format "Error while parsing resource content with hash `%s`: %s"
-          (bs/hex hash) (ex-message e)))
+          (bs/hex hash) cause-msg))
 
 
-(defn- parse-anom [hash e]
-  (ex-anom #::anom{:category ::anom/fault :message (parse-msg hash e)}))
+(defn- parse-cbor [bytes hash]
+  (-> (fhir-spec/parse-cbor bytes)
+      (ba/exceptionally
+        #(assoc %
+           ::anom/message (parse-msg hash (::anom/message %))
+           :blaze.resource/hash hash))))
+
+
+(defn- conform-msg [hash]
+  (format "Error while conforming resource content with hash `%s`."
+          (bs/hex hash)))
 
 
 (defn- conform-cbor [bytes hash]
-  (try
-    (fhir-spec/conform-cbor (fhir-spec/parse-cbor bytes))
-    (catch Exception e
-      (throw (parse-anom hash e)))))
+  (when-ok [x (parse-cbor bytes hash)]
+    (-> (fhir-spec/conform-cbor x)
+        (ba/exceptionally
+          (constantly
+            (ba/fault
+              (conform-msg hash)
+              :blaze.resource/hash hash))))))
 
 
 (def ^:private entry-thawer
-  (map
-    (fn [[k v]]
-      (let [hash (bs/from-byte-array k)]
-        [hash (conform-cbor v hash)]))))
+  (comp
+    (map
+      (fn [[k v]]
+        (let [hash (bs/from-byte-array k)]
+          (when-ok [resource (conform-cbor v hash)]
+            [hash resource]))))
+    (halt-when ba/anomaly?)))
 
 
 (def ^:private entry-freezer
@@ -79,7 +95,7 @@
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")
     (ac/supply-async
-      #(into {} entry-thawer (multi-get-content kv-store hashes))
+      #(transduce entry-thawer conj {} (multi-get-content kv-store hashes))
       executor))
 
   rs/ResourceStore

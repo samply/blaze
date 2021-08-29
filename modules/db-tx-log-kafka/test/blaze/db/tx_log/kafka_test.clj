@@ -1,11 +1,11 @@
 (ns blaze.db.tx-log.kafka-test
   (:require
-    [blaze.async.comp :as ac]
+    [blaze.anomaly-spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka :as kafka]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -120,7 +120,7 @@
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
-          (given @(-> (tx-log/submit tx-log [tx-cmd]) (ac/exceptionally ex-data))
+          (given-failed-future (tx-log/submit tx-log [tx-cmd])
             ::anom/category := ::anom/unsupported
             ::anom/message := "A transaction with 1 commands generated a Kafka message which is larger than the configured maximum of null bytes. In order to prevent this error, increase the maximum message size by setting DB_KAFKA_MAX_REQUEST_SIZE to a higher number. msg-173357"))))
 
@@ -138,7 +138,7 @@
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
-          (given @(-> (tx-log/submit tx-log [tx-cmd]) (ac/exceptionally ex-data))
+          (given-failed-future @(tx-log/submit tx-log [tx-cmd])
             ::anom/category := ::anom/fault
             ::anom/message := "msg-175337")))))
 

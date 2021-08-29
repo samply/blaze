@@ -1,3 +1,31 @@
 {:deps
- {com.cognitect/anomalies
-  {:mvn/version "0.1.12"}}}
+ {blaze/spec
+  {:local/root "../spec"}
+
+  com.cognitect/anomalies
+  {:mvn/version "0.1.12"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    lambdaisland/kaocha
+    {:mvn/version "1.0.861"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

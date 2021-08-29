@@ -1,15 +1,14 @@
 (ns blaze.elm.compiler.structured-values
   "2. Structured Values"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec :as fhir-spec]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom])
+    [clojure.string :as str])
   (:import
     [clojure.lang ILookup IReduceInit]))
 
@@ -32,12 +31,16 @@
   (format "Invalid structured type access with key `%s` on a collection." key))
 
 
+(defn- invalid-structured-type-access-anom [coll key]
+  (ba/fault
+    (invalid-structured-type-access-msg key)
+    :key key
+    :first-elem (coll/first coll)))
+
 (extend-protocol p/StructuredType
   IReduceInit
   (get [coll key]
-    (throw-anom ::anom/fault (invalid-structured-type-access-msg key)
-                :key key
-                :first-elem (coll/first coll)))
+    (throw-anom (invalid-structured-type-access-anom coll key)))
   ILookup
   (get [m key]
     (.valAt m key)))
@@ -104,7 +107,7 @@
 (defn- path->key [path]
   (let [[first-part & more-parts] (str/split path #"\." 2)]
     (when (and more-parts (not= ["value"] more-parts))
-      (throw-anom ::anom/unsupported (format "Unsupported path `%s`with more than one part." path)))
+      (throw-anom (ba/unsupported (format "Unsupported path `%s`with more than one part." path))))
     (keyword first-part)))
 
 

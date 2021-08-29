@@ -1,5 +1,7 @@
 (ns blaze.interaction.util
   (:require
+    [blaze.db.api :as d]
+    [blaze.handler.fhir.util :as fhir-util]
     [blaze.luid :as luid]
     [clojure.string :as str]))
 
@@ -11,10 +13,19 @@
         (Long/parseLong t)))))
 
 
-(defn clauses [query]
-  (mapv
-    #(let [[k v] (str/split % #"=")] (into [k] (str/split v #",")))
-    (str/split query #"&")))
+(defn- remove-query-param? [[k]]
+  (and (str/starts-with? k "_")
+       (not (#{"_id" "_list" "_profile" "_lastUpdated"} k))
+       (not (str/starts-with? k "_has"))))
+
+
+(defn clauses [query-params]
+  (into
+    []
+    (comp
+      (remove remove-query-param?)
+      (mapcat (fn [[k v]] (mapv #(into [k] (str/split % #",")) (fhir-util/to-seq v)))))
+    query-params))
 
 
 (defn luid [{:keys [clock rng-fn]}]
@@ -23,3 +34,7 @@
 
 (defn successive-luids [{:keys [clock rng-fn]}]
   (luid/successive-luids clock (rng-fn)))
+
+
+(defn t [db]
+  (or (d/as-of-t db) (d/basis-t db)))

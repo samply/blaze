@@ -128,7 +128,7 @@
     (error-response* (ex-cause error) f)
 
     (instance? Throwable error)
-    (if (::anom/category (ex-data error))
+    (if (ba/anomaly? (ex-data error))
       (error-response*
         (merge
           {::anom/message (ex-message error)}
@@ -137,9 +137,9 @@
       (do
         (log/error (log/stacktrace error))
         (error-response*
-          {::anom/category ::anom/fault
-           ::anom/message (ex-message error)
-           :blaze/stacktrace (format-exception error)}
+          (ba/fault
+            (ex-message error)
+            :blaze/stacktrace (format-exception error))
           f)))
 
     :else
@@ -191,7 +191,7 @@
    :issue [not-found-issue]})
 
 
-(defn- not-found-handler [_]
+(defn not-found-handler [_]
   (-> (ring/not-found not-found-outcome) ac/completed-future))
 
 
@@ -211,7 +211,7 @@
    :issue [(method-not-allowed-issue request)]})
 
 
-(defn- method-not-allowed-handler [request]
+(defn method-not-allowed-handler [request]
   (-> (ring/response (method-not-allowed-outcome request))
       (ring/status 405)
       ac/completed-future))
@@ -227,7 +227,7 @@
    :issue [not-acceptable-issue]})
 
 
-(defn- not-acceptable-handler [_]
+(defn not-acceptable-handler [_]
   (-> (ring/response not-acceptable-outcome)
       (ring/status 406)
       ac/completed-future))
@@ -240,13 +240,12 @@
      :not-acceptable not-acceptable-handler}))
 
 
-(defn- method-not-allowed-batch-handler [request]
-  (-> {::anom/category ::anom/forbidden
-       ::anom/message (method-not-allowed-msg request)
-       :http/status 405
-       :fhir/issue "processing"}
-      ba/ex-anom
-      ac/failed-future))
+(defn method-not-allowed-batch-handler [request]
+  (ac/completed-future
+    (ba/forbidden
+      (method-not-allowed-msg request)
+      :http/status 405
+      :fhir/issue "processing")))
 
 
 (def default-batch-handler

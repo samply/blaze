@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.cql-test
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.cql-translator :as cql-translator]
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
