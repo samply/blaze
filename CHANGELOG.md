@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.11.1
+
+### Security
+
+* Migrate to from AdoptOpenJDK Eclipse Temurin (#462)
+
 ## v0.11.0
 
 **!!! IMPORTANT !!!**

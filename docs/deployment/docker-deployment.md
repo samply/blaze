@@ -11,7 +11,7 @@ docker volume create blaze-data
 ## Blaze
 
 ```sh
-docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11.0
+docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11
 ```
 
 Blaze should log something like this:
@@ -24,10 +24,10 @@ Blaze should log something like this:
 ...
 2021-06-27T11:02:37.758Z ee086ef908c1 main INFO [blaze.system:230] - Start metrics server on port 8081
 2021-06-27T11:02:37.822Z ee086ef908c1 main INFO [blaze.system:218] - Start main server on port 8080
-2021-06-27T11:02:37.834Z ee086ef908c1 main INFO [blaze.core:64] - JVM version: 15.0.2
+2021-06-27T11:02:37.834Z ee086ef908c1 main INFO [blaze.core:64] - JVM version: 16.0.2
 2021-06-27T11:02:37.834Z ee086ef908c1 main INFO [blaze.core:65] - Maximum available memory: 1738 MiB
 2021-06-27T11:02:37.835Z ee086ef908c1 main INFO [blaze.core:66] - Number of available processors: 8
-2021-06-27T11:02:37.836Z ee086ef908c1 main INFO [blaze.core:67] - Successfully started Blaze version 0.11.0 in 8.2 seconds
+2021-06-27T11:02:37.836Z ee086ef908c1 main INFO [blaze.core:67] - Successfully started Blaze version 0.11.1 in 8.2 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
@@ -47,7 +47,7 @@ that should return:
 ```json
 {
   "name": "Blaze",
-  "version": "0.11.0"
+  "version": "0.11.1"
 }
 ```
 
@@ -61,7 +61,7 @@ A Docker Compose file looks like this:
 version: '3.2'
 services:
   blaze:
-    image: "samply/blaze:0.11.0"
+    image: "samply/blaze:0.11"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -72,4 +72,3 @@ services:
 volumes:
   blaze-data:
 ```
-
