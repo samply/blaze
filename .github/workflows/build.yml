@@ -355,20 +355,8 @@ jobs:
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
-    - name: Search Observation _lastUpdated
-      run: .github/scripts/search-patient-last-updated.sh
-
-    - name: Search Observation _profile
-      run: .github/scripts/search-observation-profile.sh
-
-    - name: Search Compartment
-      run: .github/scripts/search-compartment.sh
-
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql 56
-
-    - name: Evaluate CQL Query 1 on Individual Patients
-      run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
@@ -387,12 +375,6 @@ jobs:
 
     - name: X-Forwarded Headers
       run: .github/scripts/x-forwarded-headers.sh
-
-    - name: Delete
-      run: .github/scripts/delete.sh
-
-    - name: Batch
-      run: .github/scripts/batch.sh
 
   openid-auth-test:
     needs: build
@@ -480,11 +462,8 @@ jobs:
     - name: Docker Logs Cassandra 2
       run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
 
-    - name: Docker Logs Blaze 1
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-1
-
-    - name: Docker Logs Blaze 2
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-2
+    - name: Docker Logs Blaze
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze
 
     - name: Docker Stats
       run: docker stats --no-stream
@@ -531,20 +510,8 @@ jobs:
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
-    - name: Search Observation _lastUpdated
-      run: .github/scripts/search-patient-last-updated.sh
-
-    - name: Search Observation _profile
-      run: .github/scripts/search-observation-profile.sh
-
-    - name: Search Compartment
-      run: .github/scripts/search-compartment.sh
-
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql 56
-
-    - name: Evaluate CQL Query 1 on Individual Patients
-      run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
@@ -563,12 +530,6 @@ jobs:
 
     - name: X-Forwarded Headers
       run: .github/scripts/x-forwarded-headers.sh
-
-    - name: Delete
-      run: .github/scripts/delete.sh
-
-    - name: Batch
-      run: .github/scripts/batch.sh
 
     - name: Docker Stats
       run: docker stats --no-stream
