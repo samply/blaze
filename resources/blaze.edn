@@ -105,15 +105,18 @@
 
   :blaze.interaction/search-system
   {:clock #blaze/ref :blaze/clock
-   :rng-fn #blaze/ref :blaze/rng-fn}
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :page-store #blaze/ref :blaze/page-store}
 
   :blaze.interaction/search-type
   {:clock #blaze/ref :blaze/clock
-   :rng-fn #blaze/ref :blaze/rng-fn}
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :page-store #blaze/ref :blaze/page-store}
 
   :blaze.interaction/search-compartment
   {:clock #blaze/ref :blaze/clock
-   :rng-fn #blaze/ref :blaze/rng-fn}
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :page-store #blaze/ref :blaze/page-store}
 
   :blaze.interaction/transaction
   {:node #blaze/ref :blaze.db/node
@@ -311,7 +314,15 @@
    ;; super key :blaze.db/resource-kv-store.
    ;;
    [:blaze.db.kv/mem :blaze.db/resource-kv-store]
-   {:column-families {}}}
+   {:column-families {}}
+
+   ;;
+   ;; Local Page Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
+   ;;
+   :blaze.page-store/local
+   {:secure-rng #blaze/ref :blaze/secure-rng}}
 
   :standalone
   {
@@ -488,7 +499,15 @@
    {:stats
     [["index" #blaze/ref :blaze.db.index-kv-store/stats]
      ["transaction" #blaze/ref :blaze.db.transaction-kv-store/stats]
-     ["resource" #blaze/ref :blaze.db.resource-kv-store/stats]]}}
+     ["resource" #blaze/ref :blaze.db.resource-kv-store/stats]]}
+
+   ;;
+   ;; Local Page Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
+   ;;
+   :blaze.page-store/local
+   {:secure-rng #blaze/ref :blaze/secure-rng}}
 
   :distributed
   {
@@ -629,7 +648,27 @@
 
    :blaze.db.resource-store.cassandra/duration-seconds {}
 
-   :blaze.db.resource-store.cassandra/resource-bytes {}}}
+   :blaze.db.resource-store.cassandra/resource-bytes {}
+
+   ;;
+   ;; Cassandra Page Store
+   ;;
+   ;; Can be referred by the super key :blaze/page-store.
+   ;;
+   :blaze.page-store/cassandra
+   {:secure-rng #blaze/ref :blaze/secure-rng
+    :contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
+    :username #blaze/cfg ["DB_CASSANDRA_USERNAME" string? "cassandra"]
+    :password #blaze/cfg ["DB_CASSANDRA_PASSWORD" string? "cassandra"]
+    :key-space #blaze/cfg ["DB_CASSANDRA_KEY_SPACE" string? "blaze"]
+    :put-consistency-level #blaze/cfg ["DB_CASSANDRA_PUT_CONSISTENCY_LEVEL" string? "TWO"]
+    :max-concurrent-requests #blaze/cfg ["DB_CASSANDRA_MAX_CONCURRENT_REQUESTS" nat-int? 1024]
+    :max-request-queue-size #blaze/cfg ["DB_CASSANDRA_MAX_REQUEST_QUEUE_SIZE" nat-int? 100000]
+    :request-timeout #blaze/cfg ["DB_CASSANDRA_REQUEST_TIMEOUT" pos-int? 2000]}
+
+   :blaze.page-store.cassandra/duration-seconds {}
+
+   :blaze.page-store.cassandra/resource-bytes {}}}
 
  :features
  [

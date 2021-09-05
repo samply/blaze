@@ -1,10 +1,9 @@
 (ns blaze.db.kv.rocksdb
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.db.kv :as kv]
     [blaze.db.kv.rocksdb.metrics :as metrics]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -66,11 +65,13 @@
     (.close i)))
 
 
+(defn- column-family-not-found-msg [column-family]
+  (format "column family `%s` not found" (name column-family)))
+
+
 (defn- get-cfh ^ColumnFamilyHandle [cfhs column-family]
   (or (cfhs column-family)
-      (throw-anom
-        ::anom/not-found
-        (format "column family `%s` not found" (name column-family)))))
+      (throw-anom (ba/not-found (column-family-not-found-msg column-family)))))
 
 
 (deftype RocksKvSnapshot

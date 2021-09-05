@@ -54,7 +54,7 @@
 
 
 
-(deftest tid
+(deftest tid-test
   (check `codec/tid))
 
 
@@ -62,7 +62,7 @@
   (ZoneOffset/ofHours 0))
 
 
-(deftest date-lb
+(deftest date-lb-test
   (testing "year"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
       #system/date"1970" "80"
@@ -91,7 +91,7 @@
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -2)) "901C20")))
 
 
-(deftest date-ub
+(deftest date-ub-test
   (testing "year"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
       #system/date"1969" "7F"
@@ -120,7 +120,7 @@
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "901C1F")))
 
 
-(deftest date-lb-ub
+(deftest date-lb-ub-test
   (testing "extract lower bound"
     (is (=
           (codec/date-lb-ub->lb
@@ -134,7 +134,7 @@
           (codec/date-ub zo #system/date"2020")))))
 
 
-(deftest number
+(deftest number-test
   (testing "long"
     (are [n hex] (= hex (bs/hex (codec/number n)))
       Long/MIN_VALUE "3F8000000000000000"

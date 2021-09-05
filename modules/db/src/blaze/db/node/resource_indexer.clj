@@ -1,5 +1,6 @@
 (ns blaze.db.node.resource-indexer
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
@@ -77,7 +78,7 @@
 (defn- index-entries [search-param linked-compartments hash resource]
   (let [res (search-param/index-entries search-param linked-compartments
                                         hash resource)]
-    (if (::anom/category res)
+    (if (ba/anomaly? res)
       (log/warn (skip-indexing-msg search-param resource (::anom/message res)))
       res)))
 

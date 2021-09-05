@@ -15,9 +15,12 @@
     [blaze.interaction.search-type]
     [blaze.interaction.transaction]
     [blaze.interaction.update]
+    [blaze.interaction.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.page-store-spec]
+    [blaze.page-store.local]
     [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -122,9 +125,6 @@
      :executor (ig/ref :blaze.interaction.transaction/executor)
      :clock (ig/ref :blaze.test/clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.interaction.transaction/executor {}
-    :blaze.test/fixed-rng-fn {}
-    :blaze.test/executor {}
 
     :blaze.interaction/create
     {:node (ig/ref :blaze.db/node)
@@ -135,7 +135,8 @@
     :blaze.interaction/search-type
     {:node (ig/ref :blaze.db/node)
      :clock (ig/ref :blaze.test/clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+     :page-store (ig/ref :blaze.page-store/local)}
 
     :blaze.interaction/read
     {:node (ig/ref :blaze.db/node)}
@@ -154,7 +155,13 @@
      :search-type-handler (ig/ref :blaze.interaction/search-type)
      :read-handler (ig/ref :blaze.interaction/read)
      :delete-handler (ig/ref :blaze.interaction/delete)
-     :update-handler (ig/ref :blaze.interaction/update)}))
+     :update-handler (ig/ref :blaze.interaction/update)}
+
+    :blaze.interaction.transaction/executor {}
+    :blaze.test/fixed-rng-fn {}
+    :blaze.test/executor {}
+    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+    :blaze.test/fixed-rng {}))
 
 
 (defn wrap-defaults [handler router]

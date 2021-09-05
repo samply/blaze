@@ -94,9 +94,10 @@
      [(tx-ops (:entry (read-data name)))]
 
      (let [db (d/db node)
-           context {:clock clock :rng-fn fixed-rng-fn :db db}
+           context {:clock clock :rng-fn fixed-rng-fn :db db
+                    :blaze/base-url "" ::reitit/router router}
            period [#system/date"2000" #system/date"2020"]]
-       (evaluate-measure context "" router
+       (evaluate-measure context
                          @(d/pull node (d/resource-handle db "Measure" "0"))
                          {:period period :report-type report-type})))))
 
@@ -148,7 +149,8 @@
                :content [library-content]}]]]
 
       (let [db (d/db node)
-            context {:clock clock :rng-fn fixed-rng-fn :db db}
+            context {:clock clock :rng-fn fixed-rng-fn :db db
+                     :blaze/base-url "" ::reitit/router router}
             measure {:fhir/type :fhir/Measure :id "0"
                      :library [#fhir/canonical"0"]
                      :group
@@ -159,7 +161,7 @@
             params {:period [#system/date"2000" #system/date"2020"]
                     :report-type "subject"
                     :subject "Patient/0"}]
-        (given (evaluate-measure context "" router measure params)
+        (given (evaluate-measure context measure params)
           ::anom/category := ::anom/incorrect
           ::anom/message := "Missing criteria."
           :fhir/issue := "required"
@@ -173,7 +175,8 @@
                :content [library-content]}]]]
 
       (let [db (d/db node)
-            context {:clock clock :rng-fn fixed-rng-fn :db db}
+            context {:clock clock :rng-fn fixed-rng-fn :db db
+                     :blaze/base-url "" ::reitit/router router}
             measure {:fhir/type :fhir/Measure :id "0"
                      :library [#fhir/canonical"0"]
                      :group
@@ -185,7 +188,7 @@
             params {:period [#system/date"2000" #system/date"2020"]
                     :report-type "subject"
                     :subject-ref "0"}]
-        (given (:resource (evaluate-measure context "" router measure params))
+        (given (:resource (evaluate-measure context measure params))
           :fhir/type := :fhir/MeasureReport
           :status := #fhir/code"complete"
           :type := #fhir/code"individual"
@@ -205,7 +208,8 @@
                  :content [library-content]}]]]
 
         (let [db (d/db node)
-              context {:clock clock :rng-fn fixed-rng-fn :db db}
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical"0"]
                        :group
@@ -221,7 +225,7 @@
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
-          (given (:resource (evaluate-measure context "" router measure params))
+          (given (:resource (evaluate-measure context measure params))
             :fhir/type := :fhir/MeasureReport
             :status := #fhir/code"complete"
             :type := #fhir/code"individual"
@@ -243,7 +247,8 @@
                  :content [library-content]}]]]
 
         (let [db (d/db node)
-              context {:clock clock :rng-fn fixed-rng-fn :db db}
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical"0"]
                        :group
@@ -255,7 +260,7 @@
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref ["Observation" "0"]}]
-          (given (evaluate-measure context "" router measure params)
+          (given (evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Type mismatch between evaluation subject `Observation` and Measure subject `Patient`."))))
 
@@ -266,7 +271,8 @@
                  :content [library-content]}]]]
 
         (let [db (d/db node)
-              context {:clock clock :rng-fn fixed-rng-fn :db db}
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical"0"]
                        :group
@@ -278,7 +284,7 @@
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
-          (given (evaluate-measure context "" router measure params)
+          (given (evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))
 
@@ -291,7 +297,8 @@
          [[:delete "Patient" "0"]]]
 
         (let [db (d/db node)
-              context {:clock clock :rng-fn fixed-rng-fn :db db}
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical"0"]
                        :group
@@ -303,7 +310,7 @@
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
-          (given (evaluate-measure context "" router measure params)
+          (given (evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
 

@@ -2,14 +2,13 @@
   "10. Queries"
   (:refer-clojure :exclude [comparator])
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.coll.core :as coll]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.structured-values :as structured-values]
     [blaze.elm.expression-spec]
     [blaze.elm.protocols :as p]
-    [blaze.fhir.spec]
-    [cognitect.anomalies :as anom])
+    [blaze.fhir.spec])
   (:import
     [java.util Comparator]))
 
@@ -246,13 +245,11 @@
     :as expr}]
   (when (seq (filter (comp #{"With"} :type) relationships))
     (throw-anom
-      ::anom/unsupported
-      "Unsupported With clause in query expression."
+      (ba/unsupported "Unsupported With clause in query expression.")
       :expression expr))
   (when (seq (filter (comp #{"Without"} :type) relationships))
     (throw-anom
-      ::anom/unsupported
-      "Unsupported Without clause in query expression."
+      (ba/unsupported "Unsupported Without clause in query expression.")
       :expression expr))
   (if (= 1 (count sources))
     (let [{:keys [expression alias]} (first sources)
@@ -348,14 +345,14 @@
           (->WithXformFactory rhs rhs-operand such-that lhs-operand
                                     single-query-scope))
         (throw-anom
-          ::anom/incorrect
-          (format "Unsupported call without left-hand-side operand.")))
+          (ba/incorrect
+            (format "Unsupported call without left-hand-side operand."))))
       (throw-anom
-        ::anom/incorrect
-        (format "Unsupported call without right-hand-side operand with alias `%s`." alias)))
+        (ba/incorrect
+          (format "Unsupported call without right-hand-side operand with alias `%s`." alias))))
     (throw-anom
-      ::anom/incorrect
-      (format "Unsupported call without single query scope."))))
+      (ba/incorrect
+        (format "Unsupported call without single query scope.")))))
 
 
 ;; TODO 10.13. Without

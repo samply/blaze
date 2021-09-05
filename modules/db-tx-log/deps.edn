@@ -1,15 +1,15 @@
 {:deps
- {blaze/anomaly
-  {:local/root "../anomaly"}
-
-  blaze/async
+ {blaze/async
   {:local/root "../async"}
 
   blaze/db-resource-store
   {:local/root "../db-resource-store"}
 
   blaze/fhir-structure
-  {:local/root "../fhir-structure"}}
+  {:local/root "../fhir-structure"}
+
+  blaze/spec
+  {:local/root "../spec"}}
 
  :aliases
  {:test

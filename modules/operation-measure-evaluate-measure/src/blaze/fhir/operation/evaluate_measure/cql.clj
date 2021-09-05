@@ -1,10 +1,10 @@
 (ns blaze.fhir.operation.evaluate-measure.cql
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.db.api :as d]
     [blaze.elm.expression :as expr]
     [clojure.core.reducers :as r]
-    [cognitect.anomalies :as anom]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]))
@@ -37,10 +37,10 @@
     (expr/eval (get library-context expression-name) context subject-handle nil)
     (catch Exception e
       (log/error (log/stacktrace e))
-      {::anom/category ::anom/fault
-       ::anom/message (ex-message e)
-       :fhir/issue "exception"
-       :expression-name expression-name})))
+      (ba/fault
+        (ex-message e)
+        :fhir/issue "exception"
+        :expression-name expression-name))))
 
 
 (defn- close-batch-db! [{:keys [db]}]
@@ -79,8 +79,8 @@
     ([r] r)
     ([a b]
      (cond
-       (::anom/category a) a
-       (::anom/category b) b
+       (ba/anomaly? a) a
+       (ba/anomaly? b) b
        :else (combine-op a b)))))
 
 
@@ -114,7 +114,7 @@
       (fn [context subject-handle]
         (let [res (evaluate-expression-1 context subject-handle name)]
           (cond
-            (::anom/category res)
+            (ba/anomaly? res)
             (reduced (assoc context ::result res))
 
             res
@@ -157,13 +157,6 @@
   (evaluate-expression-1 (unwrap-library-context context) subject-handle name))
 
 
-(defn- incorrect-stratum [{:fhir/keys [type] :keys [id]} expression-name]
-  {::anom/category ::anom/incorrect
-   ::anom/message
-   (format "CQL expression `%s` returned more than one value for resource `%s`."
-           expression-name (str type "/" id))})
-
-
 (defn- stratum-result-combine-op [{:keys [report-type]}]
   (case report-type
     "population" (partial merge-with +)
@@ -184,10 +177,15 @@
       (wrap-batch-db context)))
 
 
+(defn- incorrect-stratum-msg [{:fhir/keys [type] :keys [id]} expression-name]
+  (format "CQL expression `%s` returned more than one value for resource `%s`."
+          expression-name (str type "/" id)))
+
+
 (defn- evaluate-stratum-expression [context subject-handle name]
   (let [result (evaluate-expression-1 context subject-handle name)]
     (if (sequential? result)
-      (incorrect-stratum subject-handle name)
+      (ba/incorrect (incorrect-stratum-msg subject-handle name))
       result)))
 
 
@@ -201,13 +199,13 @@
         (let [res (evaluate-expression-1 context subject-handle
                                          population-expression-name)]
           (cond
-            (::anom/category res)
+            (ba/anomaly? res)
             (reduced (assoc context ::result res))
 
             res
             (let [stratum (evaluate-stratum-expression
                             context subject-handle stratum-expression-name)]
-              (if (::anom/category stratum)
+              (if (ba/anomaly? stratum)
                 (reduced (assoc context ::result stratum))
                 (update context ::result stratum-result-reduce-op stratum subject-handle)))
 
@@ -246,7 +244,7 @@
 (defn- anom-conj
   ([] [])
   ([r] r)
-  ([r x] (if (::anom/category x) (reduced x) (conj r x))))
+  ([r x] (if (ba/anomaly? x) (reduced x) (conj r x))))
 
 
 (defn- evaluate-mult-component-stratum-expression [context subject-handle names]
@@ -266,14 +264,14 @@
         (let [res (evaluate-expression-1 context subject-handle
                                          population-expression-name)]
           (cond
-            (::anom/category res)
+            (ba/anomaly? res)
             (reduced (assoc context ::result res))
 
             res
             (let [stratum (evaluate-mult-component-stratum-expression
                             context subject-handle stratum-expression-names)]
 
-              (if (::anom/category stratum)
+              (if (ba/anomaly? stratum)
                 (reduced (assoc context ::result stratum))
                 (update context ::result stratum-result-reduce-op stratum subject-handle)))
 

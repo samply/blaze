@@ -1,5 +1,6 @@
 (ns blaze.handler.util-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.handler.util :as handler-util]
     [clojure.spec.alpha :as s]))
 

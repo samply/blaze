@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.util-test
   (:require
+    [blaze.anomaly-spec]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]

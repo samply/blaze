@@ -44,10 +44,7 @@
     {:local/root "../test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "1.0.861"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -69,10 +66,7 @@
     {:local/root "../test-util"}
 
     cloverage/cloverage
-    {:mvn/version "1.2.2"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "1.2.2"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".+spec"]}}}

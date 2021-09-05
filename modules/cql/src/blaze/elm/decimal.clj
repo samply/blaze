@@ -9,9 +9,8 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [min max])
   (:require
-    [blaze.anomaly :refer [throw-anom]]
-    [blaze.elm.protocols :as p]
-    [cognitect.anomalies :as anom])
+    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.elm.protocols :as p])
   (:import
     [java.math RoundingMode]))
 
@@ -210,6 +209,14 @@
           check-overflow))))
 
 
+(defn- minimum-value-msg [x]
+  (format "Predecessor: argument `%s` is already the minimum value." x))
+
+
+(defn- minimum-value-anom [x]
+  (ba/incorrect (minimum-value-msg x)))
+
+
 ;; 16.15. Predecessor
 (extend-protocol p/Predecessor
   BigDecimal
@@ -218,9 +225,7 @@
       (if (within-bounds? x)
         x
         ;; TODO: throwing an exception this is inconsistent with subtract
-        (throw-anom
-          ::anom/incorrect
-          (format "Predecessor: argument `%s` is already the minimum value." x))))))
+        (throw-anom (minimum-value-anom x))))))
 
 
 ;; 16.16. Round

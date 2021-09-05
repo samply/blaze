@@ -19,9 +19,11 @@
     [blaze.db.node]
     [blaze.db.node.tx-indexer.verify :as verify]
     [blaze.db.node.tx-indexer.verify-spec]
+    [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv :as rs-kv]
     [blaze.db.search-param-registry]
+    [blaze.db.tx-cache]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local]
     [blaze.fhir.hash :as hash]
@@ -121,7 +123,7 @@
   `(is (= (walk/postwalk bytes->vec ~a) (walk/postwalk bytes->vec ~b))))
 
 
-(deftest verify-tx-cmds
+(deftest verify-tx-cmds-test
   (testing "adding one patient to an empty store"
     (with-system [{:blaze.db/keys [node]} system]
       (is-entries=

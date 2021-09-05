@@ -5,6 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.anomaly-spec]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.db.spec]
     [blaze.interaction.read]
@@ -38,7 +39,7 @@
 
 
 (def match
-  {:data {:fhir.resource/type "Patient"}})
+  (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
 
 
 (defn wrap-defaults [handler]

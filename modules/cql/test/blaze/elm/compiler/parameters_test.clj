@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler.parameters-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.elm.code-spec]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
@@ -9,7 +10,8 @@
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]]))
 
 
 (st/instrument)
@@ -42,7 +44,10 @@
 
   (testing "definition not found"
     (let [context {:library {}}]
-      (is (thrown-anom? ::anom/incorrect (c/compile context #elm/parameter-ref"parameter-def-103701")))))
+      (given (ba/try-anomaly (c/compile context #elm/parameter-ref"parameter-def-103701"))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Parameter definition `parameter-def-103701` not found."
+        :context := context)))
 
   (testing "value not found"
     (let [context
@@ -51,4 +56,7 @@
             {:def
              [{:name "parameter-def-111045"}]}}}
           expr (c/compile context #elm/parameter-ref"parameter-def-111045")]
-      (is (thrown-anom? ::anom/incorrect (core/-eval expr {} nil nil))))))
+      (given (ba/try-anomaly (core/-eval expr {} nil nil))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Parameter value `parameter-def-111045` not found."
+        :context := {}))))

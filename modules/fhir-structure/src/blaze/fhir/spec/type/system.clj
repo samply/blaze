@@ -11,6 +11,8 @@
    * Quantity"
   (:refer-clojure :exclude [boolean? decimal? integer? string? type])
   (:require
+    [blaze.anomaly :as ba]
+    [blaze.anomaly-spec]
     [cognitect.anomalies :as anom]
     [java-time.core :as time-core])
   (:import
@@ -150,8 +152,7 @@
 (defn parse-decimal [s]
   (if (decimal-string? s)
     (BigDecimal. ^String s)
-    {::anom/category ::anom/incorrect
-     ::anom/message (format "Invalid decimal value `%s`." s)}))
+    (ba/incorrect (format "Invalid decimal value `%s`." s))))
 
 
 
@@ -187,13 +188,8 @@
   Returns an anomaly if `s` isn't a valid System.Date."
   [s]
   (if (date-string? s)
-    (try
-      (parse-date* s)
-      (catch DateTimeParseException e
-        {::anom/category ::anom/incorrect
-         ::anom/message (ex-message e)}))
-    {::anom/category ::anom/incorrect
-     ::anom/message (format "Invalid date-time value `%s`." s)}))
+    (ba/try-one DateTimeParseException ::anom/incorrect (parse-date* s))
+    (ba/incorrect (format "Invalid date-time value `%s`." s))))
 
 
 
@@ -395,13 +391,8 @@
 
 (defn parse-date-time [s]
   (if (date-time-string? s)
-    (try
-      (parse-date-time* s)
-      (catch DateTimeParseException e
-        {::anom/category ::anom/incorrect
-         ::anom/message (ex-message e)}))
-    {::anom/category ::anom/incorrect
-     ::anom/message (format "Invalid date-time value `%s`." s)}))
+    (ba/try-one DateTimeParseException ::anom/incorrect (parse-date-time* s))
+    (ba/incorrect (format "Invalid date-time value `%s`." s))))
 
 
 (extend-protocol SystemType

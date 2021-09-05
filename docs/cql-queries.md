@@ -163,4 +163,3 @@ After importing patients, the result of the initial population will be one:
 ![](cql-queries/measure-report-2.png)
 
 You can learn more about CQL queries in the [Author's Guide](https://cql.hl7.org/02-authorsguide.html) at HL7.
-

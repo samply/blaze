@@ -1,0 +1,335 @@
+(ns blaze.anomaly-test
+  (:require
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
+    [clojure.spec.test.alpha :as st]
+    [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]])
+  (:import
+    [java.util.concurrent ExecutionException TimeoutException]))
+
+
+(st/instrument)
+
+
+(defn- fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))
+
+
+(test/use-fixtures :each fixture)
+
+
+(deftest anomaly?-test
+  (testing "a map with the right category key is an anomaly"
+    (is (ba/anomaly? {::anom/category ::anom/fault})))
+
+  (testing "other maps are no anomalies"
+    (is (not (ba/anomaly? {})))
+    (is (not (ba/anomaly? {::foo ::bar}))))
+
+  (testing "nil is no anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+
+(deftest unsupported?-test
+  (testing "a unsupported anomaly has to have the right category"
+    (is (ba/unsupported? {::anom/category ::anom/unsupported})))
+
+  (testing "anomalies with other categories are no unsupported anomalies"
+    (is (not (ba/unsupported? {::anom/category ::anom/fault}))))
+
+  (testing "nil is no unsupported anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+
+(deftest not-found?-test
+  (testing "a not-found anomaly has to have the right category"
+    (is (ba/not-found? {::anom/category ::anom/not-found})))
+
+  (testing "anomalies with other categories are no not-found anomalies"
+    (is (not (ba/not-found? {::anom/category ::anom/fault}))))
+
+  (testing "nil is no not-found anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+
+(deftest fault?-test
+  (testing "a fault anomaly has to have the right category"
+    (is (ba/fault? {::anom/category ::anom/fault})))
+
+  (testing "anomalies with other categories are no fault anomalies"
+    (is (not (ba/fault? {::anom/category ::anom/not-found}))))
+
+  (testing "nil is no fault anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+
+(deftest incorrect-test
+  (testing "with nil message"
+    (is (= (ba/incorrect nil) {::anom/category ::anom/incorrect})))
+
+  (testing "with message only"
+    (given (ba/incorrect "msg-183005")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/incorrect "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
+
+(deftest forbidden-test
+  (testing "with nil message"
+    (is (= (ba/forbidden nil) {::anom/category ::anom/forbidden})))
+
+  (testing "with message only"
+    (given (ba/forbidden "msg-183005")
+      ::anom/category := ::anom/forbidden
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/forbidden "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/forbidden
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
+
+(deftest unsupported-test
+  (testing "with nil message"
+    (is (= (ba/unsupported nil) {::anom/category ::anom/unsupported})))
+
+  (testing "with message only"
+    (given (ba/unsupported "msg-183005")
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/unsupported "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
+
+(deftest not-found-test
+  (testing "with nil message"
+    (is (= (ba/not-found nil) {::anom/category ::anom/not-found})))
+
+  (testing "with message only"
+    (given (ba/not-found "msg-183005")
+      ::anom/category := ::anom/not-found
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/not-found "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/not-found
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
+
+(deftest fault-test
+  (testing "without message"
+    (is (= (ba/fault) {::anom/category ::anom/fault})))
+
+
+  (testing "with nil message"
+    (is (= (ba/fault nil) {::anom/category ::anom/fault})))
+
+  (testing "with message only"
+    (given (ba/fault "msg-183005")
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/fault "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
+
+(deftest busy-test
+  (testing "with nil message"
+    (is (= (ba/busy nil) {::anom/category ::anom/busy})))
+
+  (testing "with message only"
+    (given (ba/busy "msg-183005")
+      ::anom/category := ::anom/busy
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/busy "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/busy
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
+
+(deftest anomaly-test
+  (testing "ExecutionException"
+    (given (ba/anomaly (ExecutionException. (Exception. "msg-184245")))
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-184245"))
+
+  (testing "TimeoutException"
+    (given (ba/anomaly (TimeoutException. "msg-122233"))
+      ::anom/category := ::anom/busy
+      ::anom/message := "msg-122233"))
+
+  (testing "ExceptionInfo"
+    (testing "without an anomaly in data"
+      (given (ba/anomaly (ex-info "msg-184349" {}))
+        ::anom/category := ::anom/fault
+        ::anom/message := "msg-184349"))
+
+    (testing "with an anomaly in data"
+      (given (ba/anomaly (ex-info "msg-184349" (ba/incorrect "msg-184433")))
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "msg-184433")))
+
+  (testing "Exception"
+    (given (ba/anomaly (Exception. "msg-120840"))
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-120840"))
+
+  (testing "anomaly"
+    (given (ba/anomaly (ba/busy "msg-121702"))
+      ::anom/category := ::anom/busy
+      ::anom/message := "msg-121702")))
+
+
+(deftest try-one-test
+  (testing "without message"
+    (is (= (ba/try-one Exception ::anom/fault (throw (Exception.)))
+         {::anom/category ::anom/fault})))
+
+  (testing "with message"
+    (given (ba/try-one Exception ::anom/fault (throw (Exception. "msg-134156")))
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-134156")))
+
+
+(deftest try-all-test
+  (given (ba/try-all ::anom/fault (throw (Exception. "msg-134347")))
+    ::anom/category := ::anom/fault
+    ::anom/message := "msg-134347"))
+
+
+(deftest try-anomaly-test
+  (testing "an exception leads to a fault"
+    (given (ba/try-anomaly (throw (Exception. "msg-134612")))
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-134612"))
+
+  (testing "a thrown busy anomaly will be preserved"
+    (given (ba/try-anomaly (throw (ba/ex-anom (ba/busy "msg-134737" ::foo ::bar))))
+      ::anom/category := ::anom/busy
+      ::anom/message := "msg-134737"
+      ::foo := ::bar)))
+
+
+(deftest ex-anom-test
+  (testing "the message will be put in the exception"
+    (is (= (ex-message (ba/ex-anom (ba/incorrect "msg-135018"))) "msg-135018")))
+
+  (testing "the complete anomaly goes into ex-data"
+    (given (ex-data (ba/ex-anom (ba/unsupported "msg-135018" ::foo ::bar)))
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "msg-135018"
+      ::foo := ::bar)))
+
+
+(deftest throw-anom-test
+  (given (ba/try-anomaly (ba/throw-anom (ba/conflict "msg-174935")))
+    ::anom/category := ::anom/conflict
+    ::anom/message := "msg-174935"))
+
+
+(deftest throw-when-test
+  (testing "anomalies are thrown"
+    (given (ba/try-anomaly (ba/throw-when (ba/unsupported "msg-135500")))
+      ::anom/category := ::anom/unsupported
+      ::anom/message := "msg-135500"))
+
+  (testing "other values are returned"
+    (is (= (ba/throw-when {::foo ::bar}) {::foo ::bar}))))
+
+
+(deftest when-ok-test
+  (testing "no anomaly"
+    (testing "without a binding"
+      (is (= 1 (when-ok [] 1))))
+
+    (testing "with one binding"
+      (is (= 2 (when-ok [x 1] (inc x)))))
+
+    (testing "with two bindings"
+      (is (= 3 (when-ok [x 1 y 2] (+ x y))))))
+
+  (testing "anomaly on only binding"
+    (given (when-ok [x (ba/fault)] (inc x))
+      ::anom/category := ::anom/fault))
+
+  (testing "anomaly on first binding"
+    (given (when-ok [x (ba/fault) y 2] (+ x y))
+      ::anom/category := ::anom/fault))
+
+  (testing "anomaly on second binding"
+    (given (when-ok [x 1 y (ba/fault)] (+ x y))
+      ::anom/category := ::anom/fault))
+
+  (testing "bodies can also fail"
+    (given (when-ok [] (ba/fault))
+      ::anom/category := ::anom/fault)))
+
+
+(deftest if-ok-test
+  (testing "no anomaly"
+    (testing "without a binding"
+      (is (= 1 (if-ok [] 1 identity))))
+
+    (testing "with one binding"
+      (is (= 2 (if-ok [x 1] (inc x) identity))))
+
+    (testing "with two bindings"
+      (is (= 3 (if-ok [x 1 y 2] (+ x y) identity)))))
+
+  (testing "anomaly on only binding"
+    (given (if-ok [x (ba/fault)] (inc x) #(assoc % ::foo ::bar))
+      ::anom/category := ::anom/fault
+      ::foo := ::bar))
+
+  (testing "anomaly on first binding"
+    (given (if-ok [x (ba/fault) y 2] (+ x y) #(assoc % ::foo ::bar))
+      ::anom/category := ::anom/fault
+      ::foo := ::bar))
+
+  (testing "anomaly on second binding"
+    (given (if-ok [x 1 y (ba/fault)] (+ x y) #(assoc % ::foo ::bar))
+      ::anom/category := ::anom/fault
+      ::foo := ::bar))
+
+  (testing "else doesn't see the failed body"
+    (given (if-ok [] (ba/fault) #(assoc % ::anom/category ::anom/busy))
+      ::anom/category := ::anom/fault)))
+
+
+(deftest map-test
+  (testing "no anomaly"
+    (is (= 2 (ba/map 1 inc))))
+
+  (testing "with anomaly"
+    (given (ba/map (ba/fault) inc)
+      ::anom/category := ::anom/fault)))
+
+
+(deftest exceptionally-test
+  (testing "no anomaly"
+    (is (= 1 (ba/exceptionally 1 #(assoc % ::foo ::bar)))))
+
+  (testing "with anomaly"
+    (given (ba/exceptionally (ba/fault) #(assoc % ::foo ::bar))
+      ::anom/category := ::anom/fault
+      ::foo := ::bar)))

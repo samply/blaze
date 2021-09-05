@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec-spec]
     [blaze.fhir.spec.type :as type]
@@ -10,6 +11,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
+    [cognitect.anomalies :as anom]
     [cuerdas.core :as str]
     [juxt.iota :refer [given]])
   (:import
@@ -31,6 +33,18 @@
 
 
 (test/use-fixtures :each fixture)
+
+
+(deftest parse-json-test
+  (given (fhir-spec/parse-json "{")
+    ::anom/category := ::anom/incorrect
+    ::anom/message :# "Unexpected end-of-input: expected close marker for Object(.|\\s)*"))
+
+
+(deftest parse-cbor-test
+  (given (fhir-spec/parse-cbor (byte-array 0))
+    ::anom/category := ::anom/incorrect
+    ::anom/message :# "No content to map due to end-of-input(.|\\s)*"))
 
 
 (deftest resource-test
@@ -72,13 +86,13 @@
     "0"))
 
 
-(deftest local-ref-spec
+(deftest local-ref-spec-test
   (is (= ["Patient" "0"] (s/conform :blaze.fhir/local-ref "Patient/0")))
 
   (is (s/invalid? (s/conform :blaze.fhir/local-ref "Patient/0/1"))))
 
 
-(deftest patient-id
+(deftest patient-id-test
   (are [s] (s2/valid? :fhir.Patient/id s)
     "."
     "-"
@@ -117,13 +131,13 @@
 
 (deftest conform-json-test
   (testing "nil"
-    (is (s/invalid? (fhir-spec/conform-json nil))))
+    (is (ba/anomaly? (fhir-spec/conform-json nil))))
 
   (testing "string"
-    (is (s/invalid? (fhir-spec/conform-json "foo"))))
+    (is (ba/anomaly? (fhir-spec/conform-json "foo"))))
 
   (testing "invalid"
-    (is (s/invalid? (fhir-spec/conform-json {:resourceType "Patient" :id 0}))))
+    (is (ba/anomaly? (fhir-spec/conform-json {:resourceType "Patient" :id 0}))))
 
   (testing "empty patient resource"
     (testing "gets type annotated"
@@ -334,6 +348,20 @@
       "{\"valueQuantity\":{\"value\":36.6,\"unit\":\"kg/m^2\",\"system\":\"http://unitsofmeasure.org\",\"code\":\"kg/m2\"},\"resourceType\":\"Observation\"}")))
 
 
+(deftest conform-cbor-test
+  (testing "nil"
+    (given (fhir-spec/conform-cbor nil)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid intermediate representation of a resource."
+      :x := nil))
+
+  (testing "empty map"
+    (given (fhir-spec/conform-cbor {})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid intermediate representation of a resource."
+      :x := {})))
+
+
 (defn- conform-unform-cbor [resource]
   (-> (fhir-spec/unform-cbor resource)
       fhir-spec/parse-cbor
@@ -479,14 +507,14 @@
       (is (= xml (fhir-spec/unform-xml (fhir-spec/conform-xml xml)))))))
 
 
-(deftest fhir-type
+(deftest fhir-type-test
   (testing "Patient"
     (is (= :fhir/Patient
            (fhir-spec/fhir-type
              (fhir-spec/conform-json {:resourceType "Patient"}))))))
 
 
-(deftest explain-data-json
+(deftest explain-data-json-test
   (testing "valid resources"
     (are [resource] (nil? (fhir-spec/explain-data-json resource))
       {:resourceType "Patient" :id "."}
@@ -579,7 +607,7 @@
       [:fhir/issues 0 :fhir.issues/expression] := "code.coding[0].system")))
 
 
-(deftest explain-data-xml
+(deftest explain-data-xml-test
   (testing "valid resources"
     (are [resource] (nil? (fhir-spec/explain-data-xml resource))
       (sexp [::f/Patient [::f/id {:value "."}]])
@@ -626,7 +654,7 @@
         "entry[0].resource.gender"))))
 
 
-(deftest primitive?
+(deftest primitive-test
   (are [spec] (fhir-spec/primitive? spec)
     :fhir/id))
 
@@ -634,7 +662,7 @@
 
 ;; ---- Primitive Types -------------------------------------------------------
 
-(deftest fhir-decimal
+(deftest fhir-decimal-test
   (testing "conforming"
     (testing "JSON"
       (are [json fhir] (= fhir (s2/conform :fhir.json/decimal json))
@@ -657,7 +685,7 @@
         1M (sexp [nil {:value "1"}])))))
 
 
-(deftest fhir-base64Binary
+(deftest fhir-base64Binary-test
   (are [s] (s2/valid? :fhir/base64Binary s)
     #fhir/base64Binary"Zm9vCg==")
 
@@ -715,7 +743,7 @@
       [:valueString {:value "bar"}]]]))
 
 
-(deftest fhir-date
+(deftest fhir-date-test
   (testing "FHIR spec"
     (are [s] (s2/valid? :fhir/date s)
       #fhir/date"2020"))
@@ -755,7 +783,7 @@
     nil [#fhir/Extension{:url "foo" :value "bar"}] "2020"))
 
 
-(deftest fhir-dateTime
+(deftest fhir-dateTime-test
   (testing "FHIR spec"
     (are [s] (s2/valid? :fhir/dateTime s)
       #fhir/dateTime"2020"))
@@ -817,7 +845,7 @@
   #fhir/code{:extension [#fhir/Extension{:url "bar" :value "baz"}] :value "foo"})
 
 
-(deftest fhir-code
+(deftest fhir-code-test
   (testing "FHIR spec"
     (are [s] (s2/valid? :fhir/code s)
       #fhir/code"foo"))
@@ -847,7 +875,7 @@
         (is (= extended-code-element (s2/unform :fhir.xml/code extended-code)))))))
 
 
-(deftest fhir-id
+(deftest fhir-id-test
   (testing "FHIR spec"
     (are [s] (s2/valid? :fhir/id s)
       #fhir/id"."
@@ -980,7 +1008,7 @@
      [::xhtml/p "FHIR is cool."]]))
 
 
-(deftest fhir-xhtml
+(deftest fhir-xhtml-test
   (testing "FHIR spec"
     (are [s] (s2/valid? :fhir/xhtml s)
       #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"></div>"))

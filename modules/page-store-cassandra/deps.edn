@@ -1,0 +1,37 @@
+{:deps
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/cassandra
+  {:local/root "../cassandra"}
+
+  blaze/page-store
+  {:local/root "../page-store"}
+
+  blaze/module-base
+  {:local/root "../module-base"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    lambdaisland/kaocha
+    {:mvn/version "1.0.861"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

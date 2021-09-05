@@ -45,7 +45,7 @@
   (some #(when (= name (:name %)) %) (u/primitive-types)))
 
 
-(deftest primitive-type->spec-defs
+(deftest primitive-type->spec-defs-test
   (testing "boolean"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "boolean"))
                regexes->str)
@@ -270,7 +270,7 @@
   (some #(when (= name (:name %)) %) (u/resources)))
 
 
-(deftest struct-def->spec-def
+(deftest struct-def->spec-def-test
   (testing "internal representation of choice typed data element"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "UsageContext")))
       [:fhir.UsageContext/value 0 :spec-form]
@@ -466,7 +466,7 @@
 (def sexp prxml/sexp-as-element)
 
 
-(deftest elem-def->spec-def
+(deftest elem-def->spec-def-test
   (testing "normal type"
     (is (= (impl/elem-def->spec-def
              {:path "Observation.code"

@@ -1,15 +1,14 @@
 (ns blaze.elm.compiler.type-operators
   "22. Type Operators"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defbinop defunop]]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as quantity]
     [blaze.elm.util :as elm-util]
-    [blaze.fhir.spec :as fhir-spec]
-    [cognitect.anomalies :as anom]))
+    [blaze.fhir.spec :as fhir-spec]))
 
 
 ;; 22.1. As
@@ -35,9 +34,9 @@
     "DateTime" date-time/temporal?
     "Quantity" quantity/quantity?
     (throw-anom
-      ::anom/unsupported
-      (format "Unsupported ELM type `%s` in As expression." type-name)
-      :type-name type-name)))
+      (ba/unsupported
+        (format "Unsupported ELM type `%s` in As expression." type-name)
+        :type-name type-name))))
 
 
 (defn- matches-named-type-fn [type-name]
@@ -48,9 +47,9 @@
       "urn:hl7-org:elm-types:r1"
       (matches-elm-named-type-fn type-name)
       (throw-anom
-        ::anom/unsupported
-        (format "Unsupported type namespace `%s` in As expression." type-ns)
-        :type-ns type-ns))))
+        (ba/unsupported
+          (format "Unsupported type namespace `%s` in As expression." type-ns)
+          :type-ns type-ns)))))
 
 
 (defn- matches-type-specifier-fn [as-type-specifier]
@@ -64,10 +63,10 @@
         (every? pred x)))
 
     (throw-anom
-      ::anom/unsupported
-      (format "Unsupported type specifier type `%s` in As expression."
-              (:type as-type-specifier))
-      :type-specifier-type (:type as-type-specifier))))
+      (ba/unsupported
+        (format "Unsupported type specifier type `%s` in As expression."
+                (:type as-type-specifier))
+        :type-specifier-type (:type as-type-specifier)))))
 
 
 (defn- matches-type-fn
@@ -81,9 +80,9 @@
 
     :else
     (throw-anom
-      ::anom/fault
-      "Invalid As expression without `as-type` and `as-type-specifier`."
-      :expression expression)))
+      (ba/fault
+        "Invalid As expression without `as-type` and `as-type-specifier`."
+        :expression expression))))
 
 
 (defmethod core/compile* :elm.compiler.type/as

@@ -1,5 +1,6 @@
 (ns blaze.db.node.validation-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.db.node.validation :as validation]
     [blaze.db.spec]
     [clojure.spec.alpha :as s]

@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.composite.token-quantity
   (:require
     [blaze.anomaly :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]

@@ -1,15 +1,15 @@
 (ns blaze.interaction.search.params-spec
   (:require
+    [blaze.async.comp :as ac]
     [blaze.handler.fhir.util-spec]
     [blaze.interaction.search.params :as params]
+    [blaze.interaction.util-spec]
+    [blaze.page-store.spec]
     [clojure.spec.alpha :as s]))
 
 
-(s/def ::params
-  map?)
-
-
 (s/fdef params/decode
-  :args (s/cat :handling (s/nilable (s/and keyword? #(= "blaze.preference.handling" (namespace %))))
+  :args (s/cat :page-store :blaze/page-store
+               :handling (s/nilable (s/and keyword? #(= "blaze.preference.handling" (namespace %))))
                :query-params (s/nilable :ring.request/query-params))
-  :ret ::params)
+  :ret ac/completable-future?)

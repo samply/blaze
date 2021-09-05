@@ -1,14 +1,13 @@
 (ns blaze.elm.compiler.reusing-logic
   "9. Reusing Logic"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.db.api :as d]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as q]
-    [blaze.fhir.spec.type :as type]
-    [cognitect.anomalies :as anom])
+    [blaze.fhir.spec.type :as type])
   (:import
     [java.util Map]))
 
@@ -21,6 +20,19 @@
 ;; The ExpressionRef type defines an expression that references a previously
 ;; defined NamedExpression. The result of evaluating an ExpressionReference is
 ;; the result of evaluating the referenced NamedExpression.
+(defn- expression-not-found-anom [context name]
+  (ba/incorrect (format "Expression `%s` not found." name) :context context))
+
+
+(defrecord ExpressionRef [name]
+  core/Expression
+  (-eval [_ {:keys [library-context] :as context} resource _]
+    (let [expr (get library-context name ::not-found)]
+      (if (identical? ::not-found expr)
+        (throw-anom (expression-not-found-anom context name))
+        (core/-eval expr context resource nil)))))
+
+
 (defn- find-expression-def
   "Returns the expression-def with `name` from `library` or nil if not found."
   {:arglists '([library name])}
@@ -28,16 +40,10 @@
   (some #(when (= name (:name %)) %) expr-defs))
 
 
-(defrecord ExpressionRef [name]
-  core/Expression
-  (-eval [_ {:keys [library-context] :as context} resource _]
-    (let [expr (get library-context name ::not-found)]
-      (if-not (identical? ::not-found expr)
-        (core/-eval expr context resource nil)
-        (throw-anom
-          ::anom/incorrect
-          (format "Expression `%s` not found." name)
-          :context context)))))
+(defn- expression-def-not-found-anom [context name]
+  (ba/incorrect
+    (format "Expression definition `%s` not found." name)
+    :context context))
 
 
 (defmethod core/compile* :elm.compiler.type/expression-ref
@@ -57,19 +63,13 @@
               (mapv
                 #(core/-eval expression context % nil)
                 (d/type-list db def-eval-context))
-              (throw-anom
-                ::anom/incorrect
-                (format "Expression `%s` not found." name)
-                :context context))))
+              (throw-anom (expression-def-not-found-anom context name)))))
 
         :else
         (if-let [result-type-name (:resultTypeName def)]
           (vary-meta (->ExpressionRef name) assoc :result-type-name result-type-name)
           (->ExpressionRef name)))
-      (throw-anom
-        ::anom/incorrect
-        (format "Expression `%s` not found." name)
-        :context context))))
+      (throw-anom (expression-def-not-found-anom context name)))))
 
 
 (defprotocol ToQuantity
@@ -84,9 +84,7 @@
 
   Object
   (-to-quantity [x]
-    (throw-anom
-      ::anom/fault
-      (format "Can't convert `%s` to quantity." x)))
+    (throw-anom (ba/fault (format "Can't convert `%s` to quantity." x))))
 
   nil
   (-to-quantity [_]))

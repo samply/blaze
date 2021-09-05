@@ -8,6 +8,7 @@
   (:refer-clojure :exclude [sync])
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]

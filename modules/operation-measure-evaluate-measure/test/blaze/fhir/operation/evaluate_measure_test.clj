@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure-test
   (:require
+    [blaze.anomaly-spec]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure :as evaluate-measure]

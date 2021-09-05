@@ -1,8 +1,8 @@
 (ns blaze.cql-translator
   (:require
+    [blaze.anomaly :as ba]
     [blaze.elm.spec]
     [clojure.java.io :as io]
-    [cognitect.anomalies :as anom]
     [jsonista.core :as j])
   (:import
     [org.cqframework.cql.cql2elm
@@ -54,8 +54,8 @@
         _ (.registerProvider (.getLibrarySourceLoader library-manager) (FhirLibrarySourceProvider.))
         translator (CqlTranslator/fromText cql model-manager library-manager (options locators?))]
     (if-let [errors (seq (.getErrors translator))]
-      {::anom/category ::anom/incorrect
-       ::anom/message (apply str (map ex-message errors))
-       :cql cql
-       :errors errors}
+      (ba/incorrect
+        (apply str (map ex-message errors))
+        :cql cql
+        :errors errors)
       (:library (j/read-value (.toJson translator) json-object-mapper)))))

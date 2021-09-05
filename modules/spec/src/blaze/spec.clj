@@ -34,6 +34,17 @@
 
 
 
+;; ---- DB ------------------------------------------------------------------
+
+(s/def :blaze.db.query/clause
+  (s/coll-of string? :kind vector? :min-count 2))
+
+
+(s/def :blaze.db.query/clauses
+  (s/coll-of :blaze.db.query/clause :min-count 1))
+
+
+
 ;; ---- FHIR ------------------------------------------------------------------
 
 (s/def :fhir/issue
@@ -126,3 +137,17 @@
 (s/def :fhir.issue/expression
   (s/or :coll (s/coll-of string?)
         :string string?))
+
+
+
+;; ---- Clojure ---------------------------------------------------------------
+
+(s/def :clojure/binding-form (s/or :symbol simple-symbol?
+                                   :map-destructuring map?
+                                   :list-destructuring vector?))
+
+
+(s/def :clojure/binding (s/cat :binding :clojure/binding-form :expr any?))
+
+
+(s/def :clojure/bindings (s/and vector? (s/* :clojure/binding)))

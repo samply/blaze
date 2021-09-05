@@ -8,6 +8,9 @@
   blaze/module-base
   {:local/root "../module-base"}
 
+  blaze/page-store
+  {:local/root "../page-store"}
+
   blaze/rest-util
   {:local/root "../rest-util"}
 

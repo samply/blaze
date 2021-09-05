@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.string
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -14,7 +15,6 @@
     [blaze.fhir.spec.type :as type]
     [clj-fuzzy.phonetics :as phonetics]
     [clojure.string :as str]
-    [cognitect.anomalies :as anom]
     [taoensso.timbre :as log]))
 
 
@@ -137,5 +137,4 @@
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParamString name url type base code (codec/c-hash code) expression))
-    {::anom/category ::anom/unsupported
-     ::anom/message (u/missing-expression-msg url)}))
+    (ba/unsupported (u/missing-expression-msg url))))

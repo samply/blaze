@@ -1,8 +1,11 @@
 (ns blaze.fhir.spec-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.spec]
     [clojure.alpha.spec :as s2]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]))
 
 
 (s/fdef fhir-spec/type-exists?
@@ -20,7 +23,13 @@
 
 
 (s/fdef fhir-spec/parse-json
-  :args (s/cat :source some?))
+  :args (s/cat :source some?)
+  :ret (s/or :data some? :anomaly ::anom/anomaly))
+
+
+(s/fdef fhir-spec/conform-json
+  :args (s/cat :x any?)
+  :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
 
 
 (s/fdef fhir-spec/unform-json
@@ -29,12 +38,23 @@
 
 
 (s/fdef fhir-spec/parse-cbor
-  :args (s/cat :source some?))
+  :args (s/cat :source some?)
+  :ret (s/or :data some? :anomaly ::anom/anomaly))
+
+
+(s/fdef fhir-spec/conform-cbor
+  :args (s/cat :x any?)
+  :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
 
 
 (s/fdef fhir-spec/unform-cbor
   :args (s/cat :resource any?)
   :ret bytes?)
+
+
+(s/fdef fhir-spec/conform-xml
+  :args (s/cat :x any?)
+  :ret (s/or :resource :blaze/resource :anomaly ::anom/anomaly))
 
 
 (s/fdef fhir-spec/unform-xml

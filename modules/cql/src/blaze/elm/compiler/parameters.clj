@@ -1,9 +1,8 @@
 (ns blaze.elm.compiler.parameters
   "7. Parameters"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
-    [blaze.elm.compiler.core :as core]
-    [cognitect.anomalies :as anom]))
+    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.elm.compiler.core :as core]))
 
 
 ;; 7.1. ParameterDef
@@ -12,6 +11,21 @@
 
 
 ;; 7.2. ParameterRef
+(defn- parameter-value-not-found-anom [context name]
+  (ba/incorrect
+    (format "Parameter value `%s` not found." name)
+    :context context))
+
+
+(defrecord ParameterRef [name]
+  core/Expression
+  (-eval [_ {:keys [parameters] :as context} _ _]
+    (let [value (get parameters name ::not-found)]
+      (if (identical? ::not-found value)
+        (throw-anom (parameter-value-not-found-anom context name))
+        value))))
+
+
 (defn- find-parameter-def
   "Returns the parameter-def with `name` from `library` or nil if not found."
   {:arglists '([library name])}
@@ -19,16 +33,10 @@
   (some #(when (= name (:name %)) %) parameter-defs))
 
 
-(defrecord ParameterRef [name]
-  core/Expression
-  (-eval [_ {:keys [parameters] :as context} _ _]
-    (let [value (get parameters name ::not-found)]
-      (if-not (identical? ::not-found value)
-        value
-        (throw-anom
-          ::anom/incorrect
-          (format "Parameter `%s` not found." name)
-          :context context)))))
+(defn- parameter-def-not-found-anom [context name]
+  (ba/incorrect
+    (format "Parameter definition `%s` not found." name)
+    :context context))
 
 
 (defmethod core/compile* :elm.compiler.type/parameter-ref
@@ -36,7 +44,4 @@
   ;; TODO: look into other libraries (:libraryName)
   (if-let [{:keys [name]} (find-parameter-def library name)]
     (->ParameterRef name)
-    (throw-anom
-      ::anom/incorrect
-      (format "Parameter `%s` not found." name)
-      :context context)))
+    (throw-anom (parameter-def-not-found-anom context name))))

@@ -1,5 +1,6 @@
 (ns blaze.db.node.resource-indexer-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
     [blaze.byte-string-spec]

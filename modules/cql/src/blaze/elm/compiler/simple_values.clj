@@ -1,11 +1,10 @@
 (ns blaze.elm.compiler.simple-values
   "1. Simple Values"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.decimal :as decimal]
-    [blaze.elm.util :as elm-util]
-    [cognitect.anomalies :as anom]))
+    [blaze.elm.util :as elm-util]))
 
 
 ;; 1.1 Literal
@@ -25,8 +24,6 @@
           "Decimal" (decimal/from-literal value)
           "String" value
           (throw-anom
-            ::anom/unsupported
-            (str value-type " literals are not supported")))
+            (ba/unsupported (str value-type " literals are not supported"))))
         (throw-anom
-          ::anom/unsupported
-          (str value-type " literals are not supported"))))))
+          (ba/unsupported (str value-type " literals are not supported")))))))

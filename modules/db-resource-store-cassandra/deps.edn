@@ -2,14 +2,14 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/cassandra
+  {:local/root "../cassandra"}
+
   blaze/db-resource-store
   {:local/root "../db-resource-store"}
 
   blaze/module-base
-  {:local/root "../module-base"}
-
-  com.datastax.oss/java-driver-core
-  {:mvn/version "4.13.0"}}
+  {:local/root "../module-base"}}
 
  :aliases
  {:test

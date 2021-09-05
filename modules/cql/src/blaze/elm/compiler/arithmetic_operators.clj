@@ -1,14 +1,13 @@
 (ns blaze.elm.compiler.arithmetic-operators
   "16. Arithmetic Operators"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defbinop defunop]]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.protocols :as p]
-    [blaze.elm.util :as elm-util]
-    [cognitect.anomalies :as anom]))
+    [blaze.elm.util :as elm-util]))
 
 
 ;; 16.1. Abs
@@ -52,12 +51,12 @@
 
 
 ;; 16.9. MaxValue
-(defn- incorrect-type-msg [name]
-  (format "Incorrect type `%s`." name))
+(defn- incorrect-type-msg-anom [name type]
+  (ba/incorrect (format "Incorrect type `%s`." name) :type type))
 
 
-(defn- incorrect-type-ns-msg [ns]
-  (format "Incorrect type namespace `%s`." ns))
+(defn- incorrect-type-ns-msg-anom [ns type]
+  (ba/incorrect (format "Incorrect type namespace `%s`." ns) :type type))
 
 
 (defn max-value [type]
@@ -70,8 +69,8 @@
         "Date" date-time/max-date
         "DateTime" date-time/max-date-time
         "Time" date-time/max-time
-        (throw-anom ::anom/incorrect (incorrect-type-msg name) :type type))
-      (throw-anom ::anom/incorrect (incorrect-type-ns-msg ns) :type type))))
+        (throw-anom (incorrect-type-msg-anom name type)))
+      (throw-anom (incorrect-type-ns-msg-anom ns type)))))
 
 
 (defmethod core/compile* :elm.compiler.type/max-value
@@ -90,8 +89,8 @@
         "Date" date-time/min-date
         "DateTime" date-time/min-date-time
         "Time" date-time/min-time
-        (throw-anom ::anom/incorrect (incorrect-type-msg name) :type type))
-      (throw-anom ::anom/incorrect (incorrect-type-ns-msg ns) :type type))))
+        (throw-anom (incorrect-type-msg-anom name type)))
+      (throw-anom (incorrect-type-ns-msg-anom ns type)))))
 
 
 (defmethod core/compile* :elm.compiler.type/min-value

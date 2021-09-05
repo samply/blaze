@@ -4,8 +4,8 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.protocols :as p]
-    [cognitect.anomalies :as anom]
     [cuerdas.core :as str])
   (:import
     [javax.measure Quantity UnconvertibleException Unit]
@@ -27,12 +27,11 @@
   (try
     (.parse ucum-format s)
     (catch Throwable t
-      (throw (ex-info (format "Problem while parsing the unit `%s`." s)
-                      (cond->
-                        {::anom/category ::anom/incorrect
-                         :unit s}
-                        (ex-message t)
-                        (assoc :cause-msg (ex-message t))))))))
+      (throw-anom
+        (ba/incorrect
+          (format "Problem while parsing the unit `%s`." s)
+          :unit s
+          :cause-msg (ex-message t))))))
 
 
 (defn- replace-exp [s n]

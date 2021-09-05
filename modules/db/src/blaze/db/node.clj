@@ -1,8 +1,9 @@
 (ns blaze.db.node
   "Local Database Node"
   (:require
-    [blaze.anomaly :refer [ex-anom if-failed if-ok when-ok]]
-    [blaze.async.comp :as ac]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
+    [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db :as db]
@@ -80,9 +81,7 @@
 (defn- resolve-search-param [registry type code]
   (if-let [search-param (sr/get registry code type)]
     search-param
-    {::anom/category ::anom/not-found
-     ::anom/message (search-param-not-found-msg code type)
-     :http/status 400}))
+    (ba/not-found (search-param-not-found-msg code type) :http/status 400)))
 
 
 (defn- resolve-search-params [registry type clauses lenient?]
@@ -120,20 +119,6 @@
           (ac/canceled? future)
           (remove-watch state future))))
     future))
-
-
-(defn- load-tx-result [{:keys [tx-cache kv-store] :as node} t]
-  (if (tx-success/tx tx-cache t)
-    (ac/completed-future (db/db node t))
-    (if-let [anomaly (tx-error/tx-error kv-store t)]
-      (ac/failed-future
-        (ex-info (format "Transaction with point in time %d errored." t)
-                 anomaly))
-      (ac/failed-future
-        (ex-anom
-          {::anom/category ::anom/fault
-           ::anom/message
-           (format "Can't find transaction result with point in time of %d." t)})))))
 
 
 (defn- index-tx [db-before tx-data]
@@ -209,7 +194,7 @@
   (let [timer (prom/timer duration-seconds "index-resources")
         future (index-resources node tx-data)
         result (index-tx (np/-db node) tx-data)]
-    (if (::anom/category result)
+    (if (ba/anomaly? result)
       (commit-error! node t result)
       (do
         (store-tx-entries! kv-store result)
@@ -265,15 +250,15 @@
 
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
-    (if-failed [e (validation/validate-ops tx-ops)]
-      (CompletableFuture/failedFuture (ex-info "" e))
+    (if-ok [_ (validation/validate-ops tx-ops)]
       (let [[tx-cmds entries] (tx/prepare-ops tx-ops)]
         (-> (rs/put! resource-store entries)
             (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds)))
             (ac/then-apply
               (fn [t]
                 (swap! tx-resource-cache assoc t entries)
-                t))))))
+                t))))
+      ac/completed-future))
 
   (-tx-result [node t]
     (let [watcher (add-watcher node t)
@@ -283,14 +268,14 @@
       (cond
         (<= t current-t)
         (do (remove-watch state watcher)
-            (load-tx-result node t))
+            (ac/completed-future (tx/load-tx-result node t)))
 
         (:e current-state)
         (do (remove-watch state watcher)
             (ac/failed-future (:e current-state)))
 
         :else
-        (ac/then-compose watcher (fn [_] (load-tx-result node t))))))
+        (ac/then-apply watcher (fn [_] (tx/load-tx-result node t))))))
 
   p/Tx
   (-tx [_ t]
@@ -328,21 +313,19 @@
 
   p/Pull
   (-pull [_ resource-handle]
-    (-> (rs/get resource-store (:hash resource-handle))
-        (ac/then-apply #(enhance-resource tx-cache resource-handle %))))
+    (do-sync [resource (rs/get resource-store (:hash resource-handle))]
+      (enhance-resource tx-cache resource-handle resource)))
 
   (-pull-content [_ resource-handle]
-    (-> (rs/get resource-store (:hash resource-handle))
-        (ac/then-apply #(with-meta % (meta resource-handle)))))
+    (do-sync [resource (rs/get resource-store (:hash resource-handle))]
+      (with-meta resource (meta resource-handle))))
 
   (-pull-many [_ resource-handles]
-    (-> (rs/multi-get resource-store (mapv :hash resource-handles))
-        (ac/then-apply
-          (fn [resources]
-            (mapv
-              (fn [{:keys [hash] :as resource-handle}]
-                (enhance-resource tx-cache resource-handle (get resources hash)))
-              resource-handles)))))
+    (do-sync [resources (rs/multi-get resource-store (mapv :hash resource-handles))]
+      (mapv
+        (fn [{:keys [hash] :as resource-handle}]
+          (enhance-resource tx-cache resource-handle (get resources hash)))
+        resource-handles)))
 
   Runnable
   (run [node]
@@ -368,12 +351,11 @@
     (log/trace "done closing")))
 
 
-(defn- execute [executor node error]
+(defn- execute [node executor]
   (-> (CompletableFuture/runAsync node executor)
       (ac/exceptionally
-        (fn [e]
-          (log/error "Error while indexing:" (ex-message (ex-cause e)))
-          (swap! error (ex-cause e))))))
+        (fn [{::anom/keys [message]}]
+          (log/error "Error while indexing:" message)))))
 
 
 (defn- initial-state [kv-store]
@@ -399,7 +381,6 @@
       :or {poll-timeout (time/seconds 1)}}]
   (log/info "Open local database node")
   (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
-        indexer-abort-reason (atom nil)
         node (->Node tx-log resource-handle-cache tx-cache kv-store
                      resource-store search-param-registry resource-indexer
                      (atom (initial-state kv-store))
@@ -407,7 +388,7 @@
                      (volatile! true)
                      poll-timeout
                      (ac/future))]
-    (execute indexer-executor node indexer-abort-reason)
+    (execute node indexer-executor)
     node))
 
 

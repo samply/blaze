@@ -1,5 +1,6 @@
 (ns blaze.fhir-path-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec-spec]

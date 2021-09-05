@@ -1,9 +1,12 @@
 (ns blaze.interaction.search.nav-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.interaction.search.nav :as nav]
     [blaze.interaction.search.nav-spec]
+    [blaze.page-store.protocols :as p]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]))
+    [clojure.test :as test :refer [deftest is testing]]
+    [cuerdas.core :as str]))
 
 
 (st/instrument)
@@ -21,7 +24,6 @@
 (def match
   {:data
    {:blaze/base-url ""
-    :blaze/context-path ""
     :fhir.resource/type "Observation"}
    :path "/Observation"})
 
@@ -150,3 +152,32 @@
                nil
                1
                nil))))))
+
+
+(def clauses-1
+  [["foo" "bar"]])
+
+
+(def page-store
+  (reify p/PageStore
+    (-put [_ clauses]
+      (assert (= clauses-1 clauses))
+      (ac/completed-future (str/repeat "A" 32)))))
+
+
+(deftest token-url-test
+  (testing "stores clauses and puts token into the query params"
+    (is (= "base-url-195241/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&__t=195312"
+           @(nav/token-url page-store "base-url-195241" match {} clauses-1 195312 nil))))
+
+  (testing "reuses existing token"
+    (is (= "base-url-195241/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&__t=195312"
+           @(nav/token-url
+              (reify p/PageStore
+                (-put [_ _]
+                  (assert false)))
+              "base-url-195241" match
+              {:token "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"}
+              clauses-1
+              195312
+              nil)))))

@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler.list-operators-test
   (:require
+    [blaze.anomaly-spec]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.list-operators]

@@ -1,27 +1,27 @@
 (ns blaze.openid-auth.impl
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.openid-auth.spec]
     [buddy.auth.protocols :as p]
     [buddy.core.keys :as keys]
     [buddy.sign.jwt :as jwt]
-    [cognitect.anomalies :as anom]
     [hato.client :as hc]
     [taoensso.timbre :as log]))
 
 
+(defn- missing-key-msg [jwks-uri]
+  (format "Missing key in JWKS document config at `%s`." jwks-uri))
+
+
 (defn- public-key
-  "Take a the first jwk from the parsed jwks-json map and converts it into a
+  "Take the first jwk from the parsed jwks-json map and converts it into a
   PublicKey.
 
   Returns nil of no key was found."
   [[jwks-uri jwks-document]]
   (if-let [key (some-> jwks-document :keys first)]
     (keys/jwk->public-key key)
-    (throw-anom
-      ::anom/fault
-      (format "Missing key in JWKS document config at `%s`." jwks-uri))))
-
+    (throw-anom (ba/fault (missing-key-msg jwks-uri)))))
 
 (def well-known-uri "/.well-known/openid-configuration")
 
@@ -30,13 +30,15 @@
   (hc/get uri {:http-client http-client :accept :json :as :json}))
 
 
+(defn- missing-jwks-uri-msg [url]
+  (format "Missing `jwks_uri` in OpenID config at `%s`." url))
+
+
 (defn- jwks-json [url http-client]
   (let [openid-config (-> (fetch url http-client) :body)]
     (if-let [jwks-uri (:jwks_uri openid-config)]
       [jwks-uri (-> (fetch jwks-uri http-client) :body)]
-      (throw-anom
-        ::anom/fault
-        (format "Missing `jwks_uri` in OpenID config at `%s`." url)))))
+      (throw-anom (ba/fault (missing-jwks-uri-msg url))))))
 
 
 (defn fetch-public-key [http-client provider-url]

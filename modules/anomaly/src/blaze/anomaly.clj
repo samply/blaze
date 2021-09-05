@@ -1,40 +1,151 @@
 (ns blaze.anomaly
-  (:refer-clojure :exclude [map map-indexed])
+  (:refer-clojure :exclude [map])
   (:require
     [cognitect.anomalies :as anom])
   (:import
-    [java.util.concurrent CompletableFuture]))
+    [clojure.lang ExceptionInfo]
+    [java.util Map]
+    [java.util.concurrent ExecutionException TimeoutException]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn anomaly? [x]
   (some? (::anom/category x)))
 
 
-(defn incorrect [msg & kvs]
-  (apply assoc {::anom/category ::anom/incorrect ::anom/message msg} kvs))
+(defn unsupported? [x]
+  (identical? ::anom/unsupported (::anom/category x)))
 
 
-(defn unsupported [msg & kvs]
-  (apply assoc {::anom/category ::anom/unsupported ::anom/message msg} kvs))
+(defn not-found? [x]
+  (identical? ::anom/not-found (::anom/category x)))
+
+
+(defn fault? [x]
+  (identical? ::anom/fault (::anom/category x)))
+
+
+(defn- anomaly*
+  ([category msg]
+   (cond-> {::anom/category category} msg (assoc ::anom/message msg)))
+  ([category msg kvs]
+   (merge (anomaly* category msg) kvs)))
+
+
+(defn incorrect [msg & {:as kvs}]
+  (anomaly* ::anom/incorrect msg kvs))
+
+
+(defn forbidden [msg & {:as kvs}]
+  (anomaly* ::anom/forbidden msg kvs))
+
+
+(defn unsupported [msg & {:as kvs}]
+  (anomaly* ::anom/unsupported msg kvs))
+
+
+(defn not-found [msg & {:as kvs}]
+  (anomaly* ::anom/not-found msg kvs))
+
+
+(defn conflict [msg & {:as kvs}]
+  (anomaly* ::anom/conflict msg kvs))
+
+
+(defn fault
+  ([]
+   (fault nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/fault msg kvs)))
+
+
+(defn busy [msg & {:as kvs}]
+  (anomaly* ::anom/busy msg kvs))
+
+
+(defprotocol ToAnomaly
+  (-anomaly [x]))
+
+
+(extend-protocol ToAnomaly
+  ExecutionException
+  (-anomaly [e]
+    (-anomaly (ex-cause e)))
+  TimeoutException
+  (-anomaly [e]
+    (busy (.getMessage e)))
+  ExceptionInfo
+  (-anomaly [e]
+    (let [data (.getData e)]
+      (if (anomaly? data)
+        data
+        (fault (.getMessage e)))))
+  Throwable
+  (-anomaly [e]
+    (fault (.getMessage e)))
+  Map
+  (-anomaly [m]
+    (when (anomaly? m)
+      m))
+  Object
+  (-anomaly [_])
+  nil
+  (-anomaly [_]))
+
+
+(defn anomaly
+  "Coerces `x` to an anomaly.
+
+  Works for exceptions and anomalies itself.
+
+  Returns nil if `x` isn't an anomaly."
+  [x]
+  (-anomaly x))
+
+
+(defmacro try-one
+  "Applies a try-catch arround `body` catching exceptions of `type`, returning
+  an anomaly with `category` and possible message of the exception."
+  [type category & body]
+  `(try
+     ~@body
+     (catch ~type e#
+       (cond-> {::anom/category ~category}
+         (.getMessage e#)
+         (assoc ::anom/message (.getMessage e#))))))
+
+
+(defmacro try-all [category & body]
+  `(try-one Throwable ~category ~@body))
+
+
+(defmacro try-anomaly [& body]
+  `(try
+     ~@body
+     (catch Throwable e#
+       (-anomaly e#))))
 
 
 (defn ex-anom
-  "Creates an ExceptionInfo with `message` and an anomaly build from `kvs`,
-  `category` and `message` as data."
-  [anom]
-  (ex-info (::anom/message anom "") anom))
-
-
-(defn completion-stage [x]
-  (if (anomaly? x)
-    (CompletableFuture/failedFuture (ex-anom x))
-    (CompletableFuture/completedFuture x)))
+  "Creates an ExceptionInfo with `anomaly` as data."
+  [anomaly]
+  (ex-info (::anom/message anomaly) anomaly))
 
 
 (defn throw-anom
   "Throws an ExceptionInfo build with `ex-anom`."
-  [category message & {:as kvs}]
-  (throw (ex-anom (assoc kvs ::anom/category category ::anom/message message))))
+  [anomaly]
+  (throw (ex-anom anomaly)))
+
+
+(defn throw-when
+  "Throws `x` if `x` is an anomaly. Returns `x` otherwise."
+  [x]
+  (if (anomaly? x)
+    (throw-anom x)
+    x))
 
 
 (defmacro when-ok
@@ -48,38 +159,23 @@
   [bindings & body]
   (if (seq bindings)
     (let [[binding-form expr-form & next] bindings]
-      `(let [expr# ~expr-form]
-         (if (::anom/category expr#)
-           expr#
-           (let [~binding-form expr#]
+      `(let [val# ~expr-form]
+         (if (::anom/category val#)
+           val#
+           (let [~binding-form val#]
              (when-ok ~(vec next) ~@body)))))
     `(do ~@body)))
-
-
-(defmacro if-failed [[binding-form form] then else]
-  `(let [res# ~form]
-     (if (::anom/category res#)
-       (let [~binding-form res#] ~then)
-       ~else)))
 
 
 (defmacro if-ok [bindings then else]
   (if (seq bindings)
     (let [[binding-form expr-form & next] bindings]
-      `(let [expr# ~expr-form]
-         (if (::anom/category expr#)
-           (~else expr#)
-           (let [~binding-form expr#]
+      `(let [val# ~expr-form]
+         (if (::anom/category val#)
+           (~else val#)
+           (let [~binding-form val#]
              (if-ok ~(vec next) ~then ~else)))))
     then))
-
-(defn conj-anom
-  ([xs]
-   xs)
-  ([xs x]
-   (if (::anom/category x)
-     (reduced x)
-     (conj xs x))))
 
 
 (defn map [x f]
@@ -88,7 +184,3 @@
 
 (defn exceptionally [x f]
   (if (::anom/category x) (f x) x))
-
-
-(defn map-indexed [f]
-  (comp (clojure.core/map-indexed f) (halt-when anomaly?)))

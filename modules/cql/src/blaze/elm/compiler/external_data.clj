@@ -3,7 +3,7 @@
 
   https://cql.hl7.org/04-logicalspecification.html#external-data"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.elm.compiler.core :as core]
@@ -44,7 +44,7 @@
   * property - \"code\"
   * code - (code/to-code \"http://loinc.org\" nil \"39156-5\")"
   [node context data-type property codes]
-  (let [clauses [(cons property (map code->clause-value codes))]
+  (let [clauses [(into [property] (map code->clause-value) codes)]
         query (d/compile-compartment-query node context data-type clauses)]
     (->CompartmentQueryRetrieveExpression query)))
 
@@ -120,21 +120,16 @@
         (d/execute-query db query id)))))
 
 
-(defn- compartment-query [db code id type clauses]
-  (let [res (d/compartment-query db code id type clauses)]
-    (if (::anom/category res)
-      (throw (ex-info (::anom/message res) res))
-      res)))
-
-
 (defrecord WithRelatedContextCodeRetrieveExpression
   [context-expr data-type clauses]
   core/Expression
   (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [{:fhir/keys [type] :keys [id]} (core/-eval context-expr context resource scope)]
+    (when-let [{:fhir/keys [type] :keys [id]}
+               (core/-eval context-expr context resource scope)]
       (when-let [type (some-> type name)]
         (when id
-          (compartment-query db type id data-type clauses))))))
+          (ba/throw-when
+            (d/compartment-query db type id data-type clauses)))))))
 
 
 (defn related-context-expr
@@ -143,7 +138,7 @@
     (if-let [result-type-name (:result-type-name (meta context-expr))]
       (let [[value-type-ns context-type] (elm-util/parse-qualified-name result-type-name)]
         (if (= "http://hl7.org/fhir" value-type-ns)
-          (let [clauses [(cons code-property (map code->clause-value codes))]
+          (let [clauses [(into [code-property] (map code->clause-value) codes)]
                 query (d/compile-compartment-query node context-type data-type clauses)]
             (if (::anom/category query)
               (throw (ex-info (::anom/message query) query))
@@ -163,7 +158,7 @@
     (reify core/Expression
       (-eval [_ {:keys [db]} _ _]
         (into [] (d/type-list db data-type))))
-    (let [clauses [(cons code-property (map code->clause-value codes))]
+    (let [clauses [(into [code-property] (map code->clause-value) codes)]
           query (d/compile-type-query node data-type clauses)]
       (if (::anom/category query)
         (throw (ex-info (::anom/message query) query))
@@ -194,6 +189,12 @@
     (expr* node eval-context data-type code-property codes)))
 
 
+(defn- unsupported-type-namespace-anom [type-ns]
+  (ba/unsupported
+    (format "Unsupported type namespace `%s` in Retrieve expression." type-ns)
+    :type-ns type-ns))
+
+
 (defmethod core/compile* :elm.compiler.type/retrieve
   [context
    {context-expr :context
@@ -209,7 +210,4 @@
         data-type
         code-property
         (some->> codes-expr (core/compile* context)))
-      (throw-anom
-        ::anom/unsupported
-        (format "Unsupported type namespace `%s` in Retrieve expression." type-ns)
-        :type-ns type-ns))))
+      (throw-anom (unsupported-type-namespace-anom type-ns)))))

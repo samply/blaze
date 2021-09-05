@@ -2,6 +2,8 @@
   (:require
     [blaze.fhir.spec]
     [blaze.handler.fhir.util :as util]
+    [blaze.http.spec]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [reitit.core :as reitit]))
 
@@ -44,17 +46,18 @@
 
 
 (s/fdef util/type-url
-  :args (s/cat :base-url string? :router reitit/router? :type :fhir.type/name)
+  :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
+               :type :fhir.type/name)
   :ret string?)
 
 
 (s/fdef util/instance-url
-  :args (s/cat :base-url string? :router reitit/router? :type :fhir.type/name
-               :id :blaze.resource/id)
+  :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
+               :type :fhir.type/name :id :blaze.resource/id)
   :ret string?)
 
 
 (s/fdef util/versioned-instance-url
-  :args (s/cat :base-url string? :router reitit/router? :type :fhir.type/name
-               :id :blaze.resource/id :vid string?)
+  :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
+               :type :fhir.type/name :id :blaze.resource/id :vid string?)
   :ret string?)

@@ -1,6 +1,6 @@
 (ns blaze.db.tx-log.kafka
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.tx-log :as tx-log]
@@ -8,11 +8,9 @@
     [blaze.db.tx-log.kafka.log :as l]
     [blaze.db.tx-log.kafka.spec]
     [blaze.db.tx-log.kafka.util :as u]
-    [blaze.db.tx-log.spec]
     [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [jsonista.core :as j]
     [prometheus.alpha :as prom :refer [defhistogram]]
@@ -111,11 +109,11 @@
   [e {:keys [max-request-size]} num-of-tx-cmds]
   (condp identical? (class e)
     RecordTooLargeException
-    (ex-anom
-      #::anom{:category ::anom/unsupported
-              :message (record-too-large-msg max-request-size num-of-tx-cmds
-                                             (ex-message e))})
-    (ex-anom #::anom{:category ::anom/fault :message (ex-message e)})))
+    (ba/ex-anom
+      (ba/unsupported
+        (record-too-large-msg max-request-size num-of-tx-cmds
+                              (ex-message e))))
+    (ba/ex-anom (ba/fault (ex-message e)))))
 
 
 (defn- end-offset [^Consumer consumer]

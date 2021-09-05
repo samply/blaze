@@ -5,11 +5,13 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.anomaly-spec]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
+    [blaze.interaction.util-spec]
     [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
@@ -98,13 +100,17 @@
        ~@body)))
 
 
+(def patient-match
+  (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
+
+
 (deftest handler-test
   (testing "Returns Error on missing body"
     (with-handler [handler]
       []
       (let [{:keys [status body]}
             @(handler
-               {::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+               {::reitit/match patient-match})]
 
         (is (= 400 status))
 
@@ -119,7 +125,7 @@
       []
       (let [{:keys [status body]}
             @(handler
-               {::reitit/match {:data {:fhir.resource/type "Patient"}}
+               {::reitit/match patient-match
                 :body {:fhir/type :fhir/Observation}})]
 
         (is (= 400 status))
@@ -156,7 +162,7 @@
         []
         (let [{:keys [status headers body]}
               @(handler
-                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 {::reitit/match patient-match
                   :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
@@ -183,7 +189,7 @@
         []
         (let [{:keys [status headers body]}
               @(handler
-                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 {::reitit/match patient-match
                   :headers {"prefer" "return=minimal"}
                   :body {:fhir/type :fhir/Patient}})]
 
@@ -207,7 +213,7 @@
         []
         (let [{:keys [status headers body]}
               @(handler
-                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 {::reitit/match patient-match
                   :headers {"prefer" "return=representation"}
                   :body {:fhir/type :fhir/Patient}})]
 
@@ -235,7 +241,7 @@
         []
         (let [{:keys [status headers body]}
               @(handler
-                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 {::reitit/match patient-match
                   :headers {"prefer" "return=OperationOutcome"}
                   :body {:fhir/type :fhir/Patient}})]
 
@@ -261,7 +267,7 @@
           []
           (let [{:keys [status]}
                 @(handler
-                   {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                   {::reitit/match patient-match
                     :headers {"if-none-exist" "identifier=212154"}
                     :body {:fhir/type :fhir/Patient}})]
 
@@ -276,7 +282,7 @@
 
           (let [{:keys [status]}
                 @(handler
-                   {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                   {::reitit/match patient-match
                     :headers {"if-none-exist" "identifier=212154"}
                     :body {:fhir/type :fhir/Patient}})]
 
@@ -291,7 +297,7 @@
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 {::reitit/match patient-match
                   :headers {"if-none-exist" "identifier=095156"}
                   :body {:fhir/type :fhir/Patient}})]
 
@@ -311,7 +317,7 @@
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match {:data {:fhir.resource/type "Patient"}}
+                 {::reitit/match patient-match
                   :headers {"if-none-exist" "birthdate=2020"}
                   :body {:fhir/type :fhir/Patient}})]
 

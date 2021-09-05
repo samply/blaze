@@ -1,11 +1,11 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
     [blaze.fhir.spec.type.system :as system]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]))
+    [clojure.spec.alpha :as s]))
 
 
 (defn- invalid-date-param-msg [name value]
@@ -22,16 +22,16 @@
     (-> (system/parse-date value)
         (ba/exceptionally
           (fn [_]
-            {::anom/category ::anom/incorrect
-             ::anom/message (invalid-date-param-msg name value)
-             :fhir/issue "value"
-             :fhir/operation-outcome "MSG_PARAM_INVALID"
-             :fhir.issue/expression name})))
-    {::anom/category ::anom/incorrect
-     ::anom/message (format "Missing required parameter `%s`." name)
-     :fhir/issue "value"
-     :fhir/operation-outcome "MSG_PARAM_INVALID"
-     :fhir.issue/expression name}))
+            (ba/incorrect
+              (invalid-date-param-msg name value)
+              :fhir/issue "value"
+              :fhir/operation-outcome "MSG_PARAM_INVALID"
+              :fhir.issue/expression name))))
+    (ba/incorrect
+      (format "Missing required parameter `%s`." name)
+      :fhir/issue "value"
+      :fhir/operation-outcome "MSG_PARAM_INVALID"
+      :fhir.issue/expression name)))
 
 
 (defn- invalid-report-type-param-msg [report-type]
@@ -51,13 +51,12 @@
   (let [report-type (or reportType (if subject "subject" "population"))]
     (cond
       (not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type report-type))
-      {::anom/category ::anom/incorrect
-       ::anom/message (invalid-report-type-param-msg report-type)
-       :fhir/issue "value"}
+      (ba/incorrect
+        (invalid-report-type-param-msg report-type)
+        :fhir/issue "value")
 
       (and (= :get request-method) (= "subject-list" report-type))
-      {::anom/category ::anom/unsupported
-       ::anom/message no-subject-list-on-get-msg}
+      (ba/unsupported no-subject-list-on-get-msg)
 
       :else
       report-type)))
@@ -74,11 +73,11 @@
       (if (s/invalid? local-ref)
         (if (s/valid? :blaze.resource/id subject)
           subject
-          {::anom/category ::anom/incorrect
-           ::anom/message (invalid-subject-param-msg subject)
-           :fhir/issue "value"
-           :fhir/operation-outcome "MSG_PARAM_INVALID"
-           :fhir.issue/expression "subject"})
+          (ba/incorrect
+            (invalid-subject-param-msg subject)
+            :fhir/issue "value"
+            :fhir/operation-outcome "MSG_PARAM_INVALID"
+            :fhir.issue/expression "subject"))
         local-ref))))
 
 
@@ -99,4 +98,4 @@
   (fn [request]
     (if-ok [request (params-request request)]
       (handler request)
-      (comp ac/failed-future ba/ex-anom))))
+      ac/completed-future)))

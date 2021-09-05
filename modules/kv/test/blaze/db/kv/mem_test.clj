@@ -1,5 +1,6 @@
 (ns blaze.db.kv.mem-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.db.bytes :as bytes]
     [blaze.db.kv :as kv]
     [blaze.db.kv-spec]
@@ -10,7 +11,6 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -56,21 +56,6 @@
   (byte-array bytes))
 
 
-(defmacro catch-ex-data [& body]
-  `(try
-     ~@body
-     (catch Exception e#
-       (ex-data e#))))
-
-
-(defn- fault? [anomaly]
-  (= ::anom/fault (::anom/category anomaly)))
-
-
-(defn- unsupported? [anomaly]
-  (= ::anom/unsupported (::anom/category anomaly)))
-
-
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {::kv/mem nil})
@@ -93,7 +78,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (fault? (catch-ex-data (kv/valid? iter))))))))
+        (is (ba/fault? (ba/try-anomaly (kv/valid? iter))))))))
 
 
 (deftest seek-to-first-test
@@ -101,7 +86,7 @@
     (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
       (testing "errors on closed iterator"
         (.close iter)
-        (is (fault? (catch-ex-data (kv/seek-to-first! iter))))))))
+        (is (ba/fault? (ba/try-anomaly (kv/seek-to-first! iter))))))))
 
 
 (deftest seek-to-last-test
@@ -109,7 +94,7 @@
     (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
       (testing "errors on closed iterator"
         (.close iter)
-        (is (fault? (catch-ex-data (kv/seek-to-last! iter))))))))
+        (is (ba/fault? (ba/try-anomaly (kv/seek-to-last! iter))))))))
 
 
 (deftest seek-test
@@ -148,7 +133,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (fault? (catch-ex-data (kv/seek! iter (ba 0x00))))))))
+        (is (ba/fault? (ba/try-anomaly (kv/seek! iter (ba 0x00))))))))
 
   (testing "reverse comparator"
     (with-system-data [{kv-store ::kv/mem} reverse-comparator-system]
@@ -186,7 +171,7 @@
 
         (testing "errors on closed iterator"
           (.close iter)
-          (is (fault? (catch-ex-data (kv/seek! iter (ba 0x04))))))))))
+          (is (ba/fault? (ba/try-anomaly (kv/seek! iter (ba 0x04))))))))))
 
 
 (deftest seek-for-prev-test
@@ -225,7 +210,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (fault? (catch-ex-data (kv/seek-for-prev! iter (ba 0x00)))))))))
+        (is (ba/fault? (ba/try-anomaly (kv/seek-for-prev! iter (ba 0x00)))))))))
 
 
 (deftest next-test
@@ -254,7 +239,7 @@
         (try
           (kv/next! iter)
           (catch Exception e
-            (is (fault? (ex-data e)))))))))
+            (is (ba/fault? (ex-data e)))))))))
 
 
 (deftest prev-test
@@ -283,7 +268,7 @@
         (try
           (kv/prev! iter)
           (catch Exception e
-            (is (fault? (ex-data e)))))))))
+            (is (ba/fault? (ex-data e)))))))))
 
 
 (deftest key-test
@@ -292,8 +277,8 @@
 
     (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
       (testing "errors on invalid iterator"
-        (is (fault? (catch-ex-data (kv/key iter))))
-        (is (fault? (catch-ex-data (kv/key! iter (ByteBuffer/allocateDirect 0))))))
+        (is (ba/fault? (ba/try-anomaly (kv/key iter))))
+        (is (ba/fault? (ba/try-anomaly (kv/key! iter (ByteBuffer/allocateDirect 0))))))
 
       (testing "errors on nil buffer"
         (kv/seek-to-first! iter)
@@ -335,8 +320,8 @@
 
     (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
       (testing "errors on invalid iterator"
-        (is (fault? (catch-ex-data (kv/value iter))))
-        (is (fault? (catch-ex-data (kv/value! iter (ByteBuffer/allocateDirect 0))))))
+        (is (ba/fault? (ba/try-anomaly (kv/value iter))))
+        (is (ba/fault? (ba/try-anomaly (kv/value! iter (ByteBuffer/allocateDirect 0))))))
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
@@ -379,7 +364,7 @@
         (is (bytes/= (ba 0x02) (kv/value iter-b))))
 
       (testing "column-family :c doesn't exist"
-        (is (fault? (catch-ex-data (kv/new-iterator snapshot :c))))))))
+        (is (ba/fault? (ba/try-anomaly (kv/new-iterator snapshot :c))))))))
 
 
 (deftest snapshot-get-test
@@ -463,7 +448,7 @@
         (is (bytes/= (ba 0x11) (kv/get kv-store (ba 0x01)))))
 
       (testing "merge is not supported"
-        (is (unsupported? (catch-ex-data (kv/write! kv-store [[:merge]])))))
+        (is (ba/unsupported? (ba/try-anomaly (kv/write! kv-store [[:merge]])))))
 
       (testing "delete"
         (kv/write! kv-store [[:delete (ba 0x00)]])
@@ -478,7 +463,7 @@
         (is (bytes/= (ba 0x11) (kv/get kv-store :a (ba 0x01)))))
 
       (testing "merge is not supported"
-        (is (unsupported? (catch-ex-data (kv/write! kv-store [[:merge :a]])))))
+        (is (ba/unsupported? (ba/try-anomaly (kv/write! kv-store [[:merge :a]])))))
 
       (testing "delete"
         (kv/write! kv-store [[:delete :a (ba 0x00)]])

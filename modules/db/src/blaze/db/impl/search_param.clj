@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param
   (:require
-    [blaze.anomaly :refer [conj-anom when-ok]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -30,8 +31,9 @@
   Returns an anomaly on errors."
   [search-param modifier values]
   (transduce
-    (map #(p/-compile-value search-param modifier %))
-    conj-anom
+    (comp (map (partial p/-compile-value search-param modifier))
+          (halt-when ba/anomaly?))
+    conj
     []
     values))
 

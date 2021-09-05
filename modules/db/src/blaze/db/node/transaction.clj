@@ -1,6 +1,10 @@
 (ns blaze.db.node.transaction
   (:require
+    [blaze.anomaly :as ba]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.db :as db]
+    [blaze.db.impl.index.tx-error :as tx-error]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
@@ -68,3 +72,15 @@
   hashes to resource contents."
   [tx-ops]
   (split (mapv prepare-op tx-ops)))
+
+
+(defn- missing-tx-msg [t]
+  (format "Can't find transaction result with point in time of %d." t))
+
+
+(defn load-tx-result [{:keys [tx-cache kv-store] :as node} t]
+  (if (tx-success/tx tx-cache t)
+    (db/db node t)
+    (if-let [anomaly (tx-error/tx-error kv-store t)]
+      anomaly
+      (ba/fault (missing-tx-msg t)))))

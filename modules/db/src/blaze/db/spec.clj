@@ -4,7 +4,7 @@
     [blaze.db.impl.protocols :as p]
     [blaze.db.node.protocols :as np]
     [blaze.db.resource-store.spec]
-    [blaze.db.tx-log.spec]
+    [blaze.spec]
     [clojure.spec.alpha :as s])
   (:import
     [com.github.benmanes.caffeine.cache Cache LoadingCache]))
@@ -42,6 +42,10 @@
   #(satisfies? p/Db %))
 
 
+(s/def :blaze/db
+  :blaze.db/db)
+
+
 (s/def :blaze.db.tx/instant
   inst?)
 
@@ -58,17 +62,13 @@
   some?)
 
 
-(s/def :blaze.db.query/clause
-  (s/coll-of string? :min-count 2))
-
-
 (defmulti tx-op "Transaction operator" first)
 
 
 (defmethod tx-op :create [_]
   (s/cat :op #{:create}
          :resource :blaze/resource
-         :if-none-exist (s/? (s/coll-of :blaze.db.query/clause :min-count 1))))
+         :if-none-exist (s/? :blaze.db.query/clauses)))
 
 
 (defmethod tx-op :put [_]

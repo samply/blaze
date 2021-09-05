@@ -8,9 +8,12 @@
     [blaze.interaction.search-compartment]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
+    [blaze.interaction.search.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.page-store-spec]
+    [blaze.page-store.local]
     [blaze.test-util :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -46,10 +49,10 @@
 
 
 (def match
-  {:data
-   {:blaze/context-path ""
-    :fhir.compartment/code "Patient"}
-   :path "/Patient/0/Observation"})
+  (reitit/map->Match
+    {:data
+     {:fhir.compartment/code "Patient"}
+     :path "/Patient/0/Observation"}))
 
 
 (defn- link-url [body link-relation]
@@ -68,26 +71,28 @@
       :key := :blaze.interaction/search-compartment
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze.interaction/search-compartment {:clock ::invalid}})
       :key := :blaze.interaction/search-compartment
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 1 :pred] := `time/clock?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:explain ::s/problems 2 :pred] := `time/clock?
+      [:explain ::s/problems 2 :val] := ::invalid)))
 
 
 (def system
   (assoc mem-node-system
     :blaze.interaction/search-compartment
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)
-     :clock (ig/ref :blaze.test/clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.test/executor {}
-    :blaze.test/fixed-rng-fn {}))
+    {:clock (ig/ref :blaze.test/clock)
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+     :page-store (ig/ref :blaze.page-store/local)}
+    :blaze.test/fixed-rng-fn {}
+    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+    :blaze.test/fixed-rng {}))
 
 
 (defn wrap-defaults [handler]

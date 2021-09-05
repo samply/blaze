@@ -2,6 +2,7 @@
   (:require
     [blaze.fhir.spec.type]
     [blaze.interaction.history.util :as history-util]
+    [blaze.interaction.history.util-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]]
@@ -22,7 +23,7 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest since
+(deftest since-test
   (testing "no query param"
     (is (nil? (history-util/since {}))))
 
@@ -39,7 +40,7 @@
       ["2015-02-07T13:28:17+02:00" "2015-02-07T13:28:17Z"] (Instant/ofEpochSecond 1423308497))))
 
 
-(deftest page-t
+(deftest page-t-test
   (testing "no query param"
     (is (nil? (history-util/page-t {}))))
 
@@ -63,12 +64,15 @@
     {:syntax :bracket}))
 
 
+(def context
+  {:blaze/base-url "http://localhost:8080" ::reitit/router router})
+
+
 (deftest build-entry-test
   (testing "Initial version with server assigned id"
     (given
       (history-util/build-entry
-        "http://localhost:8080"
-        router
+        context
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
@@ -89,8 +93,7 @@
   (testing "Initial version with client assigned id"
     (given
       (history-util/build-entry
-        "http://localhost:8080"
-        router
+        context
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
@@ -111,8 +114,7 @@
   (testing "Non-initial version"
     (given
       (history-util/build-entry
-        "http://localhost:8080"
-        router
+        context
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
@@ -133,8 +135,7 @@
   (testing "Deleted version"
     (given
       (history-util/build-entry
-        "http://localhost:8080"
-        router
+        context
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"

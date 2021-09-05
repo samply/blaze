@@ -107,12 +107,17 @@
 
 
 (s/fdef ac/handle
-  :args (s/cat :stage ac/completion-stage? :f fn?)
+  :args (s/cat :stage ac/completion-stage? :f ifn?)
   :ret ac/completion-stage?)
 
 
 (s/fdef ac/exceptionally
-  :args (s/cat :stage ac/completion-stage? :f fn?)
+  :args (s/cat :stage ac/completion-stage? :f ifn?)
+  :ret ac/completion-stage?)
+
+
+(s/fdef ac/exceptionally-compose
+  :args (s/cat :stage ac/completion-stage? :f ifn?)
   :ret ac/completion-stage?)
 
 

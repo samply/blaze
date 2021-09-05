@@ -1,7 +1,6 @@
 (ns blaze.db.resource-store.kv-test
   (:refer-clojure :exclude [hash])
   (:require
-    [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
@@ -14,14 +13,13 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [cuerdas.core :as str]
     [integrant.core :as ig]
-    [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
 
@@ -111,14 +109,6 @@
     :executor (ig/ref ::rs-kv/executor)}})
 
 
-(defn- catch-msg [stage]
-  (ac/exceptionally stage (comp ex-message ex-cause)))
-
-
-(defn- catch-data [stage]
-  (ac/exceptionally stage (comp ex-data ex-cause)))
-
-
 (deftest get-test
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -133,7 +123,7 @@
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
         (kv/put! kv-store (bs/to-byte-array hash) (invalid-content))
 
-        (given @(catch-data (rs/get store hash))
+        (given-failed-future (rs/get store hash)
           ::anom/message :# "Error while parsing resource content(.|\\s)*"))))
 
   (testing "not-found"
@@ -141,9 +131,9 @@
       (is (nil? @(rs/get store (hash "0"))))))
 
   (testing "error"
-    (let [msg "msg-154312"]
-      (with-system [{store ::rs/kv} (failing-kv-store-system msg)]
-        (is (= msg @(catch-msg (rs/get store (hash "0")))))))))
+    (with-system [{store ::rs/kv} (failing-kv-store-system "msg-154312")]
+      (given-failed-future (rs/get store (hash "0"))
+        ::anom/message := "msg-154312"))))
 
 
 (deftest multi-get-test
@@ -172,7 +162,7 @@
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
         (kv/put! kv-store (bs/to-byte-array hash) (invalid-content))
 
-        (given @(catch-data (rs/multi-get store [hash]))
+        (given-failed-future (rs/multi-get store [hash])
           ::anom/message :# "Error while parsing resource content(.|\\s)*"))))
 
   (testing "not-found"
@@ -180,9 +170,9 @@
       (is (= {} @(rs/multi-get store [(hash "0")])))))
 
   (testing "error"
-    (let [msg "msg-154312"]
-      (with-system [{store ::rs/kv} (failing-kv-store-system msg)]
-        (is (= msg @(catch-msg (rs/multi-get store [(hash "0")]))))))))
+    (with-system [{store ::rs/kv} (failing-kv-store-system "msg-154312")]
+      (given-failed-future (rs/multi-get store [(hash "0")])
+        ::anom/message := "msg-154312"))))
 
 
 (deftest put-test
