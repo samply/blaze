@@ -71,7 +71,7 @@
  {:depstar
   {:replace-deps
    {com.github.seancorfield/depstar
-    {:mvn/version "2.1.278"}}
+    {:mvn/version "2.1.297"}}
    :ns-default hf.depstar}
 
   :test
@@ -85,7 +85,7 @@
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
+    {:mvn/version "1.0.887"}
 
     org.clojure/tools.namespace
     {:mvn/version "1.1.0"}}
@@ -102,7 +102,7 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "0.16.3"}
+    {:mvn/version "1.0.0"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "1.7.32"}}

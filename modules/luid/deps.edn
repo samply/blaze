@@ -10,11 +10,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {clojure.java-time/clojure.java-time
-    {:mvn/version "0.3.2"}
-
-    lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.887"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}
@@ -32,10 +29,7 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {clojure.java-time/clojure.java-time
-    {:mvn/version "0.3.2"}
-
-    cloverage/cloverage
+   {cloverage/cloverage
     {:mvn/version "1.2.2"}
 
     org.clojars.akiel/iota

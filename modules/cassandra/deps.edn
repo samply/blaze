@@ -3,7 +3,7 @@
   {:local/root "../async"}
 
   clojure.java-time/clojure.java-time
-  {:mvn/version "0.3.2"}
+  {:mvn/version "0.3.3"}
 
   com.datastax.oss/java-driver-core
   {:mvn/version "4.13.0"}}
@@ -17,7 +17,7 @@
     {:local/root "../test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.861"}}
+    {:mvn/version "1.0.887"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
