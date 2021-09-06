@@ -8,7 +8,6 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [is testing]]
-    [clojure.test.check :as tc]
     [cognitect.anomalies :as anom])
   (:import
     [java.time OffsetDateTime ZoneOffset]))
@@ -34,15 +33,6 @@
       {"system" (elm/string system)
        "version" (elm/string version)
        "code" (elm/string code)}])))
-
-
-(defmacro satisfies-prop [num-tests prop]
-  `(let [result# (tc/quick-check ~num-tests ~prop)]
-     (if (instance? Throwable (:result result#))
-       (throw (:result result#))
-       (if (true? (:result result#))
-         (is :success)
-         (is (clojure.pprint/pprint result#))))))
 
 
 (def patient-retrieve-elm

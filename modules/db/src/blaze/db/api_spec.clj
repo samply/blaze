@@ -5,6 +5,7 @@
     [blaze.db.api :as d]
     [blaze.db.search-param-registry-spec]
     [blaze.db.spec]
+    [blaze.db.tx-log.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))

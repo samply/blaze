@@ -52,5 +52,4 @@
     {:op "delete"
      :type "Patient"
      :id "0"
-     :hash patient-hash-0
      :if-match 1}))

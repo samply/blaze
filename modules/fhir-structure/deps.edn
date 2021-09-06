@@ -46,14 +46,14 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {criterium/criterium
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    criterium/criterium
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
     {:mvn/version "1.0.887"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}
 
     org.openjdk.jol/jol-core
     {:mvn/version "0.16"}}
@@ -65,11 +65,11 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {cloverage/cloverage
-    {:mvn/version "1.2.2"}
+   {blaze/test-util
+    {:local/root "../test-util"}
 
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}
 
     org.openjdk.jol/jol-core
     {:mvn/version "0.16"}}

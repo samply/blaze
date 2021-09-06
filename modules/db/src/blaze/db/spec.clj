@@ -4,6 +4,7 @@
     [blaze.db.impl.protocols :as p]
     [blaze.db.node.protocols :as np]
     [blaze.db.resource-store.spec]
+    [blaze.db.tx-log.spec]
     [blaze.spec]
     [clojure.spec.alpha :as s])
   (:import

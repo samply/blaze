@@ -67,8 +67,7 @@
 (defmethod tx-cmd "delete" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.db.tx-cmd/type
-                   :blaze.resource/id
-                   :blaze.resource/hash]
+                   :blaze.resource/id]
           :opt-un [:blaze.db.tx-cmd/if-match]))
 
 

@@ -377,7 +377,3 @@
 
 (defn quantity [unit value]
   (bs/concat (v-hash (or unit "")) (number value)))
-
-
-(defn deleted-resource [type id]
-  {:fhir/type (keyword "fhir" type) :id id})

@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba]
     [clojure.test :refer [is]]
+    [clojure.test.check :as tc]
     [integrant.core :as ig]
     [juxt.iota :refer [given]])
   (:import
@@ -61,3 +62,12 @@
   [_ ^ExecutorService executor]
   (.shutdown executor)
   (.awaitTermination executor 10 TimeUnit/SECONDS))
+
+
+(defmacro satisfies-prop [num-tests prop]
+  `(let [result# (tc/quick-check ~num-tests ~prop)]
+     (if (instance? Throwable (:result result#))
+       (throw (:result result#))
+       (if (true? (:result result#))
+         (is :success)
+         (is (clojure.pprint/pprint result#))))))
