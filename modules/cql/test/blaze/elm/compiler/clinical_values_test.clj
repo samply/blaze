@@ -10,6 +10,7 @@
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
+    [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
@@ -163,6 +164,6 @@
       #elm/quantity[1 "cm2"] (quantity/quantity 1 "cm2")))
 
   (testing "Periods"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [period (s/gen :elm/period)]
         (#{BigDecimal Period} (type (core/-eval (c/compile {} period) {} nil nil)))))))

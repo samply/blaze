@@ -64,7 +64,8 @@
     (given (tx/prepare-ops [[:delete "Patient" "0"]])
       [0 0 :op] := "delete"
       [0 0 :type] := "Patient"
-      [0 0 :id] := "0")))
+      [0 0 :id] := "0"
+      [1] := {})))
 
 
 (deftest load-tx-result-test

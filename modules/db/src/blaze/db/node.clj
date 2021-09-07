@@ -136,22 +136,6 @@
   (swap! state assoc :error-t t))
 
 
-(defn- hashes [tx-cmds]
-  (mapv :hash tx-cmds))
-
-
-(defn- index-resources
-  [{:keys [tx-resource-cache resource-store resource-indexer]}
-   {:keys [t tx-cmds] last-updated :instant}]
-  (if-let [resources (@tx-resource-cache t)]
-    (do (swap! tx-resource-cache dissoc t)
-        (resource-indexer/index-resources
-          resource-indexer last-updated resources))
-    (-> (rs/multi-get resource-store (hashes tx-cmds))
-        (ac/then-compose
-          #(resource-indexer/index-resources resource-indexer last-updated %)))))
-
-
 (defn- commit-error! [{:keys [kv-store state]} t anomaly]
   (kv/put! kv-store [(tx-error/index-entry t anomaly)])
   (advance-error-t! state t))
@@ -192,7 +176,7 @@
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
-        future (index-resources node tx-data)
+        future (resource-indexer/index-resources node tx-data)
         result (index-tx (np/-db node) tx-data)]
     (if (ba/anomaly? result)
       (commit-error! node t result)
@@ -230,6 +214,27 @@
   (let [tx (tx-success/tx tx-cache t)]
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
+
+
+(defn- hashes-of-non-deleted [resource-handles]
+  (into [] (comp (remove (comp #{:delete} :op)) (map :hash)) resource-handles))
+
+
+(defn- deleted-resource [{:keys [id] :as resource-handle}]
+  {:fhir/type (type/type resource-handle) :id id})
+
+
+(defn- to-resource [tx-cache resources {:keys [op hash] :as resource-handle}]
+  (let [resource (if (identical? :delete op)
+                   (deleted-resource resource-handle)
+                   (get resources hash))]
+    (enhance-resource tx-cache resource-handle resource)))
+
+
+(defn- get-resource [resource-store {:keys [op hash] :as resource-handle}]
+  (if (identical? :delete op)
+    (ac/completed-future (deleted-resource resource-handle))
+    (rs/get resource-store hash)))
 
 
 (defrecord Node [tx-log rh-cache tx-cache kv-store resource-store
@@ -313,19 +318,17 @@
 
   p/Pull
   (-pull [_ resource-handle]
-    (do-sync [resource (rs/get resource-store (:hash resource-handle))]
+    (do-sync [resource (get-resource resource-store resource-handle)]
       (enhance-resource tx-cache resource-handle resource)))
 
   (-pull-content [_ resource-handle]
-    (do-sync [resource (rs/get resource-store (:hash resource-handle))]
+    (do-sync [resource (get-resource resource-store resource-handle)]
       (with-meta resource (meta resource-handle))))
 
   (-pull-many [_ resource-handles]
-    (do-sync [resources (rs/multi-get resource-store (mapv :hash resource-handles))]
-      (mapv
-        (fn [{:keys [hash] :as resource-handle}]
-          (enhance-resource tx-cache resource-handle (get resources hash)))
-        resource-handles)))
+    (let [hashes (hashes-of-non-deleted resource-handles)]
+      (do-sync [resources (rs/multi-get resource-store hashes)]
+        (mapv (partial to-resource tx-cache resources) resource-handles))))
 
   Runnable
   (run [node]

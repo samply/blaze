@@ -931,7 +931,25 @@
             (is (= #fhir/unsignedInt 0 (:total body))))
 
           (testing "the bundle contains no entry"
-            (is (zero? (count (:entry body)))))))))
+            (is (zero? (count (:entry body))))))))
+
+    (testing "deleted resources are not found"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:delete "Patient" "0"]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-match
+                  :params {"_lastUpdated" "1970-01-01"}})]
+
+          (is (= 200 status))
+
+          (testing "the total count is 0"
+            (is (= #fhir/unsignedInt 0 (:total body))))
+
+          (testing "the bundle contains one entry"
+            (is (= 0 (count (:entry body)))))))))
 
   (testing "_profile search"
     (with-handler [handler]

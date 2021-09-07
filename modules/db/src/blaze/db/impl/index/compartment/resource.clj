@@ -30,7 +30,7 @@
      (bs/from-byte-buffer buf))))
 
 
-(defn- resource-handles-xform [resource-handle tid]
+(defn- resource-handles-xf [resource-handle tid]
   (comp
     (keep #(resource-handle tid %))
     (remove (comp #{:delete} :op))))
@@ -76,11 +76,11 @@
   ([{:keys [cri resource-handle]} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
-       (resource-handles-xform resource-handle tid)
+       (resource-handles-xf resource-handle tid)
        (i/prefix-keys! cri seek-key decode-key seek-key))))
   ([{:keys [cri resource-handle]} compartment tid start-id]
    (coll/eduction
-     (resource-handles-xform resource-handle tid)
+     (resource-handles-xf resource-handle tid)
      (i/prefix-keys!
        cri
        (encode-seek-key compartment tid)

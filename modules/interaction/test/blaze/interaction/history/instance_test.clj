@@ -160,7 +160,7 @@
 
   (testing "returns history with one currently deleted patient"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
        [[:delete "Patient" "0"]]]
 
       (let [{:keys [status body]}
@@ -193,6 +193,7 @@
             :fullUrl := #fhir/uri"base-url-135814/Patient/0"
             [:request :method] := #fhir/code"DELETE"
             [:request :url] := #fhir/uri"/Patient/0"
+            keys :!> #{:resource}
             [:response :status] := "204"
             [:response :etag] := "W/\"2\""
             [:response :lastModified] := Instant/EPOCH))
@@ -205,6 +206,7 @@
             [:resource :id] := "0"
             [:resource :fhir/type] := :fhir/Patient
             [:resource :meta :versionId] := #fhir/id"1"
+            [:resource :active] := true
             [:response :status] := "201"
             [:response :etag] := "W/\"1\""
             [:response :lastModified] := Instant/EPOCH)))))

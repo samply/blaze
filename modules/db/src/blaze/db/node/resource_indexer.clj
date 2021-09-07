@@ -8,6 +8,7 @@
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
+    [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.core.reducers :as r]
@@ -87,7 +88,8 @@
   [search-param-registry last-updated res [hash resource]]
   (log/trace "index-resource with hash" (bs/hex hash))
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
-    (let [resource (update resource :meta (fnil assoc #fhir/Meta{}) :lastUpdated last-updated)
+    (let [resource (update resource :meta (fnil assoc #fhir/Meta{})
+                           :lastUpdated last-updated)
           compartments (sr/linked-compartments search-param-registry resource)]
       (transduce
         (mapcat #(index-entries % compartments hash resource))
@@ -117,7 +119,7 @@
        (put! kv-store)))
 
 
-(defn index-resources
+(defn- index-resources*
   "Returns a CompletableFuture that will complete after all resources of
    `entries` are indexed.
 
@@ -127,6 +129,22 @@
   (log/trace "index" (count entries) "resource(s)")
   (ac/supply-async
     #(batch-index-resources resource-indexer last-updated (vec entries))))
+
+
+(defn- hashes [tx-cmds]
+  (into [] (keep :hash) tx-cmds))
+
+
+(defn index-resources
+  {:arglists '([context tx-data])}
+  [{:keys [tx-resource-cache resource-store resource-indexer]}
+   {:keys [t tx-cmds] last-updated :instant}]
+  (if-let [resources (@tx-resource-cache t)]
+    (do (swap! tx-resource-cache dissoc t)
+        (index-resources* resource-indexer last-updated resources))
+    (-> (rs/multi-get resource-store (hashes tx-cmds))
+        (ac/then-compose
+          (partial index-resources* resource-indexer last-updated)))))
 
 
 (defn new-resource-indexer

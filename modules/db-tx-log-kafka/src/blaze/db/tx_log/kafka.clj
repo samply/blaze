@@ -2,8 +2,8 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
-    [blaze.byte-string :as bs]
     [blaze.db.tx-log :as tx-log]
+    [blaze.db.tx-log.kafka.codec :as codec]
     [blaze.db.tx-log.kafka.config :as c]
     [blaze.db.tx-log.kafka.log :as l]
     [blaze.db.tx-log.kafka.spec]
@@ -12,7 +12,6 @@
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [jsonista.core :as j]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
@@ -20,12 +19,10 @@
     [java.time Duration]
     [java.util Map]
     [java.util.concurrent TimeUnit ExecutorService]
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [org.apache.kafka.clients.consumer Consumer KafkaConsumer]
     [org.apache.kafka.clients.producer Producer KafkaProducer ProducerRecord RecordMetadata Callback]
     [org.apache.kafka.common TopicPartition]
-    [org.apache.kafka.common.errors RecordTooLargeException]
-    [org.apache.kafka.common.serialization Serializer Deserializer]))
+    [org.apache.kafka.common.errors RecordTooLargeException]))
 
 
 (set! *warn-on-reflection* true)
@@ -40,45 +37,9 @@
   "op")
 
 
-(def ^:private cbor-object-mapper
-  (j/object-mapper
-    {:factory (CBORFactory.)
-     :decode-key-fn true
-     :modules [bs/object-mapper-module]}))
-
-
-(deftype CborSerializer []
-  Serializer
-  (serialize [_ _ data]
-    (j/write-value-as-bytes data cbor-object-mapper)))
-
-
-(def ^Serializer serializer (CborSerializer.))
-
-
 (defn create-producer [config]
-  (KafkaProducer. ^Map (c/producer-config config) serializer serializer))
-
-
-(defn- parse-cbor [data]
-  (try
-    (j/read-value data cbor-object-mapper)
-    (catch Exception e
-      (log/warn (format "Error while parsing tx-data: %s" (ex-message e))))))
-
-
-(defn decode-hashes [cmds]
-  (when (sequential? cmds)
-    (mapv #(update % :hash bs/from-byte-array) cmds)))
-
-
-(deftype CborDeserializer []
-  Deserializer
-  (deserialize [_ _ data]
-    (decode-hashes (parse-cbor data))))
-
-
-(def ^Deserializer deserializer (CborDeserializer.))
+  (KafkaProducer. ^Map (c/producer-config config)
+                  codec/serializer codec/serializer))
 
 
 (def ^:private ^TopicPartition tx-partition
@@ -87,7 +48,7 @@
 
 (defn create-consumer [config]
   (doto (KafkaConsumer. ^Map (c/consumer-config config)
-                        deserializer deserializer)
+                        codec/deserializer codec/deserializer)
     (.assign [tx-partition])))
 
 
@@ -157,10 +118,8 @@
     (into [] u/record-transformer (.poll consumer ^Duration timeout))))
 
 
-(defn create-last-t-consumer [config]
-  (doto (KafkaConsumer. ^Map (c/consumer-config config)
-                        deserializer deserializer)
-    (.assign [tx-partition])))
+(def create-last-t-consumer
+  create-consumer)
 
 
 (defmethod ig/pre-init-spec :blaze.db.tx-log/kafka [_]

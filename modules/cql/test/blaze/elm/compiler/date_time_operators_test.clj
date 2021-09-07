@@ -7,6 +7,7 @@
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -144,17 +145,17 @@
 
 
   (testing "an ELM year (only literals) always compiles to a Year"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [year (s/gen :elm/literal-year)]
         (instance? Year (c/compile {} year)))))
 
   (testing "an ELM year-month (only literals) always compiles to a YearMonth"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [year-month (s/gen :elm/literal-year-month)]
         (instance? YearMonth (c/compile {} year-month)))))
 
   (testing "an ELM date (only literals) always compiles to something implementing Temporal"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [date (s/gen :elm/literal-date)]
         (instance? Temporal (c/compile {} date))))))
 
@@ -332,7 +333,7 @@
       (system/date-time 2019 3 23 10 43 14)))
 
   (testing "an ELM date-time (only literals) always evaluates to something implementing Temporal"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [date-time (s/gen :elm/literal-date-time)]
         (instance? Temporal (core/-eval (c/compile {} date-time) {:now tu/now} nil nil))))))
 
@@ -872,7 +873,7 @@
       (is (= (date-time/local-time 12 13 14 15) (core/-eval expr eval-ctx nil nil)))))
 
   (testing "an ELM time (only literals) always compiles to a LocalTime"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [time (s/gen :elm/time)]
         (date-time/local-time? (c/compile {} time))))))
 

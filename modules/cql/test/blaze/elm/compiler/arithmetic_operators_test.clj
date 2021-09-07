@@ -12,6 +12,7 @@
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as quantity]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -133,19 +134,19 @@
     (tu/testing-binary-null elm/add #elm/integer"1"))
 
   (testing "Adding zero integer to any integer or decimal doesn't change it"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [operand (s/gen (s/or :i :elm/integer :d :elm/decimal))]
         (let [elm (elm/equal [(elm/add [operand #elm/integer"0"]) operand])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding zero decimal to any decimal doesn't change it"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [operand (s/gen :elm/decimal)]
         (let [elm (elm/equal [(elm/add [operand #elm/decimal"0"]) operand])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding identical integers equals multiplying the same integer by two"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [integer (s/gen :elm/integer)]
         (let [elm (elm/equivalent [(elm/add [integer integer])
                                    (elm/multiply [integer #elm/integer"2"])])]
@@ -180,14 +181,14 @@
         #elm/decimal"99999999999999999999.99999999" #elm/decimal"1")))
 
   (testing "Adding identical decimals equals multiplying the same decimal by two"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [decimal (s/gen :elm/decimal)]
         (let [elm (elm/equal [(elm/add [decimal decimal])
                               (elm/multiply [decimal #elm/integer"2"])])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding identical decimals and dividing by two results in the same decimal"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [decimal (s/gen :elm/decimal)]
         (let [elm (elm/equal [(elm/divide [(elm/add [decimal decimal])
                                            #elm/integer"2"])
@@ -217,7 +218,7 @@
       [1 "m"] [1 "s"]))
 
   (testing "Adding identical quantities equals multiplying the same quantity with two"
-    (tu/satisfies-prop
+    (satisfies-prop
       100
       (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
         (let [elm (elm/equal [(elm/add [quantity quantity])
@@ -225,7 +226,7 @@
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding identical quantities and dividing by two results in the same quantity"
-    (tu/satisfies-prop
+    (satisfies-prop
       100
       (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
         (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
@@ -249,49 +250,49 @@
       #elm/date"2019-01-01" #elm/quantity[1 "day"] (system/date 2019 1 2)))
 
   (testing "Adding a positive amount of years to a year makes it greater"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [year (s/gen :elm/year)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [year years]) year])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of years to a year-month makes it greater"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [year-month (s/gen :elm/year-month)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [year-month years]) year-month])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of years to a date makes it greater"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [date (s/gen :elm/literal-date)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [date years]) date])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of years to a date-time makes it greater"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [date-time years]) date-time])]
           (true? (core/-eval (c/compile {} elm) {:now tu/now} nil nil))))))
 
   (testing "Adding a positive amount of months to a year-month makes it greater"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [year-month (s/gen :elm/year-month)
                      months (s/gen :elm/pos-months)]
         (let [elm (elm/greater [(elm/add [year-month months]) year-month])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of months to a date makes it greater or lets it equal because a date can be also a year and adding a small amount of months to a year doesn't change it."
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [date (s/gen :elm/literal-date)
                      months (s/gen :elm/pos-months)]
         (let [elm (elm/greater-or-equal [(elm/add [date months]) date])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of months to a date-time makes it greater or lets it equal because a date-time can be also a year and adding a small amount of months to a year doesn't change it."
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      months (s/gen :elm/pos-months)]
         (let [elm (elm/greater-or-equal [(elm/add [date-time months]) date-time])]
@@ -299,7 +300,7 @@
 
   ;; TODO: is that right?
   (testing "Adding a positive amount of days to a year doesn't change it."
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [year (s/gen :elm/year)
                      days (s/gen :elm/pos-days)]
         (let [elm (elm/equal [(elm/add [year days]) year])]
@@ -307,21 +308,21 @@
 
   ;; TODO: is that right?
   (testing "Adding a positive amount of days to a year-month doesn't change it."
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [year-month (s/gen :elm/year-month)
                      days (s/gen :elm/pos-days)]
         (let [elm (elm/equal [(elm/add [year-month days]) year-month])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of days to a date makes it greater or lets it equal because a date can be also a year or year-month and adding any amount of days to a year or year-month doesn't change it."
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [date (s/gen :elm/literal-date)
                      days (s/gen :elm/pos-days)]
         (let [elm (elm/greater-or-equal [(elm/add [date days]) date])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of days to a date-time makes it greater or lets it equal because a date-time can be also a year or year-month and adding any amount of days to a year or year-month doesn't change it."
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      days (s/gen :elm/pos-days)]
         (let [elm (elm/greater-or-equal [(elm/add [date-time days]) date-time])]
@@ -440,7 +441,7 @@
     (tu/testing-binary-null elm/divide #elm/quantity[1] #elm/decimal"1.1"))
 
   (testing "(d / d) * d = d"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [decimal (s/gen :elm/non-zero-decimal)]
         (let [elm (elm/equal [(elm/multiply [(elm/divide [decimal decimal]) decimal]) decimal])]
           (true? (core/-eval (c/compile {} elm) {} nil nil)))))))
@@ -893,7 +894,7 @@
       #elm/integer"1" {:type "Null"} nil))
 
   (testing "Subtracting identical integers results in zero"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [integer (s/gen :elm/integer)]
         (zero? (core/-eval (c/compile {} (elm/subtract [integer integer])) {} nil nil)))))
 
@@ -919,7 +920,7 @@
         #elm/decimal"-99999999999999999999.99999999" #elm/decimal"1")))
 
   (testing "Subtracting identical decimals results in zero"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [decimal (s/gen :elm/decimal)]
         (zero? (core/-eval (c/compile {} (elm/subtract [decimal decimal])) {} nil nil)))))
 
@@ -946,7 +947,7 @@
       #elm/quantity[1 "m"] #elm/quantity[1 "s"]))
 
   (testing "Subtracting identical quantities results in zero"
-    (tu/satisfies-prop
+    (satisfies-prop
       100
       (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
         ;; Can't test for zero because can't extract value from quantity
@@ -972,7 +973,7 @@
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a year makes it smaller"
-      (tu/satisfies-prop 100
+      (satisfies-prop 100
         (prop/for-all [year (s/gen :elm/year)
                        years (s/gen :elm/pos-years)]
           (let [elm (elm/less [(elm/subtract [year years]) year])]
@@ -980,7 +981,7 @@
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a year-month makes it smaller"
-      (tu/satisfies-prop 100
+      (satisfies-prop 100
         (prop/for-all [year-month (s/gen :elm/year-month)
                        years (s/gen :elm/pos-years)]
           (let [elm (elm/less [(elm/subtract [year-month years]) year-month])]
@@ -988,7 +989,7 @@
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a date makes it smaller"
-      (tu/satisfies-prop 100
+      (satisfies-prop 100
         (prop/for-all [date (s/gen :elm/literal-date)
                        years (s/gen :elm/pos-years)]
           (let [elm (elm/less [(elm/subtract [date years]) date])]
@@ -996,7 +997,7 @@
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of months from a year-month makes it smaller"
-      (tu/satisfies-prop 100
+      (satisfies-prop 100
         (prop/for-all [year-month (s/gen :elm/year-month)
                        months (s/gen :elm/pos-months)]
           (let [elm (elm/less [(elm/subtract [year-month months]) year-month])]
@@ -1004,7 +1005,7 @@
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of months from a date makes it smaller or lets it equal because a date can be also a year and subtracting a small amount of months from a year doesn't change it."
-      (tu/satisfies-prop 100
+      (satisfies-prop 100
         (prop/for-all [date (s/gen :elm/literal-date)
                        months (s/gen :elm/pos-months)]
           (let [elm (elm/less-or-equal [(elm/subtract [date months]) date])]
@@ -1012,7 +1013,7 @@
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of days from a date makes it smaller or lets it equal because a date can be also a year or year-month and subtracting any amount of days from a year or year-month doesn't change it."
-      (tu/satisfies-prop 100
+      (satisfies-prop 100
         (prop/for-all [date (s/gen :elm/literal-date)
                        days (s/gen :elm/pos-days)]
           (let [elm (elm/less-or-equal [(elm/subtract [date days]) date])]

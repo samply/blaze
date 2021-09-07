@@ -3,6 +3,7 @@
     [blaze.byte-string :as bs]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 
@@ -30,3 +31,7 @@
   (testing "hashes from different resource types are different"
     (is (not= (hash/generate {:fhir/type :fhir/Patient :id "0"})
               (hash/generate {:fhir/type :fhir/Observation :id "0"})))))
+
+
+(deftest spec-generation-test
+  (is (s/exercise :blaze.resource/hash)))

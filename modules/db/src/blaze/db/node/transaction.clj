@@ -1,7 +1,6 @@
 (ns blaze.db.node.transaction
   (:require
     [blaze.anomaly :as ba]
-    [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db :as db]
     [blaze.db.impl.index.tx-error :as tx-error]
     [blaze.db.impl.index.tx-success :as tx-success]
@@ -52,15 +51,10 @@
 
 (defmethod prepare-op :delete
   [[_ type id]]
-  (let [resource (codec/deleted-resource type id)
-        hash (hash/generate resource)]
-    {:hash-resource
-     [hash resource]
-     :blaze.db/tx-cmd
-     {:op "delete"
-      :type (name (fhir-spec/fhir-type resource))
-      :id (:id resource)
-      :hash hash}}))
+  {:blaze.db/tx-cmd
+   {:op "delete"
+    :type type
+    :id id}})
 
 
 (def ^:private split
