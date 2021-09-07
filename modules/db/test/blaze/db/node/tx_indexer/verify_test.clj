@@ -1,5 +1,6 @@
 (ns blaze.db.node.tx-indexer.verify-test
   (:require
+    [blaze.byte-string :as bs]
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-as-of :as rao]
@@ -123,6 +124,11 @@
   `(is (= (walk/postwalk bytes->vec ~a) (walk/postwalk bytes->vec ~b))))
 
 
+(def ^:private deleted-hash
+  "The hash of a deleted version of a resource."
+  (bs/from-byte-array (byte-array 32)))
+
+
 (deftest verify-tx-cmds-test
   (testing "adding one patient to an empty store"
     (with-system [{:blaze.db/keys [node]} system]
@@ -187,90 +193,87 @@
            (system-stats/index-entry 2 {:total 1 :num-changes 2})]))))
 
   (testing "deleting a patient from an empty store"
-    (let [hash (hash/generate (codec/deleted-resource "Patient" "0"))]
-      (with-system [{:blaze.db/keys [node]} system]
-        (given (verify/verify-tx-cmds
-                 (d/db node) 1
-                 [{:op "delete" :type "Patient" :id "0" :hash hash}])
-          [0 #(drop 1 %) rao-tu/decode-index-entry] :=
-          [{:type "Patient" :id "0" :t 1}
-           {:hash hash :num-changes 1 :op :delete}]
+    (with-system [{:blaze.db/keys [node]} system]
+      (given (verify/verify-tx-cmds
+               (d/db node) 1
+               [{:op "delete" :type "Patient" :id "0"}])
+        [0 #(drop 1 %) rao-tu/decode-index-entry] :=
+        [{:type "Patient" :id "0" :t 1}
+         {:hash deleted-hash :num-changes 1 :op :delete}]
 
-          [1 #(drop 1 %) tao-tu/decode-index-entry] :=
-          [{:type "Patient" :t 1 :id "0"}
-           {:hash hash :num-changes 1 :op :delete}]
+        [1 #(drop 1 %) tao-tu/decode-index-entry] :=
+        [{:type "Patient" :t 1 :id "0"}
+         {:hash deleted-hash :num-changes 1 :op :delete}]
 
-          [2 #(drop 1 %) sao-tu/decode-index-entry] :=
-          [{:t 1 :type "Patient" :id "0"}
-           {:hash hash :num-changes 1 :op :delete}]
+        [2 #(drop 1 %) sao-tu/decode-index-entry] :=
+        [{:t 1 :type "Patient" :id "0"}
+         {:hash deleted-hash :num-changes 1 :op :delete}]
 
-          [3 #(drop 1 %) ts-tu/decode-index-entry] :=
-          [{:type "Patient" :t 1}
-           {:total 0 :num-changes 1}]
+        [3 #(drop 1 %) ts-tu/decode-index-entry] :=
+        [{:type "Patient" :t 1}
+         {:total 0 :num-changes 1}]
 
-          [4 #(drop 1 %) ss-tu/decode-index-entry] :=
-          [{:t 1}
-           {:total 0 :num-changes 1}]))))
+        [4 #(drop 1 %) ss-tu/decode-index-entry] :=
+        [{:t 1}
+         {:total 0 :num-changes 1}])))
 
   (testing "deleting an already deleted patient"
-    (let [hash (hash/generate (codec/deleted-resource "Patient" "0"))]
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:delete "Patient" "0"]])
+    (with-system [{:blaze.db/keys [node]} system]
+      @(d/transact node [[:delete "Patient" "0"]])
 
-        (given
-          (verify/verify-tx-cmds
-            (d/db node) 2
-            [{:op "delete" :type "Patient" :id "0" :hash hash}])
+      (given
+        (verify/verify-tx-cmds
+          (d/db node) 2
+          [{:op "delete" :type "Patient" :id "0"}])
 
-          [0 #(drop 1 %) rao-tu/decode-index-entry] :=
-          [{:type "Patient" :id "0" :t 2}
-           {:hash hash :num-changes 2 :op :delete}]
+        [0 #(drop 1 %) rao-tu/decode-index-entry] :=
+        [{:type "Patient" :id "0" :t 2}
+         {:hash deleted-hash :num-changes 2 :op :delete}]
 
-          [1 #(drop 1 %) tao-tu/decode-index-entry] :=
-          [{:type "Patient" :t 2 :id "0"}
-           {:hash hash :num-changes 2 :op :delete}]
+        [1 #(drop 1 %) tao-tu/decode-index-entry] :=
+        [{:type "Patient" :t 2 :id "0"}
+         {:hash deleted-hash :num-changes 2 :op :delete}]
 
-          [2 #(drop 1 %) sao-tu/decode-index-entry] :=
-          [{:t 2 :type "Patient" :id "0"}
-           {:hash hash :num-changes 2 :op :delete}]
+        [2 #(drop 1 %) sao-tu/decode-index-entry] :=
+        [{:t 2 :type "Patient" :id "0"}
+         {:hash deleted-hash :num-changes 2 :op :delete}]
 
-          [3 #(drop 1 %) ts-tu/decode-index-entry] :=
-          [{:type "Patient" :t 2}
-           {:total 0 :num-changes 2}]
+        [3 #(drop 1 %) ts-tu/decode-index-entry] :=
+        [{:type "Patient" :t 2}
+         {:total 0 :num-changes 2}]
 
-          [4 #(drop 1 %) ss-tu/decode-index-entry] :=
-          [{:t 2}
-           {:total 0 :num-changes 2}]))))
+        [4 #(drop 1 %) ss-tu/decode-index-entry] :=
+        [{:t 2}
+         {:total 0 :num-changes 2}])))
 
   (testing "deleting an existing patient"
-    (let [hash (hash/generate (codec/deleted-resource "Patient" "0"))]
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system [{:blaze.db/keys [node]} system]
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-        (given
-          (verify/verify-tx-cmds
-            (d/db node) 2
-            [{:op "delete" :type "Patient" :id "0" :hash hash}])
+      (given
+        (verify/verify-tx-cmds
+          (d/db node) 2
+          [{:op "delete" :type "Patient" :id "0"}])
 
-          [0 #(drop 1 %) rao-tu/decode-index-entry] :=
-          [{:type "Patient" :id "0" :t 2}
-           {:hash hash :num-changes 2 :op :delete}]
+        [0 #(drop 1 %) rao-tu/decode-index-entry] :=
+        [{:type "Patient" :id "0" :t 2}
+         {:hash deleted-hash :num-changes 2 :op :delete}]
 
-          [1 #(drop 1 %) tao-tu/decode-index-entry] :=
-          [{:type "Patient" :t 2 :id "0"}
-           {:hash hash :num-changes 2 :op :delete}]
+        [1 #(drop 1 %) tao-tu/decode-index-entry] :=
+        [{:type "Patient" :t 2 :id "0"}
+         {:hash deleted-hash :num-changes 2 :op :delete}]
 
-          [2 #(drop 1 %) sao-tu/decode-index-entry] :=
-          [{:t 2 :type "Patient" :id "0"}
-           {:hash hash :num-changes 2 :op :delete}]
+        [2 #(drop 1 %) sao-tu/decode-index-entry] :=
+        [{:t 2 :type "Patient" :id "0"}
+         {:hash deleted-hash :num-changes 2 :op :delete}]
 
-          [3 #(drop 1 %) ts-tu/decode-index-entry] :=
-          [{:type "Patient" :t 2}
-           {:total 0 :num-changes 2}]
+        [3 #(drop 1 %) ts-tu/decode-index-entry] :=
+        [{:type "Patient" :t 2}
+         {:total 0 :num-changes 2}]
 
-          [4 #(drop 1 %) ss-tu/decode-index-entry] :=
-          [{:t 2}
-           {:total 0 :num-changes 2}]))))
+        [4 #(drop 1 %) ss-tu/decode-index-entry] :=
+        [{:t 2}
+         {:total 0 :num-changes 2}])))
 
   (testing "adding a second patient to a store containing already one"
     (with-system [{:blaze.db/keys [node]} system]
@@ -343,8 +346,7 @@
         (given
           (verify/verify-tx-cmds
             (d/db node) 2
-            [{:op "delete" :type "Patient" :id "3"
-              :hash (hash/generate patient-3)}
+            [{:op "delete" :type "Patient" :id "3"}
              {:op "create" :type "Patient" :id "0"
               :hash (hash/generate patient-0)
               :if-none-exist [["identifier" "120426"]]}])

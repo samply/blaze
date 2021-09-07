@@ -13,6 +13,8 @@
     [blaze.db.kv.mem-spec]
     [blaze.db.node.resource-indexer :as ri :refer [new-resource-indexer]]
     [blaze.db.node.resource-indexer-spec]
+    [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.kv :as rs-kv]
     [blaze.db.search-param-registry]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
@@ -20,6 +22,7 @@
     [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant LocalDate ZoneId]))
@@ -46,11 +49,20 @@
      :compartment-search-param-value-index nil
      :compartment-resource-type-index nil
      :active-search-params nil}}
+
+   ::rs/kv
+   {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :executor (ig/ref ::rs-kv/executor)}
+   [::kv/mem :blaze.db/resource-kv-store]
+   {:column-families {}}
+   ::rs-kv/executor {}
+
    :blaze.db/search-param-registry {}})
 
 
 (deftest index-condition-resource-test
-  (with-system [{kv-store ::kv/mem :blaze.db/keys [search-param-registry]} system]
+  (with-system [{kv-store ::kv/mem resource-store ::rs/kv
+                 :blaze.db/keys [search-param-registry]} system]
     (let [resource
           {:fhir/type :fhir/Condition :id "id-204446"
            :code
@@ -68,8 +80,21 @@
                {:versionId #fhir/id"1"
                 :profile [#fhir/canonical"url-164445"]}}
           hash (hash/generate resource)
-          i (new-resource-indexer search-param-registry kv-store)]
-      @(ri/index-resources i Instant/EPOCH {hash resource})
+          resource-indexer (new-resource-indexer search-param-registry kv-store)
+          context
+          {:tx-resource-cache (atom {})
+           :resource-store resource-store
+           :resource-indexer resource-indexer}]
+      @(rs/put! resource-store {hash resource})
+      @(ri/index-resources
+         context
+         {:t 0
+          :instant Instant/EPOCH
+          :tx-cmds
+          [{:op "put"
+            :type "Condition"
+            :id "id-204446"
+            :hash hash}]})
 
       (testing "SearchParamValueResource index"
         (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
@@ -165,7 +190,8 @@
 
 
 (deftest index-observation-resource-test
-  (with-system [{kv-store ::kv/mem :blaze.db/keys [search-param-registry]} system]
+  (with-system [{kv-store ::kv/mem resource-store ::rs/kv
+                 :blaze.db/keys [search-param-registry]} system]
     (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                     :status #fhir/code"status-193613"
                     :category
@@ -190,8 +216,21 @@
                          :system #fhir/uri"http://unitsofmeasure.org"
                          :value 23.42M}}
           hash (hash/generate resource)
-          i (new-resource-indexer search-param-registry kv-store)]
-      @(ri/index-resources i Instant/EPOCH {hash resource})
+          resource-indexer (new-resource-indexer search-param-registry kv-store)
+          context
+          {:tx-resource-cache (atom {})
+           :resource-store resource-store
+           :resource-indexer resource-indexer}]
+      @(rs/put! resource-store {hash resource})
+      @(ri/index-resources
+         context
+         {:t 0
+          :instant Instant/EPOCH
+          :tx-cmds
+          [{:op "put"
+            :type "Observation"
+            :id "id-192702"
+            :hash hash}]})
 
       (testing "SearchParamValueResource index"
         (is (every? #{["Observation" "id-192702" #blaze/byte-string"651D1F37"]}
@@ -278,3 +317,24 @@
                 ["status" (codec/v-hash "status-193613")]
                 ["_id" (codec/v-hash "id-192702")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]]))))))
+
+
+(deftest index-delete-cmd-test
+  (with-system [{kv-store ::kv/mem resource-store ::rs/kv
+                 :blaze.db/keys [search-param-registry]} system]
+    (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
+          context
+          {:tx-resource-cache (atom {})
+           :resource-store resource-store
+           :resource-indexer resource-indexer}]
+      @(ri/index-resources
+         context
+         {:t 0
+          :instant Instant/EPOCH
+          :tx-cmds
+          [{:op "delete"
+            :type "Patient"
+            :id "0"}]})
+
+      (testing "doesn't index anything"
+        (is (empty? (sp-vr-tu/decode-index-entries kv-store :id)))))))

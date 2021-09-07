@@ -4,9 +4,9 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.search-param-value-resource-spec]
+    [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check :as tc]
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as p])
   (:import
@@ -32,15 +32,6 @@
    `(is (not-every? :failure (st/check ~sym ~opts)))))
 
 
-(defmacro satisfies-prop [num-tests prop]
-  `(let [result# (tc/quick-check ~num-tests ~prop)]
-     (if (instance? Throwable (:result result#))
-       (throw (:result result#))
-       (if (true? (:result result#))
-         (is :success)
-         (is (clojure.pprint/pprint result#))))))
-
-
 
 ;; ---- Key Functions ---------------------------------------------------------
 
@@ -49,8 +40,8 @@
     1 0xFFFFFFFFFFFFFE
     0 0xFFFFFFFFFFFFFF)
   (satisfies-prop 100000
-                  (p/for-all [t gen/nat]
-                    (= t (codec/descending-long (codec/descending-long t))))))
+    (p/for-all [t gen/nat]
+      (= t (codec/descending-long (codec/descending-long t))))))
 
 
 
@@ -192,4 +183,12 @@
       576460752303423487 "BFFFFFFFFFFFFFFF"
       576460752303423488 "C00800000000000000"
       576460752303423489 "C00800000000000001"
-      Long/MAX_VALUE "C07FFFFFFFFFFFFFFF")))
+      Long/MAX_VALUE "C07FFFFFFFFFFFFFFF"))
+
+  (testing "integer"
+    (are [n hex] (= hex (bs/hex (codec/number n)))
+      Integer/MIN_VALUE "5F80000000"
+      (int -1) "7F"
+      (int 0) "80"
+      (int 1) "81"
+      Integer/MAX_VALUE "A07FFFFFFF")))

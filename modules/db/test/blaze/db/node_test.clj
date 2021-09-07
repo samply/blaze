@@ -167,7 +167,7 @@
     (testing "with failing resource indexer"
       (with-redefs
         [resource-indexer/index-resources
-         (fn [_ _ _]
+         (fn [_ _]
            (ac/completed-future {::anom/category ::anom/fault ::x ::y}))]
         (with-system [{:blaze.db/keys [node]} system]
           (try

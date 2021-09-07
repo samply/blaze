@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.anomaly-spec]
+    [blaze.byte-string :as bs]
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.rts-as-of :as rts]
@@ -179,15 +180,20 @@
         (throw-anom (precondition-failed-anomaly if-match type id))))))
 
 
+(def ^:private deleted-hash
+  "The hash of a deleted version of a resource."
+  (bs/from-byte-array (byte-array 32)))
+
+
 (defmethod verify-tx-cmd "delete"
-  [db-before t res {:keys [type id hash]}]
+  [db-before t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
   (with-open [_ (prom/timer duration-seconds "verify-delete")]
     (let [tid (codec/tid type)
           {:keys [num-changes op] :or {num-changes 0}}
           (d/resource-handle db-before type id)]
       (cond->
-        (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :delete))
+        (-> (update res :entries into (index-entries tid id t deleted-hash (inc num-changes) :delete))
             (update :del-resources conj [type id])
             (update-in [:stats tid :num-changes] (fnil inc 0)))
         (and op (not (identical? :delete op)))

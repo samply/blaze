@@ -12,13 +12,12 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [java-time :as time]
-    [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
     [java.time Duration]
     [org.apache.kafka.clients.consumer Consumer ConsumerRecords]
-    [org.apache.kafka.clients.producer Producer RecordMetadata]
+    [org.apache.kafka.clients.producer KafkaProducer Producer RecordMetadata]
     [org.apache.kafka.common TopicPartition]
     [org.apache.kafka.common.errors
      AuthorizationException RecordTooLargeException]
@@ -180,42 +179,12 @@
         (is (= 104614 @(tx-log/last-t tx-log)))))))
 
 
-(defn invalid-cbor-content
-  "`0xA1` is the start of a map with one entry."
-  []
-  (byte-array [0xA1]))
+(def config {:bootstrap-servers "localhost:9092"})
 
 
-(def hash-patient-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
+(deftest create-producer-test
+  (is (instance? KafkaProducer (kafka/create-producer config))))
 
 
-(defn- serialize [cmds]
-  (.serialize kafka/serializer nil cmds))
-
-
-(defn- deserialize [cmds]
-  (.deserialize kafka/deserializer nil cmds))
-
-
-(deftest serializer-test
-  (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-    (is (= [cmd] (deserialize (serialize [cmd]))))))
-
-
-(deftest deserializer-test
-  (testing "empty value"
-    (is (nil? (deserialize (byte-array 0)))))
-
-  (testing "invalid cbor value"
-    (is (nil? (deserialize (invalid-cbor-content)))))
-
-  (testing "invalid map value"
-    (is (nil? (deserialize (serialize {:a 1})))))
-
-  (testing "success"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-      (given (first (deserialize (serialize [cmd])))
-        :op := "create"
-        :type := "Patient"
-        :id := "0"
-        :hash := hash-patient-0))))
+(deftest create-consumer-test
+  (is (= "tx" (.topic (first (.assignment (kafka/create-consumer config)))))))

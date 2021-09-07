@@ -536,7 +536,7 @@
   (testing "with failing resource indexer"
     (with-redefs
       [resource-indexer/index-resources
-       (fn [_ _ _]
+       (fn [_ _]
          (ac/completed-future {::anom/category ::anom/fault ::x ::y}))]
       (with-system [{:blaze.db/keys [node]} system]
         (given-failed-future
@@ -1099,7 +1099,10 @@
                  :birthDate #fhir/date"2019"}]
           [:put {:fhir/type :fhir/Patient
                  :id "id-4"
-                 :birthDate #fhir/date"2021"}]])
+                 :birthDate #fhir/date"2021"}]
+          [:put {:fhir/type :fhir/Patient
+                 :id "id-5"}]])
+      @(d/transact node [[:delete "Patient" "id-5"]])
 
       (testing "_id"
         (given (pull-type-query node "Patient" [["_id" "id-1"]])

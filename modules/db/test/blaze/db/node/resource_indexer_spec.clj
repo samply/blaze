@@ -8,9 +8,16 @@
     [blaze.db.impl.search-param-spec]
     [blaze.db.kv-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
+    [blaze.db.resource-store.spec]
     [blaze.db.search-param-registry.spec]
     [blaze.fhir.spec-spec]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s])
+  (:import
+    [clojure.lang IAtom]))
+
+
+(s/def :blaze.db.node/tx-resource-cache
+  #(instance? IAtom %))
 
 
 (s/def :blaze.db.node/resource-indexer
@@ -20,10 +27,16 @@
      :blaze.db/kv-store]))
 
 
+(s/def ::context
+  (s/keys
+    :req-un
+    [:blaze.db.node/tx-resource-cache
+     :blaze.db/resource-store
+     :blaze.db.node/resource-indexer]))
+
+
 (s/fdef resource-indexer/index-resources
-  :args (s/cat :resource-indexer :blaze.db.node/resource-indexer
-               :last-updated inst?
-               :entries (s/map-of :blaze.resource/hash (s/nilable :blaze/resource)))
+  :args (s/cat :context ::context :tx-data :blaze.db/tx-data)
   :ret ac/completable-future?)
 
 
