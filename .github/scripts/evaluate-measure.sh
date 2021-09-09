@@ -90,11 +90,14 @@ MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 create-library "$LIBRARY_URI" "$DATA" | post "Library" > /dev/null
 
 MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | post "Measure" | jq -r .id)
-COUNT=$(evaluate-measure "$MEASURE_ID" | jq -r ".group[0].population[0].count")
+REPORT=$(evaluate-measure "$MEASURE_ID")
+COUNT=$(echo "$REPORT" | jq -r ".group[0].population[0].count")
 
 if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
   echo "Success: count ($COUNT) equals the expected count"
 else
-  echo "Fail: count ($LAB_COUNT) != $EXPECTED_COUNT"
+  echo "Fail: count ($COUNT) != $EXPECTED_COUNT"
+  echo "Report:"
+  echo "$REPORT" | jq .
   exit 1
 fi
