@@ -395,11 +395,17 @@ jobs:
     - name: Evaluate CQL Query 14
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
 
-    - name: Forwarded Header
-      run: .github/scripts/forwarded-header.sh
+    - name: Forwarded Header HTTPS
+      run: .github/scripts/forwarded-header.sh https
 
-    - name: X-Forwarded Headers
-      run: .github/scripts/x-forwarded-headers.sh
+    - name: Forwarded Header HTTP
+      run: .github/scripts/forwarded-header.sh http
+
+    - name: X-Forwarded Headers HTTPS
+      run: .github/scripts/x-forwarded-headers.sh https
+
+    - name: X-Forwarded Headers HTTP
+      run: .github/scripts/x-forwarded-headers.sh http
 
     - name: Delete
       run: .github/scripts/delete.sh
@@ -639,11 +645,17 @@ jobs:
     - name: Evaluate CQL Query 14
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
 
-    - name: Forwarded Header
-      run: .github/scripts/forwarded-header.sh
+    - name: Forwarded Header HTTPS
+      run: .github/scripts/forwarded-header.sh https
 
-    - name: X-Forwarded Headers
-      run: .github/scripts/x-forwarded-headers.sh
+    - name: Forwarded Header HTTP
+      run: .github/scripts/forwarded-header.sh http
+
+    - name: X-Forwarded Headers HTTPS
+      run: .github/scripts/x-forwarded-headers.sh https
+
+    - name: X-Forwarded Headers HTTP
+      run: .github/scripts/x-forwarded-headers.sh http
 
     - name: Delete
       run: .github/scripts/delete.sh
