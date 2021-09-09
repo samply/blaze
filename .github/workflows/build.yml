@@ -367,9 +367,6 @@ jobs:
     - name: Evaluate CQL Query 14
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
 
-    - name: Evaluate CQL Query 15
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 33
-
     - name: Forwarded Header
       run: .github/scripts/forwarded-header.sh
 
@@ -521,9 +518,6 @@ jobs:
 
     - name: Evaluate CQL Query 14
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
-
-    - name: Evaluate CQL Query 15
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 33
 
     - name: Forwarded Header
       run: .github/scripts/forwarded-header.sh
