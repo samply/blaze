@@ -43,6 +43,9 @@
    {blaze/test-util
     {:local/root "../test-util"}
 
+    com.clojure-goes-fast/clj-java-decompiler
+    {:mvn/version "0.3.0"}
+
     lambdaisland/kaocha
     {:mvn/version "1.0.887"}}
 

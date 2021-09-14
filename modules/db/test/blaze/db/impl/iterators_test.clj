@@ -63,4 +63,15 @@
 
       (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
         (is (= [[0x00] [0x00 0x01]]
-               (into [] (i/keys! iter decode-1 (bs/from-hex "00")))))))))
+               (into [] (i/keys! iter decode-1 (bs/from-hex "00")))))))
+
+    (testing "new ByteBuffer is bigger than a two times increase"
+      (with-system [{kv-store ::kv/mem} system]
+        (kv/put!
+          kv-store
+          [[(ba 0x00) bytes/empty]
+           [(ba 0x00 0x01 0x02) bytes/empty]])
+
+        (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+          (is (= [[0x00] [0x00 0x01 0x02]]
+                 (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))))
