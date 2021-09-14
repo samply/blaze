@@ -117,6 +117,7 @@
 
 
 (defn remaining
+  "Returns the number of elements between the current position and the limit."
   {:inline
    (fn [byte-buffer]
      `(.remaining ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}

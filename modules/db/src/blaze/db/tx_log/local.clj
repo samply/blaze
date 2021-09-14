@@ -96,8 +96,7 @@
   [kv-store clock state tx-cmds]
   (log/trace "submit" (count tx-cmds) "tx-cmds")
   (let [{:keys [t queues]} (swap! state update :t inc)
-        instant (Instant/now clock)
-        tx-data {:t t :instant instant :tx-cmds tx-cmds}]
+        tx-data {:t t :instant (Instant/now clock) :tx-cmds tx-cmds}]
     (store-tx-data! kv-store tx-data)
     (transfer-tx-data! (vals queues) [tx-data])
     t))
@@ -129,7 +128,7 @@
 
 (defn- last-t
   "Returns the last (newest) point in time, the transaction log has persisted
-  in `kv-store` ot nil if the log is empty."
+  in `kv-store` or nil if the log is empty."
   [kv-store]
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]

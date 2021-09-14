@@ -137,7 +137,7 @@
   Uses the position of `buf` and sets the limit of `buf` according to the value
   size. Supports direct buffers only.
 
-  Returns the size of the actual value. If the key is greater than the length
+  Returns the size of the actual value. If the value is greater than the length
   of `buf`, then it indicates that the size of the `buf` is insufficient and a
   partial result is put."
   [iter buf]

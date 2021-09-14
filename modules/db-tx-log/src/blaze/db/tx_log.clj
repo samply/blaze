@@ -31,7 +31,8 @@
 
 
 (defn last-t
-  "Returns the last `t` submitted to `tx-log`."
+  "Returns a CompletableFuture that will complete with the last point in time
+  `t` submitted to `tx-log`."
   [tx-log]
   (-last-t tx-log))
 

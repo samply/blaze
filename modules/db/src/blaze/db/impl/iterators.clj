@@ -80,7 +80,7 @@
   byte buffer used to read."
   [read buf iter]
   (bb/clear! buf)
-  (let [^long size (read iter buf)]
+  (let [size (unchecked-long (read iter buf))]
     (if (< (bb/capacity buf) size)
       (let [buf (bb/allocate-direct (new-capacity (bb/capacity buf) size))]
         (read iter buf)
