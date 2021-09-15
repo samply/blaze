@@ -59,8 +59,9 @@
     (bb/allocate-direct 1024)])
   ([kb vb]
    (let [t (bb/get-long! kb)
-         value (byte-array (bb/remaining vb))]
-     (bb/copy-into-byte-array! vb value 0 (bb/remaining vb))
+         size (bb/remaining vb)
+         value (byte-array size)]
+     (bb/copy-into-byte-array! vb value 0 size)
      (-> (parse value t)
          (update :tx-cmds #(mapv decode-hash %))
          (update :instant decode-instant)

@@ -62,5 +62,14 @@ Every public function should have a spec. Function specs are declared in a names
 
 It is important that we don't use reflection. In order to see reflection warnings ```(set! *warn-on-reflection* true)``` should be used in every namespace which does Java interop.
 
+## REPL
+
+### Remote REPL Into Container
+
+* add `-Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'` to the `JAVA_TOOL_OPTIONS` env var
+* bind port 5555
+* create remote REPL in Cursive
+* 
+
 [1]: <https://github.com/weavejester/integrant>
 [2]: <https://github.com/bbatsov/clojure-style-guide>

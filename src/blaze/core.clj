@@ -35,7 +35,7 @@
       (System/exit 1))))
 
 
-(def system nil)
+(defonce system nil)
 
 
 (defn init-system! [config]

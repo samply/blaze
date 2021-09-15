@@ -81,6 +81,9 @@
 
 
 (defn id
+  {:inline
+   (fn [id-bytes offset length]
+     `(String. ~id-bytes ~offset ~length StandardCharsets/ISO_8859_1))}
   [^bytes id-bytes ^long offset ^long length]
   (String. id-bytes offset length StandardCharsets/ISO_8859_1))
 
