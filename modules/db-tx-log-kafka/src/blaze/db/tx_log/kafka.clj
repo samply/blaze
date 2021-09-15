@@ -84,7 +84,7 @@
 
 (deftype KafkaTxLog [config ^Producer producer last-t-consumer last-t-executor]
   tx-log/TxLog
-  (-submit [_ tx-cmds]
+  (-submit [_ tx-cmds _]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
     (let [timer (prom/timer duration-seconds "submit")
           future (ac/future)]
