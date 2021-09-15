@@ -86,6 +86,10 @@
    :blaze.test/clock {}})
 
 
+(defn- assoc-kv-store-init-data [system init-data]
+  (assoc-in system [[::kv/mem :blaze.db/transaction-kv-store] :init-data] init-data))
+
+
 (def failing-kv-store-system
   {::tx-log/local
    {:kv-store (ig/ref ::failing-kv-store)
@@ -114,15 +118,44 @@
 
 
 (deftest tx-log-test
-  (testing "an empty transaction log has no transaction data"
+  (testing "an empty transaction log"
     (with-system [{tx-log ::tx-log/local} system]
-      (with-open [queue (tx-log/new-queue tx-log 1)]
-        (is (empty? (tx-log/poll! queue (time/millis 10)))))))
+      (testing "the last `t` is zero"
+        (is (zero? @(tx-log/last-t tx-log))))
+
+      (testing "has no transaction data"
+        (with-open [queue (tx-log/new-queue tx-log 1)]
+          (is (empty? (tx-log/poll! queue (time/millis 10))))))))
+
+  (testing "an already filled transaction log"
+    (with-system [{tx-log ::tx-log/local}
+                  (assoc-kv-store-init-data
+                    system
+                    [[(codec/encode-key 1)
+                      (codec/encode-tx-data
+                        (Instant/ofEpochSecond 0)
+                        [{:op "create" :type "Patient" :id "0"
+                          :hash patient-hash-0}])]])]
+
+      (testing "the last `t` is one"
+        (is (= 1 @(tx-log/last-t tx-log))))
+
+      (testing "has transaction data"
+        (with-open [queue (tx-log/new-queue tx-log 1)]
+          (given (first (tx-log/poll! queue (time/millis 10)))
+            :t := 1
+            :instant := (Instant/ofEpochSecond 0)
+            [:tx-cmds 0 :op] := "create"
+            [:tx-cmds 0 :type] := "Patient"
+            [:tx-cmds 0 :id] := "0"
+            [:tx-cmds 0 :hash] := patient-hash-0)))))
 
   (testing "with one submitted command in one transaction"
     (with-system [{tx-log ::tx-log/local} system]
-      @(tx-log/submit tx-log [{:op "create" :type "Patient" :id "0"
-                               :hash patient-hash-0}])
+      @(tx-log/submit
+         tx-log
+         [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+         nil)
 
       (with-open [queue (tx-log/new-queue tx-log 1)]
         (given (first (tx-log/poll! queue (time/millis 10)))
@@ -135,11 +168,16 @@
 
   (testing "with two submitted commands in two transactions"
     (with-system [{tx-log ::tx-log/local} system]
-      @(tx-log/submit tx-log [{:op "create" :type "Patient" :id "0"
-                               :hash patient-hash-0}])
-      @(tx-log/submit tx-log [{:op "create" :type "Observation" :id "0"
-                               :hash observation-hash-0
-                               :refs [["Patient" "0"]]}])
+      @(tx-log/submit
+         tx-log
+         [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+         nil)
+      @(tx-log/submit
+         tx-log
+         [{:op "create" :type "Observation" :id "0"
+           :hash observation-hash-0
+           :refs [["Patient" "0"]]}]
+         nil)
 
       (with-open [queue (tx-log/new-queue tx-log 1)]
         (given (second (tx-log/poll! queue (time/millis 10)))
@@ -150,6 +188,17 @@
           [:tx-cmds 0 :id] := "0"
           [:tx-cmds 0 :hash] := observation-hash-0
           [:tx-cmds 0 :refs] := [["Patient" "0"]]))))
+
+  (testing "with local payload"
+    (with-system [{tx-log ::tx-log/local} system]
+      (with-open [queue (tx-log/new-queue tx-log 1)]
+        @(tx-log/submit
+           tx-log
+           [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+           ::payload)
+
+        (given (first (tx-log/poll! queue (time/millis 10)))
+          :local-payload := ::payload))))
 
   (testing "with invalid transaction data"
     (testing "with invalid key"
@@ -246,8 +295,10 @@
     (testing "with failing kv-store"
       (with-system [{tx-log ::tx-log/local} failing-kv-store-system]
         (-> (given-failed-future
-              (tx-log/submit tx-log [{:op "create" :type "Patient"
-                                      :id "0" :hash patient-hash-0}])
+              (tx-log/submit
+                tx-log
+                [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+                nil)
               ::anom/message := "put-error"))
 
         (with-open [queue (tx-log/new-queue tx-log 1)]

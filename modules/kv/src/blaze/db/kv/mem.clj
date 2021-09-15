@@ -222,6 +222,8 @@
 
 
 (defmethod ig/init-key ::kv/mem
-  [_ {:keys [column-families]}]
+  [_ {:keys [column-families init-data]}]
   (log/info "Open volatile, in-memory key-value store")
-  (->MemKvStore (atom (init-db (assoc column-families :default nil)))))
+  (let [store (->MemKvStore (atom (init-db (assoc column-families :default nil))))]
+    (some->> init-data (kv/put! store))
+    store))

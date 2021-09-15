@@ -119,13 +119,7 @@
        (put! kv-store)))
 
 
-(defn- index-resources*
-  "Returns a CompletableFuture that will complete after all resources of
-   `entries` are indexed.
-
-   `last-updated` is used to index the _lastUpdated search parameter because the
-   property doesn't exist in the resource itself."
-  [resource-indexer last-updated entries]
+(defn- index-resources* [resource-indexer last-updated entries]
   (log/trace "index" (count entries) "resource(s)")
   (ac/supply-async
     #(batch-index-resources resource-indexer last-updated (vec entries))))
@@ -136,12 +130,16 @@
 
 
 (defn index-resources
+  "Returns a CompletableFuture that will complete after all resources of
+   `tx-data` are indexed.
+
+   The :instant from `tx-data` is used to index the _lastUpdated search
+   parameter because the property doesn't exist in the resource itself."
   {:arglists '([context tx-data])}
-  [{:keys [tx-resource-cache resource-store resource-indexer]}
-   {:keys [t tx-cmds] last-updated :instant}]
-  (if-let [resources (@tx-resource-cache t)]
-    (do (swap! tx-resource-cache dissoc t)
-        (index-resources* resource-indexer last-updated resources))
+  [{:keys [resource-store resource-indexer]}
+   {:keys [tx-cmds] resources :local-payload last-updated :instant}]
+  (if resources
+    (index-resources* resource-indexer last-updated resources)
     (-> (rs/multi-get resource-store (hashes tx-cmds))
         (ac/then-compose
           (partial index-resources* resource-indexer last-updated)))))

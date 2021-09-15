@@ -82,8 +82,7 @@
           hash (hash/generate resource)
           resource-indexer (new-resource-indexer search-param-registry kv-store)
           context
-          {:tx-resource-cache (atom {})
-           :resource-store resource-store
+          {:resource-store resource-store
            :resource-indexer resource-indexer}]
       @(rs/put! resource-store {hash resource})
       @(ri/index-resources
@@ -218,8 +217,7 @@
           hash (hash/generate resource)
           resource-indexer (new-resource-indexer search-param-registry kv-store)
           context
-          {:tx-resource-cache (atom {})
-           :resource-store resource-store
+          {:resource-store resource-store
            :resource-indexer resource-indexer}]
       @(rs/put! resource-store {hash resource})
       @(ri/index-resources
@@ -324,8 +322,7 @@
                  :blaze.db/keys [search-param-registry]} system]
     (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
           context
-          {:tx-resource-cache (atom {})
-           :resource-store resource-store
+          {:resource-store resource-store
            :resource-indexer resource-indexer}]
       @(ri/index-resources
          context

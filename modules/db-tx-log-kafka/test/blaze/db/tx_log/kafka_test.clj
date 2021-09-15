@@ -103,7 +103,7 @@
            (close [_])))
        kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} system]
-        (is (= 1 @(tx-log/submit tx-log [tx-cmd])))))
+        (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil)))))
 
     (testing "RecordTooLargeException"
       (with-redefs
@@ -119,7 +119,7 @@
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
-          (given-failed-future (tx-log/submit tx-log [tx-cmd])
+          (given-failed-future (tx-log/submit tx-log [tx-cmd] nil)
             ::anom/category := ::anom/unsupported
             ::anom/message := "A transaction with 1 commands generated a Kafka message which is larger than the configured maximum of null bytes. In order to prevent this error, increase the maximum message size by setting DB_KAFKA_MAX_REQUEST_SIZE to a higher number. msg-173357"))))
 
@@ -137,7 +137,7 @@
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
-          (given-failed-future @(tx-log/submit tx-log [tx-cmd])
+          (given-failed-future @(tx-log/submit tx-log [tx-cmd] nil)
             ::anom/category := ::anom/fault
             ::anom/message := "msg-175337")))))
 
