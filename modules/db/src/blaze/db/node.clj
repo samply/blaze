@@ -238,8 +238,8 @@
 
 
 (defrecord Node [tx-log rh-cache tx-cache kv-store resource-store
-                 search-param-registry resource-indexer state tx-resource-cache
-                 run? poll-timeout finished]
+                 search-param-registry resource-indexer state run? poll-timeout
+                 finished]
   np/Node
   (-db [node]
     (db/db node (:t @state)))
@@ -258,11 +258,7 @@
     (if-ok [_ (validation/validate-ops tx-ops)]
       (let [[tx-cmds entries] (tx/prepare-ops tx-ops)]
         (-> (rs/put! resource-store entries)
-            (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds)))
-            (ac/then-apply
-              (fn [t]
-                (swap! tx-resource-cache assoc t entries)
-                t))))
+            (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
       ac/completed-future))
 
   (-tx-result [node t]
@@ -387,7 +383,6 @@
         node (->Node tx-log resource-handle-cache tx-cache kv-store
                      resource-store search-param-registry resource-indexer
                      (atom (initial-state kv-store))
-                     (atom {})
                      (volatile! true)
                      poll-timeout
                      (ac/future))]

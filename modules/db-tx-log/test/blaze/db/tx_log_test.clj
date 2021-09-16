@@ -29,14 +29,15 @@
 
 (deftest submit-test
   (let [tx-log (reify tx-log/TxLog
-                 (-submit [_ _]
+                 (-submit [_ _ _]
                    (ac/completed-future 1)))]
     (is (= 1 @(tx-log/submit
                 tx-log
                 [{:op "create"
                   :type "Patient"
                   :id "0"
-                  :hash patient-hash-0}])))))
+                  :hash patient-hash-0}]
+                nil)))))
 
 
 (deftest last-t-test

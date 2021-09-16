@@ -9,6 +9,7 @@
   Uses a single thread named `local-tx-log` to increment the point in time `t`,
   store the transaction and transfers it to listening queues."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.impl.byte-buffer :as bb]
@@ -16,18 +17,17 @@
     [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local.codec :as codec]
-    [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [java-time :as time]
-    [prometheus.alpha :as prom :refer [defhistogram]]
+    [prometheus.alpha :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
     [java.time Instant]
-    [java.util.concurrent
-     ArrayBlockingQueue BlockingQueue ExecutorService TimeUnit]))
+    [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]
+    [java.util.concurrent.locks Lock ReentrantLock]))
 
 
 (set! *warn-on-reflection* true)
@@ -53,7 +53,7 @@
       (into [] (take max-poll-size) (i/kvs! iter codec/decode-tx-data key)))))
 
 
-(defn- poll [^BlockingQueue queue timeout]
+(defn- poll! [^BlockingQueue queue timeout]
   (log/trace "poll in-memory queue with timeout =" timeout)
   (.poll queue (time/as timeout :millis) TimeUnit/MILLISECONDS))
 
@@ -67,7 +67,7 @@
           (when-let [tx-data (last tx-data)]
             (vreset! offset (inc (:t tx-data))))
           tx-data)
-        (poll queue timeout))))
+        (poll! queue timeout))))
 
   Closeable
   (close [_]
@@ -86,6 +86,10 @@
     (.put queue tx-data)))
 
 
+(defn- assoc-local-payload [tx-data local-payload]
+  (cond-> tx-data local-payload (assoc :local-payload local-payload)))
+
+
 (defn- submit!
   "Stores `tx-cmds` and transfers them to pollers on queues.
 
@@ -93,27 +97,28 @@
   consisting of the new `t`, the current time taken from `clock` and `tx-cmds`.
   Has to be run in a single thread in order to deliver transaction data in
   order."
-  [kv-store clock state tx-cmds]
+  [kv-store clock state tx-cmds local-payload]
   (log/trace "submit" (count tx-cmds) "tx-cmds")
   (let [{:keys [t queues]} (swap! state update :t inc)
-        instant (Instant/now clock)
-        tx-data {:t t :instant instant :tx-cmds tx-cmds}]
+        tx-data {:t t :instant (Instant/now clock) :tx-cmds tx-cmds}]
     (store-tx-data! kv-store tx-data)
-    (transfer-tx-data! (vals queues) [tx-data])
+    (transfer-tx-data! (vals queues) [(assoc-local-payload tx-data local-payload)])
     t))
 
 
 ;; The state contains the following keys:
 ;;  * :t - the current point in time
 ;;  * :queues - a map of queues created through `new-queue`
-(deftype LocalTxLog [kv-store clock executor state]
+(deftype LocalTxLog [kv-store clock ^Lock submit-lock state]
   tx-log/TxLog
-  (-submit [_ tx-cmds]
-    ;; ensures that the submit function is executed in a single thread
-    (ac/supply-async
-      #(with-open [_ (prom/timer duration-seconds "submit")]
-         (submit! kv-store clock state tx-cmds))
-      executor))
+  (-submit [_ tx-cmds local-payload]
+    (.lock submit-lock)
+    (try
+      (-> (submit! kv-store clock state tx-cmds local-payload)
+          ba/try-anomaly
+          ac/completed-future)
+      (finally
+        (.unlock submit-lock))))
 
   (-last-t [_]
     (ac/completed-future (:t @state)))
@@ -129,7 +134,7 @@
 
 (defn- last-t
   "Returns the last (newest) point in time, the transaction log has persisted
-  in `kv-store` ot nil if the log is empty."
+  in `kv-store` or nil if the log is empty."
   [kv-store]
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]
@@ -148,22 +153,8 @@
 (defmethod ig/init-key :blaze.db.tx-log/local
   [_ {:keys [kv-store clock]}]
   (log/info "Open local transaction log")
-  (->LocalTxLog
-    kv-store
-    clock
-    ;; it's important to have a single thread executor here. See docs of submit
-    ;; function.
-    (ex/single-thread-executor "local-tx-log")
-    (atom {:t (or (last-t kv-store) 0)})))
-
-
-(defmethod ig/halt-key! :blaze.db.tx-log/local
-  [_ tx-log]
-  (log/info "Start closing local transaction log")
-  (let [executor (.executor ^LocalTxLog tx-log)]
-    (.shutdown ^ExecutorService executor)
-    (.awaitTermination ^ExecutorService executor 10 TimeUnit/SECONDS))
-  (log/info "Done closing local transaction log"))
+  (->LocalTxLog kv-store clock (ReentrantLock.)
+                (atom {:t (or (last-t kv-store) 0)})))
 
 
 (derive :blaze.db.tx-log/local :blaze.db/tx-log)

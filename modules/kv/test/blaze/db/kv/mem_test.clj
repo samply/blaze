@@ -47,9 +47,8 @@
 
 
 (defmacro with-system-data [[binding-form system] entries & body]
-  `(with-system [system# ~system]
-     (kv/put! (::kv/mem system#) ~entries)
-     (let [~binding-form system#] ~@body)))
+  `(with-system [~binding-form (assoc-in ~system [::kv/mem :init-data] ~entries)]
+     ~@body))
 
 
 (defn- ba [& bytes]

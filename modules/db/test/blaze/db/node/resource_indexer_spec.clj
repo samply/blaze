@@ -11,13 +11,7 @@
     [blaze.db.resource-store.spec]
     [blaze.db.search-param-registry.spec]
     [blaze.fhir.spec-spec]
-    [clojure.spec.alpha :as s])
-  (:import
-    [clojure.lang IAtom]))
-
-
-(s/def :blaze.db.node/tx-resource-cache
-  #(instance? IAtom %))
+    [clojure.spec.alpha :as s]))
 
 
 (s/def :blaze.db.node/resource-indexer
@@ -30,8 +24,7 @@
 (s/def ::context
   (s/keys
     :req-un
-    [:blaze.db.node/tx-resource-cache
-     :blaze.db/resource-store
+    [:blaze.db/resource-store
      :blaze.db.node/resource-indexer]))
 
 

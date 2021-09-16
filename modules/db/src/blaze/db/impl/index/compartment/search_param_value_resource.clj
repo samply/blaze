@@ -23,8 +23,7 @@
   (i/keys! iter sp-vr/decode-key start-key))
 
 
-(defn- key-size
-  ^long [co-res-id value]
+(defn- key-size ^long [co-res-id value]
   (+ codec/c-hash-size (bs/size co-res-id) 1
      codec/c-hash-size codec/tid-size (bs/size value)))
 
