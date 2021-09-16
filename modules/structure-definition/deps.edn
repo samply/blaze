@@ -5,4 +5,4 @@
   {:local/root "../module-base"}
 
   metosin/jsonista
-  {:mvn/version "0.3.3"}}}
+  {:mvn/version "0.3.4"}}}
