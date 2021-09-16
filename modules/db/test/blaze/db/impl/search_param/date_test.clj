@@ -226,7 +226,7 @@
     (let [resource {:fhir/type :fhir/DiagnosticReport :id "foo"}
           hash (hash/generate resource)]
 
-      (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
+      (with-redefs [fhir-path/eval (fn [_ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "issued" "DiagnosticReport")
                  [] hash resource)

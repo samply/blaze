@@ -31,16 +31,16 @@
 
 
 (defmethod sr/search-param "token"
-  [_ {:keys [url type expression]}]
+  [{:keys [resolver]} {:keys [url type expression]}]
   (when expression
-    (when-ok [expression (fhir-path/compile expression)]
+    (when-ok [expression (fhir-path/compile resolver expression)]
       (->SearchParam type url expression))))
 
 
 (defmethod sr/search-param "reference"
-  [_ {:keys [url type expression]}]
+  [{:keys [resolver]} {:keys [url type expression]}]
   (when expression
-    (when-ok [expression (fhir-path/compile expression)]
+    (when-ok [expression (fhir-path/compile resolver expression)]
       (->SearchParam type url expression))))
 
 

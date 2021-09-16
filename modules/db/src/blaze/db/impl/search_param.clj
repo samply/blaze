@@ -17,9 +17,7 @@
     [blaze.db.impl.search-param.string]
     [blaze.db.impl.search-param.token]
     [blaze.db.impl.search-param.util :as u]
-    [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.spec :as fhir-spec]
-    [clojure.spec.alpha :as s]))
+    [blaze.fhir.spec :as fhir-spec]))
 
 
 (set! *warn-on-reflection* true)
@@ -106,23 +104,10 @@
   (p/-matches? search-param context resource-handle modifier compiled-values))
 
 
-(def stub-resolver
-  "A resolver which only returns a resource stub with type and id from the local
-  reference itself."
-  (reify
-    fhir-path/Resolver
-    (-resolve [_ uri]
-      (let [res (s/conform :blaze.fhir/local-ref uri)]
-        (when-not (s/invalid? res)
-          (let [[type id] res]
-            {:fhir/type (keyword "fhir" type)
-             :id id}))))))
-
-
 (defn compartment-ids
   "Returns all compartments `resource` is part-of according to `search-param`."
   [search-param resource]
-  (p/-compartment-ids search-param stub-resolver resource))
+  (p/-compartment-ids search-param resource))
 
 
 (defn c-hash-w-modifier [c-hash code modifier]
@@ -136,7 +121,7 @@
   an anomaly in case of errors."
   {:arglists '([search-param linked-compartments hash resource])}
   [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
-  (when-ok [values (p/-index-values search-param stub-resolver resource)]
+  (when-ok [values (p/-index-values search-param resource)]
     (let [{:keys [id]} resource
           type (name (fhir-spec/fhir-type resource))
           tid (codec/tid type)

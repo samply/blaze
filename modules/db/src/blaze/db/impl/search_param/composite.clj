@@ -30,15 +30,15 @@
     components))
 
 
-(defn- compile-expression [{:keys [expression] :as component}]
-  (if-ok [expr (fhir-path/compile expression)]
+(defn- compile-expression [resolver {:keys [expression] :as component}]
+  (if-ok [expr (fhir-path/compile resolver expression)]
     (assoc component :expression expr)
     #(assoc % :expression expression)))
 
 
-(defn- compile-expressions [components]
+(defn- compile-expressions [resolver components]
   (transduce
-    (comp (map compile-expression)
+    (comp (map (partial compile-expression resolver))
           (halt-when ba/anomaly?))
     conj
     []
@@ -51,18 +51,19 @@
          (#{"token" "quantity"} (:type (:search-param c2))))))
 
 
-(defn- prepare-components [index components]
+(defn- prepare-components [{:keys [index resolver]} components]
   (when-ok [components (resolve-search-params index components)]
     (if (supported? components)
-      (compile-expressions components)
+      (compile-expressions resolver components)
       {::anom/category ::anom/unsupported})))
 
 
 (defn- create-search-param
-  [index {:keys [name url type base code] main-expression :expression
-          components :component}]
-  (when-ok [components (prepare-components index components)]
-    (when-ok [main-expression (fhir-path/compile main-expression)]
+  [{:keys [resolver] :as context}
+   {:keys [name url type base code] main-expression :expression
+    components :component}]
+  (when-ok [components (prepare-components context components)]
+    (when-ok [main-expression (fhir-path/compile resolver main-expression)]
       (let [[c1 c2] components]
         (case (:type (:search-param c2))
           "token"
@@ -81,6 +82,6 @@
 
 
 (defmethod sr/search-param "composite"
-  [index search-param]
-  (-> (create-search-param index search-param)
+  [context search-param]
+  (-> (create-search-param context search-param)
       (ba/exceptionally #(handle-anomaly search-param %))))

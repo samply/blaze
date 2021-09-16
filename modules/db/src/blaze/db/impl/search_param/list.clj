@@ -52,7 +52,7 @@
                                   resource-handle list-tid list-id)]
         (referenced-resource-handles! context list-id hash tid start-id))))
 
-  (-index-values [_ _ _]
+  (-index-values [_ _]
     []))
 
 

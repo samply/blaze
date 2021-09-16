@@ -18,8 +18,8 @@
 
 
 (defn- component-index-values
-  [resolver main-value {:keys [expression search-param]}]
-  (when-ok [values (fhir-path/eval resolver expression main-value)]
+  [main-value {:keys [expression search-param]}]
+  (when-ok [values (fhir-path/eval expression [main-value])]
     (coll/eduction
       (comp
         (p/-index-value-compiler search-param)
@@ -28,7 +28,7 @@
       values)))
 
 
-(defn index-values [resolver c1 c2]
+(defn index-values [c1 c2]
   (mapcat
     (fn [main-value]
       (reduce
@@ -37,6 +37,6 @@
             (fn [res v2]
               (conj res [nil (bs/concat v1 v2)]))
             res
-            (component-index-values resolver main-value c2)))
+            (component-index-values main-value c2)))
         []
-        (component-index-values resolver main-value c1)))))
+        (component-index-values main-value c1)))))

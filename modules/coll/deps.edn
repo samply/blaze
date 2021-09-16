@@ -1,4 +1,5 @@
-{:deps
+{:paths ["src" "java" "target/classes"]
+ :deps
  {}
 
  :aliases
@@ -6,7 +7,10 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
+   {com.clojure-goes-fast/clj-java-decompiler
+    {:mvn/version "0.3.0"}
+
+    lambdaisland/kaocha
     {:mvn/version "1.0.887"}}
 
    :main-opts ["-m" "kaocha.runner"]}
@@ -18,4 +22,11 @@
    {cloverage/cloverage
     {:mvn/version "1.2.2"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}
+
+  :build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.4.0" :git/sha "801a22f"}}
+
+   :ns-default build}}}

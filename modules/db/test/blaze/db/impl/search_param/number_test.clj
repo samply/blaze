@@ -141,7 +141,7 @@
     (let [resource {:fhir/type :fhir/RiskAssessment :id "foo"}
           hash (hash/generate resource)]
 
-      (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
+      (with-redefs [fhir-path/eval (fn [_ _] {::anom/category ::anom/fault})]
         (given (search-param/index-entries
                  (sr/get search-param-registry "probability" "RiskAssessment")
                  [] hash resource)

@@ -90,6 +90,9 @@ jobs:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
+    - name: Compile
+      run: make compile
+
     - name: Test
       run: make -C modules/${{ matrix.module }} test
 
@@ -151,6 +154,9 @@ jobs:
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-16-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
+
+    - name: Compile
+      run: make compile
 
     - name: Test Coverage
       run: make -C modules/${{ matrix.module }} test-coverage

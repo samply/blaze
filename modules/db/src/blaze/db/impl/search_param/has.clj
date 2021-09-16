@@ -107,10 +107,10 @@
   (-matches? [_ context resource-handle _ values]
     (some? (some #(matches? context resource-handle %) values)))
 
-  (-index-values [_ _ _]
+  (-index-values [_ _]
     []))
 
 
 (defmethod special/special-search-param "_has"
-  [index _]
+  [{:keys [index]} _]
   (->SearchParamHas index "_has" "special" "_has"))

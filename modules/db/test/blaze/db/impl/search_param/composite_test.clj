@@ -256,7 +256,7 @@
       (let [resource {:fhir/type :fhir/Observation :id "foo"}
             hash (hash/generate resource)]
 
-        (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
+        (with-redefs [fhir-path/eval (fn [_ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    code-value-quantity-param
                    [] hash resource)
@@ -266,7 +266,7 @@
       (let [resource {:fhir/type :fhir/Observation :id "foo"}
             hash (hash/generate resource)]
 
-        (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
+        (with-redefs [fhir-path/eval (fn [_ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    code-value-concept-param
                    [] hash resource)
@@ -286,13 +286,14 @@
   (testing "FHIRPath compilation error"
     (with-redefs
       [fhir-path/compile
-       (fn [_]
+       (fn [_ _]
          {::anom/category ::anom/fault})]
       (given (sr/search-param
-               {"url-210148"
-                {:type "token"}
-                "url-211659"
-                {:type "token"}}
+               {:index
+                {"url-210148"
+                 {:type "token"}
+                 "url-211659"
+                 {:type "token"}}}
                {:type "composite"
                 :component
                 [{:definition "url-210148"

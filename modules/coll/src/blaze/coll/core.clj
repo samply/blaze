@@ -1,7 +1,7 @@
 (ns blaze.coll.core
   (:refer-clojure :exclude [count eduction empty? first])
   (:import
-    [clojure.lang Counted IReduceInit Seqable Sequential]))
+    [blaze.coll.core Eduction]))
 
 
 (set! *warn-on-reflection* true)
@@ -17,20 +17,10 @@
 (defn empty?
   "Like `clojure.core/empty?` but for reducible collections."
   [coll]
-  (nil? (first coll)))
+  (reduce (fn [_ _] (reduced false)) true coll))
 
 
 (defn eduction
   "Like `clojure.core/eduction` but faster."
   [xform coll]
-  (reify
-    Sequential
-    IReduceInit
-    (reduce [_ f init]
-      (transduce xform (completing f) init coll))
-    Seqable
-    (seq [coll]
-      (.seq ^Seqable (persistent! (.reduce coll conj! (transient [])))))
-    Counted
-    (count [coll]
-      (.reduce coll (fn ^long [^long sum _] (inc sum)) 0))))
+  (Eduction. xform coll))

@@ -66,6 +66,6 @@
     (some? (some #(spq/matches? context c-hash resource-handle prefix-length %)
                  values)))
 
-  (-index-values [_ resolver resource]
-    (when-ok [values (fhir-path/eval resolver main-expression resource)]
-      (coll/eduction (cc/index-values resolver c1 c2) values))))
+  (-index-values [_ resource]
+    (when-ok [values (fhir-path/eval main-expression [resource])]
+      (coll/eduction (cc/index-values c1 c2) values))))

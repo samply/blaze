@@ -33,6 +33,6 @@
   (-matches? [_ context resource-handle _ values]
     (some? (some #(spt/matches? context c-hash resource-handle %) values)))
 
-  (-index-values [_ resolver resource]
-    (when-ok [values (fhir-path/eval resolver main-expression resource)]
-      (coll/eduction (cc/index-values resolver c1 c2) values))))
+  (-index-values [_ resource]
+    (when-ok [values (fhir-path/eval main-expression [resource])]
+      (coll/eduction (cc/index-values c1 c2) values))))

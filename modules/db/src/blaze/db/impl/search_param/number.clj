@@ -95,8 +95,8 @@
   (-matches? [_ context resource-handle _ values]
     (some? (some #(spq/matches? context c-hash resource-handle 0 %) values)))
 
-  (-index-values [search-param resolver resource]
-    (when-ok [values (fhir-path/eval resolver expression resource)]
+  (-index-values [search-param resource]
+    (when-ok [values (fhir-path/eval expression [resource])]
       (coll/eduction (p/-index-value-compiler search-param) values)))
 
   (-index-value-compiler [_]
@@ -104,9 +104,9 @@
 
 
 (defmethod sr/search-param "number"
-  [_ {:keys [name url type base code expression]}]
+  [{:keys [resolver]} {:keys [name url type base code expression]}]
   (if expression
-    (when-ok [expression (fhir-path/compile expression)]
+    (when-ok [expression (fhir-path/compile resolver expression)]
       (->SearchParamQuantity name url type base code (codec/c-hash code)
                              expression))
     (ba/unsupported (u/missing-expression-msg url))))

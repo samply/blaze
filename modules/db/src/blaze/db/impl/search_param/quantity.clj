@@ -335,8 +335,8 @@
     (some? (some #(matches? context c-hash resource-handle codec/v-hash-size %)
                  values)))
 
-  (-index-values [search-param resolver resource]
-    (when-ok [values (fhir-path/eval resolver expression resource)]
+  (-index-values [search-param resource]
+    (when-ok [values (fhir-path/eval expression [resource])]
       (coll/eduction (p/-index-value-compiler search-param) values)))
 
   (-index-value-compiler [_]
@@ -355,9 +355,9 @@
 
 
 (defmethod sr/search-param "quantity"
-  [_ {:keys [name url type base code expression]}]
+  [{:keys [resolver]} {:keys [name url type base code expression]}]
   (if expression
-    (when-ok [expression (fhir-path/compile (fix-expr url expression))]
+    (when-ok [expression (fhir-path/compile resolver (fix-expr url expression))]
       (->SearchParamQuantity name url type base code (codec/c-hash code)
                              expression))
     (ba/unsupported (u/missing-expression-msg url))))

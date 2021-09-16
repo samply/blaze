@@ -5,6 +5,7 @@
     [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.fhir-path :as fhir-path]
+    [blaze.fhir-path.protocols :as fhir-path-protocols]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
@@ -21,7 +22,7 @@
   in the registry. Other namespaces can provide their own implementations here.
 
   The conversion can return an anomaly."
-  {:arglists '([index definition])}
+  {:arglists '([context definition])}
   (fn [_ {:keys [type]}] type))
 
 
@@ -61,19 +62,6 @@
   (-linked-compartments search-param-registry resource))
 
 
-(def stub-resolver
-  "A resolver which only returns a resource stub with type and id from the local
-  reference itself."
-  (reify
-    fhir-path/Resolver
-    (-resolve [_ uri]
-      (let [res (s/conform :blaze.fhir/local-ref uri)]
-        (when-not (s/invalid? res)
-          (let [[type id] res]
-            {:fhir/type (keyword "fhir" type)
-             :id id}))))))
-
-
 (defn- extract-id [^String s]
   (let [idx (.indexOf s 47)]
     (when (pos? idx)
@@ -89,7 +77,7 @@
   "Returns all compartments `resource` is part of, according to `search-param`."
   {:arglists '([search-param resource])}
   [{:keys [expression]} resource]
-  (when-ok [values (fhir-path/eval stub-resolver expression resource)]
+  (when-ok [values (fhir-path/eval expression [resource])]
     (coll/eduction
       (mapcat
         (fn [value]
@@ -140,11 +128,11 @@
     (j/read-value rdr object-mapper)))
 
 
-(defn- index-search-param [index {:keys [url] :as sp}]
-  (if-ok [search-param (search-param index sp)]
-    (assoc index url search-param)
+(defn- index-search-param [context {:keys [url] :as sp}]
+  (if-ok [search-param (search-param context sp)]
+    (update context :index assoc url search-param)
     #(if (= ::anom/unsupported (::anom/category %))
-       index
+       context
        (reduced %))))
 
 
@@ -190,20 +178,20 @@
 
 
 (defn- add-special
-  "Add special search params to `index`.
+  "Add special search params to :index of `context`.
 
   See: https://www.hl7.org/fhir/search.html#special"
-  [index]
-  (-> (assoc-in index ["Resource" "_list"] (search-param nil list-search-param))
-      (assoc-in ["Resource" "_has"] (search-param index has-search-param))))
+  [{:keys [index] :as context}]
+  (-> (assoc-in index ["Resource" "_list"] (search-param context list-search-param))
+      (assoc-in ["Resource" "_has"] (search-param context has-search-param))))
 
 
-(defn- build-url-index* [index filter entries]
+(defn- build-url-index* [context filter entries]
   (transduce
     (comp (map :resource)
           filter)
     (completing index-search-param)
-    index
+    context
     entries))
 
 
@@ -217,15 +205,15 @@
 
 (defn- build-url-index
   "Builds an index from url to search-param."
-  [entries]
-  (when-ok [non-composite (build-url-index* {} remove-composite entries)]
+  [resolver entries]
+  (when-ok [non-composite (build-url-index* {:index {} :resolver resolver} remove-composite entries)]
     (build-url-index* non-composite filter-composite entries)))
 
 
 (defn- build-index
   "Builds an index from [type code] to search param."
-  [{entries :entry}]
-  (when-ok [url-index (build-url-index entries)]
+  [resolver {entries :entry}]
+  (when-ok [{url-index :index} (build-url-index resolver entries)]
     (transduce
       (map :resource)
       (completing
@@ -241,12 +229,27 @@
       entries)))
 
 
+(def ^:private stub-resolver
+  "A resolver which only returns a resource stub with type and id from the local
+  reference itself."
+  (reify
+    fhir-path-protocols/Resolver
+    (-resolve [_ uri]
+      (let [res (s/conform :blaze.fhir/local-ref uri)]
+        (when-not (s/invalid? res)
+          (let [[type id] res]
+            {:fhir/type (keyword "fhir" type)
+             :id id}))))))
+
+
 (defn init-search-param-registry
   "Creates a new search param registry."
   []
   (let [bundle (read-bundle "blaze/db/search-parameters.json")]
-    (when-ok [index (build-index bundle)]
-      (->MemSearchParamRegistry (add-special index) (index-compartments index)))))
+    (when-ok [index (build-index stub-resolver bundle)]
+      (->MemSearchParamRegistry
+        (add-special {:index index :resolver stub-resolver})
+        (index-compartments index)))))
 
 
 (defmethod ig/init-key :blaze.db/search-param-registry

@@ -74,8 +74,8 @@
     [search-param context tid modifier compiled-value start-id])
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matches? [search-param context resource-handle modifier compiled-values])
-  (-compartment-ids [_ resolver resource])
-  (-index-values [_ resolver resource])
+  (-compartment-ids [_ resource])
+  (-index-values [_ resource])
   (-index-value-compiler [_]))
 
 

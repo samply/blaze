@@ -13,7 +13,6 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
-    [clojure.spec.alpha :as s]
     [taoensso.timbre :as log]))
 
 
@@ -106,19 +105,9 @@
   (identifier-entries nil identifier))
 
 
-(defn- split-literal-ref [^String s]
-  (let [idx (.indexOf s 47)]
-    (when (pos? idx)
-      (let [type (.substring s 0 idx)]
-        (when (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
-          (let [id (.substring s (unchecked-inc-int idx))]
-            (when (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))
-              [type id])))))))
-
-
 (defn- literal-reference-entries [reference]
   (when-let [value (type/value reference)]
-    (if-let [[type id] (split-literal-ref value)]
+    (if-let [[type id] (u/split-literal-ref value)]
       [[nil (codec/v-hash id)]
        [nil (codec/v-hash (str type "/" id))]
        [nil (codec/tid-id (codec/tid type)
@@ -170,6 +159,10 @@
   (some? (r-sp-v/next-value! rsvi resource-handle c-hash value value)))
 
 
+(defn- reference-id [value]
+  (some-> value :reference u/split-literal-ref (nth 1)))
+
+
 (defrecord SearchParamToken [name url type base code c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
@@ -194,23 +187,12 @@
     (let [c-hash (c-hash-w-modifier c-hash code modifier)]
       (some? (some #(matches? context c-hash resource-handle %) values))))
 
-  (-compartment-ids [_ resolver resource]
-    (when-ok [values (fhir-path/eval resolver expression resource)]
-      (into
-        []
-        (mapcat
-          (fn [value]
-            (case (fhir-spec/fhir-type value)
-              :fhir/Reference
-              (let [{:keys [reference]} value]
-                (when reference
-                  (let [res (s/conform :blaze.fhir/local-ref reference)]
-                    (when-not (s/invalid? res)
-                      (rest res))))))))
-        values)))
+  (-compartment-ids [_ resource]
+    (when-ok [values (fhir-path/eval expression [resource])]
+      (into [] (keep reference-id) values)))
 
-  (-index-values [search-param resolver resource]
-    (when-ok [values (fhir-path/eval resolver expression resource)]
+  (-index-values [search-param resource]
+    (when-ok [values (fhir-path/eval expression [resource])]
       (coll/eduction (p/-index-value-compiler search-param) values)))
 
   (-index-value-compiler [_]
@@ -229,24 +211,24 @@
 
 
 (defmethod sr/search-param "token"
-  [_ {:keys [name url type base code expression]}]
+  [{:keys [resolver]} {:keys [name url type base code expression]}]
   (if expression
-    (when-ok [expression (fhir-path/compile (fix-expr url expression))]
+    (when-ok [expression (fhir-path/compile resolver (fix-expr url expression))]
       (->SearchParamToken name url type base code (codec/c-hash code) expression))
     (ba/unsupported (u/missing-expression-msg url))))
 
 
 (defmethod sr/search-param "reference"
-  [_ {:keys [name url type base code expression]}]
+  [{:keys [resolver]} {:keys [name url type base code expression]}]
   (if expression
-    (when-ok [expression (fhir-path/compile expression)]
+    (when-ok [expression (fhir-path/compile resolver expression)]
       (->SearchParamToken name url type base code (codec/c-hash code) expression))
     (ba/unsupported (u/missing-expression-msg url))))
 
 
 (defmethod sr/search-param "uri"
-  [_ {:keys [name url type base code expression]}]
+  [{:keys [resolver]} {:keys [name url type base code expression]}]
   (if expression
-    (when-ok [expression (fhir-path/compile expression)]
+    (when-ok [expression (fhir-path/compile resolver expression)]
       (->SearchParamToken name url type base code (codec/c-hash code) expression))
     (ba/unsupported (u/missing-expression-msg url))))

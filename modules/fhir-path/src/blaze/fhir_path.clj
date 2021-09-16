@@ -1,16 +1,17 @@
 (ns blaze.fhir-path
   (:refer-clojure :exclude [eval compile resolve])
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom when-ok]]
     [blaze.anomaly-spec]
+    [blaze.fhir-path.protocols :as p]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as str]
+    [cuerdas.core :as cuerdas]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang Counted PersistentVector]
     [java.io StringReader]
     [org.antlr.v4.runtime CharStreams CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -39,38 +40,23 @@
      fhirpathParser$ParamListContext
      fhirpathParser$TypeSpecifierContext
      fhirpathParser$QualifiedIdentifierContext
-     fhirpathParser$IdentifierContext]))
+     fhirpathParser$IdentifierContext]
+    [java.util ArrayList]
+    [clojure.lang IFn]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defprotocol Expression
-  (-eval [_ context coll]))
-
-
-;; The compiler can generate static collections that will evaluate to itself
-(extend-protocol Expression
-  PersistentVector
-  (-eval [expr _ _]
-    expr))
-
-
-(defprotocol Resolver
-  (-resolve [_ uri]
-    "Resolves `uri` into a resource."))
-
-
 (defn eval
-  "Evaluates the FHIRPath expression on `value` with help of `resolver`.
+  "Evaluates the FHIRPath expression on `value`.
 
   Returns either a collection of FHIR data or an anomaly in case of errors. The
   type of the FHIR data can be determined by calling `blaze.fhir.spec/fhir-type`
   on it."
-  {:arglists '([resolver expr value])}
-  [resolver expr value]
-  (-> (ba/try-anomaly (-eval expr {:resolver resolver} [value]))
-      (ba/exceptionally #(assoc % :expression expr :value value))))
+  [expr coll]
+  (-> (transduce expr conj [] coll)
+      (ba/exceptionally #(assoc % :expression (meta expr) :coll coll))))
 
 
 ;; See: http://hl7.org/fhirpath/index.html#conversion
@@ -96,475 +82,594 @@
       (fhir-spec/to-date-time item))))
 
 
+(defn- pr-coll [coll]
+  (pr-str (into [] coll)))
+
+
+(defn- expected-single-item-msg [item-1 item-2]
+  (format "expected a single item but got at least two: `%s`, `%s`"
+          (pr-str item-1) (pr-str item-2)))
+
+
+(defn- ensure-single-item
+  "A transducer that returns an anomaly if the input collection has more than
+  one item."
+  [rf]
+  (let [first (volatile! nil)]
+    (fn
+      ([] (rf))
+      ([result] (rf result))
+      ([result input]
+       (if (nil? @first)
+         (do (vreset! first input) (rf result input))
+         (reduced (ba/incorrect (expected-single-item-msg @first input)
+                                :item-1 @first
+                                :item-2 input)))))))
+
+
 ;; See: http://hl7.org/fhirpath/index.html#singleton-evaluation-of-collections
 (defn- singleton-evaluation-msg [coll]
-  (format "unable to evaluate `%s` as singleton" (pr-str coll)))
+  (format "unable to evaluate `%s` as singleton" (pr-coll coll)))
 
 
 (defn- singleton [type coll]
-  (case (.count ^Counted coll)
+  (case (count coll)
     1 (let [first (nth coll 0)]
         (cond
           (convertible? type first) (convert type first)
           (identical? :fhir/boolean type) true
-          :else (throw-anom (ba/incorrect (singleton-evaluation-msg coll)))))
+          :else (ba/incorrect (singleton-evaluation-msg coll))))
 
     0 []
 
-    (throw-anom (ba/incorrect (singleton-evaluation-msg coll)))))
+    (ba/incorrect (singleton-evaluation-msg coll))))
 
 
-(defrecord StartExpression []
-  Expression
-  (-eval [_ _ coll]
-    coll))
+(defn- get-children-xform [key]
+  (mapcat
+    #(let [val (key %)]
+       (cond
+         (sequential? val) val
+         (some? val) [val]))))
 
 
-(defrecord TypedStartExpression [spec]
-  Expression
-  (-eval [_ _ coll]
-    (filterv #(identical? spec (fhir-spec/fhir-type %)) coll)))
+(defn- resolve-is-type [type]
+  (comp
+    (keep :reference)
+    ensure-single-item
+    (map #(str/starts-with? % type))))
 
 
-(defrecord GetChildrenExpression [key]
-  Expression
-  (-eval [_ _ coll]
-    (reduce
-      (fn [res x]
-        (let [val (get x key)]
-          (cond
-            (sequential? val) (into res val)
-            (some? val) (conj res val)
-            :else res)))
-      []
-      coll)))
+;; 5.1. Existence
+
+;; 5.1.2. exists([criteria : expression]) : Boolean
+(def ^:private exists-expr
+  (fn [rf]
+    (fn
+      ([] (rf))
+      ([result] (rf (if (empty? result) [false] result)))
+      ([_ _]
+       (reduced [true])))))
 
 
-(defrecord InvocationExpression [expression invocation]
-  Expression
-  (-eval [_ context coll]
-    (-eval invocation context (-eval expression context coll))))
+;; 5.2. Filtering and projection
 
-
-(defrecord IndexerExpression [expression index]
-  Expression
-  (-eval [_ context coll]
-    (let [coll (-eval expression context coll)
-          idx (singleton :fhir/integer (-eval index context coll))]
-      [(nth coll idx [])])))
-
-
-(defrecord PlusExpression [left-expr right-expr]
-  Expression
-  (-eval [_ context coll]
-    (let [left (singleton :fhir/string (-eval left-expr context coll))
-          right (singleton :fhir/string (-eval right-expr context coll))]
-      (cond
-        (empty? left) [right]
-        (empty? right) [left]
-        :else [(str left right)]))))
-
-
-(defn- is-type-specifier-msg [coll]
-  (format "is type specifier with more than one item at the left side `%s`"
-          (pr-str coll)))
-
-
-(defrecord IsTypeExpression [expression type-specifier]
-  Expression
-  (-eval [_ context coll]
-    (let [coll (-eval expression context coll)]
-      (case (.count ^Counted coll)
-        0 []
-
-        1 [(identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))]
-
-        (throw-anom (ba/incorrect (is-type-specifier-msg coll)))))))
-
-
-(defn- as-type-specifier-msg [coll]
-  (format "as type specifier with more than one item at the left side `%s`"
-          (pr-str coll)))
-
-
-(defrecord AsTypeExpression [expression type-specifier]
-  Expression
-  (-eval [_ context coll]
-    (let [coll (-eval expression context coll)]
-      (case (.count ^Counted coll)
-        0 []
-
-        1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
-            coll
-            [])
-
-        (throw-anom (ba/incorrect (as-type-specifier-msg coll)))))))
-
-
-(defrecord UnionExpression [e1 e2]
-  Expression
-  (-eval [_ context coll]
-    (let [^Counted c1 (-eval e1 context coll)
-          ^Counted c2 (-eval e2 context coll)]
-      (case (.count c1)
-        0 (case (.count c2)
-            (0 1) c2
-            (vec (set c2)))
-        1 (case (.count c2)
-            0 c1
-            1 (if (= c1 c2) c1 (conj c1 (nth c2 0)))
-            (vec (conj (set c2) (nth c1 0))))
-        (vec (reduce conj (set c1) c2))))))
-
-
-(defrecord EqualExpression [left-expr right-expr]
-  Expression
-  (-eval [_ context coll]
-    (let [left (-eval left-expr context coll)
-          right (-eval right-expr context coll)]
-      (cond
-        (or (empty? left) (empty? right)) []
-        (not= (count left) (count right)) [false]
-        :else
-        (loop [[l & ls] left [r & rs] right]
-          (if (system/equals (type/value l) (type/value r))
-            (if (empty? ls)
-              [true]
-              (recur ls rs))
-            [false]))))))
-
-
-(defrecord NotEqualExpression [left-expr right-expr]
-  Expression
-  (-eval [_ context coll]
-    (let [left (-eval left-expr context coll)
-          right (-eval right-expr context coll)]
-      (cond
-        (or (empty? left) (empty? right)) []
-        (not= (count left) (count right)) [false]
-        :else
-        (loop [[l & ls] left [r & rs] right]
-          (if (system/equals (type/value l) (type/value r))
-            (if (empty? ls)
-              [false]
-              (recur ls rs))
-            [true]))))))
-
-
-;; See: http://hl7.org/fhirpath/index.html#and
-(defrecord AndExpression [expr-a expr-b]
-  Expression
-  (-eval [_ context coll]
-    (let [a (singleton :fhir/boolean (-eval expr-a context coll))]
-      (if (false? a)
-        [false]
-
-        (let [b (singleton :fhir/boolean (-eval expr-b context coll))]
-          (cond
-            (false? b) [false]
-            (and (true? a) (true? b)) [true]
-            :else []))))))
-
-
-(defrecord AsFunctionExpression [type-specifier]
-  Expression
-  (-eval [_ _ coll]
-    (case (.count ^Counted coll)
-      0 []
-
-      1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
-          coll
-          [])
-
-      (throw-anom (ba/incorrect (as-type-specifier-msg coll))))))
-
-
-;; See: http://hl7.org/fhirpath/#wherecriteria-expression-collection
+;; 5.2.1. where(criteria : expression) : collection
 (defn- non-boolean-result-msg [x]
   (format "non-boolean result `%s` of type `%s` while evaluating where function criteria"
           (pr-str x) (fhir-spec/fhir-type x)))
 
-
-(defn- multiple-result-msg [x]
-  (format "multiple result items `%s` while evaluating where function criteria"
-          (pr-str x)))
-
-
-(defrecord WhereFunctionExpression [criteria]
-  Expression
-  (-eval [_ context coll]
-    (filterv
-      (fn [item]
-        (let [coll (-eval criteria context [item])]
-          (case (.count ^Counted coll)
-            0 false
-
-            1 (let [first (nth coll 0)]
-                (if (identical? :system/boolean (system/type first))
-                  first
-                  (throw-anom (ba/incorrect (non-boolean-result-msg first)))))
-
-            (throw-anom (ba/incorrect (multiple-result-msg coll))))))
-      coll)))
+(defn- halting-filter [pred]
+  (fn [rf]
+    (fn
+      ([] (rf))
+      ([result] (rf result))
+      ([result input]
+       (let [r (pred input)]
+         (cond
+           (ba/anomaly? r) r
+           r (rf result input)
+           :else result))))))
 
 
-(defrecord OfTypeFunctionExpression [type-specifier]
-  Expression
-  (-eval [_ _ coll]
-    (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll)))
+(defn- where [criteria]
+  (halting-filter
+    #(transduce
+       criteria
+       (fn
+         ([ret] ret)
+         ([ret item]
+          (if (boolean? ret)
+            (reduced (ba/incorrect "more than one item"))
+            (if (boolean? item)
+              item
+              (reduced (ba/incorrect (non-boolean-result-msg item)))))))
+       nil
+       [%])))
 
 
-(defrecord ExistsFunctionExpression []
-  Expression
-  (-eval [_ _ coll]
-    [(if (empty? coll) false true)]))
+;; 5.2.4. ofType(type : type specifier) : collection
+
+(defn- of-type? [type]
+  #(identical? type (fhir-spec/fhir-type %)))
+
+(defn- of-type [type]
+  (filter (of-type? type)))
 
 
-(defrecord ExistsWithCriteriaFunctionExpression [criteria]
-  Expression
-  (-eval [_ _ _]
-    (throw-anom (ba/unsupported "unsupported `exists` function"))))
+
+;; 5.4. Combining
+
+;; 5.4.1. union(other : collection)
+(defn- union-expr
+  "Returns a transducer that will run the both transducers `e1` and `e2` on the
+  complete input collection and return the union of their outputs."
+  [e1 e2]
+  (fn [rf]
+    (let [coll (ArrayList.)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [c1 (transduce e1 conj [] coll)
+               c2 (transduce e2 conj [] coll)]
+           (.clear coll)
+           (case (count c1)
+             0 (case (count c2)
+                 0 result
+                 1 (reduce rf result c2)
+                 (reduce rf result (set c2)))
+             1 (case (count c2)
+                 0 (reduce rf result c1)
+                 1 (if (= c1 c2)
+                     (reduce rf result c1)
+                     (reduce rf (reduce rf result c1) c2))
+                 (reduce rf result (conj (set c2) (nth c1 0))))
+             (reduce rf result (reduce conj (set c1) c2)))))
+        ([result input]
+         (.add coll input)
+         result)))))
 
 
-(defmulti resolve (fn [_ item] (fhir-spec/fhir-type item)))
+
+;; 6. Operations
+
+;; 6.1. Equality
+
+;; 6.1.1. = (Equals)
+(defn- equal-expr [l r]
+  (fn [rf]
+    (let [coll (ArrayList.)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [ls (transduce l conj coll)
+               rs (transduce r conj coll)]
+           (.clear coll)
+           (cond
+             (or (empty? ls) (empty? rs)) result
+             (not= (count ls) (count rs)) (rf result false)
+             :else
+             (loop [[l & ls] ls [r & rs] rs]
+               (if (system/equals (type/value l) (type/value r))
+                 (if (empty? ls)
+                   (rf result true)
+                   (recur ls rs))
+                 (rf result false))))))
+        ([result input]
+         (.add coll input)
+         result)))))
 
 
-(defn- resolve* [resolver uri]
-  (when-let [resource (-resolve resolver uri)]
-    [resource]))
+;; 6.1.3. != (Not Equals)
+(defn- not-equal-expr [l r]
+  (fn [rf]
+    (let [coll (ArrayList.)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [ls (transduce l conj coll)
+               rs (transduce r conj coll)]
+           (.clear coll)
+           (cond
+             (or (empty? ls) (empty? rs)) result
+             (not= (count ls) (count rs)) (rf result false)
+             :else
+             (loop [[l & ls] ls [r & rs] rs]
+               (if (system/equals (type/value l) (type/value r))
+                 (if (empty? ls)
+                   (rf result false)
+                   (recur ls rs))
+                 (rf result true))))))
+        ([result input]
+         (.add coll input)
+         result)))))
 
 
-(defmethod resolve :fhir/string [{:keys [resolver]} uri]
-  (resolve* resolver uri))
+;; 6.3. Types
+
+;; 6.3.1. is type specifier
+;; 6.3.2. is(type : type specifier)
+
+(defn- is-type [type]
+  (comp ensure-single-item (map (of-type? type))))
 
 
-(defmethod resolve :fhir/Reference [{:keys [resolver]} {:keys [reference]}]
-  (resolve* resolver reference))
+;; 6.3.3. as type specifier
+;; 6.3.4. as(type : type specifier)
+
+(defn- as-type [type]
+  (comp ensure-single-item (of-type type)))
 
 
-(defmethod resolve :default [_ item]
-  (log/debug (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item))
-                     (pr-str item))))
+
+;; 6.5. Boolean logic
+
+;; 6.5.1. and
+(defn- and-expr [l r]
+  (fn [rf]
+    (let [coll (ArrayList.)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [c (vec coll)]
+           (.clear coll)
+           (when-ok [l (singleton :fhir/boolean (transduce l conj [] c))]
+             (if (false? l)
+               (rf result false)
+
+               (when-ok [r (singleton :fhir/boolean (transduce r conj [] c))]
+                 (cond
+                   (false? r) (rf result false)
+                   (and (true? l) (true? r)) (rf result true)
+                   :else result))))))
+        ([result input]
+         (.add coll input)
+         result)))))
 
 
-(defrecord ResolveFunctionExpression []
-  Expression
-  (-eval [_ context coll]
-    (reduce #(reduce conj %1 (resolve context %2)) [] coll)))
+;; 6.5.3. not() : Boolean
+
+;; 6.6. Math
+
+;; 6.6.3. + (addition)
+(defn- plus-expr [l r]
+  (fn [rf]
+    (let [coll (ArrayList.)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [c (vec coll)]
+           (.clear coll)
+           (when-ok [l (singleton :fhir/string (transduce l conj [] c))
+                     r (singleton :fhir/string (transduce r conj [] c))]
+             (cond
+               (empty? l) (rf result r)
+               (empty? r) (rf result l)
+               :else (rf result (str l r))))))
+        ([result input]
+         (.add coll input)
+         result)))))
+
+
+(defn- skip-resolving-msg [item]
+  (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item)) (pr-str item)))
+
+
+(defn- resolve* [{:keys [resolver]} uri]
+  (p/-resolve resolver uri))
+
+
+(defn- resolve [context item]
+  (case (fhir-spec/fhir-type item)
+    :fhir/string
+    (some->> item (resolve* context))
+    :fhir/Reference
+    (some->> item :reference (resolve* context))
+    (log/debug (skip-resolving-msg item))))
 
 
 (defprotocol FPCompiler
-  (-compile [ctx])
-  (-compile-as-type-specifier [ctx]))
+  (-compile [ctx context])
+  (-compile-as-type-specifier [ctx context]))
 
 
-(defmulti function-expression (fn [name _] name))
+(defmulti function-expression (fn [_ name _] name))
 
 
 (defmethod function-expression "as"
-  [_ ^fhirpathParser$ParamListContext paramsCtx]
+  [context _ ^fhirpathParser$ParamListContext paramsCtx]
   (if-let [type-specifier-ctx (some-> paramsCtx (.expression 0))]
-    (->AsFunctionExpression (-compile-as-type-specifier type-specifier-ctx))
-    (throw-anom (ba/incorrect "missing type specifier in `as` function"))))
+    (when-ok [type (-compile-as-type-specifier type-specifier-ctx context)]
+      (as-type type))
+    (ba/incorrect "missing type specifier in `as` function")))
 
 
 (defmethod function-expression "where"
-  [_ ^fhirpathParser$ParamListContext paramsCtx]
+  [context _ ^fhirpathParser$ParamListContext paramsCtx]
   (if-let [criteria-ctx (some-> paramsCtx (.expression 0))]
-    (->WhereFunctionExpression (-compile criteria-ctx))
-    (throw-anom (ba/incorrect "missing criteria in `where` function"))))
+    (where (-compile criteria-ctx context))
+    (ba/incorrect "missing criteria in `where` function")))
 
 
 (defmethod function-expression "ofType"
-  [_ ^fhirpathParser$ParamListContext paramsCtx]
+  [context _ ^fhirpathParser$ParamListContext paramsCtx]
   (if-let [type-specifier-ctx (some-> paramsCtx (.expression 0))]
-    (->OfTypeFunctionExpression (-compile-as-type-specifier type-specifier-ctx))
-    (throw-anom (ba/incorrect "missing type specifier in `as` function"))))
+    (when-ok [type (-compile-as-type-specifier type-specifier-ctx context)]
+      (of-type type))
+    (ba/incorrect "missing type specifier in `as` function")))
 
 
 (defmethod function-expression "exists"
-  [_ ^fhirpathParser$ParamListContext paramsCtx]
-  (if-let [criteria-ctx (some-> paramsCtx (.expression 0))]
-    (->ExistsWithCriteriaFunctionExpression (-compile criteria-ctx))
-    (->ExistsFunctionExpression)))
+  [_ _ ^fhirpathParser$ParamListContext paramsCtx]
+  (if (some-> paramsCtx (.expression 0))
+    (ba/unsupported "unsupported exists() function with criteria")
+    exists-expr))
 
 
 ;; See: https://hl7.org/fhir/fhirpath.html#functions
 (defmethod function-expression "resolve"
-  [_ _]
-  (->ResolveFunctionExpression))
+  [context _ _]
+  (keep (partial resolve context)))
 
 
 (defmethod function-expression :default
   [name paramsCtx]
-  (throw-anom
-    (ba/incorrect
-      (format "unknown function `%s`" name)
-      :name name
-      :paramsCtx paramsCtx)))
+  (ba/incorrect
+    (format "unknown function `%s`" name)
+    :name name
+    :paramsCtx paramsCtx))
+
+
+(deftype FunctionExpression [name xf]
+  IFn
+  (invoke [_ rf] (xf rf)))
+
+
+(defn- constant-expr
+  "Returns a transducer returning always `coll`."
+  [coll]
+  (fn [rf]
+    (fn
+      ([] (rf))
+      ([result] (rf result))
+      ([_ _]
+       coll))))
+
+
+(deftype NumberLiteral [xf value]
+  IFn
+  (invoke [_ rf] (xf rf)))
+
+
+(defn- parse-number [^String text]
+  (try
+    (Integer/parseInt text)
+    (catch Exception _
+      (BigDecimal. text))))
+
+
+(defn- number-literal? [expr]
+  (-> expr class (identical? NumberLiteral)))
+
+
+(defn- compile-binary-expr [context l r _name expr-fn]
+  (when-ok [l (-compile l context)
+            r (-compile r context)]
+    (expr-fn l r)
+    #_(with-meta (expr-fn l r) {:name name :expressions [(meta l) (meta r)]})))
+
+
+(defn- resolve-function? [expr]
+  (and (identical? FunctionExpression (class expr))
+       (= "resolve" (.name ^FunctionExpression expr))))
 
 
 (extend-protocol FPCompiler
   fhirpathParser$TermExpressionContext
-  (-compile [ctx]
-    (-compile (.term ctx)))
-  (-compile-as-type-specifier [ctx]
-    (-compile-as-type-specifier (.term ctx)))
+  (-compile [ctx context]
+    (-compile (.term ctx) context))
+  (-compile-as-type-specifier [ctx context]
+    (-compile-as-type-specifier (.term ctx) context))
 
   fhirpathParser$InvocationExpressionContext
-  (-compile [ctx]
-    (->InvocationExpression
-      (-compile (.expression ctx))
-      (-compile (.invocation ctx))))
+  (-compile [ctx context]
+    (when-ok [expression (-compile (.expression ctx) context)
+              invocation (-compile (.invocation ctx) context)]
+      (comp expression invocation)
+      #_(with-meta (comp expression invocation)
+                 {:name "InvocationExpression"
+                  :expression (meta expression)
+                  :invocation (meta invocation)})))
 
   fhirpathParser$IndexerExpressionContext
-  (-compile [ctx]
-    (->IndexerExpression
-      (-compile (.expression ctx 0))
-      (-compile (.expression ctx 1))))
+  (-compile [ctx context]
+    (when-ok [expr (-compile (.expression ctx 0) context)
+              idx (-compile (.expression ctx 1) context)]
+      (if (number-literal? idx)
+        (let [idx (.value ^NumberLiteral idx)]
+          (comp expr (drop idx) (take 1))
+          #_(with-meta (comp expr (drop idx) (take 1))
+                     {:name "IndexerExpression"
+                      :expression (meta expr)
+                      :index idx}))
+        (ba/unsupported (str "unsupported non constant index expression: " (pr-str (meta idx)))))))
 
   fhirpathParser$AdditiveExpressionContext
-  (-compile [ctx]
-    (case (.getText (.getSymbol ^TerminalNode (.getChild ctx 1)))
-      "+"
-      (->PlusExpression
-        (-compile (.expression ctx 0))
-        (-compile (.expression ctx 1)))))
+  (-compile [ctx context]
+    (when-ok [e1 (-compile (.expression ctx 0) context)
+              e2 (-compile (.expression ctx 1) context)]
+      (case (.getText (.getSymbol ^TerminalNode (.getChild ctx 1)))
+        "+"
+        (plus-expr e1 e2)
+        #_(with-meta (plus-expr e1 e2)
+                   {:name "PlusExpression"
+                    :expressions [(meta e1) (meta e2)]}))))
 
   fhirpathParser$TypeExpressionContext
-  (-compile [ctx]
-    (case (.getText (.getSymbol ^TerminalNode (.getChild ctx 1)))
-      "is"
-      (->IsTypeExpression
-        (-compile (.expression ctx))
-        (-compile (.typeSpecifier ctx)))
-      "as"
-      (->AsTypeExpression
-        (-compile (.expression ctx))
-        (-compile (.typeSpecifier ctx)))))
+  (-compile [ctx context]
+    (let [expr (-compile (.expression ctx) context)
+          type (-compile (.typeSpecifier ctx) context)]
+      (case (.getText (.getSymbol ^TerminalNode (.getChild ctx 1)))
+        "is"
+        (if (resolve-function? expr)
+          (resolve-is-type (str (name type) "/"))
+          #_(with-meta (resolve-is-type (str (name type) "/"))
+                     {:name "IsTypeExpression"
+                      :expression (meta expr)
+                      :type type})
+          (comp expr (is-type type))
+          #_(with-meta (comp expr (is-type type))
+                     {:name "IsTypeExpression"
+                      :expression (meta expr)
+                      :type type}))
+        "as"
+        (comp expr (as-type type))
+        #_(with-meta (comp expr (as-type type))
+                   {:name "AsTypeExpression"
+                    :expression (meta expr)
+                    :type type}))))
 
   fhirpathParser$UnionExpressionContext
-  (-compile [ctx]
-    (let [[e1 e2 :as exprs] (.expression ctx)]
-      (when-not (= 2 (count exprs))
-        (throw-anom
-          (ba/fault
-            (format "UnionExpressionContext with %d expressions" (count exprs)))))
-      (->UnionExpression (-compile e1) (-compile e2))))
+  (-compile [ctx context]
+    (compile-binary-expr context (.expression ctx 0) (.expression ctx 1)
+                         "UnionExpression" union-expr))
 
   fhirpathParser$EqualityExpressionContext
-  (-compile [ctx]
+  (-compile [ctx context]
     (case (.getText (.getSymbol ^TerminalNode (.getChild ctx 1)))
       "="
-      (->EqualExpression
-        (-compile (.expression ctx 0))
-        (-compile (.expression ctx 1)))
+      (compile-binary-expr context (.expression ctx 0) (.expression ctx 1)
+                           "EqualExpression" equal-expr)
       "!="
-      (->NotEqualExpression
-        (-compile (.expression ctx 0))
-        (-compile (.expression ctx 1)))))
+      (compile-binary-expr context (.expression ctx 0) (.expression ctx 1)
+                           "NotEqualExpression" not-equal-expr)))
 
   fhirpathParser$AndExpressionContext
-  (-compile [ctx]
-    (->AndExpression (-compile (.expression ctx 0)) (-compile (.expression ctx 1))))
+  (-compile [ctx context]
+    (compile-binary-expr context (.expression ctx 0) (.expression ctx 1)
+                         "AndExpression" and-expr))
 
   fhirpathParser$InvocationTermContext
-  (-compile [ctx]
-    (-compile (.invocation ctx)))
-  (-compile-as-type-specifier [ctx]
-    (-compile-as-type-specifier (.invocation ctx)))
+  (-compile [ctx context]
+    (-compile (.invocation ctx) context))
+  (-compile-as-type-specifier [ctx context]
+    (-compile-as-type-specifier (.invocation ctx) context))
 
   fhirpathParser$LiteralTermContext
-  (-compile [ctx]
-    (-compile (.literal ctx)))
+  (-compile [ctx context]
+    (-compile (.literal ctx) context))
 
   fhirpathParser$ParenthesizedTermContext
-  (-compile [ctx]
-    (-compile (.expression ctx)))
+  (-compile [ctx context]
+    (-compile (.expression ctx) context))
 
   fhirpathParser$NullLiteralContext
-  (-compile [_]
-    [])
+  (-compile [_ _]
+    (constant-expr nil)
+    #_(with-meta (constant-expr nil) {:name "NullLiteral"}))
 
   fhirpathParser$BooleanLiteralContext
-  (-compile [ctx]
-    [(Boolean/valueOf (.getText (.getSymbol ^TerminalNode (.getChild ctx 0))))])
+  (-compile [ctx _]
+    (let [val (Boolean/valueOf (.getText (.getSymbol ^TerminalNode (.getChild ctx 0))))]
+      (constant-expr [val])
+      #_(with-meta (constant-expr [val]) {:name "BooleanLiteral" :value val})))
 
   fhirpathParser$StringLiteralContext
-  (-compile [ctx]
-    [(str/trim (.getText (.getSymbol (.STRING ctx))) "'")])
+  (-compile [ctx _]
+    (let [val (cuerdas/trim (.getText (.getSymbol (.STRING ctx))) "'")]
+      (constant-expr [val])
+      #_(with-meta (constant-expr [val]) {:name "StringLiteral" :value val})))
 
   fhirpathParser$NumberLiteralContext
-  (-compile [ctx]
-    (let [text (.getText (.getSymbol (.NUMBER ctx)))]
-      (try
-        [(Integer/parseInt text)]
-        (catch Exception _
-          [(BigDecimal. text)]))))
+  (-compile [ctx _]
+    (let [val (parse-number (.getText (.getSymbol (.NUMBER ctx))))]
+      (->NumberLiteral (constant-expr [val]) val)
+      #_(with-meta (constant-expr [val]) {:name "NumberLiteral" :value val})))
 
   fhirpathParser$DateLiteralContext
-  (-compile [ctx]
-    (let [text (subs (.getText (.getSymbol (.DATE ctx))) 1)]
-      [(type/->Date text)]))
+  (-compile [ctx _]
+    (let [val (type/->Date (subs (.getText (.getSymbol (.DATE ctx))) 1))]
+      (constant-expr [val])
+      #_(with-meta (constant-expr [val]) {:name "DateLiteral" :value val})))
 
   fhirpathParser$DateTimeLiteralContext
-  (-compile [ctx]
+  (-compile [ctx _]
     (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)
-          text (if (str/ends-with? text "T") (subs text 0 (dec (count text))) text)]
-      [(type/->DateTime text)]))
+          text (if (str/ends-with? text "T") (subs text 0 (dec (count text))) text)
+          val (type/->DateTime text)]
+      (constant-expr [val])
+      #_(with-meta (constant-expr [val]) {:name "DateTimeLiteral" :value val})))
 
   fhirpathParser$MemberInvocationContext
-  (-compile [ctx]
-    (let [[first-char :as identifier] (-compile (.identifier ctx))]
+  (-compile [ctx context]
+    (let [[first-char :as identifier] (-compile (.identifier ctx) context)]
       (if (Character/isUpperCase ^char first-char)
         (if (= "Resource" identifier)
-          (->StartExpression)
-          (->TypedStartExpression (keyword "fhir" identifier)))
-        (->GetChildrenExpression (keyword identifier)))))
-  (-compile-as-type-specifier [ctx]
-    (let [type (-compile (.identifier ctx))]
+          identity
+          (of-type (keyword "fhir" identifier)))
+        (get-children-xform (keyword identifier)))
+      #_(with-meta
+        (if (Character/isUpperCase ^char first-char)
+          (if (= "Resource" identifier)
+            identity
+            (of-type (keyword "fhir" identifier)))
+          (get-children-xform (keyword identifier)))
+        {:name "MemberInvocation"
+         :identifier identifier})))
+  (-compile-as-type-specifier [ctx context]
+    (let [type (-compile (.identifier ctx) context)]
       (if (fhir-spec/type-exists? type)
         (keyword "fhir" type)
         (throw-anom (ba/incorrect (format "unknown FHIR type `%s`" type))))))
 
   fhirpathParser$FunctionInvocationContext
-  (-compile [ctx]
-    (-compile (.function ctx)))
+  (-compile [ctx context]
+    (-compile (.function ctx) context))
 
   fhirpathParser$FunctionContext
-  (-compile [ctx]
-    (function-expression
-      (-compile (.identifier ctx))
-      (.paramList ctx)))
+  (-compile [ctx context]
+    (let [name (-compile (.identifier ctx) context)]
+      (when-ok [xf (function-expression context name (.paramList ctx))]
+        (->FunctionExpression name xf))
+      #_(with-meta (function-expression context name (.paramList ctx))
+                 {:name "FunctionExpression"
+                  :function-name name})))
 
   fhirpathParser$TypeSpecifierContext
-  (-compile [ctx]
-    (let [type (first (-compile (.qualifiedIdentifier ctx)))]
+  (-compile [ctx context]
+    (let [type (first (-compile (.qualifiedIdentifier ctx) context))]
       (if (fhir-spec/type-exists? type)
         (keyword "fhir" type)
         (throw-anom (ba/incorrect (format "unknown FHIR type `%s`" type))))))
 
   fhirpathParser$QualifiedIdentifierContext
-  (-compile [ctx]
-    (mapv -compile (.identifier ctx)))
+  (-compile [ctx context]
+    (mapv #(-compile % context) (.identifier ctx)))
 
   fhirpathParser$IdentifierContext
-  (-compile [ctx]
+  (-compile [ctx _]
     (when-let [^TerminalNode node (.getChild ctx 0)]
       (.getText (.getSymbol node)))))
 
 
 (defn compile
-  "Compiles the FHIRPath `expr`.
+  "Compiles the FHIRPath `expr` with help of `resolver`.
 
   Returns either a compiled FHIRPath expression or an anomaly in case of errors."
-  [expr]
+  [resolver expr]
   (let [r (StringReader. expr)
         s (CharStreams/fromReader r)
         l (fhirpathLexer. s)
         t (CommonTokenStream. l)
         p (fhirpathParser. t)]
-    (-> (ba/try-anomaly (-compile (.expression p)))
+    (-> (ba/try-anomaly (-compile (.expression p) {:resolver resolver}))
         (ba/exceptionally
           #(-> (update % ::anom/message str (format " in expression `%s`" expr))
                (assoc :expression expr))))))
+
+
+(comment
+  (require '[clj-java-decompiler.core :refer [decompile]])
+
+  (binding [*compiler-options* {:direct-linking true}]
+    (decompile)))
