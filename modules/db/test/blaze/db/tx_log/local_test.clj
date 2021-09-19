@@ -135,7 +135,8 @@
                       (codec/encode-tx-data
                         (Instant/ofEpochSecond 0)
                         [{:op "create" :type "Patient" :id "0"
-                          :hash patient-hash-0}])]])]
+                          :hash patient-hash-0}
+                         {:op "delete" :type "Patient" :id "1"}])]])]
 
       (testing "the last `t` is one"
         (is (= 1 @(tx-log/last-t tx-log))))
