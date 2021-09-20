@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.12.0-rc.3
+## v0.12.0-rc.4
 
 ### New Features
 
