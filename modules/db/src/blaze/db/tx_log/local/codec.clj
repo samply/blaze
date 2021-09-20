@@ -44,8 +44,10 @@
       (log/warn (parse-cbor-error-msg t e)))))
 
 
-(defn- decode-hash [tx-cmd]
-  (update tx-cmd :hash bs/from-byte-array))
+(defn- decode-hash [{:keys [hash] :as tx-cmd}]
+  (if hash
+    (assoc tx-cmd :hash (bs/from-byte-array hash))
+    tx-cmd))
 
 
 (defn- decode-instant [x]
