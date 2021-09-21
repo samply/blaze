@@ -2,12 +2,12 @@
 
 The installation works under Windows, Linux and macOS. The only dependency is an installed OpenJDK 11. Blaze is tested with [AdoptOpenJDK][1].
 
-Blaze runs on the JVM and comes as single JAR file. Download the most recent version [here](https://github.com/samply/blaze/releases/tag/v0.12.0-rc.4). Look for `blaze-0.12.0-rc.4-standalone.jar`.
+Blaze runs on the JVM and comes as single JAR file. Download the most recent version [here](https://github.com/samply/blaze/releases/tag/v0.12.0). Look for `blaze-0.12.0-standalone.jar`.
 
 After the download, you can start blaze with the following command (Linux, macOS):
 
 ```sh
-java -jar blaze-0.12.0-rc.4-standalone.jar -m blaze.core
+java -jar blaze-0.12.0-standalone.jar -m blaze.core
 ```
 
 Blaze will run with an in-memory, volatile database for testing and demo purposes.
@@ -17,14 +17,14 @@ Blaze can be run with durable storage by setting the environment variables `STOR
 Under Linux/macOS:
 
 ```sh
-STORAGE=standalone java -jar blaze-0.12.0-rc.4-standalone.jar -m blaze.core
+STORAGE=standalone java -jar blaze-0.12.0-standalone.jar -m blaze.core
 ```
 
 Under Windows, you need to set the Environment variables in the PowerShell before starting Blaze:
 
 ```powershell
 $Env:STORAGE="standalone"
-java -jar blaze-0.12.0-rc.4-standalone.jar -m blaze.core
+java -jar blaze-0.12.0-standalone.jar -m blaze.core
 ```
 
 This will create three directories called `index`, `transaction` and `resource` inside the current working directory, one for each database part used.
@@ -42,7 +42,7 @@ The output should look like this:
 2021-06-27T11:02:37.834Z ee086ef908c1 main INFO [blaze.core:64] - JVM version: 16.0.2
 2021-06-27T11:02:37.834Z ee086ef908c1 main INFO [blaze.core:65] - Maximum available memory: 1738 MiB
 2021-06-27T11:02:37.835Z ee086ef908c1 main INFO [blaze.core:66] - Number of available processors: 8
-2021-06-27T11:02:37.836Z ee086ef908c1 main INFO [blaze.core:67] - Successfully started Blaze version 0.12.0-rc.4 in 8.2 seconds
+2021-06-27T11:02:37.836Z ee086ef908c1 main INFO [blaze.core:67] - Successfully started Blaze version 0.12.0 in 8.2 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
@@ -62,7 +62,7 @@ that should return:
 ```json
 {
   "name": "Blaze",
-  "version": "0.12.0-rc.4"
+  "version": "0.12.0"
 }
 ```
 

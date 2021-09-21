@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.12.0-rc.4
+## v0.12.0
 
 ### New Features
 
@@ -18,6 +18,10 @@
 ### Bugfixes
 
 * Ensure Next-Links in Search Results can be Resolved by GET ([#463](https://github.com/samply/blaze/issues/463))
+* Fix Resizing of Buffers at Read ([#475](https://github.com/samply/blaze/issues/475))
+* Fix Indexing of lastUpdated for Deleted Resources ([#469](https://github.com/samply/blaze/issues/469))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/10?closed=1).
 
 ## v0.11.1
 
