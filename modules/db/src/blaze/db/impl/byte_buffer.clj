@@ -1,8 +1,8 @@
 (ns blaze.db.impl.byte-buffer
+  (:refer-clojure :exclude [reset!])
   (:import
     [com.google.protobuf ByteString]
-    [java.nio ByteBuffer])
-  (:refer-clojure :exclude [reset!]))
+    [java.nio ByteBuffer]))
 
 
 (set! *warn-on-reflection* true)
@@ -117,6 +117,7 @@
 
 
 (defn remaining
+  "Returns the number of elements between the current position and the limit."
   {:inline
    (fn [byte-buffer]
      `(.remaining ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -211,6 +212,7 @@
         (zero? byte)
         (do (reset! byte-buffer)
             size)
+
         (pos? (remaining byte-buffer))
         (recur (bit-and (get-byte! byte-buffer) 0xFF) (inc size))
 

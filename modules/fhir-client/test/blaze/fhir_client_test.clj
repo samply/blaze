@@ -4,6 +4,7 @@
     [blaze.fhir-client :as fhir-client]
     [blaze.fhir-client-spec]
     [blaze.fhir.spec.type]
+    [blaze.test-util :refer [given-failed-future]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -11,7 +12,7 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [com.pgssoft.httpclient HttpClientMock]
+    [com.pgssoft.httpclient HttpClientMock Condition]
     [java.nio.file Files Path]
     [java.nio.file.attribute FileAttribute]))
 
@@ -79,12 +80,25 @@
                  :code "not-found"}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
-      (given @(-> (fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
-                                    {:http-client http-client})
-                  (ac/exceptionally (comp ex-data ex-cause)))
+      (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
+                                             "Patient" "0"
+                                              {:http-client http-client})
         ::anom/category := ::anom/not-found
         [:fhir/issues 0 :severity] := #fhir/code"error"
         [:fhir/issues 0 :code] := #fhir/code"not-found")))
+
+  (testing "Invalid JSON response"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
+          (.doReturn "{")
+          (.withHeader "content-type" "application/json"))
+
+      (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
+                                             "Patient" "0"
+                                             {:http-client http-client})
+        ::anom/category := ::anom/fault
+        ::anom/message :# "Unexpected end-of-input:(.|\\s)*")))
 
   (testing "Server Error without JSON response"
     (let [http-client (HttpClientMock.)]
@@ -92,9 +106,9 @@
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturnStatus 500))
 
-      (given @(-> (fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
-                                    {:http-client http-client})
-                  (ac/exceptionally (comp ex-data ex-cause)))
+      (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
+                                             "Patient" "0"
+                                             {:http-client http-client})
         ::anom/category := ::anom/fault)))
 
   (testing "Service Unavailable without JSON response"
@@ -103,9 +117,9 @@
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn 503 "Service Unavailable"))
 
-      (given @(-> (fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
-                                    {:http-client http-client})
-                  (ac/exceptionally (comp ex-data ex-cause)))
+      (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
+                                             "Patient" "0"
+                                              {:http-client http-client})
         ::anom/category := ::anom/unavailable)))
 
   (testing "Gateway timeout without JSON response (external load-balancer)"
@@ -114,10 +128,16 @@
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn 504 "Gateway Timeout"))
 
-      (given @(-> (fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
-                                    {:http-client http-client})
-                  (ac/exceptionally (comp ex-data ex-cause)))
+      (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
+                                             "Patient" "0"
+                                             {:http-client http-client})
         ::anom/category := ::anom/busy))))
+
+
+(defn- empty-header-condition [name]
+  (reify Condition
+    (matches [_ request]
+      (.isEmpty (.firstValue (.headers request) name)))))
 
 
 (deftest update-test
@@ -126,6 +146,7 @@
           resource {:fhir/type :fhir/Patient :id "0"}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
+          (.with (empty-header-condition "If-Match"))
           (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
@@ -164,9 +185,9 @@
                [{:severity "error"}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
-      (given @(-> (fhir-client/update "http://localhost:8080/fhir" resource
-                                      {:http-client http-client})
-                  (ac/exceptionally (comp ex-data ex-cause)))
+      (given-failed-future (fhir-client/update "http://localhost:8080/fhir"
+                                               resource
+                                               {:http-client http-client})
         ::anom/category := ::anom/conflict
         [:fhir/issues 0 :severity] := #fhir/code"error"))))
 
@@ -280,9 +301,9 @@
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturnStatus 500))
 
-      (given @(-> (fhir-client/search-type "http://localhost:8080/fhir" "Patient"
-                                           {:http-client http-client})
-                  (ac/exceptionally (comp ex-data ex-cause)))
+      (given-failed-future (fhir-client/search-type "http://localhost:8080/fhir"
+                                                    "Patient"
+                                                    {:http-client http-client})
         ::anom/category := ::anom/fault))))
 
 
@@ -378,9 +399,8 @@
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturnStatus 500))
 
-      (given @(-> (fhir-client/search-system "http://localhost:8080/fhir"
-                                             {:http-client http-client})
-                  (ac/exceptionally (comp ex-data ex-cause)))
+      (given-failed-future (fhir-client/search-system "http://localhost:8080/fhir"
+                                                      {:http-client http-client})
         ::anom/category := ::anom/fault))))
 
 
@@ -421,5 +441,5 @@
 
       (.subscribe publisher processor)
 
-      (given @(ac/exceptionally future (comp ex-data ex-cause))
+      (given-failed-future future
         ::anom/category := ::anom/fault))))

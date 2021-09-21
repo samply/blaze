@@ -2,15 +2,21 @@
   (:require
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.node.protocols :as np]
     [blaze.db.resource-store.spec]
     [blaze.db.tx-log.spec]
+    [blaze.spec]
     [clojure.spec.alpha :as s])
   (:import
     [com.github.benmanes.caffeine.cache Cache LoadingCache]))
 
 
+(defn node? [x]
+  (satisfies? np/Node x))
+
+
 (s/def :blaze.db/node
-  #(satisfies? p/Node %))
+  node?)
 
 
 (s/def :blaze.db/resource-handle-cache
@@ -37,6 +43,10 @@
   #(satisfies? p/Db %))
 
 
+(s/def :blaze/db
+  :blaze.db/db)
+
+
 (s/def :blaze.db.tx/instant
   inst?)
 
@@ -53,22 +63,16 @@
   some?)
 
 
-(s/def :blaze.db.query/clause
-  (s/coll-of string? :min-count 2))
-
-
 (defmulti tx-op "Transaction operator" first)
 
 
-(defmethod tx-op :create
-  [_]
+(defmethod tx-op :create [_]
   (s/cat :op #{:create}
          :resource :blaze/resource
-         :if-none-exist (s/? (s/coll-of :blaze.db.query/clause :min-count 1))))
+         :if-none-exist (s/? :blaze.db.query/clauses)))
 
 
-(defmethod tx-op :put
-  [_]
+(defmethod tx-op :put [_]
   (s/cat :op #{:put}
          :resource :blaze/resource
          :matches (s/? :blaze.db/t)))

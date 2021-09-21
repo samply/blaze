@@ -72,7 +72,7 @@ services:
       HEAP_NEWSIZE: "200M"
 
   blaze-1:
-    image: "samply/blaze:0.11"
+    image: "samply/blaze:0.12"
     hostname: "blaze-1"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
@@ -102,7 +102,7 @@ services:
     - cassandra-3
 
   blaze-2:
-    image: "samply/blaze:0.11"
+    image: "samply/blaze:0.12"
     hostname: "blaze-2"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"

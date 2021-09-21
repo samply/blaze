@@ -7,7 +7,7 @@ EXPECTED_NUM_CONDITIONS=$(curl -s "${BASE}/Condition?_summary=count" | jq -r .to
 EXPECTED_NUM_ENCOUNTERS=$(curl -s "${BASE}/Encounter?_summary=count" | jq -r .total)
 EXPECTED_NUM_PROCEDURES=$(curl -s "${BASE}/Procedure?_summary=count" | jq -r .total)
 
-blazectl --server $BASE download -t Patient -q '_revinclude=Observation:subject&_revinclude=Condition:subject&_revinclude=Procedure:subject&_revinclude=Encounter:subject' -o output.ndjson
+blazectl --server $BASE download Patient -q '_revinclude=Observation:subject&_revinclude=Condition:subject&_revinclude=Procedure:subject&_revinclude=Encounter:subject' -o output.ndjson
 
 ACTUAL_NUM_PATIENTS=$(jq -r .resourceType output.ndjson | grep -c Patient)
 ACTUAL_NUM_OBSERVATIONS=$(jq -r .resourceType output.ndjson | grep -c Observation)
@@ -34,5 +34,4 @@ elif [ "$EXPECTED_NUM_PROCEDURES" != "$ACTUAL_NUM_PROCEDURES" ]; then
   exit 1
 else
   echo "Success: all download sizes match"
-  exit 0
 fi

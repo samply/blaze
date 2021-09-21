@@ -1,10 +1,9 @@
 (ns blaze.db.kv.rocksdb
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.db.kv :as kv]
     [blaze.db.kv.rocksdb.metrics :as metrics]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -66,11 +65,13 @@
     (.close i)))
 
 
+(defn- column-family-not-found-msg [column-family]
+  (format "column family `%s` not found" (name column-family)))
+
+
 (defn- get-cfh ^ColumnFamilyHandle [cfhs column-family]
   (or (cfhs column-family)
-      (throw-anom
-        ::anom/not-found
-        (format "column family `%s` not found" (name column-family)))))
+      (throw-anom (ba/not-found (column-family-not-found-msg column-family)))))
 
 
 (deftype RocksKvSnapshot
@@ -217,6 +218,7 @@
                  level0-file-num-compaction-trigger
                  min-write-buffer-number-to-merge
                  max-bytes-for-level-base-in-mb
+                 target-file-size-base-in-mb
                  block-size
                  bloom-filter?
                  reverse-comparator?]
@@ -225,6 +227,7 @@
                level0-file-num-compaction-trigger 4
                min-write-buffer-number-to-merge 1
                max-bytes-for-level-base-in-mb 256
+               target-file-size-base-in-mb 64
                block-size (bit-shift-left 4 10)
                bloom-filter? false
                reverse-comparator? false}}]]
@@ -240,6 +243,7 @@
          (.setMaxBytesForLevelBase (bit-shift-left ^long max-bytes-for-level-base-in-mb 20))
          (.setLevel0FileNumCompactionTrigger ^long level0-file-num-compaction-trigger)
          (.setMinWriteBufferNumberToMerge ^long min-write-buffer-number-to-merge)
+         (.setTargetFileSizeBase (bit-shift-left ^long target-file-size-base-in-mb 20))
          (.setTableFormatConfig
            (cond->
              (doto (BlockBasedTableConfig.)
@@ -266,7 +270,6 @@
          compaction-readahead-size 0}}
    column-families]
   (let [opts (doto (DBOptions.)
-               (.setStatsDumpPeriodSec 0)
                (.setStatistics ^Statistics stats)
                (.setMaxBackgroundJobs ^long max-background-jobs)
                (.setCompactionReadaheadSize ^long compaction-readahead-size)
@@ -304,7 +307,7 @@
   string?)
 
 
-(defmethod ig/pre-init-spec :blaze.db.kv/rocksdb [_]
+(defmethod ig/pre-init-spec ::kv/rocksdb [_]
   (s/keys :req-un [::dir]))
 
 
@@ -313,13 +316,13 @@
           dir (pr-str opts)))
 
 
-(defmethod ig/init-key :blaze.db.kv/rocksdb
+(defmethod ig/init-key ::kv/rocksdb
   [_ {:keys [dir block-cache stats opts column-families]}]
   (log/info (init-log-msg dir opts))
   (init-rocksdb-kv-store dir block-cache stats opts (merge {:default nil} column-families)))
 
 
-(defmethod ig/halt-key! :blaze.db.kv/rocksdb
+(defmethod ig/halt-key! ::kv/rocksdb
   [_ store]
   (log/info "Close RocksDB key-value store")
   (.close ^Closeable store))

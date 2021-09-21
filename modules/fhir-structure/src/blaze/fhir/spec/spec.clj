@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec.spec
   (:require
+    [blaze.fhir.spec.impl]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]))
@@ -27,7 +28,7 @@
 (s/def :blaze.fhir/local-ref
   (s/and string?
          (s/conformer #(str/split % #"/" 2))
-         (s/tuple :fhir.type/name :blaze.resource/id)))
+         (s/tuple :fhir.resource/type :blaze.resource/id)))
 
 
 (s/def :blaze/resource

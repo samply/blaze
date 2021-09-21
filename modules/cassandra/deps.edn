@@ -1,0 +1,34 @@
+{:deps
+ {blaze/async
+  {:local/root "../async"}
+
+  clojure.java-time/clojure.java-time
+  {:mvn/version "0.3.3"}
+
+  com.datastax.oss/java-driver-core
+  {:mvn/version "4.13.0"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    lambdaisland/kaocha
+    {:mvn/version "1.0.887"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

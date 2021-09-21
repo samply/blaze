@@ -1,5 +1,5 @@
 (ns blaze.db.impl.index.type-stats
-  "The type stats index is used to track the total number of resources and the
+  "The TypeStats index is used to track the total number of resources and the
   number of changes to resources of a particular type.
 
   The total value is used in the search-type interaction as total value of the
@@ -69,18 +69,18 @@
   (-> (bb/allocate key-size)
       (bb/put-int! tid)
       (bb/put-long! (codec/descending-long ^long t))
-      (bb/array)))
+      bb/array))
 
 
 (defn- encode-value [{:keys [total num-changes]}]
   (-> (bb/allocate value-size)
       (bb/put-long! total)
       (bb/put-long! num-changes)
-      (bb/array)))
+      bb/array))
 
 
 (defn index-entry
-  "Creates an entry which can be written to the key-value store.
+  "Returns an entry of the TypeStats index build from `tid`, `t` and `value`.
 
   The value is a map of :total and :num-changes."
   [tid t value]

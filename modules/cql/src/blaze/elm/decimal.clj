@@ -7,13 +7,12 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
+  (:refer-clojure :exclude [min max])
   (:require
-    [blaze.anomaly :refer [throw-anom]]
-    [blaze.elm.protocols :as p]
-    [cognitect.anomalies :as anom])
+    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.elm.protocols :as p])
   (:import
-    [java.math RoundingMode])
-  (:refer-clojure :exclude [min max]))
+    [java.math RoundingMode]))
 
 
 (set! *warn-on-reflection* true)
@@ -124,8 +123,8 @@
               (.divide x y)
               (catch ArithmeticException _
                 (.divide x y max-scale RoundingMode/HALF_UP)))
-            (constrain-scale)
-            (check-overflow))))))
+            constrain-scale
+            check-overflow)))))
 
 
 ;; 16.5. Exp
@@ -135,9 +134,7 @@
 (extend-protocol p/Exp
   Number
   (exp [x]
-    (-> (BigDecimal/valueOf (Math/exp x))
-        (constrain-scale)
-        (check-overflow))))
+    (-> (BigDecimal/valueOf (Math/exp x)) constrain-scale check-overflow)))
 
 
 ;; 16.6. Floor
@@ -163,8 +160,8 @@
   (log [x base]
     (when (and (pos? x) (some? base) (pos? base) (not (== 1 base)))
       (-> (BigDecimal/valueOf (/ (Math/log x) (Math/log base)))
-          (constrain-scale)
-          (check-overflow)))))
+          constrain-scale
+          check-overflow))))
 
 
 ;; 16.8. Ln
@@ -178,9 +175,7 @@
   Number
   (ln [x]
     (when (pos? x)
-      (-> (BigDecimal/valueOf (Math/log x))
-          (constrain-scale)
-          (check-overflow)))))
+      (-> (BigDecimal/valueOf (Math/log x)) constrain-scale check-overflow))))
 
 
 ;; 16.11. Modulo
@@ -193,9 +188,7 @@
   BigDecimal
   (multiply [x y]
     (when y
-      (-> (.multiply x (p/to-decimal y))
-          (constrain-scale)
-          (check-overflow)))))
+      (-> (.multiply x (p/to-decimal y)) constrain-scale check-overflow))))
 
 
 ;; 16.13. Negate
@@ -212,8 +205,16 @@
   (power [x exp]
     (when exp
       (-> (BigDecimal/valueOf (Math/pow x exp))
-          (constrain-scale)
-          (check-overflow)))))
+          constrain-scale
+          check-overflow))))
+
+
+(defn- minimum-value-msg [x]
+  (format "Predecessor: argument `%s` is already the minimum value." x))
+
+
+(defn- minimum-value-anom [x]
+  (ba/incorrect (minimum-value-msg x)))
 
 
 ;; 16.15. Predecessor
@@ -224,9 +225,7 @@
       (if (within-bounds? x)
         x
         ;; TODO: throwing an exception this is inconsistent with subtract
-        (throw-anom
-          ::anom/incorrect
-          (format "Predecessor: argument `%s` is already the minimum value." x))))))
+        (throw-anom (minimum-value-anom x))))))
 
 
 ;; 16.16. Round

@@ -20,7 +20,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2021.08.06'
+        version: '2021.09.15'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -35,6 +35,7 @@ jobs:
       max-parallel: 8
       matrix:
         module:
+        - anomaly
         - async
         - coll
         - cql
@@ -50,10 +51,13 @@ jobs:
         - fhir-structure
         - http-client
         - interaction
+        - jepsen
         - kv
         - luid
         - openid-auth
         - operation-measure-evaluate-measure
+        - page-store
+        - page-store-cassandra
         - rest-api
         - rest-util
         - scheduler
@@ -75,7 +79,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.943'
+        tools-deps: '1.10.3.981'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -95,9 +99,10 @@ jobs:
     needs: [ test ]
 
     strategy:
-      max-parallel: 2
+      max-parallel: 4
       matrix:
         module:
+        - anomaly
         - async
         - coll
         - cql
@@ -117,6 +122,8 @@ jobs:
         - luid
         - openid-auth
         - operation-measure-evaluate-measure
+        - page-store
+        - page-store-cassandra
         - rest-api
         - rest-util
         - scheduler
@@ -134,7 +141,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.943'
+        tools-deps: '1.10.3.981'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -176,7 +183,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.943'
+        tools-deps: '1.10.3.981'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -204,7 +211,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.943'
+        tools-deps: '1.10.3.981'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -289,7 +296,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.943'
+        tools-deps: '1.10.3.981'
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -325,38 +332,59 @@ jobs:
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
 
+    - name: Download Male Patient Resources
+      run: .github/scripts/download-resources-query.sh Patient "gender=male"
+
+    - name: Download Female Patient Resources
+      run: .github/scripts/download-resources-query.sh Patient "gender=female"
+
     - name: Download Patient Resources - Including Observation, Condition, Encounter and Procedure
       run: .github/scripts/revinclude.sh
 
     - name: Download Observation Resources
       run: .github/scripts/download-resources.sh Observation
 
+    - name: Download Observation Resources with special LOINC Codes
+      run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9"
+
     - name: Download Observation Resources - Including Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Encounter Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
 
     - name: Download Condition Resources
       run: .github/scripts/download-resources.sh Condition
 
     - name: Download Condition Resources - Including Subjects
-      run: blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
 
     - name: Download Condition Resources - Including Encounters
-      run: blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
 
     - name: Download DiagnosticReport Resources
       run: .github/scripts/download-resources.sh DiagnosticReport
 
     - name: Download MedicationRequest Resources - Including Medications
-      run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+      run: blazectl --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+
+    - name: Search Observation _lastUpdated
+      run: .github/scripts/search-patient-last-updated.sh
+
+    - name: Search Observation _profile
+      run: .github/scripts/search-observation-profile.sh
+
+    - name: Search Compartment
+      run: .github/scripts/search-compartment.sh
 
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql 56
+
+    - name: Evaluate CQL Query 1 on Individual Patients
+      run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
@@ -367,11 +395,85 @@ jobs:
     - name: Evaluate CQL Query 14
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
 
-    - name: Forwarded Header
-      run: .github/scripts/forwarded-header.sh
+    - name: Forwarded Header HTTPS
+      run: .github/scripts/forwarded-header.sh https
 
-    - name: X-Forwarded Headers
-      run: .github/scripts/x-forwarded-headers.sh
+    - name: Forwarded Header HTTP
+      run: .github/scripts/forwarded-header.sh http
+
+    - name: X-Forwarded Headers HTTPS
+      run: .github/scripts/x-forwarded-headers.sh https
+
+    - name: X-Forwarded Headers HTTP
+      run: .github/scripts/x-forwarded-headers.sh http
+
+    - name: Delete
+      run: .github/scripts/delete.sh
+
+    - name: Batch
+      run: .github/scripts/batch.sh
+
+    - name: Transaction
+      run: .github/scripts/transaction.sh
+
+    - name: Transaction Read/Write
+      run: .github/scripts/transaction-rw.sh
+
+  jepsen-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'temurin'
+        java-version: '16'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.3.981'
+
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-16-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+
+    - name: APT Update
+      run: sudo apt-get update
+
+    - name: Install Gnuplot
+      run: sudo apt-get install gnuplot
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.CR_PAT }}
+
+    - name: Pull Docker Image
+      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+
+    - name: Sleep 60s
+      run: sleep 60
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Jepsen Register Test
+      run: make -C modules/jepsen register-test
 
   openid-auth-test:
     needs: build
@@ -423,7 +525,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.943'
+        tools-deps: '1.10.3.981'
 
     - name: APT Update
       run: sudo apt-get update
@@ -459,8 +561,11 @@ jobs:
     - name: Docker Logs Cassandra 2
       run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
 
-    - name: Docker Logs Blaze
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze
+    - name: Docker Logs Blaze 1
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-1
+
+    - name: Docker Logs Blaze 2
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-2
 
     - name: Docker Stats
       run: docker stats --no-stream
@@ -477,38 +582,59 @@ jobs:
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
 
+    - name: Download Male Patient Resources
+      run: .github/scripts/download-resources-query.sh Patient "gender=male"
+
+    - name: Download Female Patient Resources
+      run: .github/scripts/download-resources-query.sh Patient "gender=female"
+
     - name: Download Patient Resources - Including Observation, Condition, Encounter and Procedure
       run: .github/scripts/revinclude.sh
 
     - name: Download Observation Resources
       run: .github/scripts/download-resources.sh Observation
 
+    - name: Download Observation Resources with special LOINC Codes
+      run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9"
+
     - name: Download Observation Resources - Including Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Encounter Patients
-      run: blazectl --server http://localhost:8080/fhir download -t Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
 
     - name: Download Condition Resources
       run: .github/scripts/download-resources.sh Condition
 
     - name: Download Condition Resources - Including Subjects
-      run: blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
 
     - name: Download Condition Resources - Including Encounters
-      run: blazectl --server http://localhost:8080/fhir download -t Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
+      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
 
     - name: Download DiagnosticReport Resources
       run: .github/scripts/download-resources.sh DiagnosticReport
 
     - name: Download MedicationRequest Resources - Including Medications
-      run: blazectl --server http://localhost:8080/fhir download -t MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+      run: blazectl --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+
+    - name: Search Observation _lastUpdated
+      run: .github/scripts/search-patient-last-updated.sh
+
+    - name: Search Observation _profile
+      run: .github/scripts/search-observation-profile.sh
+
+    - name: Search Compartment
+      run: .github/scripts/search-compartment.sh
 
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql 56
+
+    - name: Evaluate CQL Query 1 on Individual Patients
+      run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
@@ -519,11 +645,103 @@ jobs:
     - name: Evaluate CQL Query 14
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
 
-    - name: Forwarded Header
-      run: .github/scripts/forwarded-header.sh
+    - name: Forwarded Header HTTPS
+      run: .github/scripts/forwarded-header.sh https
 
-    - name: X-Forwarded Headers
-      run: .github/scripts/x-forwarded-headers.sh
+    - name: Forwarded Header HTTP
+      run: .github/scripts/forwarded-header.sh http
+
+    - name: X-Forwarded Headers HTTPS
+      run: .github/scripts/x-forwarded-headers.sh https
+
+    - name: X-Forwarded Headers HTTP
+      run: .github/scripts/x-forwarded-headers.sh http
+
+    - name: Delete
+      run: .github/scripts/delete.sh
+
+    - name: Batch
+      run: .github/scripts/batch.sh
+
+    - name: Transaction
+      run: .github/scripts/transaction.sh
+
+    - name: Transaction Read/Write
+      run: .github/scripts/transaction-rw.sh
+
+    - name: Docker Stats
+      run: docker stats --no-stream
+
+  jepsen-distributed-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'temurin'
+        java-version: '16'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        tools-deps: '1.10.3.981'
+
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@v2
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-16-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+
+    - name: APT Update
+      run: sudo apt-get update
+
+    - name: Install Gnuplot
+      run: sudo apt-get install gnuplot
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.CR_PAT }}
+
+    - name: Run Zookeeper, Kafka, Cassandra and Blaze
+      run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
+
+    - name: Sleep 2 Minutes
+      run: sleep 120
+
+    - name: Docker Logs Zookepper
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
+
+    - name: Docker Logs Kafka
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs kafka
+
+    - name: Docker Logs Cassandra 1
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-1
+
+    - name: Docker Logs Cassandra 2
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
+
+    - name: Docker Logs Blaze 1
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-1
+
+    - name: Docker Logs Blaze 2
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-2
+
+    - name: Docker Stats
+      run: docker stats --no-stream
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Jepsen Register Test
+      run: make -C modules/jepsen register-test
 
     - name: Docker Stats
       run: docker stats --no-stream

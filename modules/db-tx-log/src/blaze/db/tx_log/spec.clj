@@ -3,6 +3,7 @@
     [blaze.db.resource-store.spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.fhir.spec]
+    [blaze.spec]
     [clojure.spec.alpha :as s]))
 
 
@@ -35,7 +36,7 @@
 
 
 (s/def :blaze.db.tx-cmd/if-none-exist
-  (s/coll-of :blaze.db.query/clause :min-count 1))
+  :blaze.db.query/clauses)
 
 
 (s/def :blaze.db.tx-cmd/if-match
@@ -66,8 +67,7 @@
 (defmethod tx-cmd "delete" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.db.tx-cmd/type
-                   :blaze.resource/id
-                   :blaze.resource/hash]
+                   :blaze.resource/id]
           :opt-un [:blaze.db.tx-cmd/if-match]))
 
 

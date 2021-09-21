@@ -17,16 +17,16 @@
     (keyword "fhir" (codec/tid->type tid))))
 
 
-(defn- state->num-changes
+(defn state->num-changes
   "A resource is new if num-changes is 1."
   [state]
   (bit-shift-right ^long state 8))
 
 
-(defn- state->op [state]
+(defn state->op [^long state]
   (cond
-    (bit-test ^long state 1) :create
-    (bit-test ^long state 0) :delete
+    (bit-test state 1) :create
+    (bit-test state 0) :delete
     :else :put))
 
 

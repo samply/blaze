@@ -1,6 +1,8 @@
 (ns blaze.fhir-path
+  (:refer-clojure :exclude [eval compile resolve])
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.anomaly-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
@@ -8,7 +10,7 @@
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang Counted ExceptionInfo PersistentVector]
+    [clojure.lang Counted PersistentVector]
     [java.io StringReader]
     [org.antlr.v4.runtime CharStreams CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -37,8 +39,7 @@
      fhirpathParser$ParamListContext
      fhirpathParser$TypeSpecifierContext
      fhirpathParser$QualifiedIdentifierContext
-     fhirpathParser$IdentifierContext])
-  (:refer-clojure :exclude [eval compile resolve]))
+     fhirpathParser$IdentifierContext]))
 
 
 (set! *warn-on-reflection* true)
@@ -68,12 +69,8 @@
   on it."
   {:arglists '([resolver expr value])}
   [resolver expr value]
-  (try
-    (-eval expr {:resolver resolver} [value])
-    (catch ExceptionInfo e
-      (if (::anom/category (ex-data e))
-        (assoc (ex-data e) :expression expr :value value)
-        (throw e)))))
+  (-> (ba/try-anomaly (-eval expr {:resolver resolver} [value]))
+      (ba/exceptionally #(assoc % :expression expr :value value))))
 
 
 ;; See: http://hl7.org/fhirpath/index.html#conversion
@@ -110,11 +107,11 @@
         (cond
           (convertible? type first) (convert type first)
           (identical? :fhir/boolean type) true
-          :else (throw-anom ::anom/incorrect (singleton-evaluation-msg coll))))
+          :else (throw-anom (ba/incorrect (singleton-evaluation-msg coll)))))
 
     0 []
 
-    (throw-anom ::anom/incorrect (singleton-evaluation-msg coll))))
+    (throw-anom (ba/incorrect (singleton-evaluation-msg coll)))))
 
 
 (defrecord StartExpression []
@@ -182,7 +179,7 @@
 
         1 [(identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))]
 
-        (throw-anom ::anom/incorrect (is-type-specifier-msg coll))))))
+        (throw-anom (ba/incorrect (is-type-specifier-msg coll)))))))
 
 
 (defn- as-type-specifier-msg [coll]
@@ -201,7 +198,7 @@
             coll
             [])
 
-        (throw-anom ::anom/incorrect (as-type-specifier-msg coll))))))
+        (throw-anom (ba/incorrect (as-type-specifier-msg coll)))))))
 
 
 (defrecord UnionExpression [e1 e2]
@@ -279,7 +276,7 @@
           coll
           [])
 
-      (throw-anom ::anom/incorrect (as-type-specifier-msg coll)))))
+      (throw-anom (ba/incorrect (as-type-specifier-msg coll))))))
 
 
 ;; See: http://hl7.org/fhirpath/#wherecriteria-expression-collection
@@ -305,9 +302,9 @@
             1 (let [first (nth coll 0)]
                 (if (identical? :system/boolean (system/type first))
                   first
-                  (throw-anom ::anom/incorrect (non-boolean-result-msg first))))
+                  (throw-anom (ba/incorrect (non-boolean-result-msg first)))))
 
-            (throw-anom ::anom/incorrect (multiple-result-msg coll)))))
+            (throw-anom (ba/incorrect (multiple-result-msg coll))))))
       coll)))
 
 
@@ -326,7 +323,7 @@
 (defrecord ExistsWithCriteriaFunctionExpression [criteria]
   Expression
   (-eval [_ _ _]
-    (throw-anom ::anom/unsupported "unsupported `exists` function")))
+    (throw-anom (ba/unsupported "unsupported `exists` function"))))
 
 
 (defmulti resolve (fn [_ item] (fhir-spec/fhir-type item)))
@@ -368,21 +365,21 @@
   [_ ^fhirpathParser$ParamListContext paramsCtx]
   (if-let [type-specifier-ctx (some-> paramsCtx (.expression 0))]
     (->AsFunctionExpression (-compile-as-type-specifier type-specifier-ctx))
-    (throw-anom ::anom/incorrect "missing type specifier in `as` function")))
+    (throw-anom (ba/incorrect "missing type specifier in `as` function"))))
 
 
 (defmethod function-expression "where"
   [_ ^fhirpathParser$ParamListContext paramsCtx]
   (if-let [criteria-ctx (some-> paramsCtx (.expression 0))]
     (->WhereFunctionExpression (-compile criteria-ctx))
-    (throw-anom ::anom/incorrect "missing criteria in `where` function")))
+    (throw-anom (ba/incorrect "missing criteria in `where` function"))))
 
 
 (defmethod function-expression "ofType"
   [_ ^fhirpathParser$ParamListContext paramsCtx]
   (if-let [type-specifier-ctx (some-> paramsCtx (.expression 0))]
     (->OfTypeFunctionExpression (-compile-as-type-specifier type-specifier-ctx))
-    (throw-anom ::anom/incorrect "missing type specifier in `as` function")))
+    (throw-anom (ba/incorrect "missing type specifier in `as` function"))))
 
 
 (defmethod function-expression "exists"
@@ -401,9 +398,10 @@
 (defmethod function-expression :default
   [name paramsCtx]
   (throw-anom
-    ::anom/incorrect (format "unknown function `%s`" name)
-    :name name
-    :paramsCtx paramsCtx))
+    (ba/incorrect
+      (format "unknown function `%s`" name)
+      :name name
+      :paramsCtx paramsCtx)))
 
 
 (extend-protocol FPCompiler
@@ -450,8 +448,8 @@
     (let [[e1 e2 :as exprs] (.expression ctx)]
       (when-not (= 2 (count exprs))
         (throw-anom
-          ::anom/fault
-          (format "UnionExpressionContext with %d expressions" (count exprs))))
+          (ba/fault
+            (format "UnionExpressionContext with %d expressions" (count exprs)))))
       (->UnionExpression (-compile e1) (-compile e2))))
 
   fhirpathParser$EqualityExpressionContext
@@ -527,7 +525,7 @@
     (let [type (-compile (.identifier ctx))]
       (if (fhir-spec/type-exists? type)
         (keyword "fhir" type)
-        (throw-anom ::anom/incorrect (format "unknown FHIR type `%s`" type)))))
+        (throw-anom (ba/incorrect (format "unknown FHIR type `%s`" type))))))
 
   fhirpathParser$FunctionInvocationContext
   (-compile [ctx]
@@ -544,7 +542,7 @@
     (let [type (first (-compile (.qualifiedIdentifier ctx)))]
       (if (fhir-spec/type-exists? type)
         (keyword "fhir" type)
-        (throw-anom ::anom/incorrect (format "unknown FHIR type `%s`" type)))))
+        (throw-anom (ba/incorrect (format "unknown FHIR type `%s`" type))))))
 
   fhirpathParser$QualifiedIdentifierContext
   (-compile [ctx]
@@ -566,12 +564,7 @@
         l (fhirpathLexer. s)
         t (CommonTokenStream. l)
         p (fhirpathParser. t)]
-    (try
-      (-compile (.expression p))
-      (catch Exception e
-        (let [data (ex-data e)]
-          (if (::anom/category data)
-            (-> data
-                (update ::anom/message str (format " in expression `%s`" expr))
-                (assoc :expression expr))
-            (throw e)))))))
+    (-> (ba/try-anomaly (-compile (.expression p)))
+        (ba/exceptionally
+          #(-> (update % ::anom/message str (format " in expression `%s`" expr))
+               (assoc :expression expr))))))

@@ -23,8 +23,7 @@
   (i/keys! iter sp-vr/decode-key start-key))
 
 
-(defn- key-size
-  ^long [co-res-id value]
+(defn- key-size ^long [co-res-id value]
   (+ codec/c-hash-size (bs/size co-res-id) 1
      codec/c-hash-size codec/tid-size (bs/size value)))
 
@@ -37,8 +36,8 @@
       (bb/put-int! sp-c-hash)
       (bb/put-int! tid)
       (bb/put-byte-string! value)
-      (bb/flip!)
-      (bs/from-byte-buffer)))
+      bb/flip!
+      bs/from-byte-buffer))
 
 
 (defn prefix-keys!
@@ -69,10 +68,13 @@
       (bb/put-byte-string! id)
       (bb/put-byte! (bs/size id))
       (bb/put-byte-string! (codec/hash-prefix hash))
-      (bb/array)))
+      bb/array))
 
 
-(defn index-entry [compartment c-hash tid value id hash]
+(defn index-entry
+  "Returns an entry of the CompartmentSearchParamValueResource index build from
+  `compartment`, `c-hash`, `tid`, `value`, `id` and `hash`."
+  [compartment c-hash tid value id hash]
   [:compartment-search-param-value-index
    (encode-key compartment c-hash tid value id hash)
    bytes/empty])

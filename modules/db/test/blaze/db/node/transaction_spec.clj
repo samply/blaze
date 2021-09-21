@@ -1,9 +1,10 @@
 (ns blaze.db.node.transaction-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.db.node.transaction :as tx]
-    [blaze.db.spec]
     [blaze.db.tx-log.spec]
-    [blaze.fhir.spec]
+    [blaze.fhir.hash.spec]
+    [blaze.fhir.spec.spec]
     [clojure.spec.alpha :as s]))
 
 

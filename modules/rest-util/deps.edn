@@ -12,10 +12,10 @@
   {:mvn/version "4.4.14"}
 
   metosin/reitit-ring
-  {:mvn/version "0.5.13"}
+  {:mvn/version "0.5.15"}
 
   ring/ring-core
-  {:mvn/version "1.9.3"
+  {:mvn/version "1.9.4"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
@@ -31,10 +31,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    {:mvn/version "1.0.887"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -45,11 +42,8 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
-    org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".+spec"]}}}

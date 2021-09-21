@@ -2,8 +2,7 @@
   (:require
     [blaze.coll.core :as coll]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
-  (:refer-clojure :exclude [eduction empty? first]))
+    [clojure.test :as test :refer [deftest is testing]]))
 
 
 (st/instrument)
@@ -18,7 +17,7 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest first
+(deftest first-test
   (testing "nil"
     (is (nil? (coll/first nil))))
 
@@ -32,7 +31,7 @@
     (is (= 1 (coll/first [1 2])))))
 
 
-(deftest empty?
+(deftest empty-test
   (testing "nil"
     (is (true? (coll/empty? nil))))
 
@@ -43,6 +42,15 @@
     (is (false? (coll/empty? [1])))))
 
 
-(deftest eduction
+(deftest eduction-test
   (testing "eductions are sequential"
-    (is (sequential? (coll/eduction (map identity) [1])))))
+    (is (sequential? (coll/eduction (map identity) [1]))))
+
+  (testing "eductions can be reduced"
+    (is (= [2 3] (reduce conj [] (coll/eduction (map inc) [1 2])))))
+
+  (testing "eductions are seqable"
+    (is (= (list 2 3) (seq (coll/eduction (map inc) [1 2])))))
+
+  (testing "eductions are counted"
+    (is (= 2 (count (coll/eduction (map inc) [1 2]))))))

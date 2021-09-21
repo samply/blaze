@@ -208,9 +208,11 @@
       nil))
 
   (testing "instance size"
-    (is (= 48 (total-size "a")))
-    (is (= 48 (total-size (str/repeat "a" 8))))
-    (is (= 56 (total-size (str/repeat "a" 9))))))
+    (are [s size] (= size (total-size s))
+      "" 40
+      "a" 48
+      (str/repeat "a" 8) 48
+      (str/repeat "a" 9) 56)))
 
 
 (deftest decimal-test

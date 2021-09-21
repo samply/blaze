@@ -4,11 +4,10 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
-    [cognitect.anomalies :as anom]
-    [java-time :as jt])
+    [java-time :as time])
   (:import
     [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
@@ -413,49 +412,49 @@
   Year
   (add [this other]
     (if (instance? Period other)
-      (jt/plus this (jt/years (quot (:months other) 12)))
+      (time/plus this (time/years (quot (:months other) 12)))
       (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   DateTimeYear
   (add [this other]
     (if (instance? Period other)
-      (jt/plus this (jt/years (quot (:months other) 12)))
+      (time/plus this (time/years (quot (:months other) 12)))
       (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   YearMonth
   (add [this other]
     (if (instance? Period other)
-      (jt/plus this (jt/months (:months other)))
+      (time/plus this (time/months (:months other)))
       (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   DateTimeYearMonth
   (add [this other]
     (if (instance? Period other)
-      (jt/plus this (jt/months (:months other)))
+      (time/plus this (time/months (:months other)))
       (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   LocalDate
   (add [this other]
     (if (instance? Period other)
-      (jt/plus this (jt/months (:months other)) (jt/days (quot (:millis other) 86400000)))
+      (time/plus this (time/months (:months other)) (time/days (quot (:millis other) 86400000)))
       (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   DateTimeYearMonthDay
   (add [this other]
     (if (instance? Period other)
-      (jt/plus this (jt/months (:months other)) (jt/days (quot (:millis other) 86400000)))
+      (time/plus this (time/months (:months other)) (time/days (quot (:millis other) 86400000)))
       (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   LocalDateTime
   (add [this other]
     (if (instance? Period other)
-      (jt/plus this (jt/months (:months other)) (jt/nanos (* (:millis other) 1000000)))
+      (time/plus this (time/months (:months other)) (time/nanos (* (:millis other) 1000000)))
       (throw (ex-info (str "Invalid RHS adding to LocalDateTime. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
@@ -467,71 +466,63 @@
                       {:op :add :this this :other other})))))
 
 
+(defn- minimum-value-msg [x]
+  (format "Predecessor: argument `%s` is already the minimum value." x))
+
+
+(defn- minimum-value-anom [x]
+  (ba/incorrect (minimum-value-msg x)))
+
+
 ;; 16.15. Predecessor
 (extend-protocol p/Predecessor
   Year
   (predecessor [x]
-    (if (jt/after? x min-year)
+    (if (time/after? x min-year)
       (.minusYears x 1)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   DateTimeYear
   (predecessor [x]
-    (if (jt/after? x date-time-min-year)
-      (jt/minus x (jt/years 1))
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+    (if (time/after? x date-time-min-year)
+      (time/minus x (time/years 1))
+      (throw-anom (minimum-value-anom x))))
 
   YearMonth
   (predecessor [x]
-    (if (jt/after? x min-year-month)
+    (if (time/after? x min-year-month)
       (.minusMonths x 1)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   DateTimeYearMonth
   (predecessor [x]
-    (if (jt/after? x date-time-min-year-month)
-      (jt/minus x (jt/months 1))
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+    (if (time/after? x date-time-min-year-month)
+      (time/minus x (time/months 1))
+      (throw-anom (minimum-value-anom x))))
 
   LocalDate
   (predecessor [x]
-    (if (jt/after? x min-date)
+    (if (time/after? x min-date)
       (.minusDays x 1)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   DateTimeYearMonthDay
   (predecessor [x]
-    (if (jt/after? x date-time-min-date)
-      (jt/minus x (jt/days 1))
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+    (if (time/after? x date-time-min-date)
+      (time/minus x (time/days 1))
+      (throw-anom (minimum-value-anom x))))
 
   LocalDateTime
   (predecessor [x]
-    (if (jt/after? x min-date-time)
+    (if (time/after? x min-date-time)
       (.minusNanos x 1000000)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x))))
+      (throw-anom (minimum-value-anom x))))
 
   PrecisionLocalTime
   (predecessor [{:keys [local-time p-num] :as x}]
     (if (p/greater x min-time)
       (->PrecisionLocalTime (.minus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num)
-      (throw-anom
-        ::anom/incorrect
-        (format "Predecessor: argument `%s` is already the minimum value." x)))))
+      (throw-anom (minimum-value-anom x)))))
 
 
 ;; 16.17. Subtract
@@ -539,8 +530,8 @@
   Year
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (jt/minus this (jt/years (quot (:months other) 12)))]
-        (if (jt/before? result min-year)
+      (let [result (time/minus this (time/years (quot (:months other) 12)))]
+        (if (time/before? result min-year)
           (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
           result))
       (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
@@ -549,8 +540,8 @@
   DateTimeYear
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (jt/minus this (jt/years (quot (:months other) 12)))]
-        (if (jt/before? result date-time-min-year)
+      (let [result (time/minus this (time/years (quot (:months other) 12)))]
+        (if (time/before? result date-time-min-year)
           (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
           result))
       (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
@@ -559,8 +550,8 @@
   YearMonth
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (jt/minus this (jt/months (:months other)))]
-        (if (jt/before? result min-year-month)
+      (let [result (time/minus this (time/months (:months other)))]
+        (if (time/before? result min-year-month)
           (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
           result))
       (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
@@ -569,8 +560,8 @@
   DateTimeYearMonth
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (jt/minus this (jt/months (:months other)))]
-        (if (jt/before? result date-time-min-year-month)
+      (let [result (time/minus this (time/months (:months other)))]
+        (if (time/before? result date-time-min-year-month)
           (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
           result))
       (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
@@ -579,11 +570,11 @@
   LocalDate
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (jt/minus
+      (let [result (time/minus
                      this
-                     (jt/months (:months other))
-                     (jt/days (quot (:millis other) 86400000)))]
-        (if (jt/before? result min-date)
+                     (time/months (:months other))
+                     (time/days (quot (:millis other) 86400000)))]
+        (if (time/before? result min-date)
           (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
           result))
       (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
@@ -592,11 +583,11 @@
   DateTimeYearMonthDay
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (jt/minus
+      (let [result (time/minus
                      this
-                     (jt/months (:months other))
-                     (jt/days (quot (:millis other) 86400000)))]
-        (if (jt/before? result date-time-min-date)
+                     (time/months (:months other))
+                     (time/days (quot (:millis other) 86400000)))]
+        (if (time/before? result date-time-min-date)
           (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
           result))
       (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
@@ -627,49 +618,49 @@
 (extend-protocol p/Successor
   Year
   (successor [x]
-    (if (jt/before? x max-year)
+    (if (time/before? x max-year)
       (.plusYears x 1)
       (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   DateTimeYear
   (successor [x]
-    (if (jt/before? x date-time-max-year)
-      (jt/plus x (jt/years 1))
+    (if (time/before? x date-time-max-year)
+      (time/plus x (time/years 1))
       (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   YearMonth
   (successor [x]
-    (if (jt/before? x max-year-month)
+    (if (time/before? x max-year-month)
       (.plusMonths x 1)
       (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   DateTimeYearMonth
   (successor [x]
-    (if (jt/before? x date-time-max-year-month)
-      (jt/plus x (jt/months 1))
+    (if (time/before? x date-time-max-year-month)
+      (time/plus x (time/months 1))
       (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   LocalDate
   (successor [x]
-    (if (jt/before? x max-date)
+    (if (time/before? x max-date)
       (.plusDays x 1)
       (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   DateTimeYearMonthDay
   (successor [x]
-    (if (jt/before? x date-time-max-date)
-      (jt/plus x (jt/days 1))
+    (if (time/before? x date-time-max-date)
+      (time/plus x (time/days 1))
       (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
 
   LocalDateTime
   (successor [x]
-    (if (jt/before? x max-date-time)
+    (if (time/before? x max-date-time)
       (.plusNanos x 1000000)
       (throw (ex-info "Successor: argument is already the maximum value."
                       {:x x}))))
@@ -1246,9 +1237,8 @@
 
   String
   (to-date [s _]
-    (let [date (system/parse-date s)]
-      (when-not (::anom/category date)
-        date)))
+    (-> (system/parse-date s)
+        (ba/exceptionally (constantly nil))))
 
   Year
   (to-date [this _]

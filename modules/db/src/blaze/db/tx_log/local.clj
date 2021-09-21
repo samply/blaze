@@ -9,28 +9,25 @@
   Uses a single thread named `local-tx-log` to increment the point in time `t`,
   store the transaction and transfers it to listening queues."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.impl.byte-buffer :as bb]
-    [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log.spec]
-    [blaze.executors :as ex]
+    [blaze.db.tx-log.local.codec :as codec]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [java-time :as jt]
-    [jsonista.core :as j]
-    [prometheus.alpha :as prom :refer [defhistogram]]
+    [java-time :as time]
+    [prometheus.alpha :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.io Closeable]
-    [java.time Clock Instant]
-    [java.util.concurrent
-     ArrayBlockingQueue BlockingQueue ExecutorService TimeUnit]))
+    [java.time Instant]
+    [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]
+    [java.util.concurrent.locks Lock ReentrantLock]))
 
 
 (set! *warn-on-reflection* true)
@@ -45,56 +42,6 @@
   "op")
 
 
-(def ^:private cbor-object-mapper
-  (j/object-mapper
-    {:factory (CBORFactory.)
-     :decode-key-fn true
-     :modules [bs/object-mapper-module]}))
-
-
-(defn- parse-cbor [value t]
-  (try
-    (j/read-value value cbor-object-mapper)
-    (catch Exception e
-      (log/warn (format "Skip transaction with point in time of %d because their was an error while parsing tx-data: %s" t (ex-message e))))))
-
-
-(defn- decode-hash [tx-cmd]
-  (update tx-cmd :hash bs/from-byte-array))
-
-
-(defn- decode-instant [x]
-  (when (int? x)
-    (Instant/ofEpochMilli x)))
-
-
-(defn- decode-tx-data
-  ([]
-   [(bb/allocate-direct codec/t-size)
-    (bb/allocate-direct 1024)])
-  ([kb vb]
-   (let [t (bb/get-long! kb)
-         value (byte-array (bb/remaining vb))]
-     (bb/copy-into-byte-array! vb value 0 (bb/remaining vb))
-     (-> (parse-cbor value t)
-         (update :tx-cmds #(mapv decode-hash %))
-         (update :instant decode-instant)
-         (assoc :t t)))))
-
-
-(defn encode-key [t]
-  (-> (bb/allocate Long/BYTES)
-      (bb/put-long! t)
-      (bb/array)))
-
-
-(defn encode-tx-data [instant tx-cmds]
-  (j/write-value-as-bytes
-    {:instant (.toEpochMilli ^Instant instant)
-     :tx-cmds tx-cmds}
-    cbor-object-mapper))
-
-
 (def ^:private ^:const max-poll-size 50)
 
 
@@ -102,12 +49,13 @@
   (log/trace "fetch tx-data from storage offset =" offset)
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]
-    (into [] (take max-poll-size) (i/kvs! iter decode-tx-data (bs/from-byte-array (encode-key offset))))))
+    (let [key (bs/from-byte-array (codec/encode-key offset))]
+      (into [] (take max-poll-size) (i/kvs! iter codec/decode-tx-data key)))))
 
 
-(defn- poll [^BlockingQueue queue timeout]
+(defn- poll! [^BlockingQueue queue timeout]
   (log/trace "poll in-memory queue with timeout =" timeout)
-  (.poll queue (jt/as timeout :millis) TimeUnit/MILLISECONDS))
+  (.poll queue (time/as timeout :millis) TimeUnit/MILLISECONDS))
 
 
 (deftype LocalQueue [kv-store offset queue queue-start unsubscribe!]
@@ -119,7 +67,7 @@
           (when-let [tx-data (last tx-data)]
             (vreset! offset (inc (:t tx-data))))
           tx-data)
-        (poll queue timeout))))
+        (poll! queue timeout))))
 
   Closeable
   (close [_]
@@ -129,7 +77,7 @@
 
 (defn- store-tx-data! [kv-store {:keys [t instant tx-cmds]}]
   (log/trace "store transaction data with t =" t)
-  (kv/put! kv-store (encode-key t) (encode-tx-data instant tx-cmds)))
+  (kv/put! kv-store (codec/encode-key t) (codec/encode-tx-data instant tx-cmds)))
 
 
 (defn- transfer-tx-data! [queues tx-data]
@@ -138,33 +86,42 @@
     (.put queue tx-data)))
 
 
+(defn- assoc-local-payload [tx-data local-payload]
+  (cond-> tx-data local-payload (assoc :local-payload local-payload)))
+
+
 (defn- submit!
   "Stores `tx-cmds` and transfers them to pollers on queues.
 
   Uses `state` to increment the point in time `t`. Stores transaction data
-  consisting of the new `t`, the current time and `tx-cmds`. Has to be run in a
-  single thread in order to deliver transaction data in order."
-  [kv-store clock state tx-cmds]
+  consisting of the new `t`, the current time taken from `clock` and `tx-cmds`.
+  Has to be run in a single thread in order to deliver transaction data in
+  order."
+  [kv-store clock state tx-cmds local-payload]
   (log/trace "submit" (count tx-cmds) "tx-cmds")
   (let [{:keys [t queues]} (swap! state update :t inc)
-        instant (Instant/now clock)
-        tx-data {:t t :instant instant :tx-cmds tx-cmds}]
+        tx-data {:t t :instant (Instant/now clock) :tx-cmds tx-cmds}]
     (store-tx-data! kv-store tx-data)
-    (transfer-tx-data! (vals queues) [tx-data])
+    (transfer-tx-data! (vals queues) [(assoc-local-payload tx-data local-payload)])
     t))
 
 
 ;; The state contains the following keys:
 ;;  * :t - the current point in time
 ;;  * :queues - a map of queues created through `new-queue`
-(deftype LocalTxLog [kv-store clock executor state]
+(deftype LocalTxLog [kv-store clock ^Lock submit-lock state]
   tx-log/TxLog
-  (-submit [_ tx-cmds]
-    ;; ensures that the submit function is executed in a single thread
-    (ac/supply-async
-      #(with-open [_ (prom/timer duration-seconds "submit")]
-         (submit! kv-store clock state tx-cmds))
-      executor))
+  (-submit [_ tx-cmds local-payload]
+    (.lock submit-lock)
+    (try
+      (-> (submit! kv-store clock state tx-cmds local-payload)
+          ba/try-anomaly
+          ac/completed-future)
+      (finally
+        (.unlock submit-lock))))
+
+  (-last-t [_]
+    (ac/completed-future (:t @state)))
 
   (-new-queue [_ offset]
     (let [key (Object.)
@@ -177,7 +134,7 @@
 
 (defn- last-t
   "Returns the last (newest) point in time, the transaction log has persisted
-  in `kv-store` ot nil if the log is empty."
+  in `kv-store` or nil if the log is empty."
   [kv-store]
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]
@@ -189,34 +146,15 @@
           (bb/get-long! buf))))))
 
 
-(defn new-local-tx-log
-  "Returns a transaction log which is suitable only for single node setups."
-  [kv-store clock executor]
-  (->LocalTxLog kv-store clock executor (atom {:t (or (last-t kv-store) 0)})))
-
-
 (defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]
-  (s/keys :req-un [:blaze.db/kv-store]))
+  (s/keys :req-un [:blaze.db/kv-store :blaze/clock]))
 
 
 (defmethod ig/init-key :blaze.db.tx-log/local
-  [_ {:keys [kv-store]}]
+  [_ {:keys [kv-store clock]}]
   (log/info "Open local transaction log")
-  (new-local-tx-log
-    kv-store
-    (Clock/systemDefaultZone)
-    ;; it's important to have a single thread executor here. See docs of submit
-    ;; function.
-    (ex/single-thread-executor "local-tx-log")))
-
-
-(defmethod ig/halt-key! :blaze.db.tx-log/local
-  [_ tx-log]
-  (log/info "Start closing local transaction log")
-  (let [executor (.executor ^LocalTxLog tx-log)]
-    (.shutdown ^ExecutorService executor)
-    (.awaitTermination ^ExecutorService executor 10 TimeUnit/SECONDS))
-  (log/info "Done closing local transaction log"))
+  (->LocalTxLog kv-store clock (ReentrantLock.)
+                (atom {:t (or (last-t kv-store) 0)})))
 
 
 (derive :blaze.db.tx-log/local :blaze.db/tx-log)

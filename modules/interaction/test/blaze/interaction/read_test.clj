@@ -5,12 +5,15 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.anomaly-spec]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.spec]
     [blaze.interaction.read]
-    [blaze.interaction.read-spec]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -31,112 +34,116 @@
 (test/use-fixtures :each fixture)
 
 
-(defn- handler [node]
-  (-> (ig/init
-        {:blaze.interaction/read
-         {:node node}})
-      (:blaze.interaction/read)))
+(def system
+  (assoc mem-node-system :blaze.interaction/read {}))
 
 
-(defn- handler-with [txs]
+(def match
+  (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
+
+
+(defn wrap-defaults [handler]
   (fn [request]
-    (with-open [node (mem-node-with txs)]
-      @((handler node) request))))
+    (handler (assoc request ::reitit/match match))))
 
 
-(def ^:private match
-  {:data {:fhir.resource/type "Patient"}})
+(defmacro with-handler [[handler-binding] txs & body]
+  `(with-system-data [{node# :blaze.db/node
+                       handler# :blaze.interaction/read} system]
+     ~txs
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                wrap-error)]
+       ~@body)))
 
 
 (deftest handler-test
-  (testing "Returns Not Found on Non-Existing Resource"
-    (let [{:keys [status body]}
-          ((handler-with [])
-            {:path-params {:id "0"}
-             ::reitit/match match})]
+  (testing "returns Not-Found on non-existing resource"
+    (with-handler [handler]
+      []
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0"}})]
 
-      (is (= 404 status))
+        (is (= 404 status))
 
-      (given body
-        :fhir/type := :fhir/OperationOutcome
-        [:issue 0 :severity] := #fhir/code"error"
-        [:issue 0 :code] := #fhir/code"not-found"
-        [:issue 0 :diagnostics] := "Resource `/Patient/0` not found")))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"not-found"
+          [:issue 0 :diagnostics] := "Resource `Patient/0` was not found."))))
 
+  (testing "returns Not-Found on invalid version id"
+    (with-handler [handler]
+      []
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0" :vid "a"}})]
 
-  (testing "Returns Not Found on Invalid Version ID"
-    (let [{:keys [status body]}
-          ((handler-with [])
-            {:path-params {:id "0" :vid "a"}
-             ::reitit/match match})]
+        (is (= 404 status))
 
-      (is (= 404 status))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"not-found"
+          [:issue 0 :diagnostics] := "Resource `Patient/0` with versionId `a` was not found."))))
 
-      (given body
-        :fhir/type := :fhir/OperationOutcome
-        [:issue 0 :severity] := #fhir/code"error"
-        [:issue 0 :code] := #fhir/code"not-found"
-        [:issue 0 :diagnostics] := "Resource `/Patient/0` with versionId `a` was not found.")))
+  (testing "returns Gone on deleted resource"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
 
+      (let [{:keys [status body headers]}
+            @(handler {:path-params {:id "0"}})]
 
-  (testing "Returns Gone on Deleted Resource"
-    (let [{:keys [status body headers]}
-          ((handler-with
-              [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-               [[:delete "Patient" "0"]]])
-            {:path-params {:id "0"}
-             ::reitit/match match})]
+        (is (= 410 status))
 
-      (is (= 410 status))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-      (testing "Transaction time in Last-Modified header"
-        (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"deleted"
+          [:issue 0 :diagnostics] := "Resource `Patient/0` was deleted."))))
 
-      (given body
-        :fhir/type := :fhir/OperationOutcome
-        [:issue 0 :severity] := #fhir/code"error"
-        [:issue 0 :code] := #fhir/code"deleted")))
+  (testing "returns existing resource"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
+      (let [{:keys [status headers body]}
+            @(handler {:path-params {:id "0"}})]
 
-  (testing "Returns Existing Resource"
-    (let [{:keys [status headers body]}
-          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-            {:path-params {:id "0"}
-             ::reitit/match match})]
+        (is (= 200 status))
 
-      (is (= 200 status))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-      (testing "Transaction time in Last-Modified header"
-        (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource update
+          (is (= "W/\"1\"" (get headers "ETag"))))
 
-      (testing "Version in ETag header"
-        ;; 1 is the T of the transaction of the resource update
-        (is (= "W/\"1\"" (get headers "ETag"))))
+        (given body
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          [:meta :versionId] := #fhir/id"1"
+          [:meta :lastUpdated] := Instant/EPOCH))))
 
-      (given body
-        :fhir/type := :fhir/Patient
-        :id := "0"
-        [:meta :versionId] := #fhir/id"1"
-        [:meta :lastUpdated] := Instant/EPOCH)))
+  (testing "returns existing resource on versioned read"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
+      (let [{:keys [status headers body]}
+            @(handler {:path-params {:id "0" :vid "1"}})]
 
-  (testing "Returns Existing Resource on versioned read"
-    (let [{:keys [status headers body]}
-          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-            {:path-params {:id "0" :vid "1"}
-             ::reitit/match match})]
+        (is (= 200 status))
 
-      (is (= 200 status))
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
-      (testing "Transaction time in Last-Modified header"
-        (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource update
+          (is (= "W/\"1\"" (get headers "ETag"))))
 
-      (testing "Version in ETag header"
-        ;; 1 is the T of the transaction of the resource update
-        (is (= "W/\"1\"" (get headers "ETag"))))
-
-      (given body
-        :fhir/type := :fhir/Patient
-        :id := "0"
-        [:meta :versionId] := #fhir/id"1"
-        [:meta :lastUpdated] := Instant/EPOCH))))
+        (given body
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          [:meta :versionId] := #fhir/id"1"
+          [:meta :lastUpdated] := Instant/EPOCH)))))

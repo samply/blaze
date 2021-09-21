@@ -19,8 +19,7 @@
      {:compartment
       [(let [c-hash (bb/get-int! buf)]
          (tu/co-c-hash->code c-hash (Integer/toHexString c-hash)))
-       (-> (bs/from-byte-buffer buf (bb/size-up-to-null buf))
-           (codec/id-string))]
+       (-> (bs/from-byte-buffer buf (bb/size-up-to-null buf)) codec/id-string)]
       :code (let [_ (bb/get-byte! buf)
                   c-hash (bb/get-int! buf)]
               (codec/c-hash->code c-hash (Integer/toHexString c-hash)))

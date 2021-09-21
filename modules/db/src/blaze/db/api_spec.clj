@@ -5,6 +5,7 @@
     [blaze.db.api :as d]
     [blaze.db.search-param-registry-spec]
     [blaze.db.spec]
+    [blaze.db.tx-log.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))
@@ -16,7 +17,7 @@
 
 
 (s/fdef d/sync
-  :args (s/cat :node :blaze.db/node :t :blaze.db/t)
+  :args (s/cat :node :blaze.db/node :t (s/? :blaze.db/t))
   :ret ac/completable-future?)
 
 
@@ -62,7 +63,7 @@
 
 (s/fdef d/type-query
   :args (s/cat :db :blaze.db/db :type :fhir.type/name
-               :clauses (s/coll-of :blaze.db.query/clause :min-count 1)
+               :clauses :blaze.db.query/clauses
                :start-id (s/? :blaze.resource/id))
   :ret (s/or :result (s/coll-of :blaze.db/resource-handle :kind sequential?)
              :anomaly ::anom/anomaly))
@@ -71,14 +72,14 @@
 (s/fdef d/compile-type-query
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :type :fhir.type/name
-               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+               :clauses :blaze.db.query/clauses)
   :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
 
 (s/fdef d/compile-type-query-lenient
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :type :fhir.type/name
-               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+               :clauses :blaze.db.query/clauses)
   :ret :blaze.db/query)
 
 
@@ -100,14 +101,14 @@
 
 (s/fdef d/system-query
   :args (s/cat :db :blaze.db/db
-               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+               :clauses :blaze.db.query/clauses)
   :ret (s/or :result (s/coll-of :blaze.db/resource-handle :kind sequential?)
              :anomaly ::anom/anomaly))
 
 
 (s/fdef d/compile-system-query
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
-               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+               :clauses :blaze.db.query/clauses)
   :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
 
@@ -128,7 +129,7 @@
                :code string?
                :id :blaze.resource/id
                :type :fhir.type/name
-               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+               :clauses :blaze.db.query/clauses)
   :ret (s/or :result (s/coll-of :blaze.db/resource-handle :kind sequential?)
              :anomaly ::anom/anomaly))
 
@@ -137,7 +138,7 @@
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :code string?
                :type :fhir.type/name
-               :clauses (s/coll-of :blaze.db.query/clause :min-count 1))
+               :clauses :blaze.db.query/clauses)
   :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
 

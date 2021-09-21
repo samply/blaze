@@ -1,21 +1,24 @@
 (ns blaze.db.resource-store.cassandra-test
+  (:refer-clojure :exclude [hash])
   (:require
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
+    [blaze.cassandra :as cass]
     [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.cassandra :as cass]
+    [blaze.db.resource-store.cassandra]
     [blaze.db.resource-store.cassandra.statement :as statement]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.log]
+    [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [cuerdas.core :as str]
     [integrant.core :as ig]
-    [juxt.iota :refer [given]]
+    [jsonista.core :as j]
     [taoensso.timbre :as log])
   (:import
     [com.datastax.oss.driver.api.core CqlSession DriverTimeoutException ConsistencyLevel]
@@ -25,8 +28,8 @@
     [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException WriteType]
     [java.net InetSocketAddress]
     [java.nio ByteBuffer]
-    [java.util.concurrent CompletionStage])
-  (:refer-clojure :exclude [hash]))
+    [java.util.concurrent CompletionStage]
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
 
 (st/instrument)
@@ -47,23 +50,13 @@
   (bs/from-hex (str/repeat s 64)))
 
 
-(defn system
-  ([session]
-   (system session {}))
-  ([session config]
-   (with-redefs
-     [cass/session (fn [_ _] session)]
-     (ig/init {::rs/cassandra config}))))
-
-
 (def bound-get-statement (reify BoundStatement))
 
 
 (defn row-with [idx bytes]
   (reify Row
     (^ByteBuffer getByteBuffer [_ ^int i]
-      (when-not (= idx i)
-        (throw (Error.)))
+      (assert (= idx i))
       (ByteBuffer/wrap bytes))))
 
 
@@ -76,8 +69,7 @@
 (defn prepared-statement-with [bind-values bound-statement]
   (reify PreparedStatement
     (bind [_ values]
-      (when-not (= bind-values (vec values))
-        (throw (Error.)))
+      (assert (= bind-values (vec values)))
       bound-statement)))
 
 
@@ -88,16 +80,25 @@
 
 
 (deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::rs/cassandra nil})
+      :key := ::rs/cassandra
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
   (testing "invalid contact-points"
-    (try
-      (::rs/cassandra (system nil {:contact-points "localhost"}))
-      (catch Exception e
-        (given (ex-data e)
-          :reason := ::ig/build-failed-spec
-          :key := ::rs/cassandra
-          [:value :contact-points] := "localhost"
-          [:explain ::s/problems 0 :path] := [:contact-points]
-          [:explain ::s/problems 0 :val] := "localhost")))))
+    (given-thrown (ig/init {::rs/cassandra {:contact-points ::invalid}})
+      :key := ::rs/cassandra
+      :reason := ::ig/build-failed-spec
+      [:value :contact-points] := ::invalid
+      [:explain ::s/problems 0 :path] := [:contact-points]
+      [:explain ::s/problems 0 :val] := ::invalid)))
+
+
+(def cbor-object-mapper
+  (j/object-mapper
+    {:factory (CBORFactory.)
+     :decode-key-fn true}))
 
 
 (deftest get-test
@@ -115,19 +116,39 @@
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement statement]
-              (when-not (= bound-get-statement statement)
-                (throw (Error.)))
+              (assert (= bound-get-statement statement))
               (ac/completed-future (resultset-with row)))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        @(rs/get store hash)
-        (catch Exception e
-          (is (str/starts-with? (ex-message (ex-cause e))
-                                "Error while parsing resource content")))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (given-failed-future (rs/get store hash)
+            ::anom/message :# "Error while parsing resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`:(.|\\s)*"
+            :blaze.resource/hash := hash)))))
+
+  (testing "invalid resource"
+    (let [hash (hash "0")
+          row (row-with 0 (j/write-value-as-bytes {} cbor-object-mapper))
+          session
+          (reify CqlSession
+            (^PreparedStatement prepare [_ ^SimpleStatement statement]
+              (cond
+                (= statement/get-statement statement)
+                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (= (statement/put-statement "TWO") statement)
+                nil
+                :else
+                (throw (Error.))))
+            (^CompletionStage executeAsync [_ ^Statement statement]
+              (assert (= bound-get-statement statement))
+              (ac/completed-future (resultset-with row)))
+            (close [_]))]
+
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (given-failed-future (rs/get store hash)
+            ::anom/message := "Error while conforming resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`."
+            :blaze.resource/hash := hash)))))
 
   (testing "not found"
     (let [hash (hash "0")
@@ -142,16 +163,13 @@
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement statement]
-              (when-not (= bound-get-statement statement)
-                (throw (Error.)))
+              (assert (= bound-get-statement statement))
               (ac/completed-future (resultset-with nil)))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        (is (nil? @(rs/get store hash)))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (is (nil? @(rs/get store hash)))))))
 
   (testing "execute error"
     (let [hash (hash "0")
@@ -167,18 +185,14 @@
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
               (ac/failed-future (Exception. "msg-141754")))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        @(rs/get store hash)
-        (catch Exception e
-          (given (ex-cause e)
-            ex-message := "msg-141754"
-            [ex-data ::anom/category] := ::anom/fault
-            [ex-data :blaze.resource/hash] := hash))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (given-failed-future (rs/get store hash)
+            ::anom/category := ::anom/fault
+            ::anom/message := "msg-141754"
+            :blaze.resource/hash := hash)))))
 
   (testing "DriverTimeoutException"
     (let [hash (hash "0")
@@ -194,18 +208,14 @@
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
               (ac/failed-future (DriverTimeoutException. "msg-115452")))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        @(rs/get store hash)
-        (catch Exception e
-          (given (ex-cause e)
-            ex-message := "Cassandra msg-115452"
-            [ex-data ::anom/category] := ::anom/busy
-            [ex-data :blaze.resource/hash] := hash))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (given-failed-future (rs/get store hash)
+            ::anom/category := ::anom/busy
+            ::anom/message := "Cassandra msg-115452"
+            :blaze.resource/hash := hash)))))
 
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -222,16 +232,13 @@
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement statement]
-              (when-not (= bound-get-statement statement)
-                (throw (Error.)))
+              (assert (= bound-get-statement statement))
               (ac/completed-future (resultset-with row)))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        (is (= content @(rs/get store hash)))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (is (= content @(rs/get store hash)))))))
 
   (testing "success after one retry due to timeout"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -248,18 +255,16 @@
                 nil
                 :else
                 (throw (Error.))))
-            (^CompletionStage executeAsync [_ ^Statement statement]
+            (^CompletionStage executeAsync [_ ^Statement _]
               (if @throw-timeout?
                 (do (vreset! throw-timeout? false)
                     (ac/failed-future (DriverTimeoutException. "foo")))
                 (ac/completed-future (resultset-with row))))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        (is (= content @(rs/get store hash)))
-        (finally
-          (ig/halt! system))))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (is (= content @(rs/get store hash))))))))
 
 
 (deftest multi-get-test
@@ -276,16 +281,13 @@
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement statement]
-              (when-not (= bound-get-statement statement)
-                (throw (Error.)))
+              (assert (= bound-get-statement statement))
               (ac/completed-future (resultset-with nil)))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        (is (empty? @(rs/multi-get store [hash])))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (is (empty? @(rs/multi-get store [hash])))))))
 
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -302,16 +304,13 @@
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement statement]
-              (when-not (= bound-get-statement statement)
-                (throw (Error.)))
+              (assert (= bound-get-statement statement))
               (ac/completed-future (resultset-with row)))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        (is (= {hash content} @(rs/multi-get store [hash])))
-        (finally
-          (ig/halt! system))))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (is (= {hash content} @(rs/multi-get store [hash]))))))))
 
 
 (def bound-put-statement (reify BoundStatement))
@@ -348,15 +347,12 @@
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
               (ac/failed-future (Exception. "error-150216")))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        @(rs/put store {hash resource})
-        (catch Exception e
-          (is (= "error-150216" (ex-message (ex-cause e)))))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (given-failed-future (rs/put! store {hash resource})
+            ::anom/message := "error-150216")))))
 
   (testing "DriverTimeoutException"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
@@ -376,20 +372,16 @@
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
               (ac/failed-future (DriverTimeoutException. "msg-123234")))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        @(rs/put store {hash resource})
-        (catch Exception e
-          (given (ex-cause e)
-            ex-message := "Cassandra msg-123234"
-            [ex-data ::anom/category] := ::anom/busy
-            [ex-data :blaze.resource/hash] := hash
-            [ex-data :fhir/type] := :fhir/Patient
-            [ex-data :blaze.resource/id] := "0"))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (given-failed-future (rs/put! store {hash resource})
+            ::anom/category := ::anom/busy
+            ::anom/message := "Cassandra msg-123234"
+            :blaze.resource/hash := hash
+            :fhir/type := :fhir/Patient
+            :blaze.resource/id := "0")))))
 
   (testing "WriteTimeoutException"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
@@ -409,20 +401,16 @@
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
               (ac/failed-future (WriteTimeoutException. nil ConsistencyLevel/TWO 1 2 WriteType/SIMPLE)))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        @(rs/put store {hash resource})
-        (catch Exception e
-          (given (ex-cause e)
-            ex-message := "Cassandra timeout during SIMPLE write query at consistency TWO (2 replica were required but only 1 acknowledged the write)"
-            [ex-data ::anom/category] := ::anom/busy
-            [ex-data :blaze.resource/hash] := hash
-            [ex-data :fhir/type] := :fhir/Patient
-            [ex-data :blaze.resource/id] := "0"))
-        (finally
-          (ig/halt! system)))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (given-failed-future (rs/put! store {hash resource})
+            ::anom/category := ::anom/busy
+            ::anom/message := "Cassandra timeout during SIMPLE write query at consistency TWO (2 replica were required but only 1 acknowledged the write)"
+            :blaze.resource/hash := hash
+            :fhir/type := :fhir/Patient
+            :blaze.resource/id := "0")))))
 
   (testing "success"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
@@ -442,10 +430,8 @@
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
               (ac/completed-future nil))
-            (close [_]))
-          {store ::rs/cassandra :as system} (system session)]
+            (close [_]))]
 
-      (try
-        (is (nil? @(rs/put store {hash resource})))
-        (finally
-          (ig/halt! system))))))
+      (with-redefs [cass/session (fn [_ _] session)]
+        (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
+          (is (nil? @(rs/put! store {hash resource}))))))))

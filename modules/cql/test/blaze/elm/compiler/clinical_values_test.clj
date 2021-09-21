@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler.clinical-values-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.elm.code-spec]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.clinical-values]
@@ -9,9 +10,10 @@
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
+    [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
+    [clojure.test :as test :refer [are deftest testing]]
     [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]])
@@ -64,10 +66,9 @@
 
   (testing "missing code system"
     (let [context {:library {:codeSystems {:def []}}}]
-      (is
-        (thrown-anom?
-          ::anom/not-found
-          (c/compile context #elm/code["sys-def-112249" "code-112253"]))))))
+      (given (ba/try-anomaly (c/compile context #elm/code["sys-def-112249" "code-112253"]))
+        ::anom/category := ::anom/not-found
+        ::anom/message := "Can't find the code system `sys-def-112249`."))))
 
 
 ;; 3.2. CodeDef
@@ -163,6 +164,6 @@
       #elm/quantity[1 "cm2"] (quantity/quantity 1 "cm2")))
 
   (testing "Periods"
-    (tu/satisfies-prop 100
+    (satisfies-prop 100
       (prop/for-all [period (s/gen :elm/period)]
         (#{BigDecimal Period} (type (core/-eval (c/compile {} period) {} nil nil)))))))

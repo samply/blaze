@@ -5,19 +5,24 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.util :as handler-util]
-    [blaze.interaction.create :as create]
-    [blaze.interaction.delete :as delete]
-    [blaze.interaction.read :as read]
-    [blaze.interaction.search-type :as search-type]
+    [blaze.interaction.create]
+    [blaze.interaction.delete]
+    [blaze.interaction.read]
+    [blaze.interaction.search-type]
     [blaze.interaction.transaction]
-    [blaze.interaction.transaction-spec]
-    [blaze.interaction.update :as update]
-    [blaze.log]
-    [blaze.luid :as luid]
+    [blaze.interaction.update]
+    [blaze.interaction.util-spec]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.page-store-spec]
+    [blaze.page-store.local]
+    [blaze.test-util :refer [given-thrown]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
@@ -27,7 +32,8 @@
     [ring.middleware.params :refer [wrap-params]]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
+    [java.time Instant]
+    [java.util.concurrent ThreadPoolExecutor]))
 
 
 (st/instrument)
@@ -43,124 +49,204 @@
 (test/use-fixtures :each fixture)
 
 
-(def ^:private operation-outcome
+(def operation-outcome
   #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome")
 
 
-(defonce executor (ex/single-thread-executor))
+(def base-url "base-url-115515")
 
 
-(def ^:private base-url "base-url-115515")
-
-
-(defn router [node]
+(defmethod ig/init-key ::router
+  [_ {:keys [node create-handler search-type-handler
+             read-handler delete-handler update-handler]}]
   (reitit.ring/router
     [["/Observation"
       {:name :Observation/type
        :fhir.resource/type "Observation"
-       :post (create/handler node executor)}]
+       :post create-handler}]
      ["/Patient"
       {:name :Patient/type
        :fhir.resource/type "Patient"
-       :get (wrap-params (search-type/handler node))
-       :post (create/handler node executor)}]
+       :get {:middleware [[wrap-db node]]
+             :handler (wrap-params search-type-handler)}
+       :post create-handler}]
      ["/Patient/{id}"
       {:name :Patient/instance
        :fhir.resource/type "Patient"
-       :get (read/handler node)
-       :delete (delete/handler node executor)
-       :put (update/handler node executor)}]
+       :get {:middleware [[wrap-db node]] :handler read-handler}
+       :delete delete-handler
+       :put update-handler}]
      ["/Patient/{id}/_history/{vid}"
       {:name :Patient/versioned-instance}]]
     {:syntax :bracket}))
 
 
 (defn batch-handler [router]
-  (reitit.ring/ring-handler router handler-util/default-handler))
+  (reitit.ring/ring-handler router handler-util/default-batch-handler))
 
 
-(defn- handler [node]
-  (-> (ig/init
-        {:blaze.interaction/transaction
-         {:node node
-          :executor executor}})
-      (:blaze.interaction/transaction)))
+(deftest init-handler-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.interaction/transaction nil})
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.interaction/transaction {}})
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "invalid executor"
+    (given-thrown (ig/init {:blaze.interaction/transaction {:executor ::invalid}})
+      :key := :blaze.interaction/transaction
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 3 :pred] := `ex/executor?
+      [:explain ::s/problems 3 :val] := ::invalid)))
 
 
-(defn- handler-with [txs]
+(deftest init-executor-test
+  (testing "nil config"
+    (given (ig/init {:blaze.interaction.transaction/executor nil})
+      :blaze.interaction.transaction/executor :instanceof ThreadPoolExecutor)))
+
+
+(def system
+  (assoc mem-node-system
+    :blaze.interaction/transaction
+    {:node (ig/ref :blaze.db/node)
+     :executor (ig/ref :blaze.interaction.transaction/executor)
+     :clock (ig/ref :blaze.test/clock)
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+    :blaze.interaction/create
+    {:node (ig/ref :blaze.db/node)
+     :executor (ig/ref :blaze.test/executor)
+     :clock (ig/ref :blaze.test/clock)
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+    :blaze.interaction/search-type
+    {:node (ig/ref :blaze.db/node)
+     :clock (ig/ref :blaze.test/clock)
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+     :page-store (ig/ref :blaze.page-store/local)}
+
+    :blaze.interaction/read
+    {:node (ig/ref :blaze.db/node)}
+
+    :blaze.interaction/delete
+    {:node (ig/ref :blaze.db/node)
+     :executor (ig/ref :blaze.test/executor)}
+
+    :blaze.interaction/update
+    {:node (ig/ref :blaze.db/node)
+     :executor (ig/ref :blaze.test/executor)}
+
+    ::router
+    {:node (ig/ref :blaze.db/node)
+     :create-handler (ig/ref :blaze.interaction/create)
+     :search-type-handler (ig/ref :blaze.interaction/search-type)
+     :read-handler (ig/ref :blaze.interaction/read)
+     :delete-handler (ig/ref :blaze.interaction/delete)
+     :update-handler (ig/ref :blaze.interaction/update)}
+
+    :blaze.interaction.transaction/executor {}
+    :blaze.test/fixed-rng-fn {}
+    :blaze.test/executor {}
+    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+    :blaze.test/fixed-rng {}))
+
+
+(defn wrap-defaults [handler router]
   (fn [request]
-    (with-open [node (mem-node-with txs)]
-      (let [router (router node)]
-        @((handler node)
-          (assoc request
-            :blaze/base-url base-url
-            ::reitit/router router
-            :batch-handler (batch-handler router)))))))
+    (handler
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router
+        :batch-handler (batch-handler router)))))
+
+
+(defmacro with-handler [[handler-binding] txs & body]
+  `(with-system-data [{handler# :blaze.interaction/transaction
+                       router# ::router} system]
+     ~txs
+     (let [~handler-binding (-> handler# (wrap-defaults router#)
+                                wrap-error)]
+       ~@body)))
 
 
 (deftest handler-test
-  (testing "on missing body"
-    (let [{:keys [status body]}
-          ((handler-with [])
-           {})]
+  (with-handler [handler]
+    []
+    (testing "on missing body"
+      (let [{:keys [status body]}
+            @(handler {})]
 
-      (testing "returns error"
-        (is (= 400 status))
+        (testing "returns error"
+          (is (= 400 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Missing Bundle."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Missing Bundle."))))
 
-  (testing "on wrong resource type."
-    (let [{:keys [status body]}
-          ((handler-with [])
-           {:body
-            {:fhir/type :fhir/Patient}})]
+    (testing "on wrong resource type"
+      (let [{:keys [status body]}
+            @(handler {:body {:fhir/type :fhir/Patient}})]
 
-      (testing "returns error"
-        (is (= 400 status))
+        (testing "returns error"
+          (is (= 400 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"value"
-          [:issue 0 :diagnostics] := "Expected a Bundle resource but got a Patient resource."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"value"
+            [:issue 0 :diagnostics] := "Expected a Bundle resource but got a Patient resource."))))
 
-  (testing "on wrong Bundle type."
-    (let [{:keys [status body]}
-          ((handler-with [])
-           {:body
-            {:fhir/type :fhir/Bundle
-             :type #fhir/code"foo"}})]
+    (testing "on wrong Bundle type"
+      (let [{:keys [status body]}
+            @(handler
+               {:body
+                {:fhir/type :fhir/Bundle
+                 :type #fhir/code"foo"}})]
 
-      (testing "returns error"
-        (is (= 400 status))
+        (testing "returns error"
+          (is (= 400 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"value"
-          [:issue 0 :diagnostics] := "Expected a Bundle type of batch or transaction but was `foo`."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"value"
+            [:issue 0 :diagnostics] := "Expected a Bundle type of batch or transaction but was `foo`.")))))
 
   (doseq [type ["transaction" "batch"]]
     (testing (format "On %s bundle" type)
       (testing "empty bundle"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type (type/->Code type)}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type (type/->Code type)}})]
 
-          (is (= 200 status))
+            (testing "response status"
+              (is (= 200 status)))
 
-          (testing "bundle"
-            (given body
-              :fhir/type := :fhir/Bundle
-              :id :? string?
-              :type := (type/->Code (str type "-response"))
-              :entry :? empty?))))
+            (testing "bundle"
+              (given body
+                :fhir/type := :fhir/Bundle
+                :id := "AAAAAAAAAAAAAAAA"
+                :type := (type/->Code (str type "-response"))
+                :entry :? empty?)))))
 
       (testing "and update interaction"
         (testing "and newly created resource"
@@ -175,63 +261,69 @@
                    :url #fhir/uri"Patient/0"}}]]
 
             (testing "without return preference"
-              (let [{:keys [status body]
-                     {[{:keys [resource response]}] :entry} :body}
-                    ((handler-with [])
-                     {:body
-                      {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
-                       :entry entries}})]
+              (with-handler [handler]
+                []
+                (let [{:keys [status body]
+                       {[{:keys [resource response]}] :entry} :body}
+                      @(handler
+                         {:body
+                          {:fhir/type :fhir/Bundle
+                           :type (type/->Code type)
+                           :entry entries}})]
 
-                (is (= 200 status))
+                  (testing "response status"
+                    (is (= 200 status)))
 
-                (testing "bundle"
-                  (given body
-                    :fhir/type := :fhir/Bundle
-                    :id :? string?
-                    :type := (type/->Code (str type "-response"))))
+                  (testing "bundle"
+                    (given body
+                      :fhir/type := :fhir/Bundle
+                      :id := "AAAAAAAAAAAAAAAA"
+                      :type := (type/->Code (str type "-response"))))
 
-                (testing "entry resource"
-                  (is (nil? resource)))
+                  (testing "entry resource"
+                    (is (nil? resource)))
 
-                (testing "entry response"
-                  (given response
-                    :status := "201"
-                    :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
-                    :etag := "W/\"1\""
-                    :lastModified := Instant/EPOCH))))
+                  (testing "entry response"
+                    (given response
+                      :status := "201"
+                      :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
+                      :etag := "W/\"1\""
+                      :lastModified := Instant/EPOCH)))))
 
             (testing "with representation return preference"
-              (let [{:keys [status body]
-                     {[{:keys [resource response]}] :entry} :body}
-                    ((handler-with [])
-                     {:headers {"prefer" "return=representation"}
-                      :body
-                      {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
-                       :entry entries}})]
+              (with-handler [handler]
+                []
+                (let [{:keys [status body]
+                       {[{:keys [resource response]}] :entry} :body}
+                      @(handler
+                         {:headers {"prefer" "return=representation"}
+                          :body
+                          {:fhir/type :fhir/Bundle
+                           :type (type/->Code type)
+                           :entry entries}})]
 
-                (is (= 200 status))
+                  (testing "response status"
+                    (is (= 200 status)))
 
-                (testing "bundle"
-                  (given body
-                    :fhir/type := :fhir/Bundle
-                    :id :? string?
-                    :type := (type/->Code (str type "-response"))))
+                  (testing "bundle"
+                    (given body
+                      :fhir/type := :fhir/Bundle
+                      :id := "AAAAAAAAAAAAAAAA"
+                      :type := (type/->Code (str type "-response"))))
 
-                (testing "entry resource"
-                  (given resource
-                    :fhir/type := :fhir/Patient
-                    :id := "0"
-                    [:meta :versionId] := #fhir/id"1"
-                    [:meta :lastUpdated] := Instant/EPOCH))
+                  (testing "entry resource"
+                    (given resource
+                      :fhir/type := :fhir/Patient
+                      :id := "0"
+                      [:meta :versionId] := #fhir/id"1"
+                      [:meta :lastUpdated] := Instant/EPOCH))
 
-                (testing "entry response"
-                  (given response
-                    :status := "201"
-                    :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
-                    :etag := "W/\"1\""
-                    :lastModified := Instant/EPOCH))))))
+                  (testing "entry response"
+                    (given response
+                      :status := "201"
+                      :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
+                      :etag := "W/\"1\""
+                      :lastModified := Instant/EPOCH)))))))
 
         (testing "and updated resource"
           (let [entries
@@ -245,66 +337,72 @@
                    :url #fhir/uri"Patient/0"}}]]
 
             (testing "without return preference"
-              (let [{:keys [status body]
-                     {[{:keys [resource response]}] :entry} :body}
-                    ((handler-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"
-                                :gender #fhir/code"female"}]]])
-                     {:body
-                      {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
-                       :entry entries}})]
+              (with-handler [handler]
+                [[[:put {:fhir/type :fhir/Patient :id "0"
+                         :gender #fhir/code"female"}]]]
 
-                (is (= 200 status))
+                (let [{:keys [status body]
+                       {[{:keys [resource response]}] :entry} :body}
+                      @(handler
+                         {:body
+                          {:fhir/type :fhir/Bundle
+                           :type (type/->Code type)
+                           :entry entries}})]
 
-                (testing "bundle"
-                  (given body
-                    :fhir/type := :fhir/Bundle
-                    :id :? string?
-                    :type := (type/->Code (str type "-response"))))
+                  (testing "response status"
+                    (is (= 200 status)))
 
-                (testing "entry resource"
-                  (is (nil? resource)))
+                  (testing "bundle"
+                    (given body
+                      :fhir/type := :fhir/Bundle
+                      :id := "AAAAAAAAAAAAAAAA"
+                      :type := (type/->Code (str type "-response"))))
 
-                (testing "entry response"
-                  (given response
-                    :status := "200"
-                    :etag := "W/\"2\""
-                    :lastModified := Instant/EPOCH))))
+                  (testing "entry resource"
+                    (is (nil? resource)))
+
+                  (testing "entry response"
+                    (given response
+                      :status := "200"
+                      :etag := "W/\"2\""
+                      :lastModified := Instant/EPOCH)))))
 
             (testing "with representation return preference"
-              (let [{:keys [status body]
-                     {[{:keys [resource response]}] :entry} :body}
-                    ((handler-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"
-                                :gender #fhir/code"female"}]]])
-                     {:headers {"prefer" "return=representation"}
-                      :body
-                      {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
-                       :entry entries}})]
+              (with-handler [handler]
+                [[[:put {:fhir/type :fhir/Patient :id "0"
+                         :gender #fhir/code"female"}]]]
 
-                (is (= 200 status))
+                (let [{:keys [status body]
+                       {[{:keys [resource response]}] :entry} :body}
+                      @(handler
+                         {:headers {"prefer" "return=representation"}
+                          :body
+                          {:fhir/type :fhir/Bundle
+                           :type (type/->Code type)
+                           :entry entries}})]
 
-                (testing "bundle"
-                  (given body
-                    :fhir/type := :fhir/Bundle
-                    :id :? string?
-                    :type := (type/->Code (str type "-response"))))
+                  (testing "response status"
+                    (is (= 200 status)))
 
-                (testing "entry resource"
-                  (given resource
-                    :fhir/type := :fhir/Patient
-                    :id := "0"
-                    :gender := #fhir/code"male"
-                    [:meta :versionId] := #fhir/id"2"
-                    [:meta :lastUpdated] := Instant/EPOCH))
+                  (testing "bundle"
+                    (given body
+                      :fhir/type := :fhir/Bundle
+                      :id := "AAAAAAAAAAAAAAAA"
+                      :type := (type/->Code (str type "-response"))))
 
-                (testing "entry response"
-                  (given response
-                    :status := "200"
-                    :etag := "W/\"2\""
-                    :lastModified := Instant/EPOCH)))))))
+                  (testing "entry resource"
+                    (given resource
+                      :fhir/type := :fhir/Patient
+                      :id := "0"
+                      :gender := #fhir/code"male"
+                      [:meta :versionId] := #fhir/id"2"
+                      [:meta :lastUpdated] := Instant/EPOCH))
+
+                  (testing "entry response"
+                    (given response
+                      :status := "200"
+                      :etag := "W/\"2\""
+                      :lastModified := Instant/EPOCH))))))))
 
       (testing "and create interaction"
         (let [entries
@@ -315,25 +413,25 @@
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code"POST"
                  :url #fhir/uri"Patient"}}]]
-          (with-redefs
-            [luid/init (constantly [100606 100608])
-             luid/luid (constantly "AAAAAGEP4AAADCIB")]
 
-            (testing "without return preference"
+          (testing "without return preference"
+            (with-handler [handler]
+              []
               (let [{:keys [status body]
                      {[{:keys [resource response]}] :entry} :body}
-                    ((handler-with [])
-                     {:body
-                      {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
-                       :entry entries}})]
+                    @(handler
+                       {:body
+                        {:fhir/type :fhir/Bundle
+                         :type (type/->Code type)
+                         :entry entries}})]
 
-                (is (= 200 status))
+                (testing "response status"
+                  (is (= 200 status)))
 
                 (testing "bundle"
                   (given body
                     :fhir/type := :fhir/Bundle
-                    :id :? string?
+                    :id := "AAAAAAAAAAAAAAAA"
                     :type := (type/->Code (str type "-response"))))
 
                 (testing "entry resource"
@@ -342,74 +440,77 @@
                 (testing "entry response"
                   (given response
                     :status := "201"
-                    :location := #fhir/uri"base-url-115515/Patient/AAAAAGEP4AAADCIB/_history/1"
+                    :location := #fhir/uri"base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/1"
                     :etag := "W/\"1\""
-                    :lastModified := Instant/EPOCH))))
+                    :lastModified := Instant/EPOCH)))))
 
-            (testing "with representation return preference"
+          (testing "with representation return preference"
+            (with-handler [handler]
+              []
               (let [{:keys [status body]
                      {[{:keys [resource response]}] :entry} :body}
-                    ((handler-with [])
-                     {:headers {"prefer" "return=representation"}
-                      :body
-                      {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
-                       :entry entries}})]
+                    @(handler
+                       {:headers {"prefer" "return=representation"}
+                        :body
+                        {:fhir/type :fhir/Bundle
+                         :type (type/->Code type)
+                         :entry entries}})]
 
-                (is (= 200 status))
+                (testing "response status"
+                  (is (= 200 status)))
 
                 (testing "bundle"
                   (given body
                     :fhir/type := :fhir/Bundle
-                    :id :? string?
+                    :id := "AAAAAAAAAAAAAAAA"
                     :type := (type/->Code (str type "-response"))))
 
                 (testing "entry resource"
                   (given resource
                     :fhir/type := :fhir/Patient
-                    :id := "AAAAAGEP4AAADCIB"
+                    :id := "AAAAAAAAAAAAAAAA"
                     [:meta :versionId] := #fhir/id"1"
                     [:meta :lastUpdated] := Instant/EPOCH))
 
                 (testing "entry response"
                   (given response
                     :status := "201"
-                    :location := #fhir/uri"base-url-115515/Patient/AAAAAGEP4AAADCIB/_history/1"
+                    :location := #fhir/uri"base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/1"
                     :etag := "W/\"1\""
                     :lastModified := Instant/EPOCH)))))))
 
       (testing "and conditional create interaction"
         (testing "with non-matching patient"
-          (with-redefs
-            [luid/init (constantly [100606 100608])
-             luid/luid (constantly "AAAAAGEP4AAADCIB")]
-            (testing "without return preference"
+          (testing "without return preference"
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"
+                       :identifier
+                       [#fhir/Identifier{:value "095156"}]}]]]
+
               (let [{:keys [status body]
                      {[{:keys [resource response]}] :entry} :body}
-                    ((handler-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"
-                                :identifier
-                                [#fhir/Identifier{:value "095156"}]}]]])
-                     {:body
-                      {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
-                       :entry
-                       [{:fhir/type :fhir.Bundle/entry
-                         :resource
-                         {:fhir/type :fhir/Patient}
-                         :request
-                         {:fhir/type :fhir.Bundle.entry/request
-                          :method #fhir/code"POST"
-                          :url #fhir/uri"Patient"
-                          :ifNoneExist "identifier=150015"}}]}})]
+                    @(handler
+                       {:body
+                        {:fhir/type :fhir/Bundle
+                         :type (type/->Code type)
+                         :entry
+                         [{:fhir/type :fhir.Bundle/entry
+                           :resource
+                           {:fhir/type :fhir/Patient}
+                           :request
+                           {:fhir/type :fhir.Bundle.entry/request
+                            :method #fhir/code"POST"
+                            :url #fhir/uri"Patient"
+                            :ifNoneExist "identifier=150015"}}]}})]
 
                 (testing "the new patient is returned"
-                  (is (= 200 status))
+                  (testing "response status"
+                    (is (= 200 status)))
 
                   (testing "bundle"
                     (given body
                       :fhir/type := :fhir/Bundle
-                      :id :? string?
+                      :id := "AAAAAAAAAAAAAAAA"
                       :type := (type/->Code (str type "-response"))))
 
                   (testing "entry resource"
@@ -418,133 +519,145 @@
                   (testing "entry response"
                     (given response
                       :status := "201"
+                      :location := #fhir/uri"base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/2"
                       :etag := "W/\"2\""
-                      :lastModified := Instant/EPOCH)))))
+                      :lastModified := Instant/EPOCH))))))
 
-            (testing "with representation return preference"
+          (testing "with representation return preference"
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"
+                       :identifier
+                       [#fhir/Identifier{:value "095156"}]}]]]
+
               (let [{:keys [status body]
                      {[{:keys [resource response]}] :entry} :body}
-                    ((handler-with
-                       [[[:put {:fhir/type :fhir/Patient :id "0"
-                                :identifier
-                                [#fhir/Identifier{:value "095156"}]}]]])
-                     {:headers {"prefer" "return=representation"}
-                      :body
-                      {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
-                       :entry
-                       [{:fhir/type :fhir.Bundle/entry
-                         :resource
-                         {:fhir/type :fhir/Patient}
-                         :request
-                         {:fhir/type :fhir.Bundle.entry/request
-                          :method #fhir/code"POST"
-                          :url #fhir/uri"Patient"
-                          :ifNoneExist "identifier=150015"}}]}})]
+                    @(handler
+                       {:headers {"prefer" "return=representation"}
+                        :body
+                        {:fhir/type :fhir/Bundle
+                         :type (type/->Code type)
+                         :entry
+                         [{:fhir/type :fhir.Bundle/entry
+                           :resource
+                           {:fhir/type :fhir/Patient}
+                           :request
+                           {:fhir/type :fhir.Bundle.entry/request
+                            :method #fhir/code"POST"
+                            :url #fhir/uri"Patient"
+                            :ifNoneExist "identifier=150015"}}]}})]
 
                 (testing "the new patient is returned"
-                  (is (= 200 status))
+                  (testing "response status"
+                    (is (= 200 status)))
 
                   (testing "bundle"
                     (given body
                       :fhir/type := :fhir/Bundle
-                      :id :? string?
+                      :id := "AAAAAAAAAAAAAAAA"
                       :type := (type/->Code (str type "-response"))))
 
                   (testing "entry resource"
                     (given resource
                       :fhir/type := :fhir/Patient
-                      :id := "AAAAAGEP4AAADCIB"
+                      :id := "AAAAAAAAAAAAAAAA"
                       [:meta :versionId] := #fhir/id"2"
                       [:meta :lastUpdated] := Instant/EPOCH))
 
                   (testing "entry response"
                     (given response
                       :status := "201"
+                      :location := #fhir/uri"base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/2"
                       :etag := "W/\"2\""
                       :lastModified := Instant/EPOCH)))))))
 
         (testing "with matching patient"
           (testing "without return preference"
-            (let [{:keys [status body]
-                   {[{:keys [resource response]}] :entry} :body}
-                  ((handler-with
-                     [[[:put {:fhir/type :fhir/Patient :id "0"
-                              :identifier
-                              [#fhir/Identifier{:value "095156"}]}]]])
-                   {:body
-                    {:fhir/type :fhir/Bundle
-                     :type (type/->Code type)
-                     :entry
-                     [{:fhir/type :fhir.Bundle/entry
-                       :resource
-                       {:fhir/type :fhir/Patient}
-                       :request
-                       {:fhir/type :fhir.Bundle.entry/request
-                        :method #fhir/code"POST"
-                        :url #fhir/uri"Patient"
-                        :ifNoneExist "identifier=095156"}}]}})]
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"
+                       :identifier
+                       [#fhir/Identifier{:value "095156"}]}]]]
 
-              (testing "the existing patient is returned"
-                (is (= 200 status))
+              (let [{:keys [status body]
+                     {[{:keys [resource response]}] :entry} :body}
+                    @(handler
+                       {:body
+                        {:fhir/type :fhir/Bundle
+                         :type (type/->Code type)
+                         :entry
+                         [{:fhir/type :fhir.Bundle/entry
+                           :resource
+                           {:fhir/type :fhir/Patient}
+                           :request
+                           {:fhir/type :fhir.Bundle.entry/request
+                            :method #fhir/code"POST"
+                            :url #fhir/uri"Patient"
+                            :ifNoneExist "identifier=095156"}}]}})]
 
-                (testing "bundle"
-                  (given body
-                    :fhir/type := :fhir/Bundle
-                    :id :? string?
-                    :type := (type/->Code (str type "-response"))))
+                (testing "the existing patient is returned"
+                  (testing "response status"
+                    (is (= 200 status)))
 
-                (testing "entry resource"
-                  (is (nil? resource)))
+                  (testing "bundle"
+                    (given body
+                      :fhir/type := :fhir/Bundle
+                      :id := "AAAAAAAAAAAAAAAA"
+                      :type := (type/->Code (str type "-response"))))
 
-                (testing "entry response"
-                  (given response
-                    :status := "200"
-                    :etag := "W/\"1\""
-                    :lastModified := Instant/EPOCH)))))
+                  (testing "entry resource"
+                    (is (nil? resource)))
+
+                  (testing "entry response"
+                    (given response
+                      :status := "200"
+                      :location := nil
+                      :etag := "W/\"1\""
+                      :lastModified := Instant/EPOCH))))))
 
           (testing "with representation return preference"
-            (let [{:keys [status body]
-                   {[{:keys [resource response]}] :entry} :body}
-                  ((handler-with
-                     [[[:put {:fhir/type :fhir/Patient :id "0"
-                              :identifier
-                              [#fhir/Identifier{:value "095156"}]}]]])
-                   {:headers {"prefer" "return=representation"}
-                    :body
-                    {:fhir/type :fhir/Bundle
-                     :type (type/->Code type)
-                     :entry
-                     [{:fhir/type :fhir.Bundle/entry
-                       :resource
-                       {:fhir/type :fhir/Patient}
-                       :request
-                       {:fhir/type :fhir.Bundle.entry/request
-                        :method #fhir/code"POST"
-                        :url #fhir/uri"Patient"
-                        :ifNoneExist "identifier=095156"}}]}})]
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"
+                       :identifier
+                       [#fhir/Identifier{:value "095156"}]}]]]
 
-              (testing "the existing patient is returned"
-                (is (= 200 status))
+              (let [{:keys [status body]
+                     {[{:keys [resource response]}] :entry} :body}
+                    @(handler
+                       {:headers {"prefer" "return=representation"}
+                        :body
+                        {:fhir/type :fhir/Bundle
+                         :type (type/->Code type)
+                         :entry
+                         [{:fhir/type :fhir.Bundle/entry
+                           :resource
+                           {:fhir/type :fhir/Patient}
+                           :request
+                           {:fhir/type :fhir.Bundle.entry/request
+                            :method #fhir/code"POST"
+                            :url #fhir/uri"Patient"
+                            :ifNoneExist "identifier=095156"}}]}})]
 
-                (testing "bundle"
-                  (given body
-                    :fhir/type := :fhir/Bundle
-                    :id :? string?
-                    :type := (type/->Code (str type "-response"))))
+                (testing "the existing patient is returned"
+                  (testing "response status"
+                    (is (= 200 status)))
 
-                (testing "entry resource"
-                  (given resource
-                    :fhir/type := :fhir/Patient
-                    :id := "0"
-                    [:meta :versionId] := #fhir/id"1"
-                    [:meta :lastUpdated] := Instant/EPOCH))
+                  (testing "bundle"
+                    (given body
+                      :fhir/type := :fhir/Bundle
+                      :id := "AAAAAAAAAAAAAAAA"
+                      :type := (type/->Code (str type "-response"))))
 
-                (testing "entry response"
-                  (given response
-                    :status := "200"
-                    :etag := "W/\"1\""
-                    :lastModified := Instant/EPOCH)))))))
+                  (testing "entry resource"
+                    (given resource
+                      :fhir/type := :fhir/Patient
+                      :id := "0"
+                      [:meta :versionId] := #fhir/id"1"
+                      [:meta :lastUpdated] := Instant/EPOCH))
+
+                  (testing "entry response"
+                    (given response
+                      :status := "200"
+                      :etag := "W/\"1\""
+                      :lastModified := Instant/EPOCH))))))))
 
       (testing "and delete interaction"
         (let [entries
@@ -555,610 +668,620 @@
                  :url #fhir/uri"Patient/0"}}]]
 
           (testing "without return preference"
-            (let [{:keys [status body]
-                   {[{:keys [resource response]}] :entry} :body}
-                  ((handler-with
-                     [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-                   {:body
-                    {:fhir/type :fhir/Bundle
-                     :type (type/->Code type)
-                     :entry entries}})]
+            (with-handler [handler]
+              [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-              (is (= 200 status))
+              (let [{:keys [status body]
+                     {[{:keys [resource response]}] :entry} :body}
+                    @(handler
+                       {:body
+                        {:fhir/type :fhir/Bundle
+                         :type (type/->Code type)
+                         :entry entries}})]
+
+                (testing "response status"
+                  (is (= 200 status)))
+
+                (testing "bundle"
+                  (given body
+                    :fhir/type := :fhir/Bundle
+                    :id := "AAAAAAAAAAAAAAAA"
+                    :type := (type/->Code (str type "-response"))))
+
+                (testing "entry resource"
+                  (is (nil? resource)))
+
+                (testing "entry response"
+                  (given response
+                    :status := "204"
+                    :etag := "W/\"2\""
+                    :lastModified := Instant/EPOCH)))))))
+
+      (testing "and read interaction"
+        (testing "returns Not-Found on non-existing resource"
+          (with-handler [handler]
+            []
+            (let [{:keys [status]
+                   {[{:keys [response]}] :entry :as body} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type (type/->Code type)
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"GET"
+                          :url #fhir/uri"Patient/0"}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
 
               (testing "bundle"
                 (given body
                   :fhir/type := :fhir/Bundle
-                  :id :? string?
+                  :id := "AAAAAAAAAAAAAAAA"
+                  :type := (type/->Code (str type "-response"))))
+
+              (testing "returns error"
+                (testing "with status"
+                  (is (= "404" (:status response))))
+
+                (testing "with outcome"
+                  (given (:outcome response)
+                    :fhir/type := :fhir/OperationOutcome
+                    [:issue 0 :severity] := #fhir/code"error"
+                    [:issue 0 :code] := #fhir/code"not-found"
+                    [:issue 0 :diagnostics] := "Resource `Patient/0` was not found."
+                    [:issue 0 :expression 0] := "Bundle.entry[0]"))))))
+
+        (testing "returns existing resource"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status]
+                   {[{:keys [resource response]}] :entry :as body} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type (type/->Code type)
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"GET"
+                          :url #fhir/uri"Patient/0"}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "bundle"
+                (given body
+                  :fhir/type := :fhir/Bundle
+                  :id := "AAAAAAAAAAAAAAAA"
                   :type := (type/->Code (str type "-response"))))
 
               (testing "entry resource"
-                (is (nil? resource)))
+                (given resource
+                  :fhir/type := :fhir/Patient
+                  :id := "0"
+                  [:meta :versionId] := #fhir/id"1"
+                  [:meta :lastUpdated] := Instant/EPOCH))
 
               (testing "entry response"
                 (given response
-                  :status := "204"
-                  :etag := "W/\"2\""
+                  :status := "200"
+                  :etag := "W/\"1\""
                   :lastModified := Instant/EPOCH))))))))
 
   (testing "On transaction bundle"
     (testing "on missing request"
-      (let [{:keys [status body]}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"transaction"
-               :entry
-               [{}]}})]
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"transaction"
+                   :entry
+                   [{}]}})]
 
-        (testing "returns error"
-          (is (= 400 status))
+          (testing "returns error"
+            (is (= 400 status))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :expression 0] := "Bundle.entry[0]"
-            [:issue 0 :diagnostics] := "Missing request."))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"value"
+              [:issue 0 :diagnostics] := "Missing request."
+              [:issue 0 :expression 0] := "Bundle.entry[0]")))))
 
     (testing "on missing request url"
-      (let [{:keys [status body]}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"transaction"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request {}}]}})]
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"transaction"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request {}}]}})]
 
-        (testing "returns error"
-          (is (= 400 status))
+          (testing "returns error"
+            (is (= 400 status))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :expression 0] := "Bundle.entry[0].request"
-            [:issue 0 :diagnostics] := "Missing url."))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"value"
+              [:issue 0 :diagnostics] := "Missing url."
+              [:issue 0 :expression 0] := "Bundle.entry[0].request")))))
 
     (testing "on missing request method"
-      (let [{:keys [status body]}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"transaction"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request
-                 {:fhir/type :fhir.Bundle.entry/request
-                  :url #fhir/uri"Patient/0"}}]}})]
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"transaction"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :url #fhir/uri"Patient/0"}}]}})]
 
-        (testing "returns error"
-          (is (= 400 status))
+          (testing "returns error"
+            (is (= 400 status))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :expression 0] := "Bundle.entry[0].request"
-            [:issue 0 :diagnostics] := "Missing method."))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"value"
+              [:issue 0 :diagnostics] := "Missing method."
+              [:issue 0 :expression 0] := "Bundle.entry[0].request")))))
 
     (testing "on unknown method"
-      (let [{:keys [status body]}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"transaction"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request
-                 {:fhir/type :fhir.Bundle.entry/request
-                  :method #fhir/code"FOO"
-                  :url #fhir/uri"Patient/0"}}]}})]
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"transaction"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :method #fhir/code"FOO"
+                      :url #fhir/uri"Patient/0"}}]}})]
 
-        (testing "returns error"
-          (is (= 400 status))
+          (testing "returns error"
+            (is (= 400 status))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"value"
-            [:issue 0 :expression 0] := "Bundle.entry[0].request.method"
-            [:issue 0 :diagnostics] := "Unknown method `FOO`."))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"value"
+              [:issue 0 :diagnostics] := "Unknown method `FOO`."
+              [:issue 0 :expression 0] := "Bundle.entry[0].request.method")))))
 
     (testing "on unsupported method"
-      (let [{:keys [status body]}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"transaction"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request
-                 {:fhir/type :fhir.Bundle.entry/request
-                  :method #fhir/code"PATCH"
-                  :url #fhir/uri"Patient/0"}}]}})]
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"transaction"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :method #fhir/code"PATCH"
+                      :url #fhir/uri"Patient/0"}}]}})]
 
-        (testing "returns error"
-          (is (= 422 status))
+          (testing "returns error"
+            (is (= 422 status))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"not-supported"
-            [:issue 0 :expression 0] := "Bundle.entry[0].request.method"
-            [:issue 0 :diagnostics] := "Unsupported method `PATCH`."))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"not-supported"
+              [:issue 0 :diagnostics] := "Unsupported method `PATCH`."
+              [:issue 0 :expression 0] := "Bundle.entry[0].request.method")))))
 
     (testing "and update interaction"
       (testing "on missing type in URL"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri""}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri""}}]}})]
 
-          (testing "returns error"
-            (is (= 400 status))
+            (testing "returns error"
+              (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
-              [:issue 0 :diagnostics] := "Can't parse type from `entry.request.url` ``."))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"value"
+                [:issue 0 :diagnostics] := "Can't parse type from `entry.request.url` ``."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request.url")))))
 
       (testing "on unknown type"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Foo/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Foo/0"}}]}})]
 
-          (testing "returns error"
-            (is (= 400 status))
+            (testing "returns error"
+              (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
-              [:issue 0 :diagnostics] := "Unknown type `Foo` in bundle entry URL `Foo/0`."))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"value"
+                [:issue 0 :diagnostics] := "Unknown type `Foo` in bundle entry URL `Foo/0`."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request.url")))))
+
+      (testing "on missing resource type"
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
+
+            (testing "returns error "
+              (is (= 400 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"required"
+                [:issue 0 :diagnostics] := "Resource type is missing."
+                [:issue 0 :expression 0] := "Bundle.entry[0].resource.resourceType")))))
 
       (testing "on type mismatch"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Observation}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Observation}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
 
-          (testing "returns error "
-            (is (= 400 status))
+            (testing "returns error "
+              (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invariant"
-              [:issue 0 :details :coding 0 :system] := operation-outcome
-              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
-              [:issue 0 :expression 1] := "Bundle.entry[0].resource.resourceType"))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"invariant"
+                [:issue 0 :details :coding 0 :system] := operation-outcome
+                [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
+                [:issue 0 :diagnostics] := "Type mismatch between resource type `Observation` and URL `Patient/0`."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
+                [:issue 0 :expression 1] := "Bundle.entry[0].resource.resourceType")))))
 
       (testing "on missing ID"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
 
-          (testing "returns error "
-            (is (= 400 status))
+            (testing "returns error "
+              (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"required"
-              [:issue 0 :details :coding 0 :system] := operation-outcome
-              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISSING"
-              [:issue 0 :expression 0] := "Bundle.entry[0].resource.id"))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"required"
+                [:issue 0 :details :coding 0 :system] := operation-outcome
+                [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISSING"
+                [:issue 0 :diagnostics] := "Resource id is missing."
+                [:issue 0 :expression 0] := "Bundle.entry[0].resource.id")))))
 
       (testing "on missing ID in URL"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient :id "0"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient :id "0"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient"}}]}})]
 
-          (testing "returns error"
-            (is (= 400 status))
+            (testing "returns error"
+              (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
-              [:issue 0 :diagnostics] := "Can't parse id from URL `Patient`."))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"value"
+                [:issue 0 :diagnostics] := "Can't parse id from URL `Patient`."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request.url")))))
 
       (testing "on invalid ID"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient
-                    :id "A_B"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient
+                        :id "A_B"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
 
-          (testing "returns error"
-            (is (= 400 status))
+            (testing "returns error"
+              (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :details :coding 0 :system] := operation-outcome
-              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_ID_INVALID"
-              [:issue 0 :expression 0] := "Bundle.entry[0].resource.id"))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"value"
+                [:issue 0 :details :coding 0 :system] := operation-outcome
+                [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_ID_INVALID"
+                [:issue 0 :diagnostics] := "Resource id `A_B` is invalid."
+                [:issue 0 :expression 0] := "Bundle.entry[0].resource.id")))))
 
       (testing "on ID mismatch"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient
-                    :id "1"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient
+                        :id "1"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
 
-          (testing "returns error"
-            (is (= 400 status))
+            (testing "returns error"
+              (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invariant"
-              [:issue 0 :details :coding 0 :system] := operation-outcome
-              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISMATCH"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
-              [:issue 0 :expression 1] := "Bundle.entry[0].resource.id"))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"invariant"
+                [:issue 0 :details :coding 0 :system] := operation-outcome
+                [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISMATCH"
+                [:issue 0 :diagnostics] := "Id mismatch between resource id `1` and URL `Patient/0`."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
+                [:issue 0 :expression 1] := "Bundle.entry[0].resource.id")))))
 
       (testing "on optimistic locking failure"
-        (let [{:keys [status body]}
-              ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]]
-                              [[:put {:fhir/type :fhir/Patient :id "0"}]]])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient
-                    :id "0"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"
-                    :ifMatch "W/\"1\""}}]}})]
+        (with-handler [handler]
+          [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+           [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-          (testing "returns error"
-            (is (= 412 status))
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient
+                        :id "0"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"
+                        :ifMatch "W/\"1\""}}]}})]
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"conflict"
-              [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`."))))
+            (testing "returns error"
+              (is (= 412 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"conflict"
+                [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))))
 
       (testing "on duplicate resources"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient
-                    :id "0"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"}}
-                  {:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient
-                    :id "0"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient
+                        :id "0"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}
+                      {:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient
+                        :id "0"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
 
-          (testing "returns error"
-            (is (= 400 status))
+            (testing "returns error"
+              (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invariant"
-              [:issue 0 :diagnostics] := "Duplicate resource `Patient/0`."))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"invariant"
+                [:issue 0 :diagnostics] := "Duplicate resource `Patient/0`.")))))
 
       (testing "on violated referential integrity"
-        (let [{:keys [status body]}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Observation :id "0"
-                    :subject
-                    #fhir/Reference
-                        {:reference "Patient/0"}}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"POST"
-                    :url #fhir/uri"Observation"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Observation :id "0"
+                        :subject
+                        #fhir/Reference
+                            {:reference "Patient/0"}}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"POST"
+                        :url #fhir/uri"Observation"}}]}})]
 
-          (testing "returns error"
-            (is (= 409 status))
+            (testing "returns error"
+              (is (= 409 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"conflict"
-              [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))))
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"conflict"
+                [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
 
     (testing "and create interaction"
       (testing "creates sequential identifiers"
-        (let [entries
-              [{:resource
-                {:fhir/type :fhir/Patient}
-                :request
-                {:method #fhir/code"POST"
-                 :url #fhir/uri"Patient"}}
-               {:resource
-                {:fhir/type :fhir/Patient}
-                :request
-                {:method #fhir/code"POST"
-                 :url #fhir/uri"Patient"}}]]
-
-          (with-redefs
-            [luid/init (constantly [0 0])]
-            (let [{:keys [body]}
-                  ((handler-with [])
+        (with-handler [handler]
+          []
+          (let [{:keys [body]}
+                @(handler
                    {:headers {"prefer" "return=representation"}
                     :body
                     {:fhir/type :fhir/Bundle
                      :type #fhir/code"transaction"
-                     :entry entries}})]
-
-              (given body
-                [:entry 0 :resource :id] := "AAAAAAAAAAAAAAAB"
-                [:entry 1 :resource :id] := "AAAAAAAAAAAAAAAC"))))))
+                     :entry
+                     [{:resource
+                       {:fhir/type :fhir/Patient}
+                       :request
+                       {:method #fhir/code"POST"
+                        :url #fhir/uri"Patient"}}
+                      {:resource
+                       {:fhir/type :fhir/Patient}
+                       :request
+                       {:method #fhir/code"POST"
+                        :url #fhir/uri"Patient"}}]}})]
+            (given body
+              [:entry 0 :resource :id] := "AAAAAAAAAAAAAAAA"
+              [:entry 1 :resource :id] := "AAAAAAAAAAAAAAAB")))))
 
     (testing "and conditional create interaction"
       (testing "on multiple matching patients"
-        (let [{:keys [status body]}
-              ((handler-with
-                 [[[:put {:fhir/type :fhir/Patient :id "0"
-                          :birthDate #fhir/date"2020"}]
-                   [:put {:fhir/type :fhir/Patient :id "1"
-                          :birthDate #fhir/date"2020"}]]])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"transaction"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"POST"
-                    :url #fhir/uri"Patient"
-                    :ifNoneExist "birthdate=2020"}}]}})]
+        (with-handler [handler]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :birthDate #fhir/date"2020"}]
+            [:put {:fhir/type :fhir/Patient :id "1"
+                   :birthDate #fhir/date"2020"}]]]
 
-          (testing "returns error"
-            (is (= 412 status))
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"POST"
+                        :url #fhir/uri"Patient"
+                        :ifNoneExist "birthdate=2020"}}]}})]
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"conflict"
-              [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
+            (testing "returns error"
+              (is (= 412 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"conflict"
+                [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found.")))))))
 
   (testing "On batch bundle"
     (testing "on missing request"
-      (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"batch"
-               :entry
-               [{}]}})]
-
-        (is (= 200 status))
-
-        (testing "returns error"
-          (testing "with status"
-            (is (= "400" (:status response))))
-
-          (testing "with outcome"
-            (given (:outcome response)
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :expression 0] := "Bundle.entry[0]"
-              [:issue 0 :diagnostics] := "Missing request.")))))
-
-    (testing "on missing request url"
-      (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"batch"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request {}}]}})]
-
-        (is (= 200 status))
-
-        (testing "returns error"
-          (testing "with status"
-            (is (= "400" (:status response))))
-
-          (testing "with outcome"
-            (given (:outcome response)
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request"
-              [:issue 0 :diagnostics] := "Missing url.")))))
-
-    (testing "on missing request method"
-      (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"batch"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request
-                 {:fhir/type :fhir.Bundle.entry/request
-                  :url #fhir/uri"Patient/0"}}]}})]
-
-        (is (= 200 status))
-
-        (testing "returns error"
-          (testing "with status"
-            (is (= "400" (:status response))))
-
-          (testing "with outcome"
-            (given (:outcome response)
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request"
-              [:issue 0 :diagnostics] := "Missing method.")))))
-
-    (testing "on unknown method"
-      (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"batch"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request
-                 {:fhir/type :fhir.Bundle.entry/request
-                  :method #fhir/code"FOO"
-                  :url #fhir/uri"Patient/0"}}]}})]
-
-        (is (= 200 status))
-
-        (testing "returns error"
-          (testing "with status"
-            (is (= "400" (:status response))))
-
-          (testing "with outcome"
-            (given (:outcome response)
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request.method"
-              [:issue 0 :diagnostics] := "Unknown method `FOO`.")))))
-
-    (testing "on unsupported method"
-      (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-            ((handler-with [])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"batch"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request
-                 {:fhir/type :fhir.Bundle.entry/request
-                  :method #fhir/code"PATCH"
-                  :url #fhir/uri"Patient/0"}}]}})]
-
-        (is (= 200 status))
-
-        (testing "returns error"
-          (testing "with status"
-            (is (= "422" (:status response))))
-
-          (testing "with outcome"
-            (given (:outcome response)
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :expression 0] := "Bundle.entry[0].request.method"
-              [:issue 0 :diagnostics] := "Unsupported method `PATCH`.")))))
-
-    (testing "and update interaction"
-      (testing "on invalid type-level URL"
+      (with-handler [handler]
+        []
         (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"batch"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient"}}]}})]
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{}]}})]
 
-          (is (= 200 status))
+          (testing "response status"
+            (is (= 200 status)))
 
           (testing "returns error"
             (testing "with status"
@@ -1169,281 +1292,486 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :expression 0] := "Bundle.entry[0].request.url"
-                [:issue 0 :diagnostics] :=
-                "Can't parse id from URL `Patient`.")))))
+                [:issue 0 :diagnostics] := "Missing request."
+                [:issue 0 :expression 0] := "Bundle.entry[0]"))))))
+
+    (testing "on missing request url"
+      (with-handler [handler]
+        []
+        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request {}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "returns error"
+            (testing "with status"
+              (is (= "400" (:status response))))
+
+            (testing "with outcome"
+              (given (:outcome response)
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"value"
+                [:issue 0 :diagnostics] := "Missing url."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request"))))))
+
+    (testing "on missing request method"
+      (with-handler [handler]
+        []
+        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :url #fhir/uri"Patient/0"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "returns error"
+            (testing "with status"
+              (is (= "400" (:status response))))
+
+            (testing "with outcome"
+              (given (:outcome response)
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"value"
+                [:issue 0 :diagnostics] := "Missing method."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request"))))))
+
+    (testing "on unknown method"
+      (with-handler [handler]
+        []
+        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :method #fhir/code"FOO"
+                      :url #fhir/uri"Patient/0"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "returns error"
+            (testing "with status"
+              (is (= "400" (:status response))))
+
+            (testing "with outcome"
+              (given (:outcome response)
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"value"
+                [:issue 0 :diagnostics] := "Unknown method `FOO`."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request.method"))))))
+
+    (testing "on unsupported method"
+      (with-handler [handler]
+        []
+        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :method #fhir/code"PATCH"
+                      :url #fhir/uri"Patient/0"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "returns error"
+            (testing "with status"
+              (is (= "422" (:status response))))
+
+            (testing "with outcome"
+              (given (:outcome response)
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"not-supported"
+                [:issue 0 :diagnostics] := "Unsupported method `PATCH`."
+                [:issue 0 :expression 0] := "Bundle.entry[0].request.method"))))))
+
+    (testing "and update interaction"
+      (testing "on invalid type-level URL"
+        (with-handler [handler]
+          []
+          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient"}}]}})]
+
+            (testing "response status"
+              (is (= 200 status)))
+
+            (testing "returns error"
+              (testing "with status"
+                (is (= "400" (:status response))))
+
+              (testing "with outcome"
+                (given (:outcome response)
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"value"
+                  [:issue 0 :diagnostics] := "Can't parse id from URL `Patient`."
+                  [:issue 0 :expression 0] := "Bundle.entry[0].request.url"))))))
 
       (testing "on optimistic locking failure"
-        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-              ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]]
-                              [[:put {:fhir/type :fhir/Patient :id "0"}]]])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"batch"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient
-                    :id "0"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"
-                    :ifMatch "W/\"1\""}}]}})]
+        (with-handler [handler]
+          [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+           [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-          (is (= 200 status))
+          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient
+                        :id "0"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"
+                        :ifMatch "W/\"1\""}}]}})]
 
-          (testing "returns error"
-            (testing "with status"
-              (is (= "412" (:status response))))
+            (testing "response status"
+              (is (= 200 status)))
 
-            (testing "with outcome"
-              (given (:outcome response)
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"conflict"
-                [:issue 0 :expression 0] := "Bundle.entry[0]"
-                [:issue 0 :diagnostics] :=
-                "Precondition `W/\"1\"` failed on `Patient/0`.")))))
+            (testing "returns error"
+              (testing "with status"
+                (is (= "412" (:status response))))
+
+              (testing "with outcome"
+                (given (:outcome response)
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"conflict"
+                  [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`."
+                  [:issue 0 :expression 0] := "Bundle.entry[0]"))))))
 
       (testing "without return preference"
-        (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"batch"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient :id "0"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient :id "0"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
 
-          (is (= 200 status))
+            (testing "response status"
+              (is (= 200 status)))
 
-          (testing "entry resource"
-            (is (nil? resource)))
+            (testing "entry resource"
+              (is (nil? resource)))
 
-          (testing "entry response"
-            (given response
-              :status := "201"
-              :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
-              :etag := "W/\"1\""
-              :lastModified := Instant/EPOCH))))
+            (testing "entry response"
+              (given response
+                :status := "201"
+                :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
+                :etag := "W/\"1\""
+                :lastModified := Instant/EPOCH))))
+
+        (testing "leading slash in URL is removed"
+          (with-handler [handler]
+            []
+            (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"batch"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"/Patient/0"}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "entry resource"
+                (is (nil? resource)))
+
+              (testing "entry response"
+                (given response
+                  :status := "201"
+                  :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
+                  :etag := "W/\"1\""
+                  :lastModified := Instant/EPOCH))))))
 
       (testing "with representation return preference"
-        (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
-              ((handler-with [])
-               {:headers {"prefer" "return=representation"}
-                :body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"batch"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient :id "0"}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"PUT"
-                    :url #fhir/uri"Patient/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+                @(handler
+                   {:headers {"prefer" "return=representation"}
+                    :body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient :id "0"}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
 
-          (is (= 200 status))
+            (testing "response status"
+              (is (= 200 status)))
 
-          (testing "entry resource"
-            (given resource
-              :fhir/type := :fhir/Patient
-              :id := "0"
-              [:meta :versionId] := #fhir/id"1"
-              [:meta :lastUpdated] := Instant/EPOCH))
+            (testing "entry resource"
+              (given resource
+                :fhir/type := :fhir/Patient
+                :id := "0"
+                [:meta :versionId] := #fhir/id"1"
+                [:meta :lastUpdated] := Instant/EPOCH))
 
-          (testing "entry response"
-            (given response
-              :status := "201"
-              :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
-              :etag := "W/\"1\""
-              :lastModified := Instant/EPOCH)))))
+            (testing "entry response"
+              (given response
+                :status := "201"
+                :location := #fhir/uri"base-url-115515/Patient/0/_history/1"
+                :etag := "W/\"1\""
+                :lastModified := Instant/EPOCH))))))
 
     (testing "and create interaction"
+      (testing "on not-found type-level URL"
+        (with-handler [handler]
+          []
+          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"POST"
+                        :url #fhir/uri"Foo"}}]}})]
+
+            (testing "response status"
+              (is (= 200 status)))
+
+            (testing "returns error"
+              (testing "with status"
+                (is (= "400" (:status response))))
+
+              (testing "with outcome"
+                (given (:outcome response)
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"value"
+                  [:issue 0 :diagnostics] := "Unknown type `Foo` in bundle entry URL `Foo`."
+                  [:issue 0 :expression 0] := "Bundle.entry[0].request.url"))))))
+
       (testing "on invalid instance-level URL"
-        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"batch"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"POST"
-                    :url #fhir/uri"Patient/0"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"POST"
+                        :url #fhir/uri"Patient/0"}}]}})]
 
-          (is (= 200 status))
+            (testing "response status"
+              (is (= 200 status)))
 
-          (testing "returns error"
-            (testing "with status"
-              (is (= "405" (:status response))))
+            (testing "returns error"
+              (testing "with status"
+                (is (= "405" (:status response))))
 
-            (testing "with outcome"
-              (given (:outcome response)
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"processing"
-                [:issue 0 :expression 0] := "Bundle.entry[0]"
-                [:issue 0 :diagnostics] :=
-                "Method POST not allowed on `/Patient/0` endpoint.")))))
+              (testing "with outcome"
+                (given (:outcome response)
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"processing"
+                  [:issue 0 :diagnostics] := "Method POST not allowed on `/Patient/0` endpoint."
+                  [:issue 0 :expression 0] := "Bundle.entry[0]"))))))
 
       (testing "on violated referential integrity"
-        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-              ((handler-with [])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"batch"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Observation
-                    :subject #fhir/Reference{:reference "Patient/0"}}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"POST"
-                    :url #fhir/uri"Observation"}}]}})]
+        (with-handler [handler]
+          []
+          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Observation
+                        :subject #fhir/Reference{:reference "Patient/0"}}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"POST"
+                        :url #fhir/uri"Observation"}}]}})]
 
-          (is (= 200 status))
+            (testing "response status"
+              (is (= 200 status)))
 
-          (testing "returns error"
-            (testing "with status"
-              (is (= "409" (:status response))))
+            (testing "returns error"
+              (testing "with status"
+                (is (= "409" (:status response))))
 
-            (testing "with outcome"
-              (given (:outcome response)
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"conflict"
-                [:issue 0 :expression 0] := "Bundle.entry[0]"
-                [:issue 0 :diagnostics] :=
-                "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
+              (testing "with outcome"
+                (given (:outcome response)
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"conflict"
+                  [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."
+                  [:issue 0 :expression 0] := "Bundle.entry[0]")))))))
 
     (testing "and conditional create interaction"
       (testing "on multiple matching patients"
-        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-              ((handler-with
-                 [[[:put {:fhir/type :fhir/Patient :id "0"
-                          :birthDate #fhir/date"2020"}]
-                   [:put {:fhir/type :fhir/Patient :id "1"
-                          :birthDate #fhir/date"2020"}]]])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"batch"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :resource
-                   {:fhir/type :fhir/Patient}
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"POST"
-                    :url #fhir/uri"Patient"
-                    :ifNoneExist "birthdate=2020"}}]}})]
+        (with-handler [handler]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :birthDate #fhir/date"2020"}]
+            [:put {:fhir/type :fhir/Patient :id "1"
+                   :birthDate #fhir/date"2020"}]]]
 
-          (is (= 200 status))
+          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"POST"
+                        :url #fhir/uri"Patient"
+                        :ifNoneExist "birthdate=2020"}}]}})]
 
-          (testing "returns error"
-            (testing "with status"
-              (is (= "412" (:status response))))
+            (testing "response status"
+              (is (= 200 status)))
 
-            (testing "with outcome"
-              (given (:outcome response)
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"conflict"
-                [:issue 0 :expression 0] := "Bundle.entry[0]"
-                [:issue 0 :diagnostics] :=
-                "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
+            (testing "returns error"
+              (testing "with status"
+                (is (= "412" (:status response))))
 
-    (testing "and read interaction"
-      (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
-            ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]]])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"batch"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request
-                 {:fhir/type :fhir.Bundle.entry/request
-                  :method #fhir/code"GET"
-                  :url #fhir/uri"Patient/0"}}]}})]
-
-        (is (= 200 status))
-
-        (testing "entry resource"
-          (given resource
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH))
-
-        (testing "entry response"
-          (given response
-            :status := "200"
-            :etag := "W/\"1\""
-            :lastModified := Instant/EPOCH))))
+              (testing "with outcome"
+                (given (:outcome response)
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"conflict"
+                  [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
+                  [:issue 0 :expression 0] := "Bundle.entry[0]")))))))
 
     (testing "and search-type interaction"
-      (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
-            ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]
-                             [:create {:fhir/type :fhir/Patient :id "1"}]]])
-             {:body
-              {:fhir/type :fhir/Bundle
-               :type #fhir/code"batch"
-               :entry
-               [{:fhir/type :fhir.Bundle/entry
-                 :request
-                 {:fhir/type :fhir.Bundle.entry/request
-                  :method #fhir/code"GET"
-                  :url #fhir/uri"Patient?_id=0"}}]}})]
+      (with-handler [handler]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]
+          [:create {:fhir/type :fhir/Patient :id "1"}]]]
 
-        (is (= 200 status))
-
-        (testing "entry resource"
-          (given resource
-            :fhir/type := :fhir/Bundle
-            :type := #fhir/code"searchset"
-            [:entry count] := 1
-            [:entry 0 :resource :fhir/type] := :fhir/Patient
-            [:entry 0 :resource :id] := "0"
-            [:entry 0 :resource :meta :versionId] := #fhir/id"1"
-            [:entry 0 :resource :meta :lastUpdated] := Instant/EPOCH))
-
-        (testing "entry response"
-          (given response
-            :status := "200")))
-
-      (testing "with _summary=count"
         (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
-              ((handler-with [[[:create {:fhir/type :fhir/Patient :id "0"}]
-                               [:create {:fhir/type :fhir/Patient :id "1"}]]])
-               {:body
-                {:fhir/type :fhir/Bundle
-                 :type #fhir/code"batch"
-                 :entry
-                 [{:fhir/type :fhir.Bundle/entry
-                   :request
-                   {:fhir/type :fhir.Bundle.entry/request
-                    :method #fhir/code"GET"
-                    :url #fhir/uri"Patient?_summary=count"}}]}})]
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :method #fhir/code"GET"
+                      :url #fhir/uri"Patient?_id=0"}}]}})]
 
-          (is (= 200 status))
+          (testing "response status"
+            (is (= 200 status)))
 
           (testing "entry resource"
             (given resource
               :fhir/type := :fhir/Bundle
               :type := #fhir/code"searchset"
-              :total := #fhir/unsignedInt 2
-              :entry :? empty?))
+              [:entry count] := 1
+              [:entry 0 :resource :fhir/type] := :fhir/Patient
+              [:entry 0 :resource :id] := "0"
+              [:entry 0 :resource :meta :versionId] := #fhir/id"1"
+              [:entry 0 :resource :meta :lastUpdated] := Instant/EPOCH))
 
           (testing "entry response"
             (given response
-              :status := "200")))))))
+              :status := "200"))))
+
+      (testing "with _summary=count"
+        (with-handler [handler]
+          [[[:create {:fhir/type :fhir/Patient :id "0"}]
+            [:create {:fhir/type :fhir/Patient :id "1"}]]]
+
+          (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"GET"
+                        :url #fhir/uri"Patient?_summary=count"}}]}})]
+
+            (testing "response status"
+              (is (= 200 status)))
+
+            (testing "entry resource"
+              (given resource
+                :fhir/type := :fhir/Bundle
+                :type := #fhir/code"searchset"
+                :total := #fhir/unsignedInt 2
+                :entry :? empty?))
+
+            (testing "entry response"
+              (given response
+                :status := "200"))))))))

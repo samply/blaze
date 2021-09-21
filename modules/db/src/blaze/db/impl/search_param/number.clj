@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.number
   (:require
-    [blaze.anomaly :refer [if-ok when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.protocols :as p]
@@ -45,13 +46,13 @@
         (eq-value decimal-value)
         (:gt :lt :ge :le)
         {:op op :exact-value (codec/number decimal-value)}
-        {::anom/category ::anom/unsupported
-         ::category ::unsupported-prefix
-         ::unsupported-prefix op
-         ::anom/message (unsupported-prefix-msg code op)})
-      (assoc decimal-value
-        ::category ::invalid-decimal-value
-        ::anom/message (invalid-decimal-value-msg code value)))))
+        (ba/unsupported
+          (unsupported-prefix-msg code op)
+          ::category ::unsupported-prefix
+          ::unsupported-prefix op))
+      #(assoc %
+         ::category ::invalid-decimal-value
+         ::anom/message (invalid-decimal-value-msg code value)))))
 
 
 (defmulti index-entries
@@ -108,5 +109,4 @@
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParamQuantity name url type base code (codec/c-hash code)
                              expression))
-    {::anom/category ::anom/unsupported
-     ::anom/message (u/missing-expression-msg url)}))
+    (ba/unsupported (u/missing-expression-msg url))))

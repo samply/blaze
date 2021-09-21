@@ -1,6 +1,9 @@
 (ns blaze.db.node.transaction
   (:require
-    [blaze.db.impl.codec :as codec]
+    [blaze.anomaly :as ba]
+    [blaze.db.impl.db :as db]
+    [blaze.db.impl.index.tx-error :as tx-error]
+    [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
@@ -48,24 +51,30 @@
 
 (defmethod prepare-op :delete
   [[_ type id]]
-  (let [resource (codec/deleted-resource type id)
-        hash (hash/generate resource)]
-    {:hash-resource
-     [hash resource]
-     :blaze.db/tx-cmd
-     {:op "delete"
-      :type (name (fhir-spec/fhir-type resource))
-      :id (:id resource)
-      :hash hash}}))
+  {:blaze.db/tx-cmd
+   {:op "delete"
+    :type type
+    :id id}})
 
 
 (def ^:private split
-  (juxt #(mapv :blaze.db/tx-cmd %)
-        #(into {} (map :hash-resource) %)))
+  (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
 
 
 (defn prepare-ops
-  "Splits each transaction operator into a collection of :blaze.db/tx-cmd and a
-  map of hash to resource."
+  "Splits `tx-ops` into a tuple of :blaze.db/tx-cmds and a map of resource
+  hashes to resource contents."
   [tx-ops]
   (split (mapv prepare-op tx-ops)))
+
+
+(defn- missing-tx-msg [t]
+  (format "Can't find transaction result with point in time of %d." t))
+
+
+(defn load-tx-result [{:keys [tx-cache kv-store] :as node} t]
+  (if (tx-success/tx tx-cache t)
+    (db/db node t)
+    (if-let [anomaly (tx-error/tx-error kv-store t)]
+      anomaly
+      (ba/fault (missing-tx-msg t)))))

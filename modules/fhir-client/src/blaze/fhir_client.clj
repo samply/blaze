@@ -1,12 +1,12 @@
 (ns blaze.fhir-client
+  (:refer-clojure :exclude [read spit update])
   (:require
     [blaze.async.comp :as ac]
     [blaze.async.flow :as flow]
     [blaze.fhir-client.impl :as impl]
     [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent Flow$Publisher])
-  (:refer-clojure :exclude [read spit update]))
+    [java.util.concurrent Flow$Publisher]))
 
 
 (set! *warn-on-reflection* true)

@@ -1,8 +1,8 @@
 (ns blaze.handler.util
   "HTTP/REST Handler Utils"
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
-    [blaze.db.api :as d]
     [blaze.fhir.spec.type :as type]
     [blaze.http.util :as hu]
     [clojure.string :as str]
@@ -16,10 +16,11 @@
 
 
 (defn preference
-  "Returns the value of the preference with `name` from Ring `headers`."
+  "Returns the value of the preference with `name` as keyword from `headers` or
+  nil if there is none."
   [headers name]
   (->> (hu/parse-header-value (get headers "prefer"))
-       (some #(when (= name (:name %)) (:value %)))))
+       (some #(when (= name (:name %)) (keyword (str "blaze.preference." name) (:value %))))))
 
 
 (defn- issue-code [category]
@@ -91,6 +92,7 @@
 (defn- category->status [category]
   (case category
     ::anom/incorrect 400
+    ::anom/forbidden 403
     ::anom/not-found 404
     ::anom/unsupported 422
     ::anom/conflict 409
@@ -107,6 +109,43 @@
     (aviso/format-exception e)))
 
 
+(defn- headers [response {:http/keys [headers]}]
+  (reduce #(apply ring/header %1 %2) response headers))
+
+
+(defn- error-response* [{::anom/keys [category] :as error} f]
+  (cond
+    category
+    (do
+      (when-not (:blaze/stacktrace error)
+        (case category
+          ::anom/fault
+          (log/error error)
+          (log/warn error)))
+      (f error))
+
+    (instance? CompletionException error)
+    (error-response* (ex-cause error) f)
+
+    (instance? Throwable error)
+    (if (ba/anomaly? (ex-data error))
+      (error-response*
+        (merge
+          {::anom/message (ex-message error)}
+          (ex-data error))
+        f)
+      (do
+        (log/error (log/stacktrace error))
+        (error-response*
+          (ba/fault
+            (ex-message error)
+            :blaze/stacktrace (format-exception error))
+          f)))
+
+    :else
+    (error-response* {::anom/category ::anom/fault} f)))
+
+
 (defn error-response
   "Converts `error` into a OperationOutcome response.
 
@@ -120,110 +159,96 @@
       - will go into `OperationOutcome.issue.details` as code with system
         http://terminology.hl7.org/CodeSystem/operation-outcome
   * :fhir.issue/expression - will go into `OperationOutcome.issue.expression`"
-  {:arglists '([error])}
-  [{::anom/keys [category] :http/keys [status] :as error}]
-  (cond
-    category
-    (do
-      (when-not (:blaze/stacktrace error)
-        (case category
-          ::anom/fault
-          (log/error error)
-          (log/warn error)))
+  [error]
+  (error-response*
+    error
+    (fn [{::anom/keys [category] :http/keys [status] :as error}]
       (-> (ring/response (operation-outcome error))
-          (ring/status (or status (category->status category)))))
-
-    (instance? CompletionException error)
-    (error-response (ex-cause error))
-
-    (instance? Throwable error)
-    (if (::anom/category (ex-data error))
-      (error-response
-        (merge
-          {::anom/message (ex-message error)}
-          (ex-data error)))
-      (do
-        (log/error (log/stacktrace error))
-        (error-response
-          {::anom/category ::anom/fault
-           ::anom/message (ex-message error)
-           :blaze/stacktrace (format-exception error)})))
-
-    :else
-    (error-response {::anom/category ::anom/fault})))
+          (headers error)
+          (ring/status (or status (category->status category)))))))
 
 
 (defn bundle-error-response
   "Returns an error response suitable for bundles.
 
   Accepts anomalies and exceptions."
-  {:arglists '([error])}
-  [{::anom/keys [category] :as error}]
-  (cond
-    category
-    (do
-      (when-not (:blaze/stacktrace error)
-        (case category
-          ::anom/fault
-          (log/error error)
-          (log/warn error)))
+  [error]
+  (error-response*
+    error
+    (fn [{::anom/keys [category] :http/keys [status] :as error}]
       {:fhir/type :fhir.Bundle.entry/response
-       :status (str (category->status category))
-       :outcome (operation-outcome error)})
-
-    (instance? Throwable error)
-    (if (::anom/category (ex-data error))
-      (bundle-error-response
-        (merge
-          {::anom/message (ex-message error)}
-          (ex-data error)))
-      (do
-        (log/error (log/stacktrace error))
-        (bundle-error-response
-          {::anom/category ::anom/fault
-           ::anom/message (ex-message error)
-           :blaze/stacktrace (format-exception error)})))
-
-    :else
-    (bundle-error-response {::anom/category ::anom/fault})))
+       :status (str (or status (category->status category)))
+       :outcome (operation-outcome error)})))
 
 
-(defn db
-  "Returns a CompletableFuture that will complete with the value of the
-  database, optionally as of some point in time `t`."
-  [node t]
-  (if t
-    (-> (d/sync node t) (ac/then-apply #(d/as-of % t)))
-    (ac/completed-future (d/db node))))
+(def ^:private not-found-issue
+  {:severity #fhir/code"error"
+   :code #fhir/code"not-found"})
+
+
+(def ^:private not-found-outcome
+  {:fhir/type :fhir/OperationOutcome
+   :issue [not-found-issue]})
+
+
+(defn not-found-handler [_]
+  (-> (ring/not-found not-found-outcome) ac/completed-future))
+
+
+(defn- method-not-allowed-msg [{:keys [uri request-method]}]
+  (format "Method %s not allowed on `%s` endpoint."
+          (str/upper-case (name request-method)) uri))
+
+
+(defn- method-not-allowed-issue [request]
+  {:severity #fhir/code"error"
+   :code #fhir/code"processing"
+   :diagnostics (method-not-allowed-msg request)})
+
+
+(defn- method-not-allowed-outcome [request]
+  {:fhir/type :fhir/OperationOutcome
+   :issue [(method-not-allowed-issue request)]})
+
+
+(defn method-not-allowed-handler [request]
+  (-> (ring/response (method-not-allowed-outcome request))
+      (ring/status 405)
+      ac/completed-future))
+
+
+(def ^:private not-acceptable-issue
+  {:severity #fhir/code"error"
+   :code #fhir/code"structure"})
+
+
+(def ^:private not-acceptable-outcome
+  {:fhir/type :fhir/OperationOutcome
+   :issue [not-acceptable-issue]})
+
+
+(defn not-acceptable-handler [_]
+  (-> (ring/response not-acceptable-outcome)
+      (ring/status 406)
+      ac/completed-future))
 
 
 (def default-handler
   (reitit.ring/create-default-handler
-    {:not-found
-     (fn [_]
-       (ac/completed-future
-         (ring/not-found
-           {:fhir/type :fhir/OperationOutcome
-            :issue
-            [{:severity #fhir/code"error"
-              :code #fhir/code"not-found"}]})))
-     :method-not-allowed
-     (fn [{:keys [uri request-method]}]
-       (-> (ring/response
-             {:fhir/type :fhir/OperationOutcome
-              :issue
-              [{:severity #fhir/code"error"
-                :code #fhir/code"processing"
-                :diagnostics (format "Method %s not allowed on `%s` endpoint."
-                                     (str/upper-case (name request-method)) uri)}]})
-           (ring/status 405)
-           (ac/completed-future)))
-     :not-acceptable
-     (fn [_]
-       (-> (ring/response
-             {:fhir/type :fhir/OperationOutcome
-              :issue
-              [{:severity #fhir/code"error"
-                :code #fhir/code"structure"}]})
-           (ring/status 406)
-           (ac/completed-future)))}))
+    {:not-found not-found-handler
+     :method-not-allowed method-not-allowed-handler
+     :not-acceptable not-acceptable-handler}))
+
+
+(defn method-not-allowed-batch-handler [request]
+  (ac/completed-future
+    (ba/forbidden
+      (method-not-allowed-msg request)
+      :http/status 405
+      :fhir/issue "processing")))
+
+
+(def default-batch-handler
+  "A handler returning failed futures."
+  (reitit.ring/create-default-handler
+    {:method-not-allowed method-not-allowed-batch-handler}))

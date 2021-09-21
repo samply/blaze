@@ -3,14 +3,11 @@
 
   https://www.hl7.org/fhir/http.html#read"
   (:require
-    [blaze.anomaly :refer [ex-anom]]
-    [blaze.async.comp :as ac]
+    [blaze.anomaly :as ba :refer [if-ok]]
+    [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.db.spec]
-    [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -35,71 +32,63 @@
   (str "W/\"" t "\""))
 
 
-(defn- db [node vid type id]
-  (cond
-    (and vid (re-matches #"\d+" vid))
-    (let [vid (Long/parseLong vid)]
-      (-> (d/sync node vid) (ac/then-apply #(d/as-of % vid))))
+(defn- resource-handle [db type id]
+  (if-let [{:keys [op t] :as handle} (d/resource-handle db type id)]
+    (if (identical? :delete op)
+      (let [tx (d/tx db t)]
+        (ba/not-found
+          (format "Resource `%s/%s` was deleted." type id)
+          :http/status 410
+          :http/headers
+          [["Last-Modified" (last-modified tx)]
+           ["ETag" (etag tx)]]
+          :fhir/issue "deleted"))
+      handle)
+    (ba/not-found
+      (format "Resource `%s/%s` was not found." type id)
+      :fhir/issue "not-found")))
 
-    vid
-    (ac/failed-future
-      (ex-anom
-        {::anom/category ::anom/not-found
-         ::anom/message (format "Resource `/%s/%s` with versionId `%s` was not found." type id vid)
-         :fhir/issue "not-found"}))
 
-    :else
-    (ac/completed-future (d/db node))))
+(defn- pull [db type id]
+  (if-ok [resource-handle (resource-handle db type id)]
+    (d/pull db resource-handle)
+    ac/completed-future))
 
 
-(defn- handler-intern [node]
+(defn- response [resource]
+  (let [{:blaze.db/keys [tx]} (meta resource)]
+    (-> (ring/response resource)
+        (ring/header "Last-Modified" (last-modified tx))
+        (ring/header "ETag" (etag tx)))))
+
+
+(def ^:private handler
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
-        {:keys [id vid]} :path-params}]
-    (-> (db node vid type id)
-        (ac/then-compose
-          (fn [db]
-            (if-let [{:keys [op t] :as handle} (d/resource-handle db type id)]
-              (if (identical? :delete op)
-                (let [tx (d/tx db t)]
-                  (-> (handler-util/operation-outcome
-                        {:fhir/issue "deleted"})
-                      (ring/response)
-                      (ring/status 410)
-                      (ring/header "Last-Modified" (last-modified tx))
-                      (ring/header "ETag" (etag tx))
-                      (ac/completed-future)))
-                (-> (d/pull node handle)
-                    (ac/then-apply
-                      (fn [resource]
-                        (let [{:blaze.db/keys [tx]} (meta resource)]
-                          (-> (ring/response resource)
-                              (ring/header "Last-Modified" (last-modified tx))
-                              (ring/header "ETag" (etag tx))))))))
-              (-> (handler-util/error-response
-                    {::anom/category ::anom/not-found
-                     :fhir/issue "not-found"
-                     ::anom/message (format "Resource `/%s/%s` not found" type id)})
-                  (ac/completed-future)))))
-        (ac/exceptionally handler-util/error-response))))
+        {:keys [id]} :path-params :blaze/keys [db]}]
+    (do-sync [resource (pull db type id)]
+      (response resource))))
 
 
-(defn wrap-interaction-name [handler]
+(defn- wrap-invalid-vid [handler]
+  (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
+        {:keys [id vid]} :path-params :as request}]
+    (if (and vid (not (re-matches #"\d+" vid)))
+      (ac/completed-future
+        (ba/not-found
+          (format "Resource `%s/%s` with versionId `%s` was not found." type id vid)
+          :fhir/issue "not-found"))
+      (handler request))))
+
+
+(defn- wrap-interaction-name [handler]
   (fn [{{:keys [vid]} :path-params :as request}]
-    (-> (handler request)
-        (ac/then-apply #(assoc % :fhir/interaction-name (if vid "vread" "read"))))))
+    (do-sync [response (handler request)]
+      (assoc response :fhir/interaction-name (if vid "vread" "read")))))
 
 
-(defn handler [node]
-  (-> (handler-intern node)
-      (wrap-interaction-name)
-      (wrap-observe-request-duration)))
-
-
-(defmethod ig/pre-init-spec :blaze.interaction/read [_]
-  (s/keys :req-un [:blaze.db/node]))
-
-
-(defmethod ig/init-key :blaze.interaction/read
-  [_ {:keys [node]}]
+(defmethod ig/init-key :blaze.interaction/read [_ _]
   (log/info "Init FHIR read interaction handler")
-  (handler node))
+  (-> handler
+      wrap-invalid-vid
+      wrap-interaction-name
+      wrap-observe-request-duration))

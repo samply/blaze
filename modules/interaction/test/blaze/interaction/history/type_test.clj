@@ -5,13 +5,17 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.interaction.history.type]
-    [blaze.interaction.history.type-spec]
     [blaze.interaction.history.util-spec]
+    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db-spec]
+    [blaze.test-util :refer [given-thrown]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
+    [java-time :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -32,7 +36,7 @@
 (test/use-fixtures :each fixture)
 
 
-(def ^:private base-url "base-url-144600")
+(def base-url "base-url-144600")
 
 
 (def router
@@ -42,63 +46,100 @@
 
 
 (def match
-  {:data
-   {:blaze/base-url ""
-    :blaze/context-path ""
-    :fhir.resource/type "Patient"}
-   :path "/Patient/_history"})
-
-
-(defn- handler [node]
-  (-> (ig/init
-        {:blaze.interaction.history/type
-         {:node node}})
-      (:blaze.interaction.history/type)))
-
-
-(defn- handler-with [txs]
-  (fn [request]
-    (with-open [node (mem-node-with txs)]
-      @((handler node)
-        (assoc request
-          :blaze/base-url base-url
-          ::reitit/router router)))))
+  (reitit/map->Match
+    {:data
+     {:blaze/base-url ""
+      :fhir.resource/type "Patient"}
+     :path "/Patient/_history"}))
 
 
 (defn- link-url [body link-relation]
   (->> body :link (filter (comp #{link-relation} :relation)) first :url))
 
 
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.interaction.history/type nil})
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.interaction.history/type {}})
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+
+  (testing "invalid clock"
+    (given-thrown (ig/init {:blaze.interaction.history/type {:clock ::invalid}})
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 1 :pred] := `time/clock?
+      [:explain ::s/problems 1 :val] := ::invalid)))
+
+
+(def system
+  (assoc mem-node-system
+    :blaze.interaction.history/type
+    {:node (ig/ref :blaze.db/node)
+     :clock (ig/ref :blaze.test/clock)
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+    :blaze.test/fixed-rng-fn {}))
+
+
+(defn wrap-defaults [handler]
+  (fn [request]
+    (handler
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router
+        ::reitit/match match))))
+
+
+(defmacro with-handler [[handler-binding] txs & body]
+  `(with-system-data [{node# :blaze.db/node
+                       handler# :blaze.interaction.history/type} system]
+     ~txs
+     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
+       ~@body)))
+
+
 (deftest handler-test
   (testing "with one patient"
-    (let [{:keys [status body]}
-          ((handler-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])
-            {::reitit/match match})]
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (is (= 200 status))
+      (let [{:keys [status body]}
+            @(handler {})]
 
-      (is (= :fhir/Bundle (:fhir/type body)))
+        (is (= 200 status))
 
-      (is (string? (:id body)))
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
 
-      (is (= #fhir/code"history" (:type body)))
+        (testing "the bundle id is an LUID"
+          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-      (is (= #fhir/unsignedInt 1 (:total body)))
+        (is (= #fhir/code"history" (:type body)))
 
-      (testing "has self link"
-        (is (= #fhir/uri"base-url-144600/Patient/_history?__t=1&__page-t=1&__page-id=0"
-               (link-url body "self"))))
+        (is (= #fhir/unsignedInt 1 (:total body)))
 
-      (testing "the bundle contains one entry"
-        (is (= 1 (count (:entry body)))))
+        (testing "has self link"
+          (is (= #fhir/uri"base-url-144600/Patient/_history?__t=1&__page-t=1&__page-id=0"
+                 (link-url body "self"))))
 
-      (given (-> body :entry first)
-        :fullUrl := #fhir/uri"base-url-144600/Patient/0"
-        [:request :method] := #fhir/code"PUT"
-        [:request :url] := #fhir/uri"/Patient/0"
-        [:resource :id] := "0"
-        [:resource :fhir/type] := :fhir/Patient
-        [:resource :meta :versionId] := #fhir/id"1"
-        [:response :status] := "201"
-        [:response :etag] := "W/\"1\""
-        [:response :lastModified] := Instant/EPOCH))))
+        (testing "the bundle contains one entry"
+          (is (= 1 (count (:entry body)))))
+
+        (given (-> body :entry first)
+          :fullUrl := #fhir/uri"base-url-144600/Patient/0"
+          [:request :method] := #fhir/code"PUT"
+          [:request :url] := #fhir/uri"/Patient/0"
+          [:resource :id] := "0"
+          [:resource :fhir/type] := :fhir/Patient
+          [:resource :meta :versionId] := #fhir/id"1"
+          [:response :status] := "201"
+          [:response :etag] := "W/\"1\""
+          [:response :lastModified] := Instant/EPOCH)))))

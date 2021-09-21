@@ -102,7 +102,7 @@
             (if (= "" string)
               [string]
               (if-let [separator (core/-eval separator context resource scope)]
-                (condp = (count separator)
+                (case (count separator)
                   0
                   [string]
                   1

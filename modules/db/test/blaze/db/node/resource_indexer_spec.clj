@@ -1,5 +1,6 @@
 (ns blaze.db.node.resource-indexer-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
     [blaze.byte-string-spec]
@@ -7,6 +8,7 @@
     [blaze.db.impl.search-param-spec]
     [blaze.db.kv-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
+    [blaze.db.resource-store.spec]
     [blaze.db.search-param-registry.spec]
     [blaze.fhir.spec-spec]
     [clojure.spec.alpha :as s]))
@@ -19,9 +21,15 @@
      :blaze.db/kv-store]))
 
 
+(s/def ::context
+  (s/keys
+    :req-un
+    [:blaze.db/resource-store
+     :blaze.db.node/resource-indexer]))
+
+
 (s/fdef resource-indexer/index-resources
-  :args (s/cat :resource-indexer :blaze.db.node/resource-indexer
-               :entries (s/map-of :blaze.resource/hash (s/nilable :blaze/resource)))
+  :args (s/cat :context ::context :tx-data :blaze.db/tx-data)
   :ret ac/completable-future?)
 
 

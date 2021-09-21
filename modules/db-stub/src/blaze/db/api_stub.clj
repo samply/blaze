@@ -2,83 +2,80 @@
   (:require
     [blaze.db.api :as d]
     [blaze.db.api-spec]
-    [blaze.db.impl.index.tx-success :as tsi]
-    [blaze.db.kv.mem :refer [new-mem-kv-store]]
+    [blaze.db.kv :as kv]
+    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
-    [blaze.db.node :refer [new-node]]
-    [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
-    [blaze.db.search-param-registry :as sr]
-    [blaze.db.spec]
+    [blaze.db.node]
+    [blaze.db.resource-handle-cache]
+    [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.kv :as rs-kv]
+    [blaze.db.search-param-registry]
+    [blaze.db.tx-cache]
+    [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
-    [blaze.db.tx-log.local :refer [new-local-tx-log]]
-    [blaze.executors :as ex]
-    [clojure.spec.alpha :as s]
-    [java-time :as jt])
-  (:import
-    [com.github.benmanes.caffeine.cache Caffeine]
-    [java.io Closeable]
-    [java.time Clock Instant ZoneId]))
+    [blaze.db.tx-log.local]
+    [blaze.test-util :refer [with-system]]
+    [integrant.core :as ig]
+    [java-time :as time]))
 
 
-(def ^:private search-param-registry (sr/init-search-param-registry))
+(def mem-node-system
+  {:blaze.db/node
+   {:tx-log (ig/ref :blaze.db/tx-log)
+    :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
+    :tx-cache (ig/ref :blaze.db/tx-cache)
+    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+    :resource-store (ig/ref :blaze.db/resource-store)
+    :kv-store (ig/ref :blaze.db/index-kv-store)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :poll-timeout (time/millis 10)}
+
+   ::tx-log/local
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)
+    :clock (ig/ref :blaze.test/clock)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
+   :blaze.test/clock {}
+
+   :blaze.db/resource-handle-cache {}
+
+   :blaze.db/tx-cache
+   {:kv-store (ig/ref :blaze.db/index-kv-store)}
+
+   :blaze.db.node/indexer-executor {}
+
+   [::kv/mem :blaze.db/index-kv-store]
+   {:column-families
+    {:search-param-value-index nil
+     :resource-value-index nil
+     :compartment-search-param-value-index nil
+     :compartment-resource-type-index nil
+     :active-search-params nil
+     :tx-success-index {:reverse-comparator? true}
+     :tx-error-index nil
+     :t-by-instant-index {:reverse-comparator? true}
+     :resource-as-of-index nil
+     :type-as-of-index nil
+     :system-as-of-index nil
+     :type-stats-index nil
+     :system-stats-index nil}}
+
+   ::rs/kv
+   {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :executor (ig/ref ::rs-kv/executor)}
+   [::kv/mem :blaze.db/resource-kv-store]
+   {:column-families {}}
+   ::rs-kv/executor {}
+
+   :blaze.db/search-param-registry {}})
 
 
-;; TODO: with this shared executor, it's not possible to run test in parallel
-(def ^:private local-tx-log-executor
-  (ex/single-thread-executor "local-tx-log"))
-
-
-;; TODO: with this shared executor, it's not possible to run test in parallel
-(def ^:private indexer-executor
-  (ex/single-thread-executor "indexer"))
-
-
-(def ^:private resource-store-executor
-  (ex/single-thread-executor "resource-store"))
-
-
-(def ^:private clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
-
-
-(defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
-
-
-(defn mem-node ^Closeable []
-  (let [index-kv-store
-        (new-mem-kv-store
-          {:search-param-value-index nil
-           :resource-value-index nil
-           :compartment-search-param-value-index nil
-           :compartment-resource-type-index nil
-           :active-search-params nil
-           :tx-success-index {:reverse-comparator? true}
-           :tx-error-index nil
-           :t-by-instant-index {:reverse-comparator? true}
-           :resource-as-of-index nil
-           :type-as-of-index nil
-           :system-as-of-index nil
-           :type-stats-index nil
-           :system-stats-index nil})
-        resource-store (new-kv-resource-store (new-mem-kv-store)
-                                              resource-store-executor)
-        tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))]
-    (new-node tx-log resource-handle-cache (tx-cache index-kv-store)
-              indexer-executor index-kv-store resource-store
-              search-param-registry (jt/millis 10))))
-
-
-(defn- submit-txs [node txs]
+(defn submit-txs [node txs]
   (doseq [tx-ops txs]
     @(d/transact node tx-ops)))
 
 
-(defn mem-node-with ^Closeable [txs]
-  (doto (mem-node)
-    (submit-txs txs)))
-
-
-(s/fdef mem-node-with
-  :args (s/cat :txs (s/coll-of :blaze.db/tx-ops))
-  :ret :blaze.db/node)
+(defmacro with-system-data [[binding-form system] txs & body]
+  `(with-system [system# ~system]
+     (submit-txs (:blaze.db/node system#) ~txs)
+     (let [~binding-form system#] ~@body)))

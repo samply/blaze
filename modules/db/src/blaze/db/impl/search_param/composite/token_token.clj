@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.composite.token-token
   (:require
     [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.protocols :as p]

@@ -18,7 +18,7 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest to-seq
+(deftest to-seq-test
   (testing "nil"
     (is (nil? (fhir-util/to-seq nil))))
 
@@ -29,7 +29,7 @@
     (is (= [1] (fhir-util/to-seq [1])))))
 
 
-(deftest t
+(deftest t-test
   (testing "no query param"
     (is (nil? (fhir-util/t {}))))
 
@@ -46,7 +46,7 @@
       ["3" "4"] 3)))
 
 
-(deftest page-size
+(deftest page-size-test
   (testing "no query param"
     (is (= 50 (fhir-util/page-size {}))))
 
@@ -71,7 +71,7 @@
     (is (= 10000 (fhir-util/page-size {"_count" "10001"})))))
 
 
-(deftest page-offset
+(deftest page-offset-test
   (testing "no query param"
     (is (zero? (fhir-util/page-offset {}))))
 
@@ -92,7 +92,7 @@
       ["3" "4"] 3)))
 
 
-(deftest page-type
+(deftest page-type-test
   (testing "no query param"
     (is (nil? (fhir-util/page-type {}))))
 
@@ -108,7 +108,7 @@
       ["A" "B"] "A")))
 
 
-(deftest page-id
+(deftest page-id-test
   (testing "no query param"
     (is (nil? (fhir-util/page-id {}))))
 
@@ -124,7 +124,7 @@
       ["A" "b"] "A")))
 
 
-(def ^:private router
+(def router
   (reitit/router
     [[""
       {}
@@ -134,31 +134,20 @@
     {:syntax :bracket}))
 
 
-(deftest type-url
+(def context
+  {:blaze/base-url "http://localhost:8080" ::reitit/router router})
+
+
+(deftest type-url-test
   (is (= "http://localhost:8080/Patient"
-         (fhir-util/type-url "http://localhost:8080" router "Patient"))))
+         (fhir-util/type-url context "Patient"))))
 
 
-(deftest instance-url
+(deftest instance-url-test
   (is (= "http://localhost:8080/Patient/0"
-         (fhir-util/instance-url "http://localhost:8080" router "Patient" "0"))))
+         (fhir-util/instance-url context "Patient" "0"))))
 
 
-(deftest versioned-instance-url
+(deftest versioned-instance-url-test
   (is (= "http://localhost:8080/Patient/0/_history/1"
-         (fhir-util/versioned-instance-url "http://localhost:8080" router
-                                           "Patient" "0" "1"))))
-
-
-(deftest etag->t
-  (testing "accepts nil"
-    (is (nil? (fhir-util/etag->t nil))))
-
-  (testing "valid ETag"
-    (is (= 1 (fhir-util/etag->t "W/\"1\""))))
-
-  (testing "invalid ETag"
-    (are [s] (nil? (fhir-util/etag->t s))
-      "foo"
-      "W/1"
-      "W/\"a\"")))
+         (fhir-util/versioned-instance-url context "Patient" "0" "1"))))

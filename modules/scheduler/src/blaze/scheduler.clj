@@ -3,7 +3,7 @@
     [blaze.scheduler.protocol :as p]
     [blaze.scheduler.spec]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [taoensso.timbre :as log])
   (:import
     [java.util.concurrent Executors ScheduledExecutorService TimeUnit]))
@@ -22,8 +22,8 @@
     (.scheduleAtFixedRate
       scheduler
       f
-      (jt/as initial-delay :nanos)
-      (jt/as period :nanos)
+      (time/as initial-delay :nanos)
+      (time/as period :nanos)
       TimeUnit/NANOSECONDS)))
 
 

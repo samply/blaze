@@ -6,7 +6,7 @@
     [blaze.scheduler.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [java-time :as jt]
+    [java-time :as time]
     [taoensso.timbre :as log])
   (:import
     [java.security PublicKey]
@@ -30,7 +30,7 @@
          (log/error (format "Error while fetching public key from %s:"
                             provider-url)
                     (ex-message e) (pr-str (ex-data e)))))
-    (jt/seconds 1) (jt/seconds 60)))
+    (time/seconds 1) (time/seconds 60)))
 
 
 

@@ -1,14 +1,23 @@
 {:deps
- {blaze/executor
-  {:local/root "../executor"}}
+ {blaze/anomaly
+  {:local/root "../anomaly"}
+
+  blaze/executor
+  {:local/root "../executor"}
+
+  com.taoensso/timbre
+  {:mvn/version "5.1.2"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
-    {:mvn/version "1.0.861"}}
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    lambdaisland/kaocha
+    {:mvn/version "1.0.887"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -16,7 +25,10 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}}
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

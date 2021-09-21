@@ -45,10 +45,10 @@
   (some #(when (= name (:name %)) %) (u/primitive-types)))
 
 
-(deftest primitive-type->spec-defs
+(deftest primitive-type->spec-defs-test
   (testing "boolean"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "boolean"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/boolean
              :spec-form `boolean?}
             {:key :fhir.json/boolean
@@ -66,7 +66,7 @@
 
   (testing "integer"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "integer"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/integer
              :spec-form `(fn [~'x] (instance? Integer ~'x))}
             {:key :fhir.json/integer
@@ -84,7 +84,7 @@
 
   (testing "string"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "string"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/string
              :spec-form `type/string?}
             {:key :fhir.json/string
@@ -102,7 +102,7 @@
 
   (testing "decimal"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "decimal"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/decimal
              :spec-form `type/decimal?}
             {:key :fhir.json/decimal
@@ -120,7 +120,7 @@
 
   (testing "uri"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "uri"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/uri
              :spec-form `type/uri?}
             {:key :fhir.json/uri
@@ -138,7 +138,7 @@
 
   (testing "canonical"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "canonical"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/canonical
              :spec-form `type/canonical?}
             {:key :fhir.json/canonical
@@ -156,7 +156,7 @@
 
   (testing "base64Binary"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "base64Binary"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/base64Binary
              :spec-form `type/base64Binary?}
             {:key :fhir.json/base64Binary
@@ -174,7 +174,7 @@
 
   (testing "code"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "code"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/code
              :spec-form `type/code?}
             {:key :fhir.json/code
@@ -192,7 +192,7 @@
 
   (testing "unsignedInt"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "unsignedInt"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/unsignedInt
              :spec-form `type/unsignedInt?}
             {:key :fhir.json/unsignedInt
@@ -210,7 +210,7 @@
 
   (testing "positiveInt"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "positiveInt"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/positiveInt
              :spec-form `type/positiveInt?}
             {:key :fhir.json/positiveInt
@@ -228,7 +228,7 @@
 
   (testing "uuid"
     (is (= (-> (impl/primitive-type->spec-defs (primitive-type "uuid"))
-               (regexes->str))
+               regexes->str)
            [{:key :fhir/uuid
              :spec-form `uuid?}
             {:key :fhir.json/uuid
@@ -270,7 +270,7 @@
   (some #(when (= name (:name %)) %) (u/resources)))
 
 
-(deftest struct-def->spec-def
+(deftest struct-def->spec-def-test
   (testing "internal representation of choice typed data element"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "UsageContext")))
       [:fhir.UsageContext/value 0 :spec-form]
@@ -466,7 +466,7 @@
 (def sexp prxml/sexp-as-element)
 
 
-(deftest elem-def->spec-def
+(deftest elem-def->spec-def-test
   (testing "normal type"
     (is (= (impl/elem-def->spec-def
              {:path "Observation.code"

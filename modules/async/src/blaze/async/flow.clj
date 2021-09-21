@@ -2,12 +2,12 @@
   "This namespace provides functions to work with Java 9 Reactive Streams.
 
   https://www.baeldung.com/java-9-reactive-streams"
+  (:refer-clojure :exclude [mapcat])
   (:require
     [blaze.async.comp :as ac])
   (:import
     [java.util.concurrent Flow$Processor Flow$Publisher Flow$Subscriber
-                          Flow$Subscription SubmissionPublisher])
-  (:refer-clojure :exclude [mapcat]))
+                          Flow$Subscription SubmissionPublisher]))
 
 
 (set! *warn-on-reflection* true)

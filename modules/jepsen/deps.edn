@@ -1,0 +1,19 @@
+{:deps
+ {blaze/fhir-client
+  {:local/root "../fhir-client"}
+
+  jepsen/jepsen
+  {:mvn/version "0.2.4"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.0.887"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :register
+  {:main-opts ["-m" "blaze.jepsen.register"]}}}

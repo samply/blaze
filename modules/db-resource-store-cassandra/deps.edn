@@ -2,25 +2,25 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/cassandra
+  {:local/root "../cassandra"}
+
   blaze/db-resource-store
   {:local/root "../db-resource-store"}
 
   blaze/module-base
-  {:local/root "../module-base"}
-
-  com.datastax.oss/java-driver-core
-  {:mvn/version "4.12.0"}}
+  {:local/root "../module-base"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
+   {blaze/test-util
+    {:local/root "../test-util"}
 
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    lambdaisland/kaocha
+    {:mvn/version "1.0.887"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -28,10 +28,10 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
+   {blaze/test-util
+    {:local/root "../test-util"}
 
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

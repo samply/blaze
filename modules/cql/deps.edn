@@ -5,10 +5,10 @@
   {:local/root "../db"}
 
   com.fasterxml.jackson.module/jackson-module-jaxb-annotations
-  {:mvn/version "2.12.3"}
+  {:mvn/version "2.12.5"}
 
   info.cqframework/cql-to-elm
-  {:mvn/version "1.5.3"
+  {:mvn/version "1.5.4"
    :exclusions
    [com.google.code.javaparser/javaparser
     info.cqframework/qdm
@@ -37,16 +37,10 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}
+    {:mvn/version "1.0.887"}
 
     org.clojure/data.xml
-    {:mvn/version "0.2.0-alpha6"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "0.2.0-alpha6"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -57,17 +51,11 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
-    org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}
 
     org.clojure/data.xml
-    {:mvn/version "0.2.0-alpha6"}
-
-    org.clojure/test.check
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "0.2.0-alpha6"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" "blaze.elm.spec"]}}}

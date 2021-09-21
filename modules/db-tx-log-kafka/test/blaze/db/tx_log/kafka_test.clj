@@ -1,26 +1,27 @@
 (ns blaze.db.tx-log.kafka-test
   (:require
-    [blaze.async.comp :as ac]
+    [blaze.anomaly-spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka :as kafka]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.test-util :refer [given-failed-future given-thrown with-system]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [java-time :as jt]
-    [juxt.iota :refer [given]]
+    [java-time :as time]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
-    [java.time Instant]
-    [org.apache.kafka.clients.consumer Consumer ConsumerRecord]
-    [org.apache.kafka.clients.producer Producer RecordMetadata]
+    [java.time Duration]
+    [org.apache.kafka.clients.consumer Consumer ConsumerRecords]
+    [org.apache.kafka.clients.producer KafkaProducer Producer RecordMetadata]
     [org.apache.kafka.common TopicPartition]
     [org.apache.kafka.common.errors
      AuthorizationException RecordTooLargeException]
-    [org.apache.kafka.common.record TimestampType]))
+    [java.util Map]))
 
 
 (st/instrument)
@@ -42,10 +43,50 @@
 (def tx-cmd {:op "create" :type "Patient" :id "0" :hash patient-hash-0})
 
 
-(defn tx-log []
-  (-> {:blaze.db.tx-log/kafka {:bootstrap-servers bootstrap-servers}}
-      ig/init
-      :blaze.db.tx-log/kafka))
+(def system
+  {::tx-log/kafka
+   {:bootstrap-servers bootstrap-servers
+    :last-t-executor (ig/ref ::kafka/last-t-executor)}
+   ::kafka/last-t-executor {}})
+
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::tx-log/kafka nil})
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {::tx-log/kafka {}})
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :bootstrap-servers))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
+
+  (testing "invalid bootstrap servers"
+    (given-thrown (ig/init {::tx-log/kafka {:bootstrap-servers ::invalid}})
+      :key := ::tx-log/kafka
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))
+      [:explain ::s/problems 1 :pred] := `string?
+      [:explain ::s/problems 1 :val] := ::invalid)))
+
+
+(defn- no-op-producer [{servers :bootstrap-servers}]
+  (assert (= bootstrap-servers servers))
+  (reify
+    Producer
+    Closeable
+    (close [_])))
+
+
+(defn- no-op-consumer [{servers :bootstrap-servers}]
+  (assert (= bootstrap-servers servers))
+  (reify
+    Consumer
+    Closeable
+    (close [_])))
 
 
 (deftest tx-log-test
@@ -53,143 +94,97 @@
     (with-redefs
       [kafka/create-producer
        (fn [{servers :bootstrap-servers}]
-         (when-not (= bootstrap-servers servers)
-           (throw (Error.)))
+         (assert (= bootstrap-servers servers))
          (reify
            Producer
            (send [_ _ callback]
              (.onCompletion callback (RecordMetadata. nil 0 0 0 nil 0 0) nil))
            Closeable
-           (close [_])))]
-      (with-open [tx-log (tx-log)]
-        (is (= 1 @(tx-log/submit tx-log [tx-cmd])))))
-(int (/ (- 1522581 1048576) 1024))
+           (close [_])))
+       kafka/create-last-t-consumer no-op-consumer]
+      (with-system [{tx-log ::tx-log/kafka} system]
+        (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil)))))
+
     (testing "RecordTooLargeException"
       (with-redefs
         [kafka/create-producer
          (fn [{servers :bootstrap-servers}]
-           (when-not (= bootstrap-servers servers)
-             (throw (Error.)))
+           (assert (= bootstrap-servers servers))
            (reify
              Producer
              (send [_ _ callback]
                (.onCompletion callback nil
                               (RecordTooLargeException. "msg-173357")))
              Closeable
-             (close [_])))]
-        (with-open [tx-log (tx-log)]
-          (given @(-> (tx-log/submit tx-log [tx-cmd]) (ac/exceptionally ex-data))
+             (close [_])))
+         kafka/create-last-t-consumer no-op-consumer]
+        (with-system [{tx-log ::tx-log/kafka} system]
+          (given-failed-future (tx-log/submit tx-log [tx-cmd] nil)
             ::anom/category := ::anom/unsupported
             ::anom/message := "A transaction with 1 commands generated a Kafka message which is larger than the configured maximum of null bytes. In order to prevent this error, increase the maximum message size by setting DB_KAFKA_MAX_REQUEST_SIZE to a higher number. msg-173357"))))
-
-    (* 3 1024 1024)
 
     (testing "AuthorizationException"
       (with-redefs
         [kafka/create-producer
          (fn [{servers :bootstrap-servers}]
-           (when-not (= bootstrap-servers servers)
-             (throw (Error.)))
+           (assert (= bootstrap-servers servers))
            (reify
              Producer
              (send [_ _ callback]
                (.onCompletion callback nil
                               (AuthorizationException. "msg-175337")))
              Closeable
-             (close [_])))]
-        (with-open [tx-log (tx-log)]
-          (given @(-> (tx-log/submit tx-log [tx-cmd]) (ac/exceptionally ex-data))
+             (close [_])))
+         kafka/create-last-t-consumer no-op-consumer]
+        (with-system [{tx-log ::tx-log/kafka} system]
+          (given-failed-future @(tx-log/submit tx-log [tx-cmd] nil)
             ::anom/category := ::anom/fault
             ::anom/message := "msg-175337")))))
 
   (testing "an empty transaction log has no transaction data"
     (with-redefs
-      [kafka/create-producer
-       (fn [{servers :bootstrap-servers}]
-         (when-not (= bootstrap-servers servers)
-           (throw (Error.)))
-         (reify
-           Producer
-           Closeable
-           (close [_])))
+      [kafka/create-producer no-op-producer
        kafka/create-consumer
        (fn [{servers :bootstrap-servers}]
-         (when-not (= bootstrap-servers servers)
-           (throw (Error.)))
+         (assert (= bootstrap-servers servers))
          (reify
            Consumer
            (^void seek [_ ^TopicPartition partition ^long offset]
-             (when-not (= (TopicPartition. "tx" 0) partition)
-               (throw (Error.)))
-             (when-not (= 0 offset)
-               (throw (Error.))))
-           tx-log/Queue
-           (-poll [_ timeout]
-             (when-not (= (jt/millis 10) timeout)
-               (throw (Error.))))
+             (assert (= (TopicPartition. "tx" 0) partition))
+             (assert (= 0 offset)))
+           (^ConsumerRecords poll [_ ^Duration duration]
+             (assert (= (time/seconds 1) duration))
+             (ConsumerRecords. (Map/of)))
+           Closeable
+           (close [_])))
+       kafka/create-last-t-consumer no-op-consumer]
+      (with-system [{tx-log ::tx-log/kafka} system]
+        (with-open [queue (tx-log/new-queue tx-log 1)]
+          (is (empty? (tx-log/poll! queue (time/seconds 1))))))))
+
+  (testing "last-t"
+    (with-redefs
+      [kafka/create-producer no-op-producer
+       kafka/create-last-t-consumer
+       (fn [{servers :bootstrap-servers}]
+         (assert (= bootstrap-servers servers))
+         (reify
+           Consumer
+           (endOffsets [_ partitions]
+             (assert (= (TopicPartition. "tx" 0) (first partitions)))
+             (Map/of (first partitions) 104614))
            Closeable
            (close [_])))]
-      (with-open [tx-log (tx-log)
-                  queue (tx-log/new-queue tx-log 1)]
-        (is (empty? (tx-log/poll queue (jt/millis 10))))))))
+      (with-system [{tx-log ::tx-log/kafka} system]
+        (is (= 104614 @(tx-log/last-t tx-log)))))))
 
 
-(defn invalid-cbor-content
-  "`0xA1` is the start of a map with one entry."
-  []
-  (byte-array [0xA1]))
+(def config {:bootstrap-servers "localhost:9092"})
 
 
-(def hash-patient-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
+(deftest create-producer-test
+  (is (instance? KafkaProducer (kafka/create-producer config))))
 
 
-(defn- serialize [cmds]
-  (.serialize kafka/serializer nil cmds))
-
-
-(defn- deserialize [cmds]
-  (.deserialize kafka/deserializer nil cmds))
-
-
-(deftest serializer-test
-  (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-    (is (= [cmd] (deserialize (serialize [cmd]))))))
-
-
-(deftest deserializer-test
-  (testing "empty value"
-    (is (nil? (deserialize (byte-array 0)))))
-
-  (testing "invalid cbor value"
-    (is (nil? (deserialize (invalid-cbor-content)))))
-
-  (testing "invalid map value"
-    (is (nil? (deserialize (serialize {:a 1})))))
-
-  (testing "success"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-      (given (first (deserialize (serialize [cmd])))
-        :op := "create"
-        :type := "Patient"
-        :id := "0"
-        :hash := hash-patient-0))))
-
-
-(defn consumer-record [offset timestamp timestamp-type value]
-  (ConsumerRecord. "tx" 0 offset timestamp timestamp-type 0 0 0 nil value))
-
-
-(deftest record-transformer-test
-  (testing "skips record with wrong timestamp type"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-      (is (empty? (into [] kafka/record-transformer [(consumer-record 0 0 TimestampType/CREATE_TIME [cmd])])))))
-
-  (testing "skips record with invalid transaction commands"
-    (is (empty? (into [] kafka/record-transformer [(consumer-record 0 0 TimestampType/LOG_APPEND_TIME [{:op "create"}])]))))
-
-  (testing "success"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-      (given (first (into [] kafka/record-transformer [(consumer-record 0 0 TimestampType/LOG_APPEND_TIME [cmd])]))
-        :t := 1
-        :instant := (Instant/ofEpochSecond 0)
-        :tx-cmds := [cmd]))))
+(deftest create-consumer-test
+  (is (= "tx" (.topic (first (.assignment (kafka/create-consumer config)))))))

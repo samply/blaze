@@ -2,44 +2,55 @@
   (:require
     [blaze.anomaly :refer [ex-anom]]
     [blaze.db.api :as d]
-    [blaze.db.impl.index.tx-success :as tsi]
-    [blaze.db.kv.mem :refer [new-mem-kv-store]]
-    [blaze.db.node :as node]
-    [blaze.db.resource-store.kv :refer [new-kv-resource-store]]
-    [blaze.db.search-param-registry :as sr]
-    [blaze.db.tx-log.local :refer [new-local-tx-log]]
-    [blaze.executors :as ex]
+    [blaze.db.kv :as kv]
+    [blaze.db.kv.mem]
+    [blaze.db.node]
+    [blaze.db.resource-handle-cache]
+    [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.kv :as rs-kv]
+    [blaze.db.search-param-registry]
+    [blaze.db.tx-cache]
+    [blaze.db.tx-log :as tx-log]
+    [blaze.db.tx-log.local]
+    [blaze.log]
+    [blaze.test-util :refer [with-system]]
     [clojure.test :refer [deftest is testing]]
     [criterium.core :as criterium]
-    [java-time :as jt]
-    [taoensso.timbre :as log])
-  (:import
-    [com.github.benmanes.caffeine.cache Caffeine]
-    [java.time Clock Instant ZoneId]))
+    [integrant.core :as ig]
+    [java-time :as time]
+    [taoensso.timbre :as log]))
 
 
 (log/set-level! :info)
 
 
-(def ^:private search-param-registry (sr/init-search-param-registry))
+(def system
+  {:blaze.db/node
+   {:tx-log (ig/ref :blaze.db/tx-log)
+    :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
+    :tx-cache (ig/ref :blaze.db/tx-cache)
+    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+    :resource-store (ig/ref :blaze.db/resource-store)
+    :kv-store (ig/ref :blaze.db/index-kv-store)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :poll-timeout (time/millis 10)}
 
+   ::tx-log/local
+   {:kv-store (ig/ref :blaze.db/transaction-kv-store)
+    :clock (ig/ref :blaze.test/clock)}
+   [::kv/mem :blaze.db/transaction-kv-store]
+   {:column-families {}}
+   :blaze.test/clock {}
 
-;; TODO: with this shared executor, it's not possible to run test in parallel
-(def ^:private local-tx-log-executor
-  (ex/single-thread-executor "local-tx-log"))
+   :blaze.db/resource-handle-cache {}
 
+   :blaze.db/tx-cache
+   {:kv-store (ig/ref :blaze.db/index-kv-store)}
 
-;; TODO: with this shared executor, it's not possible to run test in parallel
-(def ^:private indexer-executor
-  (ex/single-thread-executor "indexer"))
+   :blaze.db.node/indexer-executor {}
 
-
-(def ^:private resource-store-executor
-  (ex/single-thread-executor "resource-store"))
-
-
-(defn new-index-kv-store []
-  (new-mem-kv-store
+   [::kv/mem :blaze.db/index-kv-store]
+   {:column-families
     {:search-param-value-index nil
      :resource-value-index nil
      :compartment-search-param-value-index nil
@@ -52,29 +63,21 @@
      :type-as-of-index nil
      :system-as-of-index nil
      :type-stats-index nil
-     :system-stats-index nil}))
+     :system-stats-index nil}}
 
+   ::rs/kv
+   {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :executor (ig/ref ::rs-kv/executor)}
+   [::kv/mem :blaze.db/resource-kv-store]
+   {:column-families {}}
+   ::rs-kv/executor {}
 
-(def clock (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
-
-
-(defn- tx-cache [index-kv-store]
-  (.build (Caffeine/newBuilder) (tsi/cache-loader index-kv-store)))
-
-
-(defn new-node []
-  (let [tx-log (new-local-tx-log (new-mem-kv-store) clock local-tx-log-executor)
-        resource-handle-cache (.build (Caffeine/newBuilder))
-        index-kv-store (new-index-kv-store)]
-    (node/new-node tx-log resource-handle-cache (tx-cache index-kv-store)
-                   indexer-executor index-kv-store
-                   (new-kv-resource-store (new-mem-kv-store)
-                                          resource-store-executor)
-                   search-param-registry (jt/millis 10))))
+   :blaze.db/search-param-registry {}})
 
 
 (deftest transact-test
-  (with-open [node (new-node)]
-    ;; 190 µs
+  (with-system [{:blaze.db/keys [node]} system]
+    ;; 190 µs - MacBook Pro 2015
+    ;;  68 µs - Mac mini M1
     (criterium/quick-bench
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))))

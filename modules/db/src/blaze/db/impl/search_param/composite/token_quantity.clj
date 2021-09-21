@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.composite.token-quantity
   (:require
     [blaze.anomaly :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
@@ -21,11 +22,9 @@
 
 (defn- prefix-with [{:keys [op] :as quantity-value} token-value]
   (if (identical? :eq op)
-    (-> quantity-value
-        (update :lower-bound prefix-with* token-value)
+    (-> (update quantity-value :lower-bound prefix-with* token-value)
         (update :upper-bound prefix-with* token-value))
-    (-> quantity-value
-        (update :exact-value prefix-with* token-value))))
+    (update quantity-value :exact-value prefix-with* token-value)))
 
 
 (def ^:private ^:const ^long prefix-length
@@ -42,16 +41,16 @@
           token-value (cc/compile-component-value c1 v1)]
       (if-ok [quantity-value (cc/compile-component-value c2 v2)]
         (prefix-with quantity-value token-value)
-        (case (::spq/category quantity-value)
+        #(case (::spq/category %)
           ::spq/invalid-decimal-value
-          (assoc quantity-value
+          (assoc %
             ::anom/message (spq/invalid-decimal-value-msg code v2))
           ::spq/unsupported-prefix
-          (assoc quantity-value
+          (assoc %
             ::anom/message
             (spq/unsupported-prefix-msg
-              code (::spq/unsupported-prefix quantity-value)))
-          quantity-value))))
+              code (::spq/unsupported-prefix %)))
+          %))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
@@ -70,4 +69,3 @@
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
       (coll/eduction (cc/index-values resolver c1 c2) values))))
-

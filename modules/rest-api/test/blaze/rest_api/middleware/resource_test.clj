@@ -3,6 +3,7 @@
     [blaze.async.comp :as ac]
     [blaze.executors :as ex]
     [blaze.fhir.spec.type :as type]
+    [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.rest-api.middleware.resource :refer [wrap-resource]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
@@ -30,7 +31,9 @@
 
 (def resource-handler
   "A handler which just returns the :body from the request."
-  (wrap-resource (comp ac/completed-future :body) executor))
+  (-> (comp ac/completed-future :body)
+      (wrap-resource executor)
+      wrap-error))
 
 
 (deftest json-test

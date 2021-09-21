@@ -1,13 +1,12 @@
 (ns blaze.fhir.spec.impl
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.util :as u]
     [clojure.alpha.spec :as s]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
-    [cognitect.anomalies :as anom]
     [cuerdas.core :as str])
   (:import
     [java.net URLEncoder]
@@ -105,7 +104,7 @@
     "http://hl7.org/fhirpath/System.Integer" `int?
     "http://hl7.org/fhirpath/System.Decimal" `decimal?
     "http://hl7.org/fhirpath/System.Boolean" `boolean?
-    (throw-anom ::anom/unsupported (format "Unsupported system type `%s`." code))))
+    (throw-anom (ba/unsupported (format "Unsupported system type `%s`." code)))))
 
 
 
@@ -144,13 +143,16 @@
   `(s/or ~@(mapcat #(choice-pair path %) types)))
 
 
+(defn- choice-spec-def* [modifier path code min max]
+  {:key (path-parts->key' (str "fhir." (name modifier)) (split-path (str/replace path "[x]" (str/capital code))))
+   :modifier modifier
+   :min min
+   :max max
+   :spec-form (keyword (str "fhir." (name modifier)) code)})
+
+
 (defn- choice-spec-def [modifier path path-parts code min max]
-  (cond->
-    {:key (path-parts->key' (str "fhir." (name modifier)) (split-path (str/replace path "[x]" (str/capital code))))
-     :modifier modifier
-     :min min
-     :max max
-     :spec-form (keyword (str "fhir." (name modifier)) code)}
+  (cond-> (choice-spec-def* modifier path code min max)
     (identical? :json modifier)
     (assoc :choice-group (keyword (last path-parts)))))
 
@@ -349,7 +351,9 @@
 
 (defn- resource-type-annotating-conformer-form [type]
   `(s/conformer
-     (fn [~'m] (-> (assoc ~'m :fhir/type ~(keyword "fhir" type)) (dissoc :resourceType)))
+     (fn [~'m]
+       (-> (assoc ~'m :fhir/type ~(keyword "fhir" type))
+           (dissoc :resourceType)))
      (fn [~'m] (-> (dissoc ~'m :fhir/type) (assoc :resourceType ~type)))))
 
 
@@ -406,10 +410,8 @@
 
 
 (defn- json-type-conformer-form [kind parent-path-parts path-part]
-  (cond
-    (= "resource" kind)
+  (if (= "resource" kind)
     (resource-type-annotating-conformer-form path-part)
-    :else
     (type-annotating-conformer-form (spec-key "fhir" parent-path-parts path-part))))
 
 

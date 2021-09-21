@@ -1,10 +1,15 @@
 (ns blaze.db.tx-log.kafka.spec
   (:require
+    [blaze.executors :as ex]
     [clojure.spec.alpha :as s]))
 
 
 (s/def :blaze.db.tx-log.kafka/bootstrap-servers
   string?)
+
+
+(s/def :blaze.db.tx-log.kafka/last-t-executor
+  ex/executor?)
 
 
 (s/def :blaze.db.tx-log.kafka/max-request-size

@@ -15,15 +15,6 @@
 (set! *warn-on-reflection* true)
 
 
-(defn- new-resource-handle-cache
-  "Creates a new resource handle cache."
-  [max-size]
-  (-> (Caffeine/newBuilder)
-      (.maximumSize max-size)
-      (.recordStats)
-      (.build)))
-
-
 (defmethod ig/pre-init-spec :blaze.db/resource-handle-cache [_]
   (s/keys :opt-un [::max-size]))
 
@@ -32,4 +23,7 @@
   [_ {:keys [max-size] :or {max-size 0}}]
   (log/info "Create resource handle cache with a size of" max-size
             "resource handles")
-  (new-resource-handle-cache max-size))
+  (-> (Caffeine/newBuilder)
+      (.maximumSize max-size)
+      (.recordStats)
+      (.build)))

@@ -19,6 +19,7 @@
   (:require
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
+    [blaze.db.impl.arrays-support :as arrays-support]
     [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.kv :as kv])
   (:import
@@ -68,16 +69,20 @@
       (reduce-iter! iter kv/prev! rf init))))
 
 
+(defn- new-capacity ^long [^long old-capacity ^long min-capacity]
+  (arrays-support/new-length old-capacity (- min-capacity old-capacity)
+                             (bit-shift-right old-capacity 1)))
+
 (defn- read!
   "Reads from `iter` using the function `read` and `buf`.
 
-  When `buf` is to small, a new direct byte buffer will be created. Returns the
+  When `buf` is too small, a new direct byte buffer will be created. Returns the
   byte buffer used to read."
   [read buf iter]
   (bb/clear! buf)
-  (let [size (read iter buf)]
-    (if (< (bb/capacity buf) ^long size)
-      (let [buf (bb/allocate-direct (* 2 (bb/capacity buf)))]
+  (let [size (unchecked-long (read iter buf))]
+    (if (< (bb/capacity buf) size)
+      (let [buf (bb/allocate-direct (new-capacity (bb/capacity buf) size))]
         (read iter buf)
         buf)
       buf)))
@@ -193,8 +198,8 @@
 (defn kvs!
   "Returns a reducible collection of decoded keys and values of `iter`.
 
-  The `decode` function has to return a tuple of direct ByteBuffers, the first
-  for the key and the second for the value, when called with no argument. The
+  When called with no argument, the `decode` function has to return a tuple of
+  direct ByteBuffers, the first for the key and the second for the value. The
   ByteBuffer will be used for each key and value read and will be passed to the
   decode function for decoding into a value which will end up in the collection.
 

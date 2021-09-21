@@ -1,5 +1,6 @@
 (ns blaze.db.node.resource-indexer
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
@@ -7,6 +8,7 @@
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
+    [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.core.reducers :as r]
@@ -77,15 +79,18 @@
 (defn- index-entries [search-param linked-compartments hash resource]
   (let [res (search-param/index-entries search-param linked-compartments
                                         hash resource)]
-    (if (::anom/category res)
+    (if (ba/anomaly? res)
       (log/warn (skip-indexing-msg search-param resource (::anom/message res)))
       res)))
 
 
-(defn- conj-index-entries! [search-param-registry res [hash resource]]
+(defn- conj-index-entries!
+  [search-param-registry last-updated res [hash resource]]
   (log/trace "index-resource with hash" (bs/hex hash))
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
-    (let [compartments (sr/linked-compartments search-param-registry resource)]
+    (let [resource (update resource :meta (fnil assoc #fhir/Meta{})
+                           :lastUpdated last-updated)
+          compartments (sr/linked-compartments search-param-registry resource)]
       (transduce
         (mapcat #(index-entries % compartments hash resource))
         conj!
@@ -99,8 +104,7 @@
 
 
 (defn- batch-index-resources
-  ""
-  [{:keys [kv-store search-param-registry]} entries]
+  [{:keys [kv-store search-param-registry]} last-updated entries]
   (->> entries
        (r/fold
          (batch-size (count entries))
@@ -110,17 +114,35 @@
             (put! kv-store (persistent! index-entries-a))
             (put! kv-store (persistent! index-entries-b))
             (transient [])))
-         (partial conj-index-entries! search-param-registry))
+         (partial conj-index-entries! search-param-registry last-updated))
        (persistent!)
        (put! kv-store)))
 
 
+(defn- index-resources* [resource-indexer last-updated entries]
+  (log/trace "index" (count entries) "resource(s)")
+  (ac/supply-async
+    #(batch-index-resources resource-indexer last-updated (vec entries))))
+
+
+(defn- hashes [tx-cmds]
+  (into [] (keep :hash) tx-cmds))
+
+
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources of
-   `entries` are indexed."
-  [resource-indexer entries]
-  (log/trace "index" (count entries) "resource(s)")
-  (ac/supply-async #(batch-index-resources resource-indexer (vec entries))))
+   `tx-data` are indexed.
+
+   The :instant from `tx-data` is used to index the _lastUpdated search
+   parameter because the property doesn't exist in the resource itself."
+  {:arglists '([context tx-data])}
+  [{:keys [resource-store resource-indexer]}
+   {:keys [tx-cmds] resources :local-payload last-updated :instant}]
+  (if resources
+    (index-resources* resource-indexer last-updated resources)
+    (-> (rs/multi-get resource-store (hashes tx-cmds))
+        (ac/then-compose
+          (partial index-resources* resource-indexer last-updated)))))
 
 
 (defn new-resource-indexer

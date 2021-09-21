@@ -184,16 +184,14 @@
 
 ;; 15.1. Case
 (defn- infer-item-types [context]
-  #(-> %
-       (update :when (partial infer-types context))
+  #(-> (update % :when (partial infer-types context))
        (update :then (partial infer-types context))))
 
 
 (defmethod infer-types* :elm/case
   [context {:keys [comparand] :as expression}]
   (cond->
-    (-> expression
-        (update :caseItem #(mapv (infer-item-types context) %))
+    (-> (update expression :caseItem #(mapv (infer-item-types context) %))
         (update :else #(infer-types context %)))
     comparand
     (assoc :comparand (infer-types context comparand))))
@@ -202,8 +200,7 @@
 ;; 15.2. If
 (defmethod infer-types* :elm/if
   [context expression]
-  (-> expression
-      (update :condition #(infer-types context %))
+  (-> (update expression :condition #(infer-types context %))
       (update :then #(infer-types context %))
       (update :else #(infer-types context %))))
 

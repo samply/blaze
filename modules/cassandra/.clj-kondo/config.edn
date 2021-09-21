@@ -1,0 +1,7 @@
+{:linters
+ {:unsorted-required-namespaces
+  {:level :error}
+  :single-key-in
+  {:level :warning}}
+
+ :skip-comments true}

@@ -3,9 +3,10 @@
 
   It uses sorted maps with byte array keys and values."
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.db.kv :as kv]
-    [cognitect.anomalies :as anom]
+    [blaze.db.kv.spec]
+    [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -40,25 +41,25 @@
 
 (defn- check-valid [iter]
   (when (not (kv/valid? iter))
-    (throw-anom ::anom/fault "The iterator is invalid.")))
+    (throw-anom (ba/fault "The iterator is invalid."))))
 
 
 (deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
   kv/KvIterator
   (-valid [_]
-    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
+    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
     (some? (:first @cursor)))
 
   (-seek-to-first [_]
-    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
+    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
     (reset! cursor {:first (first db) :rest (rest db)}))
 
   (-seek-to-last [_]
-    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
+    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
     (reset! cursor {:first (last db) :rest nil}))
 
   (-seek [_ k]
-    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
+    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
     (let [[x & xs] (subseq db >= k)]
       (reset! cursor {:first x :rest xs})))
 
@@ -68,7 +69,7 @@
       (kv/-seek iter k)))
 
   (-seek-for-prev [_ k]
-    (when closed? (throw-anom ::anom/fault "The iterator is closed."))
+    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
     (let [[x & xs] (rsubseq db <= k)]
       (reset! cursor {:first x :rest xs})))
 
@@ -114,7 +115,7 @@
   (-new-iterator [_ column-family]
     (if-let [db (get db column-family)]
       (->MemKvIterator db (atom {:rest (seq db)}) false)
-      (throw-anom ::anom/fault (column-family-unknown-msg column-family))))
+      (throw-anom (ba/fault (column-family-unknown-msg column-family)))))
 
   (-snapshot-get [_ k]
     (some-> (get-in db [:default k]) (copy)))
@@ -148,11 +149,11 @@
         (case op
           :put (update db column-family assoc-copy k v)
           :delete (update db column-family dissoc k)
-          (throw-anom ::anom/unsupported (str (name op) " is not supported")))
+          (throw-anom (ba/unsupported (str (name op) " is not supported"))))
         (case op
           :put (update db :default assoc-copy column-family k)
           :delete (update db :default dissoc column-family)
-          (throw-anom ::anom/unsupported (str (name op) " is not supported")))))
+          (throw-anom (ba/unsupported (str (name op) " is not supported"))))))
     db
     entries))
 
@@ -179,6 +180,7 @@
         ks)))
 
   (-put [_ entries]
+    (log/trace "put" (count entries) "entries")
     (swap! db put-entries entries)
     nil)
 
@@ -215,15 +217,13 @@
   (into {} (map init-column-family) column-families))
 
 
-(defn new-mem-kv-store
-  "Initializes an in-memory key-value store with optional column families."
-  ([]
-   (new-mem-kv-store {}))
-  ([column-families]
-   (->MemKvStore (atom (init-db (assoc column-families :default nil))))))
+(defmethod ig/pre-init-spec ::kv/mem [_]
+  (s/keys :req-un [::kv/column-families]))
 
 
-(defmethod ig/init-key :blaze.db.kv/mem
-  [_ {:keys [column-families]}]
+(defmethod ig/init-key ::kv/mem
+  [_ {:keys [column-families init-data]}]
   (log/info "Open volatile, in-memory key-value store")
-  (new-mem-kv-store column-families))
+  (let [store (->MemKvStore (atom (init-db (assoc column-families :default nil))))]
+    (some->> init-data (kv/put! store))
+    store))

@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.date
   (:require
-    [blaze.anomaly :refer [if-ok when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
@@ -221,11 +222,8 @@
           (:le :lt)
           {:op op
            :upper-bound (date-ub date-time-value)}
-          {::anom/category ::anom/unsupported
-           ::anom/message (unsupported-prefix-msg code op)})
-        (assoc date-time-value
-          ::anom/message
-          (invalid-date-time-value-msg code value)))))
+          (ba/unsupported (unsupported-prefix-msg code op)))
+        #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
@@ -257,5 +255,4 @@
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
       (->SearchParamDate name url type base code (codec/c-hash code) expression))
-    {::anom/category ::anom/unsupported
-     ::anom/message (u/missing-expression-msg url)}))
+    (ba/unsupported (u/missing-expression-msg url))))

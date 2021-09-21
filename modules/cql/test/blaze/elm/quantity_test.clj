@@ -5,7 +5,8 @@
     [clojure.java.io :as io]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
-    [clojure.test :as test :refer [are deftest is testing]]))
+    [clojure.test :as test :refer [are deftest is testing]]
+    [cognitect.anomalies :as anom]))
 
 
 (st/instrument)
@@ -33,7 +34,7 @@
            (map #(str/split % #"\t"))
            (map first)
            (map #(try (q/quantity 1 %) (catch Exception e (ex-data e))))
-           (filter :cognitect.anomalies/category)
+           (filter ::anom/category)
            (map :unit)
            (count)
            (= 62)

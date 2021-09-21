@@ -1,17 +1,18 @@
 (ns blaze.fhir.spec.type.system-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))
 
 
 (s/fdef system/value?
-  :args (s/cat :a any?)
+  :args (s/cat :x any?)
   :ret boolean?)
 
 
 (s/fdef system/type
-  :args (s/cat :a any?)
+  :args (s/cat :x any?)
   :ret (s/nilable keyword?))
 
 

@@ -18,7 +18,7 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest parse-qualified-name
+(deftest parse-qualified-name-test
   (testing "nil"
     (is (nil? (elm-util/parse-qualified-name nil))))
 

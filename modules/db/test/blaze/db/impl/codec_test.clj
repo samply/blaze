@@ -4,14 +4,13 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.search-param-value-resource-spec]
-    [blaze.fhir.spec.type.system :as system]
+    [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check :as tc]
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as p])
   (:import
-    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth ZoneOffset]))
+    [java.time OffsetDateTime ZoneOffset]))
 
 
 (st/instrument)
@@ -33,15 +32,6 @@
    `(is (not-every? :failure (st/check ~sym ~opts)))))
 
 
-(defmacro satisfies-prop [num-tests prop]
-  `(let [result# (tc/quick-check ~num-tests ~prop)]
-     (if (instance? Throwable (:result result#))
-       (throw (:result result#))
-       (if (true? (:result result#))
-         (is :success)
-         (is (clojure.pprint/pprint result#))))))
-
-
 
 ;; ---- Key Functions ---------------------------------------------------------
 
@@ -50,12 +40,12 @@
     1 0xFFFFFFFFFFFFFE
     0 0xFFFFFFFFFFFFFF)
   (satisfies-prop 100000
-                  (p/for-all [t gen/nat]
-                    (= t (codec/descending-long (codec/descending-long t))))))
+    (p/for-all [t gen/nat]
+      (= t (codec/descending-long (codec/descending-long t))))))
 
 
 
-(deftest tid
+(deftest tid-test
   (check `codec/tid))
 
 
@@ -63,25 +53,25 @@
   (ZoneOffset/ofHours 0))
 
 
-(deftest date-lb
+(deftest date-lb-test
   (testing "year"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      (Year/of 1970) "80"
-      (system/date-time 1970) "80"))
+      #system/date"1970" "80"
+      #system/date-time"1970" "80"))
 
   (testing "year-month"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      (YearMonth/of 1970 1) "80"
-      (system/date-time 1970 1) "80"))
+      #system/date"1970-01" "80"
+      #system/date-time"1970-01" "80"))
 
   (testing "local-date"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      (LocalDate/of 1970 1 1) "80"
-      (system/date-time 1970 1 1) "80"))
+      #system/date"1970-01-01" "80"
+      #system/date-time"1970-01-01" "80"))
 
   (testing "local-date-time"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      (LocalDateTime/of 1970 1 1 0 0) "80"))
+      #system/date-time"1970-01-01T00:00" "80"))
 
   (testing "offset-date-time"
     (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
@@ -92,25 +82,25 @@
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -2)) "901C20")))
 
 
-(deftest date-ub
+(deftest date-ub-test
   (testing "year"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (Year/of 1969) "7F"
-      (system/date-time 1969) "7F"))
+      #system/date"1969" "7F"
+      #system/date-time"1969" "7F"))
 
   (testing "year-month"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (YearMonth/of 1969 12) "7F"
-      (system/date-time 1969 12) "7F"))
+      #system/date"1969-12" "7F"
+      #system/date-time"1969-12" "7F"))
 
   (testing "local-date"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (LocalDate/of 1969 12 31) "7F"
-      (system/date-time 1969 12 31) "7F"))
+      #system/date"1969-12-31" "7F"
+      #system/date-time"1969-12-31" "7F"))
 
   (testing "local-date-time"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (LocalDateTime/of 1969 12 31 23 59 59) "7F"))
+      #system/date-time"1969-12-31T23:59:59" "7F"))
 
   (testing "offset-date-time"
     (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
@@ -121,21 +111,21 @@
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "901C1F")))
 
 
-(deftest date-lb-ub
+(deftest date-lb-ub-test
   (testing "extract lower bound"
     (is (=
           (codec/date-lb-ub->lb
-            (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
-          (codec/date-lb zo (Year/of 2020)))))
+            (codec/date-lb-ub (codec/date-lb zo #system/date"2020") (codec/date-ub zo #system/date"2020")))
+          (codec/date-lb zo #system/date"2020"))))
 
   (testing "extract upper bound"
     (is (=
           (codec/date-lb-ub->ub
-            (codec/date-lb-ub (codec/date-lb zo (Year/of 2020)) (codec/date-ub zo (Year/of 2020))))
-          (codec/date-ub zo (Year/of 2020))))))
+            (codec/date-lb-ub (codec/date-lb zo #system/date"2020") (codec/date-ub zo #system/date"2020")))
+          (codec/date-ub zo #system/date"2020")))))
 
 
-(deftest number
+(deftest number-test
   (testing "long"
     (are [n hex] (= hex (bs/hex (codec/number n)))
       Long/MIN_VALUE "3F8000000000000000"
@@ -193,4 +183,12 @@
       576460752303423487 "BFFFFFFFFFFFFFFF"
       576460752303423488 "C00800000000000000"
       576460752303423489 "C00800000000000001"
-      Long/MAX_VALUE "C07FFFFFFFFFFFFFFF")))
+      Long/MAX_VALUE "C07FFFFFFFFFFFFFFF"))
+
+  (testing "integer"
+    (are [n hex] (= hex (bs/hex (codec/number n)))
+      Integer/MIN_VALUE "5F80000000"
+      (int -1) "7F"
+      (int 0) "80"
+      (int 1) "81"
+      Integer/MAX_VALUE "A07FFFFFFF")))

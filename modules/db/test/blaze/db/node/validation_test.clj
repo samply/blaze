@@ -20,7 +20,7 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest validate-ops
+(deftest validate-ops-test
   (testing "single delete"
     (is (nil? (validation/validate-ops [[:delete "Patient" "0"]]))))
 

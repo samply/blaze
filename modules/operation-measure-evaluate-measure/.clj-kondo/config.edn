@@ -1,7 +1,11 @@
 {:lint-as
- {prometheus.alpha/defcounter clojure.core/def
-  prometheus.alpha/defhistogram clojure.core/def
-  blaze.anomaly/when-ok clojure.core/let}
+ {blaze.anomaly/if-ok clojure.core/let
+  blaze.anomaly/when-ok clojure.core/let
+  blaze.db.api-stub/with-system-data clojure.core/with-open
+  blaze.fhir.operation.evaluate-measure-test/with-handler clojure.core/fn
+  blaze.fhir.operation.evaluate-measure-test/with-handler-data clojure.core/fn
+  prometheus.alpha/defcounter clojure.core/def
+  prometheus.alpha/defhistogram clojure.core/def}
 
  :linters
  {:unsorted-required-namespaces

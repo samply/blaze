@@ -10,6 +10,7 @@
     [blaze.db.kv :as kv])
   (:import
     [com.github.benmanes.caffeine.cache Cache]
+    [com.google.common.primitives Ints]
     [java.util.function Function]))
 
 
@@ -198,14 +199,11 @@
 
 (defn- start-key
   ([tid]
-   (-> (bb/allocate Integer/BYTES)
-       (bb/put-int! tid)
-       (bb/flip!)
-       (bs/from-byte-buffer)))
+   (-> (Ints/toByteArray tid) bs/from-byte-array))
   ([tid start-id t]
    (-> (encode-key-buf tid start-id t)
-       (bb/flip!)
-       (bs/from-byte-buffer))))
+       bb/flip!
+       bs/from-byte-buffer)))
 
 
 (defn type-list
@@ -411,7 +409,7 @@
     (and (instance? Key x)
          (= tid ^long (.-tid ^Key x))
          (.equals id (.-id ^Key x))
-         (= t ^long  (.-t ^Key x))))
+         (= t ^long (.-t ^Key x))))
   (hashCode [_]
     (-> tid
         (unchecked-multiply-int 31)
@@ -432,7 +430,7 @@
         rh (reify Function
              (apply [_ key]
                (resource-handle** raoi tb kb vb (.-tid ^Key key)
-                                  (.-id ^Key  key) (.-t ^Key key))))]
+                                  (.-id ^Key key) (.-t ^Key key))))]
     (fn resource-handle
       ([tid id]
        (resource-handle tid id t))

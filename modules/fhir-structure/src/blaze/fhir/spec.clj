@@ -1,5 +1,7 @@
 (ns blaze.fhir.spec
   (:require
+    [blaze.anomaly :as ba]
+    [blaze.anomaly-spec]
     [blaze.fhir.hash.spec]
     [blaze.fhir.spec.impl :as impl]
     [blaze.fhir.spec.spec]
@@ -8,6 +10,7 @@
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [clojure.walk :as walk]
+    [cognitect.anomalies :as anom]
     [jsonista.core :as j])
   (:import
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
@@ -30,22 +33,11 @@
   representation which can be conformed using `conform-json`.
 
   Possible `source` types are byte array, File, URL, String, Reader and
-  InputStream."
+  InputStream.
+
+  Returns an anomaly on parse errors."
   [source]
-  (j/read-value source json-object-mapper))
-
-
-(defn conform-json
-  "Returns the internal representation of `resource` parsed from JSON."
-  {:arglists '([resource])}
-  [{type :resourceType :as resource}]
-  (or
-    (when type
-      (when-let [spec (s2/get-spec (keyword "fhir.json" type))]
-        (let [resource (s2/conform spec resource)]
-          (when-not (s2/invalid? resource)
-            resource))))
-    ::s/invalid))
+  (ba/try-all ::anom/incorrect (j/read-value source json-object-mapper)))
 
 
 (def ^:private cbor-object-mapper
@@ -57,38 +49,30 @@
 
 (defn parse-cbor
   "Parses a CBOR representation of a resource in `source` into an intermediate
-  representation which can be conformed using `conform-json`.
+  representation which can be conformed using `conform-cbor`.
 
   Possible `source` types are byte array, File, URL, String, Reader and
-  InputStream."
+  InputStream.
+
+  Returns an anomaly on parse errors."
   [source]
-  (j/read-value source cbor-object-mapper))
+  (ba/try-all ::anom/incorrect (j/read-value source cbor-object-mapper)))
 
 
 (defn conform-cbor
-  "Returns the internal representation of `resource` parsed from CBOR."
-  {:arglists '([resource])}
-  [{type :resourceType :as resource}]
+  "Returns the internal representation of `x` parsed from CBOR.
+
+  Returns an anomaly if `x` isn't a valid intermediate representation of a
+  resource."
+  {:arglists '([x])}
+  [{type :resourceType :as x}]
   (or
     (when type
       (when-let [spec (s2/get-spec (keyword "fhir.cbor" type))]
-        (let [resource (s2/conform spec resource)]
+        (let [resource (s2/conform spec x)]
           (when-not (s2/invalid? resource)
             resource))))
-    ::s/invalid))
-
-
-(defn conform-xml
-  "Returns the internal representation of `resource` parsed from XML."
-  {:arglists '([resource])}
-  [{:keys [tag] :as resource}]
-  (or
-    (when type
-      (when-let [spec (s2/get-spec (keyword "fhir.xml" (name tag)))]
-        (let [resource (s2/conform spec resource)]
-          (when-not (s2/invalid? resource)
-            resource))))
-    ::s/invalid))
+    (ba/incorrect "Invalid intermediate representation of a resource." :x x)))
 
 
 (defn- transform-type-key [type-key modifier]
@@ -204,14 +188,17 @@
                    val)))))
 
 
+(defn- issue [pred val via]
+  {:fhir.issues/severity "error"
+   :fhir.issues/code "invariant"
+   :fhir.issues/diagnostics (diagnostics-from-problem pred val via)})
+
+
 (defn- generate-issue
   "Returns an issue of type map for the given arguments."
   {:arglists '([resource problem])}
   [resource {:keys [val via in pred]}]
-  (cond->
-    {:fhir.issues/severity "error"
-     :fhir.issues/code "invariant"
-     :fhir.issues/diagnostics (diagnostics-from-problem pred val via)}
+  (cond-> (issue pred val via)
     (:resourceType resource)
     (assoc :fhir.issues/expression (fhir-path in resource))))
 
@@ -284,3 +271,41 @@
   (when-let [fhir-type (fhir-type x)]
     (and (= "fhir" (namespace fhir-type))
          (Character/isLowerCase ^char (first (name fhir-type))))))
+
+
+(defn conform-json
+  "Returns the internal representation of `x` parsed from JSON.
+
+  Returns an anomaly if `x` isn't a valid intermediate representation of a
+  resource."
+  {:arglists '([x])}
+  [{type :resourceType :as x}]
+  (or
+    (when type
+      (when-let [spec (s2/get-spec (keyword "fhir.json" type))]
+        (let [resource (s2/conform spec x)]
+          (when-not (s2/invalid? resource)
+            resource))))
+    (ba/incorrect
+      "Invalid intermediate representation of a resource."
+      :x x
+      :fhir/issues (:fhir/issues (explain-data-json x)))))
+
+
+(defn conform-xml
+  "Returns the internal representation of `x` parsed from XML.
+
+  Returns an anomaly if `x` isn't a valid intermediate representation of a
+  resource."
+  {:arglists '([x])}
+  [{:keys [tag] :as x}]
+  (or
+    (when type
+      (when-let [spec (s2/get-spec (keyword "fhir.xml" (name tag)))]
+        (let [resource (s2/conform spec x)]
+          (when-not (s2/invalid? resource)
+            resource))))
+    (ba/incorrect
+      "Invalid intermediate representation of a resource."
+      :x x
+      :fhir/issues (:fhir/issues (explain-data-xml x)))))

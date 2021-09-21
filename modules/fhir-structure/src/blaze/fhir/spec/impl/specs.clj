@@ -1,9 +1,9 @@
 (ns blaze.fhir.spec.impl.specs
   "Custom Specs for primitive and complex types."
+  (:refer-clojure :exclude [meta])
   (:require
     [clojure.alpha.spec :as s]
-    [clojure.alpha.spec.protocols :as sp])
-  (:refer-clojure :exclude [meta]))
+    [clojure.alpha.spec.protocols :as sp]))
 
 
 (set! *warn-on-reflection* true)

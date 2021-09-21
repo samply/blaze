@@ -9,6 +9,7 @@
 
 (defn- format-config [config]
   (->> config
+       (remove (fn [[k]] (= :blaze.db.tx-log.kafka/last-t-executor k)))
        (keep
          (fn [[k v]] (when (some? v) (str (name k) " = " (format-value k v)))))
        (str/join ", ")))

@@ -52,13 +52,9 @@
 
 (defn- encode-key
   ([tid id hash c-hash]
-   (-> (encode-key-buf tid id hash c-hash)
-       (bb/flip!)
-       (bs/from-byte-buffer)))
+   (-> (encode-key-buf tid id hash c-hash) bb/flip! bs/from-byte-buffer))
   ([tid id hash c-hash value]
-   (-> (encode-key-buf tid id hash c-hash value)
-       (bb/flip!)
-       (bs/from-byte-buffer))))
+   (-> (encode-key-buf tid id hash c-hash value) bb/flip! bs/from-byte-buffer)))
 
 
 (defn next-value!

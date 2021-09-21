@@ -44,29 +44,30 @@ services:
 
   cassandra-1:
     image: "docker.io/bitnami/cassandra:3"
+    hostname: "cassandra-1"
     volumes:
     - "./cassandra-init.cql:/docker-entrypoint-initdb.d/cassandra-init.cql:ro"
     - "cassandra-1-data:/bitnami"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
       CASSANDRA_PASSWORD_SEEDER: "yes"
-      MAX_HEAP_SIZE: "1G"
+      MAX_HEAP_SIZE: "512M"
       HEAP_NEWSIZE: "100M"
 
   cassandra-2:
     image: "docker.io/bitnami/cassandra:3"
+    hostname: "cassandra-2"
     volumes:
     - "cassandra-2-data:/bitnami"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "1G"
+      MAX_HEAP_SIZE: "512M"
       HEAP_NEWSIZE: "100M"
 
-  blaze:
+  blaze-1:
     image: "ghcr.io/samply/blaze:sha-${GITHUB_SHA}"
-    hostname: "blaze"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      JAVA_TOOL_OPTIONS: "-Xmx512m"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
@@ -79,27 +80,58 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
-      DB_CASSANDRA_MAX_REQUEST_QUEUE_SIZE: "1000000"
       DB_RESOURCE_CACHE_SIZE: "1000"
       LOG_LEVEL: "debug"
-    ports:
-    - "8080:8080"
     volumes:
     - "./blaze.keystore.jks:/app/blaze.keystore.jks:ro"
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
-    - "blaze-data:/app/data"
-    deploy:
-      resources:
-        limits:
-          cpus: '0.75'
+    - "blaze-1-data:/app/data"
     depends_on:
     - kafka-topic-creator
     - cassandra-1
     - cassandra-2
+
+  blaze-2:
+    image: "ghcr.io/samply/blaze:sha-${GITHUB_SHA}"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx512m"
+      STORAGE: "distributed"
+      DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+      DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
+      DB_KAFKA_SECURITY_PROTOCOL: "SSL"
+      DB_KAFKA_SSL_TRUSTSTORE_LOCATION: "/app/kafka.truststore.jks"
+      DB_KAFKA_SSL_TRUSTSTORE_PASSWORD: "password"
+      DB_KAFKA_SSL_KEYSTORE_LOCATION: "/app/blaze.keystore.jks"
+      DB_KAFKA_SSL_KEYSTORE_PASSWORD: "password"
+      DB_KAFKA_SSL_KEY_PASSWORD: "password"
+      DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
+      DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
+      DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
+      DB_RESOURCE_CACHE_SIZE: "1000"
+      LOG_LEVEL: "debug"
+    volumes:
+    - "./blaze.keystore.jks:/app/blaze.keystore.jks:ro"
+    - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
+    - "blaze-2-data:/app/data"
+    depends_on:
+    - kafka-topic-creator
+    - cassandra-1
+    - cassandra-2
+
+  ingress:
+    image: "haproxy:2.3"
+    ports:
+    - "8080:8080"
+    volumes:
+    - "./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro"
+    depends_on:
+    - blaze-1
+    - blaze-2
 
 volumes:
   zookeeper-data:
   kafka-data:
   cassandra-1-data:
   cassandra-2-data:
-  blaze-data:
+  blaze-1-data:
+  blaze-2-data:

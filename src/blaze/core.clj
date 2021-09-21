@@ -28,12 +28,14 @@
           (str "Error while initializing Blaze.\n\n    " (ex-message e))
           (ex-cause e)
           (str "\n\n    Cause: " (ex-message (ex-cause e)))
+          (ex-cause (ex-cause e))
+          (str "\n\n      Cause: " (ex-message (ex-cause (ex-cause e))))
           (seq config)
           (str "\n\n    Config:\n      " (config-msg config))))
       (System/exit 1))))
 
 
-(def system nil)
+(defonce system nil)
 
 
 (defn init-system! [config]

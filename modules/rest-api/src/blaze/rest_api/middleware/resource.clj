@@ -1,13 +1,12 @@
 (ns blaze.rest-api.middleware.resource
   "JSON/XML deserialization middleware."
   (:require
-    [blaze.anomaly :refer [throw-anom ex-anom]]
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.handler.util :as handler-util]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]
-    [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom]
@@ -31,48 +30,31 @@
 (defn- parse-json
   "Takes a request `body` and returns the parsed JSON content.
 
-  Throws an anomaly on parse errors."
+  Returns an anomaly on parse errors."
   [body]
   (with-open [_ (prom/timer parse-duration-seconds "json")]
-    (try
-      (fhir-spec/parse-json body)
-      (catch Exception e
-        (throw-anom ::anom/incorrect (ex-message e))))))
+    (fhir-spec/parse-json body)))
 
 
 (defn- conform-json [json]
   (if (map? json)
-    (let [resource (fhir-spec/conform-json json)]
-      (if (s/invalid? resource)
-        (throw-anom
-          ::anom/incorrect
-          "Resource invalid."
-          :fhir/issues (:fhir/issues (fhir-spec/explain-data-json json)))
-        resource))
-    (throw-anom
-      ::anom/incorrect
+    (fhir-spec/conform-json json)
+    (ba/incorrect
       "Expect a JSON object."
       :fhir/issue "structure"
       :fhir/operation-outcome "MSG_JSON_OBJECT")))
 
 
-(defn- handle-json [request]
-  (update request :body (comp conform-json parse-json)))
+(defn- handle-json [{:keys [body] :as request}]
+  (when-ok [x (parse-json body)
+            resource (conform-json x)]
+    (assoc request :body resource)))
 
 
 (defn- xml-request? [request]
   (when-let [content-type (request/content-type request)]
     (or (str/starts-with? content-type "application/fhir+xml")
         (str/starts-with? content-type "application/xml"))))
-
-
-(defn- conform-xml [element]
-  (let [resource (fhir-spec/conform-xml element)]
-    (if (s/invalid? resource)
-      {::anom/category ::anom/incorrect
-       ::anom/message "Resource invalid."
-       :fhir/issues (:fhir/issues (fhir-spec/explain-data-xml element))}
-      resource)))
 
 
 (defn- parse-and-conform-xml
@@ -82,19 +64,14 @@
   [body]
   (with-open [_ (prom/timer parse-duration-seconds "xml")
               reader (io/reader body)]
-    (try
-      ;; It is important to conform inside this function, because the XML parser
-      ;; is lazy streaming. Otherwise errors will be thrown outside this function.
-      (conform-xml (xml/parse reader))
-      (catch Exception e
-        (throw-anom ::anom/incorrect (or (ex-message e) (str e)))))))
+    ;; It is important to conform inside this function, because the XML parser
+    ;; is lazy streaming. Otherwise, errors will be thrown outside this function.
+    (ba/try-all ::anom/incorrect (fhir-spec/conform-xml (xml/parse reader)))))
 
 
 (defn- handle-xml [{:keys [body] :as request}]
-  (let [resource (parse-and-conform-xml body)]
-    (if (::anom/category resource)
-      (throw (ex-anom resource))
-      (assoc request :body resource))))
+  (when-ok [resource (parse-and-conform-xml body)]
+    (assoc request :body resource)))
 
 
 (defn- unknown-content-type-msg [request]
@@ -106,19 +83,13 @@
     "Content-Type header expected, but is missing. Please specify one of application/fhir+json` or `application/fhir+xml`."))
 
 
-(defn- unknown-content-type-error [request]
-  (ex-anom
-    {::anom/category ::anom/incorrect
-     ::anom/message (unknown-content-type-msg request)}))
-
-
 (defn- handle-request [{:keys [body] :as request} executor]
   (cond
     (and (json-request? request) body)
     (ac/supply-async #(handle-json request) executor)
     (and (xml-request? request) body)
     (ac/supply-async #(handle-xml request) executor)
-    :else (ac/failed-future (unknown-content-type-error request))))
+    :else (ac/completed-future (ba/incorrect (unknown-content-type-msg request)))))
 
 
 (defn wrap-resource
@@ -133,5 +104,4 @@
   [handler executor]
   (fn [request]
     (-> (handle-request request executor)
-        (ac/then-compose handler)
-        (ac/exceptionally handler-util/error-response))))
+        (ac/then-compose handler))))

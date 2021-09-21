@@ -1,14 +1,12 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-test
   (:require
-    [blaze.bundle :as bundle]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.operation.evaluate-measure.measure :refer [evaluate-measure]]
     [blaze.fhir.operation.evaluate-measure.measure-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.log]
-    [blaze.luid :refer [luid]]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -18,7 +16,6 @@
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant OffsetDateTime ZoneOffset Year]
     [java.util Base64]))
 
 
@@ -35,9 +32,6 @@
 (test/use-fixtures :each fixture)
 
 
-(def now (OffsetDateTime/ofInstant Instant/EPOCH (ZoneOffset/ofHours 0)))
-
-
 (def router
   (reitit/router
     [["/Patient/{id}" {:name :Patient/instance}]
@@ -45,8 +39,16 @@
     {:syntax :bracket}))
 
 
-(defn- node-with [{:keys [entry]}]
-  (mem-node-with [(bundle/tx-ops entry)]))
+(defmulti entry-tx-op (fn [{{:keys [method]} :request}] (type/value method)))
+
+
+(defmethod entry-tx-op "PUT"
+  [{:keys [resource]}]
+  [:put resource])
+
+
+(defn- tx-ops [entries]
+  (mapv entry-tx-op entries))
 
 
 (defn- slurp-resource [name]
@@ -78,14 +80,24 @@
     (update bundle :entry conj library)))
 
 
+(def system
+  (assoc mem-node-system
+    :blaze.test/fixed-rng-fn {}))
+
+
 (defn- evaluate
   ([name]
    (evaluate name "population"))
   ([name report-type]
-   (with-open [node (node-with (read-data name))]
+   (with-system-data
+     [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+     [(tx-ops (:entry (read-data name)))]
+
      (let [db (d/db node)
-           period [(Year/of 2000) (Year/of 2020)]]
-       (evaluate-measure now db "" router
+           context {:clock clock :rng-fn fixed-rng-fn :db db
+                    :blaze/base-url "" ::reitit/router router}
+           period [#system/date"2000" #system/date"2020"]]
+       (evaluate-measure context
                          @(d/pull node (d/resource-handle db "Measure" "0"))
                          {:period period :report-type report-type})))))
 
@@ -109,12 +121,198 @@
         :stratum)))
 
 
-(defn- new-ids []
-  (atom (map str (range))))
+(defn- population-concept [code]
+  (type/map->CodeableConcept
+    {:coding
+     [(type/map->Coding
+        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+         :code (type/->Code code)})]}))
 
 
-(defn- take-from! [xs]
-  #(let [x (first @xs)] (swap! xs rest) x))
+(defn- cql-expression [expr]
+  {:fhir/type :fhir/Expression
+   :language #fhir/code"text/cql"
+   :expression expr})
+
+
+(def library-content
+  #fhir/Attachment
+      {:contentType #fhir/code"text/cql"
+       :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
+
+
+(deftest evaluate-measure-test
+  (testing "missing criteria"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+      [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [library-content]}]]]
+
+      (let [db (d/db node)
+            context {:clock clock :rng-fn fixed-rng-fn :db db
+                     :blaze/base-url "" ::reitit/router router}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")}]}]}
+            params {:period [#system/date"2000" #system/date"2020"]
+                    :report-type "subject"
+                    :subject "Patient/0"}]
+        (given (evaluate-measure context measure params)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Missing criteria."
+          :fhir/issue := "required"
+          :fhir.issue/expression := "Measure.group[0].population[0]"))))
+
+  (testing "single subject"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [library-content]}]]]
+
+      (let [db (d/db node)
+            context {:clock clock :rng-fn fixed-rng-fn :db db
+                     :blaze/base-url "" ::reitit/router router}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "InInitialPopulation")}]}]}
+            params {:period [#system/date"2000" #system/date"2020"]
+                    :report-type "subject"
+                    :subject-ref "0"}]
+        (given (:resource (evaluate-measure context measure params))
+          :fhir/type := :fhir/MeasureReport
+          :status := #fhir/code"complete"
+          :type := #fhir/code"individual"
+          :measure := #fhir/canonical"/0"
+          [:subject :reference] := "Patient/0"
+          :date := #system/date-time"1970-01-01T00:00Z"
+          :period := #fhir/Period{:start #system/date-time"2000"
+                                  :end #system/date-time"2020"}
+          [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+          [:group 0 :population 0 :count] := 1)))
+
+    (testing "with stratifiers"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
+          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [library-content]}]]]
+
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]
+                         :stratifier
+                         [{:fhir/type :fhir.Measure.group/stratifier
+                           :code #fhir/CodeableConcept{:text "gender"}
+                           :criteria (cql-expression "Gender")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref "0"}]
+          (given (:resource (evaluate-measure context measure params))
+            :fhir/type := :fhir/MeasureReport
+            :status := #fhir/code"complete"
+            :type := #fhir/code"individual"
+            :measure := #fhir/canonical"/0"
+            [:subject :reference] := "Patient/0"
+            :date := #system/date-time"1970-01-01T00:00Z"
+            :period := #fhir/Period{:start #system/date-time"2000"
+                                    :end #system/date-time"2020"}
+            [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+            [:group 0 :population 0 :count] := 1
+            [:group 0 :stratifier 0 :code 0 :text] := "gender"
+            [:group 0 :stratifier 0 :stratum 0 :value :text] := "male"
+            [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 1))))
+
+    (testing "invalid subject"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [library-content]}]]]
+
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref ["Observation" "0"]}]
+          (given (evaluate-measure context measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Type mismatch between evaluation subject `Observation` and Measure subject `Patient`."))))
+
+    (testing "missing subject"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [library-content]}]]]
+
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref "0"}]
+          (given (evaluate-measure context measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Subject with type `Patient` and id `0` was not found."))))
+
+    (testing "deleted subject"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [library-content]}]]
+         [[:delete "Patient" "0"]]]
+
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref "0"}]
+          (given (evaluate-measure context measure params)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
 
 
 (deftest integration-test
@@ -143,19 +341,18 @@
     "q34-medication" 1
     "q35-literal-library-ref" 1)
 
-  (with-redefs [luid (take-from! (new-ids))]
-    (let [result (evaluate "q1" "subject-list")]
-      (testing "MeasureReport is valid"
-        (is (s/valid? :blaze/resource (:resource result))))
+  (let [result (evaluate "q1" "subject-list")]
+    (testing "MeasureReport is valid"
+      (is (s/valid? :blaze/resource (:resource result))))
 
-      (given (first-population result)
-        :count := 1
-        [:subjectResults :reference] := "List/0")
+    (given (first-population result)
+      :count := 1
+      [:subjectResults :reference] := "List/AAAAAAAAAAAAAAAA")
 
-      (given (second (first (:tx-ops result)))
-        :fhir/type := :fhir/List
-        :id := "0"
-        [:entry 0 :item :reference] := "Patient/0")))
+    (given (second (first (:tx-ops result)))
+      :fhir/type := :fhir/List
+      :id := "AAAAAAAAAAAAAAAA"
+      [:entry 0 :item :reference] := "Patient/0"))
 
   (let [result (evaluate "q19-stratifier-ageclass")]
     (testing "MeasureReport is valid"
@@ -170,32 +367,31 @@
       [1 :value :text] := "70"
       [1 :population 0 :count] := 2))
 
-  (with-redefs [luid (take-from! (new-ids))]
-    (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
-      (testing "MeasureReport is valid"
-        (is (s/valid? :blaze/resource (:resource result))))
+  (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
+    (testing "MeasureReport is valid"
+      (is (s/valid? :blaze/resource (:resource result))))
 
-      (testing "MeasureReport type is `subject-list`"
-        (is (= #fhir/code"subject-list" (-> result :resource :type))))
+    (testing "MeasureReport type is `subject-list`"
+      (is (= #fhir/code"subject-list" (-> result :resource :type))))
 
-      (given (first-stratifier-strata result)
-        [0 :value :text] := "10"
-        [0 :population 0 :count] := 1
-        [0 :population 0 :subjectResults :reference] := "List/1"
-        [1 :value :text] := "70"
-        [1 :population 0 :count] := 2
-        [1 :population 0 :subjectResults :reference] := "List/2")
+    (given (first-stratifier-strata result)
+      [0 :value :text] := "10"
+      [0 :population 0 :count] := 1
+      [0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
+      [1 :value :text] := "70"
+      [1 :population 0 :count] := 2
+      [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC")
 
-      (given (:tx-ops result)
-        [1 1 :fhir/type] := :fhir/List
-        [1 1 :id] := "1"
-        [1 1 :status] := #fhir/code"current"
-        [1 1 :mode] := #fhir/code"working"
-        [1 1 :entry 0 :item :reference] := "Patient/0"
-        [2 1 :fhir/type] := :fhir/List
-        [2 1 :id] := "2"
-        [2 1 :entry 0 :item :reference] := "Patient/1"
-        [2 1 :entry 1 :item :reference] := "Patient/2")))
+    (given (:tx-ops result)
+      [1 1 :fhir/type] := :fhir/List
+      [1 1 :id] := "AAAAAAAAAAAAAAAB"
+      [1 1 :status] := #fhir/code"current"
+      [1 1 :mode] := #fhir/code"working"
+      [1 1 :entry 0 :item :reference] := "Patient/0"
+      [2 1 :fhir/type] := :fhir/List
+      [2 1 :id] := "AAAAAAAAAAAAAAAC"
+      [2 1 :entry 0 :item :reference] := "Patient/1"
+      [2 1 :entry 1 :item :reference] := "Patient/2"))
 
   (given (first-stratifier-strata (evaluate "q20-stratifier-city"))
     [0 :value :text] := "Jena"
@@ -222,38 +418,37 @@
     [2 :component 1 :value :text] := "male"
     [2 :population 0 :count] := 1)
 
-  (with-redefs [luid (take-from! (new-ids))]
-    (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
-      (testing "MeasureReport is valid"
-        (is (s/valid? :blaze/resource (:resource result))))
+  (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
+    (testing "MeasureReport is valid"
+      (is (s/valid? :blaze/resource (:resource result))))
 
-      (given (first-stratifier-strata result)
-        [0 :component 0 :code :text] := "age-class"
-        [0 :component 0 :value :text] := "10"
-        [0 :component 1 :code :text] := "gender"
-        [0 :component 1 :value :text] := "male"
-        [0 :population 0 :count] := 1
-        [0 :population 0 :subjectResults :reference] := "List/1"
-        [1 :component 0 :value :text] := "70"
-        [1 :component 1 :value :text] := "female"
-        [1 :population 0 :count] := 2
-        [1 :population 0 :subjectResults :reference] := "List/3"
-        [2 :component 0 :value :text] := "70"
-        [2 :component 1 :value :text] := "male"
-        [2 :population 0 :count] := 1
-        [2 :population 0 :subjectResults :reference] := "List/2")
+    (given (first-stratifier-strata result)
+      [0 :component 0 :code :text] := "age-class"
+      [0 :component 0 :value :text] := "10"
+      [0 :component 1 :code :text] := "gender"
+      [0 :component 1 :value :text] := "male"
+      [0 :population 0 :count] := 1
+      [0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
+      [1 :component 0 :value :text] := "70"
+      [1 :component 1 :value :text] := "female"
+      [1 :population 0 :count] := 2
+      [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAD"
+      [2 :component 0 :value :text] := "70"
+      [2 :component 1 :value :text] := "male"
+      [2 :population 0 :count] := 1
+      [2 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC")
 
-      (given (:tx-ops result)
-        [1 1 :fhir/type] := :fhir/List
-        [1 1 :id] := "1"
-        [1 1 :entry 0 :item :reference] := "Patient/0"
-        [2 1 :fhir/type] := :fhir/List
-        [2 1 :id] := "2"
-        [2 1 :entry 0 :item :reference] := "Patient/1"
-        [3 1 :fhir/type] := :fhir/List
-        [3 1 :id] := "3"
-        [3 1 :entry 0 :item :reference] := "Patient/2"
-        [3 1 :entry 1 :item :reference] := "Patient/3")))
+    (given (:tx-ops result)
+      [1 1 :fhir/type] := :fhir/List
+      [1 1 :id] := "AAAAAAAAAAAAAAAB"
+      [1 1 :entry 0 :item :reference] := "Patient/0"
+      [2 1 :fhir/type] := :fhir/List
+      [2 1 :id] := "AAAAAAAAAAAAAAAC"
+      [2 1 :entry 0 :item :reference] := "Patient/1"
+      [3 1 :fhir/type] := :fhir/List
+      [3 1 :id] := "AAAAAAAAAAAAAAAD"
+      [3 1 :entry 0 :item :reference] := "Patient/2"
+      [3 1 :entry 1 :item :reference] := "Patient/3"))
 
   (given (first-stratifier-strata (evaluate "q25-stratifier-collection"))
     [0 :value :text] := "Organization/collection-0"

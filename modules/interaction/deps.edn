@@ -8,6 +8,9 @@
   blaze/module-base
   {:local/root "../module-base"}
 
+  blaze/page-store
+  {:local/root "../page-store"}
+
   blaze/rest-util
   {:local/root "../rest-util"}
 
@@ -23,10 +26,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    {:mvn/version "1.0.887"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -37,10 +37,7 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
-    org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

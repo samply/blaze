@@ -1,12 +1,14 @@
 (ns blaze.spec
   (:require
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]))
+    [clojure.string :as str]
+    [java-time :as time])
+  (:import
+    [java.util Random]))
 
 
 (s/def :blaze/base-url
-  (s/and string?
-         #(not (str/ends-with? % "/"))))
+  (s/and string? (complement #(str/ends-with? % "/"))))
 
 
 (s/def :blaze/context-path
@@ -16,7 +18,30 @@
       :empty str/blank?
       :non-empty (s/and
                    #(str/starts-with? % "/")
-                   #(not (str/ends-with? % "/"))))))
+                   (complement #(str/ends-with? % "/"))))))
+
+
+(s/def :blaze/clock
+  time/clock?)
+
+
+(s/def :blaze/rng
+  #(instance? Random %))
+
+
+(s/def :blaze/rng-fn
+  fn?)
+
+
+
+;; ---- DB ------------------------------------------------------------------
+
+(s/def :blaze.db.query/clause
+  (s/coll-of string? :kind vector? :min-count 2))
+
+
+(s/def :blaze.db.query/clauses
+  (s/coll-of :blaze.db.query/clause :min-count 1))
 
 
 
@@ -39,6 +64,7 @@
     "duplicate"
     "multiple-matches"
     "not-found"
+    "deleted"
     "too-long"
     "code-invalid"
     "extension"
@@ -111,3 +137,17 @@
 (s/def :fhir.issue/expression
   (s/or :coll (s/coll-of string?)
         :string string?))
+
+
+
+;; ---- Clojure ---------------------------------------------------------------
+
+(s/def :clojure/binding-form (s/or :symbol simple-symbol?
+                                   :map-destructuring map?
+                                   :list-destructuring vector?))
+
+
+(s/def :clojure/binding (s/cat :binding :clojure/binding-form :expr any?))
+
+
+(s/def :clojure/bindings (s/and vector? (s/* :clojure/binding)))

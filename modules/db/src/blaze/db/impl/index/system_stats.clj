@@ -1,5 +1,5 @@
 (ns blaze.db.impl.index.system-stats
-  "The system stats index is used to track the total number of resources and the
+  "The SystemStats index is used to track the total number of resources and the
   number of changes to resources in the whole system.
 
   The total value is used in the search-system interaction as total value of the
@@ -62,18 +62,18 @@
 (defn- encode-key [t]
   (-> (bb/allocate key-size)
       (bb/put-long! (codec/descending-long ^long t))
-      (bb/array)))
+      bb/array))
 
 
 (defn- encode-value [{:keys [total num-changes]}]
   (-> (bb/allocate value-size)
       (bb/put-long! total)
       (bb/put-long! num-changes)
-      (bb/array)))
+      bb/array))
 
 
 (defn index-entry
-  "Creates an entry which can be written to the key-value store.
+  "Returns an entry of the SystemStats index build from `t` and `value`.
 
   The value is a map of :total and :num-changes."
   [t value]

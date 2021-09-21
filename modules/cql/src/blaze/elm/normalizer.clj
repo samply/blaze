@@ -1,7 +1,6 @@
 (ns blaze.elm.normalizer
   (:require
     [blaze.elm.spec]
-    [clojure.spec.alpha :as s]
     [cuerdas.core :as str]))
 
 
@@ -12,12 +11,13 @@
     (keyword "elm.normalizer.type" (str/kebab type))))
 
 
+(defn- normalize-expression [x]
+  (update x :expression normalize))
+
+
 (defn- update-expression-defs [expression-defs]
-  (mapv #(update % :expression normalize) expression-defs))
+  (mapv normalize-expression expression-defs))
 
-
-(s/fdef normalize-library
-  :args (s/cat :library :elm/library))
 
 (defn normalize-library [library]
   (update-in library [:statements :def] update-expression-defs))
@@ -27,6 +27,17 @@
   [expression]
   expression)
 
+
+(defn- un-pred [name operand]
+  {:type name
+   :operand operand
+   :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"})
+
+
+(defn- bin-pred [name operand-1 operand-2]
+  {:type name
+   :operand [operand-1 operand-2]
+   :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"})
 
 
 ;; 2. Structured Values
@@ -63,13 +74,12 @@
 ;; 10.1. Query
 (defmethod normalize :elm.normalizer.type/query
   [{:keys [source relationship where return] let' :let :as expression}]
-  (cond-> (assoc expression
-            :source (mapv #(update % :expression normalize) source))
+  (cond-> (assoc expression :source (mapv normalize-expression source))
     let'
-    (assoc :let (mapv #(update % :expression normalize) let'))
+    (assoc :let (mapv normalize-expression let'))
 
     relationship
-    (assoc :relationship (mapv #(update % :expression normalize) relationship))
+    (assoc :relationship (mapv normalize-expression relationship))
 
     where
     (assoc :where (normalize where))
@@ -110,12 +120,7 @@
   [{[operand-1 operand-2] :operand}]
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
-    {:type "Not"
-     :operand
-     {:type "Equal"
-      :operand [operand-1 operand-2]
-      :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
-     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
+    (un-pred "Not" (bin-pred "Equal" operand-1 operand-2))))
 
 
 ;; 13. Logical Operators
@@ -129,13 +134,7 @@
   [{[operand-1 operand-2] :operand}]
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
-    {:type "Or"
-     :operand
-     [{:type "Not"
-       :operand operand-1
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
-      operand-2]
-     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
+    (bin-pred "Or" (un-pred "Not" operand-1) operand-2)))
 
 
 ;; 13.3. Not
@@ -239,8 +238,7 @@
 ;; 16.19. Round
 (defmethod normalize :elm.normalizer.type/round
   [{operand :operand :keys [precision] :as expression}]
-  (cond->
-    (assoc expression :operand (normalize operand))
+  (cond-> (assoc expression :operand (normalize operand))
     precision
     (assoc :precision (normalize precision))))
 
@@ -269,10 +267,7 @@
   [{[operand-1 operand-2] :operand :keys [precision]}]
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
-    (cond->
-      {:type "Contains"
-       :operand [operand-2 operand-1]
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+    (cond-> (bin-pred "Contains" operand-2 operand-1)
       precision
       (assoc :precision precision))))
 
@@ -282,10 +277,7 @@
   [{[operand-1 operand-2] :operand :keys [precision]}]
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
-    (cond->
-      {:type "Includes"
-       :operand [operand-2 operand-1]
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+    (cond-> (bin-pred "Includes" operand-2 operand-1)
       precision
       (assoc :precision precision))))
 
@@ -295,21 +287,14 @@
   [{[operand-1 operand-2] :operand :keys [precision]}]
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
-    {:type "Or"
-     :operand
-     [(cond->
-        {:type "MeetsBefore"
-         :operand [operand-1 operand-2]
-         :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+    (bin-pred
+      "Or"
+      (cond-> (bin-pred "MeetsBefore" operand-1 operand-2)
         precision
         (assoc :precision precision))
-      (cond->
-        {:type "MeetsAfter"
-         :operand [operand-1 operand-2]
-         :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+      (cond-> (bin-pred "MeetsAfter" operand-1 operand-2)
         precision
-        (assoc :precision precision))]
-     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
+        (assoc :precision precision)))))
 
 
 ;; 19.20. Overlaps
@@ -317,23 +302,16 @@
   [{[operand-1 operand-2] :operand :keys [precision]}]
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
-    {:type "Or"
-     :operand
-     [(normalize
-        (cond->
-          {:type "OverlapsBefore"
-           :operand [operand-1 operand-2]
-           :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+    (bin-pred
+      "Or"
+      (normalize
+        (cond-> (bin-pred "OverlapsBefore"operand-1 operand-2)
           precision
           (assoc :precision precision)))
       (normalize
-        (cond->
-          {:type "OverlapsAfter"
-           :operand [operand-1 operand-2]
-           :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+        (cond-> (bin-pred "OverlapsAfter" operand-1 operand-2)
           precision
-          (assoc :precision precision)))]
-     :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}))
+          (assoc :precision precision))))))
 
 
 ;; 19.21. OverlapsBefore
@@ -342,15 +320,14 @@
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
     (cond->
-      {:type "ProperContains"
-       :operand
-       [operand-1
+      (bin-pred
+        "ProperContains"
+        operand-1
         (cond->
           {:type "Start"
            :operand operand-2}
           (:resultTypeName operand-2)
-          (assoc :resultTypeName (:resultTypeName operand-2)))]
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+          (assoc :resultTypeName (:resultTypeName operand-2))))
       precision
       (assoc :precision precision))))
 
@@ -361,15 +338,14 @@
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
     (cond->
-      {:type "ProperContains"
-       :operand
-       [operand-1
+      (bin-pred
+        "ProperContains"
+        operand-1
         (cond->
           {:type "End"
            :operand operand-2}
           (:resultTypeName operand-2)
-          (assoc :resultTypeName (:resultTypeName operand-2)))]
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+          (assoc :resultTypeName (:resultTypeName operand-2))))
       precision
       (assoc :precision precision))))
 
@@ -379,10 +355,7 @@
   [{[operand-1 operand-2] :operand :keys [precision]}]
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
-    (cond->
-      {:type "ProperContains"
-       :operand [operand-2 operand-1]
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+    (cond-> (bin-pred "ProperContains" operand-2 operand-1)
       precision
       (assoc :precision precision))))
 
@@ -392,10 +365,7 @@
   [{[operand-1 operand-2] :operand :keys [precision]}]
   (let [operand-1 (normalize operand-1)
         operand-2 (normalize operand-2)]
-    (cond->
-      {:type "ProperIncludes"
-       :operand [operand-2 operand-1]
-       :resultTypeName "{urn:hl7-org:elm-types:r1}Boolean"}
+    (cond-> (bin-pred "ProperIncludes" operand-2 operand-1)
       precision
       (assoc :precision precision))))
 

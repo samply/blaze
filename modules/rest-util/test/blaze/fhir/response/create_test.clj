@@ -1,8 +1,9 @@
 (ns blaze.fhir.response.create-test
   (:require
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-with]]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.response.create :refer [build-response]]
+    [blaze.fhir.response.create-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [reitit.core :as reitit]
@@ -28,17 +29,23 @@
     {:syntax :bracket}))
 
 
+(def context
+  {:blaze/base-url "http://localhost:8080" ::reitit/router router})
+
+
 (deftest build-response-test
-  (with-open [node (mem-node-with [[[:put {:fhir/type :fhir/Patient :id "0"}]]])]
+  (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
     (let [db (d/db node)
+          context (assoc context :blaze/db db)
           resource-handle (d/resource-handle db "Patient" "0")
           resource @(d/pull db resource-handle)]
 
       (testing "created"
         (testing "with no Prefer header"
           (let [{:keys [status headers body]}
-                @(build-response "http://localhost:8080" router nil db nil
-                                 resource-handle)]
+                @(build-response context nil resource-handle)]
 
             (testing "Returns 201"
               (is (= 201 status)))
@@ -59,17 +66,21 @@
               (is (= resource body)))))
 
         (testing "with return=minimal Prefer header"
-          (let [{:keys [body]}
-                @(build-response "http://localhost:8080" router "minimal" db nil
-                                 resource-handle)]
+          (let [context
+                (assoc context
+                  :blaze.preference/return :blaze.preference.return/minimal)
+                {:keys [body]}
+                @(build-response context nil resource-handle)]
 
             (testing "Contains no body"
               (is (nil? body)))))
 
         (testing "with return=representation Prefer header"
-          (let [{:keys [body]}
-                @(build-response "http://localhost:8080" router "representation"
-                                 db nil resource-handle)]
+          (let [context
+                (assoc context
+                  :blaze.preference/return :blaze.preference.return/representation)
+                {:keys [body]}
+                @(build-response context nil resource-handle)]
 
             (testing "Contains the resource as body"
               (is (= resource body))))))
@@ -77,8 +88,7 @@
       (testing "updated"
         (testing "with no Prefer header"
           (let [{:keys [status headers body]}
-                @(build-response "http://localhost:8080" router nil db
-                                 resource-handle resource-handle)]
+                @(build-response context resource-handle resource-handle)]
 
             (testing "Returns 200"
               (is (= 200 status)))
@@ -95,17 +105,21 @@
               (is (= resource body)))))
 
         (testing "with return=minimal Prefer header"
-          (let [{:keys [body]}
-                @(build-response "http://localhost:8080" router "minimal" db
-                                 resource-handle resource-handle)]
+          (let [context
+                (assoc context
+                  :blaze.preference/return :blaze.preference.return/minimal)
+                {:keys [body]}
+                @(build-response context resource-handle resource-handle)]
 
             (testing "Contains no body"
               (is (nil? body)))))
 
         (testing "with return=representation Prefer header"
-          (let [{:keys [body]}
-                @(build-response "http://localhost:8080" router "representation"
-                                 db resource-handle resource-handle)]
+          (let [context
+                (assoc context
+                  :blaze.preference/return :blaze.preference.return/representation)
+                {:keys [body]}
+                @(build-response context resource-handle resource-handle)]
 
             (testing "Contains the resource as body"
               (is (= resource body)))))))))

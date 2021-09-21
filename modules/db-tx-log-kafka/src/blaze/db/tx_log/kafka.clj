@@ -1,32 +1,28 @@
 (ns blaze.db.tx-log.kafka
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
-    [blaze.byte-string :as bs]
     [blaze.db.tx-log :as tx-log]
+    [blaze.db.tx-log.kafka.codec :as codec]
     [blaze.db.tx-log.kafka.config :as c]
     [blaze.db.tx-log.kafka.log :as l]
     [blaze.db.tx-log.kafka.spec]
-    [blaze.db.tx-log.spec]
+    [blaze.db.tx-log.kafka.util :as u]
+    [blaze.executors :as ex]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [jsonista.core :as j]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]
-    [java.time Duration Instant]
+    [java.time Duration]
     [java.util Map]
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-    [org.apache.kafka.clients.consumer Consumer KafkaConsumer ConsumerRecord]
+    [java.util.concurrent TimeUnit ExecutorService]
+    [org.apache.kafka.clients.consumer Consumer KafkaConsumer]
     [org.apache.kafka.clients.producer Producer KafkaProducer ProducerRecord RecordMetadata Callback]
     [org.apache.kafka.common TopicPartition]
-    [org.apache.kafka.common.errors RecordTooLargeException]
-    [org.apache.kafka.common.record TimestampType]
-    [org.apache.kafka.common.serialization Serializer Deserializer]))
+    [org.apache.kafka.common.errors RecordTooLargeException]))
 
 
 (set! *warn-on-reflection* true)
@@ -41,45 +37,9 @@
   "op")
 
 
-(def ^:private cbor-object-mapper
-  (j/object-mapper
-    {:factory (CBORFactory.)
-     :decode-key-fn true
-     :modules [bs/object-mapper-module]}))
-
-
-(deftype CborSerializer []
-  Serializer
-  (serialize [_ _ data]
-    (j/write-value-as-bytes data cbor-object-mapper)))
-
-
-(def ^Serializer serializer (CborSerializer.))
-
-
 (defn create-producer [config]
-  (KafkaProducer. ^Map (c/producer-config config) serializer serializer))
-
-
-(defn- parse-cbor [data]
-  (try
-    (j/read-value data cbor-object-mapper)
-    (catch Exception e
-      (log/warn (format "Error while parsing tx-data: %s" (ex-message e))))))
-
-
-(defn decode-hashes [cmds]
-  (when (sequential? cmds)
-    (mapv #(update % :hash bs/from-byte-array) cmds)))
-
-
-(deftype CborDeserializer []
-  Deserializer
-  (deserialize [_ _ data]
-    (decode-hashes (parse-cbor data))))
-
-
-(def ^Deserializer deserializer (CborDeserializer.))
+  (KafkaProducer. ^Map (c/producer-config config)
+                  codec/serializer codec/serializer))
 
 
 (def ^:private ^TopicPartition tx-partition
@@ -88,7 +48,7 @@
 
 (defn create-consumer [config]
   (doto (KafkaConsumer. ^Map (c/consumer-config config)
-                        deserializer deserializer)
+                        codec/deserializer codec/deserializer)
     (.assign [tx-partition])))
 
 
@@ -110,16 +70,21 @@
   [e {:keys [max-request-size]} num-of-tx-cmds]
   (condp identical? (class e)
     RecordTooLargeException
-    (ex-anom
-      #::anom{:category ::anom/unsupported
-              :message (record-too-large-msg max-request-size num-of-tx-cmds
-                                             (ex-message e))})
-    (ex-anom #::anom{:category ::anom/fault :message (ex-message e)})))
+    (ba/ex-anom
+      (ba/unsupported
+        (record-too-large-msg max-request-size num-of-tx-cmds
+                              (ex-message e))))
+    (ba/ex-anom (ba/fault (ex-message e)))))
 
 
-(deftype KafkaTxLog [config ^Producer producer]
+(defn- end-offset [^Consumer consumer]
+  (with-open [_ (prom/timer duration-seconds "end-offset")]
+    (get (.endOffsets consumer [tx-partition]) tx-partition)))
+
+
+(deftype KafkaTxLog [config ^Producer producer last-t-consumer last-t-executor]
   tx-log/TxLog
-  (-submit [_ tx-cmds]
+  (-submit [_ tx-cmds _]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
     (let [timer (prom/timer duration-seconds "submit")
           future (ac/future)]
@@ -132,6 +97,9 @@
                    (ac/complete! future (metadata->t metadata))))))
       future))
 
+  (-last-t [_]
+    (ac/supply-async #(end-offset last-t-consumer) last-t-executor))
+
   (-new-queue [_ offset]
     (log/trace "new-queue offset =" offset)
     (let [consumer (create-consumer config)]
@@ -140,50 +108,23 @@
 
   Closeable
   (close [_]
-    (.close producer)))
-
-
-(defn- record->t
-  "Returns the point in time `t` of the transaction data received by a consumer.
-
-  The `t` is calculated from the offset by incrementing it because Kafka
-  offsets start at zero were `t`s start at one."
-  [record]
-  (inc (.offset ^ConsumerRecord record)))
-
-
-(defn invalid-timestamp-type-msg [t timestamp-type]
-  (format "Skip transaction with point in time of %d because the timestamp type is `%s` instead of `LogAppendTime`."
-          t timestamp-type))
-
-
-(defn- invalid-tx-data-msg [t cause]
-  (format "Skip transaction with point in time of %d because tx-data is invalid: %s"
-          t (str/replace cause #"\s" " ")))
-
-
-(def record-transformer
-  (mapcat
-    (fn [^ConsumerRecord record]
-      (let [t (record->t record)]
-        (if (= TimestampType/LOG_APPEND_TIME (.timestampType record))
-          (let [tx-cmds (.value record)]
-            (if (s/valid? :blaze.db/tx-cmds tx-cmds)
-              [{:t t
-                :instant (Instant/ofEpochMilli (.timestamp record))
-                :tx-cmds tx-cmds}]
-              (log/warn (invalid-tx-data-msg t (s/explain-str :blaze.db/tx-cmds tx-cmds)))))
-          (log/warn (invalid-timestamp-type-msg t (.timestampType record))))))))
+    (.close producer)
+    (.close ^Closeable last-t-consumer)))
 
 
 (extend-protocol tx-log/Queue
-  KafkaConsumer
+  Consumer
   (-poll [consumer timeout]
-    (into [] record-transformer (.poll consumer ^Duration timeout))))
+    (into [] u/record-transformer (.poll consumer ^Duration timeout))))
+
+
+(def create-last-t-consumer
+  create-consumer)
 
 
 (defmethod ig/pre-init-spec :blaze.db.tx-log/kafka [_]
-  (s/keys :req-un [::bootstrap-servers]
+  (s/keys :req-un [::bootstrap-servers
+                   ::last-t-executor]
           :opt-un [::max-request-size
                    ::compression-type
                    ::security-protocol
@@ -197,16 +138,33 @@
 (defmethod ig/init-key :blaze.db.tx-log/kafka
   [_ config]
   (log/info (l/init-msg config))
-  (->KafkaTxLog config (create-producer config)))
+  (->KafkaTxLog config (create-producer config) (create-last-t-consumer config)
+                (:last-t-executor config)))
 
 
 (defmethod ig/halt-key! :blaze.db.tx-log/kafka
   [_ tx-log]
-  (log/info "Close Kafka transaction log")
-  (.close ^Closeable tx-log))
+  (log/info "Closing Kafka transaction log...")
+  (.close ^Closeable tx-log)
+  (log/info "Kafka transaction log was closed successfully"))
 
 
 (derive :blaze.db.tx-log/kafka :blaze.db/tx-log)
+
+
+(defmethod ig/init-key ::last-t-executor
+  [_ _]
+  (log/info "Init last-t executor")
+  (ex/single-thread-executor "db-tx-log-kafka-last-t"))
+
+
+(defmethod ig/halt-key! ::last-t-executor
+  [_ ^ExecutorService executor]
+  (log/info "Stopping last-t executor...")
+  (.shutdown executor)
+  (if (.awaitTermination executor 10 TimeUnit/SECONDS)
+    (log/info "Last-t executor was stopped successfully")
+    (log/warn "Got timeout while stopping the last-t executor")))
 
 
 (reg-collector ::duration-seconds

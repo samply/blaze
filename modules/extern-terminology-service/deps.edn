@@ -13,14 +13,14 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {com.pgs-soft/HttpClientMock
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    com.pgs-soft/HttpClientMock
     {:mvn/version "1.0.0"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.861"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    {:mvn/version "1.0.887"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -28,13 +28,13 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {com.pgs-soft/HttpClientMock
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    com.pgs-soft/HttpClientMock
     {:mvn/version "1.0.0"}
 
-    org.clojars.akiel/cloverage
-    {:mvn/version "1.2.2-SNAPSHOT"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

@@ -1,13 +1,12 @@
 (ns blaze.elm.compiler.date-time-operators
   "18. Date and Time Operators"
   (:require
-    [blaze.anomaly :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defbinopp defunop defunopp]]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.protocols :as p]
-    [blaze.fhir.spec.type.system :as system]
-    [cognitect.anomalies :as anom])
+    [blaze.fhir.spec.type.system :as system])
   (:import
     [java.time OffsetDateTime ZoneOffset]))
 
@@ -15,38 +14,38 @@
 (set! *warn-on-reflection* true)
 
 
-(defn- check-year-range [year]
+(defn- check-year-range! [year]
   (when-not (< 0 year 10000)
-    (throw-anom ::anom/incorrect (format "Year `%d` out of range." year))))
+    (throw-anom (ba/incorrect (format "Year `%d` out of range." year)))))
 
 
 (defn- date
   ([year]
-   (check-year-range year)
+   (check-year-range! year)
    (system/date year))
   ([year month]
-   (check-year-range year)
+   (check-year-range! year)
    (system/date year month))
   ([year month day]
-   (check-year-range year)
+   (check-year-range! year)
    (system/date year month day)))
 
 
 (defn- date-time
   ([year]
-   (check-year-range year)
+   (check-year-range! year)
    (system/date-time year))
   ([year month]
-   (check-year-range year)
+   (check-year-range! year)
    (system/date-time year month))
   ([year month day]
-   (check-year-range year)
+   (check-year-range! year)
    (system/date-time year month day)))
 
 
 (defn- to-local-date-time
   [year month day hour minute second millis]
-  (check-year-range year)
+  (check-year-range! year)
   (system/date-time year month day hour minute second millis))
 
 
@@ -54,7 +53,7 @@
   "Creates a DateTime with a local date time adjusted for the offset of the
   evaluation request."
   [now year month day hour minute second millis timezone-offset]
-  (check-year-range year)
+  (check-year-range! year)
   (-> ^OffsetDateTime
       (system/date-time year month day hour minute second millis
                         (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
@@ -187,8 +186,7 @@
                         {:expression expression})))
 
       (some? timezone-offset)
-      (cond
-        (some? hour)
+      (if (some? hour)
         (reify core/Expression
           (-eval [_ {:keys [now] :as context} resource scope]
             (to-local-date-time-with-offset
@@ -201,8 +199,6 @@
               (or (core/-eval second context resource scope) 0)
               (or (core/-eval millisecond context resource scope) 0)
               (core/-eval timezone-offset context resource scope))))
-
-        :else
         (throw (ex-info "Need at least an hour if timezone offset is given."
                         {:expression expression})))
 

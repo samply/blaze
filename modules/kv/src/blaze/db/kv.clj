@@ -1,7 +1,10 @@
 (ns blaze.db.kv
-  "Protocols for key-value store backend implementations."
+  "Protocols for key-value store backend implementations.
+
+  All functions block the current thread while doing I/O."
   (:refer-clojure :exclude [get key])
-  (:import [java.io Closeable]))
+  (:import
+    [java.io Closeable]))
 
 
 (defprotocol KvIterator
@@ -134,7 +137,7 @@
   Uses the position of `buf` and sets the limit of `buf` according to the value
   size. Supports direct buffers only.
 
-  Returns the size of the actual value. If the key is greater than the length
+  Returns the size of the actual value. If the value is greater than the length
   of `buf`, then it indicates that the size of the `buf` is insufficient and a
   partial result is put."
   [iter buf]
@@ -198,7 +201,9 @@
 
 
 (defn get
-  "Returns the value if there is any, nil otherwise."
+  "Returns the value of `key` in `column-family` (optional) or nil if not found.
+
+  Blocks the current thread."
   ([store key]
    (-get store key))
   ([store column-family key]

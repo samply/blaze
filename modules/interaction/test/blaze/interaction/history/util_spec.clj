@@ -2,7 +2,9 @@
   (:require
     [blaze.db.api-spec]
     [blaze.handler.fhir.util-spec]
+    [blaze.http.spec]
     [blaze.interaction.history.util :as util]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [reitit.core :as reitit]))
 
@@ -20,15 +22,13 @@
 (s/fdef util/nav-url
   :args
   (s/cat
-    :base-url string?
-    :match :fhir.router/match
+    :context (s/keys :req [:blaze/base-url :blaze/db ::reitit/match])
     :query-params (s/nilable :ring.request/query-params)
-    :t :blaze.db/t
     :page-t :blaze.db/t
     :type (s/? :fhir.type/name)
     :id (s/? :blaze.resource/id)))
 
 
 (s/fdef util/build-entry
-  :args (s/cat :base-url string? :router reitit/router?
+  :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
                :resource :blaze/resource))

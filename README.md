@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please refer to the [Conformance](docs/conformance.md) section and report any issues you encounter during evaluation.
 
-Latest release: [v0.11.1][5]
+Latest release: [v0.12.0][5]
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ In order to run Blaze just execute the following:
 
 ```sh
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.12
 ```
 
 Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
@@ -50,6 +50,10 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 * [Architecture](docs/architecture.md)
 * [Implementation](docs/implementation/README.md)
 
+## Development
+
+Pull requests are welcome. Please consider the [development](DEVELOPMENT.md) documentation before creating one.
+
 ## YourKit Profiler
 
 ![YourKit logo](https://www.yourkit.com/images/yklogo.png)
@@ -68,10 +72,10 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.11.1>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.12.0>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
 [9]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [10]: <https://github.com/facebook/rocksdb/wiki/RocksDB-Basics#multi-threaded-compactions>
-[12]: <https://touchstone.aegis.net/touchstone/conformance/history?suite=FHIR4-0-1-Basic-Server&supportedOnly=true&suiteType=HL7_FHIR_SERVER&ownedBy=ALL&ps=10&published=true&pPass=0&strSVersion=1&format=ALL>
+[12]: <https://touchstone.aegis.net/touchstone/conformance/history?suite=FHIR4-0-1-Basic-Server&supportedOnly=true&suiteType=HL7_FHIR_SERVER&ownedBy=ALL&ps=10&published=true&pPass=0&strSVersion=6&format=ALL>

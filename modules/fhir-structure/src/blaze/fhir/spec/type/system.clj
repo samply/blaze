@@ -9,16 +9,18 @@
    * DateTime
    * Time
    * Quantity"
+  (:refer-clojure :exclude [boolean? decimal? integer? string? type])
   (:require
+    [blaze.anomaly :as ba]
+    [blaze.anomaly-spec]
     [cognitect.anomalies :as anom]
-    [java-time.core :as jt.c])
+    [java-time.core :as time-core])
   (:import
     [com.google.common.hash PrimitiveSink]
     [java.nio.charset StandardCharsets]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
     [java.time.temporal Temporal TemporalUnit TemporalAccessor TemporalField]
-    [java.time.format DateTimeParseException])
-  (:refer-clojure :exclude [boolean? decimal? integer? string? type]))
+    [java.time.format DateTimeParseException]))
 
 
 (set! *warn-on-reflection* true)
@@ -150,8 +152,7 @@
 (defn parse-decimal [s]
   (if (decimal-string? s)
     (BigDecimal. ^String s)
-    {::anom/category ::anom/incorrect
-     ::anom/message (format "Invalid decimal value `%s`." s)}))
+    (ba/incorrect (format "Invalid decimal value `%s`." s))))
 
 
 
@@ -181,15 +182,14 @@
   (.matches (re-matcher #"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?" s)))
 
 
-(defn parse-date [s]
+(defn parse-date
+  "Parses `s` into a System.Date.
+
+  Returns an anomaly if `s` isn't a valid System.Date."
+  [s]
   (if (date-string? s)
-    (try
-      (parse-date* s)
-      (catch DateTimeParseException e
-        {::anom/category ::anom/incorrect
-         ::anom/message (ex-message e)}))
-    {::anom/category ::anom/incorrect
-     ::anom/message (format "Invalid date-time value `%s`." s)}))
+    (ba/try-one DateTimeParseException ::anom/incorrect (parse-date* s))
+    (ba/incorrect (format "Invalid date-time value `%s`." s))))
 
 
 
@@ -211,7 +211,7 @@
       (instance? DateTimeYear x) (.equals year (.-year ^DateTimeYear x))
       (instance? Year x) (.equals year x)))
 
-  jt.c/Ordered
+  time-core/Ordered
   (single-before? [_ x]
     (and (instance? DateTimeYear x) (.isBefore ^Year year (.-year ^DateTimeYear x))))
   (single-after? [_ x]
@@ -260,7 +260,7 @@
       (.equals year-month (.-year_month ^DateTimeYearMonth x))
       (instance? YearMonth x) (.equals year-month x)))
 
-  jt.c/Ordered
+  time-core/Ordered
   (single-before? [_ x]
     (and (instance? DateTimeYearMonth x)
          (.isBefore ^YearMonth year-month (.-year_month ^DateTimeYearMonth x))))
@@ -313,7 +313,7 @@
       (.equals date (.-date ^DateTimeYearMonthDay x))
       (instance? LocalDate x) (.equals date x)))
 
-  jt.c/Ordered
+  time-core/Ordered
   (single-before? [_ x]
     (and (instance? DateTimeYearMonthDay x)
          (.isBefore ^LocalDate date (.-date ^DateTimeYearMonthDay x))))
@@ -391,13 +391,8 @@
 
 (defn parse-date-time [s]
   (if (date-time-string? s)
-    (try
-      (parse-date-time* s)
-      (catch DateTimeParseException e
-        {::anom/category ::anom/incorrect
-         ::anom/message (ex-message e)}))
-    {::anom/category ::anom/incorrect
-     ::anom/message (format "Invalid date-time value `%s`." s)}))
+    (ba/try-one DateTimeParseException ::anom/incorrect (parse-date-time* s))
+    (ba/incorrect (format "Invalid date-time value `%s`." s))))
 
 
 (extend-protocol SystemType

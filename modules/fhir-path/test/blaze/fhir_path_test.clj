@@ -1,5 +1,6 @@
 (ns blaze.fhir-path-test
   "See: http://hl7.org/fhirpath/index.html"
+  (:refer-clojure :exclude [eval])
   (:require
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir-path-spec]
@@ -10,8 +11,7 @@
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
-  (:refer-clojure :exclude [eval]))
+    [taoensso.timbre :as log]))
 
 
 (st/instrument)
@@ -244,8 +244,7 @@
 ;; 5.2.1. where(criteria : expression) : collection
 (deftest where-function-test
   (testing "missing criteria"
-    (given
-      (fhir-path/compile "Patient.telecom.where()")
+    (given (fhir-path/compile "Patient.telecom.where()")
       ::anom/category := ::anom/incorrect
       ::anom/message := "missing criteria in `where` function in expression `Patient.telecom.where()`"))
 

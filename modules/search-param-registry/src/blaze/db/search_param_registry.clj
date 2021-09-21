@@ -1,6 +1,8 @@
 (ns blaze.db.search-param-registry
+  (:refer-clojure :exclude [get])
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :refer [if-ok when-ok]]
+    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
@@ -9,8 +11,7 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [jsonista.core :as j]
-    [taoensso.timbre :as log])
-  (:refer-clojure :exclude [get]))
+    [taoensso.timbre :as log]))
 
 
 (defmulti search-param
@@ -140,12 +141,11 @@
 
 
 (defn- index-search-param [index {:keys [url] :as sp}]
-  (let [res (search-param index sp)]
-    (if-let [category (::anom/category res)]
-      (if (= ::anom/unsupported category)
-        index
-        (reduced res))
-      (assoc index url res))))
+  (if-ok [search-param (search-param index sp)]
+    (assoc index url search-param)
+    #(if (= ::anom/unsupported (::anom/category %))
+       index
+       (reduced %))))
 
 
 (defn- read-compartment-def [name]

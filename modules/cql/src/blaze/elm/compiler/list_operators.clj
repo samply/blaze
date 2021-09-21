@@ -1,7 +1,7 @@
 (ns blaze.elm.compiler.list-operators
   "20. List Operators"
   (:require
-    [blaze.anomaly :refer [ex-anom]]
+    [blaze.anomaly :as ba]
     [blaze.coll.core :as coll]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defunop]]
@@ -177,7 +177,7 @@
     (p/singleton-from list)
     (catch ExceptionInfo e
       (if (::anom/category (ex-data e))
-        (throw (ex-anom (assoc (ex-data e) :expression expression)))
+        (throw (ba/ex-anom (assoc (ex-data e) :expression expression)))
         (throw e)))))
 
 

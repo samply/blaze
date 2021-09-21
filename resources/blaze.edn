@@ -80,37 +80,49 @@
   ;; provides read and write access to the actual resources.
   ;;
   :blaze.interaction.history/system
-  {:node #blaze/ref :blaze.db/node}
+  {:clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction.history/type
-  {:node #blaze/ref :blaze.db/node}
+  {:clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction.history/instance
-  {:node #blaze/ref :blaze.db/node}
+  {:clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/create
   {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.server/executor}
+   :executor #blaze/ref :blaze.server/executor
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/delete
   {:node #blaze/ref :blaze.db/node
    :executor #blaze/ref :blaze.server/executor}
 
-  :blaze.interaction/read
-  {:node #blaze/ref :blaze.db/node}
+  :blaze.interaction/read {}
 
   :blaze.interaction/search-system
-  {:node #blaze/ref :blaze.db/node}
+  {:clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :page-store #blaze/ref :blaze/page-store}
 
   :blaze.interaction/search-type
-  {:node #blaze/ref :blaze.db/node}
+  {:clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :page-store #blaze/ref :blaze/page-store}
 
   :blaze.interaction/search-compartment
-  {:node #blaze/ref :blaze.db/node}
+  {:clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :page-store #blaze/ref :blaze/page-store}
 
   :blaze.interaction/transaction
   {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.interaction.transaction/executor}
+   :executor #blaze/ref :blaze.interaction.transaction/executor
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction.transaction/executor {}
 
@@ -129,7 +141,9 @@
   ;;
   :blaze.fhir.operation.evaluate-measure/handler
   {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor}
+   :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.fhir.operation.evaluate-measure/executor
   {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" int? 4]}
@@ -263,7 +277,8 @@
    ;; log uses a key-value store to persist transactions.
    ;;
    :blaze.db.tx-log/local
-   {:kv-store #blaze/ref :blaze.db/transaction-kv-store}
+   {:kv-store #blaze/ref :blaze.db/transaction-kv-store
+    :clock #blaze/ref :blaze/clock}
 
    :blaze.db.tx-log.local/duration-seconds {}
 
@@ -279,6 +294,8 @@
 
    ;;
    ;; Key-Value Resource Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
    ;;
    :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
@@ -297,7 +314,15 @@
    ;; super key :blaze.db/resource-kv-store.
    ;;
    [:blaze.db.kv/mem :blaze.db/resource-kv-store]
-   {:column-families {}}}
+   {:column-families {}}
+
+   ;;
+   ;; Local Page Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
+   ;;
+   :blaze.page-store/local
+   {:secure-rng #blaze/ref :blaze/secure-rng}}
 
   :standalone
   {
@@ -315,19 +340,27 @@
      #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:search-param-value-index
-     {:write-buffer-size-in-mb 32
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 256
+      :target-file-size-base-in-mb 26
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-value-index
      {:write-buffer-size-in-mb 32
+      :max-bytes-for-level-base-in-mb 128
+      :target-file-size-base-in-mb 13
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-search-param-value-index
-     {:write-buffer-size-in-mb 32
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 256
+      :target-file-size-base-in-mb 26
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-resource-type-index
      {:write-buffer-size-in-mb 4
+      :max-bytes-for-level-base-in-mb 16
+      :target-file-size-base-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :active-search-params
@@ -335,36 +368,52 @@
 
      :tx-success-index
      {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :reverse-comparator? true}
 
      :tx-error-index
      {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :t-by-instant-index
      {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :reverse-comparator? true}
 
      :resource-as-of-index
      {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 3
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :type-as-of-index
      {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 3
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :system-as-of-index
      {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 3
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :type-stats-index
      {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :system-stats-index
      {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store/stats] {}
@@ -376,7 +425,8 @@
    ;; log uses a key-value store to persist transactions.
    ;;
    :blaze.db.tx-log/local
-   {:kv-store #blaze/ref :blaze.db/transaction-kv-store}
+   {:kv-store #blaze/ref :blaze.db/transaction-kv-store
+    :clock #blaze/ref :blaze/clock}
 
    :blaze.db.tx-log.local/duration-seconds {}
 
@@ -396,13 +446,17 @@
      #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:default
-     {:write-buffer-size-in-mb 4
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 3
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.transaction-kv-store/stats] {}
 
    ;;
    ;; Key-Value Resource Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
    ;;
    :blaze.db.resource-store/kv
    {:kv-store #blaze/ref :blaze.db/resource-kv-store
@@ -427,7 +481,9 @@
      #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:default
-     {:write-buffer-size-in-mb 32
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 256
+      :target-file-size-base-in-mb 26
       ;; According to Synthea test data, a resource has an average size of
       ;; 1300 bytes. So a block with a size of 16 kb will hold about 10
       ;; resources in average.
@@ -443,7 +499,15 @@
    {:stats
     [["index" #blaze/ref :blaze.db.index-kv-store/stats]
      ["transaction" #blaze/ref :blaze.db.transaction-kv-store/stats]
-     ["resource" #blaze/ref :blaze.db.resource-kv-store/stats]]}}
+     ["resource" #blaze/ref :blaze.db.resource-kv-store/stats]]}
+
+   ;;
+   ;; Local Page Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
+   ;;
+   :blaze.page-store/local
+   {:secure-rng #blaze/ref :blaze/secure-rng}}
 
   :distributed
   {
@@ -464,92 +528,80 @@
      #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:search-param-value-index
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
+     {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
+      :target-file-size-base-in-mb 26
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-value-index
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 256
+     {:write-buffer-size-in-mb 32
+      :max-bytes-for-level-base-in-mb 128
+      :target-file-size-base-in-mb 13
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-search-param-value-index
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
+     {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
+      :target-file-size-base-in-mb 26
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-resource-type-index
-     {:write-buffer-size-in-mb 64
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 128
+     {:write-buffer-size-in-mb 4
+      :max-bytes-for-level-base-in-mb 16
+      :target-file-size-base-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :active-search-params
      {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :tx-success-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
+     {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :reverse-comparator? true}
 
      :tx-error-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
+     {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :t-by-instant-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
+     {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :reverse-comparator? true}
 
      :resource-as-of-index
-     {:write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 256
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 3
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :type-as-of-index
-     {:write-buffer-size-in-mb 64
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 128
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 3
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :system-as-of-index
-     {:write-buffer-size-in-mb 64
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
-      :max-bytes-for-level-base-in-mb 128
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 3
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :type-stats-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
+     {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :system-stats-index
-     {:write-buffer-size-in-mb 4
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 2
+     {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 1
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    :blaze.db.kv.rocksdb/block-cache
@@ -566,6 +618,7 @@
    ;;
    :blaze.db.tx-log/kafka
    {:bootstrap-servers #blaze/cfg ["DB_KAFKA_BOOTSTRAP_SERVERS" string? "localhost:9092"]
+    :last-t-executor #blaze/ref :blaze.db.tx-log.kafka/last-t-executor
     :max-request-size #blaze/cfg ["DB_KAFKA_MAX_REQUEST_SIZE" nat-int? 1048576]
     :compression-type #blaze/cfg ["DB_KAFKA_COMPRESSION_TYPE" string? "snappy"]
     :security-protocol #blaze/cfg ["DB_KAFKA_SECURITY_PROTOCOL" string? "PLAINTEXT"]
@@ -575,10 +628,13 @@
     :ssl-keystore-password #blaze/cfg ["DB_KAFKA_SSL_KEYSTORE_PASSWORD" string?]
     :ssl-key-password #blaze/cfg ["DB_KAFKA_SSL_KEY_PASSWORD" string?]}
 
+   :blaze.db.tx-log.kafka/last-t-executor {}
    :blaze.db.tx-log.kafka/duration-seconds {}
 
    ;;
    ;; Cassandra Resource Store
+   ;;
+   ;; Can be referred by the super key :blaze.db/resource-store.
    ;;
    :blaze.db.resource-store/cassandra
    {:contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
@@ -592,7 +648,27 @@
 
    :blaze.db.resource-store.cassandra/duration-seconds {}
 
-   :blaze.db.resource-store.cassandra/resource-bytes {}}}
+   :blaze.db.resource-store.cassandra/resource-bytes {}
+
+   ;;
+   ;; Cassandra Page Store
+   ;;
+   ;; Can be referred by the super key :blaze/page-store.
+   ;;
+   :blaze.page-store/cassandra
+   {:secure-rng #blaze/ref :blaze/secure-rng
+    :contact-points #blaze/cfg ["DB_CASSANDRA_CONTACT_POINTS" string? "localhost:9042"]
+    :username #blaze/cfg ["DB_CASSANDRA_USERNAME" string? "cassandra"]
+    :password #blaze/cfg ["DB_CASSANDRA_PASSWORD" string? "cassandra"]
+    :key-space #blaze/cfg ["DB_CASSANDRA_KEY_SPACE" string? "blaze"]
+    :put-consistency-level #blaze/cfg ["DB_CASSANDRA_PUT_CONSISTENCY_LEVEL" string? "TWO"]
+    :max-concurrent-requests #blaze/cfg ["DB_CASSANDRA_MAX_CONCURRENT_REQUESTS" nat-int? 1024]
+    :max-request-queue-size #blaze/cfg ["DB_CASSANDRA_MAX_REQUEST_QUEUE_SIZE" nat-int? 100000]
+    :request-timeout #blaze/cfg ["DB_CASSANDRA_REQUEST_TIMEOUT" pos-int? 2000]}
+
+   :blaze.page-store.cassandra/duration-seconds {}
+
+   :blaze.page-store.cassandra/resource-bytes {}}}
 
  :features
  [

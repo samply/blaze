@@ -1,4 +1,5 @@
 (ns blaze.byte-string
+  (:refer-clojure :exclude [concat empty nth subs < <= > >=])
   (:import
     [com.google.common.io BaseEncoding]
     [com.google.protobuf ByteString]
@@ -7,8 +8,7 @@
     [com.fasterxml.jackson.databind.ser.std StdSerializer]
     [java.io Writer]
     [java.nio ByteBuffer]
-    [java.nio.charset Charset])
-  (:refer-clojure :exclude [concat empty nth subs < <= > >=]))
+    [java.nio.charset Charset]))
 
 
 (set! *warn-on-reflection* true)

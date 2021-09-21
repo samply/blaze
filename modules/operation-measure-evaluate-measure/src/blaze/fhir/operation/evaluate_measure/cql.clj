@@ -1,9 +1,10 @@
 (ns blaze.fhir.operation.evaluate-measure.cql
   (:require
+    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly-spec]
     [blaze.db.api :as d]
     [blaze.elm.expression :as expr]
     [clojure.core.reducers :as r]
-    [cognitect.anomalies :as anom]
     [taoensso.timbre :as log])
   (:import
     [java.io Closeable]))
@@ -23,7 +24,7 @@
 
 (def eval-sequential-chunk-size
   "Size of chunks of resources to evaluate sequential. This size is used by
-  r/fold as a cut off point for the fork-join algorithm.
+  r/fold as a cut-off point for the fork-join algorithm.
 
   Each chunk of those resources if evaluated sequential and the results of
   multiple of those parallel evaluations are combined afterwards."
@@ -36,10 +37,10 @@
     (expr/eval (get library-context expression-name) context subject-handle nil)
     (catch Exception e
       (log/error (log/stacktrace e))
-      {::anom/category ::anom/fault
-       ::anom/message (ex-message e)
-       :fhir/issue "exception"
-       :expression-name expression-name})))
+      (ba/fault
+        (ex-message e)
+        :fhir/issue "exception"
+        :expression-name expression-name))))
 
 
 (defn- close-batch-db! [{:keys [db]}]
@@ -62,8 +63,7 @@
   [combine-op context]
   (fn batch-db-combine-op
     ([]
-     (-> (update context :db d/new-batch-db)
-         (assoc ::result (combine-op))))
+     (-> (update context :db d/new-batch-db) (assoc ::result (combine-op))))
     ([context]
      (close-batch-db! context)
      (combine-op (::result context)))
@@ -79,8 +79,8 @@
     ([r] r)
     ([a b]
      (cond
-       (::anom/category a) a
-       (::anom/category b) b
+       (ba/anomaly? a) a
+       (ba/anomaly? b) b
        :else (combine-op a b)))))
 
 
@@ -114,7 +114,7 @@
       (fn [context subject-handle]
         (let [res (evaluate-expression-1 context subject-handle name)]
           (cond
-            (::anom/category res)
+            (ba/anomaly? res)
             (reduced (assoc context ::result res))
 
             res
@@ -149,11 +149,12 @@
       (d/type-list db subject-type))))
 
 
-(defn- incorrect-stratum [{:fhir/keys [type] :keys [id]} expression-name]
-  {::anom/category ::anom/incorrect
-   ::anom/message
-   (format "CQL expression `%s` returned more than one value for resource `%s`."
-           expression-name (str type "/" id))})
+(defn evaluate-individual-expression
+  "Evaluates the expression with `name` according to `context`.
+
+  Returns an anomaly in case of errors."
+  [context subject-handle name]
+  (evaluate-expression-1 (unwrap-library-context context) subject-handle name))
 
 
 (defn- stratum-result-combine-op [{:keys [report-type]}]
@@ -176,10 +177,15 @@
       (wrap-batch-db context)))
 
 
+(defn- incorrect-stratum-msg [{:fhir/keys [type] :keys [id]} expression-name]
+  (format "CQL expression `%s` returned more than one value for resource `%s`."
+          expression-name (str type "/" id)))
+
+
 (defn- evaluate-stratum-expression [context subject-handle name]
   (let [result (evaluate-expression-1 context subject-handle name)]
     (if (sequential? result)
-      (incorrect-stratum subject-handle name)
+      (ba/incorrect (incorrect-stratum-msg subject-handle name))
       result)))
 
 
@@ -193,13 +199,13 @@
         (let [res (evaluate-expression-1 context subject-handle
                                          population-expression-name)]
           (cond
-            (::anom/category res)
+            (ba/anomaly? res)
             (reduced (assoc context ::result res))
 
             res
             (let [stratum (evaluate-stratum-expression
                             context subject-handle stratum-expression-name)]
-              (if (::anom/category stratum)
+              (if (ba/anomaly? stratum)
                 (reduced (assoc context ::result stratum))
                 (update context ::result stratum-result-reduce-op stratum subject-handle)))
 
@@ -210,7 +216,7 @@
 
 (defn calc-strata
   "Returns a map of stratum to count or an anomaly."
-  {:arglists '([[context population-expression-name stratum-expression-name]])}
+  {:arglists '([context population-expression-name stratum-expression-name])}
   [{:keys [db subject-type] :as context} population-expression-name
    stratum-expression-name]
   (let [context (unwrap-library-context context)]
@@ -223,10 +229,22 @@
       (d/type-list db subject-type))))
 
 
+(defn calc-individual-strata
+  "Returns a map of stratum to count or an anomaly."
+  [context subject-handle population-expression-name stratum-expression-name]
+  (let [context (unwrap-library-context context)]
+    (when-ok [included? (evaluate-expression-1 context subject-handle
+                                     population-expression-name)]
+      (when included?
+        (when-ok [stratum (evaluate-stratum-expression
+                            context subject-handle stratum-expression-name)]
+          {stratum 1})))))
+
+
 (defn- anom-conj
   ([] [])
   ([r] r)
-  ([r x] (if (::anom/category x) (reduced x) (conj r x))))
+  ([r x] (if (ba/anomaly? x) (reduced x) (conj r x))))
 
 
 (defn- evaluate-mult-component-stratum-expression [context subject-handle names]
@@ -246,14 +264,14 @@
         (let [res (evaluate-expression-1 context subject-handle
                                          population-expression-name)]
           (cond
-            (::anom/category res)
+            (ba/anomaly? res)
             (reduced (assoc context ::result res))
 
             res
             (let [stratum (evaluate-mult-component-stratum-expression
                             context subject-handle stratum-expression-names)]
 
-              (if (::anom/category stratum)
+              (if (ba/anomaly? stratum)
                 (reduced (assoc context ::result stratum))
                 (update context ::result stratum-result-reduce-op stratum subject-handle)))
 
@@ -262,7 +280,7 @@
       subject-handles)))
 
 
-(defn calc-mult-component-strata
+(defn calc-multi-component-strata
   "Returns a map of stratum to count or an anomaly."
   {:arglists '([[context population-expression-name expression-names]])}
   [{:keys [db subject-type] :as context} population-expression-name

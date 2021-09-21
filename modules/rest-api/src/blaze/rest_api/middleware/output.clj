@@ -1,7 +1,7 @@
 (ns blaze.rest-api.middleware.output
   "JSON/XML serialization middleware."
   (:require
-    [blaze.async.comp :as ac]
+    [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]
@@ -42,19 +42,29 @@
     (.toByteArray out)))
 
 
-(defn handle-response [request {:keys [body] :as response}]
-  (if body
-    (if (xml-response? request)
-      (-> (update response :body generate-xml)
-          (ring/content-type "application/fhir+xml;charset=utf-8"))
-      (-> (update response :body generate-json)
-          (ring/content-type "application/fhir+json;charset=utf-8")))
-    response))
+(defn- encode-response-xml [response]
+  (-> (update response :body generate-xml)
+      (ring/content-type "application/fhir+xml;charset=utf-8")))
+
+
+(defn- encode-response-json [response]
+  (-> (update response :body generate-json)
+      (ring/content-type "application/fhir+json;charset=utf-8")))
+
+
+(defn- encode-response [request response]
+  (if (xml-response? request)
+    (encode-response-xml response)
+    (encode-response-json response)))
+
+
+(defn- handle-response [request {:keys [body] :as response}]
+  (cond->> response body (encode-response request)))
 
 
 (defn wrap-output
   "Middleware to output resources in JSON or XML."
   [handler]
   (fn [request]
-    (-> (handler request)
-        (ac/then-apply #(handle-response request %)))))
+    (do-sync [response (handler request)]
+      (handle-response request response))))
