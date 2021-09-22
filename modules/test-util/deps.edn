@@ -4,7 +4,7 @@
 
   integrant/integrant
   {:git/url "https://github.com/weavejester/integrant.git"
-   :sha "32a46f5dca8a6b563a6dddf88bec887be3201b08"}
+   :git/sha "32a46f5dca8a6b563a6dddf88bec887be3201b08"}
 
   org.clojars.akiel/iota
   {:mvn/version "0.1"}
