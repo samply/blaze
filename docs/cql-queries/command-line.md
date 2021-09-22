@@ -7,7 +7,7 @@ This section describes how to evaluate a CQL query using the command line only.
 If you don't already have Blaze running, you can read about how to do it in [Deployment](../deployment/README.md). If you have Docker available just run:
 
 ```
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.11
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.12
 ```
 
 ## Use the evaluate-measure.sh Script
