@@ -1,5 +1,6 @@
 (ns blaze.rest-api
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.search-param-registry.spec]
     [blaze.executors :as ex]
     [blaze.handler.util :as handler-util]
@@ -53,9 +54,10 @@
 
 
 (defn default-options-handler [request]
-  (-> (ring/response {})
+  (-> (ring/status 204)
       (ring/header "Access-Control-Allow-Methods" (allowed-methods request))
-      (ring/header "Access-Control-Allow-Headers" "content-type")))
+      (ring/header "Access-Control-Allow-Headers" "content-type")
+      (ac/completed-future)))
 
 
 (defn router
