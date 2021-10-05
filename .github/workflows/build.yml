@@ -419,6 +419,9 @@ jobs:
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
 
+    - name: OPTIONS
+      run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
+
   jepsen-test:
     needs: build
     runs-on: ubuntu-20.04
@@ -668,6 +671,9 @@ jobs:
 
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
+
+    - name: OPTIONS
+      run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
 
     - name: Docker Stats
       run: docker stats --no-stream
