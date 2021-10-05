@@ -17,13 +17,13 @@
   {:mvn/version "30.1.1-jre"}
 
   com.fasterxml.jackson.core/jackson-core
-  {:mvn/version "2.12.5"}
+  {:mvn/version "2.13.0"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.12.5"}
+  {:mvn/version "2.13.0"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.12.5"}
+  {:mvn/version "2.13.0"}
 
   com.taoensso/timbre
   {:mvn/version "5.1.2"}
