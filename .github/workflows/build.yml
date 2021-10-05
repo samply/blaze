@@ -20,7 +20,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2021.09.15'
+        version: '2021.09.25'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -79,7 +79,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.981'
+        tools-deps: '1.10.3.986'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -141,7 +141,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.981'
+        tools-deps: '1.10.3.986'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -183,7 +183,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.981'
+        tools-deps: '1.10.3.986'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -211,7 +211,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.981'
+        tools-deps: '1.10.3.986'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -296,7 +296,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.981'
+        tools-deps: '1.10.3.986'
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -419,6 +419,9 @@ jobs:
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
 
+    - name: OPTIONS
+      run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
+
   jepsen-test:
     needs: build
     runs-on: ubuntu-20.04
@@ -433,7 +436,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.981'
+        tools-deps: '1.10.3.986'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -525,7 +528,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.981'
+        tools-deps: '1.10.3.986'
 
     - name: APT Update
       run: sudo apt-get update
@@ -669,6 +672,9 @@ jobs:
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
 
+    - name: OPTIONS
+      run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
+
     - name: Docker Stats
       run: docker stats --no-stream
 
@@ -686,7 +692,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.981'
+        tools-deps: '1.10.3.986'
 
     - name: Check out Git repository
       uses: actions/checkout@v2

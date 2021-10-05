@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.12.1
+
+### Bugfixes
+
+* Fix Failing OPTIONS Request ([#490](https://github.com/samply/blaze/issues/490))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/13?closed=1).
+
 ## v0.12.0
 
 ### New Features

@@ -236,18 +236,18 @@
 
 (deftest default-options-handler-test
   (testing "without match"
-    (given (rest-api/default-options-handler {})
-      :status := 200
+    (given @(rest-api/default-options-handler {})
+      :status := 204
       [:headers "Access-Control-Allow-Headers"] := "content-type"))
 
   (testing "with one :get match"
-    (given (rest-api/default-options-handler {::reitit/match {:result {:get {}}}})
-      :status := 200
+    (given @(rest-api/default-options-handler {::reitit/match {:result {:get {}}}})
+      :status := 204
       [:headers "Access-Control-Allow-Methods"] := "GET"))
 
   (testing "with one :get and one :post match"
-    (given (rest-api/default-options-handler {::reitit/match {:result {:get {} :post {}}}})
-      :status := 200
+    (given @(rest-api/default-options-handler {::reitit/match {:result {:get {} :post {}}}})
+      :status := 204
       [:headers "Access-Control-Allow-Methods"] := "GET,POST")))
 
 
@@ -303,3 +303,12 @@
                    :uri "/metadata"
                    :headers {"X-Forwarded-Host" "blaze.de"}})
           [:body fhir-spec/parse-json :implementation :url] := "http://blaze.de")))))
+
+
+(deftest options-cors-test
+  (testing "XML"
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given @(rest-api {:request-method :options :uri "/metadata"})
+        :status := 204
+        [:headers "Access-Control-Allow-Headers"] := "content-type"
+        [:headers "Access-Control-Allow-Methods"] := "GET,OPTIONS"))))
