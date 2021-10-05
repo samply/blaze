@@ -53,7 +53,7 @@
   Returns an integer."
   (memoize-1
     (fn [type]
-      (-> (Hashing/murmur3_32)
+      (-> (Hashing/murmur3_32_fixed)
           (.hashBytes (.getBytes ^String type StandardCharsets/ISO_8859_1))
           (.asInt)))))
 
@@ -113,7 +113,7 @@
 
 
 (defn c-hash [code]
-  (-> (Hashing/murmur3_32)
+  (-> (Hashing/murmur3_32_fixed)
       (.hashString ^String code StandardCharsets/UTF_8)
       (.asInt)))
 
@@ -158,7 +158,7 @@
 
 
 (defn v-hash [value]
-  (-> (Hashing/murmur3_32)
+  (-> (Hashing/murmur3_32_fixed)
       (.hashString ^String value StandardCharsets/UTF_8)
       (.asBytes)
       bs/from-byte-array))

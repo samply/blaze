@@ -2,7 +2,7 @@
 
  :deps
  {com.google.guava/guava
-  {:mvn/version "30.1.1-jre"}
+  {:mvn/version "31.0.1-jre"}
 
   com.google.protobuf/protobuf-java
   {:mvn/version "3.18.0"}

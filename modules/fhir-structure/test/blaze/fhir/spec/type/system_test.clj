@@ -25,7 +25,7 @@
 
 
 (defn murmur3 [x]
-  (let [hasher (.newHasher (Hashing/murmur3_32))]
+  (let [hasher (.newHasher (Hashing/murmur3_32_fixed))]
     (system/-hash-into x hasher)
     (Integer/toHexString (.asInt (.hash hasher)))))
 
