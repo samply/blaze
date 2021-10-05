@@ -47,7 +47,7 @@
     {:mvn/version "0.3.0"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.887"}}
+    {:mvn/version "1.0.902"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
