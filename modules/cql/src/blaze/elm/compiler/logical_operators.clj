@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.logical-operators
-  "13. Logical Operators"
+  "13. Logical Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defunop]]))

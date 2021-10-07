@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.clinical-values
-  "3. Clinical Values"
+  "3. Clinical Values
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.code :as code]

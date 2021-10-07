@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.conditional-operators
-  "15. Conditional Operators"
+  "15. Conditional Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler.core :as core]
     [blaze.elm.protocols :as p]))

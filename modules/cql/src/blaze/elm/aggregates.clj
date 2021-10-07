@@ -1,4 +1,8 @@
 (ns blaze.elm.aggregates
+  "21. Aggregate Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.protocols :as p]))
 

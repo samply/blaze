@@ -34,7 +34,7 @@
 (defn- evaluate-expression-1
   [{:keys [library-context] :as context} subject-handle expression-name]
   (try
-    (expr/eval (get library-context expression-name) context subject-handle nil)
+    (expr/eval context (get library-context expression-name) subject-handle)
     (catch Exception e
       (log/error (log/stacktrace e))
       (ba/fault

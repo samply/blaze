@@ -1,4 +1,8 @@
 (ns blaze.elm.compiler.list-operators-test
+  "20. List Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly-spec]
     [blaze.elm.compiler :as c]
@@ -8,8 +12,11 @@
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
+    [blaze.test-util :refer [satisfies-prop]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]))
+    [clojure.test :as test :refer [are deftest testing]]
+    [clojure.test.check.properties :as prop]))
 
 
 (st/instrument)
@@ -68,11 +75,17 @@
 ;; It is an error to invoke the Current operator outside the context of a scoped
 ;; operation.
 (deftest compile-current-test
-  (are [x] (= x (core/-eval (c/compile {} {:type "Current"}) {} nil x))
-    1)
+  (testing "default scope"
+    (satisfies-prop 100
+    (prop/for-all [x (s/gen int?)]
+      (= x (core/-eval (c/compile {} {:type "Current"}) {} nil x)))))
 
-  (are [x] (= x (core/-eval (c/compile {} {:type "Current" :scope "A"}) {} nil {"A" x}))
-    1))
+  (testing "named scope"
+    (satisfies-prop 100
+    (prop/for-all [scope (s/gen string?)
+                   x (s/gen int?)]
+      (let [expr (c/compile {} {:type "Current" :scope scope})]
+        (= x (core/-eval expr {} nil {scope x})))))))
 
 
 ;; 20.4. Distinct

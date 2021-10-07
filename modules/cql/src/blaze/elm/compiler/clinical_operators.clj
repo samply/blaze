@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.clinical-operators
-  "23. Clinical Operators"
+  "23. Clinical Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler.core :as core]
     [blaze.elm.protocols :as p]))

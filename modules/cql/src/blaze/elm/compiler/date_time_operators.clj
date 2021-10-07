@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.date-time-operators
-  "18. Date and Time Operators"
+  "18. Date and Time Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]

@@ -25,12 +25,8 @@
           :opt-un [::library-context ::parameters]))
 
 
-(s/def :blaze.elm.expression/scope
-  any?)
-
-
 (s/fdef expr/eval
-  :args (s/cat :expression :blaze.elm.compiler/expression
-               :context :blaze.elm.expression/context
-               :resource (s/nilable (s/or :resource :blaze/resource :resource-handle :blaze.db/resource-handle))
-               :scope (s/nilable :blaze.elm.expression/scope)))
+  :args (s/cat :context :blaze.elm.expression/context
+               :expression :blaze.elm.compiler/expression
+               :resource (s/nilable (s/or :resource :blaze/resource
+                                          :resource-handle :blaze.db/resource-handle))))

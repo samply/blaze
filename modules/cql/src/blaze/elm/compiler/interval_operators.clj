@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.interval-operators
-  "19. Interval Operators"
+  "19. Interval Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler.arithmetic-operators :as ao]
     [blaze.elm.compiler.core :as core]
