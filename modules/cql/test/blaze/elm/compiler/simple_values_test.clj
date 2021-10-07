@@ -1,4 +1,8 @@
 (ns blaze.elm.compiler.simple-values-test
+  "1. Simple Values
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.test-util :as tu]

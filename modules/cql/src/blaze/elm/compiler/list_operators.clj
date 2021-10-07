@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.list-operators
-  "20. List Operators"
+  "20. List Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba]
     [blaze.coll.core :as coll]

@@ -12,7 +12,9 @@
 
 
 (defprotocol Expression
-  (-eval [this context resource scope]))
+  (-eval [expression context resource scope]
+    "Evaluates `expression` on `resource` using `context` and optional `scope`
+    for scoped expressions like inside queries."))
 
 
 (defn expr? [x]

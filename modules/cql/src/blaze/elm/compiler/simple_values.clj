@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.simple-values
-  "1. Simple Values"
+  "1. Simple Values
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]

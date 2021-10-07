@@ -1,7 +1,8 @@
 (ns blaze.elm.compiler.external-data
   "11. External Data
 
-  https://cql.hl7.org/04-logicalspecification.html#external-data"
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.db.api :as d]

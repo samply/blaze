@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.arithmetic-operators
-  "16. Arithmetic Operators"
+  "16. Arithmetic Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]

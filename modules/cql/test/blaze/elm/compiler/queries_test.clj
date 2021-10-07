@@ -1,4 +1,8 @@
 (ns blaze.elm.compiler.queries-test
+  "10. Queries
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
