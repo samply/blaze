@@ -65,6 +65,70 @@
       (add-metrics! stats TickerType/BLOCK_CACHE_INDEX_BYTES_INSERT)))
 
 
+(defn- block-cache-filter-miss-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_block_cache_filter_miss_total"
+        "Returns the number of times cache miss when accessing filter block from block cache."
+        ["name"])
+      (add-metrics! stats TickerType/BLOCK_CACHE_FILTER_MISS)))
+
+
+(defn- block-cache-filter-hit-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_block_cache_filter_hit_total"
+        "Returns the number of times cache hit when accessing filter block from block cache."
+        ["name"])
+      (add-metrics! stats TickerType/BLOCK_CACHE_FILTER_HIT)))
+
+
+(defn- block-cache-filter-insert-bytes-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_block_cache_filter_insert_bytes_total"
+        "Returns the number of bytes of filter blocks inserted into block cache."
+        ["name"])
+      (add-metrics! stats TickerType/BLOCK_CACHE_FILTER_BYTES_INSERT)))
+
+
+(defn- memtable-hit-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_memtable_hit_total"
+        "Returns the number of memtable hits."
+        ["name"])
+      (add-metrics! stats TickerType/MEMTABLE_HIT)))
+
+
+(defn- memtable-miss-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_memtable_miss_total"
+        "Returns the number of memtable misses."
+        ["name"])
+      (add-metrics! stats TickerType/MEMTABLE_MISS)))
+
+
+(defn- get-hit-l0-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_get_hit_l0_total"
+        "Returns the number of Get() queries served by L0."
+        ["name"])
+      (add-metrics! stats TickerType/GET_HIT_L0)))
+
+
+(defn- get-hit-l1-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_get_hit_l1_total"
+        "Returns the number of Get() queries served by L1."
+        ["name"])
+      (add-metrics! stats TickerType/GET_HIT_L1)))
+
+
+(defn- get-hit-l2-and-up-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_get_hit_l2_and_up_total"
+        "Returns the number of Get() queries served by L2 and up."
+        ["name"])
+      (add-metrics! stats TickerType/GET_HIT_L2_AND_UP)))
+
+
 (defn- keys-read-total [stats]
   (-> (CounterMetricFamily.
         "blaze_rocksdb_keys_read_total"
@@ -161,6 +225,30 @@
       (add-metrics! stats TickerType/BLOOM_FILTER_FULL_TRUE_POSITIVE)))
 
 
+(defn- blocks-compressed-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_blocks_compressed_total"
+        "Number of blocks compressed."
+        ["name"])
+      (add-metrics! stats TickerType/NUMBER_BLOCK_COMPRESSED)))
+
+
+(defn- blocks-decompressed-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_blocks_decompressed_total"
+        "Number of blocks decompressed."
+        ["name"])
+      (add-metrics! stats TickerType/NUMBER_BLOCK_DECOMPRESSED)))
+
+
+(defn- blocks-not-compressed-total [stats]
+  (-> (CounterMetricFamily.
+        "blaze_rocksdb_blocks_not_compressed_total"
+        "Number of blocks not compressed."
+        ["name"])
+      (add-metrics! stats TickerType/NUMBER_BLOCK_NOT_COMPRESSED)))
+
+
 (defn stats-collector [stats]
   (proxy [Collector] []
     (collect []
@@ -170,6 +258,14 @@
        (block-cache-index-miss-total stats)
        (block-cache-index-hit-total stats)
        (block-cache-index-insert-bytes-total stats)
+       (block-cache-filter-miss-total stats)
+       (block-cache-filter-hit-total stats)
+       (block-cache-filter-insert-bytes-total stats)
+       (memtable-hit-total stats)
+       (memtable-miss-total stats)
+       (get-hit-l0-total stats)
+       (get-hit-l1-total stats)
+       (get-hit-l2-and-up-total stats)
        (keys-read-total stats)
        (keys-written-total stats)
        (keys-updated-total stats)
@@ -181,4 +277,7 @@
        (file-errors-total stats)
        (bloom-filter-useful-total stats)
        (bloom-filter-full-positive-total stats)
-       (bloom-filter-full-true-positive-total stats)])))
+       (bloom-filter-full-true-positive-total stats)
+       (blocks-compressed-total stats)
+       (blocks-decompressed-total stats)
+       (blocks-not-compressed-total stats)])))

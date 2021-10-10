@@ -20,7 +20,10 @@
     [cognitect.anomalies :as anom]
     [cuerdas.core :as str]
     [integrant.core :as ig]
-    [taoensso.timbre :as log]))
+    [jsonista.core :as j]
+    [taoensso.timbre :as log])
+  (:import
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
 
 (st/instrument)
@@ -109,6 +112,12 @@
     :executor (ig/ref ::rs-kv/executor)}})
 
 
+(def cbor-object-mapper
+  (j/object-mapper
+    {:factory (CBORFactory.)
+     :decode-key-fn true}))
+
+
 (deftest get-test
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -125,6 +134,14 @@
 
         (given-failed-future (rs/get store hash)
           ::anom/message :# "Error while parsing resource content(.|\\s)*"))))
+
+  (testing "conforming error"
+    (let [hash (hash "0")]
+      (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+        (kv/put! kv-store (bs/to-byte-array hash) (j/write-value-as-bytes {} cbor-object-mapper))
+
+        (given-failed-future (rs/get store hash)
+          ::anom/message :# "Error while conforming resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`."))))
 
   (testing "not-found"
     (with-system [{store ::rs/kv} system]
