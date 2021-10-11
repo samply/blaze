@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.12.2
+
+### Bugfixes
+
+* Fix DB Sync After Failing Transaction ([#498](https://github.com/samply/blaze/issues/498))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/14?closed=1).
+
 ## v0.12.1
 
 ### Bugfixes
