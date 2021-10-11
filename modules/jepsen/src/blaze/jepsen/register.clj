@@ -4,6 +4,7 @@
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
+    [blaze.fhir.spec.type :as type]
     [blaze.jepsen.util :as u]
     [clojure.tools.logging :refer [info]]
     [hato.client :as hc]
@@ -11,6 +12,7 @@
     [jepsen.cli :as cli]
     [jepsen.client :as client]
     [jepsen.generator :as gen]
+    [jepsen.nemesis :as nemesis]
     [jepsen.tests :as tests]
     [knossos.model :as model])
   (:import
@@ -38,6 +40,15 @@
      context))
 
 
+(defn failing-write! [{:keys [base-uri] :as context}]
+  @(-> (fhir-client/update
+         base-uri
+         {:fhir/type :fhir/Observation :id "0"
+          :subject (type/map->Reference {:reference (str "Patient/" (UUID/randomUUID))})}
+         context)
+       (ac/exceptionally (constantly nil))))
+
+
 (defrecord Client [context]
   client/Client
   (open! [this _test node]
@@ -61,6 +72,21 @@
   (close! [_ _test]))
 
 
+(defn trash-sender
+  "Sends trash requests."
+  [node]
+  (let [context {:base-uri (str "http://" node "/fhir")}]
+    (reify nemesis/Nemesis
+      (setup! [this _] this)
+
+      (invoke! [_ _ op]
+        (case (:f op)
+          :failing-write (do (failing-write! context)
+                             op)))
+
+      (teardown! [_ _]))))
+
+
 (defn blaze-test
   "Given an options map from the command line runner (e.g. :nodes, :ssh,
   :concurrency, ...), constructs a test map."
@@ -71,12 +97,16 @@
      :name "register"
      :remote (u/->Remote)
      :client (->Client {})
+     :nemesis (trash-sender (first (:nodes opts)))
      :checker (checker/linearizable
                 {:model (model/register)
                  :algorithm :linear})
      :generator (->> (gen/mix [r w])
                      (gen/stagger (:delta-time opts))
-                     (gen/nemesis nil)
+                     (gen/nemesis
+                       (cycle
+                         [{:type :info, :f :failing-write}
+                          (gen/sleep 1)]))
                      (gen/time-limit (:time-limit opts)))}
     opts))
 
