@@ -1,4 +1,8 @@
 (ns blaze.elm.compiler.parameters-test
+  "7. Parameters
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba]
     [blaze.elm.code-spec]

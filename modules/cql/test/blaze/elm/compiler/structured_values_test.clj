@@ -1,4 +1,8 @@
 (ns blaze.elm.compiler.structured-values-test
+  "2. Structured Values
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.coll.core :as coll]
     [blaze.elm.code-spec]

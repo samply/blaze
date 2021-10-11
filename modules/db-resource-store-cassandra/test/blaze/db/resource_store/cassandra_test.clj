@@ -126,7 +126,7 @@
             ::anom/message :# "Error while parsing resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`:(.|\\s)*"
             :blaze.resource/hash := hash)))))
 
-  (testing "invalid resource"
+  (testing "conforming error"
     (let [hash (hash "0")
           row (row-with 0 (j/write-value-as-bytes {} cbor-object-mapper))
           session

@@ -1,4 +1,8 @@
 (ns blaze.elm.compiler.reusing-logic-test
+  "9. Reusing Logic
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]

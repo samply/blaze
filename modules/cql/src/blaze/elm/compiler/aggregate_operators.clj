@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.aggregate-operators
-  "21. Aggregate Operators"
+  "21. Aggregate Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.aggregates :as aggregates]
     [blaze.elm.compiler.macros :refer [defaggop]]

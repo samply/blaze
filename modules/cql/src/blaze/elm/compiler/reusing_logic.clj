@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.reusing-logic
-  "9. Reusing Logic"
+  "9. Reusing Logic
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.db.api :as d]

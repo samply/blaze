@@ -48,14 +48,18 @@
           (bs/hex hash)))
 
 
-(defn- conform-cbor [bytes hash]
+(defn- conform-cbor [x hash]
+  (-> (fhir-spec/conform-cbor x)
+      (ba/exceptionally
+        (fn [_]
+          (ba/fault
+            (conform-msg hash)
+            :blaze.resource/hash hash)))))
+
+
+(defn- parse-and-conform-cbor [bytes hash]
   (when-ok [x (parse-cbor bytes hash)]
-    (-> (fhir-spec/conform-cbor x)
-        (ba/exceptionally
-          (constantly
-            (ba/fault
-              (conform-msg hash)
-              :blaze.resource/hash hash))))))
+    (conform-cbor x hash)))
 
 
 (def ^:private entry-thawer
@@ -63,7 +67,7 @@
     (map
       (fn [[k v]]
         (let [hash (bs/from-byte-array k)]
-          (when-ok [resource (conform-cbor v hash)]
+          (when-ok [resource (parse-and-conform-cbor v hash)]
             [hash resource]))))
     (halt-when ba/anomaly?)))
 
@@ -89,7 +93,7 @@
   (-get [_ hash]
     (ac/supply-async
       #(some-> (get-content kv-store hash)
-               (conform-cbor hash))
+               (parse-and-conform-cbor hash))
       executor))
 
   (-multi-get [_ hashes]

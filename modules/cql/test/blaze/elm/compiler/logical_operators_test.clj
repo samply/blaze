@@ -1,4 +1,8 @@
 (ns blaze.elm.compiler.logical-operators-test
+  "13. Logical Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.logical-operators]

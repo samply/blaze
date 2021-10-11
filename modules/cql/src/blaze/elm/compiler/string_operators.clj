@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.string-operators
-  "17. String Operators"
+  "17. String Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defbinop defnaryop defternop defunop]]

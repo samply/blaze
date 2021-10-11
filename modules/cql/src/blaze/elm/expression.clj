@@ -4,5 +4,7 @@
     [blaze.elm.compiler.core :as core]))
 
 
-(defn eval [expression context resource scope]
-  (core/-eval expression context resource scope))
+(defn eval
+  "Evaluates `expression` on `resource` using `context`."
+  [context expression resource]
+  (core/-eval expression context resource nil))

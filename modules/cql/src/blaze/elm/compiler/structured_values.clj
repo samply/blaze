@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.structured-values
-  "2. Structured Values"
+  "2. Structured Values
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.coll.core :as coll]

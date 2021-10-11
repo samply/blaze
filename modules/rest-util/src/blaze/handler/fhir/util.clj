@@ -17,7 +17,7 @@
   "Returns the t (optional) of the database which should be stay stable.
 
   Tries to read the t from the query param `__t` and returns the first valid one
-  if their is any."
+  if there is any."
   {:arglists '([query-params])}
   [{v "__t"}]
   (some #(when (re-matches #"\d+" %) (Long/parseLong %)) (to-seq v)))
@@ -31,7 +31,7 @@
   "Returns the page size taken from a possible `_count` query param.
 
   Returns the value from the first valid `_count` query param or the default
-  value of 50. Limits values to 10000."
+  value of 50. Limits value to 10000."
   {:arglists '([query-params])}
   [{v "_count"}]
   (if-let [count (some #(when (re-matches #"\d+" %) %) (to-seq v))]
@@ -79,9 +79,9 @@
 
 
 (defn instance-url
-  "Returns the URL of a instance (resource) like `[base]/[type]/[id]`."
+  "Returns the URL of an instance (resource) like `[base]/[type]/[id]`."
   [context type id]
-  ;; URL's are build by hand here, because id's do not need to be URL encoded
+  ;; URLs are build by hand here, because id's do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (type-url context type) "/" id))
 
@@ -90,6 +90,6 @@
   "Returns the URL of a versioned instance (resource) like
   `[base]/[type]/[id]/_history/[vid]`."
   [context type id vid]
-  ;; URL's are build by hand here, because id's do not need to be URL encoded
+  ;; URLs are build by hand here, because id's do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (instance-url context type id) "/_history/" vid))

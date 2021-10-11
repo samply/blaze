@@ -39,8 +39,8 @@
     {:spec
      {`expr/eval
       (s/fspec
-        :args (s/cat :expression :blaze.elm.compiler/expression
-                     :context map? :resource nil? :scope nil?))}})
+        :args (s/cat :context map? :expression :blaze.elm.compiler/expression
+                     :resource nil?))}})
   (f)
   (st/unstrument))
 
@@ -83,7 +83,7 @@
 
 
 (defn eval-elm [now elm]
-  (expr/eval (compile {} elm) {:now now} nil nil))
+  (expr/eval {:now now} (compile {} elm) nil))
 
 
 (defn eval [now cql]

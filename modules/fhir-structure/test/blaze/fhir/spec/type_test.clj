@@ -1322,6 +1322,11 @@
   (testing "type"
     (is (= :fhir/Extension (type/type #fhir/Extension{}))))
 
+  (testing "to-json"
+    (are [code json] (= json (gen-json-string code))
+      #fhir/Extension{} "{}"
+      #fhir/Extension{:id "id-162531"} "{\"id\":\"id-162531\"}"))
+
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/Extension{}

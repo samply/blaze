@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.type-operators
-  "22. Type Operators"
+  "22. Type Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]

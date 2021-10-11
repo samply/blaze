@@ -53,7 +53,7 @@
 
 
 (defn- failing-eval [msg]
-  (fn [_ _ _ _] (throw (Exception. ^String msg))))
+  (fn [_ _ _] (throw (Exception. ^String msg))))
 
 
 (deftest evaluate-expression-test

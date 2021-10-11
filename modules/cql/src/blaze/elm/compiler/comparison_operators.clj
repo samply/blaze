@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.comparison-operators
-  "12. Comparison Operators"
+  "12. Comparison Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defbinop]]

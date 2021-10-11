@@ -64,19 +64,19 @@
           (bs/hex hash)))
 
 
-(defn- conform-cbor [bytes hash]
-  (when-ok [x (parse-cbor bytes hash)]
-    (-> (fhir-spec/conform-cbor x)
-        (ba/exceptionally
-          (constantly
-            (ba/fault
-              (conform-msg hash)
-              :blaze.resource/hash hash))))))
+(defn- conform-cbor [x hash]
+  (-> (fhir-spec/conform-cbor x)
+      (ba/exceptionally
+        (fn [_]
+          (ba/fault
+            (conform-msg hash)
+            :blaze.resource/hash hash)))))
 
 
 (defn- read-content [result-set hash]
-  (when-ok [row (cass/first-row result-set)]
-    (conform-cbor row hash)))
+  (when-ok [row (cass/first-row result-set)
+            x (parse-cbor row hash)]
+    (conform-cbor x hash)))
 
 
 (defn- map-execute-get-error [hash e]

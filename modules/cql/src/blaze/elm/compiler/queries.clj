@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.queries
-  "10. Queries"
+  "10. Queries
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [comparator])
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]

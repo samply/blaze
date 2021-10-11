@@ -1,5 +1,8 @@
 (ns blaze.elm.compiler.nullological-operators
-  "14. Nullological Operators"
+  "14. Nullological Operators
+
+  Section numbers are according to
+  https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defunop]]))
