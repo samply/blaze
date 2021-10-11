@@ -98,7 +98,7 @@
     clauses))
 
 
-(defn- add-watcher
+(defn- db-future
   "Adds a watcher to `node` and returns a CompletableFuture that will complete
   with the database value of at least the point in time `t` if `t` is reached or
   complete exceptionally in case the indexing errored."
@@ -109,7 +109,7 @@
       (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
         (cond
           (<= t (max new-t new-error-t))
-          (do (ac/complete! future (db/db node (max new-t t)))
+          (do (ac/complete! future (db/db node new-t))
               (remove-watch state future))
 
           e
@@ -191,11 +191,6 @@
   (reduce #(index-tx-data! node %2) nil (tx-log/poll! queue poll-timeout)))
 
 
-(defn- max-t [state]
-  (let [{:keys [t error-t]} state]
-    (max t error-t)))
-
-
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
   (-> (or meta #fhir/Meta{})
       (assoc :versionId (type/->Id (str t)))
@@ -249,9 +244,10 @@
         (ac/then-compose #(np/-sync node %))))
 
   (-sync [node t]
-    (if (<= t (:t @state))
-      (ac/completed-future (np/-db node))
-      (add-watcher node t)))
+    (let [{current-t :t current-error-t :error-t} @state]
+      (if (<= t (max current-t current-error-t))
+        (ac/completed-future (db/db node current-t))
+        (db-future node t))))
 
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
@@ -262,21 +258,21 @@
       ac/completed-future))
 
   (-tx-result [node t]
-    (let [watcher (add-watcher node t)
-          current-state @state
-          current-t (max-t current-state)]
+    (let [future (db-future node t)
+          {current-t :t current-error-t :error-t :as current-state} @state
+          current-t (max current-t current-error-t)]
       (log/trace "call tx-result: t =" t "current-t =" current-t)
       (cond
         (<= t current-t)
-        (do (remove-watch state watcher)
+        (do (remove-watch state future)
             (ac/completed-future (tx/load-tx-result node t)))
 
         (:e current-state)
-        (do (remove-watch state watcher)
+        (do (remove-watch state future)
             (ac/failed-future (:e current-state)))
 
         :else
-        (ac/then-apply watcher (fn [_] (tx/load-tx-result node t))))))
+        (ac/then-apply future (fn [_] (tx/load-tx-result node t))))))
 
   p/Tx
   (-tx [_ t]

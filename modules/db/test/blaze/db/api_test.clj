@@ -138,20 +138,30 @@
 
 
 (deftest sync-test
-  (testing "on already available database"
+  (testing "on already available database value"
     (with-system [{:blaze.db/keys [node]} system]
       @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
       (is (= 1 (d/basis-t @(d/sync node 1))))))
 
-  (testing "on unavailable database"
+  (testing "on currently unavailable database value"
     (with-system [{:blaze.db/keys [node]} system]
       (let [future (d/sync node 1)]
         @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
         (is (= 1 (d/basis-t @future))))))
 
-  (testing "on database being available after two transactions"
+  (testing "errored transactions are ignored"
+    (with-system [{:blaze.db/keys [node]} system]
+      @(d/transact node [[:create {:fhir/type :fhir/Observation :id "0"}]])
+      @(-> (d/transact node [[:create
+                              {:fhir/type :fhir/Observation :id "1"
+                               :subject #fhir/Reference{:reference "Patient/0"}}]])
+           (ac/exceptionally (constantly nil)))
+
+      (is (= 1 (d/basis-t @(d/sync node))))))
+
+  (testing "on database value being available after two transactions"
     (with-system [{:blaze.db/keys [node]} system]
       (let [future (d/sync node 2)]
         @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])

@@ -30,7 +30,7 @@
   "Used to coordinate with other nodes.
 
   When called with `t`, returns a CompletionStage that completes with the
-  database value with at least the point in time `t` is available. Does not
+  database value with at least the point in time `t` available. Does not
   communicate with the transaction log. Simply waits for the database value
   becoming available.
 
