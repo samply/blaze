@@ -38,99 +38,150 @@
   (if (str/starts-with? s "/") (subs s 1) s))
 
 
+(defn- missing-request-anom [idx]
+  (ba/incorrect
+    "Missing request."
+    :fhir/issue "value"
+    :fhir.issue/expression (format "Bundle.entry[%d]" idx)))
+
+
+(defn- missing-url-anom [idx]
+  (ba/incorrect
+    "Missing url."
+    :fhir/issue "value"
+    :fhir.issue/expression (format "Bundle.entry[%d].request" idx)))
+
+
+(defn- missing-method-anom [idx]
+  (ba/incorrect
+    "Missing method."
+    :fhir/issue "value"
+    :fhir.issue/expression (format "Bundle.entry[%d].request" idx)))
+
+
+(defn- unknown-method-anom [method idx]
+  (ba/incorrect
+    (format "Unknown method `%s`." method)
+    :fhir/issue "value"
+    :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx)))
+
+
+(defn- unsupported-method-anom [method idx]
+  (ba/unsupported
+    (format "Unsupported method `%s`." method)
+    :fhir/issue "not-supported"
+    :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx)))
+
+
+(defn- missing-type-anom [url idx]
+  (ba/incorrect
+    (format "Can't parse type from `entry.request.url` `%s`." url)
+    :fhir/issue "value"
+    :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
+
+
+(defn- unknown-type-anom [type url idx]
+  (ba/incorrect
+    (format "Unknown type `%s` in bundle entry URL `%s`." type url)
+    :fhir/issue "value"
+    :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
+
+
+(defn- missing-resource-type-anom [idx]
+  (ba/incorrect
+    "Resource type is missing."
+    :fhir/issue "required"
+    :fhir.issue/expression (format "Bundle.entry[%d].resource.resourceType" idx)))
+
+
+(defn type-mismatch-anom [resource url idx]
+  (ba/incorrect
+    (format "Type mismatch between resource type `%s` and URL `%s`."
+            (-> resource :fhir/type name) url)
+    :fhir/issue "invariant"
+    :fhir.issue/expression
+    [(format "Bundle.entry[%d].request.url" idx)
+     (format "Bundle.entry[%d].resource.resourceType" idx)]
+    :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH"))
+
+
+(defn- missing-url-id-anom [url idx]
+  (ba/incorrect
+    (format "Can't parse id from URL `%s`." url)
+    :fhir/issue "value"
+    :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx)))
+
+
+(defn- missing-resource-id-anom [idx]
+  (ba/incorrect
+    "Resource id is missing."
+    :fhir/issue "required"
+    :fhir.issue/expression (format "Bundle.entry[%d].resource.id" idx)
+    :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"))
+
+
+(defn- invalid-resource-id-anom [resource idx]
+  (ba/incorrect
+    (format "Resource id `%s` is invalid." (:id resource))
+    :fhir/issue "value"
+    :fhir.issue/expression (format "Bundle.entry[%d].resource.id" idx)
+    :fhir/operation-outcome "MSG_ID_INVALID"))
+
+
+(defn- id-mismatch-anom [resource url idx]
+  (ba/incorrect
+    (format "Id mismatch between resource id `%s` and URL `%s`."
+            (:id resource) url)
+    :fhir/issue "invariant"
+    :fhir.issue/expression
+    [(format "Bundle.entry[%d].request.url" idx)
+     (format "Bundle.entry[%d].resource.id" idx)]
+    :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH"))
+
+
 (defn- validate-entry [idx {:keys [request resource] :as entry}]
   (let [method (some-> request :method type/value)
         [url] (some-> request :url type/value strip-leading-slash (str/split #"\?"))
         [type id] (some-> url url/match-url)]
     (cond
       (nil? request)
-      (ba/incorrect
-        "Missing request."
-        :fhir/issue "value"
-        :fhir.issue/expression (format "Bundle.entry[%d]" idx))
+      (missing-request-anom idx)
 
       (nil? url)
-      (ba/incorrect
-        "Missing url."
-        :fhir/issue "value"
-        :fhir.issue/expression (format "Bundle.entry[%d].request" idx))
+      (missing-url-anom idx)
 
       (nil? method)
-      (ba/incorrect
-        "Missing method."
-        :fhir/issue "value"
-        :fhir.issue/expression (format "Bundle.entry[%d].request" idx))
+      (missing-method-anom idx)
 
       (not (#{"GET" "HEAD" "POST" "PUT" "DELETE" "PATCH"} method))
-      (ba/incorrect
-        (format "Unknown method `%s`." method)
-        :fhir/issue "value"
-        :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx))
+      (unknown-method-anom method idx)
 
       (not (#{"GET" "POST" "PUT" "DELETE"} method))
-      (ba/unsupported
-        (format "Unsupported method `%s`." method)
-        :fhir/issue "not-supported"
-        :fhir.issue/expression (format "Bundle.entry[%d].request.method" idx))
+      (unsupported-method-anom method idx)
 
       (nil? type)
-      (ba/incorrect
-        (format "Can't parse type from `entry.request.url` `%s`." url)
-        :fhir/issue "value"
-        :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx))
+      (missing-type-anom url idx)
 
       (not (fhir-spec/type-exists? type))
-      (ba/incorrect
-        (format "Unknown type `%s` in bundle entry URL `%s`." type url)
-        :fhir/issue "value"
-        :fhir.issue/expression (format "Bundle.entry[%d].request.url" idx))
+      (unknown-type-anom type url idx)
 
       (and (#{"POST" "PUT"} method) (nil? (:fhir/type resource)))
-      (ba/incorrect
-        "Resource type is missing."
-        :fhir/issue "required"
-        :fhir.issue/expression
-        [(format "Bundle.entry[%d].resource.resourceType" idx)])
+      (missing-resource-type-anom idx)
 
       (and (#{"POST" "PUT"} method) (not= type (-> resource :fhir/type name)))
-      (ba/incorrect
-        (format "Type mismatch between resource type `%s` and URL `%s`."
-                (-> resource :fhir/type name) url)
-        :fhir/issue "invariant"
-        :fhir.issue/expression
-        [(format "Bundle.entry[%d].request.url" idx)
-         (format "Bundle.entry[%d].resource.resourceType" idx)]
-        :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")
+      (type-mismatch-anom resource url idx)
 
       (and (= "PUT" method) (nil? id))
-      (ba/incorrect
-        (format "Can't parse id from URL `%s`." url)
-        :fhir/issue "value"
-        :fhir.issue/expression [(format "Bundle.entry[%d].request.url" idx)])
+      (missing-url-id-anom url idx)
 
       (and (= "PUT" method) (not (contains? resource :id)))
-      (ba/incorrect
-        "Resource id is missing."
-        :fhir/issue "required"
-        :fhir.issue/expression [(format "Bundle.entry[%d].resource.id" idx)]
-        :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING")
+      (missing-resource-id-anom idx)
 
       (and (= "PUT" method) (not (s/valid? :blaze.resource/id (:id resource))))
-      (ba/incorrect
-        (format "Resource id `%s` is invalid." (:id resource))
-        :fhir/issue "value"
-        :fhir.issue/expression [(format "Bundle.entry[%d].resource.id" idx)]
-        :fhir/operation-outcome "MSG_ID_INVALID")
+      (invalid-resource-id-anom resource idx)
 
       (and (= "PUT" method) (not= id (:id resource)))
-      (ba/incorrect
-        (format "Id mismatch between resource id `%s` and URL `%s`."
-                (:id resource) url)
-        :fhir/issue "invariant"
-        :fhir.issue/expression
-        [(format "Bundle.entry[%d].request.url" idx)
-         (format "Bundle.entry[%d].resource.id" idx)]
-        :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH")
+      (id-mismatch-anom resource url idx)
 
       :else
       (assoc entry :blaze/type type :blaze/id id))))
