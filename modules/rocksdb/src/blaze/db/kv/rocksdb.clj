@@ -221,6 +221,7 @@
                  target-file-size-base-in-mb
                  block-size
                  bloom-filter?
+                 optimize-filters-for-hits?
                  reverse-comparator?]
           :or {write-buffer-size-in-mb 64
                max-write-buffer-number 2
@@ -230,6 +231,7 @@
                target-file-size-base-in-mb 64
                block-size (bit-shift-left 4 10)
                bloom-filter? false
+               optimize-filters-for-hits? false
                reverse-comparator? false}}]]
    (ColumnFamilyDescriptor.
      (.getBytes (name key))
@@ -254,6 +256,8 @@
                (.setBlockCache block-cache))
              bloom-filter?
              (.setFilterPolicy (BloomFilter. 10 false)))))
+       optimize-filters-for-hits?
+       (.setOptimizeFiltersForHits true)
        reverse-comparator?
        (.setComparator BuiltinComparator/REVERSE_BYTEWISE_COMPARATOR)))))
 

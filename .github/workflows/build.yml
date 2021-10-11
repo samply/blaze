@@ -314,7 +314,7 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
-    - name: Sleep 60s
+    - name: Sleep 60 Seconds
       run: sleep 60
 
     - name: Docker Logs
@@ -466,7 +466,7 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
-    - name: Sleep 60s
+    - name: Sleep 60 Seconds
       run: sleep 60
 
     - name: Docker Logs
@@ -496,7 +496,7 @@ jobs:
     - name: Run Keycloak and Blaze
       run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d
 
-    - name: Sleep 90s
+    - name: Sleep 90 Seconds
       run: sleep 90
 
     - name: Docker Logs Keycloak
@@ -549,8 +549,8 @@ jobs:
     - name: Run Zookeeper, Kafka, Cassandra and Blaze
       run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
 
-    - name: Sleep 2 Minutes
-      run: sleep 120
+    - name: Sleep 2.5 Minutes
+      run: sleep 150
 
     - name: Docker Logs Zookepper
       run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
@@ -719,8 +719,8 @@ jobs:
     - name: Run Zookeeper, Kafka, Cassandra and Blaze
       run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
 
-    - name: Sleep 2 Minutes
-      run: sleep 120
+    - name: Sleep 2.5 Minutes
+      run: sleep 150
 
     - name: Docker Logs Zookepper
       run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
