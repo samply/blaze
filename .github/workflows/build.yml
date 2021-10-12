@@ -65,7 +65,7 @@ jobs:
 
         java-version:
         - '11'
-        - '16'
+        - '17'
 
     runs-on: ubuntu-20.04
 
@@ -136,7 +136,7 @@ jobs:
       uses: actions/setup-java@v2
       with:
         distribution: 'temurin'
-        java-version: '16'
+        java-version: '17'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -150,7 +150,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-16-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
+        key: ${{ runner.os }}-temurin-17-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
     - name: Test Coverage
       run: make -C modules/${{ matrix.module }} test-coverage
@@ -169,7 +169,7 @@ jobs:
       matrix:
         java-version:
         - '11'
-        - '16'
+        - '17'
 
     runs-on: ubuntu-20.04
 
@@ -206,7 +206,7 @@ jobs:
       uses: actions/setup-java@v2
       with:
         distribution: 'temurin'
-        java-version: '16'
+        java-version: '17'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -220,7 +220,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-16-maven-build-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-17-maven-build-${{ hashFiles('**/deps.edn') }}
 
     - name: Build Uberjar
       run: make uberjar
@@ -291,7 +291,7 @@ jobs:
       uses: actions/setup-java@v2
       with:
         distribution: 'temurin'
-        java-version: '16'
+        java-version: '17'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -431,7 +431,7 @@ jobs:
       uses: actions/setup-java@v2
       with:
         distribution: 'temurin'
-        java-version: '16'
+        java-version: '17'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -445,7 +445,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-16-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update
@@ -523,7 +523,7 @@ jobs:
       uses: actions/setup-java@v2
       with:
         distribution: 'temurin'
-        java-version: '16'
+        java-version: '17'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -687,7 +687,7 @@ jobs:
       uses: actions/setup-java@v2
       with:
         distribution: 'temurin'
-        java-version: '16'
+        java-version: '17'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -701,7 +701,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-16-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update
