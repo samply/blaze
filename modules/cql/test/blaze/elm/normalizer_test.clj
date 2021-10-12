@@ -2,6 +2,7 @@
   "Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.elm.literal]
     [blaze.elm.normalizer :refer [normalize]]
     [blaze.elm.normalizer-spec]
     [clojure.spec.test.alpha :as st]
@@ -27,6 +28,14 @@
 
 (def expression-2
   {:type "Xor" :operand [#elm/string "A" #elm/string "B"]})
+
+
+(def expression-3
+  {:type "In" :operand [#elm/string "A" #elm/string "B"]})
+
+
+(def expression-4
+  {:type "IncludedIn" :operand [#elm/string "A" #elm/string "B"]})
 
 
 
@@ -193,3 +202,43 @@
   (testing "Normalizes the operand of an IsTrue expression"
     (given (normalize {:type "IsTrue" :operand expression-1})
       :operand := (normalize expression-1))))
+
+
+
+;; 15. Conditional Operators
+
+;; 15.1. Case
+(deftest normalize-case-test
+  (testing "Normalizes the case item and else"
+    (given (normalize {:type "Case"
+                       :caseItem
+                       [{:when expression-1
+                         :then expression-2}]
+                       :else expression-3})
+      [:caseItem 0 :when] := (normalize expression-1)
+      [:caseItem 0 :then] := (normalize expression-2)
+      :else := (normalize expression-3)))
+
+  (testing "Normalizes the optional comparand"
+    (given (normalize {:type "Case"
+                       :comparand expression-1
+                       :caseItem
+                       [{:when expression-2
+                         :then expression-3}]
+                       :else expression-4})
+      :comparand := (normalize expression-1)
+      [:caseItem 0 :when] := (normalize expression-2)
+      [:caseItem 0 :then] := (normalize expression-3)
+      :else := (normalize expression-4))))
+
+
+;; 15.2. If
+(deftest normalize-if-test
+  (testing "Normalizes all arguments"
+    (given (normalize {:type "If"
+                       :condition expression-1
+                       :then expression-2
+                       :else expression-3})
+      :condition := (normalize expression-1)
+      :then := (normalize expression-2)
+      :else := (normalize expression-3))))
