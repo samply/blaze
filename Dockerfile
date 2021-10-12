@@ -1,10 +1,4 @@
-FROM eclipse-temurin:16-focal
-
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get remove -y curl openssl binutils \
-    && DEBIAN_FRONTEND=noninteractive apt-get autoremove -y \
-    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
-
+FROM eclipse-temurin:17-focal
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
 COPY target/blaze-standalone.jar /app/
