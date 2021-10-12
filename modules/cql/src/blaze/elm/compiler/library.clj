@@ -6,7 +6,6 @@
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
     [blaze.elm.normalizer :as normalizer]
-    [blaze.elm.type-infer :as type-infer]
     [cognitect.anomalies :as anom]))
 
 
@@ -47,8 +46,7 @@
   (let [library (-> library
                     normalizer/normalize-library
                     equiv-relationships/find-equiv-rels-library
-                    deps-infer/infer-library-deps
-                    type-infer/infer-library-types)
+                    deps-infer/infer-library-deps)
         context (assoc opts :node node :library library)]
     (when-ok [expr-defs (expr-defs context library)]
       {:life/compiled-expression-defs expr-defs})))
