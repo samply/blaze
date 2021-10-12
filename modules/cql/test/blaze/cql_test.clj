@@ -12,8 +12,6 @@
     [blaze.elm.expression-spec]
     [blaze.elm.normalizer :as normalizer]
     [blaze.elm.protocols :as p]
-    [blaze.elm.type-infer :as type-infer]
-    [blaze.elm.type-infer-spec]
     [clojure.data.xml :as xml]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -77,7 +75,6 @@
         normalizer/normalize-library
         equiv-relationships/find-equiv-rels-library
         deps-infer/infer-library-deps
-        type-infer/infer-library-types
         :statements :def first :expression)
     #(throw (ex-info "CQL-to-ELM translation error" %))))
 
