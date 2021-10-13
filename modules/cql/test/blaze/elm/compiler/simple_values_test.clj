@@ -4,13 +4,15 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]]))
 
 
 (st/instrument)
@@ -56,11 +58,13 @@
   (testing "Unknown Literal"
     (is (nil? (c/compile {} {:type "Literal"
                              :valueType "foo"})))
-    (is (thrown-anom? ::anom/unsupported
-                      (c/compile {} {:type "Literal"
-                                     :valueType "foo"
-                                     :value "bar"})))
-    (is (thrown-anom? ::anom/unsupported
-                      (c/compile {} {:type "Literal"
-                                     :valueType "{urn:hl7-org:elm-types:r1}foo"
-                                     :value "bar"})))))
+
+    (given (ba/try-anomaly (c/compile {} {:type "Literal"
+                                          :valueType "foo"
+                                          :value "bar"}))
+      ::anom/category := ::anom/unsupported)
+
+    (given (ba/try-anomaly (c/compile {} {:type "Literal"
+                                          :valueType "{urn:hl7-org:elm-types:r1}foo"
+                                          :value "bar"}))
+      ::anom/category := ::anom/unsupported)))

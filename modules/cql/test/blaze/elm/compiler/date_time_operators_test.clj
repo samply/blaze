@@ -4,6 +4,7 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
@@ -17,7 +18,8 @@
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
-    [java-time :as time])
+    [java-time :as time]
+    [juxt.iota :refer [given]])
   (:import
     [java.time Year YearMonth]
     [java.time.temporal Temporal]))
@@ -77,7 +79,9 @@
     (is (= (system/date 2019) (c/compile {} #elm/date"2019"))))
 
   (testing "Static year over 10.000"
-    (is (thrown-anom? ::anom/incorrect (c/compile {} #elm/date"10001"))))
+    (given (ba/try-anomaly (c/compile {} #elm/date"10001"))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Year `10001` out of range."))
 
   (testing "Dynamic Null year"
     (let [compile-ctx {:library {:parameters {:def [{:name "year"}]}}}

@@ -4,6 +4,7 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.elm.compiler :as c]
@@ -15,7 +16,7 @@
     [blaze.fhir.spec.type]
     [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
+    [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]])
   (:import
@@ -254,4 +255,5 @@
 
   (testing "with unsupported type namespace"
     (let [elm {:type "Retrieve" :dataType "{foo}Bar"}]
-      (is (thrown-anom? ::anom/unsupported (c/compile {} elm))))))
+      (given (ba/try-anomaly (c/compile {} elm))
+        ::anom/category := ::anom/unsupported))))

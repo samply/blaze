@@ -7,8 +7,7 @@
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [is testing]]
-    [cognitect.anomalies :as anom])
+    [clojure.test :refer [is testing]])
   (:import
     [java.time OffsetDateTime ZoneOffset]))
 
@@ -37,22 +36,6 @@
 
 (def patient-retrieve-elm
   {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"})
-
-
-(defmethod test/assert-expr 'thrown-anom? [msg form]
-  (let [category (second form)
-        body (nthnext form 2)]
-    `(try ~@body
-          (test/do-report {:type :fail, :message ~msg,
-                           :expected '~form, :actual nil})
-          (catch Exception e#
-            (let [m# (::anom/category (ex-data e#))]
-              (if (= ~category m#)
-                (test/do-report {:type :pass, :message ~msg,
-                                 :expected '~form, :actual e#})
-                (test/do-report {:type :fail, :message ~msg,
-                                 :expected '~form, :actual e#})))
-            e#))))
 
 
 (def now (OffsetDateTime/now (ZoneOffset/ofHours 0)))

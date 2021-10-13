@@ -4,6 +4,7 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.arithmetic-operators-spec]
     [blaze.elm.compiler.core :as core]
@@ -22,7 +23,8 @@
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
-    [cognitect.anomalies :as anom])
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]])
   (:import
     [javax.measure UnconvertibleException]))
 
@@ -555,9 +557,15 @@
     "{urn:hl7-org:elm-types:r1}DateTime" (system/date-time 9999 12 31 23 59 59 999)
     "{urn:hl7-org:elm-types:r1}Time" (date-time/local-time 23 59 59 999))
 
-  (are [type] (thrown-anom? ::anom/incorrect (c/compile {} (elm/max-value type)))
-    "{urn:hl7-org:elm-types:r1}Foo"
-    "{foo}Bar"))
+  (testing "unknown type name"
+    (given (ba/try-anomaly (c/compile {} (elm/max-value "{urn:hl7-org:elm-types:r1}Foo")))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Incorrect type `Foo`."))
+
+  (testing "unknown type namespace"
+    (given (ba/try-anomaly (c/compile {} (elm/max-value "{foo}Bar")))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Incorrect type namespace `foo`.")))
 
 
 ;; 16.10. MinValue
@@ -591,9 +599,15 @@
     "{urn:hl7-org:elm-types:r1}DateTime" (system/date-time 1 1 1 0 0 0 0)
     "{urn:hl7-org:elm-types:r1}Time" (date-time/local-time 0 0 0 0))
 
-  (are [type] (thrown-anom? ::anom/incorrect (c/compile {} (elm/min-value type)))
-    "{urn:hl7-org:elm-types:r1}Foo"
-    "{foo}Bar"))
+  (testing "unknown type name"
+    (given (ba/try-anomaly (c/compile {} (elm/min-value "{urn:hl7-org:elm-types:r1}Foo")))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Incorrect type `Foo`."))
+
+  (testing "unknown type namespace"
+    (given (ba/try-anomaly (c/compile {} (elm/min-value "{foo}Bar")))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Incorrect type namespace `foo`.")))
 
 
 ;; 16.11. Modulo
@@ -793,7 +807,10 @@
   (tu/testing-unary-null elm/predecessor)
 
   (testing "throws error if the argument is already the minimum value"
-    (are [x] (thrown-anom? ::anom/incorrect (c/compile {} (elm/predecessor x)))
+    (are [x]
+      (= ::anom/incorrect
+         (::anom/category (ba/try-anomaly (c/compile {} (elm/predecessor x)))))
+
       (elm/decimal (str decimal/min))
       #elm/date"0001"
       #elm/date"0001-01"
