@@ -339,7 +339,8 @@
     "q28-relationship-procedure-condition" 1
     "q33-incompatible-quantities" 1
     "q34-medication" 1
-    "q35-literal-library-ref" 1)
+    "q35-literal-library-ref" 1
+    "q36-parameter" 1)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -491,6 +492,6 @@
     [1 :population 0 :count] := 1))
 
 (comment
-  (log/set-level! :trace)
-  (evaluate "q35-literal-library-ref")
+  (log/set-level! :debug)
+  (evaluate "q37")
   )

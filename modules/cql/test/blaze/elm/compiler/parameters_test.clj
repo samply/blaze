@@ -62,5 +62,5 @@
           expr (c/compile context #elm/parameter-ref"parameter-def-111045")]
       (given (ba/try-anomaly (core/-eval expr {} nil nil))
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Parameter value `parameter-def-111045` not found."
+        ::anom/message := "Value of parameter `parameter-def-111045` not found."
         :context := {}))))
