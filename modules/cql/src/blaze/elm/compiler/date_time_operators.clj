@@ -65,6 +65,8 @@
 
 
 (defrecord YearExpression [year]
+  system/SystemType
+  (-type [_] :system/date)
   core/Expression
   (-eval [_ context resource scope]
     (some-> (core/-eval year context resource scope) date)))
@@ -77,6 +79,8 @@
 
 
 (defrecord YearMonthExpression [year month]
+  system/SystemType
+  (-type [_] :system/date)
   core/Expression
   (-eval [_ context resource scope]
     (when-let [year (core/-eval year context resource scope)]
@@ -95,6 +99,8 @@
 
 
 (defrecord LocalDateExpression [year month day]
+  system/SystemType
+  (-type [_] :system/date)
   core/Expression
   (-eval [_ context resource scope]
     (when-let [year (core/-eval year context resource scope)]

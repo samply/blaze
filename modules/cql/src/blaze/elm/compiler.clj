@@ -23,6 +23,7 @@
     [blaze.elm.compiler.list-operators]
     [blaze.elm.compiler.logical-operators]
     [blaze.elm.compiler.nullological-operators]
+    [blaze.elm.compiler.parameters]
     [blaze.elm.compiler.reusing-logic]
     [blaze.elm.compiler.simple-values]
     [blaze.elm.compiler.string-operators]

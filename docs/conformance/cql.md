@@ -64,8 +64,8 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 
 | Num | Group | Expression | State | Notes |
 |-----|-------|------------|-------|-------|
-| 7.1. | ParameterDef | ✗ |
-| 7.2. | ParameterRef | ✗ |
+| 7.1. | ParameterDef | ✓ |
+| 7.2. | ParameterRef | ✓ |
 
 ### 8. Expressions
 

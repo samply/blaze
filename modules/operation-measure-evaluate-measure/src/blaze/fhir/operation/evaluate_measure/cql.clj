@@ -127,8 +127,11 @@
 
 (defn- unwrap-library-context
   {:arglists '([context])}
-  [{{expression-defs :life/compiled-expression-defs} :library :as context}]
-  (assoc context :library-context expression-defs))
+  [{{:keys [compiled-expression-defs parameter-default-values]} :library
+    :as context}]
+  (assoc context
+    :library-context compiled-expression-defs
+    :parameters parameter-default-values))
 
 
 (defn evaluate-expression
@@ -234,7 +237,7 @@
   [context subject-handle population-expression-name stratum-expression-name]
   (let [context (unwrap-library-context context)]
     (when-ok [included? (evaluate-expression-1 context subject-handle
-                                     population-expression-name)]
+                                               population-expression-name)]
       (when included?
         (when-ok [stratum (evaluate-stratum-expression
                             context subject-handle stratum-expression-name)]
