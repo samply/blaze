@@ -94,7 +94,7 @@
     (->AsExpression operand (matches-type-fn expression))))
 
 
-;; 22.2. CanConvert
+;; TODO 22.2. CanConvert
 
 
 ;; 22.3. CanConvertQuantity
@@ -115,7 +115,7 @@
     (->ChildrenOperatorExpression source)))
 
 
-;; 22.5. Convert
+;; TODO 22.5. Convert
 
 
 ;; 22.6. ConvertQuantity
@@ -123,25 +123,27 @@
   (p/convert-quantity x unit))
 
 
-;; 22.7. ConvertsToBoolean
+;; TODO 22.7. ConvertsToBoolean
 
-;; 22.8. ConvertsToDate
+;; TODO 22.8. ConvertsToDate
 
-;; 22.9. ConvertsToDateTime
+;; TODO 22.9. ConvertsToDateTime
 
-;; 22.10. ConvertsToDecimal
+;; TODO 22.10. ConvertsToDecimal
 
-;; 22.11. ConvertsToInteger
+;; TODO 22.11. ConvertsToLong
 
-;; 22.12. ConvertsToQuantity
+;; TODO 22.12. ConvertsToInteger
 
-;; 22.13. ConvertsToRatio
+;; TODO 22.13. ConvertsToQuantity
 
-;; 22.14. ConvertsToString
+;; TODO 22.14. ConvertsToRatio
 
-;; 22.15. ConvertsToTime
+;; TODO 22.15. ConvertsToString
 
-;; 22.16. Descendents
+;; TODO 22.16. ConvertsToTime
+
+;; 22.17. Descendents
 (defrecord DescendentsOperatorExpression [source]
   core/Expression
   (-eval [_ context resource scope]
@@ -154,15 +156,15 @@
     (->DescendentsOperatorExpression source)))
 
 
-;; 22.17. Is
+;; TODO 22.18. Is
 
-;; 22.18. ToBoolean
+;; TODO 22.19. ToBoolean
 
-;; 22.19. ToChars
+;; TODO 22.20. ToChars
 
-;; 22.20. ToConcept
+;; TODO 22.21. ToConcept
 
-;; 22.21. ToDate
+;; 22.22. ToDate
 (defrecord ToDateOperatorExpression [operand]
   core/Expression
   (-eval [_ {:keys [now] :as context} resource scope]
@@ -175,7 +177,7 @@
     (->ToDateOperatorExpression operand)))
 
 
-;; 22.22. ToDateTime
+;; 22.23. ToDateTime
 (defrecord ToDateTimeOperatorExpression [operand]
   core/Expression
   (-eval [_ {:keys [now] :as context} resource scope]
@@ -188,26 +190,33 @@
     (->ToDateTimeOperatorExpression operand)))
 
 
-;; 22.23. ToDecimal
+;; 22.24. ToDecimal
 (defunop to-decimal [x]
   (p/to-decimal x))
 
 
-;; 22.24. ToInteger
+;; 22.25. ToInteger
 (defunop to-integer [x]
   (p/to-integer x))
 
 
-;; 22.25. ToList
+;; 22.26. ToList
 (defunop to-list [x]
   (if (nil? x) [] [x]))
 
 
-;; 22.26. ToQuantity
+;; TODO 22.27. ToLong
+
+;; 22.28. ToQuantity
 (defunop to-quantity [x]
   (p/to-quantity x))
 
 
-;; 22.28. ToString
+;; TODO 22.29. ToRatio
+
+;; 22.30. ToString
 (defunop to-string [x]
   (p/to-string x))
+
+
+;; TODO 22.31. ToTime
