@@ -58,4 +58,4 @@
     {:mvn/version "0.2.0-alpha6"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
-               "-e" "blaze.elm.spec"]}}}
+               "-e" ".*spec$"]}}}
