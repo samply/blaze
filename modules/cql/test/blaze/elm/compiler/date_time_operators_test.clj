@@ -83,6 +83,11 @@
       ::anom/category := ::anom/incorrect
       ::anom/message := "Year `10001` out of range."))
 
+  (testing "Dynamic year has type :system/date"
+    (let [compile-ctx {:library {:parameters {:def [{:name "year"}]}}}
+          elm #elm/date[#elm/parameter-ref"year"]]
+      (is (= :system/date (system/type (c/compile compile-ctx elm))))))
+
   (testing "Dynamic Null year"
     (let [compile-ctx {:library {:parameters {:def [{:name "year"}]}}}
           elm #elm/date[#elm/parameter-ref"year"]
@@ -109,6 +114,11 @@
       #elm/date"2019-03"
       (system/date 2019 3)))
 
+  (testing "Dynamic year-month has type :system/date"
+    (let [compile-ctx {:library {:parameters {:def [{:name "month"}]}}}
+          elm #elm/date[#elm/integer"2019" #elm/parameter-ref"month"]]
+      (is (= :system/date (system/type (c/compile compile-ctx elm))))))
+
   (testing "Dynamic year-month"
     (let [compile-ctx {:library {:parameters {:def [{:name "month"}]}}}
           elm #elm/date[#elm/integer"2019" #elm/parameter-ref"month"]
@@ -125,6 +135,13 @@
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"month" nil "day" nil}}]
       (is (= (system/date 2020) (core/-eval expr eval-ctx nil nil)))))
+
+  (testing "Dynamic date has type :system/date"
+    (let [compile-ctx {:library {:parameters {:def [{:name "day"}]}}}
+          elm #elm/date[#elm/integer"2018"
+                        #elm/integer"5"
+                        #elm/parameter-ref"day"]]
+      (is (= :system/date (system/type (c/compile compile-ctx elm))))))
 
   (testing "Dynamic Null day"
     (let [compile-ctx {:library {:parameters {:def [{:name "day"}]}}}
@@ -148,9 +165,6 @@
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"day" 23}}]
       (is (= (system/date 2019 3 23) (core/-eval expr eval-ctx nil nil)))))
-
-
-
 
   (testing "an ELM year (only literals) always compiles to a Year"
     (satisfies-prop 100
