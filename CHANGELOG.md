@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.13.0
+
+### New Features
+
+* Implement CQL ParameterDef and ParameterRef ([#506](https://github.com/samply/blaze/issues/506))
+
+### Bugfixes
+
+* Implement Normalization of Conditional Operators ([#504](https://github.com/samply/blaze/issues/504))
+
+### Other
+
+* Update Java to v17 ([#503](https://github.com/samply/blaze/issues/503))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/15?closed=1).
+
 ## v0.12.2
 
 ### Bugfixes
