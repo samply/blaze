@@ -125,7 +125,7 @@
     @(d/pull db handle)))
 
 
-(defn- compile-primary-library*
+(defn- compile-primary-library
   "Compiles the CQL code from the first library resource which is referenced
   from `measure`.
 
@@ -146,13 +146,6 @@
       :fhir/issue "not-supported"
       :fhir.issue/expression "Measure.library"
       :measure measure)))
-
-
-(defn- compile-primary-library
-  "Same as `compile-primary-library*` with added metrics collection."
-  [db measure]
-  (with-open [_ (prom/timer compile-duration-seconds)]
-    (compile-primary-library* db measure)))
 
 
 

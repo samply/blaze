@@ -16,7 +16,7 @@
 ;; 7.2. ParameterRef
 (defn- parameter-value-not-found-anom [context name]
   (ba/incorrect
-    (format "Parameter value `%s` not found." name)
+    (format "Value of parameter `%s` not found." name)
     :context context))
 
 

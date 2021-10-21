@@ -169,6 +169,32 @@
 
 
 
+;; 15. Conditional Operators
+
+;; 15.1. Case
+(defn- normalize-case-item [item]
+  (-> (update item :when normalize)
+      (update :then normalize)))
+
+
+(defmethod normalize :elm.normalizer.type/case
+  [{:keys [comparand] :as expression}]
+  (cond->
+    (-> (update expression :caseItem (partial mapv normalize-case-item))
+        (update :else normalize))
+    comparand
+    (assoc :comparand (normalize comparand))))
+
+
+;; 15.2. If
+(defmethod normalize :elm.normalizer.type/if
+  [expression]
+  (-> (update expression :condition normalize)
+      (update :then normalize)
+      (update :else normalize)))
+
+
+
 ;; 16. Arithmetic Operators
 
 ;; 16.1. Abs
@@ -305,7 +331,7 @@
     (bin-pred
       "Or"
       (normalize
-        (cond-> (bin-pred "OverlapsBefore"operand-1 operand-2)
+        (cond-> (bin-pred "OverlapsBefore" operand-1 operand-2)
           precision
           (assoc :precision precision)))
       (normalize

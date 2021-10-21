@@ -7,12 +7,16 @@
     [cognitect.anomalies :as anom]))
 
 
-(s/def :life/compiled-expression-defs
+(s/def ::compiled-expression-defs
+  (s/map-of :elm/name core/expr?))
+
+
+(s/def ::parameter-default-values
   (s/map-of :elm/name core/expr?))
 
 
 (s/def :life/compiled-library
-  (s/keys :req [:life/compiled-expression-defs]))
+  (s/keys :req-un [::compiled-expression-defs ::parameter-default-values]))
 
 
 (s/fdef library/compile-library

@@ -19,11 +19,6 @@
   :redefined-var
   {:level :off}
 
-  :unresolved-symbol
-  {:exclude
-   [(clojure.test/is [thrown-anom?])
-    (clojure.test/are [thrown-anom?])]}
-
   :unresolved-var
   {:exclude
    [clojure.spec.gen.alpha/int

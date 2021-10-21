@@ -200,22 +200,25 @@
 ;; TODO 22.10. ConvertsToDecimal
 
 
-;; TODO 22.11. ConvertsToInteger
+;; TODO 22.11. ConvertsToLong
 
 
-;; TODO 22.12. ConvertsToQuantity
+;; TODO 22.12. ConvertsToInteger
 
 
-;; TODO 22.13. ConvertsToRatio
+;; TODO 22.13. ConvertsToQuantity
 
 
-;; TODO 22.14. ConvertsToString
+;; TODO 22.14. ConvertsToRatio
 
 
-;; TODO 22.15. ConvertsToTime
+;; TODO 22.15. ConvertsToString
 
 
-;; 22.16. Descendents
+;; TODO 22.16. ConvertsToTime
+
+
+;; 22.17. Descendents
 ;;
 ;; For structured types, the Descendents operator returns a list of all the
 ;; values of the elements of the type, recursively. List-valued elements are
@@ -240,16 +243,16 @@
 ;; TODO 22.17. Is
 
 
-;; TODO 22.18. ToBoolean
+;; TODO 22.19. ToBoolean
 
 
-;; TODO 22.19. ToChars
+;; TODO 22.20. ToChars
 
 
-;; TODO 22.20. ToConcept
+;; TODO 22.21. ToConcept
 
 
-;; 22.21. ToDate
+;; 22.22. ToDate
 ;;
 ;; The ToDate operator converts the value of its argument to a Date value.
 ;;
@@ -297,7 +300,7 @@
   (tu/testing-unary-null elm/to-date))
 
 
-;; 22.22. ToDateTime
+;; 22.23. ToDateTime
 ;;
 ;; The ToDateTime operator converts the value of its argument to a DateTime
 ;; value.
@@ -351,7 +354,7 @@
   (tu/testing-unary-null elm/to-date-time))
 
 
-;; 22.23. ToDecimal
+;; 22.24. ToDecimal
 ;;
 ;; The ToDecimal operator converts the value of its argument to a Decimal value.
 ;; The operator accepts strings using the following format:
@@ -389,7 +392,7 @@
   (tu/testing-unary-null elm/to-decimal))
 
 
-;; 22.24. ToInteger
+;; 22.25. ToInteger
 ;;
 ;; The ToInteger operator converts the value of its argument to an Integer
 ;; value. The operator accepts strings using the following format:
@@ -423,7 +426,7 @@
   (tu/testing-unary-null elm/to-integer))
 
 
-;; 22.25. ToList
+;; 22.26. ToList
 ;;
 ;; The ToList operator returns its argument as a List value. The operator
 ;; accepts a singleton value of any type and returns a list with the value as
@@ -450,7 +453,9 @@
     (is (= [] (core/-eval (c/compile {} #elm/to-list{:type "Null"}) {} nil nil)))))
 
 
-;; 22.26. ToQuantity
+;; TODO 22.27. ToLong
+
+;; 22.28. ToQuantity
 ;;
 ;; The ToQuantity operator converts the value of its argument to a Quantity
 ;; value. The operator may be used with Integer, Decimal, Ratio, or String
@@ -517,10 +522,10 @@
   (tu/testing-unary-null elm/to-quantity))
 
 
-;; TODO 22.27. ToRatio
+;; TODO 22.29. ToRatio
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 ;;
 ;; The ToString operator converts the value of its argument to a String value.
 ;; The operator uses the following string representations for each type:
@@ -599,4 +604,4 @@
   (tu/testing-unary-null elm/to-string))
 
 
-;; TODO 22.29. ToTime
+;; TODO 22.31. ToTime
