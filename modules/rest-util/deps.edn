@@ -31,7 +31,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.902"}}
+    {:mvn/version "1.60.945"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
