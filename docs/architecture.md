@@ -34,7 +34,7 @@ Each Blaze Process runs in a [JVM][6]. In the standalone case, in addition to th
 
 ## Other Work
 
-The architecture of Blaze is inspired by the architecture of [CRUX][9] but optimized for the FHIR use-case.
+The architecture of Blaze is inspired by the architecture of [XTDB][9] but optimized for the FHIR use-case.
 
 [1]: <https://rocksdb.org>
 [2]: <https://en.wikipedia.org/wiki/ACID>
@@ -44,4 +44,4 @@ The architecture of Blaze is inspired by the architecture of [CRUX][9] but optim
 [6]: <https://en.wikipedia.org/wiki/Java_virtual_machine>
 [7]: <https://www.hl7.org/fhir/http.html#history>
 [8]: <https://www.hl7.org/fhir/http.html>
-[9]: <https://www.opencrux.com>
+[9]: <https://xtdb.com>
