@@ -34,7 +34,6 @@
                   {:handler (fn [_] ::read)}}}]
         {:kind "resource" :name "Patient"})
       [0] := "/Patient"
-      [1 :middleware] := []
       [1 :fhir.resource/type] := "Patient"
       [2] := ["" {:name :Patient/type}]
       [3] := ["/_history" {:conflicting true}]
