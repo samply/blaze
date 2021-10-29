@@ -79,7 +79,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.986'
+        tools-deps: '1.10.3.998'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -141,7 +141,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.986'
+        tools-deps: '1.10.3.998'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -183,7 +183,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.986'
+        tools-deps: '1.10.3.998'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -211,7 +211,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.986'
+        tools-deps: '1.10.3.998'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -296,7 +296,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.986'
+        tools-deps: '1.10.3.998'
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -436,7 +436,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.986'
+        tools-deps: '1.10.3.998'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -528,7 +528,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.986'
+        tools-deps: '1.10.3.998'
 
     - name: APT Update
       run: sudo apt-get update
@@ -692,7 +692,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.986'
+        tools-deps: '1.10.3.998'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
