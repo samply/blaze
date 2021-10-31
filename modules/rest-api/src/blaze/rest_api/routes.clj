@@ -51,19 +51,14 @@
 
   Route data contains the resource type under :fhir.resource/type."
   {:arglists '([context resource-patterns structure-definition])}
-  [{:keys [node auth-backends]
-    parse-executor :blaze.rest-api.json-parse/executor}
+  [{:keys [node] parse-executor :blaze.rest-api.json-parse/executor}
    resource-patterns
    {:keys [name] :as structure-definition}]
   (when-let
     [{:blaze.rest-api.resource-pattern/keys [interactions]}
      (u/resolve-pattern resource-patterns structure-definition)]
     [(str "/" name)
-     {:middleware
-      (cond-> []
-        (seq auth-backends)
-        (conj wrap-auth-guard))
-      :fhir.resource/type name}
+     {:fhir.resource/type name}
      [""
       (cond-> {:name (keyword name "type")}
         (contains? interactions :search-type)
@@ -131,18 +126,55 @@
 
 (defn compartment-route
   {:arglists '([context compartment])}
-  [{:keys [node auth-backends]}
-   {:blaze.rest-api.compartment/keys [code search-handler]}]
+  [{:keys [node]} {:blaze.rest-api.compartment/keys [code search-handler]}]
   [(format "/%s/{id}/{type}" code)
    {:name (keyword code "compartment")
     :fhir.compartment/code code
     :conflicting true
-    :middleware
-    (cond-> []
-      (seq auth-backends)
-      (conj wrap-auth-guard))
     :get {:middleware [[wrap-db node]]
           :handler search-handler}}])
+
+
+(defn- operation-system-handler-route
+  [{:keys [node] parse-executor :blaze.rest-api.json-parse/executor}
+   {:blaze.rest-api.operation/keys [code system-handler]}]
+  (when system-handler
+    [[(str "/$" code)
+      {:middleware [[wrap-db node]]
+       :get system-handler
+       :post {:middleware [[wrap-resource parse-executor]]
+              :handler system-handler}}]]))
+
+
+(defn operation-type-handler-route
+  [{:keys [node] parse-executor :blaze.rest-api.json-parse/executor}
+   {:blaze.rest-api.operation/keys
+    [code resource-types type-handler]}]
+  (when type-handler
+    (map
+      (fn [resource-type]
+        [(str "/" resource-type "/$" code)
+         {:conflicting true
+          :middleware [[wrap-db node]]
+          :get type-handler
+          :post {:middleware [[wrap-resource parse-executor]]
+                 :handler type-handler}}])
+      resource-types)))
+
+
+(defn operation-instance-handler-route
+  [{:keys [node] parse-executor :blaze.rest-api.json-parse/executor}
+   {:blaze.rest-api.operation/keys
+    [code resource-types instance-handler]}]
+  (when instance-handler
+    (map
+      (fn [resource-type]
+        [(str "/" resource-type "/{id}/$" code)
+         {:middleware [[wrap-db node]]
+          :get instance-handler
+          :post {:middleware [[wrap-resource parse-executor]]
+                 :handler instance-handler}}])
+      resource-types)))
 
 
 (defn routes
@@ -165,14 +197,13 @@
    capabilities-handler
    batch-handler-promise]
   (-> [""
-       {:middleware [wrap-params [wrap-forwarded base-url]]
+       {:middleware
+        (cond-> [wrap-params [wrap-forwarded base-url]]
+          (seq auth-backends)
+          (conj wrap-auth-guard))
         :blaze/context-path context-path}
        [""
-        (cond->
-          {:middleware
-           (cond-> []
-             (seq auth-backends)
-             (conj wrap-auth-guard))}
+        (cond-> {}
           (some? search-system-handler)
           (assoc :get {:middleware [[wrap-db node]]
                        :handler search-system-handler})
@@ -184,20 +215,12 @@
        ["/metadata"
         {:get capabilities-handler}]
        ["/_history"
-        (cond->
-          {:middleware
-           (cond-> []
-             (seq auth-backends)
-             (conj wrap-auth-guard))}
+        (cond-> {}
           (some? history-system-handler)
           (assoc :get {:middleware [[wrap-db node]]
                        :handler history-system-handler}))]
        ["/__page"
-        (cond->
-          {:middleware
-           (cond-> []
-             (seq auth-backends)
-             (conj wrap-auth-guard))}
+        (cond-> {}
           (some? search-system-handler)
           (assoc
             :get {:middleware [[wrap-db node]]
@@ -205,61 +228,17 @@
             :post {:middleware [[wrap-db node]]
                    :handler search-system-handler}))]]
       (into
-        (mapcat
-          (fn [{:blaze.rest-api.operation/keys [code system-handler]}]
-            (when system-handler
-              [[(str "/$" code)
-                {:middleware
-                 (cond-> []
-                   (seq auth-backends)
-                   (conj wrap-auth-guard)
-                   true
-                   (conj [wrap-db node]))
-                 :get system-handler
-                 :post system-handler}]])))
+        (mapcat (partial operation-system-handler-route context))
         operations)
       (into
-        (mapcat
-          (fn [{:blaze.rest-api.operation/keys
-                [code resource-types type-handler]}]
-            (when type-handler
-              (map
-                (fn [resource-type]
-                  [(str "/" resource-type "/$" code)
-                   {:conflicting true
-                    :middleware
-                    (cond-> []
-                      (seq auth-backends)
-                      (conj wrap-auth-guard)
-                      true
-                      (conj [wrap-db node]))
-                    :get type-handler
-                    :post type-handler}])
-                resource-types))))
+        (mapcat (partial operation-type-handler-route context))
         operations)
       (into
-        (mapcat
-          (fn [{:blaze.rest-api.operation/keys
-                [code resource-types instance-handler]}]
-            (when instance-handler
-              (map
-                (fn [resource-type]
-                  [(str "/" resource-type "/{id}/$" code)
-                   {:middleware
-                    (cond-> []
-                      (seq auth-backends)
-                      (conj wrap-auth-guard)
-                      true
-                      (conj [wrap-db node]))
-                    :get instance-handler
-                    :post instance-handler}])
-                resource-types))))
+        (mapcat (partial operation-instance-handler-route context))
         operations)
       (into
         (comp
           u/structure-definition-filter
-          (keep #(resource-route context resource-patterns %)))
+          (keep (partial resource-route context resource-patterns)))
         structure-definitions)
-      (into
-        (map #(compartment-route context %))
-        compartments)))
+      (into (map (partial compartment-route context)) compartments)))

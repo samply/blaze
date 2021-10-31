@@ -33,7 +33,7 @@
   (testing "period start"
     (testing "missing"
       (let [{:keys [status body]}
-            @(handler {:params {"periodEnd" "2015"}})]
+            @(handler {:params {}})]
 
         (is (= 400 status))
 
@@ -96,6 +96,57 @@
           :diagnostics := "Invalid parameter `periodEnd` with value `a`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD."
           [:expression first] := "periodEnd"))))
 
+  (testing "valid period"
+    (testing "with params"
+      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+            @(handler {:params {"periodStart" "2020"
+                                "periodEnd" "2021"}})]
+
+        (given params
+          [:period 0] := #fhir/date"2020"
+          [:period 1] := #fhir/date"2021")))
+
+    (testing "with resource"
+      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+            @(handler
+               {:body
+                {:fhir/type :fhir/Parameters
+                 :parameter
+                 [{:fhir/type :fhir.Parameters/parameter
+                   :name "periodStart"
+                   :value #fhir/date"2020"}
+                  {:fhir/type :fhir.Parameters/parameter
+                   :name "periodEnd"
+                   :value #fhir/date"2021"}]}})]
+
+        (given params
+          [:period 0] := #fhir/date"2020"
+          [:period 1] := #fhir/date"2021"))))
+
+  (testing "measure"
+    (doseq [request
+            [{:params
+              {"periodStart" "2015"
+               "periodEnd" "2016"
+               "measure" "measure-202606"}}
+             {:body
+              {:fhir/type :fhir/Parameters
+               :parameter
+               [{:fhir/type :fhir.Parameters/parameter
+                 :name "periodStart"
+                 :value #fhir/date"2014"}
+                {:fhir/type :fhir.Parameters/parameter
+                 :name "periodEnd"
+                 :value #fhir/date"2015"}
+                {:fhir/type :fhir.Parameters/parameter
+                 :name "measure"
+                 :value "measure-202606"}]}}]]
+      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+            @(handler request)]
+
+        (given params
+          :measure := "measure-202606"))))
+
   (testing "report type"
     (testing "invalid"
       (let [{:keys [status body]}
@@ -132,6 +183,26 @@
           :severity := #fhir/code"error"
           :code := #fhir/code"not-supported"
           :diagnostics := "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")))
+
+    (testing "subject-list on POST request"
+      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+            @(handler
+               {:request-method :post
+                :body
+                {:fhir/type :fhir/Parameters
+                 :parameter
+                 [{:fhir/type :fhir.Parameters/parameter
+                   :name "periodStart"
+                   :value #fhir/date"2014"}
+                  {:fhir/type :fhir.Parameters/parameter
+                   :name "periodEnd"
+                   :value #fhir/date"2015"}
+                  {:fhir/type :fhir.Parameters/parameter
+                   :name "reportType"
+                   :value #fhir/code"subject-list"}]}})]
+
+        (given params
+          :report-type := "subject-list")))
 
     (testing "default"
       (testing "is population for normal requests"

@@ -127,7 +127,7 @@
 
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Measure"
-    (testing "on type endpoint"
+    (testing "on instance endpoint"
       (with-handler [handler]
         []
         (let [{:keys [status body]}
@@ -143,7 +143,7 @@
             :severity := #fhir/code"error"
             :code := #fhir/code"not-found"))))
 
-    (testing "on instance endpoint"
+    (testing "on type endpoint"
       (with-handler [handler]
         []
         (let [{:keys [status body]}
@@ -443,10 +443,18 @@
           (let [{:keys [status headers body]}
                 @(handler
                   {:request-method :post
-                   :params
-                   {"measure" "url-181501"
-                    "periodStart" "2014"
-                    "periodEnd" "2015"}})]
+                   :body
+                   {:fhir/type :fhir/Parameters
+                    :parameter
+                    [{:fhir/type :fhir.Parameters/parameter
+                      :name "measure"
+                      :value "url-181501"}
+                     {:fhir/type :fhir.Parameters/parameter
+                      :name "periodStart"
+                      :value #fhir/date"2014"}
+                     {:fhir/type :fhir.Parameters/parameter
+                      :name "periodEnd"
+                      :value #fhir/date"2015"}]}})]
 
             (is (= 201 status))
 
@@ -505,9 +513,15 @@
                 @(handler
                   {:request-method :post
                    :path-params {:id "0"}
-                   :params
-                   {"periodStart" "2014"
-                    "periodEnd" "2015"}})]
+                   :body
+                   {:fhir/type :fhir/Parameters
+                    :parameter
+                    [{:fhir/type :fhir.Parameters/parameter
+                      :name "periodStart"
+                      :value #fhir/date"2014"}
+                     {:fhir/type :fhir.Parameters/parameter
+                      :name "periodEnd"
+                      :value #fhir/date"2015"}]}})]
 
             (is (= 201 status))
 
