@@ -50,6 +50,12 @@
 
 
 (deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.db/resource-cache nil})
+      :key := :blaze.db/resource-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
   (testing "missing store"
     (given-thrown (ig/init {:blaze.db/resource-cache {}})
       :key := :blaze.db/resource-cache
