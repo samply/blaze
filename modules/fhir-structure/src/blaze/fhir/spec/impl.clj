@@ -804,11 +804,17 @@
    {:key (keyword "fhir.cbor" name) :spec-form (cbor-spec-form name snapshot)}])
 
 
+(defn- resolve-spec [spec-form]
+  (if (keyword? spec-form) spec-form (s/resolve-spec spec-form)))
+
+
 (defn- register
   "Registers `spec-defs`"
   [spec-defs]
-  (doseq [{:keys [key spec-form]} spec-defs]
-    (s/register key (if (keyword? spec-form) spec-form (s/resolve-spec spec-form)))))
+  (run!
+    (fn [{:keys [key spec-form]}]
+      (s/register key (resolve-spec spec-form)))
+    spec-defs))
 
 
 ;; register all primitive type specs without id and extension

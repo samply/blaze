@@ -70,12 +70,7 @@
    :blaze.db/search-param-registry {}})
 
 
-(defn submit-txs [node txs]
-  (doseq [tx-ops txs]
-    @(d/transact node tx-ops)))
-
-
 (defmacro with-system-data [[binding-form system] txs & body]
   `(with-system [system# ~system]
-     (submit-txs (:blaze.db/node system#) ~txs)
+     (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
