@@ -1,11 +1,11 @@
 lint:
-	clj-kondo --lint src deps.edn
+	clj-kondo --lint src test deps.edn
 
 test:
-	true
+	clojure -M:test --profile :ci
 
 test-coverage:
-	true
+	clojure -M:test-coverage
 
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
