@@ -62,6 +62,7 @@ jobs:
         - rest-util
         - scheduler
         - search-param-registry
+        - thread-pool-executor-collector
 
         java-version:
         - '11'
@@ -128,6 +129,7 @@ jobs:
         - rest-util
         - scheduler
         - search-param-registry
+        - thread-pool-executor-collector
 
     runs-on: ubuntu-20.04
 
