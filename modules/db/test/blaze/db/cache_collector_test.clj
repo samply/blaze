@@ -9,6 +9,7 @@
     [juxt.iota :refer [given]])
   (:import
     [com.github.benmanes.caffeine.cache Caffeine]
+    [io.prometheus.client Collector$Type]
     [java.util.function Function]))
 
 
@@ -59,15 +60,20 @@
     (testing "all zero on fresh cache"
       (given (.collect collector)
         [0 #(.-name %)] := "blaze_db_cache_hits"
+        [0 #(.-type %)] := Collector$Type/COUNTER
         [0 #(.-samples %) 0 #(.-value %)] := 0.0
         [1 #(.-name %)] := "blaze_db_cache_loads"
+        [1 #(.-type %)] := Collector$Type/COUNTER
         [1 #(.-samples %) 0 #(.-value %)] := 0.0
         [2 #(.-name %)] := "blaze_db_cache_load_failures"
+        [2 #(.-type %)] := Collector$Type/COUNTER
         [2 #(.-samples %) 0 #(.-value %)] := 0.0
         [3 #(.-name %)] := "blaze_db_cache_load_seconds"
+        [3 #(.-type %)] := Collector$Type/COUNTER
         [3 #(.-samples %) 0 #(.-value %)] := 0.0
         [4 #(.-name %)] := "blaze_db_cache_evictions"
-        [4 #(.-samples %) 0 #(.-value %)] := 0.0))
+        [4 #(.-samples %) 0 #(.-value %)] := 0.0
+        [4 #(.-type %)] := Collector$Type/COUNTER))
 
     (testing "one load"
       (.get cache 1 (reify Function (apply [_ key] key)))

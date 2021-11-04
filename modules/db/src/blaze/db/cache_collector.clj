@@ -19,94 +19,10 @@
     (.stats cache)))
 
 
-(defn- add-hit-count! [^CounterMetricFamily family name stats]
-  (.addMetric family [name] (.hitCount ^CacheStats stats)))
-
-
-(defn- add-hit-counts! [family stats]
-  (doseq [[name stats] stats]
-    (add-hit-count! family name stats))
-  family)
-
-
-(defn- hits-total [stats]
-  (-> (CounterMetricFamily.
-        "blaze_db_cache_hits_total"
-        "Returns the number of times Cache lookup methods have returned a cached value."
-        ["name"])
-      (add-hit-counts! stats)))
-
-
-(defn- add-load-count! [^CounterMetricFamily family name stats]
-  (.addMetric family [name] (.loadCount ^CacheStats stats)))
-
-
-(defn- add-load-counts! [family stats]
-  (doseq [[name stats] stats]
-    (add-load-count! family name stats))
-  family)
-
-
-(defn- loads-total [stats]
-  (-> (CounterMetricFamily.
-        "blaze_db_cache_loads_total"
-        "Returns the total number of times that Cache lookup methods attempted to load new values."
-        ["name"])
-      (add-load-counts! stats)))
-
-
-(defn- add-load-failure-count! [^CounterMetricFamily family name stats]
-  (.addMetric family [name] (.loadFailureCount ^CacheStats stats)))
-
-
-(defn- add-load-failure-counts! [family stats]
-  (doseq [[name stats] stats]
-    (add-load-failure-count! family name stats))
-  family)
-
-
-(defn- load-failures-total [stats]
-  (-> (CounterMetricFamily.
-        "blaze_db_cache_load_failures_total"
-        "Returns the number of times Cache lookup methods failed to load a new value, either because no value was found or an exception was thrown while loading."
-        ["name"])
-      (add-load-failure-counts! stats)))
-
-
-(defn- add-load-time! [^CounterMetricFamily family name stats]
-  (.addMetric family [name] (/ (double (.totalLoadTime ^CacheStats stats)) 1e9)))
-
-
-(defn- add-load-times! [family stats]
-  (doseq [[name stats] stats]
-    (add-load-time! family name stats))
-  family)
-
-
-(defn- add-eviction-count! [^CounterMetricFamily family name stats]
-  (.addMetric family [name] (.evictionCount ^CacheStats stats)))
-
-
-(defn- add-eviction-counts! [family stats]
-  (doseq [[name stats] stats]
-    (add-eviction-count! family name stats))
-  family)
-
-
-(defn- load-seconds-total [stats]
-  (-> (CounterMetricFamily.
-        "blaze_db_cache_load_seconds_total"
-        "Returns the total number of seconds the cache has spent loading new values."
-        ["name"])
-      (add-load-times! stats)))
-
-
-(defn- load-evictions-total [stats]
-  (-> (CounterMetricFamily.
-        "blaze_db_cache_evictions_total"
-        "Returns the number of times an entry has been evicted."
-        ["name"])
-      (add-eviction-counts! stats)))
+(defn- counter-metric-family [name help f stats]
+  (let [mf (CounterMetricFamily. ^String name ^String help ["name"])]
+    (run! (fn [[name stats]] (.addMetric mf [name] (f stats))) stats)
+    mf))
 
 
 (def ^:private mapper
@@ -122,11 +38,31 @@
   (proxy [Collector] []
     (collect []
       (let [stats (into [] mapper caches)]
-        [(hits-total stats)
-         (loads-total stats)
-         (load-failures-total stats)
-         (load-seconds-total stats)
-         (load-evictions-total stats)]))))
+        [(counter-metric-family
+           "blaze_db_cache_hits_total"
+           "Returns the number of times Cache lookup methods have returned a cached value."
+           #(.hitCount ^CacheStats %)
+           stats)
+         (counter-metric-family
+           "blaze_db_cache_loads_total"
+           "Returns the total number of times that Cache lookup methods attempted to load new values."
+           #(.loadCount ^CacheStats %)
+           stats)
+         (counter-metric-family
+           "blaze_db_cache_load_failures_total"
+           "Returns the number of times Cache lookup methods failed to load a new value, either because no value was found or an exception was thrown while loading."
+           #(.loadFailureCount ^CacheStats %)
+           stats)
+         (counter-metric-family
+           "blaze_db_cache_load_seconds_total"
+           "Returns the total number of seconds the cache has spent loading new values."
+           #(/ (double (.totalLoadTime ^CacheStats %)) 1e9)
+           stats)
+         (counter-metric-family
+           "blaze_db_cache_evictions_total"
+           "Returns the number of times an entry has been evicted."
+           #(.evictionCount ^CacheStats %)
+           stats)]))))
 
 
 (derive :blaze.db/cache-collector :blaze.metrics/collector)
