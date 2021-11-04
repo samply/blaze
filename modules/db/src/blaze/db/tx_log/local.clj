@@ -82,8 +82,7 @@
 
 (defn- transfer-tx-data! [queues tx-data]
   (log/trace "transfer transaction data to" (count queues) "queue(s)")
-  (doseq [^BlockingQueue queue queues]
-    (.put queue tx-data)))
+  (run! #(.put ^BlockingQueue % tx-data) queues))
 
 
 (defn- assoc-local-payload [tx-data local-payload]
