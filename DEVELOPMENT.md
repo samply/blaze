@@ -1,5 +1,18 @@
 # Development
 
+## Release Checklist
+
+* create a release branch called `release-v<version>` like `release-v0.13.1`
+* rename every occurance of the old version, say `0.13.0` into the new version, say `0.13.1`
+* update the last changed date in `blaze.rest-api.capabilities`
+* update the CHANGELOG based on the milestone
+* create a commit with the title `Release v<version>`
+* create a PR from the release branch into master
+* merge that PR
+* create and push a tag called `v<version>` like `v0.13.1` on master at the merge commit
+* merge the release branch back into develop
+* create release notes on GitHub
+
 ## Style Guide
 
 The Clojure code in this project follows the [Clojure Style Guide][2].
