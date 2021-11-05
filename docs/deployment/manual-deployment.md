@@ -2,7 +2,7 @@
 
 The installation works under Windows, Linux and macOS. The only dependency is an installed OpenJDK 11. Blaze is tested with [AdoptOpenJDK][1].
 
-Blaze runs on the JVM and comes as single JAR file. Download the most recent version [here](https://github.com/samply/blaze/releases/tag/v0.13.0). Look for `blaze-0.13.1-standalone.jar`.
+Blaze runs on the JVM and comes as single JAR file. Download the most recent version [here](https://github.com/samply/blaze/releases/tag/v0.13.1). Look for `blaze-0.13.1-standalone.jar`.
 
 After the download, you can start blaze with the following command (Linux, macOS):
 
