@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-focal
+FROM openjdk:17
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
 COPY target/blaze-standalone.jar /app/

@@ -84,8 +84,7 @@
         (vreset! subscription s)
         (request! s 1))
       (onNext [x]
-        (doseq [y (f x)]
-          (.submit ^SubmissionPublisher this y))
+        (run! #(.submit ^SubmissionPublisher this %) (f x))
         (request! @subscription 1))
       (onError [e]
         (.closeExceptionally ^SubmissionPublisher this e))

@@ -167,11 +167,11 @@
       "/Patient/0/Condition" :get [:params :forwarded :db]
       "/Patient/0/Observation" :get [:params :forwarded :db]
       "/$compact-db" :get [:params :forwarded :db]
-      "/$compact-db" :post [:params :forwarded :db]
+      "/$compact-db" :post [:params :forwarded :db :resource]
       "/Measure/$evaluate-measure" :get [:params :forwarded :db]
-      "/Measure/$evaluate-measure" :post [:params :forwarded :db]
+      "/Measure/$evaluate-measure" :post [:params :forwarded :db :resource]
       "/Measure/0/$evaluate-measure" :get [:params :forwarded :db]
-      "/Measure/0/$evaluate-measure" :post [:params :forwarded :db]
+      "/Measure/0/$evaluate-measure" :post [:params :forwarded :db :resource]
       "/Measure/0" :get [:params :forwarded :db])
 
     (testing "with auth backends"
@@ -184,11 +184,11 @@
         "" :get [:params :forwarded :auth-guard :db]
         "" :post [:params :forwarded :auth-guard :resource :wrap-batch-handler]
         "/$compact-db" :get [:params :forwarded :auth-guard :db]
-        "/$compact-db" :post [:params :forwarded :auth-guard :db]
+        "/$compact-db" :post [:params :forwarded :auth-guard :db :resource]
         "/Measure/$evaluate-measure" :get [:params :forwarded :auth-guard :db]
-        "/Measure/$evaluate-measure" :post [:params :forwarded :auth-guard :db]
+        "/Measure/$evaluate-measure" :post [:params :forwarded :auth-guard :db :resource]
         "/Measure/0/$evaluate-measure" :get [:params :forwarded :auth-guard :db]
-        "/Measure/0/$evaluate-measure" :post [:params :forwarded :auth-guard :db])))
+        "/Measure/0/$evaluate-measure" :post [:params :forwarded :auth-guard :db :resource])))
 
   (testing "Patient instance POST is not allowed"
     (given @((reitit.ring/ring-handler (router []) handler-util/default-handler)

@@ -78,7 +78,7 @@
 
 
 (defn- find-measure-handle*
-  [db {{:keys [id]} :path-params {:strs [measure]} :params}]
+  [db {{:keys [id]} :path-params {:keys [measure]} ::params}]
   (cond
     id
     (d/resource-handle db "Measure" id)

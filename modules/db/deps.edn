@@ -44,10 +44,10 @@
     {:local/root "../test-util"}
 
     com.clojure-goes-fast/clj-java-decompiler
-    {:mvn/version "0.3.0"}
+    {:mvn/version "0.3.1"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.0.902"}}
+    {:mvn/version "1.60.945"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

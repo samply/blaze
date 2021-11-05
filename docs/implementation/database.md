@@ -2,7 +2,7 @@
 
 ## Overview
 
-The database architecture of Blaze is influenced by [Datomic][1] and [Crux][2]. Both databases have a strong foundation in functional programming and [persistent data structures][3] leading to immutable databases.
+The database architecture of Blaze is influenced by [Datomic][1] and [XTDB][2]. Both databases have a strong foundation in functional programming and [persistent data structures][3] leading to immutable databases.
 
 ## Immutable Database
 
@@ -30,7 +30,7 @@ In practise, each FHIR RESTful API read request will obtain the newest known dat
 
 Datomic uses a fact based data model, were each fact is the triple `(entity, attribute, value)` for example `(<patient-id>, birthDate, 2020)`. This model has one big advantage, the minimum change between two database values will be a fact, which is quite small. The disadvantage is, that bigger structures like resources have to be reconstructed from individual facts. In addition to that, because in FHIR, updates are always whole resources, the actual changed facts have to be determined by diffing the old and new resource.
 
-Another data model is the document model used in document stores like [MongoDB][5] but also Crux. With documents, the smallest structure in the database is a document. Blaze uses that document data model were each resource version is a document. Because Blaze uses resource versions as documents, instead of only the current version, documents can't be indexed by resource identifier. Instead, as Crux does, content hashes will be used. Aside the version based document store, several indices are used to build up the database values and enable queries. 
+Another data model is the document model used in document stores like [MongoDB][5] but also XTDB. With documents, the smallest structure in the database is a document. Blaze uses that document data model were each resource version is a document. Because Blaze uses resource versions as documents, instead of only the current version, documents can't be indexed by resource identifier. Instead, as XTDB does, content hashes will be used. Aside the version based document store, several indices are used to build up the database values and enable queries. 
 
 ## Indices
 
@@ -93,7 +93,7 @@ In the same way the `TypeAsOf` index uses a different key ordering in comparison
 
 The `TxSuccess` index contains the real point in time, as `java.time.Instant`, successful transactions happened. In other words, this index maps each `t` which is just a monotonically increasing number to a real point in time. 
 
-**Note:** Other than Crux, Blaze is not a bitemporal. That means the time recorded in the history of resources is the transaction time, not a business time. That also means that one can't fix the history, because the history only reflects the transactions happened. 
+**Note:** Other than XTDB, Blaze is not a bitemporal. That means the time recorded in the history of resources is the transaction time, not a business time. That also means that one can't fix the history, because the history only reflects the transactions happened. 
 
 #### TxError
 
@@ -216,7 +216,7 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 **TODO: continue...**
 
 [1]: <https://www.datomic.com>
-[2]: <https://opencrux.com/main/index.html>
+[2]: <https://xtdb.com>
 [3]: <https://en.wikipedia.org/wiki/Persistent_data_structure>
 [4]: <https://en.wikipedia.org/wiki/Copy-on-write>
 [5]: <https://www.mongodb.com>

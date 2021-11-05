@@ -31,6 +31,12 @@
 
 (deftest init-test
   (testing "invalid max-size"
+    (given-thrown (ig/init {:blaze.db/resource-handle-cache nil})
+      :key := :blaze.db/resource-handle-cache
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "invalid max-size"
     (given-thrown (ig/init {:blaze.db/resource-handle-cache {:max-size ::invalid}})
       :key := :blaze.db/resource-handle-cache
       :reason := ::ig/build-failed-spec

@@ -4,6 +4,7 @@
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.alpha :as s]))
 
@@ -13,25 +14,38 @@
           name value))
 
 
-(defn- coerce-date-param
-  "Coerces the parameter with `name` from `request` into a System.Date.
+(defn- get-param-value-from-resource [body name]
+  (when (= :fhir/Parameters (type/type body))
+    (some #(when (= name (:name %)) (:value %)) (:parameter body))))
 
-  Returns an anomaly if the parameter is missing or invalid."
-  [request name]
-  (if-let [value (get-in request [:params name])]
-    (-> (system/parse-date value)
-        (ba/exceptionally
-          (fn [_]
-            (ba/incorrect
-              (invalid-date-param-msg name value)
-              :fhir/issue "value"
-              :fhir/operation-outcome "MSG_PARAM_INVALID"
-              :fhir.issue/expression name))))
-    (ba/incorrect
-      (format "Missing required parameter `%s`." name)
-      :fhir/issue "value"
-      :fhir/operation-outcome "MSG_PARAM_INVALID"
-      :fhir.issue/expression name)))
+
+(defn- get-param-value [{:keys [params body]} name coercer]
+  (or (some->> (get params name) (coercer name))
+      (get-param-value-from-resource body name)))
+
+
+(defn- get-required-param-value [request name coercer]
+  (or (get-param-value request name coercer)
+      (ba/incorrect
+        (format "Missing required parameter `%s`." name)
+        :fhir/issue "value"
+        :fhir/operation-outcome "MSG_PARAM_INVALID"
+        :fhir.issue/expression name)))
+
+
+(defn- coerce-date
+  "Coerces `value` into a System.Date.
+
+  Returns an anomaly if the parameter is invalid."
+  [name value]
+  (-> (system/parse-date value)
+      (ba/exceptionally
+        (fn [_]
+          (ba/incorrect
+            (invalid-date-param-msg name value)
+            :fhir/issue "value"
+            :fhir/operation-outcome "MSG_PARAM_INVALID"
+            :fhir.issue/expression name)))))
 
 
 (defn- invalid-report-type-param-msg [report-type]
@@ -39,27 +53,10 @@
           report-type))
 
 
-(def ^:private no-subject-list-on-get-msg
-  "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")
-
-
-(defn- coerce-report-type-param
-  "Coerces the parameter `reportType` from `request`.
-
-  Returns an anomaly if the parameter is invalid."
-  [{:keys [request-method] {:strs [reportType subject]} :params}]
-  (let [report-type (or reportType (if subject "subject" "population"))]
-    (cond
-      (not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type report-type))
-      (ba/incorrect
-        (invalid-report-type-param-msg report-type)
-        :fhir/issue "value")
-
-      (and (= :get request-method) (= "subject-list" report-type))
-      (ba/unsupported no-subject-list-on-get-msg)
-
-      :else
-      report-type)))
+(defn- coerce-report-type [_ value]
+  (if-not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type value)
+    (ba/incorrect (invalid-report-type-param-msg value) :fhir/issue "value")
+    (type/->Code value)))
 
 
 (defn- invalid-subject-param-msg [subject]
@@ -81,17 +78,31 @@
         local-ref))))
 
 
-(defn- params-request [request]
-  (when-ok [period-start (coerce-date-param request "periodStart")
-            period-end (coerce-date-param request "periodEnd")
-            report-type (coerce-report-type-param request)
+(def ^:private no-subject-list-on-get-msg
+  "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")
+
+
+(defn- params-request [{:keys [request-method] :as request}]
+  (when-ok [period-start (get-required-param-value
+                           request "periodStart" coerce-date)
+            period-end (get-required-param-value
+                         request "periodEnd" coerce-date)
+            measure (get-param-value request "measure" (fn [_ v] v))
+            report-type (get-param-value
+                          request "reportType" coerce-report-type)
             subject-ref (coerce-subject-ref-param request)]
-    (assoc request
-      :blaze.fhir.operation.evaluate-measure/params
-      (cond-> {:period [period-start period-end]
-               :report-type report-type}
-        subject-ref
-        (assoc :subject-ref subject-ref)))))
+    (let [report-type (some-> report-type type/value)]
+      (if (and (= :get request-method) (= "subject-list" report-type))
+        (ba/unsupported no-subject-list-on-get-msg)
+        (assoc request
+          :blaze.fhir.operation.evaluate-measure/params
+          (cond-> {:period [period-start period-end]
+                   :report-type (or report-type
+                                    (if subject-ref "subject" "population"))}
+            measure
+            (assoc :measure measure)
+            subject-ref
+            (assoc :subject-ref subject-ref)))))))
 
 
 (defn wrap-coerce-params [handler]

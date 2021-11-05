@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.13.1
+
+### Bugfixes
+
+* Fix Encoding of Parameters at Operation POST Requests ([#513](https://github.com/samply/blaze/issues/513))
+
+### Other
+
+* Move to OpenJDK ([#518](https://github.com/samply/blaze/issues/518))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/16?closed=1).
+
 ## v0.13.0
 
 ### New Features

@@ -20,6 +20,10 @@
 (test/use-fixtures :each fixture)
 
 
+(deftest processor-test
+  (is (flow/processor? (flow/mapcat #(repeat % %)))))
+
+
 (deftest collect-test
   (testing "with publisher generating two numbers"
     (let [publisher (SubmissionPublisher.)
@@ -41,6 +45,15 @@
 
 
 (deftest mapcat-test
+  (testing "with publisher generating one number"
+    (let [publisher (SubmissionPublisher.)
+          processor (flow/mapcat #(repeat % %))
+          future (flow/collect processor)]
+      (flow/subscribe! publisher processor)
+      (.submit publisher 1)
+      (.close publisher)
+      (is (= [1] @future))))
+
   (testing "with publisher generating two numbers"
     (let [publisher (SubmissionPublisher.)
           processor (flow/mapcat #(repeat % %))

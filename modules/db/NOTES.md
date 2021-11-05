@@ -1,28 +1,4 @@
-# Crux
-
-## Crux Indices
-
-attr, eid and content-hash key parts have a size of 21 bytes which is the size of a SHA1 (160 bit) plus one for the value type. Value key part is the whole value.
-
-| Name | Key Parts | Value | seek-values | Doc |
-|---|---|---|---|---|
-| DocAttributeValueEntityValueIndex | attr val eid content-hash | - |
-| DocAttributeValueEntityEntityIndex | attr val eid content-hash | - | eid, EntityTx | same as above only with value already known and entity free
-| DocAttributeEntityValueEntityIndex | attr eid content-hash val | - | ? | TODO: Swap v and content-hash, so it has the same order as AVE
-| DocAttributeEntityValueValueIndex | attr eid content-hash val | - | ? | TODO: Swap v and content-hash, so it has the same order as AVE
-| EntityAsOfIndex | eid valid-time tx-time tx-id | content-hash | eid, EntityTx | |
-| EntityHistoryRangeIndex | | |
-| 
-
-In Crux an entity can have multiple documents over time. Every time a new document is put, every attribute is indexed together with the content-hash of the document.
-
-### EntityAsOfIndex Example
-
-| eid-0 | valid-time-new |
-| eid-0 | valid-time-old |
-| eid-1 | valid-time-old |
-
-# Blaze NG
+# Blaze
 
 ## Features
 

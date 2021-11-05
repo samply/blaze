@@ -21,7 +21,7 @@
     [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
     [blaze.log]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
@@ -169,14 +169,22 @@
         [resource-indexer/index-resources
          (fn [_ _]
            (ac/completed-future {::anom/category ::anom/fault ::x ::y}))]
-        (with-system [{:blaze.db/keys [node]} system]
-          (try
-            @(-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                 (ac/then-compose
-                   (fn [t]
-                     (Thread/sleep 100)
-                     (node/tx-result node t))))
-            (catch Exception e
-              (given (ex-data (ex-cause e))
-                ::anom/category := ::anom/fault
-                ::x ::y))))))))
+
+        (testing "fetching the result immediately"
+          (with-system [{:blaze.db/keys [node]} system]
+            (given-failed-future
+              (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+                  (ac/then-compose (partial node/tx-result node)))
+              ::anom/category := ::anom/fault
+              ::x ::y)))
+
+        (testing "wait before fetching the result"
+          (with-system [{:blaze.db/keys [node]} system]
+            (given-failed-future
+              (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+                  (ac/then-compose
+                    (fn [t]
+                      (Thread/sleep 100)
+                      (node/tx-result node t))))
+              ::anom/category := ::anom/fault
+              ::x ::y)))))))
