@@ -137,7 +137,7 @@
 
 
 (deftype CassandraResourceStore [session get-statement put-statement]
-  rs/ResourceLookup
+  rs/ResourceStore
   (-get [_ hash]
     (log/trace "get" hash)
     (execute-get session get-statement hash))
@@ -148,7 +148,6 @@
       (do-sync [_ (ac/all-of futures)]
         (zipmap-found hashes (map deref futures)))))
 
-  rs/ResourceStore
   (-put [_ entries]
     (log/trace "put" (count entries) "entries")
     (ac/all-of (execute-multi-put session put-statement entries)))

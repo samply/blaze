@@ -66,7 +66,7 @@
     (given-thrown (ig/init {:blaze.db/resource-cache {:resource-store ::invalid}})
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (satisfies? rs/ResourceLookup ~'%))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (satisfies? rs/ResourceStore ~'%))
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid max-size"

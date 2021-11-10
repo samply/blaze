@@ -52,9 +52,6 @@
   io.netty/netty-transport-native-epoll$linux-x86_64
   {:mvn/version "4.1.70.Final"}
 
-  io.prometheus/simpleclient_hotspot
-  {:mvn/version "0.11.0"}
-
   org.clojars.akiel/spec-coerce
   {:mvn/version "0.4.0"}
 
