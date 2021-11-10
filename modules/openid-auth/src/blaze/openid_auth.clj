@@ -9,8 +9,7 @@
     [java-time :as time]
     [taoensso.timbre :as log])
   (:import
-    [java.security PublicKey]
-    [java.util.concurrent Future]))
+    [java.security PublicKey]))
 
 
 (set! *warn-on-reflection* true)
@@ -48,7 +47,7 @@
 (defmethod ig/halt-key! :blaze.openid-auth/backend
   [_ {:keys [future]}]
   (log/info "Stop OpenID authentication backend")
-  (.cancel ^Future future false))
+  (sched/cancel future false))
 
 
 (derive :blaze.openid-auth/backend :blaze.auth/backend)
