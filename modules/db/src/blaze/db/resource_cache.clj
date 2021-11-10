@@ -21,14 +21,13 @@
 
 
 (deftype ResourceCache [^AsyncLoadingCache cache resource-store put-executor]
-  rs/ResourceLookup
+  rs/ResourceStore
   (-get [_ hash]
     (.get cache hash))
 
   (-multi-get [_ hashes]
     (.getAll cache hashes))
 
-  rs/ResourceStore
   (-put [_ entries]
     (rs/put! resource-store entries))
 

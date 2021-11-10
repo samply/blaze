@@ -2,6 +2,9 @@
  {blaze/kv
   {:local/root "../kv"}
 
+  blaze/metrics
+  {:local/root "../metrics"}
+
   blaze/module-base
   {:local/root "../module-base"}
 

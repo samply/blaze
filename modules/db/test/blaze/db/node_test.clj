@@ -98,12 +98,11 @@
 
 (defmethod ig/init-key ::resource-store-failing-on-get [_ _]
   (reify
-    rs/ResourceLookup
+    rs/ResourceStore
     (-get [_ _]
       (ac/completed-future {::anom/category ::anom/fault}))
     (-multi-get [_ _]
       (ac/completed-future {::anom/category ::anom/fault}))
-    rs/ResourceStore
     (-put [_ _]
       (ac/completed-future nil))))
 

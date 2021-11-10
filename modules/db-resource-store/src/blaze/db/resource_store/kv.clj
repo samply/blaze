@@ -89,7 +89,7 @@
 
 
 (deftype KvResourceStore [kv-store executor]
-  rs/ResourceLookup
+  rs/ResourceStore
   (-get [_ hash]
     (ac/supply-async
       #(some-> (get-content kv-store hash)
@@ -102,7 +102,6 @@
       #(transduce entry-thawer conj {} (multi-get-content kv-store hashes))
       executor))
 
-  rs/ResourceStore
   (-put [_ entries]
     (ac/supply-async
       #(kv/put! kv-store (coll/eduction entry-freezer entries))
@@ -120,6 +119,10 @@
 
 
 (derive ::rs/kv :blaze.db/resource-store)
+
+
+(defmethod ig/pre-init-spec ::executor [_]
+  (s/keys :opt-un [::num-threads]))
 
 
 (defn- executor-init-msg [num-threads]

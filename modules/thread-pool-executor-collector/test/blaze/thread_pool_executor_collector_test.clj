@@ -1,5 +1,6 @@
 (ns blaze.thread-pool-executor-collector-test
   (:require
+    [blaze.metrics.core :as metrics]
     [blaze.test-util :refer [given-thrown with-system]]
     [blaze.thread-pool-executor-collector]
     [blaze.thread-pool-executor-collector.spec :as spec]
@@ -10,7 +11,6 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [io.prometheus.client Collector$Type]
     [java.util.concurrent Executors Executor]))
 
 
@@ -69,33 +69,33 @@
                 system]
 
     (testing "fresh pool"
-      (given (.collect collector)
-        [0 #(.-name %)] := "thread_pool_executor_active_count"
-        [0 #(.-type %)] := Collector$Type/GAUGE
-        [0 #(.-samples %) 0 #(.-value %)] := 0.0
-        [1 #(.-name %)] := "thread_pool_executor_completed_tasks"
-        [1 #(.-type %)] := Collector$Type/COUNTER
-        [1 #(.-samples %) 0 #(.-value %)] := 0.0
-        [2 #(.-name %)] := "thread_pool_executor_core_pool_size"
-        [2 #(.-type %)] := Collector$Type/GAUGE
-        [2 #(.-samples %) 0 #(.-value %)] := 1.0
-        [3 #(.-name %)] := "thread_pool_executor_largest_pool_size"
-        [3 #(.-type %)] := Collector$Type/GAUGE
-        [3 #(.-samples %) 0 #(.-value %)] := 0.0
-        [4 #(.-name %)] := "thread_pool_executor_maximum_pool_size"
-        [4 #(.-type %)] := Collector$Type/GAUGE
-        [4 #(.-samples %) 0 #(.-value %)] := 1.0
-        [5 #(.-name %)] := "thread_pool_executor_pool_size"
-        [5 #(.-type %)] := Collector$Type/GAUGE
-        [5 #(.-samples %) 0 #(.-value %)] := 0.0
-        [6 #(.-name %)] := "thread_pool_executor_queue_size"
-        [6 #(.-type %)] := Collector$Type/GAUGE
-        [6 #(.-samples %) 0 #(.-value %)] := 0.0))
+      (given (metrics/collect collector)
+        [0 :name] := "thread_pool_executor_active_count"
+        [0 :type] := :gauge
+        [0 :samples 0 :value] := 0.0
+        [1 :name] := "thread_pool_executor_completed_tasks"
+        [1 :type] := :counter
+        [1 :samples 0 :value] := 0.0
+        [2 :name] := "thread_pool_executor_core_pool_size"
+        [2 :type] := :gauge
+        [2 :samples 0 :value] := 1.0
+        [3 :name] := "thread_pool_executor_largest_pool_size"
+        [3 :type] := :gauge
+        [3 :samples 0 :value] := 0.0
+        [4 :name] := "thread_pool_executor_maximum_pool_size"
+        [4 :type] := :gauge
+        [4 :samples 0 :value] := 1.0
+        [5 :name] := "thread_pool_executor_pool_size"
+        [5 :type] := :gauge
+        [5 :samples 0 :value] := 0.0
+        [6 :name] := "thread_pool_executor_queue_size"
+        [6 :type] := :gauge
+        [6 :samples 0 :value] := 0.0))
 
     (testing "one active thread"
       (.execute ^Executor pool #(Thread/sleep 100))
-      (given (.collect collector)
-        [0 #(.-name %)] := "thread_pool_executor_active_count"
-        [0 #(.-samples %) 0 #(.-value %)] := 1.0
-        [1 #(.-name %)] := "thread_pool_executor_completed_tasks"
-        [1 #(.-samples %) 0 #(.-value %)] := 0.0))))
+      (given (metrics/collect collector)
+        [0 :name] := "thread_pool_executor_active_count"
+        [0 :samples 0 :value] := 1.0
+        [1 :name] := "thread_pool_executor_completed_tasks"
+        [1 :samples 0 :value] := 0.0))))

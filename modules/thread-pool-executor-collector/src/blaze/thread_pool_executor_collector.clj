@@ -1,67 +1,68 @@
 (ns blaze.thread-pool-executor-collector
   (:require
+    [blaze.metrics.core :as metrics]
     [blaze.thread-pool-executor-collector.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
-    [io.prometheus.client Collector GaugeMetricFamily CounterMetricFamily]
     [java.util.concurrent BlockingQueue ThreadPoolExecutor]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn- gauge-metric-family [name help f executors]
-  (let [mf (GaugeMetricFamily. ^String name ^String help ["name"])]
-    (run! (fn [[name pool]] (.addMetric mf [name] (f pool))) executors)
-    mf))
+(defn- sample-xf [f]
+  (map (fn [[name pool]] {:label-values [name] :value (f pool)})))
 
 
-(defn- counter-metric-family [name help f executors]
-  (let [mf (CounterMetricFamily. ^String name ^String help ["name"])]
-    (run! (fn [[name pool]] (.addMetric mf [name] (f pool))) executors)
-    mf))
+(defn- counter-metric [name help f executors]
+  (let [samples (into [] (sample-xf f) executors)]
+    (metrics/counter-metric name help ["name"] samples)))
+
+
+(defn- gauge-metric [name help f executors]
+  (let [samples (into [] (sample-xf f) executors)]
+    (metrics/gauge-metric name help ["name"] samples)))
 
 
 (defn- thread-pool-executor-collector [executors]
-  (proxy [Collector] []
-    (collect []
-      [(gauge-metric-family
-         "thread_pool_executor_active_count"
-         "Returns the approximate number of threads that are actively executing tasks."
-         #(.getActiveCount ^ThreadPoolExecutor %)
-         executors)
-       (counter-metric-family
-         "thread_pool_executor_completed_tasks_total"
-         "Returns the approximate total number of tasks that have completed execution."
-         #(.getCompletedTaskCount ^ThreadPoolExecutor %)
-         executors)
-       (gauge-metric-family
-         "thread_pool_executor_core_pool_size"
-         "Returns the core number of threads."
-         #(.getCorePoolSize ^ThreadPoolExecutor %)
-         executors)
-       (gauge-metric-family
-         "thread_pool_executor_largest_pool_size"
-         "Returns the largest number of threads that have ever simultaneously been in the pool."
-         #(.getLargestPoolSize ^ThreadPoolExecutor %)
-         executors)
-       (gauge-metric-family
-         "thread_pool_executor_maximum_pool_size"
-         "Returns the maximum allowed number of threads."
-         #(.getMaximumPoolSize ^ThreadPoolExecutor %)
-         executors)
-       (gauge-metric-family
-         "thread_pool_executor_pool_size"
-         "Returns the current number of threads in the pool."
-         #(.getPoolSize ^ThreadPoolExecutor %)
-         executors)
-       (gauge-metric-family
-         "thread_pool_executor_queue_size"
-         "Returns the current number of tasks in the queue."
-         #(.size ^BlockingQueue (.getQueue ^ThreadPoolExecutor %))
-         executors)])))
+  (metrics/collector
+    [(gauge-metric
+       "thread_pool_executor_active_count"
+       "Returns the approximate number of threads that are actively executing tasks."
+       #(.getActiveCount ^ThreadPoolExecutor %)
+       executors)
+     (counter-metric
+       "thread_pool_executor_completed_tasks_total"
+       "Returns the approximate total number of tasks that have completed execution."
+       #(.getCompletedTaskCount ^ThreadPoolExecutor %)
+       executors)
+     (gauge-metric
+       "thread_pool_executor_core_pool_size"
+       "Returns the core number of threads."
+       #(.getCorePoolSize ^ThreadPoolExecutor %)
+       executors)
+     (gauge-metric
+       "thread_pool_executor_largest_pool_size"
+       "Returns the largest number of threads that have ever simultaneously been in the pool."
+       #(.getLargestPoolSize ^ThreadPoolExecutor %)
+       executors)
+     (gauge-metric
+       "thread_pool_executor_maximum_pool_size"
+       "Returns the maximum allowed number of threads."
+       #(.getMaximumPoolSize ^ThreadPoolExecutor %)
+       executors)
+     (gauge-metric
+       "thread_pool_executor_pool_size"
+       "Returns the current number of threads in the pool."
+       #(.getPoolSize ^ThreadPoolExecutor %)
+       executors)
+     (gauge-metric
+       "thread_pool_executor_queue_size"
+       "Returns the current number of tasks in the queue."
+       #(.size ^BlockingQueue (.getQueue ^ThreadPoolExecutor %))
+       executors)]))
 
 
 (defmethod ig/pre-init-spec :blaze/thread-pool-executor-collector [_]

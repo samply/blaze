@@ -1,0 +1,10 @@
+{:lint-as
+ {blaze.test-util/with-system clojure.core/with-open}
+
+ :linters
+ {:unsorted-required-namespaces
+  {:level :error}
+  :single-key-in
+  {:level :warning}}
+
+ :skip-comments true}

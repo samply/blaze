@@ -6,3 +6,7 @@
 
 (s/def :blaze.db.resource-store.kv/executor
   ex/executor?)
+
+
+(s/def :blaze.db.resource-store.kv/num-threads
+  nat-int?)
