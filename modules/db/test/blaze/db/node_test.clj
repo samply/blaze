@@ -21,10 +21,11 @@
     [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
     [blaze.log]
+    [blaze.metrics.spec]
     [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
+    [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [java-time :as time]
@@ -130,7 +131,30 @@
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry)))))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+
+  (testing "invalid tx-log"
+    (given-thrown (ig/init {:blaze.db/node {:tx-log ::invalid}})
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-handle-cache))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (satisfies? tx-log/TxLog ~'%))
+      [:explain ::s/problems 6 :val] := ::invalid)))
+
+
+(deftest duration-seconds-collector-init-test
+  (with-system [{collector ::node/duration-seconds} {::node/duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest transaction-sizes-collector-init-test
+  (with-system [{collector ::node/transaction-sizes} {::node/transaction-sizes {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
 
 
 (deftest transact-test
@@ -187,3 +211,22 @@
                       (node/tx-result node t))))
               ::anom/category := ::anom/fault
               ::x ::y)))))))
+
+
+(deftest indexer-executor-shutdown-timeout-test
+  (let [{::node/keys [indexer-executor] :as system}
+        (ig/init {::node/indexer-executor {}})]
+
+    ;; will produce a timeout, because the function runs 11 seconds
+    (.execute indexer-executor #(Thread/sleep 11000))
+
+    ;; ensure that the function is called before the scheduler is halted
+    (Thread/sleep 100)
+
+    (ig/halt! system)
+
+    ;; the scheduler is shut down
+    (is (.isShutdown indexer-executor))
+
+    ;; but it isn't terminated yet
+    (is (not (.isTerminated indexer-executor)))))

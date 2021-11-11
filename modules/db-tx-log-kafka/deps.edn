@@ -8,6 +8,9 @@
   blaze/db-tx-log
   {:local/root "../db-tx-log"}
 
+  blaze/metrics
+  {:local/root "../metrics"}
+
   blaze/module-base
   {:local/root "../module-base"}
 

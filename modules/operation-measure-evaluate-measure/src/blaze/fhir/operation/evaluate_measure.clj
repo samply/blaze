@@ -116,6 +116,10 @@
       (wrap-observe-request-duration "operation-evaluate-measure")))
 
 
+(defmethod ig/pre-init-spec ::executor [_]
+  (s/keys :opt-un [::num-threads]))
+
+
 (defn- executor-init-msg [num-threads]
   (format "Init $evaluate-measure operation executor with %d threads"
           num-threads))
