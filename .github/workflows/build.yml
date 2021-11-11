@@ -54,6 +54,7 @@ jobs:
         - jepsen
         - kv
         - luid
+        - metrics
         - openid-auth
         - operation-measure-evaluate-measure
         - page-store
@@ -100,7 +101,7 @@ jobs:
     needs: [ test ]
 
     strategy:
-      max-parallel: 4
+      max-parallel: 1
       matrix:
         module:
         - anomaly
@@ -121,6 +122,7 @@ jobs:
         - interaction
         - kv
         - luid
+        - metrics
         - openid-auth
         - operation-measure-evaluate-measure
         - page-store
