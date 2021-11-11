@@ -6,3 +6,7 @@
 
 (s/def :blaze.fhir.operation.evaluate-measure/executor
   ex/executor?)
+
+
+(s/def :blaze.fhir.operation.evaluate-measure/num-threads
+  nat-int?)

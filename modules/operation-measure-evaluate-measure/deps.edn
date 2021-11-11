@@ -8,6 +8,9 @@
   blaze/luid
   {:local/root "../luid"}
 
+  blaze/metrics
+  {:local/root "../metrics"}
+
   blaze/module-base
   {:local/root "../module-base"}
 

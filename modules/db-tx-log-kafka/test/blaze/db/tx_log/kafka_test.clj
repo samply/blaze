@@ -5,6 +5,7 @@
     [blaze.db.tx-log.kafka :as kafka]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.metrics.spec]
     [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -73,6 +74,11 @@
       [:explain ::s/problems 1 :val] := ::invalid)))
 
 
+(deftest duration-seconds-collector-init-test
+  (with-system [{collector ::kafka/duration-seconds} {::kafka/duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
 (defn- no-op-producer [{servers :bootstrap-servers}]
   (assert (= bootstrap-servers servers))
   (reify
@@ -98,7 +104,7 @@
          (reify
            Producer
            (send [_ _ callback]
-             (.onCompletion callback (RecordMetadata. nil 0 0 0 nil 0 0) nil))
+             (.onCompletion callback (RecordMetadata. nil 0 0 0 0 0) nil))
            Closeable
            (close [_])))
        kafka/create-last-t-consumer no-op-consumer]
@@ -188,3 +194,22 @@
 
 (deftest create-consumer-test
   (is (= "tx" (.topic (first (.assignment (kafka/create-consumer config)))))))
+
+
+(deftest last-t-executor-shutdown-timeout-test
+  (let [{::kafka/keys [last-t-executor] :as system}
+        (ig/init {::kafka/last-t-executor {}})]
+
+    ;; will produce a timeout, because the function runs 11 seconds
+    (.execute last-t-executor #(Thread/sleep 11000))
+
+    ;; ensure that the function is called before the scheduler is halted
+    (Thread/sleep 100)
+
+    (ig/halt! system)
+
+    ;; the scheduler is shut down
+    (is (.isShutdown last-t-executor))
+
+    ;; but it isn't terminated yet
+    (is (not (.isTerminated last-t-executor)))))

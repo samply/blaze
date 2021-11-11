@@ -11,7 +11,7 @@
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
-    [blaze.db.node.resource-indexer :as ri :refer [new-resource-indexer]]
+    [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.node.resource-indexer-spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv :as rs-kv]
@@ -53,8 +53,10 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :executor (ig/ref ::rs-kv/executor)}
+
    [::kv/mem :blaze.db/resource-kv-store]
    {:column-families {}}
+
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry {}})
@@ -80,12 +82,13 @@
                {:versionId #fhir/id"1"
                 :profile [#fhir/canonical"url-164445"]}}
           hash (hash/generate resource)
-          resource-indexer (new-resource-indexer search-param-registry kv-store)
+          resource-indexer (resource-indexer/new-resource-indexer
+                             search-param-registry kv-store)
           context
           {:resource-store resource-store
            :resource-indexer resource-indexer}]
       @(rs/put! resource-store {hash resource})
-      @(ri/index-resources
+      @(resource-indexer/index-resources
          context
          {:t 0
           :instant Instant/EPOCH
@@ -215,12 +218,13 @@
                          :system #fhir/uri"http://unitsofmeasure.org"
                          :value 23.42M}}
           hash (hash/generate resource)
-          resource-indexer (new-resource-indexer search-param-registry kv-store)
+          resource-indexer (resource-indexer/new-resource-indexer
+                             search-param-registry kv-store)
           context
           {:resource-store resource-store
            :resource-indexer resource-indexer}]
       @(rs/put! resource-store {hash resource})
-      @(ri/index-resources
+      @(resource-indexer/index-resources
          context
          {:t 0
           :instant Instant/EPOCH
@@ -320,11 +324,12 @@
 (deftest index-delete-cmd-test
   (with-system [{kv-store ::kv/mem resource-store ::rs/kv
                  :blaze.db/keys [search-param-registry]} system]
-    (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
+    (let [resource-indexer (resource-indexer/new-resource-indexer
+                             search-param-registry kv-store)
           context
           {:resource-store resource-store
            :resource-indexer resource-indexer}]
-      @(ri/index-resources
+      @(resource-indexer/index-resources
          context
          {:t 0
           :instant Instant/EPOCH

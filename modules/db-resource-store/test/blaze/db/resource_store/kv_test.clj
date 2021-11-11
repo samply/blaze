@@ -105,9 +105,8 @@
 
 
 (deftest resource-bytes-collector-init-test
-  (testing "nil config"
-    (with-system [{collector ::rs-kv/resource-bytes} {::rs-kv/resource-bytes nil}]
-      (is (s/valid? :blaze.metrics/collector collector)))))
+  (with-system [{collector ::rs-kv/resource-bytes} {::rs-kv/resource-bytes {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
 
 
 (def system

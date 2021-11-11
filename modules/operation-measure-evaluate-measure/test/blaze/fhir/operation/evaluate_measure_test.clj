@@ -5,10 +5,11 @@
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
     [blaze.fhir.spec.type :as type]
+    [blaze.metrics.spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.middleware.fhir.error :refer [wrap-error]]
-    [blaze.test-util :refer [given-thrown]]
+    [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -97,6 +98,38 @@
       [:explain ::s/problems 3 :val] := ::invalid)))
 
 
+(deftest executor-init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::evaluate-measure/executor nil})
+      :key := ::evaluate-measure/executor
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "invalid num-threads"
+    (given-thrown (ig/init {::evaluate-measure/executor {:num-threads ::invalid}})
+      :key := ::evaluate-measure/executor
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `nat-int?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "with default num-threads"
+    (with-system [{::evaluate-measure/keys [executor]}
+                  {::evaluate-measure/executor {}}]
+      (is (instance? ExecutorService executor)))))
+
+
+(deftest compile-duration-seconds-collector-init-test
+  (with-system [{collector ::evaluate-measure/compile-duration-seconds}
+                {::evaluate-measure/compile-duration-seconds nil}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest evaluate-duration-seconds-collector-init-test
+  (with-system [{collector ::evaluate-measure/evaluate-duration-seconds}
+                {::evaluate-measure/evaluate-duration-seconds nil}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
 (def system
   (assoc mem-node-system
     ::evaluate-measure/handler
@@ -111,9 +144,9 @@
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-       (assoc request
-         :blaze/base-url base-url
-         ::reitit/router router))))
+      (assoc request
+        :blaze/base-url base-url
+        ::reitit/router router))))
 
 
 (defmacro with-handler [[handler-binding] txs & body]
@@ -132,8 +165,8 @@
         []
         (let [{:keys [status body]}
               @(handler
-                {:path-params {:id "0"}
-                 :params {"periodStart" "2014" "periodEnd" "2015"}})]
+                 {:path-params {:id "0"}
+                  :params {"periodStart" "2014" "periodEnd" "2015"}})]
 
           (is (= 404 status))
 
@@ -148,10 +181,10 @@
         []
         (let [{:keys [status body]}
               @(handler
-                {:params
-                 {"measure" "url-181501"
-                  "periodStart" "2014"
-                  "periodEnd" "2015"}})]
+                 {:params
+                  {"measure" "url-181501"
+                   "periodStart" "2014"
+                   "periodEnd" "2015"}})]
 
           (is (= 404 status))
 
@@ -168,8 +201,8 @@
 
       (let [{:keys [status body]}
             @(handler
-              {:path-params {:id "0"}
-               :params {"periodStart" "2014" "periodEnd" "2015"}})]
+               {:path-params {:id "0"}
+                :params {"periodStart" "2014" "periodEnd" "2015"}})]
 
         (is (= 410 status))
 
@@ -186,10 +219,10 @@
 
       (let [{:keys [status body]}
             @(handler
-              {:params
-               {"measure" "url-182126"
-                "periodStart" "2014"
-                "periodEnd" "2015"}})]
+               {:params
+                {"measure" "url-182126"
+                 "periodStart" "2014"
+                 "periodEnd" "2015"}})]
 
         (is (= 422 status))
 
@@ -209,10 +242,10 @@
 
       (let [{:keys [status body]}
             @(handler
-              {:params
-               {"measure" "url-181501"
-                "periodStart" "2014"
-                "periodEnd" "2015"}})]
+               {:params
+                {"measure" "url-181501"
+                 "periodStart" "2014"
+                 "periodEnd" "2015"}})]
 
         (is (= 400 status))
 
@@ -234,10 +267,10 @@
 
       (let [{:keys [status body]}
             @(handler
-              {:params
-               {"measure" "url-182104"
-                "periodStart" "2014"
-                "periodEnd" "2015"}})]
+               {:params
+                {"measure" "url-182104"
+                 "periodStart" "2014"
+                 "periodEnd" "2015"}})]
 
         (is (= 400 status))
 
@@ -261,10 +294,10 @@
 
       (let [{:keys [status body]}
             @(handler
-              {:params
-               {"measure" "url-182051"
-                "periodStart" "2014"
-                "periodEnd" "2015"}})]
+               {:params
+                {"measure" "url-182051"
+                 "periodStart" "2014"
+                 "periodEnd" "2015"}})]
 
         (is (= 400 status))
 
@@ -288,10 +321,10 @@
 
       (let [{:keys [status body]}
             @(handler
-              {:params
-               {"measure" "url-182039"
-                "periodStart" "2014"
-                "periodEnd" "2015"}})]
+               {:params
+                {"measure" "url-182039"
+                 "periodStart" "2014"
+                 "periodEnd" "2015"}})]
 
         (is (= 400 status))
 
@@ -333,11 +366,11 @@
 
             (let [{:keys [status body]}
                   @(handler
-                    {:request-method :get
-                     :params
-                     {"measure" "url-181501"
-                      "periodStart" "2014"
-                      "periodEnd" "2015"}})]
+                     {:request-method :get
+                      :params
+                      {"measure" "url-181501"
+                       "periodStart" "2014"
+                       "periodEnd" "2015"}})]
 
               (is (= 200 status))
 
@@ -396,11 +429,11 @@
 
             (let [{:keys [status body]}
                   @(handler
-                    {:request-method :get
-                     :params
-                     {"measure" "url-181501"
-                      "periodStart" "2014"
-                      "periodEnd" "2015"}})]
+                     {:request-method :get
+                      :params
+                      {"measure" "url-181501"
+                       "periodStart" "2014"
+                       "periodEnd" "2015"}})]
 
               (is (= 200 status))
 
@@ -442,19 +475,19 @@
 
           (let [{:keys [status headers body]}
                 @(handler
-                  {:request-method :post
-                   :body
-                   {:fhir/type :fhir/Parameters
-                    :parameter
-                    [{:fhir/type :fhir.Parameters/parameter
-                      :name "measure"
-                      :value "url-181501"}
-                     {:fhir/type :fhir.Parameters/parameter
-                      :name "periodStart"
-                      :value #fhir/date"2014"}
-                     {:fhir/type :fhir.Parameters/parameter
-                      :name "periodEnd"
-                      :value #fhir/date"2015"}]}})]
+                   {:request-method :post
+                    :body
+                    {:fhir/type :fhir/Parameters
+                     :parameter
+                     [{:fhir/type :fhir.Parameters/parameter
+                       :name "measure"
+                       :value "url-181501"}
+                      {:fhir/type :fhir.Parameters/parameter
+                       :name "periodStart"
+                       :value #fhir/date"2014"}
+                      {:fhir/type :fhir.Parameters/parameter
+                       :name "periodEnd"
+                       :value #fhir/date"2015"}]}})]
 
             (is (= 201 status))
 
@@ -483,11 +516,11 @@
 
           (let [{:keys [status body]}
                 @(handler
-                  {:request-method :get
-                   :path-params {:id "0"}
-                   :params
-                   {"periodStart" "2014"
-                    "periodEnd" "2015"}})]
+                   {:request-method :get
+                    :path-params {:id "0"}
+                    :params
+                    {"periodStart" "2014"
+                     "periodEnd" "2015"}})]
 
             (is (= 200 status))
 
@@ -511,17 +544,17 @@
 
           (let [{:keys [status headers body]}
                 @(handler
-                  {:request-method :post
-                   :path-params {:id "0"}
-                   :body
-                   {:fhir/type :fhir/Parameters
-                    :parameter
-                    [{:fhir/type :fhir.Parameters/parameter
-                      :name "periodStart"
-                      :value #fhir/date"2014"}
-                     {:fhir/type :fhir.Parameters/parameter
-                      :name "periodEnd"
-                      :value #fhir/date"2015"}]}})]
+                   {:request-method :post
+                    :path-params {:id "0"}
+                    :body
+                    {:fhir/type :fhir/Parameters
+                     :parameter
+                     [{:fhir/type :fhir.Parameters/parameter
+                       :name "periodStart"
+                       :value #fhir/date"2014"}
+                      {:fhir/type :fhir.Parameters/parameter
+                       :name "periodEnd"
+                       :value #fhir/date"2015"}]}})]
 
             (is (= 201 status))
 
@@ -539,7 +572,20 @@
               [:period :end] := #fhir/dateTime"2015")))))))
 
 
-(deftest executor-test
-  (let [system (ig/init {::evaluate-measure/executor {}})]
-    (is (instance? ExecutorService (::evaluate-measure/executor system)))
-    (ig/halt! system)))
+(deftest indexer-executor-shutdown-timeout-test
+  (let [{::evaluate-measure/keys [executor] :as system}
+        (ig/init {::evaluate-measure/executor {}})]
+
+    ;; will produce a timeout, because the function runs 11 seconds
+    (.execute executor #(Thread/sleep 11000))
+
+    ;; ensure that the function is called before the scheduler is halted
+    (Thread/sleep 100)
+
+    (ig/halt! system)
+
+    ;; the scheduler is shut down
+    (is (.isShutdown executor))
+
+    ;; but it isn't terminated yet
+    (is (not (.isTerminated executor)))))
