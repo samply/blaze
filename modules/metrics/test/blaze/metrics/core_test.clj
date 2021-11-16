@@ -26,13 +26,13 @@
 
   (testing "with one metric"
     (given (metrics/collect (metrics/collector
-                              [(metrics/counter-metric "foo" "" [] [])]))
+                              [(metrics/counter-metric "foo_total" "" [] [])]))
       [0 :name] := "foo"))
 
   (testing "with two metrics"
     (given (metrics/collect (metrics/collector
-                              [(metrics/counter-metric "foo" "" [] [])
-                               (metrics/counter-metric "bar" "" [] [])]))
+                              [(metrics/counter-metric "foo_total" "" [] [])
+                               (metrics/counter-metric "bar_total" "" [] [])]))
       [0 :name] := "foo"
       [1 :name] := "bar")))
 
@@ -40,7 +40,7 @@
 (deftest counter-metric-test
   (testing "with one label"
     (testing "with one sample"
-      (given (datafy/datafy (metrics/counter-metric "foo" "" ["name"] [{:label-values ["bar"] :value 1.0}]))
+      (given (datafy/datafy (metrics/counter-metric "foo_total" "" ["name"] [{:label-values ["bar"] :value 1.0}]))
         :name := "foo"
         :type := :counter
         [:samples 0 :label-values] := ["bar"]

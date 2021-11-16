@@ -25,7 +25,7 @@
 
 
 (def collector
-  (metrics/collector [(metrics/counter-metric "foo" "" [] [])]))
+  (metrics/collector [(metrics/counter-metric "foo_total" "" [] [])]))
 
 
 (defn- samples [registry]

@@ -2,7 +2,8 @@
   (:require
     [blaze.metrics.core :as metrics]
     [blaze.metrics.spec]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [clojure.string :as str]))
 
 
 (s/fdef metrics/collect
@@ -10,8 +11,12 @@
   :ret (s/coll-of :blaze.metrics/metric))
 
 
+(defn counter-name? [x]
+  (and (string? x) (str/ends-with? x "_total")))
+
+
 (s/fdef metrics/counter-metric
-  :args (s/cat :name string? :help string? :label-names (s/coll-of string?)
+  :args (s/cat :name counter-name? :help string? :label-names (s/coll-of string?)
                :samples (s/coll-of :blaze.metrics/sample)))
 
 
