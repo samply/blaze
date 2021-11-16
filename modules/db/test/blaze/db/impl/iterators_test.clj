@@ -11,7 +11,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 
-
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 
@@ -37,8 +37,9 @@
   ([]
    (bb/allocate-direct 1))
   ([kb]
-   (let [bs (byte-array (.remaining kb))]
-     (.get kb bs)
+   (let [len (bb/remaining kb)
+         bs (byte-array len)]
+     (bb/copy-into-byte-array! kb bs 0 len)
      (vec bs))))
 
 

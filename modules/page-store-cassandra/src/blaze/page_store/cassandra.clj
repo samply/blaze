@@ -17,7 +17,8 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.lang AutoCloseable]))
+    [java.lang AutoCloseable]
+    [java.nio ByteBuffer]))
 
 
 (set! *warn-on-reflection* true)
@@ -68,7 +69,7 @@
 
 (defn- bind-put [statement token clauses]
   (let [content (codec/encode clauses)]
-    (prom/observe! clauses-bytes (.capacity content))
+    (prom/observe! clauses-bytes (.capacity ^ByteBuffer content))
     (cass/bind statement token content)))
 
 
