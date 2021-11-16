@@ -61,6 +61,7 @@ jobs:
         - page-store-cassandra
         - rest-api
         - rest-util
+        - rocksdb
         - scheduler
         - search-param-registry
         - thread-pool-executor-collector
@@ -129,6 +130,7 @@ jobs:
         - page-store-cassandra
         - rest-api
         - rest-util
+        - rocksdb
         - scheduler
         - search-param-registry
         - thread-pool-executor-collector
