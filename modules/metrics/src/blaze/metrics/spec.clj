@@ -38,4 +38,4 @@
 
 
 (s/def :blaze.metrics.sample/value
-  double?)
+  number?)
