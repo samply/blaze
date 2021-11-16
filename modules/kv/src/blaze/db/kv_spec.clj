@@ -108,3 +108,8 @@
 
 (s/fdef kv/delete!
   :args (s/cat :kv-store :blaze.db/kv-store :keys (s/coll-of bytes?)))
+
+
+(s/fdef kv/write!
+  :args (s/cat :kv-store :blaze.db/kv-store
+               :entries (s/coll-of ::kv/write-entry :kind sequential?)))

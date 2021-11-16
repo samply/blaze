@@ -102,8 +102,8 @@
     (set! closed? true)))
 
 
-(defn- column-family-unknown-msg [column-family]
-  (format "column family %s is unknown" column-family))
+(defn- column-family-not-found-msg [column-family]
+  (format "column family `%s` not found" (name column-family)))
 
 
 (deftype MemKvSnapshot [db]
@@ -115,7 +115,7 @@
   (-new-iterator [_ column-family]
     (if-let [db (get db column-family)]
       (->MemKvIterator db (atom {:rest (seq db)}) false)
-      (throw-anom (ba/fault (column-family-unknown-msg column-family)))))
+      (throw-anom (ba/not-found (column-family-not-found-msg column-family)))))
 
   (-snapshot-get [_ k]
     (some-> (get-in db [:default k]) (copy)))
@@ -127,8 +127,13 @@
   (close [_]))
 
 
-(defn- assoc-copy [m ^bytes k ^bytes v]
-  (assert m "column-family not found")
+(defn- assoc-copy-cf [m column-family k v]
+  (when (nil? m)
+    (throw-anom (ba/not-found (column-family-not-found-msg column-family))))
+  (assoc m (copy k) (copy v)))
+
+
+(defn- assoc-copy [m k v]
   (assoc m (copy k) (copy v)))
 
 
@@ -136,7 +141,7 @@
   (reduce
     (fn [db [column-family k v]]
       (if (keyword? column-family)
-        (update db column-family assoc-copy k v)
+        (update db column-family assoc-copy-cf column-family k v)
         (update db :default assoc-copy column-family k)))
     db
     entries))
@@ -147,7 +152,7 @@
     (fn [db [op column-family k v]]
       (if (keyword? column-family)
         (case op
-          :put (update db column-family assoc-copy k v)
+          :put (update db column-family assoc-copy-cf column-family k v)
           :delete (update db column-family dissoc k)
           (throw-anom (ba/unsupported (str (name op) " is not supported"))))
         (case op
