@@ -39,7 +39,7 @@ Such components reside in a namespace. There exists a constructor function calle
     [clojure.spec.alpha :as s]
     [integrant.core :as ig])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (defn new-node
@@ -60,10 +60,10 @@ Such components reside in a namespace. There exists a constructor function calle
 (defmethod ig/halt-key! :blaze.db/node
   [_ node]
   (log/info "Close local database node")
-  (.close ^Closeable node))
+  (.close ^AutoCloseable node))
 ```
 
-In this example, you can see the `new-node` function which gets two dependencies `dep-a` and `dep-b` which could be config values or other components. The function returns the database node itself. In our case the database node holds resources which should be freed when it is no longer needed. A common idiom is to implement `java.io.Closeable` and call the `.close` method at the end of usage.
+In this example, you can see the `new-node` function which gets two dependencies `dep-a` and `dep-b` which could be config values or other components. The function returns the database node itself. In our case the database node holds resources which should be freed when it is no longer needed. A common idiom is to implement `java.lang.AutoCloseable` and call the `.close` method at the end of usage.
 
 While the pair of the function `new-node` and the method `.close` can be used in tests, integrant is used in production. In the example, you can see the multi-method instances `ig/pre-init-spec`, `ig/init-key` and `ig/halt-key!`. First `ig/pre-init-spec` is used to provide a spec for the dependency map `ig/init-key` receives. The spec is created using the `s/keys` form in order to validate a map. Second the `ig/init-key` method will be called by integrant when the component with the :blaze.db/node key is initialized. In this method we simply call our `new-node` function, passing all dependencies from the map as arguments. In addition to that we log a meaningful message at info level in order to make the startup of Blaze transparent. It's also a good idea to log out any config values here. Last the method `ig/halt-key!` is used to free any resources our component might hold. Here we call our `.close` on the component instance passed.
 

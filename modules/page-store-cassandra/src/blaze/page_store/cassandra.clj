@@ -17,7 +17,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (set! *warn-on-reflection* true)
@@ -100,7 +100,7 @@
       (do-sync [_ (execute-put session put-statement token clauses)]
         token)))
 
-  Closeable
+  AutoCloseable
   (close [_]
     (cass/close session)))
 
@@ -136,7 +136,7 @@
 (defmethod ig/halt-key! ::page-store/cassandra
   [_ store]
   (log/info "Close Cassandra page store")
-  (.close ^Closeable store))
+  (.close ^AutoCloseable store))
 
 
 (derive :blaze.page-store/cassandra :blaze/page-store)

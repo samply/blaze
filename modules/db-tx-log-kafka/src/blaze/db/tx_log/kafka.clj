@@ -15,7 +15,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]
+    [java.lang AutoCloseable]
     [java.time Duration]
     [java.util Map]
     [java.util.concurrent TimeUnit ExecutorService]
@@ -106,10 +106,10 @@
       (.seek ^Consumer consumer tx-partition ^long (dec offset))
       consumer))
 
-  Closeable
+  AutoCloseable
   (close [_]
     (.close producer)
-    (.close ^Closeable last-t-consumer)))
+    (.close ^AutoCloseable last-t-consumer)))
 
 
 (extend-protocol tx-log/Queue
@@ -145,7 +145,7 @@
 (defmethod ig/halt-key! :blaze.db.tx-log/kafka
   [_ tx-log]
   (log/info "Closing Kafka transaction log...")
-  (.close ^Closeable tx-log)
+  (.close ^AutoCloseable tx-log)
   (log/info "Kafka transaction log was closed successfully"))
 
 

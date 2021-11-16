@@ -24,7 +24,7 @@
     [taoensso.timbre :as log])
   (:import
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-    [java.io Closeable]
+    [java.lang AutoCloseable]
     [java.time Instant]))
 
 
@@ -69,9 +69,9 @@
             (-seek-to-last [_])
             (-seek [_ _])
             (-valid [_] false)
-            Closeable
+            AutoCloseable
             (close [_])))
-        Closeable
+        AutoCloseable
         (close [_])))
     (-put [_ _ _]
       (throw (Exception. "put-error")))))

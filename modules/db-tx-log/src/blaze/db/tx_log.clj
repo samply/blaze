@@ -1,7 +1,7 @@
 (ns blaze.db.tx-log
   "Protocols for transaction log backend implementations."
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (defprotocol TxLog
@@ -45,7 +45,7 @@
   "Returns a new queue starting at `offset`.
 
   The queue has to be closed after usage."
-  ^Closeable
+  ^AutoCloseable
   [tx-log offset]
   (-new-queue tx-log offset))
 
