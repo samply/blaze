@@ -51,7 +51,8 @@
         [[(ba 0x00) bytes/empty]
          [(ba 0x01) bytes/empty]])
 
-      (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+      (with-open [snapshot (kv/new-snapshot kv-store)
+                  iter (kv/new-iterator snapshot)]
         (is (= [[0x00] [0x01]]
                (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))
 
@@ -62,7 +63,8 @@
         [[(ba 0x00) bytes/empty]
          [(ba 0x00 0x01) bytes/empty]])
 
-      (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+      (with-open [snapshot (kv/new-snapshot kv-store)
+                  iter (kv/new-iterator snapshot)]
         (is (= [[0x00] [0x00 0x01]]
                (into [] (i/keys! iter decode-1 (bs/from-hex "00")))))))
 
@@ -73,6 +75,7 @@
           [[(ba 0x00) bytes/empty]
            [(ba 0x00 0x01 0x02) bytes/empty]])
 
-        (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+        (with-open [snapshot (kv/new-snapshot kv-store)
+                    iter (kv/new-iterator snapshot)]
           (is (= [[0x00] [0x00 0x01 0x02]]
                  (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))))

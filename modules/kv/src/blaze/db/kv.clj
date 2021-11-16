@@ -158,6 +158,8 @@
   The result is initially invalid, so the caller must call one of the seek
   functions with the iterator before using it.
 
+  Throws an anomaly if `column-family` was not found.
+
   Iterators have to be closed after usage."
   (^AutoCloseable
    [snapshot]
@@ -221,8 +223,12 @@
 
 
 (defn put!
-  "Entries are either tuples of key and value or triples of column-family, key
+  "Stores either `entries` or the pair of `key` and `value`.
+
+  Entries are either tuples of key and value or triples of column-family, key
   and value.
+
+  Throws an anomaly if a column-family of an entry was not found.
 
   Puts are atomic. Blocks. Returns nil."
   ([store entries]

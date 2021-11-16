@@ -17,6 +17,7 @@
     [java.nio ByteBuffer]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
@@ -71,7 +72,8 @@
 
 (deftest valid-test
   (with-system [{kv-store ::kv/mem} system]
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
       (testing "iterator is initially invalid"
         (is (not (kv/valid? iter))))
 
@@ -81,16 +83,36 @@
 
 
 (deftest seek-to-first-test
-  (with-system [{kv-store ::kv/mem} system]
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+  (with-system-data [{kv-store ::kv/mem} system]
+    [[(ba 0x01) (ba 0x10)]
+     [(ba 0x02) (ba 0x20)]]
+
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
+      (kv/seek-to-first! iter)
+      (is (kv/valid? iter))
+      (is (bytes/= (ba 0x01) (kv/key iter)))
+      (is (bytes/= (ba 0x10) (kv/value iter)))
+
       (testing "errors on closed iterator"
         (.close iter)
         (is (ba/fault? (ba/try-anomaly (kv/seek-to-first! iter))))))))
 
 
 (deftest seek-to-last-test
-  (with-system [{kv-store ::kv/mem} system]
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+  (with-system-data [{kv-store ::kv/mem} system]
+    [[(ba 0x01) (ba 0x10)]
+     [(ba 0x02) (ba 0x20)]]
+
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
+      (kv/seek-to-last! iter)
+      (is (kv/valid? iter))
+      (is (bytes/= (ba 0x02) (kv/key iter)))
+      (is (bytes/= (ba 0x20) (kv/value iter)))
+
       (testing "errors on closed iterator"
         (.close iter)
         (is (ba/fault? (ba/try-anomaly (kv/seek-to-last! iter))))))))
@@ -101,7 +123,9 @@
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
       (testing "before first entry"
         (kv/seek! iter (ba 0x00))
         (is (kv/valid? iter))
@@ -139,7 +163,9 @@
       [[:a (ba 0x01) (ba 0x10)]
        [:a (ba 0x03) (ba 0x30)]]
 
-      (let [iter (kv/new-iterator (kv/new-snapshot kv-store) :a)]
+      (with-open [snapshot (kv/new-snapshot kv-store)
+                  iter (kv/new-iterator snapshot :a)]
+
         (testing "before first entry"
           (kv/seek! iter (ba 0x04))
           (is (kv/valid? iter))
@@ -178,7 +204,9 @@
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
       (testing "past second entry"
         (kv/seek-for-prev! iter (ba 0x04))
         (is (kv/valid? iter))
@@ -217,7 +245,9 @@
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
       (testing "first entry"
         (kv/seek-to-first! iter)
         (is (kv/valid? iter))
@@ -246,7 +276,9 @@
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
       (testing "first entry"
         (kv/seek-to-last! iter)
         (is (kv/valid? iter))
@@ -274,20 +306,12 @@
   (with-system-data [{kv-store ::kv/mem} system]
     [[(ba 0x01 0x02) (ba 0x00)]]
 
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
       (testing "errors on invalid iterator"
         (is (ba/fault? (ba/try-anomaly (kv/key iter))))
         (is (ba/fault? (ba/try-anomaly (kv/key! iter (ByteBuffer/allocateDirect 0))))))
-
-      (testing "errors on nil buffer"
-        (kv/seek-to-first! iter)
-        (is (thrown-with-msg? Exception #"Call to #'blaze.db.kv/key! did not conform to spec."
-                              (kv/key! iter nil))))
-
-      (testing "errors on heap buffer"
-        (kv/seek-to-first! iter)
-        (is (thrown-with-msg? Exception #"Call to #'blaze.db.kv/key! did not conform to spec."
-                              (kv/key! iter (ByteBuffer/allocate 0)))))
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
@@ -317,7 +341,9 @@
   (with-system-data [{kv-store ::kv/mem} system]
     [[(ba 0x00) (ba 0x01 0x02)]]
 
-    (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
       (testing "errors on invalid iterator"
         (is (ba/fault? (ba/try-anomaly (kv/value iter))))
         (is (ba/fault? (ba/try-anomaly (kv/value! iter (ByteBuffer/allocateDirect 0))))))
@@ -351,9 +377,10 @@
     [[:a (ba 0x00) (ba 0x01)]
      [:b (ba 0x00) (ba 0x02)]]
 
-    (let [snapshot (kv/new-snapshot kv-store)
-          iter-a (kv/new-iterator snapshot :a)
-          iter-b (kv/new-iterator snapshot :b)]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter-a (kv/new-iterator snapshot :a)
+                iter-b (kv/new-iterator snapshot :b)]
+
       (testing "the value in :a is 0x01"
         (kv/seek-to-first! iter-a)
         (is (bytes/= (ba 0x01) (kv/value iter-a))))
@@ -363,7 +390,7 @@
         (is (bytes/= (ba 0x02) (kv/value iter-b))))
 
       (testing "column-family :c doesn't exist"
-        (is (ba/fault? (ba/try-anomaly (kv/new-iterator snapshot :c))))))))
+        (is (ba/not-found? (ba/try-anomaly (kv/new-iterator snapshot :c))))))))
 
 
 (deftest snapshot-get-test
@@ -371,7 +398,8 @@
     [[(ba 0x00) (ba 0x01)]
      [:a (ba 0x00) (ba 0x02)]]
 
-    (let [snapshot (kv/new-snapshot kv-store)]
+    (with-open [snapshot (kv/new-snapshot kv-store)]
+
       (testing "returns found value"
         (is (bytes/= (ba 0x01) (kv/snapshot-get snapshot (ba 0x00)))))
 
@@ -425,7 +453,7 @@
       (is (bytes/= (ba 0x01) (kv/get kv-store (ba 0x00)))))
 
     (testing "errors on unknown column-family"
-      (is (thrown? AssertionError (kv/put! kv-store [[:a (ba 0x00) (ba 0x01)]]))))))
+      (is (ba/not-found? (ba/try-anomaly (kv/put! kv-store [[:a (ba 0x00) (ba 0x01)]])))))))
 
 
 (deftest delete-test
@@ -447,7 +475,7 @@
         (is (bytes/= (ba 0x11) (kv/get kv-store (ba 0x01)))))
 
       (testing "merge is not supported"
-        (is (ba/unsupported? (ba/try-anomaly (kv/write! kv-store [[:merge]])))))
+        (is (ba/unsupported? (ba/try-anomaly (kv/write! kv-store [[:merge (ba 0x00) (ba 0x00)]])))))
 
       (testing "delete"
         (kv/write! kv-store [[:delete (ba 0x00)]])
@@ -462,7 +490,7 @@
         (is (bytes/= (ba 0x11) (kv/get kv-store :a (ba 0x01)))))
 
       (testing "merge is not supported"
-        (is (ba/unsupported? (ba/try-anomaly (kv/write! kv-store [[:merge :a]])))))
+        (is (ba/unsupported? (ba/try-anomaly (kv/write! kv-store [[:merge :a (ba 0x00) (ba 0x00)]])))))
 
       (testing "delete"
         (kv/write! kv-store [[:delete :a (ba 0x00)]])
