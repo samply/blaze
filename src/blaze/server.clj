@@ -8,7 +8,7 @@
     [manifold.deferred :as md]
     [ring.util.response :as ring])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (defn- wrap-server [handler server]
@@ -31,4 +31,4 @@
 (defn shutdown!
   "Shuts `server` down, releasing its port."
   [server]
-  (.close ^Closeable server))
+  (.close ^AutoCloseable server))

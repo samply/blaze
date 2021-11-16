@@ -4,7 +4,7 @@
   All functions block the current thread while doing I/O."
   (:refer-clojure :exclude [get key])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (defprotocol KvIterator
@@ -156,11 +156,13 @@
   "Return an iterator over the contents of the database.
 
   The result is initially invalid, so the caller must call one of the seek
-  functions with the iterator before using it."
-  (^Closeable
+  functions with the iterator before using it.
+
+  Iterators have to be closed after usage."
+  (^AutoCloseable
    [snapshot]
    (-new-iterator snapshot))
-  (^Closeable
+  (^AutoCloseable
    [snapshot column-family]
    (-new-iterator snapshot column-family)))
 
@@ -194,8 +196,10 @@
 
 
 (defn new-snapshot
-  ""
-  ^Closeable
+  "Opens a new snapshot of `store`.
+
+  Snapshots have to be closed after usage."
+  ^AutoCloseable
   [store]
   (-new-snapshot store))
 

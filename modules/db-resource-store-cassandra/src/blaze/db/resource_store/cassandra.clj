@@ -16,7 +16,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]
+    [java.lang AutoCloseable]
     [java.nio ByteBuffer]))
 
 
@@ -152,7 +152,7 @@
     (log/trace "put" (count entries) "entries")
     (ac/all-of (execute-multi-put session put-statement entries)))
 
-  Closeable
+  AutoCloseable
   (close [_]
     (cass/close session)))
 
@@ -186,7 +186,7 @@
 (defmethod ig/halt-key! ::rs/cassandra
   [_ store]
   (log/info "Close Cassandra resource store")
-  (.close ^Closeable store))
+  (.close ^AutoCloseable store))
 
 
 (derive ::rs/cassandra :blaze.db/resource-store)

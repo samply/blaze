@@ -10,9 +10,9 @@
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]
     [java.util Arrays Comparator]
-    [java.nio ByteBuffer]))
+    [java.nio ByteBuffer]
+    [java.lang AutoCloseable]))
 
 
 (set! *warn-on-reflection* true)
@@ -97,7 +97,7 @@
     (check-valid iter)
     (put buf (-> @cursor :first val)))
 
-  Closeable
+  AutoCloseable
   (close [_]
     (set! closed? true)))
 
@@ -123,7 +123,7 @@
   (-snapshot-get [_ column-family k]
     (some-> (get-in db [column-family k]) (copy)))
 
-  Closeable
+  AutoCloseable
   (close [_]))
 
 
@@ -170,7 +170,7 @@
     (kv/snapshot-get (->MemKvSnapshot @db) column-family k))
 
   (-multi-get [_ ks]
-    (with-open [snapshot ^Closeable (->MemKvSnapshot @db)]
+    (with-open [snapshot ^AutoCloseable (->MemKvSnapshot @db)]
       (reduce
         (fn [r k]
           (if-let [v (kv/snapshot-get snapshot k)]

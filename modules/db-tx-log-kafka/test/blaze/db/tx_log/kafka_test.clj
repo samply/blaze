@@ -15,14 +15,14 @@
     [java-time :as time]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]
+    [java.lang AutoCloseable]
     [java.time Duration]
+    [java.util Map]
     [org.apache.kafka.clients.consumer Consumer ConsumerRecords]
     [org.apache.kafka.clients.producer KafkaProducer Producer RecordMetadata]
     [org.apache.kafka.common TopicPartition]
     [org.apache.kafka.common.errors
-     AuthorizationException RecordTooLargeException]
-    [java.util Map]))
+     AuthorizationException RecordTooLargeException]))
 
 
 (st/instrument)
@@ -83,7 +83,7 @@
   (assert (= bootstrap-servers servers))
   (reify
     Producer
-    Closeable
+    AutoCloseable
     (close [_])))
 
 
@@ -91,7 +91,7 @@
   (assert (= bootstrap-servers servers))
   (reify
     Consumer
-    Closeable
+    AutoCloseable
     (close [_])))
 
 
@@ -105,7 +105,7 @@
            Producer
            (send [_ _ callback]
              (.onCompletion callback (RecordMetadata. nil 0 0 0 0 0) nil))
-           Closeable
+           AutoCloseable
            (close [_])))
        kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} system]
@@ -121,7 +121,7 @@
              (send [_ _ callback]
                (.onCompletion callback nil
                               (RecordTooLargeException. "msg-173357")))
-             Closeable
+             AutoCloseable
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
@@ -139,7 +139,7 @@
              (send [_ _ callback]
                (.onCompletion callback nil
                               (AuthorizationException. "msg-175337")))
-             Closeable
+             AutoCloseable
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
@@ -161,7 +161,7 @@
            (^ConsumerRecords poll [_ ^Duration duration]
              (assert (= (time/seconds 1) duration))
              (ConsumerRecords. (Map/of)))
-           Closeable
+           AutoCloseable
            (close [_])))
        kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} system]
@@ -179,7 +179,7 @@
            (endOffsets [_ partitions]
              (assert (= (TopicPartition. "tx" 0) (first partitions)))
              (Map/of (first partitions) 104614))
-           Closeable
+           AutoCloseable
            (close [_])))]
       (with-system [{tx-log ::tx-log/kafka} system]
         (is (= 104614 @(tx-log/last-t tx-log)))))))

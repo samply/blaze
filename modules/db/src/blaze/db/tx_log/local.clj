@@ -2,7 +2,7 @@
   "A transaction log which is suitable only for standalone (single node) setups.
 
   Uses an exclusive key-value store to persist the transaction log using the
-  default column family. The single key-value index is populated were keys are
+  default column family. The single key-value index is populated where keys are
   the point in time `t` of the transaction and the values are transaction
   commands and instants.
 
@@ -24,7 +24,7 @@
     [prometheus.alpha :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]
+    [java.lang AutoCloseable]
     [java.time Instant]
     [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]
     [java.util.concurrent.locks Lock ReentrantLock]))
@@ -69,7 +69,7 @@
           tx-data)
         (poll! queue timeout))))
 
-  Closeable
+  AutoCloseable
   (close [_]
     (log/trace "close queue")
     (unsubscribe!)))

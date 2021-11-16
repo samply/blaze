@@ -5,7 +5,7 @@
     [blaze.server.spec]
     [clojure.spec.alpha :as s])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (s/fdef server/init!
@@ -14,4 +14,4 @@
 
 
 (s/fdef server/shutdown!
-  :args (s/cat :server #(instance? Closeable %)))
+  :args (s/cat :server #(instance? AutoCloseable %)))

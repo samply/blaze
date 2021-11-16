@@ -7,7 +7,7 @@
     [clojure.core.reducers :as r]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (set! *warn-on-reflection* true)
@@ -44,7 +44,7 @@
 
 
 (defn- close-batch-db! [{:keys [db]}]
-  (.close ^Closeable db))
+  (.close ^AutoCloseable db))
 
 
 (defn- wrap-batch-db

@@ -15,7 +15,7 @@
     [blaze.db.impl.protocols :as p]
     [blaze.db.node.protocols :as np])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (defn db
@@ -156,7 +156,7 @@
 
 
 (defn compile-type-query
-  "Same as `type-query` but in a two step process of pre-compilation and later
+  "Same as `type-query` but in a two-step process of pre-compilation and later
   execution by `execute-query`.
 
   Returns an anomaly if search parameters in clauses can't be resolved."
@@ -208,7 +208,7 @@
 
 
 (defn compile-system-query
-  "Same as `system-query` but in a two step process of pre-compilation and later
+  "Same as `system-query` but in a two-step process of pre-compilation and later
   execution by `execute-query`.
 
   Returns an anomaly if search parameters in clauses can't be resolved."
@@ -263,9 +263,9 @@
 
 
 (defn compile-compartment-query
-  "Same as `compartment-query` but in a two step process of pre-compilation and
-  later execution by `execute-query`. The `id` of the compartments resource will
-  be supplied as argument to `execute-query`.
+  "Same as `compartment-query` but in a two-step process of pre-compilation and
+  later execution by `execute-query`. The `id` of the compartments' resource
+  will be supplied as argument to `execute-query`.
 
   Returns an anomaly if search parameters in clauses can't be resolved."
   [node-or-db code type clauses]
@@ -313,7 +313,7 @@
   `type` and `id` starting as-of `db` in reverse chronological order.
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
-  Additionally a `since` instant can be given to define a point in the past
+  Additionally, a `since` instant can be given to define a point in the past
   where the history should start into the present.
 
   History entries are resource handles. Please use `pull-many` to obtain the
@@ -350,7 +350,7 @@
   `type` starting as-of `db` in reverse chronological order.
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
-  Additionally a `since` instant can be given to define a point in the past
+  Additionally, a `since` instant can be given to define a point in the past
   where the history should start into the present.
 
   History entries are resource handles. Please use `pull-many` to obtain the
@@ -387,7 +387,7 @@
   `db` in reverse chronological order.
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
-  Additionally a `since` instant can be given to define a point in the past
+  Additionally, a `since` instant can be given to define a point in the past
   where the history should start into the present.
 
   History entries are resource handles. Please use `pull-many` to obtain the
@@ -457,7 +457,7 @@
 
   The batch database has to be closed after usage, because it holds resources
   that have to be freed."
-  ^Closeable
+  ^AutoCloseable
   [db]
   (p/-new-batch-db db))
 
