@@ -8,8 +8,11 @@
   (:import
     [java.nio ByteBuffer]
     [java.time Clock Instant ZoneId]
-    [java.util Random]
+    [java.util Arrays Random]
     [java.util.concurrent Executors ExecutorService TimeUnit]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defmacro given-thrown [v & body]
@@ -71,3 +74,10 @@
        (if (true? (:result result#))
          (is :success)
          (is (clojure.pprint/pprint result#))))))
+
+
+(defn bytes=
+  "Compares two byte arrays for equivalence."
+  {:arglists '([a b])}
+  [^bytes a ^bytes b]
+  (Arrays/equals a b))

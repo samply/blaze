@@ -1,13 +1,12 @@
 (ns blaze.db.kv.mem-test
   (:require
     [blaze.anomaly :as ba]
-    [blaze.db.bytes :as bytes]
     [blaze.db.kv :as kv]
     [blaze.db.kv-spec]
     [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
     [blaze.log]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :refer [bytes= given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -56,6 +55,12 @@
   (byte-array bytes))
 
 
+(defn- bb [& bytes]
+  (doto (ByteBuffer/allocateDirect (count bytes))
+    (.put (byte-array bytes))
+    (.flip)))
+
+
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {::kv/mem nil})
@@ -92,8 +97,8 @@
 
       (kv/seek-to-first! iter)
       (is (kv/valid? iter))
-      (is (bytes/= (ba 0x01) (kv/key iter)))
-      (is (bytes/= (ba 0x10) (kv/value iter)))
+      (is (bytes= (ba 0x01) (kv/key iter)))
+      (is (bytes= (ba 0x10) (kv/value iter)))
 
       (testing "errors on closed iterator"
         (.close iter)
@@ -110,8 +115,8 @@
 
       (kv/seek-to-last! iter)
       (is (kv/valid? iter))
-      (is (bytes/= (ba 0x02) (kv/key iter)))
-      (is (bytes/= (ba 0x20) (kv/value iter)))
+      (is (bytes= (ba 0x02) (kv/key iter)))
+      (is (bytes= (ba 0x20) (kv/value iter)))
 
       (testing "errors on closed iterator"
         (.close iter)
@@ -129,26 +134,26 @@
       (testing "before first entry"
         (kv/seek! iter (ba 0x00))
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x01) (kv/key iter)))
-        (is (bytes/= (ba 0x10) (kv/value iter))))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
 
       (testing "at first entry"
         (kv/seek! iter (ba 0x01))
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x01) (kv/key iter)))
-        (is (bytes/= (ba 0x10) (kv/value iter))))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
 
       (testing "before second entry"
         (kv/seek! iter (ba 0x02))
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x03) (kv/key iter)))
-        (is (bytes/= (ba 0x30) (kv/value iter))))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
 
       (testing "at second entry"
         (kv/seek! iter (ba 0x03))
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x03) (kv/key iter)))
-        (is (bytes/= (ba 0x30) (kv/value iter))))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
 
       (testing "overshoot"
         (kv/seek! iter (ba 0x04))
@@ -169,26 +174,26 @@
         (testing "before first entry"
           (kv/seek! iter (ba 0x04))
           (is (kv/valid? iter))
-          (is (bytes/= (ba 0x03) (kv/key iter)))
-          (is (bytes/= (ba 0x30) (kv/value iter))))
+          (is (bytes= (ba 0x03) (kv/key iter)))
+          (is (bytes= (ba 0x30) (kv/value iter))))
 
         (testing "at first entry"
           (kv/seek! iter (ba 0x03))
           (is (kv/valid? iter))
-          (is (bytes/= (ba 0x03) (kv/key iter)))
-          (is (bytes/= (ba 0x30) (kv/value iter))))
+          (is (bytes= (ba 0x03) (kv/key iter)))
+          (is (bytes= (ba 0x30) (kv/value iter))))
 
         (testing "before second entry"
           (kv/seek! iter (ba 0x02))
           (is (kv/valid? iter))
-          (is (bytes/= (ba 0x01) (kv/key iter)))
-          (is (bytes/= (ba 0x10) (kv/value iter))))
+          (is (bytes= (ba 0x01) (kv/key iter)))
+          (is (bytes= (ba 0x10) (kv/value iter))))
 
         (testing "at second entry"
           (kv/seek! iter (ba 0x01))
           (is (kv/valid? iter))
-          (is (bytes/= (ba 0x01) (kv/key iter)))
-          (is (bytes/= (ba 0x10) (kv/value iter))))
+          (is (bytes= (ba 0x01) (kv/key iter)))
+          (is (bytes= (ba 0x10) (kv/value iter))))
 
         (testing "overshoot"
           (kv/seek! iter (ba 0x00))
@@ -197,6 +202,87 @@
         (testing "errors on closed iterator"
           (.close iter)
           (is (ba/fault? (ba/try-anomaly (kv/seek! iter (ba 0x04))))))))))
+
+
+(deftest seek-buffer-test
+  (with-system-data [{kv-store ::kv/mem} system]
+    [[(ba 0x01) (ba 0x10)]
+     [(ba 0x03) (ba 0x30)]]
+
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                iter (kv/new-iterator snapshot)]
+
+      (testing "before first entry"
+        (kv/seek-buffer! iter (bb 0x00))
+        (is (kv/valid? iter))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
+
+      (testing "at first entry"
+        (kv/seek-buffer! iter (bb 0x01))
+        (is (kv/valid? iter))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
+
+      (testing "before second entry"
+        (kv/seek-buffer! iter (bb 0x02))
+        (is (kv/valid? iter))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
+
+      (testing "at second entry"
+        (kv/seek-buffer! iter (bb 0x03))
+        (is (kv/valid? iter))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
+
+      (testing "overshoot"
+        (kv/seek-buffer! iter (bb 0x04))
+        (is (not (kv/valid? iter))))
+
+      (testing "errors on closed iterator"
+        (.close iter)
+        (is (ba/fault? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x00))))))))
+
+  (testing "reverse comparator"
+    (with-system-data [{kv-store ::kv/mem} reverse-comparator-system]
+      [[:a (ba 0x01) (ba 0x10)]
+       [:a (ba 0x03) (ba 0x30)]]
+
+      (with-open [snapshot (kv/new-snapshot kv-store)
+                  iter (kv/new-iterator snapshot :a)]
+
+        (testing "before first entry"
+          (kv/seek-buffer! iter (bb 0x04))
+          (is (kv/valid? iter))
+          (is (bytes= (ba 0x03) (kv/key iter)))
+          (is (bytes= (ba 0x30) (kv/value iter))))
+
+        (testing "at first entry"
+          (kv/seek-buffer! iter (bb 0x03))
+          (is (kv/valid? iter))
+          (is (bytes= (ba 0x03) (kv/key iter)))
+          (is (bytes= (ba 0x30) (kv/value iter))))
+
+        (testing "before second entry"
+          (kv/seek-buffer! iter (bb 0x02))
+          (is (kv/valid? iter))
+          (is (bytes= (ba 0x01) (kv/key iter)))
+          (is (bytes= (ba 0x10) (kv/value iter))))
+
+        (testing "at second entry"
+          (kv/seek-buffer! iter (bb 0x01))
+          (is (kv/valid? iter))
+          (is (bytes= (ba 0x01) (kv/key iter)))
+          (is (bytes= (ba 0x10) (kv/value iter))))
+
+        (testing "overshoot"
+          (kv/seek-buffer! iter (bb 0x00))
+          (is (not (kv/valid? iter))))
+
+        (testing "errors on closed iterator"
+          (.close iter)
+          (is (ba/fault? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x04))))))))))
 
 
 (deftest seek-for-prev-test
@@ -210,26 +296,26 @@
       (testing "past second entry"
         (kv/seek-for-prev! iter (ba 0x04))
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x03) (kv/key iter)))
-        (is (bytes/= (ba 0x30) (kv/value iter))))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
 
       (testing "at second entry"
         (kv/seek-for-prev! iter (ba 0x03))
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x03) (kv/key iter)))
-        (is (bytes/= (ba 0x30) (kv/value iter))))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
 
       (testing "past first entry"
         (kv/seek-for-prev! iter (ba 0x02))
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x01) (kv/key iter)))
-        (is (bytes/= (ba 0x10) (kv/value iter))))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
 
       (testing "at first entry"
         (kv/seek-for-prev! iter (ba 0x01))
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x01) (kv/key iter)))
-        (is (bytes/= (ba 0x10) (kv/value iter))))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
 
       (testing "overshoot"
         (kv/seek-for-prev! iter (ba 0x00))
@@ -251,14 +337,14 @@
       (testing "first entry"
         (kv/seek-to-first! iter)
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x01) (kv/key iter)))
-        (is (bytes/= (ba 0x10) (kv/value iter))))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
 
       (testing "second entry"
         (kv/next! iter)
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x03) (kv/key iter)))
-        (is (bytes/= (ba 0x30) (kv/value iter))))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
 
       (testing "end"
         (kv/next! iter)
@@ -282,14 +368,14 @@
       (testing "first entry"
         (kv/seek-to-last! iter)
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x03) (kv/key iter)))
-        (is (bytes/= (ba 0x30) (kv/value iter))))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
 
       (testing "second entry"
         (kv/prev! iter)
         (is (kv/valid? iter))
-        (is (bytes/= (ba 0x01) (kv/key iter)))
-        (is (bytes/= (ba 0x10) (kv/value iter))))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
 
       (testing "end"
         (kv/prev! iter)
@@ -383,11 +469,11 @@
 
       (testing "the value in :a is 0x01"
         (kv/seek-to-first! iter-a)
-        (is (bytes/= (ba 0x01) (kv/value iter-a))))
+        (is (bytes= (ba 0x01) (kv/value iter-a))))
 
       (testing "the value in :b is 0x02"
         (kv/seek-to-first! iter-b)
-        (is (bytes/= (ba 0x02) (kv/value iter-b))))
+        (is (bytes= (ba 0x02) (kv/value iter-b))))
 
       (testing "column-family :c doesn't exist"
         (is (ba/not-found? (ba/try-anomaly (kv/new-iterator snapshot :c))))))))
@@ -401,13 +487,13 @@
     (with-open [snapshot (kv/new-snapshot kv-store)]
 
       (testing "returns found value"
-        (is (bytes/= (ba 0x01) (kv/snapshot-get snapshot (ba 0x00)))))
+        (is (bytes= (ba 0x01) (kv/snapshot-get snapshot (ba 0x00)))))
 
       (testing "returns nil on not found value"
         (is (nil? (kv/snapshot-get snapshot (ba 0x01)))))
 
       (testing "returns found value of column-family :a"
-        (is (bytes/= (ba 0x02) (kv/snapshot-get snapshot :a (ba 0x00)))))
+        (is (bytes= (ba 0x02) (kv/snapshot-get snapshot :a (ba 0x00)))))
 
       (testing "returns nil on not found value of column-family :a"
         (is (nil? (kv/snapshot-get snapshot :a (ba 0x01))))))))
@@ -419,13 +505,13 @@
      [:a (ba 0x00) (ba 0x02)]]
 
     (testing "returns found value"
-      (is (bytes/= (ba 0x01) (kv/get kv-store (ba 0x00)))))
+      (is (bytes= (ba 0x01) (kv/get kv-store (ba 0x00)))))
 
     (testing "returns nil on not found value"
       (is (nil? (kv/get kv-store (ba 0x01)))))
 
     (testing "returns found value of column-family :a"
-      (is (bytes/= (ba 0x02) (kv/get kv-store :a (ba 0x00)))))
+      (is (bytes= (ba 0x02) (kv/get kv-store :a (ba 0x00)))))
 
     (testing "returns nil on not found value of column-family :a"
       (is (nil? (kv/get kv-store :a (ba 0x01)))))))
@@ -450,7 +536,7 @@
 
     (testing "key value"
       (kv/put! kv-store (ba 0x00) (ba 0x01))
-      (is (bytes/= (ba 0x01) (kv/get kv-store (ba 0x00)))))
+      (is (bytes= (ba 0x01) (kv/get kv-store (ba 0x00)))))
 
     (testing "errors on unknown column-family"
       (is (ba/not-found? (ba/try-anomaly (kv/put! kv-store [[:a (ba 0x00) (ba 0x01)]])))))))
@@ -472,7 +558,7 @@
 
       (testing "put"
         (kv/write! kv-store [[:put (ba 0x01) (ba 0x11)]])
-        (is (bytes/= (ba 0x11) (kv/get kv-store (ba 0x01)))))
+        (is (bytes= (ba 0x11) (kv/get kv-store (ba 0x01)))))
 
       (testing "merge is not supported"
         (is (ba/unsupported? (ba/try-anomaly (kv/write! kv-store [[:merge (ba 0x00) (ba 0x00)]])))))
@@ -487,7 +573,7 @@
 
       (testing "put"
         (kv/write! kv-store [[:put :a (ba 0x01) (ba 0x11)]])
-        (is (bytes/= (ba 0x11) (kv/get kv-store :a (ba 0x01)))))
+        (is (bytes= (ba 0x11) (kv/get kv-store :a (ba 0x01)))))
 
       (testing "merge is not supported"
         (is (ba/unsupported? (ba/try-anomaly (kv/write! kv-store [[:merge :a (ba 0x00) (ba 0x00)]])))))
