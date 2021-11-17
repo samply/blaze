@@ -3,7 +3,6 @@
     [blaze.byte-string :refer [byte-string?]]
     [blaze.byte-string-spec]
     [blaze.coll.core-spec]
-    [blaze.db.bytes-spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
     [blaze.db.impl.iterators-spec]

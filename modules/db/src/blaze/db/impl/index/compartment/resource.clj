@@ -3,8 +3,8 @@
   (:require
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
-    [blaze.db.bytes :as bytes]
     [blaze.db.impl.byte-buffer :as bb]
+    [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]))
 

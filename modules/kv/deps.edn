@@ -28,4 +28,5 @@
     cloverage/cloverage
     {:mvn/version "1.2.2"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
+               "-e" ".+spec"]}}}

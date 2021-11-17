@@ -7,6 +7,10 @@
     [java.nio ByteBuffer]))
 
 
+(defn- direct-buffer? [x]
+  (and (instance? ByteBuffer x) (.isDirect ^ByteBuffer x)))
+
+
 (s/fdef kv/valid?
   :args (s/cat :iter :blaze.db/kv-iterator)
   :ret boolean?)
@@ -24,6 +28,10 @@
   :args (s/cat :iter :blaze.db/kv-iterator :target bytes?))
 
 
+(s/fdef kv/seek-buffer!
+  :args (s/cat :iter :blaze.db/kv-iterator :target direct-buffer?))
+
+
 (s/fdef kv/seek-for-prev!
   :args (s/cat :iter :blaze.db/kv-iterator :target bytes?))
 
@@ -39,10 +47,6 @@
 (s/fdef kv/key
   :args (s/cat :iter :blaze.db/kv-iterator)
   :ret bytes?)
-
-
-(defn- direct-buffer? [x]
-  (and (instance? ByteBuffer x) (.isDirect ^ByteBuffer x)))
 
 
 (s/fdef kv/key!

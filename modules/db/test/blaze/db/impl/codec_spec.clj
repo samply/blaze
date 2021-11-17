@@ -3,7 +3,6 @@
     [blaze.byte-string :refer [byte-string?]]
     [blaze.byte-string-spec]
     [blaze.db.api-spec]
-    [blaze.db.bytes-spec]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec.spec]
     [blaze.fhir.spec]
