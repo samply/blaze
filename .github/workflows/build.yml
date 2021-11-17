@@ -278,10 +278,18 @@ jobs:
         tags: ${{ steps.docker-meta.outputs.tags }}
         labels: ${{ steps.docker-meta.outputs.labels }}
 
-    - name: Scan Container Image
-      uses: azure/container-scan@v0
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
       with:
-        image-name: ghcr.io/samply/blaze:sha-${{ github.sha }}
+        image-ref: ghcr.io/samply/blaze:sha-${{ github.sha }}
+        format: template
+        template: '@/contrib/sarif.tpl'
+        output: trivy-results.sarif
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@codeql-bundle-20211115
+      with:
+        sarif_file: trivy-results.sarif
 
   integration-test:
     needs: build
