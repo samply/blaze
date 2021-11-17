@@ -1,4 +1,4 @@
-FROM openjdk:17
+FROM openjdk:17-slim
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
 COPY target/blaze-standalone.jar /app/
