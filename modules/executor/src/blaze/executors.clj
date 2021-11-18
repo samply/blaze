@@ -1,6 +1,4 @@
 (ns blaze.executors
-  (:require
-    [manifold.executor :as me])
   (:import
     [java.util.concurrent Executor Executors ThreadFactory]))
 
@@ -15,22 +13,6 @@
 (defn- thread-name!
   [thread-counter name-template]
   (format name-template (swap! thread-counter inc)))
-
-
-(defn manifold-cpu-bound-pool
-  "Returns a thread pool with a fixed number of threads which is the number of
-  available processors.
-
-  Sets `manifold.executor/executor-thread-local` to this executor to ensure
-  deferreds are always executed on this executor."
-  [name-template]
-  (let [thread-counter (atom 0)
-        ep (promise)
-        e (Executors/newFixedThreadPool
-            (.availableProcessors (Runtime/getRuntime))
-            (me/thread-factory #(thread-name! thread-counter name-template) ep))]
-    (deliver ep e)
-    e))
 
 
 (defn cpu-bound-pool
