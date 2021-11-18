@@ -11,13 +11,13 @@
 
 
 (comment
-  (rocksdb/compact-range
+  (rocksdb/compact-range!
     (get system :blaze.db.kv/rocksdb)
     :resource-as-of-index
     true
     1)
 
-  (rocksdb/compact-range
+  (rocksdb/compact-range!
     (get system :blaze.db.kv/rocksdb)
     :search-param-value-index
     true
