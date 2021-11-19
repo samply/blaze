@@ -1,8 +1,4 @@
-{:deps
- {manifold/manifold
-  {:mvn/version "0.1.8"}}
-
- :aliases
+{:aliases
  {:test
   {:extra-paths ["test"]
 
