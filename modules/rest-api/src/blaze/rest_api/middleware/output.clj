@@ -1,7 +1,7 @@
 (ns blaze.rest-api.middleware.output
   "JSON/XML serialization middleware."
   (:require
-    [blaze.async.comp :as ac :refer [do-sync]]
+    [blaze.async.comp :refer [do-sync]]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]

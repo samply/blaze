@@ -4,7 +4,7 @@
   Call `init!` to initialize an HTTP server and `shutdown!` to release its port
   again."
   (:require
-    [blaze.async.comp :as ac]
+    [blaze.async.comp :as ac :refer [do-sync]]
     [ring.adapter.jetty :as ring-jetty]
     [ring.util.response :as ring])
   (:import
@@ -13,8 +13,8 @@
 
 (defn- wrap-server [handler server]
   (fn [request]
-    (-> (handler request)
-        (ac/then-apply #(ring/header % "Server" server)))))
+    (do-sync [response (handler request)]
+      (ring/header response "Server" server))))
 
 
 (defn- wrap-sync [handler]
