@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.13.2
+
+### Security
+
+* Migrate from Aleph to Jetty ([#538](https://github.com/samply/blaze/pull/538))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/17?closed=1).
+
 ## v0.13.1
 
 ### Bugfixes
