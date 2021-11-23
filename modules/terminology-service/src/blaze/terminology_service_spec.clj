@@ -1,8 +1,8 @@
 (ns blaze.terminology-service-spec
   (:require
+    [blaze.async.comp :as ac]
     [blaze.terminology-service :as terminology-service :refer [terminology-service?]]
-    [clojure.spec.alpha :as s]
-    [manifold.deferred :refer [deferred?]]))
+    [clojure.spec.alpha :as s]))
 
 
 (s/def ::url
@@ -23,4 +23,4 @@
 
 (s/fdef terminology-service/expand-value-set
   :args (s/cat :terminology-service terminology-service? :params expand-value-set-params)
-  :ret deferred?)
+  :ret ac/completable-future?)

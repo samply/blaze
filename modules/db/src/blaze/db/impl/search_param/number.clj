@@ -38,23 +38,6 @@
      :upper-bound (codec/number (+ decimal-value delta))}))
 
 
-(defn- compile-value [code value]
-  (let [[op value] (u/separate-op value)]
-    (if-ok [decimal-value (system/parse-decimal value)]
-      (case op
-        :eq
-        (eq-value decimal-value)
-        (:gt :lt :ge :le)
-        {:op op :exact-value (codec/number decimal-value)}
-        (ba/unsupported
-          (unsupported-prefix-msg code op)
-          ::category ::unsupported-prefix
-          ::unsupported-prefix op))
-      #(assoc %
-         ::category ::invalid-decimal-value
-         ::anom/message (invalid-decimal-value-msg code value)))))
-
-
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([url value])}
@@ -80,7 +63,20 @@
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
-    (compile-value code value))
+    (let [[op value] (u/separate-op value)]
+      (if-ok [decimal-value (system/parse-decimal value)]
+        (case op
+          :eq
+          (eq-value decimal-value)
+          (:gt :lt :ge :le)
+          {:op op :exact-value (codec/number decimal-value)}
+          (ba/unsupported
+            (unsupported-prefix-msg code op)
+            ::category ::unsupported-prefix
+            ::unsupported-prefix op))
+        #(assoc %
+           ::category ::invalid-decimal-value
+           ::anom/message (invalid-decimal-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction

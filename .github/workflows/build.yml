@@ -54,12 +54,14 @@ jobs:
         - jepsen
         - kv
         - luid
+        - metrics
         - openid-auth
         - operation-measure-evaluate-measure
         - page-store
         - page-store-cassandra
         - rest-api
         - rest-util
+        - rocksdb
         - scheduler
         - search-param-registry
         - thread-pool-executor-collector
@@ -80,7 +82,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1013'
+        tools-deps: '1.10.3.1029'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -100,7 +102,7 @@ jobs:
     needs: [ test ]
 
     strategy:
-      max-parallel: 4
+      max-parallel: 1
       matrix:
         module:
         - anomaly
@@ -121,12 +123,14 @@ jobs:
         - interaction
         - kv
         - luid
+        - metrics
         - openid-auth
         - operation-measure-evaluate-measure
         - page-store
         - page-store-cassandra
         - rest-api
         - rest-util
+        - rocksdb
         - scheduler
         - search-param-registry
         - thread-pool-executor-collector
@@ -143,7 +147,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1013'
+        tools-deps: '1.10.3.1029'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -185,7 +189,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1013'
+        tools-deps: '1.10.3.1029'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -213,7 +217,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1013'
+        tools-deps: '1.10.3.1029'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -276,10 +280,18 @@ jobs:
         tags: ${{ steps.docker-meta.outputs.tags }}
         labels: ${{ steps.docker-meta.outputs.labels }}
 
-    - name: Scan Container Image
-      uses: azure/container-scan@v0
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
       with:
-        image-name: ghcr.io/samply/blaze:sha-${{ github.sha }}
+        image-ref: ghcr.io/samply/blaze:sha-${{ github.sha }}
+        format: template
+        template: '@/contrib/sarif.tpl'
+        output: trivy-results.sarif
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@codeql-bundle-20211115
+      with:
+        sarif_file: trivy-results.sarif
 
   integration-test:
     needs: build
@@ -298,7 +310,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1013'
+        tools-deps: '1.10.3.1029'
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -450,7 +462,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1013'
+        tools-deps: '1.10.3.1029'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -542,7 +554,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1013'
+        tools-deps: '1.10.3.1029'
 
     - name: APT Update
       run: sudo apt-get update
@@ -718,7 +730,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1013'
+        tools-deps: '1.10.3.1029'
 
     - name: Check out Git repository
       uses: actions/checkout@v2

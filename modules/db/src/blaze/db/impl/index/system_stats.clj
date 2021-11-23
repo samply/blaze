@@ -18,7 +18,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.kv :as kv])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]))
 
 
 (set! *warn-on-reflection* true)
@@ -29,7 +29,7 @@
   "Returns the iterator of the system stats index.
 
   Has to be closed after usage."
-  ^Closeable [snapshot]
+  ^AutoCloseable [snapshot]
   (kv/new-iterator snapshot :system-stats-index))
 
 

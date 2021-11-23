@@ -5,6 +5,7 @@
     [blaze.db.tx-log.kafka :as kafka]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.metrics.spec]
     [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -14,14 +15,14 @@
     [java-time :as time]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]
+    [java.lang AutoCloseable]
     [java.time Duration]
+    [java.util Map]
     [org.apache.kafka.clients.consumer Consumer ConsumerRecords]
     [org.apache.kafka.clients.producer KafkaProducer Producer RecordMetadata]
     [org.apache.kafka.common TopicPartition]
     [org.apache.kafka.common.errors
-     AuthorizationException RecordTooLargeException]
-    [java.util Map]))
+     AuthorizationException RecordTooLargeException]))
 
 
 (st/instrument)
@@ -73,11 +74,16 @@
       [:explain ::s/problems 1 :val] := ::invalid)))
 
 
+(deftest duration-seconds-collector-init-test
+  (with-system [{collector ::kafka/duration-seconds} {::kafka/duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
 (defn- no-op-producer [{servers :bootstrap-servers}]
   (assert (= bootstrap-servers servers))
   (reify
     Producer
-    Closeable
+    AutoCloseable
     (close [_])))
 
 
@@ -85,7 +91,7 @@
   (assert (= bootstrap-servers servers))
   (reify
     Consumer
-    Closeable
+    AutoCloseable
     (close [_])))
 
 
@@ -98,8 +104,8 @@
          (reify
            Producer
            (send [_ _ callback]
-             (.onCompletion callback (RecordMetadata. nil 0 0 0 nil 0 0) nil))
-           Closeable
+             (.onCompletion callback (RecordMetadata. nil 0 0 0 0 0) nil))
+           AutoCloseable
            (close [_])))
        kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} system]
@@ -115,7 +121,7 @@
              (send [_ _ callback]
                (.onCompletion callback nil
                               (RecordTooLargeException. "msg-173357")))
-             Closeable
+             AutoCloseable
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
@@ -133,7 +139,7 @@
              (send [_ _ callback]
                (.onCompletion callback nil
                               (AuthorizationException. "msg-175337")))
-             Closeable
+             AutoCloseable
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
         (with-system [{tx-log ::tx-log/kafka} system]
@@ -155,7 +161,7 @@
            (^ConsumerRecords poll [_ ^Duration duration]
              (assert (= (time/seconds 1) duration))
              (ConsumerRecords. (Map/of)))
-           Closeable
+           AutoCloseable
            (close [_])))
        kafka/create-last-t-consumer no-op-consumer]
       (with-system [{tx-log ::tx-log/kafka} system]
@@ -173,7 +179,7 @@
            (endOffsets [_ partitions]
              (assert (= (TopicPartition. "tx" 0) (first partitions)))
              (Map/of (first partitions) 104614))
-           Closeable
+           AutoCloseable
            (close [_])))]
       (with-system [{tx-log ::tx-log/kafka} system]
         (is (= 104614 @(tx-log/last-t tx-log)))))))
@@ -188,3 +194,22 @@
 
 (deftest create-consumer-test
   (is (= "tx" (.topic (first (.assignment (kafka/create-consumer config)))))))
+
+
+(deftest last-t-executor-shutdown-timeout-test
+  (let [{::kafka/keys [last-t-executor] :as system}
+        (ig/init {::kafka/last-t-executor {}})]
+
+    ;; will produce a timeout, because the function runs 11 seconds
+    (.execute last-t-executor #(Thread/sleep 11000))
+
+    ;; ensure that the function is called before the scheduler is halted
+    (Thread/sleep 100)
+
+    (ig/halt! system)
+
+    ;; the scheduler is shut down
+    (is (.isShutdown last-t-executor))
+
+    ;; but it isn't terminated yet
+    (is (not (.isTerminated last-t-executor)))))

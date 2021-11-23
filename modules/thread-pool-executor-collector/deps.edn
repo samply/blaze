@@ -1,5 +1,8 @@
 {:deps
- {blaze/module-base
+ {blaze/metrics
+  {:local/root "../metrics"}
+
+  blaze/module-base
   {:local/root "../module-base"}}
 
  :aliases

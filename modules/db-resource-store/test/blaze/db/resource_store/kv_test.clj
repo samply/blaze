@@ -13,6 +13,7 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.metrics.spec]
     [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -72,12 +73,12 @@
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid kv-store"
-    (given-thrown (ig/init {::rs/kv {:kv-store ::kv-store}})
+    (given-thrown (ig/init {::rs/kv {:kv-store ::invalid}})
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))
       [:explain ::s/problems 1 :pred] := `kv/store?
-      [:explain ::s/problems 1 :val] := ::kv-store))
+      [:explain ::s/problems 1 :val] := ::invalid))
 
   (testing "invalid executor"
     (given-thrown (ig/init {::rs/kv {:executor ::invalid}})
@@ -86,6 +87,26 @@
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 1 :pred] := `ex/executor?
       [:explain ::s/problems 1 :val] := ::invalid)))
+
+
+(deftest executor-init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::rs-kv/executor nil})
+      :key := ::rs-kv/executor
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "invalid num-threads"
+    (given-thrown (ig/init {::rs-kv/executor {:num-threads ::invalid}})
+      :key := ::rs-kv/executor
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `nat-int?
+      [:explain ::s/problems 0 :val] := ::invalid)))
+
+
+(deftest resource-bytes-collector-init-test
+  (with-system [{collector ::rs-kv/resource-bytes} {::rs-kv/resource-bytes {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
 
 
 (def system
@@ -199,3 +220,21 @@
       @(rs/put! store {hash content})
 
       (is (= content @(rs/get store hash))))))
+
+
+(deftest executor-shutdown-timeout-test
+  (let [{::rs-kv/keys [executor] :as system} (ig/init {::rs-kv/executor {}})]
+
+    ;; will produce a timeout, because the function runs 11 seconds
+    (.execute executor #(Thread/sleep 11000))
+
+    ;; ensure that the function is called before the scheduler is halted
+    (Thread/sleep 100)
+
+    (ig/halt! system)
+
+    ;; the scheduler is shut down
+    (is (.isShutdown executor))
+
+    ;; but it isn't terminated yet
+    (is (not (.isTerminated executor)))))

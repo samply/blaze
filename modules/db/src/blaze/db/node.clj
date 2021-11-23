@@ -35,7 +35,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]
+    [java.lang AutoCloseable]
     [java.util.concurrent TimeUnit ExecutorService CompletableFuture]))
 
 
@@ -338,7 +338,7 @@
         (ac/complete! finished true)
         (log/trace "exit indexer"))))
 
-  Closeable
+  AutoCloseable
   (close [_]
     (log/trace "start closing")
     (vreset! run? false)
@@ -389,7 +389,7 @@
 (defmethod ig/halt-key! :blaze.db/node
   [_ node]
   (log/info "Close local database node")
-  (.close ^Closeable node))
+  (.close ^AutoCloseable node))
 
 
 (defmethod ig/init-key ::indexer-executor

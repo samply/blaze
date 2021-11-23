@@ -20,7 +20,8 @@
     [blaze.db.impl.search-param.util :as u]
     [blaze.db.kv :as kv])
   (:import
-    [java.io Closeable Writer]
+    [java.io Writer]
+    [java.lang AutoCloseable]
     [clojure.lang IReduceInit]))
 
 
@@ -225,15 +226,15 @@
   (-pull-many [_ resource-handles]
     (p/-pull-many node resource-handles))
 
-  Closeable
+  AutoCloseable
   (close [_]
     (let [{:keys [snapshot raoi svri rsvi cri csvri]} context]
-      (.close ^Closeable raoi)
-      (.close ^Closeable svri)
-      (.close ^Closeable rsvi)
-      (.close ^Closeable cri)
-      (.close ^Closeable csvri)
-      (.close ^Closeable snapshot))))
+      (.close ^AutoCloseable raoi)
+      (.close ^AutoCloseable svri)
+      (.close ^AutoCloseable rsvi)
+      (.close ^AutoCloseable cri)
+      (.close ^AutoCloseable csvri)
+      (.close ^AutoCloseable snapshot))))
 
 
 (defmethod print-method BatchDb [^BatchDb db ^Writer w]
@@ -294,7 +295,7 @@
   A batch database can be used instead of a normal database. It's functionally
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
-  ^Closeable
+  ^AutoCloseable
   [{:keys [kv-store rh-cache] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
     (->BatchDb

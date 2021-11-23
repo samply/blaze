@@ -1,8 +1,8 @@
 (ns blaze.db.impl.iterators-test
   (:require
     [blaze.byte-string :as bs]
-    [blaze.db.bytes :as bytes]
     [blaze.db.impl.byte-buffer :as bb]
+    [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
@@ -11,7 +11,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 
-
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 
@@ -37,8 +37,9 @@
   ([]
    (bb/allocate-direct 1))
   ([kb]
-   (let [bs (byte-array (.remaining kb))]
-     (.get kb bs)
+   (let [len (bb/remaining kb)
+         bs (byte-array len)]
+     (bb/copy-into-byte-array! kb bs 0 len)
      (vec bs))))
 
 
@@ -50,7 +51,8 @@
         [[(ba 0x00) bytes/empty]
          [(ba 0x01) bytes/empty]])
 
-      (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+      (with-open [snapshot (kv/new-snapshot kv-store)
+                  iter (kv/new-iterator snapshot)]
         (is (= [[0x00] [0x01]]
                (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))
 
@@ -61,7 +63,8 @@
         [[(ba 0x00) bytes/empty]
          [(ba 0x00 0x01) bytes/empty]])
 
-      (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+      (with-open [snapshot (kv/new-snapshot kv-store)
+                  iter (kv/new-iterator snapshot)]
         (is (= [[0x00] [0x00 0x01]]
                (into [] (i/keys! iter decode-1 (bs/from-hex "00")))))))
 
@@ -72,6 +75,7 @@
           [[(ba 0x00) bytes/empty]
            [(ba 0x00 0x01 0x02) bytes/empty]])
 
-        (let [iter (kv/new-iterator (kv/new-snapshot kv-store))]
+        (with-open [snapshot (kv/new-snapshot kv-store)
+                    iter (kv/new-iterator snapshot)]
           (is (= [[0x00] [0x00 0x01 0x02]]
                  (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))))

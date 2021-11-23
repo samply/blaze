@@ -1,14 +1,9 @@
 (ns blaze.db.resource-store.spec
   (:require
-    [blaze.db.resource-store :refer [ResourceLookup ResourceStore]]
+    [blaze.db.resource-store :as rs]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]))
 
 
-(s/def :blaze.db/resource-lookup
-  #(satisfies? ResourceLookup %))
-
-
 (s/def :blaze.db/resource-store
-  (s/and #(satisfies? ResourceLookup %)
-         #(satisfies? ResourceStore %)))
+  #(satisfies? rs/ResourceStore %))

@@ -9,14 +9,14 @@
   (into {} (map (juxt :name :value)) m))
 
 
-(defn- extract-host-and-proto-from-forwarded [{forwarded "Forwarded"}]
+(defn- extract-host-and-proto-from-forwarded [{forwarded "forwarded"}]
   (when-let [[{:keys [name value params]}] (hu/parse-header-value forwarded)]
     (let [{:strs [host proto]} (assoc (name-value-map params) name value)]
       [host proto])))
 
 
 (defn- extract-host-and-proto
-  [{host "X-Forwarded-Host" proto "X-Forwarded-Proto" :as headers}]
+  [{host "x-forwarded-host" proto "x-forwarded-proto" :as headers}]
   (if host
     [host proto]
     (extract-host-and-proto-from-forwarded headers)))

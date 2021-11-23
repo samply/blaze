@@ -301,7 +301,7 @@
         (given @(rest-api
                   {:request-method :get
                    :uri "/metadata"
-                   :headers {"X-Forwarded-Host" "blaze.de"}})
+                   :headers {"x-forwarded-host" "blaze.de"}})
           [:body fhir-spec/parse-json :implementation :url] := "http://blaze.de")))))
 
 

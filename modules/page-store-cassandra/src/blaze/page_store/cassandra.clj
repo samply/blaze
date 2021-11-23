@@ -17,7 +17,8 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.io Closeable]))
+    [java.lang AutoCloseable]
+    [java.nio ByteBuffer]))
 
 
 (set! *warn-on-reflection* true)
@@ -68,7 +69,7 @@
 
 (defn- bind-put [statement token clauses]
   (let [content (codec/encode clauses)]
-    (prom/observe! clauses-bytes (.capacity content))
+    (prom/observe! clauses-bytes (.capacity ^ByteBuffer content))
     (cass/bind statement token content)))
 
 
@@ -100,7 +101,7 @@
       (do-sync [_ (execute-put session put-statement token clauses)]
         token)))
 
-  Closeable
+  AutoCloseable
   (close [_]
     (cass/close session)))
 
@@ -136,7 +137,7 @@
 (defmethod ig/halt-key! ::page-store/cassandra
   [_ store]
   (log/info "Close Cassandra page store")
-  (.close ^Closeable store))
+  (.close ^AutoCloseable store))
 
 
 (derive :blaze.page-store/cassandra :blaze/page-store)

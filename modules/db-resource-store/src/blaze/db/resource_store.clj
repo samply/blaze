@@ -3,31 +3,28 @@
   (:refer-clojure :exclude [get]))
 
 
-(defprotocol ResourceLookup
+(defprotocol ResourceStore
   "Resource content access by content-hash."
 
-  (-get [lookup hash])
+  (-get [store hash])
 
-  (-multi-get [lookup hashes]))
+  (-multi-get [store hashes])
+
+  (-put [store entries]))
 
 
 (defn get
   "Returns a CompletableFuture that will complete with the resource content of
   `hash` or nil if it was not found."
-  [lookup hash]
-  (-get lookup hash))
+  [store hash]
+  (-get store hash))
 
 
 (defn multi-get
   "Returns a CompletableFuture that will complete with a map from `hash` to the
   resource content of all found `hashes`."
-  [lookup hashes]
-  (-multi-get lookup hashes))
-
-
-(defprotocol ResourceStore
-  "Resource content storage."
-  (-put [store entries]))
+  [store hashes]
+  (-multi-get store hashes))
 
 
 (defn put!

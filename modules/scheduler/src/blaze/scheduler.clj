@@ -6,7 +6,7 @@
     [java-time :as time]
     [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent Executors ScheduledExecutorService TimeUnit]))
+    [java.util.concurrent Executors Future ScheduledExecutorService TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -14,6 +14,10 @@
 
 (defn schedule-at-fixed-rate [scheduler f initial-delay period]
   (p/-schedule-at-fixed-rate scheduler f initial-delay period))
+
+
+(defn cancel [future interrupt-if-running?]
+  (.cancel ^Future future interrupt-if-running?))
 
 
 (extend-protocol p/Scheduler

@@ -42,24 +42,6 @@
      :upper-bound (codec/quantity unit (+ decimal-value delta))}))
 
 
-(defn- compile-value [code value]
-  (let [[op value-and-unit] (u/separate-op value)
-        [value unit] (str/split value-and-unit #"\|" 2)]
-    (if-ok [decimal-value (system/parse-decimal value)]
-      (case op
-        :eq
-        (eq-value unit decimal-value)
-        (:gt :lt :ge :le)
-        {:op op :exact-value (codec/quantity unit decimal-value)}
-        (ba/unsupported
-          (unsupported-prefix-msg code op)
-          ::category ::unsupported-prefix
-          ::unsupported-prefix op))
-      #(assoc %
-         ::category ::invalid-decimal-value
-         ::anom/message (invalid-decimal-value-msg code value)))))
-
-
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([url value])}
@@ -223,6 +205,9 @@
 
   Changes the state of `context`. Consuming the collection requires exclusive
   access to `context`."
+  {:arglists
+   '([context c-hash tid prefix-length value]
+     [context c-hash tid prefix-length value start-id])}
   ([context c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}]
    (case op
@@ -297,6 +282,7 @@
 
 
 (defn matches?
+  {:arglists '([context c-hash resource-handle prefix-length value])}
   [context c-hash resource-handle prefix-length
    {:keys [op lower-bound exact-value upper-bound]}]
   (case op
@@ -316,7 +302,21 @@
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
-    (compile-value code value))
+    (let [[op value-and-unit] (u/separate-op value)
+          [value unit] (str/split value-and-unit #"\|" 2)]
+      (if-ok [decimal-value (system/parse-decimal value)]
+        (case op
+          :eq
+          (eq-value unit decimal-value)
+          (:gt :lt :ge :le)
+          {:op op :exact-value (codec/quantity unit decimal-value)}
+          (ba/unsupported
+            (unsupported-prefix-msg code op)
+            ::category ::unsupported-prefix
+            ::unsupported-prefix op))
+        #(assoc %
+           ::category ::invalid-decimal-value
+           ::anom/message (invalid-decimal-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction

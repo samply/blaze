@@ -8,8 +8,8 @@
     [clojure.test :as test :refer [is deftest]]
     [java-time :as time])
   (:import
-    [java.time Instant]
-    [java.io Closeable]))
+    [java.lang AutoCloseable]
+    [java.time Instant]))
 
 
 (st/instrument)
@@ -63,7 +63,7 @@
                      tx-log/Queue
                      (-poll [_ _]
                        [tx-data])
-                     Closeable
+                     AutoCloseable
                      (close [_]))))]
     (with-open [queue (tx-log/new-queue tx-log 1)]
       (is (= [tx-data] (tx-log/poll! queue (time/millis 100)))))))

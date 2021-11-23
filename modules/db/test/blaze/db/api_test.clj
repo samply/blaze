@@ -105,14 +105,13 @@
 
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
   (reify
-    rs/ResourceLookup
+    rs/ResourceStore
     (-get [_ hash]
       (Thread/sleep (long (* 100 (Math/random))))
       (rs/get resource-store hash))
     (-multi-get [_ hashes]
       (Thread/sleep (long (* 100 (Math/random))))
       (rs/multi-get resource-store hashes))
-    rs/ResourceStore
     (-put [_ entries]
       (Thread/sleep (long (* 100 (Math/random))))
       (rs/put! resource-store entries))))
@@ -125,7 +124,6 @@
 
 (defmethod ig/init-key ::resource-store-failing-on-put [_ _]
   (reify
-    rs/ResourceLookup
     rs/ResourceStore
     (-put [_ _]
       (ac/completed-future {::anom/category ::anom/fault}))))

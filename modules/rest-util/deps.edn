@@ -17,8 +17,7 @@
   ring/ring-core
   {:mvn/version "1.9.4"
    :exclusions
-   [clj-time/clj-time
-    commons-fileupload/commons-fileupload
+   [commons-fileupload/commons-fileupload
     crypto-equality/crypto-equality
     crypto-random/crypto-random]}}
 

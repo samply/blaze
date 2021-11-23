@@ -5,6 +5,7 @@
     [blaze.db.impl.index.search-param-value-resource-spec]
     [blaze.db.impl.search-param.quantity :as spq]
     [blaze.db.impl.search-param.quantity.spec]
+    [blaze.db.spec]
     [blaze.fhir.spec.type.system-spec]
     [clojure.spec.alpha :as s]))
 
@@ -14,5 +15,13 @@
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :prefix-length nat-int?
-               :value :blaze.db.impl.search-param.quantity/value
+               :value ::spq/value
                :start-id (s/? :blaze.db/id-byte-string)))
+
+
+(s/fdef spq/matches?
+  :args (s/cat :context :blaze.db.impl.batch-db/context
+               :c-hash :blaze.db/c-hash
+               :resource-handle :blaze.db/resource-handle
+               :prefix-length nat-int?
+               :value ::spq/value))

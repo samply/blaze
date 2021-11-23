@@ -4,17 +4,27 @@
   Call `init!` to initialize an HTTP server and `shutdown!` to release its port
   again."
   (:require
-    [aleph.http :as http]
-    [manifold.deferred :as md]
+    [blaze.async.comp :as ac :refer [do-sync]]
+    [ring.adapter.jetty :as ring-jetty]
     [ring.util.response :as ring])
   (:import
-    [java.io Closeable]))
+    [org.eclipse.jetty.server Server]))
 
 
 (defn- wrap-server [handler server]
   (fn [request]
+    (do-sync [response (handler request)]
+      (ring/header response "Server" server))))
+
+
+(defn- wrap-sync [handler]
+  (fn [request respond raise]
     (-> (handler request)
-        (md/chain #(ring/header % "Server" server)))))
+        (ac/when-complete
+          (fn [response e]
+            (if response
+              (respond response)
+              (raise e)))))))
 
 
 (defn init!
@@ -22,13 +32,18 @@
 
   Call `shutdown!` on the returned server to stop listening and releasing its
   port."
-  [port executor handler version]
-  (http/start-server
-    (wrap-server handler (str "Blaze/" version))
-    {:port port :executor executor}))
+  [port handler version]
+  (ring-jetty/run-jetty
+    (-> handler
+        (wrap-server (str "Blaze/" version))
+        (wrap-sync))
+    {:port port
+     :async? true
+     :join? false
+     :send-server-version? false}))
 
 
 (defn shutdown!
   "Shuts `server` down, releasing its port."
   [server]
-  (.close ^Closeable server))
+  (.stop ^Server server))

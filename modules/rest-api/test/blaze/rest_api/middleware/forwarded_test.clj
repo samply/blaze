@@ -27,49 +27,49 @@
 
   (testing "X-Forwarded-Host header"
     (given ((wrap-forwarded identity "http://localhost:8080")
-            {:headers {"X-Forwarded-Host" "blaze.de"}})
+            {:headers {"x-forwarded-host" "blaze.de"}})
       :blaze/base-url := "http://blaze.de"))
 
   (testing "X-Forwarded-Host header"
     (given ((wrap-forwarded identity "http://localhost:8080")
-            {:headers {"X-Forwarded-Host" "blaze.de"}})
+            {:headers {"x-forwarded-host" "blaze.de"}})
       :blaze/base-url := "http://blaze.de"))
 
   (testing "X-Forwarded-Host header with port"
     (given ((wrap-forwarded identity "http://localhost:8080")
-            {:headers {"X-Forwarded-Host" "localhost:8081"}})
+            {:headers {"x-forwarded-host" "localhost:8081"}})
       :blaze/base-url := "http://localhost:8081"))
 
   (testing "X-Forwarded-Host and X-Forwarded-Proto header"
     (given ((wrap-forwarded identity "http://localhost:8080")
             {:headers
-             {"X-Forwarded-Host" "blaze.de"
-              "X-Forwarded-Proto" "https"}})
+             {"x-forwarded-host" "blaze.de"
+              "x-forwarded-proto" "https"}})
       :blaze/base-url := "https://blaze.de"))
 
   (testing "Forwarded header"
     (testing "with host"
       (given ((wrap-forwarded identity "http://localhost:8080")
-              {:headers {"Forwarded" "host=blaze.de"}})
+              {:headers {"forwarded" "host=blaze.de"}})
         :blaze/base-url := "http://blaze.de"))
 
     (testing "with host and port"
       (given ((wrap-forwarded identity "http://localhost:8080")
-              {:headers {"Forwarded" "host=localhost:8081"}})
+              {:headers {"forwarded" "host=localhost:8081"}})
         :blaze/base-url := "http://localhost:8081"))
 
     (testing "with host and proto"
       (testing "host first"
         (given ((wrap-forwarded identity "http://localhost:8080")
-                {:headers {"Forwarded" "host=blaze.de;proto=https"}})
+                {:headers {"forwarded" "host=blaze.de;proto=https"}})
           :blaze/base-url := "https://blaze.de"))
 
       (testing "proto first"
         (given ((wrap-forwarded identity "http://localhost:8080")
-                {:headers {"Forwarded" "proto=https;host=blaze.de"}})
+                {:headers {"forwarded" "proto=https;host=blaze.de"}})
           :blaze/base-url := "https://blaze.de"))
 
       (testing "extra for"
         (given ((wrap-forwarded identity "http://localhost:8080")
-                {:headers {"Forwarded" "for=127.0.0.1;host=blaze.de;proto=https"}})
+                {:headers {"forwarded" "for=127.0.0.1;host=blaze.de;proto=https"}})
           :blaze/base-url := "https://blaze.de")))))

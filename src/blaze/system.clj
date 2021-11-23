@@ -30,7 +30,7 @@
 
 
 (defn- cfg
-  "Creates a config entry which consists of the name of a environment variable,
+  "Creates a config entry which consists of the name of an environment variable,
   a spec and a default value.
 
   Config entries appear in blaze.edn files."
@@ -61,7 +61,7 @@
 
 
 (defn resolve-config
-  "Resolves config entries to there actual values with the help of an
+  "Resolves config entries to their actual values with the help of an
   environment."
   [config env]
   (walk/postwalk
@@ -87,7 +87,7 @@
 
 
 (def ^:private root-config
-  {:blaze/version "0.13.1"
+  {:blaze/version "0.13.2"
 
    :blaze/clock {}
 
@@ -124,7 +124,6 @@
 
    :blaze/server
    {:port (->Cfg "SERVER_PORT" nat-int? 8080)
-    :executor (ig/ref :blaze.server/executor)
     :handler (ig/ref :blaze.handler/app)
     :version (ig/ref :blaze/version)}
 
@@ -226,16 +225,16 @@
 (defmethod ig/init-key :blaze.server/executor
   [_ _]
   (log/info (executor-init-msg))
-  (ex/manifold-cpu-bound-pool "server-%d"))
+  (ex/cpu-bound-pool "server-%d"))
 
 
 (derive :blaze.server/executor :blaze.metrics/thread-pool-executor)
 
 
 (defmethod ig/init-key :blaze/server
-  [_ {:keys [port executor handler version]}]
+  [_ {:keys [port handler version]}]
   (log/info "Start main server on port" port)
-  (server/init! port executor handler version))
+  (server/init! port handler version))
 
 
 (defmethod ig/halt-key! :blaze/server
@@ -247,7 +246,7 @@
 (defmethod ig/init-key :blaze.metrics/server
   [_ {:keys [port handler version]}]
   (log/info "Start metrics server on port" port)
-  (server/init! port (ex/single-thread-executor) handler version))
+  (server/init! port handler version))
 
 
 (defmethod ig/halt-key! :blaze.metrics/server

@@ -1,4 +1,7 @@
-{:linters
+{:lint-as
+ {blaze.async.comp/do-sync clojure.core/let}
+
+ :linters
  {:unsorted-required-namespaces
   {:level :error}
   :single-key-in
