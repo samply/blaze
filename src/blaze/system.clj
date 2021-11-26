@@ -7,7 +7,7 @@
   (:require
     [blaze.executors :as ex]
     [blaze.log]
-    [blaze.server :as server]
+    [blaze.server]
     [blaze.server.spec]
     [clojure.java.io :as io]
     [clojure.string :as str]
@@ -125,7 +125,8 @@
    :blaze/server
    {:port (->Cfg "SERVER_PORT" nat-int? 8080)
     :handler (ig/ref :blaze.handler/app)
-    :version (ig/ref :blaze/version)}
+    :version (ig/ref :blaze/version)
+    :async? true}
 
    :blaze/thread-pool-executor-collector
    {:executors (->RefMap :blaze.metrics/thread-pool-executor)}
@@ -133,13 +134,15 @@
    :blaze.metrics/registry
    {:collectors (ig/refset :blaze.metrics/collector)}
 
-   :blaze.handler/metrics
+   :blaze.metrics/handler
    {:registry (ig/ref :blaze.metrics/registry)}
 
-   :blaze.metrics/server
+   [:blaze/server :blaze.metrics/server]
    {:port (->Cfg "METRICS_SERVER_PORT" nat-int? 8081)
-    :handler (ig/ref :blaze.handler/metrics)
-    :version (ig/ref :blaze/version)}})
+    :handler (ig/ref :blaze.metrics/handler)
+    :version (ig/ref :blaze/version)
+    :min-threads 1
+    :max-threads 4}})
 
 
 (defn- feature-enabled?
@@ -229,27 +232,3 @@
 
 
 (derive :blaze.server/executor :blaze.metrics/thread-pool-executor)
-
-
-(defmethod ig/init-key :blaze/server
-  [_ {:keys [port handler version]}]
-  (log/info "Start main server on port" port)
-  (server/init! port handler version))
-
-
-(defmethod ig/halt-key! :blaze/server
-  [_ server]
-  (log/info "Shutdown main server")
-  (server/shutdown! server))
-
-
-(defmethod ig/init-key :blaze.metrics/server
-  [_ {:keys [port handler version]}]
-  (log/info "Start metrics server on port" port)
-  (server/init! port handler version))
-
-
-(defmethod ig/halt-key! :blaze.metrics/server
-  [_ server]
-  (log/info "Shutdown metrics server")
-  (server/shutdown! server))

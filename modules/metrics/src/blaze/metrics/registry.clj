@@ -17,7 +17,7 @@
 
 
 (defmethod ig/pre-init-spec :blaze.metrics/registry [_]
-  (s/keys :req-un [:blaze.metrics/collectors]))
+  (s/keys :opt-un [:blaze.metrics/collectors]))
 
 
 (defn- register-collectors! [registry collectors]
@@ -29,7 +29,7 @@
 
 
 (defmethod ig/init-key :blaze.metrics/registry
-  [_ {:keys [collectors]}]
+  [_ {:keys [collectors] :or {collectors []}}]
   (log/info "Init metrics registry")
   (doto (CollectorRegistry. true)
     (.register (StandardExports.))

@@ -180,14 +180,28 @@
 
   (testing "ExceptionInfo"
     (testing "without an anomaly in data"
-      (given (ba/anomaly (ex-info "msg-184349" {}))
+      (given (ba/anomaly (ex-info "msg-184349" {::foo ::bar}))
         ::anom/category := ::anom/fault
-        ::anom/message := "msg-184349"))
+        ::anom/message := "msg-184349"
+        ::foo := ::bar))
 
     (testing "with an anomaly in data"
       (given (ba/anomaly (ex-info "msg-184349" (ba/incorrect "msg-184433")))
         ::anom/category := ::anom/incorrect
-        ::anom/message := "msg-184433")))
+        ::anom/message := "msg-184433"))
+
+    (testing "without message"
+      (is (= ::none ((ba/anomaly (ex-info nil {})) ::anom/message ::none))))
+
+    (testing "with cause"
+      (given (ba/anomaly (ex-info "msg-181247" {} (Exception. "msg-181120")))
+        ::anom/message := "msg-181247"
+        [:blaze.anomaly/cause ::anom/message] := "msg-181120")
+
+      (testing "and nil message"
+        (given (ba/anomaly (ex-info "msg-181247" {} (Exception.)))
+          ::anom/message := "msg-181247"
+          [:blaze.anomaly/cause #(% ::anom/message ::none)] := ::none))))
 
   (testing "Exception"
     (given (ba/anomaly (Exception. "msg-120840"))
@@ -203,7 +217,7 @@
 (deftest try-one-test
   (testing "without message"
     (is (= (ba/try-one Exception ::anom/fault (throw (Exception.)))
-         {::anom/category ::anom/fault})))
+           {::anom/category ::anom/fault})))
 
   (testing "with message"
     (given (ba/try-one Exception ::anom/fault (throw (Exception. "msg-134156")))

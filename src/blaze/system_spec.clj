@@ -1,7 +1,6 @@
 (ns blaze.system-spec
   (:require
     [blaze.db.api-spec]
-    [blaze.server-spec]
     [blaze.system :as system]
     [clojure.spec.alpha :as s]))
 

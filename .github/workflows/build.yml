@@ -64,6 +64,7 @@ jobs:
         - rocksdb
         - scheduler
         - search-param-registry
+        - server
         - thread-pool-executor-collector
 
         java-version:
@@ -133,6 +134,7 @@ jobs:
         - rocksdb
         - scheduler
         - search-param-registry
+        - server
         - thread-pool-executor-collector
 
     runs-on: ubuntu-20.04
@@ -326,7 +328,7 @@ jobs:
       run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
     - name: Sleep 60 Seconds
       run: sleep 60
@@ -447,6 +449,9 @@ jobs:
 
     - name: OPTIONS
       run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
+
+    - name: Prometheus Metrics
+      run: curl -f http://localhost:8081/metrics
 
   jepsen-test:
     needs: build
@@ -712,6 +717,12 @@ jobs:
 
     - name: OPTIONS
       run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
+
+    - name: Prometheus Metrics - Blaze 1
+      run: curl -f http://localhost:8081/metrics
+
+    - name: Prometheus Metrics - Blaze 2
+      run: curl -f http://localhost:8082/metrics
 
     - name: Docker Stats
       run: docker stats --no-stream
