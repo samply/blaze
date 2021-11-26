@@ -82,6 +82,8 @@ services:
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_RESOURCE_CACHE_SIZE: "1000"
       LOG_LEVEL: "debug"
+    ports:
+    - "8081:8081"
     volumes:
     - "./blaze.keystore.jks:/app/blaze.keystore.jks:ro"
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
@@ -109,6 +111,8 @@ services:
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_RESOURCE_CACHE_SIZE: "1000"
       LOG_LEVEL: "debug"
+    ports:
+    - "8082:8081"
     volumes:
     - "./blaze.keystore.jks:/app/blaze.keystore.jks:ro"
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"

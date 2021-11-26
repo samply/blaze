@@ -13,8 +13,12 @@
   (s/coll-of :blaze.metrics/collector))
 
 
+(defn registry? [x]
+  (instance? CollectorRegistry x))
+
+
 (s/def :blaze.metrics/registry
-  #(instance? CollectorRegistry %))
+  registry?)
 
 
 (s/def :blaze.metrics/metric

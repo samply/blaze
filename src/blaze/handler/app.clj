@@ -1,5 +1,9 @@
 (ns blaze.handler.app
   (:require
+    [blaze.async.comp :as ac]
+    [blaze.handler.health.spec]
+    [blaze.rest-api.spec]
+    [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.ring]
     [ring.util.response :as ring]
@@ -28,7 +32,21 @@
     rest-api))
 
 
+(defn- wrap-sync [handler]
+  (fn [request respond raise]
+    (-> (handler request)
+        (ac/when-complete
+          (fn [response e]
+            (if response
+              (respond response)
+              (raise e)))))))
+
+
+(defmethod ig/pre-init-spec :blaze.handler/app [_]
+  (s/keys :req-un [:blaze/rest-api :blaze/health-handler]))
+
+
 (defmethod ig/init-key :blaze.handler/app
   [_ {:keys [rest-api health-handler]}]
   (log/info "Init app handler")
-  (handler rest-api health-handler))
+  (wrap-sync (handler rest-api health-handler)))

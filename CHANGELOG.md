@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.13.3
+
+### Bugfixes
+
+* Fix Failing Metrics Endpoint ([#547](https://github.com/samply/blaze/pull/547))
+
+### Security
+
+* Fix CVE-2021-37137 in Package io.netty:netty-codec ([#548](https://github.com/samply/blaze/pull/548))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/18?closed=1).
+
 ## v0.13.2
 
 ### Security

@@ -11,6 +11,10 @@
 (set! *warn-on-reflection* true)
 
 
+(s/def :blaze/rest-api
+  fn?)
+
+
 (s/def :blaze.rest-api/auth-backends
   (s/coll-of #(satisfies? p/IAuthentication %)))
 

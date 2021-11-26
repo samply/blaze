@@ -78,10 +78,14 @@
     (busy (.getMessage e)))
   ExceptionInfo
   (-anomaly [e]
-    (let [data (.getData e)]
-      (if (anomaly? data)
-        data
-        (fault (.getMessage e)))))
+    (cond->
+      (merge
+        (cond-> {::anom/category ::anom/fault}
+          (.getMessage e)
+          (assoc ::anom/message (.getMessage e)))
+        (.getData e))
+      (.getCause e)
+      (assoc :blaze.anomaly/cause (-anomaly (.getCause e)))))
   Throwable
   (-anomaly [e]
     (fault (.getMessage e)))
