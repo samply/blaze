@@ -1,0 +1,55 @@
+{:deps
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  org.eclipse.jetty/jetty-server
+  {:mvn/version "9.4.44.v20210927"}
+
+  ring/ring-jetty-adapter
+  {:mvn/version "1.9.4"
+   :exclusions
+   [clj-time/clj-time
+    commons-fileupload/commons-fileupload
+    crypto-equality/crypto-equality
+    crypto-random/crypto-random]}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    hato/hato
+    {:mvn/version "0.8.2"}
+
+    lambdaisland/kaocha
+    {:mvn/version "1.60.945"}
+
+    org.slf4j/slf4j-nop
+    {:mvn/version "1.7.32"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :test-coverage
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    cloverage/cloverage
+    {:mvn/version "1.2.2"}
+
+    hato/hato
+    {:mvn/version "0.8.2"}
+
+    org.slf4j/slf4j-nop
+    {:mvn/version "1.7.32"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
+               "-e" ".*spec$"]}}}

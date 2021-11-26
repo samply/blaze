@@ -1,4 +1,4 @@
-(ns blaze.handler.metrics
+(ns blaze.metrics.handler
   (:require
     [blaze.metrics.spec]
     [clojure.spec.alpha :as s]
@@ -7,11 +7,11 @@
     [taoensso.timbre :as log]))
 
 
-(defmethod ig/pre-init-spec :blaze.handler/metrics [_]
+(defmethod ig/pre-init-spec :blaze.metrics/handler [_]
   (s/keys :req-un [:blaze.metrics/registry]))
 
 
-(defmethod ig/init-key :blaze.handler/metrics
+(defmethod ig/init-key :blaze.metrics/handler
   [_ {:keys [registry]}]
   (log/info "Init metrics handler")
   (fn [_]

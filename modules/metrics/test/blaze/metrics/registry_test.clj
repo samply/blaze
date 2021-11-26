@@ -24,14 +24,6 @@
 (test/use-fixtures :each fixture)
 
 
-(def collector
-  (metrics/collector [(metrics/counter-metric "foo_total" "" [] [])]))
-
-
-(defn- samples [registry]
-  (mapv datafy/datafy (iterator-seq (.asIterator (.metricFamilySamples registry)))))
-
-
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {:blaze.metrics/registry nil})
@@ -39,20 +31,27 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `map?))
 
-  (testing "missing config"
-    (given-thrown (ig/init {:blaze.metrics/registry {}})
-      :key := :blaze.metrics/registry
-      :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :collectors))))
-
   (testing "invalid collectors"
     (given-thrown (ig/init {:blaze.metrics/registry {:collectors ::invalid}})
       :key := :blaze.metrics/registry
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `coll?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:explain ::s/problems 0 :val] := ::invalid)))
 
+
+(def collector
+  (metrics/collector [(metrics/counter-metric "foo_total" "" [] [])]))
+
+
+(def system
+  {:blaze.metrics/registry {:collectors [collector]}})
+
+
+(defn- samples [registry]
+  (mapv datafy/datafy (iterator-seq (.asIterator (.metricFamilySamples registry)))))
+
+
+(deftest registry-test
   (testing "with one collector"
-    (with-system [{:blaze.metrics/keys [registry]} {:blaze.metrics/registry
-                                                    {:collectors [collector]}}]
+    (with-system [{:blaze.metrics/keys [registry]} system]
       (is (= 1 (count (filter (comp #{"foo"} :name) (samples registry))))))))
