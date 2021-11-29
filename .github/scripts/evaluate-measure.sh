@@ -73,13 +73,14 @@ create-measure() {
 }
 
 post() {
-  curl -sH "Content-Type: application/fhir+json" -d @- "http://localhost:8080/fhir/$1"
+  curl -sH "Content-Type: application/fhir+json" -d @- "$1/$2"
 }
 
 evaluate-measure() {
-  curl -s "http://localhost:8080/fhir/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030"
+  curl -s "$1/Measure/$2/\$evaluate-measure?periodStart=2000&periodEnd=2030"
 }
 
+BASE="http://localhost:8080/fhir"
 FILE=$1
 EXPECTED_COUNT=$2
 
@@ -87,10 +88,10 @@ DATA=$(base64 "$FILE" | tr -d '\n')
 LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
-create-library "$LIBRARY_URI" "$DATA" | post "Library" > /dev/null
+create-library "$LIBRARY_URI" "$DATA" | post "$BASE" "Library" > /dev/null
 
-MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | post "Measure" | jq -r .id)
-REPORT=$(evaluate-measure "$MEASURE_ID")
+MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | post "$BASE" "Measure" | jq -r .id)
+REPORT=$(evaluate-measure "$BASE" "$MEASURE_ID")
 COUNT=$(echo "$REPORT" | jq -r ".group[0].population[0].count")
 
 if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
