@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-BASE=http://localhost:8080/fhir
+BASE="http://localhost:8080/fhir"
 TYPE=$1
 QUERY=$2
 EXPECTED_SIZE=$(curl -s "$BASE/$TYPE?$QUERY&_summary=count" | jq -r .total)

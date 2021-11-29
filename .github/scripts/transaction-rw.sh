@@ -4,6 +4,7 @@
 # This script creates and reads a patient in a single transaction.
 #
 
+BASE="http://localhost:8080/fhir"
 PATIENT_ID="e42a47bb-a371-4cf5-9f17-51e59c1f612a"
 
 bundle() {
@@ -32,8 +33,7 @@ cat <<END
 }
 END
 }
-RESULT=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" \
-  "http://localhost:8080/fhir")
+RESULT=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$BASE")
 
 RESOURCE_TYPE="$(echo "$RESULT" | jq -r .resourceType)"
 if [ "$RESOURCE_TYPE" = "Bundle" ]; then
