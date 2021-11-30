@@ -1,9 +1,10 @@
 #!/bin/bash -e
 
+BASE="http://localhost:8080/fhir"
 PATIENT_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-curl -sfXDELETE "http://localhost:8080/fhir/Patient/$PATIENT_ID"
+curl -sfXDELETE "$BASE/Patient/$PATIENT_ID"
 
-PATIENT_HISTORY=$(curl -s "http://localhost:8080/fhir/Patient/$PATIENT_ID/_history")
+PATIENT_HISTORY=$(curl -s "$BASE/Patient/$PATIENT_ID/_history")
 
 TOTAL=$(echo "$PATIENT_HISTORY" | jq .total)
 if [ "$TOTAL" = "1" ]; then
@@ -29,7 +30,7 @@ else
   exit 1
 fi
 
-PATIENT_STATUS=$(curl -is "http://localhost:8080/fhir/Patient/$PATIENT_ID" | grep HTTP | tr -d '\r\n')
+PATIENT_STATUS=$(curl -is "$BASE/Patient/$PATIENT_ID" | grep HTTP | tr -d '\r\n')
 if [ "$PATIENT_STATUS" = "HTTP/1.1 410 Gone" ]; then
   echo "OK: patient status is HTTP/1.1 410 Gone"
 else
@@ -37,7 +38,7 @@ else
   exit 1
 fi
 
-PATIENT_OUTCOME=$(curl -s "http://localhost:8080/fhir/Patient/$PATIENT_ID")
+PATIENT_OUTCOME=$(curl -s "$BASE/Patient/$PATIENT_ID")
 
 CODE=$(echo "$PATIENT_OUTCOME" | jq -r .issue[].code)
 if [ "$CODE" = "deleted" ]; then

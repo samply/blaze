@@ -1,8 +1,8 @@
 #!/bin/bash -e
 
-BASE=http://localhost:8080/fhir
+BASE="http://localhost:8080/fhir"
 TYPE=$1
-EXPECTED_SIZE=$(curl -s "${BASE}/${TYPE}?_summary=count" | jq -r .total)
+EXPECTED_SIZE=$(curl -s "$BASE/${TYPE}?_summary=count" | jq -r .total)
 
 FILE_NAME=$(uuidgen)
 blazectl --server $BASE download "$TYPE" -o "$FILE_NAME".ndjson

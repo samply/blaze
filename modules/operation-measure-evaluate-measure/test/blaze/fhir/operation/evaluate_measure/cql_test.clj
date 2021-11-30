@@ -108,6 +108,10 @@
         (is (false? (cql/evaluate-individual-expression context patient "InInitialPopulation")))))))
 
 
+(def two-value-eval
+  (fn [_ _ _] ["1" "2"]))
+
+
 (deftest calc-strata-test
   (testing "failing eval"
     (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [clock]}
@@ -121,7 +125,21 @@
         (with-redefs [expr/eval (failing-eval "msg-221825")]
           (given (cql/calc-strata context "" "")
             ::anom/category := ::anom/fault
-            ::anom/message := "msg-221825"))))))
+            ::anom/message := "msg-221825")))))
+
+  (testing "multiple values"
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [clock]}
+                       mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      (let [context {:db (d/db node)
+                     :now (now clock)
+                     :library (compile-library node)
+                     :subject-type "Patient"
+                     :report-type "population"}]
+        (with-redefs [expr/eval two-value-eval]
+          (given (cql/calc-strata context "" "expr-133506")
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "CQL expression `expr-133506` returned more than one value for resource `Patient/0`."))))))
 
 
 (deftest calc-individual-strata-test

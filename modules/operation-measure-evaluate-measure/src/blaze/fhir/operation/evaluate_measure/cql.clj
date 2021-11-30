@@ -4,6 +4,7 @@
     [blaze.anomaly-spec]
     [blaze.db.api :as d]
     [blaze.elm.expression :as expr]
+    [blaze.fhir.spec.type :as type]
     [clojure.core.reducers :as r]
     [taoensso.timbre :as log])
   (:import
@@ -180,9 +181,9 @@
       (wrap-batch-db context)))
 
 
-(defn- incorrect-stratum-msg [{:fhir/keys [type] :keys [id]} expression-name]
+(defn- incorrect-stratum-msg [{:keys [id] :as handle} expression-name]
   (format "CQL expression `%s` returned more than one value for resource `%s`."
-          expression-name (str type "/" id)))
+          expression-name (-> handle type/type name (str "/" id))))
 
 
 (defn- evaluate-stratum-expression [context subject-handle name]

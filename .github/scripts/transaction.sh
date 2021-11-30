@@ -5,9 +5,9 @@
 # request.
 #
 
+BASE="http://localhost:8080/fhir"
 PATIENT_ID=$(curl -sH "Content-Type: application/fhir+json" \
-  -d '{"resourceType": "Patient"}' \
-  "http://localhost:8080/fhir/Patient" | jq -r .id)
+  -d '{"resourceType": "Patient"}' "$BASE/Patient" | jq -r .id)
 
 bundle() {
 cat <<END
@@ -25,8 +25,7 @@ cat <<END
 }
 END
 }
-RESULT=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" \
-  "http://localhost:8080/fhir")
+RESULT=$(curl -sH "Content-Type: application/fhir+json" -d "$(bundle)" "$BASE")
 
 RESOURCE_TYPE="$(echo "$RESULT" | jq -r .resourceType)"
 if [ "$RESOURCE_TYPE" = "Bundle" ]; then

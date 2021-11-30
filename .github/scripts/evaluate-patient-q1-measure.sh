@@ -68,24 +68,25 @@ create-measure() {
 }
 
 post() {
-  curl -sH "Content-Type: application/fhir+json" -d @- "http://localhost:8080/fhir/$1"
+  curl -sH "Content-Type: application/fhir+json" -d @- "$1/$2"
 }
 
 evaluate-measure() {
-  curl -s "http://localhost:8080/fhir/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030&subject=$2"
+  curl -s "$1/Measure/$2/\$evaluate-measure?periodStart=2000&periodEnd=2030&subject=$3"
 }
 
+BASE="http://localhost:8080/fhir"
 FILE="modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1-query.cql"
 DATA=$(base64 "$FILE" | tr -d '\n')
 LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
-create-library "$LIBRARY_URI" "$DATA" | post "Library" > /dev/null
+create-library "$LIBRARY_URI" "$DATA" | post "$BASE" "Library" > /dev/null
 
-MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | post "Measure" | jq -r .id)
+MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | post "$BASE" "Measure" | jq -r .id)
 
-MALE_PATIENT_ID=$(curl -s 'http://localhost:8080/fhir/Patient?gender=male&_count=1' | jq -r '.entry[].resource.id')
-COUNT=$(evaluate-measure "$MEASURE_ID" "$MALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
+MALE_PATIENT_ID=$(curl -s "$BASE/Patient?gender=male&_count=1" | jq -r '.entry[].resource.id')
+COUNT=$(evaluate-measure "$BASE" "$MEASURE_ID" "$MALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
 if [ "$COUNT" = "1" ]; then
   echo "Success: count ($COUNT) equals the expected count"
 else
@@ -93,8 +94,8 @@ else
   exit 1
 fi
 
-FEMALE_PATIENT_ID=$(curl -s 'http://localhost:8080/fhir/Patient?gender=female&_count=1' | jq -r '.entry[].resource.id')
-COUNT=$(evaluate-measure "$MEASURE_ID" "$FEMALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
+FEMALE_PATIENT_ID=$(curl -s "$BASE/Patient?gender=female&_count=1" | jq -r ".entry[].resource.id")
+COUNT=$(evaluate-measure "$BASE" "$MEASURE_ID" "$FEMALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
 if [ "$COUNT" = "0" ]; then
   echo "Success: count ($COUNT) equals the expected count"
 else
