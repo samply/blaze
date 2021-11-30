@@ -450,6 +450,12 @@ jobs:
     - name: OPTIONS
       run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
 
+    - name: Health
+      run: curl -f http://localhost:8080/health
+
+    - name: Health - HEAD
+      run: curl -f --head http://localhost:8080/health
+
     - name: Prometheus Metrics
       run: curl -f http://localhost:8081/metrics
 
@@ -717,6 +723,12 @@ jobs:
 
     - name: OPTIONS
       run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
+
+    - name: Health
+      run: curl -f http://localhost:8080/health
+
+    - name: Health - HEAD
+      run: curl -f --head http://localhost:8080/health
 
     - name: Prometheus Metrics - Blaze 1
       run: curl -f http://localhost:8081/metrics
