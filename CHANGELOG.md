@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.13.4
+
+### Bugfixes
+
+* Fix Health Handler ([#553](https://github.com/samply/blaze/pull/553))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/19?closed=1).
+
 ## v0.13.3
 
 ### Bugfixes
