@@ -267,7 +267,20 @@
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definitions))
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry)))))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+
+  (testing "invalid enforce-referential-integrity"
+    (given-thrown (ig/init {:blaze/rest-api {:enforce-referential-integrity ::invalid}})
+      :key := :blaze/rest-api
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze.rest-api.json-parse/executor))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definitions))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 6 :pred] := `boolean?
+      [:explain ::s/problems 6 :val] := ::invalid)))
 
 
 (def system

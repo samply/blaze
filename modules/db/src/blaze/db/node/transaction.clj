@@ -10,13 +10,13 @@
     [blaze.fhir.spec.type :as type]))
 
 
-(defmulti prepare-op first)
+(defmulti prepare-op (fn [_ [op]] op))
 
 
 (defmethod prepare-op :create
-  [[op resource clauses]]
+  [{:keys [references-fn]} [op resource clauses]]
   (let [hash (hash/generate resource)
-        refs (type/references resource)]
+        refs (references-fn resource)]
     {:hash-resource
      [hash resource]
      :blaze.db/tx-cmd
@@ -32,9 +32,9 @@
 
 
 (defmethod prepare-op :put
-  [[op resource matches]]
+  [{:keys [references-fn]} [op resource matches]]
   (let [hash (hash/generate resource)
-        refs (type/references resource)]
+        refs (references-fn resource)]
     {:hash-resource
      [hash resource]
      :blaze.db/tx-cmd
@@ -50,7 +50,7 @@
 
 
 (defmethod prepare-op :delete
-  [[_ type id]]
+  [_ [_ type id]]
   {:blaze.db/tx-cmd
    {:op "delete"
     :type type
@@ -61,11 +61,24 @@
   (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
 
 
+(defn- ctx
+  [{:blaze.db/keys [enforce-referential-integrity]
+    :or {enforce-referential-integrity true}}]
+  {:references-fn
+   (if enforce-referential-integrity
+     type/references
+     (constantly nil))})
+
+
 (defn prepare-ops
   "Splits `tx-ops` into a tuple of :blaze.db/tx-cmds and a map of resource
-  hashes to resource contents."
-  [tx-ops]
-  (split (mapv prepare-op tx-ops)))
+  hashes to resource contents.
+
+  Puts :refs into the returned :blaze.db/tx-cmds if
+  :blaze.db/enforce-referential-integrity is true in `context` which is the
+  default."
+  [context tx-ops]
+  (split (mapv (partial prepare-op (ctx context)) tx-ops)))
 
 
 (defn- missing-tx-msg [t]

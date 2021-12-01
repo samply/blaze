@@ -144,7 +144,21 @@
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
       [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:explain ::s/problems 6 :pred] := `(fn ~'[%] (satisfies? tx-log/TxLog ~'%))
-      [:explain ::s/problems 6 :val] := ::invalid)))
+      [:explain ::s/problems 6 :val] := ::invalid))
+
+  (testing "invalid enforce-referential-integrity"
+    (given-thrown (ig/init {:blaze.db/node {:enforce-referential-integrity ::invalid}})
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :tx-log))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-handle-cache))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 7 :pred] := `boolean?
+      [:explain ::s/problems 7 :val] := ::invalid)))
 
 
 (deftest duration-seconds-collector-init-test

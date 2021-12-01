@@ -17,8 +17,10 @@
 
 
 (defn- capability-resource
-  {:arglists '([resource-patterns operations search-param-registry structure-definition])}
-  [resource-patterns operations search-param-registry
+  {:arglists '([context structure-definition])}
+  [{:keys [resource-patterns operations search-param-registry
+           enforce-referential-integrity]
+    :or {enforce-referential-integrity true}}
    {:keys [name] :as structure-definition}]
   (when-let
     [{:blaze.rest-api.resource-pattern/keys [interactions]}
@@ -58,9 +60,11 @@
          :conditionalUpdate false
          :conditionalDelete #fhir/code"not-supported"
          :referencePolicy
-         [#fhir/code"literal"
-          #fhir/code"enforced"
+         (cond->
+           [#fhir/code"literal"
           #fhir/code"local"]
+           enforce-referential-integrity
+           (conj #fhir/code"enforced"))
          :searchParam
          (transduce
            (map
@@ -89,17 +93,16 @@
 
 
 (defn capabilities-handler
+  {:arglists '([context])}
   [{:keys
     [version
      context-path
      structure-definitions
-     search-param-registry
      search-system-handler
      transaction-handler
-     history-system-handler
-     resource-patterns
-     operations]
-    :or {context-path ""}}]
+     history-system-handler]
+    :or {context-path ""}
+    :as context}]
   (let [capability-statement
         {:fhir/type :fhir/CapabilityStatement
          :status #fhir/code"active"
@@ -125,7 +128,7 @@
              []
              (comp
                u/structure-definition-filter
-               (keep #(capability-resource resource-patterns operations search-param-registry %)))
+               (keep (partial capability-resource context)))
              structure-definitions)
            :interaction
            (cond-> []

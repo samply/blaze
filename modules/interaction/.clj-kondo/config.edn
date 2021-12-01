@@ -24,7 +24,8 @@
   blaze.interaction.transaction-test/with-handler clojure.core/fn
   blaze.interaction.transaction-test/with-handler-data clojure.core/fn
   blaze.interaction.update-test/with-handler clojure.core/fn
-  blaze.interaction.update-test/with-handler-data clojure.core/fn}
+  blaze.interaction.update-test/with-handler-data clojure.core/fn
+  blaze.test-util/with-system clojure.core/with-open}
 
  :linters
  {:unsorted-required-namespaces

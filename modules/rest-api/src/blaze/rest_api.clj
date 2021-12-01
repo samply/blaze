@@ -2,6 +2,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.search-param-registry.spec]
+    [blaze.db.spec]
     [blaze.executors :as ex]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.error :refer [wrap-error]]
@@ -111,18 +112,19 @@
     [:blaze.rest-api.json-parse/executor]
     :req-un
     [:blaze/base-url
-     ::version
+     :blaze/version
      :blaze.rest-api/structure-definitions
      :blaze.db/node
      :blaze.db/search-param-registry]
     :opt-un
-    [::context-path
+    [:blaze/context-path
      ::auth-backends
      ::search-system-handler
      ::transaction-handler
      ::history-system-handler
      ::resource-patterns
-     ::operations]))
+     ::operations
+     :blaze.db/enforce-referential-integrity]))
 
 
 (defmethod ig/init-key :blaze/rest-api
