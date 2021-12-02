@@ -397,6 +397,30 @@
 
 
 
+;; 20. List Operators
+
+;; 20.4. Distinct
+(derive :elm.normalizer.type/distinct :elm.normalizer.type/unary-expression)
+
+;; 20.8. Exists
+(derive :elm.normalizer.type/exists :elm.normalizer.type/unary-expression)
+
+
+;; 20.10. First
+(defmethod normalize :elm.normalizer.type/first
+  [expression]
+  (update expression :source normalize))
+
+
+;; 20.11. Flatten
+(derive :elm.normalizer.type/flatten :elm.normalizer.type/unary-expression)
+
+
+;; 20.25. SingletonFrom
+(derive :elm.normalizer.type/singleton-from :elm.normalizer.type/unary-expression)
+
+
+
 ;; 23. Clinical Operators
 
 ;; 23.3. CalculateAge

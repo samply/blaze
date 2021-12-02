@@ -2,7 +2,7 @@
   "Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.literal]
+    [blaze.elm.literal :as elm]
     [blaze.elm.normalizer :refer [normalize]]
     [blaze.elm.normalizer-spec]
     [clojure.spec.test.alpha :as st]
@@ -242,3 +242,36 @@
       :condition := (normalize expression-1)
       :then := (normalize expression-2)
       :else := (normalize expression-3))))
+
+
+
+;; 20. List Operators
+
+;; 20.4. Distinct
+(deftest normalize-distinct-test
+  (given (normalize (elm/distinct expression-1))
+    :operand := (normalize expression-1)))
+
+
+;; 20.8. Exists
+(deftest normalize-exists-test
+  (given (normalize (elm/exists expression-1))
+    :operand := (normalize expression-1)))
+
+
+;; 20.10. First
+(deftest normalize-first-test
+  (given (normalize (elm/first expression-1))
+    :source := (normalize expression-1)))
+
+
+;; 20.11. Flatten
+(deftest normalize-flatten-test
+  (given (normalize (elm/flatten expression-1))
+    :operand := (normalize expression-1)))
+
+
+;; 20.25. SingletonFrom
+(deftest normalize-singleton-from-test
+  (given (normalize (elm/singleton-from expression-1))
+    :operand := (normalize expression-1)))
