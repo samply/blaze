@@ -21,7 +21,7 @@
 
 (defprotocol XformFactory
   (-create [_ context resource]
-    "Creates an xform which filters and/or shapes query sources."))
+    "Creates a xform which filters and/or shapes query sources."))
 
 
 (defrecord WithXformFactory
@@ -35,11 +35,11 @@
           (filter
             (fn eval-with-clause [lhs-entity]
               (when-let [rhs-entities (some->> (core/-eval lhs-operand context
-                                                      resource lhs-entity)
+                                                           resource lhs-entity)
                                                (get index))]
                 (some
                   #(core/-eval such-that context resource
-                          {single-query-scope lhs-entity alias %})
+                               {single-query-scope lhs-entity alias %})
                   rhs-entities)))))
         (let [index (into #{} (map indexer) rhs)]
           (filter
@@ -49,9 +49,9 @@
 
 
 #_(defn- with-xform-factory [create-with-clause]
-  (fn create-with-xform [context resource scope]
-    (let [with-clause (create-with-clause context resource scope)]
-      (filter #(with-clause context resource %)))))
+    (fn create-with-xform [context resource scope]
+      (let [with-clause (create-with-clause context resource scope)]
+        (filter #(with-clause context resource %)))))
 
 
 (defrecord WhereXformFactory [expr]
@@ -238,6 +238,18 @@
   sort-by-item)
 
 
+(defn- unsupported-with-clause-anom [expr]
+  (ba/unsupported
+    "Unsupported With clause in query expression."
+    :expression expr))
+
+
+(defn- unsupported-without-clause-anom [expr]
+  (ba/unsupported
+    "Unsupported Without clause in query expression."
+    :expression expr))
+
+
 (defmethod core/compile* :elm.compiler.type/query
   [{:keys [optimizations] :as context}
    {sources :source
@@ -247,13 +259,9 @@
     {sort-by-items :by} :sort
     :as expr}]
   (when (seq (filter (comp #{"With"} :type) relationships))
-    (throw-anom
-      (ba/unsupported "Unsupported With clause in query expression.")
-      :expression expr))
+    (throw-anom (unsupported-with-clause-anom expr)))
   (when (seq (filter (comp #{"Without"} :type) relationships))
-    (throw-anom
-      (ba/unsupported "Unsupported Without clause in query expression.")
-      :expression expr))
+    (throw-anom (unsupported-without-clause-anom expr)))
   (if (= 1 (count sources))
     (let [{:keys [expression alias]} (first sources)
           context (dissoc context :optimizations)
@@ -341,12 +349,12 @@
                                                     single-query-scope)]
         (let [rhs (core/compile* context rhs)
               rhs-operand (core/compile* (assoc context :life/single-query-scope alias)
-                                   rhs-operand)
+                                         rhs-operand)
               lhs-operand (core/compile* context lhs-operand)
               such-that (some->> such-that
                                  (core/compile* (dissoc context :life/single-query-scope)))]
           (->WithXformFactory rhs rhs-operand such-that lhs-operand
-                                    single-query-scope))
+                              single-query-scope))
         (throw-anom
           (ba/incorrect
             (format "Unsupported call without left-hand-side operand."))))

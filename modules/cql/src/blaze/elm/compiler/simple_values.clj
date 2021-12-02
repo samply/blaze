@@ -14,6 +14,9 @@
 ;;
 ;; The Literal type defines a single scalar value. For example, the literal 5,
 ;; the boolean value true or the string "antithrombotic".
+(defn- unsupported-literals-anom [value-type]
+  (ba/unsupported (str value-type " literals are not supported")))
+
 (defmethod core/compile* :elm.compiler.type/literal
   [_ {:keys [value] value-type :valueType}]
   (when value
@@ -26,7 +29,5 @@
           "Integer" (long (Integer/parseInt value))
           "Decimal" (decimal/from-literal value)
           "String" value
-          (throw-anom
-            (ba/unsupported (str value-type " literals are not supported"))))
-        (throw-anom
-          (ba/unsupported (str value-type " literals are not supported")))))))
+          (throw-anom (unsupported-literals-anom value-type)))
+        (throw-anom (unsupported-literals-anom value-type))))))
