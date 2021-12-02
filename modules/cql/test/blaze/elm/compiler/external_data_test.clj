@@ -224,17 +224,37 @@
                 {:def
                  [{:name "sys-def-225944"
                    :id "system-225806"}]}}}
-              elm (elm/retrieve
-                    {:type "Medication"
-                     :codes #elm/list[#elm/code["sys-def-225944"
-                                                "code-225809"]]})
+              elm #elm/retrieve
+                      {:type "Medication"
+                       :codes #elm/list[#elm/code["sys-def-225944"
+                                                  "code-225809"]]}
               expr (c/compile context elm)
               db (d/db node)]
 
           (given (core/-eval expr {:db db} nil nil)
             count := 1
             [0 fhir-spec/fhir-type] := :fhir/Medication
-            [0 :id] := "0")))))
+            [0 :id] := "0"))))
+
+    (testing "unknown code property"
+      (with-system [{:blaze.db/keys [node]} mem-node-system]
+        (let [context
+              {:node node
+               :eval-context "Unfiltered"
+               :library
+               {:codeSystems
+                {:def
+                 [{:name "sys-def-225944"
+                   :id "system-225806"}]}}}
+              elm #elm/retrieve
+                      {:type "Medication"
+                       :codes #elm/list[#elm/code["sys-def-225944"
+                                                  "code-225809"]]
+                       :code-property "foo"}]
+
+          (given (ba/try-anomaly (c/compile context elm))
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Medication` was not found.")))))
 
   (testing "with related context"
     (testing "with pre-compiled database query"
@@ -245,13 +265,32 @@
                        {:def
                         [{:name "name-174207"
                           :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
-              elm {:type "Retrieve"
-                   :dataType "{http://hl7.org/fhir}Observation"
-                   :context #elm/expression-ref "name-174207"
-                   :codes #elm/list [#elm/code ["sys-def-174848" "code-174911"]]}
+              elm #elm/retrieve
+                      {:type "Observation"
+                       :context #elm/expression-ref "name-174207"
+                       :codes #elm/list[#elm/code["sys-def-174848"
+                                                  "code-174911"]]}
               expr (c/compile {:node node :library library} elm)]
           (given expr
-            type := WithRelatedContextQueryRetrieveExpression)))))
+            type := WithRelatedContextQueryRetrieveExpression))))
+
+    (testing "unknown code property"
+      (with-system [{:blaze.db/keys [node]} mem-node-system]
+        (let [library {:codeSystems
+                       {:def [{:name "sys-def-174848" :id "system-174915"}]}
+                       :statements
+                       {:def
+                        [{:name "name-174207"
+                          :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
+              elm #elm/retrieve
+                      {:type "Observation"
+                       :context #elm/expression-ref "name-174207"
+                       :codes #elm/list[#elm/code["sys-def-174848"
+                                                  "code-174911"]]
+                       :code-property "foo"}]
+          (given (ba/try-anomaly (c/compile {:node node :library library} elm))
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
 
   (testing "with unsupported type namespace"
     (let [elm {:type "Retrieve" :dataType "{foo}Bar"}]

@@ -4,14 +4,13 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.spec]
     [blaze.elm.util :as elm-util]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom]))
+    [clojure.string :as str]))
 
 
 (set! *warn-on-reflection* true)
@@ -139,11 +138,10 @@
     (if-let [result-type-name (:result-type-name (meta context-expr))]
       (let [[value-type-ns context-type] (elm-util/parse-qualified-name result-type-name)]
         (if (= "http://hl7.org/fhir" value-type-ns)
-          (let [clauses [(into [code-property] (map code->clause-value) codes)]
-                query (d/compile-compartment-query node context-type data-type clauses)]
-            (if (::anom/category query)
-              (throw (ex-info (::anom/message query) query))
-              (->WithRelatedContextQueryRetrieveExpression context-expr query)))
+          (let [clauses [(into [code-property] (map code->clause-value) codes)]]
+            (if-ok [query (d/compile-compartment-query node context-type data-type clauses)]
+              (->WithRelatedContextQueryRetrieveExpression context-expr query)
+              ba/throw-anom))
 
           (->WithRelatedContextCodeRetrieveExpression
             context-expr data-type
@@ -159,13 +157,12 @@
     (reify core/Expression
       (-eval [_ {:keys [db]} _ _]
         (into [] (d/type-list db data-type))))
-    (let [clauses [(into [code-property] (map code->clause-value) codes)]
-          query (d/compile-type-query node data-type clauses)]
-      (if (::anom/category query)
-        (throw (ex-info (::anom/message query) query))
+    (let [clauses [(into [code-property] (map code->clause-value) codes)]]
+      (if-ok [query (d/compile-type-query node data-type clauses)]
         (reify core/Expression
           (-eval [_ {:keys [db]} _ _]
-            (into [] (d/execute-query db query))))))))
+            (into [] (d/execute-query db query))))
+        ba/throw-anom))))
 
 
 (defn- expr* [node eval-context data-type code-property codes]
@@ -211,4 +208,4 @@
         data-type
         code-property
         (some->> codes-expr (core/compile* context)))
-      (throw-anom (unsupported-type-namespace-anom type-ns)))))
+      (ba/throw-anom (unsupported-type-namespace-anom type-ns)))))

@@ -165,7 +165,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-first-test
-  (are [source res] (= res (core/-eval (c/compile {} {:type "First" :source source}) {} nil nil))
+  (are [source res] (= res (core/-eval (c/compile {} (elm/first source)) {} nil nil))
     #elm/list [#elm/integer"1"] 1
     #elm/list [#elm/integer"1" #elm/integer"2"] 1
 

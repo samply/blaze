@@ -9,6 +9,7 @@
  elm/quantity blaze.elm.literal/quantity
  elm/parameter-ref blaze.elm.literal/parameter-ref
  elm/expression-ref blaze.elm.literal/expression-ref
+ elm/retrieve blaze.elm.literal/retrieve
  elm/equal blaze.elm.literal/equal
  elm/equivalent blaze.elm.literal/equivalent
  elm/greater blaze.elm.literal/greater
@@ -50,6 +51,9 @@
  elm/interval blaze.elm.literal/interval
  elm/intersect blaze.elm.literal/intersect
  elm/current blaze.elm.literal/current
+ elm/distinct blaze.elm.literal/distinct
+ elm/exists blaze.elm.literal/exists
+ elm/first blaze.elm.literal/first
  elm/singleton-from blaze.elm.literal/singleton-from
  elm/as blaze.elm.literal/as
  elm/can-convert-quantity blaze.elm.literal/can-convert-quantity

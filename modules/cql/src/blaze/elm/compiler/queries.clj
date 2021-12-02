@@ -335,6 +335,18 @@
   (some #(when (contains? (:life/scopes %) alias) %) operands))
 
 
+(def ^:private missing-lhs-operand-anom
+  (ba/incorrect (format "Unsupported call without left-hand-side operand.")))
+
+
+(defn- missing-rhs-operand-msg [alias]
+  (format "Unsupported call without right-hand-side operand with alias `%s`."
+          alias))
+
+(defn- missing-rhs-operand-anom [alias]
+  (ba/incorrect (missing-rhs-operand-msg alias)))
+
+
 (defn compile-with-equiv-clause
   "We use the terms `lhs` and `rhs` for left-hand-side and right-hand-side of
   the semi-join here.
@@ -355,12 +367,8 @@
                                  (core/compile* (dissoc context :life/single-query-scope)))]
           (->WithXformFactory rhs rhs-operand such-that lhs-operand
                               single-query-scope))
-        (throw-anom
-          (ba/incorrect
-            (format "Unsupported call without left-hand-side operand."))))
-      (throw-anom
-        (ba/incorrect
-          (format "Unsupported call without right-hand-side operand with alias `%s`." alias))))
+        (throw-anom missing-lhs-operand-anom))
+      (throw-anom (missing-rhs-operand-anom alias)))
     (throw-anom
       (ba/incorrect
         (format "Unsupported call without single query scope.")))))
