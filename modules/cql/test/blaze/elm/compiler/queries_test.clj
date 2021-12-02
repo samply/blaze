@@ -4,6 +4,7 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.elm.code :as code]
@@ -19,6 +20,7 @@
     [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
+    [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]])
   (:import
     [clojure.lang IPersistentCollection]))
@@ -41,7 +43,7 @@
 ;; 10.1. Query
 ;;
 ;; The Query operator represents a clause-based query. The result of the query
-;; is determined by the type of sources included, as well as the clauses used
+;; is determined by the type of sources included as well as the clauses used
 ;; in the query.
 (deftest compile-query-test
   (testing "Non-retrieve queries"
@@ -164,7 +166,45 @@
                        :expression retrieve}]
                      :where where
                      :return {:expression return}}]
-          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil))))))))
+          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil)))))))
+
+  (testing "Unsupported With clause"
+    (let [elm {:type "Query"
+                 :source
+                 [{:expression
+                   {:type "Retrieve"
+                    :dataType "{http://hl7.org/fhir}Condition"}
+                   :alias "C"}]
+                 :relationship
+                 [{:type "With"
+                   :alias "P"
+                   :expression
+                   {:type "Retrieve" :dataType "{http://hl7.org/fhir}Procedure"}
+                   :suchThat
+                   {:type "Equal"
+                    :operand [#elm/integer "1" #elm/integer "1"]}}]}]
+      (given (ba/try-anomaly (c/compile {} elm))
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported With clause in query expression.")))
+
+  (testing "Unsupported Without clause"
+    (let [elm {:type "Query"
+                 :source
+                 [{:expression
+                   {:type "Retrieve"
+                    :dataType "{http://hl7.org/fhir}Condition"}
+                   :alias "C"}]
+                 :relationship
+                 [{:type "Without"
+                   :alias "P"
+                   :expression
+                   {:type "Retrieve" :dataType "{http://hl7.org/fhir}Procedure"}
+                   :suchThat
+                   {:type "Equal"
+                    :operand [#elm/integer "1" #elm/integer "1"]}}]}]
+      (given (ba/try-anomaly (c/compile {} elm))
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported Without clause in query expression."))))
 
 
 ;; 10.3. AliasRef
@@ -184,31 +224,31 @@
                #fhir/Reference{:reference "Patient/0"}}]]]
 
       (let [elm {:alias "O1"
-               :type "WithEquiv"
-               :expression
-               {:type "Retrieve"
-                :dataType "{http://hl7.org/fhir}Observation"}
-               :equivOperand
-               [{:path "subject"
-                 :scope "O0"
-                 :type "Property"
-                 :resultTypeName "{http://hl7.org/fhir}Reference"
-                 :life/scopes #{"O0"}
-                 :life/source-type "{http://hl7.org/fhir}Observation"}
-                {:path "subject"
-                 :scope "O1"
-                 :type "Property"
-                 :resultTypeName "{http://hl7.org/fhir}Reference"
-                 :life/scopes #{"O1"}
-                 :life/source-type "{http://hl7.org/fhir}Observation"}]}
-          compile-context
-          {:node node :life/single-query-scope "O0" :eval-context "Unfiltered"}
-          xform-factory (queries/compile-with-equiv-clause compile-context elm)
-          eval-context {:db (d/db node)}
-          xform (queries/-create xform-factory eval-context nil)
-          lhs-entity {:fhir/type :fhir/Observation
-                      :subject #fhir/Reference{:reference "Patient/0"}}]
-      (is (= [lhs-entity] (into [] xform [lhs-entity]))))))
+                 :type "WithEquiv"
+                 :expression
+                 {:type "Retrieve"
+                  :dataType "{http://hl7.org/fhir}Observation"}
+                 :equivOperand
+                 [{:path "subject"
+                   :scope "O0"
+                   :type "Property"
+                   :resultTypeName "{http://hl7.org/fhir}Reference"
+                   :life/scopes #{"O0"}
+                   :life/source-type "{http://hl7.org/fhir}Observation"}
+                  {:path "subject"
+                   :scope "O1"
+                   :type "Property"
+                   :resultTypeName "{http://hl7.org/fhir}Reference"
+                   :life/scopes #{"O1"}
+                   :life/source-type "{http://hl7.org/fhir}Observation"}]}
+            compile-context
+            {:node node :life/single-query-scope "O0" :eval-context "Unfiltered"}
+            xform-factory (queries/compile-with-equiv-clause compile-context elm)
+            eval-context {:db (d/db node)}
+            xform (queries/-create xform-factory eval-context nil)
+            lhs-entity {:fhir/type :fhir/Observation
+                        :subject #fhir/Reference{:reference "Patient/0"}}]
+        (is (= [lhs-entity] (into [] xform [lhs-entity]))))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
     (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -218,22 +258,22 @@
                #fhir/Reference{:reference "Patient/0"}}]]]
 
       (let [elm {:alias "O"
-               :type "WithEquiv"
-               :expression
-               {:type "Retrieve"
-                :dataType "{http://hl7.org/fhir}Observation"}
-               :equivOperand
-               [{:name "P" :type "AliasRef" :life/scopes #{"P"}}
-                {:path "subject"
-                 :scope "O"
-                 :type "Property"
-                 :resultTypeName "{http://hl7.org/fhir}Reference"
-                 :life/scopes #{"O"}
-                 :life/source-type "{http://hl7.org/fhir}Observation"}]}
-          compile-context
-          {:node node :life/single-query-scope "P" :eval-context "Unfiltered"}
-          xform-factory (queries/compile-with-equiv-clause compile-context elm)
-          eval-context {:db (d/db node)}
-          xform (queries/-create xform-factory eval-context nil)
-          lhs-entity #fhir/Reference{:reference "Patient/0"}]
-      (is (= [lhs-entity] (into [] xform [lhs-entity])))))))
+                 :type "WithEquiv"
+                 :expression
+                 {:type "Retrieve"
+                  :dataType "{http://hl7.org/fhir}Observation"}
+                 :equivOperand
+                 [{:name "P" :type "AliasRef" :life/scopes #{"P"}}
+                  {:path "subject"
+                   :scope "O"
+                   :type "Property"
+                   :resultTypeName "{http://hl7.org/fhir}Reference"
+                   :life/scopes #{"O"}
+                   :life/source-type "{http://hl7.org/fhir}Observation"}]}
+            compile-context
+            {:node node :life/single-query-scope "P" :eval-context "Unfiltered"}
+            xform-factory (queries/compile-with-equiv-clause compile-context elm)
+            eval-context {:db (d/db node)}
+            xform (queries/-create xform-factory eval-context nil)
+            lhs-entity #fhir/Reference{:reference "Patient/0"}]
+        (is (= [lhs-entity] (into [] xform [lhs-entity])))))))

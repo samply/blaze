@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.13.5
+
+### Bugfixes
+
+* Fix Insufficient Configured Threads for the Metrics Server ([#557](https://github.com/samply/blaze/pull/557))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/21?closed=1).
+
 ## v0.13.4
 
 ### Bugfixes
