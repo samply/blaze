@@ -303,17 +303,6 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v2
 
-    - name: Setup Java
-      uses: actions/setup-java@v2
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
-      with:
-        tools-deps: '1.10.3.1029'
-
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
@@ -339,8 +328,14 @@ jobs:
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement.sh
 
+    - name: Check Referential Integrity Enforced
+      run: .github/scripts/check-referential-integrity-enforced.sh
+
     - name: Load Data
-      run: blazectl --server http://localhost:8080/fhir upload .github/test-data
+      run: blazectl --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Check Total-Number of Resources are 92114
+      run: .github/scripts/check-total-number-of-resources.sh 92114
 
     - name: Count Resources
       run: blazectl --server http://localhost:8080/fhir count-resources
@@ -459,6 +454,48 @@ jobs:
     - name: Prometheus Metrics
       run: curl -f http://localhost:8081/metrics
 
+  not-enforcing-referential-integrity-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.CR_PAT }}
+
+    - name: Pull Docker Image
+      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+
+    - name: Sleep 60 Seconds
+      run: sleep 60
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Check Referential Integrity Not Enforced
+      run: .github/scripts/check-referential-integrity-not-enforced.sh
+
+    - name: Load Data
+      run: blazectl --server http://localhost:8080/fhir upload -c1 .github/test-data/etl
+
+    - name: Check Total-Number of Resources are 5
+      run: .github/scripts/check-total-number-of-resources.sh 5
+
   jepsen-test:
     needs: build
     runs-on: ubuntu-20.04
@@ -556,23 +593,6 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v2
 
-    - name: Setup Java
-      uses: actions/setup-java@v2
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
-      with:
-        tools-deps: '1.10.3.1029'
-
-    - name: APT Update
-      run: sudo apt-get update
-
-    - name: Install Gnuplot
-      run: sudo apt-get install gnuplot
-
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
@@ -613,8 +633,14 @@ jobs:
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement.sh
 
+    - name: Check Referential Integrity Enforced
+      run: .github/scripts/check-referential-integrity-enforced.sh
+
     - name: Load Data
-      run: blazectl --server http://localhost:8080/fhir upload .github/test-data
+      run: blazectl --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Check Total-Number of Resources are 92114
+      run: .github/scripts/check-total-number-of-resources.sh 92114
 
     - name: Count Resources
       run: blazectl --server http://localhost:8080/fhir count-resources

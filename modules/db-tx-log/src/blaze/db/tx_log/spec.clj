@@ -23,12 +23,8 @@
   :fhir.type/name)
 
 
-(s/def :blaze.db/local-ref
-  (s/tuple :fhir.type/name :blaze.resource/id))
-
-
 (s/def :blaze.db.tx-cmd/refs
-  (s/coll-of :blaze.db/local-ref))
+  (s/coll-of :blaze.fhir/local-ref-tuple))
 
 
 (s/def :blaze.db/t

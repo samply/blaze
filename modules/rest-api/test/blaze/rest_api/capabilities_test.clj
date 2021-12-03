@@ -3,6 +3,7 @@
     [blaze.db.impl.search-param]
     [blaze.db.search-param-registry :as sr]
     [blaze.rest-api.capabilities :as capabilities]
+    [blaze.rest-api.capabilities-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]
@@ -99,7 +100,30 @@
           :body)
       :fhir/type := :fhir/CapabilityStatement
       [:rest 0 :resource 0 :type] := #fhir/code"Patient"
-      [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"))
+      [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
+      [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"}))
+
+    (testing "with disabled referential integrity check"
+      (given
+        (-> @((capabilities/capabilities-handler
+                {:version "version-131640"
+                 :structure-definitions
+                 [{:kind "resource" :name "Patient"}]
+                 :search-param-registry search-param-registry
+                 :resource-patterns
+                 [#:blaze.rest-api.resource-pattern
+                     {:type "Patient"
+                      :interactions
+                      {:read
+                       #:blaze.rest-api.interaction
+                           {:handler (fn [_])}}}]
+                 :enforce-referential-integrity false})
+              {})
+            :body)
+        :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :resource 0 :type] := #fhir/code"Patient"
+        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
+        [:rest 0 :resource 0 :referencePolicy] :? (comp not (partial some #{#fhir/code"enforced"})))))
 
   (testing "Observation interaction"
     (given

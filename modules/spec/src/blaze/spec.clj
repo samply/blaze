@@ -11,6 +11,10 @@
   (s/and string? (complement #(str/ends-with? % "/"))))
 
 
+(s/def :blaze/version
+  string?)
+
+
 (s/def :blaze/context-path
   (s/and
     string?

@@ -19,16 +19,18 @@
     [java-time :as time]))
 
 
-(def mem-node-system
+(defn create-mem-node-system [node-config]
   {:blaze.db/node
-   {:tx-log (ig/ref :blaze.db/tx-log)
-    :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
-    :tx-cache (ig/ref :blaze.db/tx-cache)
-    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-    :resource-store (ig/ref :blaze.db/resource-store)
-    :kv-store (ig/ref :blaze.db/index-kv-store)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
-    :poll-timeout (time/millis 10)}
+   (merge
+     {:tx-log (ig/ref :blaze.db/tx-log)
+      :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
+      :tx-cache (ig/ref :blaze.db/tx-cache)
+      :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+      :resource-store (ig/ref :blaze.db/resource-store)
+      :kv-store (ig/ref :blaze.db/index-kv-store)
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)
+      :poll-timeout (time/millis 10)}
+     node-config)
 
    ::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
@@ -68,6 +70,10 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry {}})
+
+
+(def mem-node-system
+  (create-mem-node-system {}))
 
 
 (defmacro with-system-data [[binding-form system] txs & body]

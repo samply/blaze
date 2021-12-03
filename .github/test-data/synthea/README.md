@@ -1,4 +1,4 @@
-# FHIR Test Data
+# FHIR Synthea Test Data
 
 Generates with Synthea v2.7.0 using openjdk 11.
 

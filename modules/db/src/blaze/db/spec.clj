@@ -90,3 +90,7 @@
 
 (s/def :blaze.db/tx-ops
   (s/coll-of :blaze.db/tx-op :kind vector? :min-count 1))
+
+
+(s/def :blaze.db/enforce-referential-integrity
+  boolean?)

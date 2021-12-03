@@ -23,10 +23,15 @@
 (test/use-fixtures :each fixture)
 
 
+(def context
+  {})
+
+
 (deftest prepare-ops-test
   (testing "create"
     (testing "with references"
       (given (tx/prepare-ops
+               context
                [[:create {:fhir/type :fhir/Observation :id "0"
                           :subject #fhir/Reference{:reference "Patient/0"}}]])
         [0 0 :op] := "create"
@@ -36,10 +41,18 @@
         [0 0 :refs] := [["Patient" "0"]]
         [1 0 0] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [1 0 1] := {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}}))
+                    :subject #fhir/Reference{:reference "Patient/0"}})
+
+      (testing "with disabled referential integrity check"
+        (given (tx/prepare-ops
+                 {:blaze.db/enforce-referential-integrity false}
+                 [[:create {:fhir/type :fhir/Observation :id "0"
+                            :subject #fhir/Reference{:reference "Patient/0"}}]])
+          [0 0 :refs] :? empty?)))
 
     (testing "conditional"
       (given (tx/prepare-ops
+               context
                [[:create {:fhir/type :fhir/Patient :id "id-220036"}
                  [["identifier" "115508"]]]])
         [0 0 :op] := "create"
@@ -47,21 +60,41 @@
         [0 0 :id] := "id-220036"
         [0 0 :if-none-exist] := [["identifier" "115508"]])))
 
-  (testing "one put"
-    (given (tx/prepare-ops [[:put {:fhir/type :fhir/Patient :id "0"}]])
+  (testing "put"
+    (given (tx/prepare-ops context [[:put {:fhir/type :fhir/Patient :id "0"}]])
       [0 0 :op] := "put"
       [0 0 :type] := "Patient"
       [0 0 :id] := "0"
       [0 0 :hash] := #blaze/byte-string"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
       [1 0 0] := #blaze/byte-string"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
-      [1 0 1] := {:fhir/type :fhir/Patient :id "0"}))
+      [1 0 1] := {:fhir/type :fhir/Patient :id "0"})
 
-  (testing "one put with matches"
-    (given (tx/prepare-ops [[:put {:fhir/type :fhir/Patient :id "0"} 4]])
-      [0 0 :if-match] := 4))
+    (testing "with references"
+      (given (tx/prepare-ops
+               context
+               [[:put {:fhir/type :fhir/Observation :id "0"
+                       :subject #fhir/Reference{:reference "Patient/0"}}]])
+        [0 0 :op] := "put"
+        [0 0 :type] := "Observation"
+        [0 0 :id] := "0"
+        [0 0 :hash] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [0 0 :refs] := [["Patient" "0"]]
+        [1 0 0] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [1 0 1] := {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}})
 
-  (testing "one delete"
-    (given (tx/prepare-ops [[:delete "Patient" "0"]])
+      (testing "with disabled referential integrity check"
+        (given (tx/prepare-ops {:blaze.db/enforce-referential-integrity false}
+                               [[:put {:fhir/type :fhir/Observation :id "0"
+                                       :subject #fhir/Reference{:reference "Patient/0"}}]])
+          [0 0 :refs] :? empty?)))
+
+    (testing "with matches"
+      (given (tx/prepare-ops context [[:put {:fhir/type :fhir/Patient :id "0"} 4]])
+        [0 0 :if-match] := 4)))
+
+  (testing "delete"
+    (given (tx/prepare-ops context [[:delete "Patient" "0"]])
       [0 0 :op] := "delete"
       [0 0 :type] := "Patient"
       [0 0 :id] := "0"

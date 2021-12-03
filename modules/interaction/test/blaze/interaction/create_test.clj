@@ -6,14 +6,15 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.anomaly-spec]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub
+     :refer [create-mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
     [blaze.interaction.util-spec]
     [blaze.middleware.fhir.error :refer [wrap-error]]
-    [blaze.test-util :refer [given-thrown]]
+    [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -43,7 +44,8 @@
 
 (def router
   (reitit/router
-    [["/Patient" {:name :Patient/type}]]
+    [["/Patient" {:name :Patient/type}]
+     ["/Observation" {:name :Observation/type}]]
     {:syntax :bracket}))
 
 
@@ -74,8 +76,8 @@
       [:explain ::s/problems 3 :val] := ::invalid)))
 
 
-(def system
-  (assoc mem-node-system
+(defn create-system [node-config]
+  (assoc (create-mem-node-system node-config)
     :blaze.interaction/create
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)
@@ -83,6 +85,10 @@
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
     :blaze.test/executor {}
     :blaze.test/fixed-rng-fn {}))
+
+
+(def system
+  (create-system {}))
 
 
 (defn wrap-defaults [handler]
@@ -104,59 +110,63 @@
   (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
 
 
+(def observation-match
+  (reitit/map->Match {:data {:fhir.resource/type "Observation"}}))
+
+
 (deftest handler-test
-  (testing "Returns Error on missing body"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-               {::reitit/match patient-match})]
+  (testing "errors on"
+    (testing "missing body"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-match})]
 
-        (is (= 400 status))
+          (is (= 400 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Missing HTTP body."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Missing HTTP body."))))
 
-  (testing "Returns Error on type mismatch"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-               {::reitit/match patient-match
-                :body {:fhir/type :fhir/Observation}})]
+    (testing "type mismatch"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-match
+                  :body {:fhir/type :fhir/Observation}})]
 
-        (is (= 400 status))
+          (is (= 400 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invariant"
-          [:issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-          [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
-          [:issue 0 :diagnostics] := "Resource type `Observation` doesn't match the endpoint type `Patient`."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invariant"
+            [:issue 0 :details :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+            [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
+            [:issue 0 :diagnostics] := "Resource type `Observation` doesn't match the endpoint type `Patient`."))))
 
-  (testing "Returns Error violated referential integrity"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-               {::reitit/match {:data {:fhir.resource/type "Observation"}}
-                :body {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}})]
+    (testing "violated referential integrity"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match observation-match
+                  :body {:fhir/type :fhir/Observation :id "0"
+                         :subject #fhir/Reference{:reference "Patient/0"}}})]
 
-        (is (= 409 status))
+          (is (= 409 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"conflict"
-          [:issue 0 :diagnostics] :=
-          "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"conflict"
+            [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))))
 
-  (testing "On newly created resource"
+  (testing "on newly created resource"
     (testing "with no Prefer header"
       (with-handler [handler]
         []
@@ -328,4 +338,32 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"conflict"
-              [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found.")))))))
+              [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
+
+  (testing "with disabled referential integrity check"
+    (with-system [{handler :blaze.interaction/create} (create-system {:enforce-referential-integrity false})]
+      (let [{:keys [status headers body]}
+            @((-> handler wrap-defaults wrap-error)
+               {::reitit/match observation-match
+                :body {:fhir/type :fhir/Observation :id "0"
+                       :subject #fhir/Reference{:reference "Patient/0"}}})]
+
+        (is (= 201 status))
+
+        (testing "Location header"
+          (is (= (str base-url "/Observation/AAAAAAAAAAAAAAAA/_history/1")
+                 (get headers "Location"))))
+
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
+
+        (given body
+          :fhir/type := :fhir/Observation
+          :id := "AAAAAAAAAAAAAAAA"
+          [:meta :versionId] := #fhir/id"1"
+          [:meta :lastUpdated] := Instant/EPOCH
+          [:subject :reference] := "Patient/0")))))

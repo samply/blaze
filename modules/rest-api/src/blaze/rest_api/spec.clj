@@ -94,14 +94,6 @@
   (s/coll-of :blaze.rest-api/compartment))
 
 
-(s/def :blaze.rest-api/version
-  string?)
-
-
-(s/def :blaze.rest-api/context-path
-  string?)
-
-
 (s/def :blaze.rest-api.operation/code
   string?)
 

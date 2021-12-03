@@ -25,10 +25,14 @@
   (s/and string? #(re-matches #"[A-Za-z0-9\-\.]{1,64}" %)))
 
 
+(s/def :blaze.fhir/local-ref-tuple
+  (s/tuple :fhir.resource/type :blaze.resource/id))
+
+
 (s/def :blaze.fhir/local-ref
   (s/and string?
          (s/conformer #(str/split % #"/" 2))
-         (s/tuple :fhir.resource/type :blaze.resource/id)))
+         :blaze.fhir/local-ref-tuple))
 
 
 (s/def :blaze/resource
