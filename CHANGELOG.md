@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.14.0
+
+### New Features
+
+* Allow Disabling Referential Integrity ([#544](https://github.com/samply/blaze/pull/544))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/11?closed=1).
+
 ## v0.13.5
 
 ### Bugfixes
