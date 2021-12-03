@@ -1,6 +1,6 @@
 (ns blaze.elm.literal
   (:refer-clojure
-    :exclude [and boolean count distinct flatten list max min not or time])
+    :exclude [and boolean count distinct first flatten list max min not or time])
   (:require
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]
@@ -102,12 +102,16 @@
 ;; 11. External Data
 
 ;; 11.1. Retrieve
-(defn retrieve [{:keys [type codes]}]
+(defn retrieve [{:keys [type codes code-property context]}]
   (cond->
     {:type "Retrieve"
      :dataType (str "{http://hl7.org/fhir}" type)}
     codes
-    (assoc :codes codes)))
+    (assoc :codes codes)
+    code-property
+    (assoc :codeProperty code-property)
+    context
+    (assoc :context context)))
 
 
 
@@ -526,6 +530,11 @@
 ;; 20.8. Exists
 (defn exists [list]
   {:type "Exists" :operand list})
+
+
+;; 20.10. First
+(defn first [source]
+  {:type "First" :source source})
 
 
 ;; 20.11. Flatten

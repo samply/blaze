@@ -232,7 +232,7 @@
     (rs/get resource-store hash)))
 
 
-(defrecord Node [tx-log rh-cache tx-cache kv-store resource-store
+(defrecord Node [context tx-log rh-cache tx-cache kv-store resource-store
                  search-param-registry resource-indexer state run? poll-timeout
                  finished]
   np/Node
@@ -252,7 +252,7 @@
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
     (if-ok [_ (validation/validate-ops tx-ops)]
-      (let [[tx-cmds entries] (tx/prepare-ops tx-ops)]
+      (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
         (-> (rs/put! resource-store entries)
             (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
       ac/completed-future))
@@ -358,6 +358,20 @@
    :error-t 0})
 
 
+(defn- init-msg
+  [{:keys [enforce-referential-integrity]
+    :or {enforce-referential-integrity true}}]
+  (log/info "Open local database node with"
+            (if enforce-referential-integrity "enabled" "disabled")
+            "referential integrity checks"))
+
+
+(defn- ctx
+  [{:keys [enforce-referential-integrity]
+    :or {enforce-referential-integrity true}}]
+  {:blaze.db/enforce-referential-integrity enforce-referential-integrity})
+
+
 (defmethod ig/pre-init-spec :blaze.db/node [_]
   (s/keys
     :req-un
@@ -367,16 +381,18 @@
      ::indexer-executor
      :blaze.db/kv-store
      :blaze.db/resource-store
-     :blaze.db/search-param-registry]))
-
+     :blaze.db/search-param-registry]
+    :opt-un
+    [:blaze.db/enforce-referential-integrity]))
 
 (defmethod ig/init-key :blaze.db/node
   [_ {:keys [tx-log resource-handle-cache tx-cache indexer-executor kv-store
              resource-store search-param-registry poll-timeout]
-      :or {poll-timeout (time/seconds 1)}}]
-  (log/info "Open local database node")
+      :or {poll-timeout (time/seconds 1)}
+      :as config}]
+  (init-msg config)
   (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
-        node (->Node tx-log resource-handle-cache tx-cache kv-store
+        node (->Node (ctx config) tx-log resource-handle-cache tx-cache kv-store
                      resource-store search-param-registry resource-indexer
                      (atom (initial-state kv-store))
                      (volatile! true)

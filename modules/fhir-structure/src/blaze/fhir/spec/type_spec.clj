@@ -19,7 +19,7 @@
 
 (s/fdef type/references
   :args (s/cat :x any?)
-  :ret (s/coll-of :blaze.db/local-ref))
+  :ret (s/coll-of :blaze.fhir/local-ref-tuple))
 
 
 (s/fdef type/->Date

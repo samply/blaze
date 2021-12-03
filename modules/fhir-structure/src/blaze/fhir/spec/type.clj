@@ -55,7 +55,10 @@
   (p/-hash-into x sink))
 
 
-(defn references [x]
+(defn references
+  "Returns a collection of local references which are tuples of FHIR resource
+  type name and FHIR resource id."
+  [x]
   (p/-references x))
 
 

@@ -3,7 +3,6 @@
   expression resulting in equiv semi-joins and semi-differences."
   (:require
     [blaze.elm.spec]
-    [clojure.spec.alpha :as s]
     [cuerdas.core :as str]))
 
 
@@ -11,15 +10,12 @@
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.normalizer.type" (str/kebab type))))
+    (keyword "elm.equiv-relationships.type" (str/kebab type))))
 
 
 (defn- update-expression-defs [expression-defs]
   (mapv #(update % :expression find-equiv-rels) expression-defs))
 
-
-(s/fdef find-equiv-rels-library
-  :args (s/cat :library :elm/library))
 
 (defn find-equiv-rels-library [library]
   (update-in library [:statements :def] update-expression-defs))
@@ -30,12 +26,12 @@
   expression)
 
 
-(defmethod find-equiv-rels :elm.normalizer.type/unary-expression
+(defmethod find-equiv-rels :elm.equiv-relationships.type/unary-expression
   [expression]
   (update expression :operand find-equiv-rels))
 
 
-(defmethod find-equiv-rels :elm.normalizer.type/multiary-expression
+(defmethod find-equiv-rels :elm.equiv-relationships.type/multiary-expression
   [expression]
   (update expression :operand #(mapv find-equiv-rels %)))
 
@@ -87,16 +83,31 @@
       relationship)))
 
 
-(defmethod find-equiv-rels :elm.normalizer.type/query
+(defmethod find-equiv-rels :elm.equiv-relationships.type/query
   [{relationships :relationship :as expression}]
   (assoc expression :relationship (mapv find-equiv-relationship relationships)))
 
 
+
 ;; 20. List Operators
 
+;; 20.4. Distinct
+(derive :elm.equiv-relationships.type/distinct :elm.equiv-relationships.type/unary-expression)
+
+
 ;; 20.8. Exists
-(derive :elm.normalizer.type/exists :elm.normalizer.type/unary-expression)
+(derive :elm.equiv-relationships.type/exists :elm.equiv-relationships.type/unary-expression)
+
+
+;; 20.10. First
+(defmethod find-equiv-rels :elm.equiv-relationships.type/first
+  [expression]
+  (update expression :source find-equiv-rels))
+
+
+;; 20.11. Flatten
+(derive :elm.equiv-relationships.type/flatten :elm.equiv-relationships.type/unary-expression)
 
 
 ;; 20.25. SingletonFrom
-(derive :elm.normalizer.type/singleton-from :elm.normalizer.type/unary-expression)
+(derive :elm.equiv-relationships.type/singleton-from :elm.equiv-relationships.type/unary-expression)

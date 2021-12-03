@@ -2,7 +2,6 @@
   (:require
     [blaze.elm.spec]
     [clojure.set :as set]
-    [clojure.spec.alpha :as s]
     [cuerdas.core :as str]))
 
 
@@ -18,9 +17,6 @@
 (defn- update-expression-defs [expression-defs]
   (mapv #(update % :expression infer-deps) expression-defs))
 
-
-(s/fdef infer-library-deps
-  :args (s/cat :library :elm/library))
 
 (defn infer-library-deps [library]
   (update-in library [:statements :def] update-expression-defs))
@@ -527,6 +523,12 @@
 
 ;; 20.8. Exists
 (derive :elm.deps.type/exists :elm.deps.type/unary-expression)
+
+
+;; 20.10. First
+(defmethod infer-deps :elm.deps.type/first
+  [expression]
+  (update expression :source infer-deps))
 
 
 ;; 20.25. SingletonFrom

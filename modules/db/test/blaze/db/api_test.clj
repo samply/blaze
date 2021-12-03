@@ -52,16 +52,18 @@
 (test/use-fixtures :each fixture)
 
 
-(def system
+(defn create-system [node-config]
   {:blaze.db/node
-   {:tx-log (ig/ref :blaze.db/tx-log)
-    :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
-    :tx-cache (ig/ref :blaze.db/tx-cache)
-    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-    :resource-store (ig/ref :blaze.db/resource-store)
-    :kv-store (ig/ref :blaze.db/index-kv-store)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
-    :poll-timeout (time/millis 10)}
+   (merge
+     {:tx-log (ig/ref :blaze.db/tx-log)
+      :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
+      :tx-cache (ig/ref :blaze.db/tx-cache)
+      :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+      :resource-store (ig/ref :blaze.db/resource-store)
+      :kv-store (ig/ref :blaze.db/index-kv-store)
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)
+      :poll-timeout (time/millis 10)}
+     node-config)
 
    ::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
@@ -101,6 +103,10 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry {}})
+
+
+(def system
+  (create-system {}))
 
 
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
@@ -197,7 +203,7 @@
       (with-system [{:blaze.db/keys [node]} system]
         @(d/transact
            node
-           ;; the create ops are purposely disordered in order to test the
+           ;; create ops are purposely disordered in order to test the
            ;; reference dependency ordering algorithm
            [[:create
              {:fhir/type :fhir/Observation :id "0"
@@ -513,6 +519,23 @@
              [:delete "Observation" "1"]])
           ::anom/category := ::anom/conflict
           ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
+
+  (testing "not enforcing referential integrity"
+    (testing "creating an Observation were the subject doesn't exist"
+      (testing "create"
+        (with-system [{:blaze.db/keys [node]} (create-system {:enforce-referential-integrity false})]
+          @(d/transact
+             node
+             [[:create
+               {:fhir/type :fhir/Observation :id "0"
+                :subject #fhir/Reference{:reference "Patient/0"}}]])
+
+          (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
+            :fhir/type := :fhir/Observation
+            :id := "0"
+            [:subject :reference] := "Patient/0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :create)))))
 
   (testing "creating 100 transactions in parallel"
     (with-system [{:blaze.db/keys [node]} slow-resource-store-system]

@@ -6,13 +6,14 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.anomaly-spec]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub
+     :refer [create-mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.update]
     [blaze.middleware.fhir.error :refer [wrap-error]]
-    [blaze.test-util :refer [given-thrown]]
+    [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -42,7 +43,8 @@
 
 (def router
   (reitit/router
-    [["/Patient" {:name :Patient/type}]]
+    [["/Patient" {:name :Patient/type}]
+     ["/Observation" {:name :Observation/type}]]
     {:syntax :bracket}))
 
 
@@ -52,6 +54,10 @@
 
 (def patient-match
   (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
+
+
+(def observation-match
+  (reitit/map->Match {:data {:fhir.resource/type "Observation"}}))
 
 
 (deftest init-test
@@ -77,12 +83,16 @@
       [:explain ::s/problems 1 :val] := ::invalid)))
 
 
-(def system
-  (assoc mem-node-system
+(defn create-system [node-config]
+  (assoc (create-mem-node-system node-config)
     :blaze.interaction/update
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)}
     :blaze.test/executor {}))
+
+
+(def system
+  (create-system {}))
 
 
 (defn wrap-defaults [handler]
@@ -101,123 +111,123 @@
 
 
 (deftest handler-test
-  (testing "on missing body"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-               {:path-params {:id "0"}
-                ::reitit/match patient-match})]
+  (testing "erros on"
+    (testing "missing body"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match})]
 
-        (testing "returns error"
-          (is (= 400 status))
+          (testing "returns error"
+            (is (= 400 status))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing HTTP body.")))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"invalid"
+              [:issue 0 :diagnostics] := "Missing HTTP body.")))))
 
-  (testing "on type mismatch"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-               {:path-params {:id "0"}
-                ::reitit/match patient-match
-                :body {:fhir/type :fhir/Observation}})]
+    (testing "type mismatch"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :body {:fhir/type :fhir/Observation}})]
 
-        (testing "returns error"
-          (is (= 400 status))
+          (testing "returns error"
+            (is (= 400 status))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invariant"
-            [:issue 0 :details :coding 0 :system] := operation-outcome
-            [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
-            [:issue 0 :diagnostics] := "Invalid update interaction of a Observation at a Patient endpoint.")))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"invariant"
+              [:issue 0 :details :coding 0 :system] := operation-outcome
+              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
+              [:issue 0 :diagnostics] := "Invalid update interaction of a Observation at a Patient endpoint.")))))
 
-  (testing "on missing id"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-               {:path-params {:id "0"}
-                ::reitit/match patient-match
-                :body {:fhir/type :fhir/Patient}})]
+    (testing "missing id"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :body {:fhir/type :fhir/Patient}})]
 
-        (testing "returns error"
-          (is (= 400 status))
+          (testing "returns error"
+            (is (= 400 status))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"required"
-            [:issue 0 :details :coding 0 :system] := operation-outcome
-            [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISSING"
-            [:issue 0 :diagnostics] := "Missing resource id.")))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"required"
+              [:issue 0 :details :coding 0 :system] := operation-outcome
+              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISSING"
+              [:issue 0 :diagnostics] := "Missing resource id.")))))
 
+    (testing "ID mismatch"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :body {:fhir/type :fhir/Patient :id "1"}})]
 
-  (testing "on ID mismatch"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-               {:path-params {:id "0"}
-                ::reitit/match patient-match
-                :body {:fhir/type :fhir/Patient :id "1"}})]
+          (testing "returns error"
+            (is (= 400 status))
 
-        (testing "returns error"
-          (is (= 400 status))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"invariant"
+              [:issue 0 :details :coding 0 :system] := operation-outcome
+              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISMATCH"
+              [:issue 0 :diagnostics] := "The resource id `1` doesn't match the endpoints id `0`.")))))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invariant"
-            [:issue 0 :details :coding 0 :system] := operation-outcome
-            [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISMATCH"
-            [:issue 0 :diagnostics] := "The resource id `1` doesn't match the endpoints id `0`.")))))
+    (testing "optimistic locking failure"
+      (with-handler [handler]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-  (testing "on optimistic locking failure"
-    (with-handler [handler]
-      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :headers {"if-match" "W/\"1\""}
+                  :body {:fhir/type :fhir/Patient :id "0"}})]
 
-      (let [{:keys [status body]}
-            @(handler
-               {:path-params {:id "0"}
-                ::reitit/match patient-match
-                :headers {"if-match" "W/\"1\""}
-                :body {:fhir/type :fhir/Patient :id "0"}})]
+          (testing "returns error"
+            (is (= 412 status))
 
-        (testing "returns error"
-          (is (= 412 status))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"conflict"
+              [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))))
 
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"conflict"
-            [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))))
+    (testing "violated referential integrity"
+      (with-handler [handler]
+        []
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match observation-match
+                  :body {:fhir/type :fhir/Observation :id "0"
+                         :subject #fhir/Reference{:reference "Patient/0"}}})]
 
-  (testing "on violated referential integrity"
-    (with-handler [handler]
-      []
-      (let [{:keys [status body]}
-            @(handler
-               {:path-params {:id "0"}
-                ::reitit/match {:data {:fhir.resource/type "Observation"}}
-                :body {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}})]
+          (testing "returns error"
+            (is (= 409 status))
 
-        (testing "returns error"
-          (is (= 409 status))
-
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"conflict"
-            [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"conflict"
+              [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
 
   (testing "on newly created resource"
     (testing "with no Prefer header"
@@ -371,4 +381,35 @@
               :id := "0"
               :birthDate := #fhir/date"2020"
               [:meta :versionId] := #fhir/id"2"
-              [:meta :lastUpdated] := Instant/EPOCH)))))))
+              [:meta :lastUpdated] := Instant/EPOCH))))))
+
+  (testing "with disabled referential integrity check"
+    (with-system [{handler :blaze.interaction/update} (create-system {:enforce-referential-integrity false})]
+      (let [{:keys [status headers body]}
+            @((-> handler wrap-defaults wrap-error)
+               {:path-params {:id "0"}
+                ::reitit/match observation-match
+                :body {:fhir/type :fhir/Observation :id "0"
+                       :subject #fhir/Reference{:reference "Patient/0"}}})]
+
+        (testing "Returns 201"
+          (is (= 201 status)))
+
+        (testing "Location header"
+          (is (= "base-url-134013/Observation/0/_history/1" (get headers "Location"))))
+
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "VersionId in ETag header"
+          (is (= "W/\"1\"" (get headers "ETag"))))
+
+        (testing "Location header"
+          (is (= "base-url-134013/Observation/0/_history/1" (get headers "Location"))))
+
+        (testing "Contains the resource as body"
+          (given body
+            :fhir/type := :fhir/Observation
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [:meta :lastUpdated] := Instant/EPOCH))))))

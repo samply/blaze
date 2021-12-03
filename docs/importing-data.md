@@ -1,6 +1,6 @@
 # Importing Data
 
-In order to use Blaze for queries, you have to import your data. Although you can use the full functionality of the [FHIR RESTful API](https://www.hl7.org/fhir/http.html) available under `http://localhost:8080/fhir` to create resources, the easiest way is to download [blazectl](https://github.com/samply/blazectl/releases/tag/v0.2.0) to upload [bundles](https://www.hl7.org/fhir/bundle.html).
+In order to use Blaze for queries, you have to import your data. Although you can use the full functionality of the [FHIR RESTful API](https://www.hl7.org/fhir/http.html) available under `http://localhost:8080/fhir` to create resources, the easiest way is to download [blazectl](https://github.com/samply/blazectl/releases/tag/v0.8.1) to upload [bundles](https://www.hl7.org/fhir/bundle.html).
 
 First you should test connectivity by counting already available resources in Blaze which should be zero:
 
@@ -71,3 +71,16 @@ Specimen                          : 100
 total                             : 742
 ```
 
+## Disabling Referential Integrity Checks
+
+If your primary date source ensures referential integrity already, and you can't import the resources into Blaze in the right order or bunldes so that the referential integrity will be maintained per transaction, you can disable the referential integrity checks in Blaze by setting the env var `ENFORCE_REFERENTIAL_INTEGRITY` to `false`. 
+
+The checks can be enabled/disabled at each start of Blaze. You can check whether the checks are enabled by executing:
+
+````sh
+curl -s http://localhost:8080/fhir/metadata | jq -r 'isempty(.rest[].resource[].referencePolicy[] | select(. == "enforced")) | not'
+````
+
+That command return `true` or `false` depending on whether the referential integrity checks are enabled or not.
+
+Please be aware that Blaze doesn't check the referential integrity of already imported resource if you enable the checks after you have already imported resources. By disabling the referential integrity checks at some time, you will have a database that can contain stale references.

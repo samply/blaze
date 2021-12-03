@@ -166,7 +166,7 @@
                    ::cass/request-timeout]))
 
 
-(defn init-msg [config]
+(defn- init-msg [config]
   (str "Open Cassandra resource store with the following settings: "
        (cass/format-config config)))
 

@@ -366,6 +366,12 @@
   :ret :elm/expression)
 
 
+;; 20.10. First
+(s/fdef literal/first
+  :args (s/cat :source :elm/expression)
+  :ret :elm/expression)
+
+
 ;; 20.11. Flatten
 (s/fdef literal/flatten
   :args (s/cat :list :elm/expression)
