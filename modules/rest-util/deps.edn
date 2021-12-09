@@ -9,7 +9,7 @@
   {:local/root "../fhir-structure"}
 
   org.apache.httpcomponents/httpcore
-  {:mvn/version "4.4.14"}
+  {:mvn/version "4.4.15"}
 
   metosin/reitit-ring
   {:mvn/version "0.5.15"}
