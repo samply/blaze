@@ -61,7 +61,7 @@
               ret))
           ::s/invalid))
       (unform* [_ x] x)
-      (explain* [_ path via in x _ _])
+      (explain* [_ _path _via _in _x _ _])
       (gen* [_ _ _ _])
       (with-gen* [_ _])
       (describe* [_] `(record ~class-sym ~spec-forms)))))

@@ -26,10 +26,11 @@
                                           Statement Row AsyncResultSet SimpleStatement]
     [com.datastax.oss.driver.api.core.metadata Node EndPoint]
     [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException WriteType]
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.net InetSocketAddress]
     [java.nio ByteBuffer]
-    [java.util.concurrent CompletionStage]
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
+    #_{:clj-kondo/ignore [:unused-import]}
+    [java.util.concurrent CompletionStage]))
 
 
 (st/instrument)
