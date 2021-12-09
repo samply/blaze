@@ -20,7 +20,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2021.10.19'
+        version: '2021.12.01'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -83,7 +83,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1029'
+        tools-deps: '1.10.3.1040'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -149,7 +149,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1029'
+        tools-deps: '1.10.3.1040'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -191,7 +191,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1029'
+        tools-deps: '1.10.3.1040'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -219,7 +219,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1029'
+        tools-deps: '1.10.3.1040'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -291,7 +291,7 @@ jobs:
         output: trivy-results.sarif
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@codeql-bundle-20211115
+      uses: github/codeql-action/upload-sarif@codeql-bundle-20211208
       with:
         sarif_file: trivy-results.sarif
 
@@ -510,7 +510,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1029'
+        tools-deps: '1.10.3.1040'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -779,7 +779,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1029'
+        tools-deps: '1.10.3.1040'
 
     - name: Check out Git repository
       uses: actions/checkout@v2

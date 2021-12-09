@@ -11,7 +11,7 @@
   {:mvn/version "0.3.3"}
 
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "3.0.4"}
+  {:mvn/version "3.0.5"}
 
   com.google.guava/guava
   {:mvn/version "31.0.1-jre"}
@@ -32,7 +32,7 @@
   {:mvn/version "2021.05.29-0"}
 
   metosin/jsonista
-  {:mvn/version "0.3.4"}
+  {:mvn/version "0.3.5"}
 
   org.clojure/alpha.spec
   {:git/url "https://github.com/alexanderkiel/spec-alpha2.git"
