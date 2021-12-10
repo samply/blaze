@@ -2888,7 +2888,12 @@
         (given (d/compile-type-query node "Patient" [["foo" "bar"]
                                                      ["active" "true"]])
           ::anom/category := ::anom/not-found
-          ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))))
+          ::anom/message := "The search-param with code `foo` and type `Patient` was not found."))
+
+      (testing "invalid date"
+        (given (d/compile-type-query node "Patient" [["birthdate" "invalid"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`.")))))
 
 
 (deftest compile-type-query-lenient-test
@@ -2897,21 +2902,38 @@
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
 
       (testing "the patient can be found"
-        (given @(->> (d/compile-type-query-lenient node "Patient" [["active" "true"]])
+        (given @(->> (d/compile-type-query-lenient
+                       node "Patient" [["active" "true"]])
                      (d/execute-query (d/db node))
                      (d/pull-many node))
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"))
 
       (testing "an unknown search-param is ignored"
-        (let [clauses [["foo" "bar"] ["active" "true"]]
-              query (d/compile-type-query-lenient node "Patient" clauses)]
+        (let [query (d/compile-type-query-lenient
+                      node "Patient" [["foo" "bar"] ["active" "true"]])]
           (given @(d/pull-many node (d/execute-query (d/db node) query))
             [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0")
 
           (testing "the clause [\"foo\" \"bar\"] was not used"
-            (is (= [["active" "true"]] (d/query-clauses query)))))))))
+            (is (= [["active" "true"]] (d/query-clauses query)))))
+
+        (testing "one unknown search parameter will result in an empty query"
+          (let [query (d/compile-type-query-lenient
+                        node "Patient" [["foo" "bar"]])]
+            (given @(d/pull-many node (d/execute-query (d/db node) query))
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := "0")
+
+            (testing "the clause [\"foo\" \"bar\"] was not used"
+              (is (empty? (d/query-clauses query)))))))
+
+      (testing "invalid date"
+        (given (d/compile-type-query-lenient
+                 node "Patient" [["birthdate" "invalid"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`.")))))
 
 
 
