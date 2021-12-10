@@ -80,7 +80,7 @@
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :type :fhir.type/name
                :clauses :blaze.db.query/clauses)
-  :ret :blaze.db/query)
+  :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
 
 

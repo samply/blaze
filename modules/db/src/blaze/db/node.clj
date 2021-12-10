@@ -285,10 +285,11 @@
       (batch-db/->TypeQuery (codec/tid type) (seq clauses))))
 
   (-compile-type-query-lenient [_ type clauses]
-    (if-let [clauses (seq (resolve-search-params search-param-registry type
-                                                 clauses true))]
-      (batch-db/->TypeQuery (codec/tid type) clauses)
-      (batch-db/->EmptyTypeQuery (codec/tid type))))
+    (when-ok [clauses (resolve-search-params search-param-registry type clauses
+                                             true)]
+      (if-let [clauses (seq clauses)]
+        (batch-db/->TypeQuery (codec/tid type) clauses)
+        (batch-db/->EmptyTypeQuery (codec/tid type)))))
 
   (-compile-system-query [_ clauses]
     (when-ok [clauses (resolve-search-params search-param-registry "Resource"

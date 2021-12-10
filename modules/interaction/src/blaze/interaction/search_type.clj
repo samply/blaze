@@ -57,7 +57,7 @@
        :clauses clauses})
 
     :else
-    (let [query (d/compile-type-query-lenient db type clauses)]
+    (when-ok [query (d/compile-type-query-lenient db type clauses)]
       {:handles (execute-query db query page-id)
        :clauses (d/query-clauses query)})))
 
@@ -193,7 +193,7 @@
        :clauses clauses})
 
     :else
-    (let [query (d/compile-type-query-lenient db type clauses)]
+    (when-ok [query (d/compile-type-query-lenient db type clauses)]
       {:total (count (d/execute-query db query))
        :clauses (d/query-clauses query)})))
 

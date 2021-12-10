@@ -63,6 +63,8 @@
     [["/Observation"
       {:name :Observation/type
        :fhir.resource/type "Observation"
+       :get {:middleware [[wrap-db node]]
+             :handler (wrap-params search-type-handler)}
        :post create-handler}]
      ["/Patient"
       {:name :Patient/type
@@ -1774,4 +1776,67 @@
 
             (testing "entry response"
               (given response
-                :status := "200"))))))))
+                :status := "200")))))
+
+      (testing "with date-time search param value"
+        (with-handler [handler]
+          [[[:create
+             {:fhir/type :fhir/Observation :id "0"
+              :effective #fhir/dateTime"2021-12-08T00:00:00+01:00"}]
+            [:create
+             {:fhir/type :fhir/Observation :id "1"
+              :effective #fhir/dateTime"2021-12-09T00:00:00+01:00"}]]]
+
+          (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"batch"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"GET"
+                        :url #fhir/uri"Observation?date=lt2021-12-08T10:00:00%2B01:00"}}]}})]
+
+            (testing "response status"
+              (is (= 200 status)))
+
+            (testing "entry resource"
+              (given resource
+                :fhir/type := :fhir/Bundle
+                :type := #fhir/code"searchset"
+                :total := #fhir/unsignedInt 1
+                [:entry count] := 1))
+
+            (testing "entry response"
+              (given response
+                :status := "200")))
+
+          (testing "without encoding of the plus in the timezone"
+            (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"batch"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"GET"
+                          :url #fhir/uri"Observation?date=lt2021-12-09T00:00:00+01:00"}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "returns error"
+                (testing "with status"
+                  (is (= "400" (:status response))))
+
+                (testing "with outcome"
+                  (given (:outcome response)
+                    :fhir/type := :fhir/OperationOutcome
+                    [:issue 0 :severity] := #fhir/code"error"
+                    [:issue 0 :code] := #fhir/code"invalid"
+                    [:issue 0 :diagnostics] := "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`."
+                    [:issue 0 :expression 0] := "Bundle.entry[0]"))))))))))
