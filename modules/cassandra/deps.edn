@@ -8,9 +8,9 @@
   com.datastax.oss/java-driver-core
   {:mvn/version "4.13.0"}
 
-  ;; curreny version of transitive dependency of com.datastax.oss/java-driver-core
+  ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
-  {:mvn/version "4.1.70.Final"}}
+  {:mvn/version "4.1.72.Final"}}
 
  :aliases
  {:test
