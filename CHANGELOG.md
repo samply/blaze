@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.15.0
+
+### Operation
+
+* Allow Setting the Database Sync Timeout ([#566](https://github.com/samply/blaze/pull/566))
+
+### Bugfixes
+
+* Ensure Error Response on Invalid Value in FHIR Search ([#563](https://github.com/samply/blaze/pull/563))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/20?closed=1).
+
 ## v0.14.1
 
 ### Other

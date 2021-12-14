@@ -3,7 +3,7 @@
 ## Release Checklist
 
 * create a release branch called `release-v<version>` like `release-v0.13.1`
-* rename every occurance of the old version, say `0.13.0` into the new version, say `0.13.1`
+* rename every occurrence of the old version, say `0.13.0` into the new version, say `0.13.1`
 * update the last changed date in `blaze.rest-api.capabilities`
 * update the CHANGELOG based on the milestone
 * create a commit with the title `Release v<version>`
