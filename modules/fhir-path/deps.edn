@@ -3,7 +3,7 @@
   {:local/root "../fhir-structure"}
 
   info.cqframework/cql
-  {:mvn/version "1.5.4"}}
+  {:mvn/version "1.5.5"}}
 
  :aliases
  {:test
