@@ -267,7 +267,8 @@
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definitions))
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
   (testing "invalid enforce-referential-integrity"
     (given-thrown (ig/init {:blaze/rest-api {:enforce-referential-integrity ::invalid}})
@@ -279,8 +280,9 @@
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definitions))
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 6 :pred] := `boolean?
-      [:explain ::s/problems 6 :val] := ::invalid)))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:explain ::s/problems 7 :pred] := `boolean?
+      [:explain ::s/problems 7 :val] := ::invalid)))
 
 
 (def system
@@ -291,6 +293,7 @@
      :structure-definitions []
      :node (ig/ref :blaze.db/node)
      :search-param-registry (ig/ref :blaze.db/search-param-registry)
+     :db-sync-timeout 10000
      :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)}
     :blaze.db/search-param-registry {}
     :blaze.rest-api.json-parse/executor {}))

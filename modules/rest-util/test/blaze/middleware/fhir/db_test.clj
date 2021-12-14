@@ -85,5 +85,15 @@
            (assert (= ::node node))
            (ac/supply-async (constantly ::db) (ac/delayed-executor 3 TimeUnit/SECONDS)))]
 
+        (given-failed-future ((db/wrap-db handler ::node 2000) {})
+          ::anom/category := ::anom/busy)))
+
+    (testing "default timeout are 10 seconds"
+      (with-redefs
+        [d/sync
+         (fn [node]
+           (assert (= ::node node))
+           (ac/supply-async (constantly ::db) (ac/delayed-executor 11 TimeUnit/SECONDS)))]
+
         (given-failed-future ((db/wrap-db handler ::node) {})
           ::anom/category := ::anom/busy)))))
