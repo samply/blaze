@@ -15,18 +15,21 @@
   (and vid (re-matches #"\d+" vid) (Long/parseLong vid)))
 
 
-(defn- db [node {:keys [query-params] :as request}]
+(defn- db [node timeout {:keys [query-params] :as request}]
   (if-let [t (vid request)]
     (do-sync [db (d/sync node t)]
       (d/as-of db t))
     (if-let [t (fhir-util/t query-params)]
       (d/sync node t)
-      (ac/or-timeout! (d/sync node) 2 TimeUnit/SECONDS))))
+      (ac/or-timeout! (d/sync node) timeout TimeUnit/MILLISECONDS))))
 
 
-(defn wrap-db [handler node]
-  (fn [request]
-    (if (:blaze/db request)
-      (handler request)
-      (-> (db node request)
-          (ac/then-compose #(handler (assoc request :blaze/db %)))))))
+(defn wrap-db
+  ([handler node]
+   (wrap-db handler node 10000))
+  ([handler node timeout]
+   (fn [request]
+     (if (:blaze/db request)
+       (handler request)
+       (-> (db node timeout request)
+           (ac/then-compose #(handler (assoc request :blaze/db %))))))))

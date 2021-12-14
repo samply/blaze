@@ -140,3 +140,8 @@
 
 (s/def :blaze.rest-api/structure-definitions
   (s/coll-of :fhir.un/StructureDefinition))
+
+
+;; in milliseconds
+(s/def :blaze.rest-api/db-sync-timeout
+  pos-int?)
