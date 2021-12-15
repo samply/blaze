@@ -5,4 +5,4 @@
 
 
 (s/fdef db/wrap-db
-  :args (s/cat :handler ifn? :node :blaze.db/node))
+  :args (s/cat :handler ifn? :node :blaze.db/node :timeout (s/? pos-int?)))

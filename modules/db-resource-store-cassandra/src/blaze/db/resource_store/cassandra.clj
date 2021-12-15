@@ -175,8 +175,7 @@
   [_ {:keys [put-consistency-level]
       :or {put-consistency-level "TWO"} :as config}]
   (log/info (init-msg config))
-  (let [options (cass/options config)
-        session (cass/session config options)]
+  (let [session (cass/session config)]
     (->CassandraResourceStore
       session
       (cass/prepare session statement/get-statement)

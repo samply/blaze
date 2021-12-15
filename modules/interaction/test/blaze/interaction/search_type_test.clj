@@ -456,6 +456,40 @@
                   (is (= #fhir/uri"base-url-113047/Patient?active=true&_summary=count&_count=50&__t=1"
                          (link-url body "self")))))))))))
 
+  (testing "on invalid date-time"
+    (testing "returns error"
+      (with-handler [handler]
+        []
+        (testing "normal result"
+          (let [{:keys [status body]}
+                @(handler
+                   {::reitit/match observation-match
+                    ;; the date is already URl decoded and so contains a space instead of a plus
+                    :params {"date" "2021-12-09T00:00:00 01:00"}})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"invalid"
+              [:issue 0 :diagnostics] := "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`.")))
+
+        (testing "summary result"
+          (let [{:keys [status body]}
+                @(handler
+                   {::reitit/match observation-match
+                    ;; the date is already URl decoded and so contains a space instead of a plus
+                    :params {"date" "2021-12-09T00:00:00 01:00" "_summary" "count"}})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"invalid"
+              [:issue 0 :diagnostics] := "Invalid date-time value `2021-12-09T00:00:00 01:00` in search parameter `date`."))))))
+
   (testing "on invalid token"
     (testing "returns error"
       (with-handler [handler]

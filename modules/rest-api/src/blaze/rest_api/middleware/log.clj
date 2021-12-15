@@ -4,11 +4,15 @@
     [taoensso.timbre :as log]))
 
 
+(defn- format-request-method [{:keys [request-method]}]
+  (str/upper-case (name request-method)))
+
+
 (defn wrap-log
   [handler]
-  (fn [{:keys [request-method uri query-string] :as request}]
+  (fn [{:keys [uri query-string] :as request}]
     (log/debug
       (if query-string
-        (format "%s [base]%s?%s" (str/upper-case (name request-method)) uri query-string)
-        (format "%s [base]%s" (str/upper-case (name request-method)) uri)))
+        (format "%s [base]%s?%s" (format-request-method request) uri query-string)
+        (format "%s [base]%s" (format-request-method request) uri)))
     (handler request)))

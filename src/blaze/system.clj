@@ -87,7 +87,7 @@
 
 
 (def ^:private root-config
-  {:blaze/version "0.14.1"
+  {:blaze/version "0.15.0"
 
    :blaze/clock {}
 
@@ -109,6 +109,7 @@
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
+    :db-sync-timeout (->Cfg "DB_SYNC_TIMEOUT" pos-int? 10000)
     :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)}
 
    :blaze.rest-api/requests-total {}

@@ -115,7 +115,8 @@
      :blaze/version
      :blaze.rest-api/structure-definitions
      :blaze.db/node
-     :blaze.db/search-param-registry]
+     :blaze.db/search-param-registry
+     :blaze.rest-api/db-sync-timeout]
     :opt-un
     [:blaze/context-path
      ::auth-backends
@@ -128,8 +129,9 @@
 
 
 (defmethod ig/init-key :blaze/rest-api
-  [_ {:keys [base-url context-path] :as context}]
-  (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path))
+  [_ {:keys [base-url context-path db-sync-timeout] :as context}]
+  (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path)
+            "and a database sync timeout of" db-sync-timeout "ms")
   (handler context))
 
 

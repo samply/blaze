@@ -8,7 +8,7 @@
   {:mvn/version "2.13.0"}
 
   info.cqframework/cql-to-elm
-  {:mvn/version "1.5.4"
+  {:mvn/version "1.5.5"
    :exclusions
    [com.google.code.javaparser/javaparser
     info.cqframework/qdm

@@ -2,15 +2,17 @@ name: Build
 
 on:
   schedule:
-    - cron: '0 10 * * *' # everyday at 10am
+  - cron: '0 10 * * *' # every day at 10am
   push:
     branches:
-      - '**'
+    - master
+    - develop
     tags:
       - 'v*.*.*'
   pull_request:
     branches:
-      - 'master'
+    - master
+    - develop
 
 jobs:
   lint:
@@ -37,6 +39,7 @@ jobs:
         module:
         - anomaly
         - async
+        - cassandra
         - coll
         - cql
         - db
@@ -102,41 +105,6 @@ jobs:
 
     needs: [ test ]
 
-    strategy:
-      max-parallel: 1
-      matrix:
-        module:
-        - anomaly
-        - async
-        - coll
-        - cql
-        - db
-        - db-resource-store
-        - db-resource-store-cassandra
-        - db-tx-log
-        - db-tx-log-kafka
-        - executor
-        - extern-terminology-service
-        - fhir-client
-        - fhir-path
-        - fhir-structure
-        - http-client
-        - interaction
-        - kv
-        - luid
-        - metrics
-        - openid-auth
-        - operation-measure-evaluate-measure
-        - page-store
-        - page-store-cassandra
-        - rest-api
-        - rest-util
-        - rocksdb
-        - scheduler
-        - search-param-registry
-        - server
-        - thread-pool-executor-collector
-
     runs-on: ubuntu-20.04
 
     steps:
@@ -158,16 +126,16 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-17-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
+        key: ${{ runner.os }}-temurin-17-maven-test-coverage-${{ hashFiles('**/deps.edn') }}
 
     - name: Test Coverage
-      run: make -C modules/${{ matrix.module }} test-coverage
+      run: make test-coverage
 
     - name: Codecov Upload
       uses: codecov/codecov-action@v2
       with:
-        name: ${{ matrix.module }}
-        file: modules/${{ matrix.module }}/target/coverage/codecov.json
+        name: codecov-umbrella
+        file: modules/**/target/coverage/codecov.json
         fail_ci_if_error: true
 
   test-root:
