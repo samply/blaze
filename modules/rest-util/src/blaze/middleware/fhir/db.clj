@@ -6,7 +6,8 @@
   (:require
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
-    [blaze.handler.fhir.util :as fhir-util])
+    [blaze.handler.fhir.util :as fhir-util]
+    [cognitect.anomalies :as anom])
   (:import
     [java.util.concurrent TimeUnit]))
 
@@ -15,13 +16,19 @@
   (and vid (re-matches #"\d+" vid) (Long/parseLong vid)))
 
 
+(defn- timeout-msg [timeout]
+  (format "Timeout while trying to acquire the latest known database state. At least one known transaction hasen't been completed yet. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.", timeout))
+
+
 (defn- db [node timeout {:keys [query-params] :as request}]
   (if-let [t (vid request)]
     (do-sync [db (d/sync node t)]
       (d/as-of db t))
     (if-let [t (fhir-util/t query-params)]
       (d/sync node t)
-      (ac/or-timeout! (d/sync node) timeout TimeUnit/MILLISECONDS))))
+      (-> (d/sync node)
+          (ac/or-timeout! timeout TimeUnit/MILLISECONDS)
+          (ac/exceptionally #(assoc % ::anom/message (timeout-msg timeout)))))))
 
 
 (defn wrap-db
