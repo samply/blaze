@@ -34,5 +34,10 @@
   :ret (s/or :result bytes? :anomaly ::anom/anomaly))
 
 
+(s/fdef cass/session
+  :args (s/cat :config map?)
+  :ret #(instance? CqlSession %))
+
+
 (s/fdef cass/close
   :args (s/cat :session #(instance? CqlSession %)))
