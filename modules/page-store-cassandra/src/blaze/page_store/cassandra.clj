@@ -125,8 +125,7 @@
   [_ {:keys [secure-rng put-consistency-level]
       :or {put-consistency-level "TWO"} :as config}]
   (log/info (init-msg config))
-  (let [options (cass/options config)
-        session (cass/session config options)]
+  (let [session (cass/session config)]
     (->CassandraPageStore
       secure-rng
       session

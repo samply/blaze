@@ -21,7 +21,10 @@
     {:local/root "../test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.945"}}
+    {:mvn/version "1.60.945"}
+
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -33,6 +36,10 @@
     {:local/root "../test-util"}
 
     cloverage/cloverage
-    {:mvn/version "1.2.2"}}
+    {:mvn/version "1.2.2"}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}
+    org.clojars.akiel/iota
+    {:mvn/version "0.1"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
+               "-e" ".+spec"]}}}

@@ -2,6 +2,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.cassandra :as cass]
+    [blaze.cassandra-spec]
     [blaze.page-store :as page-store]
     [blaze.page-store.cassandra]
     [blaze.page-store.cassandra.codec :as codec]
@@ -69,7 +70,7 @@
 (deftest put-test
   (testing "success"
     (with-redefs
-      [cass/session (fn [_ _] ::session)
+      [cass/session (fn [_] ::session)
        cass/prepare prepare
        cass/bind (fn [prepared-statement & params]
                    (assert (= ::prepared-put-statement prepared-statement))

@@ -4,6 +4,7 @@
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.cassandra :as cass]
+    [blaze.cassandra-spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.cassandra]
     [blaze.db.resource-store.cassandra.statement :as statement]
@@ -121,7 +122,7 @@
               (ac/completed-future (resultset-with row)))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (given-failed-future (rs/get store hash)
             ::anom/message :# "Error while parsing resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`:(.|\\s)*"
@@ -145,7 +146,7 @@
               (ac/completed-future (resultset-with row)))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (given-failed-future (rs/get store hash)
             ::anom/message := "Error while conforming resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`."
@@ -168,7 +169,7 @@
               (ac/completed-future (resultset-with nil)))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (is (nil? @(rs/get store hash)))))))
 
@@ -188,7 +189,7 @@
               (ac/failed-future (Exception. "msg-141754")))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (given-failed-future (rs/get store hash)
             ::anom/category := ::anom/fault
@@ -211,7 +212,7 @@
               (ac/failed-future (DriverTimeoutException. "msg-115452")))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (given-failed-future (rs/get store hash)
             ::anom/category := ::anom/busy
@@ -237,7 +238,7 @@
               (ac/completed-future (resultset-with row)))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (is (= content @(rs/get store hash)))))))
 
@@ -263,7 +264,7 @@
                 (ac/completed-future (resultset-with row))))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (is (= content @(rs/get store hash))))))))
 
@@ -286,7 +287,7 @@
               (ac/completed-future (resultset-with nil)))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (is (empty? @(rs/multi-get store [hash])))))))
 
@@ -309,7 +310,7 @@
               (ac/completed-future (resultset-with row)))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (is (= {hash content} @(rs/multi-get store [hash]))))))))
 
@@ -350,7 +351,7 @@
               (ac/failed-future (Exception. "error-150216")))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (given-failed-future (rs/put! store {hash resource})
             ::anom/message := "error-150216")))))
@@ -375,7 +376,7 @@
               (ac/failed-future (DriverTimeoutException. "msg-123234")))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (given-failed-future (rs/put! store {hash resource})
             ::anom/category := ::anom/busy
@@ -404,7 +405,7 @@
               (ac/failed-future (WriteTimeoutException. nil ConsistencyLevel/TWO 1 2 WriteType/SIMPLE)))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (given-failed-future (rs/put! store {hash resource})
             ::anom/category := ::anom/busy
@@ -433,6 +434,6 @@
               (ac/completed-future nil))
             (close [_]))]
 
-      (with-redefs [cass/session (fn [_ _] session)]
+      (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (is (nil? @(rs/put! store {hash resource}))))))))

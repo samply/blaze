@@ -1,13 +1,28 @@
 (ns blaze.cassandra-test
   (:require
+    [blaze.anomaly :as ba]
+    [blaze.async.comp :as ac]
     [blaze.cassandra :as cass]
     [blaze.cassandra-spec]
+    [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest are testing]]
-    [java-time :as time])
+    [clojure.test :as test :refer [deftest is testing]]
+    [clojure.test.check.generators :as gen]
+    [clojure.test.check.properties :as prop]
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]])
   (:import
-    [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
-    [java.net InetSocketAddress]))
+    [com.datastax.oss.driver.api.core
+     ConsistencyLevel CqlSession DriverTimeoutException
+     RequestThrottlingException]
+    [com.datastax.oss.driver.api.core.cql
+     AsyncResultSet BoundStatement PreparedStatement Row SimpleStatement
+     Statement]
+    [com.datastax.oss.driver.api.core.servererrors
+     WriteTimeoutException WriteType]
+    [java.nio ByteBuffer]
+    #_{:clj-kondo/ignore [:unused-import]}
+    [java.util.concurrent CompletionStage]))
 
 
 (st/instrument)
@@ -22,45 +37,117 @@
 (test/use-fixtures :each fixture)
 
 
-(deftest options-test
-  (testing "defaults"
-    (let [^OptionsMap options (cass/options nil)]
-      (are [k v] (= v (.get options k))
-        TypedDriverOption/REQUEST_THROTTLER_CLASS
-        "ConcurrencyLimitingRequestThrottler"
-
-        TypedDriverOption/REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS
-        1024
-
-        TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE
-        100000
-
-        TypedDriverOption/REQUEST_TIMEOUT
-        (time/millis 2000))))
-
-  (testing "custom values"
-    (let [^OptionsMap options (cass/options {:max-concurrent-requests 32
-                                          :max-request-queue-size 1000
-                                          :request-timeout 5000})]
-      (are [k v] (= v (.get options k))
-        TypedDriverOption/REQUEST_THROTTLER_CLASS
-        "ConcurrencyLimitingRequestThrottler"
-
-        TypedDriverOption/REQUEST_THROTTLER_MAX_CONCURRENT_REQUESTS
-        32
-
-        TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE
-        1000
-
-        TypedDriverOption/REQUEST_TIMEOUT
-        (time/millis 5000)))))
+(deftest prepare-test
+  (let [given-statement (reify SimpleStatement)
+        prepared-statement (reify PreparedStatement)
+        session
+        (reify CqlSession
+          (^PreparedStatement prepare [_ ^SimpleStatement statement]
+            (assert (= given-statement statement))
+            prepared-statement))]
+    (is (= prepared-statement (cass/prepare session given-statement)))))
 
 
-(deftest build-contact-points-test
-  (are [s res] (= res (cass/build-contact-points s))
-    "localhost:9042"
-    [(InetSocketAddress. "localhost" 9042)]
+(deftest bind-test
+  (testing "bind nothing"
+    (let [bound-statement (reify BoundStatement)
+          statement
+          (reify PreparedStatement
+            (bind [_ values]
+              (assert (empty? values))
+              bound-statement))]
+      (is (= bound-statement (cass/bind statement)))))
 
-    "node-1:9042,node-2:9042"
-    [(InetSocketAddress. "node-1" 9042)
-     (InetSocketAddress. "node-2" 9042)]))
+  (testing "bind one value"
+    (let [bound-statement (reify BoundStatement)
+          statement
+          (reify PreparedStatement
+            (bind [_ values]
+              (assert (= [::value] (vec values)))
+              bound-statement))]
+      (is (= bound-statement (cass/bind statement ::value)))))
+
+  (testing "bind two values"
+    (let [bound-statement (reify BoundStatement)
+          statement
+          (reify PreparedStatement
+            (bind [_ values]
+              (assert (= [::v1 ::v2] (vec values)))
+              bound-statement))]
+      (is (= bound-statement (cass/bind statement ::v1 ::v2))))))
+
+
+(deftest execute-test
+  (let [given-statement (reify Statement)
+        result-set (reify AsyncResultSet)
+        session
+        (reify CqlSession
+          (^CompletionStage executeAsync [_ ^Statement statement]
+            (assert (= given-statement statement))
+            (ac/completed-future result-set)))]
+    (is (= result-set @(cass/execute session given-statement)))))
+
+
+(defn row-with [idx bytes]
+  (reify Row
+    (^ByteBuffer getByteBuffer [_ ^int i]
+      (assert (= idx i))
+      (ByteBuffer/wrap (byte-array bytes)))))
+
+
+(defn resultset-with [row]
+  (reify AsyncResultSet
+    (one [_]
+      row)))
+
+
+(deftest first-row-test
+  (testing "with one row"
+    (satisfies-prop 100
+      (prop/for-all [bytes (gen/vector gen/byte)]
+        (= bytes (vec (cass/first-row (resultset-with (row-with 0 bytes))))))))
+
+  (testing "with no row"
+    (given (cass/first-row (resultset-with nil))
+      ::anom/category := ::anom/not-found)))
+
+
+(deftest format-config-test
+  (testing "empty config"
+    (is (= "" (cass/format-config {}))))
+
+  (testing "normal value"
+    (is (= "foo = bar" (cass/format-config {:foo "bar"}))))
+
+  (testing "nil value is ignored"
+    (is (= "" (cass/format-config {:foo nil}))))
+
+  (testing "passwords are hidden"
+    (is (= "password = [hidden]" (cass/format-config {:password "secret"})))))
+
+
+(deftest close-test
+  (let [state (atom ::open)
+        session
+        (reify CqlSession
+          (close [_]
+            (reset! state ::closed)))]
+    (cass/close session)
+    (is (= ::closed @state))))
+
+
+(deftest anomaly-test
+  (testing "DriverTimeoutException"
+    (given (ba/anomaly (DriverTimeoutException. "msg-162625"))
+      ::anom/category := ::anom/busy
+      ::anom/message := "Cassandra msg-162625"))
+
+  (testing "WriteTimeoutException"
+    (given (ba/anomaly (WriteTimeoutException. nil ConsistencyLevel/TWO 1 2 WriteType/SIMPLE))
+      ::anom/category := ::anom/busy
+      ::anom/message := "Cassandra timeout during SIMPLE write query at consistency TWO (2 replica were required but only 1 acknowledged the write)"))
+
+  (testing "RequestThrottlingException"
+    (given (ba/anomaly (RequestThrottlingException. "msg-163725"))
+      ::anom/category := ::anom/busy
+      ::anom/message := "Cassandra msg-163725")))
