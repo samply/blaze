@@ -86,7 +86,8 @@
            (ac/supply-async (constantly ::db) (ac/delayed-executor 3 TimeUnit/SECONDS)))]
 
         (given-failed-future ((db/wrap-db handler ::node 2000) {})
-          ::anom/category := ::anom/busy)))
+          ::anom/category := ::anom/busy
+          ::anom/message := "Timeout while trying to acquire the latest known database state. At least one known transaction hasen't been completed yet. Please try to lower the transaction load or increase the timeout of 2000 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.")))
 
     (testing "default timeout are 10 seconds"
       (with-redefs
@@ -96,4 +97,5 @@
            (ac/supply-async (constantly ::db) (ac/delayed-executor 11 TimeUnit/SECONDS)))]
 
         (given-failed-future ((db/wrap-db handler ::node) {})
-          ::anom/category := ::anom/busy)))))
+          ::anom/category := ::anom/busy
+          ::anom/message := "Timeout while trying to acquire the latest known database state. At least one known transaction hasen't been completed yet. Please try to lower the transaction load or increase the timeout of 10000 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.")))))
