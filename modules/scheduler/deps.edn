@@ -11,7 +11,7 @@
     {:local/root "../test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.945"}}
+    {:mvn/version "1.60.972"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
