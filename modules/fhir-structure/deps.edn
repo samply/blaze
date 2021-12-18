@@ -53,7 +53,7 @@
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.945"}
+    {:mvn/version "1.60.972"}
 
     org.openjdk.jol/jol-core
     {:mvn/version "0.16"}}
