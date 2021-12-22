@@ -4,11 +4,17 @@
  :linters
  {:unsorted-required-namespaces
   {:level :error}
+
   :single-key-in
   {:level :warning}
+
   :unresolved-namespace
   {:exclude [f xhtml]}
+
   :redefined-var
-  {:level :off}}
+  {:level :off}
+
+  :reduce-without-init
+  {:level :warning}}
 
  :skip-comments true}
