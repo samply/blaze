@@ -16,14 +16,8 @@
   com.google.guava/guava
   {:mvn/version "31.0.1-jre"}
 
-  com.fasterxml.jackson.core/jackson-core
-  {:mvn/version "2.13.0"}
-
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.13.0"}
-
-  com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.13.0"}
+  {:mvn/version "2.13.1"}
 
   com.taoensso/timbre
   {:mvn/version "5.1.2"}
@@ -53,7 +47,7 @@
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.945"}
+    {:mvn/version "1.60.972"}
 
     org.openjdk.jol/jol-core
     {:mvn/version "0.16"}}
