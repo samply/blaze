@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.15.1
+
+### Security
+
+* Fix CVE-2021-3712 in Package openssl-libs 1:1.1.1k-4.el8 ([#574](https://github.com/samply/blaze/pull/574))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/24?closed=1).
+
 ## v0.15.0
 
 ### Operation
