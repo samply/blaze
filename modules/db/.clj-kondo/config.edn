@@ -17,6 +17,9 @@
   {:level :error}
 
   :single-key-in
+  {:level :warning}
+
+  :reduce-without-init
   {:level :warning}}
 
  :skip-comments true}
