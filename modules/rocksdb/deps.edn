@@ -9,7 +9,7 @@
   {:local/root "../module-base"}
 
   org.rocksdb/rocksdbjni
-  {:mvn/version "6.26.1"}}
+  {:mvn/version "6.27.3"}}
 
  :aliases
  {:test
