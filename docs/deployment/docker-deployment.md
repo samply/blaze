@@ -11,7 +11,7 @@ docker volume create blaze-data
 ## Blaze
 
 ```sh
-docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.13
+docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.15
 ```
 
 Blaze should log something like this:
@@ -61,7 +61,7 @@ A Docker Compose file looks like this:
 version: '3.2'
 services:
   blaze:
-    image: "samply/blaze:0.13"
+    image: "samply/blaze:0.15"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
