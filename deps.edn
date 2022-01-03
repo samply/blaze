@@ -64,7 +64,7 @@
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.972"}
+    {:mvn/version "1.60.977"}
 
     org.clojure/tools.namespace
     {:mvn/version "1.2.0"}}
@@ -111,6 +111,7 @@
     "-d" "modules/jepsen"
     "-d" "modules/kv"
     "-d" "modules/luid"
+    "-d" "modules/metrics"
     "-d" "modules/module-base"
     "-d" "modules/openid-auth"
     "-d" "modules/operation-measure-evaluate-measure"
@@ -121,6 +122,7 @@
     "-d" "modules/rocksdb"
     "-d" "modules/scheduler"
     "-d" "modules/search-param-registry"
+    "-d" "modules/server"
     "-d" "modules/spec"
     "-d" "modules/structure-definition"
     "-d" "modules/terminology-service"
