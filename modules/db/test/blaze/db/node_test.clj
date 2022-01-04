@@ -114,6 +114,25 @@
       (assoc ::resource-store-failing-on-get {})))
 
 
+(defmethod ig/init-key ::resource-store-slow-on-put [_ {:keys [resource-store]}]
+  (reify
+    rs/ResourceStore
+    (-get [_ hash]
+      (rs/get resource-store hash))
+    (-multi-get [_ hashes]
+      (rs/multi-get resource-store hashes))
+    (-put [_ entries]
+      (-> (rs/put! resource-store entries)
+          (ac/then-apply-async (fn [_] (Thread/sleep 100)))))))
+
+
+(def resource-store-slow-on-put
+  (-> (assoc-in system [:blaze.db/node :resource-store]
+                (ig/ref ::resource-store-slow-on-put))
+      (assoc ::resource-store-slow-on-put
+             {:resource-store (ig/ref :blaze.db/resource-store)})))
+
+
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {:blaze.db/node nil})
@@ -208,7 +227,7 @@
            (ac/completed-future {::anom/category ::anom/fault ::x ::y}))]
 
         (testing "fetching the result immediately"
-          (with-system [{:blaze.db/keys [node]} system]
+          (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put]
             (given-failed-future
               (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
                   (ac/then-compose (partial node/tx-result node)))
