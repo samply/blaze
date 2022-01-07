@@ -6,7 +6,10 @@
   {:mvn/version "0.3.3"}
 
   com.datastax.oss/java-driver-core
-  {:mvn/version "4.13.0"}
+  {:mvn/version "4.13.0"
+   ;; remove when https://github.com/datastax/java-driver/pull/1575 is solved
+   :exclusions
+   [com.esri.geometry/esri-geometry-api]}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
