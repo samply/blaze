@@ -539,6 +539,16 @@
       #elm/interval [#elm/integer"2" #elm/integer"3"] false)))
 
 
+;; 19.8. Equal
+;;
+;; See 12.1. Equal
+
+
+;; 19.9. Equivalent
+;;
+;; See 12.2. Equivalent
+
+
 ;; 19.10. Except
 ;;
 ;; The Except operator returns the set difference of the two arguments.
@@ -588,6 +598,47 @@
         #elm/interval [#elm/integer"3" #elm/integer"5"]
         #elm/interval [#elm/integer"1" #elm/integer"3"]
         (interval 4 5)))))
+
+
+;; 19.11. Expand
+;;
+;; The Expand operator returns the set of intervals of size per for all the
+;; ranges present in the given list of intervals, or the list of points covering
+;; the range of the given interval, if invoked on a single interval.
+;;
+;; The per argument determines the size of the resulting intervals and must be a
+;; quantity-valued expression compatible with the interval point type. For
+;; numeric intervals, this means a quantity with the default unit '1' (not to be
+;; confused with the quantity value, which may be any valid positive decimal).
+;; For Date-, DateTime-, and Time-valued intervals, this means a quantity with a
+;; temporal unit (e.g., 'year', 'month', etc).
+;;
+;; Conceptually, the per argument to the expand operator partitions the
+;; value-space for the operation into units of size 'per', and the intervals
+;; will be expanded aligning with those partitions. Note that the 'per'
+;; partitions start from the starting boundary of the first input interval,
+;; ordered.
+;;
+;; If the per argument is null, a per value will be constructed based on the
+;; coarsest precision of the boundaries of the intervals in the input set. For
+;; example, a list of DateTime-based intervals where the boundaries are a
+;; mixture of hours and minutes will expand at the hour precision.
+;;
+;; Note that if the values in the intervals are more precise than the per
+;; quantity, the more precise values will be truncated to the precision
+;; specified by the per quantity.
+;;
+;; If the input argument is an interval, rather than a list of intervals, the
+;; result is a list of points, rather than a list of intervals. In this case,
+;; the calculation is performed the same way, but the starting point of each
+;; resulting interval is returned, rather than the interval.
+;;
+;; If the list of intervals is empty, the result is empty. If the list of
+;; intervals contains nulls, they will be excluded from the resulting list.
+;;
+;; If the source argument is null, the result is null.
+;;
+;; TODO: Test Expand
 
 
 ;; 19.12. In

@@ -12,7 +12,8 @@
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.protocols :as p])
   (:import
-    [java.math RoundingMode]))
+    [java.math RoundingMode]
+    [tech.units.indriya.function RationalNumber]))
 
 
 (set! *warn-on-reflection* true)
@@ -149,7 +150,7 @@
     (.longValueExact (.setScale x 0 RoundingMode/FLOOR))))
 
 
-;; 16.7. Log
+;; 16.8. Log
 ;;
 ;; When invoked with Integer arguments, the arguments will be implicitly
 ;; converted to Decimal.
@@ -164,7 +165,7 @@
           check-overflow))))
 
 
-;; 16.8. Ln
+;; 16.10. Ln
 ;;
 ;; When invoked with Integer arguments, the arguments will be implicitly
 ;; converted to Decimal.
@@ -178,12 +179,12 @@
       (-> (BigDecimal/valueOf (Math/log x)) constrain-scale check-overflow))))
 
 
-;; 16.11. Modulo
+;; 16.13. Modulo
 ;;
 ;; See integer implementation
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 (extend-protocol p/Multiply
   BigDecimal
   (multiply [x y]
@@ -191,7 +192,7 @@
       (-> (.multiply x (p/to-decimal y)) constrain-scale check-overflow))))
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 (extend-protocol p/Negate
   BigDecimal
   (negate [x]
@@ -199,7 +200,7 @@
     (.negate x)))
 
 
-;; 16.14. Power
+;; 16.16. Power
 (extend-protocol p/Power
   BigDecimal
   (power [x exp]
@@ -217,7 +218,7 @@
   (ba/incorrect (minimum-value-msg x)))
 
 
-;; 16.15. Predecessor
+;; 16.18. Predecessor
 (extend-protocol p/Predecessor
   BigDecimal
   (predecessor [x]
@@ -228,14 +229,14 @@
         (throw-anom (minimum-value-anom x))))))
 
 
-;; 16.16. Round
+;; 16.19. Round
 (extend-protocol p/Round
   BigDecimal
   (round [x precision]
     (.setScale x ^long precision RoundingMode/HALF_UP)))
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 (extend-protocol p/Subtract
   BigDecimal
   (subtract [x y]
@@ -246,7 +247,7 @@
       (check-overflow (.subtract x (p/to-decimal y))))))
 
 
-;; 16.18. Successor
+;; 16.21. Successor
 (extend-protocol p/Successor
   BigDecimal
   (successor [x]
@@ -258,19 +259,19 @@
                         {:x x}))))))
 
 
-;; 16.19. Truncate
+;; 16.22. Truncate
 (extend-protocol p/Truncate
   BigDecimal
   (truncate [x]
     (.intValueExact (.toBigInteger x))))
 
 
-;; 16.20. TruncatedDivide
+;; 16.23. TruncatedDivide
 ;;
 ;; See integer implementation
 
 
-;; 22.23. ToDecimal
+;; 22.24. ToDecimal
 (extend-protocol p/ToDecimal
   Integer
   (to-decimal [x]
@@ -283,6 +284,10 @@
   BigDecimal
   (to-decimal [x] x)
 
+  RationalNumber
+  (to-decimal [x]
+    (.bigDecimalValue x))
+
   String
   (to-decimal [s]
     (when-let [d (try (BigDecimal. s) (catch Exception _))]
@@ -292,10 +297,10 @@
 (defn from-literal [s]
   (if-let [d (p/to-decimal s)]
     d
-    (throw (Exception. (str "Invalid decimal literal `" s "`.")))))
+    (throw-anom (ba/incorrect (format "Incorrect decimal literal `%s`." s)))))
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 (extend-protocol p/ToString
   BigDecimal
   (to-string [x]

@@ -26,9 +26,10 @@
     (testing "special units"
       (are [unit] (q/quantity 1 unit)
         "U/L"
-        "10*3/uL"))
+        "10*3/uL"
+        "mm[Hg]"))
 
-    (testing "we can't parse 62 of this units"
+    (testing "we can't parse 20 of this units"
       (->> (str/split (slurp (io/resource "blaze/elm/fhir-ucum-units.tsv")) #"\n")
            (drop 1)
            (map #(str/split % #"\t"))
@@ -37,7 +38,7 @@
            (filter ::anom/category)
            (map :unit)
            (count)
-           (= 62)
+           (= 20)
            (is)))))
 
 
@@ -49,4 +50,7 @@
       (q/quantity 1 "m")
       (q/quantity (int 1) "m")
       (p/divide (q/quantity 1M "m") (q/quantity 1M "s"))
-      (p/divide (q/quantity 1M "m") (q/quantity 2M "s")))))
+      (p/divide (q/quantity 1M "m") (q/quantity 2M "s"))))
+
+  (testing "get on unknown key returns nil"
+    (is (nil? (p/get (q/quantity 1M "m") ::unknown)))))

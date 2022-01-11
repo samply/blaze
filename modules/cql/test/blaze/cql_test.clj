@@ -104,7 +104,11 @@
                    (let [~'now (OffsetDateTime/now)]
                      ~(if invalid?
                         `(is (~'thrown? Exception (eval ~'now ~expression)))
-                        `(is (equal (eval ~'now ~output) (eval ~'now ~expression)))))))))))
+                        `(is
+                           (try
+                             (equal (eval ~'now ~output) (eval ~'now ~expression))
+                             (catch Throwable e#
+                               (throw (ex-info (ex-message e#) (merge (ex-data e#) {:name ~name}))))))))))))))
 
 
 (defmacro deftests [name file exclusions]
@@ -174,11 +178,31 @@
 
 ;; 6. Arithmetic Operators
 (deftests "arithmetic-operators" "cql-test/CqlArithmeticFunctionsTest.xml"
-          #{"DecimalMinValue" "DecimalMaxValue"
-            "Ln0" "LnNeg0"
+          #{"DecimalMinValue"                               ; decimal value has 28 integral digits instead of 20
+            "DecimalMaxValue"                               ; decimal value has 28 integral digits instead of 20
+            "Ln0"
+            "LnNeg0"
             "Log1Base1"
-            "RoundNeg0D5" "RoundNeg1D5"
-            "IntegerMinValue"                               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than
+            "RoundNeg0D5"
+            "RoundNeg1D5"
+            "IntegerMinValue"                               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_VALUE than
+            "LongMinValue"                                  ; CQL-To-ELM negates the pos long which is over Long/MAX_VALUE than
+            "LongMaxValue"                                  ; the L of the long interval is missing
+            "ModuloQuantity"                                ; unknown quantity `gm`
+            "TruncatedDivide10d1ByNeg3D1Quantity"           ; unknown quantity `gm`
+            "PrecisionDecimal"                              ; TODO: implement
+            "PrecisionYear"                                 ; TODO: implement
+            "PrecisionDateTimeMilliseconds"                 ; TODO: implement
+            "PrecisionTimeMinutes"                          ; TODO: implement
+            "PrecisionTimeMilliseconds"                     ; TODO: implement
+            "LowBoundaryTimeMillisecond"                    ; TODO: implement
+            "LowBoundaryDateTimeMillisecond"                ; TODO: implement
+            "LowBoundaryDateMonth"                          ; TODO: implement
+            "LowBoundaryDecimal"                            ; TODO: implement
+            "HighBoundaryTimeMillisecond"                   ; TODO: implement
+            "HighBoundaryDateTimeMillisecond"               ; TODO: implement
+            "HighBoundaryDateMonth"                         ; TODO: implement
+            "HighBoundaryDecimal"                           ; TODO: implement
             })
 
 
@@ -263,6 +287,14 @@
             "TestNullElement1"                              ; Contains should return null on either null argument
             "DateTimeIncludedInNull"                        ; as no precision is given, it should return true
             "DateTimeIncludedInPrecisionNull"               ; TODO: resolve, worked before
+            "ExpandPerDay"                                  ; TODO: implement
+            "ExpandPer2Days"                                ; TODO: implement
+            "ExpandPerHour"                                 ; TODO: implement
+            "ExpandPer1"                                    ; TODO: implement
+            "ExpandPerMinute"                               ; TODO: implement
+            "ExpandPer0D1"                                  ; TODO: implement
+            "ExpandInterval"                                ; TODO: implement
+            "ExpandIntervalPer2"                            ; TODO: implement
             })
 
 

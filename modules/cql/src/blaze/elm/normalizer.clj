@@ -421,6 +421,13 @@
 
 
 
+;; 22. Type Operators
+
+;; 20.27. ToLong
+(derive :elm.normalizer.type/to-long :elm.normalizer.type/unary-expression)
+
+
+
 ;; 23. Clinical Operators
 
 ;; 23.3. CalculateAge

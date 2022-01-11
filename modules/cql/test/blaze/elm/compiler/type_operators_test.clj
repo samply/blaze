@@ -240,7 +240,7 @@
   (tu/testing-unary-null elm/descendents))
 
 
-;; TODO 22.17. Is
+;; TODO 22.18. Is
 
 
 ;; TODO 22.19. ToBoolean
@@ -408,11 +408,12 @@
 ;; If the input string is not formatted correctly, or cannot be interpreted as
 ;; a valid Integer value, the result is null.
 ;;
+;; If the input is Boolean, true will result in 1, false will result in 0.
+;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-integer-test
   (testing "String values"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-integer elm/string x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-integer elm/string x))
       (str Integer/MIN_VALUE) Integer/MIN_VALUE
       "-1" -1
       "0" 0
@@ -422,6 +423,11 @@
       (str (dec Integer/MIN_VALUE)) nil
       (str (inc Integer/MAX_VALUE)) nil
       "a" nil))
+
+  (testing "Boolean values"
+    (are [x res] (= res (tu/compile-unop elm/to-integer elm/boolean x))
+      "true" 1
+      "false" 0))
 
   (tu/testing-unary-null elm/to-integer))
 
@@ -453,7 +459,49 @@
     (is (= [] (core/-eval (c/compile {} #elm/to-list{:type "Null"}) {} nil nil)))))
 
 
-;; TODO 22.27. ToLong
+;; 22.27. ToLong
+;;
+;; The ToLong operator converts the value of its argument to a Long value. The
+;; operator accepts strings using the following format:
+;;
+;; (+|-)?#0
+;;
+;; Meaning an optional polarity indicator, followed by any number of digits
+;; (including none), followed by at least one digit.
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; Note that the long value returned by this operator must be a valid value in
+;; the range representable for Long values in CQL.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as a
+;; valid Long value, the result is null.
+;;
+;; If the input is Boolean, true will result in 1, false will result in 0.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-to-long-test
+  (testing "String values"
+    (are [x res] (= res (tu/compile-unop elm/to-long elm/string x))
+      (str Long/MIN_VALUE) Long/MIN_VALUE
+      "-1" -1
+      "0" 0
+      "1" 1
+      (str Long/MAX_VALUE) Long/MAX_VALUE
+
+      (str (dec (bigint Long/MIN_VALUE))) nil
+      (str (inc (bigint Long/MAX_VALUE))) nil
+
+      "a" nil))
+
+  (testing "Boolean values"
+    (are [x res] (= res (tu/compile-unop elm/to-long elm/boolean x))
+      "true" 1
+      "false" 0))
+
+  (tu/testing-unary-null elm/to-long))
+
 
 ;; 22.28. ToQuantity
 ;;

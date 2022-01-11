@@ -205,7 +205,10 @@
   (if (nil? x) [] [x]))
 
 
-;; TODO 22.27. ToLong
+;; 22.27. ToLong
+(defunop to-long [x]
+  (p/to-long x))
+
 
 ;; 22.28. ToQuantity
 (defunop to-quantity [x]

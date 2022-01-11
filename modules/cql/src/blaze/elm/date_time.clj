@@ -474,7 +474,7 @@
   (ba/incorrect (minimum-value-msg x)))
 
 
-;; 16.15. Predecessor
+;; 16.18. Predecessor
 (extend-protocol p/Predecessor
   Year
   (predecessor [x]
@@ -525,7 +525,7 @@
       (throw-anom (minimum-value-anom x)))))
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 (extend-protocol p/Subtract
   Year
   (subtract [this other]
@@ -1230,7 +1230,7 @@
 
 ;; 22. Type Operators
 
-;; 22.21. ToDate
+;; 22.22. ToDate
 (extend-protocol p/ToDate
   nil
   (to-date [_ _])
@@ -1274,7 +1274,7 @@
         (.toLocalDate))))
 
 
-;; 22.22. ToDateTime
+;; 22.23. ToDateTime
 (extend-protocol p/ToDateTime
   nil
   (to-date-time [_ _])
@@ -1321,7 +1321,7 @@
   (to-date-time [_ _]))
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 (extend-protocol p/ToString
   PrecisionLocalTime
   (to-string [{:keys [local-time]}]

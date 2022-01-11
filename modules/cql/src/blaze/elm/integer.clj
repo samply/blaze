@@ -15,14 +15,14 @@
 
 ;; 12.1. Equal
 (extend-protocol p/Equal
-  Long
+  Number
   (equal [x y]
     (some->> y (p/equivalent x))))
 
 
 ;; 12.2. Equivalent
 (extend-protocol p/Equivalent
-  Long
+  Number
   (equivalent [x y]
     (if (number? y)
       (== x y)
@@ -31,6 +31,9 @@
 
 ;; 16.1. Abs
 (extend-protocol p/Abs
+  Integer
+  (abs [x]
+    (Math/abs ^int x))
   Long
   (abs [x]
     (Math/abs ^long x)))
@@ -54,7 +57,7 @@
 
 ;; 16.4. Divide
 (extend-protocol p/Divide
-  Long
+  Number
   (divide [x y]
     (p/divide (p/to-decimal x) y)))
 
@@ -71,17 +74,17 @@
     x))
 
 
-;; 16.7. Log
+;; 16.8. Log
 ;;
 ;; See decimal implementation
 
 
-;; 16.8. Ln
+;; 16.10. Ln
 ;;
 ;; See decimal implementation
 
 
-;; 16.11. Modulo
+;; 16.13. Modulo
 (extend-protocol p/Modulo
   nil
   (modulo [_ _])
@@ -93,23 +96,23 @@
       (catch Exception _))))
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 (extend-protocol p/Multiply
-  Long
+  Number
   (multiply [x y]
     (try
       (* x y)
       (catch Exception _))))
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 (extend-protocol p/Negate
   Number
   (negate [x]
     (- x)))
 
 
-;; 16.14. Power
+;; 16.16. Power
 (extend-protocol p/Power
   Long
   (power [x exp]
@@ -119,14 +122,14 @@
         (catch ArithmeticException _ res)))))
 
 
-;; 16.15. Predecessor
+;; 16.18. Predecessor
 (extend-protocol p/Predecessor
-  Long
+  Number
   (predecessor [x]
     (dec x)))
 
 
-;; 16.16. Round
+;; 16.19. Round
 ;;
 ;; Round returns always a decimal.
 (extend-protocol p/Round
@@ -135,29 +138,21 @@
     (BigDecimal/valueOf x)))
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 (extend-protocol p/Subtract
-  Integer
-  (subtract [a b]
-    (some->> b (- a)))
-
-  Long
+  Number
   (subtract [a b]
     (some->> b (- a))))
 
 
-;; 16.18. Successor
+;; 16.21. Successor
 (extend-protocol p/Successor
-  Integer
-  (successor [x]
-    (inc x))
-
-  Long
+  Number
   (successor [x]
     (inc x)))
 
 
-;; 16.19. Truncate
+;; 16.22. Truncate
 (extend-protocol p/Truncate
   Integer
   (truncate [x] x)
@@ -166,7 +161,7 @@
   (truncate [x] x))
 
 
-;; 16.20. TruncatedDivide
+;; 16.23. TruncatedDivide
 (extend-protocol p/TruncatedDivide
   Number
   (truncated-divide [num div]
@@ -174,7 +169,7 @@
       (quot num div))))
 
 
-;; 22.24. ToInteger
+;; 22.25. ToInteger
 (extend-protocol p/ToInteger
   Integer
   (to-integer [x] x)
@@ -189,7 +184,22 @@
       (catch Exception _))))
 
 
-;; 22.28. ToString
+;; 22.27. ToLong
+(extend-protocol p/ToLong
+  Integer
+  (to-long [x] (long x))
+
+  Long
+  (to-long [x] x)
+
+  String
+  (to-long [s]
+    (try
+      (Long/parseLong s)
+      (catch Exception _))))
+
+
+;; 22.30. ToString
 (extend-protocol p/ToString
   Number
   (to-string [x]

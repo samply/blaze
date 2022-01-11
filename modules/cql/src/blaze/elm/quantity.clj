@@ -12,7 +12,6 @@
     [javax.measure.format UnitFormat]
     [javax.measure.spi ServiceProvider]
     [tech.units.indriya ComparableQuantity]
-    [tech.units.indriya.function RationalNumber]
     [tech.units.indriya.quantity Quantities]))
 
 
@@ -76,28 +75,11 @@
 
 
 ;; 2.3. Property
-(defprotocol ToBigDecimal
-  (-to-big-decimal [_]))
-
-(extend-protocol ToBigDecimal
-  RationalNumber
-  (-to-big-decimal [x]
-    (.bigDecimalValue x))
-  BigDecimal
-  (-to-big-decimal [x]
-    x)
-  Long
-  (-to-big-decimal [x]
-    (BigDecimal/valueOf x))
-  Integer
-  (-to-big-decimal [x]
-    (BigDecimal/valueOf ^long x)))
-
 (extend-protocol p/StructuredType
   Quantity
   (get [quantity key]
     (case key
-      :value (-to-big-decimal (.getValue quantity))
+      :value (p/to-decimal (.getValue quantity))
       :unit (format-unit (.getUnit quantity))
       nil)))
 
@@ -156,7 +138,7 @@
     (.divide ^Quantity quantity divisor)))
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 (extend-protocol p/Multiply
   Quantity
   (multiply [x y]
@@ -175,33 +157,38 @@
     (.multiply ^Quantity quantity multiplier)))
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 (extend-protocol p/Negate
   Quantity
   (negate [x]
     (Quantities/getQuantity ^Number (p/negate (.getValue x)) (.getUnit x))))
 
 
-;; 16.15. Predecessor
+;; 16.18. Predecessor
 (extend-protocol p/Predecessor
   Quantity
   (predecessor [x]
-    (Quantities/getQuantity ^Number (p/predecessor (.getValue x)) (.getUnit x))))
+    (Quantities/getQuantity ^Number (p/predecessor (p/to-decimal (.getValue x)))
+                            (.getUnit x))))
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 (extend-protocol p/Subtract
   Quantity
   (subtract [x y]
     (.subtract x y)))
 
 
-;; 16.18. Successor
+;; 16.21. Successor
 (extend-protocol p/Successor
   Quantity
   (successor [x]
-    (Quantities/getQuantity ^Number (p/successor (.getValue x)) (.getUnit x))))
+    (Quantities/getQuantity ^Number (p/successor (p/to-decimal (.getValue x)))
+                            (.getUnit x))))
 
+
+
+;; 22. Type Operators
 
 ;; 22.3. CanConvertQuantity
 (extend-protocol p/CanConvertQuantity
@@ -220,7 +207,7 @@
       (catch Exception _))))
 
 
-;; 22.26. ToQuantity
+;; 22.28. ToQuantity
 (extend-protocol p/ToQuantity
   Number
   (to-quantity [x]
@@ -234,7 +221,7 @@
         (quantity (p/to-decimal value) (or (str/trim unit "'") "1"))))))
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 (extend-protocol p/ToString
   Quantity
   (to-string [x]
