@@ -11,6 +11,7 @@
     zone of the :now timestamp in the evaluation context."
   (:refer-clojure :exclude [compile])
   (:require
+    [blaze.elm.boolean]
     [blaze.elm.compiler.aggregate-operators]
     [blaze.elm.compiler.clinical-operators]
     [blaze.elm.compiler.clinical-values]

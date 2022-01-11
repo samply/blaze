@@ -23,10 +23,10 @@
   {:mvn/version "2.4.0-b180830.0359"}
 
   systems.uom/systems-quantity
-  {:mvn/version "2.0.2"}
+  {:mvn/version "2.1"}
 
   systems.uom/systems-ucum
-  {:mvn/version "2.0.2"}}
+  {:mvn/version "2.1"}}
 
  :aliases
  {:test

@@ -1,6 +1,7 @@
 (ns blaze.elm.literal
   (:refer-clojure
-    :exclude [and boolean count distinct first flatten list max min not or time])
+    :exclude [and boolean count distinct first flatten list long max min not or
+              time])
   (:require
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]
@@ -21,6 +22,13 @@
   {:type "Literal"
    :valueType "{urn:hl7-org:elm-types:r1}Decimal"
    :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
+   :value s})
+
+
+(defn long [s]
+  {:type "Literal"
+   :valueType "{urn:hl7-org:elm-types:r1}Long"
+   :resultTypeName "{urn:hl7-org:elm-types:r1}Long"
    :value s})
 
 
@@ -249,59 +257,59 @@
    :operand op})
 
 
-;; 16.7. Log
+;; 16.8. Log
 (defn log [ops]
   {:type "Log"
    :operand ops})
 
 
-;; 16.8. Ln
+;; 16.10. Ln
 (defn ln [op]
   {:type "Ln"
    :operand op})
 
 
-;; 16.9. MaxValue
+;; 16.11. MaxValue
 (defn max-value [type]
   {:type "MaxValue" :valueType type})
 
 
-;; 16.10. MinValue
+;; 16.12. MinValue
 (defn min-value [type]
   {:type "MinValue" :valueType type})
 
 
-;; 16.11. Modulo
+;; 16.13. Modulo
 (defn modulo [ops]
   {:type "Modulo"
    :operand ops})
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 (defn multiply [ops]
   {:type "Multiply"
    :operand ops})
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 (defn negate [op]
   {:type "Negate"
    :operand op})
 
 
-;; 16.14. Power
+;; 16.16. Power
 (defn power [ops]
   {:type "Power"
    :operand ops})
 
 
-;; 16.15. Predecessor
+;; 16.18. Predecessor
 (defn predecessor [op]
   {:type "Predecessor"
    :operand op})
 
 
-;; 16.16. Round
+;; 16.19. Round
 (defn round [[operand precision]]
   (cond->
     {:type "Round"
@@ -647,42 +655,47 @@
   {:type "ConvertQuantity" :operand ops})
 
 
-;; 22.16. Descendents
+;; 22.17. Descendents
 (defn descendents [source]
   {:type "Descendents" :source source})
 
 
-;; 22.21. ToDate
+;; 22.22. ToDate
 (defn to-date [operand]
   {:type "ToDate" :operand operand})
 
 
-;; 22.22. ToDateTime
+;; 22.23. ToDateTime
 (defn to-date-time [operand]
   {:type "ToDateTime" :operand operand})
 
 
-;; 22.23. ToDecimal
+;; 22.24. ToDecimal
 (defn to-decimal [operand]
   {:type "ToDecimal" :operand operand})
 
 
-;; 22.24. ToInteger
+;; 22.25. ToInteger
 (defn to-integer [operand]
   {:type "ToInteger" :operand operand})
 
 
-;; 22.25. ToList
+;; 22.26. ToList
 (defn to-list [operand]
   {:type "ToList" :operand operand})
 
 
-;; 22.26. ToQuantity
+;; 22.27. ToLong
+(defn to-long [operand]
+  {:type "ToLong" :operand operand})
+
+
+;; 22.28. ToQuantity
 (defn to-quantity [operand]
   {:type "ToQuantity" :operand operand})
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 (defn to-string [operand]
   {:type "ToString" :operand operand})
 

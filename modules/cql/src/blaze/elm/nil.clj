@@ -128,7 +128,7 @@
   (truncate [_]))
 
 
-;; 16.20. TruncatedDivide
+;; 16.23. TruncatedDivide
 (extend-protocol p/TruncatedDivide
   nil
   (truncated-divide [_ _]))
@@ -243,6 +243,15 @@
 
 
 
+;; 20. List Operators
+
+;; 20.25. SingletonFrom
+(extend-protocol p/SingletonFrom
+  nil
+  (singleton-from [_]))
+
+
+
 ;; 22. Type Operators
 
 ;; 22.3. CanConvertQuantity
@@ -263,37 +272,37 @@
   (convert-quantity [_ _]))
 
 
-;; 22.16. Descendents
+;; 22.17. Descendents
 (extend-protocol p/Descendents
   nil
   (descendents [_]))
 
 
-;; 22.23. ToDecimal
+;; 22.24. ToDecimal
 (extend-protocol p/ToDecimal
   nil
   (to-decimal [_]))
 
 
-;; 22.24. ToInteger
+;; 22.25. ToInteger
 (extend-protocol p/ToInteger
   nil
   (to-integer [_]))
 
 
-;; 20.25. SingletonFrom
-(extend-protocol p/SingletonFrom
+;; 22.27. ToLong
+(extend-protocol p/ToLong
   nil
-  (singleton-from [_]))
+  (to-long [_]))
 
 
-;; 22.26. ToQuantity
+;; 22.28. ToQuantity
 (extend-protocol p/ToQuantity
   nil
   (to-quantity [_]))
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 (extend-protocol p/ToString
   nil
   (to-string [_]))

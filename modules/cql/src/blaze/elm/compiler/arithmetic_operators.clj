@@ -43,17 +43,17 @@
   (p/floor x))
 
 
-;; 16.7. Log
+;; 16.8. Log
 (defbinop log [x base]
   (p/log x base))
 
 
-;; 16.8. Ln
+;; 16.10. Ln
 (defunop ln [x]
   (p/ln x))
 
 
-;; 16.9. MaxValue
+;; 16.11. MaxValue
 (defn- incorrect-type-msg-anom [name type]
   (ba/incorrect (format "Incorrect type `%s`." name) :type type))
 
@@ -68,6 +68,7 @@
       "urn:hl7-org:elm-types:r1"
       (case name
         "Integer" (long Integer/MAX_VALUE)
+        "Long" Long/MAX_VALUE
         "Decimal" decimal/max
         "Date" date-time/max-date
         "DateTime" date-time/max-date-time
@@ -81,13 +82,14 @@
   (max-value type))
 
 
-;; 16.10. MinValue
+;; 16.12. MinValue
 (defn min-value [type]
   (let [[ns name] (elm-util/parse-qualified-name type)]
     (case ns
       "urn:hl7-org:elm-types:r1"
       (case name
         "Integer" (long Integer/MIN_VALUE)
+        "Long" Long/MIN_VALUE
         "Decimal" decimal/min
         "Date" date-time/min-date
         "DateTime" date-time/min-date-time
@@ -101,32 +103,32 @@
   (min-value type))
 
 
-;; 16.11. Modulo
+;; 16.13. Modulo
 (defbinop modulo [num div]
   (p/modulo num div))
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 (defbinop multiply [x y]
   (p/multiply x y))
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 (defunop negate [x]
   (p/negate x))
 
 
-;; 16.14. Power
+;; 16.16. Power
 (defbinop power [x exp]
   (p/power x exp))
 
 
-;; 16.15. Predecessor
+;; 16.18. Predecessor
 (defunop predecessor [x]
   (p/predecessor x))
 
 
-;; 16.16. Round
+;; 16.19. Round
 (defrecord RoundOperatorExpression [operand precision]
   core/Expression
   (-eval [_ context resource scope]
@@ -143,21 +145,21 @@
       (->RoundOperatorExpression operand precision))))
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 (defbinop subtract [x y]
   (p/subtract x y))
 
 
-;; 16.18. Successor
+;; 16.21. Successor
 (defunop successor [x]
   (p/successor x))
 
 
-;; 16.19. Truncate
+;; 16.22. Truncate
 (defunop truncate [x]
   (p/truncate x))
 
 
-;; 16.20. TruncatedDivide
+;; 16.23. TruncatedDivide
 (defbinop truncated-divide [num div]
   (p/truncated-divide num div))

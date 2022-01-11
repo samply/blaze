@@ -1,5 +1,6 @@
 {elm/boolean blaze.elm.literal/boolean
  elm/decimal blaze.elm.literal/decimal
+ elm/long blaze.elm.literal/long
  elm/integer blaze.elm.literal/integer
  elm/string blaze.elm.literal/string
  elm/tuple blaze.elm.literal/tuple
