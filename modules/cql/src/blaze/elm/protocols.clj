@@ -78,62 +78,62 @@
   (floor [x]))
 
 
-;; 16.7. Log
+;; 16.8. Log
 (defprotocol Log
   (log [x base]))
 
 
-;; 16.8. Ln
+;; 16.10. Ln
 (defprotocol Ln
   (ln [x] "Calculates the natural logarithm of `x`."))
 
 
-;; 16.11. Modulo
+;; 16.13. Modulo
 (defprotocol Modulo
   (modulo [num div]))
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 (defprotocol Multiply
   (multiply [x y]))
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 (defprotocol Negate
   (negate [x]))
 
 
-;; 16.14. Power
+;; 16.16. Power
 (defprotocol Power
   (power [x exp]))
 
 
-;; 16.15. Predecessor
+;; 16.18. Predecessor
 (defprotocol Predecessor
   (predecessor [x]))
 
 
-;; 16.16. Round
+;; 16.19. Round
 (defprotocol Round
   (round [x precision]))
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 (defprotocol Subtract
   (subtract [x y]))
 
 
-;; 16.18. Successor
+;; 16.21. Successor
 (defprotocol Successor
   (successor [x]))
 
 
-;; 16.19. Truncate
+;; 16.22. Truncate
 (defprotocol Truncate
   (truncate [x]))
 
 
-;; 16.20. TruncatedDivide
+;; 16.23. TruncatedDivide
 (defprotocol TruncatedDivide
   (truncated-divide [num div]))
 
@@ -230,6 +230,14 @@
 
 
 
+;; 20. List Operators
+
+;; 20.25. SingletonFrom
+(defprotocol SingletonFrom
+  (singleton-from [x]))
+
+
+
 ;; 22. Type Operators
 
 ;; 22.3. ConvertQuantity
@@ -247,12 +255,12 @@
   (convert-quantity [x unit]))
 
 
-;; 22.16. Descendents
+;; 22.17. Descendents
 (defprotocol Descendents
   (descendents [source]))
 
 
-;; 22.21. ToDate
+;; 22.22. ToDate
 (defprotocol ToDate
   "Converts an object into something usable as Date relative to `now`.
 
@@ -261,7 +269,7 @@
   (to-date [x now]))
 
 
-;; 22.22. ToDateTime
+;; 22.23. ToDateTime
 (defprotocol ToDateTime
   "Converts an object into something usable as DateTime relative to `now`.
 
@@ -272,26 +280,26 @@
   (to-date-time [x now]))
 
 
-;; 22.23. ToDecimal
+;; 22.24. ToDecimal
 (defprotocol ToDecimal
   (to-decimal ^BigDecimal [x]))
 
 
-;; 22.24. ToInteger
+;; 22.25. ToInteger
 (defprotocol ToInteger
   (to-integer [x]))
 
 
-;; 20.25. SingletonFrom
-(defprotocol SingletonFrom
-  (singleton-from [x]))
+;; 22.27. ToLong
+(defprotocol ToLong
+  (to-long [x]))
 
 
-;; 22.26. ToQuantity
+;; 22.28. ToQuantity
 (defprotocol ToQuantity
   (to-quantity [x]))
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 (defprotocol ToString
   (to-string [x]))

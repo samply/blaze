@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.15.2
+
+### Security
+
+* Update Google Protobuf to v3.19.2 ([#583](https://github.com/samply/blaze/pull/583))
+
+### Other Improvements
+
+* Enhance CQL Implementation ([#582](https://github.com/samply/blaze/pull/582))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/25?closed=1).
+
 ## v0.15.1
 
 ### Security

@@ -280,51 +280,51 @@
 (derive :elm.deps.type/floor :elm.deps.type/unary-expression)
 
 
-;; 16.7. Log
+;; 16.8. Log
 (derive :elm.deps.type/log :elm.deps.type/nary-expression)
 
 
-;; 16.8. Ln
+;; 16.10. Ln
 (derive :elm.deps.type/ln :elm.deps.type/unary-expression)
 
 
-;; 16.11. Modulo
+;; 16.13. Modulo
 (derive :elm.deps.type/modulo :elm.deps.type/nary-expression)
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 (derive :elm.deps.type/multiply :elm.deps.type/nary-expression)
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 (derive :elm.deps.type/negate :elm.deps.type/unary-expression)
 
 
-;; 16.14. Power
+;; 16.16. Power
 (derive :elm.deps.type/power :elm.deps.type/nary-expression)
 
 
-;; 16.15. Predecessor
+;; 16.18. Predecessor
 (derive :elm.deps.type/predecessor :elm.deps.type/unary-expression)
 
 
-;; 16.16. Round
+;; 16.19. Round
 (derive :elm.deps.type/round :elm.deps.type/unary-expression)
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 (derive :elm.deps.type/subtract :elm.deps.type/nary-expression)
 
 
-;; 16.18. Successor
+;; 16.21. Successor
 (derive :elm.deps.type/successor :elm.deps.type/unary-expression)
 
 
-;; 16.19. Truncate
+;; 16.22. Truncate
 (derive :elm.deps.type/truncate :elm.deps.type/unary-expression)
 
 
-;; 16.20. TruncatedDivide
+;; 16.23. TruncatedDivide
 (derive :elm.deps.type/truncated-divide :elm.deps.type/nary-expression)
 
 
@@ -604,19 +604,19 @@
 (derive :elm.deps.type/as :elm.deps.type/unary-expression)
 
 
-;; 22.21. ToDate
+;; 22.22. ToDate
 (derive :elm.deps.type/to-date :elm.deps.type/unary-expression)
 
 
-;; 22.22. ToDateTime
+;; 22.23. ToDateTime
 (derive :elm.deps.type/to-date-time :elm.deps.type/unary-expression)
 
 
-;; 22.25. ToList
+;; 22.26. ToList
 (derive :elm.deps.type/to-list :elm.deps.type/unary-expression)
 
 
-;; 22.26. ToQuantity
+;; 22.28. ToQuantity
 (derive :elm.deps.type/to-quantity :elm.deps.type/unary-expression)
 
 

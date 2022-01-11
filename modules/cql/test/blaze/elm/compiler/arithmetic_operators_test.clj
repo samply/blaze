@@ -480,7 +480,24 @@
   (tu/testing-unary-null elm/floor))
 
 
-;; 16.7. Log
+;; 16.7. HighBoundary
+;;
+;; The HighBoundary operator returns the greatest possible value of the input to
+;; the specified precision.
+;;
+;; If no precision is specified, the greatest precision of the type of the input
+;; value is used (i.e. at least 8 for Decimal, 4 for Date, at least 17 for
+;; DateTime, and at least 9 for Time).
+;;
+;; If the precision is greater than the maximum possible precision of the
+;; implementation, the result is null.
+;;
+;; The operator can be used with Decimal, Date, DateTime, and Time values.
+;;
+;; TODO: Test HighBoundary
+
+
+;; 16.8. Log
 ;;
 ;; The Log operator computes the logarithm of its first argument, using the
 ;; second argument as the base.
@@ -501,7 +518,24 @@
   (tu/testing-binary-null elm/log #elm/decimal"1.1"))
 
 
-;; 16.8. Ln
+;; 16.9. LowBoundary
+;;
+;; The LowBoundary operator returns the least possible value of the input to the
+;; specified precision.
+;;
+;; If no precision is specified, the greatest precision of the type of the input
+;; value is used (i.e. at least 8 for Decimal, 4 for Date, at least 17 for
+;; DateTime, and at least 9 for Time).
+;;
+;; If the precision is greater than the maximum possible precision of the
+;; implementation, the result is null.
+;;
+;; The operator can be used with Decimal, Date, DateTime, and Time values.
+;;
+;; TODO: Test LowBoundary
+
+
+;; 16.10. Ln
 ;;
 ;; The Ln operator computes the natural logarithm of its argument.
 ;;
@@ -526,15 +560,17 @@
   (tu/testing-unary-null elm/ln))
 
 
-;; 16.9. MaxValue
+;; 16.11. MaxValue
 ;;
 ;; The MaxValue operator returns the maximum representable value for the given
 ;; type.
 ;;
-;; The MaxValue operator is defined for the Integer, Decimal, Date, DateTime,
-;; and Time types.
+;; The MaxValue operator is defined for the Integer, Long, Decimal, Date,
+;; DateTime, and Time types.
 ;;
 ;; For Integer, MaxValue returns the maximum signed 32-bit integer, 2^31 - 1.
+;;
+;; For Long, MaxValue returns the maximum signed 64-bit integer, 2^63 - 1.
 ;;
 ;; For Decimal, MaxValue returns the maximum representable Decimal value,
 ;; (10^28 - 1) / 10^8 (99999999999999999999.99999999).
@@ -552,6 +588,7 @@
 (deftest compile-max-value-test
   (are [type res] (= res (c/compile {} (elm/max-value type)))
     "{urn:hl7-org:elm-types:r1}Integer" Integer/MAX_VALUE
+    "{urn:hl7-org:elm-types:r1}Long" Long/MAX_VALUE
     "{urn:hl7-org:elm-types:r1}Decimal" (/ (- 1E28M 1) 1E8M)
     "{urn:hl7-org:elm-types:r1}Date" (system/date 9999 12 31)
     "{urn:hl7-org:elm-types:r1}DateTime" (system/date-time 9999 12 31 23 59 59 999)
@@ -568,15 +605,17 @@
       ::anom/message := "Incorrect type namespace `foo`.")))
 
 
-;; 16.10. MinValue
+;; 16.12. MinValue
 ;;
 ;; The MinValue operator returns the minimum representable value for the given
 ;; type.
 ;;
-;; The MinValue operator is defined for the Integer, Decimal, Date, DateTime,
-;; and Time types.
+;; The MinValue operator is defined for the Integer, Long, Decimal, Date,
+;; DateTime, and Time types.
 ;;
 ;; For Integer, MinValue returns the minimum signed 32-bit integer, -(2^31).
+;;
+;; For Long, MinValue returns the minimum signed 64-bit integer, -(2^63).
 ;;
 ;; For Decimal, MinValue returns the minimum representable Decimal value,
 ;; (-10^28 + 1) / 10^8 (-99999999999999999999.99999999).
@@ -594,6 +633,7 @@
 (deftest compile-min-value-test
   (are [type res] (= res (c/compile {} (elm/min-value type)))
     "{urn:hl7-org:elm-types:r1}Integer" Integer/MIN_VALUE
+    "{urn:hl7-org:elm-types:r1}Long" Long/MIN_VALUE
     "{urn:hl7-org:elm-types:r1}Decimal" (/ (+ -1E28M 1) 1E8M)
     "{urn:hl7-org:elm-types:r1}Date" (system/date 1 1 1)
     "{urn:hl7-org:elm-types:r1}DateTime" (system/date-time 1 1 1 0 0 0 0)
@@ -610,7 +650,7 @@
       ::anom/message := "Incorrect type namespace `foo`.")))
 
 
-;; 16.11. Modulo
+;; 16.13. Modulo
 ;;
 ;; The Modulo operator computes the remainder of the division of its arguments.
 ;;
@@ -645,7 +685,7 @@
       #elm/decimal"1" #elm/decimal"0" nil)))
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 ;;
 ;; The Multiply operator performs numeric multiplication of its arguments.
 ;;
@@ -686,7 +726,7 @@
     (tu/testing-binary-null elm/multiply #elm/quantity[1])))
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 ;;
 ;; The Negate operator returns the negative of its argument.
 ;;
@@ -714,7 +754,7 @@
   (tu/testing-unary-null elm/negate))
 
 
-;; 16.14. Power
+;; 16.16. Power
 ;;
 ;; The Power operator raises the first argument to the power given by the
 ;; second argument.
@@ -746,16 +786,31 @@
       #elm/decimal"10" #elm/integer"2" 100M)))
 
 
-;; 16.15. Predecessor
+;; 16.17. Precision
+;;
+;; The Precision operator returns the number of digits of precision in the input
+;; value.
+;;
+;; The operator can be used with Decimal, Date, DateTime, and Time values.
+;;
+;; For Decimal values, the operator returns the number of digits of precision
+;; after the decimal place in the input value.
+;;
+;; TODO: Test Precision
+
+
+;; 16.18. Predecessor
 ;;
 ;; The Predecessor operator returns the predecessor of the argument. For
 ;; example, the predecessor of 2 is 1. If the argument is already the minimum
 ;; value for the type, a run-time error is thrown.
 ;;
-;; The Predecessor operator is defined for the Integer, Decimal, Quantity, Date,
+;; The Predecessor operator is defined for the Integer, Long, Decimal, Date,
 ;; DateTime, and Time types.
 ;;
 ;; For Integer, Predecessor is equivalent to subtracting 1.
+;;
+;; For Long, Predecessor is equivalent to subtracting 1L.
 ;;
 ;; For Decimal, Predecessor is equivalent to subtracting the minimum precision
 ;; value for the Decimal type, or 10^-08.
@@ -765,10 +820,6 @@
 ;; value. For example, if the DateTime is fully specified, Predecessor is
 ;; equivalent to subtracting 1 millisecond; if the DateTime is specified to the
 ;; second, Predecessor is equivalent to subtracting one second, etc.
-;;
-;; For Quantity values, the predecessor is equivalent to subtracting 1 if the
-;; quantity is an integer, and the minimum precision value for the Decimal type
-;; if the quantity is a decimal. The units are unchanged.
 ;;
 ;; If the argument is null, the result is null.
 ;;
@@ -801,7 +852,7 @@
 
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
-      #elm/quantity[0 "m"] (quantity/quantity -1 "m")
+      #_#_#elm/quantity[0 "m"] (quantity/quantity -1 "m")   ; TODO: implement
       #elm/quantity[0M "m"] (quantity/quantity -1E-8M "m")))
 
   (tu/testing-unary-null elm/predecessor)
@@ -823,7 +874,7 @@
       (elm/quantity [decimal/min]))))
 
 
-;; 16.16. Round
+;; 16.19. Round
 ;;
 ;; The Round operator returns the nearest integer to its argument. The semantics
 ;; of round are defined as a traditional round, meaning that a decimal value of
@@ -870,7 +921,7 @@
         (is (nil? (core/-eval expr eval-ctx nil nil)))))))
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 ;;
 ;; The Subtract operator performs numeric subtraction of its arguments.
 ;;
@@ -1069,16 +1120,18 @@
       #elm/time"00:00:00" #elm/quantity[1 "second"] (date-time/local-time 23 59 59))))
 
 
-;; 16.18. Successor
+;; 16.21. Successor
 ;;
 ;; The Successor operator returns the successor of the argument. For example,
 ;; the successor of 1 is 2. If the argument is already the maximum value for the
 ;; type, a run-time error is thrown.
 ;;
-;; The Successor operator is defined for the Integer, Decimal, Date, DateTime,
-;; and Time types.
+;; The Successor operator is defined for the Integer, Long, Decimal, Date,
+;; DateTime, and Time types.
 ;;
 ;; For Integer, Successor is equivalent to adding 1.
+;;
+;; For Long, Successor is equivalent to adding 1L.
 ;;
 ;; For Decimal, Successor is equivalent to adding the minimum precision value
 ;; for the Decimal type, or 10^-08.
@@ -1090,6 +1143,8 @@
 ;; is equivalent to adding one second, etc.
 ;;
 ;; If the argument is null, the result is null.
+;;
+;; If the result of the operation cannot be represented, the result is null.
 (deftest compile-successor-test
   (testing "Integer"
     (are [x res] (= res (c/compile {} (elm/successor x)))
@@ -1118,7 +1173,7 @@
 
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/successor x)))
-      #elm/quantity[0 "m"] (quantity/quantity 1 "m")
+      #_#_#elm/quantity[0 "m"] (quantity/quantity 1 "m")    ; TODO: implement
       #elm/quantity[0M "m"] (quantity/quantity 1E-8M "m")))
 
   (tu/testing-unary-null elm/successor)
@@ -1135,7 +1190,7 @@
     #elm/date-time"9999-12-31T23:59:59.999"))
 
 
-;; 16.19. Truncate
+;; 16.22. Truncate
 ;;
 ;; The Truncate operator returns the integer component of its argument.
 ;;
@@ -1149,7 +1204,7 @@
   (tu/testing-unary-null elm/truncate))
 
 
-;; 16.20. TruncatedDivide
+;; 16.23. TruncatedDivide
 ;;
 ;; The TruncatedDivide operator performs integer division of its arguments.
 ;;

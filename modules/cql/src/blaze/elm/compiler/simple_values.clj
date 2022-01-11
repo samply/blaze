@@ -17,6 +17,21 @@
 (defn- unsupported-literals-anom [value-type]
   (ba/unsupported (str value-type " literals are not supported")))
 
+
+(defn- parse-int [s]
+  (try
+    (long (Integer/parseInt s))
+    (catch Exception _
+      (throw-anom (ba/incorrect (format "Incorrect integer literal `%s`." s))))))
+
+
+(defn- parse-long [s]
+  (try
+    (Long/parseLong s)
+    (catch Exception _
+      (throw-anom (ba/incorrect (format "Incorrect long literal `%s`." s))))))
+
+
 (defmethod core/compile* :elm.compiler.type/literal
   [_ {:keys [value] value-type :valueType}]
   (when value
@@ -26,7 +41,8 @@
         (case value-type-name
           "Boolean" (Boolean/valueOf ^String value)
           ;; TODO: maybe we can even use integers here
-          "Integer" (long (Integer/parseInt value))
+          "Integer" (parse-int value)
+          "Long" (parse-long value)
           "Decimal" (decimal/from-literal value)
           "String" value
           (throw-anom (unsupported-literals-anom value-type)))

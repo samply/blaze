@@ -8,7 +8,7 @@
   {:mvn/version "2.13.1"}
 
   info.cqframework/cql-to-elm
-  {:mvn/version "1.5.5"
+  {:mvn/version "1.5.6"
    :exclusions
    [com.google.code.javaparser/javaparser
     info.cqframework/qdm
@@ -23,10 +23,10 @@
   {:mvn/version "2.4.0-b180830.0359"}
 
   systems.uom/systems-quantity
-  {:mvn/version "2.0.2"}
+  {:mvn/version "2.1"}
 
   systems.uom/systems-ucum
-  {:mvn/version "2.0.2"}}
+  {:mvn/version "2.1"}}
 
  :aliases
  {:test
@@ -37,7 +37,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.972"}
+    {:mvn/version "1.60.977"}
 
     org.clojure/data.xml
     {:mvn/version "0.2.0-alpha6"}}

@@ -405,49 +405,49 @@
   :ret :elm/expression)
 
 
-;; 22.16. Descendents
+;; 22.17. Descendents
 (s/fdef literal/descendents
   :args (s/cat :source :elm/expression)
   :ret :elm/expression)
 
 
-;; 22.21. ToDate
+;; 22.22. ToDate
 (s/fdef literal/to-date
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
-;; 22.22. ToDateTime
+;; 22.23. ToDateTime
 (s/fdef literal/to-date-time
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
-;; 22.23. ToDecimal
+;; 22.24. ToDecimal
 (s/fdef literal/to-decimal
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
-;; 22.24. ToInteger
+;; 22.25. ToInteger
 (s/fdef literal/to-integer
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
-;; 22.25. ToList
+;; 22.26. ToList
 (s/fdef literal/to-list
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
-;; 22.26. ToQuantity
+;; 22.28. ToQuantity
 (s/fdef literal/to-quantity
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 (s/fdef literal/to-string
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)

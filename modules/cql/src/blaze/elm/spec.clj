@@ -936,45 +936,57 @@
 (derive :elm.spec.type/floor :elm.spec.type/unary-expression)
 
 
-;; 16.7. Log
+;; 16.7. HighBoundary
+(derive :elm.spec.type/high-boundary :elm.spec.type/binary-expression)
+
+
+;; 16.8. Log
 (derive :elm.spec.type/log :elm.spec.type/binary-expression)
 
 
-;; 16.8. Ln
+;; 16.9. LowBoundary
+(derive :elm.spec.type/low-boundary :elm.spec.type/binary-expression)
+
+
+;; 16.10. Ln
 (derive :elm.spec.type/ln :elm.spec.type/unary-expression)
 
 
-;; 16.9. MaxValue
+;; 16.11. MaxValue
 (defmethod expression :elm.spec.type/max-value [_]
   (s/keys :req-un [:elm/valueType]))
 
 
-;; 16.10. MinValue
+;; 16.12. MinValue
 (defmethod expression :elm.spec.type/min-value [_]
   (s/keys :req-un [:elm/valueType]))
 
 
-;; 16.11. Modulo
+;; 16.13. Modulo
 (derive :elm.spec.type/modulo :elm.spec.type/binary-expression)
 
 
-;; 16.12. Multiply
+;; 16.14. Multiply
 (derive :elm.spec.type/multiply :elm.spec.type/binary-expression)
 
 
-;; 16.13. Negate
+;; 16.15. Negate
 (derive :elm.spec.type/negate :elm.spec.type/unary-expression)
 
 
-;; 16.14. Power
+;; 16.16. Power
 (derive :elm.spec.type/power :elm.spec.type/binary-expression)
 
 
-;; 16.15. Predecessor
+;; 16.17. Precision
+(derive :elm.spec.type/precision :elm.spec.type/unary-expression)
+
+
+;; 16.18. Predecessor
 (derive :elm.spec.type/predecessor :elm.spec.type/unary-expression)
 
 
-;; 16.16. Round
+;; 16.19. Round
 (s/def :elm.round/precision
   :elm/expression)
 
@@ -984,19 +996,19 @@
           :opt-un [:elm.round/precision]))
 
 
-;; 16.17. Subtract
+;; 16.20. Subtract
 (derive :elm.spec.type/subtract :elm.spec.type/binary-expression)
 
 
-;; 16.18. Successor
+;; 16.21. Successor
 (derive :elm.spec.type/successor :elm.spec.type/unary-expression)
 
 
-;; 16.19. Truncate
+;; 16.22. Truncate
 (derive :elm.spec.type/truncate :elm.spec.type/unary-expression)
 
 
-;; 16.20. TruncatedDivide
+;; 16.23. TruncatedDivide
 (derive :elm.spec.type/truncated-divide :elm.spec.type/binary-expression)
 
 
@@ -1694,80 +1706,88 @@
 (derive :elm.spec.type/converts-to-decimal :elm.spec.type/unary-expression)
 
 
-;; 22.11. ConvertsToInteger
+;; 22.11. ConvertsToLong
+(derive :elm.spec.type/converts-to-long :elm.spec.type/unary-expression)
+
+
+;; 22.12. ConvertsToInteger
 (derive :elm.spec.type/converts-to-integer :elm.spec.type/unary-expression)
 
 
-;; 22.12. ConvertsToQuantity
+;; 22.13. ConvertsToQuantity
 (derive :elm.spec.type/converts-to-quantity :elm.spec.type/unary-expression)
 
 
-;; 22.13. ConvertsToRatio
+;; 22.14. ConvertsToRatio
 (derive :elm.spec.type/converts-to-ratio :elm.spec.type/unary-expression)
 
 
-;; 22.14. ConvertsToString
+;; 22.15. ConvertsToString
 (derive :elm.spec.type/converts-to-string :elm.spec.type/unary-expression)
 
 
-;; 22.15. ConvertsToTime
+;; 22.16. ConvertsToTime
 (derive :elm.spec.type/converts-to-time :elm.spec.type/unary-expression)
 
 
-;; 22.16. Descendents
+;; 22.17. Descendents
 (defmethod expression :elm.spec.type/descendents [_]
   (s/keys :req-un [:elm/source]))
 
 
-;; 22.17. TODO Is
+;; 22.18. Is
 (derive :elm.spec.type/is :elm.spec.type/unary-expression)
 
 
-;; 22.18. ToBoolean
+;; 22.19. ToBoolean
 (derive :elm.spec.type/to-boolean :elm.spec.type/unary-expression)
 
 
-;; 22.19. ToChars
+;; 22.20. ToChars
 (derive :elm.spec.type/to-chars :elm.spec.type/unary-expression)
 
 
-;; 22.20. ToConcept
+;; 22.21. ToConcept
 (derive :elm.spec.type/to-concept :elm.spec.type/unary-expression)
 
 
-;; 22.21. ToDate
+;; 22.22. ToDate
 (derive :elm.spec.type/to-date :elm.spec.type/unary-expression)
 
 
-;; 22.22. ToDateTime
+;; 22.23. ToDateTime
 (derive :elm.spec.type/to-date-time :elm.spec.type/unary-expression)
 
 
-;; 22.23. ToDecimal
+;; 22.24. ToDecimal
 (derive :elm.spec.type/to-decimal :elm.spec.type/unary-expression)
 
 
-;; 22.24. ToInteger
+;; 22.25. ToInteger
 (derive :elm.spec.type/to-integer :elm.spec.type/unary-expression)
 
 
-;; 22.25. ToList
+;; 22.26. ToList
 (derive :elm.spec.type/to-list :elm.spec.type/unary-expression)
 
 
-;; 22.26. ToQuantity
+;; 22.27. ToLong
+(derive :elm.spec.type/to-long :elm.spec.type/unary-expression)
+
+
+;; 22.28. ToQuantity
 (derive :elm.spec.type/to-quantity :elm.spec.type/unary-expression)
 
 
-;; 22.27. ToRatio
+;; 22.29. ToRatio
 (derive :elm.spec.type/to-ratio :elm.spec.type/unary-expression)
 
 
-;; 22.28. ToString
+;; 22.30. ToString
 (derive :elm.spec.type/to-string :elm.spec.type/unary-expression)
 
 
-;; 22.29. ToTime
+;; 22.31. ToTime
 (derive :elm.spec.type/to-time :elm.spec.type/unary-expression)
 
 
