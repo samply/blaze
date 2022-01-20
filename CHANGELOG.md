@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.15.3
+
+### Security
+
+* Update Dependencies ([#585](https://github.com/samply/blaze/pull/585))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/26?closed=1).
+
 ## v0.15.2
 
 ### Security
