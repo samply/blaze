@@ -1,7 +1,7 @@
 (ns blaze.db.tx-log.kafka.log-test
   (:require
     [blaze.db.tx-log.kafka.log :as l]
-    [clojure.test :as test :refer [deftest is testing]]))
+    [clojure.test :refer [deftest is testing]]))
 
 
 (deftest init-msg-test
