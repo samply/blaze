@@ -16,18 +16,39 @@ An easy way to evaluate queries is to use the script `evaluate-measure.sh`, whic
 
 ```sh
 $ ./evaluate-measure.sh
-Usage: ./evaluate-measure.sh -f QUERY_FILE [ -t type ] BASE 
+Usage: ./evaluate-measure.sh -f QUERY_FILE [ -t subject-type ] [ -r report-type ] BASE
+
+Example subject-types: Patient, Specimen; default is Patient
+Possible report-types: subject-list, population; default is population 
 ```
 
-### Example 
+### Examples
+
+#### Counting the Number of Male Patients
 
 ```sh
 $ ./evaluate-measure.sh -f docs/cql-queries/gender-male.cql http://localhost:8080/fhir 
 ```
-the result should be
+the result should be something like this:
 
 ```text
-Count: 0
+Generating a population count report...
+Found 43 subjects.
 ```
 
-if no data was imported.
+#### Listing the URLs of Male Patients
+
+```sh
+$ ./evaluate-measure.sh -f docs/cql-queries/gender-male.cql -r subject-list http://localhost:8080/fhir 
+```
+the result should be something like this:
+
+```text
+Generating a report including the list of matching subjects...
+Found 43 subjects that can be found on List http://localhost:8080/fhir/List/C7UW434TIAF7CDYC.
+The individual subject URLs are:
+http://localhost:8080/fhir/Patient/bbmri-0
+http://localhost:8080/fhir/Patient/bbmri-1
+http://localhost:8080/fhir/Patient/bbmri-13
+...
+```
