@@ -81,26 +81,35 @@ create-measure() {
 }
 
 post() {
-  curl -sH "Content-Type: application/fhir+json" -d @- "${BASE}/$1"
+  curl -sH "Content-Type: application/fhir+json" -d @- "$BASE/$1"
 }
 
 evaluate-measure() {
-  time curl -s "${BASE}/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030"
+    curl -s "$BASE/Measure/$1/\$evaluate-measure?periodStart=2000&periodEnd=2030"
+}
+
+evaluate-measure-list() {
+  curl -sd '{"resourceType": "Parameters", "parameter": [{"name": "periodStart", "value": "2000"}, {"name": "periodEnd", "value": "2030"}, {"name": "reportType", "value": "subject-list"}]}' \
+    -H "Content-Type: application/fhir+json" "$BASE/Measure/$1/\$evaluate-measure"
 }
 
 usage()
 {
-  echo "Usage: $0 -f QUERY_FILE [ -t type ] BASE"
+  echo "Usage: $0 -f QUERY_FILE [ -t subject-type ] [ -r report-type ] BASE"
+  echo ""
+  echo "Example subject-types: Patient, Specimen; default is Patient"
+  echo "Possible report-types: subject-list, population; default is population"
   exit 2
 }
 
-unset FILE TYPE BASE
+unset FILE SUBJECT_TYPE REPORT_TYPE BASE
 
-while getopts 'f:t:' c
+while getopts 'f:t:r:' c
 do
   case ${c} in
     f) FILE=$OPTARG ;;
-    t) TYPE=$OPTARG ;;
+    t) SUBJECT_TYPE=$OPTARG ;;
+    r) REPORT_TYPE=$OPTARG ;;
   esac
 done
 
@@ -108,7 +117,7 @@ shift $((OPTIND-1))
 BASE=$1
 
 [[ -z "$FILE" ]] && usage
-[[ -z "$TYPE" ]] && TYPE="Patient"
+[[ -z "$SUBJECT_TYPE" ]] && SUBJECT_TYPE="Patient"
 [[ -z "$BASE" ]] && usage
 
 DATA=$(cat ${FILE} | base64 | tr -d '\n')
@@ -117,8 +126,24 @@ MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
 create-library ${LIBRARY_URI} ${DATA} | post "Library" > /dev/null
 
-MEASURE_ID=$(create-measure ${MEASURE_URI} ${LIBRARY_URI} ${TYPE} | post "Measure" | jq -r .id)
+MEASURE_ID=$(create-measure ${MEASURE_URI} ${LIBRARY_URI} ${SUBJECT_TYPE} | post "Measure" | jq -r .id)
 
-COUNT=$(evaluate-measure ${MEASURE_ID} | jq ".group[0].population[0].count")
+if [ "subject-list" = "$REPORT_TYPE" ]; then
+  echo "Generating a report including the list of matching subjects..."
+  MEASURE_REPORT=$(evaluate-measure-list ${MEASURE_ID})
+  COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count')
+  LIST_REFERENCE=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].subjectResults.reference')
 
-echo "Count: ${COUNT}"
+  echo "Found $COUNT subjects that can be found on List $BASE/$LIST_REFERENCE."
+  echo "The individual subject URLs are:"
+
+  for REFERENCE in $(curl -s "$BASE/$LIST_REFERENCE" | jq -r '.entry[].item.reference')
+  do
+    echo "$BASE/$REFERENCE"
+  done
+else
+  echo "Generating a population count report..."
+  MEASURE_REPORT=$(evaluate-measure ${MEASURE_ID})
+  COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count')
+  echo "Found $COUNT subjects."
+fi
