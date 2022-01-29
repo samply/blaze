@@ -6,11 +6,12 @@
     [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.rest-api.middleware.resource :refer [wrap-resource]]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
+    [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [java.io StringReader]))
+    [java.io ByteArrayInputStream]
+    [java.nio.charset StandardCharsets]))
 
 
 (st/instrument)
@@ -36,28 +37,39 @@
       wrap-error))
 
 
+(defn input-stream
+  ([s]
+   (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8)))
+  ([s closed?]
+   (proxy [ByteArrayInputStream] [(.getBytes s StandardCharsets/UTF_8)]
+     (close []
+       (reset! closed? true)))))
+
+
 (deftest json-test
   (testing "possible content types"
     (doseq [content-type ["application/fhir+json" "text/json" "application/json"]]
-      (given @(resource-handler
-                {:headers {"content-type" content-type}
-                 :body (StringReader. "{\"resourceType\": \"Patient\"}")})
-        type/type := :fhir/Patient)))
+      (let [closed? (atom false)]
+        (given @(resource-handler
+                  {:headers {"content-type" content-type}
+                   :body (input-stream "{\"resourceType\": \"Patient\"}" closed?)})
+          type/type := :fhir/Patient)
+        (is (true? @closed?)))))
 
   (testing "body with invalid JSON"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+json"}
-               :body (StringReader. "x")})
+               :body (input-stream "x")})
       :status := 400
       [:body type/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "Unrecognized token 'x': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\n at [Source: (StringReader); line: 1, column: 2]"))
+      [:body :issue 0 :diagnostics] := "Unrecognized token 'x': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\n at [Source: (ByteArrayInputStream); line: 1, column: 2]"))
 
   (testing "body with no JSON object"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+json"}
-               :body (StringReader. "1")})
+               :body (input-stream "1")})
       :status := 400
       [:body type/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
@@ -69,7 +81,7 @@
   (testing "body with invalid resource"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+json"}
-               :body (StringReader. "{\"resourceType\": \"Patient\", \"gender\": {}}")})
+               :body (input-stream "{\"resourceType\": \"Patient\", \"gender\": {}}")})
       :status := 400
       [:body type/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
@@ -80,7 +92,7 @@
   (testing "body with bundle with invalid resource"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+json"}
-               :body (StringReader. "{\"resourceType\": \"Bundle\", \"entry\": [{\"resource\": {\"resourceType\": \"Patient\", \"gender\": {}}}]}")})
+               :body (input-stream "{\"resourceType\": \"Bundle\", \"entry\": [{\"resource\": {\"resourceType\": \"Patient\", \"gender\": {}}}]}")})
       :status := 400
       [:body type/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
@@ -92,16 +104,18 @@
 (deftest xml-test
   (testing "possible content types"
     (doseq [content-type ["application/fhir+xml" "application/xml"]]
-      (given @(resource-handler
-                {:headers {"content-type" content-type}
-                 :body (StringReader. "<Patient xmlns=\"http://hl7.org/fhir\"></Patient>")})
-        type/type := :fhir/Patient)))
+      (let [closed? (atom false)]
+        (given @(resource-handler
+                  {:headers {"content-type" content-type}
+                   :body (input-stream "<Patient xmlns=\"http://hl7.org/fhir\"></Patient>" closed?)})
+          type/type := :fhir/Patient)
+        (is (true? @closed?)))))
 
   (testing "body with invalid XML"
     (given @(resource-handler
               {:request-method :post
                :headers {"content-type" "application/fhir+xml"}
-               :body (StringReader. "<Patient xmlns=\"http://hl7.org/fhir\"><id value \"a_b\"/></Patient>")})
+               :body (input-stream "<Patient xmlns=\"http://hl7.org/fhir\"><id value \"a_b\"/></Patient>")})
       :status := 400
       [:body type/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
@@ -111,7 +125,7 @@
   (testing "body with invalid resource"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+xml"}
-               :body (StringReader. "<Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient>")})
+               :body (input-stream "<Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient>")})
       :status := 400
       [:body type/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
@@ -121,7 +135,7 @@
   (testing "body with bundle with invalid resource"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+xml"}
-               :body (StringReader. "<Bundle xmlns=\"http://hl7.org/fhir\"><entry><resource><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient></resource></entry></Bundle>")})
+               :body (input-stream "<Bundle xmlns=\"http://hl7.org/fhir\"><entry><resource><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"a_b\"/></Patient></resource></entry></Bundle>")})
       :status := 400
       [:body type/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
@@ -140,7 +154,7 @@
         [:body :issue 0 :diagnostics] := "Content-Type header expected, but is missing. Please specify one of application/fhir+json` or `application/fhir+xml`."))
 
     (testing "with unknown content-type header"
-      (given @(resource-handler {:headers {"content-type" "text/plain"} :body ""})
+      (given @(resource-handler {:headers {"content-type" "text/plain"} :body (input-stream "")})
         :status := 400
         [:body type/type] := :fhir/OperationOutcome
         [:body :issue 0 :severity] := #fhir/code"error"
