@@ -300,13 +300,13 @@ jobs:
       run: .github/scripts/check-referential-integrity-enforced.sh
 
     - name: Load Data
-      run: blazectl --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
 
     - name: Check Total-Number of Resources are 92114
       run: .github/scripts/check-total-number-of-resources.sh 92114
 
     - name: Count Resources
-      run: blazectl --server http://localhost:8080/fhir count-resources
+      run: blazectl --no-progress --server http://localhost:8080/fhir count-resources
 
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
@@ -327,28 +327,28 @@ jobs:
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9"
 
     - name: Download Observation Resources - Including Patients
-      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Patients
-      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Encounter Patients
-      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
 
     - name: Download Condition Resources
       run: .github/scripts/download-resources.sh Condition
 
     - name: Download Condition Resources - Including Subjects
-      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
 
     - name: Download Condition Resources - Including Encounters
-      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
 
     - name: Download DiagnosticReport Resources
       run: .github/scripts/download-resources.sh DiagnosticReport
 
     - name: Download MedicationRequest Resources - Including Medications
-      run: blazectl --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
     - name: Search Observation _lastUpdated
       run: .github/scripts/search-patient-last-updated.sh
@@ -459,10 +459,59 @@ jobs:
       run: .github/scripts/check-referential-integrity-not-enforced.sh
 
     - name: Load Data
-      run: blazectl --server http://localhost:8080/fhir upload -c1 .github/test-data/etl
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload -c1 .github/test-data/etl
 
     - name: Check Total-Number of Resources are 5
       run: .github/scripts/check-total-number-of-resources.sh 5
+
+  # This test uploads many small transactions in order to show that Blaze can handle many small requests containing
+  # chunked payload blazectl uses. Versions of Blaze from 0.13.2 to 0.15.3, starting with the migration to Jetty, had
+  # the problem that the JSON parser did not read the entire inputstream so that terminal chunks could remain, which
+  # caused Jetty to close the stream.
+  small-transactions-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v2
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.CR_PAT }}
+
+    - name: Pull Docker Image
+      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+
+    - name: Sleep 60 Seconds
+      run: sleep 60
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Generate Test Data
+      run: mkdir .github/test-data/small-txs && .github/scripts/gen-bundle-ndjson.sh > .github/test-data/small-txs/bundles.ndjson
+
+    - name: Load Data Sequentially
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload -c 1 .github/test-data/small-txs
+
+    - name: Load Data with Concurrency 2
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload -c 2 .github/test-data/small-txs
+
+    - name: Load Data with Concurrency 4
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload -c 4 .github/test-data/small-txs
 
   jepsen-test:
     needs: build
@@ -605,13 +654,13 @@ jobs:
       run: .github/scripts/check-referential-integrity-enforced.sh
 
     - name: Load Data
-      run: blazectl --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
 
     - name: Check Total-Number of Resources are 92114
       run: .github/scripts/check-total-number-of-resources.sh 92114
 
     - name: Count Resources
-      run: blazectl --server http://localhost:8080/fhir count-resources
+      run: blazectl --no-progress --server http://localhost:8080/fhir count-resources
 
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
@@ -632,28 +681,28 @@ jobs:
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9"
 
     - name: Download Observation Resources - Including Patients
-      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Patients
-      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
 
     - name: Download Observation Resources - Including Encounters and Encounter Patients
-      run: blazectl --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
 
     - name: Download Condition Resources
       run: .github/scripts/download-resources.sh Condition
 
     - name: Download Condition Resources - Including Subjects
-      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
 
     - name: Download Condition Resources - Including Encounters
-      run: blazectl --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
 
     - name: Download DiagnosticReport Resources
       run: .github/scripts/download-resources.sh DiagnosticReport
 
     - name: Download MedicationRequest Resources - Including Medications
-      run: blazectl --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+      run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
     - name: Search Observation _lastUpdated
       run: .github/scripts/search-patient-last-updated.sh

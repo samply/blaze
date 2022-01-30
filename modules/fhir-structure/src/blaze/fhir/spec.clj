@@ -13,6 +13,7 @@
     [cognitect.anomalies :as anom]
     [jsonista.core :as j])
   (:import
+    [com.fasterxml.jackson.databind DeserializationFeature]
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.util.regex Pattern]))
 
@@ -22,10 +23,11 @@
 
 
 (def ^:private json-object-mapper
-  (j/object-mapper
-    {:decode-key-fn true
-     :bigdecimals true
-     :modules [type/fhir-module]}))
+  (-> (j/object-mapper
+        {:decode-key-fn true
+         :bigdecimals true
+         :modules [type/fhir-module]})
+      (.enable DeserializationFeature/FAIL_ON_TRAILING_TOKENS)))
 
 
 (defn parse-json
@@ -34,6 +36,8 @@
 
   Possible `source` types are byte array, File, URL, String, Reader and
   InputStream.
+
+  Reads the stream until its end, tailing on any trailing tokens.
 
   Returns an anomaly on parse errors."
   [source]
