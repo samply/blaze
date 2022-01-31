@@ -10,7 +10,9 @@
   (:import
     [java.time Instant]
     [org.apache.kafka.clients.consumer ConsumerRecord]
-    [org.apache.kafka.common.record TimestampType]))
+    [org.apache.kafka.common.record TimestampType]
+    [org.apache.kafka.common.header.internals RecordHeaders]
+    [java.util Optional]))
 
 
 (st/instrument)
@@ -30,20 +32,26 @@
 
 
 (defn consumer-record [offset timestamp timestamp-type value]
-  (ConsumerRecord. "tx" 0 offset timestamp timestamp-type 0 0 0 nil value))
+  (ConsumerRecord. "tx" 0 ^long offset ^long timestamp
+                   ^TimestampType timestamp-type 0 0 nil value (RecordHeaders.)
+                   (Optional/empty)))
 
 
 (deftest record-transformer-test
   (testing "skips record with wrong timestamp type"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-      (is (empty? (into [] u/record-transformer [(consumer-record 0 0 TimestampType/CREATE_TIME [cmd])])))))
+    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}
+          record (consumer-record 0 0 TimestampType/CREATE_TIME [cmd])]
+      (is (empty? (into [] u/record-transformer [record])))))
 
   (testing "skips record with invalid transaction commands"
-    (is (empty? (into [] u/record-transformer [(consumer-record 0 0 TimestampType/LOG_APPEND_TIME [{:op "create"}])]))))
+    (let [cmd {:op "create"}
+          record (consumer-record 0 0 TimestampType/LOG_APPEND_TIME [cmd])]
+      (is (empty? (into [] u/record-transformer [record])))))
 
   (testing "success"
-    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}]
-      (given (first (into [] u/record-transformer [(consumer-record 0 0 TimestampType/LOG_APPEND_TIME [cmd])]))
+    (let [cmd {:op "create" :type "Patient" :id "0" :hash hash-patient-0}
+          record (consumer-record 0 0 TimestampType/LOG_APPEND_TIME [cmd])]
+      (given (first (into [] u/record-transformer [record]))
         :t := 1
         :instant := (Instant/ofEpochSecond 0)
         :tx-cmds := [cmd]))))

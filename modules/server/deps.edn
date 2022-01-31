@@ -5,9 +5,6 @@
   blaze/module-base
   {:local/root "../module-base"}
 
-  org.eclipse.jetty/jetty-server
-  {:mvn/version "9.4.44.v20210927"}
-
   ring/ring-jetty-adapter
   {:mvn/version "1.9.5"
    :exclusions
@@ -31,7 +28,7 @@
     {:mvn/version "1.60.977"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "1.7.33"}}
+    {:mvn/version "1.7.35"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -49,7 +46,7 @@
     {:mvn/version "0.8.2"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "1.7.33"}}
+    {:mvn/version "1.7.35"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".*spec$"]}}}
