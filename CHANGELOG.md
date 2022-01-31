@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.15.4
+
+### Bugfixes
+
+* Consume the Whole Inputstream of Request Payloads ([#594](https://github.com/samply/blaze/pull/594))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/27?closed=1).
+
 ## v0.15.3
 
 ### Security
