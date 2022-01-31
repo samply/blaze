@@ -1,5 +1,5 @@
 (ns blaze.fhir-path
-  (:refer-clojure :exclude [eval compile resolve])
+  (:refer-clojure :exclude [compile eval resolve])
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.anomaly-spec]
@@ -16,30 +16,30 @@
     [org.antlr.v4.runtime.tree TerminalNode]
     [org.cqframework.cql.gen
      fhirpathLexer fhirpathParser
-     fhirpathParser$TermExpressionContext
-     fhirpathParser$InvocationExpressionContext
-     fhirpathParser$IndexerExpressionContext
      fhirpathParser$AdditiveExpressionContext
-     fhirpathParser$TypeExpressionContext
-     fhirpathParser$UnionExpressionContext
-     fhirpathParser$EqualityExpressionContext
      fhirpathParser$AndExpressionContext
-     fhirpathParser$InvocationTermContext
-     fhirpathParser$LiteralTermContext
-     fhirpathParser$ParenthesizedTermContext
-     fhirpathParser$NullLiteralContext
      fhirpathParser$BooleanLiteralContext
-     fhirpathParser$StringLiteralContext
-     fhirpathParser$NumberLiteralContext
      fhirpathParser$DateLiteralContext
      fhirpathParser$DateTimeLiteralContext
-     fhirpathParser$MemberInvocationContext
-     fhirpathParser$FunctionInvocationContext
+     fhirpathParser$EqualityExpressionContext
      fhirpathParser$FunctionContext
+     fhirpathParser$FunctionInvocationContext
+     fhirpathParser$IdentifierContext
+     fhirpathParser$IndexerExpressionContext
+     fhirpathParser$InvocationExpressionContext
+     fhirpathParser$InvocationTermContext
+     fhirpathParser$LiteralTermContext
+     fhirpathParser$MemberInvocationContext
+     fhirpathParser$NullLiteralContext
+     fhirpathParser$NumberLiteralContext
      fhirpathParser$ParamListContext
-     fhirpathParser$TypeSpecifierContext
+     fhirpathParser$ParenthesizedTermContext
      fhirpathParser$QualifiedIdentifierContext
-     fhirpathParser$IdentifierContext]))
+     fhirpathParser$StringLiteralContext
+     fhirpathParser$TermExpressionContext
+     fhirpathParser$TypeExpressionContext
+     fhirpathParser$TypeSpecifierContext
+     fhirpathParser$UnionExpressionContext]))
 
 
 (set! *warn-on-reflection* true)
@@ -279,35 +279,6 @@
       (throw-anom (ba/incorrect (as-type-specifier-msg coll))))))
 
 
-;; See: http://hl7.org/fhirpath/#wherecriteria-expression-collection
-(defn- non-boolean-result-msg [x]
-  (format "non-boolean result `%s` of type `%s` while evaluating where function criteria"
-          (pr-str x) (fhir-spec/fhir-type x)))
-
-
-(defn- multiple-result-msg [x]
-  (format "multiple result items `%s` while evaluating where function criteria"
-          (pr-str x)))
-
-
-(defrecord WhereFunctionExpression [criteria]
-  Expression
-  (-eval [_ context coll]
-    (filterv
-      (fn [item]
-        (let [coll (-eval criteria context [item])]
-          (case (.count ^Counted coll)
-            0 false
-
-            1 (let [first (nth coll 0)]
-                (if (identical? :system/boolean (system/type first))
-                  first
-                  (throw-anom (ba/incorrect (non-boolean-result-msg first)))))
-
-            (throw-anom (ba/incorrect (multiple-result-msg coll))))))
-      coll)))
-
-
 (defrecord OfTypeFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ coll]
@@ -368,6 +339,40 @@
     (throw-anom (ba/incorrect "missing type specifier in `as` function"))))
 
 
+
+;; 5.2. Filtering and projection
+
+;; 5.2.1. where(criteria : expression) : collection
+
+;; See: http://hl7.org/fhirpath/#wherecriteria-expression-collection
+(defn- non-boolean-result-msg [x]
+  (format "non-boolean result `%s` of type `%s` while evaluating where function criteria"
+          (pr-str x) (fhir-spec/fhir-type x)))
+
+
+(defn- multiple-result-msg [x]
+  (format "multiple result items `%s` while evaluating where function criteria"
+          (pr-str x)))
+
+
+(defrecord WhereFunctionExpression [criteria]
+  Expression
+  (-eval [_ context coll]
+    (filterv
+      (fn [item]
+        (let [coll (-eval criteria context [item])]
+          (case (.count ^Counted coll)
+            0 false
+
+            1 (let [first (nth coll 0)]
+                (if (identical? :system/boolean (system/type first))
+                  first
+                  (throw-anom (ba/incorrect (non-boolean-result-msg first)))))
+
+            (throw-anom (ba/incorrect (multiple-result-msg coll))))))
+      coll)))
+
+
 (defmethod function-expression "where"
   [_ ^fhirpathParser$ParamListContext paramsCtx]
   (if-let [criteria-ctx (some-> paramsCtx (.expression 0))]
@@ -389,7 +394,22 @@
     (->ExistsFunctionExpression)))
 
 
-;; See: https://hl7.org/fhir/fhirpath.html#functions
+
+;; Additional functions (https://www.hl7.org/fhir/fhirpath.html#functions)
+
+(defrecord ExtensionFunctionExpression [xf]
+  Expression
+  (-eval [_ _ coll]
+    (into [] xf coll)))
+
+
+(defmethod function-expression "extension"
+  [_ ^fhirpathParser$ParamListContext paramsCtx]
+  (let [url-pred (set (some-> paramsCtx (.expression 0) -compile))
+        xf (comp (mapcat :extension) (filter (comp url-pred :url)))]
+    (->ExtensionFunctionExpression xf)))
+
+
 (defmethod function-expression "resolve"
   [_ _]
   (->ResolveFunctionExpression))
