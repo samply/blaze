@@ -13,20 +13,20 @@
     [blaze.fhir.spec.type.system
      DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [clojure.lang Keyword]
+    [com.fasterxml.jackson.core JsonGenerator]
+    [com.fasterxml.jackson.databind JsonSerializer SerializerProvider]
+    [com.fasterxml.jackson.databind.module SimpleModule]
+    [com.fasterxml.jackson.databind.ser.std StdSerializer]
+    [com.fasterxml.jackson.datatype.jsr310.ser
+     LocalDateSerializer OffsetDateTimeSerializer YearMonthSerializer
+     YearSerializer]
     [com.google.common.hash PrimitiveSink]
     [java.io Writer]
     [java.time
      Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
      ZoneOffset]
     [java.time.format DateTimeFormatter DateTimeParseException]
-    [java.util List Map UUID]
-    [com.fasterxml.jackson.core JsonGenerator]
-    [com.fasterxml.jackson.databind.module SimpleModule]
-    [com.fasterxml.jackson.databind JsonSerializer SerializerProvider]
-    [com.fasterxml.jackson.databind.ser.std StdSerializer]
-    [com.fasterxml.jackson.datatype.jsr310.ser
-     LocalDateSerializer OffsetDateTimeSerializer YearSerializer
-     YearMonthSerializer]))
+    [java.util List Map UUID]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -1234,7 +1234,7 @@
 
 (defn- valid-ref? [[type id]]
   (and (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
-       (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))))
+       (some->> id (re-matcher #"[A-Za-z0-9\-\.]{1,64}") .matches)))
 
 
 (defn- reference-reference [ref]
