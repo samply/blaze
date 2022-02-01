@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.15.5
+
+### New Features
+
+* Implement FHIRPath Function extension ([#598](https://github.com/samply/blaze/pull/598))
+
+### Bugfixes
+
+* Fix NPE in Reference Resolution ([#599](https://github.com/samply/blaze/pull/599))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/28?closed=1).
+
 ## v0.15.4
 
 ### Bugfixes

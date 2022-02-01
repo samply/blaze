@@ -128,23 +128,25 @@
 (deftest singleton-test
   (testing "string concatenation"
     (testing "with no given name"
-      (is (= (first (eval "Patient.name.family + ', ' + Patient.name.given"
-                          {:fhir/type :fhir/Patient
-                           :id "foo"
-                           :name
-                           [{:fhir/type :fhir/HumanName
-                             :family "Doe"}]}))
-             "Doe, ")))
+      (given
+        (eval "Patient.name.family + ', ' + Patient.name.given"
+              {:fhir/type :fhir/Patient
+               :id "foo"
+               :name
+               [{:fhir/type :fhir/HumanName
+                 :family "Doe"}]})
+        identity := ["Doe, "]))
 
     (testing "with one given name"
-      (is (= (first (eval "Patient.name.family + ', ' + Patient.name.given"
-                          {:fhir/type :fhir/Patient
-                           :id "foo"
-                           :name
-                           [{:fhir/type :fhir/HumanName
-                             :family "Doe"
-                             :given ["John"]}]}))
-             "Doe, John")))
+      (given
+        (eval "Patient.name.family + ', ' + Patient.name.given"
+              {:fhir/type :fhir/Patient
+               :id "foo"
+               :name
+               [{:fhir/type :fhir/HumanName
+                 :family "Doe"
+                 :given ["John"]}]})
+        identity := ["Doe, John"]))
 
     (testing "with two given names"
       (given (eval "Patient.name.family + ', ' + Patient.name.given"
@@ -169,16 +171,17 @@
 
   (testing "and expression"
     (testing "with one telecom"
-      (is (= (first (eval "Patient.active and Patient.gender and Patient.telecom"
-                          {:fhir/type :fhir/Patient
-                           :id "foo"
-                           :active true
-                           :gender #fhir/code"female"
-                           :telecom
-                           [{:fhir/type :fhir/ContactPoint
-                             :use #fhir/code"home"
-                             :value "foo"}]}))
-             true)))
+      (given
+        (eval "Patient.active and Patient.gender and Patient.telecom"
+              {:fhir/type :fhir/Patient
+               :id "foo"
+               :active true
+               :gender #fhir/code"female"
+               :telecom
+               [{:fhir/type :fhir/ContactPoint
+                 :use #fhir/code"home"
+                 :value "foo"}]})
+        identity := [true]))
 
     (testing "with two telecoms"
       (given (eval "Patient.active and Patient.gender and Patient.telecom"
@@ -221,22 +224,20 @@
 
 ;; 5.1.2. exists([criteria : expression]) : Boolean
 (deftest exists-function-test
-  (is
-    (false?
-      (first
-        (eval
-          "Patient.deceased.exists()"
-          {:fhir/type :fhir/Patient
-           :id "id-182007"}))))
+  (given
+    (eval
+      "Patient.deceased.exists()"
+      {:fhir/type :fhir/Patient
+       :id "id-182007"})
+    identity := [false])
 
-  (is
-    (true?
-      (first
-        (eval
-          "Patient.deceased.exists()"
-          {:fhir/type :fhir/Patient
-           :id "id-182007"
-           :deceased true})))))
+  (given
+    (eval
+      "Patient.deceased.exists()"
+      {:fhir/type :fhir/Patient
+       :id "id-182007"
+       :deceased true})
+    identity := [true]))
 
 
 ;; 5.2. Filtering and projection
@@ -280,36 +281,36 @@
       [1 :value] := "value-145928"))
 
   (testing "returns empty collection on non-matching item"
-    (is
-      (empty?
-        (eval
-          "Patient.telecom.where(use = 'work')"
-          {:fhir/type :fhir/Patient
-           :id "id-162953"
-           :telecom
-           [{:fhir/type :fhir/ContactPoint
-             :use #fhir/code"home"
-             :value "value-170758"}]}))))
+    (given
+      (eval
+        "Patient.telecom.where(use = 'work')"
+        {:fhir/type :fhir/Patient
+         :id "id-162953"
+         :telecom
+         [{:fhir/type :fhir/ContactPoint
+           :use #fhir/code"home"
+           :value "value-170758"}]})
+      count := 0))
 
   (testing "returns empty collection on empty criteria result"
-    (is
-      (empty?
-        (eval
-          "Patient.telecom.where({})"
-          {:fhir/type :fhir/Patient
-           :id "id-162953"
-           :telecom
-           [{:fhir/type :fhir/ContactPoint
-             :use #fhir/code"home"
-             :value "value-170758"}]}))))
+    (given
+      (eval
+        "Patient.telecom.where({})"
+        {:fhir/type :fhir/Patient
+         :id "id-162953"
+         :telecom
+         [{:fhir/type :fhir/ContactPoint
+           :use #fhir/code"home"
+           :value "value-170758"}]})
+      count := 0))
 
   (testing "returns empty collection on empty input"
-    (is
-      (empty?
-        (eval
-          "Patient.telecom.where(use = 'home')"
-          {:fhir/type :fhir/Patient
-           :id "id-162953"}))))
+    (given
+      (eval
+        "Patient.telecom.where(use = 'home')"
+        {:fhir/type :fhir/Patient
+         :id "id-162953"})
+      count := 0))
 
   (testing "return error on multiple criteria result"
     (given
@@ -358,19 +359,18 @@
 
 ;; 5.3.1. [ index : Integer ] : collection
 (deftest indexer-test
-  (is
-    (=
-      (eval
-        "Bundle.entry[0].resource"
-        {:fhir/type :fhir/Bundle
-         :id "id-110914"
-         :entry
-         [{:fhir/type :fhir.Bundle/entry
-           :resource
-           {:fhir/type :fhir/Patient
-            :id "id-111004"}}]})
-      [{:fhir/type :fhir/Patient
-        :id "id-111004"}])))
+  (given
+    (eval
+      "Bundle.entry[0].resource"
+      {:fhir/type :fhir/Bundle
+       :id "id-110914"
+       :entry
+       [{:fhir/type :fhir.Bundle/entry
+         :resource
+         {:fhir/type :fhir/Patient
+          :id "id-111004"}}]})
+    identity := [{:fhir/type :fhir/Patient
+                  :id "id-111004"}]))
 
 
 ;; 5.4. Combining
@@ -395,15 +395,14 @@
       "'Wade' | Patient.name.family" ["Wade" "Doe" "Bolton"]
       "Patient.name.family | Patient.name.family" ["Doe" "Bolton"]))
 
-  (is
-    (=
-      (eval
-        "Patient.gender | Patient.birthDate"
-        {:fhir/type :fhir/Patient
-         :id "id-162953"
-         :gender #fhir/code"female"
-         :birthDate #fhir/date"2020"})
-      [#fhir/code"female" #fhir/date"2020"])))
+  (given
+    (eval
+      "Patient.gender | Patient.birthDate"
+      {:fhir/type :fhir/Patient
+       :id "id-162953"
+       :gender #fhir/code"female"
+       :birthDate #fhir/date"2020"})
+    identity := [#fhir/code"female" #fhir/date"2020"]))
 
 
 
@@ -415,84 +414,82 @@
 (deftest equals-test
   (testing "propagates empty collections"
     (testing "both empty"
-      (is
-        (empty?
-          (eval
-            "{} = {}"
-            {:fhir/type :fhir/Patient
-             :id "foo"}))))
+      (given
+        (eval
+          "{} = {}"
+          {:fhir/type :fhir/Patient
+           :id "foo"})
+        count := 0))
 
     (testing "left empty"
-      (is
-        (empty?
-          (eval
-            "{} = Patient.id"
-            {:fhir/type :fhir/Patient
-             :id "foo"}))))
+      (given
+        (eval
+          "{} = Patient.id"
+          {:fhir/type :fhir/Patient
+           :id "foo"})
+        count := 0))
 
     (testing "right empty"
-      (is
-        (empty?
-          (eval
-            "Patient.id = {}"
-            {:fhir/type :fhir/Patient
-             :id "foo"})))))
+      (given
+        (eval
+          "Patient.id = {}"
+          {:fhir/type :fhir/Patient
+           :id "foo"})
+        count := 0)))
 
   (testing "string comparison"
-    (is
-      (true?
-        (first
-          (eval "Patient.id = 'foo'"
-                {:fhir/type :fhir/Patient
-                 :id "foo"}))))
-    (is
-      (false?
-        (first
-          (eval "Patient.id = 'bar'"
-                {:fhir/type :fhir/Patient
-                 :id "foo"}))))))
+    (given
+      (eval "Patient.id = 'foo'"
+            {:fhir/type :fhir/Patient
+             :id "foo"})
+      identity := [true])
+
+    (given
+      (eval "Patient.id = 'bar'"
+            {:fhir/type :fhir/Patient
+             :id "foo"})
+      identity := [false])))
 
 
 ;; 6.1.3. != (Not Equals)
 (deftest not-equals-test
   (testing "propagates empty collections"
     (testing "both empty"
-      (is
-        (empty?
-          (eval
-            "{} != {}"
-            {:fhir/type :fhir/Patient
-             :id "foo"}))))
+      (given
+        (eval
+          "{} != {}"
+          {:fhir/type :fhir/Patient
+           :id "foo"})
+        count := 0))
 
     (testing "left empty"
-      (is
-        (empty?
-          (eval
-            "{} != Patient.id"
-            {:fhir/type :fhir/Patient
-             :id "foo"}))))
+      (given
+        (eval
+          "{} != Patient.id"
+          {:fhir/type :fhir/Patient
+           :id "foo"})
+        count := 0))
 
     (testing "right empty"
-      (is
-        (empty?
-          (eval
-            "Patient.id != {}"
-            {:fhir/type :fhir/Patient
-             :id "foo"}))))
+      (given
+        (eval
+          "Patient.id != {}"
+          {:fhir/type :fhir/Patient
+           :id "foo"})
+        count := 0))
 
     (testing "string comparison"
-      (is
-        (true?
-          (first
-            (eval "Patient.id != 'bar'"
-                  {:fhir/type :fhir/Patient
-                   :id "foo"}))))
-      (is
-        (false?
-          (first
-            (eval "Patient.id != 'foo'"
-                  {:fhir/type :fhir/Patient
-                   :id "foo"})))))))
+      (given
+        (eval "Patient.id != 'bar'"
+              {:fhir/type :fhir/Patient
+               :id "foo"})
+        identity := [true])
+
+      (given
+        (eval "Patient.id != 'foo'"
+              {:fhir/type :fhir/Patient
+               :id "foo"})
+        identity := [false]))))
 
 
 ;; 6.3. Types
@@ -500,30 +497,27 @@
 ;; 6.3.1. is type specifier
 (deftest is-type-specifier-test
   (testing "single item with matching type returns true"
-    (is
-      (true?
-        (first
-          (eval
-            "Patient.birthDate is date"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date"2020"})))))
+    (given
+      (eval
+        "Patient.birthDate is date"
+        {:fhir/type :fhir/Patient :id "foo"
+         :birthDate #fhir/date"2020"})
+      identity := [true]))
 
   (testing "single item with non-matching type returns false"
-    (is
-      (false?
-        (first
-          (eval
-            "Patient.birthDate is string"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date"2020"})))))
+    (given
+      (eval
+        "Patient.birthDate is string"
+        {:fhir/type :fhir/Patient :id "foo"
+         :birthDate #fhir/date"2020"})
+      identity := [false]))
 
   (testing "empty collection returns empty collection"
-    (is
-      (empty?
-        (first
-          (eval
-            "Patient.birthDate is string"
-            {:fhir/type :fhir/Patient :id "foo"})))))
+    (given
+      (eval
+        "Patient.birthDate is string"
+        {:fhir/type :fhir/Patient :id "foo"})
+      count := 0))
 
   (testing "multiple item returns an error"
     (given
@@ -540,31 +534,27 @@
 ;; 6.3.3 as type specifier
 (deftest as-type-specifier-test
   (testing "single item with matching type returns the item"
-    (is
-      (=
-        #fhir/date"2020"
-        (first
-          (eval
-            "Patient.birthDate as date"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date"2020"})))))
+    (given
+      (eval
+        "Patient.birthDate as date"
+        {:fhir/type :fhir/Patient :id "foo"
+         :birthDate #fhir/date"2020"})
+      identity := [#fhir/date"2020"]))
 
   (testing "single item with non-matching type returns an empty collection"
-    (is
-      (empty?
-        (first
-          (eval
-            "Patient.birthDate as string"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date"2020"})))))
+    (given
+      (eval
+        "Patient.birthDate as string"
+        {:fhir/type :fhir/Patient :id "foo"
+         :birthDate #fhir/date"2020"})
+      count := 0))
 
   (testing "empty collection returns empty collection"
-    (is
-      (empty?
-        (first
-          (eval
-            "Patient.birthDate as string"
-            {:fhir/type :fhir/Patient :id "foo"})))))
+    (given
+      (eval
+        "Patient.birthDate as string"
+        {:fhir/type :fhir/Patient :id "foo"})
+      count := 0))
 
   (testing "multiple item returns an error"
     (given
@@ -581,31 +571,27 @@
 ;; 6.3.4 as(type : type specifier)
 (deftest as-function-test
   (testing "single item with matching type returns the item"
-    (is
-      (=
-        #fhir/date"2020"
-        (first
-          (eval
-            "Patient.birthDate.as(date)"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date"2020"})))))
+    (given
+      (eval
+        "Patient.birthDate.as(date)"
+        {:fhir/type :fhir/Patient :id "foo"
+         :birthDate #fhir/date"2020"})
+      identity := [#fhir/date"2020"]))
 
   (testing "single item with non-matching type returns an empty collection"
-    (is
-      (empty?
-        (first
-          (eval
-            "Patient.birthDate.as(string)"
-            {:fhir/type :fhir/Patient :id "foo"
-             :birthDate #fhir/date"2020"})))))
+    (given
+      (eval
+        "Patient.birthDate.as(string)"
+        {:fhir/type :fhir/Patient :id "foo"
+         :birthDate #fhir/date"2020"})
+      count := 0))
 
   (testing "empty collection returns empty collection"
-    (is
-      (empty?
-        (first
-          (eval
-            "Patient.birthDate.as(string)"
-            {:fhir/type :fhir/Patient :id "foo"})))))
+    (given
+      (eval
+        "Patient.birthDate.as(string)"
+        {:fhir/type :fhir/Patient :id "foo"})
+      count := 0))
 
   (testing "multiple item returns an error"
     (given
@@ -632,3 +618,23 @@
     "Patient.gender = 'male' and Patient.birthDate = @2021" false?
     "Patient.gender = 'female' and Patient.birthDate = @2020" false?
     "Patient.gender = 'female' and Patient.birthDate = @2021" false?))
+
+
+
+;; Additional functions (https://www.hl7.org/fhir/fhirpath.html#functions)
+
+(deftest extension-test
+  (testing "missing url returns empty collection"
+    (given
+      (eval
+        "Patient.extension().value"
+        {:fhir/type :fhir/Patient :id "foo"
+         :extension [#fhir/Extension{:url "url-145553" :value "value-145600"}]})
+      count := 0))
+
+  (given
+    (eval
+      "Patient.extension('url-145553').value"
+      {:fhir/type :fhir/Patient :id "foo"
+       :extension [#fhir/Extension{:url "url-145553" :value "value-145600"}]})
+    identity := ["value-145600"]))
