@@ -1606,6 +1606,12 @@
       #fhir/Reference{:reference "Patient/0"}
       [["Patient" "0"]]
 
+      #fhir/Reference{:reference "Patient"}
+      []
+
+      #fhir/Reference{:reference ""}
+      []
+
       #fhir/Reference
           {:extension
            [#fhir/Extension{:value #fhir/Reference{:reference "Patient/1"}}]
