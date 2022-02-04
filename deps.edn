@@ -64,7 +64,7 @@
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.977"}
+    {:mvn/version "1.62.993"}
 
     org.clojure/tools.namespace
     {:mvn/version "1.2.0"}}

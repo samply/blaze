@@ -25,7 +25,7 @@
     {:mvn/version "0.8.2"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.977"}
+    {:mvn/version "1.62.993"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "1.7.35"}}
