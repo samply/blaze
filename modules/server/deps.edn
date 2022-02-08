@@ -28,7 +28,7 @@
     {:mvn/version "1.62.993"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "1.7.35"}}
+    {:mvn/version "1.7.36"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -46,7 +46,7 @@
     {:mvn/version "0.8.2"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "1.7.35"}}
+    {:mvn/version "1.7.36"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".*spec$"]}}}
