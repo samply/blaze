@@ -24,7 +24,7 @@
     {:local/root "../test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.977"}
+    {:mvn/version "1.62.993"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}
