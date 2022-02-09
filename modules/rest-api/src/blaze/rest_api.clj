@@ -4,6 +4,7 @@
     [blaze.db.search-param-registry.spec]
     [blaze.db.spec]
     [blaze.executors :as ex]
+    [blaze.fhir.structure-definition-repo :as sdr]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.middleware.fhir.metrics :as metrics]
@@ -113,7 +114,7 @@
     :req-un
     [:blaze/base-url
      :blaze/version
-     :blaze.rest-api/structure-definitions
+     :blaze.fhir/structure-definition-repo
      :blaze.db/node
      :blaze.db/search-param-registry
      :blaze.rest-api/db-sync-timeout]
@@ -129,10 +130,15 @@
 
 
 (defmethod ig/init-key :blaze/rest-api
-  [_ {:keys [base-url context-path db-sync-timeout] :as context}]
+  [_
+   {:keys [base-url context-path db-sync-timeout structure-definition-repo]
+    :as context}]
   (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path)
             "and a database sync timeout of" db-sync-timeout "ms")
-  (handler context))
+  (handler
+    (-> context
+        (dissoc :structure-definition-repo)
+        (assoc :structure-definitions (sdr/resources structure-definition-repo)))))
 
 
 (reg-collector ::requests-total

@@ -3,6 +3,7 @@
     [blaze.db.tx-log.spec]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest]]
@@ -10,6 +11,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 
@@ -20,7 +22,6 @@
 
 
 (test/use-fixtures :each fixture)
-
 
 (deftest t-test
   (are [x] (s/valid? :blaze.db/t x)

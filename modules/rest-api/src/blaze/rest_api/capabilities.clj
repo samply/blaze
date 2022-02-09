@@ -126,9 +126,7 @@
            :resource
            (into
              []
-             (comp
-               u/structure-definition-filter
-               (keep (partial capability-resource context)))
+             (keep (partial capability-resource context))
              structure-definitions)
            :interaction
            (cond-> []

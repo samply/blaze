@@ -5,6 +5,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.rest-api.middleware.resource :refer [wrap-resource]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -15,6 +16,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 

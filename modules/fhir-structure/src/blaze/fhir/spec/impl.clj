@@ -3,7 +3,6 @@
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type :as type]
-    [blaze.fhir.util :as u]
     [clojure.alpha.spec :as s]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
@@ -808,21 +807,13 @@
   (if (keyword? spec-form) spec-form (s/resolve-spec spec-form)))
 
 
-(defn- register
+(defn register
   "Registers `spec-defs`"
   [spec-defs]
   (run!
     (fn [{:keys [key spec-form]}]
       (s/register key (resolve-spec spec-form)))
     spec-defs))
-
-
-;; register all primitive type specs without id and extension
-(register (mapcat primitive-type->spec-defs (u/primitive-types)))
-
-
-;; register all complex type specs
-(register (mapcat struct-def->spec-def (u/complex-types)))
 
 
 ;; Resource Spec
@@ -867,9 +858,6 @@
 (s/def :fhir.xml/Resource
   (s/and (s/conformer conform-xml-resource unform-xml-resource)
          (s/multi-spec xml-resource (fn [value _] value))))
-
-
-(register (mapcat struct-def->spec-def (remove :abstract (u/resources))))
 
 
 (defmulti resource (constantly :default))

@@ -11,9 +11,6 @@
   blaze/rest-util
   {:local/root "../rest-util"}
 
-  blaze/structure-definition
-  {:local/root "../structure-definition"}
-
   buddy/buddy-auth
   {:mvn/version "3.0.323"}
 

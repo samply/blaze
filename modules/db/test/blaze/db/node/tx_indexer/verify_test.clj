@@ -30,6 +30,7 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
+    [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
@@ -103,7 +104,10 @@
    {:column-families {}}
    ::rs-kv/executor {}
 
-   :blaze.db/search-param-registry {}})
+   :blaze.db/search-param-registry
+   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
+
+   :blaze.fhir/structure-definition-repo {}})
 
 
 (def tid-patient (codec/tid "Patient"))

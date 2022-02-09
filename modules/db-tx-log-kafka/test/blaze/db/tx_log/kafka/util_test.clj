@@ -3,6 +3,7 @@
     [blaze.db.tx-log.kafka.util :as u]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -16,6 +17,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 

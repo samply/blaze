@@ -14,6 +14,7 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local]
+    [blaze.fhir.structure-definition-repo]
     [blaze.test-util :refer [with-system]]
     [integrant.core :as ig]
     [java-time :as time]))
@@ -69,7 +70,10 @@
    {:column-families {}}
    ::rs-kv/executor {}
 
-   :blaze.db/search-param-registry {}})
+   :blaze.db/search-param-registry
+   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
+
+   :blaze.fhir/structure-definition-repo {}})
 
 
 (def mem-node-system

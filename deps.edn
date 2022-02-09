@@ -28,9 +28,6 @@
   blaze/server
   {:local/root "modules/server"}
 
-  blaze/structure-definition
-  {:local/root "modules/structure-definition"}
-
   blaze/thread-pool-executor-collector
   {:local/root "modules/thread-pool-executor-collector"}
 
@@ -124,7 +121,6 @@
     "-d" "modules/search-param-registry"
     "-d" "modules/server"
     "-d" "modules/spec"
-    "-d" "modules/structure-definition"
     "-d" "modules/terminology-service"
     "-d" "modules/test-util"
     "-d" "modules/thread-pool-executor-collector"]}}}

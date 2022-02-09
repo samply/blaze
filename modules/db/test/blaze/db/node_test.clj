@@ -20,6 +20,7 @@
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
+    [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.metrics.spec]
     [blaze.test-util :refer [given-failed-future given-thrown with-system]]
@@ -94,7 +95,10 @@
    {:column-families {}}
    ::rs-kv/executor {}
 
-   :blaze.db/search-param-registry {}})
+   :blaze.db/search-param-registry
+   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
+
+   :blaze.fhir/structure-definition-repo {}})
 
 
 (defmethod ig/init-key ::resource-store-failing-on-get [_ _]

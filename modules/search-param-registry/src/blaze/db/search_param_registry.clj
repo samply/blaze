@@ -241,15 +241,13 @@
       entries)))
 
 
-(defn init-search-param-registry
-  "Creates a new search param registry."
-  []
-  (let [bundle (read-bundle "blaze/db/search-parameters.json")]
-    (when-ok [index (build-index bundle)]
-      (->MemSearchParamRegistry (add-special index) (index-compartments index)))))
+(defmethod ig/pre-init-spec :blaze.db/search-param-registry [_]
+  (s/keys :req-un [:blaze.fhir/structure-definition-repo]))
 
 
 (defmethod ig/init-key :blaze.db/search-param-registry
   [_ _]
   (log/info "Init in-memory fixed R4 search parameter registry")
-  (init-search-param-registry))
+  (let [bundle (read-bundle "blaze/db/search-parameters.json")]
+    (when-ok [index (build-index bundle)]
+      (->MemSearchParamRegistry (add-special index) (index-compartments index)))))
