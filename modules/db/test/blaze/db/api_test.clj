@@ -26,6 +26,7 @@
     [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
     [blaze.fhir.spec.type :as type]
+    [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :refer [given-failed-future with-system]]
     [clojure.spec.test.alpha :as st]
@@ -102,7 +103,10 @@
    {:column-families {}}
    ::rs-kv/executor {}
 
-   :blaze.db/search-param-registry {}})
+   :blaze.db/search-param-registry
+   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
+
+   :blaze.fhir/structure-definition-repo {}})
 
 
 (def system

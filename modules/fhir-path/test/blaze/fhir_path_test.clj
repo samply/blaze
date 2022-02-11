@@ -7,6 +7,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -15,6 +16,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 

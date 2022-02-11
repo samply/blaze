@@ -1,6 +1,7 @@
 (ns blaze.test-util
   (:require
     [blaze.anomaly :as ba]
+    [blaze.fhir.structure-definition-repo]
     [clojure.test :refer [is]]
     [clojure.test.check :as tc]
     [integrant.core :as ig]
@@ -81,3 +82,7 @@
   {:arglists '([a b])}
   [^bytes a ^bytes b]
   (Arrays/equals a b))
+
+
+(defn init-fhir-specs []
+  (ig/init {:blaze.fhir/structure-definition-repo {}}))

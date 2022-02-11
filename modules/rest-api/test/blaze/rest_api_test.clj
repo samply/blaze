@@ -3,6 +3,8 @@
     [blaze.db.api-stub :refer [mem-node-system]]
     [blaze.db.impl.search-param]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.structure-definition-repo]
+    [blaze.fhir.structure-definition-repo.protocols :as sdrp]
     [blaze.handler.util :as handler-util]
     [blaze.rest-api :as rest-api]
     [blaze.test-util :refer [given-thrown with-system]]
@@ -265,7 +267,7 @@
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze.rest-api.json-parse/executor))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definitions))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
@@ -277,7 +279,7 @@
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze.rest-api.json-parse/executor))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definitions))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
       [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
@@ -290,13 +292,24 @@
     :blaze/rest-api
     {:base-url "http://localhost:8080"
      :version "0.1.0"
-     :structure-definitions []
+     :structure-definition-repo (ig/ref ::empty-structure-definition-repo)
      :node (ig/ref :blaze.db/node)
      :search-param-registry (ig/ref :blaze.db/search-param-registry)
      :db-sync-timeout 10000
      :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)}
-    :blaze.db/search-param-registry {}
+    :blaze.db/search-param-registry
+    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
+    :blaze.fhir/structure-definition-repo {}
+    ::empty-structure-definition-repo {}
     :blaze.rest-api.json-parse/executor {}))
+
+
+(defmethod ig/init-key ::empty-structure-definition-repo
+  [_ _]
+  (reify sdrp/StructureDefinitionRepo
+    (-primitive-types [_] [])
+    (-complex-types [_] [])
+    (-resources [_] [])))
 
 
 (deftest format-override-test

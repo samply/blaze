@@ -33,43 +33,43 @@
    :history-system-handler #blaze/ref :blaze.interaction.history/system
    :resource-patterns
    [#:blaze.rest-api.resource-pattern
-       {:type :default
-        :interactions
-        {:read
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/read}
-         :vread
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/read}
-         :update
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/update}
-         :delete
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/delete}
-         :history-instance
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction.history/instance}
-         :history-type
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction.history/type}
-         :create
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/create}
-         :search-type
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/search-type}}}]
+           {:type :default
+            :interactions
+            {:read
+             #:blaze.rest-api.interaction
+                     {:handler #blaze/ref :blaze.interaction/read}
+             :vread
+             #:blaze.rest-api.interaction
+                     {:handler #blaze/ref :blaze.interaction/read}
+             :update
+             #:blaze.rest-api.interaction
+                     {:handler #blaze/ref :blaze.interaction/update}
+             :delete
+             #:blaze.rest-api.interaction
+                     {:handler #blaze/ref :blaze.interaction/delete}
+             :history-instance
+             #:blaze.rest-api.interaction
+                     {:handler #blaze/ref :blaze.interaction.history/instance}
+             :history-type
+             #:blaze.rest-api.interaction
+                     {:handler #blaze/ref :blaze.interaction.history/type}
+             :create
+             #:blaze.rest-api.interaction
+                     {:handler #blaze/ref :blaze.interaction/create}
+             :search-type
+             #:blaze.rest-api.interaction
+                     {:handler #blaze/ref :blaze.interaction/search-type}}}]
    :compartments
    [#:blaze.rest-api.compartment
-       {:code "Patient"
-        :search-handler #blaze/ref :blaze.interaction/search-compartment}]
+           {:code "Patient"
+            :search-handler #blaze/ref :blaze.interaction/search-compartment}]
    :operations
    [#:blaze.rest-api.operation
-       {:code "evaluate-measure"
-        :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
-        :resource-types ["Measure"]
-        :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
-        :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}]
+           {:code "evaluate-measure"
+            :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+            :resource-types ["Measure"]
+            :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
+            :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}]
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
   ;;
@@ -241,10 +241,11 @@
   ;;
   ;; The search param registry contains a set of FHIR search parameter
   ;; definitions which are used for query functionality in the database node.
-  ;; Currently this implementation holds a fix set of search parameters defined
+  ;; Currently, this implementation holds a fix set of search parameters defined
   ;; in FHIR R4.
   ;;
-  :blaze.db/search-param-registry {}}
+  :blaze.db/search-param-registry
+  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}}
 
  :storage
  {:in-memory

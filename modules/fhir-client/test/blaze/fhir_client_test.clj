@@ -1,10 +1,9 @@
 (ns blaze.fhir-client-test
   (:require
-    [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.fhir-client-spec]
     [blaze.fhir.spec.type]
-    [blaze.test-util :refer [given-failed-future]]
+    [blaze.test-util :as tu :refer [given-failed-future]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -18,6 +17,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 

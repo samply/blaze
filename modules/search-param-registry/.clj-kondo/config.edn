@@ -1,5 +1,6 @@
 {:lint-as
- {blaze.anomaly/when-ok clojure.core/let}
+ {blaze.anomaly/when-ok clojure.core/let
+  blaze.test-util/with-system clojure.core/with-open}
 
  :linters
  {:unsorted-required-namespaces

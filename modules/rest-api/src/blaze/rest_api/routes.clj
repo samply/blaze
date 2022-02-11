@@ -238,8 +238,6 @@
         (mapcat (partial operation-instance-handler-route context))
         operations)
       (into
-        (comp
-          u/structure-definition-filter
-          (keep (partial resource-route context resource-patterns)))
+        (keep (partial resource-route context resource-patterns))
         structure-definitions)
       (into (map (partial compartment-route context)) compartments)))
