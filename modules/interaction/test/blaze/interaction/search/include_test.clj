@@ -5,12 +5,14 @@
     [blaze.fhir.spec.type :as type]
     [blaze.interaction.search.include :as include]
     [blaze.interaction.search.include-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]))
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 
 
 (defn- fixture [f]

@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please refer to the [Conformance](docs/conformance.md) section and report any issues you encounter during evaluation.
 
-Latest release: [v0.15.5][5]
+Latest release: [v0.15.6][5]
 
 ## Quick Start
 
@@ -72,7 +72,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.15.5>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.15.6>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
