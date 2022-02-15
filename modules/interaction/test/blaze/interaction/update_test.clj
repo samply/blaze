@@ -13,7 +13,7 @@
     [blaze.fhir.spec.type]
     [blaze.interaction.update]
     [blaze.middleware.fhir.error :refer [wrap-error]]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -26,6 +26,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 

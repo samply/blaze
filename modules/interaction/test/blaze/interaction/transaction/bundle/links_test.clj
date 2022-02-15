@@ -3,12 +3,14 @@
     [blaze.fhir.spec.type :as type]
     [blaze.interaction.transaction.bundle.links :as links]
     [blaze.interaction.transaction.bundle.links-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]))
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 
 
 (defn- fixture [f]
