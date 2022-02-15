@@ -125,7 +125,7 @@
         (format "The identifier `%s` is invalid." id)
         :fhir/issue "value"))
 
-    (not (s/valid? :fhir.type/name type))
+    (not (s/valid? :fhir.resource/type type))
     (ac/completed-future
       (ba/incorrect
         (format "The type `%s` is invalid." type)

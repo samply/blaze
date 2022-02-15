@@ -80,7 +80,7 @@
 
 (defmethod tx-op :delete [_]
   (s/cat :op #{:delete}
-         :type :fhir.type/name
+         :type :fhir.resource/type
          :id :blaze.resource/id))
 
 

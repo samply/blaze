@@ -37,7 +37,7 @@
 
 (s/fdef util/page-type
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
-  :ret (s/nilable :fhir.type/name))
+  :ret (s/nilable :fhir.resource/type))
 
 
 (s/fdef util/page-id
@@ -47,17 +47,17 @@
 
 (s/fdef util/type-url
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
-               :type :fhir.type/name)
+               :type :fhir.resource/type)
   :ret string?)
 
 
 (s/fdef util/instance-url
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
-               :type :fhir.type/name :id :blaze.resource/id)
+               :type :fhir.resource/type :id :blaze.resource/id)
   :ret string?)
 
 
 (s/fdef util/versioned-instance-url
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
-               :type :fhir.type/name :id :blaze.resource/id :vid string?)
+               :type :fhir.resource/type :id :blaze.resource/id :vid string?)
   :ret string?)
