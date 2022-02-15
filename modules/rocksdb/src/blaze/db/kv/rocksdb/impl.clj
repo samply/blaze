@@ -112,7 +112,7 @@
 
 
 (defn delete-wb! [^WriteBatchInterface wb ks]
-  (run! #(.delete wb %) ks))
+  (run! #(.delete wb ^bytes %) ks))
 
 
 (defn write-wb! [cfhs ^WriteBatchInterface wb entries]

@@ -22,7 +22,7 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2022.01.15'
+        version: '2022.02.09'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -86,7 +86,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1069'
+        tools-deps: '1.10.3.1082'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -117,7 +117,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1069'
+        tools-deps: '1.10.3.1082'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -159,7 +159,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1069'
+        tools-deps: '1.10.3.1082'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -187,7 +187,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1069'
+        tools-deps: '1.10.3.1082'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -527,7 +527,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1069'
+        tools-deps: '1.10.3.1082'
 
     - name: Check out Git repository
       uses: actions/checkout@v2
@@ -796,7 +796,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1069'
+        tools-deps: '1.10.3.1082'
 
     - name: Check out Git repository
       uses: actions/checkout@v2

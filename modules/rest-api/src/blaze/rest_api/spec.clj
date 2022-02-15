@@ -2,7 +2,6 @@
   (:require
     [blaze.executors :as ex]
     [blaze.spec]
-    [blaze.structure-definition]
     [buddy.auth.protocols :as p]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]))
@@ -139,7 +138,7 @@
 
 
 (s/def :blaze.rest-api/structure-definitions
-  (s/coll-of :fhir.un/StructureDefinition))
+  (s/coll-of map?))
 
 
 ;; in milliseconds

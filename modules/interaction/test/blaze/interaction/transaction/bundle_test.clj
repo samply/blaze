@@ -2,12 +2,14 @@
   (:require
     [blaze.interaction.transaction.bundle :as bundle]
     [blaze.interaction.transaction.bundle-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]))
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 
 
 (defn- fixture [f]

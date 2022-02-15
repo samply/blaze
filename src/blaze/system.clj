@@ -7,8 +7,6 @@
   (:require
     [blaze.executors :as ex]
     [blaze.log]
-    [blaze.server]
-    [blaze.server.spec]
     [clojure.java.io :as io]
     [clojure.string :as str]
     [clojure.tools.reader.edn :as edn]
@@ -87,7 +85,7 @@
 
 
 (def ^:private root-config
-  {:blaze/version "0.15.5"
+  {:blaze/version "0.15.6"
 
    :blaze/clock {}
 
@@ -95,7 +93,7 @@
 
    :blaze/secure-rng {}
 
-   :blaze/structure-definition {}
+   :blaze.fhir/structure-definition-repo {}
 
    :blaze.handler/health {}
 
@@ -104,7 +102,7 @@
    :blaze/rest-api
    {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
     :version (ig/ref :blaze/version)
-    :structure-definitions (ig/ref :blaze/structure-definition)
+    :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
     :node (ig/ref :blaze.db/node)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)

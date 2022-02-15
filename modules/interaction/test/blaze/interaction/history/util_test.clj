@@ -3,6 +3,7 @@
     [blaze.fhir.spec.type]
     [blaze.interaction.history.util :as history-util]
     [blaze.interaction.history.util-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]]
@@ -12,6 +13,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 
 
 (defn- fixture [f]

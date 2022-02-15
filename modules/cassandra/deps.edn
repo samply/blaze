@@ -13,7 +13,7 @@
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
-  {:mvn/version "4.1.73.Final"}}
+  {:mvn/version "4.1.74.Final"}}
 
  :aliases
  {:test
@@ -24,7 +24,7 @@
     {:local/root "../test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.977"}
+    {:mvn/version "1.62.993"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}

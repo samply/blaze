@@ -4,6 +4,7 @@
     [blaze.executors :as ex]
     [blaze.fhir.spec-spec]
     [blaze.rest-api.middleware.output :refer [wrap-output]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [juxt.iota :refer [given]]
@@ -14,6 +15,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 

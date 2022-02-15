@@ -15,10 +15,3 @@
     (some
       #(when (= :default (:blaze.rest-api.resource-pattern/type %)) %)
       resource-patterns)))
-
-
-(def structure-definition-filter
-  (comp
-    (filter (comp #{"resource"} :kind))
-    (remove :experimental)
-    (remove :abstract)))

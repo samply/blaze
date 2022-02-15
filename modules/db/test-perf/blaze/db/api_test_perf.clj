@@ -12,6 +12,7 @@
     [blaze.db.tx-cache]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local]
+    [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :refer [with-system]]
     [clojure.test :refer [deftest is testing]]
@@ -72,7 +73,10 @@
    {:column-families {}}
    ::rs-kv/executor {}
 
-   :blaze.db/search-param-registry {}})
+   :blaze.db/search-param-registry
+   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
+
+   :blaze.fhir/structure-definition-repo {}})
 
 
 (deftest transact-test

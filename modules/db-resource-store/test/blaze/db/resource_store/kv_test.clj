@@ -14,7 +14,7 @@
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.metrics.spec]
-    [blaze.test-util :refer [given-failed-future given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -28,6 +28,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 

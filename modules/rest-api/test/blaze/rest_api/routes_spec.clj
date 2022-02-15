@@ -6,8 +6,9 @@
 
 
 (s/fdef routes/resource-route
-  :args (s/cat :context map? :resource-patterns :blaze.rest-api/resource-patterns
-               :structure-definition :fhir.un/StructureDefinition))
+  :args (s/cat :context map?
+               :resource-patterns :blaze.rest-api/resource-patterns
+               :structure-definition map?))
 
 
 (s/fdef routes/compartment-route

@@ -11,9 +11,6 @@
   blaze/rest-util
   {:local/root "../rest-util"}
 
-  blaze/structure-definition
-  {:local/root "../structure-definition"}
-
   buddy/buddy-auth
   {:mvn/version "3.0.323"}
 
@@ -29,7 +26,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.60.977"}}
+    {:mvn/version "1.62.993"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

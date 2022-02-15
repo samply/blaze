@@ -3,12 +3,14 @@
     [blaze.byte-string :as bs]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 
 
 (defn- fixture [f]
