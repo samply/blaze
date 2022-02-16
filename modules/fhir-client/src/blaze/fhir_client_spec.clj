@@ -18,7 +18,7 @@
 
 
 (s/fdef fhir-client/read
-  :args (s/cat :base-uri string? :type :fhir.type/name :id :blaze.resource/id
+  :args (s/cat :base-uri string? :type :fhir.resource/type :id :blaze.resource/id
                :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
@@ -30,13 +30,13 @@
 
 
 (s/fdef fhir-client/execute-type-get
-  :args (s/cat :base-uri string? :type :fhir.type/name :name string?
+  :args (s/cat :base-uri string? :type :fhir.resource/type :name string?
                :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
 
 (s/fdef fhir-client/search-type-publisher
-  :args (s/cat :base-uri string? :type :fhir.type/name
+  :args (s/cat :base-uri string? :type :fhir.resource/type
                :opts (s/? :blaze.fhir-client/options))
   :ret flow/publisher?)
 
@@ -47,7 +47,7 @@
 
 
 (s/fdef fhir-client/search-type
-  :args (s/cat :base-uri string? :type :fhir.type/name
+  :args (s/cat :base-uri string? :type :fhir.resource/type
                :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
