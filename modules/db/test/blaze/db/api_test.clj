@@ -10,20 +10,13 @@
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
-    [blaze.db.node]
     [blaze.db.node-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
-    [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :as rs-kv]
     [blaze.db.search-param-registry]
-    [blaze.db.tx-cache]
-    [blaze.db.tx-log :as tx-log]
+    [blaze.db.test-util :refer [system with-system-data]]
     [blaze.db.tx-log-spec]
-    [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo]
@@ -33,7 +26,6 @@
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -51,66 +43,6 @@
 
 
 (test/use-fixtures :each fixture)
-
-
-(defn create-system [node-config]
-  {:blaze.db/node
-   (merge
-     {:tx-log (ig/ref :blaze.db/tx-log)
-      :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
-      :tx-cache (ig/ref :blaze.db/tx-cache)
-      :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-      :resource-store (ig/ref :blaze.db/resource-store)
-      :kv-store (ig/ref :blaze.db/index-kv-store)
-      :search-param-registry (ig/ref :blaze.db/search-param-registry)
-      :poll-timeout (time/millis 10)}
-     node-config)
-
-   ::tx-log/local
-   {:kv-store (ig/ref :blaze.db/transaction-kv-store)
-    :clock (ig/ref :blaze.test/clock)}
-   [::kv/mem :blaze.db/transaction-kv-store]
-   {:column-families {}}
-   :blaze.test/clock {}
-
-   :blaze.db/resource-handle-cache {}
-
-   :blaze.db/tx-cache
-   {:kv-store (ig/ref :blaze.db/index-kv-store)}
-
-   :blaze.db.node/indexer-executor {}
-
-   [::kv/mem :blaze.db/index-kv-store]
-   {:column-families
-    {:search-param-value-index nil
-     :resource-value-index nil
-     :compartment-search-param-value-index nil
-     :compartment-resource-type-index nil
-     :active-search-params nil
-     :tx-success-index {:reverse-comparator? true}
-     :tx-error-index nil
-     :t-by-instant-index {:reverse-comparator? true}
-     :resource-as-of-index nil
-     :type-as-of-index nil
-     :system-as-of-index nil
-     :type-stats-index nil
-     :system-stats-index nil}}
-
-   ::rs/kv
-   {:kv-store (ig/ref :blaze.db/resource-kv-store)
-    :executor (ig/ref ::rs-kv/executor)}
-   [::kv/mem :blaze.db/resource-kv-store]
-   {:column-families {}}
-   ::rs-kv/executor {}
-
-   :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-
-   :blaze.fhir/structure-definition-repo {}})
-
-
-(def system
-  (create-system {}))
 
 
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
@@ -147,8 +79,8 @@
 
 (deftest sync-test
   (testing "on already available database value"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (is (= 1 (d/basis-t @(d/sync node 1))))))
 
@@ -160,8 +92,9 @@
         (is (= 1 (d/basis-t @future))))))
 
   (testing "errored transactions are ignored"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:create {:fhir/type :fhir/Observation :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Observation :id "0"}]]]
+
       @(-> (d/transact node [[:create
                               {:fhir/type :fhir/Observation :id "1"
                                :subject #fhir/Reference{:reference "Patient/0"}}]])
@@ -178,9 +111,10 @@
         (is (= 2 (d/basis-t @future)))))
 
     (testing "without t"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
-        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+         [[:create {:fhir/type :fhir/Patient :id "1"}]]]
+
         (is (= 2 (d/basis-t @(d/sync node)))))))
 
   (testing "cancelling"
@@ -194,8 +128,8 @@
 (deftest transact-test
   (testing "create"
     (testing "one Patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
@@ -204,15 +138,13 @@
           [meta :blaze.db/op] := :create)))
 
     (testing "one Patient with one Observation"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact
-           node
-           ;; create ops are purposely disordered in order to test the
-           ;; reference dependency ordering algorithm
-           [[:create
-             {:fhir/type :fhir/Observation :id "0"
-              :subject #fhir/Reference{:reference "Patient/0"}}]
-            [:create {:fhir/type :fhir/Patient :id "0"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        ;; create ops are purposely disordered in order to test the
+        ;; reference dependency ordering algorithm
+        [[[:create
+           {:fhir/type :fhir/Observation :id "0"
+            :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:create {:fhir/type :fhir/Patient :id "0"}]]]
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
@@ -230,12 +162,10 @@
   (testing "conditional create"
     (testing "one Patient"
       (testing "on empty database"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:create
-               {:fhir/type :fhir/Patient :id "0"}
-               [["identifier" "111033"]]]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:create
+             {:fhir/type :fhir/Patient :id "0"}
+             [["identifier" "111033"]]]]]
 
           (testing "the Patient was created"
             (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -245,17 +175,12 @@
               [meta :blaze.db/op] := :create))))
 
       (testing "on non-matching Patient"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/Patient :id "0"
-                     :identifier [#fhir/Identifier{:value "094808"}]}]])
-
-          @(d/transact
-             node
-             [[:create
-               {:fhir/type :fhir/Patient :id "1"}
-               [["identifier" "111033"]]]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier [#fhir/Identifier{:value "094808"}]}]]
+           [[:create
+             {:fhir/type :fhir/Patient :id "1"}
+             [["identifier" "111033"]]]]]
 
           (testing "the Patient was created"
             (given @(d/pull node (d/resource-handle (d/db node) "Patient" "1"))
@@ -265,29 +190,22 @@
               [meta :blaze.db/op] := :create))))
 
       (testing "on matching Patient"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/Patient :id "0"
-                     :identifier [#fhir/Identifier{:value "111033"}]}]])
-
-          @(d/transact
-             node
-             [[:create
-               {:fhir/type :fhir/Patient :id "1"}
-               [["identifier" "111033"]]]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier [#fhir/Identifier{:value "111033"}]}]]
+           [[:create
+             {:fhir/type :fhir/Patient :id "1"}
+             [["identifier" "111033"]]]]]
 
           (testing "no new patient is created"
             (is (= 1 (d/type-total (d/db node) "Patient"))))))
 
       (testing "on multiple matching Patients"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/Patient :id "0"
-                     :birthDate #fhir/date"2020"}]
-              [:put {:fhir/type :fhir/Patient :id "1"
-                     :birthDate #fhir/date"2020"}]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :birthDate #fhir/date"2020"}]
+            [:put {:fhir/type :fhir/Patient :id "1"
+                   :birthDate #fhir/date"2020"}]]]
 
           (testing "causes a transaction abort with conflict"
             (given-failed-future
@@ -299,26 +217,24 @@
               ::anom/category := ::anom/conflict))))
 
       (testing "on deleting the matching Patient"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/Patient :id "0"
-                     :identifier [#fhir/Identifier{:value "153229"}]}]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier [#fhir/Identifier{:value "153229"}]}]]]
 
           (testing "causes a transaction abort with conflict"
             (given-failed-future
               (d/transact
                 node
                 [[:create
-                  {:fhir/type :fhir/Patient :id "1"}
+                  {:fhir/type :fhir/Patient :id "foo"}
                   [["identifier" "153229"]]]
                  [:delete "Patient" "0"]])
               ::anom/category := ::anom/conflict))))))
 
   (testing "put"
     (testing "one Patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (testing "the Patient was created"
           (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -328,14 +244,12 @@
             [meta :blaze.db/op] := :put))))
 
     (testing "one Patient with one Observation"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact
-           node
-           ;; the create ops are purposely disordered in order to test the
-           ;; reference dependency ordering algorithm
-           [[:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
-            [:put {:fhir/type :fhir/Patient :id "0"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        ;; the create ops are purposely disordered in order to test the
+        ;; reference dependency ordering algorithm
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (testing "the Patient was created"
           (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -353,9 +267,9 @@
             [meta :blaze.db/op] := :put))))
 
     (testing "updating one Patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]])
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
@@ -365,23 +279,21 @@
           [meta :blaze.db/op] := :put)))
 
     (testing "Diamond Reference Dependencies"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact
-           node
-           ;; the create ops are purposely disordered in order to test the
-           ;; reference dependency ordering algorithm
-           [[:put {:fhir/type :fhir/List
-                   :id "0"
-                   :entry
-                   [{:fhir/type :fhir.List/entry
-                     :item #fhir/Reference{:reference "Observation/0"}}
-                    {:fhir/type :fhir.List/entry
-                     :item #fhir/Reference{:reference "Observation/1"}}]}]
-            [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
-            [:put {:fhir/type :fhir/Patient :id "0"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        ;; the create ops are purposely disordered in order to test the
+        ;; reference dependency ordering algorithm
+        [[[:put {:fhir/type :fhir/List
+                 :id "0"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item #fhir/Reference{:reference "Observation/0"}}
+                  {:fhir/type :fhir.List/entry
+                   :item #fhir/Reference{:reference "Observation/1"}}]}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:put {:fhir/type :fhir/Observation :id "1"
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
@@ -504,11 +416,9 @@
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
     (testing "creating a List were the entry item will be deleted in the same transaction"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact
-           node
-           [[:create {:fhir/type :fhir/Observation :id "0"}]
-            [:create {:fhir/type :fhir/Observation :id "1"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:create {:fhir/type :fhir/Observation :id "0"}]
+          [:create {:fhir/type :fhir/Observation :id "1"}]]]
 
         (given-failed-future
           (d/transact
@@ -527,12 +437,10 @@
   (testing "not enforcing referential integrity"
     (testing "creating an Observation were the subject doesn't exist"
       (testing "create"
-        (with-system [{:blaze.db/keys [node]} (create-system {:enforce-referential-integrity false})]
-          @(d/transact
-             node
-             [[:create
-               {:fhir/type :fhir/Observation :id "0"
-                :subject #fhir/Reference{:reference "Patient/0"}}]])
+        (with-system-data [{:blaze.db/keys [node]} (assoc-in system [:blaze.db/node :enforce-referential-integrity] false)]
+          [[[:create
+             {:fhir/type :fhir/Observation :id "0"
+              :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
           (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
             :fhir/type := :fhir/Observation
@@ -572,7 +480,7 @@
     (with-redefs
       [resource-indexer/index-resources
        (fn [_ _]
-         (ac/completed-future {::anom/category ::anom/fault ::x ::y}))]
+         (ac/failed-future (ex-info "" {::anom/category ::anom/fault ::x ::y})))]
       (with-system [{:blaze.db/keys [node]} system]
         (given-failed-future
           (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
@@ -581,8 +489,8 @@
 
 
 (deftest tx-test
-  (with-system [{:blaze.db/keys [node]} system]
-    @(d/transact node [[:put {:fhir/type :fhir/Patient :id "id-142136"}]])
+  (with-system-data [{:blaze.db/keys [node]} system]
+    [[[:put {:fhir/type :fhir/Patient :id "id-142136"}]]]
 
     (let [db (d/db node)]
       (given (d/tx db (d/basis-t db))
@@ -598,14 +506,14 @@
       (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
 
   (testing "a resource handle is actually one"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
 
   (testing "a node contains a resource after a create transaction"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "pull"
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
@@ -624,8 +532,8 @@
         (is (= 1 (:num-changes (d/resource-handle (d/db node) "Patient" "0")))))))
 
   (testing "a node contains a resource after a put transaction"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
         :fhir/type := :fhir/Patient
@@ -635,9 +543,9 @@
         [meta :blaze.db/num-changes] := 1)))
 
   (testing "a deleted resource is flagged"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:delete "Patient" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
 
       (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
         :fhir/type := :fhir/Patient
@@ -657,8 +565,8 @@
       (is (zero? (d/type-total (d/db node) "Patient")))))
 
   (testing "a node with one patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one list entry"
         (is (= 1 (count (d/type-list (d/db node) "Patient"))))
@@ -673,28 +581,28 @@
           [0 :meta :lastUpdated] := Instant/EPOCH))))
 
   (testing "a node with one deleted patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:delete "Patient" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
 
       (testing "doesn't contain it in the list"
         (is (coll/empty? (d/type-list (d/db node) "Patient")))
         (is (zero? (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with one recreated patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:delete "Patient" "0"]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]
+       [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one list entry"
         (is (= 1 (count (d/type-list (d/db node) "Patient"))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with two patients in two transactions"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two list entries"
         (is (= 2 (count (d/type-list (d/db node) "Patient"))))
@@ -720,9 +628,9 @@
         (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
 
   (testing "a node with two patients in one transaction"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Patient :id "1"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two list entries"
         (is (= 2 (count (d/type-list (d/db node) "Patient"))))
@@ -748,9 +656,9 @@
         (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
 
   (testing "a node with one updated patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (testing "has one list entry"
         (is (= 1 (count (d/type-list (d/db node) "Patient"))))
@@ -764,9 +672,9 @@
           [0 :meta :versionId] := #fhir/id"2"))))
 
   (testing "a node with resources of different types"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has one patient list entry"
         (is (= 1 (count (d/type-list (d/db node) "Patient"))))
@@ -778,8 +686,8 @@
 
   (testing "the database is immutable"
     (testing "while updating a patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]]
 
         (let [db (d/db node)]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
@@ -797,8 +705,8 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
@@ -816,9 +724,9 @@
                 [0 :meta :versionId] := #fhir/id"1")))))))
 
   (testing "resources will be returned in lexical id order"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Patient :id "00"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "00"}]]]
 
       (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
         [0 :id] := "0"
@@ -840,8 +748,8 @@
       (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]])))))
 
   (testing "a node with one patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (testing "the patient can be found"
         (given (pull-type-query node "Patient" [["active" "true"]])
@@ -862,9 +770,9 @@
             ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))))
 
   (testing "a node with two patients in one transaction"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
-                         [:put {:fhir/type :fhir/Patient :id "1" :active false}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active false}]]]
 
       (testing "only the active patient will be found"
         (given (pull-type-query node "Patient" [["active" "true"]])
@@ -886,10 +794,10 @@
           [1 :id] := "1"))))
 
   (testing "does not find the deleted active patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
-                         [:put {:fhir/type :fhir/Patient :id "1" :active true}]])
-      @(d/transact node [[:delete "Patient" "1"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active true}]]
+       [[:delete "Patient" "1"]]]
 
       (given (pull-type-query node "Patient" [["active" "true"]])
         count := 1
@@ -897,10 +805,10 @@
         [0 :id] := "0")))
 
   (testing "does not find the updated patient that is no longer active"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
-                         [:put {:fhir/type :fhir/Patient :id "1" :active true}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1" :active false}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active true}]]
+       [[:put {:fhir/type :fhir/Patient :id "1" :active false}]]]
 
       (given (pull-type-query node "Patient" [["active" "true"]])
         count := 1
@@ -908,10 +816,10 @@
         [0 :id] := "0")))
 
   (testing "a node with three patients in one transaction"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]
-                         [:put {:fhir/type :fhir/Patient :id "1" :active false}]
-                         [:put {:fhir/type :fhir/Patient :id "2" :active true}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active false}]
+        [:put {:fhir/type :fhir/Patient :id "2" :active true}]]]
 
       (testing "two active patients will be found"
         (given (pull-type-query node "Patient" [["active" "true"]])
@@ -929,20 +837,20 @@
 
   (testing "Special Search Parameter _list"
     (testing "a node with two patients, one observation and one list in one transaction"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                           [:put {:fhir/type :fhir/Patient :id "1"}]
-                           [:put {:fhir/type :fhir/Observation :id "0"}]
-                           [:put {:fhir/type :fhir/List :id "0"
-                                  :entry
-                                  [{:fhir/type :fhir.List/entry
-                                    :item
-                                    #fhir/Reference
-                                        {:reference "Patient/0"}}
-                                   {:fhir/type :fhir.List/entry
-                                    :item
-                                    #fhir/Reference
-                                        {:reference "Observation/0"}}]}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Observation :id "0"}]
+          [:put {:fhir/type :fhir/List :id "0"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                           {:reference "Patient/0"}}
+                  {:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                           {:reference "Observation/0"}}]}]]]
 
         (testing "returns only the patient referenced in the list"
           (given (pull-type-query node "Patient" [["_list" "0"]])
@@ -957,25 +865,25 @@
             1 := nil))))
 
     (testing "a node with three patients and one list in one transaction"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                           [:put {:fhir/type :fhir/Patient :id "1"}]
-                           [:put {:fhir/type :fhir/Patient :id "2"}]
-                           [:put {:fhir/type :fhir/Patient :id "3"}]
-                           [:put {:fhir/type :fhir/List :id "0"
-                                  :entry
-                                  [{:fhir/type :fhir.List/entry
-                                    :item
-                                    #fhir/Reference
-                                        {:reference "Patient/0"}}
-                                   {:fhir/type :fhir.List/entry
-                                    :item
-                                    #fhir/Reference
-                                        {:reference "Patient/2"}}
-                                   {:fhir/type :fhir.List/entry
-                                    :item
-                                    #fhir/Reference
-                                        {:reference "Patient/3"}}]}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Patient :id "2"}]
+          [:put {:fhir/type :fhir/Patient :id "3"}]
+          [:put {:fhir/type :fhir/List :id "0"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                           {:reference "Patient/0"}}
+                  {:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                           {:reference "Patient/2"}}
+                  {:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                           {:reference "Patient/3"}}]}]]]
 
         (testing "it is possible to start with the second patient"
           (given (pull-type-query node "Patient" [["_list" "0"]] "2")
@@ -984,56 +892,56 @@
             [1 :id] := "3")))))
 
   (testing "Special Search Parameter _has"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                :active true}]
-                         [:put {:fhir/type :fhir/Patient :id "1"
-                                :active true}]
-                         [:put {:fhir/type :fhir/Observation :id "0"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}
-                                :code
-                                #fhir/CodeableConcept
-                                    {:coding
-                                     [#fhir/Coding
-                                         {:system #fhir/uri"http://loinc.org"
-                                          :code #fhir/code"8480-6"}]}
-                                :value
-                                #fhir/Quantity
-                                    {:value 130M
-                                     :code #fhir/code"mm[Hg]"
-                                     :system #fhir/uri"http://unitsofmeasure.org"}}]
-                         [:put {:fhir/type :fhir/Observation :id "O1"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}
-                                :code
-                                #fhir/CodeableConcept
-                                    {:coding
-                                     [#fhir/Coding
-                                         {:system #fhir/uri"http://loinc.org"
-                                          :code #fhir/code"8480-6"}]}
-                                :value
-                                #fhir/Quantity
-                                    {:value 150M
-                                     :code #fhir/code"mm[Hg]"
-                                     :system #fhir/uri"http://unitsofmeasure.org"}}]
-                         [:put {:fhir/type :fhir/Observation :id "O2"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/1"}
-                                :code
-                                #fhir/CodeableConcept
-                                    {:coding
-                                     [#fhir/Coding
-                                         {:system #fhir/uri"http://loinc.org"
-                                          :code #fhir/code"8480-6"}]}
-                                :value
-                                #fhir/Quantity
-                                    {:value 100M
-                                     :code #fhir/code"mm[Hg]"
-                                     :system #fhir/uri"http://unitsofmeasure.org"}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :active true}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                       {:value 130M
+                        :code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation :id "O1"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                       {:value 150M
+                        :code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation :id "O2"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/1"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                       {:value 100M
+                        :code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (testing "select the Patient with >= 130 mm[Hg]"
         (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
@@ -1082,62 +990,60 @@
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
 
   (testing "Patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient
-                 :id "id-0"
-                 :meta
-                 #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
-                 :identifier [#fhir/Identifier{:value "0"}]
-                 :active false
-                 :gender #fhir/code"male"
-                 :birthDate #fhir/date"2020-02-08"
-                 :deceased true
-                 :address
-                 [{:fhir/type :fhir/Address
-                   :line ["Philipp-Rosenthal-Straße 27"]
-                   :city "Leipzig"}]
-                 :name
-                 [{:fhir/type :fhir/HumanName
-                   :family "Müller"}]}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-1"
-                 :active true
-                 :gender #fhir/code"female"
-                 :birthDate #fhir/date"2020-02"
-                 :address
-                 [{:fhir/type :fhir/Address
-                   :city "Berlin"}]
-                 :telecom
-                 [{:fhir/type :fhir/ContactPoint
-                   :system #fhir/code"email"
-                   :value "foo@bar.baz"}
-                  {:fhir/type :fhir/ContactPoint
-                   :system #fhir/code"phone"
-                   :value "0815"}]}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-2"
-                 :active false
-                 :gender #fhir/code"female"
-                 :birthDate #fhir/date"2020"
-                 :deceased #fhir/dateTime"2020-03"
-                 :address
-                 [{:fhir/type :fhir/Address
-                   :line ["Liebigstraße 20a"]
-                   :city "Leipzig"}]
-                 :name
-                 [{:fhir/type :fhir/HumanName
-                   :family "Schmidt"}]}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-3"
-                 :birthDate #fhir/date"2019"}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-4"
-                 :birthDate #fhir/date"2021"}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-5"}]])
-      @(d/transact node [[:delete "Patient" "id-5"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient
+               :id "id-0"
+               :meta
+               #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
+               :identifier [#fhir/Identifier{:value "0"}]
+               :active false
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2020-02-08"
+               :deceased true
+               :address
+               [{:fhir/type :fhir/Address
+                 :line ["Philipp-Rosenthal-Straße 27"]
+                 :city "Leipzig"}]
+               :name
+               [{:fhir/type :fhir/HumanName
+                 :family "Müller"}]}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-1"
+               :active true
+               :gender #fhir/code"female"
+               :birthDate #fhir/date"2020-02"
+               :address
+               [{:fhir/type :fhir/Address
+                 :city "Berlin"}]
+               :telecom
+               [{:fhir/type :fhir/ContactPoint
+                 :system #fhir/code"email"
+                 :value "foo@bar.baz"}
+                {:fhir/type :fhir/ContactPoint
+                 :system #fhir/code"phone"
+                 :value "0815"}]}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-2"
+               :active false
+               :gender #fhir/code"female"
+               :birthDate #fhir/date"2020"
+               :deceased #fhir/dateTime"2020-03"
+               :address
+               [{:fhir/type :fhir/Address
+                 :line ["Liebigstraße 20a"]
+                 :city "Leipzig"}]
+               :name
+               [{:fhir/type :fhir/HumanName
+                 :family "Schmidt"}]}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-3"
+               :birthDate #fhir/date"2019"}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-4"
+               :birthDate #fhir/date"2021"}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-5"}]]
+       [[:delete "Patient" "id-5"]]]
 
       (testing "_id"
         (given (pull-type-query node "Patient" [["_id" "id-1"]])
@@ -1594,15 +1500,13 @@
           1 := nil))))
 
   (testing "Practitioner"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Practitioner
-                 :id "id-0"
-                 :name
-                 [{:fhir/type :fhir/HumanName
-                   :family "Müller"
-                   :given ["Hans" "Martin"]}]}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Practitioner
+               :id "id-0"
+               :name
+               [{:fhir/type :fhir/HumanName
+                 :family "Müller"
+                 :given ["Hans" "Martin"]}]}]]]
 
       (testing "name"
         (testing "using family"
@@ -1621,25 +1525,23 @@
             [0 :id] := "id-0")))))
 
   (testing "Specimen"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Specimen
-                 :id "id-0"
-                 :type
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
-                           :code #fhir/code"dna"}]}
-                 :collection
-                 {:fhir/type :fhir.Specimen/collection
-                  :bodySite
-                  #fhir/CodeableConcept
-                      {:coding
-                       [#fhir/Coding
-                           {:system #fhir/uri"urn:oid:2.16.840.1.113883.6.43.1"
-                            :code #fhir/code"C77.4"}]}}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Specimen
+               :id "id-0"
+               :type
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"https://fhir.bbmri.de/CodeSystem/SampleMaterialType"
+                                 :code #fhir/code"dna"}]}
+               :collection
+               {:fhir/type :fhir.Specimen/collection
+                :bodySite
+                #fhir/CodeableConcept
+                        {:coding
+                         [#fhir/Coding
+                                 {:system #fhir/uri"urn:oid:2.16.840.1.113883.6.43.1"
+                                  :code #fhir/code"C77.4"}]}}}]]]
 
       (testing "bodysite"
         (testing "using system|code"
@@ -1688,16 +1590,14 @@
               0 := nil))))))
 
   (testing "ActivityDefinition"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/ActivityDefinition
-                 :id "id-0"
-                 :url #fhir/uri"url-111619"
-                 :description #fhir/markdown"desc-121208"}]
-          [:put {:fhir/type :fhir/ActivityDefinition
-                 :id "id-1"
-                 :url #fhir/uri"url-111721"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/ActivityDefinition
+               :id "id-0"
+               :url #fhir/uri"url-111619"
+               :description #fhir/markdown"desc-121208"}]
+        [:put {:fhir/type :fhir/ActivityDefinition
+               :id "id-1"
+               :url #fhir/uri"url-111721"}]]]
 
       (testing "url"
         (given (pull-type-query node "ActivityDefinition" [["url" "url-111619"]])
@@ -1710,15 +1610,13 @@
           [0 :id] := "id-0"))))
 
   (testing "CodeSystem"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/CodeSystem
-                 :id "id-0"
-                 :version "version-122443"}]
-          [:put {:fhir/type :fhir/CodeSystem
-                 :id "id-1"
-                 :version "version-122456"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/CodeSystem
+               :id "id-0"
+               :version "version-122443"}]
+        [:put {:fhir/type :fhir/CodeSystem
+               :id "id-1"
+               :version "version-122456"}]]]
 
       (testing "version"
         (given (pull-type-query node "CodeSystem" [["version" "version-122443"]])
@@ -1726,16 +1624,14 @@
           1 := nil))))
 
   (testing "MedicationKnowledge"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/MedicationKnowledge
-                 :id "id-0"
-                 :monitoringProgram
-                 [{:fhir/type :fhir.MedicationKnowledge/monitoringProgram
-                   :name "name-123124"}]}]
-          [:put {:fhir/type :fhir/MedicationKnowledge
-                 :id "id-1"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/MedicationKnowledge
+               :id "id-0"
+               :monitoringProgram
+               [{:fhir/type :fhir.MedicationKnowledge/monitoringProgram
+                 :name "name-123124"}]}]
+        [:put {:fhir/type :fhir/MedicationKnowledge
+               :id "id-1"}]]]
 
       (testing "monitoring-program-name"
         (given (pull-type-query node "MedicationKnowledge" [["monitoring-program-name" "name-123124"]])
@@ -1743,27 +1639,25 @@
           1 := nil))))
 
   (testing "Condition"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient
-                 :id "id-0"}]
-          [:put {:fhir/type :fhir/Condition
-                 :id "id-0"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
-                           :code #fhir/code"C71.4"}]}
-                 :subject
-                 #fhir/Reference
-                     {:reference "Patient/id-0"}
-                 :onset
-                 {:fhir/type :fhir/Age
-                  :value 63M}}]
-          [:put {:fhir/type :fhir/Condition
-                 :id "id-1"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient
+               :id "id-0"}]
+        [:put {:fhir/type :fhir/Condition
+               :id "id-0"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                                 :code #fhir/code"C71.4"}]}
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/id-0"}
+               :onset
+               {:fhir/type :fhir/Age
+                :value 63M}}]
+        [:put {:fhir/type :fhir/Condition
+               :id "id-1"}]]]
 
       (testing "patient"
         (given (pull-type-query node "Condition" [["patient" "id-0"]])
@@ -1786,39 +1680,37 @@
           count := 1
           [0 :id] := "id-0")))
 
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Condition :id "0"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:code #fhir/code"0"}]}}]
-          [:put {:fhir/type :fhir/Condition :id "3"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:code #fhir/code"0"}]}}]
-          [:put {:fhir/type :fhir/Condition :id "4"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:code #fhir/code"0"}]}}]
-          [:put {:fhir/type :fhir/Condition :id "1"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:code #fhir/code"1"}]}}]
-          [:put {:fhir/type :fhir/Condition :id "2"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:code #fhir/code"1"}]}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Condition :id "0"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:code #fhir/code"0"}]}}]
+        [:put {:fhir/type :fhir/Condition :id "3"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:code #fhir/code"0"}]}}]
+        [:put {:fhir/type :fhir/Condition :id "4"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:code #fhir/code"0"}]}}]
+        [:put {:fhir/type :fhir/Condition :id "1"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:code #fhir/code"1"}]}}]
+        [:put {:fhir/type :fhir/Condition :id "2"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:code #fhir/code"1"}]}}]]]
 
       (testing "code"
         (testing "starting with ID `1` does not return Conditions with ID `3`
@@ -1837,50 +1729,48 @@
             [2 :id] := "2")))))
 
   (testing "Observation"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Observation
-                 :id "id-0"
-                 :status #fhir/code"final"
-                 :effective
-                 #fhir/Period
-                     {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                      :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
-                 :value
-                 #fhir/Quantity
-                     {:value 0M
-                      :unit "kg/m²"
-                      :code #fhir/code"kg/m2"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-1"
-                 :status #fhir/code"final"
-                 :effective #fhir/dateTime"2021-02-25"
-                 :value
-                 #fhir/Quantity
-                     {:value 1M
-                      :unit "kg/m²"
-                      :code #fhir/code"kg/m2"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-2"
-                 :status #fhir/code"final"
-                 :value
-                 #fhir/Quantity
-                     {:value 2.11M
-                      :unit "kg/m²"
-                      :code #fhir/code"kg/m2"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-3"
-                 :status #fhir/code"final"
-                 :value
-                 #fhir/Quantity
-                     {:value 3M
-                      :unit "kg/m²"
-                      :code #fhir/code"kg/m2"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Observation
+               :id "id-0"
+               :status #fhir/code"final"
+               :effective
+               #fhir/Period
+                       {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                        :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+               :value
+               #fhir/Quantity
+                       {:value 0M
+                        :unit "kg/m²"
+                        :code #fhir/code"kg/m2"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-1"
+               :status #fhir/code"final"
+               :effective #fhir/dateTime"2021-02-25"
+               :value
+               #fhir/Quantity
+                       {:value 1M
+                        :unit "kg/m²"
+                        :code #fhir/code"kg/m2"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-2"
+               :status #fhir/code"final"
+               :value
+               #fhir/Quantity
+                       {:value 2.11M
+                        :unit "kg/m²"
+                        :code #fhir/code"kg/m2"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-3"
+               :status #fhir/code"final"
+               :value
+               #fhir/Quantity
+                       {:value 3M
+                        :unit "kg/m²"
+                        :code #fhir/code"kg/m2"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (testing "date"
         (testing "with year precision"
@@ -2210,27 +2100,25 @@
             [0 :id] := "id-2")))))
 
   (testing "Observation"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Observation
-                 :id "id-0"
-                 :status #fhir/code"final"
-                 :value
-                 #fhir/Quantity
-                     {:value 23.42M
-                      :unit "kg/m²"
-                      :code #fhir/code"kg/m2"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-1"
-                 :status #fhir/code"final"
-                 :value
-                 #fhir/Quantity
-                     {:value 23.42M
-                      :unit "kg/m²"
-                      :code #fhir/code"kg/m2"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Observation
+               :id "id-0"
+               :status #fhir/code"final"
+               :value
+               #fhir/Quantity
+                       {:value 23.42M
+                        :unit "kg/m²"
+                        :code #fhir/code"kg/m2"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-1"
+               :status #fhir/code"final"
+               :value
+               #fhir/Quantity
+                       {:value 23.42M
+                        :unit "kg/m²"
+                        :code #fhir/code"kg/m2"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (testing "full result"
         (let [clauses [["value-quantity" "23.42"]]]
@@ -2246,27 +2134,25 @@
             [0 :id] := "id-1")))))
 
   (testing "quantity search doesn't overshoot into other types"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Observation
-                 :id "id-0"
-                 :value
-                 #fhir/Quantity
-                     {:value 0M
-                      :unit "m"
-                      :code #fhir/code"m"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]
-          [:put {:fhir/type :fhir/TestScript
-                 :id "id-0"
-                 :useContext
-                 [{:fhir/type :fhir/UsageContext
-                   :value
-                   #fhir/Quantity
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Observation
+               :id "id-0"
+               :value
+               #fhir/Quantity
                        {:value 0M
                         :unit "m"
                         :code #fhir/code"m"
-                        :system #fhir/uri"http://unitsofmeasure.org"}}]}]])
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/TestScript
+               :id "id-0"
+               :useContext
+               [{:fhir/type :fhir/UsageContext
+                 :value
+                 #fhir/Quantity
+                         {:value 0M
+                          :unit "m"
+                          :code #fhir/code"m"
+                          :system #fhir/uri"http://unitsofmeasure.org"}}]}]]]
 
       (testing "ResourceSearchParamValue index looks like it should"
         (is (= (r-sp-v-tu/decode-index-entries
@@ -2313,65 +2199,63 @@
             [0 :id] := "id-0")))))
 
   (testing "Observation code-value-quantity"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Observation
-                 :id "id-0"
-                 :status #fhir/code"final"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://loinc.org"
-                           :code #fhir/code"8480-6"}]}
-                 :value
-                 #fhir/Quantity
-                     {:value 130M
-                      :code #fhir/code"mm[Hg]"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-1"
-                 :status #fhir/code"final"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://loinc.org"
-                           :code #fhir/code"8480-6"}]}
-                 :value
-                 #fhir/Quantity
-                     {:value 150M
-                      :code #fhir/code"mm[Hg]"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-2"
-                 :status #fhir/code"final"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://loinc.org"
-                           :code #fhir/code"8462-4"}]}
-                 :value
-                 #fhir/Quantity
-                     {:value 90M
-                      :code #fhir/code"mm[Hg]"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-3"
-                 :status #fhir/code"final"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://loinc.org"
-                           :code #fhir/code"8462-4"}]}
-                 :value
-                 #fhir/Quantity
-                     {:value 70M
-                      :code #fhir/code"mm[Hg]"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Observation
+               :id "id-0"
+               :status #fhir/code"final"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                       {:value 130M
+                        :code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-1"
+               :status #fhir/code"final"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                       {:value 150M
+                        :code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-2"
+               :status #fhir/code"final"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"8462-4"}]}
+               :value
+               #fhir/Quantity
+                       {:value 90M
+                        :code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-3"
+               :status #fhir/code"final"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"8462-4"}]}
+               :value
+               #fhir/Quantity
+                       {:value 70M
+                        :code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (testing "as first clause"
         (let [clauses [["code-value-quantity" "8480-6$ge140"]]]
@@ -2505,60 +2389,58 @@
                     [0 :id] := "id-1")))))))))
 
   (testing "Observation code-value-concept"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Observation
-                 :id "id-0"
-                 :status #fhir/code"final"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://loinc.org"
-                           :code #fhir/code"94564-2"
-                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-                 :value
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://snomed.info/sct"
-                           :code #fhir/code"260373001"
-                           :display "Detected (qualifier value)"}]}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-1"
-                 :status #fhir/code"final"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://loinc.org"
-                           :code #fhir/code"94564-2"
-                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-                 :value
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://snomed.info/sct"
-                           :code #fhir/code"260415000"
-                           :display "Not detected (qualifier value)"}]}}]
-          [:put {:fhir/type :fhir/Observation
-                 :id "id-2"
-                 :status #fhir/code"final"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://loinc.org"
-                           :code #fhir/code"94564-2"
-                           :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-                 :value
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"http://snomed.info/sct"
-                           :code #fhir/code"260373001"
-                           :display "Detected (qualifier value)"}]}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Observation
+               :id "id-0"
+               :status #fhir/code"final"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"94564-2"
+                                 :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+               :value
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://snomed.info/sct"
+                                 :code #fhir/code"260373001"
+                                 :display "Detected (qualifier value)"}]}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-1"
+               :status #fhir/code"final"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"94564-2"
+                                 :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+               :value
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://snomed.info/sct"
+                                 :code #fhir/code"260415000"
+                                 :display "Not detected (qualifier value)"}]}}]
+        [:put {:fhir/type :fhir/Observation
+               :id "id-2"
+               :status #fhir/code"final"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"94564-2"
+                                 :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+               :value
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://snomed.info/sct"
+                                 :code #fhir/code"260373001"
+                                 :display "Detected (qualifier value)"}]}}]]]
 
       (testing "as first clause"
         (testing "code as system|code"
@@ -2645,12 +2527,10 @@
                 [1 :id] := "id-2")))))))
 
   (testing "MeasureReport"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/MeasureReport
-                 :id "id-144132"
-                 :measure #fhir/canonical"measure-url-181106"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/MeasureReport
+               :id "id-144132"
+               :measure #fhir/canonical"measure-url-181106"}]]]
 
       (testing "measure"
         (let [clauses [["measure" "measure-url-181106"]]]
@@ -2661,27 +2541,23 @@
   (testing "List"
     (testing "item"
       (testing "with no modifier"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/Patient :id "0"}]
-              [:put {:fhir/type :fhir/Patient :id "1"}]])
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/List
-                     :id "id-150545"
-                     :entry
-                     [{:fhir/type :fhir.List/entry
-                       :item
-                       #fhir/Reference
-                           {:reference "Patient/0"}}]}]
-              [:put {:fhir/type :fhir/List
-                     :id "id-143814"
-                     :entry
-                     [{:fhir/type :fhir.List/entry
-                       :item
-                       #fhir/Reference
-                           {:reference "Patient/1"}}]}]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Patient :id "1"}]]
+           [[:put {:fhir/type :fhir/List
+                   :id "id-150545"
+                   :entry
+                   [{:fhir/type :fhir.List/entry
+                     :item
+                     #fhir/Reference
+                             {:reference "Patient/0"}}]}]
+            [:put {:fhir/type :fhir/List
+                   :id "id-143814"
+                   :entry
+                   [{:fhir/type :fhir.List/entry
+                     :item
+                     #fhir/Reference
+                             {:reference "Patient/1"}}]}]]]
 
           (let [clauses [["item" "Patient/1"]]]
             (given (pull-type-query node "List" clauses)
@@ -2689,29 +2565,27 @@
               1 := nil))))
 
       (testing "with identifier modifier"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/List
-                     :id "id-123058"
-                     :entry
-                     [{:fhir/type :fhir.List/entry
-                       :item
-                       #fhir/Reference
-                           {:identifier
-                            #fhir/Identifier
-                                {:system #fhir/uri"system-122917"
-                                 :value "value-122931"}}}]}]
-              [:put {:fhir/type :fhir/List
-                     :id "id-143814"
-                     :entry
-                     [{:fhir/type :fhir.List/entry
-                       :item
-                       #fhir/Reference
-                           {:identifier
-                            #fhir/Identifier
-                                {:system #fhir/uri"system-122917"
-                                 :value "value-143818"}}}]}]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/List
+                   :id "id-123058"
+                   :entry
+                   [{:fhir/type :fhir.List/entry
+                     :item
+                     #fhir/Reference
+                             {:identifier
+                              #fhir/Identifier
+                                      {:system #fhir/uri"system-122917"
+                                       :value "value-122931"}}}]}]
+            [:put {:fhir/type :fhir/List
+                   :id "id-143814"
+                   :entry
+                   [{:fhir/type :fhir.List/entry
+                     :item
+                     #fhir/Reference
+                             {:identifier
+                              #fhir/Identifier
+                                      {:system #fhir/uri"system-122917"
+                                       :value "value-143818"}}}]}]]]
 
           (let [clauses [["item:identifier" "system-122917|value-122931"]]]
             (given (pull-type-query node "List" clauses)
@@ -2720,41 +2594,39 @@
 
     (testing "code and item"
       (testing "with identifier modifier"
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact
-             node
-             [[:put {:fhir/type :fhir/List
-                     :id "id-123058"
-                     :code
-                     #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                              {:system #fhir/uri"system-152812"
-                               :code #fhir/code"code-152819"}]}
-                     :entry
-                     [{:fhir/type :fhir.List/entry
-                       :item
-                       #fhir/Reference
-                           {:identifier
-                            #fhir/Identifier
-                                {:system #fhir/uri"system-122917"
-                                 :value "value-122931"}}}]}]
-              [:put {:fhir/type :fhir/List
-                     :id "id-143814"
-                     :code
-                     #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                              {:system #fhir/uri"system-152812"
-                               :code #fhir/code"code-152819"}]}
-                     :entry
-                     [{:fhir/type :fhir.List/entry
-                       :item
-                       #fhir/Reference
-                           {:identifier
-                            #fhir/Identifier
-                                {:system #fhir/uri"system-122917"
-                                 :value "value-143818"}}}]}]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/List
+                   :id "id-123058"
+                   :code
+                   #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                                    {:system #fhir/uri"system-152812"
+                                     :code #fhir/code"code-152819"}]}
+                   :entry
+                   [{:fhir/type :fhir.List/entry
+                     :item
+                     #fhir/Reference
+                             {:identifier
+                              #fhir/Identifier
+                                      {:system #fhir/uri"system-122917"
+                                       :value "value-122931"}}}]}]
+            [:put {:fhir/type :fhir/List
+                   :id "id-143814"
+                   :code
+                   #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                                    {:system #fhir/uri"system-152812"
+                                     :code #fhir/code"code-152819"}]}
+                   :entry
+                   [{:fhir/type :fhir.List/entry
+                     :item
+                     #fhir/Reference
+                             {:identifier
+                              #fhir/Identifier
+                                      {:system #fhir/uri"system-122917"
+                                       :value "value-143818"}}}]}]]]
 
           (let [clauses [["code" "system-152812|code-152819"]
                          ["item:identifier" "system-122917|value-143818"]]]
@@ -2763,27 +2635,25 @@
               1 := nil))))))
 
   (testing "Date order"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient
-                 :id "id-0"
-                 :birthDate #fhir/date"1900"}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-1"
-                 :birthDate #fhir/date"1960"}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-2"
-                 :birthDate #fhir/date"1970"}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-3"
-                 :birthDate #fhir/date"1980"}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-4"
-                 :birthDate #fhir/date"2020"}]
-          [:put {:fhir/type :fhir/Patient
-                 :id "id-5"
-                 :birthDate #fhir/date"2100"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient
+               :id "id-0"
+               :birthDate #fhir/date"1900"}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-1"
+               :birthDate #fhir/date"1960"}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-2"
+               :birthDate #fhir/date"1970"}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-3"
+               :birthDate #fhir/date"1980"}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-4"
+               :birthDate #fhir/date"2020"}]
+        [:put {:fhir/type :fhir/Patient
+               :id "id-5"
+               :birthDate #fhir/date"2100"}]]]
 
       (given (pull-type-query node "Patient" [["birthdate" "ge1900"]])
         count := 6
@@ -2796,37 +2666,35 @@
 
   (testing "type number"
     (testing "decimal"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact
-           node
-           [[:put {:fhir/type :fhir/RiskAssessment
-                   :id "id-0"
-                   :method
-                   #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                            {:system #fhir/uri"system-164844"
-                             :code #fhir/code"code-164847"}]}
-                   :prediction
-                   [{:fhir/type :fhir.RiskAssessment/prediction
-                     :probability 0.9M}]}]
-            [:put {:fhir/type :fhir/RiskAssessment
-                   :id "id-1"
-                   :status #fhir/code"final"
-                   :prediction
-                   [{:fhir/type :fhir.RiskAssessment/prediction
-                     :probability 0.1M}]}]
-            [:put {:fhir/type :fhir/RiskAssessment
-                   :id "id-2"
-                   :method
-                   #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                            {:system #fhir/uri"system-164844"
-                             :code #fhir/code"code-164847"}]}
-                   :prediction
-                   [{:fhir/type :fhir.RiskAssessment/prediction
-                     :probability 0.5M}]}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/RiskAssessment
+                 :id "id-0"
+                 :method
+                 #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                                  {:system #fhir/uri"system-164844"
+                                   :code #fhir/code"code-164847"}]}
+                 :prediction
+                 [{:fhir/type :fhir.RiskAssessment/prediction
+                   :probability 0.9M}]}]
+          [:put {:fhir/type :fhir/RiskAssessment
+                 :id "id-1"
+                 :status #fhir/code"final"
+                 :prediction
+                 [{:fhir/type :fhir.RiskAssessment/prediction
+                   :probability 0.1M}]}]
+          [:put {:fhir/type :fhir/RiskAssessment
+                 :id "id-2"
+                 :method
+                 #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                                  {:system #fhir/uri"system-164844"
+                                   :code #fhir/code"code-164847"}]}
+                 :prediction
+                 [{:fhir/type :fhir.RiskAssessment/prediction
+                   :probability 0.5M}]}]]]
 
         (given (pull-type-query node "RiskAssessment" [["probability" "ge0.5"]])
           count := 2
@@ -2853,19 +2721,17 @@
               [0 :id] := "id-2")))))
 
     (testing "integer"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact
-           node
-           [[:put {:fhir/type :fhir/MolecularSequence
-                   :id "id-0"
-                   :variant
-                   [{:fhir/type :fhir.MolecularSequence/variant
-                     :start #fhir/integer 1}]}]
-            [:put {:fhir/type :fhir/MolecularSequence
-                   :id "id-1"
-                   :variant
-                   [{:fhir/type :fhir.MolecularSequence/variant
-                     :start #fhir/integer 2}]}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/MolecularSequence
+                 :id "id-0"
+                 :variant
+                 [{:fhir/type :fhir.MolecularSequence/variant
+                   :start #fhir/integer 1}]}]
+          [:put {:fhir/type :fhir/MolecularSequence
+                 :id "id-1"
+                 :variant
+                 [{:fhir/type :fhir.MolecularSequence/variant
+                   :start #fhir/integer 2}]}]]]
 
         (given (pull-type-query node "MolecularSequence" [["variant-start" "1"]])
           count := 1
@@ -2878,8 +2744,8 @@
 
 (deftest compile-type-query-test
   (testing "a node with one patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (testing "the patient can be found"
         (given @(->> (d/compile-type-query node "Patient" [["active" "true"]])
@@ -2902,8 +2768,8 @@
 
 (deftest compile-type-query-lenient-test
   (testing "a node with one patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (testing "the patient can be found"
         (given @(->> (d/compile-type-query-lenient
@@ -2949,8 +2815,8 @@
       (is (zero? (d/system-total (d/db node))))))
 
   (testing "a node with one patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one list entry"
         (is (= 1 (count (d/system-list (d/db node)))))
@@ -2963,18 +2829,18 @@
           [0 :meta :versionId] := #fhir/id"1"))))
 
   (testing "a node with one deleted patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:delete "Patient" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
 
       (testing "doesn't contain it in the list"
         (is (coll/empty? (d/system-list (d/db node))))
         (is (zero? (d/system-total (d/db node)))))))
 
   (testing "a node with two resources in two transactions"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has two list entries"
         (is (= 2 (count (d/system-list (d/db node)))))
@@ -3026,12 +2892,12 @@
                          (d/db node) "Patient" "0" "Observation")))))
 
   (testing "a node contains one Observation in the Patient/0 compartment"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}}]]]
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation")
         count := 1
@@ -3040,16 +2906,16 @@
         [0 :meta :versionId] := #fhir/id"2")))
 
   (testing "a node contains two resources in the Patient/0 compartment"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}}]]
+       [[:put {:fhir/type :fhir/Observation :id "1"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}}]]]
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation")
         count := 2
@@ -3061,32 +2927,32 @@
         [1 :meta :versionId] := #fhir/id"3")))
 
   (testing "a deleted resource does not show up"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]])
-      @(d/transact node [[:delete "Observation" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}}]]
+       [[:delete "Observation" "0"]]]
 
       (is (coll/empty? (d/list-compartment-resource-handles
                          (d/db node) "Patient" "0" "Observation")))))
 
   (testing "it is possible to start at a later id"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "1"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "2"
-                                :subject
-                                #fhir/Reference
-                                    {:reference "Patient/0"}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}}]]
+       [[:put {:fhir/type :fhir/Observation :id "1"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}}]]
+       [[:put {:fhir/type :fhir/Observation :id "2"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}}]]]
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation" "1")
         [0 :fhir/type] := :fhir/Observation
@@ -3116,18 +2982,16 @@
                          [["code" "foo"]])))))
 
   (testing "returns the Observation in the Patient/0 compartment"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system-191514"
-                           :code #fhir/code"code-191518"}]}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system-191514"
+                                 :code #fhir/code"code-191518"}]}}]]]
 
       (given @(pull-compartment-query
                 node "Patient" "0" "Observation"
@@ -3201,21 +3065,17 @@
           [2 :meta :versionId] := #fhir/id"2"))))
 
   (testing "doesn't return deleted resources"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system"
-                           :code #fhir/code"code"}]}}]])
-      @(d/transact
-         node
-         [[:delete "Observation" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system"
+                                 :code #fhir/code"code"}]}}]]
+       [[:delete "Observation" "0"]]]
 
       (is (coll/empty? (d/compartment-query
                          (d/db node) "Patient" "0" "Observation"
@@ -3250,18 +3110,16 @@
           [0 :id] := "1"))))
 
   (testing "returns the Observation in the Patient/0 compartment on the second criteria value"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system-191514"
-                           :code #fhir/code"code-191518"}]}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system-191514"
+                                 :code #fhir/code"code-191518"}]}}]]]
 
       (given @(pull-compartment-query
                 node "Patient" "0" "Observation"
@@ -3271,24 +3129,22 @@
         [0 :id] := "0")))
 
   (testing "with one patient and one observation"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system-191514"
-                           :code #fhir/code"code-191518"}]}
-                 :value
-                 #fhir/Quantity
-                     {:code #fhir/code"kg/m2"
-                      :unit "kg/m²"
-                      :system #fhir/uri"http://unitsofmeasure.org"
-                      :value 42M}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system-191514"
+                                 :code #fhir/code"code-191518"}]}
+               :value
+               #fhir/Quantity
+                       {:code #fhir/code"kg/m2"
+                        :unit "kg/m²"
+                        :system #fhir/uri"http://unitsofmeasure.org"
+                        :value 42M}}]]]
 
       (testing "matches second criteria"
         (given @(pull-compartment-query
@@ -3319,63 +3175,58 @@
                          [["code" "baz"]])))))
 
   (testing "Unknown type is not a problem"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient
-                 :id "id-0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "id-0"}]]]
 
       (given (d/compartment-query (d/db node) "Patient" "id-0" "Foo" [["code" "baz"]])
         ::anom/category := ::anom/not-found
         ::anom/message := "The search-param with code `code` and type `Foo` was not found.")))
 
   (testing "Patient compartment"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Condition :id "1"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system"
-                           :code #fhir/code"code-a"}]}
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
-          [:put {:fhir/type :fhir/Condition :id "2"
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system"
-                           :code #fhir/code"code-b"}]}
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
-          [:put {:fhir/type :fhir/Observation :id "3"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system"
-                           :code #fhir/code"code-a"}]}
-                 :value
-                 #fhir/Quantity
-                     {:code #fhir/code"kg/m2"
-                      :system #fhir/uri"http://unitsofmeasure.org"
-                      :value 42M}}]
-          [:put {:fhir/type :fhir/Observation :id "4"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system"
-                           :code #fhir/code"code-b"}]}
-                 :value
-                 #fhir/Quantity
-                     {:code #fhir/code"kg/m2"
-                      :system #fhir/uri"http://unitsofmeasure.org"
-                      :value 23M}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Condition :id "1"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system"
+                                 :code #fhir/code"code-a"}]}
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Condition :id "2"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system"
+                                 :code #fhir/code"code-b"}]}
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system"
+                                 :code #fhir/code"code-a"}]}
+               :value
+               #fhir/Quantity
+                       {:code #fhir/code"kg/m2"
+                        :system #fhir/uri"http://unitsofmeasure.org"
+                        :value 42M}}]
+        [:put {:fhir/type :fhir/Observation :id "4"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system"
+                                 :code #fhir/code"code-b"}]}
+               :value
+               #fhir/Quantity
+                       {:code #fhir/code"kg/m2"
+                        :system #fhir/uri"http://unitsofmeasure.org"
+                        :value 23M}}]]]
 
       (testing "token search parameter"
         (testing "as first clause"
@@ -3436,18 +3287,16 @@
 
 
 (deftest compile-compartment-query-test
-  (with-system [{:blaze.db/keys [node]} system]
-    @(d/transact
-       node
-       [[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :code
-               #fhir/CodeableConcept
-                   {:coding
-                    [#fhir/Coding
-                        {:system #fhir/uri"system-191514"
-                         :code #fhir/code"code-191518"}]}}]])
+  (with-system-data [{:blaze.db/keys [node]} system]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri"system-191514"
+                               :code #fhir/code"code-191518"}]}}]]]
 
     (given @(let [query (d/compile-compartment-query
                           node "Patient" "Observation"
@@ -3468,8 +3317,8 @@
       (is (zero? (d/total-num-of-instance-changes (d/db node) "Patient" "0")))))
 
   (testing "a node with one patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one history entry"
         (is (= 1 (count (d/instance-history (d/db node) "Patient" "0"))))
@@ -3486,9 +3335,9 @@
         (is (zero? (d/total-num-of-instance-changes (d/db node) "Patient" "1"))))))
 
   (testing "a node with one deleted patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:delete "Patient" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/instance-history (d/db node) "Patient" "0"))))
@@ -3509,9 +3358,9 @@
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with two versions"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active false}]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/instance-history (d/db node) "Patient" "0"))))
@@ -3531,8 +3380,8 @@
 
   (testing "the database is immutable"
     (testing "while updating a patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]]
 
         (let [db (d/db node)]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
@@ -3560,8 +3409,8 @@
       (is (zero? (d/total-num-of-type-changes (d/db node) "Patient")))))
 
   (testing "a node with one patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one history entry"
         (is (= 1 (count (d/type-history (d/db node) "Patient"))))
@@ -3578,9 +3427,9 @@
         (is (zero? (d/total-num-of-type-changes (d/db node) "Observation"))))))
 
   (testing "a node with one deleted patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:delete "Patient" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/type-history (d/db node) "Patient"))))
@@ -3601,9 +3450,9 @@
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with two patients in two transactions"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/type-history (d/db node) "Patient"))))
@@ -3622,9 +3471,9 @@
         (is (coll/empty? (d/type-history (d/db node) "Patient" 0))))))
 
   (testing "a node with two patients in one transaction"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Patient :id "1"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/type-history (d/db node) "Patient"))))
@@ -3641,8 +3490,8 @@
 
   (testing "the database is immutable"
     (testing "while updating a patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]]
 
         (let [db (d/db node)]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
@@ -3660,8 +3509,8 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
@@ -3688,8 +3537,8 @@
       (is (zero? (d/total-num-of-system-changes (d/db node))))))
 
   (testing "a node with one patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one history entry"
         (is (= 1 (count (d/system-history (d/db node)))))
@@ -3702,9 +3551,9 @@
           [0 :meta :versionId] := #fhir/id"1"))))
 
   (testing "a node with one deleted patient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:delete "Patient" "0"]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/system-history (d/db node)))))
@@ -3725,9 +3574,9 @@
           [1 meta :blaze.db/op] := :put))))
 
   (testing "a node with one patient and one observation in two transactions"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-      @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/system-history (d/db node)))))
@@ -3743,9 +3592,9 @@
           [0 :fhir/type] := :fhir/Patient))))
 
   (testing "a node with one patient and one observation in one transaction"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Observation :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/system-history (d/db node)))))
@@ -3761,9 +3610,9 @@
           [0 :fhir/type] := :fhir/Patient))))
 
   (testing "a node with two patients in one transaction"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                         [:put {:fhir/type :fhir/Patient :id "1"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two history entries"
         (is (= 2 (count (d/system-history (d/db node)))))
@@ -3775,8 +3624,8 @@
 
   (testing "the database is immutable"
     (testing "while updating a patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active false}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]]
 
         (let [db (d/db node)]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
@@ -3794,8 +3643,8 @@
                 [0 :meta :versionId] := #fhir/id"1"))))))
 
     (testing "while adding another patient"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)]
           @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])
@@ -3816,12 +3665,12 @@
   (testing "Observation"
     (doseq [code ["subject" "patient"]]
       (testing code
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                             [:put {:fhir/type :fhir/Observation :id "0"
-                                    :subject
-                                    #fhir/Reference
-                                        {:reference "Patient/0"}}]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject
+                   #fhir/Reference
+                           {:reference "Patient/0"}}]]]
 
           (let [db (d/db node)
                 observation (d/resource-handle db "Observation" "0")]
@@ -3839,16 +3688,16 @@
                 [0 :id] := "0"))))))
 
     (testing "encounter"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                           [:put {:fhir/type :fhir/Encounter :id "0"}]
-                           [:put {:fhir/type :fhir/Observation :id "0"
-                                  :subject
-                                  #fhir/Reference
-                                      {:reference "Patient/0"}
-                                  :encounter
-                                  #fhir/Reference
-                                      {:reference "Encounter/0"}}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Encounter :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 #fhir/Reference
+                         {:reference "Patient/0"}
+                 :encounter
+                 #fhir/Reference
+                         {:reference "Encounter/0"}}]]]
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
@@ -3858,12 +3707,12 @@
             [0 :id] := "0"))))
 
     (testing "with Group subject"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Group :id "0"}]
-                           [:put {:fhir/type :fhir/Observation :id "0"
-                                  :subject
-                                  #fhir/Reference
-                                      {:reference "Group/0"}}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Group :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 #fhir/Reference
+                         {:reference "Group/0"}}]]]
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
@@ -3888,14 +3737,14 @@
             (is (empty? (d/include db observation "subject" "Patient")))))))
 
     (testing "non-reference search parameter code"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Observation :id "0"
-                                  :code
-                                  #fhir/CodeableConcept
-                                      {:coding
-                                       [#fhir/Coding
-                                           {:system #fhir/uri"http://loinc.org"
-                                            :code #fhir/code"8480-6"}]}}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :code
+                 #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                                  {:system #fhir/uri"http://loinc.org"
+                                   :code #fhir/code"8480-6"}]}}]]]
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
@@ -3903,11 +3752,11 @@
 
   (testing "Patient"
     (testing "non-reference search parameter family"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
-                                  :name
-                                  [{:fhir/type :fhir/HumanName
-                                    :family "Müller"}]}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :name
+                 [{:fhir/type :fhir/HumanName
+                   :family "Müller"}]}]]]
 
         (let [db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
@@ -3918,16 +3767,16 @@
   (testing "Patient"
     (doseq [code ["subject" "patient"]]
       (testing code
-        (with-system [{:blaze.db/keys [node]} system]
-          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                             [:put {:fhir/type :fhir/Observation :id "1"
-                                    :subject
-                                    #fhir/Reference
-                                        {:reference "Patient/0"}}]
-                             [:put {:fhir/type :fhir/Observation :id "2"
-                                    :subject
-                                    #fhir/Reference
-                                        {:reference "Patient/0"}}]])
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "1"
+                   :subject
+                   #fhir/Reference
+                           {:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "2"
+                   :subject
+                   #fhir/Reference
+                           {:reference "Patient/0"}}]]]
 
           (let [db (d/db node)
                 patients (d/resource-handle db "Patient" "0")]
@@ -3940,15 +3789,15 @@
               [1 :id] := "2")))))
 
     (testing "non-reference search parameter code"
-      (with-system [{:blaze.db/keys [node]} system]
-        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]
-                           [:put {:fhir/type :fhir/Observation :id "0"
-                                  :code
-                                  #fhir/CodeableConcept
-                                      {:coding
-                                       [#fhir/Coding
-                                           {:system #fhir/uri"http://loinc.org"
-                                            :code #fhir/code"8480-6"}]}}]])
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :code
+                 #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding
+                                  {:system #fhir/uri"http://loinc.org"
+                                   :code #fhir/code"8480-6"}]}}]]]
 
         (let [db (d/db node)
               patients (d/resource-handle db "Patient" "0")]
@@ -3957,8 +3806,8 @@
 
 (deftest new-batch-db-test
   (testing "resource-handle"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(d/pull batch-db (d/resource-handle batch-db "Patient" "0"))
@@ -3966,16 +3815,16 @@
           :id := "0"))))
 
   (testing "type-list-and-total"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (is (= 1 (count (d/type-list batch-db "Patient"))))
         (is (= 1 (d/type-total batch-db "Patient"))))))
 
   (testing "compile-type-query"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(->> (d/compile-type-query batch-db "Patient" [["active" "true"]])
@@ -3985,8 +3834,8 @@
           [0 :id] := "0"))))
 
   (testing "compile-type-query-lenient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(->> (d/compile-type-query-lenient batch-db "Patient" [["active" "true"]])
@@ -3996,20 +3845,18 @@
           [0 :id] := "0"))))
 
   (testing "compile-compartment-query"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 #fhir/Reference
-                     {:reference "Patient/0"}
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system-191514"
-                           :code #fhir/code"code-191518"}]}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system-191514"
+                                 :code #fhir/code"code-191518"}]}}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(let [query (d/compile-compartment-query
@@ -4021,18 +3868,16 @@
           [0 :id] := "0"))))
 
   (testing "compile-compartment-query-lenient"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact
-         node
-         [[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}
-                 :code
-                 #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system-191514"
-                           :code #fhir/code"code-191518"}]}}]])
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system-191514"
+                                 :code #fhir/code"code-191518"}]}}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given @(let [query (d/compile-compartment-query-lenient
