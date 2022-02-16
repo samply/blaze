@@ -8,7 +8,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as p])
+    [clojure.test.check.properties :as prop])
   (:import
     [java.time OffsetDateTime ZoneOffset]))
 
@@ -40,7 +40,7 @@
     1 0xFFFFFFFFFFFFFE
     0 0xFFFFFFFFFFFFFF)
   (satisfies-prop 100000
-    (p/for-all [t gen/nat]
+    (prop/for-all [t gen/nat]
       (= t (codec/descending-long (codec/descending-long t))))))
 
 

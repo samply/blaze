@@ -20,9 +20,10 @@
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
     [blaze.fhir.structure-definition-repo]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :refer [given-failed-future with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -64,6 +65,33 @@
    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
 
    :blaze.fhir/structure-definition-repo {}})
+
+
+(deftest fails-on-kv-put-test
+  (with-system [{kv-store ::kv/mem resource-store ::rs/kv
+                 :blaze.db/keys [search-param-registry]} system]
+    (let [patient {:fhir/type :fhir/Patient :id "0"}
+          hash (hash/generate patient)
+          resource-indexer (resource-indexer/new-resource-indexer
+                             search-param-registry kv-store)
+          context
+          {:resource-store resource-store
+           :resource-indexer resource-indexer}]
+      (with-redefs [kv/put! (fn [_ _] (throw (Exception. "msg-200802")))]
+        (given-failed-future
+          (resource-indexer/index-resources
+            context
+            {:t 0
+             :instant Instant/EPOCH
+             :tx-cmds
+             [{:op "put"
+               :type "Patient"
+               :id "0"
+               :hash hash}]
+             :local-payload
+             {hash patient}})
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-200802")))))
 
 
 (deftest index-condition-resource-test
