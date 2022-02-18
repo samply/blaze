@@ -287,8 +287,8 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
-    - name: Sleep 60 Seconds
-      run: sleep 60
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -446,8 +446,8 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
-    - name: Sleep 60 Seconds
-      run: sleep 60
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -492,8 +492,8 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
-    - name: Sleep 60 Seconds
-      run: sleep 60
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -509,9 +509,6 @@ jobs:
 
     - name: Load Data with Concurrency 2
       run: blazectl --no-progress --server http://localhost:8080/fhir upload -c 2 .github/test-data/small-txs
-
-    - name: Load Data with Concurrency 4
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload -c 4 .github/test-data/small-txs
 
   jepsen-test:
     needs: build
@@ -557,8 +554,8 @@ jobs:
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
 
-    - name: Sleep 60 Seconds
-      run: sleep 60
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -587,8 +584,8 @@ jobs:
     - name: Run Keycloak and Blaze
       run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d
 
-    - name: Sleep 90 Seconds
-      run: sleep 90
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
     - name: Docker Logs Keycloak
       run: docker-compose -f .github/openid-auth-test/docker-compose.yml logs keycloak
@@ -623,8 +620,11 @@ jobs:
     - name: Run Zookeeper, Kafka, Cassandra and Blaze
       run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
 
-    - name: Sleep 2.5 Minutes
-      run: sleep 150
+    - name: Wait for Blaze 1
+      run: .github/scripts/wait-for-url.sh  http://localhost:8081/metrics
+
+    - name: Wait for Blaze 2
+      run: .github/scripts/wait-for-url.sh  http://localhost:8082/metrics
 
     - name: Docker Logs Zookepper
       run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
@@ -823,8 +823,11 @@ jobs:
     - name: Run Zookeeper, Kafka, Cassandra and Blaze
       run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
 
-    - name: Sleep 2.5 Minutes
-      run: sleep 150
+    - name: Wait for Blaze 1
+      run: .github/scripts/wait-for-url.sh  http://localhost:8081/metrics
+
+    - name: Wait for Blaze 2
+      run: .github/scripts/wait-for-url.sh  http://localhost:8082/metrics
 
     - name: Docker Logs Zookepper
       run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
