@@ -37,7 +37,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.62.993"}
+    {:mvn/version "1.63.998"}
 
     org.clojure/data.xml
     {:mvn/version "0.2.0-alpha6"}}
