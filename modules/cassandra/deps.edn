@@ -6,10 +6,7 @@
   {:mvn/version "0.3.3"}
 
   com.datastax.oss/java-driver-core
-  {:mvn/version "4.13.0"
-   ;; remove when https://github.com/datastax/java-driver/pull/1575 is solved
-   :exclusions
-   [com.esri.geometry/esri-geometry-api]}
+  {:mvn/version "4.14.0"}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
@@ -24,7 +21,7 @@
     {:local/root "../test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.62.993"}
+    {:mvn/version "1.63.998"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}
