@@ -158,7 +158,9 @@
 
 ;; ---- System.Date -----------------------------------------------------------
 
-(defn date? [x]
+(defn date?
+  "Returns true if `x` is a System.Date."
+  [x]
   (identical? :system/date (-type x)))
 
 
@@ -195,7 +197,9 @@
 
 ;; ---- System.DateTime -------------------------------------------------------
 
-(defn date-time? [x]
+(defn date-time?
+  "Returns true if `x` is a System.DateTime."
+  [x]
   (identical? :system/date-time (-type x)))
 
 

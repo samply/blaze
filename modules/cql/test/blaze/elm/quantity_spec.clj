@@ -1,7 +1,7 @@
 (ns blaze.elm.quantity-spec
   (:require
     [blaze.anomaly-spec]
-    [blaze.elm.quantity :as q]
+    [blaze.elm.quantity :as quantity]
     [clojure.spec.alpha :as s])
   (:import
     [javax.measure Unit]))
@@ -11,9 +11,9 @@
   (instance? Unit x))
 
 
-(s/fdef q/format-unit
+(s/fdef quantity/format-unit
   :args (s/cat :unit unit?))
 
 
-(s/fdef q/quantity
+(s/fdef quantity/quantity
   :args (s/cat :value number? :unit string?))

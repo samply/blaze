@@ -274,7 +274,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-date-test
   (let [eval #(core/-eval % {:now tu/now} nil nil)]
-    (testing "String values"
+    (testing "String"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/string x)))
         "2019" (system/date 2019)
         "2019-01" (system/date 2019 1)
@@ -284,13 +284,13 @@
         "2019-13" nil
         "2019-02-29" nil))
 
-    (testing "Date values"
+    (testing "Date"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/date x)))
         "2019" (system/date 2019)
         "2019-01" (system/date 2019 1)
         "2019-01-01" (system/date 2019 1 1)))
 
-    (testing "DateTime values"
+    (testing "DateTime"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/date-time x)))
         "2019" (system/date 2019)
         "2019-01" (system/date 2019 1)
@@ -326,25 +326,27 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-date-time-test
   (let [eval #(core/-eval % {:now tu/now} nil nil)]
-    (testing "String values"
+    (testing "String"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date-time elm/string x)))
         "2020" (system/date-time 2020)
         "2020-03" (system/date-time 2020 3)
         "2020-03-08" (system/date-time 2020 3 8)
         "2020-03-08T12:54:00" (system/date-time 2020 3 8 12 54)
         "2020-03-08T12:54:00+00:00" (system/date-time 2020 3 8 12 54)
+        "2020-03-08T12:54:00+01:00" (system/date-time 2020 3 8 11 54)
 
         "aaaa" nil
         "2019-13" nil
         "2019-02-29" nil))
 
-    (testing "Date values"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-date-time elm/date x)))
-        "2020" (system/date-time 2020)
-        "2020-03" (system/date-time 2020 3)
-        "2020-03-08" (system/date-time 2020 3 8)))
+    (testing "Date"
+      (testing "Static"
+        (are [x res] (= res (tu/compile-unop elm/to-date-time elm/date x))
+          "2020" (system/date-time 2020)
+          "2020-03" (system/date-time 2020 3)
+          "2020-03-08" (system/date-time 2020 3 8))))
 
-    (testing "DateTime values"
+    (testing "DateTime"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date-time elm/date-time x)))
         "2020" (system/date-time 2020)
         "2020-03" (system/date-time 2020 3)
@@ -375,7 +377,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-decimal-test
-  (testing "String values"
+  (testing "String"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-decimal elm/string x)
                                     {} nil nil))
       (str decimal/min) decimal/min
@@ -412,7 +414,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-integer-test
-  (testing "String values"
+  (testing "String"
     (are [x res] (= res (tu/compile-unop elm/to-integer elm/string x))
       (str Integer/MIN_VALUE) Integer/MIN_VALUE
       "-1" -1
@@ -424,7 +426,7 @@
       (str (inc Integer/MAX_VALUE)) nil
       "a" nil))
 
-  (testing "Boolean values"
+  (testing "Boolean"
     (are [x res] (= res (tu/compile-unop elm/to-integer elm/boolean x))
       "true" 1
       "false" 0))
@@ -482,7 +484,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-long-test
-  (testing "String values"
+  (testing "String"
     (are [x res] (= res (tu/compile-unop elm/to-long elm/string x))
       (str Long/MIN_VALUE) Long/MIN_VALUE
       "-1" -1
@@ -495,7 +497,7 @@
 
       "a" nil))
 
-  (testing "Boolean values"
+  (testing "Boolean"
     (are [x res] (= res (tu/compile-unop elm/to-long elm/boolean x))
       "true" 1
       "false" 0))
@@ -534,7 +536,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-quantity-test
-  (testing "String values"
+  (testing "String"
     (are [x res] (p/equal res (core/-eval (tu/compile-unop elm/to-quantity
                                                            elm/string x)
                                           {} nil nil))
@@ -553,12 +555,12 @@
       ""
       "a"))
 
-  (testing "Integer values"
+  (testing "Integer"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-quantity elm/integer x)
                                     {} nil nil))
       "1" (quantity/quantity 1 "1")))
 
-  (testing "Decimal values"
+  (testing "Decimal"
     (are [x res] (p/equal res (core/-eval (tu/compile-unop elm/to-quantity
                                                            elm/decimal x)
                                           {} nil nil))
@@ -589,20 +591,20 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-string-test
-  (testing "Boolean values"
+  (testing "Boolean"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/boolean x)
                                     {} nil nil))
       "true" "true"
       "false" "false"))
 
-  (testing "Integer values"
+  (testing "Integer"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/integer x)
                                     {} nil nil))
       "-1" "-1"
       "0" "0"
       "1" "1"))
 
-  (testing "Decimal values"
+  (testing "Decimal"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/decimal x)
                                     {} nil nil))
       "-1" "-1"
@@ -621,7 +623,7 @@
       "0.000000001" "0.00000000"
       "0.000000005" "0.00000001"))
 
-  (testing "Quantity values"
+  (testing "Quantity"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/quantity
                                                      x)
                                     {} nil nil))
@@ -629,20 +631,20 @@
       [1M "m"] "1 'm'"
       [1.1M "m"] "1.1 'm'"))
 
-  (testing "Date values"
+  (testing "Date"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/date x)
                                     {} nil nil))
       "2019" "2019"
       "2019-01" "2019-01"
       "2019-01-01" "2019-01-01"))
 
-  (testing "DateTime values"
+  (testing "DateTime"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/date-time
                                                      x)
                                     {} nil nil))
       "2019-01-01T01:00" "2019-01-01T01:00"))
 
-  (testing "Time values"
+  (testing "Time"
     (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/time x)
                                     {} nil nil))
       "01:00" "01:00"))

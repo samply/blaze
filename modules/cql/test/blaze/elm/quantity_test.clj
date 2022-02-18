@@ -1,7 +1,7 @@
 (ns blaze.elm.quantity-test
   (:require
     [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :as q]
+    [blaze.elm.quantity :as quantity]
     [clojure.java.io :as io]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
@@ -24,7 +24,7 @@
 (deftest quantity-test
   (testing "Commonly Used UCUM Codes for Healthcare Units"
     (testing "special units"
-      (are [unit] (q/quantity 1 unit)
+      (are [unit] (quantity/quantity 1 unit)
         "U/L"
         "10*3/uL"
         "mm[Hg]"))
@@ -34,7 +34,7 @@
            (drop 1)
            (map #(str/split % #"\t"))
            (map first)
-           (map #(try (q/quantity 1 %) (catch Exception e (ex-data e))))
+           (map #(try (quantity/quantity 1 %) (catch Exception e (ex-data e))))
            (filter ::anom/category)
            (map :unit)
            (count)
@@ -46,11 +46,11 @@
 (deftest property-test
   (testing "the value of a quantity is always a BigDecimal"
     (are [quantity] (= BigDecimal (class (p/get quantity :value)))
-      (q/quantity 1M "m")
-      (q/quantity 1 "m")
-      (q/quantity (int 1) "m")
-      (p/divide (q/quantity 1M "m") (q/quantity 1M "s"))
-      (p/divide (q/quantity 1M "m") (q/quantity 2M "s"))))
+      (quantity/quantity 1M "m")
+      (quantity/quantity 1 "m")
+      (quantity/quantity (int 1) "m")
+      (p/divide (quantity/quantity 1M "m") (quantity/quantity 1M "s"))
+      (p/divide (quantity/quantity 1M "m") (quantity/quantity 2M "s"))))
 
   (testing "get on unknown key returns nil"
-    (is (nil? (p/get (q/quantity 1M "m") ::unknown)))))
+    (is (nil? (p/get (quantity/quantity 1M "m") ::unknown)))))

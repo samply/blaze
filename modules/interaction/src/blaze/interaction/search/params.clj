@@ -30,7 +30,7 @@
 
 
 (defn- summary?
-  "Returns true iff a summary result is requested."
+  "Returns true if a summary result is requested."
   [{summary "_summary" :as query-params}]
   (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 

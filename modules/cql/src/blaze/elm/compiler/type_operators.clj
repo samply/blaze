@@ -11,7 +11,8 @@
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as quantity]
     [blaze.elm.util :as elm-util]
-    [blaze.fhir.spec :as fhir-spec]))
+    [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type.system :as system]))
 
 
 ;; 22.1. As
@@ -187,7 +188,9 @@
 (defmethod core/compile* :elm.compiler.type/to-date-time
   [context {:keys [operand]}]
   (when-let [operand (core/compile* context operand)]
-    (->ToDateTimeOperatorExpression operand)))
+    (if (system/date? operand)
+      (p/to-date-time operand nil)
+      (->ToDateTimeOperatorExpression operand))))
 
 
 ;; 22.24. ToDecimal

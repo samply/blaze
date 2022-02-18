@@ -8,8 +8,10 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.interval :as interval]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -74,4 +76,31 @@
       (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
         {:value 23M :code "kg"} (quantity/quantity 23M "kg")
         {:value 42M} (quantity/quantity 42M "1")
-        {} nil))))
+        {} nil)))
+
+  (testing "ToInterval"
+    (let [context {:library {:parameters {:def [{:name "x"}]}}}
+          elm {:type "FunctionRef"
+               :libraryName "FHIRHelpers"
+               :name "ToInterval"
+               :operand [#elm/parameter-ref"x"]}
+          expr (c/compile context elm)]
+      (are [x res] (= res (core/-eval expr {:now tu/now :parameters {"x" x}} nil nil))
+        #fhir/Period
+                {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                 :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+        (interval/interval
+          (system/parse-date-time "2021-02-23T15:12:45+01:00")
+          (system/parse-date-time "2021-02-23T16:00:00+01:00"))
+        #fhir/Period
+                {:start nil
+                 :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+        (interval/interval
+          nil
+          (system/parse-date-time "2021-02-23T16:00:00+01:00"))
+        #fhir/Period
+                {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                 :end nil}
+        (interval/interval
+          (system/parse-date-time "2021-02-23T15:12:45+01:00")
+          nil)))))
