@@ -373,7 +373,8 @@
     (let [[year month day] arg]
       (cond->
         {:type "Date"
-         :year year}
+         :year year
+         :resultTypeName "{urn:hl7-org:elm-types:r1}Date"}
         month (assoc :month month)
         day (assoc :day day)))))
 
@@ -457,6 +458,19 @@
        :name (clojure.core/or (:resultTypeName low) (:resultTypeName high))}}}))
 
 
+(defn closed-interval [[low high]]
+  {:type "Interval"
+   :low low
+   :high high
+   :lowClosed true
+   :highClosed true
+   :resultTypeSpecifier
+   {:type "IntervalTypeSpecifier",
+    :pointType
+    {:type "NamedTypeSpecifier"
+     :name (clojure.core/or (:resultTypeName low) (:resultTypeName high))}}})
+
+
 ;; 19.2. After
 (defn after [[x y precision]]
   (cond->
@@ -485,7 +499,17 @@
   {:type "Contains" :operand ops})
 
 
-;; 19.13. Except
+;; 19.6. End
+(defn end [interval]
+  {:type "End" :operand interval})
+
+
+;; 19.7. Ends
+(defn ends [ops]
+  {:type "Ends" :operand ops})
+
+
+;; 19.10. Except
 (defn except [ops]
   {:type "Except" :operand ops})
 
@@ -510,6 +534,16 @@
   {:type "MeetsAfter" :operand ops})
 
 
+;; 19.20. Overlaps
+(defn overlaps [ops]
+  {:type "Overlaps" :operand ops})
+
+
+;; 19.23. PointFrom
+(defn point-from [interval]
+  {:type "PointFrom" :operand interval})
+
+
 ;; 19.24. ProperContains
 (defn proper-contains [ops]
   {:type "ProperContains" :operand ops})
@@ -520,9 +554,24 @@
   {:type "ProperIncludes" :operand ops})
 
 
+;; 19.29. Start
+(defn start [interval]
+  {:type "Start" :operand interval})
+
+
+;; 19.30. Starts
+(defn starts [ops]
+  {:type "Starts" :operand ops})
+
+
 ;; 19.31. Union
 (defn union [ops]
   {:type "Union" :operand ops})
+
+
+;; 19.32. Width
+(defn width [interval]
+  {:type "Width" :operand interval})
 
 
 ;; 20.3. Current

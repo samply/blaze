@@ -12,8 +12,10 @@
 
 
 ;; 19.1. Interval
-(defn- determine-type [{:keys [resultTypeName asType]}]
-  (or resultTypeName asType))
+(defn- determine-type [{:keys [resultTypeName asType type]}]
+  (or resultTypeName
+      asType
+      (when (= "ToDateTime" type) "{urn:hl7-org:elm-types:r1}DateTime")))
 
 
 (defrecord IntervalExpression
@@ -165,9 +167,9 @@
 
 
 ;; 19.20. Overlaps
-(defmethod core/compile* :elm.compiler.type/overlaps
-  [_ _]
-  (throw (Exception. "Unsupported Overlaps expression. Please normalize the ELM tree before compiling.")))
+(defbinopp overlaps [x y _]
+  (and (p/greater-or-equal (:end x) (:start y))
+       (p/less-or-equal (:start x) (:end y))))
 
 
 ;; 19.21. OverlapsBefore

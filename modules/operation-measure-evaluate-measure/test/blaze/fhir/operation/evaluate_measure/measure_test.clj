@@ -340,7 +340,8 @@
     "q33-incompatible-quantities" 1
     "q34-medication" 1
     "q35-literal-library-ref" 1
-    "q36-parameter" 1)
+    "q36-parameter" 1
+    "q37-overlaps" 2)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -493,5 +494,6 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q37")
+  (evaluate "q37-overlaps")
+
   )

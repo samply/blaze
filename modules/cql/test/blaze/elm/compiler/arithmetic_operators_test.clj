@@ -504,18 +504,22 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-log-test
-  (are [x base res] (= res (c/compile {} (elm/log [x base])))
-    #elm/integer"16" #elm/integer"2" 4M
+  (testing "Integer"
+    (are [x base res] (= res (c/compile {} (elm/log [x base])))
+      #elm/integer"16" #elm/integer"2" 4M
 
-    #elm/decimal"100" #elm/decimal"10" 2M
-    #elm/decimal"1" #elm/decimal"1" nil
+      #elm/integer"0" #elm/integer"2" nil)
 
-    #elm/integer"0" #elm/integer"2" nil
-    #elm/decimal"0" #elm/integer"2" nil)
+    (tu/testing-binary-null elm/log #elm/integer"1"))
 
-  (tu/testing-binary-null elm/log #elm/integer"1")
+  (testing "Decimal"
+    (are [x base res] (= res (c/compile {} (elm/log [x base])))
+      #elm/decimal"100" #elm/decimal"10" 2M
+      #elm/decimal"1" #elm/decimal"1" nil
 
-  (tu/testing-binary-null elm/log #elm/decimal"1.1"))
+      #elm/decimal"0" #elm/integer"2" nil)
+
+    (tu/testing-binary-null elm/log #elm/decimal"1.1")))
 
 
 ;; 16.9. LowBoundary

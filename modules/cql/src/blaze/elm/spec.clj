@@ -1,6 +1,6 @@
 (ns blaze.elm.spec
   (:require
-    [blaze.elm.quantity :as q]
+    [blaze.elm.quantity :as quantity]
     [blaze.fhir.spec.type.system :as system]
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
@@ -27,7 +27,7 @@
 (def defined-units
   "All defined units from ucum-service."
   (into #{} (comp (filter (comp #{BaseUnit} class))
-                  (map q/format-unit))
+                  (map quantity/format-unit))
         (.getUnits ucum-service)))
 
 
