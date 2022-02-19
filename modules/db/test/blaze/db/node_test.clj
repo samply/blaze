@@ -16,6 +16,7 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local-spec]
+    [blaze.executors :as ex]
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.metrics.spec]
@@ -196,7 +197,7 @@
         (ig/init {::node/indexer-executor {}})]
 
     ;; will produce a timeout, because the function runs 11 seconds
-    (.execute indexer-executor #(Thread/sleep 11000))
+    (ex/execute! indexer-executor #(Thread/sleep 11000))
 
     ;; ensure that the function is called before the scheduler is halted
     (Thread/sleep 100)
@@ -204,7 +205,7 @@
     (ig/halt! system)
 
     ;; the scheduler is shut down
-    (is (.isShutdown indexer-executor))
+    (is (ex/shutdown? indexer-executor))
 
     ;; but it isn't terminated yet
-    (is (not (.isTerminated indexer-executor)))))
+    (is (not (ex/terminated? indexer-executor)))))

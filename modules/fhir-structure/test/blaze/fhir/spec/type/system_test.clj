@@ -384,15 +384,15 @@
 
   (testing "hash-code"
     (testing "DateTimeYear hash-code equals that of Year"
-      (is (= (.hashCode (system/date-time 2020))
+      (is (= (.hashCode ^Object (system/date-time 2020))
              (.hashCode (Year/of 2020)))))
 
     (testing "DateTimeYearMonth hash-code equals that of YearMonth"
-      (is (= (.hashCode (system/date-time 2020 1))
+      (is (= (.hashCode ^Object (system/date-time 2020 1))
              (.hashCode (YearMonth/of 2020 1)))))
 
     (testing "DateTimeYearMonthDay hash-code equals that of LocalDate"
-      (is (= (.hashCode (system/date-time 2020 1 1))
+      (is (= (.hashCode ^Object (system/date-time 2020 1 1))
              (.hashCode (LocalDate/of 2020 1 1))))))
 
   (testing "Temporal"

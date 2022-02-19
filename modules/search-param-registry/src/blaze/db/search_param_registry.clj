@@ -54,7 +54,7 @@
 (defn linked-compartments
   "Returns a list of compartments linked to `resource`.
 
-  For example an Observation may linked to the compartment `[\"Patient\" \"0\"]`
+  For example an Observation may be linked to the compartment `[\"Patient\" \"0\"]`
   because its subject points to this patient. Compartments are represented
   through a tuple of `code` and `id`."
   [search-param-registry resource]

@@ -19,6 +19,7 @@
     [java.util Base64]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
@@ -56,7 +57,7 @@
 
 
 (defn- b64-encode [s]
-  (.encodeToString (Base64/getEncoder) (.getBytes s)))
+  (.encodeToString (Base64/getEncoder) (.getBytes ^String s)))
 
 
 (defn- library-entry [query]

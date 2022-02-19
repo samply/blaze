@@ -7,6 +7,7 @@
     [com.datastax.oss.driver.api.core ConsistencyLevel]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

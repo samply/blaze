@@ -1,5 +1,6 @@
 (ns blaze.scheduler-test
   (:require
+    [blaze.executors :as ex]
     [blaze.scheduler :as sched]
     [blaze.scheduler-spec]
     [blaze.test-util :refer [with-system]]
@@ -65,7 +66,7 @@
     (ig/halt! system)
 
     ;; the scheduler is shut down
-    (is (.isShutdown scheduler))
+    (is (ex/shutdown? scheduler))
 
     ;; but it isn't terminated yet
-    (is (not (.isTerminated scheduler)))))
+    (is (not (ex/terminated? scheduler)))))
