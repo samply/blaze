@@ -25,10 +25,7 @@
     {:mvn/version "0.8.2"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.63.998"}
-
-    org.slf4j/slf4j-nop
-    {:mvn/version "1.7.36"}}
+    {:mvn/version "1.63.998"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -43,10 +40,7 @@
     {:mvn/version "1.2.2"}
 
     hato/hato
-    {:mvn/version "0.8.2"}
-
-    org.slf4j/slf4j-nop
-    {:mvn/version "1.7.36"}}
+    {:mvn/version "0.8.2"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".*spec$"]}}}

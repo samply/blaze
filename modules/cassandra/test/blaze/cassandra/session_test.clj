@@ -13,6 +13,7 @@
     [com.datastax.oss.driver.api.core.metadata EndPoint]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 
@@ -28,8 +29,8 @@
 (defn- get-field
   "Access to private or protected field where `field-name` is a symbol or
    keyword."
-  [klass field-name obj]
-  (-> klass (.getDeclaredField (name field-name))
+  [class field-name obj]
+  (-> (.getDeclaredField ^Class class (name field-name))
       (doto (.setAccessible true))
       (.get obj)))
 

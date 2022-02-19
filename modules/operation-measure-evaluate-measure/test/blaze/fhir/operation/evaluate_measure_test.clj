@@ -577,7 +577,7 @@
         (ig/init {::evaluate-measure/executor {}})]
 
     ;; will produce a timeout, because the function runs 11 seconds
-    (.execute executor #(Thread/sleep 11000))
+    (ex/execute! executor #(Thread/sleep 11000))
 
     ;; ensure that the function is called before the scheduler is halted
     (Thread/sleep 100)
@@ -585,7 +585,7 @@
     (ig/halt! system)
 
     ;; the scheduler is shut down
-    (is (.isShutdown executor))
+    (is (ex/shutdown? executor))
 
     ;; but it isn't terminated yet
-    (is (not (.isTerminated executor)))))
+    (is (not (ex/terminated? executor)))))

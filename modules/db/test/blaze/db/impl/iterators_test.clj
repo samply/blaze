@@ -11,7 +11,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 
-(set! *warn-on-reflection* true)
+
 (st/instrument)
 
 

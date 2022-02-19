@@ -14,6 +14,7 @@
     [com.pgssoft.httpclient HttpClientMock]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (tu/init-fhir-specs)
 (log/set-level! :trace)
@@ -65,7 +66,7 @@
 (deftest terminology-service-test
   (with-system [{ts ::ts/extern ::keys [http-client]} system]
 
-    (-> (.onGet http-client "http://localhost:8080/fhir/ValueSet/$expand?url=http://hl7.org/fhir/ValueSet/administrative-gender")
+    (-> (.onGet ^HttpClientMock http-client "http://localhost:8080/fhir/ValueSet/$expand?url=http://hl7.org/fhir/ValueSet/administrative-gender")
         (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
         (.withHeader "content-type" "application/fhir+json"))
 

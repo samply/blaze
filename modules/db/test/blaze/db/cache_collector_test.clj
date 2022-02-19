@@ -9,10 +9,11 @@
     [integrant.core :as ig]
     [juxt.iota :refer [given]])
   (:import
-    [com.github.benmanes.caffeine.cache Caffeine]
+    [com.github.benmanes.caffeine.cache Cache Caffeine]
     [java.util.function Function]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 
@@ -25,7 +26,7 @@
 (test/use-fixtures :each fixture)
 
 
-(def cache (-> (Caffeine/newBuilder) (.recordStats) (.build)))
+(def ^Cache cache (-> (Caffeine/newBuilder) (.recordStats) (.build)))
 
 
 (def system

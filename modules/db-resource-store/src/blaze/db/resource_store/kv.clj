@@ -19,7 +19,10 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent ExecutorService TimeUnit]))
+    [java.util.concurrent TimeUnit]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defhistogram resource-bytes
@@ -76,7 +79,7 @@
   (map
     (fn [[k v]]
       (let [content (fhir-spec/unform-cbor v)]
-        (prom/observe! resource-bytes (alength content))
+        (prom/observe! resource-bytes (alength ^bytes content))
         [(bs/to-byte-array k) content]))))
 
 
@@ -136,10 +139,10 @@
 
 
 (defmethod ig/halt-key! ::executor
-  [_ ^ExecutorService executor]
+  [_ executor]
   (log/info "Stopping resource store key-value executor...")
-  (.shutdown executor)
-  (if (.awaitTermination executor 10 TimeUnit/SECONDS)
+  (ex/shutdown! executor)
+  (if (ex/await-termination executor 10 TimeUnit/SECONDS)
     (log/info "Resource store key-value executor was stopped successfully")
     (log/warn "Got timeout while stopping the resource store key-value executor")))
 

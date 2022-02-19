@@ -6,7 +6,6 @@
     [blaze.db.impl.index.resource-handle :as rh]))
 
 
-(set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 

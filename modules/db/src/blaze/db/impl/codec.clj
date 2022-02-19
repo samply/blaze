@@ -429,7 +429,7 @@
     (number (epoch-seconds (.atStartOfDay (.atDay year 1)) zone-id)))
   DateTimeYear
   (-date-lb [year zone-id]
-    (number (epoch-seconds (.atStartOfDay (.atDay ^Year (.year year) 1)) zone-id)))
+    (number (epoch-seconds (.atStartOfDay (.atDay ^Year (.-year year) 1)) zone-id)))
   YearMonth
   (-date-lb [year-month zone-id]
     (number (epoch-seconds (.atStartOfDay (.atDay year-month 1)) zone-id)))
