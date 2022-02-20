@@ -5,7 +5,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param.composite.token-quantity :as tq]
     [blaze.db.impl.search-param.composite.token-token :as tt]
-    [blaze.db.search-param-registry :as sr]
+    [blaze.db.impl.search-param.core :as sc]
     [blaze.fhir-path :as fhir-path]
     [cognitect.anomalies :as anom]
     [taoensso.timbre :as log]))
@@ -80,7 +80,7 @@
   (assoc anomaly ::anom/category ::anom/unsupported))
 
 
-(defmethod sr/search-param "composite"
+(defmethod sc/search-param "composite"
   [index search-param]
   (-> (create-search-param index search-param)
       (ba/exceptionally #(handle-anomaly search-param %))))

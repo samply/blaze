@@ -5,9 +5,9 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.impl.search-param.core :as sc]
     [blaze.db.impl.search-param.quantity :as spq]
     [blaze.db.impl.search-param.util :as u]
-    [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
@@ -99,7 +99,7 @@
     (mapcat (partial index-entries url))))
 
 
-(defmethod sr/search-param "number"
+(defmethod sc/search-param "number"
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]

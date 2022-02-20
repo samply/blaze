@@ -34,7 +34,6 @@ jobs:
     needs: [ lint ]
 
     strategy:
-      max-parallel: 8
       matrix:
         module:
         - anomaly
@@ -66,7 +65,6 @@ jobs:
         - rest-util
         - rocksdb
         - scheduler
-        - search-param-registry
         - server
         - thread-pool-executor-collector
 

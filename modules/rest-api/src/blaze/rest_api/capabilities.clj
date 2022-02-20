@@ -83,12 +83,12 @@
           :operation
           (into
             []
-            (mapcat
+            (keep
               (fn [{:blaze.rest-api.operation/keys
                     [code def-uri type-handler instance-handler]}]
                 (when (or type-handler instance-handler)
-                  [{:name code
-                    :definition (type/->Canonical def-uri)}])))
+                  {:name code
+                   :definition (type/->Canonical def-uri)})))
             operations))))))
 
 

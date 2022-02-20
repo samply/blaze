@@ -1,4 +1,6 @@
-{:deps
+{:paths ["src" "resources"]
+
+ :deps
  {blaze/async
   {:local/root "../async"}
 
@@ -28,9 +30,6 @@
 
   blaze/db-resource-store
   {:local/root "../db-resource-store"}
-
-  blaze/search-param-registry
-  {:local/root "../search-param-registry"}
 
   blaze/spec
   {:local/root "../spec"}

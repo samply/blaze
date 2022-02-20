@@ -9,8 +9,8 @@
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.impl.search-param.core :as sc]
     [blaze.db.impl.search-param.util :as u]
-    [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
@@ -354,7 +354,7 @@
     expression))
 
 
-(defmethod sr/search-param "quantity"
+(defmethod sc/search-param "quantity"
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile (fix-expr url expression))]

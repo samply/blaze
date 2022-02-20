@@ -120,7 +120,8 @@
 
 
 (defn compartment-ids
-  "Returns all compartments `resource` is part-of according to `search-param`."
+  "Returns reducible collection of all ids of compartments `resource` is part-of
+  according to `search-param`."
   [search-param resource]
   (p/-compartment-ids search-param stub-resolver resource))
 

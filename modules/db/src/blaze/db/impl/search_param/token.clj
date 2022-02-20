@@ -8,12 +8,11 @@
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.impl.search-param.core :as sc]
     [blaze.db.impl.search-param.util :as u]
-    [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
-    [clojure.spec.alpha :as s]
     [taoensso.timbre :as log]))
 
 
@@ -196,17 +195,12 @@
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (into
-        []
-        (mapcat
+      (coll/eduction
+        (keep
           (fn [value]
-            (case (fhir-spec/fhir-type value)
-              :fhir/Reference
-              (let [{:keys [reference]} value]
-                (when reference
-                  (let [res (s/conform :blaze.fhir/local-ref reference)]
-                    (when-not (s/invalid? res)
-                      (rest res))))))))
+            (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
+              (when-let [reference (:reference value)]
+                (nth (split-literal-ref reference) 1)))))
         values)))
 
   (-index-values [search-param resolver resource]
@@ -228,7 +222,7 @@
     expression))
 
 
-(defmethod sr/search-param "token"
+(defmethod sc/search-param "token"
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile (fix-expr url expression))]
@@ -236,7 +230,7 @@
     (ba/unsupported (u/missing-expression-msg url))))
 
 
-(defmethod sr/search-param "reference"
+(defmethod sc/search-param "reference"
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
@@ -244,7 +238,7 @@
     (ba/unsupported (u/missing-expression-msg url))))
 
 
-(defmethod sr/search-param "uri"
+(defmethod sc/search-param "uri"
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]

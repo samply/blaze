@@ -118,7 +118,6 @@
     "-d" "modules/rest-util"
     "-d" "modules/rocksdb"
     "-d" "modules/scheduler"
-    "-d" "modules/search-param-registry"
     "-d" "modules/server"
     "-d" "modules/spec"
     "-d" "modules/terminology-service"
