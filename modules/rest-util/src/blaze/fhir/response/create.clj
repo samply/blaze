@@ -2,7 +2,7 @@
   (:require
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.fhir.util :as fhir-util]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
@@ -40,7 +40,7 @@
 
 (defn build-response
   [{:blaze/keys [db] :as context} old-handle {:keys [id] :as new-handle}]
-  (let [type (name (type/type new-handle))
+  (let [type (name (fhir-spec/fhir-type new-handle))
         tx (d/tx db (:t new-handle))
         vid (str (:blaze.db/t tx))
         created (or (nil? old-handle) (identical? :delete (:op old-handle)))]

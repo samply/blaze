@@ -18,6 +18,7 @@
     [blaze.db.test-util :refer [system with-system-data]]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local-spec]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
@@ -576,7 +577,7 @@
         (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [0 :meta type/type] := :fhir/Meta
+          [0 :meta fhir-spec/fhir-type] := :fhir/Meta
           [0 :meta :versionId] := #fhir/id"1"
           [0 :meta :lastUpdated] := Instant/EPOCH))))
 
@@ -3678,13 +3679,13 @@
             (testing "without target type"
               (given (d/include db observation code)
                 count := 1
-                [0 type/type] := :fhir/Patient
+                [0 fhir-spec/fhir-type] := :fhir/Patient
                 [0 :id] := "0"))
 
             (testing "with target type"
               (given (d/include db observation code "Patient")
                 count := 1
-                [0 type/type] := :fhir/Patient
+                [0 fhir-spec/fhir-type] := :fhir/Patient
                 [0 :id] := "0"))))))
 
     (testing "encounter"
@@ -3703,7 +3704,7 @@
               observation (d/resource-handle db "Observation" "0")]
           (given (d/include db observation "encounter")
             count := 1
-            [0 type/type] := :fhir/Encounter
+            [0 fhir-spec/fhir-type] := :fhir/Encounter
             [0 :id] := "0"))))
 
     (testing "with Group subject"
@@ -3720,7 +3721,7 @@
           (testing "returns group with subject param"
             (given (d/include db observation "subject")
               count := 1
-              [0 type/type] := :fhir/Group
+              [0 fhir-spec/fhir-type] := :fhir/Group
               [0 :id] := "0"))
 
           (testing "returns nothing with patient param"
@@ -3730,7 +3731,7 @@
           (testing "returns group with subject param and Group target type"
             (given (d/include db observation "subject" "Group")
               count := 1
-              [0 type/type] := :fhir/Group
+              [0 fhir-spec/fhir-type] := :fhir/Group
               [0 :id] := "0"))
 
           (testing "returns nothing with subject param and Patient target type"
@@ -3783,9 +3784,9 @@
 
             (given (d/rev-include db patients "Observation" code)
               count := 2
-              [0 type/type] := :fhir/Observation
+              [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1"
-              [1 type/type] := :fhir/Observation
+              [1 fhir-spec/fhir-type] := :fhir/Observation
               [1 :id] := "2")))))
 
     (testing "non-reference search parameter code"

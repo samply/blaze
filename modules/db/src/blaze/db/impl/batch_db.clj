@@ -19,7 +19,7 @@
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.util :as u]
     [blaze.db.kv :as kv]
-    [blaze.fhir.spec.type :as type])
+    [blaze.fhir.spec :as fhir-spec])
   (:import
     [clojure.lang IReduceInit]
     [java.io Writer]
@@ -178,7 +178,7 @@
   (-rev-include [_ resource-handle source-type code]
     (let [{:keys [id]} resource-handle
           {:keys [svri]} context
-          reference (codec/v-hash (str (name (type/type resource-handle)) "/" id))
+          reference (codec/v-hash (str (name (fhir-spec/fhir-type resource-handle)) "/" id))
           source-tid (codec/tid source-type)]
       (coll/eduction
         (u/resource-handle-mapper context source-tid)
