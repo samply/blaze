@@ -25,6 +25,7 @@
     [blaze.db.search-param-registry.spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.executors :as ex]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
@@ -216,7 +217,7 @@
 
 
 (defn- deleted-resource [{:keys [id] :as resource-handle}]
-  {:fhir/type (type/type resource-handle) :id id})
+  {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
 
 
 (defn- to-resource [tx-cache resources {:keys [op hash] :as resource-handle}]

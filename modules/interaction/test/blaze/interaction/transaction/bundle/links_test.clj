@@ -1,6 +1,6 @@
 (ns blaze.interaction.transaction.bundle.links-test
   (:require
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.interaction.transaction.bundle.links :as links]
     [blaze.interaction.transaction.bundle.links-spec]
     [blaze.test-util :as tu]
@@ -96,7 +96,7 @@
             {:fhir/type :fhir/Observation :id "0"
              :code #fhir/CodeableConcept{}}}]]
       (given (links/resolve-entry-links entries)
-        [0 :resource :code type/type] := :fhir/CodeableConcept))))
+        [0 :resource :code fhir-spec/fhir-type] := :fhir/CodeableConcept))))
 
 
 (deftest resolve-entry-links-in-contained-resources-test

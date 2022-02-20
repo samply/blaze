@@ -2,7 +2,7 @@
   (:require
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.interaction.search.include :as include]
     [blaze.interaction.search.include-spec]
     [blaze.test-util :as tu]
@@ -38,7 +38,7 @@
             observations (d/type-list db "Observation")]
         (given (include/add-includes db include-defs observations)
           count := 1
-          [0 type/type] := :fhir/Patient)))
+          [0 fhir-spec/fhir-type] := :fhir/Patient)))
 
     (testing "with non-matching target type"
       (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -79,8 +79,8 @@
             observations (d/type-list db "Observation")]
         (given (include/add-includes db include-defs observations)
           count := 2
-          [0 type/type] := :fhir/Patient
-          [1 type/type] := :fhir/Encounter))))
+          [0 fhir-spec/fhir-type] := :fhir/Patient
+          [1 fhir-spec/fhir-type] := :fhir/Encounter))))
 
   (testing "one direct reverse include"
     (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -98,4 +98,4 @@
             patients (d/type-list db "Patient")]
         (given (include/add-includes db include-defs patients)
           count := 1
-          [0 type/type] := :fhir/Observation)))))
+          [0 fhir-spec/fhir-type] := :fhir/Observation)))))

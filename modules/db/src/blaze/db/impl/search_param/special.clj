@@ -1,6 +1,6 @@
 (ns blaze.db.impl.search-param.special
   (:require
-    [blaze.db.search-param-registry :as sr]
+    [blaze.db.impl.search-param.core :as sc]
     [taoensso.timbre :as log]))
 
 
@@ -9,7 +9,7 @@
   (fn [_ {:keys [name]}] name))
 
 
-(defmethod sr/search-param "special"
+(defmethod sc/search-param "special"
   [index search-param]
   (special-search-param index search-param))
 

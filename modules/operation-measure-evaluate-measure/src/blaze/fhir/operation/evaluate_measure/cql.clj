@@ -4,7 +4,7 @@
     [blaze.anomaly-spec]
     [blaze.db.api :as d]
     [blaze.elm.expression :as expr]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec :as fhir-spec]
     [clojure.core.reducers :as r]
     [taoensso.timbre :as log])
   (:import
@@ -183,7 +183,7 @@
 
 (defn- incorrect-stratum-msg [{:keys [id] :as handle} expression-name]
   (format "CQL expression `%s` returned more than one value for resource `%s`."
-          expression-name (-> handle type/type name (str "/" id))))
+          expression-name (-> handle fhir-spec/fhir-type name (str "/" id))))
 
 
 (defn- evaluate-stratum-expression [context subject-handle name]

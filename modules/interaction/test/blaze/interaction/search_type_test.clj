@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
-    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.interaction.search-type]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
@@ -567,7 +567,7 @@
 
           (testing "the entry has the right search information"
             (given (-> body :entry first :search)
-              type/type := :fhir.Bundle.entry/search
+              fhir-spec/fhir-type := :fhir.Bundle.entry/search
               :mode := #fhir/code"match"))))
 
       (testing "with param _summary equal to count"

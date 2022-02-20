@@ -4,6 +4,7 @@
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.alpha :as s]))
@@ -15,7 +16,7 @@
 
 
 (defn- get-param-value-from-resource [body name]
-  (when (= :fhir/Parameters (type/type body))
+  (when (identical? :fhir/Parameters (fhir-spec/fhir-type body))
     (some #(when (= name (:name %)) (:value %)) (:parameter body))))
 
 

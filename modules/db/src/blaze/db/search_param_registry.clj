@@ -4,7 +4,8 @@
     [blaze.anomaly :refer [if-ok when-ok]]
     [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
-    [blaze.fhir-path :as fhir-path]
+    [blaze.db.impl.search-param :as search-param]
+    [blaze.db.impl.search-param.core :as sc]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
@@ -12,23 +13,6 @@
     [integrant.core :as ig]
     [jsonista.core :as j]
     [taoensso.timbre :as log]))
-
-
-(defmulti search-param
-  "Converts a FHIR search parameter definition into a search-param.
-
-  This multi-method is used to convert search parameters before storing them
-  in the registry. Other namespaces can provide their own implementations here.
-
-  The conversion can return an anomaly."
-  {:arglists '([index definition])}
-  (fn [_ {:keys [type]}] type))
-
-
-(defmethod search-param :default
-  [_ {:keys [url type]}]
-  (log/debug (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))
-  {::anom/category ::anom/unsupported})
 
 
 (defprotocol SearchParamRegistry
@@ -61,47 +45,6 @@
   (-linked-compartments search-param-registry resource))
 
 
-(def stub-resolver
-  "A resolver which only returns a resource stub with type and id from the local
-  reference itself."
-  (reify
-    fhir-path/Resolver
-    (-resolve [_ uri]
-      (let [res (s/conform :blaze.fhir/local-ref uri)]
-        (when-not (s/invalid? res)
-          (let [[type id] res]
-            {:fhir/type (keyword "fhir" type)
-             :id id}))))))
-
-
-(defn- extract-id [^String s]
-  (let [idx (.indexOf s 47)]
-    (when (pos? idx)
-      (let [type (.substring s 0 idx)]
-        (when (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
-          (let [id (.substring s (unchecked-inc-int idx))]
-            (when (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))
-              id)))))))
-
-
-;; TODO: the search-param needs to have an :expression which isn't certain
-(defn- compartment-ids
-  "Returns all compartments `resource` is part of, according to `search-param`."
-  {:arglists '([search-param resource])}
-  [{:keys [expression]} resource]
-  (when-ok [values (fhir-path/eval stub-resolver expression resource)]
-    (coll/eduction
-      (mapcat
-        (fn [value]
-          (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
-            (some-> value :reference extract-id vector))))
-      values)))
-
-
-(defn- vals-into [to from]
-  (transduce (map val) conj to from))
-
-
 (deftype MemSearchParamRegistry [index compartment-index]
   SearchParamRegistry
   (-get [_ code]
@@ -112,19 +55,17 @@
         (-get this code)))
 
   (-list-by-type [_ type]
-    (-> (vals-into [] (index "Resource"))
-        (vals-into (index type))))
+    (-> (into [] (map val) (index "Resource"))
+        (into (map val) (index type))))
 
   (-linked-compartments [_ resource]
-    (transduce
+    (into
+      #{}
       (mapcat
         (fn [{:keys [def-code search-param]}]
-          ;; TODO: use search-params compartment-ids
           (coll/eduction
             (map (fn [id] [def-code id]))
-            (compartment-ids search-param resource))))
-      conj
-      #{}
+            (search-param/compartment-ids search-param resource))))
       (compartment-index (name (fhir-spec/fhir-type resource))))))
 
 
@@ -133,24 +74,20 @@
     {:decode-key-fn true}))
 
 
-(defn- read-bundle
-  "Reads a bundle from classpath named `resource-name`."
-  [resource-name]
-  (with-open [rdr (io/reader (io/resource resource-name))]
+(defn- read-json-resource
+  "Reads the JSON encoded resource with `name` from classpath."
+  [name]
+  (log/trace (format "Read resource `%s` from class path." name))
+  (with-open [rdr (io/reader (io/resource name))]
     (j/read-value rdr object-mapper)))
 
 
 (defn- index-search-param [index {:keys [url] :as sp}]
-  (if-ok [search-param (search-param index sp)]
+  (if-ok [search-param (sc/search-param index sp)]
     (assoc index url search-param)
     #(if (= ::anom/unsupported (::anom/category %))
        index
        (reduced %))))
-
-
-(defn- read-compartment-def [name]
-  (with-open [rdr (io/reader (io/resource name))]
-    (j/read-value rdr object-mapper)))
 
 
 (defn- index-compartment-def
@@ -175,7 +112,7 @@
 
 
 (defn- index-compartments [search-param-index]
-  (->> (read-compartment-def "blaze/db/compartment/patient.json")
+  (->> (read-json-resource "blaze/db/compartment/patient.json")
        (index-compartment-def search-param-index)))
 
 
@@ -194,8 +131,8 @@
 
   See: https://www.hl7.org/fhir/search.html#special"
   [index]
-  (-> (assoc-in index ["Resource" "_list"] (search-param nil list-search-param))
-      (assoc-in ["Resource" "_has"] (search-param index has-search-param))))
+  (-> (assoc-in index ["Resource" "_list"] (sc/search-param nil list-search-param))
+      (assoc-in ["Resource" "_has"] (sc/search-param index has-search-param))))
 
 
 (defn- build-url-index* [index filter entries]
@@ -248,6 +185,6 @@
 (defmethod ig/init-key :blaze.db/search-param-registry
   [_ _]
   (log/info "Init in-memory fixed R4 search parameter registry")
-  (let [bundle (read-bundle "blaze/db/search-parameters.json")]
+  (let [bundle (read-json-resource "blaze/db/search-parameters.json")]
     (when-ok [index (build-index bundle)]
       (->MemSearchParamRegistry (add-special index) (index-compartments index)))))
