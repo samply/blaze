@@ -36,7 +36,9 @@
   (try
     (expr/eval context (get library-context expression-name) subject-handle)
     (catch Exception e
-      (log/error (log/stacktrace e))
+      (log/error (format "Error while evaluating the expression `%s`:"
+                         expression-name) (ex-message (ex-cause e)))
+      (log/error e)
       (ba/fault
         (ex-message e)
         :fhir/issue "exception"

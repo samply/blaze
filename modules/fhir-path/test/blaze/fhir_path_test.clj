@@ -206,20 +206,47 @@
 ;; 5. Functions
 
 (deftest resolve-function-test
-  (let [resolver
-        (reify
-          fhir-path/Resolver
-          (-resolve [_ uri]
-            (when (= "reference-180039" uri)
-              {:fhir/type :fhir/Patient
-               :id "id-164737"})))]
+  (testing "Specimen with reference to Patient"
+    (let [resolver
+          (reify
+            fhir-path/Resolver
+            (-resolve [_ uri]
+              (when (= "reference-180039" uri)
+                {:fhir/type :fhir/Patient
+                 :id "id-164737"})))]
+      (given
+        (eval
+          "Specimen.subject.where(resolve() is Patient)"
+          resolver
+          {:fhir/type :fhir/Specimen :id "foo"
+           :subject #fhir/Reference{:reference "reference-180039"}})
+        [0 :reference] := "reference-180039")))
+
+  (testing "Specimen with display only reference"
     (given
       (eval
         "Specimen.subject.where(resolve() is Patient)"
         resolver
-        {:fhir/type :fhir/Specimen :id "id-175250"
-         :subject #fhir/Reference{:reference "reference-180039"}})
-      [0 :reference] := "reference-180039")))
+        {:fhir/type :fhir/Specimen :id "foo"
+         :subject #fhir/Reference{:display "foo"}})
+      count := 0))
+
+  (testing "Resolving on unsupported data type is skipped"
+    (given
+      (eval
+        "Patient.gender.where(resolve())"
+        resolver
+        {:fhir/type :fhir/Patient :id "foo"
+         :gender #fhir/code"unknown"})
+      count := 0))
+
+  (testing "Resolving string"
+    (given
+      (eval
+        "Patient.id.where(resolve())"
+        resolver
+        {:fhir/type :fhir/Patient :id "foo"})
+      count := 0)))
 
 
 ;; 5.1. Existence

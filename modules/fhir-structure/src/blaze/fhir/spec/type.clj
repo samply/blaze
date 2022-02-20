@@ -12,7 +12,7 @@
   (:import
     [blaze.fhir.spec.type.system
      DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
-    [clojure.lang Keyword]
+    [clojure.lang IPersistentMap Keyword]
     [com.fasterxml.jackson.core JsonGenerator]
     [com.fasterxml.jackson.databind JsonSerializer SerializerProvider]
     [com.fasterxml.jackson.databind.module SimpleModule]
@@ -26,7 +26,7 @@
      Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
      ZoneOffset]
     [java.time.format DateTimeFormatter DateTimeParseException]
-    [java.util List Map UUID]))
+    [java.util List UUID]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -1113,9 +1113,9 @@
   (-hash-into [k sink]
     (.putInt ^PrimitiveSink sink (.hasheq k)))
   (-references [_])
-  Map
+  IPersistentMap
   (-type [m]
-    (:fhir/type m))
+    (.valAt m :fhir/type))
   (-value [_])
   (-hash-into [m sink]
     (.putByte ^PrimitiveSink sink (byte 37))

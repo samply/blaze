@@ -153,6 +153,7 @@
     (log/trace "done indexing all resources")
     (catch Exception e
       (log/error "Error while resource indexing: " (ex-message (ex-cause e)))
+      (log/error e)
       (throw e))
     (finally
       (prom/observe-duration! timer))))

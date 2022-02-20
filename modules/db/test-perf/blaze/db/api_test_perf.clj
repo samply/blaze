@@ -1,6 +1,5 @@
 (ns blaze.db.api-test-perf
   (:require
-    [blaze.anomaly :refer [ex-anom]]
     [blaze.db.api :as d]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
@@ -15,7 +14,7 @@
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :refer [with-system]]
-    [clojure.test :refer [deftest is testing]]
+    [clojure.test :refer [deftest]]
     [criterium.core :as criterium]
     [integrant.core :as ig]
     [java-time :as time]

@@ -2,11 +2,13 @@
   (:require
     [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry-spec]
+    [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec.type]
     [blaze.fhir.structure-definition-repo]
     [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
@@ -49,6 +51,14 @@
         count := 1
         [0] := ["Patient" "1"]))
 
+    (testing "Observation subject"
+      (given (sr/linked-compartments
+               search-param-registry
+               {:fhir/type :fhir/Observation :id "0"
+                :subject #fhir/Reference{:reference "Patient/1"}})
+        count := 1
+        [0] := ["Patient" "1"]))
+
     (testing "MedicationAdministration subject"
       (given (sr/linked-compartments
                search-param-registry
@@ -78,4 +88,19 @@
                 [{:fhir/type :fhir.MedicationAdministration/performer
                   :actor #fhir/Reference{:reference "Patient/1"}}]})
         count := 1
-        [0] := ["Patient" "1"]))))
+        [0] := ["Patient" "1"]))
+
+    (testing "with FHIRPath eval error"
+      (with-redefs [fhir-path/eval
+                    (fn [_ _ _]
+                      {::anom/category ::anom/fault
+                       ::anom/message "msg-121005"
+                       ::x ::y})]
+        (given
+          (sr/linked-compartments
+            search-param-registry
+            {:fhir/type :fhir/Condition :id "0"
+             :subject #fhir/Reference{:reference "Patient/1"}})
+          ::anom/category := ::anom/fault
+          ::anom/message := "msg-121005"
+          ::x := ::y)))))

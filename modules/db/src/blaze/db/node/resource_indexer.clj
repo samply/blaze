@@ -1,6 +1,6 @@
 (ns blaze.db.node.resource-indexer
   (:require
-    [blaze.anomaly :as ba]
+    [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
@@ -84,13 +84,22 @@
       res)))
 
 
+(defn- linked-compartments [search-param-registry hash resource]
+  (if-ok [compartments (sr/linked-compartments search-param-registry resource)]
+    compartments
+    (fn [e]
+      (log/warn "Skip indexing compartments of resource with hash "
+                (bs/hex hash) " because of:" (::anom/message e))
+      [])))
+
+
 (defn- conj-index-entries!
   [search-param-registry last-updated res [hash resource]]
-  (log/trace "index-resource with hash" (bs/hex hash))
+  (log/trace "Index resource with hash" (bs/hex hash))
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
     (let [resource (update resource :meta (fnil assoc #fhir/Meta{})
                            :lastUpdated last-updated)
-          compartments (sr/linked-compartments search-param-registry resource)]
+          compartments (linked-compartments search-param-registry hash resource)]
       (transduce
         (mapcat #(index-entries % compartments hash resource))
         conj!

@@ -631,24 +631,56 @@
   (sr/get search-param-registry "subject" "Observation"))
 
 
+(defn patient-param [search-param-registry]
+  (sr/get search-param-registry "patient" "Condition"))
+
+
 (defn compartment-ids [search-param resource]
   (into [] (search-param/compartment-ids search-param resource)))
 
 
 (deftest compartment-ids-test
   (with-system [{:blaze.db/keys [search-param-registry]} system]
-    (let [subject-param (subject-param search-param-registry)]
+    (testing "Observation"
+      (let [subject-param (subject-param search-param-registry)]
 
-      (testing "with literal reference"
-        (let [observation {:fhir/type :fhir/Observation :id "0"
+        (testing "with literal reference"
+          (let [observation {:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference "Patient/0"}}]
+            (is (= ["0"] (compartment-ids subject-param observation)))))
+
+        (testing "without reference"
+          (let [observation {:fhir/type :fhir/Observation :id "0"}]
+            (is (empty? (compartment-ids subject-param observation)))))
+
+        (testing "with reference without reference value"
+          (let [observation {:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:display "foo"}}]
+            (is (empty? (compartment-ids subject-param observation)))))
+
+        (testing "with absolute reference"
+          (let [observation {:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference "http://server.org/Patient/0"}}]
+            (is (empty? (compartment-ids subject-param observation)))))))
+
+    (testing "Condition"
+      (let [patient-param (patient-param search-param-registry)]
+
+        (testing "with literal reference"
+          (let [condition {:fhir/type :fhir/Condition :id "0"
                            :subject #fhir/Reference{:reference "Patient/0"}}]
-          (is (= ["0"] (compartment-ids subject-param observation)))))
+            (is (= ["0"] (compartment-ids patient-param condition)))))
 
-      (testing "without reference"
-        (let [observation {:fhir/type :fhir/Observation :id "0"}]
-          (is (empty? (compartment-ids subject-param observation)))))
+        (testing "without reference"
+          (let [condition {:fhir/type :fhir/Condition :id "0"}]
+            (is (empty? (compartment-ids patient-param condition)))))
 
-      (testing "with absolute reference"
-        (let [observation {:fhir/type :fhir/Observation :id "0"
+        (testing "with reference without reference value"
+          (let [condition {:fhir/type :fhir/Condition :id "0"
+                           :subject #fhir/Reference{:display "foo"}}]
+            (is (empty? (compartment-ids patient-param condition)))))
+
+        (testing "with absolute reference"
+          (let [condition {:fhir/type :fhir/Condition :id "0"
                            :subject #fhir/Reference{:reference "http://server.org/Patient/0"}}]
-          (is (empty? (compartment-ids subject-param observation))))))))
+            (is (empty? (compartment-ids patient-param condition)))))))))

@@ -16,6 +16,7 @@
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv :as rs-kv]
     [blaze.db.search-param-registry]
+    [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
@@ -92,6 +93,33 @@
              {hash patient}})
           ::anom/category := ::anom/fault
           ::anom/message := "msg-200802")))))
+
+
+(deftest skips-on-failing-fhir-path-eval-test
+  (with-system [{kv-store ::kv/mem resource-store ::rs/kv
+                 :blaze.db/keys [search-param-registry]} system]
+    (let [observation {:fhir/type :fhir/Observation :id "0"
+                       :subject #fhir/Reference{:reference "foo"}}
+          hash (hash/generate observation)
+          resource-indexer (resource-indexer/new-resource-indexer
+                             search-param-registry kv-store)
+          context
+          {:resource-store resource-store
+           :resource-indexer resource-indexer}]
+      (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
+        @(resource-indexer/index-resources
+           context
+           {:t 0
+            :instant Instant/EPOCH
+            :tx-cmds
+            [{:op "put"
+              :type "Observation"
+              :id "0"
+              :hash hash}]
+            :local-payload
+            {hash observation}}))
+
+      (is (empty? (sp-vr-tu/decode-index-entries kv-store :id))))))
 
 
 (deftest index-condition-resource-test

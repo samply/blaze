@@ -135,7 +135,7 @@
           (ex-data error))
         f)
       (do
-        (log/error (log/stacktrace error))
+        (log/error error)
         (error-response*
           (ba/fault
             (ex-message error)
