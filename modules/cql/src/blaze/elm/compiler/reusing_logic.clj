@@ -127,22 +127,24 @@
 
 
 (defprotocol ToInterval
-  (-to-interval [x]))
+  (-to-interval [x context]))
 
 
 (extend-protocol ToInterval
   Period
-  (-to-interval [{:keys [start end]}]
-    (interval/interval (type/value start) (type/value end)))
+  (-to-interval [{:keys [start end]} {:keys [now]}]
+    (interval/interval
+      (p/to-date-time (type/value start) now)
+      (p/to-date-time (type/value end) now)))
 
   nil
-  (-to-interval [_]))
+  (-to-interval [_ _]))
 
 
 (defrecord ToIntervalFunctionExpression [operand]
   core/Expression
   (-eval [_ context resource scope]
-    (-to-interval (core/-eval operand context resource scope))))
+    (-to-interval (core/-eval operand context resource scope) context)))
 
 
 ;; 9.4. FunctionRef

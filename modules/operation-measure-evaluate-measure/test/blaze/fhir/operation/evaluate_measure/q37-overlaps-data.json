@@ -44,6 +44,16 @@
     },
     {
       "resource": {
+        "resourceType": "Patient",
+        "id": "4"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/4"
+      }
+    },
+    {
+      "resource": {
         "resourceType": "Procedure",
         "id": "0",
         "code": {
@@ -130,6 +140,31 @@
       "request": {
         "method": "PUT",
         "url": "Procedure/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "4",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "431182000"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/4"
+        },
+        "performedPeriod": {
+          "start": "2020-03-01T00:00:00+01:00",
+          "end": "2020-05-01T00:00:00+01:00"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Procedure/4"
       }
     },
     {

@@ -90,17 +90,17 @@
                 {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
                  :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
         (interval/interval
-          (system/parse-date-time "2021-02-23T15:12:45+01:00")
-          (system/parse-date-time "2021-02-23T16:00:00+01:00"))
+          (system/date-time 2021 2 23 14 12 45)
+          (system/date-time 2021 2 23 15 0 0))
         #fhir/Period
                 {:start nil
                  :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
         (interval/interval
           nil
-          (system/parse-date-time "2021-02-23T16:00:00+01:00"))
+          (system/date-time 2021 2 23 15 0 0))
         #fhir/Period
                 {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
                  :end nil}
         (interval/interval
-          (system/parse-date-time "2021-02-23T15:12:45+01:00")
+          (system/date-time 2021 2 23 14 12 45)
           nil)))))
