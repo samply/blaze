@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.16.0
+
+### New Features
+
+* Implement CQL FHIRHelpers ToInterval Function ([#612](https://github.com/samply/blaze/pull/612))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/23?closed=1).
+
 ## v0.15.6
 
 ### Other
