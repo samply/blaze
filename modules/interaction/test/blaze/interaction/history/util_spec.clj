@@ -25,7 +25,7 @@
     :context (s/keys :req [:blaze/base-url :blaze/db ::reitit/match])
     :query-params (s/nilable :ring.request/query-params)
     :page-t :blaze.db/t
-    :type (s/? :fhir.type/name)
+    :type (s/? :fhir.resource/type)
     :id (s/? :blaze.resource/id)))
 
 

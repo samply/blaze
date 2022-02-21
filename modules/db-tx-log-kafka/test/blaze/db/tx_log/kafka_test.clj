@@ -3,6 +3,7 @@
     [blaze.anomaly-spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka :as kafka]
+    [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.metrics.spec]
@@ -13,6 +14,7 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [java-time :as time]
+    [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
     [java.lang AutoCloseable]
@@ -25,6 +27,7 @@
      AuthorizationException RecordTooLargeException]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (tu/init-fhir-specs)
 (log/set-level! :trace)
@@ -194,7 +197,9 @@
 
 
 (deftest create-consumer-test
-  (is (= "tx" (.topic (first (.assignment (kafka/create-consumer config)))))))
+  (given (.assignment (kafka/create-consumer config))
+    count := 1
+    [0] := (TopicPartition. "tx" 0)))
 
 
 (deftest last-t-executor-shutdown-timeout-test
@@ -202,7 +207,7 @@
         (ig/init {::kafka/last-t-executor {}})]
 
     ;; will produce a timeout, because the function runs 11 seconds
-    (.execute last-t-executor #(Thread/sleep 11000))
+    (ex/execute! last-t-executor #(Thread/sleep 11000))
 
     ;; ensure that the function is called before the scheduler is halted
     (Thread/sleep 100)
@@ -210,7 +215,7 @@
     (ig/halt! system)
 
     ;; the scheduler is shut down
-    (is (.isShutdown last-t-executor))
+    (is (ex/shutdown? last-t-executor))
 
     ;; but it isn't terminated yet
-    (is (not (.isTerminated last-t-executor)))))
+    (is (not (ex/terminated? last-t-executor)))))

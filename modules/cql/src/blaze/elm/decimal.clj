@@ -50,7 +50,7 @@
 
 
 (defn within-bounds?
-  "Returns true iff `x` is withing the bounds of `min` and `max`."
+  "Returns true if `x` is withing the bounds of `min` and `max`."
   [^BigDecimal x]
   (<= (- (.precision x) (.scale x)) max-integral-digits))
 

@@ -14,7 +14,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please refer to the [Conformance](docs/conformance.md) section and report any issues you encounter during evaluation.
 
-Latest release: [v0.15.6][5]
+Latest release: [v0.16.0][5]
 
 ## Quick Start
 
@@ -24,7 +24,7 @@ In order to run Blaze just execute the following:
 
 ```sh
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.15
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.16
 ```
 
 Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
@@ -62,7 +62,7 @@ The developers of Blaze uses the YourKit profiler to optimize performance. YourK
 
 ## License
 
-Copyright 2019 - 2021 The Samply Community
+Copyright 2019 - 2022 The Samply Community
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
@@ -72,7 +72,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.15.6>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.16.0>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>

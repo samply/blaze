@@ -324,20 +324,7 @@
 
 
 ;; 19.20. Overlaps
-(defmethod normalize :elm.normalizer.type/overlaps
-  [{[operand-1 operand-2] :operand :keys [precision]}]
-  (let [operand-1 (normalize operand-1)
-        operand-2 (normalize operand-2)]
-    (bin-pred
-      "Or"
-      (normalize
-        (cond-> (bin-pred "OverlapsBefore" operand-1 operand-2)
-          precision
-          (assoc :precision precision)))
-      (normalize
-        (cond-> (bin-pred "OverlapsAfter" operand-1 operand-2)
-          precision
-          (assoc :precision precision))))))
+(derive :elm.normalizer.type/overlaps :elm.normalizer.type/multiary-expression)
 
 
 ;; 19.21. OverlapsBefore

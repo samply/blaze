@@ -1,0 +1,222 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "2"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "3"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "4"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/4"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "0",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "431182000"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "performedPeriod": {
+          "start": "2020-03-01",
+          "end": "2020-05-01"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Procedure/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "1",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "431182000"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/1"
+        },
+        "performedDateTime": "2020-04-01"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Procedure/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "2",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "431182000"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/2"
+        },
+        "performedDateTime": "2020-07-01"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Procedure/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "3",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "431182000"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/3"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Procedure/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "4",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "431182000"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/4"
+        },
+        "performedPeriod": {
+          "start": "2020-03-01T00:00:00+01:00",
+          "end": "2020-05-01T00:00:00+01:00"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Procedure/4"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Patient"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ]
+}

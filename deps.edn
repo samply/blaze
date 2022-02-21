@@ -61,7 +61,7 @@
     {:mvn/version "0.4.6"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.62.993"}
+    {:mvn/version "1.63.998"}
 
     org.clojure/tools.namespace
     {:mvn/version "1.2.0"}}
@@ -118,7 +118,6 @@
     "-d" "modules/rest-util"
     "-d" "modules/rocksdb"
     "-d" "modules/scheduler"
-    "-d" "modules/search-param-registry"
     "-d" "modules/server"
     "-d" "modules/spec"
     "-d" "modules/terminology-service"

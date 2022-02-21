@@ -58,7 +58,7 @@
   Values have to be valid FHIR resource type names."
   {:arglists '([query-params])}
   [{v "__page-type"}]
-  (some #(when (s/valid? :fhir.type/name %) %) (to-seq v)))
+  (some #(when (s/valid? :fhir.resource/type %) %) (to-seq v)))
 
 
 (defn page-id

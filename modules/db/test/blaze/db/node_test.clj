@@ -5,21 +5,18 @@
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :as rs-kv]
     [blaze.db.search-param-registry]
-    [blaze.db.tx-cache]
+    [blaze.db.test-util :refer [system]]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
-    [blaze.db.tx-log.local]
     [blaze.db.tx-log.local-spec]
+    [blaze.executors :as ex]
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.metrics.spec]
@@ -29,7 +26,6 @@
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [java-time :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
@@ -45,60 +41,6 @@
 
 
 (test/use-fixtures :each fixture)
-
-
-(def system
-  {:blaze.db/node
-   {:tx-log (ig/ref :blaze.db/tx-log)
-    :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
-    :tx-cache (ig/ref :blaze.db/tx-cache)
-    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-    :resource-store (ig/ref :blaze.db/resource-store)
-    :kv-store (ig/ref :blaze.db/index-kv-store)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
-    :poll-timeout (time/millis 10)}
-
-   ::tx-log/local
-   {:kv-store (ig/ref :blaze.db/transaction-kv-store)
-    :clock (ig/ref :blaze.test/clock)}
-   [::kv/mem :blaze.db/transaction-kv-store]
-   {:column-families {}}
-   :blaze.test/clock {}
-
-   :blaze.db/resource-handle-cache {}
-
-   :blaze.db/tx-cache
-   {:kv-store (ig/ref :blaze.db/index-kv-store)}
-
-   :blaze.db.node/indexer-executor {}
-
-   [::kv/mem :blaze.db/index-kv-store]
-   {:column-families
-    {:search-param-value-index nil
-     :resource-value-index nil
-     :compartment-search-param-value-index nil
-     :compartment-resource-type-index nil
-     :active-search-params nil
-     :tx-success-index {:reverse-comparator? true}
-     :tx-error-index nil
-     :t-by-instant-index {:reverse-comparator? true}
-     :resource-as-of-index nil
-     :type-as-of-index nil
-     :system-as-of-index nil
-     :type-stats-index nil
-     :system-stats-index nil}}
-
-   ::rs/kv
-   {:kv-store (ig/ref :blaze.db/resource-kv-store)
-    :executor (ig/ref ::rs-kv/executor)}
-   [::kv/mem :blaze.db/resource-kv-store]
-   {:column-families {}}
-   ::rs-kv/executor {}
-
-   :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-
-   :blaze.fhir/structure-definition-repo {}})
 
 
 (defmethod ig/init-key ::resource-store-failing-on-get [_ _]
@@ -228,7 +170,7 @@
       (with-redefs
         [resource-indexer/index-resources
          (fn [_ _]
-           (ac/completed-future {::anom/category ::anom/fault ::x ::y}))]
+           (ac/failed-future (ex-info "" {::anom/category ::anom/fault ::x ::y})))]
 
         (testing "fetching the result immediately"
           (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put]
@@ -255,7 +197,7 @@
         (ig/init {::node/indexer-executor {}})]
 
     ;; will produce a timeout, because the function runs 11 seconds
-    (.execute indexer-executor #(Thread/sleep 11000))
+    (ex/execute! indexer-executor #(Thread/sleep 11000))
 
     ;; ensure that the function is called before the scheduler is halted
     (Thread/sleep 100)
@@ -263,7 +205,7 @@
     (ig/halt! system)
 
     ;; the scheduler is shut down
-    (is (.isShutdown indexer-executor))
+    (is (ex/shutdown? indexer-executor))
 
     ;; but it isn't terminated yet
-    (is (not (.isTerminated indexer-executor)))))
+    (is (not (ex/terminated? indexer-executor)))))

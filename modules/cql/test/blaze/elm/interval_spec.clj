@@ -7,7 +7,7 @@
 
 
 (defn point?
-  "Returns true iff `x` is of a valid point type for an interval."
+  "Returns true if `x` is of a valid point type for an interval."
   [x]
   (or (int? x) (decimal? x) (temporal? x) (quantity? x)))
 

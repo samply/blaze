@@ -25,6 +25,7 @@
     [blaze.db.search-param-registry.spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.executors :as ex]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
@@ -36,7 +37,7 @@
     [taoensso.timbre :as log])
   (:import
     [java.lang AutoCloseable]
-    [java.util.concurrent TimeUnit ExecutorService CompletableFuture]))
+    [java.util.concurrent CompletableFuture TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -216,7 +217,7 @@
 
 
 (defn- deleted-resource [{:keys [id] :as resource-handle}]
-  {:fhir/type (type/type resource-handle) :id id})
+  {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
 
 
 (defn- to-resource [tx-cache resources {:keys [op hash] :as resource-handle}]
@@ -416,10 +417,10 @@
 
 
 (defmethod ig/halt-key! ::indexer-executor
-  [_ ^ExecutorService executor]
+  [_ executor]
   (log/info "Stopping indexer executor...")
-  (.shutdown executor)
-  (if (.awaitTermination executor 10 TimeUnit/SECONDS)
+  (ex/shutdown! executor)
+  (if (ex/await-termination executor 10 TimeUnit/SECONDS)
     (log/info "Indexer executor was stopped successfully")
     (log/warn "Got timeout while stopping the indexer executor")))
 

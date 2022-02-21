@@ -1,6 +1,7 @@
 (ns blaze.test-util
   (:require
     [blaze.anomaly :as ba]
+    [blaze.executors :as ex]
     [blaze.fhir.structure-definition-repo]
     [clojure.test :refer [is]]
     [clojure.test.check :as tc]
@@ -10,7 +11,7 @@
     [java.nio ByteBuffer]
     [java.time Clock Instant ZoneId]
     [java.util Arrays Random]
-    [java.util.concurrent Executors ExecutorService TimeUnit]))
+    [java.util.concurrent Executors TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -63,9 +64,9 @@
 
 
 (defmethod ig/halt-key! :blaze.test/executor
-  [_ ^ExecutorService executor]
-  (.shutdown executor)
-  (.awaitTermination executor 10 TimeUnit/SECONDS))
+  [_ executor]
+  (ex/shutdown! executor)
+  (ex/await-termination executor 10 TimeUnit/SECONDS))
 
 
 (defmacro satisfies-prop [num-tests prop]

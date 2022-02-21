@@ -2,6 +2,9 @@
  {blaze/anomaly
   {:local/root "../anomaly"}
 
+  blaze/executor
+  {:local/root "../executor"}
+
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
@@ -13,4 +16,7 @@
   {:mvn/version "0.1"}
 
   org.clojure/test.check
-  {:mvn/version "1.1.1"}}}
+  {:mvn/version "1.1.1"}
+
+  org.slf4j/slf4j-nop
+  {:mvn/version "1.7.36"}}}

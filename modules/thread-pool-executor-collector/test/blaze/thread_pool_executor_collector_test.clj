@@ -1,5 +1,6 @@
 (ns blaze.thread-pool-executor-collector-test
   (:require
+    [blaze.executors :as ex]
     [blaze.metrics.core :as metrics]
     [blaze.test-util :refer [given-thrown with-system]]
     [blaze.thread-pool-executor-collector]
@@ -11,7 +12,7 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent Executors Executor]))
+    [java.util.concurrent Executors]))
 
 
 (st/instrument)
@@ -61,7 +62,8 @@
    ::pool {}})
 
 
-(defmethod ig/init-key ::pool [_ _] (Executors/newFixedThreadPool 1))
+(defmethod ig/init-key ::pool [_ _]
+  (Executors/newFixedThreadPool 1))
 
 
 (deftest collector-test
@@ -93,7 +95,7 @@
         [6 :samples 0 :value] := 0.0))
 
     (testing "one active thread"
-      (.execute ^Executor pool #(Thread/sleep 100))
+      (ex/execute! pool #(Thread/sleep 100))
       (given (metrics/collect collector)
         [0 :name] := "thread_pool_executor_active_count"
         [0 :samples 0 :value] := 1.0

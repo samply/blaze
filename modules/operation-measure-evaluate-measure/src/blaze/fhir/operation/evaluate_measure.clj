@@ -23,7 +23,7 @@
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent ExecutorService TimeUnit]))
+    [java.util.concurrent TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -132,10 +132,10 @@
 
 
 (defmethod ig/halt-key! ::executor
-  [_ ^ExecutorService executor]
+  [_ executor]
   (log/info "Stopping $evaluate-measure operation executor...")
-  (.shutdown executor)
-  (if (.awaitTermination executor 10 TimeUnit/SECONDS)
+  (ex/shutdown! executor)
+  (if (ex/await-termination executor 10 TimeUnit/SECONDS)
     (log/info "$evaluate-measure operation executor was stopped successfully")
     (log/warn "Got timeout while stopping the $evaluate-measure operation executor")))
 

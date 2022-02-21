@@ -19,6 +19,7 @@
     [java.util Base64]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
@@ -56,7 +57,7 @@
 
 
 (defn- b64-encode [s]
-  (.encodeToString (Base64/getEncoder) (.getBytes s)))
+  (.encodeToString (Base64/getEncoder) (.getBytes ^String s)))
 
 
 (defn- library-entry [query]
@@ -340,7 +341,8 @@
     "q33-incompatible-quantities" 1
     "q34-medication" 1
     "q35-literal-library-ref" 1
-    "q36-parameter" 1)
+    "q36-parameter" 1
+    "q37-overlaps" 3)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -493,5 +495,6 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q37")
+  (evaluate "q37-overlaps")
+
   )

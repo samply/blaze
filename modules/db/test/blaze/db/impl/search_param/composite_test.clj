@@ -8,6 +8,7 @@
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
+    [blaze.db.impl.search-param.core :as sc]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
@@ -284,7 +285,7 @@
 
 (deftest create-test
   (testing "not found component"
-    (given (sr/search-param
+    (given (sc/search-param
              {}
              {:type "composite"
               :component
@@ -297,7 +298,7 @@
       [fhir-path/compile
        (fn [_]
          {::anom/category ::anom/fault})]
-      (given (sr/search-param
+      (given (sc/search-param
                {"url-210148"
                 {:type "token"}
                 "url-211659"

@@ -18,9 +18,9 @@
     [java.lang AutoCloseable]
     [java.time Duration]
     [java.util Map]
-    [java.util.concurrent TimeUnit ExecutorService]
+    [java.util.concurrent TimeUnit]
     [org.apache.kafka.clients.consumer Consumer KafkaConsumer]
-    [org.apache.kafka.clients.producer Producer KafkaProducer ProducerRecord RecordMetadata Callback]
+    [org.apache.kafka.clients.producer Callback KafkaProducer Producer ProducerRecord RecordMetadata]
     [org.apache.kafka.common TopicPartition]
     [org.apache.kafka.common.errors RecordTooLargeException]))
 
@@ -46,7 +46,7 @@
   (TopicPartition. "tx" 0))
 
 
-(defn create-consumer [config]
+(defn create-consumer ^Consumer [config]
   (doto (KafkaConsumer. ^Map (c/consumer-config config)
                         codec/deserializer codec/deserializer)
     (.assign [tx-partition])))
@@ -102,9 +102,8 @@
 
   (-new-queue [_ offset]
     (log/trace "new-queue offset =" offset)
-    (let [consumer (create-consumer config)]
-      (.seek ^Consumer consumer tx-partition ^long (dec offset))
-      consumer))
+    (doto (create-consumer config)
+      (.seek tx-partition ^long (dec offset))))
 
   AutoCloseable
   (close [_]
@@ -159,10 +158,10 @@
 
 
 (defmethod ig/halt-key! ::last-t-executor
-  [_ ^ExecutorService executor]
+  [_ executor]
   (log/info "Stopping last-t executor...")
-  (.shutdown executor)
-  (if (.awaitTermination executor 10 TimeUnit/SECONDS)
+  (ex/shutdown! executor)
+  (if (ex/await-termination executor 10 TimeUnit/SECONDS)
     (log/info "Last-t executor was stopped successfully")
     (log/warn "Got timeout while stopping the last-t executor")))
 

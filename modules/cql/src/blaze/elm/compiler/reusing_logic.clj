@@ -8,10 +8,12 @@
     [blaze.db.api :as d]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.interval :as interval]
     [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :as q]
+    [blaze.elm.quantity :as quantity]
     [blaze.fhir.spec.type :as type])
   (:import
+    [blaze.fhir.spec.type Period]
     [java.util Map]))
 
 
@@ -83,7 +85,7 @@
   Map
   (-to-quantity [m]
     (when-let [value (:value m)]
-      (q/quantity value (or (-> m :code type/value) "1"))))
+      (quantity/quantity value (or (-> m :code type/value) "1"))))
 
   Object
   (-to-quantity [x]
@@ -124,6 +126,27 @@
     (str (core/-eval operand context resource scope))))
 
 
+(defprotocol ToInterval
+  (-to-interval [x context]))
+
+
+(extend-protocol ToInterval
+  Period
+  (-to-interval [{:keys [start end]} {:keys [now]}]
+    (interval/interval
+      (p/to-date-time (type/value start) now)
+      (p/to-date-time (type/value end) now)))
+
+  nil
+  (-to-interval [_ _]))
+
+
+(defrecord ToIntervalFunctionExpression [operand]
+  core/Expression
+  (-eval [_ context resource scope]
+    (-to-interval (core/-eval operand context resource scope) context)))
+
+
 ;; 9.4. FunctionRef
 (defmethod core/compile* :elm.compiler.type/function-ref
   [context {:keys [name] operands :operand}]
@@ -147,5 +170,8 @@
 
       "ToDecimal"
       (first operands)
+
+      "ToInterval"
+      (->ToIntervalFunctionExpression (first operands))
 
       (throw (Exception. (str "Unsupported function `" name "` in `FunctionRef` expression."))))))

@@ -9,6 +9,7 @@
     [blaze.fhir.operation.evaluate-measure.measure.population :as population]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier :as stratifier]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
+    [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.luid :as luid]
@@ -253,7 +254,7 @@
 
 
 (defn- local-ref [handle]
-  (str (name (type/type handle)) "/" (:id handle)))
+  (str (name (fhir-spec/fhir-type handle)) "/" (:id handle)))
 
 
 (defn- measure-report

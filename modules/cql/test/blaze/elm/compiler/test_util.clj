@@ -47,11 +47,15 @@
     {:def
      [{:name "true"}
       {:name "false"}
-      {:name "nil"}]}}})
+      {:name "nil"}
+      {:name "1"}
+      {:name "2"}
+      {:name "3"}
+      {:name "4"}]}}})
 
 
 (def dynamic-eval-ctx
-  {:parameters {"true" true "false" false "nil" nil}})
+  {:parameters {"true" true "false" false "nil" nil "1" 1 "2" 2 "3" 3 "4" 4}})
 
 
 (defn dynamic-compile-eval [elm]

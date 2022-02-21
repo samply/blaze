@@ -68,10 +68,27 @@
 ;; involving the high boundary will be performed with that interpretation.
 (deftest compile-interval-test
   (testing "Static"
-    (are [elm res] (= res (c/compile {} elm))
-      #elm/interval [#elm/integer"1" #elm/integer"2"] (interval 1 2)
-      #elm/interval [#elm/decimal"1" #elm/decimal"2"] (interval 1M 2M)
+    (testing "Integer"
+      (are [s e res] (= res (tu/compile-binop elm/interval elm/integer s e))
+        "1" "2" (interval 1 2)))
 
+    (testing "Decimal"
+      (are [s e res] (= res (tu/compile-binop elm/interval elm/decimal s e))
+        "1" "2" (interval 1M 2M)))
+
+    (testing "Date"
+      (are [s e res] (= res (tu/compile-binop elm/closed-interval elm/date s e))
+        "2020" "2021" (interval (system/date 2020) (system/date 2021))))
+
+    (testing "DateTime"
+      (are [s e res] (= res (tu/compile-binop elm/closed-interval elm/date-time s e))
+        "2020" "2021" (interval (system/date-time 2020) (system/date-time 2021)))
+
+      (testing "with ToDateTime"
+        (are [s e res] (= res (c/compile {} (elm/closed-interval [(elm/to-date-time (elm/date s)) (elm/date-time e)])))
+          "2020" "2021" (interval (system/date-time 2020) (system/date-time 2021)))))
+
+    (are [elm res] (= res (c/compile {} elm))
       #elm/interval [:< #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
                      #elm/integer"1"]
       (interval nil 1)
@@ -141,11 +158,6 @@
 ;; If either argument is null, the result is null.
 (deftest compile-after-test
   (testing "Interval"
-    (testing "null arguments result in null"
-      (are [x y res] (= res (core/-eval (c/compile {} (elm/after [x y])) {} nil nil))
-        interval-zero {:type "Null"} nil
-        {:type "Null"} interval-zero nil))
-
     (testing "if both intervals are closed, the start of the first (3) has to be greater then the end of the second (2)"
       (are [x y res] (= res (tu/compile-binop elm/after elm/interval x y))
         [#elm/integer"3" #elm/integer"4"]
@@ -177,7 +189,9 @@
     (testing "if the second interval has an unknown high bound, the result is null"
       (are [x y res] (= res (tu/compile-binop elm/after elm/interval x y))
         [#elm/integer"2" #elm/integer"3"]
-        [#elm/integer"1" {:type "Null"} :>] nil)))
+        [#elm/integer"1" {:type "Null"} :>] nil))
+
+    (tu/testing-binary-null elm/after interval-zero))
 
   (testing "Date"
     (are [x y res] (= res (tu/compile-binop elm/after elm/date x y))
@@ -278,11 +292,6 @@
 ;; If either argument is null, the result is null.
 (deftest compile-before-test
   (testing "Interval"
-    (testing "null arguments result in null"
-      (are [x y res] (= res (core/-eval (c/compile {} (elm/before [x y])) {} nil nil))
-        interval-zero {:type "Null"} nil
-        {:type "Null"} interval-zero nil))
-
     (testing "if both intervals are closed, the end of the first (2) has to be less then the start of the second (3)"
       (are [x y res] (= res (tu/compile-binop elm/before elm/interval x y))
         [#elm/integer"1" #elm/integer"2"]
@@ -314,7 +323,9 @@
     (testing "if the second interval has an unknown low bound, the result is null"
       (are [x y res] (= res (tu/compile-binop elm/before elm/interval x y))
         [#elm/integer"1" #elm/integer"2"]
-        [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer"3"] nil)))
+        [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer"3"] nil))
+
+    (tu/testing-binary-null elm/before interval-zero))
 
   (testing "Date"
     (are [x y res] (= res (tu/compile-binop elm/before elm/date x y))
@@ -419,7 +430,7 @@
 
       #elm/list [{:type "Null"}] {:type "Null"} []
       #elm/list [{:type "Null"} {:type "Null"}] {:type "Null"} []
-      #elm/list [] {:type "Null"} []
+      #elm/list[] {:type "Null"} []
 
       {:type "Null"} {:type "Null"} nil))
 
@@ -454,27 +465,33 @@
 ;; If either argument is null, the result is null.
 (deftest compile-contains-test
   (testing "Interval"
-    (testing "Null"
-      (are [interval x res] (= res (core/-eval (c/compile {} (elm/contains [interval x])) {} nil nil))
-        interval-zero {:type "Null"} nil))
-
     (testing "Integer"
       (are [interval x res] (= res (core/-eval (c/compile {} (elm/contains [interval x])) {} nil nil))
         #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"1" true
-        #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"2" false)))
+        #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"2" false))
+
+    (testing "Null"
+      (are [interval x] (nil? (c/compile {} (elm/contains [interval x])))
+        interval-zero {:type "Null"}
+
+        {:type "Null"} {:type "Null"})))
 
   (testing "List"
     (are [list x res] (= res (core/-eval (c/compile {} (elm/contains [list x])) {} nil nil))
-      #elm/list [] #elm/integer"1" false
+      #elm/list[] #elm/integer"1" false
 
       #elm/list [#elm/integer"1"] #elm/integer"1" true
       #elm/list [#elm/integer"1"] #elm/integer"2" false
 
       #elm/list [#elm/quantity[1 "m"]] #elm/quantity[100 "cm"] true
 
-      #elm/list [#elm/date"2019"] #elm/date"2019-01" false
+      #elm/list [#elm/date"2019"] #elm/date"2019-01" false)
 
-      #elm/list [] {:type "Null"} nil)))
+    (testing "Null"
+      (are [list x] (nil? (c/compile {} (elm/contains [list x])))
+        #elm/list[] {:type "Null"}
+
+        {:type "Null"} {:type "Null"}))))
 
 
 ;; 19.6. End
@@ -491,21 +508,19 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-end-test
-  (testing "Null"
-    (are [x res] (= res (core/-eval (c/compile {} {:type "End" :operand x}) {} nil nil))
-      {:type "Null"} nil))
-
   (testing "Integer"
-    (are [x res] (= res (core/-eval (c/compile {} {:type "End" :operand x}) {} nil nil))
-      #elm/interval [#elm/integer"1" #elm/integer"2"] 2
-      #elm/interval [#elm/integer"1" #elm/integer"2" :>] 1
-      #elm/interval [#elm/integer"1" {:type "Null"}] Integer/MAX_VALUE))
+    (are [x res] (= res (tu/compile-unop elm/end elm/interval x))
+      [#elm/integer"1" #elm/integer"2"] 2
+      [#elm/integer"1" #elm/integer"2" :>] 1
+      [#elm/integer"1" {:type "Null"}] Integer/MAX_VALUE))
 
   (testing "Decimal"
-    (are [x res] (= res (core/-eval (c/compile {} {:type "End" :operand x}) {} nil nil))
-      #elm/interval [#elm/decimal"1" #elm/decimal"2.1"] 2.1M
-      #elm/interval [#elm/decimal"1" #elm/decimal"2.1" :>] 2.09999999M
-      #elm/interval [#elm/decimal"1" {:type "Null"}] decimal/max)))
+    (are [x res] (= res (tu/compile-unop elm/end elm/interval x))
+      [#elm/decimal"1" #elm/decimal"2.1"] 2.1M
+      [#elm/decimal"1" #elm/decimal"2.1" :>] 2.09999999M
+      [#elm/decimal"1" {:type "Null"}] decimal/max))
+
+  (tu/testing-unary-null elm/end))
 
 
 ;; 19.7. Ends
@@ -524,19 +539,13 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-ends-test
-  (testing "Null"
-    (are [x y res] (= res (core/-eval (c/compile {} {:type "Ends" :operand [x y]}) {} nil nil))
-      {:type "Null"} interval-zero nil
-      interval-zero {:type "Null"} nil))
-
   (testing "Integer"
-    (are [x y res] (= res (core/-eval (c/compile {} {:type "Ends" :operand [x y]}) {} nil nil))
-      #elm/interval [#elm/integer"1" #elm/integer"3"]
-      #elm/interval [#elm/integer"1" #elm/integer"3"] true
-      #elm/interval [#elm/integer"2" #elm/integer"3"]
-      #elm/interval [#elm/integer"1" #elm/integer"3"] true
-      #elm/interval [#elm/integer"1" #elm/integer"3"]
-      #elm/interval [#elm/integer"2" #elm/integer"3"] false)))
+    (are [x y res] (= res (tu/compile-binop elm/ends elm/interval x y))
+      [#elm/integer"1" #elm/integer"3"] [#elm/integer"1" #elm/integer"3"] true
+      [#elm/integer"2" #elm/integer"3"] [#elm/integer"1" #elm/integer"3"] true
+      [#elm/integer"1" #elm/integer"3"] [#elm/integer"2" #elm/integer"3"] false))
+
+  (tu/testing-binary-null elm/ends interval-zero))
 
 
 ;; 19.8. Equal
@@ -568,36 +577,25 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-except-test
-  (testing "Null"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/except [x y])) {} nil nil))
-      {:type "Null"} {:type "Null"} nil))
-
   (testing "List"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/except [x y])) {} nil nil))
-      #elm/list [] #elm/list [] []
-      #elm/list [] #elm/list [#elm/integer"1"] []
-      #elm/list [#elm/integer"1"] #elm/list [#elm/integer"1"] []
-      #elm/list [#elm/integer"1"] #elm/list [] [1]
-      #elm/list [#elm/integer"1"] #elm/list [#elm/integer"2"] [1]
-      #elm/list [#elm/integer"1" #elm/integer"2"] #elm/list [#elm/integer"2"] [1]
-      #elm/list [#elm/integer"1" #elm/integer"2"] #elm/list [#elm/integer"1"] [2]
+    (are [x y res] (= res (tu/compile-binop elm/except elm/list x y))
+      [] [] []
+      [] [#elm/integer"1"] []
+      [#elm/integer"1"] [#elm/integer"1"] []
+      [#elm/integer"1"] [] [1]
+      [#elm/integer"1"] [#elm/integer"2"] [1]
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"2"] [1]
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1"] [2])
 
-      #elm/list [] {:type "Null"} nil))
+    (tu/testing-binary-null elm/except #elm/list[]))
 
   (testing "Interval"
-    (testing "Null"
-      (are [x y res] (= res (core/-eval (c/compile {} (elm/except [x y])) {} nil nil))
-        interval-zero {:type "Null"} nil))
-
     (testing "Integer"
-      (are [x y res] (= res (core/-eval (c/compile {} (elm/except [x y])) {} nil nil))
-        #elm/interval [#elm/integer"1" #elm/integer"3"]
-        #elm/interval [#elm/integer"3" #elm/integer"4"]
-        (interval 1 2)
+      (are [x y res] (= res (tu/compile-binop elm/except elm/interval x y))
+        [#elm/integer"1" #elm/integer"3"] [#elm/integer"3" #elm/integer"4"] (interval 1 2)
+        [#elm/integer"3" #elm/integer"5"] [#elm/integer"1" #elm/integer"3"] (interval 4 5)))
 
-        #elm/interval [#elm/integer"3" #elm/integer"5"]
-        #elm/interval [#elm/integer"1" #elm/integer"3"]
-        (interval 4 5)))))
+    (tu/testing-binary-null elm/except interval-zero)))
 
 
 ;; 19.11. Expand
@@ -672,31 +670,24 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-includes-test
-  (testing "Null"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/includes [x y])) {} nil nil))
-      {:type "Null"} {:type "Null"} nil))
-
   (testing "List"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/includes [x y])) {} nil nil))
-      #elm/list [] #elm/list [] true
-      #elm/list [#elm/integer"1"] #elm/list [#elm/integer"1"] true
-      #elm/list [#elm/integer"1" #elm/integer"2"] #elm/list [#elm/integer"1"] true
+    (are [x y res] (= res (tu/compile-binop elm/includes elm/list x y))
+      [] [] true
+      [#elm/integer"1"] [#elm/integer"1"] true
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1"] true
 
-      #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] false
+      [{:type "Null"}] [{:type "Null"}] false)
 
-      #elm/list [] {:type "Null"} nil))
+    (tu/testing-binary-null elm/includes #elm/list[]))
+
 
   (testing "Interval"
-    (testing "Null"
-      (are [x y res] (= res (core/-eval (c/compile {} (elm/includes [x y])) {} nil nil))
-        interval-zero {:type "Null"} nil))
-
     (testing "Integer"
-      (are [x y res] (= res (core/-eval (c/compile {} (elm/includes [x y])) {} nil nil))
-        #elm/interval [#elm/integer"1" #elm/integer"2"]
-        #elm/interval [#elm/integer"1" #elm/integer"2"] true
-        #elm/interval [#elm/integer"1" #elm/integer"2"]
-        #elm/interval [#elm/integer"1" #elm/integer"3"] false))))
+      (are [x y res] (= res (tu/compile-binop elm/includes elm/interval x y))
+        [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"2"] true
+        [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"3"] false))
+
+    (tu/testing-binary-null elm/includes interval-zero)))
 
 
 ;; 19.14. IncludedIn
@@ -785,17 +776,12 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-meets-before-test
-  (testing "Null"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/meets-before [x y])) {} nil nil))
-      interval-zero {:type "Null"} nil
-      {:type "Null"} interval-zero nil))
-
   (testing "Integer"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/meets-before [x y])) {} nil nil))
-      #elm/interval [#elm/integer"1" #elm/integer"2"]
-      #elm/interval [#elm/integer"3" #elm/integer"4"] true
-      #elm/interval [#elm/integer"1" #elm/integer"2"]
-      #elm/interval [#elm/integer"4" #elm/integer"5"] false)))
+    (are [x y res] (= res (tu/compile-binop elm/meets-before elm/interval x y))
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"3" #elm/integer"4"] true
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"4" #elm/integer"5"] false))
+
+  (tu/testing-binary-null elm/meets-before interval-zero))
 
 
 ;; 19.18. MeetsAfter
@@ -813,24 +799,65 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-meets-after-test
-  (testing "Null"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/meets-after [x y])) {} nil nil))
-      interval-zero {:type "Null"} nil
-      {:type "Null"} interval-zero nil))
-
   (testing "Integer"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/meets-after [x y])) {} nil nil))
-      #elm/interval [#elm/integer"3" #elm/integer"4"]
-      #elm/interval [#elm/integer"1" #elm/integer"2"] true
-      #elm/interval [#elm/integer"4" #elm/integer"5"]
-      #elm/interval [#elm/integer"1" #elm/integer"2"] false)))
+    (are [x y res] (= res (tu/compile-binop elm/meets-after elm/interval x y))
+      [#elm/integer"3" #elm/integer"4"] [#elm/integer"1" #elm/integer"2"] true
+      [#elm/integer"4" #elm/integer"5"] [#elm/integer"1" #elm/integer"2"] false))
+
+  (tu/testing-binary-null elm/meets-after interval-zero))
 
 
 ;; 19.20. Overlaps
 ;;
-;; Normalized to OverlapsBefore or OverlapsAfter
+;; The Overlaps operator returns true if the first interval overlaps the second.
+;; In other words, if the starting or ending point of either interval is in the
+;; other, or if the ending point of the first interval is greater than or equal
+;; to the starting point of the second interval, and the starting point of the
+;; first interval is less than or equal to the ending point of the second
+;; interval.
+;;
+;; This operator uses the semantics described in the Start and End operators to
+;; determine interval boundaries.
+;;
+;; If precision is specified and the point type is a Date, DateTime, or Time
+;; type, comparisons used in the operation are performed at the specified
+;; precision.
+;;
+;; If either argument is null, the result is null.
 (deftest compile-overlaps-test
-  (tu/unsupported-binary-operand "Overlaps"))
+  (testing "Static"
+    (are [x y res] (= res (tu/compile-binop elm/overlaps elm/interval x y))
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"3" #elm/integer"4"] false
+      [#elm/integer"3" #elm/integer"4"] [#elm/integer"1" #elm/integer"2"] false
+
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"2" #elm/integer"4"] true
+      [#elm/integer"2" #elm/integer"4"] [#elm/integer"1" #elm/integer"2"] true
+
+      [#elm/integer"1" #elm/integer"3"] [#elm/integer"2" #elm/integer"4"] true
+      [#elm/integer"2" #elm/integer"4"] [#elm/integer"1" #elm/integer"3"] true
+
+      [#elm/integer"2" #elm/integer"3"] [#elm/integer"1" #elm/integer"4"] true
+      [#elm/integer"1" #elm/integer"4"] [#elm/integer"2" #elm/integer"3"] true
+
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"2"] true))
+
+  (testing "Dynamic"
+    (are [x y res] (= res (tu/dynamic-compile-eval (elm/overlaps [(elm/interval x) (elm/interval y)])))
+      [#elm/integer"1" #elm/parameter-ref"2"] [#elm/integer"3" #elm/parameter-ref"4"] false
+      [#elm/integer"3" #elm/parameter-ref"4"] [#elm/integer"1" #elm/parameter-ref"2"] false
+
+      [#elm/integer"1" #elm/parameter-ref"2"] [#elm/integer"2" #elm/parameter-ref"4"] true
+      [#elm/integer"2" #elm/parameter-ref"4"] [#elm/integer"1" #elm/parameter-ref"2"] true
+
+      [#elm/integer"1" #elm/parameter-ref"3"] [#elm/integer"2" #elm/parameter-ref"4"] true
+      [#elm/integer"2" #elm/parameter-ref"4"] [#elm/integer"1" #elm/parameter-ref"3"] true
+
+      [#elm/integer"2" #elm/parameter-ref"3"] [#elm/integer"1" #elm/parameter-ref"4"] true
+      [#elm/integer"1" #elm/parameter-ref"4"] [#elm/integer"2" #elm/parameter-ref"3"] true
+
+      [#elm/integer"1" #elm/parameter-ref"2"] [#elm/integer"1" #elm/parameter-ref"2"] true))
+
+  (tu/testing-binary-null elm/overlaps interval-zero))
 
 
 ;; 19.21. OverlapsBefore
@@ -855,9 +882,12 @@
 ;;
 ;; If the source interval is null, the result is null.
 (deftest compile-point-from-test
-  (are [x res] (= res (core/-eval (c/compile {} {:type "PointFrom" :operand x}) {} nil nil))
-    #elm/interval [#elm/integer"1" #elm/integer"1"] 1
-    {:type "Null"} nil))
+  (testing "Integer"
+    (are [x res] (= res (tu/compile-unop elm/point-from elm/interval x))
+      [#elm/integer"1" #elm/integer"1"] 1
+      [#elm/integer"2" #elm/integer"2"] 2))
+
+  (tu/testing-unary-null elm/point-from))
 
 
 ;; 19.24. ProperContains
@@ -882,15 +912,13 @@
 ;; If either argument is null, the result is null.
 (deftest compile-proper-contains-test
   (testing "Interval"
-    (testing "Null"
-      (are [interval x res] (= res (core/-eval (c/compile {} (elm/proper-contains [interval x])) {} nil nil))
-        interval-zero {:type "Null"} nil))
-
     (testing "Integer"
-      (are [interval x res] (= res (core/-eval (c/compile {} (elm/proper-contains [interval x])) {} nil nil))
+      (are [interval x res] (= res (c/compile {} (elm/proper-contains [interval x])))
         #elm/interval [#elm/integer"1" #elm/integer"3"] #elm/integer"2" true
         #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"1" false
-        #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"2" false))))
+        #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"2" false))
+
+    (tu/testing-binary-null elm/proper-contains interval-zero)))
 
 
 ;; 19.25. ProperIn
@@ -923,21 +951,13 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-proper-includes-test
-  (testing "Null"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/proper-includes [x y])) {} nil nil))
-      {:type "Null"} {:type "Null"} nil))
-
   (testing "Interval"
-    (testing "Null"
-      (are [x y res] (= res (core/-eval (c/compile {} (elm/proper-includes [x y])) {} nil nil))
-        interval-zero {:type "Null"} nil))
-
     (testing "Integer"
-      (are [x y res] (= res (core/-eval (c/compile {} (elm/proper-includes [x y])) {} nil nil))
-        #elm/interval [#elm/integer"1" #elm/integer"3"]
-        #elm/interval [#elm/integer"1" #elm/integer"2"] true
-        #elm/interval [#elm/integer"1" #elm/integer"2"]
-        #elm/interval [#elm/integer"1" #elm/integer"2"] false))))
+      (are [x y res] (= res (tu/compile-binop elm/proper-includes elm/interval x y))
+        [#elm/integer"1" #elm/integer"3"] [#elm/integer"1" #elm/integer"2"] true
+        [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"2"] false))
+
+    (tu/testing-binary-null elm/proper-includes interval-zero)))
 
 
 ;; 19.27. ProperIncludedIn
@@ -977,21 +997,19 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-start-test
-  (testing "Null"
-    (are [x res] (= res (core/-eval (c/compile {} {:type "Start" :operand x}) {} nil nil))
-      {:type "Null"} nil))
-
   (testing "Integer"
-    (are [x res] (= res (core/-eval (c/compile {} {:type "Start" :operand x}) {} nil nil))
-      #elm/interval [#elm/integer"1" #elm/integer"2"] 1
-      #elm/interval [:< #elm/integer"1" #elm/integer"2"] 2
-      #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer"2"] Integer/MIN_VALUE))
+    (are [x res] (= res (tu/compile-unop elm/start elm/interval x))
+      [#elm/integer"1" #elm/integer"2"] 1
+      [:< #elm/integer"1" #elm/integer"2"] 2
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer"2"] Integer/MIN_VALUE))
 
   (testing "Decimal"
-    (are [x res] (= res (core/-eval (c/compile {} {:type "Start" :operand x}) {} nil nil))
-      #elm/interval [#elm/decimal"1.1" #elm/decimal"2"] 1.1M
-      #elm/interval [:< #elm/decimal"1.1" #elm/decimal"2"] 1.10000001M
-      #elm/interval [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"} #elm/decimal"2"] decimal/min)))
+    (are [x res] (= res (tu/compile-unop elm/start elm/interval x))
+      [#elm/decimal"1.1" #elm/decimal"2"] 1.1M
+      [:< #elm/decimal"1.1" #elm/decimal"2"] 1.10000001M
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"} #elm/decimal"2"] decimal/min))
+
+  (tu/testing-unary-null elm/start))
 
 
 ;; 19.30. Starts
@@ -1010,19 +1028,13 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-starts-test
-  (testing "Null"
-    (are [x y res] (= res (core/-eval (c/compile {} {:type "Starts" :operand [x y]}) {} nil nil))
-      {:type "Null"} #elm/interval [#elm/integer"1" #elm/integer"2"] nil
-      #elm/interval [#elm/integer"1" #elm/integer"2"] {:type "Null"} nil))
-
   (testing "Integer"
-    (are [x y res] (= res (core/-eval (c/compile {} {:type "Starts" :operand [x y]}) {} nil nil))
-      #elm/interval [#elm/integer"1" #elm/integer"3"]
-      #elm/interval [#elm/integer"1" #elm/integer"3"] true
-      #elm/interval [#elm/integer"1" #elm/integer"2"]
-      #elm/interval [#elm/integer"1" #elm/integer"3"] true
-      #elm/interval [#elm/integer"2" #elm/integer"3"]
-      #elm/interval [#elm/integer"1" #elm/integer"3"] false)))
+    (are [x y res] (= res (tu/compile-binop elm/starts elm/interval x y))
+      [#elm/integer"1" #elm/integer"3"] [#elm/integer"1" #elm/integer"3"] true
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"3"] true
+      [#elm/integer"2" #elm/integer"3"] [#elm/integer"1" #elm/integer"3"] false))
+
+  (tu/testing-binary-null elm/starts interval-zero))
 
 
 ;; 19.31. Union
@@ -1044,21 +1056,19 @@
 ;; TODO: only implemented as binary operator because it's binary in CQL.
 (deftest compile-union-test
   (testing "List"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/union [x y])) {} nil nil))
-      #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] [nil nil]
-      #elm/list [#elm/integer"1"] #elm/list [#elm/integer"1"] [1]
-      #elm/list [#elm/integer"1"] #elm/list [#elm/integer"2"] [1 2]
-      #elm/list [#elm/integer"1"] #elm/list [#elm/integer"1" #elm/integer"2"] [1 2]
+    (are [x y res] (= res (tu/compile-binop elm/union elm/list x y))
+      [{:type "Null"}] [{:type "Null"}] [nil nil]
+      [#elm/integer"1"] [#elm/integer"1"] [1]
+      [#elm/integer"1"] [#elm/integer"2"] [1 2]
+      [#elm/integer"1"] [#elm/integer"1" #elm/integer"2"] [1 2])
 
-      {:type "Null"} {:type "Null"} nil))
+    (tu/testing-binary-null elm/union #elm/list[]))
 
   (testing "Interval"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/union [x y])) {} nil nil))
-      #elm/interval [#elm/integer"1" #elm/integer"2"]
-      #elm/interval [#elm/integer"3" #elm/integer"4"]
-      (interval 1 4)
+    (are [x y res] (= res (tu/compile-binop elm/union elm/interval x y))
+      [#elm/integer"1" #elm/integer"2"] [#elm/integer"3" #elm/integer"4"] (interval 1 4))
 
-      {:type "Null"} {:type "Null"} nil)))
+    (tu/testing-binary-null elm/union interval-zero)))
 
 
 ;; 19.32. Width
@@ -1071,10 +1081,8 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-width-test
-  (testing "Null"
-    (are [x res] (= res (core/-eval (c/compile {} {:type "Width" :operand x}) {} nil nil))
-      {:type "Null"} nil))
-
   (testing "Integer"
-    (are [x res] (= res (core/-eval (c/compile {} {:type "Width" :operand x}) {} nil nil))
-      #elm/interval [#elm/integer"1" #elm/integer"2"] 1)))
+    (are [x res] (= res (tu/compile-unop elm/width elm/interval x))
+      [#elm/integer"1" #elm/integer"2"] 1))
+
+  (tu/testing-unary-null elm/width))

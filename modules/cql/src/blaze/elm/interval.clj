@@ -103,7 +103,9 @@
         (->Interval (:start left) (:end right))))))
 
 
-(defn interval [start end]
+(defn interval
+  "Returns an interval with the given `start` and `end` bounds."
+  [start end]
   (if-not (false? (p/less-or-equal start end))
     (->Interval start end)
     (throw (ex-info "Invalid interval bounds." {:start start :end end}))))

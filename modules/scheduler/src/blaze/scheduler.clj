@@ -1,5 +1,6 @@
 (ns blaze.scheduler
   (:require
+    [blaze.executors :as ex]
     [blaze.scheduler.protocol :as p]
     [blaze.scheduler.spec]
     [integrant.core :as ig]
@@ -38,9 +39,9 @@
 
 
 (defmethod ig/halt-key! :blaze/scheduler
-  [_ ^ScheduledExecutorService scheduler]
+  [_ scheduler]
   (log/info "Stopping scheduler...")
-  (.shutdown scheduler)
-  (if (.awaitTermination scheduler 10 TimeUnit/SECONDS)
+  (ex/shutdown! scheduler)
+  (if (ex/await-termination scheduler 10 TimeUnit/SECONDS)
     (log/info "Scheduler was stopped successfully")
     (log/warn "Got timeout while stopping the scheduler")))
