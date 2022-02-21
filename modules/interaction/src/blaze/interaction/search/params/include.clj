@@ -1,7 +1,6 @@
 (ns blaze.interaction.search.params.include
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.handler.fhir.util :as fhir-util]
     [clojure.string :as str]))
 

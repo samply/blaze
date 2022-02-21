@@ -1,6 +1,5 @@
 (ns blaze.interaction.history.util
   (:require
-    [blaze.db.api-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.util :as iu]

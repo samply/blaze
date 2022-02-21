@@ -4,7 +4,6 @@
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.executors :as ex]

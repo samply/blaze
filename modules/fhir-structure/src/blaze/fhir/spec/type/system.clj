@@ -12,7 +12,6 @@
   (:refer-clojure :exclude [boolean? decimal? integer? string? type])
   (:require
     [blaze.anomaly :as ba]
-    [blaze.anomaly-spec]
     [cognitect.anomalies :as anom]
     [java-time.core :as time-core])
   (:import

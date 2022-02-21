@@ -6,7 +6,6 @@
   (:require
     [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.db.api :as d]
-    [blaze.db.api-spec]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.spec]
     [blaze.elm.util :as elm-util]

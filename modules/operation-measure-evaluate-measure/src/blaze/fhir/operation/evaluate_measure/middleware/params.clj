@@ -1,7 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
     [blaze.fhir.spec :as fhir-spec]

@@ -1,7 +1,6 @@
 (ns blaze.elm.compiler.library
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.elm.compiler :as compiler]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]

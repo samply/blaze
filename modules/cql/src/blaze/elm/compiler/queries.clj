@@ -9,7 +9,6 @@
     [blaze.coll.core :as coll]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.structured-values :as structured-values]
-    [blaze.elm.expression-spec]
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec])
   (:import

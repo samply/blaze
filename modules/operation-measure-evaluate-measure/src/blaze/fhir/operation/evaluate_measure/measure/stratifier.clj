@@ -1,7 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.stratifier
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
     [blaze.fhir.spec.type :as type]))

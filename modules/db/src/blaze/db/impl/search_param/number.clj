@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.number
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.protocols :as p]

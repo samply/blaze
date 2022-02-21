@@ -1,7 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.cql
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.db.api :as d]
     [blaze.elm.expression :as expr]
     [blaze.fhir.spec :as fhir-spec]

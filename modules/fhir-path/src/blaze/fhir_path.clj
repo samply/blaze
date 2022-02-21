@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [compile eval resolve])
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.anomaly-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
