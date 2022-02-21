@@ -1,8 +1,7 @@
 (ns blaze.db.search-param-registry
   (:refer-clojure :exclude [get])
   (:require
-    [blaze.anomaly :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.coll.core :as coll]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param.core :as sc]
@@ -59,13 +58,18 @@
         (into (map val) (index type))))
 
   (-linked-compartments [_ resource]
-    (into
+    (transduce
+      (comp
+        (map
+          (fn [{:keys [def-code search-param]}]
+            (when-ok [compartment-ids (search-param/compartment-ids search-param resource)]
+              (coll/eduction
+                (map (fn [id] [def-code id]))
+                compartment-ids))))
+        (halt-when ba/anomaly?)
+        cat)
+      conj
       #{}
-      (mapcat
-        (fn [{:keys [def-code search-param]}]
-          (coll/eduction
-            (map (fn [id] [def-code id]))
-            (search-param/compartment-ids search-param resource))))
       (compartment-index (name (fhir-spec/fhir-type resource))))))
 
 

@@ -1,7 +1,6 @@
 (ns blaze.db.resource-store.cassandra
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.byte-string :as bs]
     [blaze.cassandra :as cass]

@@ -2,7 +2,6 @@
   "https://www.hl7.org/fhir/search.html#has"
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]

@@ -1,7 +1,6 @@
 (ns blaze.interaction.search.params
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.search.params.include :as include]

@@ -1,7 +1,6 @@
 (ns blaze.page-store.cassandra.codec
   (:require
     [blaze.anomaly :as ba]
-    [blaze.anomaly-spec]
     [cognitect.anomalies :as anom]
     [jsonista.core :as j])
   (:import

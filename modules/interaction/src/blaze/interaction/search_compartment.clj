@@ -1,7 +1,6 @@
 (ns blaze.interaction.search-compartment
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.db.spec]

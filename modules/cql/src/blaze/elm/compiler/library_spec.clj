@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler.library-spec
   (:require
+    [blaze.anomaly-spec]
     [blaze.elm.compiler-spec]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.library :as library]

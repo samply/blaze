@@ -5,7 +5,6 @@
     [blaze.db.impl.index.tx-error :as tx-error]
     [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]))
 

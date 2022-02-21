@@ -64,7 +64,7 @@
 (s/fdef search-param/compartment-ids
   :args (s/cat :search-param :blaze.db/search-param
                :resource :blaze/resource)
-  :ret (s/coll-of :blaze.resource/id))
+  :ret (s/or :ids (s/coll-of :blaze.resource/id) :anomaly ::anom/anomaly))
 
 
 (s/fdef search-param/index-entries
