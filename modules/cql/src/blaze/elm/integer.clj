@@ -86,9 +86,6 @@
 
 ;; 16.13. Modulo
 (extend-protocol p/Modulo
-  nil
-  (modulo [_ _])
-
   Number
   (modulo [x div]
     (try
@@ -172,7 +169,8 @@
 ;; 22.25. ToInteger
 (extend-protocol p/ToInteger
   Integer
-  (to-integer [x] x)
+  (to-integer [x]
+    (long x))
 
   Long
   (to-integer [x] x)
@@ -187,7 +185,8 @@
 ;; 22.27. ToLong
 (extend-protocol p/ToLong
   Integer
-  (to-long [x] (long x))
+  (to-long [x]
+    (long x))
 
   Long
   (to-long [x] x)
