@@ -4,6 +4,7 @@
  fhir/url blaze.fhir.spec.type/->Url
  fhir/canonical blaze.fhir.spec.type/->Canonical
  fhir/base64Binary blaze.fhir.spec.type/->Base64Binary
+ fhir/instant blaze.fhir.spec.type/->Instant
  fhir/date blaze.fhir.spec.type/->Date
  fhir/dateTime blaze.fhir.spec.type/->DateTime
  fhir/time blaze.fhir.spec.type/->Time

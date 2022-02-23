@@ -382,12 +382,12 @@
 ;; ---- instant ---------------------------------------------------------------
 
 
-(defn- format-offset-date-time [date-time]
+(defn- format-offset-date-time ^String [date-time]
   (.format DateTimeFormatter/ISO_DATE_TIME date-time))
 
 
 ;; Implementation of a FHIR instant with a variable ZoneOffset.
-(deftype OffsetInstant [^OffsetDateTime value]
+(deftype OffsetInstant [value]
   p/FhirType
   (-type [_] :fhir/instant)
   (-value [_] value)
@@ -413,6 +413,12 @@
       (.serialize OffsetDateTimeSerializer/INSTANCE (.value offset-instant) gen provider))))
 
 
+(defmethod print-method OffsetInstant [^OffsetInstant instant ^Writer w]
+  (.write w "#fhir/instant\"")
+  (.write w (format-offset-date-time (.value instant)))
+  (.write w "\""))
+
+
 (extend-protocol p/FhirType
   Instant
   (-type [_] :fhir/instant)
@@ -423,6 +429,12 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into (p/-value instant) sink))
   (-references [_]))
+
+
+(defmethod print-method Instant [^Instant instant ^Writer w]
+  (.write w "#fhir/instant\"")
+  (.write w (str instant))
+  (.write w "\""))
 
 
 (defn ->Instant [s]
@@ -1338,6 +1350,14 @@
 (defmethod print-dup Year [^Year year ^Writer w]
   (.write w "#=(java.time.Year/of ")
   (.write w (str (.getValue year)))
+  (.write w ")"))
+
+
+(defmethod print-dup Instant [^Instant instant ^Writer w]
+  (.write w "#=(java.time.Instant/ofEpochSecond ")
+  (.write w (str (.getEpochSecond instant)))
+  (.write w " ")
+  (.write w (str (.getNano instant)))
   (.write w ")"))
 
 
