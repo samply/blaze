@@ -106,6 +106,13 @@
    :name name})
 
 
+;; 9.4. FunctionRef
+(defn function-ref [name & ops]
+  {:type "FunctionRef"
+   :name name
+   :operand ops})
+
+
 
 ;; 11. External Data
 
@@ -318,11 +325,13 @@
     (assoc :precision precision)))
 
 
+;; 16.20. Subtract
 (defn subtract [ops]
   {:type "Subtract"
    :operand ops})
 
 
+;; 16.21. Successor
 (defn successor [op]
   {:type "Successor"
    :operand op})
@@ -334,10 +343,59 @@
    :operand op})
 
 
+;; 16.23. TruncatedDivide
 (defn truncated-divide [ops]
   {:type "TruncatedDivide"
    :operand ops})
 
+
+
+;; 17. String Operators
+
+;; 17.3. EndsWith
+(defn ends-with [ops]
+  {:type "EndsWith"
+   :operand ops})
+
+
+;; 17.6. Indexer
+(defn indexer [ops]
+  {:type "Indexer"
+   :operand ops})
+
+
+;; 17.8. Length
+(defn length [x]
+  {:type "Length"
+   :operand x})
+
+
+;; 17.9. Lower
+(defn lower [x]
+  {:type "Lower"
+   :operand x})
+
+
+;; 17.10. Matches
+(defn matches [ops]
+  {:type "Matches"
+   :operand ops})
+
+
+;; 17.16. StartsWith
+(defn starts-with [ops]
+  {:type "StartsWith"
+   :operand ops})
+
+
+;; 17.18. Upper
+(defn upper [x]
+  {:type "Upper"
+   :operand x})
+
+
+
+;; 18. Date and Time Operators
 
 ;; 18.14. SameAs
 (defn same-as [[x y precision]]
@@ -495,8 +553,12 @@
 
 
 ;; 19.5. Contains
-(defn contains [ops]
-  {:type "Contains" :operand ops})
+(defn contains [[list x precision]]
+  (cond->
+    {:type "Contains"
+     :operand [list x]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.6. End
@@ -505,8 +567,12 @@
 
 
 ;; 19.7. Ends
-(defn ends [ops]
-  {:type "Ends" :operand ops})
+(defn ends [[x y precision]]
+  (cond->
+    {:type "Ends"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.10. Except
@@ -515,8 +581,12 @@
 
 
 ;; 19.13. Includes
-(defn includes [ops]
-  {:type "Includes" :operand ops})
+(defn includes [[x y precision]]
+  (cond->
+    {:type "Includes"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.15. Intersect
@@ -525,18 +595,30 @@
 
 
 ;; 19.17. MeetsBefore
-(defn meets-before [ops]
-  {:type "MeetsBefore" :operand ops})
+(defn meets-before [[x y precision]]
+  (cond->
+    {:type "MeetsBefore"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.18. MeetsAfter
-(defn meets-after [ops]
-  {:type "MeetsAfter" :operand ops})
+(defn meets-after [[x y precision]]
+  (cond->
+    {:type "MeetsAfter"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.20. Overlaps
-(defn overlaps [ops]
-  {:type "Overlaps" :operand ops})
+(defn overlaps [[x y precision]]
+  (cond->
+    {:type "Overlaps"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.23. PointFrom
@@ -545,13 +627,21 @@
 
 
 ;; 19.24. ProperContains
-(defn proper-contains [ops]
-  {:type "ProperContains" :operand ops})
+(defn proper-contains [[x y precision]]
+  (cond->
+    {:type "ProperContains"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.26. ProperIncludes
-(defn proper-includes [ops]
-  {:type "ProperIncludes" :operand ops})
+(defn proper-includes [[x y precision]]
+  (cond->
+    {:type "ProperIncludes"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.29. Start
@@ -560,8 +650,12 @@
 
 
 ;; 19.30. Starts
-(defn starts [ops]
-  {:type "Starts" :operand ops})
+(defn starts [[x y precision]]
+  (cond->
+    {:type "Starts"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
 
 
 ;; 19.31. Union

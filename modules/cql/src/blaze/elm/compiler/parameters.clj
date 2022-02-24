@@ -26,7 +26,9 @@
     (let [value (get parameters name ::not-found)]
       (if (identical? ::not-found value)
         (throw-anom (parameter-value-not-found-anom context name))
-        value))))
+        value)))
+  (-form [_]
+    `(~'param-ref ~name)))
 
 
 (defn- find-parameter-def

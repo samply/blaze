@@ -34,49 +34,49 @@
 (deftest compile-literal-test
   (testing "Boolean Literal"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/boolean"true" true
-      #elm/boolean"false" false))
+      #elm/boolean "true" true
+      #elm/boolean "false" false))
 
   (testing "Decimal Literal"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/decimal"-1" -1M
-      #elm/decimal"0" 0M
-      #elm/decimal"1" 1M
+      #elm/decimal "-1" -1M
+      #elm/decimal "0" 0M
+      #elm/decimal "1" 1M
 
-      #elm/decimal"-0.1" -0.1M
-      #elm/decimal"0.0" 0M
-      #elm/decimal"0.1" 0.1M
+      #elm/decimal "-0.1" -0.1M
+      #elm/decimal "0.0" 0M
+      #elm/decimal "0.1" 0.1M
 
-      #elm/decimal"0.000000001" 0M
-      #elm/decimal"0.000000005" 1E-8M
+      #elm/decimal "0.000000001" 0M
+      #elm/decimal "0.000000005" 1E-8M
 
-      #elm/decimal"-99999999999999999999.99999999" -99999999999999999999.99999999M
-      #elm/decimal"99999999999999999999.99999999" 99999999999999999999.99999999M)
+      #elm/decimal "-99999999999999999999.99999999" -99999999999999999999.99999999M
+      #elm/decimal "99999999999999999999.99999999" 99999999999999999999.99999999M)
 
     (testing "failure"
-      (given (ba/try-anomaly (c/compile {} #elm/decimal"x"))
+      (given (ba/try-anomaly (c/compile {} #elm/decimal "x"))
         ::anom/category := ::anom/incorrect
         ::anom/message := "Incorrect decimal literal `x`.")))
 
   (testing "Long Literal"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/long"-1" -1
-      #elm/long"0" 0
-      #elm/long"1" 1)
+      #elm/long "-1" -1
+      #elm/long "0" 0
+      #elm/long "1" 1)
 
     (testing "failure"
-      (given (ba/try-anomaly (c/compile {} #elm/long"x"))
+      (given (ba/try-anomaly (c/compile {} #elm/long "x"))
         ::anom/category := ::anom/incorrect
         ::anom/message := "Incorrect long literal `x`.")))
 
   (testing "Integer Literal"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/integer"-1" -1
-      #elm/integer"0" 0
-      #elm/integer"1" 1)
+      #elm/integer "-1" -1
+      #elm/integer "0" 0
+      #elm/integer "1" 1)
 
     (testing "failure"
-      (given (ba/try-anomaly (c/compile {} #elm/integer"x"))
+      (given (ba/try-anomaly (c/compile {} #elm/integer "x"))
         ::anom/category := ::anom/incorrect
         ::anom/message := "Incorrect integer literal `x`.")))
 

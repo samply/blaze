@@ -92,19 +92,25 @@
 (defrecord SourcePropertyExpression [source key]
   core/Expression
   (-eval [_ {:keys [db] :as context} resource scope]
-    (get-property db key (core/-eval source context resource scope))))
+    (get-property db key (core/-eval source context resource scope)))
+  (-form [_]
+    `(~key ~(core/-form source))))
 
 
 (defrecord SingleScopePropertyExpression [key]
   core/Expression
   (-eval [_ {:keys [db]} _ value]
-    (get-property db key value)))
+    (get-property db key value))
+  (-form [_]
+    `(~key ~'default)))
 
 
 (defrecord ScopePropertyExpression [scope-key key]
   core/Expression
   (-eval [_ {:keys [db]} _ scope]
-    (get-property db key (get scope scope-key))))
+    (get-property db key (get scope scope-key)))
+  (-form [_]
+    `(~key ~(symbol (name scope-key)))))
 
 
 (defn- path->key [path]

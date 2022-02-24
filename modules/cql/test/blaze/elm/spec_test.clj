@@ -24,7 +24,7 @@
 (deftest literal-test
   (testing "valid"
     (are [x] (s/valid? :elm/expression x)
-      #elm/boolean"true"))
+      #elm/boolean "true"))
 
   (testing "invalid"
     (given (s/explain-data :elm/expression {:type "Literal"})
@@ -34,7 +34,7 @@
 (deftest literal-integer-test
   (testing "valid"
     (are [x] (s/valid? :elm/integer x)
-      #elm/integer"0"))
+      #elm/integer "0"))
 
   (testing "invalid"
     (given (s/explain-data :elm/integer nil)
@@ -43,14 +43,14 @@
     (given (s/explain-data :elm/integer {:type "Literal"})
       [::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :valueType)))
 
-    (given (s/explain-data :elm/integer #elm/boolean"true")
+    (given (s/explain-data :elm/integer #elm/boolean "true")
       [::s/problems 0 :path 0] := :valueType)))
 
 
 (deftest literal-decimal-test
   (testing "valid"
     (are [x] (s/valid? :elm/decimal x)
-      #elm/decimal"0"))
+      #elm/decimal "0"))
 
   (testing "invalid"
     (given (s/explain-data :elm/decimal nil)
@@ -59,7 +59,7 @@
     (given (s/explain-data :elm/decimal {:type "Literal"})
       [::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :valueType)))
 
-    (given (s/explain-data :elm/decimal #elm/boolean"true")
+    (given (s/explain-data :elm/decimal #elm/boolean "true")
       [::s/problems 0 :path 0] := :valueType)))
 
 
@@ -67,7 +67,7 @@
   (testing "valid"
     (are [x] (s/valid? :elm/expression x)
       #elm/tuple{}
-      #elm/tuple{"id" #elm/integer"0"}))
+      #elm/tuple{"id" #elm/integer "0"}))
 
   (testing "invalid"
     (given (s/explain-data :elm/expression {:type "Tuple" :element "foo"})
@@ -86,8 +86,8 @@
 (deftest instance-test
   (testing "valid"
     (are [x] (s/valid? :elm/expression x)
-      #elm/instance["{urn:hl7-org:elm-types:r1}Code"
-                    {"system" #elm/string"foo" "code" #elm/string"bar"}]))
+      #elm/instance ["{urn:hl7-org:elm-types:r1}Code"
+                    {"system" #elm/string "foo" "code" #elm/string "bar"}]))
 
   (testing "invalid"
     (given (s/explain-data :elm/expression {:type "Instance"})
@@ -114,7 +114,7 @@
   (testing "valid"
     (are [x] (s/valid? :elm/expression x)
       {:type "Query"
-       :source [{:alias "foo" :expression #elm/integer"0"}]}))
+       :source [{:alias "foo" :expression #elm/integer "0"}]}))
 
   (testing "invalid"
     (given (s/explain-data :elm/expression {:type "Query"})
@@ -131,54 +131,54 @@
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"}]})
+                                            [{:expression #elm/integer "0"}]})
       [::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :alias)))
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"
+                                            [{:expression #elm/integer "0"
                                               :alias "foo"}]
                                             :sort "foo"})
       [::s/problems 0 :pred] := `map?)
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"
+                                            [{:expression #elm/integer "0"
                                               :alias "foo"}]
                                             :sort {}})
       [::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :by)))
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"
+                                            [{:expression #elm/integer "0"
                                               :alias "foo"}]
                                             :sort {:by "foo"}})
       [::s/problems 0 :pred] := `coll?)
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"
+                                            [{:expression #elm/integer "0"
                                               :alias "foo"}]
                                             :sort {:by ["foo"]}})
       [::s/problems 0 :pred] := `blaze.elm.spec/sort-by-item)
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"
+                                            [{:expression #elm/integer "0"
                                               :alias "foo"}]
                                             :sort {:by [{:type "ByDirection"}]}})
       [::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :direction)))
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"
+                                            [{:expression #elm/integer "0"
                                               :alias "foo"}]
                                             :sort {:by [{:type "ByColumn"}]}})
       [::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :direction)))
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"
+                                            [{:expression #elm/integer "0"
                                               :alias "foo"}]
                                             :sort
                                             {:by
@@ -189,7 +189,7 @@
 
     (given (s/explain-data :elm/expression {:type "Query"
                                             :source
-                                            [{:expression #elm/integer"0"
+                                            [{:expression #elm/integer "0"
                                               :alias "foo"}]
                                             :sort
                                             {:by

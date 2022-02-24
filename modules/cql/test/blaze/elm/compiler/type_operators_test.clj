@@ -44,7 +44,7 @@
 (deftest compile-as-test
   (testing "FHIR types"
     (are [elm resource res] (= res (core/-eval (c/compile {} elm) {} nil {"R" resource}))
-      #elm/as["{http://hl7.org/fhir}boolean"
+      #elm/as ["{http://hl7.org/fhir}boolean"
               {:path "deceased"
                :scope "R"
                :type "Property"}]
@@ -52,67 +52,93 @@
       true
 
       #elm/as ["{http://hl7.org/fhir}integer"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+              {:path "value"
+               :scope "R"
+               :type "Property"}]
       {:fhir/type :fhir/Observation :value (int 1)}
       (int 1)
 
       #elm/as ["{http://hl7.org/fhir}string"
-               {:path "name"
-                :scope "R"
-                :type "Property"}]
+              {:path "name"
+               :scope "R"
+               :type "Property"}]
       {:fhir/type :fhir/Account :name "a"}
       "a"
 
       #elm/as ["{http://hl7.org/fhir}decimal"
-               {:path "duration"
-                :scope "R"
-                :type "Property"}]
+              {:path "duration"
+               :scope "R"
+               :type "Property"}]
       {:fhir/type :fhir/Media :duration 1.1M}
       1.1M
 
       #elm/as ["{http://hl7.org/fhir}uri"
-               {:path "url"
-                :scope "R"
-                :type "Property"}]
+              {:path "url"
+               :scope "R"
+               :type "Property"}]
       {:fhir/type :fhir/Measure :url #fhir/uri"a"}
       #fhir/uri"a"
 
       #elm/as ["{http://hl7.org/fhir}url"
-               {:path "address"
-                :scope "R"
-                :type "Property"}]
+              {:path "address"
+               :scope "R"
+               :type "Property"}]
       {:fhir/type :fhir/Endpoint :address #fhir/url"a"}
       #fhir/url"a"
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+              {:path "value"
+               :scope "R"
+               :type "Property"}]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       #fhir/dateTime"2019-09-04"
 
       #elm/as ["{http://hl7.org/fhir}Quantity"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+              {:path "value"
+               :scope "R"
+               :type "Property"}]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       nil))
 
   (testing "ELM types"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
-      #elm/as ["{urn:hl7-org:elm-types:r1}Boolean" #elm/boolean"true"]
+      #elm/as ["{urn:hl7-org:elm-types:r1}Boolean" #elm/boolean "true"]
       true
 
-      #elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/integer"1"]
+      #elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/integer "1"]
       1
 
       #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
       nil
 
-      #elm/as ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time"2019-09-04"]
-      (system/date-time 2019 9 4))))
+      #elm/as ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2019-09-04"]
+      (system/date-time 2019 9 4)))
+
+  (testing "form"
+    (are [elm form] (= form (core/-form (c/compile {} elm)))
+      #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
+      nil
+
+      #elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/integer "1"]
+      '(as elm/integer 1)
+
+      #elm/as ["{http://hl7.org/fhir}dateTime"
+              {:path "value"
+               :scope "R"
+               :type "Property"}]
+      '(as fhir/dateTime (:value R))
+
+      {:type "As"
+       :asTypeSpecifier
+       {:type "ListTypeSpecifier"
+        :elementType
+        {:type "NamedTypeSpecifier"
+         :name "{http://hl7.org/fhir}Quantity"}}
+       :operand
+       {:path "value"
+        :scope "R"
+        :type "Property"}}
+      '(as (list fhir/Quantity) (:value R)))))
 
 
 ;; TODO 22.2. CanConvert
@@ -130,13 +156,24 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-can-convert-quantity-test
-  (are [argument unit] (true? (core/-eval (c/compile {} #elm/can-convert-quantity [argument unit]) {} nil nil))
-    #elm/quantity[5 "mg"] #elm/string "g")
+  (let [compile-op (partial tu/compile-binop elm/can-convert-quantity
+                            elm/quantity elm/string)]
+    (testing "true"
+      (are [argument unit] (true? (compile-op argument unit))
+        [5 "mg"] "g"))
 
-  (are [argument unit] (false? (core/-eval (c/compile {} #elm/can-convert-quantity [argument unit]) {} nil nil))
-    #elm/quantity[5 "mg"] #elm/string "m")
+    (testing "false"
+      (are [argument unit] (false? (compile-op argument unit))
+        [5 "mg"] "m")))
 
-  (tu/testing-binary-null elm/can-convert-quantity #elm/quantity[1 "m"] #elm/string "m"))
+  (tu/testing-binary-null elm/can-convert-quantity #elm/quantity [1 "m"]
+                          #elm/string "m")
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "q"}]}}}
+          elm #elm/can-convert-quantity[#elm/parameter-ref "q" #elm/string "g"]
+          expr (c/compile compile-ctx elm)]
+      (is (= '(can-convert-quantity (param-ref "q") "g") (core/-form expr))))))
 
 
 ;; 22.4. Children
@@ -180,12 +217,18 @@
 ;; If either argument is null, the result is null.
 (deftest compile-convert-quantity-test
   (are [argument unit res] (p/equal res (core/-eval (c/compile {} (elm/convert-quantity [argument unit])) {} nil nil))
-    #elm/quantity[5 "mg"] #elm/string "g" (quantity/quantity 0.005 "g"))
+    #elm/quantity [5 "mg"] #elm/string "g" (quantity/quantity 0.005 "g"))
 
   (are [argument unit] (nil? (core/-eval (c/compile {} (elm/convert-quantity [argument unit])) {} nil nil))
-    #elm/quantity[5 "mg"] #elm/string "m")
+    #elm/quantity [5 "mg"] #elm/string "m")
 
-  (tu/testing-binary-null elm/convert-quantity #elm/quantity[5 "mg"] #elm/string "m"))
+  (tu/testing-binary-null elm/convert-quantity #elm/quantity [5 "mg"] #elm/string "m")
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "q"}]}}}
+          elm #elm/convert-quantity[#elm/parameter-ref "q" #elm/string "g"]
+          expr (c/compile compile-ctx elm)]
+      (is (= '(convert-quantity (param-ref "q") "g") (core/-form expr))))))
 
 
 ;; TODO 22.7. ConvertsToBoolean
@@ -378,8 +421,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-decimal-test
   (testing "String"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-decimal elm/string x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-decimal elm/string x))
       (str decimal/min) decimal/min
       "-1.1" -1.1M
       "-1" -1M
@@ -391,7 +433,13 @@
       (str (+ decimal/max 1e-8M)) nil
       "a" nil))
 
-  (tu/testing-unary-null elm/to-decimal))
+  (tu/testing-unary-null elm/to-decimal)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-decimal #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-decimal (param-ref "x")) (core/-form expr))))))
 
 
 ;; 22.25. ToInteger
@@ -431,7 +479,13 @@
       "true" 1
       "false" 0))
 
-  (tu/testing-unary-null elm/to-integer))
+  (tu/testing-unary-null elm/to-integer)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-integer #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-integer (param-ref "x")) (core/-form expr))))))
 
 
 ;; 22.26. ToList
@@ -458,7 +512,13 @@
       "1" [1]))
 
   (testing "Null"
-    (is (= [] (core/-eval (c/compile {} #elm/to-list{:type "Null"}) {} nil nil)))))
+    (is (= [] (core/-eval (c/compile {} #elm/to-list{:type "Null"}) {} nil nil))))
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-list #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-list (param-ref "x")) (core/-form expr))))))
 
 
 ;; 22.27. ToLong
@@ -502,7 +562,13 @@
       "true" 1
       "false" 0))
 
-  (tu/testing-unary-null elm/to-long))
+  (tu/testing-unary-null elm/to-long)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-long #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-long (param-ref "x")) (core/-form expr))))))
 
 
 ;; 22.28. ToQuantity
@@ -569,7 +635,13 @@
 
   ;; TODO: Ratio
 
-  (tu/testing-unary-null elm/to-quantity))
+  (tu/testing-unary-null elm/to-quantity)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-quantity #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-quantity (param-ref "x")) (core/-form expr))))))
 
 
 ;; TODO 22.29. ToRatio
@@ -651,7 +723,13 @@
 
   ;; TODO: Ratio
 
-  (tu/testing-unary-null elm/to-string))
+  (tu/testing-unary-null elm/to-string)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-string #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-string (param-ref "x")) (core/-form expr))))))
 
 
 ;; TODO 22.31. ToTime

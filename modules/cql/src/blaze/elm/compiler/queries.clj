@@ -20,7 +20,8 @@
 
 (defprotocol XformFactory
   (-create [_ context resource]
-    "Creates a xform which filters and/or shapes query sources."))
+    "Creates a xform which filters and/or shapes query sources.")
+  (-form [_]))
 
 
 (defrecord WithXformFactory
@@ -56,7 +57,9 @@
 (defrecord WhereXformFactory [expr]
   XformFactory
   (-create [_ context resource]
-    (filter #(core/-eval expr context resource %))))
+    (filter #(core/-eval expr context resource %)))
+  (-form [_]
+    `(~'where ~(core/-form expr))))
 
 
 (defn- where-xform-factory [expr]
@@ -72,7 +75,9 @@
 (defrecord DistinctXformFactory []
   XformFactory
   (-create [_ _ _]
-    (distinct)))
+    (distinct))
+  (-form [_]
+    'distinct))
 
 
 (defrecord ComposedDistinctXformFactory [xform-factory]
@@ -96,7 +101,9 @@
 (defrecord ComposedXformFactory [factories]
   XformFactory
   (-create [_ context resource]
-    (transduce (map #(-create % context resource)) comp factories)))
+    (transduce (map #(-create % context resource)) comp factories))
+  (-form [_]
+    `(~'comp ~@(map -form factories))))
 
 
 (defn- xform-factory
@@ -125,7 +132,9 @@
   (-eval [_ context resource scope]
     (coll/eduction
       (-create xform-factory context resource)
-      (core/-eval source context resource scope))))
+      (core/-eval source context resource scope)))
+  (-form [_]
+    `(~'eduction-query ~(-form xform-factory) ~(core/-form source))))
 
 
 (defn- eduction-expr [xform-factory source]
@@ -138,7 +147,9 @@
     (into
       []
       (-create xform-factory context resource)
-      (core/-eval source context resource scope))))
+      (core/-eval source context resource scope)))
+  (-form [_]
+    `(~'vector-query ~(-form xform-factory) ~(core/-form source))))
 
 
 (defn- into-vector-expr [xform-factory source]

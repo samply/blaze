@@ -11,12 +11,11 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.external-data]
     [blaze.elm.compiler.test-util :as tu]
-    [blaze.elm.literal :as elm]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
     [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
+    [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]])
   (:import
@@ -91,7 +90,7 @@
               {:node node
                :eval-context "Patient"
                :library {}}
-              expr (c/compile context (elm/retrieve {:type "Observation"}))
+              expr (c/compile context #elm/retrieve{:type "Observation"})
               db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
 
@@ -123,18 +122,23 @@
                   {:def
                    [{:name "sys-def-131750"
                      :id "system-192253"}]}}}
-                elm (elm/retrieve
-                      {:type "Observation"
-                       :codes #elm/list[#elm/code["sys-def-131750"
-                                                  "code-192300"]]})
+                elm #elm/retrieve
+                        {:type "Observation"
+                         :codes #elm/list [#elm/code ["sys-def-131750"
+                                                    "code-192300"]]}
                 expr (c/compile context elm)
                 db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
 
-            (given (core/-eval expr {:db db} patient nil)
-              count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Observation
-              [0 :id] := "1"))))
+            (testing "eval"
+              (given (core/-eval expr {:db db} patient nil)
+                count := 1
+                [0 fhir-spec/fhir-type] := :fhir/Observation
+                [0 :id] := "1"))
+
+            (testing "form"
+              (is (= '(compartment-query-retrieve "Observation" [["code" "system-192253|code-192300"]])
+                     (core/-form expr)))))))
 
       (testing "with two codes"
         (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -169,11 +173,11 @@
                   {:def
                    [{:name "sys-def-131750"
                      :id "system-192253"}]}}}
-                elm (elm/retrieve
-                      {:type "Observation"
-                       :codes
-                       #elm/list[#elm/code["sys-def-131750" "code-192300"]
-                                 #elm/code["sys-def-131750" "code-140541"]]})
+                elm #elm/retrieve
+                        {:type "Observation"
+                         :codes
+                         #elm/list [#elm/code ["sys-def-131750" "code-192300"]
+                                   #elm/code ["sys-def-131750" "code-140541"]]}
                 expr (c/compile context elm)
                 db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
@@ -226,7 +230,7 @@
                    :id "system-225806"}]}}}
               elm #elm/retrieve
                       {:type "Medication"
-                       :codes #elm/list[#elm/code["sys-def-225944"
+                       :codes #elm/list [#elm/code ["sys-def-225944"
                                                   "code-225809"]]}
               expr (c/compile context elm)
               db (d/db node)]
@@ -248,7 +252,7 @@
                    :id "system-225806"}]}}}
               elm #elm/retrieve
                       {:type "Medication"
-                       :codes #elm/list[#elm/code["sys-def-225944"
+                       :codes #elm/list [#elm/code ["sys-def-225944"
                                                   "code-225809"]]
                        :code-property "foo"}]
 
@@ -268,7 +272,7 @@
               elm #elm/retrieve
                       {:type "Observation"
                        :context #elm/expression-ref "name-174207"
-                       :codes #elm/list[#elm/code["sys-def-174848"
+                       :codes #elm/list [#elm/code ["sys-def-174848"
                                                   "code-174911"]]}
               expr (c/compile {:node node :library library} elm)]
           (given expr
@@ -285,7 +289,7 @@
               elm #elm/retrieve
                       {:type "Observation"
                        :context #elm/expression-ref "name-174207"
-                       :codes #elm/list[#elm/code["sys-def-174848"
+                       :codes #elm/list [#elm/code ["sys-def-174848"
                                                   "code-174911"]]
                        :code-property "foo"}]
           (given (ba/try-anomaly (c/compile {:node node :library library} elm))

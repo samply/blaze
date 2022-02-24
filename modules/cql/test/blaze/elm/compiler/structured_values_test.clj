@@ -42,10 +42,10 @@
 ;; expression, including another Tuple.
 (deftest compile-tuple-test
   (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
-    #elm/tuple{"id" #elm/integer"1"}
+    #elm/tuple{"id" #elm/integer "1"}
     {:id 1}
 
-    #elm/tuple{"id" #elm/integer"1" "name" #elm/string "john"}
+    #elm/tuple{"id" #elm/integer "1" "name" #elm/string "john"}
     {:id 1 :name "john"}))
 
 
@@ -108,7 +108,10 @@
                   {:eval-context "Patient"}
                   elm)
                 result (coll/first (core/-eval expr nil nil {"R" entity}))]
-            (is (= identifier result))))
+            (is (= identifier result))
+
+            (testing "form"
+              (is (= '(:identifier R) (core/-form expr))))))
 
         (testing "without source-type"
           (let [elm
@@ -230,7 +233,10 @@
                    :life/single-query-scope "R"}
                   elm)
                 result (coll/first (core/-eval expr nil nil entity))]
-            (is (= identifier result))))
+            (is (= identifier result))
+
+            (testing "form"
+              (is (= '(:identifier default) (core/-form expr))))))
 
         (testing "without source-type"
           (let [elm
@@ -333,7 +339,10 @@
                :identifier [identifier]}
               expr (c/compile {:library library :eval-context "Patient"} elm)
               result (coll/first (core/-eval expr {:library-context {"Patient" source}} nil nil))]
-          (is (= identifier result))))
+          (is (= identifier result))
+
+          (testing "form"
+            (is (= '(:identifier (expr-ref "Patient")) (core/-form expr))))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:name "Patient"}]}}
@@ -424,7 +433,7 @@
             {:name "name"
              :type {:name "{urn:hl7-org:elm-types:r1}String" :type "NamedTypeSpecifier"}}]}
           :element
-          [{:name "id" :value #elm/integer"1"}]}}
+          [{:name "id" :value #elm/integer "1"}]}}
         1))
 
     (testing "Quantity"
@@ -434,7 +443,7 @@
           {:resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
            :path "value"
            :type "Property"
-           :source #elm/quantity[42 "m"]}
+           :source #elm/quantity [42 "m"]}
           42M))
 
       (testing "unit"
@@ -443,7 +452,7 @@
           {:resultTypeName "{urn:hl7-org:elm-types:r1}String"
            :path "unit"
            :type "Property"
-           :source #elm/quantity[42 "m"]}
+           :source #elm/quantity [42 "m"]}
           "m")))
 
     (testing "nil"

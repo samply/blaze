@@ -103,7 +103,7 @@ evaluate-measure() {
 }
 
 fetch-patients() {
-  curl -s "$1/Patient?_list=$2&_count=100"
+  curl -s "$1/Patient?_list=$2&_count=200"
 }
 
 BASE="http://localhost:8080/fhir"
