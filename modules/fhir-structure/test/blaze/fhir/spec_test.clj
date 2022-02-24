@@ -4,6 +4,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec-spec]
     [blaze.fhir.spec.type :as type]
+    [blaze.test-util :as tu]
     [clojure.alpha.spec :as s2]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
@@ -24,6 +25,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 
 
 (defn- fixture [f]
@@ -717,7 +719,7 @@
 (deftest fhir-instant
   (testing "FHIR spec"
     (are [s] (s2/valid? :fhir/instant s)
-      (type/->Instant "2015-02-07T13:28:17.239+02:00")))
+      #fhir/instant"2015-02-07T13:28:17.239+02:00"))
 
   (testing "JSON spec"
     (are [s] (s2/valid? :fhir.json/instant s)
@@ -727,14 +729,14 @@
     (testing "JSON"
       (are [json fhir] (= fhir (s2/conform :fhir.json/instant json))
         "2015-02-07T13:28:17.239+02:00"
-        (type/->Instant "2015-02-07T13:28:17.239+02:00"))))
+        #fhir/instant"2015-02-07T13:28:17.239+02:00")))
 
   (testing "unforming"
     (testing "JSON"
       (are [fhir json] (= json (unform-json fhir))
-        (type/->Instant "2015-02-07T13:28:17.239+02:00")
+        #fhir/instant"2015-02-07T13:28:17.239+02:00"
         "\"2015-02-07T13:28:17.239+02:00\""
-        (type/->Instant "2015-02-07T13:28:17.239Z")
+        #fhir/instant"2015-02-07T13:28:17.239Z"
         "\"2015-02-07T13:28:17.239Z\""))))
 
 

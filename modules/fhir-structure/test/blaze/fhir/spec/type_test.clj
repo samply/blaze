@@ -428,49 +428,55 @@
     (is (= Instant/EPOCH
            (type/xml->Instant (sexp [nil {:value "1970-01-01T00:00:00Z"}])))))
   (testing "from JSON"
-    (is (= Instant/EPOCH (type/->Instant "1970-01-01T00:00:00Z"))))
+    (is (= Instant/EPOCH #fhir/instant"1970-01-01T00:00:00Z")))
   (testing "type"
     (is (= :fhir/instant
-           (type/type (type/->Instant "2020-01-01T00:00:00+02:00"))))
+           (type/type #fhir/instant"2020-01-01T00:00:00+02:00")))
     (is (= :fhir/instant (type/type Instant/EPOCH))))
   (testing "value is a System.DateTime which is a OffsetDateTime"
     (is (= (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/ofHours 2))
-           (type/value (type/->Instant "2020-01-01T00:00:00+02:00"))))
+           (type/value #fhir/instant"2020-01-01T00:00:00+02:00")))
     (is (= (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC)
            (type/value Instant/EPOCH))))
   (testing "to-json"
     (are [instant json] (= json (gen-json-string instant))
-      (type/->Instant "2020-01-01T00:00:00+02:00") "\"2020-01-01T00:00:00+02:00\""
+      #fhir/instant"2020-01-01T00:00:00+02:00" "\"2020-01-01T00:00:00+02:00\""
       Instant/EPOCH "\"1970-01-01T00:00:00Z\""))
   (testing "to-xml"
     (is (= (sexp [nil {:value "2020-01-01T00:00:00+02:00"}])
-           (type/to-xml (type/->Instant "2020-01-01T00:00:00+02:00"))))
+           (type/to-xml #fhir/instant"2020-01-01T00:00:00+02:00")))
     (is (= (sexp [nil {:value "1970-01-01T00:00:00Z"}])
            (type/to-xml Instant/EPOCH))))
   (testing "equals"
-    (is (= (type/->Instant "2020-01-01T00:00:00+02:00")
-           (type/->Instant "2020-01-01T00:00:00+02:00")))
-    (is (not= (type/->Instant "2020-01-01T00:00:00+01:00")
-              (type/->Instant "2020-01-01T00:00:00+02:00")))
-    (is (= Instant/EPOCH (type/->Instant "1970-01-01T00:00:00Z")))
-    (is (= Instant/EPOCH (type/->Instant "1970-01-01T00:00:00+00:00"))))
+    (is (= #fhir/instant"2020-01-01T00:00:00+02:00"
+           #fhir/instant"2020-01-01T00:00:00+02:00"))
+    (is (not= #fhir/instant"2020-01-01T00:00:00+01:00"
+              #fhir/instant"2020-01-01T00:00:00+02:00"))
+    (is (= Instant/EPOCH #fhir/instant"1970-01-01T00:00:00Z"))
+    (is (= Instant/EPOCH #fhir/instant"1970-01-01T00:00:00+00:00")))
   (testing "instance size"
     (testing "backed by OffsetDateTime, taking into account shared offsets"
-      (is (= 112 (- (total-size (type/->Instant "2020-01-01T00:00:00+02:00"))
+      (is (= 112 (- (total-size #fhir/instant"2020-01-01T00:00:00+02:00")
                     (total-size ZoneOffset/UTC)))))
     (testing "backed by java.time.Instant"
       (is (= 24 (total-size Instant/EPOCH)))))
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      (type/->Instant "2020-01-01T00:00:00+00:00") "d81f6bc2"
-      (type/->Instant "2020-01-01T00:00:00+01:00") "4225df0d"
-      (type/->Instant "2020-01-01T00:00:00Z") "d81f6bc2"
-      (type/->Instant "1970-01-01T00:00:00Z") "93344244"
+      #fhir/instant"2020-01-01T00:00:00+00:00" "d81f6bc2"
+      #fhir/instant"2020-01-01T00:00:00+01:00" "4225df0d"
+      #fhir/instant"2020-01-01T00:00:00Z" "d81f6bc2"
+      #fhir/instant"1970-01-01T00:00:00Z" "93344244"
       Instant/EPOCH "93344244"))
   (testing "references"
     (are [x refs] (= refs (type/references x))
       Instant/EPOCH
-      nil)))
+      nil))
+  (testing "print"
+    (are [i s] (= s (pr-str i))
+        #fhir/instant"2020-01-01T00:00:00Z"
+        "#fhir/instant\"2020-01-01T00:00:00Z\""
+      #fhir/instant"2020-01-01T00:00:00+01:00"
+      "#fhir/instant\"2020-01-01T00:00:00+01:00\"")))
 
 
 (deftest date-test
