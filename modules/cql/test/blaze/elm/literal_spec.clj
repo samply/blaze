@@ -1,6 +1,6 @@
 (ns blaze.elm.literal-spec
   (:require
-    [blaze.elm.literal :as literal]
+    [blaze.elm.literal :as elm]
     [blaze.elm.spec]
     [clojure.spec.alpha :as s]))
 
@@ -9,22 +9,22 @@
 ;; 1. Simple Values
 
 ;; 1.1. Literal
-(s/fdef literal/boolean
+(s/fdef elm/boolean
   :args (s/cat :s string?)
   :ret :elm/expression)
 
 
-(s/fdef literal/decimal
+(s/fdef elm/decimal
   :args (s/cat :s string?)
   :ret :elm/expression)
 
 
-(s/fdef literal/integer
+(s/fdef elm/integer
   :args (s/cat :s string?)
   :ret :elm/expression)
 
 
-(s/fdef literal/string
+(s/fdef elm/string
   :args (s/cat :s string?)
   :ret :elm/expression)
 
@@ -33,13 +33,13 @@
 ;; 2. Structured Values
 
 ;; 2.1. Tuple
-(s/fdef literal/tuple
+(s/fdef elm/tuple
   :args (s/cat :arg (s/map-of string? :elm/expression))
   :ret :elm/expression)
 
 
 ;; 2.1. Instance
-(s/fdef literal/instance
+(s/fdef elm/instance
   :args (s/cat :arg (s/tuple string? (s/map-of string? :elm/expression)))
   :ret :elm/expression)
 
@@ -48,7 +48,7 @@
 ;; 3. Clinical Values
 
 ;; 3.1 Code
-(s/fdef literal/code
+(s/fdef elm/code
   :args
   (s/cat
     :args
@@ -57,13 +57,13 @@
 
 
 ;; 3.3. CodeRef
-(s/fdef literal/code-ref
+(s/fdef elm/code-ref
   :args (s/cat :name string?)
   :ret :elm/expression)
 
 
 ;; 3.9. Quantity
-(s/fdef literal/quantity
+(s/fdef elm/quantity
   :args (s/cat :args (s/spec (s/cat :value number? :unit (s/? string?))))
   :ret :elm/expression)
 
@@ -72,192 +72,193 @@
 ;; 9. Reusing Logic
 
 ;; 9.2. ExpressionRef
-(s/fdef literal/expression-ref
+(s/fdef elm/expression-ref
   :args (s/cat :name string?)
   :ret :elm/expression)
 
 
-(s/fdef literal/equal
+(s/fdef elm/equal
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/equivalent
+(s/fdef elm/equivalent
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/greater
+(s/fdef elm/greater
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/greater-or-equal
+(s/fdef elm/greater-or-equal
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/less
+(s/fdef elm/less
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/less-or-equal
+(s/fdef elm/less-or-equal
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/and
+(s/fdef elm/and
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/not
+(s/fdef elm/not
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/or
+(s/fdef elm/or
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/xor
+(s/fdef elm/xor
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/is-false
+(s/fdef elm/is-false
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/is-null
+(s/fdef elm/is-null
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/is-true
+(s/fdef elm/is-true
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/list
+(s/fdef elm/list
   :args (s/cat :elements (s/coll-of :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/if-expr
+(s/fdef elm/if-expr
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/abs
+(s/fdef elm/abs
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/add
+(s/fdef elm/add
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/ceiling
+(s/fdef elm/ceiling
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/divide
+(s/fdef elm/divide
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/exp
+(s/fdef elm/exp
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/floor
+(s/fdef elm/floor
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/log
+(s/fdef elm/log
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/ln
+(s/fdef elm/ln
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/modulo
+(s/fdef elm/modulo
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/multiply
+(s/fdef elm/multiply
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/negate
+(s/fdef elm/negate
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/power
+(s/fdef elm/power
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/predecessor
+(s/fdef elm/predecessor
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/round
-  :args (s/cat :arg (s/coll-of :elm/expression))
+(s/fdef elm/round
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression
+                                   :precision (s/? :elm/expression))))
   :ret :elm/expression)
 
 
-(s/fdef literal/subtract
+(s/fdef elm/subtract
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/successor
+(s/fdef elm/successor
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/truncate
+(s/fdef elm/truncate
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/truncated-divide
+(s/fdef elm/truncated-divide
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
-(s/fdef literal/date
+(s/fdef elm/date
   :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
   :ret :elm/expression)
 
 
-(s/fdef literal/date-from
+(s/fdef elm/date-from
   :args (s/cat :op :elm/expression)
   :ret :elm/expression)
 
 
-(s/fdef literal/date-time
+(s/fdef elm/date-time
   :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
   :ret :elm/expression)
 
 
-(s/fdef literal/time
+(s/fdef elm/time
   :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
   :ret :elm/expression)
 
@@ -269,123 +270,156 @@
          :high :elm/expression
          :high-open (s/? #{:>})))
 
-(s/fdef literal/interval
+(s/fdef elm/interval
   :args (s/cat :arg (s/spec ::interval-arg))
   :ret :elm/expression)
 
 
 ;; 19.2. After
-(s/fdef literal/after
+(s/fdef elm/after
   :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
                                    :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.3. Before
-(s/fdef literal/before
+(s/fdef elm/before
   :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
                                    :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.4. Collapse
-(s/fdef literal/collapse
+(s/fdef elm/collapse
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
 ;; 19.5. Contains
-(s/fdef literal/contains
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+(s/fdef elm/contains
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
+  :ret :elm/expression)
+
+
+;; 19.6. End
+(s/fdef elm/end
+  :args (s/cat :interval :elm/expression)
+  :ret :elm/expression)
+
+
+;; 19.7. Ends
+(s/fdef elm/ends
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.13. Except
-(s/fdef literal/except
+(s/fdef elm/except
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
 ;; 19.13. Includes
-(s/fdef literal/includes
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+(s/fdef elm/includes
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.15. Intersect
-(s/fdef literal/intersect
+(s/fdef elm/intersect
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
 ;; 19.17. MeetsBefore
-(s/fdef literal/meets-before
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+(s/fdef elm/meets-before
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.18. MeetsAfter
-(s/fdef literal/meets-after
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+(s/fdef elm/meets-after
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
+  :ret :elm/expression)
+
+
+;; 19.20. Overlaps
+(s/fdef elm/overlaps
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.24. ProperContains
-(s/fdef literal/proper-contains
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+(s/fdef elm/proper-contains
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.26. ProperIncludes
-(s/fdef literal/proper-includes
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+(s/fdef elm/proper-includes
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
+  :ret :elm/expression)
+
+
+;; 19.30. ProperIncludes
+(s/fdef elm/starts
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)
 
 
 ;; 19.31. Union
-(s/fdef literal/union
+(s/fdef elm/union
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
 ;; 20.3. Current
-(s/fdef literal/current
+(s/fdef elm/current
   :args (s/cat :scope string?)
   :ret :elm/expression)
 
 
 ;; 20.4. Distinct
-(s/fdef literal/distinct
+(s/fdef elm/distinct
   :args (s/cat :list :elm/expression)
   :ret :elm/expression)
 
 
 ;; 20.8. Exists
-(s/fdef literal/exists
+(s/fdef elm/exists
   :args (s/cat :list :elm/expression)
   :ret :elm/expression)
 
 
 ;; 20.10. First
-(s/fdef literal/first
+(s/fdef elm/first
   :args (s/cat :source :elm/expression)
   :ret :elm/expression)
 
 
 ;; 20.11. Flatten
-(s/fdef literal/flatten
+(s/fdef elm/flatten
   :args (s/cat :list :elm/expression)
   :ret :elm/expression)
 
 
 ;; 20.25. SingletonFrom
-(s/fdef literal/singleton-from
+(s/fdef elm/singleton-from
   :args (s/cat :list :elm/expression)
   :ret :elm/expression)
 
 
 ;; 20.28. Times
-(s/fdef literal/times
+(s/fdef elm/times
   :args (s/cat :lists (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
@@ -394,61 +428,67 @@
 ;; 22. Type Operators
 
 ;; 22.1. As
-(s/fdef literal/as
+(s/fdef elm/as
   :args (s/cat :arg (s/tuple string? :elm/expression))
   :ret :elm/expression)
 
 
 ;; 22.6. ConvertQuantity
-(s/fdef literal/convert-quantity
+(s/fdef elm/convert-quantity
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
 
 
 ;; 22.17. Descendents
-(s/fdef literal/descendents
+(s/fdef elm/descendents
   :args (s/cat :source :elm/expression)
   :ret :elm/expression)
 
 
 ;; 22.22. ToDate
-(s/fdef literal/to-date
+(s/fdef elm/to-date
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
 ;; 22.23. ToDateTime
-(s/fdef literal/to-date-time
+(s/fdef elm/to-date-time
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
 ;; 22.24. ToDecimal
-(s/fdef literal/to-decimal
+(s/fdef elm/to-decimal
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
 ;; 22.25. ToInteger
-(s/fdef literal/to-integer
+(s/fdef elm/to-integer
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
 ;; 22.26. ToList
-(s/fdef literal/to-list
+(s/fdef elm/to-list
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.27. ToLong
+(s/fdef elm/to-long
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
 ;; 22.28. ToQuantity
-(s/fdef literal/to-quantity
+(s/fdef elm/to-quantity
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
 ;; 22.30. ToString
-(s/fdef literal/to-string
+(s/fdef elm/to-string
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
@@ -457,6 +497,6 @@
 ;; 23. Clinical Operators
 
 ;; 23.4. CalculateAgeAt
-(s/fdef literal/calculate-age-at
+(s/fdef elm/calculate-age-at
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)

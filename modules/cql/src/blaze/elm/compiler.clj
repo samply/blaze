@@ -42,3 +42,7 @@
   Use `compile-library` to compile a whole library."
   [context expression]
   (core/compile* context expression))
+
+
+(defn form [expression]
+  (core/-form expression))

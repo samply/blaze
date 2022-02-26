@@ -14,7 +14,8 @@
 (defprotocol Expression
   (-eval [expression context resource scope]
     "Evaluates `expression` on `resource` using `context` and optional `scope`
-    for scoped expressions like inside queries."))
+    for scoped expressions like inside queries.")
+  (-form [expression]))
 
 
 (defn expr? [x]
@@ -23,12 +24,16 @@
 
 (extend-protocol Expression
   nil
-  (-eval [this _ _ _]
-    this)
+  (-eval [expr _ _ _]
+    expr)
+  (-form [_]
+    'nil)
 
   Object
-  (-eval [this _ _ _]
-    this))
+  (-eval [expr _ _ _]
+    expr)
+  (-form [expr]
+    expr))
 
 
 (defn static? [x]

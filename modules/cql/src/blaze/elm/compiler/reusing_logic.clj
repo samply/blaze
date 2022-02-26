@@ -35,7 +35,9 @@
     (let [expr (get library-context name ::not-found)]
       (if (identical? ::not-found expr)
         (throw-anom (expression-not-found-anom context name))
-        (core/-eval expr context resource nil)))))
+        (core/-eval expr context resource nil))))
+  (-form [_]
+    `(~'expr-ref ~name)))
 
 
 (defn- find-expression-def
@@ -98,7 +100,9 @@
 (defrecord ToQuantityFunctionExpression [operand]
   core/Expression
   (-eval [_ context resource scope]
-    (-to-quantity (core/-eval operand context resource scope))))
+    (-to-quantity (core/-eval operand context resource scope)))
+  (-form [_]
+    `(~'call "ToQuantity" ~(core/-form operand))))
 
 
 (defrecord ToCodeFunctionExpression [operand]
@@ -117,13 +121,17 @@
 (defrecord ToDateTimeFunctionExpression [operand]
   core/Expression
   (-eval [_ {:keys [now] :as context} resource scope]
-    (p/to-date-time (core/-eval operand context resource scope) now)))
+    (p/to-date-time (core/-eval operand context resource scope) now))
+  (-form [_]
+    `(~'call "ToDateTime" ~(core/-form operand))))
 
 
 (defrecord ToStringFunctionExpression [operand]
   core/Expression
   (-eval [_ context resource scope]
-    (str (core/-eval operand context resource scope))))
+    (str (core/-eval operand context resource scope)))
+  (-form [_]
+    `(~'call "ToString" ~(core/-form operand))))
 
 
 (defprotocol ToInterval
@@ -144,14 +152,16 @@
 (defrecord ToIntervalFunctionExpression [operand]
   core/Expression
   (-eval [_ context resource scope]
-    (-to-interval (core/-eval operand context resource scope) context)))
+    (-to-interval (core/-eval operand context resource scope) context))
+  (-form [_]
+    `(~'call "ToInterval" ~(core/-form operand))))
 
 
 ;; 9.4. FunctionRef
 (defmethod core/compile* :elm.compiler.type/function-ref
   [context {:keys [name] operands :operand}]
   ;; TODO: look into other libraries (:libraryName)
-  (let [operands (mapv #(core/compile* context %) operands)]
+  (let [operands (map #(core/compile* context %) operands)]
     (case name
       "ToQuantity"
       (->ToQuantityFunctionExpression (first operands))

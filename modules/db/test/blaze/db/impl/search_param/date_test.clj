@@ -13,7 +13,6 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
-    [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo]
     [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
@@ -208,7 +207,7 @@
       (testing "issued"
         (let [patient {:fhir/type :fhir/DiagnosticReport
                        :id "id-155607"
-                       :issued (type/->Instant "2019-11-17T00:14:29.917+01:00")}
+                       :issued #fhir/instant"2019-11-17T00:14:29.917+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
               (search-param/index-entries

@@ -16,27 +16,22 @@
 
 
 ;; 22.1. As
-;;
-;; The As operator allows the result of an expression to be cast as a given
-;; target type. This allows expressions to be written that are statically typed
-;; against the expected run-time type of the argument. If the argument is not of
-;; the specified type, and the strict attribute is false (the default), the
-;; result is null. If the argument is not of the specified type and the strict
-;; attribute is true, an exception is thrown.
-(defrecord AsExpression [operand matches-type?]
+(defrecord AsExpression [operand type pred]
   core/Expression
   (-eval [_ context resource scope]
     (let [value (core/-eval operand context resource scope)]
-      (when (matches-type? value)
-        value))))
+      (when (pred value)
+        value)))
+  (-form [_]
+    `(~'as ~type ~(core/-form operand))))
 
 
 (defn- matches-elm-named-type-fn [type-name]
   (case type-name
-    "Boolean" boolean?
-    "Integer" int?
-    "DateTime" date-time/temporal?
-    "Quantity" quantity/quantity?
+    "Boolean" ['elm/boolean boolean?]
+    "Integer" ['elm/integer int?]
+    "DateTime" ['elm/date-time date-time/temporal?]
+    "Quantity" ['elm/quantity quantity/quantity?]
     (throw-anom
       (ba/unsupported
         (format "Unsupported ELM type `%s` in As expression." type-name)
@@ -47,7 +42,7 @@
   (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
     (case type-ns
       "http://hl7.org/fhir"
-      (comp #{(keyword "fhir" type-name)} fhir-spec/fhir-type)
+      [(symbol "fhir" type-name) (comp #{(keyword "fhir" type-name)} fhir-spec/fhir-type)]
       "urn:hl7-org:elm-types:r1"
       (matches-elm-named-type-fn type-name)
       (throw-anom
@@ -62,9 +57,10 @@
     (matches-named-type-fn (:name as-type-specifier))
 
     "ListTypeSpecifier"
-    (let [pred (matches-type-specifier-fn (:elementType as-type-specifier))]
-      (fn matches-type? [x]
-        (every? pred x)))
+    (let [[type pred] (matches-type-specifier-fn (:elementType as-type-specifier))]
+      [`(~'list ~type)
+       (fn matches-type? [x]
+         (every? pred x))])
 
     (throw-anom
       (ba/unsupported
@@ -92,7 +88,8 @@
 (defmethod core/compile* :elm.compiler.type/as
   [context {:keys [operand] :as expression}]
   (when-some [operand (core/compile* context operand)]
-    (->AsExpression operand (matches-type-fn expression))))
+    (let [[type pred] (matches-type-fn expression)]
+      (->AsExpression operand type pred))))
 
 
 ;; TODO 22.2. CanConvert

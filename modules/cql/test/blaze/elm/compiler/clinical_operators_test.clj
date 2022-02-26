@@ -58,18 +58,18 @@
 (deftest compile-calculate-age-at-test
   (testing "Year"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
-      {:type "CalculateAgeAt" :operand [#elm/date"2018" #elm/date"2019"]
+      {:type "CalculateAgeAt" :operand [#elm/date "2018" #elm/date "2019"]
        :precision "Year"}
       1
-      {:type "CalculateAgeAt" :operand [#elm/date"2018" #elm/date"2018"]
+      {:type "CalculateAgeAt" :operand [#elm/date "2018" #elm/date "2018"]
        :precision "Year"}
       0
 
-      {:type "CalculateAgeAt" :operand [#elm/date"2018" #elm/date"2018"]
+      {:type "CalculateAgeAt" :operand [#elm/date "2018" #elm/date "2018"]
        :precision "Month"}
       nil))
 
-  (tu/testing-binary-null elm/calculate-age-at #elm/date"2018"))
+  (tu/testing-binary-null elm/calculate-age-at #elm/date "2018"))
 
 
 ;; 23.5. Equal

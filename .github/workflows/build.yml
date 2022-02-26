@@ -304,7 +304,7 @@ jobs:
       run: .github/scripts/check-total-number-of-resources.sh 92114
 
     - name: Count Resources
-      run: blazectl --no-progress --server http://localhost:8080/fhir count-resources
+      run: blazectl count-resources --server http://localhost:8080/fhir
 
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
@@ -372,6 +372,12 @@ jobs:
     - name: Evaluate CQL Query 2 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
 
+    - name: Evaluate CQL Query 4
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4-query.cql 0
+
+    - name: Evaluate CQL Query 4 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4-query.cql 0
+
     - name: Evaluate CQL Query 7
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7-query.cql 81
 
@@ -383,6 +389,30 @@ jobs:
 
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
+
+    - name: Evaluate CQL Query 15
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 31
+
+    - name: Evaluate CQL Query 15 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 31
+
+    - name: Evaluate CQL Query 17
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17-query.cql 120
+
+    - name: Evaluate CQL Query 17 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17-query.cql 120
+
+    - name: Evaluate CQL Query 36
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter-query.cql 86
+
+    - name: Evaluate CQL Query 36 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter-query.cql 86
+
+    - name: Evaluate CQL Query 34
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps-query.cql 24
+
+    - name: Evaluate CQL Query 34 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps-query.cql 24
 
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https
@@ -658,7 +688,7 @@ jobs:
       run: .github/scripts/check-total-number-of-resources.sh 92114
 
     - name: Count Resources
-      run: blazectl --no-progress --server http://localhost:8080/fhir count-resources
+      run: blazectl count-resources --server http://localhost:8080/fhir
 
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
@@ -726,6 +756,12 @@ jobs:
     - name: Evaluate CQL Query 2 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2-query.cql 42
 
+    - name: Evaluate CQL Query 4
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4-query.cql 0
+
+    - name: Evaluate CQL Query 4 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4-query.cql 0
+
     - name: Evaluate CQL Query 7
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7-query.cql 81
 
@@ -737,6 +773,30 @@ jobs:
 
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
+
+    - name: Evaluate CQL Query 15
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 31
+
+    - name: Evaluate CQL Query 15 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 31
+
+    - name: Evaluate CQL Query 17
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17-query.cql 120
+
+    - name: Evaluate CQL Query 17 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17-query.cql 120
+
+    - name: Evaluate CQL Query 36
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter-query.cql 86
+
+    - name: Evaluate CQL Query 36 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter-query.cql 86
+
+    - name: Evaluate CQL Query 34
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps-query.cql 24
+
+    - name: Evaluate CQL Query 34 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps-query.cql 24
 
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https

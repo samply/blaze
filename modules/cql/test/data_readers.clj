@@ -27,6 +27,13 @@
  elm/list blaze.elm.literal/list
  elm/if blaze.elm.literal/if-expr
  elm/abs blaze.elm.literal/abs
+ elm/ends-with blaze.elm.literal/ends-with
+ elm/indexer blaze.elm.literal/indexer
+ elm/length blaze.elm.literal/length
+ elm/lower blaze.elm.literal/lower
+ elm/matches blaze.elm.literal/matches
+ elm/starts-with blaze.elm.literal/starts-with
+ elm/upper blaze.elm.literal/upper
  elm/add blaze.elm.literal/add
  elm/ceiling blaze.elm.literal/ceiling
  elm/divide blaze.elm.literal/divide
@@ -48,8 +55,12 @@
  elm/date blaze.elm.literal/date
  elm/date-from blaze.elm.literal/date-from
  elm/date-time blaze.elm.literal/date-time
+ elm/date-time-component-from blaze.elm.literal/date-time-component-from
+ elm/difference-between blaze.elm.literal/difference-between
+ elm/duration-between blaze.elm.literal/duration-between
  elm/time blaze.elm.literal/time
  elm/interval blaze.elm.literal/interval
+ elm/contains blaze.elm.literal/contains
  elm/intersect blaze.elm.literal/intersect
  elm/current blaze.elm.literal/current
  elm/distinct blaze.elm.literal/distinct
@@ -66,6 +77,7 @@
  elm/to-decimal blaze.elm.literal/to-decimal
  elm/to-integer blaze.elm.literal/to-integer
  elm/to-list blaze.elm.literal/to-list
+ elm/to-long blaze.elm.literal/to-long
  elm/to-quantity blaze.elm.literal/to-quantity
  elm/to-string blaze.elm.literal/to-string
  elm/calculate-age-at blaze.elm.literal/calculate-age-at}

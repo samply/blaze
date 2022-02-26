@@ -21,9 +21,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
-  (:import
-    [clojure.lang IPersistentCollection]))
+    [juxt.iota :refer [given]]))
 
 
 (st/instrument)
@@ -64,9 +62,9 @@
            [{:alias "S"
              :expression
              #elm/list
-                 [#elm/quantity[2 "m"]
-                  #elm/quantity[1 "m"]
-                  #elm/quantity[1 "m"]]}]
+                 [#elm/quantity [2 "m"]
+                  #elm/quantity [1 "m"]
+                  #elm/quantity [1 "m"]]}]
            :sort
            {:by
             [{:type "ByExpression"
@@ -85,12 +83,12 @@
              [{:alias "S"
                :expression
                #elm/list
-                   [#elm/instance["{urn:hl7-org:elm-types:r1}Code"
-                                  {"system" #elm/string"foo"
-                                   "code" #elm/string"c"}]
-                    #elm/instance["{urn:hl7-org:elm-types:r1}Code"
-                                  {"system" #elm/string"bar"
-                                   "code" #elm/string"c"}]]}]
+                   [#elm/instance ["{urn:hl7-org:elm-types:r1}Code"
+                                  {"system" #elm/string "foo"
+                                   "code" #elm/string "c"}]
+                    #elm/instance ["{urn:hl7-org:elm-types:r1}Code"
+                                  {"system" #elm/string "bar"
+                                   "code" #elm/string "c"}]]}]
              :sort
              {:by
               [{:type "ByExpression"
@@ -110,13 +108,18 @@
          :return {:distinct false :expression {:type "AliasRef" :name "S"}}}
         [1 1]))
 
-    (testing "returns only the first item on optimize first"
-      (let [query {:type "Query"
-                   :source
-                   [{:alias "S"
-                     :expression #elm/list [#elm/integer "1" #elm/integer "1"]}]}
-            res (core/-eval (c/compile {:optimizations #{:first}} query) {} nil nil)]
-        (is (not (instance? IPersistentCollection res))))))
+    (testing "with query hint optimize first"
+      (let [elm {:type "Query"
+                 :source
+                 [{:alias "S"
+                   :expression #elm/list [#elm/integer "1" #elm/integer "1"]}]}
+            expr (c/compile {:optimizations #{:first}} elm)]
+
+        (testing "eval"
+          (is (= [1] (into [] (core/-eval expr {} nil nil)))))
+
+        (testing "form"
+          (is (= '(eduction-query distinct [1 1]) (core/-form expr)))))))
 
   (testing "Retrieve queries"
     (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -138,70 +141,85 @@
                     :resultTypeName "{http://hl7.org/fhir}string"
                     :life/source-type "{http://hl7.org/fhir}Patient"}]
 
-        (let [query {:type "Query"
-                     :source
-                     [{:alias "P"
-                       :expression retrieve}]}]
-          (given (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil)
-            [0 fhir-spec/fhir-type] := :fhir/Patient
-            [0 :id] := "0"))
+        (let [elm {:type "Query"
+                   :source
+                   [{:alias "P"
+                     :expression retrieve}]}
+              expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
+          (testing "eval"
+            (given (core/-eval expr {:db db} nil nil)
+              [0 fhir-spec/fhir-type] := :fhir/Patient
+              [0 :id] := "0"))
 
-        (let [query {:type "Query"
-                     :source
-                     [{:alias "P"
-                       :expression retrieve}]
-                     :where where}]
-          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil))))
+          (testing "form"
+            (is (= '(vector-query distinct (retrieve "Patient")) (core/-form expr)))))
 
-        (let [query {:type "Query"
-                     :source
-                     [{:alias "P"
-                       :expression retrieve}]
-                     :return {:expression return}}]
-          (is (nil? (first (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil)))))
+        (let [elm {:type "Query"
+                   :source
+                   [{:alias "P"
+                     :expression retrieve}]
+                   :where where}
+              expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
+          (testing "eval"
+            (is (empty? (core/-eval expr {:db db} nil nil))))
 
-        (let [query {:type "Query"
-                     :source
-                     [{:alias "P"
-                       :expression retrieve}]
-                     :where where
-                     :return {:expression return}}]
-          (is (empty? (core/-eval (c/compile {:node node :eval-context "Unfiltered"} query) {:db db} nil nil)))))))
+          (testing "form"
+            (is (= '(vector-query
+                      (comp (where (equal (:gender default) 2)) distinct)
+                      (retrieve "Patient"))
+                   (core/-form expr)))))
+
+        (let [elm {:type "Query"
+                   :source
+                   [{:alias "P"
+                     :expression retrieve}]
+                   :return {:expression return}}
+              expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
+          (is (nil? (first (core/-eval expr {:db db} nil nil)))))
+
+        (let [elm {:type "Query"
+                   :source
+                   [{:alias "P"
+                     :expression retrieve}]
+                   :where where
+                   :return {:expression return}}
+              expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
+          (is (empty? (core/-eval expr {:db db} nil nil)))))))
 
   (testing "Unsupported With clause"
     (let [elm {:type "Query"
-                 :source
-                 [{:expression
-                   {:type "Retrieve"
-                    :dataType "{http://hl7.org/fhir}Condition"}
-                   :alias "C"}]
-                 :relationship
-                 [{:type "With"
-                   :alias "P"
-                   :expression
-                   {:type "Retrieve" :dataType "{http://hl7.org/fhir}Procedure"}
-                   :suchThat
-                   {:type "Equal"
-                    :operand [#elm/integer "1" #elm/integer "1"]}}]}]
+               :source
+               [{:expression
+                 {:type "Retrieve"
+                  :dataType "{http://hl7.org/fhir}Condition"}
+                 :alias "C"}]
+               :relationship
+               [{:type "With"
+                 :alias "P"
+                 :expression
+                 {:type "Retrieve" :dataType "{http://hl7.org/fhir}Procedure"}
+                 :suchThat
+                 {:type "Equal"
+                  :operand [#elm/integer "1" #elm/integer "1"]}}]}]
       (given (ba/try-anomaly (c/compile {} elm))
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported With clause in query expression.")))
 
   (testing "Unsupported Without clause"
     (let [elm {:type "Query"
-                 :source
-                 [{:expression
-                   {:type "Retrieve"
-                    :dataType "{http://hl7.org/fhir}Condition"}
-                   :alias "C"}]
-                 :relationship
-                 [{:type "Without"
-                   :alias "P"
-                   :expression
-                   {:type "Retrieve" :dataType "{http://hl7.org/fhir}Procedure"}
-                   :suchThat
-                   {:type "Equal"
-                    :operand [#elm/integer "1" #elm/integer "1"]}}]}]
+               :source
+               [{:expression
+                 {:type "Retrieve"
+                  :dataType "{http://hl7.org/fhir}Condition"}
+                 :alias "C"}]
+               :relationship
+               [{:type "Without"
+                 :alias "P"
+                 :expression
+                 {:type "Retrieve" :dataType "{http://hl7.org/fhir}Procedure"}
+                 :suchThat
+                 {:type "Equal"
+                  :operand [#elm/integer "1" #elm/integer "1"]}}]}]
       (given (ba/try-anomaly (c/compile {} elm))
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported Without clause in query expression."))))

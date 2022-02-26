@@ -232,7 +232,8 @@
 (extend-protocol p/Round
   BigDecimal
   (round [x precision]
-    (.setScale x ^long precision RoundingMode/HALF_UP)))
+    (let [new-scale (or precision 0)]
+      (.setScale x ^int new-scale RoundingMode/HALF_UP))))
 
 
 ;; 16.20. Subtract

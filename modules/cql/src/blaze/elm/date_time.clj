@@ -6,11 +6,13 @@
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.protocols :as p]
+    [blaze.fhir.spec.type]
     [blaze.fhir.spec.type.system :as system]
     [java-time :as time])
   (:import
+    [blaze.fhir.spec.type OffsetInstant]
     [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
-    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
+    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth Instant]
     [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]
     [java.util Map]))
 
@@ -1278,6 +1280,15 @@
 (extend-protocol p/ToDateTime
   nil
   (to-date-time [_ _])
+
+  Instant
+  (to-date-time [this now]
+    (-> (.atOffset this (.getOffset ^OffsetDateTime now))
+        (.toLocalDateTime)))
+
+  OffsetInstant
+  (to-date-time [this now]
+    (p/to-date-time (.value this) now))
 
   Year
   (to-date-time [this _]
