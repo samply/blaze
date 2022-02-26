@@ -21,9 +21,10 @@
 (defn- nil-and
   "Creates an and-expression where one operand is known to be nil."
   [x]
-  (case x
-    (true nil) nil
+  (condp identical? x
+    true nil
     false false
+    nil nil
     (nil-and-expr x)))
 
 
@@ -31,7 +32,7 @@
   "Creates an and-expression where `a` is known to be dynamic and `b` could be
   static or dynamic."
   [a b]
-  (case b
+  (condp identical? b
     true a
     false false
     nil (nil-and-expr a)
@@ -51,7 +52,7 @@
 (defmethod core/compile* :elm.compiler.type/and
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (case a
+    (condp identical? a
       true (core/compile* context b)
       false false
       nil (nil-and (core/compile* context b))
@@ -83,9 +84,10 @@
 (defn- nil-or
   "Creates an or-expression where one operand is known to be nil."
   [x]
-  (case x
+  (condp identical? x
     true true
-    (false nil) nil
+    false nil
+    nil nil
     (nil-or-expr x)))
 
 
@@ -93,7 +95,7 @@
   "Creates an or-expression where `a` is known to be dynamic and `b` could be
   static or dynamic."
   [a b]
-  (case b
+  (condp identical? b
     true true
     false a
     nil (nil-or-expr a)
@@ -113,7 +115,7 @@
 (defmethod core/compile* :elm.compiler.type/or
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (case a
+    (condp identical? a
       true true
       false (core/compile* context b)
       nil (nil-or (core/compile* context b))
@@ -125,7 +127,7 @@
   "Creates an xor-expression where `a` is known to be dynamic and `b` could be
   static or dynamic."
   [a b]
-  (case b
+  (condp identical? b
     true
     (reify core/Expression
       (-eval [_ context resource scope]
@@ -148,7 +150,7 @@
 (defmethod core/compile* :elm.compiler.type/xor
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (case a
+    (condp identical? a
       true (core/compile* context {:type "Not" :operand b})
       false (core/compile* context b)
       nil nil

@@ -113,13 +113,13 @@
     (throw-anom (ba/incorrect (singleton-evaluation-msg coll)))))
 
 
-(defrecord StartExpression []
+(deftype StartExpression []
   Expression
   (-eval [_ _ coll]
     coll))
 
 
-(defrecord TypedStartExpression [rf]
+(deftype TypedStartExpression [rf]
   Expression
   (-eval [_ _ coll]
     (.reduce ^IReduceInit coll rf [])))
@@ -131,7 +131,7 @@
     (->TypedStartExpression ((filter pred) conj))))
 
 
-(defrecord GetChildrenExpression [f]
+(deftype GetChildrenExpression [f]
   Expression
   (-eval [_ _ coll]
     (.reduce ^IReduceInit coll f [])))
@@ -147,13 +147,13 @@
           :else res)))))
 
 
-(defrecord InvocationExpression [expression invocation]
+(deftype InvocationExpression [expression invocation]
   Expression
   (-eval [_ context coll]
     (-eval invocation context (-eval expression context coll))))
 
 
-(defrecord IndexerExpression [expression index]
+(deftype IndexerExpression [expression index]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)
@@ -161,7 +161,7 @@
       [(nth coll idx [])])))
 
 
-(defrecord PlusExpression [left-expr right-expr]
+(deftype PlusExpression [left-expr right-expr]
   Expression
   (-eval [_ context coll]
     (let [left (singleton :fhir/string (-eval left-expr context coll))
@@ -177,7 +177,7 @@
           (pr-str coll)))
 
 
-(defrecord IsTypeExpression [expression type-specifier]
+(deftype IsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
@@ -194,7 +194,7 @@
           (pr-str coll)))
 
 
-(defrecord AsTypeExpression [expression type-specifier]
+(deftype AsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
@@ -208,7 +208,7 @@
         (throw-anom (ba/incorrect (as-type-specifier-msg coll)))))))
 
 
-(defrecord UnionExpression [e1 e2]
+(deftype UnionExpression [e1 e2]
   Expression
   (-eval [_ context coll]
     (let [^Counted c1 (-eval e1 context coll)
@@ -224,7 +224,7 @@
         (vec (reduce conj (set c1) c2))))))
 
 
-(defrecord EqualExpression [left-expr right-expr]
+(deftype EqualExpression [left-expr right-expr]
   Expression
   (-eval [_ context coll]
     (let [left (-eval left-expr context coll)
@@ -241,7 +241,7 @@
             [false]))))))
 
 
-(defrecord NotEqualExpression [left-expr right-expr]
+(deftype NotEqualExpression [left-expr right-expr]
   Expression
   (-eval [_ context coll]
     (let [left (-eval left-expr context coll)
@@ -259,7 +259,7 @@
 
 
 ;; See: http://hl7.org/fhirpath/index.html#and
-(defrecord AndExpression [expr-a expr-b]
+(deftype AndExpression [expr-a expr-b]
   Expression
   (-eval [_ context coll]
     (let [a (singleton :fhir/boolean (-eval expr-a context coll))]
@@ -273,7 +273,7 @@
             :else []))))))
 
 
-(defrecord AsFunctionExpression [type-specifier]
+(deftype AsFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ coll]
     (case (.count ^Counted coll)
@@ -286,19 +286,19 @@
       (throw-anom (ba/incorrect (as-type-specifier-msg coll))))))
 
 
-(defrecord OfTypeFunctionExpression [type-specifier]
+(deftype OfTypeFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ coll]
     (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll)))
 
 
-(defrecord ExistsFunctionExpression []
+(deftype ExistsFunctionExpression []
   Expression
   (-eval [_ _ coll]
     [(if (empty? coll) false true)]))
 
 
-(defrecord ExistsWithCriteriaFunctionExpression [criteria]
+(deftype ExistsWithCriteriaFunctionExpression [criteria]
   Expression
   (-eval [_ _ _]
     (throw-anom (ba/unsupported "unsupported `exists` function"))))
@@ -327,7 +327,7 @@
   [])
 
 
-(defrecord ResolveFunctionExpression []
+(deftype ResolveFunctionExpression []
   Expression
   (-eval [_ context coll]
     (.reduce ^IReduceInit coll #(.reduce (resolve context %2) conj %1) [])))
@@ -364,7 +364,7 @@
           (pr-str x)))
 
 
-(defrecord WhereFunctionExpression [where-rf]
+(deftype WhereFunctionExpression [where-rf]
   Expression
   (-eval [_ context coll]
     (.reduce ^IReduceInit coll (where-rf context) [])))
@@ -412,7 +412,7 @@
 
 ;; Additional functions (https://www.hl7.org/fhir/fhirpath.html#functions)
 
-(defrecord ExtensionFunctionExpression [rf]
+(deftype ExtensionFunctionExpression [rf]
   Expression
   (-eval [_ _ coll]
     (.reduce ^IReduceInit coll rf [])))

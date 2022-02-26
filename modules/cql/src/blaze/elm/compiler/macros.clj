@@ -3,6 +3,10 @@
     [blaze.elm.compiler.core :as core]))
 
 
+(defn- compile-kw [name]
+  (keyword "elm.compiler.type" (clojure.core/name name)))
+
+
 (defmacro defunop
   {:arglists '([name attr-map? bindings & body])}
   [name & more]
@@ -10,7 +14,7 @@
         more (if (map? (first more)) (next more) more)
         [[operand-binding expr-binding] & body] more]
     (if expr-binding
-      `(defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+      `(defmethod core/compile* ~(compile-kw name)
          [context# expr#]
          (let [operand# (core/compile* (merge context# ~attr-map) (:operand expr#))]
            (if (core/static? operand#)
@@ -24,7 +28,7 @@
                    ~@body))
                (-form [~'_]
                  (list (quote ~name) (core/-form operand#)))))))
-      `(defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+      `(defmethod core/compile* ~(compile-kw name)
          [context# expr#]
          (let [operand# (core/compile* (merge context# ~attr-map) (:operand expr#))]
            (if (core/static? operand#)
@@ -44,7 +48,7 @@
   (let [attr-map (when (map? (first more)) (first more))
         more (if (map? (first more)) (next more) more)
         [[op-1-binding op-2-binding] & body] more]
-    `(defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+    `(defmethod core/compile* ~(compile-kw name)
        [context# {[operand-1# operand-2#] :operand}]
        (let [context# (merge context# ~attr-map)
              operand-1# (core/compile* context# operand-1#)
@@ -65,7 +69,7 @@
 (defmacro defternop
   {:arglists '([name bindings & body])}
   [name [op-1-binding op-2-binding op-3-binding] & body]
-  `(defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+  `(defmethod core/compile* ~(compile-kw name)
      [context# {[operand-1# operand-2# operand-3#] :operand}]
      (let [operand-1# (core/compile* context# operand-1#)
            operand-2# (core/compile* context# operand-2#)
@@ -81,7 +85,7 @@
 (defmacro defnaryop
   {:arglists '([name bindings & body])}
   [name [operands-binding] & body]
-  `(defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+  `(defmethod core/compile* ~(compile-kw name)
      [context# {operands# :operand}]
      (let [operands# (mapv #(core/compile* context# %) operands#)]
        (reify core/Expression
@@ -93,7 +97,7 @@
 (defmacro defaggop
   {:arglists '([name bindings & body])}
   [name [source-binding] & body]
-  `(defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+  `(defmethod core/compile* ~(compile-kw name)
      [context# {source# :source}]
      (let [source# (core/compile* context# source#)]
        (reify core/Expression
@@ -105,7 +109,7 @@
 (defmacro defunopp
   {:arglists '([name bindings & body])}
   [name [operand-binding precision-binding expr-binding] & body]
-  `(defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+  `(defmethod core/compile* ~(compile-kw name)
      [context# {operand# :operand precision# :precision :as expr#}]
      (let [operand# (core/compile* context# operand#)
            ~precision-binding (some-> precision# core/to-chrono-unit)
@@ -124,7 +128,7 @@
   (let [attr-map (when (map? (first more)) (first more))
         more (if (map? (first more)) (next more) more)
         [[op-1-binding op-2-binding precision-binding] & body] more]
-    `(defmethod core/compile* ~(keyword "elm.compiler.type" (clojure.core/name name))
+    `(defmethod core/compile* ~(compile-kw name)
        [context# {[operand-1# operand-2#] :operand precision# :precision}]
        (let [context# (merge context# ~attr-map)
              operand-1# (core/compile* context# operand-1#)
