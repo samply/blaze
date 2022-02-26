@@ -39,8 +39,8 @@
     `(do
        (defrecord ~name [~@fields]
          p/FhirType
-         (-type [~'_] ~(or fhir-type (keyword "fhir" (str name))))
-         (-hash-into [~'_ ~sink-sym]
+         (~'-type [~'_] ~(or fhir-type (keyword "fhir" (str name))))
+         (~'-hash-into [~'_ ~sink-sym]
            (.putByte ~sink-sym-tag (byte ~hash-num))
            ~@(map-indexed
                (fn [idx field]
@@ -50,7 +50,7 @@
                       ~field ~sink-sym)))
                fields))
          ~(or references
-              `(-references [~'_]
+              `(~'-references [~'_]
                             (-> (transient [])
                                 ~@(keep
                                     (fn [field]

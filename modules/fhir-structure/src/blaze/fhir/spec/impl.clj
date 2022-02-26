@@ -448,9 +448,10 @@
      :modifier :json
      :spec-form
      (case key
+       :fhir.json/Coding
+       `(type/coding "json")
        (:fhir.json/Attachment
          :fhir.json/Extension
-         :fhir.json/Coding
          :fhir.json/CodeableConcept
          :fhir.json/Quantity
          :fhir.json/Period
@@ -620,9 +621,10 @@
      :modifier :cbor
      :spec-form
      (case key
+       :fhir.cbor/Coding
+       `(type/coding "cbor")
        (:fhir.cbor/Attachment
          :fhir.cbor/Extension
-         :fhir.cbor/Coding
          :fhir.cbor/CodeableConcept
          :fhir.cbor/Quantity
          :fhir.cbor/Period

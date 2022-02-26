@@ -91,7 +91,7 @@
       s)))
 
 
-(defn- explain-1 [form pred path via in v settings-key settings]
+(defn explain-1 [form pred path via in v settings-key settings]
   (let [pred (maybe-spec pred)]
     (if (s/spec? pred)
       (sp/explain* pred path (if-let [name (#'s/spec-name pred)] (conj via name) via) in v settings-key settings)
@@ -101,22 +101,25 @@
 (defn- json-object-impl [constructor-sym spec-forms key-map]
   (let [constructor (resolve constructor-sym)
         specs (delay (into {} (map #(vector (key %) (s/resolve-spec (val %)))) spec-forms))
-        lookup #(get @specs %)
         internal-key #(get key-map % %)]
     (reify
       sp/Spec
       (conform* [_ x _ settings]
         (if (map? x)
-          (loop [ret x [[k v] & ks] x]
-            (if k
-              (let [conformed (if-let [sp (lookup k)] (sp/conform* sp v k settings) v)]
-                (if (s/invalid? conformed)
-                  ::s/invalid
-                  (let [k' (internal-key k)]
-                    (if (identical? k' k)
-                      (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks)
-                      (recur (-> ret (dissoc k) (assoc k' conformed)) ks)))))
-              (constructor ret)))
+          (let [x (reduce-kv
+                    (fn [ret k v]
+                      (let [conformed (if-let [sp (@specs k)] (sp/conform* sp v k settings) v)]
+                        (if (s/invalid? conformed)
+                          (reduced ::s/invalid)
+                          (let [k' (internal-key k)]
+                            (if (identical? k' k)
+                              (if-not (identical? v conformed) (assoc ret k conformed) ret)
+                              (-> ret (dissoc k) (assoc k' conformed)))))))
+                    x
+                    x)]
+            (if (s/invalid? x)
+              x
+              (constructor x)))
           ::s/invalid))
       (unform* [_ x] x)
       (explain* [_ path via in x _ settings]
@@ -124,7 +127,7 @@
           [{:path path :pred `map? :val x :via via :in in}]
           (reduce-kv
             (fn [p k v]
-              (if-let [sp (lookup k)]
+              (if-let [sp (@specs k)]
                 (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))
                 p))
             [] x)))

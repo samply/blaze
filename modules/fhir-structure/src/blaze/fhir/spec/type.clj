@@ -1,10 +1,12 @@
 (ns blaze.fhir.spec.type
   (:refer-clojure :exclude [decimal? string? type uri? uuid?])
   (:require
+    [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type.macros :as macros :refer [defcomplextype]]
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
-    [clojure.alpha.spec :as s2]
+    [clojure.alpha.spec :as s]
+    [clojure.alpha.spec.protocols :as sp]
     [clojure.data.xml :as xml]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
@@ -494,7 +496,7 @@
     (system/parse-date* value)
     (catch DateTimeParseException _
       ;; in case of leap year errors not covered by regex
-      ::s2/invalid)))
+      ::s/invalid)))
 
 
 (defn xml->Date
@@ -633,11 +635,11 @@
      (system/parse-date-time* value)
      (catch DateTimeParseException _
        ;; in case of leap year errors not covered by regex
-       ::s2/invalid)))
+       ::s/invalid)))
   ([id extensions value]
    (let [date-time (->DateTime value)]
-     (if (s2/invalid? date-time)
-       ::s2/invalid
+     (if (s/invalid? date-time)
+       ::s/invalid
        (->ExtendedDateTime id extensions date-time)))))
 
 
@@ -1181,6 +1183,66 @@
    version :string
    code code-serializer
    display :string})
+
+
+(defmethod s/expand-spec `coding
+  [[_ kind]]
+  {:clojure.spec/op `coding
+   :kind kind})
+
+
+(defmethod s/create-spec `coding
+  [{:keys [kind]}]
+  (let [id-spec (delay (s/resolve-spec (keyword (format "fhir.%s.Coding" kind) "id")))
+        extension-spec (delay (s/resolve-spec `(s/coll-of ~(keyword (format "fhir.%s.Coding" kind) "Extension"))))
+        system-spec (delay (s/resolve-spec (keyword (format "fhir.%s.Coding" kind) "system")))
+        version-spec (delay (s/resolve-spec (keyword (format "fhir.%s.Coding" kind) "version")))
+        code-spec (delay (s/resolve-spec (keyword (format "fhir.%s.Coding" kind) "code")))
+        display-spec (delay (s/resolve-spec (keyword (format "fhir.%s.Coding" kind) "display")))
+        specs (delay (into {} (map #(vector (key %) (s/resolve-spec (val %))))
+                           {:id (keyword (format "fhir.%s.Coding" kind) "id")
+                            :extension `(s/coll-of ~(keyword (format "fhir.%s.Coding" kind) "Extension"))
+                            :system (keyword (format "fhir.%s.Coding" kind) "system")
+                            :version (keyword (format "fhir.%s.Coding" kind) "version")
+                            :code (keyword (format "fhir.%s.Coding" kind) "code")
+                            :display (keyword (format "fhir.%s.Coding" kind) "display")}))]
+    (reify
+      sp/Spec
+      (conform* [_ x _ settings]
+        (if (map? x)
+          (let [id (when-let [v (x :id)] (sp/conform* @id-spec v :id settings))]
+            (if (s/invalid? id)
+              ::s/invalid
+              (let [extension (when-let [v (x :extension)] (sp/conform* @extension-spec v :extension settings))]
+                (if (s/invalid? extension)
+                  ::s/invalid
+                  (let [system (when-let [v (x :system)] (sp/conform* @system-spec v :system settings))]
+                    (if (s/invalid? system)
+                      ::s/invalid
+                      (let [version (when-let [v (x :version)] (sp/conform* @version-spec v :version settings))]
+                        (if (s/invalid? version)
+                          ::s/invalid
+                          (let [code (when-let [v (x :code)] (sp/conform* @code-spec v :code settings))]
+                            (if (s/invalid? code)
+                              ::s/invalid
+                              (let [display (when-let [v (x :display)] (sp/conform* @display-spec v :display settings))]
+                                (if (s/invalid? display)
+                                  ::s/invalid
+                                  (->Coding id extension system version code display)))))))))))))
+          ::s/invalid))
+      (unform* [_ x] x)
+      (explain* [_ path via in x _ settings]
+        (if (not (map? x))
+          [{:path path :pred `map? :val x :via via :in in}]
+          (reduce-kv
+            (fn [p k v]
+              (if-let [sp (@specs k)]
+                (into p (specs/explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))
+                p))
+            [] x)))
+      (gen* [_ _ _ _])
+      (with-gen* [_ _])
+      (describe* [_] `(coding ~kind)))))
 
 
 (declare coding-serializer)
