@@ -123,11 +123,11 @@
 
 
 (defn- population-concept [code]
-  (type/map->CodeableConcept
+  (type/codeable-concept
     {:coding
-     [(type/map->Coding
+     [(type/coding
         {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
-         :code (type/->Code code)})]}))
+         :code (type/code code)})]}))
 
 
 (defn- cql-expression [expr]

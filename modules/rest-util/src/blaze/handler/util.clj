@@ -38,9 +38,9 @@
           (cond->
             {:fhir/type :fhir.OperationOutcome/issue
              :severity #fhir/code"error"
-             :code (or (some-> code type/->Code) (issue-code category))}
+             :code (or (some-> code type/code) (issue-code category))}
             severity
-            (assoc :severity (type/->Code severity))
+            (assoc :severity (type/code severity))
             diagnostics
             (assoc :diagnostics diagnostics)
             (coll? expression)
@@ -59,13 +59,13 @@
   (cond->
     {:fhir/type :fhir.OperationOutcome/issue
      :severity #fhir/code"error"
-     :code (or (some-> issue type/->Code) (issue-code category))}
+     :code (or (some-> issue type/code) (issue-code category))}
     operation-outcome
     (assoc
       :details
       {:coding
        [{:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-         :code (type/->Code operation-outcome)}]})
+         :code (type/code operation-outcome)}]})
     message
     (assoc :diagnostics message)
     stacktrace

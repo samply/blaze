@@ -247,7 +247,7 @@
 
 
 (defn- location [context type id vid]
-  (type/->Uri (fhir-util/versioned-instance-url context type id vid)))
+  (type/uri (fhir-util/versioned-instance-url context type id vid)))
 
 
 (defn- created-entry
@@ -367,7 +367,7 @@
         :status (str status)}
 
        location
-       (assoc :location (type/->Uri location))
+       (assoc :location (type/uri location))
 
        etag
        (assoc :etag etag)
@@ -503,7 +503,7 @@
 (defn- response-bundle [context type entries]
   {:fhir/type :fhir/Bundle
    :id (iu/luid context)
-   :type (type/->Code (str (type/value type) "-response"))
+   :type (type/code (str (type/value type) "-response"))
    :entry entries})
 
 

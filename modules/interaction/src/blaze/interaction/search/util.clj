@@ -17,6 +17,6 @@
    (entry context resource match))
   ([context {:fhir/keys [type] :keys [id] :as resource} mode]
    {:fhir/type :fhir.Bundle/entry
-    :fullUrl (type/->Uri (fhir-util/instance-url context (name type) id))
+    :fullUrl (type/uri (fhir-util/instance-url context (name type) id))
     :resource resource
     :search mode}))

@@ -26,6 +26,6 @@
                  :severity #fhir/code"error"
                  :code #fhir/code"login"
                  :details
-                 (type/map->CodeableConcept
+                 (type/codeable-concept
                    {:coding [msg-auth-required]})}]})
             (ring/status 401))))))

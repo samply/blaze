@@ -1,6 +1,7 @@
 (ns blaze.fhir.spec.type
   (:refer-clojure :exclude [decimal? string? type uri? uuid?])
   (:require
+    [blaze.fhir.spec.impl.intern :as intern]
     [blaze.fhir.spec.type.macros :as macros :refer [defcomplextype]]
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
@@ -201,6 +202,7 @@
 
 ;; ---- uri -------------------------------------------------------------------
 
+
 (deftype Uri [value]
   p/FhirType
   (-type [_] :fhir/uri)
@@ -233,10 +235,14 @@
   (.write w "\""))
 
 
+(def uri
+  (intern/intern-value ->Uri))
+
+
 (defn xml->Uri
   {:arglists '([element])}
   [{{:keys [_id _extension value]} :attrs}]
-  (->Uri value))
+  (uri value))
 
 
 (defn uri? [x]
@@ -323,10 +329,14 @@
   (.write w "\""))
 
 
+(def canonical
+  (intern/intern-value ->Canonical))
+
+
 (defn xml->Canonical
   {:arglists '([element])}
   [{{:keys [_id value]} :attrs _extensions :content}]
-  (->Canonical value))
+  (canonical value))
 
 
 (defn canonical? [x]
@@ -746,8 +756,12 @@
       (.writeString gen ^String (.value extended-code)))))
 
 
+(def code
+  (intern/intern-value ->Code))
+
+
 (defn tagged-literal->Code [x]
-  (if (string? x) (->Code x) (map->ExtendedCode x)))
+  (if (string? x) (code x) (map->ExtendedCode x)))
 
 
 (defn xml->Code
@@ -756,7 +770,7 @@
   [{{:keys [id value]} :attrs extensions :content}]
   (if (or id (seq extensions))
     (->ExtendedCode id extensions value)
-    (->Code value)))
+    (code value)))
 
 
 (defn code? [x]
@@ -1183,6 +1197,10 @@
    display :string})
 
 
+(def coding
+  (intern/intern-value map->Coding))
+
+
 (declare coding-serializer)
 
 
@@ -1193,6 +1211,10 @@
    extension ^{:cardinality :many} extension-serializer
    coding ^{:cardinality :many} coding-serializer
    text :string})
+
+
+(def codeable-concept
+  (intern/intern-value map->CodeableConcept))
 
 
 (declare codeable-concept-serializer)

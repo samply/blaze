@@ -30,7 +30,7 @@
             #(some #{name} (:blaze.rest-api.operation/resource-types %))
             operations)]
       (cond->
-        {:type (type/->Code name)
+        {:type (type/code name)
          :interaction
          (reduce
            (fn [res code]
@@ -39,7 +39,7 @@
                (conj
                  res
                  (cond->
-                   {:code (type/->Code (clojure.core/name code))}
+                   {:code (type/code (clojure.core/name code))}
                    doc
                    (assoc :documentation (type/->Markdown doc))))
                res))
@@ -69,9 +69,9 @@
          (transduce
            (map
              (fn [{:keys [name url type]}]
-               (cond-> {:name name :type (type/->Code type)}
+               (cond-> {:name name :type (type/code type)}
                  url
-                 (assoc :definition (type/->Canonical url))
+                 (assoc :definition (type/canonical url))
                  (= "quantity" type)
                  (assoc :documentation quantity-documentation))))
            conj
@@ -88,7 +88,7 @@
                     [code def-uri type-handler instance-handler]}]
                 (when (or type-handler instance-handler)
                   {:name code
-                   :definition (type/->Canonical def-uri)})))
+                   :definition (type/canonical def-uri)})))
             operations))))))
 
 
