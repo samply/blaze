@@ -179,7 +179,9 @@
 (defrecord ToDateTimeOperatorExpression [operand]
   core/Expression
   (-eval [_ {:keys [now] :as context} resource scope]
-    (p/to-date-time (core/-eval operand context resource scope) now)))
+    (p/to-date-time (core/-eval operand context resource scope) now))
+  (-form [_]
+    (list 'to-date-time (core/-form operand))))
 
 
 (defmethod core/compile* :elm.compiler.type/to-date-time

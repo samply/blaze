@@ -498,5 +498,6 @@
 
 ;; 23.4. CalculateAgeAt
 (s/fdef elm/calculate-age-at
-  :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
+  :args (s/cat :ops (s/spec (s/cat :x :elm/expression :y :elm/expression
+                                   :precision (s/? string?))))
   :ret :elm/expression)

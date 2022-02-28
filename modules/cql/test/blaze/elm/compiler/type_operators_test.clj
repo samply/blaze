@@ -396,7 +396,9 @@
         "2020-03-08" (system/date-time 2020 3 8)
         "2020-03-08T12:13" (system/date-time 2020 3 8 12 13))))
 
-  (tu/testing-unary-null elm/to-date-time))
+  (tu/testing-unary-null elm/to-date-time)
+
+  (tu/testing-unary-form elm/to-date-time))
 
 
 ;; 22.24. ToDecimal

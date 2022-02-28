@@ -847,5 +847,9 @@
 ;; 23. Clinical Operators
 
 ;; 23.4. CalculateAgeAt
-(defn calculate-age-at [ops]
-  {:type "CalculateAgeAt" :operand ops})
+(defn calculate-age-at [[x y precision]]
+  (cond->
+    {:type "CalculateAgeAt"
+     :operand [x y]}
+    precision
+    (assoc :precision precision)))
