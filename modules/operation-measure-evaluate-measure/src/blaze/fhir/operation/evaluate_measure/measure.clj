@@ -267,7 +267,7 @@
        "population" #fhir/code"summary"
        "subject-list" #fhir/code"subject-list"
        "subject" #fhir/code"individual")
-     :measure (type/->Canonical measure-ref)
+     :measure (type/canonical measure-ref)
      :date now
      :period
      (type/map->Period

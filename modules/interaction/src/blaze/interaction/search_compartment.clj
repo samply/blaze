@@ -54,7 +54,7 @@
     {:keys [page-offset] :as params} :params} clauses]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/->Uri (nav/url base-url match params clauses (iu/t db)
+   :url (type/uri (nav/url base-url match params clauses (iu/t db)
                              {"__page-offset" page-offset}))})
 
 
@@ -68,7 +68,7 @@
                                (iu/t db) (next-link-offset params entries))]
     {:fhir/type :fhir.Bundle/link
      :relation "next"
-     :url (type/->Uri url)}))
+     :url (type/uri url)}))
 
 
 (defn- bundle* [context handles clauses]

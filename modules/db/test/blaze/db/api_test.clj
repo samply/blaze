@@ -3007,9 +3007,9 @@
             {:fhir/type :fhir/Observation :id id
              :subject #fhir/Reference{:reference "Patient/0"}
              :code
-             (type/map->CodeableConcept
+             (type/codeable-concept
                {:coding
-                [(type/map->Coding
+                [(type/coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
       (with-system [{:blaze.db/keys [node]} system]
@@ -3033,9 +3033,9 @@
             {:fhir/type :fhir/Observation :id id
              :subject #fhir/Reference{:reference "Patient/0"}
              :code
-             (type/map->CodeableConcept
+             (type/codeable-concept
                {:coding
-                [(type/map->Coding
+                [(type/coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
       (with-system [{:blaze.db/keys [node]} system]
@@ -3088,9 +3088,9 @@
             {:fhir/type :fhir/Observation :id id
              :subject #fhir/Reference{:reference "Patient/0"}
              :code
-             (type/map->CodeableConcept
+             (type/codeable-concept
                {:coding
-                [(type/map->Coding
+                [(type/coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
       (with-system [{:blaze.db/keys [node]} system]

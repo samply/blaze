@@ -56,7 +56,7 @@
 (defn- coerce-report-type [_ value]
   (if-not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type value)
     (ba/incorrect (invalid-report-type-param-msg value) :fhir/issue "value")
-    (type/->Code value)))
+    (type/code value)))
 
 
 (defn- invalid-subject-param-msg [subject]

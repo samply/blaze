@@ -7,7 +7,7 @@
 
 
 (defn- value-concept [value]
-  (type/map->CodeableConcept {:text (str (if (nil? value) "null" value))}))
+  (type/codeable-concept {:text (str (if (nil? value) "null" value))}))
 
 
 (defn- stratum* [population value]

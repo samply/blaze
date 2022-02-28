@@ -22,7 +22,7 @@
 (defn- link [context query-params relation resource-handle]
   {:fhir/type :fhir.Bundle/link
    :relation relation
-   :url (type/->Uri (history-util/nav-url context query-params
+   :url (type/uri (history-util/nav-url context query-params
                                           (:t resource-handle)
                                           (:id resource-handle)))})
 

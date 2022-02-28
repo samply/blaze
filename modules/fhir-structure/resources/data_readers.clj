@@ -1,8 +1,8 @@
 {fhir/integer clojure.core/int
  fhir/long clojure.core/long
- fhir/uri blaze.fhir.spec.type/->Uri
+ fhir/uri blaze.fhir.spec.type/uri
  fhir/url blaze.fhir.spec.type/->Url
- fhir/canonical blaze.fhir.spec.type/->Canonical
+ fhir/canonical blaze.fhir.spec.type/canonical
  fhir/base64Binary blaze.fhir.spec.type/->Base64Binary
  fhir/instant blaze.fhir.spec.type/->Instant
  fhir/date blaze.fhir.spec.type/->Date
@@ -18,8 +18,8 @@
  fhir/xhtml blaze.fhir.spec.type/->Xhtml
  fhir/Attachment blaze.fhir.spec.type/map->Attachment
  fhir/Extension blaze.fhir.spec.type/map->Extension
- fhir/Coding blaze.fhir.spec.type/map->Coding
- fhir/CodeableConcept blaze.fhir.spec.type/map->CodeableConcept
+ fhir/Coding blaze.fhir.spec.type/coding
+ fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
  fhir/Quantity blaze.fhir.spec.type/map->Quantity
  fhir/Period blaze.fhir.spec.type/map->Period
  fhir/Identifier blaze.fhir.spec.type/map->Identifier
