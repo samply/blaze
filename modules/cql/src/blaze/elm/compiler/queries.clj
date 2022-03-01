@@ -45,7 +45,9 @@
           (filter
             (fn eval-with-clause [lhs-entity]
               (some->> (core/-eval lhs-operand context resource lhs-entity)
-                       (contains? index)))))))))
+                       (contains? index))))))))
+  (-form [_]
+    (list 'with (core/-form rhs))))
 
 
 #_(defn- with-xform-factory [create-with-clause]
