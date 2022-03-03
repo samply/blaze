@@ -436,11 +436,11 @@
     (testing "XML representation of Extension"
       (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Extension")))
         [:fhir.Extension/url 0 :spec-form regexes->str]
-        := `(s2/and string? (fn [~'s] (re-matches "\\S*" ~'s)))
+        := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
         [:fhir.json.Extension/url 0 :spec-form regexes->str]
-        := `(s2/and string? (fn [~'s] (re-matches "\\S*" ~'s)))
+        := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
         [:fhir.xml.Extension/url 0 :spec-form regexes->str]
-        := `(s2/and string? (fn [~'s] (re-matches "\\S*" ~'s)))
+        := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
         [:fhir.xml.Extension/url 0 :representation] := :xmlAttr))
 
     (testing "XML representation of Coding"
@@ -472,7 +472,17 @@
         [:fhir.xml.Questionnaire/item 0 :spec-form 2 1 :item]
         := `(s2/and
               (s2/conformer impl/ensure-coll clojure.core/identity)
-              (s2/coll-of :fhir.xml.Questionnaire.item/item))))))
+              (s2/coll-of :fhir.xml.Questionnaire.item/item))))
+
+    (testing "JSON representation of Quantity.unit"
+      (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Quantity")))
+        [:fhir.json.Quantity/unit 0 :spec-form regexes->str]
+        := `(specs/regex "[ \\r\\n\\t\\S]+" impl/intern-string)))
+
+    (testing "CBOR representation of Quantity.unit"
+      (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Quantity")))
+        [:fhir.cbor.Quantity/unit 0 :spec-form regexes->str]
+        := `(s2/conformer impl/intern-string)))))
 
 
 (def sexp prxml/sexp-as-element)

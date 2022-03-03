@@ -9,6 +9,9 @@
 (set! *warn-on-reflection* true)
 
 
+(declare regex)
+
+
 (defn- regex-impl
   [pattern f-form]
   (let [f (s/resolve-fn f-form)]
@@ -28,19 +31,22 @@
 
 
 (defmethod s/expand-spec `regex
-  [[_ pattern f]]
+  [[_ pattern f-form]]
   {:clojure.spec/op `regex
    :pattern pattern
-   :f f})
+   :f-form f-form})
 
 
 (defmethod s/create-spec `regex
-  [{:keys [pattern f]}]
-  (regex-impl pattern f))
+  [{:keys [pattern f-form]}]
+  (regex-impl pattern f-form))
 
 
 
 ;; ---- Record Spec -----------------------------------------------------------
+
+(declare record)
+
 
 (defn- record-impl [class-sym spec-forms]
   (let [class (resolve class-sym)
@@ -96,6 +102,9 @@
     (if (s/spec? pred)
       (sp/explain* pred path (if-let [name (#'s/spec-name pred)] (conj via name) via) in v settings-key settings)
       [{:path path :pred form :val v :via via :in in}])))
+
+
+(declare json-object)
 
 
 (defn- json-object-impl [constructor-sym spec-forms key-map]

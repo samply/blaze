@@ -30,6 +30,16 @@
   (reduce conj! to from))
 
 
+(defn- write-string [gen s]
+  `(.writeString ~(with-meta gen {:tag `JsonGenerator}) ~(with-meta s {:tag `String})))
+
+
+(defn- serialize [serializer x gen provider]
+  `(.serialize ~(with-meta serializer {:tag `JsonSerializer}) ~x ~gen ~provider))
+
+
+(comment (serialize 's 1 'g 'p))
+
 (defmacro defcomplextype
   [name [& fields] & {:keys [fhir-type hash-num references field-serializers]}]
   (let [sink-sym (gensym "sink")
@@ -76,6 +86,11 @@
                           (case serializer
                             :string
                             `[(.writeStringField ~'gen ~(str field) ~field)]
+                            :strings
+                            `[(.writeArrayFieldStart ~'gen ~(str field))
+                              (dotimes [~'i (count ~field)]
+                                ~(write-string 'gen `(nth ~field ~'i)))
+                              (.writeEndArray ~'gen)]
                             :decimal
                             `[(.writeNumberField ~'gen ~(str field) ~(with-meta field {:tag `BigDecimal}))]
                             :dynamic
@@ -86,8 +101,8 @@
                               (dyn-serialize ~'gen ~'provider ~field)]
                             (if (= :many (:cardinality (meta serializer)))
                               `[(.writeArrayFieldStart ~'gen ~(str field))
-                                (dotimes [i# (count ~field)]
-                                  (.serialize ~(with-meta serializer {:tag `JsonSerializer}) (nth ~field i#) ~'gen ~'provider))
+                                (dotimes [~'i (count ~field)]
+                                  ~(serialize serializer `(nth ~field ~'i) 'gen 'provider))
                                 (.writeEndArray ~'gen)]
                               `[(.writeFieldName ~'gen ~(str field))
                                 (.serialize ~(with-meta serializer {:tag `JsonSerializer}) ~field ~'gen ~'provider)])))))

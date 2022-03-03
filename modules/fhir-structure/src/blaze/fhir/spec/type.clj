@@ -1277,6 +1277,43 @@
       [ref])))
 
 
+(defcomplextype HumanName [id extension use text family given prefix suffix period]
+  :hash-num 46
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   use code-serializer
+   text :string
+   family :string
+   given :strings
+   prefix :strings
+   suffix :strings
+   period period-serializer})
+
+
+(declare human-name-serializer)
+
+
+(defcomplextype Address [id extension use type text line city district state postalCode country period]
+  :hash-num 47
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   use code-serializer
+   type code-serializer
+   text :string
+   line :strings
+   city :string
+   district :string
+   state :string
+   postalCode :string
+   country :string
+   period period-serializer})
+
+
+(declare address-serializer)
+
+
 (defcomplextype Reference [id extension reference type identifier display]
   :hash-num 43
   :references
@@ -1307,6 +1344,10 @@
    profile ^{:cardinality :many} canonical-serializer
    security ^{:cardinality :many} coding-serializer
    tag ^{:cardinality :many} coding-serializer})
+
+
+(def mk-meta
+  (intern/intern-value map->Meta))
 
 
 (declare meta-serializer)
@@ -1353,8 +1394,17 @@
     (.addSerializer Coding coding-serializer)
     (.addSerializer CodeableConcept codeable-concept-serializer)
     (.addSerializer Quantity quantity-serializer)
+    ;; Range
+    ;; Ratio
     (.addSerializer Period period-serializer)
+    ;; SampledData
     (.addSerializer Identifier identifier-serializer)
+    (.addSerializer HumanName human-name-serializer)
+    (.addSerializer Address address-serializer)
+    ;; ContactPoint
+    ;; Timing
+    ;; Signature
+    ;; Annotation
     (.addSerializer Reference reference-serializer)
     (.addSerializer Meta meta-serializer)
     (.addSerializer BundleEntrySearch bundle-entry-search-serializer)))

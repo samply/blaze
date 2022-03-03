@@ -55,6 +55,19 @@
    :main-opts
    ["-m" "kaocha.runner"]}
 
+  :test-perf
+  {:extra-paths ["test-perf"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    criterium/criterium
+    {:mvn/version "0.4.6"}
+
+    org.openjdk.jol/jol-core
+    {:mvn/version "0.16"}}}
+
   :test-coverage
   {:extra-paths ["test"]
 

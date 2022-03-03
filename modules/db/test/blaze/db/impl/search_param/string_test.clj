@@ -61,7 +61,7 @@
       (testing "missing family is not a problem"
         (let [patient {:fhir/type :fhir/Patient
                        :id "id-164114"
-                       :name [{:fhir/type :fhir/HumanName}]}
+                       :name [#fhir/HumanName{}]}
               hash (hash/generate patient)]
 
           (is (empty? (search-param/index-entries
@@ -70,9 +70,7 @@
 
       (let [patient {:fhir/type :fhir/Patient
                      :id "id-122929"
-                     :name
-                     [{:fhir/type :fhir/HumanName
-                       :family "family-102508"}]}
+                     :name [#fhir/HumanName{:family "family-102508"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (search-param/index-entries
@@ -98,9 +96,8 @@
       (let [patient {:fhir/type :fhir/Patient
                      :id "id-122929"
                      :address
-                     [{:fhir/type :fhir/Address
-                       :line ["line-120252"]
-                       :city "city-105431"}]}
+                     [#fhir/Address{:line ["line-120252"]
+                                    :city "city-105431"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries

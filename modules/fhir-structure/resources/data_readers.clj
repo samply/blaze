@@ -23,8 +23,10 @@
  fhir/Quantity blaze.fhir.spec.type/map->Quantity
  fhir/Period blaze.fhir.spec.type/map->Period
  fhir/Identifier blaze.fhir.spec.type/map->Identifier
+ fhir/HumanName blaze.fhir.spec.type/map->HumanName
+ fhir/Address blaze.fhir.spec.type/map->Address
  fhir/Reference blaze.fhir.spec.type/map->Reference
- fhir/Meta blaze.fhir.spec.type/map->Meta
+ fhir/Meta blaze.fhir.spec.type/mk-meta
  fhir/BundleEntrySearch blaze.fhir.spec.type/map->BundleEntrySearch
  system/date blaze.fhir.spec.type.system/parse-date
  system/date-time blaze.fhir.spec.type.system/parse-date-time}
