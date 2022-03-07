@@ -22,11 +22,11 @@
                    ~expr-binding expr#]
                ~@body)
              (reify core/Expression
-               (-eval [~'_ context# resource# scope#]
+               (~'-eval [~'_ context# resource# scope#]
                  (let [~operand-binding (core/-eval operand# context# resource# scope#)
                        ~expr-binding expr#]
                    ~@body))
-               (-form [~'_]
+               (~'-form [~'_]
                  (list (quote ~name) (core/-form operand#)))))))
       `(defmethod core/compile* ~(compile-kw name)
          [context# expr#]
@@ -35,10 +35,10 @@
              (let [~operand-binding operand#]
                ~@body)
              (reify core/Expression
-               (-eval [~'_ context# resource# scope#]
+               (~'-eval [~'_ context# resource# scope#]
                  (let [~operand-binding (core/-eval operand# context# resource# scope#)]
                    ~@body))
-               (-form [~'_]
+               (~'-form [~'_]
                  (list (quote ~name) (core/-form operand#))))))))))
 
 
@@ -58,11 +58,11 @@
                  ~op-2-binding operand-2#]
              ~@body)
            (reify core/Expression
-             (-eval [~'_ context# resource# scope#]
+             (~'-eval [~'_ context# resource# scope#]
                (let [~op-1-binding (core/-eval operand-1# context# resource# scope#)
                      ~op-2-binding (core/-eval operand-2# context# resource# scope#)]
                  ~@body))
-             (-form [~'_]
+             (~'-form [~'_]
                (list (quote ~name) (core/-form operand-1#) (core/-form operand-2#)))))))))
 
 
@@ -75,7 +75,7 @@
            operand-2# (core/compile* context# operand-2#)
            operand-3# (core/compile* context# operand-3#)]
        (reify core/Expression
-         (-eval [~'_ context# resource# scope#]
+         (~'-eval [~'_ context# resource# scope#]
            (let [~op-1-binding (core/-eval operand-1# context# resource# scope#)
                  ~op-2-binding (core/-eval operand-2# context# resource# scope#)
                  ~op-3-binding (core/-eval operand-3# context# resource# scope#)]
@@ -89,7 +89,7 @@
      [context# {operands# :operand}]
      (let [operands# (mapv #(core/compile* context# %) operands#)]
        (reify core/Expression
-         (-eval [~'_ context# resource# scope#]
+         (~'-eval [~'_ context# resource# scope#]
            (let [~operands-binding (mapv #(core/-eval % context# resource# scope#) operands#)]
              ~@body))))))
 
@@ -101,7 +101,7 @@
      [context# {source# :source}]
      (let [source# (core/compile* context# source#)]
        (reify core/Expression
-         (-eval [~'_ context# resource# scope#]
+         (~'-eval [~'_ context# resource# scope#]
            (let [~source-binding (core/-eval source# context# resource# scope#)]
              ~@body))))))
 
@@ -115,10 +115,10 @@
            ~precision-binding (some-> precision# core/to-chrono-unit)
            ~(or expr-binding '_) expr#]
        (reify core/Expression
-         (-eval [~'_ context# resource# scope#]
+         (~'-eval [~'_ context# resource# scope#]
            (let [~operand-binding (core/-eval operand# context# resource# scope#)]
              ~@body))
-         (-form [~'_]
+         (~'-form [~'_]
            (list (quote ~name) (core/-form operand#) precision#))))))
 
 
@@ -140,11 +140,11 @@
                  ~precision-binding chrono-precision#]
              ~@body)
            (reify core/Expression
-             (-eval [~'_ context# resource# scope#]
+             (~'-eval [~'_ context# resource# scope#]
                (let [~op-1-binding (core/-eval operand-1# context# resource# scope#)
                      ~op-2-binding (core/-eval operand-2# context# resource# scope#)
                      ~precision-binding chrono-precision#]
                  ~@body))
-             (-form [~'_]
+             (~'-form [~'_]
                (list (quote ~name) (core/-form operand-1#) (core/-form operand-2#)
                      precision#))))))))
