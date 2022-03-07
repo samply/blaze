@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.composite
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.search-param.composite.token-quantity :as tq]
     [blaze.db.impl.search-param.composite.token-token :as tt]

@@ -129,20 +129,20 @@
 
 
 ;; 16.19. Round
-(defrecord RoundOperatorExpression [operand precision]
-  core/Expression
-  (-eval [_ context resource scope]
-    (p/round (core/-eval operand context resource scope)
-             (core/-eval precision context resource scope))))
-
-
 (defmethod core/compile* :elm.compiler.type/round
   [context {:keys [operand precision]}]
   (let [operand (core/compile* context operand)
-        precision (or (some->> precision (core/compile* context)) 0)]
+        precision (some->> precision (core/compile* context))]
     (if (and (core/static? operand) (core/static? precision))
       (p/round operand precision)
-      (->RoundOperatorExpression operand precision))))
+      (reify core/Expression
+        (-eval [_ context resource scope]
+          (p/round (core/-eval operand context resource scope)
+                   (core/-eval precision context resource scope)))
+        (-form [_]
+          (->> (some-> (core/-form precision) list)
+               (cons (core/-form operand))
+               (cons 'round)))))))
 
 
 ;; 16.20. Subtract

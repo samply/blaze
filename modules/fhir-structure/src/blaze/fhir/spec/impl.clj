@@ -1,6 +1,7 @@
 (ns blaze.fhir.spec.impl
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.fhir.spec.impl.intern :as intern]
     [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s]
@@ -51,8 +52,13 @@
   `(fn [~'s] (re-matches #"[A-Za-z0-9\-\.]{1,64}" ~'s)))
 
 
+(def ^{:arglists '([s])} intern-string
+  "Returns an interned String without using String/intern."
+  (intern/intern-value identity))
+
+
 (def uri-matcher-form
-  `(fn [~'s] (re-matches #"\S*" ~'s)))
+  `(specs/regex #"\S*" intern-string))
 
 
 (defn element? [x]
@@ -82,7 +88,7 @@
     (:json nil) `(s/and string? ~uri-matcher-form)
     :xml `(s/and element? (s/conformer conform-xml-value unform-xml-value) ~uri-matcher-form)
     :xmlAttr `(s/and string? ~uri-matcher-form)
-    :cbor `any?))
+    :cbor `(s/conformer intern-string)))
 
 
 (defn- string-spec [modifier type]
@@ -192,7 +198,10 @@
       :modifier :json
       :min min
       :max max
-      :spec-form (keyword "fhir.json" (:code type))}
+      :spec-form
+      (if (= "Quantity.unit" path)
+        `(specs/regex #"[ \r\n\t\S]+" intern-string)
+        (keyword "fhir.json" (:code type)))}
      (cond->
        {:key (path-parts->key' "fhir.xml" (split-path path))
         :modifier :xml
@@ -207,7 +216,10 @@
       :modifier :cbor
       :min min
       :max max
-      :spec-form (keyword "fhir.cbor" (:code type))}]))
+      :spec-form
+      (if (= "Quantity.unit" path)
+        `(s/conformer intern-string)
+        (keyword "fhir.cbor" (:code type)))}]))
 
 
 (defn elem-def->spec-def
@@ -334,6 +346,8 @@
          :fhir/Quantity
          :fhir/Period
          :fhir/Identifier
+         :fhir/HumanName
+         :fhir/Address
          :fhir/Reference
          :fhir/Meta)
        (record-spec-form path-part child-spec-defs)
@@ -425,9 +439,9 @@
     (group-by :choice-group child-spec-defs)))
 
 
-(defn- json-object-spec-form [class-name child-spec-defs]
+(defn- json-object-spec-form [create-fn child-spec-defs]
   `(specs/json-object
-     ~(symbol "blaze.fhir.spec.type" (str "map->" class-name))
+     ~(symbol "blaze.fhir.spec.type" create-fn)
      ~(into
         {}
         (comp
@@ -448,18 +462,23 @@
      :modifier :json
      :spec-form
      (case key
+       :fhir.json/Coding
+       (json-object-spec-form "coding" child-spec-defs)
+       :fhir.json/CodeableConcept
+       (json-object-spec-form "codeable-concept" child-spec-defs)
+       :fhir.json/Meta
+       (json-object-spec-form "mk-meta" child-spec-defs)
        (:fhir.json/Attachment
          :fhir.json/Extension
-         :fhir.json/Coding
-         :fhir.json/CodeableConcept
          :fhir.json/Quantity
          :fhir.json/Period
          :fhir.json/Identifier
-         :fhir.json/Reference
-         :fhir.json/Meta)
-       (json-object-spec-form path-part child-spec-defs)
+         :fhir.json/HumanName
+         :fhir.json/Address
+         :fhir.json/Reference)
+       (json-object-spec-form (str "map->" path-part) child-spec-defs)
        :fhir.json.Bundle.entry/search
-       (json-object-spec-form "BundleEntrySearch" child-spec-defs)
+       (json-object-spec-form "map->BundleEntrySearch" child-spec-defs)
        (conj (seq (remap-choice-conformer-forms child-spec-defs))
              (json-type-conformer-form kind parent-path-parts path-part)
              (schema-spec-form :json child-spec-defs)
@@ -587,6 +606,8 @@
          :fhir.xml/Quantity
          :fhir.xml/Period
          :fhir.xml/Identifier
+         :fhir.xml/HumanName
+         :fhir.xml/Address
          :fhir.xml/Reference
          :fhir.xml/Meta)
        (special-xml-schema-spec-form kind (name key) child-spec-defs)
@@ -596,9 +617,9 @@
                              child-spec-defs))}))
 
 
-(defn- cbor-object-spec-form [class-name child-spec-defs]
+(defn- cbor-object-spec-form [create-fn child-spec-defs]
   `(specs/json-object
-     ~(symbol "blaze.fhir.spec.type" (str "map->" class-name))
+     ~(symbol "blaze.fhir.spec.type" create-fn)
      ~(into
         {}
         (comp
@@ -620,18 +641,23 @@
      :modifier :cbor
      :spec-form
      (case key
+       :fhir.cbor/Coding
+       (cbor-object-spec-form "coding" child-spec-defs)
+       :fhir.cbor/CodeableConcept
+       (cbor-object-spec-form "codeable-concept" child-spec-defs)
+       :fhir.cbor/Meta
+       (cbor-object-spec-form "mk-meta" child-spec-defs)
        (:fhir.cbor/Attachment
          :fhir.cbor/Extension
-         :fhir.cbor/Coding
-         :fhir.cbor/CodeableConcept
          :fhir.cbor/Quantity
          :fhir.cbor/Period
          :fhir.cbor/Identifier
-         :fhir.cbor/Reference
-         :fhir.cbor/Meta)
-       (cbor-object-spec-form path-part child-spec-defs)
+         :fhir.cbor/HumanName
+         :fhir.cbor/Address
+         :fhir.cbor/Reference)
+       (cbor-object-spec-form (str "map->" path-part) child-spec-defs)
        :fhir.cbor.Bundle.entry/search
-       (cbor-object-spec-form "BundleEntrySearch" child-spec-defs)
+       (cbor-object-spec-form "map->BundleEntrySearch" child-spec-defs)
        (conj (seq (remap-choice-conformer-forms child-spec-defs))
              (json-type-conformer-form kind parent-path-parts path-part)
              (schema-spec-form :cbor child-spec-defs)
@@ -722,15 +748,15 @@
       "integer" `(s/and int? (s/conformer int identity))
       "string" `(specs/regex ~pattern identity)
       "decimal" `(s/conformer conform-decimal-json identity)
-      "uri" `(specs/regex ~pattern type/->Uri)
+      "uri" `(specs/regex ~pattern type/uri)
       "url" `(specs/regex ~pattern type/->Url)
-      "canonical" `(specs/regex ~pattern type/->Canonical)
+      "canonical" `(specs/regex ~pattern type/canonical)
       "base64Binary" `(specs/regex ~pattern type/->Base64Binary)
       "instant" `(specs/regex ~pattern type/->Instant)
       "date" `(specs/regex ~pattern type/->Date)
       "dateTime" `(specs/regex ~pattern type/->DateTime)
       "time" `(specs/regex ~pattern type/->Time)
-      "code" `(specs/regex ~pattern type/->Code)
+      "code" `(specs/regex ~pattern type/code)
       "oid" `(specs/regex ~pattern type/->Oid)
       "id" `(specs/regex ~pattern type/->Id)
       "markdown" `(specs/regex ~pattern type/->Markdown)
@@ -774,15 +800,15 @@
     "integer" `(s/conformer int identity)
     "string" `any?
     "decimal" `any?
-    "uri" `(s/conformer type/->Uri identity)
+    "uri" `(s/conformer type/uri identity)
     "url" `(s/conformer type/->Url identity)
-    "canonical" `(s/conformer type/->Canonical identity)
+    "canonical" `(s/conformer type/canonical identity)
     "base64Binary" `(s/conformer type/->Base64Binary identity)
     "instant" `(s/conformer type/->Instant identity)
     "date" `(s/conformer type/->Date identity)
     "dateTime" `(s/conformer type/->DateTime identity)
     "time" `(s/conformer type/->Time identity)
-    "code" `(s/conformer type/->Code identity)
+    "code" `(s/conformer type/code identity)
     "oid" `(s/conformer type/->Oid identity)
     "id" `(s/conformer type/->Id identity)
     "markdown" `(s/conformer type/->Markdown identity)

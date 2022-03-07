@@ -12,8 +12,7 @@
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.protocols :as p])
   (:import
-    [java.math RoundingMode]
-    [tech.units.indriya.function RationalNumber]))
+    [java.math RoundingMode]))
 
 
 (set! *warn-on-reflection* true)
@@ -233,7 +232,8 @@
 (extend-protocol p/Round
   BigDecimal
   (round [x precision]
-    (.setScale x ^long precision RoundingMode/HALF_UP)))
+    (let [new-scale (or precision 0)]
+      (.setScale x ^int new-scale RoundingMode/HALF_UP))))
 
 
 ;; 16.20. Subtract
@@ -283,10 +283,6 @@
 
   BigDecimal
   (to-decimal [x] x)
-
-  RationalNumber
-  (to-decimal [x]
-    (.bigDecimalValue x))
 
   String
   (to-decimal [s]

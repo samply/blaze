@@ -1,7 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
     [blaze.fhir.spec :as fhir-spec]
@@ -57,7 +56,7 @@
 (defn- coerce-report-type [_ value]
   (if-not (s/valid? :blaze.fhir.operation.evaluate-measure/report-type value)
     (ba/incorrect (invalid-report-type-param-msg value) :fhir/issue "value")
-    (type/->Code value)))
+    (type/code value)))
 
 
 (defn- invalid-subject-param-msg [subject]

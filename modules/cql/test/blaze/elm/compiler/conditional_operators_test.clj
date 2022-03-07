@@ -35,12 +35,12 @@
 (deftest compile-if-test
   (testing "Static"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/if[#elm/boolean "true" #elm/integer"1" #elm/integer"2"] 1
-      #elm/if[#elm/boolean "false" #elm/integer"1" #elm/integer"2"] 2
-      #elm/if[{:type "Null"} #elm/integer"1" #elm/integer"2"] 2))
+      #elm/if [#elm/boolean "true" #elm/integer "1" #elm/integer "2"] 1
+      #elm/if [#elm/boolean "false" #elm/integer "1" #elm/integer "2"] 2
+      #elm/if [{:type "Null"} #elm/integer "1" #elm/integer "2"] 2))
 
   (testing "Dynamic"
     (are [elm res] (= res (tu/dynamic-compile-eval elm))
-      #elm/if[#elm/parameter-ref"true" #elm/integer"1" #elm/integer"2"] 1
-      #elm/if[#elm/parameter-ref"false" #elm/integer"1" #elm/integer"2"] 2
-      #elm/if[#elm/parameter-ref"nil" #elm/integer"1" #elm/integer"2"] 2)))
+      #elm/if [#elm/parameter-ref "true" #elm/integer "1" #elm/integer "2"] 1
+      #elm/if [#elm/parameter-ref "false" #elm/integer "1" #elm/integer "2"] 2
+      #elm/if [#elm/parameter-ref "nil" #elm/integer "1" #elm/integer "2"] 2)))

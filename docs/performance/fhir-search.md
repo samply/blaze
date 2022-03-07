@@ -46,7 +46,7 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | E5-2687W v4 |      128 |             4 |                1 |        29 M |           28 M | 29463-7 |  1.3 M |       35 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 17861-6 |  1.7 M |       48 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 39156-5 |  9.7 M |      284 |
-| E5-2687W v4 |      128 |            40 |               10 |       292 M |          278 M | 29463-7 |   13 M |      410 |
+| E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 29463-7 |   13 M |      410 |
 
 According to the measurements the time needed by Blaze to deliver resources only depends on the number of hits and equals roughly in **30 seconds per 1 million hits**.
 

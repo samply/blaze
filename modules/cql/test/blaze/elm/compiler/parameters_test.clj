@@ -42,13 +42,16 @@
           {:library
            {:parameters
             {:def
-             [{:name "parameter-def-101820"}]}}}]
-      (is (= (->ParameterRef "parameter-def-101820")
-             (c/compile context #elm/parameter-ref"parameter-def-101820")))))
+             [{:name "parameter-def-101820"}]}}}
+          expr (c/compile context #elm/parameter-ref "parameter-def-101820")]
+      (is (= (->ParameterRef "parameter-def-101820") expr))
+
+      (testing "form"
+        (is (= '(param-ref "parameter-def-101820") (core/-form expr))))))
 
   (testing "definition not found"
     (let [context {:library {}}]
-      (given (ba/try-anomaly (c/compile context #elm/parameter-ref"parameter-def-103701"))
+      (given (ba/try-anomaly (c/compile context #elm/parameter-ref "parameter-def-103701"))
         ::anom/category := ::anom/incorrect
         ::anom/message := "Parameter definition `parameter-def-103701` not found."
         :context := context)))
@@ -59,7 +62,7 @@
            {:parameters
             {:def
              [{:name "parameter-def-111045"}]}}}
-          expr (c/compile context #elm/parameter-ref"parameter-def-111045")]
+          expr (c/compile context #elm/parameter-ref "parameter-def-111045")]
       (given (ba/try-anomaly (core/-eval expr {} nil nil))
         ::anom/category := ::anom/incorrect
         ::anom/message := "Value of parameter `parameter-def-111045` not found."

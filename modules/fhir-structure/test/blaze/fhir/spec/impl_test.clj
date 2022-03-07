@@ -135,7 +135,7 @@
              [{:key :fhir/uri
                :spec-form `type/uri?}
               {:key :fhir.json/uri
-               :spec-form `(specs/regex "\\S*" type/->Uri)}
+               :spec-form `(specs/regex "\\S*" type/uri)}
               {:key :fhir.xml/uri
                :spec-form
                `(s2/and
@@ -145,7 +145,7 @@
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Uri type/to-xml))}
               {:key :fhir.cbor/uri
-               :spec-form `(s2/conformer type/->Uri identity)}])))
+               :spec-form `(s2/conformer type/uri identity)}])))
 
     (testing "canonical"
       (is (= (-> (impl/primitive-type->spec-defs (primitive-type structure-definition-repo "canonical"))
@@ -153,7 +153,7 @@
              [{:key :fhir/canonical
                :spec-form `type/canonical?}
               {:key :fhir.json/canonical
-               :spec-form `(specs/regex "\\S*" type/->Canonical)}
+               :spec-form `(specs/regex "\\S*" type/canonical)}
               {:key :fhir.xml/canonical
                :spec-form
                `(s2/and
@@ -163,7 +163,7 @@
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Canonical type/to-xml))}
               {:key :fhir.cbor/canonical
-               :spec-form `(s2/conformer type/->Canonical identity)}])))
+               :spec-form `(s2/conformer type/canonical identity)}])))
 
     (testing "base64Binary"
       (is (= (-> (impl/primitive-type->spec-defs (primitive-type structure-definition-repo "base64Binary"))
@@ -189,7 +189,7 @@
              [{:key :fhir/code
                :spec-form `type/code?}
               {:key :fhir.json/code
-               :spec-form `(specs/regex "[^\\s]+(\\s[^\\s]+)*" type/->Code)}
+               :spec-form `(specs/regex "[^\\s]+(\\s[^\\s]+)*" type/code)}
               {:key :fhir.xml/code
                :spec-form
                `(s2/and
@@ -199,7 +199,7 @@
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Code type/to-xml))}
               {:key :fhir.cbor/code
-               :spec-form `(s2/conformer type/->Code identity)}])))
+               :spec-form `(s2/conformer type/code identity)}])))
 
     (testing "unsignedInt"
       (is (= (-> (impl/primitive-type->spec-defs (primitive-type structure-definition-repo "unsignedInt"))
@@ -436,11 +436,11 @@
     (testing "XML representation of Extension"
       (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Extension")))
         [:fhir.Extension/url 0 :spec-form regexes->str]
-        := `(s2/and string? (fn [~'s] (re-matches "\\S*" ~'s)))
+        := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
         [:fhir.json.Extension/url 0 :spec-form regexes->str]
-        := `(s2/and string? (fn [~'s] (re-matches "\\S*" ~'s)))
+        := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
         [:fhir.xml.Extension/url 0 :spec-form regexes->str]
-        := `(s2/and string? (fn [~'s] (re-matches "\\S*" ~'s)))
+        := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
         [:fhir.xml.Extension/url 0 :representation] := :xmlAttr))
 
     (testing "XML representation of Coding"
@@ -472,7 +472,17 @@
         [:fhir.xml.Questionnaire/item 0 :spec-form 2 1 :item]
         := `(s2/and
               (s2/conformer impl/ensure-coll clojure.core/identity)
-              (s2/coll-of :fhir.xml.Questionnaire.item/item))))))
+              (s2/coll-of :fhir.xml.Questionnaire.item/item))))
+
+    (testing "JSON representation of Quantity.unit"
+      (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Quantity")))
+        [:fhir.json.Quantity/unit 0 :spec-form regexes->str]
+        := `(specs/regex "[ \\r\\n\\t\\S]+" impl/intern-string)))
+
+    (testing "CBOR representation of Quantity.unit"
+      (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Quantity")))
+        [:fhir.cbor.Quantity/unit 0 :spec-form regexes->str]
+        := `(s2/conformer impl/intern-string)))))
 
 
 (def sexp prxml/sexp-as-element)

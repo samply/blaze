@@ -51,13 +51,13 @@
     #elm/list [{:type "Null"}]
     [nil]
 
-    #elm/list [#elm/integer"1"]
+    #elm/list [#elm/integer "1"]
     [1]
 
-    #elm/list [#elm/integer"1" {:type "Null"}]
+    #elm/list [#elm/integer "1" {:type "Null"}]
     [1 nil]
 
-    #elm/list [#elm/integer"1" #elm/integer"2"]
+    #elm/list [#elm/integer "1" #elm/integer "2"]
     [1 2]))
 
 
@@ -77,15 +77,15 @@
 (deftest compile-current-test
   (testing "default scope"
     (satisfies-prop 100
-    (prop/for-all [x (s/gen int?)]
-      (= x (core/-eval (c/compile {} {:type "Current"}) {} nil x)))))
+      (prop/for-all [x (s/gen int?)]
+        (= x (core/-eval (c/compile {} {:type "Current"}) {} nil x)))))
 
   (testing "named scope"
     (satisfies-prop 100
-    (prop/for-all [scope (s/gen string?)
-                   x (s/gen int?)]
-      (let [expr (c/compile {} {:type "Current" :scope scope})]
-        (= x (core/-eval expr {} nil {scope x})))))))
+      (prop/for-all [scope (s/gen string?)
+                     x (s/gen int?)]
+        (let [expr (c/compile {} {:type "Current" :scope scope})]
+          (= x (core/-eval expr {} nil {scope x})))))))
 
 
 ;; 20.4. Distinct
@@ -101,17 +101,19 @@
 ;;
 ;; If the source argument is null, the result is null.
 (deftest compile-distinct-test
-  (are [list res] (= res (core/-eval (c/compile {} (elm/distinct list)) {} nil nil))
-    #elm/list [#elm/integer"1"] [1]
-    #elm/list [#elm/integer"1" #elm/integer"1"] [1]
-    #elm/list [#elm/integer"1" #elm/integer"1" #elm/integer"2"] [1 2]
+  (are [list res] (= res (c/compile {} (elm/distinct list)))
+    #elm/list [#elm/integer "1"] [1]
+    #elm/list [#elm/integer "1" #elm/integer "1"] [1]
+    #elm/list [#elm/integer "1" #elm/integer "1" #elm/integer "2"] [1 2]
     #elm/list [{:type "Null"}] [nil]
     #elm/list [{:type "Null"} {:type "Null"}] [nil nil]
     #elm/list [{:type "Null"} {:type "Null"} {:type "Null"}] [nil nil nil]
-    #elm/list [#elm/quantity[100 "cm"] #elm/quantity[1 "m"]] [(quantity/quantity 100 "cm")]
-    #elm/list [#elm/quantity[1 "m"] #elm/quantity[100 "cm"]] [(quantity/quantity 1 "m")]
+    #elm/list [#elm/quantity [100 "cm"] #elm/quantity [1 "m"]] [(quantity/quantity 100 "cm")]
+    #elm/list [#elm/quantity [1 "m"] #elm/quantity [100 "cm"]] [(quantity/quantity 1 "m")])
 
-    {:type "Null"} nil))
+  (tu/testing-unary-null elm/distinct)
+
+  (tu/testing-unary-form elm/distinct))
 
 
 ;; 20.5. Equal
@@ -135,12 +137,14 @@
 ;;
 ;; If the argument is null, the result is false.
 (deftest compile-exists-test
-  (are [list res] (= res (core/-eval (c/compile {} (elm/exists list)) {} nil nil))
-    #elm/list [#elm/integer"1"] true
-    #elm/list [#elm/integer"1" #elm/integer"1"] true
+  (are [list res] (= res (c/compile {} (elm/exists list)))
+    #elm/list [#elm/integer "1"] true
+    #elm/list [#elm/integer "1" #elm/integer "1"] true
     #elm/list [] false
 
-    {:type "Null"} false))
+    {:type "Null"} false)
+
+  (tu/testing-unary-form elm/exists))
 
 
 ;; 20.9. Filter
@@ -151,10 +155,10 @@
 ;; If the source argument is null, the result is null.
 (deftest compile-filter-test
   (are [source condition res] (= res (core/-eval (c/compile {} {:type "Filter" :source source :condition condition :scope "A"}) {} nil nil))
-    #elm/list [#elm/integer"1"] #elm/boolean"false" []
-    #elm/list [#elm/integer"1"] #elm/equal [#elm/current "A" #elm/integer"1"] [1]
+    #elm/list [#elm/integer "1"] #elm/boolean "false" []
+    #elm/list [#elm/integer "1"] #elm/equal [#elm/current "A" #elm/integer "1"] [1]
 
-    {:type "Null"} #elm/boolean"true" nil))
+    {:type "Null"} #elm/boolean "true" nil))
 
 
 ;; 20.10. First
@@ -166,8 +170,8 @@
 ;; If the argument is null, the result is null.
 (deftest compile-first-test
   (are [source res] (= res (core/-eval (c/compile {} (elm/first source)) {} nil nil))
-    #elm/list [#elm/integer"1"] 1
-    #elm/list [#elm/integer"1" #elm/integer"2"] 1
+    #elm/list [#elm/integer "1"] 1
+    #elm/list [#elm/integer "1" #elm/integer "2"] 1
 
     {:type "Null"} nil))
 
@@ -178,15 +182,17 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-flatten-test
-  (are [list res] (= res (core/-eval (c/compile {} (elm/flatten list)) {} nil nil))
+  (are [list res] (= res (c/compile {} (elm/flatten list)))
     #elm/list [] []
-    #elm/list [#elm/integer"1"] [1]
-    #elm/list [#elm/integer"1" #elm/list [#elm/integer"2"]] [1 2]
-    #elm/list [#elm/integer"1" #elm/list [#elm/integer"2"] #elm/integer"3"] [1 2 3]
-    #elm/list [#elm/integer"1" #elm/list [#elm/integer"2" #elm/list [#elm/integer"3"]]] [1 2 3]
-    #elm/list [#elm/list [#elm/integer"1" #elm/list [#elm/integer"2"]] #elm/integer"3"] [1 2 3]
+    #elm/list [#elm/integer "1"] [1]
+    #elm/list [#elm/integer "1" #elm/list [#elm/integer "2"]] [1 2]
+    #elm/list [#elm/integer "1" #elm/list [#elm/integer "2"] #elm/integer "3"] [1 2 3]
+    #elm/list [#elm/integer "1" #elm/list [#elm/integer "2" #elm/list [#elm/integer "3"]]] [1 2 3]
+    #elm/list [#elm/list [#elm/integer "1" #elm/list [#elm/integer "2"]] #elm/integer "3"] [1 2 3])
 
-    {:type "Null"} nil))
+  (tu/testing-unary-null elm/flatten)
+
+  (tu/testing-unary-form elm/flatten))
 
 
 ;; 20.12. ForEach
@@ -203,14 +209,14 @@
 (deftest compile-for-each-test
   (testing "Without scope"
     (are [source element res] (= res (core/-eval (c/compile {} {:type "ForEach" :source source :element element}) {} nil nil))
-      #elm/list [#elm/integer"1"] {:type "Null"} [nil]
+      #elm/list [#elm/integer "1"] {:type "Null"} [nil]
 
       {:type "Null"} {:type "Null"} nil))
 
   (testing "With scope"
     (are [source element res] (= res (core/-eval (c/compile {} {:type "ForEach" :source source :element element :scope "A"}) {} nil nil))
-      #elm/list [#elm/integer"1"] #elm/current "A" [1]
-      #elm/list [#elm/integer"1" #elm/integer"2"] #elm/add [#elm/current "A" #elm/integer"1"] [2 3]
+      #elm/list [#elm/integer "1"] #elm/current "A" [1]
+      #elm/list [#elm/integer "1" #elm/integer "2"] #elm/add [#elm/current "A" #elm/integer "1"] [2 3]
 
       {:type "Null"} {:type "Null"} nil)))
 
@@ -244,13 +250,13 @@
 ;; If either argument is null, the result is null.
 (deftest compile-index-of-test
   (are [source element res] (= res (core/-eval (c/compile {} {:type "IndexOf" :source source :element element}) {} nil nil))
-    #elm/list [] #elm/integer"1" -1
-    #elm/list [#elm/integer"1"] #elm/integer"1" 0
-    #elm/list [#elm/integer"1" #elm/integer"1"] #elm/integer"1" 0
-    #elm/list [#elm/integer"1" #elm/integer"2"] #elm/integer"2" 1
+    #elm/list [] #elm/integer "1" -1
+    #elm/list [#elm/integer "1"] #elm/integer "1" 0
+    #elm/list [#elm/integer "1" #elm/integer "1"] #elm/integer "1" 0
+    #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "2" 1
 
     #elm/list [] {:type "Null"} nil
-    {:type "Null"} #elm/integer"1" nil
+    {:type "Null"} #elm/integer "1" nil
     {:type "Null"} {:type "Null"} nil))
 
 
@@ -268,8 +274,8 @@
 ;; If the argument is null, the result is null.
 (deftest compile-last-test
   (are [source res] (= res (core/-eval (c/compile {} {:type "Last" :source source}) {} nil nil))
-    #elm/list [#elm/integer"1"] 1
-    #elm/list [#elm/integer"1" #elm/integer"2"] 2
+    #elm/list [#elm/integer "1"] 1
+    #elm/list [#elm/integer "1" #elm/integer "2"] 2
 
     {:type "Null"} nil))
 
@@ -325,11 +331,13 @@
 (deftest compile-singleton-from-test
   (are [list res] (= res (core/-eval (c/compile {} (elm/singleton-from list)) {} nil nil))
     #elm/list [] nil
-    #elm/list [#elm/integer"1"] 1
+    #elm/list [#elm/integer "1"] 1
     {:type "Null"} nil)
 
   (are [list] (thrown? Exception (core/-eval (c/compile {} (elm/singleton-from list)) {} nil nil))
-    #elm/list [#elm/integer"1" #elm/integer"1"]))
+    #elm/list [#elm/integer "1" #elm/integer "1"])
+
+  (tu/testing-unary-null elm/singleton-from))
 
 
 ;; 20.26. Slice
@@ -347,17 +355,17 @@
 ;; the startIndex, the result is an empty list.
 (deftest compile-slice-test
   (are [source start end res] (= res (core/-eval (c/compile {} {:type "Slice" :source source :startIndex start :endIndex end}) {} nil nil))
-    #elm/list [#elm/integer"1"] #elm/integer"0" #elm/integer"1" [1]
-    #elm/list [#elm/integer"1" #elm/integer"2"] #elm/integer"0" #elm/integer"1" [1]
-    #elm/list [#elm/integer"1" #elm/integer"2"] #elm/integer"1" #elm/integer"2" [2]
-    #elm/list [#elm/integer"1" #elm/integer"2" #elm/integer"3"] #elm/integer"1" #elm/integer"3" [2 3]
-    #elm/list [#elm/integer"1" #elm/integer"2"] {:type "Null"} {:type "Null"} [1 2]
+    #elm/list [#elm/integer "1"] #elm/integer "0" #elm/integer "1" [1]
+    #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "0" #elm/integer "1" [1]
+    #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "1" #elm/integer "2" [2]
+    #elm/list [#elm/integer "1" #elm/integer "2" #elm/integer "3"] #elm/integer "1" #elm/integer "3" [2 3]
+    #elm/list [#elm/integer "1" #elm/integer "2"] {:type "Null"} {:type "Null"} [1 2]
 
-    #elm/list [#elm/integer"1"] #elm/integer"-1" #elm/integer"0" []
-    #elm/list [#elm/integer"1"] #elm/integer"1" #elm/integer"0" []
+    #elm/list [#elm/integer "1"] #elm/integer "-1" #elm/integer "0" []
+    #elm/list [#elm/integer "1"] #elm/integer "1" #elm/integer "0" []
 
 
-    {:type "Null"} #elm/integer"0" #elm/integer"0" nil
+    {:type "Null"} #elm/integer "0" #elm/integer "0" nil
     {:type "Null"} {:type "Null"} {:type "Null"} nil))
 
 
@@ -373,10 +381,10 @@
 ;; If the argument is null, the result is null.
 (deftest compile-sort-test
   (are [source by res] (= res (core/-eval (c/compile {} {:type "Sort" :source source :by [by]}) {} nil nil))
-    #elm/list [#elm/integer"2" #elm/integer"1"]
+    #elm/list [#elm/integer "2" #elm/integer "1"]
     {:type "ByDirection" :direction "asc"} [1 2]
 
-    #elm/list [#elm/integer"1" #elm/integer"2"]
+    #elm/list [#elm/integer "1" #elm/integer "2"]
     {:type "ByDirection" :direction "desc"} [2 1]
 
     {:type "Null"} {:type "ByDirection" :direction "asc"} nil))

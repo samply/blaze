@@ -31,7 +31,7 @@
 (test/use-fixtures :each fixture)
 
 
-(def interval-zero #elm/interval [#elm/integer"0" #elm/integer"0"])
+(def interval-zero #elm/interval [#elm/integer "0" #elm/integer "0"])
 
 ;; 19.1. Interval
 ;;
@@ -90,30 +90,30 @@
 
     (are [elm res] (= res (c/compile {} elm))
       #elm/interval [:< #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
-                     #elm/integer"1"]
+                     #elm/integer "1"]
       (interval nil 1)
 
-      #elm/interval [#elm/integer"1"
+      #elm/interval [#elm/integer "1"
                      #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}] :>]
       (interval 1 nil)
 
-      #elm/interval [:< #elm/integer"1" #elm/integer"2"] (interval 2 2)
-      #elm/interval [#elm/integer"1" #elm/integer"2" :>] (interval 1 1)
-      #elm/interval [:< #elm/integer"1" #elm/integer"3" :>] (interval 2 2)))
+      #elm/interval [:< #elm/integer "1" #elm/integer "2"] (interval 2 2)
+      #elm/interval [#elm/integer "1" #elm/integer "2" :>] (interval 1 1)
+      #elm/interval [:< #elm/integer "1" #elm/integer "3" :>] (interval 2 2)))
 
   (testing "Dynamic"
     (are [elm res] (= res (tu/dynamic-compile-eval elm))
-      (elm/interval [:< (elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref"nil"])
-                     #elm/integer"1"])
+      (elm/interval [:< (elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref "nil"])
+                     #elm/integer "1"])
       (interval nil 1)
 
-      (elm/interval [#elm/integer"1"
-                     (elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref"nil"]) :>])
+      (elm/interval [#elm/integer "1"
+                     (elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref "nil"]) :>])
       (interval 1 nil)))
 
   (testing "Invalid interval"
     (are [elm] (thrown? Exception (core/-eval (c/compile {} elm) {} nil nil))
-      #elm/interval [#elm/integer"5" #elm/integer"3"])))
+      #elm/interval [#elm/integer "5" #elm/integer "3"])))
 
 
 ;; 19.2. After
@@ -160,36 +160,36 @@
   (testing "Interval"
     (testing "if both intervals are closed, the start of the first (3) has to be greater then the end of the second (2)"
       (are [x y res] (= res (tu/compile-binop elm/after elm/interval x y))
-        [#elm/integer"3" #elm/integer"4"]
-        [#elm/integer"1" #elm/integer"2"] true
-        [#elm/integer"2" #elm/integer"3"]
-        [#elm/integer"1" #elm/integer"2"] false))
+        [#elm/integer "3" #elm/integer "4"]
+        [#elm/integer "1" #elm/integer "2"] true
+        [#elm/integer "2" #elm/integer "3"]
+        [#elm/integer "1" #elm/integer "2"] false))
 
     (testing "if one of the intervals is open, start and end can be the same (2)"
       (are [x y res] (= res (tu/compile-binop elm/after elm/interval x y))
-        [#elm/integer"2" #elm/integer"3"]
-        [#elm/integer"1" #elm/integer"2" :>] true
-        [:< #elm/integer"2" #elm/integer"3"]
-        [#elm/integer"1" #elm/integer"2"] true
-        [:< #elm/integer"2" #elm/integer"3"]
-        [#elm/integer"1" #elm/integer"2" :>] true))
+        [#elm/integer "2" #elm/integer "3"]
+        [#elm/integer "1" #elm/integer "2" :>] true
+        [:< #elm/integer "2" #elm/integer "3"]
+        [#elm/integer "1" #elm/integer "2"] true
+        [:< #elm/integer "2" #elm/integer "3"]
+        [#elm/integer "1" #elm/integer "2" :>] true))
 
     (testing "if both intervals are open, start and end can overlap slightly"
       (are [x y res] (= res (tu/compile-binop elm/after elm/interval x y))
-        [:< #elm/integer"2" #elm/integer"4"]
-        [#elm/integer"1" #elm/integer"3" :>] true))
+        [:< #elm/integer "2" #elm/integer "4"]
+        [#elm/integer "1" #elm/integer "3" :>] true))
 
     (testing "if one of the relevant bounds is infinity, the result is false"
       (are [x y res] (= res (tu/compile-binop elm/after elm/interval x y))
-        [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer"3"]
-        [#elm/integer"1" #elm/integer"2"] false
-        [#elm/integer"2" #elm/integer"3"]
-        [#elm/integer"1" {:type "Null"}] false))
+        [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "3"]
+        [#elm/integer "1" #elm/integer "2"] false
+        [#elm/integer "2" #elm/integer "3"]
+        [#elm/integer "1" {:type "Null"}] false))
 
     (testing "if the second interval has an unknown high bound, the result is null"
       (are [x y res] (= res (tu/compile-binop elm/after elm/interval x y))
-        [#elm/integer"2" #elm/integer"3"]
-        [#elm/integer"1" {:type "Null"} :>] nil))
+        [#elm/integer "2" #elm/integer "3"]
+        [#elm/integer "1" {:type "Null"} :>] nil))
 
     (tu/testing-binary-null elm/after interval-zero))
 
@@ -205,9 +205,9 @@
       "2019-04-17" "2019-04-17" false
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/after #elm/date"2019")
-    (tu/testing-binary-null elm/after #elm/date"2019-04")
-    (tu/testing-binary-null elm/after #elm/date"2019-04-17")
+    (tu/testing-binary-null elm/after #elm/date "2019")
+    (tu/testing-binary-null elm/after #elm/date "2019-04")
+    (tu/testing-binary-null elm/after #elm/date "2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/after elm/date x y "year"))
@@ -233,9 +233,9 @@
       "2019-04-17" "2019-04-17" false
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/after #elm/date-time"2019")
-    (tu/testing-binary-null elm/after #elm/date-time"2019-04")
-    (tu/testing-binary-null elm/after #elm/date-time"2019-04-17")
+    (tu/testing-binary-null elm/after #elm/date-time "2019")
+    (tu/testing-binary-null elm/after #elm/date-time "2019-04")
+    (tu/testing-binary-null elm/after #elm/date-time "2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/after elm/date-time
@@ -248,7 +248,9 @@
         "2019-04" "2019-05" false
         "2019-04-17" "2019-04-16" false
         "2019-04-17" "2019-04-17" false
-        "2019-04-17" "2019-04-18" false))))
+        "2019-04-17" "2019-04-18" false)))
+
+  (tu/testing-binary-precision-form elm/after))
 
 
 ;; 19.3. Before
@@ -294,36 +296,36 @@
   (testing "Interval"
     (testing "if both intervals are closed, the end of the first (2) has to be less then the start of the second (3)"
       (are [x y res] (= res (tu/compile-binop elm/before elm/interval x y))
-        [#elm/integer"1" #elm/integer"2"]
-        [#elm/integer"3" #elm/integer"4"] true
-        [#elm/integer"1" #elm/integer"2"]
-        [#elm/integer"2" #elm/integer"3"] false))
+        [#elm/integer "1" #elm/integer "2"]
+        [#elm/integer "3" #elm/integer "4"] true
+        [#elm/integer "1" #elm/integer "2"]
+        [#elm/integer "2" #elm/integer "3"] false))
 
     (testing "if one of the intervals is open, start and end can be the same (2)"
       (are [x y res] (= res (tu/compile-binop elm/before elm/interval x y))
-        [#elm/integer"1" #elm/integer"2" :>]
-        [#elm/integer"2" #elm/integer"3"] true
-        [#elm/integer"1" #elm/integer"2"]
-        [:< #elm/integer"2" #elm/integer"3"] true
-        [#elm/integer"1" #elm/integer"2" :>]
-        [:< #elm/integer"2" #elm/integer"3"] true))
+        [#elm/integer "1" #elm/integer "2" :>]
+        [#elm/integer "2" #elm/integer "3"] true
+        [#elm/integer "1" #elm/integer "2"]
+        [:< #elm/integer "2" #elm/integer "3"] true
+        [#elm/integer "1" #elm/integer "2" :>]
+        [:< #elm/integer "2" #elm/integer "3"] true))
 
     (testing "if both intervals are open, start and end can overlap slightly"
       (are [x y res] (= res (tu/compile-binop elm/before elm/interval x y))
-        [#elm/integer"1" #elm/integer"3" :>]
-        [:< #elm/integer"2" #elm/integer"4"] true))
+        [#elm/integer "1" #elm/integer "3" :>]
+        [:< #elm/integer "2" #elm/integer "4"] true))
 
     (testing "if one of the relevant bounds is infinity, the result is false"
       (are [x y res] (= res (tu/compile-binop elm/before elm/interval x y))
-        [#elm/integer"1" {:type "Null"}]
-        [#elm/integer"2" #elm/integer"3"] false
-        [#elm/integer"1" #elm/integer"2"]
-        [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer"3"] false))
+        [#elm/integer "1" {:type "Null"}]
+        [#elm/integer "2" #elm/integer "3"] false
+        [#elm/integer "1" #elm/integer "2"]
+        [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "3"] false))
 
     (testing "if the second interval has an unknown low bound, the result is null"
       (are [x y res] (= res (tu/compile-binop elm/before elm/interval x y))
-        [#elm/integer"1" #elm/integer"2"]
-        [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer"3"] nil))
+        [#elm/integer "1" #elm/integer "2"]
+        [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "3"] nil))
 
     (tu/testing-binary-null elm/before interval-zero))
 
@@ -339,9 +341,9 @@
       "2019-04-17" "2019-04-17" false
       "2019-04-17" "2019-04-16" false)
 
-    (tu/testing-binary-null elm/before #elm/date"2019")
-    (tu/testing-binary-null elm/before #elm/date"2019-04")
-    (tu/testing-binary-null elm/before #elm/date"2019-04-17")
+    (tu/testing-binary-null elm/before #elm/date "2019")
+    (tu/testing-binary-null elm/before #elm/date "2019-04")
+    (tu/testing-binary-null elm/before #elm/date "2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/before elm/date x y
@@ -368,9 +370,9 @@
       "2019-04-17" "2019-04-17" false
       "2019-04-17" "2019-04-16" false)
 
-    (tu/testing-binary-null elm/before #elm/date-time"2019")
-    (tu/testing-binary-null elm/before #elm/date-time"2019-04")
-    (tu/testing-binary-null elm/before #elm/date-time"2019-04-17")
+    (tu/testing-binary-null elm/before #elm/date-time "2019")
+    (tu/testing-binary-null elm/before #elm/date-time "2019-04")
+    (tu/testing-binary-null elm/before #elm/date-time "2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/before elm/date-time
@@ -383,7 +385,9 @@
         "2019-04" "2019-03" false
         "2019-04-17" "2019-04-18" false
         "2019-04-17" "2019-04-17" false
-        "2019-04-17" "2019-04-16" false))))
+        "2019-04-17" "2019-04-16" false)))
+
+  (tu/testing-binary-precision-form elm/before))
 
 
 ;; 19.4. Collapse
@@ -419,27 +423,29 @@
 (deftest compile-collapse-test
   (testing "Integer"
     (are [source per res] (= res (core/-eval (c/compile {} (elm/collapse [source per])) {} nil nil))
-      #elm/list [#elm/interval [#elm/integer"1" #elm/integer"2"]]
+      #elm/list [#elm/interval [#elm/integer "1" #elm/integer "2"]]
       {:type "Null"}
       [(interval 1 2)]
 
-      #elm/list [#elm/interval [#elm/integer"1" #elm/integer"2"]
-                 #elm/interval [#elm/integer"2" #elm/integer"3"]]
+      #elm/list [#elm/interval [#elm/integer "1" #elm/integer "2"]
+                #elm/interval [#elm/integer "2" #elm/integer "3"]]
       {:type "Null"}
       [(interval 1 3)]
 
       #elm/list [{:type "Null"}] {:type "Null"} []
       #elm/list [{:type "Null"} {:type "Null"}] {:type "Null"} []
-      #elm/list[] {:type "Null"} []
+      #elm/list [] {:type "Null"} []
 
       {:type "Null"} {:type "Null"} nil))
 
   (testing "DateTime"
     (are [source per res] (= res (core/-eval (c/compile {} (elm/collapse [source per])) {} nil nil))
-      #elm/list [#elm/interval [#elm/date-time"2012-01-01" #elm/date-time"2012-01-15"]
-                 #elm/interval [#elm/date-time"2012-01-16" #elm/date-time"2012-05-25"]]
+      #elm/list [#elm/interval [#elm/date-time "2012-01-01" #elm/date-time "2012-01-15"]
+                #elm/interval [#elm/date-time "2012-01-16" #elm/date-time "2012-05-25"]]
       {:type "Null"}
-      [(interval (system/date-time 2012 1 1) (system/date-time 2012 5 25))])))
+      [(interval (system/date-time 2012 1 1) (system/date-time 2012 5 25))]))
+
+  (tu/testing-binary-form elm/collapse))
 
 
 ;; 19.5. Contains
@@ -466,32 +472,26 @@
 (deftest compile-contains-test
   (testing "Interval"
     (testing "Integer"
-      (are [interval x res] (= res (core/-eval (c/compile {} (elm/contains [interval x])) {} nil nil))
-        #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"1" true
-        #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"2" false))
+      (are [interval x res] (= res (c/compile {} (elm/contains [interval x])))
+        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "1" true
+        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "2" false)
 
-    (testing "Null"
-      (are [interval x] (nil? (c/compile {} (elm/contains [interval x])))
-        interval-zero {:type "Null"}
-
-        {:type "Null"} {:type "Null"})))
+      (tu/testing-binary-null elm/contains interval-zero #elm/integer "1")))
 
   (testing "List"
     (are [list x res] (= res (core/-eval (c/compile {} (elm/contains [list x])) {} nil nil))
-      #elm/list[] #elm/integer"1" false
+      #elm/list [] #elm/integer "1" false
 
-      #elm/list [#elm/integer"1"] #elm/integer"1" true
-      #elm/list [#elm/integer"1"] #elm/integer"2" false
+      #elm/list [#elm/integer "1"] #elm/integer "1" true
+      #elm/list [#elm/integer "1"] #elm/integer "2" false
 
-      #elm/list [#elm/quantity[1 "m"]] #elm/quantity[100 "cm"] true
+      #elm/list [#elm/quantity [1 "m"]] #elm/quantity [100 "cm"] true
 
-      #elm/list [#elm/date"2019"] #elm/date"2019-01" false)
+      #elm/list [#elm/date "2019"] #elm/date "2019-01" false)
 
-    (testing "Null"
-      (are [list x] (nil? (c/compile {} (elm/contains [list x])))
-        #elm/list[] {:type "Null"}
+    (tu/testing-binary-null elm/contains #elm/list [] #elm/integer "1"))
 
-        {:type "Null"} {:type "Null"}))))
+  (tu/testing-binary-precision-form elm/contains))
 
 
 ;; 19.6. End
@@ -510,17 +510,19 @@
 (deftest compile-end-test
   (testing "Integer"
     (are [x res] (= res (tu/compile-unop elm/end elm/interval x))
-      [#elm/integer"1" #elm/integer"2"] 2
-      [#elm/integer"1" #elm/integer"2" :>] 1
-      [#elm/integer"1" {:type "Null"}] Integer/MAX_VALUE))
+      [#elm/integer "1" #elm/integer "2"] 2
+      [#elm/integer "1" #elm/integer "2" :>] 1
+      [#elm/integer "1" {:type "Null"}] Integer/MAX_VALUE))
 
   (testing "Decimal"
     (are [x res] (= res (tu/compile-unop elm/end elm/interval x))
-      [#elm/decimal"1" #elm/decimal"2.1"] 2.1M
-      [#elm/decimal"1" #elm/decimal"2.1" :>] 2.09999999M
-      [#elm/decimal"1" {:type "Null"}] decimal/max))
+      [#elm/decimal "1" #elm/decimal "2.1"] 2.1M
+      [#elm/decimal "1" #elm/decimal "2.1" :>] 2.09999999M
+      [#elm/decimal "1" {:type "Null"}] decimal/max))
 
-  (tu/testing-unary-null elm/end))
+  (tu/testing-unary-null elm/end)
+
+  (tu/testing-unary-form elm/end))
 
 
 ;; 19.7. Ends
@@ -541,11 +543,13 @@
 (deftest compile-ends-test
   (testing "Integer"
     (are [x y res] (= res (tu/compile-binop elm/ends elm/interval x y))
-      [#elm/integer"1" #elm/integer"3"] [#elm/integer"1" #elm/integer"3"] true
-      [#elm/integer"2" #elm/integer"3"] [#elm/integer"1" #elm/integer"3"] true
-      [#elm/integer"1" #elm/integer"3"] [#elm/integer"2" #elm/integer"3"] false))
+      [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true
+      [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true
+      [#elm/integer "1" #elm/integer "3"] [#elm/integer "2" #elm/integer "3"] false))
 
-  (tu/testing-binary-null elm/ends interval-zero))
+  (tu/testing-binary-null elm/ends interval-zero)
+
+  (tu/testing-binary-precision-form elm/ends))
 
 
 ;; 19.8. Equal
@@ -580,22 +584,24 @@
   (testing "List"
     (are [x y res] (= res (tu/compile-binop elm/except elm/list x y))
       [] [] []
-      [] [#elm/integer"1"] []
-      [#elm/integer"1"] [#elm/integer"1"] []
-      [#elm/integer"1"] [] [1]
-      [#elm/integer"1"] [#elm/integer"2"] [1]
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"2"] [1]
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1"] [2])
+      [] [#elm/integer "1"] []
+      [#elm/integer "1"] [#elm/integer "1"] []
+      [#elm/integer "1"] [] [1]
+      [#elm/integer "1"] [#elm/integer "2"] [1]
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "2"] [1]
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1"] [2])
 
-    (tu/testing-binary-null elm/except #elm/list[]))
+    (tu/testing-binary-null elm/except #elm/list []))
 
   (testing "Interval"
     (testing "Integer"
       (are [x y res] (= res (tu/compile-binop elm/except elm/interval x y))
-        [#elm/integer"1" #elm/integer"3"] [#elm/integer"3" #elm/integer"4"] (interval 1 2)
-        [#elm/integer"3" #elm/integer"5"] [#elm/integer"1" #elm/integer"3"] (interval 4 5)))
+        [#elm/integer "1" #elm/integer "3"] [#elm/integer "3" #elm/integer "4"] (interval 1 2)
+        [#elm/integer "3" #elm/integer "5"] [#elm/integer "1" #elm/integer "3"] (interval 4 5)))
 
-    (tu/testing-binary-null elm/except interval-zero)))
+    (tu/testing-binary-null elm/except interval-zero))
+
+  (tu/testing-binary-form elm/except))
 
 
 ;; 19.11. Expand
@@ -673,21 +679,23 @@
   (testing "List"
     (are [x y res] (= res (tu/compile-binop elm/includes elm/list x y))
       [] [] true
-      [#elm/integer"1"] [#elm/integer"1"] true
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1"] true
+      [#elm/integer "1"] [#elm/integer "1"] true
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1"] true
 
       [{:type "Null"}] [{:type "Null"}] false)
 
-    (tu/testing-binary-null elm/includes #elm/list[]))
+    (tu/testing-binary-null elm/includes #elm/list []))
 
 
   (testing "Interval"
     (testing "Integer"
       (are [x y res] (= res (tu/compile-binop elm/includes elm/interval x y))
-        [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"2"] true
-        [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"3"] false))
+        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] true
+        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "3"] false))
 
-    (tu/testing-binary-null elm/includes interval-zero)))
+    (tu/testing-binary-null elm/includes interval-zero))
+
+  (tu/testing-binary-precision-form elm/includes))
 
 
 ;; 19.14. IncludedIn
@@ -719,38 +727,40 @@
 (deftest compile-intersect-test
   (testing "List"
     (are [x y res] (= res (tu/compile-binop elm/intersect elm/list x y))
-      [#elm/integer"1"] [#elm/integer"1"] [1]
-      [#elm/integer"1"] [#elm/integer"2"] []
+      [#elm/integer "1"] [#elm/integer "1"] [1]
+      [#elm/integer "1"] [#elm/integer "2"] []
 
-      [#elm/integer"1"] [#elm/integer"1" #elm/integer"2"] [1]
+      [#elm/integer "1"] [#elm/integer "1" #elm/integer "2"] [1]
 
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1"] [1])
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1"] [1])
 
-    (tu/testing-binary-null elm/intersect #elm/list[]))
+    (tu/testing-binary-null elm/intersect #elm/list []))
 
   (testing "Interval"
     (are [x y res] (= res (tu/compile-binop elm/intersect elm/interval x y))
-      [#elm/integer"1" #elm/integer"2"]
-      [#elm/integer"2" #elm/integer"3"]
+      [#elm/integer "1" #elm/integer "2"]
+      [#elm/integer "2" #elm/integer "3"]
       (interval 2 2)
 
-      [#elm/integer"2" #elm/integer"3"]
-      [#elm/integer"1" #elm/integer"2"]
+      [#elm/integer "2" #elm/integer "3"]
+      [#elm/integer "1" #elm/integer "2"]
       (interval 2 2)
 
-      [#elm/integer"1" #elm/integer"10"]
-      [#elm/integer"5" #elm/integer"8"]
+      [#elm/integer "1" #elm/integer "10"]
+      [#elm/integer "5" #elm/integer "8"]
       (interval 5 8)
 
-      [#elm/integer"1" #elm/integer"10"]
-      [#elm/integer"5" {:type "Null"} :>]
+      [#elm/integer "1" #elm/integer "10"]
+      [#elm/integer "5" {:type "Null"} :>]
       nil
 
-      [#elm/integer"1" #elm/integer"2"]
-      [#elm/integer"3" #elm/integer"4"]
+      [#elm/integer "1" #elm/integer "2"]
+      [#elm/integer "3" #elm/integer "4"]
       nil)
 
-    (tu/testing-binary-null elm/intersect interval-zero)))
+    (tu/testing-binary-null elm/intersect interval-zero))
+
+  (tu/testing-binary-form elm/intersect))
 
 
 ;; 19.16. Meets
@@ -778,10 +788,12 @@
 (deftest compile-meets-before-test
   (testing "Integer"
     (are [x y res] (= res (tu/compile-binop elm/meets-before elm/interval x y))
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"3" #elm/integer"4"] true
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"4" #elm/integer"5"] false))
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] true
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "4" #elm/integer "5"] false))
 
-  (tu/testing-binary-null elm/meets-before interval-zero))
+  (tu/testing-binary-null elm/meets-before interval-zero)
+
+  (tu/testing-binary-precision-form elm/meets-before))
 
 
 ;; 19.18. MeetsAfter
@@ -801,10 +813,12 @@
 (deftest compile-meets-after-test
   (testing "Integer"
     (are [x y res] (= res (tu/compile-binop elm/meets-after elm/interval x y))
-      [#elm/integer"3" #elm/integer"4"] [#elm/integer"1" #elm/integer"2"] true
-      [#elm/integer"4" #elm/integer"5"] [#elm/integer"1" #elm/integer"2"] false))
+      [#elm/integer "3" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] true
+      [#elm/integer "4" #elm/integer "5"] [#elm/integer "1" #elm/integer "2"] false))
 
-  (tu/testing-binary-null elm/meets-after interval-zero))
+  (tu/testing-binary-null elm/meets-after interval-zero)
+
+  (tu/testing-binary-precision-form elm/meets-after))
 
 
 ;; 19.20. Overlaps
@@ -827,37 +841,39 @@
 (deftest compile-overlaps-test
   (testing "Static"
     (are [x y res] (= res (tu/compile-binop elm/overlaps elm/interval x y))
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"3" #elm/integer"4"] false
-      [#elm/integer"3" #elm/integer"4"] [#elm/integer"1" #elm/integer"2"] false
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] false
+      [#elm/integer "3" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] false
 
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"2" #elm/integer"4"] true
-      [#elm/integer"2" #elm/integer"4"] [#elm/integer"1" #elm/integer"2"] true
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "2" #elm/integer "4"] true
+      [#elm/integer "2" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] true
 
-      [#elm/integer"1" #elm/integer"3"] [#elm/integer"2" #elm/integer"4"] true
-      [#elm/integer"2" #elm/integer"4"] [#elm/integer"1" #elm/integer"3"] true
+      [#elm/integer "1" #elm/integer "3"] [#elm/integer "2" #elm/integer "4"] true
+      [#elm/integer "2" #elm/integer "4"] [#elm/integer "1" #elm/integer "3"] true
 
-      [#elm/integer"2" #elm/integer"3"] [#elm/integer"1" #elm/integer"4"] true
-      [#elm/integer"1" #elm/integer"4"] [#elm/integer"2" #elm/integer"3"] true
+      [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "4"] true
+      [#elm/integer "1" #elm/integer "4"] [#elm/integer "2" #elm/integer "3"] true
 
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"2"] true))
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] true))
 
   (testing "Dynamic"
     (are [x y res] (= res (tu/dynamic-compile-eval (elm/overlaps [(elm/interval x) (elm/interval y)])))
-      [#elm/integer"1" #elm/parameter-ref"2"] [#elm/integer"3" #elm/parameter-ref"4"] false
-      [#elm/integer"3" #elm/parameter-ref"4"] [#elm/integer"1" #elm/parameter-ref"2"] false
+      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "3" #elm/parameter-ref "4"] false
+      [#elm/integer "3" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "2"] false
 
-      [#elm/integer"1" #elm/parameter-ref"2"] [#elm/integer"2" #elm/parameter-ref"4"] true
-      [#elm/integer"2" #elm/parameter-ref"4"] [#elm/integer"1" #elm/parameter-ref"2"] true
+      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "2" #elm/parameter-ref "4"] true
+      [#elm/integer "2" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "2"] true
 
-      [#elm/integer"1" #elm/parameter-ref"3"] [#elm/integer"2" #elm/parameter-ref"4"] true
-      [#elm/integer"2" #elm/parameter-ref"4"] [#elm/integer"1" #elm/parameter-ref"3"] true
+      [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "2" #elm/parameter-ref "4"] true
+      [#elm/integer "2" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "3"] true
 
-      [#elm/integer"2" #elm/parameter-ref"3"] [#elm/integer"1" #elm/parameter-ref"4"] true
-      [#elm/integer"1" #elm/parameter-ref"4"] [#elm/integer"2" #elm/parameter-ref"3"] true
+      [#elm/integer "2" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "4"] true
+      [#elm/integer "1" #elm/parameter-ref "4"] [#elm/integer "2" #elm/parameter-ref "3"] true
 
-      [#elm/integer"1" #elm/parameter-ref"2"] [#elm/integer"1" #elm/parameter-ref"2"] true))
+      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "1" #elm/parameter-ref "2"] true))
 
-  (tu/testing-binary-null elm/overlaps interval-zero))
+  (tu/testing-binary-null elm/overlaps interval-zero)
+
+  (tu/testing-binary-precision-form elm/overlaps))
 
 
 ;; 19.21. OverlapsBefore
@@ -884,10 +900,12 @@
 (deftest compile-point-from-test
   (testing "Integer"
     (are [x res] (= res (tu/compile-unop elm/point-from elm/interval x))
-      [#elm/integer"1" #elm/integer"1"] 1
-      [#elm/integer"2" #elm/integer"2"] 2))
+      [#elm/integer "1" #elm/integer "1"] 1
+      [#elm/integer "2" #elm/integer "2"] 2))
 
-  (tu/testing-unary-null elm/point-from))
+  (tu/testing-unary-null elm/point-from)
+
+  (tu/testing-unary-form elm/point-from))
 
 
 ;; 19.24. ProperContains
@@ -914,11 +932,13 @@
   (testing "Interval"
     (testing "Integer"
       (are [interval x res] (= res (c/compile {} (elm/proper-contains [interval x])))
-        #elm/interval [#elm/integer"1" #elm/integer"3"] #elm/integer"2" true
-        #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"1" false
-        #elm/interval [#elm/integer"1" #elm/integer"1"] #elm/integer"2" false))
+        #elm/interval [#elm/integer "1" #elm/integer "3"] #elm/integer "2" true
+        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "1" false
+        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "2" false))
 
-    (tu/testing-binary-null elm/proper-contains interval-zero)))
+    (tu/testing-binary-null elm/proper-contains interval-zero))
+
+  (tu/testing-binary-precision-form elm/proper-contains))
 
 
 ;; 19.25. ProperIn
@@ -954,10 +974,12 @@
   (testing "Interval"
     (testing "Integer"
       (are [x y res] (= res (tu/compile-binop elm/proper-includes elm/interval x y))
-        [#elm/integer"1" #elm/integer"3"] [#elm/integer"1" #elm/integer"2"] true
-        [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"2"] false))
+        [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "2"] true
+        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] false))
 
-    (tu/testing-binary-null elm/proper-includes interval-zero)))
+    (tu/testing-binary-null elm/proper-includes interval-zero))
+
+  (tu/testing-binary-precision-form elm/proper-includes))
 
 
 ;; 19.27. ProperIncludedIn
@@ -999,17 +1021,19 @@
 (deftest compile-start-test
   (testing "Integer"
     (are [x res] (= res (tu/compile-unop elm/start elm/interval x))
-      [#elm/integer"1" #elm/integer"2"] 1
-      [:< #elm/integer"1" #elm/integer"2"] 2
-      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer"2"] Integer/MIN_VALUE))
+      [#elm/integer "1" #elm/integer "2"] 1
+      [:< #elm/integer "1" #elm/integer "2"] 2
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "2"] Integer/MIN_VALUE))
 
   (testing "Decimal"
     (are [x res] (= res (tu/compile-unop elm/start elm/interval x))
-      [#elm/decimal"1.1" #elm/decimal"2"] 1.1M
-      [:< #elm/decimal"1.1" #elm/decimal"2"] 1.10000001M
-      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"} #elm/decimal"2"] decimal/min))
+      [#elm/decimal "1.1" #elm/decimal "2"] 1.1M
+      [:< #elm/decimal "1.1" #elm/decimal "2"] 1.10000001M
+      [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"} #elm/decimal "2"] decimal/min))
 
-  (tu/testing-unary-null elm/start))
+  (tu/testing-unary-null elm/start)
+
+  (tu/testing-unary-form elm/start))
 
 
 ;; 19.30. Starts
@@ -1030,11 +1054,13 @@
 (deftest compile-starts-test
   (testing "Integer"
     (are [x y res] (= res (tu/compile-binop elm/starts elm/interval x y))
-      [#elm/integer"1" #elm/integer"3"] [#elm/integer"1" #elm/integer"3"] true
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"1" #elm/integer"3"] true
-      [#elm/integer"2" #elm/integer"3"] [#elm/integer"1" #elm/integer"3"] false))
+      [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "3"] true
+      [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] false))
 
-  (tu/testing-binary-null elm/starts interval-zero))
+  (tu/testing-binary-null elm/starts interval-zero)
+
+  (tu/testing-binary-precision-form elm/starts))
 
 
 ;; 19.31. Union
@@ -1058,17 +1084,19 @@
   (testing "List"
     (are [x y res] (= res (tu/compile-binop elm/union elm/list x y))
       [{:type "Null"}] [{:type "Null"}] [nil nil]
-      [#elm/integer"1"] [#elm/integer"1"] [1]
-      [#elm/integer"1"] [#elm/integer"2"] [1 2]
-      [#elm/integer"1"] [#elm/integer"1" #elm/integer"2"] [1 2])
+      [#elm/integer "1"] [#elm/integer "1"] [1]
+      [#elm/integer "1"] [#elm/integer "2"] [1 2]
+      [#elm/integer "1"] [#elm/integer "1" #elm/integer "2"] [1 2])
 
-    (tu/testing-binary-null elm/union #elm/list[]))
+    (tu/testing-binary-null elm/union #elm/list []))
 
   (testing "Interval"
     (are [x y res] (= res (tu/compile-binop elm/union elm/interval x y))
-      [#elm/integer"1" #elm/integer"2"] [#elm/integer"3" #elm/integer"4"] (interval 1 4))
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] (interval 1 4))
 
-    (tu/testing-binary-null elm/union interval-zero)))
+    (tu/testing-binary-null elm/union interval-zero))
+
+  (tu/testing-binary-form elm/union))
 
 
 ;; 19.32. Width
@@ -1083,6 +1111,8 @@
 (deftest compile-width-test
   (testing "Integer"
     (are [x res] (= res (tu/compile-unop elm/width elm/interval x))
-      [#elm/integer"1" #elm/integer"2"] 1))
+      [#elm/integer "1" #elm/integer "2"] 1))
 
-  (tu/testing-unary-null elm/width))
+  (tu/testing-unary-null elm/width)
+
+  (tu/testing-unary-form elm/width))

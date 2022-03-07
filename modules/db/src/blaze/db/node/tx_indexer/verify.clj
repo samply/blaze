@@ -1,7 +1,6 @@
 (ns blaze.db.node.tx-indexer.verify
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.anomaly-spec]
     [blaze.byte-string :as bs]
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]

@@ -9,6 +9,7 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.interval :as interval]
+    [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
     [blaze.fhir.spec.type.system :as system]
@@ -52,55 +53,86 @@
   (testing "Eval"
     (let [library {:statements {:def [{:name "name-170312"}]}}
           expr (c/compile {:library library} #elm/expression-ref "name-170312")]
-      (is (= ::result (core/-eval expr {:library-context {"name-170312" ::result}} nil nil))))))
+      (is (= ::result (core/-eval expr {:library-context {"name-170312" ::result}} nil nil)))))
+
+  (testing "form"
+    (let [library {:statements {:def [{:name "name-170312"}]}}
+          expr (c/compile {:library library} #elm/expression-ref "name-170312")]
+      (is (= '(expr-ref "name-170312") (core/-form expr))))))
 
 
 ;; 9.4. FunctionRef
+;;
+;; The FunctionRef type defines an expression that invokes a previously defined
+;; function. The result of evaluating each operand is passed to the function.
 (deftest compile-function-ref-test
-  (testing "ToString"
-    (are [elm res]
-      (= res (core/-eval (c/compile {} elm) {} nil nil))
-      {:type "FunctionRef"
-       :libraryName "FHIRHelpers"
-       :name "ToString"
-       :operand [#elm/string "foo"]}
-      "foo"))
-
   (testing "ToQuantity"
-    (let [context {:library {:parameters {:def [{:name "x"}]}}}
-          elm {:type "FunctionRef"
-               :libraryName "FHIRHelpers"
-               :name "ToQuantity"
-               :operand [#elm/parameter-ref"x"]}
-          expr (c/compile context elm)]
-      (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
-        {:value 23M :code "kg"} (quantity/quantity 23M "kg")
-        {:value 42M} (quantity/quantity 42M "1")
-        {} nil)))
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm (elm/function-ref "ToQuantity" #elm/parameter-ref "x")
+          expr (c/compile compile-ctx elm)]
+      (testing "eval"
+        (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
+          {:value 23M :code "kg"} (quantity/quantity 23M "kg")
+          {:value 42M} (quantity/quantity 42M "1")
+          {} nil))
+
+      (testing "form"
+        (is (= '(call "ToQuantity" (param-ref "x")) (core/-form expr))))))
+
+  (testing "ToDateTime"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm (elm/function-ref "ToDateTime" #elm/parameter-ref "x")
+          expr (c/compile compile-ctx elm)
+          eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+      (testing "eval"
+        (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
+          #fhir/dateTime"2022-02-22"
+          (system/date-time 2022 2 22)
+          #fhir/instant"2021-02-23T15:12:45Z"
+          (system/date-time 2021 2 23 15 12 45)
+          #fhir/instant"2021-02-23T15:12:45+01:00"
+          (system/date-time 2021 2 23 14 12 45)))
+
+      (testing "form"
+        (is (= '(call "ToDateTime" (param-ref "x")) (core/-form expr))))))
+
+  (testing "ToString"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm (elm/function-ref "ToString" #elm/parameter-ref "x")
+          expr (c/compile compile-ctx elm)]
+      (testing "eval"
+        (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
+          "string-195733" "string-195733"
+          #fhir/uri"uri-195924" "uri-195924"))
+
+      (testing "form"
+        (is (= '(call "ToString" (param-ref "x")) (core/-form expr))))))
 
   (testing "ToInterval"
-    (let [context {:library {:parameters {:def [{:name "x"}]}}}
-          elm {:type "FunctionRef"
-               :libraryName "FHIRHelpers"
-               :name "ToInterval"
-               :operand [#elm/parameter-ref"x"]}
-          expr (c/compile context elm)]
-      (are [x res] (= res (core/-eval expr {:now tu/now :parameters {"x" x}} nil nil))
-        #fhir/Period
-                {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                 :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
-        (interval/interval
-          (system/date-time 2021 2 23 14 12 45)
-          (system/date-time 2021 2 23 15 0 0))
-        #fhir/Period
-                {:start nil
-                 :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
-        (interval/interval
-          nil
-          (system/date-time 2021 2 23 15 0 0))
-        #fhir/Period
-                {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                 :end nil}
-        (interval/interval
-          (system/date-time 2021 2 23 14 12 45)
-          nil)))))
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm (elm/function-ref "ToInterval" #elm/parameter-ref "x")
+          expr (c/compile compile-ctx elm)
+          eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+      (testing "eval"
+        (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
+          #fhir/Period
+              {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+               :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+          (interval/interval
+            (system/date-time 2021 2 23 14 12 45)
+            (system/date-time 2021 2 23 15 0 0))
+          #fhir/Period
+              {:start nil
+               :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+          (interval/interval
+            nil
+            (system/date-time 2021 2 23 15 0 0))
+          #fhir/Period
+              {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+               :end nil}
+          (interval/interval
+            (system/date-time 2021 2 23 14 12 45)
+            nil)))
+
+      (testing "form"
+        (is (= '(call "ToInterval" (param-ref "x")) (core/-form expr)))))))

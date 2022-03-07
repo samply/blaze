@@ -1,6 +1,7 @@
 (ns blaze.fhir.spec.type
   (:refer-clojure :exclude [decimal? string? type uri? uuid?])
   (:require
+    [blaze.fhir.spec.impl.intern :as intern]
     [blaze.fhir.spec.type.macros :as macros :refer [defcomplextype]]
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
@@ -12,7 +13,7 @@
   (:import
     [blaze.fhir.spec.type.system
      DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
-    [clojure.lang Keyword]
+    [clojure.lang IPersistentMap Keyword]
     [com.fasterxml.jackson.core JsonGenerator]
     [com.fasterxml.jackson.databind JsonSerializer SerializerProvider]
     [com.fasterxml.jackson.databind.module SimpleModule]
@@ -26,7 +27,7 @@
      Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
      ZoneOffset]
     [java.time.format DateTimeFormatter DateTimeParseException]
-    [java.util List Map UUID]))
+    [java.util List UUID]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -201,6 +202,7 @@
 
 ;; ---- uri -------------------------------------------------------------------
 
+
 (deftype Uri [value]
   p/FhirType
   (-type [_] :fhir/uri)
@@ -233,10 +235,14 @@
   (.write w "\""))
 
 
+(def uri
+  (intern/intern-value ->Uri))
+
+
 (defn xml->Uri
   {:arglists '([element])}
   [{{:keys [_id _extension value]} :attrs}]
-  (->Uri value))
+  (uri value))
 
 
 (defn uri? [x]
@@ -323,10 +329,14 @@
   (.write w "\""))
 
 
+(def canonical
+  (intern/intern-value ->Canonical))
+
+
 (defn xml->Canonical
   {:arglists '([element])}
   [{{:keys [_id value]} :attrs _extensions :content}]
-  (->Canonical value))
+  (canonical value))
 
 
 (defn canonical? [x]
@@ -382,12 +392,12 @@
 ;; ---- instant ---------------------------------------------------------------
 
 
-(defn- format-offset-date-time [date-time]
+(defn- format-offset-date-time ^String [date-time]
   (.format DateTimeFormatter/ISO_DATE_TIME date-time))
 
 
 ;; Implementation of a FHIR instant with a variable ZoneOffset.
-(deftype OffsetInstant [^OffsetDateTime value]
+(deftype OffsetInstant [value]
   p/FhirType
   (-type [_] :fhir/instant)
   (-value [_] value)
@@ -413,6 +423,12 @@
       (.serialize OffsetDateTimeSerializer/INSTANCE (.value offset-instant) gen provider))))
 
 
+(defmethod print-method OffsetInstant [^OffsetInstant instant ^Writer w]
+  (.write w "#fhir/instant\"")
+  (.write w (format-offset-date-time (.value instant)))
+  (.write w "\""))
+
+
 (extend-protocol p/FhirType
   Instant
   (-type [_] :fhir/instant)
@@ -423,6 +439,12 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into (p/-value instant) sink))
   (-references [_]))
+
+
+(defmethod print-method Instant [^Instant instant ^Writer w]
+  (.write w "#fhir/instant\"")
+  (.write w (str instant))
+  (.write w "\""))
 
 
 (defn ->Instant [s]
@@ -734,8 +756,12 @@
       (.writeString gen ^String (.value extended-code)))))
 
 
+(def code
+  (intern/intern-value ->Code))
+
+
 (defn tagged-literal->Code [x]
-  (if (string? x) (->Code x) (map->ExtendedCode x)))
+  (if (string? x) (code x) (map->ExtendedCode x)))
 
 
 (defn xml->Code
@@ -744,7 +770,7 @@
   [{{:keys [id value]} :attrs extensions :content}]
   (if (or id (seq extensions))
     (->ExtendedCode id extensions value)
-    (->Code value)))
+    (code value)))
 
 
 (defn code? [x]
@@ -1113,9 +1139,9 @@
   (-hash-into [k sink]
     (.putInt ^PrimitiveSink sink (.hasheq k)))
   (-references [_])
-  Map
+  IPersistentMap
   (-type [m]
-    (:fhir/type m))
+    (.valAt m :fhir/type))
   (-value [_])
   (-hash-into [m sink]
     (.putByte ^PrimitiveSink sink (byte 37))
@@ -1171,6 +1197,10 @@
    display :string})
 
 
+(def coding
+  (intern/intern-value map->Coding))
+
+
 (declare coding-serializer)
 
 
@@ -1181,6 +1211,10 @@
    extension ^{:cardinality :many} extension-serializer
    coding ^{:cardinality :many} coding-serializer
    text :string})
+
+
+(def codeable-concept
+  (intern/intern-value map->CodeableConcept))
 
 
 (declare codeable-concept-serializer)
@@ -1243,6 +1277,43 @@
       [ref])))
 
 
+(defcomplextype HumanName [id extension use text family given prefix suffix period]
+  :hash-num 46
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   use code-serializer
+   text :string
+   family :string
+   given :strings
+   prefix :strings
+   suffix :strings
+   period period-serializer})
+
+
+(declare human-name-serializer)
+
+
+(defcomplextype Address [id extension use type text line city district state postalCode country period]
+  :hash-num 47
+  :field-serializers
+  {id :string
+   extension ^{:cardinality :many} extension-serializer
+   use code-serializer
+   type code-serializer
+   text :string
+   line :strings
+   city :string
+   district :string
+   state :string
+   postalCode :string
+   country :string
+   period period-serializer})
+
+
+(declare address-serializer)
+
+
 (defcomplextype Reference [id extension reference type identifier display]
   :hash-num 43
   :references
@@ -1273,6 +1344,10 @@
    profile ^{:cardinality :many} canonical-serializer
    security ^{:cardinality :many} coding-serializer
    tag ^{:cardinality :many} coding-serializer})
+
+
+(def mk-meta
+  (intern/intern-value map->Meta))
 
 
 (declare meta-serializer)
@@ -1319,8 +1394,17 @@
     (.addSerializer Coding coding-serializer)
     (.addSerializer CodeableConcept codeable-concept-serializer)
     (.addSerializer Quantity quantity-serializer)
+    ;; Range
+    ;; Ratio
     (.addSerializer Period period-serializer)
+    ;; SampledData
     (.addSerializer Identifier identifier-serializer)
+    (.addSerializer HumanName human-name-serializer)
+    (.addSerializer Address address-serializer)
+    ;; ContactPoint
+    ;; Timing
+    ;; Signature
+    ;; Annotation
     (.addSerializer Reference reference-serializer)
     (.addSerializer Meta meta-serializer)
     (.addSerializer BundleEntrySearch bundle-entry-search-serializer)))
@@ -1338,6 +1422,14 @@
 (defmethod print-dup Year [^Year year ^Writer w]
   (.write w "#=(java.time.Year/of ")
   (.write w (str (.getValue year)))
+  (.write w ")"))
+
+
+(defmethod print-dup Instant [^Instant instant ^Writer w]
+  (.write w "#=(java.time.Instant/ofEpochSecond ")
+  (.write w (str (.getEpochSecond instant)))
+  (.write w " ")
+  (.write w (str (.getNano instant)))
   (.write w ")"))
 
 

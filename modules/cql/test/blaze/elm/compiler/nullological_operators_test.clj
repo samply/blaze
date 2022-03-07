@@ -45,9 +45,9 @@
   (are [elm res] (= res (core/-eval (c/compile {} (elm/coalesce elm)) {} nil nil))
     [] nil
     [{:type "Null"}] nil
-    [#elm/boolean"false" #elm/boolean"true"] false
-    [{:type "Null"} #elm/integer"1" #elm/integer"2"] 1
-    [#elm/integer"2"] 2
+    [#elm/boolean "false" #elm/boolean "true"] false
+    [{:type "Null"} #elm/integer "1" #elm/integer "2"] 1
+    [#elm/integer "2"] 2
     [#elm/list []] nil
     [{:type "Null"} #elm/list [#elm/string "a"]] ["a"]
     [#elm/list [{:type "Null"} #elm/string "a"]] "a"))
@@ -61,15 +61,17 @@
 (deftest compile-is-false-test
   (testing "Static"
     (are [x res] (= res (c/compile {} (elm/is-false x)))
-      #elm/boolean"true" false
-      #elm/boolean"false" true
+      #elm/boolean "true" false
+      #elm/boolean "false" true
       {:type "Null"} false))
 
   (testing "Dynamic"
     (are [x res] (= res (tu/dynamic-compile-eval (elm/is-false x)))
-      #elm/parameter-ref"true" false
-      #elm/parameter-ref"false" true
-      #elm/parameter-ref"nil" false)))
+      #elm/parameter-ref "true" false
+      #elm/parameter-ref "false" true
+      #elm/parameter-ref "nil" false))
+
+  (tu/testing-unary-form elm/is-false))
 
 
 ;; 14.4. IsNull
@@ -80,15 +82,17 @@
 (deftest compile-is-null-test
   (testing "Static"
     (are [x res] (= res (c/compile {} (elm/is-null x)))
-      #elm/boolean"true" false
-      #elm/boolean"false" false
+      #elm/boolean "true" false
+      #elm/boolean "false" false
       {:type "Null"} true))
 
   (testing "Dynamic"
     (are [x res] (= res (tu/dynamic-compile-eval (elm/is-null x)))
-      #elm/parameter-ref"true" false
-      #elm/parameter-ref"false" false
-      #elm/parameter-ref"nil" true)))
+      #elm/parameter-ref "true" false
+      #elm/parameter-ref "false" false
+      #elm/parameter-ref "nil" true))
+
+  (tu/testing-unary-form elm/is-null))
 
 
 ;; 14.5. IsTrue
@@ -99,12 +103,14 @@
 (deftest compile-is-true-test
   (testing "Static"
     (are [x res] (= res (c/compile {} (elm/is-true x)))
-      #elm/boolean"true" true
-      #elm/boolean"false" false
+      #elm/boolean "true" true
+      #elm/boolean "false" false
       {:type "Null"} false))
 
   (testing "Dynamic"
     (are [x res] (= res (tu/dynamic-compile-eval (elm/is-true x)))
-      #elm/parameter-ref"true" true
-      #elm/parameter-ref"false" false
-      #elm/parameter-ref"nil" false)))
+      #elm/parameter-ref "true" true
+      #elm/parameter-ref "false" false
+      #elm/parameter-ref "nil" false))
+
+  (tu/testing-unary-form elm/is-true))

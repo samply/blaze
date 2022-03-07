@@ -123,11 +123,11 @@
 
 
 (defn- population-concept [code]
-  (type/map->CodeableConcept
+  (type/codeable-concept
     {:coding
-     [(type/map->Coding
+     [(type/coding
         {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
-         :code (type/->Code code)})]}))
+         :code (type/code code)})]}))
 
 
 (defn- cql-expression [expr]
@@ -342,7 +342,8 @@
     "q34-medication" 1
     "q35-literal-library-ref" 1
     "q36-parameter" 1
-    "q37-overlaps" 3)
+    "q37-overlaps" 3
+    "q38-di-surv" 2)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -495,6 +496,6 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q37-overlaps")
+  (evaluate "q38-di-surv")
 
   )

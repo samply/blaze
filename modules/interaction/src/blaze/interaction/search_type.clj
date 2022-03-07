@@ -4,7 +4,6 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.anomaly :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.db.spec]
@@ -123,7 +122,7 @@
   (let [url (self-link-url-fn clauses (self-link-offset first-entry))]
     {:fhir/type :fhir.Bundle/link
      :relation "self"
-     :url (type/->Uri url)}))
+     :url (type/uri url)}))
 
 
 (defn- next-link-offset [next-handle]
@@ -135,7 +134,7 @@
   (do-sync [url (next-link-url-fn clauses (next-link-offset next-handle))]
     {:fhir/type :fhir.Bundle/link
      :relation "next"
-     :url (type/->Uri url)}))
+     :url (type/uri url)}))
 
 
 (defn- total

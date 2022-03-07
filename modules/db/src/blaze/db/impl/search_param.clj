@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -18,8 +17,7 @@
     [blaze.db.impl.search-param.token]
     [blaze.db.impl.search-param.util :as u]
     [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.spec :as fhir-spec]
-    [clojure.spec.alpha :as s]))
+    [blaze.fhir.spec :as fhir-spec]))
 
 
 (set! *warn-on-reflection* true)
@@ -106,17 +104,15 @@
   (p/-matches? search-param context resource-handle modifier compiled-values))
 
 
-(def stub-resolver
+(def ^:private stub-resolver
   "A resolver which only returns a resource stub with type and id from the local
   reference itself."
   (reify
     fhir-path/Resolver
     (-resolve [_ uri]
-      (let [res (s/conform :blaze.fhir/local-ref uri)]
-        (when-not (s/invalid? res)
-          (let [[type id] res]
-            {:fhir/type (keyword "fhir" type)
-             :id id}))))))
+      (when-let [[type id] (some-> uri u/split-literal-ref)]
+        {:fhir/type (keyword "fhir" type)
+         :id id}))))
 
 
 (defn compartment-ids

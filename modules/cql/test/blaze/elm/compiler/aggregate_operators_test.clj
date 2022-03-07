@@ -42,9 +42,9 @@
 (deftest compile-all-true-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/all-true source)) {} nil nil))
-      #elm/list [#elm/boolean"true" #elm/boolean"false"] false
-      #elm/list [#elm/boolean"false"] false
-      #elm/list [#elm/boolean"true"] true
+      #elm/list [#elm/boolean "true" #elm/boolean "false"] false
+      #elm/list [#elm/boolean "false"] false
+      #elm/list [#elm/boolean "true"] true
 
       #elm/list [{:type "Null"}] true
       #elm/list [] true
@@ -64,9 +64,9 @@
 (deftest compile-any-true-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/any-true source)) {} nil nil))
-      #elm/list [#elm/boolean"true" #elm/boolean"false"] true
-      #elm/list [#elm/boolean"false"] false
-      #elm/list [#elm/boolean"true"] true
+      #elm/list [#elm/boolean "true" #elm/boolean "false"] true
+      #elm/list [#elm/boolean "false"] false
+      #elm/list [#elm/boolean "true"] true
 
       #elm/list [{:type "Null"}] false
       #elm/list [] false
@@ -86,9 +86,9 @@
 (deftest compile-avg-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/avg source)) {} nil nil))
-      #elm/list [#elm/decimal"1" #elm/decimal"2"] 1.5M
-      #elm/list [#elm/integer"1" #elm/integer"2"] 1.5M
-      #elm/list [#elm/integer"1"] 1M
+      #elm/list [#elm/decimal "1" #elm/decimal "2"] 1.5M
+      #elm/list [#elm/integer "1" #elm/integer "2"] 1.5M
+      #elm/list [#elm/integer "1"] 1M
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -108,8 +108,8 @@
 (deftest compile-count-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/count source)) {} nil nil))
-      #elm/list [#elm/integer"1"] 1
-      #elm/list [#elm/integer"1" #elm/integer"1"] 2
+      #elm/list [#elm/integer "1"] 1
+      #elm/list [#elm/integer "1" #elm/integer "1"] 2
 
       #elm/list [{:type "Null"}] 0
       #elm/list [] 0
@@ -130,9 +130,9 @@
 (deftest compile-geometric-mean-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/geometric-mean source)) {} nil nil))
-      #elm/list [#elm/decimal"2" #elm/decimal"8"] 4M
-      #elm/list [#elm/integer"2" #elm/integer"8"] 4M
-      #elm/list [#elm/integer"1"] 1M
+      #elm/list [#elm/decimal "2" #elm/decimal "8"] 4M
+      #elm/list [#elm/integer "2" #elm/integer "8"] 4M
+      #elm/list [#elm/integer "1"] 1M
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -153,9 +153,9 @@
 (deftest compile-product-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/product source)) {} nil nil))
-      #elm/list [#elm/decimal"2" #elm/decimal"8"] 16M
-      #elm/list [#elm/integer"2" #elm/integer"8"] 16
-      #elm/list [#elm/integer"1"] 1
+      #elm/list [#elm/decimal "2" #elm/decimal "8"] 16M
+      #elm/list [#elm/integer "2" #elm/integer "8"] 16
+      #elm/list [#elm/integer "1"] 1
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -177,9 +177,9 @@
 (deftest compile-max-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/max source)) {} nil nil))
-      #elm/list [#elm/decimal"2" #elm/decimal"8"] 8M
-      #elm/list [#elm/integer"2" #elm/integer"8"] 8
-      #elm/list [#elm/integer"1"] 1
+      #elm/list [#elm/decimal "2" #elm/decimal "8"] 8M
+      #elm/list [#elm/integer "2" #elm/integer "8"] 8
+      #elm/list [#elm/integer "1"] 1
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -199,10 +199,10 @@
 (deftest compile-median-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/median source)) {} nil nil))
-      #elm/list [#elm/decimal"2" #elm/decimal"10" #elm/decimal"8"] 8M
-      #elm/list [#elm/integer"2" #elm/integer"10" #elm/integer"8"] 8
-      #elm/list [#elm/integer"1" #elm/integer"2"] 1.5M
-      #elm/list [#elm/integer"1"] 1
+      #elm/list [#elm/decimal "2" #elm/decimal "10" #elm/decimal "8"] 8M
+      #elm/list [#elm/integer "2" #elm/integer "10" #elm/integer "8"] 8
+      #elm/list [#elm/integer "1" #elm/integer "2"] 1.5M
+      #elm/list [#elm/integer "1"] 1
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -224,9 +224,9 @@
 (deftest compile-min-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/min source)) {} nil nil))
-      #elm/list [#elm/decimal"2" #elm/decimal"8"] 2M
-      #elm/list [#elm/integer"2" #elm/integer"8"] 2
-      #elm/list [#elm/integer"1"] 1
+      #elm/list [#elm/decimal "2" #elm/decimal "8"] 2M
+      #elm/list [#elm/integer "2" #elm/integer "8"] 2
+      #elm/list [#elm/integer "1"] 1
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -246,10 +246,10 @@
 (deftest compile-mode-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/mode source)) {} nil nil))
-      #elm/list [#elm/decimal"2" #elm/decimal"2" #elm/decimal"8"] 2M
-      #elm/list [#elm/integer"2" #elm/integer"2" #elm/integer"8"] 2
-      #elm/list [#elm/integer"1"] 1
-      #elm/list [#elm/integer"1" {:type "Null"} {:type "Null"}] 1
+      #elm/list [#elm/decimal "2" #elm/decimal "2" #elm/decimal "8"] 2M
+      #elm/list [#elm/integer "2" #elm/integer "2" #elm/integer "8"] 2
+      #elm/list [#elm/integer "1"] 1
+      #elm/list [#elm/integer "1" {:type "Null"} {:type "Null"}] 1
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -270,7 +270,7 @@
 (deftest compile-population-variance-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/population-variance source)) {} nil nil))
-      #elm/list [#elm/decimal"1" #elm/decimal"2" #elm/decimal"3" #elm/decimal"4" #elm/decimal"5"] 2M
+      #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 2M
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -291,7 +291,7 @@
 (deftest compile-population-std-dev-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/population-std-dev source)) {} nil nil))
-      #elm/list [#elm/decimal"1" #elm/decimal"2" #elm/decimal"3" #elm/decimal"4" #elm/decimal"5"] 1.41421356M
+      #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 1.41421356M
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -311,9 +311,9 @@
 (deftest compile-sum-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/sum source)) {} nil nil))
-      #elm/list [#elm/decimal"2" #elm/decimal"8"] 10M
-      #elm/list [#elm/integer"2" #elm/integer"8"] 10
-      #elm/list [#elm/integer"1"] 1
+      #elm/list [#elm/decimal "2" #elm/decimal "8"] 10M
+      #elm/list [#elm/integer "2" #elm/integer "8"] 10
+      #elm/list [#elm/integer "1"] 1
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -334,7 +334,7 @@
 (deftest compile-std-dev-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/std-dev source)) {} nil nil))
-      #elm/list [#elm/decimal"1" #elm/decimal"2" #elm/decimal"3" #elm/decimal"4" #elm/decimal"5"] 1.58113883M
+      #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 1.58113883M
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
@@ -355,7 +355,7 @@
 (deftest compile-variance-test
   (testing "Without path"
     (are [source res] (= res (core/-eval (c/compile {} (elm/variance source)) {} nil nil))
-      #elm/list [#elm/decimal"1" #elm/decimal"2" #elm/decimal"3" #elm/decimal"4" #elm/decimal"5"] 2.5M
+      #elm/list [#elm/decimal "1" #elm/decimal "2" #elm/decimal "3" #elm/decimal "4" #elm/decimal "5"] 2.5M
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil

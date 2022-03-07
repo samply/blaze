@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec.type-test
   (:require
+    [blaze.fhir.spec.memory :as mem]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
     [clojure.data.xml.name :as xml-name]
@@ -12,7 +13,6 @@
   (:import
     [java.time Instant LocalDate LocalTime OffsetDateTime Year YearMonth
                ZoneOffset]
-    [org.openjdk.jol.info ClassLayout GraphLayout]
     [com.google.common.hash Hashing]))
 
 
@@ -29,22 +29,6 @@
 
 
 (test/use-fixtures :each fixture)
-
-
-(defn class-layout [c]
-  (.toPrintable (ClassLayout/parseClass c)))
-
-
-(defn instance-size [c]
-  (.instanceSize (ClassLayout/parseClass c)))
-
-
-(defn graph-layout [& xs]
-  (.toPrintable (GraphLayout/parseInstance (object-array xs))))
-
-
-(defn total-size [& xs]
-  (.totalSize (GraphLayout/parseInstance (object-array xs))))
 
 
 (defn murmur3 [x]
@@ -145,7 +129,7 @@
       nil))
 
   (testing "instance size"
-    (is (= 16 (total-size #fhir/integer 1)))))
+    (is (= 16 (mem/total-size #fhir/integer 1)))))
 
 
 (deftest long-test
@@ -175,7 +159,7 @@
       nil))
 
   (testing "instance size"
-    (is (= 24 (total-size #fhir/long 1)))))
+    (is (= 24 (mem/total-size #fhir/long 1)))))
 
 
 (deftest string-test
@@ -208,7 +192,7 @@
       nil))
 
   (testing "instance size"
-    (are [s size] (= size (total-size s))
+    (are [s size] (= size (mem/total-size s))
       "" 40
       "a" 48
       (str/repeat "a" 8) 48
@@ -247,7 +231,7 @@
       nil))
 
   (testing "instance size"
-    (is (= 40 (total-size 1.1M)))))
+    (is (= 40 (mem/total-size 1.1M)))))
 
 
 (deftest uri-test
@@ -288,8 +272,8 @@
     (is (= "#fhir/uri\"142600\"" (pr-str #fhir/uri"142600"))))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/uri"")))
-    (is (= 64 (total-size #fhir/uri"a")))))
+    (is (= 56 (mem/total-size #fhir/uri"")))
+    (is (= 64 (mem/total-size #fhir/uri"a")))))
 
 
 (deftest url-test
@@ -330,8 +314,8 @@
     (is (= "#fhir/url\"142600\"" (pr-str #fhir/url"142600"))))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/url"")))
-    (is (= 64 (total-size #fhir/url"a")))))
+    (is (= 56 (mem/total-size #fhir/url"")))
+    (is (= 64 (mem/total-size #fhir/url"a")))))
 
 
 (deftest canonical-test
@@ -372,8 +356,8 @@
     (is (= "#fhir/canonical\"142600\"" (pr-str #fhir/canonical"142600"))))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/canonical"")))
-    (is (= 64 (total-size #fhir/canonical"a")))))
+    (is (= 56 (mem/total-size #fhir/canonical"")))
+    (is (= 64 (mem/total-size #fhir/canonical"a")))))
 
 
 (deftest base64Binary-test
@@ -416,9 +400,9 @@
     (is (= "#fhir/base64Binary\"YQo=\"" (pr-str #fhir/base64Binary"YQo="))))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/base64Binary"")))
-    (is (= 64 (total-size #fhir/base64Binary"YQo=")))
-    (is (= 72 (total-size #fhir/base64Binary"MTA1NjE0Cg==")))))
+    (is (= 56 (mem/total-size #fhir/base64Binary"")))
+    (is (= 64 (mem/total-size #fhir/base64Binary"YQo=")))
+    (is (= 72 (mem/total-size #fhir/base64Binary"MTA1NjE0Cg==")))))
 
 
 (deftest instant-test
@@ -428,49 +412,55 @@
     (is (= Instant/EPOCH
            (type/xml->Instant (sexp [nil {:value "1970-01-01T00:00:00Z"}])))))
   (testing "from JSON"
-    (is (= Instant/EPOCH (type/->Instant "1970-01-01T00:00:00Z"))))
+    (is (= Instant/EPOCH #fhir/instant"1970-01-01T00:00:00Z")))
   (testing "type"
     (is (= :fhir/instant
-           (type/type (type/->Instant "2020-01-01T00:00:00+02:00"))))
+           (type/type #fhir/instant"2020-01-01T00:00:00+02:00")))
     (is (= :fhir/instant (type/type Instant/EPOCH))))
   (testing "value is a System.DateTime which is a OffsetDateTime"
     (is (= (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/ofHours 2))
-           (type/value (type/->Instant "2020-01-01T00:00:00+02:00"))))
+           (type/value #fhir/instant"2020-01-01T00:00:00+02:00")))
     (is (= (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC)
            (type/value Instant/EPOCH))))
   (testing "to-json"
     (are [instant json] (= json (gen-json-string instant))
-      (type/->Instant "2020-01-01T00:00:00+02:00") "\"2020-01-01T00:00:00+02:00\""
+      #fhir/instant"2020-01-01T00:00:00+02:00" "\"2020-01-01T00:00:00+02:00\""
       Instant/EPOCH "\"1970-01-01T00:00:00Z\""))
   (testing "to-xml"
     (is (= (sexp [nil {:value "2020-01-01T00:00:00+02:00"}])
-           (type/to-xml (type/->Instant "2020-01-01T00:00:00+02:00"))))
+           (type/to-xml #fhir/instant"2020-01-01T00:00:00+02:00")))
     (is (= (sexp [nil {:value "1970-01-01T00:00:00Z"}])
            (type/to-xml Instant/EPOCH))))
   (testing "equals"
-    (is (= (type/->Instant "2020-01-01T00:00:00+02:00")
-           (type/->Instant "2020-01-01T00:00:00+02:00")))
-    (is (not= (type/->Instant "2020-01-01T00:00:00+01:00")
-              (type/->Instant "2020-01-01T00:00:00+02:00")))
-    (is (= Instant/EPOCH (type/->Instant "1970-01-01T00:00:00Z")))
-    (is (= Instant/EPOCH (type/->Instant "1970-01-01T00:00:00+00:00"))))
+    (is (= #fhir/instant"2020-01-01T00:00:00+02:00"
+           #fhir/instant"2020-01-01T00:00:00+02:00"))
+    (is (not= #fhir/instant"2020-01-01T00:00:00+01:00"
+              #fhir/instant"2020-01-01T00:00:00+02:00"))
+    (is (= Instant/EPOCH #fhir/instant"1970-01-01T00:00:00Z"))
+    (is (= Instant/EPOCH #fhir/instant"1970-01-01T00:00:00+00:00")))
   (testing "instance size"
     (testing "backed by OffsetDateTime, taking into account shared offsets"
-      (is (= 112 (- (total-size (type/->Instant "2020-01-01T00:00:00+02:00"))
-                    (total-size ZoneOffset/UTC)))))
+      (is (= 112 (- (mem/total-size #fhir/instant"2020-01-01T00:00:00+02:00")
+                    (mem/total-size ZoneOffset/UTC)))))
     (testing "backed by java.time.Instant"
-      (is (= 24 (total-size Instant/EPOCH)))))
+      (is (= 24 (mem/total-size Instant/EPOCH)))))
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      (type/->Instant "2020-01-01T00:00:00+00:00") "d81f6bc2"
-      (type/->Instant "2020-01-01T00:00:00+01:00") "4225df0d"
-      (type/->Instant "2020-01-01T00:00:00Z") "d81f6bc2"
-      (type/->Instant "1970-01-01T00:00:00Z") "93344244"
+      #fhir/instant"2020-01-01T00:00:00+00:00" "d81f6bc2"
+      #fhir/instant"2020-01-01T00:00:00+01:00" "4225df0d"
+      #fhir/instant"2020-01-01T00:00:00Z" "d81f6bc2"
+      #fhir/instant"1970-01-01T00:00:00Z" "93344244"
       Instant/EPOCH "93344244"))
   (testing "references"
     (are [x refs] (= refs (type/references x))
       Instant/EPOCH
-      nil)))
+      nil))
+  (testing "print"
+    (are [i s] (= s (pr-str i))
+        #fhir/instant"2020-01-01T00:00:00Z"
+        "#fhir/instant\"2020-01-01T00:00:00Z\""
+      #fhir/instant"2020-01-01T00:00:00+01:00"
+      "#fhir/instant\"2020-01-01T00:00:00+01:00\"")))
 
 
 (deftest date-test
@@ -492,7 +482,7 @@
       (is (not= #fhir/date"2020" #fhir/date"2021"))
       (is (not= #fhir/date"2020" "2020")))
     (testing "instance size"
-      (is (= 16 (total-size #fhir/date"2020"))))
+      (is (= 16 (mem/total-size #fhir/date"2020"))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/date"2020" "c92be432"))
@@ -520,7 +510,7 @@
       (is (not= #fhir/date"2020-01" #fhir/date"2020-02"))
       (is (not= #fhir/date"2020-01" "2020-01")))
     (testing "instance size"
-      (is (= 24 (total-size #fhir/date"2020-01"))))
+      (is (= 24 (mem/total-size #fhir/date"2020-01"))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/date"2020-01" "fbcdf97f"))
@@ -549,7 +539,7 @@
       (is (not= #fhir/date"2020-01-01" #fhir/date"2020-01-02"))
       (is (not= #fhir/date"2020-01-01" "2020-01-01")))
     (testing "instance size"
-      (is (= 24 (total-size #fhir/date"2020-01-01"))))
+      (is (= 24 (mem/total-size #fhir/date"2020-01-01"))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/date"2020-01-01" "cd20e081"))
@@ -579,7 +569,7 @@
       (is (not= #fhir/dateTime"2020" #fhir/dateTime"2021"))
       (is (not= #fhir/dateTime"2020" "2020")))
     (testing "instance size"
-      (is (= 32 (total-size #fhir/dateTime"2020"))))
+      (is (= 32 (mem/total-size #fhir/dateTime"2020"))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/dateTime"2020" "41e906ff"))
@@ -611,7 +601,7 @@
       (is (not= #fhir/dateTime"2020-01" #fhir/dateTime"2020-02"))
       (is (not= #fhir/dateTime"2020-01" "2020-01")))
     (testing "instance size"
-      (is (= 40 (total-size #fhir/dateTime"2020-01"))))
+      (is (= 40 (mem/total-size #fhir/dateTime"2020-01"))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/dateTime"2020-01" "9d6c5bd3"))
@@ -639,7 +629,7 @@
     (testing "equals"
       (is (= #fhir/dateTime"2020-01-01" #fhir/dateTime"2020-01-01")))
     (testing "instance size"
-      (is (= 40 (total-size #fhir/dateTime"2020-01-01"))))
+      (is (= 40 (mem/total-size #fhir/dateTime"2020-01-01"))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/dateTime"2020-01-01" "39fe9bdb"))
@@ -668,7 +658,7 @@
       (is (= #fhir/dateTime"2020-01-01T00:00:00"
              #fhir/dateTime"2020-01-01T00:00:00")))
     (testing "instance size"
-      (is (= 72 (total-size #fhir/dateTime"2020-01-01T00:00:00"))))
+      (is (= 72 (mem/total-size #fhir/dateTime"2020-01-01T00:00:00"))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/dateTime"2020-01-01T00:00:00" "da537591"))
@@ -695,7 +685,7 @@
       (is (= #fhir/dateTime"2020-01-01T00:00:00.000"
              #fhir/dateTime"2020-01-01T00:00:00.000")))
     (testing "instance size"
-      (is (= 72 (total-size #fhir/dateTime"2020-01-01T00:00:00.000"))))
+      (is (= 72 (mem/total-size #fhir/dateTime"2020-01-01T00:00:00.000"))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/dateTime"2020-01-01T00:00:00.000" "da537591"))
@@ -722,8 +712,8 @@
       (is (= #fhir/dateTime"2020-01-01T00:00:00Z"
              #fhir/dateTime"2020-01-01T00:00:00Z")))
     (testing "instance size taking into account shared offsets"
-      (is (= 96 (- (total-size #fhir/dateTime"2020-01-01T00:00:00Z")
-                   (total-size ZoneOffset/UTC)))))
+      (is (= 96 (- (mem/total-size #fhir/dateTime"2020-01-01T00:00:00Z")
+                   (mem/total-size ZoneOffset/UTC)))))
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
         #fhir/dateTime"2020-01-01T00:00:00Z" "d541a45"))
@@ -874,7 +864,7 @@
       nil))
 
   (testing "instance size"
-    (is (= 24 (total-size #fhir/time"13:53:21")))))
+    (is (= 24 (mem/total-size #fhir/time"13:53:21")))))
 
 
 (def gender-extension
@@ -950,8 +940,8 @@
     (is (= "#fhir/code\"175718\"" (pr-str #fhir/code"175718"))))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/code"")))
-    (is (= 64 (total-size #fhir/code"175718")))))
+    (is (= 56 (mem/total-size #fhir/code"")))
+    (is (= 64 (mem/total-size #fhir/code"175718")))))
 
 
 (deftest oid-test
@@ -994,8 +984,8 @@
 
   (testing "instance size"
     (testing "instance size"
-      (is (= 56 (total-size #fhir/oid"")))
-      (is (= 64 (total-size #fhir/oid"175718"))))))
+      (is (= 56 (mem/total-size #fhir/oid"")))
+      (is (= 64 (mem/total-size #fhir/oid"175718"))))))
 
 
 (deftest id-test
@@ -1037,8 +1027,8 @@
     (is (= "#fhir/id\"175718\"" (pr-str #fhir/id"175718"))))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/id"")))
-    (is (= 64 (total-size #fhir/id"175718")))))
+    (is (= 56 (mem/total-size #fhir/id"")))
+    (is (= 64 (mem/total-size #fhir/id"175718")))))
 
 
 (deftest markdown-test
@@ -1081,8 +1071,8 @@
     (is (= "#fhir/markdown\"175718\"" (pr-str #fhir/markdown"175718"))))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/markdown"")))
-    (is (= 64 (total-size #fhir/markdown"175718")))))
+    (is (= 56 (mem/total-size #fhir/markdown"")))
+    (is (= 64 (mem/total-size #fhir/markdown"175718")))))
 
 
 (deftest unsignedInt-test
@@ -1125,8 +1115,8 @@
     (is (= "#fhir/unsignedInt 160845" (pr-str #fhir/unsignedInt 160845))))
 
   (testing "instance size"
-    (is (= 16 (total-size #fhir/unsignedInt 0)))
-    (is (= 16 (total-size #fhir/unsignedInt 175718)))))
+    (is (= 16 (mem/total-size #fhir/unsignedInt 0)))
+    (is (= 16 (mem/total-size #fhir/unsignedInt 175718)))))
 
 
 (deftest positiveInt-test
@@ -1169,8 +1159,8 @@
     (is (= "#fhir/positiveInt 160845" (pr-str #fhir/positiveInt 160845))))
 
   (testing "instance size"
-    (is (= 16 (total-size #fhir/positiveInt 0)))
-    (is (= 16 (total-size #fhir/positiveInt 175718)))))
+    (is (= 16 (mem/total-size #fhir/positiveInt 0)))
+    (is (= 16 (mem/total-size #fhir/positiveInt 175718)))))
 
 
 (deftest uuid-test
@@ -1214,7 +1204,7 @@
       nil))
 
   (testing "instance size"
-    (is (= 32 (total-size #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))))
+    (is (= 32 (mem/total-size #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3")))))
 
 
 (def xhtml-element
@@ -1261,8 +1251,8 @@
     (is (= "#fhir/xhtml\"175718\"" (pr-str #fhir/xhtml"175718"))))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/xhtml"")))
-    (is (= 64 (total-size #fhir/xhtml"175718")))))
+    (is (= 56 (mem/total-size #fhir/xhtml"")))
+    (is (= 64 (mem/total-size #fhir/xhtml"175718")))))
 
 
 (deftest attachment-test
@@ -1310,7 +1300,7 @@
       []))
 
   (testing "instance size"
-    (is (= 72 (total-size #fhir/Attachment{}))))
+    (is (= 72 (mem/total-size #fhir/Attachment{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -1353,7 +1343,7 @@
       []))
 
   (testing "instance size"
-    (is (= 48 (total-size #fhir/Extension{}))))
+    (is (= 48 (mem/total-size #fhir/Extension{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -1394,7 +1384,7 @@
       []))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/Coding{}))))
+    (is (= 56 (mem/total-size #fhir/Coding{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -1429,7 +1419,7 @@
       []))
 
   (testing "instance size"
-    (is (= 48 (total-size #fhir/CodeableConcept{}))))
+    (is (= 48 (mem/total-size #fhir/CodeableConcept{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -1473,7 +1463,7 @@
       []))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/Quantity{}))))
+    (is (= 56 (mem/total-size #fhir/Quantity{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -1508,7 +1498,7 @@
       []))
 
   (testing "instance size"
-    (is (= 48 (total-size #fhir/Period{}))))
+    (is (= 48 (mem/total-size #fhir/Period{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -1555,12 +1545,136 @@
       []))
 
   (testing "instance size"
-    (is (= 64 (total-size #fhir/Identifier{}))))
+    (is (= 64 (mem/total-size #fhir/Identifier{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Identifier{} "#fhir/Identifier{}"
       #fhir/Identifier{:id "212329"} "#fhir/Identifier{:id \"212329\"}")))
+
+
+(deftest human-name-test
+  (testing "type"
+    (is (= :fhir/HumanName (type/type #fhir/HumanName{}))))
+
+  (testing "hash-into"
+    (are [x hex] (= hex (murmur3 x))
+      #fhir/HumanName{}
+      "af56fc23"
+
+      #fhir/HumanName{:id "id-130739"}
+      "ebba60f8"
+
+      #fhir/HumanName{:extension [#fhir/Extension{}]}
+      "4947bc16"
+
+      #fhir/HumanName{:use #fhir/code"use-155144"}
+      "60b2b58c"
+
+      #fhir/HumanName{:text "text-212402"}
+      "b9ab5f61"
+
+      #fhir/HumanName{:family "family-212422"}
+      "915831d8"
+
+      #fhir/HumanName{:given ["given-212441"]}
+      "e26a58ee"
+
+      #fhir/HumanName{:given ["given-212448" "given-212454"]}
+      "b46d5198"
+
+      #fhir/HumanName{:prefix ["prefix-212514"]}
+      "1a411067"
+
+      #fhir/HumanName{:prefix ["prefix-212523" "prefix-212525"]}
+      "32529f07"
+
+      #fhir/HumanName{:suffix ["suffix-212542"]}
+      "3181f719"
+
+      #fhir/HumanName{:suffix ["suffix-212547" "suffix-212554"]}
+      "69ca06e0"
+
+      #fhir/HumanName{:period #fhir/Period{}}
+      "18b2a823"))
+
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      #fhir/HumanName{}
+      []))
+
+  (testing "instance size"
+    (is (= 64 (mem/total-size #fhir/HumanName{}))))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/HumanName{} "#fhir/HumanName{}"
+      #fhir/HumanName{:id "212625"} "#fhir/HumanName{:id \"212625\"}")))
+
+
+(deftest address-test
+  (testing "type"
+    (is (= :fhir/Address (type/type #fhir/Address{}))))
+
+  (testing "hash-into"
+    (are [x hex] (= hex (murmur3 x))
+      #fhir/Address{}
+      "4a6b5e4f"
+
+      #fhir/Address{:id "id-130739"}
+      "bd6a5731"
+
+      #fhir/Address{:extension [#fhir/Extension{}]}
+      "2a3786e7"
+
+      #fhir/Address{:use #fhir/code"use-155144"}
+      "b6cf1d48"
+
+      #fhir/Address{:type #fhir/code"type-084442"}
+      "54c286c3"
+
+      #fhir/Address{:text "text-212402"}
+      "15baed84"
+
+      #fhir/Address{:line ["line-212441"]}
+      "eafac0f1"
+
+      #fhir/Address{:line ["line-212448" "line-212454"]}
+      "62f4cf8f"
+
+      #fhir/Address{:city "city-084705"}
+      "9765a1e9"
+
+      #fhir/Address{:district "district-084717"}
+      "9e6dc6b8"
+
+      #fhir/Address{:state "state-084729"}
+      "17a7640f"
+
+      #fhir/Address{:postalCode "postalCode-084832"}
+      "8880561c"
+
+      #fhir/Address{:country "country-084845"}
+      "57c51a7d"
+
+      #fhir/Address{:period #fhir/Period{}}
+      "fb17905a"))
+
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      #fhir/Address{}
+      []))
+
+  (testing "instance size"
+    (are [x size] (= size (mem/total-size x))
+      #fhir/Address{} 80
+      #fhir/Address{:text "text-212402"} 136
+      #fhir/Address{:line ["line-212441"]} 200))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Address{} "#fhir/Address{}"
+      #fhir/Address{:id "084856"} "#fhir/Address{:id \"084856\"}")))
 
 
 (deftest reference-test
@@ -1619,7 +1733,7 @@
       [["Patient" "0"] ["Patient" "1"]]))
 
   (testing "instance size"
-    (is (= 56 (total-size #fhir/Reference{}))))
+    (is (= 56 (mem/total-size #fhir/Reference{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -1645,7 +1759,7 @@
       #fhir/Meta{:versionId #fhir/id"versionId-161415"}
       "9edaa9b"
 
-      (type/map->Meta {:lastUpdated Instant/EPOCH})
+      (type/mk-meta {:lastUpdated Instant/EPOCH})
       "38b8dfe3"
 
       #fhir/Meta{:source #fhir/uri"source-161629"}
@@ -1674,7 +1788,14 @@
       [["Patient" "2"]]))
 
   (testing "instance size"
-    (is (= 64 (total-size #fhir/Meta{}))))
+    (are [x size] (= size (mem/total-size x))
+      #fhir/Meta{} 64
+      #fhir/Meta{:profile [#fhir/canonical"foo"]} 192)
+
+    (testing "two interned instances take the same memory as one"
+      (is (= 192 (mem/total-size #fhir/Meta{:profile [#fhir/canonical"foo"]}
+                                 #fhir/Meta{:profile [#fhir/canonical"foo"]})))))
+
 
   (testing "print"
     (are [v s] (= s (pr-str v))
@@ -1709,7 +1830,7 @@
       []))
 
   (testing "instance size"
-    (is (= 48 (total-size #fhir/BundleEntrySearch{}))))
+    (is (= 48 (mem/total-size #fhir/BundleEntrySearch{}))))
 
   (testing "print"
     (are [v s] (= s (pr-str v))

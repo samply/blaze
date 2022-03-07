@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [update])
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.async.flow :as flow]
     [blaze.fhir.spec :as fhir-spec]

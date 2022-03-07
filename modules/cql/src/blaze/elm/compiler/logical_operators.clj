@@ -9,50 +9,54 @@
 
 
 ;; 13.1. And
-
-;; static-a is either true or nil but not false
-(defrecord StaticAndOperatorExpression [static-a b]
-  core/Expression
-  (-eval [_ context resource scope]
-    (let [b (core/-eval b context resource scope)]
-      (cond
-        (false? b) false
-        (and (true? static-a) (true? b)) true))))
+(defn- nil-and-expr [x]
+  (reify core/Expression
+    (-eval [_ context resource scope]
+      (when (false? (core/-eval x context resource scope))
+        false))
+    (-form [_]
+      (list 'and nil (core/-form x)))))
 
 
-(defn- and-static [static-a b]
-  (if (core/static? b)
-    (cond
-      (false? b) false
-      (and (true? static-a) (true? b)) true)
-    (->StaticAndOperatorExpression static-a b)))
+(defn- nil-and
+  "Creates an and-expression where one operand is known to be nil."
+  [x]
+  (condp identical? x
+    true nil
+    false false
+    nil nil
+    (nil-and-expr x)))
 
 
-(defrecord AndOperatorExpression [a b]
-  core/Expression
-  (-eval [_ context resource scope]
-    (let [a (core/-eval a context resource scope)]
-      (if (false? a)
-        false
-        (let [b (core/-eval b context resource scope)]
-          (cond
-            (false? b) false
-            (and (true? a) (true? b)) true))))))
+(defn- dynamic-and
+  "Creates an and-expression where `a` is known to be dynamic and `b` could be
+  static or dynamic."
+  [a b]
+  (condp identical? b
+    true a
+    false false
+    nil (nil-and-expr a)
+    (reify core/Expression
+      (-eval [_ context resource scope]
+        (let [a (core/-eval a context resource scope)]
+          (if (false? a)
+            false
+            (let [b (core/-eval b context resource scope)]
+              (cond
+                (false? b) false
+                (and (true? a) (true? b)) true)))))
+      (-form [_]
+        (list 'and (core/-form a) (core/-form b))))))
 
 
 (defmethod core/compile* :elm.compiler.type/and
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (if (core/static? a)
-      (if (false? a)
-        false
-        (and-static a (core/compile* context b)))
-      (let [b (core/compile* context b)]
-        (if (core/static? b)
-          (if (false? b)
-            false
-            (and-static b a))
-          (->AndOperatorExpression a b))))))
+    (condp identical? a
+      true (core/compile* context b)
+      false false
+      nil (nil-and (core/compile* context b))
+      (dynamic-and a (core/compile* context b)))))
 
 
 ;; 13.2 Implies
@@ -68,104 +72,86 @@
 
 
 ;; 13.4. Or
-
-;; static-a is either false or nil but not true
-(defrecord StaticOrOperatorExpression [static-a b]
-  core/Expression
-  (-eval [_ context resource scope]
-    (let [b (core/-eval b context resource scope)]
-      (cond
-        (true? b) true
-        (and (false? static-a) (false? b)) false))))
+(defn- nil-or-expr [x]
+  (reify core/Expression
+    (-eval [_ context resource scope]
+      (when (true? (core/-eval x context resource scope))
+        true))
+    (-form [_]
+      (list 'or nil (core/-form x)))))
 
 
-(defn- or-static [static-a b]
-  (if (core/static? b)
-    (cond
-      (true? b) true
-      (and (false? static-a) (false? b)) false)
-    (->StaticOrOperatorExpression static-a b)))
+(defn- nil-or
+  "Creates an or-expression where one operand is known to be nil."
+  [x]
+  (condp identical? x
+    true true
+    false nil
+    nil nil
+    (nil-or-expr x)))
 
 
-(defrecord OrOperatorExpression [a b]
-  core/Expression
-  (-eval [_ context resource scope]
-    (let [a (core/-eval a context resource scope)]
-      (if (true? a)
-        true
-        (let [b (core/-eval b context resource scope)]
-          (cond
-            (true? b) true
-            (and (false? a) (false? b)) false))))))
+(defn- dynamic-or
+  "Creates an or-expression where `a` is known to be dynamic and `b` could be
+  static or dynamic."
+  [a b]
+  (condp identical? b
+    true true
+    false a
+    nil (nil-or-expr a)
+    (reify core/Expression
+      (-eval [_ context resource scope]
+        (let [a (core/-eval a context resource scope)]
+          (if (true? a)
+            true
+            (let [b (core/-eval b context resource scope)]
+              (cond
+                (true? b) true
+                (and (false? a) (false? b)) false)))))
+      (-form [_]
+        (list 'or (core/-form a) (core/-form b))))))
 
 
 (defmethod core/compile* :elm.compiler.type/or
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (if (core/static? a)
-      (if (true? a)
-        true
-        (or-static a (core/compile* context b)))
-      (let [operand-2 (core/compile* context b)]
-        (if (core/static? operand-2)
-          (if (true? operand-2)
-            true
-            (or-static operand-2 a))
-          (->OrOperatorExpression a operand-2))))))
+    (condp identical? a
+      true true
+      false (core/compile* context b)
+      nil (nil-or (core/compile* context b))
+      (dynamic-or a (core/compile* context b)))))
 
 
 ;; 13.5 Xor
-(defrecord StaticXOrOperatorExpression [static-a b]
-  core/Expression
-  (-eval [_ context resource scope]
-    (let [b (core/-eval b context resource scope)]
-      (cond
-        (or (and (true? static-a) (true? b))
-            (and (false? static-a) (false? b)))
-        false
-        (or (and (true? static-a) (false? b))
-            (and (false? static-a) (true? b)))
-        true))))
-
-
-(defn- xor-static [static-a b]
-  (if (core/static? b)
-    (cond
-      (or (and (true? static-a) (true? b))
-          (and (false? static-a) (false? b)))
-      false
-      (or (and (true? static-a) (false? b))
-          (and (false? static-a) (true? b)))
-      true)
-    (->StaticXOrOperatorExpression static-a b)))
-
-
-(defrecord XOrOperatorExpression [a b]
-  core/Expression
-  (-eval [_ context resource scope]
-    (let [a (core/-eval a context resource scope)]
-      (if (nil? a)
-        nil
-        (let [b (core/-eval b context resource scope)]
-          (cond
-            (or (and (true? a) (true? b))
-                (and (false? a) (false? b)))
-            false
-            (or (and (true? a) (false? b))
-                (and (false? a) (true? b)))
-            true))))))
+(defn- dynamic-xor
+  "Creates an xor-expression where `a` is known to be dynamic and `b` could be
+  static or dynamic."
+  [a b]
+  (condp identical? b
+    true
+    (reify core/Expression
+      (-eval [_ context resource scope]
+        (let [a (core/-eval a context resource scope)]
+          (when (some? a)
+            (not a))))
+      (-form [_]
+        (list 'not (core/-form a))))
+    false a
+    nil nil
+    (reify core/Expression
+      (-eval [_ context resource scope]
+        (when-some [a (core/-eval a context resource scope)]
+          (when-some [b (core/-eval b context resource scope)]
+            (if a (not b) b))))
+      (-form [_]
+        (list 'xor (core/-form a) (core/-form b))))))
 
 
 (defmethod core/compile* :elm.compiler.type/xor
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
-    (if (core/static? a)
-      (if (nil? a)
-        nil
-        (xor-static a (core/compile* context b)))
-      (let [b (core/compile* context b)]
-        (if (core/static? b)
-          (if (nil? b)
-            nil
-            (xor-static b a))
-          (->XOrOperatorExpression a b))))))
+    (condp identical? a
+      true (core/compile* context {:type "Not" :operand b})
+      false (core/compile* context b)
+      nil nil
+      (dynamic-xor a (core/compile* context b)))))

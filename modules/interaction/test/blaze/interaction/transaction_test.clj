@@ -239,7 +239,7 @@
                 @(handler
                    {:body
                     {:fhir/type :fhir/Bundle
-                     :type (type/->Code type)}})]
+                     :type (type/code type)}})]
 
             (testing "response status"
               (is (= 200 status)))
@@ -248,7 +248,7 @@
               (given body
                 :fhir/type := :fhir/Bundle
                 :id := "AAAAAAAAAAAAAAAA"
-                :type := (type/->Code (str type "-response"))
+                :type := (type/code (str type "-response"))
                 :entry :? empty?)))))
 
       (testing "and update interaction"
@@ -271,7 +271,7 @@
                       @(handler
                          {:body
                           {:fhir/type :fhir/Bundle
-                           :type (type/->Code type)
+                           :type (type/code type)
                            :entry entries}})]
 
                   (testing "response status"
@@ -281,7 +281,7 @@
                     (given body
                       :fhir/type := :fhir/Bundle
                       :id := "AAAAAAAAAAAAAAAA"
-                      :type := (type/->Code (str type "-response"))))
+                      :type := (type/code (str type "-response"))))
 
                   (testing "entry resource"
                     (is (nil? resource)))
@@ -302,7 +302,7 @@
                          {:headers {"prefer" "return=representation"}
                           :body
                           {:fhir/type :fhir/Bundle
-                           :type (type/->Code type)
+                           :type (type/code type)
                            :entry entries}})]
 
                   (testing "response status"
@@ -312,7 +312,7 @@
                     (given body
                       :fhir/type := :fhir/Bundle
                       :id := "AAAAAAAAAAAAAAAA"
-                      :type := (type/->Code (str type "-response"))))
+                      :type := (type/code (str type "-response"))))
 
                   (testing "entry resource"
                     (given resource
@@ -349,7 +349,7 @@
                       @(handler
                          {:body
                           {:fhir/type :fhir/Bundle
-                           :type (type/->Code type)
+                           :type (type/code type)
                            :entry entries}})]
 
                   (testing "response status"
@@ -359,7 +359,7 @@
                     (given body
                       :fhir/type := :fhir/Bundle
                       :id := "AAAAAAAAAAAAAAAA"
-                      :type := (type/->Code (str type "-response"))))
+                      :type := (type/code (str type "-response"))))
 
                   (testing "entry resource"
                     (is (nil? resource)))
@@ -381,7 +381,7 @@
                          {:headers {"prefer" "return=representation"}
                           :body
                           {:fhir/type :fhir/Bundle
-                           :type (type/->Code type)
+                           :type (type/code type)
                            :entry entries}})]
 
                   (testing "response status"
@@ -391,7 +391,7 @@
                     (given body
                       :fhir/type := :fhir/Bundle
                       :id := "AAAAAAAAAAAAAAAA"
-                      :type := (type/->Code (str type "-response"))))
+                      :type := (type/code (str type "-response"))))
 
                   (testing "entry resource"
                     (given resource
@@ -425,7 +425,7 @@
                     @(handler
                        {:body
                         {:fhir/type :fhir/Bundle
-                         :type (type/->Code type)
+                         :type (type/code type)
                          :entry entries}})]
 
                 (testing "response status"
@@ -435,7 +435,7 @@
                   (given body
                     :fhir/type := :fhir/Bundle
                     :id := "AAAAAAAAAAAAAAAA"
-                    :type := (type/->Code (str type "-response"))))
+                    :type := (type/code (str type "-response"))))
 
                 (testing "entry resource"
                   (is (nil? resource)))
@@ -456,7 +456,7 @@
                        {:headers {"prefer" "return=representation"}
                         :body
                         {:fhir/type :fhir/Bundle
-                         :type (type/->Code type)
+                         :type (type/code type)
                          :entry entries}})]
 
                 (testing "response status"
@@ -466,7 +466,7 @@
                   (given body
                     :fhir/type := :fhir/Bundle
                     :id := "AAAAAAAAAAAAAAAA"
-                    :type := (type/->Code (str type "-response"))))
+                    :type := (type/code (str type "-response"))))
 
                 (testing "entry resource"
                   (given resource
@@ -495,7 +495,7 @@
                     @(handler
                        {:body
                         {:fhir/type :fhir/Bundle
-                         :type (type/->Code type)
+                         :type (type/code type)
                          :entry
                          [{:fhir/type :fhir.Bundle/entry
                            :resource
@@ -514,7 +514,7 @@
                     (given body
                       :fhir/type := :fhir/Bundle
                       :id := "AAAAAAAAAAAAAAAA"
-                      :type := (type/->Code (str type "-response"))))
+                      :type := (type/code (str type "-response"))))
 
                   (testing "entry resource"
                     (is (nil? resource)))
@@ -538,7 +538,7 @@
                        {:headers {"prefer" "return=representation"}
                         :body
                         {:fhir/type :fhir/Bundle
-                         :type (type/->Code type)
+                         :type (type/code type)
                          :entry
                          [{:fhir/type :fhir.Bundle/entry
                            :resource
@@ -557,7 +557,7 @@
                     (given body
                       :fhir/type := :fhir/Bundle
                       :id := "AAAAAAAAAAAAAAAA"
-                      :type := (type/->Code (str type "-response"))))
+                      :type := (type/code (str type "-response"))))
 
                   (testing "entry resource"
                     (given resource
@@ -585,7 +585,7 @@
                     @(handler
                        {:body
                         {:fhir/type :fhir/Bundle
-                         :type (type/->Code type)
+                         :type (type/code type)
                          :entry
                          [{:fhir/type :fhir.Bundle/entry
                            :resource
@@ -604,7 +604,7 @@
                     (given body
                       :fhir/type := :fhir/Bundle
                       :id := "AAAAAAAAAAAAAAAA"
-                      :type := (type/->Code (str type "-response"))))
+                      :type := (type/code (str type "-response"))))
 
                   (testing "entry resource"
                     (is (nil? resource)))
@@ -628,7 +628,7 @@
                        {:headers {"prefer" "return=representation"}
                         :body
                         {:fhir/type :fhir/Bundle
-                         :type (type/->Code type)
+                         :type (type/code type)
                          :entry
                          [{:fhir/type :fhir.Bundle/entry
                            :resource
@@ -647,7 +647,7 @@
                     (given body
                       :fhir/type := :fhir/Bundle
                       :id := "AAAAAAAAAAAAAAAA"
-                      :type := (type/->Code (str type "-response"))))
+                      :type := (type/code (str type "-response"))))
 
                   (testing "entry resource"
                     (given resource
@@ -679,7 +679,7 @@
                     @(handler
                        {:body
                         {:fhir/type :fhir/Bundle
-                         :type (type/->Code type)
+                         :type (type/code type)
                          :entry entries}})]
 
                 (testing "response status"
@@ -689,7 +689,7 @@
                   (given body
                     :fhir/type := :fhir/Bundle
                     :id := "AAAAAAAAAAAAAAAA"
-                    :type := (type/->Code (str type "-response"))))
+                    :type := (type/code (str type "-response"))))
 
                 (testing "entry resource"
                   (is (nil? resource)))
@@ -709,7 +709,7 @@
                   @(handler
                      {:body
                       {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
+                       :type (type/code type)
                        :entry
                        [{:fhir/type :fhir.Bundle/entry
                          :request
@@ -724,7 +724,7 @@
                 (given body
                   :fhir/type := :fhir/Bundle
                   :id := "AAAAAAAAAAAAAAAA"
-                  :type := (type/->Code (str type "-response"))))
+                  :type := (type/code (str type "-response"))))
 
               (testing "returns error"
                 (testing "with status"
@@ -747,7 +747,7 @@
                   @(handler
                      {:body
                       {:fhir/type :fhir/Bundle
-                       :type (type/->Code type)
+                       :type (type/code type)
                        :entry
                        [{:fhir/type :fhir.Bundle/entry
                          :request
@@ -762,7 +762,7 @@
                 (given body
                   :fhir/type := :fhir/Bundle
                   :id := "AAAAAAAAAAAAAAAA"
-                  :type := (type/->Code (str type "-response"))))
+                  :type := (type/code (str type "-response"))))
 
               (testing "entry resource"
                 (given resource

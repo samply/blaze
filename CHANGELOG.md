@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.16.1
+
+### Performance Improvements
+
+* Improve CQL Quantity Creation ([#621](https://github.com/samply/blaze/pull/621))
+* Improve FHIRPath Performance ([#617](https://github.com/samply/blaze/pull/617))
+* Intern Uri, Canonical, Code, Coding and CodeableConcept ([#628](https://github.com/samply/blaze/pull/628))
+* Use Records For HumanName and Address, Intern Meta ([#633](https://github.com/samply/blaze/pull/633))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/31?closed=1).
+
 ## v0.16.0
 
 ### New Features

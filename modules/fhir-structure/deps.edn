@@ -14,10 +14,10 @@
   {:mvn/version "3.0.5"}
 
   com.google.guava/guava
-  {:mvn/version "31.0.1-jre"}
+  {:mvn/version "31.1-jre"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.13.1"}
+  {:mvn/version "2.13.2"}
 
   com.taoensso/timbre
   {:mvn/version "5.1.2"}
@@ -54,6 +54,19 @@
 
    :main-opts
    ["-m" "kaocha.runner"]}
+
+  :test-perf
+  {:extra-paths ["test-perf"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}
+
+    criterium/criterium
+    {:mvn/version "0.4.6"}
+
+    org.openjdk.jol/jol-core
+    {:mvn/version "0.16"}}}
 
   :test-coverage
   {:extra-paths ["test"]

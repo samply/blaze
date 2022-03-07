@@ -2,7 +2,6 @@
   "A resource store implementation that uses a kev-value store as backend."
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]

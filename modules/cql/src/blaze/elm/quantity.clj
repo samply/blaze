@@ -12,10 +12,17 @@
     [javax.measure.format UnitFormat]
     [javax.measure.spi ServiceProvider]
     [tech.units.indriya ComparableQuantity]
+    [tech.units.indriya.function Calculus DefaultNumberSystem]
     [tech.units.indriya.quantity Quantities]))
 
 
 (set! *warn-on-reflection* true)
+
+
+(Calculus/setCurrentNumberSystem
+  (proxy [DefaultNumberSystem] []
+    (narrow [number]
+      number)))
 
 
 (def ^:private ^UnitFormat ucum-format

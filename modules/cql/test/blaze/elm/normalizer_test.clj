@@ -3,6 +3,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.literal :as elm]
+    [blaze.elm.literal-spec]
     [blaze.elm.normalizer :refer [normalize]]
     [blaze.elm.normalizer-spec]
     [clojure.spec.test.alpha :as st]

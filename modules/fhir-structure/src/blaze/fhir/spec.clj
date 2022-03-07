@@ -1,7 +1,6 @@
 (ns blaze.fhir.spec
   (:require
     [blaze.anomaly :as ba]
-    [blaze.anomaly-spec]
     [blaze.fhir.hash.spec]
     [blaze.fhir.spec.impl :as impl]
     [blaze.fhir.spec.spec]

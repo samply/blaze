@@ -1,14 +1,13 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.stratifier
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
     [blaze.fhir.spec.type :as type]))
 
 
 (defn- value-concept [value]
-  (type/map->CodeableConcept {:text (str (if (nil? value) "null" value))}))
+  (type/codeable-concept {:text (str (if (nil? value) "null" value))}))
 
 
 (defn- stratum* [population value]

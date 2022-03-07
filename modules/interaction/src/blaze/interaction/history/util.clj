@@ -1,6 +1,5 @@
 (ns blaze.interaction.history.util
   (:require
-    [blaze.db.api-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.util :as iu]
@@ -81,11 +80,11 @@
 
 (defn build-entry [context {:fhir/keys [type] :keys [id] :as resource}]
   (cond->
-    {:fullUrl (type/->Uri (fhir-util/instance-url context (name type) id))
+    {:fullUrl (type/uri (fhir-util/instance-url context (name type) id))
      :request
      {:fhir/type :fhir.Bundle.entry/request
       :method (method resource)
-      :url (type/->Uri (url (assoc context :blaze/base-url "") (name type) id
+      :url (type/uri (url (assoc context :blaze/base-url "") (name type) id
                             resource))}
      :response
      {:fhir/type :fhir.Bundle.entry/response

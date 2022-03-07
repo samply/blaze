@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.token
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -105,19 +104,9 @@
   (identifier-entries nil identifier))
 
 
-(defn- split-literal-ref [^String s]
-  (let [idx (.indexOf s 47)]
-    (when (pos? idx)
-      (let [type (.substring s 0 idx)]
-        (when (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
-          (let [id (.substring s (unchecked-inc-int idx))]
-            (when (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))
-              [type id])))))))
-
-
 (defn- literal-reference-entries [reference]
   (when-let [value (type/value reference)]
-    (if-let [[type id] (split-literal-ref value)]
+    (if-let [[type id] (u/split-literal-ref value)]
       [[nil (codec/v-hash id)]
        [nil (codec/v-hash (str type "/" id))]
        [nil (codec/tid-id (codec/tid type)
@@ -200,7 +189,7 @@
           (fn [value]
             (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
               (when-let [reference (:reference value)]
-                (nth (split-literal-ref reference) 1)))))
+                (nth (u/split-literal-ref reference) 1)))))
         values)))
 
   (-index-values [search-param resolver resource]

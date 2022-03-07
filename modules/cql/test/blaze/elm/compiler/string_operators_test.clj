@@ -7,6 +7,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]))
@@ -80,16 +81,25 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-ends-with-test
-  (are [s suffix res] (= res (core/-eval (c/compile {} {:type "EndsWith" :operand [s suffix]}) {} nil nil))
-    #elm/string "a" #elm/string "a" true
-    #elm/string "ab" #elm/string "b" true
+  (testing "static"
+    (are [s suffix res] (= res (c/compile {} (elm/ends-with [s suffix])))
+      #elm/string "a" #elm/string "a" true
+      #elm/string "ab" #elm/string "b" true
 
-    #elm/string "a" #elm/string "b" false
-    #elm/string "ba" #elm/string "b" false
+      #elm/string "a" #elm/string "b" false
+      #elm/string "ba" #elm/string "b" false))
 
-    {:type "Null"} #elm/string "a" nil
-    #elm/string "a" {:type "Null"} nil
-    {:type "Null"} {:type "Null"} nil))
+  (testing "dynamic"
+    (are [s suffix res] (= res (tu/dynamic-compile-eval (elm/ends-with [s suffix])))
+      #elm/parameter-ref "a" #elm/string "a" true
+      #elm/parameter-ref "ab" #elm/string "b" true
+
+      #elm/parameter-ref "a" #elm/string "b" false
+      #elm/parameter-ref "ba" #elm/string "b" false))
+
+  (tu/testing-binary-null elm/ends-with #elm/string "a")
+
+  (tu/testing-binary-form elm/ends-with))
 
 
 ;; 17.4. Equal
@@ -114,28 +124,26 @@
 ;; If either argument is null, the result is null.
 (deftest compile-indexer-test
   (testing "String"
-    (are [x i res] (= res (core/-eval (c/compile {} {:type "Indexer" :operand [x i]}) {} nil nil))
-      #elm/string "a" #elm/integer"0" "a"
-      #elm/string "ab" #elm/integer"1" "b"
+    (are [x i res] (= res (c/compile {} (elm/indexer [x i])))
+      #elm/string "a" #elm/integer "0" "a"
+      #elm/string "ab" #elm/integer "1" "b"
 
-      #elm/string "" #elm/integer"-1" nil
-      #elm/string "" #elm/integer"0" nil
-      #elm/string "a" #elm/integer"1" nil
+      #elm/string "" #elm/integer "-1" nil
+      #elm/string "a" #elm/integer "1" nil)
 
-      #elm/string "" {:type "Null"} nil
-      {:type "Null"} #elm/integer"0" nil))
+    (tu/testing-binary-null elm/indexer #elm/string "a" #elm/integer "0"))
 
   (testing "List"
-    (are [x i res] (= res (core/-eval (c/compile {} {:type "Indexer" :operand [x i]}) {} nil nil))
-      #elm/list [#elm/integer"1"] #elm/integer"0" 1
-      #elm/list [#elm/integer"1" #elm/integer"2"] #elm/integer"1" 2
+    (are [x i res] (= res (c/compile {} (elm/indexer [x i])))
+      #elm/list [#elm/integer "1"] #elm/integer "0" 1
+      #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "1" 2
 
-      #elm/list [] #elm/integer"-1" nil
-      #elm/list [] #elm/integer"0" nil
-      #elm/list [#elm/integer"1"] #elm/integer"1" nil
+      #elm/list [] #elm/integer "-1" nil
+      #elm/list [#elm/integer "1"] #elm/integer "1" nil)
 
-      #elm/list [] {:type "Null"} nil
-      {:type "Null"} #elm/integer"0" nil)))
+    (tu/testing-binary-null elm/indexer #elm/list [] #elm/integer "0"))
+
+  (tu/testing-binary-form elm/indexer))
 
 
 ;; 17.7. LastPositionOf
@@ -168,13 +176,22 @@
 ;;
 ;; If the argument is null, the result is 0.
 (deftest compile-length-test
-  (are [x res] (= res (core/-eval (c/compile {} {:type "Length" :operand x}) {} nil nil))
-    #elm/string "" 0
-    #elm/string "a" 1
-    #elm/list [] 0
-    #elm/list [#elm/integer"1"] 1
+  (testing "static"
+    (are [x res] (= res (c/compile {} (elm/length x)))
+      #elm/string "" 0
+      #elm/string "a" 1
+      #elm/list [] 0
+      #elm/list [#elm/integer "1"] 1
 
-    {:type "Null"} 0))
+      {:type "Null"} 0))
+
+  (testing "dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/length x)))
+      #elm/parameter-ref "empty-string" 0
+      #elm/parameter-ref "a" 1
+      #elm/parameter-ref "nil" 0))
+
+  (tu/testing-unary-form elm/length))
 
 
 ;; 17.9. Lower
@@ -189,11 +206,19 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-lower-test
-  (are [s res] (= res (core/-eval (c/compile {} {:type "Lower" :operand s}) {} nil nil))
-    #elm/string "" ""
-    #elm/string "A" "a"
+  (testing "static"
+    (are [s res] (= res (c/compile {} (elm/lower s)))
+      #elm/string "" ""
+      #elm/string "A" "a"))
 
-    {:type "Null"} nil))
+  (testing "dynamic"
+    (are [s res] (= res (tu/dynamic-compile-eval (elm/lower s)))
+      #elm/parameter-ref "empty-string" ""
+      #elm/parameter-ref "A" "a"))
+
+  (tu/testing-unary-null elm/lower)
+
+  (tu/testing-unary-form elm/lower))
 
 
 ;; 17.10. Matches
@@ -210,14 +235,14 @@
 ;; such, CQL does not prescribe a particular dialect, but recommends the use of
 ;; the PCRE dialect.
 (deftest compile-matches-test
-  (are [s pattern res] (= res (core/-eval (c/compile {} {:type "Matches" :operand [s pattern]}) {} nil nil))
+  (are [s pattern res] (= res (c/compile {} (elm/matches [s pattern])))
     #elm/string "a" #elm/string "a" true
 
-    #elm/string "a" #elm/string "\\d" false
+    #elm/string "a" #elm/string "\\d" false)
 
-    {:type "Null"} #elm/string "a" nil
-    #elm/string "a" {:type "Null"} nil
-    {:type "Null"} {:type "Null"} nil))
+  (tu/testing-binary-null elm/matches #elm/string "a")
+
+  (tu/testing-binary-form elm/matches))
 
 
 ;; 17.11. NotEqual
@@ -321,16 +346,25 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-starts-with-test
-  (are [s prefix res] (= res (core/-eval (c/compile {} {:type "StartsWith" :operand [s prefix]}) {} nil nil))
-    #elm/string "a" #elm/string "a" true
-    #elm/string "ba" #elm/string "b" true
+  (testing "static"
+    (are [s prefix res] (= res (c/compile {} (elm/starts-with [s prefix])))
+      #elm/string "a" #elm/string "a" true
+      #elm/string "ba" #elm/string "b" true
 
-    #elm/string "a" #elm/string "b" false
-    #elm/string "ab" #elm/string "b" false
+      #elm/string "a" #elm/string "b" false
+      #elm/string "ab" #elm/string "b" false))
 
-    {:type "Null"} #elm/string "a" nil
-    #elm/string "a" {:type "Null"} nil
-    {:type "Null"} {:type "Null"} nil))
+  (testing "dynamic"
+    (are [s prefix res] (= res (tu/dynamic-compile-eval (elm/starts-with [s prefix])))
+      #elm/parameter-ref "a" #elm/string "a" true
+      #elm/parameter-ref "ba" #elm/string "b" true
+
+      #elm/parameter-ref "a" #elm/string "b" false
+      #elm/parameter-ref "ab" #elm/string "b" false))
+
+  (tu/testing-binary-null elm/starts-with #elm/string "a")
+
+  (tu/testing-binary-form elm/starts-with))
 
 
 ;; 17.17. Substring
@@ -348,25 +382,25 @@
 (deftest compile-substring-test
   (testing "Without length"
     (are [s start-index res] (= res (core/-eval (c/compile {} {:type "Substring" :stringToSub s :startIndex start-index}) {} nil nil))
-      #elm/string "ab" #elm/integer"1" "b"
+      #elm/string "ab" #elm/integer "1" "b"
 
-      #elm/string "a" #elm/integer"-1" nil
-      #elm/string "a" #elm/integer"1" nil
-      {:type "Null"} #elm/integer"0" nil
+      #elm/string "a" #elm/integer "-1" nil
+      #elm/string "a" #elm/integer "1" nil
+      {:type "Null"} #elm/integer "0" nil
       #elm/string "a" {:type "Null"} nil
       {:type "Null"} {:type "Null"} nil))
 
   (testing "With length"
     (are [s start-index length res] (= res (core/-eval (c/compile {} {:type "Substring" :stringToSub s :startIndex start-index :length length}) {} nil nil))
-      #elm/string "a" #elm/integer"0" #elm/integer"1" "a"
-      #elm/string "a" #elm/integer"0" #elm/integer"2" "a"
-      #elm/string "abc" #elm/integer"1" #elm/integer"1" "b"
+      #elm/string "a" #elm/integer "0" #elm/integer "1" "a"
+      #elm/string "a" #elm/integer "0" #elm/integer "2" "a"
+      #elm/string "abc" #elm/integer "1" #elm/integer "1" "b"
 
-      #elm/string "a" #elm/integer"-1" #elm/integer"0" nil
-      #elm/string "a" #elm/integer"2" #elm/integer"0" nil
-      {:type "Null"} #elm/integer"0" #elm/integer"0" nil
-      #elm/string "a" {:type "Null"} #elm/integer"0" nil
-      {:type "Null"} {:type "Null"} #elm/integer"0" nil)))
+      #elm/string "a" #elm/integer "-1" #elm/integer "0" nil
+      #elm/string "a" #elm/integer "2" #elm/integer "0" nil
+      {:type "Null"} #elm/integer "0" #elm/integer "0" nil
+      #elm/string "a" {:type "Null"} #elm/integer "0" nil
+      {:type "Null"} {:type "Null"} #elm/integer "0" nil)))
 
 
 ;; 17.18. Upper
@@ -381,8 +415,16 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-upper-test
-  (are [s res] (= res (core/-eval (c/compile {} {:type "Upper" :operand s}) {} nil nil))
-    #elm/string "" ""
-    #elm/string "a" "A"
+  (testing "static"
+    (are [s res] (= res (c/compile {} (elm/upper s)))
+      #elm/string "" ""
+      #elm/string "a" "A"))
 
-    {:type "Null"} nil))
+  (testing "dynamic"
+    (are [s res] (= res (tu/dynamic-compile-eval (elm/upper s)))
+      #elm/parameter-ref "empty-string" ""
+      #elm/parameter-ref "a" "A"))
+
+  (tu/testing-unary-null elm/upper)
+
+  (tu/testing-unary-form elm/upper))

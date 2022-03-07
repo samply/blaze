@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [compile eval resolve])
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.anomaly-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
@@ -10,7 +9,7 @@
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang Counted PersistentVector]
+    [clojure.lang Counted PersistentVector IReduceInit]
     [java.io StringReader]
     [org.antlr.v4.runtime CharStreams CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -109,44 +108,52 @@
           (identical? :fhir/boolean type) true
           :else (throw-anom (ba/incorrect (singleton-evaluation-msg coll)))))
 
-    0 []
+    0 coll
 
     (throw-anom (ba/incorrect (singleton-evaluation-msg coll)))))
 
 
-(defrecord StartExpression []
+(deftype StartExpression []
   Expression
   (-eval [_ _ coll]
     coll))
 
 
-(defrecord TypedStartExpression [spec]
+(deftype TypedStartExpression [rf]
   Expression
   (-eval [_ _ coll]
-    (filterv #(identical? spec (fhir-spec/fhir-type %)) coll)))
+    (.reduce ^IReduceInit coll rf [])))
 
 
-(defrecord GetChildrenExpression [key]
+(defn- typed-start-expression [type-name]
+  (let [fhir-type (keyword "fhir" type-name)
+        pred #(identical? fhir-type (fhir-spec/fhir-type %))]
+    (->TypedStartExpression ((filter pred) conj))))
+
+
+(deftype GetChildrenExpression [f]
   Expression
   (-eval [_ _ coll]
-    (reduce
-      (fn [res x]
-        (let [val (get x key)]
-          (cond
-            (sequential? val) (into res val)
-            (some? val) (conj res val)
-            :else res)))
-      []
-      coll)))
+    (.reduce ^IReduceInit coll f [])))
 
 
-(defrecord InvocationExpression [expression invocation]
+(defn- get-children-expression [key]
+  (->GetChildrenExpression
+    (fn [res item]
+      (let [val (get item key)]
+        (cond
+          (instance? IReduceInit val) (.reduce ^IReduceInit val conj res)
+          (some? val) (conj res val)
+          :else res)))))
+
+
+(deftype InvocationExpression [expression invocation]
   Expression
   (-eval [_ context coll]
     (-eval invocation context (-eval expression context coll))))
 
 
-(defrecord IndexerExpression [expression index]
+(deftype IndexerExpression [expression index]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)
@@ -154,7 +161,7 @@
       [(nth coll idx [])])))
 
 
-(defrecord PlusExpression [left-expr right-expr]
+(deftype PlusExpression [left-expr right-expr]
   Expression
   (-eval [_ context coll]
     (let [left (singleton :fhir/string (-eval left-expr context coll))
@@ -170,12 +177,12 @@
           (pr-str coll)))
 
 
-(defrecord IsTypeExpression [expression type-specifier]
+(deftype IsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
       (case (.count ^Counted coll)
-        0 []
+        0 coll
 
         1 [(identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))]
 
@@ -187,12 +194,12 @@
           (pr-str coll)))
 
 
-(defrecord AsTypeExpression [expression type-specifier]
+(deftype AsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
       (case (.count ^Counted coll)
-        0 []
+        0 coll
 
         1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
             coll
@@ -201,7 +208,7 @@
         (throw-anom (ba/incorrect (as-type-specifier-msg coll)))))))
 
 
-(defrecord UnionExpression [e1 e2]
+(deftype UnionExpression [e1 e2]
   Expression
   (-eval [_ context coll]
     (let [^Counted c1 (-eval e1 context coll)
@@ -217,7 +224,7 @@
         (vec (reduce conj (set c1) c2))))))
 
 
-(defrecord EqualExpression [left-expr right-expr]
+(deftype EqualExpression [left-expr right-expr]
   Expression
   (-eval [_ context coll]
     (let [left (-eval left-expr context coll)
@@ -234,7 +241,7 @@
             [false]))))))
 
 
-(defrecord NotEqualExpression [left-expr right-expr]
+(deftype NotEqualExpression [left-expr right-expr]
   Expression
   (-eval [_ context coll]
     (let [left (-eval left-expr context coll)
@@ -252,7 +259,7 @@
 
 
 ;; See: http://hl7.org/fhirpath/index.html#and
-(defrecord AndExpression [expr-a expr-b]
+(deftype AndExpression [expr-a expr-b]
   Expression
   (-eval [_ context coll]
     (let [a (singleton :fhir/boolean (-eval expr-a context coll))]
@@ -266,11 +273,11 @@
             :else []))))))
 
 
-(defrecord AsFunctionExpression [type-specifier]
+(deftype AsFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ coll]
     (case (.count ^Counted coll)
-      0 []
+      0 coll
 
       1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
           coll
@@ -279,30 +286,31 @@
       (throw-anom (ba/incorrect (as-type-specifier-msg coll))))))
 
 
-(defrecord OfTypeFunctionExpression [type-specifier]
+(deftype OfTypeFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ coll]
     (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll)))
 
 
-(defrecord ExistsFunctionExpression []
+(deftype ExistsFunctionExpression []
   Expression
   (-eval [_ _ coll]
     [(if (empty? coll) false true)]))
 
 
-(defrecord ExistsWithCriteriaFunctionExpression [criteria]
+(deftype ExistsWithCriteriaFunctionExpression [criteria]
   Expression
   (-eval [_ _ _]
     (throw-anom (ba/unsupported "unsupported `exists` function"))))
 
 
-(defmulti resolve (fn [_ item] (fhir-spec/fhir-type item)))
+(defmulti ^IReduceInit resolve (fn [_ item] (fhir-spec/fhir-type item)))
 
 
 (defn- resolve* [resolver uri]
-  (when-let [resource (-resolve resolver uri)]
-    [resource]))
+  (if-let [resource (-resolve resolver uri)]
+    [resource]
+    []))
 
 
 (defmethod resolve :fhir/string [{:keys [resolver]} uri]
@@ -314,14 +322,15 @@
 
 
 (defmethod resolve :default [_ item]
-  (log/debug (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item))
-                     (pr-str item))))
+  (log/warn (format "Skip resolving %s `%s`." (name (fhir-spec/fhir-type item))
+                    (pr-str item)))
+  [])
 
 
-(defrecord ResolveFunctionExpression []
+(deftype ResolveFunctionExpression []
   Expression
   (-eval [_ context coll]
-    (reduce #(reduce conj %1 (resolve context %2)) [] coll)))
+    (.reduce ^IReduceInit coll #(.reduce (resolve context %2) conj %1) [])))
 
 
 (defprotocol FPCompiler
@@ -355,28 +364,34 @@
           (pr-str x)))
 
 
-(defrecord WhereFunctionExpression [criteria]
+(deftype WhereFunctionExpression [where-rf]
   Expression
   (-eval [_ context coll]
-    (filterv
-      (fn [item]
-        (let [coll (-eval criteria context [item])]
-          (case (.count ^Counted coll)
-            0 false
+    (.reduce ^IReduceInit coll (where-rf context) [])))
 
-            1 (let [first (nth coll 0)]
-                (if (identical? :system/boolean (system/type first))
-                  first
-                  (throw-anom (ba/incorrect (non-boolean-result-msg first)))))
 
-            (throw-anom (ba/incorrect (multiple-result-msg coll))))))
-      coll)))
+(defn- where-function-expr [criteria]
+  (->WhereFunctionExpression
+    (fn [context]
+      ((filter
+         (fn [item]
+           (let [coll (-eval criteria context [item])]
+             (case (.count ^Counted coll)
+               0 false
+
+               1 (let [first (nth coll 0)]
+                   (if (identical? :system/boolean (system/type first))
+                     first
+                     (throw-anom (ba/incorrect (non-boolean-result-msg first)))))
+
+               (throw-anom (ba/incorrect (multiple-result-msg coll)))))))
+       conj))))
 
 
 (defmethod function-expression "where"
   [_ ^fhirpathParser$ParamListContext paramsCtx]
   (if-let [criteria-ctx (some-> paramsCtx (.expression 0))]
-    (->WhereFunctionExpression (-compile criteria-ctx))
+    (where-function-expr (-compile criteria-ctx))
     (throw-anom (ba/incorrect "missing criteria in `where` function"))))
 
 
@@ -397,17 +412,17 @@
 
 ;; Additional functions (https://www.hl7.org/fhir/fhirpath.html#functions)
 
-(defrecord ExtensionFunctionExpression [xf]
+(deftype ExtensionFunctionExpression [rf]
   Expression
   (-eval [_ _ coll]
-    (into [] xf coll)))
+    (.reduce ^IReduceInit coll rf [])))
 
 
 (defmethod function-expression "extension"
   [_ ^fhirpathParser$ParamListContext paramsCtx]
   (let [url-pred (set (some-> paramsCtx (.expression 0) -compile))
         xf (comp (mapcat :extension) (filter (comp url-pred :url)))]
-    (->ExtensionFunctionExpression xf)))
+    (->ExtensionFunctionExpression (xf conj))))
 
 
 (defmethod function-expression "resolve"
@@ -539,8 +554,8 @@
       (if (Character/isUpperCase ^char first-char)
         (if (= "Resource" identifier)
           (->StartExpression)
-          (->TypedStartExpression (keyword "fhir" identifier)))
-        (->GetChildrenExpression (keyword identifier)))))
+          (typed-start-expression identifier))
+        (get-children-expression (keyword identifier)))))
   (-compile-as-type-specifier [ctx]
     (let [type (-compile (.identifier ctx))]
       (if (fhir-spec/type-exists? type)

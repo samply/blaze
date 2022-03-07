@@ -118,7 +118,7 @@
 
 
 ;; 19.7. Ends
-(defbinop ends [x y _]
+(defbinopp ends [x y _]
   (and (p/greater-or-equal (:start x) (:start y))
        (p/equal (:end x) (:end y))))
 
@@ -126,6 +126,9 @@
 ;; 19.10. Except
 (defbinop except [x y]
   (p/except x y))
+
+
+;; TODO 19.11. Expand
 
 
 ;; 19.12. In
@@ -221,7 +224,7 @@
 
 
 ;; 19.30. Starts
-(defbinop starts [x y _]
+(defbinopp starts [x y _]
   (and (p/equal (:start x) (:start y))
        (p/less-or-equal (:end x) (:end y))))
 

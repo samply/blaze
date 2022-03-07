@@ -28,7 +28,7 @@
               (:t resource-handle)
               (-> resource-handle fhir-spec/fhir-type name)
               (:id resource-handle))
-            type/->Uri)})
+            type/uri)})
 
 
 (defn- build-response

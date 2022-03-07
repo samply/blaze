@@ -6,7 +6,6 @@
   (:require
     [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.db.api :as d]
-    [blaze.db.api-spec]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.spec]
     [blaze.elm.util :as elm-util]
@@ -22,10 +21,12 @@
     (d/list-compartment-resource-handles db context id data-type)))
 
 
-(defrecord CompartmentQueryRetrieveExpression [query]
+(defrecord CompartmentQueryRetrieveExpression [query data-type clauses]
   core/Expression
   (-eval [_ {:keys [db]} {:keys [id]} _]
-    (d/execute-query db query id)))
+    (d/execute-query db query id))
+  (-form [_]
+    `(~'compartment-query-retrieve ~data-type ~clauses)))
 
 
 (defn- code->clause-value [{:keys [system code]}]
@@ -46,7 +47,7 @@
   [node context data-type property codes]
   (let [clauses [(into [property] (map code->clause-value) codes)]
         query (d/compile-compartment-query node context data-type clauses)]
-    (->CompartmentQueryRetrieveExpression query)))
+    (->CompartmentQueryRetrieveExpression query data-type clauses)))
 
 
 (defn- split-reference [s]
@@ -156,7 +157,9 @@
   (if (empty? codes)
     (reify core/Expression
       (-eval [_ {:keys [db]} _ _]
-        (into [] (d/type-list db data-type))))
+        (into [] (d/type-list db data-type)))
+      (-form [_]
+        `(~'retrieve ~data-type)))
     (let [clauses [(into [code-property] (map code->clause-value) codes)]]
       (if-ok [query (d/compile-type-query node data-type clauses)]
         (reify core/Expression

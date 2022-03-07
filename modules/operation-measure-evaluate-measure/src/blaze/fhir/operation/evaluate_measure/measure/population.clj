@@ -1,7 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.population
   (:require
     [blaze.anomaly :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]))
 

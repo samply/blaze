@@ -1,7 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.cql
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.anomaly-spec]
     [blaze.db.api :as d]
     [blaze.elm.expression :as expr]
     [blaze.fhir.spec :as fhir-spec]
@@ -37,7 +36,9 @@
   (try
     (expr/eval context (get library-context expression-name) subject-handle)
     (catch Exception e
-      (log/error (log/stacktrace e))
+      (log/error (format "Error while evaluating the expression `%s`:"
+                         expression-name) (ex-message (ex-cause e)))
+      (log/error e)
       (ba/fault
         (ex-message e)
         :fhir/issue "exception"

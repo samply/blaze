@@ -49,7 +49,7 @@
           {:library
            {:codeSystems
             {:def [{:name "sys-def-115852" :id "system-115910"}]}}}]
-      (given (c/compile context #elm/code["sys-def-115852" "code-115927"])
+      (given (c/compile context #elm/code ["sys-def-115852" "code-115927"])
         type := Code
         :system := "system-115910"
         :code := "code-115927")))
@@ -62,7 +62,7 @@
              [{:name "sys-def-120434"
                :id "system-120411"
                :version "version-120408"}]}}}]
-      (given (c/compile context #elm/code["sys-def-120434" "code-120416"])
+      (given (c/compile context #elm/code ["sys-def-120434" "code-120416"])
         type := Code
         :system := "system-120411"
         :version := "version-120408"
@@ -70,7 +70,7 @@
 
   (testing "missing code system"
     (let [context {:library {:codeSystems {:def []}}}]
-      (given (ba/try-anomaly (c/compile context #elm/code["sys-def-112249" "code-112253"]))
+      (given (ba/try-anomaly (c/compile context #elm/code ["sys-def-112249" "code-112253"]))
         ::anom/category := ::anom/not-found
         ::anom/message := "Can't find the code system `sys-def-112249`."))))
 
@@ -97,7 +97,7 @@
              [{:name "code-def-125054"
                :id "code-125340"
                :codeSystem {:name "sys-def-125149"}}]}}}]
-      (given (c/compile context #elm/code-ref"code-def-125054")
+      (given (c/compile context #elm/code-ref "code-def-125054")
         type := Code
         :system := "system-name-125213"
         :code := "code-125340")))
@@ -115,7 +115,7 @@
              [{:name "code-def-125054"
                :id "code-125354"
                :codeSystem {:name "sys-def-125149"}}]}}}]
-      (given (c/compile context #elm/code-ref"code-def-125054")
+      (given (c/compile context #elm/code-ref "code-def-125054")
         type := Code
         :system := "system-name-125213"
         :version := "version-125222"
@@ -147,25 +147,25 @@
   (testing "Examples"
     (are [elm res] (= res (c/compile {} elm))
       {:type "Quantity"} nil
-      #elm/quantity[1] (quantity/quantity 1 "")
-      #elm/quantity[1 "year"] (date-time/period 1 0 0)
-      #elm/quantity[2 "years"] (date-time/period 2 0 0)
-      #elm/quantity[1 "month"] (date-time/period 0 1 0)
-      #elm/quantity[2 "months"] (date-time/period 0 2 0)
-      #elm/quantity[1 "week"] (date-time/period 0 0 (* 7 24 60 60 1000))
-      #elm/quantity[2 "weeks"] (date-time/period 0 0 (* 2 7 24 60 60 1000))
-      #elm/quantity[1 "day"] (date-time/period 0 0 (* 24 60 60 1000))
-      #elm/quantity[2 "days"] (date-time/period 0 0 (* 2 24 60 60 1000))
-      #elm/quantity[1 "hour"] (date-time/period 0 0 (* 60 60 1000))
-      #elm/quantity[2 "hours"] (date-time/period 0 0 (* 2 60 60 1000))
-      #elm/quantity[1 "minute"] (date-time/period 0 0 (* 60 1000))
-      #elm/quantity[2 "minutes"] (date-time/period 0 0 (* 2 60 1000))
-      #elm/quantity[1 "second"] (date-time/period 0 0 1000)
-      #elm/quantity[2 "seconds"] (date-time/period 0 0 2000)
-      #elm/quantity[1 "millisecond"] (date-time/period 0 0 1)
-      #elm/quantity[2 "milliseconds"] (date-time/period 0 0 2)
-      #elm/quantity[1 "s"] (quantity/quantity 1 "s")
-      #elm/quantity[1 "cm2"] (quantity/quantity 1 "cm2")))
+      #elm/quantity [1] (quantity/quantity 1 "")
+      #elm/quantity [1 "year"] (date-time/period 1 0 0)
+      #elm/quantity [2 "years"] (date-time/period 2 0 0)
+      #elm/quantity [1 "month"] (date-time/period 0 1 0)
+      #elm/quantity [2 "months"] (date-time/period 0 2 0)
+      #elm/quantity [1 "week"] (date-time/period 0 0 (* 7 24 60 60 1000))
+      #elm/quantity [2 "weeks"] (date-time/period 0 0 (* 2 7 24 60 60 1000))
+      #elm/quantity [1 "day"] (date-time/period 0 0 (* 24 60 60 1000))
+      #elm/quantity [2 "days"] (date-time/period 0 0 (* 2 24 60 60 1000))
+      #elm/quantity [1 "hour"] (date-time/period 0 0 (* 60 60 1000))
+      #elm/quantity [2 "hours"] (date-time/period 0 0 (* 2 60 60 1000))
+      #elm/quantity [1 "minute"] (date-time/period 0 0 (* 60 1000))
+      #elm/quantity [2 "minutes"] (date-time/period 0 0 (* 2 60 1000))
+      #elm/quantity [1 "second"] (date-time/period 0 0 1000)
+      #elm/quantity [2 "seconds"] (date-time/period 0 0 2000)
+      #elm/quantity [1 "millisecond"] (date-time/period 0 0 1)
+      #elm/quantity [2 "milliseconds"] (date-time/period 0 0 2)
+      #elm/quantity [1 "s"] (quantity/quantity 1 "s")
+      #elm/quantity [1 "cm2"] (quantity/quantity 1 "cm2")))
 
   (testing "Periods"
     (satisfies-prop 100

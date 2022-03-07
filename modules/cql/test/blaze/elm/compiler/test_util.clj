@@ -51,11 +51,19 @@
       {:name "1"}
       {:name "2"}
       {:name "3"}
-      {:name "4"}]}}})
+      {:name "4"}
+      {:name "empty-string"}
+      {:name "a"}
+      {:name "ab"}
+      {:name "b"}
+      {:name "ba"}
+      {:name "A"}]}}})
 
 
 (def dynamic-eval-ctx
-  {:parameters {"true" true "false" false "nil" nil "1" 1 "2" 2 "3" 3 "4" 4}})
+  {:parameters
+   {"true" true "false" false "nil" nil "1" 1 "2" 2 "3" 3 "4" 4
+    "empty-string" "" "a" "a" "ab" "ab" "b" "b" "ba" "ba" "A" "A"}})
 
 
 (defn dynamic-compile-eval [elm]
@@ -85,7 +93,7 @@
 
 (defmacro testing-unary-dynamic-null [elm-constructor]
   `(testing "Dynamic Null"
-     (let [elm# (~elm-constructor #elm/parameter-ref"nil")]
+     (let [elm# (~elm-constructor #elm/parameter-ref "nil")]
        (is (nil? (dynamic-compile-eval elm#))))))
 
 
@@ -105,15 +113,15 @@
 (defmacro testing-binary-dynamic-null [elm-constructor non-null-op-1 non-null-op-2]
   `(testing "Dynamic Null"
      (let [elm# (~elm-constructor
-                  [#elm/parameter-ref"nil"
-                   #elm/parameter-ref"nil"])]
+                  [#elm/parameter-ref "nil"
+                   #elm/parameter-ref "nil"])]
        (is (nil? (dynamic-compile-eval elm#))))
      (let [elm# (~elm-constructor
                   [~non-null-op-1
-                   #elm/parameter-ref"nil"])]
+                   #elm/parameter-ref "nil"])]
        (is (nil? (dynamic-compile-eval elm#))))
      (let [elm# (~elm-constructor
-                  [#elm/parameter-ref"nil"
+                  [#elm/parameter-ref "nil"
                    ~non-null-op-2])]
        (is (nil? (dynamic-compile-eval elm#))))))
 
@@ -144,3 +152,52 @@
 
 (defn compile-binop-precision [constructor op-constructor op-1 op-2 precision]
   (c/compile {} (constructor [(op-constructor op-1) (op-constructor op-2) precision])))
+
+
+(defmacro testing-unary-form [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "form"
+       (let [compile-ctx# {:library {:parameters {:def [{:name "x"}]}}}
+             elm# (~elm-constructor (elm/parameter-ref "x"))
+             expr# (c/compile compile-ctx# elm#)]
+         (is (= (quote (~form-name (~'param-ref "x"))) (core/-form expr#)))))))
+
+
+(defmacro testing-unary-precision-form
+  ([elm-constructor]
+   `(testing-unary-precision-form ~elm-constructor "year" "month"))
+  ([elm-constructor & precisions]
+   (let [form-name (symbol (name elm-constructor))]
+     `(testing "form"
+        (let [compile-ctx# {:library {:parameters {:def [{:name "x"}]}}}]
+          (doseq [precision# ~(vec precisions)]
+            (let [elm# (~elm-constructor [(elm/parameter-ref "x") precision#])
+                  expr# (c/compile compile-ctx# elm#)]
+              (is (= (list '~form-name '(~'param-ref "x") precision#)
+                     (core/-form expr#))))))))))
+
+
+(defmacro testing-binary-form [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "form"
+       (let [compile-ctx# {:library {:parameters {:def [{:name "x"} {:name "y"}]}}}
+             elm# (~elm-constructor [(elm/parameter-ref "x")
+                                     (elm/parameter-ref "y")])
+             expr# (c/compile compile-ctx# elm#)]
+         (is (= (quote (~form-name (~'param-ref "x") (~'param-ref "y")))
+                (core/-form expr#)))))))
+
+
+(defmacro testing-binary-precision-form
+  ([elm-constructor]
+   `(testing-binary-precision-form ~elm-constructor "year" "month"))
+  ([elm-constructor & precisions]
+   (let [form-name (symbol (name elm-constructor))]
+     `(testing "form"
+        (let [compile-ctx# {:library {:parameters {:def [{:name "x"} {:name "y"}]}}}]
+          (doseq [precision# ~(vec precisions)]
+            (let [elm# (~elm-constructor [(elm/parameter-ref "x")
+                                          (elm/parameter-ref "y") precision#])
+                  expr# (c/compile compile-ctx# elm#)]
+              (is (= (list '~form-name '(~'param-ref "x") '(~'param-ref "y")
+                           precision#) (core/-form expr#))))))))))
