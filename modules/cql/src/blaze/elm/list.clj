@@ -28,7 +28,7 @@
 
   IReduceInit
   (equal [x y]
-    (p/equal (into [] x) y)))
+    (p/equal (vec x) y)))
 
 
 ;; 12.2. Equivalent
@@ -48,7 +48,7 @@
 
   IReduceInit
   (equivalent [x y]
-    (p/equivalent (into [] x) y)))
+    (p/equivalent (vec x) y)))
 
 
 ;; 17.6. Indexer
@@ -60,7 +60,7 @@
 
   IReduceInit
   (indexer [list index]
-    (p/indexer (into [] list) index)))
+    (p/indexer (vec list) index)))
 
 
 ;; 19.5. Contains
@@ -122,7 +122,7 @@
 
   IReduceInit
   (intersect [x y]
-    (p/intersect (into [] x) y)))
+    (p/intersect (vec x) y)))
 
 
 ;; 19.24. ProperContains
@@ -133,7 +133,7 @@
 
   IReduceInit
   (proper-contains [list x precision]
-    (p/proper-contains (into [] list) x precision)))
+    (p/proper-contains (vec list) x precision)))
 
 
 ;; 19.26. ProperIncludes
@@ -144,7 +144,7 @@
 
   IReduceInit
   (proper-includes [x y precision]
-    (p/proper-includes (into [] x) y precision)))
+    (p/proper-includes (vec x) y precision)))
 
 
 ;; 19.31. Union
