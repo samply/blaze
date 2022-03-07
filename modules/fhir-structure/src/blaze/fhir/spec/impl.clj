@@ -1,6 +1,7 @@
 (ns blaze.fhir.spec.impl
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.fhir.spec.impl.intern :as intern]
     [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s]
@@ -51,8 +52,13 @@
   `(fn [~'s] (re-matches #"[A-Za-z0-9\-\.]{1,64}" ~'s)))
 
 
+(def ^{:arglists '([s])} intern-string
+  "Returns an interned String without using String/intern."
+  (intern/intern-value identity))
+
+
 (def uri-matcher-form
-  `(fn [~'s] (re-matches #"\S*" ~'s)))
+  `(specs/regex #"\S*" intern-string))
 
 
 (defn element? [x]
@@ -82,7 +88,7 @@
     (:json nil) `(s/and string? ~uri-matcher-form)
     :xml `(s/and element? (s/conformer conform-xml-value unform-xml-value) ~uri-matcher-form)
     :xmlAttr `(s/and string? ~uri-matcher-form)
-    :cbor `any?))
+    :cbor `(s/conformer intern-string)))
 
 
 (defn- string-spec [modifier type]
@@ -192,7 +198,10 @@
       :modifier :json
       :min min
       :max max
-      :spec-form (keyword "fhir.json" (:code type))}
+      :spec-form
+      (if (= "Quantity.unit" path)
+        `(specs/regex #"[ \r\n\t\S]+" intern-string)
+        (keyword "fhir.json" (:code type)))}
      (cond->
        {:key (path-parts->key' "fhir.xml" (split-path path))
         :modifier :xml
@@ -207,7 +216,10 @@
       :modifier :cbor
       :min min
       :max max
-      :spec-form (keyword "fhir.cbor" (:code type))}]))
+      :spec-form
+      (if (= "Quantity.unit" path)
+        `(s/conformer intern-string)
+        (keyword "fhir.cbor" (:code type)))}]))
 
 
 (defn elem-def->spec-def
@@ -334,6 +346,8 @@
          :fhir/Quantity
          :fhir/Period
          :fhir/Identifier
+         :fhir/HumanName
+         :fhir/Address
          :fhir/Reference
          :fhir/Meta)
        (record-spec-form path-part child-spec-defs)
@@ -452,13 +466,16 @@
        (json-object-spec-form "coding" child-spec-defs)
        :fhir.json/CodeableConcept
        (json-object-spec-form "codeable-concept" child-spec-defs)
+       :fhir.json/Meta
+       (json-object-spec-form "mk-meta" child-spec-defs)
        (:fhir.json/Attachment
          :fhir.json/Extension
          :fhir.json/Quantity
          :fhir.json/Period
          :fhir.json/Identifier
-         :fhir.json/Reference
-         :fhir.json/Meta)
+         :fhir.json/HumanName
+         :fhir.json/Address
+         :fhir.json/Reference)
        (json-object-spec-form (str "map->" path-part) child-spec-defs)
        :fhir.json.Bundle.entry/search
        (json-object-spec-form "map->BundleEntrySearch" child-spec-defs)
@@ -589,6 +606,8 @@
          :fhir.xml/Quantity
          :fhir.xml/Period
          :fhir.xml/Identifier
+         :fhir.xml/HumanName
+         :fhir.xml/Address
          :fhir.xml/Reference
          :fhir.xml/Meta)
        (special-xml-schema-spec-form kind (name key) child-spec-defs)
@@ -626,13 +645,16 @@
        (cbor-object-spec-form "coding" child-spec-defs)
        :fhir.cbor/CodeableConcept
        (cbor-object-spec-form "codeable-concept" child-spec-defs)
+       :fhir.cbor/Meta
+       (cbor-object-spec-form "mk-meta" child-spec-defs)
        (:fhir.cbor/Attachment
          :fhir.cbor/Extension
          :fhir.cbor/Quantity
          :fhir.cbor/Period
          :fhir.cbor/Identifier
-         :fhir.cbor/Reference
-         :fhir.cbor/Meta)
+         :fhir.cbor/HumanName
+         :fhir.cbor/Address
+         :fhir.cbor/Reference)
        (cbor-object-spec-form (str "map->" path-part) child-spec-defs)
        :fhir.cbor.Bundle.entry/search
        (cbor-object-spec-form "map->BundleEntrySearch" child-spec-defs)

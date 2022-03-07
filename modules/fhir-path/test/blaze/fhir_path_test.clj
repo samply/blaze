@@ -134,9 +134,7 @@
         (eval "Patient.name.family + ', ' + Patient.name.given"
               {:fhir/type :fhir/Patient
                :id "foo"
-               :name
-               [{:fhir/type :fhir/HumanName
-                 :family "Doe"}]})
+               :name [#fhir/HumanName{:family "Doe"}]})
         identity := ["Doe, "]))
 
     (testing "with one given name"
@@ -144,20 +142,14 @@
         (eval "Patient.name.family + ', ' + Patient.name.given"
               {:fhir/type :fhir/Patient
                :id "foo"
-               :name
-               [{:fhir/type :fhir/HumanName
-                 :family "Doe"
-                 :given ["John"]}]})
+               :name [#fhir/HumanName{:family "Doe" :given ["John"]}]})
         identity := ["Doe, John"]))
 
     (testing "with two given names"
       (given (eval "Patient.name.family + ', ' + Patient.name.given"
                    {:fhir/type :fhir/Patient
                     :id "foo"
-                    :name
-                    [{:fhir/type :fhir/HumanName
-                      :family "Doe"
-                      :given ["John" "Foo"]}]})
+                    :name [#fhir/HumanName{:family "Doe" :given ["John" "Foo"]}]})
         ::anom/category := ::anom/incorrect
         ::anom/message := "unable to evaluate `[\"John\" \"Foo\"]` as singleton"))
 
@@ -165,11 +157,9 @@
       (given (eval "Patient.name.family + ', ' + Patient.name"
                    {:fhir/type :fhir/Patient
                     :id "foo"
-                    :name
-                    [{:fhir/type :fhir/HumanName
-                      :family "Doe"}]})
+                    :name [#fhir/HumanName{:family "Doe"}]})
         ::anom/category := ::anom/incorrect
-        ::anom/message := "unable to evaluate `[{:fhir/type :fhir/HumanName, :family \"Doe\"}]` as singleton")))
+        ::anom/message := "unable to evaluate `[#fhir/HumanName{:family \"Doe\"}]` as singleton")))
 
   (testing "and expression"
     (testing "with one telecom"
@@ -347,9 +337,7 @@
         "Patient.address.where(line)"
         {:fhir/type :fhir/Patient
          :id "id-162953"
-         :address
-         [{:fhir/type :fhir/Address
-           :line ["a" "b"]}]})
+         :address [#fhir/Address{:line ["a" "b"]}]})
       ::anom/category := ::anom/incorrect
       ::anom/message := "multiple result items `[\"a\" \"b\"]` while evaluating where function criteria"))
 
@@ -409,10 +397,8 @@
   (let [patient
         {:fhir/type :fhir/Patient :id "foo"
          :name
-         [{:fhir/type :fhir/HumanName
-           :family "Doe"}
-          {:fhir/type :fhir/HumanName
-           :family "Bolton"}]}]
+         [#fhir/HumanName{:family "Doe"}
+          #fhir/HumanName{:family "Bolton"}]}]
     (are [expr res] (= res (eval expr patient))
       "{} | {}" []
       "1 | {}" [1]

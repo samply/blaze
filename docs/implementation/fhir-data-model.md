@@ -72,9 +72,7 @@ The internal representation of the example above looks like this:
 ```clojure
 {:fhir/type :fhir/Patient
  :id "0"
- :name 
- [{:fhir/type :fhir/HumanName
-   :text "John Doe"}]
+ :name [#fhir/HumanName{:text "John Doe"}]
  :birthDate #fhir/date"2020"
  :deceased false}
 ```
@@ -98,27 +96,27 @@ First, the `-type` method will return the FHIR type of a value and second the `-
 
 The following table shows the mapping from primitive FHIR types to Java types:
 
-FHIR Type | FHIRPath Type | Java Type | Heap Size
------------|----------------|-----------|-----------
-boolean | System.Boolean | Boolean | interned
-integer | System.Integer | Integer | 16 bytes
-string | System.String | String | 40 bytes + content in 8 bytes increments
-decimal | System.Decimal | BigDecimal | 40 bytes for practical small decimals
-uri | System.String | Class with embedded String | 56 bytes + content in 8 bytes increments
-url | System.String | Class with embedded String | 56 bytes + content in 8 bytes increments
-canonical | System.String | Class with embedded String | 56 bytes + content in 8 bytes increments
-base64Binary | System.String | Class with embedded String | 56 bytes + content in 8 bytes increments
-instant | System.DateTime | Instant or class with embedded OffsetDateTime | 24 bytes or 112 bytes
-date | System.Date | Year, YearMonth, LocalDate | 16 bytes, 24 bytes, 24 bytes
-dateTime | System.DateTime | Class with embedded Year, Class with embedded YearMonth, Class with embedded LocalDate, LocalDateTime, OffsetDateTime | 32 bytes, 40 bytes, 40 bytes, 72 bytes, 96 bytes (zone offsets are cached)
-time | System.Time | LocalTime | 24 bytes
-code | System.String | Class with embedded String | 56 bytes + content in 8 bytes increments
-oid | System.String | Class with embedded String | 56 bytes + content in 8 bytes increments
-id | System.String | Class with embedded String | 56 bytes + content in 8 bytes increments
-markdown | System.String | Class with embedded String | 56 bytes + content in 8 bytes increments
-unsignedInt | System.Integer | Class with embedded int | 16 bytes
-positiveInt | System.Integer | Class with embedded int | 16 bytes
-uuid | System.String | java.util.UUID | 32 bytes
+| FHIR Type    | FHIRPath Type   | Java Type                                                                                                             | Heap Size                                                                  |
+|--------------|-----------------|-----------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| boolean      | System.Boolean  | Boolean                                                                                                               | interned                                                                   |
+| integer      | System.Integer  | Integer                                                                                                               | 16 bytes                                                                   |
+| string       | System.String   | String                                                                                                                | 40 bytes + content in 8 bytes increments                                   |
+| decimal      | System.Decimal  | BigDecimal                                                                                                            | 40 bytes for practical small decimals                                      |
+| uri          | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
+| url          | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
+| canonical    | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
+| base64Binary | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
+| instant      | System.DateTime | Instant or class with embedded OffsetDateTime                                                                         | 24 bytes or 112 bytes                                                      |
+| date         | System.Date     | Year, YearMonth, LocalDate                                                                                            | 16 bytes, 24 bytes, 24 bytes                                               |
+| dateTime     | System.DateTime | Class with embedded Year, Class with embedded YearMonth, Class with embedded LocalDate, LocalDateTime, OffsetDateTime | 32 bytes, 40 bytes, 40 bytes, 72 bytes, 96 bytes (zone offsets are cached) |
+| time         | System.Time     | LocalTime                                                                                                             | 24 bytes                                                                   |
+| code         | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
+| oid          | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
+| id           | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
+| markdown     | System.String   | Class with embedded String                                                                                            | 56 bytes + content in 8 bytes increments                                   |
+| unsignedInt  | System.Integer  | Class with embedded int                                                                                               | 16 bytes                                                                   |
+| positiveInt  | System.Integer  | Class with embedded int                                                                                               | 16 bytes                                                                   |
+| uuid         | System.String   | java.util.UUID                                                                                                        | 32 bytes                                                                   |
 
 For `boolean`, `integer` `string` and `decimal`, the obvious Java types are used. `BigDecimal` is used instead of `double` because FHIR recommends a decimal of basis 10.
 
