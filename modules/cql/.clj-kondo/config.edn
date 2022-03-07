@@ -10,7 +10,6 @@
   blaze.elm.compiler.macros/defaggop clojure.core/defn
   blaze.elm.compiler.macros/defbinopp clojure.core/defn
   blaze.elm.compiler.macros/defunopp clojure.core/defn
-  clojure.test.check.properties/for-all clojure.core/let
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}
 
