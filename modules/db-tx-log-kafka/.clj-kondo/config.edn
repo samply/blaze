@@ -1,7 +1,6 @@
 {:lint-as
  {blaze.anomaly/when-ok clojure.core/let
   blaze.test-util/with-system clojure.core/with-open
-  clojure.test.check.properties/for-all clojure.core/let
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}
 

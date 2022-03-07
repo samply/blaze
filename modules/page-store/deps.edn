@@ -14,7 +14,7 @@
   {:mvn/version "3.0.5"}
 
   com.google.guava/guava
-  {:mvn/version "31.0.1-jre"}}
+  {:mvn/version "31.1-jre"}}
 
  :aliases
  {:test

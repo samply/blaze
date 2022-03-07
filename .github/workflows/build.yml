@@ -22,10 +22,10 @@ jobs:
     - name: Setup clj-kondo
       uses: DeLaGuardo/setup-clj-kondo@master
       with:
-        version: '2022.02.09'
+        version: '2022.03.04'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Lint
       run: make lint
@@ -84,10 +84,10 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1082'
+        tools-deps: '1.10.3.1087'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2
@@ -115,10 +115,10 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1082'
+        tools-deps: '1.10.3.1087'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2
@@ -157,10 +157,10 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1082'
+        tools-deps: '1.10.3.1087'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2
@@ -185,10 +185,10 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1082'
+        tools-deps: '1.10.3.1087'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2
@@ -267,7 +267,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -456,7 +456,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -502,7 +502,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -552,10 +552,10 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1082'
+        tools-deps: '1.10.3.1087'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2
@@ -600,7 +600,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v1
@@ -633,7 +633,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -854,10 +854,10 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        tools-deps: '1.10.3.1082'
+        tools-deps: '1.10.3.1087'
 
     - name: Check out Git repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache Local Maven Repo
       uses: actions/cache@v2
