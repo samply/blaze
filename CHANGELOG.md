@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.16.2
+
+### Bugfixes
+
+* Fix Authentication in Batch Requests ([#641](https://github.com/samply/blaze/pull/641))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/32?closed=1).
+
 ## v0.16.1
 
 ### Performance Improvements
