@@ -20,16 +20,18 @@
 (test/use-fixtures :each fixture)
 
 
+(defn handler [_]
+  (ac/completed-future (ring/response ::foo)))
+
+
 (deftest wrap-auth-guard-test
   (testing "with identity"
-    (given @((wrap-auth-guard (fn [_] (ac/completed-future (ring/response :foo))))
-             {:identity :bar})
+    (given @((wrap-auth-guard handler) {:identity :bar})
       :status := 200
-      :body := :foo))
+      :body := ::foo))
 
   (testing "without identity"
-    (given @((wrap-auth-guard (fn [_] (ac/completed-future (ring/response :foo))))
-             {})
+    (given @((wrap-auth-guard handler) {})
       :status := 401
       [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
