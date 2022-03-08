@@ -21,5 +21,5 @@ define InInitialPopulation:
   exists "Stationäre Aufnahme" E
     with "Diabetes mellitus, Typ 1 Diagnose" C
       such that C.encounter.reference = 'Encounter/' + E.id
-    where E.period included in Interval[@2021-01-01T, @2021-12-31T]
+    where E.period during Interval[@2021-01-01T, @2021-12-31T]
       and AgeInYearsAt(E.period.start) < 5
