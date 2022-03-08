@@ -196,7 +196,7 @@
   core/Expression
   (-eval [_ context resource scope]
     ;; TODO: build a comparator of all sort by items
-    (->> (into [] (core/-eval source context resource scope))
+    (->> (vec (core/-eval source context resource scope))
          (sort-by
            (if-let [expr (:expression sort-by-item)]
              #(core/-eval expr context resource %)

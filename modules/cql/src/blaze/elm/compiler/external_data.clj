@@ -157,14 +157,14 @@
   (if (empty? codes)
     (reify core/Expression
       (-eval [_ {:keys [db]} _ _]
-        (into [] (d/type-list db data-type)))
+        (vec (d/type-list db data-type)))
       (-form [_]
         `(~'retrieve ~data-type)))
     (let [clauses [(into [code-property] (map code->clause-value) codes)]]
       (if-ok [query (d/compile-type-query node data-type clauses)]
         (reify core/Expression
           (-eval [_ {:keys [db]} _ _]
-            (into [] (d/execute-query db query))))
+            (vec (d/execute-query db query))))
         ba/throw-anom))))
 
 

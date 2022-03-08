@@ -25,16 +25,16 @@
     {:keys [clauses]} :params}]
   (cond
     (empty? clauses)
-    {:handles (into [] (d/list-compartment-resource-handles db code id type))}
+    {:handles (vec (d/list-compartment-resource-handles db code id type))}
 
     (identical? :blaze.preference.handling/strict handling)
     (when-ok [handles (d/compartment-query db code id type clauses)]
-      {:handles (into [] handles)
+      {:handles (vec handles)
        :clauses clauses})
 
     :else
     (let [query (d/compile-compartment-query-lenient db code type clauses)]
-      {:handles (into [] (d/execute-query db query id))
+      {:handles (vec (d/execute-query db query id))
        :clauses (d/query-clauses query)})))
 
 

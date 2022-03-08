@@ -1,0 +1,12 @@
+{
+  "resourceType": "Bundle",
+  "type": "batch",
+  "entry": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "Patient"
+      }
+    }
+  ]
+}

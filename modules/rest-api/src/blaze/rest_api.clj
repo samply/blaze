@@ -44,7 +44,7 @@
        :syntax :bracket
        :reitit.middleware/transform
        (fn [middleware]
-         (filterv (comp not #{:resource} :name) middleware))})
+         (filterv (comp not #{:resource :auth-guard} :name) middleware))})
     handler-util/default-batch-handler))
 
 

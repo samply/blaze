@@ -54,8 +54,8 @@
   {:extra-paths ["dev" "test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "modules/test-util"}
+   {blaze/db-stub
+    {:local/root "modules/db-stub"}
 
     criterium/criterium
     {:mvn/version "0.4.6"}
