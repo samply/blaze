@@ -24,7 +24,11 @@
     []
     (comp
       (remove remove-query-param?)
-      (mapcat (fn [[k v]] (mapv #(into [k] (str/split % #",")) (fhir-util/to-seq v)))))
+      (mapcat
+        (fn [[k v]]
+          (map
+            #(into [k] (map str/trim) (str/split % #","))
+            (fhir-util/to-seq v)))))
     query-params))
 
 

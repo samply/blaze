@@ -1063,6 +1063,59 @@
             :fhir/type := :fhir/Patient
             :id := "0")))))
 
+  (testing "value-quantity search"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :value
+               #fhir/Quantity
+                   {:value 65M
+                    :code #fhir/code "kg"
+                    :system #fhir/uri "http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :value
+               #fhir/Quantity
+                   {:value 75M
+                    :code #fhir/code "kg"
+                    :system #fhir/uri "http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :value
+               #fhir/Quantity
+                   {:value 100M
+                    :code #fhir/code "kg"
+                    :system #fhir/uri "http://unitsofmeasure.org"}}]]]
+
+      (doseq [value ["ge70" " ge70" "ge70 " "ge 70" " ge 70 "]]
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match observation-match
+                  :params {"value-quantity" value}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code "searchset" (:type body))))
+
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
+
+          (testing "the bundle contains two entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the entry has the right fullUrl"
+            (is (= #fhir/uri "base-url-113047/Observation/1"
+                   (-> body :entry first :fullUrl))))
+
+          (testing "the entry has the right resources"
+            (given (-> body :entry first :resource)
+              :fhir/type := :fhir/Observation
+              :id := "1")
+            (given (-> body :entry second :resource)
+              :fhir/type := :fhir/Observation
+              :id := "2"))))))
+
   (testing "_has search"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
