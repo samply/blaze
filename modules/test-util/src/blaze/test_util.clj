@@ -2,7 +2,6 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.executors :as ex]
-    [blaze.fhir.structure-definition-repo]
     [clojure.test :refer [is]]
     [clojure.test.check :as tc]
     [integrant.core :as ig]

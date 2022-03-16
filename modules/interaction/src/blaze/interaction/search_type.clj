@@ -158,7 +158,7 @@
   (cond->
     {:fhir/type :fhir/Bundle
      :id (iu/luid context)
-     :type #fhir/code"searchset"
+     :type #fhir/code "searchset"
      :entry entries
      :link [(self-link context clauses (first entries))]}
 
@@ -201,7 +201,7 @@
   (when-ok [{:keys [total clauses]} (summary-total context)]
     {:fhir/type :fhir/Bundle
      :id (iu/luid context)
-     :type #fhir/code"searchset"
+     :type #fhir/code "searchset"
      :total (type/->UnsignedInt total)
      :link [(self-link context clauses [])]}))
 

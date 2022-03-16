@@ -39,7 +39,7 @@
 
 
 (defmacro defcomplextype
-  [name [& fields] & {:keys [fhir-type hash-num references field-serializers]}]
+  [name [& fields] & {:keys [fhir-type hash-num references mem-size field-serializers]}]
   (let [sink-sym (gensym "sink")
         sink-sym-tag (with-meta sink-sym {:tag `PrimitiveSink})
         value-sym (gensym "value")
@@ -65,10 +65,12 @@
                                       (when-not (= 'id field)
                                         `(into! (p/-references ~field))))
                                     fields)
-                                (persistent!)))))
+                                (persistent!))))
+         (~'-mem-size [~'_]
+           (or ~mem-size 0)))
 
        (defmethod print-method ~name [x# ~(with-meta 'w {:tag `Writer})]
-         (.write ~'w ~(str "#fhir/" name))
+         (.write ~'w ~(str "#fhir/" name " "))
          (print-method (into {} (remove (comp nil? val)) x#) ~'w))
 
        (def ~(serializer-sym name)

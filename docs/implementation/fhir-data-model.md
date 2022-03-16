@@ -72,7 +72,7 @@ The internal representation of the example above looks like this:
 ```clojure
 {:fhir/type :fhir/Patient
  :id "0"
- :name [#fhir/HumanName{:text "John Doe"}]
+ :name [#fhir/HumanName {:text "John Doe"}]
  :birthDate #fhir/date"2020"
  :deceased false}
 ```

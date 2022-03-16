@@ -7,6 +7,7 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.history.instance]
     [blaze.interaction.history.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -117,8 +118,8 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"))))
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-found"))))
 
   (testing "returns history with one patient"
     (with-handler [handler]
@@ -135,7 +136,7 @@
         (testing "the bundle id is an LUID"
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-        (is (= #fhir/code"history" (:type body)))
+        (is (= #fhir/code "history" (:type body)))
 
         (is (= #fhir/unsignedInt 1 (:total body)))
 
@@ -145,13 +146,13 @@
 
         (is (= "self" (-> body :link first :relation)))
 
-        (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=1&__page-t=1"
+        (is (= #fhir/uri "base-url-135814/Patient/0/_history?__t=1&__page-t=1"
                (-> body :link first :url)))
 
         (given (-> body :entry first)
-          :fullUrl := #fhir/uri"base-url-135814/Patient/0"
-          [:request :method] := #fhir/code"PUT"
-          [:request :url] := #fhir/uri"/Patient/0"
+          :fullUrl := #fhir/uri "base-url-135814/Patient/0"
+          [:request :method] := #fhir/code "PUT"
+          [:request :url] := #fhir/uri "/Patient/0"
           [:resource :id] := "0"
           [:resource :fhir/type] := :fhir/Patient
           [:resource :meta :versionId] := #fhir/id"1"
@@ -176,7 +177,7 @@
         (testing "the bundle id is an LUID"
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-        (is (= #fhir/code"history" (:type body)))
+        (is (= #fhir/code "history" (:type body)))
 
         (is (= #fhir/unsignedInt 2 (:total body)))
 
@@ -186,14 +187,14 @@
 
         (is (= "self" (-> body :link first :relation)))
 
-        (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=2&__page-t=2"
+        (is (= #fhir/uri "base-url-135814/Patient/0/_history?__t=2&__page-t=2"
                (-> body :link first :url)))
 
         (testing "first entry"
           (given (-> body :entry first)
-            :fullUrl := #fhir/uri"base-url-135814/Patient/0"
-            [:request :method] := #fhir/code"DELETE"
-            [:request :url] := #fhir/uri"/Patient/0"
+            :fullUrl := #fhir/uri "base-url-135814/Patient/0"
+            [:request :method] := #fhir/code "DELETE"
+            [:request :url] := #fhir/uri "/Patient/0"
             keys :!> #{:resource}
             [:response :status] := "204"
             [:response :etag] := "W/\"2\""
@@ -201,9 +202,9 @@
 
         (testing "second entry"
           (given (-> body :entry second)
-            :fullUrl := #fhir/uri"base-url-135814/Patient/0"
-            [:request :method] := #fhir/code"PUT"
-            [:request :url] := #fhir/uri"/Patient/0"
+            :fullUrl := #fhir/uri "base-url-135814/Patient/0"
+            [:request :method] := #fhir/code "PUT"
+            [:request :url] := #fhir/uri "/Patient/0"
             [:resource :id] := "0"
             [:resource :fhir/type] := :fhir/Patient
             [:resource :meta :versionId] := #fhir/id"1"
@@ -214,8 +215,8 @@
 
   (testing "contains a next link on node with two versions and _count=1"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
       (let [{:keys [body]}
             @(handler
@@ -224,13 +225,13 @@
 
         (is (= "next" (-> body :link second :relation)))
 
-        (is (= #fhir/uri"base-url-135814/Patient/0/_history?_count=1&__t=2&__page-t=1"
+        (is (= #fhir/uri "base-url-135814/Patient/0/_history?_count=1&__t=2&__page-t=1"
                (-> body :link second :url))))))
 
   (testing "with two versions, calling the second page"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
-       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "female"}]]]
 
       (let [{:keys [body]}
             @(handler
@@ -242,4 +243,4 @@
 
         (testing "is shows the first version"
           (given (-> body :entry first)
-            [:resource :gender] := #fhir/code"male"))))))
+            [:resource :gender] := #fhir/code "male"))))))

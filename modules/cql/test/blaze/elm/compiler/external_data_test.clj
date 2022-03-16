@@ -84,7 +84,7 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject
-                 #fhir/Reference{:reference "Patient/0"}}]]]
+                 #fhir/Reference {:reference "Patient/0"}}]]]
 
         (let [context
               {:node node
@@ -103,16 +103,16 @@
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject
-                   #fhir/Reference{:reference "Patient/0"}}]
+                   #fhir/Reference {:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
                        {:coding
                         [#fhir/Coding
-                            {:system #fhir/uri"system-192253"
-                             :code #fhir/code"code-192300"}]}
+                            {:system #fhir/uri "system-192253"
+                             :code #fhir/code "code-192300"}]}
                    :subject
-                   #fhir/Reference{:reference "Patient/0"}}]]]
+                   #fhir/Reference {:reference "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -145,25 +145,25 @@
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject
-                   #fhir/Reference{:reference "Patient/0"}}]
+                   #fhir/Reference {:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
                        {:coding
                         [#fhir/Coding
-                            {:system #fhir/uri"system-192253"
-                             :code #fhir/code"code-192300"}]}
+                            {:system #fhir/uri "system-192253"
+                             :code #fhir/code "code-192300"}]}
                    :subject
-                   #fhir/Reference{:reference "Patient/0"}}]
+                   #fhir/Reference {:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
                    :code
                    #fhir/CodeableConcept
                        {:coding
                         [#fhir/Coding
-                            {:system #fhir/uri"system-192253"
-                             :code #fhir/code"code-140541"}]}
+                            {:system #fhir/uri "system-192253"
+                             :code #fhir/code "code-140541"}]}
                    :subject
-                   #fhir/Reference{:reference "Patient/0"}}]]]
+                   #fhir/Reference {:reference "Patient/0"}}]]]
 
           (let [context
                 {:node node
@@ -195,7 +195,7 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Specimen :id "0"
                  :subject
-                 #fhir/Reference{:reference "Patient/0"}}]]]
+                 #fhir/Reference {:reference "Patient/0"}}]]]
 
         (let [context
               {:node node
@@ -217,8 +217,8 @@
                  #fhir/CodeableConcept
                      {:coding
                       [#fhir/Coding
-                          {:system #fhir/uri"system-225806"
-                           :code #fhir/code"code-225809"}]}}]]]
+                          {:system #fhir/uri "system-225806"
+                           :code #fhir/code "code-225809"}]}}]]]
 
         (let [context
               {:node node

@@ -25,19 +25,19 @@
 
 (defn- issue-code [category]
   (case category
-    ::anom/busy #fhir/code"timeout"
-    ::anom/incorrect #fhir/code"invalid"
-    ::anom/not-found #fhir/code"not-found"
-    ::anom/unsupported #fhir/code"not-supported"
-    ::anom/conflict #fhir/code"conflict"
-    #fhir/code"exception"))
+    ::anom/busy #fhir/code "timeout"
+    ::anom/incorrect #fhir/code "invalid"
+    ::anom/not-found #fhir/code "not-found"
+    ::anom/unsupported #fhir/code "not-supported"
+    ::anom/conflict #fhir/code "conflict"
+    #fhir/code "exception"))
 
 
 (defn- operation-outcome-issues [issues category]
   (mapv (fn [{:fhir.issues/keys [severity code diagnostics expression]}]
           (cond->
             {:fhir/type :fhir.OperationOutcome/issue
-             :severity #fhir/code"error"
+             :severity #fhir/code "error"
              :code (or (some-> code type/code) (issue-code category))}
             severity
             (assoc :severity (type/code severity))
@@ -58,13 +58,13 @@
     ::anom/keys [category message]}]
   (cond->
     {:fhir/type :fhir.OperationOutcome/issue
-     :severity #fhir/code"error"
+     :severity #fhir/code "error"
      :code (or (some-> issue type/code) (issue-code category))}
     operation-outcome
     (assoc
       :details
       {:coding
-       [{:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+       [{:system #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome"
          :code (type/code operation-outcome)}]})
     message
     (assoc :diagnostics message)
@@ -182,8 +182,8 @@
 
 
 (def ^:private not-found-issue
-  {:severity #fhir/code"error"
-   :code #fhir/code"not-found"})
+  {:severity #fhir/code "error"
+   :code #fhir/code "not-found"})
 
 
 (def ^:private not-found-outcome
@@ -201,8 +201,8 @@
 
 
 (defn- method-not-allowed-issue [request]
-  {:severity #fhir/code"error"
-   :code #fhir/code"processing"
+  {:severity #fhir/code "error"
+   :code #fhir/code "processing"
    :diagnostics (method-not-allowed-msg request)})
 
 
@@ -218,8 +218,8 @@
 
 
 (def ^:private not-acceptable-issue
-  {:severity #fhir/code"error"
-   :code #fhir/code"structure"})
+  {:severity #fhir/code "error"
+   :code #fhir/code "structure"})
 
 
 (def ^:private not-acceptable-outcome

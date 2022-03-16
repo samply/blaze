@@ -131,27 +131,27 @@
      [#fhir/CodeableConcept
          {:coding
           [#fhir/Coding
-              {:code #fhir/code"vital-signs"
-               :system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"}]}]
+              {:code #fhir/code "vital-signs"
+               :system #fhir/uri "http://terminology.hl7.org/CodeSystem/observation-category"}]}]
      :meta
      #fhir/Meta
          {:profile [#fhir/canonical"https://fhir.bbmri.de/StructureDefinition/Bmi"]}
      :fhir/type :fhir/Observation
      :value
      #fhir/Quantity
-         {:code #fhir/code"kg/m2"
-          :system #fhir/uri"http://unitsofmeasure.org"
+         {:code #fhir/code "kg/m2"
+          :system #fhir/uri "http://unitsofmeasure.org"
           :unit "kg/m2"
           :value 36.6M}
-     :status #fhir/code"final"
+     :status #fhir/code "final"
      :effective #fhir/dateTime"2005-06-17"
      :id "0-bmi"
      :code
      #fhir/CodeableConcept
          {:coding
           [#fhir/Coding
-              {:code #fhir/code"39156-5" :system #fhir/uri"http://loinc.org"}]}
-     :subject #fhir/Reference{:reference "Patient/0"}})
+              {:code #fhir/code "39156-5" :system #fhir/uri "http://loinc.org"}]}
+     :subject #fhir/Reference {:reference "Patient/0"}})
 
   ;; 418
   (count (fhir-spec/unform-cbor observation))

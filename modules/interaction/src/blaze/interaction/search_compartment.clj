@@ -74,7 +74,7 @@
 (defn- bundle* [context handles clauses]
   {:fhir/type :fhir/Bundle
    :id (iu/luid context)
-   :type #fhir/code"searchset"
+   :type #fhir/code "searchset"
    :total (type/->UnsignedInt (count handles))
    :link [(self-link context clauses)]})
 

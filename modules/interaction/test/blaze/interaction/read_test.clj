@@ -8,6 +8,7 @@
     [blaze.anomaly-spec]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.db.spec]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.read]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
@@ -69,8 +70,8 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-found"
           [:issue 0 :diagnostics] := "Resource `Patient/0` was not found."))))
 
   (testing "returns Not-Found on invalid version id"
@@ -83,8 +84,8 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "not-found"
           [:issue 0 :diagnostics] := "Resource `Patient/0` with versionId `a` was not found."))))
 
   (testing "returns Gone on deleted resource"
@@ -102,8 +103,8 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"deleted"
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "deleted"
           [:issue 0 :diagnostics] := "Resource `Patient/0` was deleted."))))
 
   (testing "returns existing resource"

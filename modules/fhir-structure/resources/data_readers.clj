@@ -18,7 +18,7 @@
  fhir/xhtml blaze.fhir.spec.type/->Xhtml
  fhir/Attachment blaze.fhir.spec.type/map->Attachment
  fhir/Extension blaze.fhir.spec.type/map->Extension
- fhir/Coding blaze.fhir.spec.type/coding
+ fhir/Coding blaze.fhir.spec.type/map->Coding
  fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
  fhir/Quantity blaze.fhir.spec.type/map->Quantity
  fhir/Period blaze.fhir.spec.type/map->Period

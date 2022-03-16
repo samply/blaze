@@ -66,7 +66,7 @@
   [{:blaze/keys [db] {:keys [page-size]} :params :as context} entries]
   {:fhir/type :fhir/Bundle
    :id (iu/luid context)
-   :type #fhir/code"searchset"
+   :type #fhir/code "searchset"
    :total (type/->UnsignedInt (d/system-total db))
    :entry (if (< page-size (count entries))
             (pop entries)
@@ -90,7 +90,7 @@
   (ac/completed-future
     {:fhir/type :fhir/Bundle
      :id (iu/luid context)
-     :type #fhir/code"searchset"
+     :type #fhir/code "searchset"
      :total (type/->UnsignedInt (d/system-total db))
      :link [(self-link context [])]}))
 

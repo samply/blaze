@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [decimal? string? type uri? uuid?])
   (:require
     [blaze.fhir.spec.impl.intern :as intern]
-    [blaze.fhir.spec.type.macros :as macros :refer [defcomplextype]]
+    [blaze.fhir.spec.type.macros :refer [defcomplextype]]
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
     [clojure.alpha.spec :as s2]
@@ -11,6 +11,7 @@
     [clojure.data.xml.node :as xml-node]
     [clojure.string :as str])
   (:import
+    [blaze.fhir.spec.type Code Extension FhirType Id Reference Uri PrimitiveType Coding Quantity]
     [blaze.fhir.spec.type.system
      DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [clojure.lang IPersistentMap Keyword]
@@ -35,6 +36,9 @@
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
+
+
+(def ^:private ^:const interned-mem-size 0)
 
 
 (defn type [x]
@@ -63,6 +67,10 @@
   (p/-references x))
 
 
+(defn mem-size [x]
+  (p/-mem-size x))
+
+
 
 ;; ---- nil -------------------------------------------------------------------
 
@@ -73,8 +81,20 @@
   (-value [_])
   (-to-xml [_])
   (-hash-into [_ _])
-  (-references [_]))
-
+  (-references [_])
+  (-mem-size [_] 0)
+  PrimitiveType
+  (-type [x] (.fhirType x))
+  (-value [x] (.value x))
+  (-to-xml [x] (.toXml x))
+  (-hash-into [x sink] (.hashInto x sink))
+  (-references [x] (.references x))
+  (-mem-size [x] (.memSize x))
+  FhirType
+  (-type [x] (.fhirType x))
+  (-hash-into [x sink] (.hashInto x sink))
+  (-references [x] (.references x))
+  (-mem-size [x] (.memSize x)))
 
 
 ;; ---- Object -------------------------------------------------------------------
@@ -98,7 +118,8 @@
     (.putByte ^PrimitiveSink sink (byte 0))                 ; :fhir/boolean
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into b sink))
-  (-references [_]))
+  (-references [_])
+  (-mem-size [_] 16))
 
 
 (defn xml->Boolean
@@ -119,7 +140,8 @@
     (.putByte ^PrimitiveSink sink (byte 1))                 ; :fhir/integer
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into i sink))
-  (-references [_]))
+  (-references [_])
+  (-mem-size [_] 16))
 
 
 (defn xml->Integer
@@ -140,7 +162,8 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :fhir/long
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into i sink))
-  (-references [_]))
+  (-references [_])
+  (-mem-size [_] 16))
 
 
 (defn xml->Long
@@ -161,7 +184,9 @@
     (.putByte ^PrimitiveSink sink (byte 3))                 ; :fhir/string
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into s sink))
-  (-references [_]))
+  (-references [_])
+  (-mem-size [s]
+    (+ 40 (* (quot (+ (.length s) 7) 8) 8))))
 
 
 (defn xml->String
@@ -186,7 +211,8 @@
     (.putByte ^PrimitiveSink sink (byte 4))                 ; :fhir/decimal
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into d sink))
-  (-references [_]))
+  (-references [_])
+  (-mem-size [_] 40))
 
 
 (defn xml->Decimal
@@ -202,41 +228,14 @@
 
 ;; ---- uri -------------------------------------------------------------------
 
-
-(deftype Uri [value]
-  p/FhirType
-  (-type [_] :fhir/uri)
-  (-value [_] value)
-  (-to-xml [_] (xml-node/element nil {:value value}))
-  (-hash-into [_ sink]
-    (.putByte ^PrimitiveSink sink (byte 5))                 ; :fhir/uri
-    (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink))
-  (-references [_])
-
-  Object
-  (equals [_ x]
-    (and (instance? Uri x) (= value (.value ^Uri x))))
-  (hashCode [_]
-    (.hashCode value))
-  (toString [_]
-    (str value)))
-
-
-(def ^:private ^JsonSerializer uri-serializer
-  (proxy [StdSerializer] [Uri]
-    (serialize [^Uri uri ^JsonGenerator gen _]
-      (.writeString gen ^String (.value uri)))))
-
-
 (defmethod print-method Uri [^Uri uri ^Writer w]
-  (.write w "#fhir/uri\"")
-  (.write w (str uri))
+  (.write w "#fhir/uri \"")
+  (.write w (.value uri))
   (.write w "\""))
 
 
 (def uri
-  (intern/intern-value ->Uri))
+  (intern/intern-value #(Uri. %)))
 
 
 (defn xml->Uri
@@ -262,6 +261,7 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
   (-references [_])
+  (-mem-size [_] (+ 16 ^long (p/-mem-size value)))
 
   Object
   (equals [_ x]
@@ -307,6 +307,7 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
   (-references [_])
+  (-mem-size [_] interned-mem-size)
 
   Object
   (equals [_ x]
@@ -356,6 +357,7 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
   (-references [_])
+  (-mem-size [_] (+ 16 (long (p/-mem-size value))))
 
   Object
   (equals [_ x]
@@ -407,6 +409,7 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into value sink))
   (-references [_])
+  (-mem-size [_] (+ 16 ^long (p/-mem-size value)))
 
   Object
   (equals [_ x]
@@ -438,7 +441,8 @@
     (.putByte ^PrimitiveSink sink (byte 9))                 ; :fhir/instant
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into (p/-value instant) sink))
-  (-references [_]))
+  (-references [_])
+  (-mem-size [_] 24))
 
 
 (defmethod print-method Instant [^Instant instant ^Writer w]
@@ -477,6 +481,7 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
   (-references [_])
+  (-mem-size [_] 16)
 
   YearMonth
   (-type [_] :fhir/date)
@@ -487,6 +492,7 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
   (-references [_])
+  (-mem-size [_] 24)
 
   LocalDate
   (-type [_] :fhir/date)
@@ -496,7 +502,8 @@
     (.putByte ^PrimitiveSink sink (byte 10))                ; :fhir/date
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date sink))
-  (-references [_]))
+  (-references [_])
+  (-mem-size [_] 24))
 
 
 (defn ->Date [value]
@@ -597,6 +604,7 @@
     (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
     (system/-hash-into date-time sink))
   (-references [_])
+  (-mem-size [_] 96)
 
   LocalDateTime
   (-type [_] :fhir/dateTime)
@@ -700,34 +708,9 @@
 
 ;; ---- code ------------------------------------------------------------------
 
-(deftype Code [value]
-  p/FhirType
-  (-type [_] :fhir/code)
-  (-value [_] value)
-  (-to-xml [_] (xml-node/element nil {:value value}))
-  (-hash-into [_ sink]
-    (.putByte ^PrimitiveSink sink (byte 13))                ; :fhir/code
-    (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink))
-  (-references [_])
-  Object
-  (equals [_ x]
-    (and (instance? Code x) (= value (.value ^Code x))))
-  (hashCode [_]
-    (.hashCode value))
-  (toString [_]
-    value))
-
-
-(def ^:private ^JsonSerializer code-serializer
-  (proxy [StdSerializer] [Code]
-    (serialize [^Code code ^JsonGenerator gen _]
-      (.writeString gen ^String (.value code)))))
-
-
-(defmethod print-method Code [code ^Writer w]
-  (.write w "#fhir/code\"")
-  (.write w ^String (p/-value code))
+(defmethod print-method Code [^Code code ^Writer w]
+  (.write w "#fhir/code \"")
+  (.write w (.value code))
   (.write w "\""))
 
 
@@ -757,7 +740,7 @@
 
 
 (def code
-  (intern/intern-value ->Code))
+  (intern/intern-value #(Code. %)))
 
 
 (defn tagged-literal->Code [x]
@@ -824,35 +807,25 @@
 
 ;; ---- id --------------------------------------------------------------------
 
-(deftype Id [value]
-  p/FhirType
-  (-type [_] :fhir/id)
-  (-value [_] value)
-  (-to-xml [_] (xml-node/element nil {:value value}))
-  (-hash-into [_ sink]
-    (.putByte ^PrimitiveSink sink (byte 15))                ; :fhir/id
-    (.putByte ^PrimitiveSink sink (byte 2))                 ; :value
-    (system/-hash-into value sink))
-  (-references [_])
-  Object
-  (equals [_ x]
-    (and (instance? Id x) (= value (.value ^Id x))))
-  (hashCode [_]
-    (.hashCode value))
-  (toString [_]
-    value))
-
-
+(comment
+  (binding [*compiler-options* {:disable-locals-clearing true
+                                :direct-linking false}]
+    (compile 'blaze.fhir.spec.type))
+  )
 (def ^:private ^JsonSerializer id-serializer
   (proxy [StdSerializer] [Id]
     (serialize [^Id id ^JsonGenerator gen _]
       (.writeString gen ^String (.value id)))))
 
 
-(defmethod print-method Id [id ^Writer w]
-  (.write w "#fhir/id\"")
-  (.write w ^String (p/-value id))
+(defmethod print-method Id [^Id id ^Writer w]
+  (.write w "#fhir/id \"")
+  (.write w (.value id))
   (.write w "\""))
+
+
+(defn ->Id [value]
+  (Id. value))
 
 
 (defn xml->Id
@@ -1139,6 +1112,7 @@
   (-hash-into [k sink]
     (.putInt ^PrimitiveSink sink (.hasheq k)))
   (-references [_])
+  (-mem-size [_] 0)
   IPersistentMap
   (-type [m]
     (.valAt m :fhir/type))
@@ -1152,10 +1126,9 @@
       nil
       (sort (keys m))))
   (-references [m]
-    (transduce (mapcat p/-references) conj [] (vals m))))
-
-
-(declare extension-serializer)
+    (transduce (mapcat p/-references) conj [] (vals m)))
+  (-mem-size [m]
+    (reduce-kv (fn [^long s _ v] (+ s 8 (long (p/-mem-size v)))) 48 m)))
 
 
 (defcomplextype Attachment [id extension contentType language data url size
@@ -1163,9 +1136,9 @@
   :hash-num 46
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
-   contentType code-serializer
-   language code-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
+   contentType Code/SERIALIZER
+   language Code/SERIALIZER
    data base64-binary-serializer
    url url-serializer
    size unsigned-int-serializer
@@ -1177,39 +1150,30 @@
 (declare attachment-serializer)
 
 
-(defcomplextype Extension [id extension url value]
-  :hash-num 39
-  :field-serializers
-  {id :string
-   extension ^{:cardinality :many} extension-serializer
-   url :string
-   value :dynamic-type})
+(defn map->Extension [m]
+  (Extension/create m))
 
 
-(defcomplextype Coding [id extension system version code display]
-  :hash-num 38
-  :field-serializers
-  {id :string
-   extension ^{:cardinality :many} extension-serializer
-   system uri-serializer
-   version :string
-   code code-serializer
-   display :string})
+(defmethod print-method Extension [extension ^Writer w]
+  (.write w "#fhir/Extension ")
+  (print-method (into {} extension) w))
 
 
-(def coding
-  (intern/intern-value map->Coding))
+(def map->Coding
+  (intern/intern-value #(Coding/create %)))
 
 
-(declare coding-serializer)
+(defmethod print-method Coding [coding ^Writer w]
+  (.write w "#fhir/Coding ")
+  (print-method (into {} coding) w))
 
 
 (defcomplextype CodeableConcept [id extension coding text]
   :hash-num 39
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
-   coding ^{:cardinality :many} coding-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
+   coding ^{:cardinality :many} Coding/SERIALIZER
    text :string})
 
 
@@ -1220,26 +1184,37 @@
 (declare codeable-concept-serializer)
 
 
-(defcomplextype Quantity [id extension value comparator unit system code]
+#_(defcomplextype Quantity [id extension value comparator unit system code]
   :hash-num 40
+  :mem-size
+  (+ 56
+    (long (p/-mem-size id))
+    (long (p/-mem-size extension))
+    (long (p/-mem-size value)))
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
    value :decimal
-   comparator code-serializer
+   comparator Code/SERIALIZER
    unit :string
-   system uri-serializer
-   code code-serializer})
+   system Uri/SERIALIZER
+   code Code/SERIALIZER})
 
 
-(declare quantity-serializer)
+(def map->Quantity
+  (intern/intern-value #(Quantity/create %)))
+
+
+(defmethod print-method Quantity [quantity ^Writer w]
+  (.write w "#fhir/Quantity ")
+  (print-method (into {} quantity) w))
 
 
 (defcomplextype Period [id extension start end]
   :hash-num 41
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
    start :dynamic
    end :dynamic})
 
@@ -1247,42 +1222,28 @@
 (declare period-serializer)
 
 
-(declare reference-serializer)
-
-
 (defcomplextype Identifier [id extension use type system value period assigner]
   :hash-num 42
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
-   use code-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
+   use Code/SERIALIZER
    type codeable-concept-serializer
-   system uri-serializer
+   system Uri/SERIALIZER
    value :string
    period period-serializer
-   assigner reference-serializer})
+   assigner Reference/SERIALIZER})
 
 
 (declare identifier-serializer)
-
-
-(defn- valid-ref? [[type id]]
-  (and (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
-       (some->> id (re-matcher #"[A-Za-z0-9\-\.]{1,64}") .matches)))
-
-
-(defn- reference-reference [ref]
-  (let [ref (str/split ref #"/" 2)]
-    (when (valid-ref? ref)
-      [ref])))
 
 
 (defcomplextype HumanName [id extension use text family given prefix suffix period]
   :hash-num 46
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
-   use code-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
+   use Code/SERIALIZER
    text :string
    family :string
    given :strings
@@ -1298,9 +1259,9 @@
   :hash-num 47
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
-   use code-serializer
-   type code-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
+   use Code/SERIALIZER
+   type Code/SERIALIZER
    text :string
    line :strings
    city :string
@@ -1314,36 +1275,44 @@
 (declare address-serializer)
 
 
-(defcomplextype Reference [id extension reference type identifier display]
-  :hash-num 43
-  :references
-  (-references [_]
-    (-> (transient (or (some-> reference reference-reference) []))
-        (macros/into! (p/-references extension))
-        (macros/into! (p/-references type))
-        (macros/into! (p/-references identifier))
-        (macros/into! (p/-references display))
-        (persistent!)))
-  :field-serializers
-  {id :string
-   extension ^{:cardinality :many} extension-serializer
-   reference :string
-   type uri-serializer
-   identifier identifier-serializer
-   display :string})
+#_(defcomplextype Reference [id extension reference type identifier display]
+    :hash-num 43
+    :references
+    (-references [_]
+      (-> (transient (or (some-> reference reference-reference) []))
+          (macros/into! (p/-references extension))
+          (macros/into! (p/-references type))
+          (macros/into! (p/-references identifier))
+          (macros/into! (p/-references display))
+          (persistent!)))
+    :field-serializers
+    {id :string
+     extension ^{:cardinality :many} Extension/SERIALIZER
+     reference :string
+     type Uri/SERIALIZER
+     identifier identifier-serializer
+     display :string})
+
+(defn map->Reference [m]
+  (Reference/create m))
+
+
+(defmethod print-method Reference [reference ^Writer w]
+  (.write w "#fhir/Reference ")
+  (print-method (into {} reference) w))
 
 
 (defcomplextype Meta [id extension versionId lastUpdated source profile security tag]
   :hash-num 44
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
    versionId id-serializer
    lastUpdated :dynamic
-   source uri-serializer
+   source Uri/SERIALIZER
    profile ^{:cardinality :many} canonical-serializer
-   security ^{:cardinality :many} coding-serializer
-   tag ^{:cardinality :many} coding-serializer})
+   security ^{:cardinality :many} Coding/SERIALIZER
+   tag ^{:cardinality :many} Coding/SERIALIZER})
 
 
 (def mk-meta
@@ -1358,8 +1327,8 @@
   :hash-num 45
   :field-serializers
   {id :string
-   extension ^{:cardinality :many} extension-serializer
-   mode code-serializer
+   extension ^{:cardinality :many} Extension/SERIALIZER
+   mode Code/SERIALIZER
    score :decimal})
 
 
@@ -1371,7 +1340,7 @@
 
 (def fhir-module
   (doto (SimpleModule. "FHIR")
-    (.addSerializer Uri uri-serializer)
+    (.addSerializer Uri Uri/SERIALIZER)
     (.addSerializer Url url-serializer)
     (.addSerializer Canonical canonical-serializer)
     (.addSerializer Base64Binary base64-binary-serializer)
@@ -1380,7 +1349,7 @@
     (.addSerializer DateTimeYearMonth date-time-year-month-serializer)
     (.addSerializer DateTimeYearMonthDay date-time-year-month-day-serializer)
     (.addSerializer ExtendedDateTime extended-date-time-serializer)
-    (.addSerializer Code code-serializer)
+    (.addSerializer Code Code/SERIALIZER)
     (.addSerializer ExtendedCode extended-code-serializer)
     (.addSerializer Oid oid-serializer)
     (.addSerializer Id id-serializer)
@@ -1390,10 +1359,10 @@
     (.addSerializer UUID uuid-serializer)
     (.addSerializer Xhtml xhtml-serializer)
     (.addSerializer Attachment attachment-serializer)
-    (.addSerializer Extension extension-serializer)
-    (.addSerializer Coding coding-serializer)
+    (.addSerializer Extension Extension/SERIALIZER)
+    (.addSerializer Coding Coding/SERIALIZER)
     (.addSerializer CodeableConcept codeable-concept-serializer)
-    (.addSerializer Quantity quantity-serializer)
+    (.addSerializer Quantity Quantity/SERIALIZER)
     ;; Range
     ;; Ratio
     (.addSerializer Period period-serializer)
@@ -1405,7 +1374,7 @@
     ;; Timing
     ;; Signature
     ;; Annotation
-    (.addSerializer Reference reference-serializer)
+    (.addSerializer Reference Reference/SERIALIZER)
     (.addSerializer Meta meta-serializer)
     (.addSerializer BundleEntrySearch bundle-entry-search-serializer)))
 

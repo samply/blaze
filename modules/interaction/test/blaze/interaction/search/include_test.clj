@@ -3,6 +3,7 @@
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.search.include :as include]
     [blaze.interaction.search.include-spec]
     [blaze.test-util :as tu]

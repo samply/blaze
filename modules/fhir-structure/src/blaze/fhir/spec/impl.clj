@@ -112,7 +112,6 @@
     (throw-anom (ba/unsupported (format "Unsupported system type `%s`." code)))))
 
 
-
 (defn- split-path [path]
   (str/split path #"\."))
 
@@ -397,7 +396,7 @@
   "Add the type suffix to the key of a choice typed data element."
   [m key]
   (if-some [v (get m key)]
-    (-> (dissoc m key) (assoc (choice-type-key key (type/type v)) v))
+    (-> (into {} m) (dissoc key) (assoc (choice-type-key key (type/type v)) v))
     m))
 
 
@@ -462,13 +461,12 @@
      :modifier :json
      :spec-form
      (case key
-       :fhir.json/Coding
-       (json-object-spec-form "coding" child-spec-defs)
        :fhir.json/CodeableConcept
        (json-object-spec-form "codeable-concept" child-spec-defs)
        :fhir.json/Meta
        (json-object-spec-form "mk-meta" child-spec-defs)
        (:fhir.json/Attachment
+         :fhir.json/Coding
          :fhir.json/Extension
          :fhir.json/Quantity
          :fhir.json/Period
@@ -498,8 +496,8 @@
 (defn conform-xml
   "First step in conforming an XML `element` into the internal form.
 
-  Builds a map from child tags to either vector of childs or single-valued
-  childs."
+  Builds a map from child tags to either vector of children or single-valued
+  children."
   {:arglists '([element])}
   [{:keys [attrs content]}]
   (transduce
@@ -513,7 +511,13 @@
 
 
 (defn select-non-nil-keys [m ks]
-  (into {} (remove (comp nil? val)) (select-keys m ks)))
+  (reduce
+    (fn [res k]
+      (if-some [v (get m k)]
+        (assoc res k v)
+        res))
+    {}
+    ks))
 
 
 (defn- xml-attrs-form [child-spec-defs]
@@ -579,11 +583,15 @@
         `s/and))
 
 
+(defn to-map [x]
+  (reduce-kv (fn [r k v] (cond-> r (some? v) (assoc k v))) {} x))
+
+
 (defn- special-xml-schema-spec-form [kind type-name child-spec-defs]
   (let [constructor-sym (symbol "blaze.fhir.spec.type" (str "map->" type-name))
         constructor (resolve constructor-sym)]
-    (conj (seq (remap-choice-conformer-forms child-spec-defs))
-          `(s/conformer ~constructor identity)
+    (conj (seq (conj (remap-choice-conformer-forms child-spec-defs)
+                     `(s/conformer ~constructor to-map)))
           (schema-spec-form :xml child-spec-defs)
           `(s/conformer conform-xml
                         ~(xml-unformer kind (keyword type-name) child-spec-defs))
@@ -641,13 +649,12 @@
      :modifier :cbor
      :spec-form
      (case key
-       :fhir.cbor/Coding
-       (cbor-object-spec-form "coding" child-spec-defs)
        :fhir.cbor/CodeableConcept
        (cbor-object-spec-form "codeable-concept" child-spec-defs)
        :fhir.cbor/Meta
        (cbor-object-spec-form "mk-meta" child-spec-defs)
        (:fhir.cbor/Attachment
+         :fhir.cbor/Coding
          :fhir.cbor/Extension
          :fhir.cbor/Quantity
          :fhir.cbor/Period

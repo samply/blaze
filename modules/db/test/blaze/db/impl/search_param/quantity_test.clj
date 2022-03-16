@@ -145,12 +145,12 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
                        {:value 140M
-                        :code #fhir/code"mm[Hg]"
-                        :system #fhir/uri"http://unitsofmeasure.org"}}
+                        :code #fhir/code "mm[Hg]"
+                        :system #fhir/uri "http://unitsofmeasure.org"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (search-param/index-entries
@@ -209,7 +209,7 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
                        {:value 140M
@@ -256,12 +256,12 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
                        {:value 120M
                         :unit "mm[Hg]"
-                        :code #fhir/code"mm[Hg]"}}
+                        :code #fhir/code "mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
               (search-param/index-entries
@@ -304,12 +304,12 @@
         (let [observation
               {:fhir/type :fhir/Observation
                :id "id-155558"
-               :status #fhir/code"final"
+               :status #fhir/code "final"
                :value
                #fhir/Quantity
                        {:value 120M
                         :unit "mmHg"
-                        :code #fhir/code"mm[Hg]"}}
+                        :code #fhir/code "mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (search-param/index-entries

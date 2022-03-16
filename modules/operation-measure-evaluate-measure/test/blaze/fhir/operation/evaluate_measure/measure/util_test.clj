@@ -30,7 +30,7 @@
 
   (testing "unsupported language"
     (given (u/expression (constantly "path-184706")
-                         {:language #fhir/code"lang-184851"})
+                         {:language #fhir/code "lang-184851"})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Unsupported language `lang-184851`."
       :fhir/issue := "not-supported"
@@ -38,7 +38,7 @@
 
   (testing "missing expression"
     (given (u/expression (constantly "path-184642")
-                         {:language #fhir/code"text/cql"})
+                         {:language #fhir/code "text/cql"})
       ::anom/category := ::anom/incorrect
       ::anom/message := "Missing expression."
       :fhir/issue := "required"

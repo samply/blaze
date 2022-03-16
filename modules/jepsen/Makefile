@@ -1,7 +1,10 @@
 lint:
 	clj-kondo --lint src test deps.edn
 
-test:
+prep:
+	clojure -X:deps prep
+
+test: prep
 	clojure -M:test --profile :ci
 
 test-coverage:

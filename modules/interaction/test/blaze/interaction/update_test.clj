@@ -11,6 +11,7 @@
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.update]
     [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
@@ -50,7 +51,7 @@
 
 
 (def operation-outcome
-  #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome")
+  #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome")
 
 
 (def patient-match
@@ -126,8 +127,8 @@
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invalid"
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invalid"
               [:issue 0 :diagnostics] := "Missing HTTP body.")))))
 
     (testing "type mismatch"
@@ -144,10 +145,10 @@
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invariant"
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invariant"
               [:issue 0 :details :coding 0 :system] := operation-outcome
-              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_TYPE_MISMATCH"
+              [:issue 0 :details :coding 0 :code] := #fhir/code "MSG_RESOURCE_TYPE_MISMATCH"
               [:issue 0 :diagnostics] := "Invalid update interaction of a Observation at a Patient endpoint.")))))
 
     (testing "missing id"
@@ -164,10 +165,10 @@
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"required"
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "required"
               [:issue 0 :details :coding 0 :system] := operation-outcome
-              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISSING"
+              [:issue 0 :details :coding 0 :code] := #fhir/code "MSG_RESOURCE_ID_MISSING"
               [:issue 0 :diagnostics] := "Missing resource id.")))))
 
     (testing "ID mismatch"
@@ -184,10 +185,10 @@
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invariant"
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "invariant"
               [:issue 0 :details :coding 0 :system] := operation-outcome
-              [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISMATCH"
+              [:issue 0 :details :coding 0 :code] := #fhir/code "MSG_RESOURCE_ID_MISMATCH"
               [:issue 0 :diagnostics] := "The resource id `1` doesn't match the endpoints id `0`.")))))
 
     (testing "optimistic locking failure"
@@ -207,8 +208,8 @@
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"conflict"
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "conflict"
               [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))))
 
     (testing "violated referential integrity"
@@ -219,15 +220,15 @@
                  {:path-params {:id "0"}
                   ::reitit/match observation-match
                   :body {:fhir/type :fhir/Observation :id "0"
-                         :subject #fhir/Reference{:reference "Patient/0"}}})]
+                         :subject #fhir/Reference {:reference "Patient/0"}}})]
 
           (testing "returns error"
             (is (= 409 status))
 
             (given body
               :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"conflict"
+              [:issue 0 :severity] := #fhir/code "error"
+              [:issue 0 :code] := #fhir/code "conflict"
               [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
 
   (testing "on newly created resource"
@@ -391,7 +392,7 @@
                {:path-params {:id "0"}
                 ::reitit/match observation-match
                 :body {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}})]
+                       :subject #fhir/Reference {:reference "Patient/0"}}})]
 
         (testing "Returns 201"
           (is (= 201 status)))

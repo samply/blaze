@@ -5,6 +5,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.delete]
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]

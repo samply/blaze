@@ -34,8 +34,8 @@
   [[:create
     {:fhir/type :fhir/List
      :id list-id
-     :status #fhir/code"current"
-     :mode #fhir/code"working"
+     :status #fhir/code "current"
+     :mode #fhir/code "working"
      :entry
      (mapv
        (fn [subject-id]

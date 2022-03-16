@@ -5,6 +5,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.spec.type]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.search-compartment]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
@@ -126,8 +127,8 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"value"
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "value"
           [:issue 0 :diagnostics] := "The identifier `<invalid>` is invalid."))))
 
   (testing "Returns an Error on Invalid Type"
@@ -141,8 +142,8 @@
 
         (given body
           :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"value"
+          [:issue 0 :severity] := #fhir/code "error"
+          [:issue 0 :code] := #fhir/code "value"
           [:issue 0 :diagnostics] := "The type `<invalid>` is invalid."))))
 
   (testing "on unknown search parameter"
@@ -161,8 +162,8 @@
 
               (given body
                 :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"not-found"
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :code] := #fhir/code "not-found"
                 [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Observation` was not found."))))
 
         (testing "summary result"
@@ -178,8 +179,8 @@
 
               (given body
                 :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"not-found"
+                [:issue 0 :severity] := #fhir/code "error"
+                [:issue 0 :code] := #fhir/code "not-found"
                 [:issue 0 :diagnostics] := "The search-param with code `foo` and type `Observation` was not found."))))))
 
     (testing "with lenient handling"
@@ -190,7 +191,7 @@
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :subject
-                       #fhir/Reference{:reference "Patient/0"}}]]]
+                       #fhir/Reference {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -207,7 +208,7 @@
                   (is (string? (:id body))))
 
                 (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (is (= #fhir/code "searchset" (:type body))))
 
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
@@ -216,7 +217,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+                  (is (= #fhir/uri "base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
                          (link-url body "self")))))))
 
           (testing "summary result"
@@ -242,7 +243,7 @@
                   (is (string? (:id body))))
 
                 (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (is (= #fhir/code "searchset" (:type body))))
 
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
@@ -251,7 +252,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
+                  (is (= #fhir/uri "base-url-114238/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
                          (link-url body "self"))))))))
 
         (testing "with another search parameter"
@@ -259,12 +260,12 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :status #fhir/code"final"
+                       :status #fhir/code "final"
                        :subject
                        #fhir/Reference
                            {:reference "Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
-                       :status #fhir/code"preliminary"
+                       :status #fhir/code "preliminary"
                        :subject
                        #fhir/Reference
                            {:reference "Patient/0"}}]]]
@@ -281,7 +282,7 @@
                   (is (= :fhir/Bundle (:fhir/type body))))
 
                 (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (is (= #fhir/code "searchset" (:type body))))
 
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
@@ -290,19 +291,19 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
+                  (is (= #fhir/uri "base-url-114238/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
                          (link-url body "self")))))))
 
           (testing "summary result"
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :status #fhir/code"final"
+                       :status #fhir/code "final"
                        :subject
                        #fhir/Reference
                            {:reference "Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
-                       :status #fhir/code"preliminary"
+                       :status #fhir/code "preliminary"
                        :subject
                        #fhir/Reference
                            {:reference "Patient/0"}}]]]
@@ -319,7 +320,7 @@
                   (is (= :fhir/Bundle (:fhir/type body))))
 
                 (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (is (= #fhir/code "searchset" (:type body))))
 
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
@@ -328,7 +329,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
+                  (is (= #fhir/uri "base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
                          (link-url body "self"))))))))))
 
     (testing "with default handling"
@@ -338,7 +339,7 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :subject #fhir/Reference {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -354,7 +355,7 @@
                   (is (string? (:id body))))
 
                 (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (is (= #fhir/code "searchset" (:type body))))
 
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
@@ -363,7 +364,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+                  (is (= #fhir/uri "base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
                          (link-url body "self")))))))
 
           (testing "summary result"
@@ -388,7 +389,7 @@
                   (is (string? (:id body))))
 
                 (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (is (= #fhir/code "searchset" (:type body))))
 
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
@@ -397,7 +398,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
+                  (is (= #fhir/uri "base-url-114238/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
                          (link-url body "self"))))))))
 
         (testing "with another search parameter"
@@ -405,11 +406,11 @@
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :status #fhir/code"final"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]
+                       :status #fhir/code "final"
+                       :subject #fhir/Reference {:reference "Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
-                       :status #fhir/code"preliminary"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]]]
+                       :status #fhir/code "preliminary"
+                       :subject #fhir/Reference {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -422,7 +423,7 @@
                   (is (= :fhir/Bundle (:fhir/type body))))
 
                 (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (is (= #fhir/code "searchset" (:type body))))
 
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
@@ -431,19 +432,19 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
+                  (is (= #fhir/uri "base-url-114238/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
                          (link-url body "self")))))))
 
           (testing "summary result"
             (with-handler [handler]
               [[[:put {:fhir/type :fhir/Patient :id "0"}]
                 [:put {:fhir/type :fhir/Observation :id "0"
-                       :status #fhir/code"final"
+                       :status #fhir/code "final"
                        :subject
                        #fhir/Reference
                            {:reference "Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
-                       :status #fhir/code"preliminary"
+                       :status #fhir/code "preliminary"
                        :subject
                        #fhir/Reference
                            {:reference "Patient/0"}}]]]
@@ -459,7 +460,7 @@
                   (is (= :fhir/Bundle (:fhir/type body))))
 
                 (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (is (= #fhir/code "searchset" (:type body))))
 
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
@@ -468,7 +469,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= #fhir/uri"base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
+                  (is (= #fhir/uri "base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
                          (link-url body "self")))))))))))
 
   (testing "Returns an empty Bundle on Non-Existing Compartment"
@@ -482,18 +483,18 @@
 
         (given body
           :fhir/type := :fhir/Bundle
-          :type := #fhir/code"searchset"
+          :type := #fhir/code "searchset"
           :total := #fhir/unsignedInt 0))))
 
   (testing "with one Observation"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :status #fhir/code"final"
-               :subject #fhir/Reference{:reference "Patient/0"}}]
+               :status #fhir/code "final"
+               :subject #fhir/Reference {:reference "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :status #fhir/code"preliminary"
-               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+               :status #fhir/code "preliminary"
+               :subject #fhir/Reference {:reference "Patient/0"}}]]]
 
       (let [request {:path-params {:id "0" :type "Observation"}}]
 
@@ -507,7 +508,7 @@
               (is (= :fhir/Bundle (:fhir/type body))))
 
             (testing "the bundle type is searchset"
-              (is (= #fhir/code"searchset" (:type body))))
+              (is (= #fhir/code "searchset" (:type body))))
 
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
@@ -526,7 +527,7 @@
               (is (= :fhir/Bundle (:fhir/type body))))
 
             (testing "the bundle type is searchset"
-              (is (= #fhir/code"searchset" (:type body))))
+              (is (= #fhir/code "searchset" (:type body))))
 
             (testing "the total count is 1"
               (is (= #fhir/unsignedInt 1 (:total body))))
@@ -543,13 +544,13 @@
               (is (= :fhir/Bundle (:fhir/type body))))
 
             (testing "the bundle type is searchset"
-              (is (= #fhir/code"searchset" (:type body))))
+              (is (= #fhir/code "searchset" (:type body))))
 
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
 
             (testing "has a self link"
-              (is (= #fhir/uri"base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+              (is (= #fhir/uri "base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
                      (link-url body "self"))))
 
             (testing "the bundle contains two entries"
@@ -557,12 +558,12 @@
 
             (testing "the first entry"
               (given (-> body :entry first)
-                :fullUrl := #fhir/uri"base-url-114238/Observation/0"
+                :fullUrl := #fhir/uri "base-url-114238/Observation/0"
                 [:resource :fhir/type] := :fhir/Observation
                 [:resource :id] := "0"))
 
             (testing "the second entry"
               (given (-> body :entry second)
-                :fullUrl := #fhir/uri"base-url-114238/Observation/1"
+                :fullUrl := #fhir/uri "base-url-114238/Observation/1"
                 [:resource :fhir/type] := :fhir/Observation
                 [:resource :id] := "1"))))))))

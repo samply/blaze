@@ -13,6 +13,7 @@
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -70,11 +71,18 @@
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm (elm/function-ref "ToQuantity" #elm/parameter-ref "x")
           expr (c/compile compile-ctx elm)]
-      (testing "eval"
+
+      (testing "success"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
-          {:value 23M :code "kg"} (quantity/quantity 23M "kg")
-          {:value 42M} (quantity/quantity 42M "1")
-          {} nil))
+          #fhir/Quantity {:value 23M :code #fhir/code "kg"} (quantity/quantity 23M "kg")
+          #fhir/Quantity {:value 42M} (quantity/quantity 42M "1")
+          #fhir/Quantity {} nil
+          nil nil))
+
+      (testing "failure"
+        (given-thrown (core/-eval expr {:parameters {"x" :foo}} nil nil)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Can't convert `:foo` to quantity."))
 
       (testing "form"
         (is (= '(call "ToQuantity" (param-ref "x")) (core/-form expr))))))
@@ -103,7 +111,7 @@
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
           "string-195733" "string-195733"
-          #fhir/uri"uri-195924" "uri-195924"))
+          #fhir/uri "uri-195924" "uri-195924"))
 
       (testing "form"
         (is (= '(call "ToString" (param-ref "x")) (core/-form expr))))))

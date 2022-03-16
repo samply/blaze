@@ -7,6 +7,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.fhir.structure-definition-repo]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -134,7 +135,7 @@
         (eval "Patient.name.family + ', ' + Patient.name.given"
               {:fhir/type :fhir/Patient
                :id "foo"
-               :name [#fhir/HumanName{:family "Doe"}]})
+               :name [#fhir/HumanName {:family "Doe"}]})
         identity := ["Doe, "]))
 
     (testing "with one given name"
@@ -142,14 +143,14 @@
         (eval "Patient.name.family + ', ' + Patient.name.given"
               {:fhir/type :fhir/Patient
                :id "foo"
-               :name [#fhir/HumanName{:family "Doe" :given ["John"]}]})
+               :name [#fhir/HumanName {:family "Doe" :given ["John"]}]})
         identity := ["Doe, John"]))
 
     (testing "with two given names"
       (given (eval "Patient.name.family + ', ' + Patient.name.given"
                    {:fhir/type :fhir/Patient
                     :id "foo"
-                    :name [#fhir/HumanName{:family "Doe" :given ["John" "Foo"]}]})
+                    :name [#fhir/HumanName {:family "Doe" :given ["John" "Foo"]}]})
         ::anom/category := ::anom/incorrect
         ::anom/message := "unable to evaluate `[\"John\" \"Foo\"]` as singleton"))
 
@@ -157,9 +158,9 @@
       (given (eval "Patient.name.family + ', ' + Patient.name"
                    {:fhir/type :fhir/Patient
                     :id "foo"
-                    :name [#fhir/HumanName{:family "Doe"}]})
+                    :name [#fhir/HumanName {:family "Doe"}]})
         ::anom/category := ::anom/incorrect
-        ::anom/message := "unable to evaluate `[#fhir/HumanName{:family \"Doe\"}]` as singleton")))
+        ::anom/message := "unable to evaluate `[#fhir/HumanName {:family \"Doe\"}]` as singleton")))
 
   (testing "and expression"
     (testing "with one telecom"
@@ -168,10 +169,10 @@
               {:fhir/type :fhir/Patient
                :id "foo"
                :active true
-               :gender #fhir/code"female"
+               :gender #fhir/code "female"
                :telecom
                [{:fhir/type :fhir/ContactPoint
-                 :use #fhir/code"home"
+                 :use #fhir/code "home"
                  :value "foo"}]})
         identity := [true]))
 
@@ -180,16 +181,16 @@
                    {:fhir/type :fhir/Patient
                     :id "foo"
                     :active true
-                    :gender #fhir/code"female"
+                    :gender #fhir/code "female"
                     :telecom
                     [{:fhir/type :fhir/ContactPoint
-                      :use #fhir/code"home"
+                      :use #fhir/code "home"
                       :value "foo"}
                      {:fhir/type :fhir/ContactPoint
-                      :use #fhir/code"work"
+                      :use #fhir/code "work"
                       :value "bar"}]})
         ::anom/category := ::anom/incorrect
-        ::anom/message := "unable to evaluate `[{:fhir/type :fhir/ContactPoint, :use #fhir/code\"home\", :value \"foo\"} {:fhir/type :fhir/ContactPoint, :use #fhir/code\"work\", :value \"bar\"}]` as singleton"))))
+        ::anom/message := "unable to evaluate `[{:fhir/type :fhir/ContactPoint, :use #fhir/code \"home\", :value \"foo\"} {:fhir/type :fhir/ContactPoint, :use #fhir/code \"work\", :value \"bar\"}]` as singleton"))))
 
 
 
@@ -209,7 +210,7 @@
           "Specimen.subject.where(resolve() is Patient)"
           resolver
           {:fhir/type :fhir/Specimen :id "foo"
-           :subject #fhir/Reference{:reference "reference-180039"}})
+           :subject #fhir/Reference {:reference "reference-180039"}})
         [0 :reference] := "reference-180039")))
 
   (testing "Specimen with display only reference"
@@ -218,7 +219,7 @@
         "Specimen.subject.where(resolve() is Patient)"
         resolver
         {:fhir/type :fhir/Specimen :id "foo"
-         :subject #fhir/Reference{:display "foo"}})
+         :subject #fhir/Reference {:display "foo"}})
       count := 0))
 
   (testing "Resolving on unsupported data type is skipped"
@@ -227,7 +228,7 @@
         "Patient.gender.where(resolve())"
         resolver
         {:fhir/type :fhir/Patient :id "foo"
-         :gender #fhir/code"unknown"})
+         :gender #fhir/code "unknown"})
       count := 0))
 
   (testing "Resolving string"
@@ -276,9 +277,9 @@
          :id "id-162953"
          :telecom
          [{:fhir/type :fhir/ContactPoint
-           :use #fhir/code"home"
+           :use #fhir/code "home"
            :value "value-170758"}]})
-      [0 :use] := #fhir/code"home"
+      [0 :use] := #fhir/code "home"
       [0 :value] := "value-170758"))
 
   (testing "returns two matching items"
@@ -289,14 +290,14 @@
          :id "id-162953"
          :telecom
          [{:fhir/type :fhir/ContactPoint
-           :use #fhir/code"home"
+           :use #fhir/code "home"
            :value "value-170758"}
           {:fhir/type :fhir/ContactPoint
-           :use #fhir/code"home"
+           :use #fhir/code "home"
            :value "value-145928"}]})
-      [0 :use] := #fhir/code"home"
+      [0 :use] := #fhir/code "home"
       [0 :value] := "value-170758"
-      [1 :use] := #fhir/code"home"
+      [1 :use] := #fhir/code "home"
       [1 :value] := "value-145928"))
 
   (testing "returns empty collection on non-matching item"
@@ -307,7 +308,7 @@
          :id "id-162953"
          :telecom
          [{:fhir/type :fhir/ContactPoint
-           :use #fhir/code"home"
+           :use #fhir/code "home"
            :value "value-170758"}]})
       count := 0))
 
@@ -319,7 +320,7 @@
          :id "id-162953"
          :telecom
          [{:fhir/type :fhir/ContactPoint
-           :use #fhir/code"home"
+           :use #fhir/code "home"
            :value "value-170758"}]})
       count := 0))
 
@@ -337,7 +338,7 @@
         "Patient.address.where(line)"
         {:fhir/type :fhir/Patient
          :id "id-162953"
-         :address [#fhir/Address{:line ["a" "b"]}]})
+         :address [#fhir/Address {:line ["a" "b"]}]})
       ::anom/category := ::anom/incorrect
       ::anom/message := "multiple result items `[\"a\" \"b\"]` while evaluating where function criteria"))
 
@@ -349,10 +350,10 @@
          :id "id-162953"
          :telecom
          [{:fhir/type :fhir/ContactPoint
-           :use #fhir/code"home"
+           :use #fhir/code "home"
            :value "value-170758"}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "non-boolean result `#fhir/code\"home\"` of type `:fhir/code` while evaluating where function criteria")))
+      ::anom/message := "non-boolean result `#fhir/code \"home\"` of type `:fhir/code` while evaluating where function criteria")))
 
 
 ;; 5.2.4. ofType(type : type specifier) : collection
@@ -364,9 +365,9 @@
         {:fhir/type :fhir/Observation
          :component
          [{:fhir/type :fhir.Observation/component
-           :value #fhir/Quantity{:value 150M}}
+           :value #fhir/Quantity {:value 150M}}
           {:fhir/type :fhir.Observation/component
-           :value #fhir/Quantity{:value 100M}}]})
+           :value #fhir/Quantity {:value 100M}}]})
       [0 :value] := 150M
       [1 :value] := 100M)))
 
@@ -397,8 +398,8 @@
   (let [patient
         {:fhir/type :fhir/Patient :id "foo"
          :name
-         [#fhir/HumanName{:family "Doe"}
-          #fhir/HumanName{:family "Bolton"}]}]
+         [#fhir/HumanName {:family "Doe"}
+          #fhir/HumanName {:family "Bolton"}]}]
     (are [expr res] (= res (eval expr patient))
       "{} | {}" []
       "1 | {}" [1]
@@ -415,9 +416,9 @@
       "Patient.gender | Patient.birthDate"
       {:fhir/type :fhir/Patient
        :id "id-162953"
-       :gender #fhir/code"female"
+       :gender #fhir/code "female"
        :birthDate #fhir/date"2020"})
-    identity := [#fhir/code"female" #fhir/date"2020"]))
+    identity := [#fhir/code "female" #fhir/date"2020"]))
 
 
 
@@ -540,10 +541,10 @@
         "Patient.identifier is string"
         {:fhir/type :fhir/Patient :id "id-162953"
          :identifier
-         [#fhir/Identifier{:value "value-163922"}
-          #fhir/Identifier{:value "value-163928"}]})
+         [#fhir/Identifier {:value "value-163922"}
+          #fhir/Identifier {:value "value-163928"}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "is type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
+      ::anom/message := "is type specifier with more than one item at the left side `[#fhir/Identifier {:value \"value-163922\"} #fhir/Identifier {:value \"value-163928\"}]`")))
 
 
 ;; 6.3.3 as type specifier
@@ -577,10 +578,10 @@
         "Patient.identifier as string"
         {:fhir/type :fhir/Patient :id "id-162953"
          :identifier
-         [#fhir/Identifier{:value "value-163922"}
-          #fhir/Identifier{:value "value-163928"}]})
+         [#fhir/Identifier {:value "value-163922"}
+          #fhir/Identifier {:value "value-163928"}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "as type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
+      ::anom/message := "as type specifier with more than one item at the left side `[#fhir/Identifier {:value \"value-163922\"} #fhir/Identifier {:value \"value-163928\"}]`")))
 
 
 ;; 6.3.4 as(type : type specifier)
@@ -614,10 +615,10 @@
         "Patient.identifier.as(string)"
         {:fhir/type :fhir/Patient :id "id-162953"
          :identifier
-         [#fhir/Identifier{:value "value-163922"}
-          #fhir/Identifier{:value "value-163928"}]})
+         [#fhir/Identifier {:value "value-163922"}
+          #fhir/Identifier {:value "value-163928"}]})
       ::anom/category := ::anom/incorrect
-      ::anom/message := "as type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
+      ::anom/message := "as type specifier with more than one item at the left side `[#fhir/Identifier {:value \"value-163922\"} #fhir/Identifier {:value \"value-163928\"}]`")))
 
 
 
@@ -627,7 +628,7 @@
 (deftest and-test
   (are [expr pred] (pred (first (eval expr {:fhir/type :fhir/Patient
                                             :id "id-162953"
-                                            :gender #fhir/code"male"
+                                            :gender #fhir/code "male"
                                             :birthDate #fhir/date"2020"})))
     "Patient.gender = 'male' and Patient.birthDate = @2020" true?
     "Patient.gender = 'male' and Patient.birthDate = @2021" false?
@@ -644,12 +645,12 @@
       (eval
         "Patient.extension().value"
         {:fhir/type :fhir/Patient :id "foo"
-         :extension [#fhir/Extension{:url "url-145553" :value "value-145600"}]})
+         :extension [#fhir/Extension {:url "url-145553" :value "value-145600"}]})
       count := 0))
 
   (given
     (eval
       "Patient.extension('url-145553').value"
       {:fhir/type :fhir/Patient :id "foo"
-       :extension [#fhir/Extension{:url "url-145553" :value "value-145600"}]})
+       :extension [#fhir/Extension {:url "url-145553" :value "value-145600"}]})
     identity := ["value-145600"]))

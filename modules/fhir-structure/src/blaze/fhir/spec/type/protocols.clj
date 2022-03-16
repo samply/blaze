@@ -6,4 +6,5 @@
   (-value [_])
   (-to-xml [_])
   (-hash-into [_ sink])
-  (-references [_]))
+  (-references [_])
+  (-mem-size [_]))

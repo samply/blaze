@@ -52,19 +52,19 @@
             :history-type
             :create
             :search-type])
-         :versioning #fhir/code"versioned"
+         :versioning #fhir/code "versioned"
          :readHistory true
          :updateCreate true
          :conditionalCreate true
-         :conditionalRead #fhir/code"not-supported"
+         :conditionalRead #fhir/code "not-supported"
          :conditionalUpdate false
-         :conditionalDelete #fhir/code"not-supported"
+         :conditionalDelete #fhir/code "not-supported"
          :referencePolicy
          (cond->
-           [#fhir/code"literal"
-          #fhir/code"local"]
+           [#fhir/code "literal"
+          #fhir/code "local"]
            enforce-referential-integrity
-           (conj #fhir/code"enforced"))
+           (conj #fhir/code "enforced"))
          :searchParam
          (transduce
            (map
@@ -105,24 +105,24 @@
     :as context}]
   (let [capability-statement
         {:fhir/type :fhir/CapabilityStatement
-         :status #fhir/code"active"
+         :status #fhir/code "active"
          :experimental false
          :publisher "The Samply Community"
          :copyright
          #fhir/markdown"Copyright 2019 - 2022 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License."
-         :kind #fhir/code"instance"
-         :date #fhir/dateTime"2022-03-16"
+         :kind #fhir/code "instance"
+         :date #fhir/dateTime "2022-03-16"
          :software
          {:name "Blaze"
           :version version}
          :implementation
          {:description "Blaze"}
-         :fhirVersion #fhir/code"4.0.1"
+         :fhirVersion #fhir/code "4.0.1"
          :format
-         [#fhir/code"application/fhir+json"
-          #fhir/code"application/xml+json"]
+         [#fhir/code "application/fhir+json"
+          #fhir/code "application/xml+json"]
          :rest
-         [{:mode #fhir/code"server"
+         [{:mode #fhir/code "server"
            :resource
            (into
              []
@@ -131,11 +131,11 @@
            :interaction
            (cond-> []
              (some? search-system-handler)
-             (conj {:code #fhir/code"search-system"})
+             (conj {:code #fhir/code "search-system"})
              (some? transaction-handler)
-             (conj {:code #fhir/code"transaction"} {:code #fhir/code"batch"})
+             (conj {:code #fhir/code "transaction"} {:code #fhir/code "batch"})
              (some? history-system-handler)
-             (conj {:code #fhir/code"history-system"}))}]}]
+             (conj {:code #fhir/code "history-system"}))}]}]
     (fn [{:blaze/keys [base-url]}]
       (ac/completed-future
         (ring/response

@@ -98,7 +98,7 @@
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 identifier
                 #fhir/Identifier
-                    {:system #fhir/uri"foo"
+                    {:system #fhir/uri "foo"
                      :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
@@ -120,7 +120,7 @@
                  :type "Property"}
                 identifier
                 #fhir/Identifier
-                    {:system #fhir/uri"foo"
+                    {:system #fhir/uri "foo"
                      :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
@@ -161,12 +161,12 @@
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
-                 :gender #fhir/code"male"}
+                 :gender #fhir/code "male"}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
                   elm)]
-            (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity})))))
+            (is (= #fhir/code "male" (core/-eval expr nil nil {"R" entity})))))
 
         (testing "without source-type"
           (let [elm
@@ -175,12 +175,12 @@
                  :type "Property"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
-                 :gender #fhir/code"male"}
+                 :gender #fhir/code "male"}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
                   elm)]
-            (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))))
+            (is (= #fhir/code "male" (core/-eval expr nil nil {"R" entity}))))))
 
       (testing "Observation.value"
         (testing "with source-type"
@@ -222,7 +222,7 @@
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 identifier
                 #fhir/Identifier
-                    {:system #fhir/uri"foo"
+                    {:system #fhir/uri "foo"
                      :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
@@ -245,7 +245,7 @@
                  :type "Property"}
                 identifier
                 #fhir/Identifier
-                    {:system #fhir/uri"foo"
+                    {:system #fhir/uri "foo"
                      :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
@@ -267,13 +267,13 @@
                  :life/source-type "{http://hl7.org/fhir}Patient"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
-                 :gender #fhir/code"male"}
+                 :gender #fhir/code "male"}
                 expr
                 (c/compile
                   {:eval-context "Patient"
                    :life/single-query-scope "R"}
                   elm)]
-            (is (= #fhir/code"male" (core/-eval expr nil nil entity)))))
+            (is (= #fhir/code "male" (core/-eval expr nil nil entity)))))
 
         (testing "without source-type"
           (let [elm
@@ -282,13 +282,13 @@
                  :type "Property"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
-                 :gender #fhir/code"male"}
+                 :gender #fhir/code "male"}
                 expr
                 (c/compile
                   {:eval-context "Patient"
                    :life/single-query-scope "R"}
                   elm)]
-            (is (= #fhir/code"male" (core/-eval expr nil nil entity))))))
+            (is (= #fhir/code "male" (core/-eval expr nil nil entity))))))
 
       (testing "Observation.value"
         (testing "with source-type"
@@ -332,7 +332,7 @@
                :life/source-type "{http://hl7.org/fhir}Patient"}
               identifier
               #fhir/Identifier
-                  {:system #fhir/uri"foo"
+                  {:system #fhir/uri "foo"
                    :value "bar"}
               source
               {:fhir/type :fhir/Patient :id "0"
@@ -352,7 +352,7 @@
                :type "Property"}
               identifier
               #fhir/Identifier
-                  {:system #fhir/uri"foo"
+                  {:system #fhir/uri "foo"
                    :value "bar"}
               source
               {:fhir/type :fhir/Patient :id "0"
@@ -371,10 +371,10 @@
                :life/source-type "{http://hl7.org/fhir}Patient"}
               source
               {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code"male"}
+               :gender #fhir/code "male"}
               expr (c/compile {:library library :eval-context "Patient"} elm)
               result (core/-eval expr {:library-context {"Patient" source}} nil nil)]
-          (is (= #fhir/code"male" result))))
+          (is (= #fhir/code "male" result))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:name "Patient"}]}}
@@ -384,10 +384,10 @@
                :type "Property"}
               source
               {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code"male"}
+               :gender #fhir/code "male"}
               expr (c/compile {:library library :eval-context "Patient"} elm)
               result (core/-eval expr {:library-context {"Patient" source}} nil nil)]
-          (is (= #fhir/code"male" result)))))
+          (is (= #fhir/code "male" result)))))
 
     (testing "Observation.value"
       (testing "with source-type"

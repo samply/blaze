@@ -23,7 +23,7 @@
 
 
 (def operation-outcome-uri
-  #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome")
+  #fhir/uri "http://terminology.hl7.org/CodeSystem/operation-outcome")
 
 
 (def handler (-> (params/wrap-coerce-params ac/completed-future) wrap-error))
@@ -40,10 +40,10 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           [:details :coding 0 :system] := operation-outcome-uri
-          [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
+          [:details :coding 0 :code] := #fhir/code "MSG_PARAM_INVALID"
           :diagnostics := "Missing required parameter `periodStart`."
           [:expression first] := "periodStart")))
 
@@ -56,10 +56,10 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           [:details :coding 0 :system] := operation-outcome-uri
-          [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
+          [:details :coding 0 :code] := #fhir/code "MSG_PARAM_INVALID"
           :diagnostics := "Invalid parameter `periodStart` with value `a`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD."
           [:expression first] := "periodStart"))))
 
@@ -73,10 +73,10 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           [:details :coding 0 :system] := operation-outcome-uri
-          [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
+          [:details :coding 0 :code] := #fhir/code "MSG_PARAM_INVALID"
           :diagnostics := "Missing required parameter `periodEnd`."
           [:expression first] := "periodEnd")))
 
@@ -89,10 +89,10 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           [:details :coding 0 :system] := operation-outcome-uri
-          [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
+          [:details :coding 0 :code] := #fhir/code "MSG_PARAM_INVALID"
           :diagnostics := "Invalid parameter `periodEnd` with value `a`. Should be a date in format YYYY, YYYY-MM or YYYY-MM-DD."
           [:expression first] := "periodEnd"))))
 
@@ -162,8 +162,8 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           :diagnostics := "Invalid parameter `reportType` with value `<invalid>`. Should be one of `subject`, `subject-list` or `population`.")))
 
     (testing "subject-list is not possible with a GET request"
@@ -180,8 +180,8 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"not-supported"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "not-supported"
           :diagnostics := "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")))
 
     (testing "subject-list on POST request"
@@ -199,7 +199,7 @@
                    :value #fhir/date"2015"}
                   {:fhir/type :fhir.Parameters/parameter
                    :name "reportType"
-                   :value #fhir/code"subject-list"}]}})]
+                   :value #fhir/code "subject-list"}]}})]
 
         (given params
           :report-type := "subject-list")))
@@ -266,9 +266,9 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           [:details :coding 0 :system] := operation-outcome-uri
-          [:details :coding 0 :code] := #fhir/code"MSG_PARAM_INVALID"
+          [:details :coding 0 :code] := #fhir/code "MSG_PARAM_INVALID"
           :diagnostics := "Invalid parameter `subject` with value `a/1`. Should be a reference."
           [:expression first] := "subject")))))

@@ -54,11 +54,11 @@
 (def tid-patient (codec/tid "Patient"))
 
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
-(def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
+(def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"})
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 (def patient-2 {:fhir/type :fhir/Patient :id "2"})
 (def patient-3 {:fhir/type :fhir/Patient :id "3"
-                :identifier [#fhir/Identifier{:value "120426"}]})
+                :identifier [#fhir/Identifier {:value "120426"}]})
 
 
 (defn bytes->vec [x]

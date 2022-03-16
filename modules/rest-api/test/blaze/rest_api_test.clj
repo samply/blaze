@@ -197,8 +197,8 @@
              {:uri "/Patient/0" :request-method :post})
       :status := 405
       [:body :fhir/type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"processing"
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "processing"
       [:body :issue 0 :diagnostics] := "Method POST not allowed on `/Patient/0` endpoint."))
 
   (testing "Patient type PUT is not allowed"
@@ -206,8 +206,8 @@
              {:uri "/Patient" :request-method :put})
       :status := 405
       [:body :fhir/type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"processing"
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "processing"
       [:body :issue 0 :diagnostics] := "Method PUT not allowed on `/Patient` endpoint."))
 
   (testing "Observations are not found"
@@ -215,8 +215,8 @@
              {:uri "/Observation" :request-method :get})
       :status := 404
       [:body :fhir/type] := :fhir/OperationOutcome
-      [:body :issue 0 :severity] := #fhir/code"error"
-      [:body :issue 0 :code] := #fhir/code"not-found")))
+      [:body :issue 0 :severity] := #fhir/code "error"
+      [:body :issue 0 :code] := #fhir/code "not-found")))
 
 
 (deftest router-match-by-name-test

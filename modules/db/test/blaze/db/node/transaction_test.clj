@@ -33,7 +33,7 @@
       (given (tx/prepare-ops
                context
                [[:create {:fhir/type :fhir/Observation :id "0"
-                          :subject #fhir/Reference{:reference "Patient/0"}}]])
+                          :subject #fhir/Reference {:reference "Patient/0"}}]])
         [0 0 :op] := "create"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
@@ -41,13 +41,13 @@
         [0 0 :refs] := [["Patient" "0"]]
         [1 0 0] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [1 0 1] := {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}})
+                    :subject #fhir/Reference {:reference "Patient/0"}})
 
       (testing "with disabled referential integrity check"
         (given (tx/prepare-ops
                  {:blaze.db/enforce-referential-integrity false}
                  [[:create {:fhir/type :fhir/Observation :id "0"
-                            :subject #fhir/Reference{:reference "Patient/0"}}]])
+                            :subject #fhir/Reference {:reference "Patient/0"}}]])
           [0 0 :refs] :? empty?)))
 
     (testing "conditional"
@@ -73,7 +73,7 @@
       (given (tx/prepare-ops
                context
                [[:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}]])
+                       :subject #fhir/Reference {:reference "Patient/0"}}]])
         [0 0 :op] := "put"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
@@ -81,12 +81,12 @@
         [0 0 :refs] := [["Patient" "0"]]
         [1 0 0] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [1 0 1] := {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}})
+                    :subject #fhir/Reference {:reference "Patient/0"}})
 
       (testing "with disabled referential integrity check"
         (given (tx/prepare-ops {:blaze.db/enforce-referential-integrity false}
                                [[:put {:fhir/type :fhir/Observation :id "0"
-                                       :subject #fhir/Reference{:reference "Patient/0"}}]])
+                                       :subject #fhir/Reference {:reference "Patient/0"}}]])
           [0 0 :refs] :? empty?)))
 
     (testing "with matches"

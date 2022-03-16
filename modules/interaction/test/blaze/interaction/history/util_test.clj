@@ -1,6 +1,7 @@
 (ns blaze.interaction.history.util-test
   (:require
     [blaze.fhir.spec.type]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.history.util :as history-util]
     [blaze.interaction.history.util-spec]
     [blaze.test-util :as tu]
@@ -78,13 +79,13 @@
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta #fhir/Meta{:versionId #fhir/id"1"}}
+           :meta #fhir/Meta {:versionId #fhir/id"1"}}
           {:blaze.db/op :create
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
-      [:request :method] := #fhir/code"POST"
-      [:request :url] := #fhir/uri"/Patient"
+      :fullUrl := #fhir/uri "http://localhost:8080/Patient/0"
+      [:request :method] := #fhir/code "POST"
+      [:request :url] := #fhir/uri "/Patient"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "201"
@@ -99,13 +100,13 @@
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta #fhir/Meta{:versionId #fhir/id"1"}}
+           :meta #fhir/Meta {:versionId #fhir/id"1"}}
           {:blaze.db/op :put
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
-      [:request :method] := #fhir/code"PUT"
-      [:request :url] := #fhir/uri"/Patient/0"
+      :fullUrl := #fhir/uri "http://localhost:8080/Patient/0"
+      [:request :method] := #fhir/code "PUT"
+      [:request :url] := #fhir/uri "/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "201"
@@ -120,13 +121,13 @@
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta #fhir/Meta{:versionId #fhir/id"2"}}
+           :meta #fhir/Meta {:versionId #fhir/id"2"}}
           {:blaze.db/op :put
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
-      [:request :method] := #fhir/code"PUT"
-      [:request :url] := #fhir/uri"/Patient/0"
+      :fullUrl := #fhir/uri "http://localhost:8080/Patient/0"
+      [:request :method] := #fhir/code "PUT"
+      [:request :url] := #fhir/uri "/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "200"
@@ -141,13 +142,13 @@
         (with-meta
           {:fhir/type :fhir/Patient
            :id "0"
-           :meta #fhir/Meta{:versionId #fhir/id"2"}}
+           :meta #fhir/Meta {:versionId #fhir/id"2"}}
           {:blaze.db/op :delete
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
-      [:request :method] := #fhir/code"DELETE"
-      [:request :url] := #fhir/uri"/Patient/0"
+      :fullUrl := #fhir/uri "http://localhost:8080/Patient/0"
+      [:request :method] := #fhir/code "DELETE"
+      [:request :url] := #fhir/uri "/Patient/0"
       [:response :status] := "204"
       [:response :lastModified] := Instant/EPOCH
       [:response :etag] := "W/\"2\"")))

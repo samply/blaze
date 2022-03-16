@@ -26,7 +26,7 @@
         (sr/linked-compartments
           search-param-registry
           {:fhir/type :fhir/Condition :id "0"
-           :subject #fhir/Reference{:reference "Patient/1"}}))
+           :subject #fhir/Reference {:reference "Patient/1"}}))
 
       ;; 700 ns - Mac mini M1
       (testing "Observation subject"
@@ -34,4 +34,4 @@
           (sr/linked-compartments
             search-param-registry
             {:fhir/type :fhir/Observation :id "0"
-             :subject #fhir/Reference{:reference "Patient/1"}}))))))
+             :subject #fhir/Reference {:reference "Patient/1"}}))))))

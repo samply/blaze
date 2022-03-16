@@ -1,4 +1,9 @@
-{:paths ["src" "resources"]
+{:paths ["src" "resources" "target/classes"]
+
+ :deps/prep-lib
+ {:alias :build
+  :fn compile
+  :ensure "target/classes"}
 
  :deps
  {blaze/anomaly
@@ -36,7 +41,14 @@
   {:mvn/version "0.2.0-alpha6"}}
 
  :aliases
- {:test
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.8.1" :git/sha "7d40500"}}
+
+   :ns-default build}
+
+  :test
   {:extra-paths ["test"]
 
    :extra-deps

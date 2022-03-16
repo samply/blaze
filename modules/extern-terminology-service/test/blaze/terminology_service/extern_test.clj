@@ -1,5 +1,6 @@
 (ns blaze.terminology-service.extern-test
   (:require
+    [blaze.fhir.structure-definition-repo]
     [blaze.terminology-service :as ts]
     [blaze.terminology-service.extern]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
