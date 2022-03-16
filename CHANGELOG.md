@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.16.3
+
+### Bugfixes
+
+* Trim Values in FHIR Search ([#644](https://github.com/samply/blaze/pull/644))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/33?closed=1).
+
 ## v0.16.2
 
 ### Bugfixes
