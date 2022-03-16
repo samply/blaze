@@ -18,25 +18,6 @@
 (set! *warn-on-reflection* true)
 
 
-
-;; ---- compile-value ---------------------------------------------------------
-
-(defn invalid-decimal-value-msg [code value]
-  (format "Invalid decimal value `%s` in search parameter `%s`." value code))
-
-
-(defn unsupported-prefix-msg [code op]
-  (format "Unsupported prefix `%s` in search parameter `%s`." (name op) code))
-
-
-(defn- eq-value [decimal-value]
-  (let [delta (.movePointLeft 0.5M (.scale ^BigDecimal decimal-value))]
-    {:op :eq
-     :lower-bound (codec/number (- decimal-value delta))
-     :exact-value (codec/number decimal-value)
-     :upper-bound (codec/number (+ decimal-value delta))}))
-
-
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([url value])}
@@ -66,16 +47,16 @@
       (if-ok [decimal-value (system/parse-decimal value)]
         (case op
           :eq
-          (eq-value decimal-value)
+          (u/eq-value codec/number decimal-value)
           (:gt :lt :ge :le)
           {:op op :exact-value (codec/number decimal-value)}
           (ba/unsupported
-            (unsupported-prefix-msg code op)
+            (u/unsupported-prefix-msg code op)
             ::category ::unsupported-prefix
             ::unsupported-prefix op))
         #(assoc %
            ::category ::invalid-decimal-value
-           ::anom/message (invalid-decimal-value-msg code value)))))
+           ::anom/message (u/invalid-decimal-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction

@@ -176,10 +176,6 @@
   (format "Invalid date-time value `%s` in search parameter `%s`." value code))
 
 
-(defn- unsupported-prefix-msg [code op]
-  (format "Unsupported prefix `%s` in search parameter `%s`." (name op) code))
-
-
 (defn- resource-keys!
   ([context c-hash tid {:keys [op lower-bound upper-bound]}]
    (case op
@@ -221,7 +217,7 @@
           (:le :lt)
           {:op op
            :upper-bound (date-ub date-time-value)}
-          (ba/unsupported (unsupported-prefix-msg code op)))
+          (ba/unsupported (u/unsupported-prefix-msg code op)))
         #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]

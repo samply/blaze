@@ -102,6 +102,9 @@
 
         "23.4" (codec/quantity nil 23.35M) (codec/quantity nil 23.45M)
         "23.0|kg/m2" (codec/quantity "kg/m2" 22.95M) (codec/quantity "kg/m2" 23.05M)
+        ;; with white space between value and unit
+        "23.0| kg/m2" (codec/quantity "kg/m2" 22.95M) (codec/quantity "kg/m2" 23.05M)
+        "23.0 | kg/m2" (codec/quantity "kg/m2" 22.95M) (codec/quantity "kg/m2" 23.05M)
         "0.1" (codec/quantity nil 0.05M) (codec/quantity nil 0.15M)
         "0" (codec/quantity nil -0.5M) (codec/quantity nil 0.5M)
         "0.0" (codec/quantity nil -0.05M) (codec/quantity nil 0.05M)))
@@ -113,8 +116,14 @@
             :op := op
             :exact-value := exact-value)
 
-          (str (name op) "23") (codec/quantity nil 23M)
-          (str (name op) "0.1") (codec/quantity nil 0.1M))))
+          (str (name op) "23.4") (codec/quantity nil 23.4M)
+          (str (name op) "23.0|kg/m2") (codec/quantity "kg/m2" 23.0M)
+          ;; with white space between value and unit
+          (str (name op) "23.0| kg/m2") (codec/quantity "kg/m2" 23.0M)
+          (str (name op) "23.0 | kg/m2") (codec/quantity "kg/m2" 23.0M)
+          (str (name op) "0.1") (codec/quantity nil 0.1M)
+          ;; with white space between op and value
+          (str (name op) " 1") (codec/quantity nil 1M))))
 
     (testing "invalid decimal value"
       (given (search-param/compile-values

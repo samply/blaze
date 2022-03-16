@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.util-test
   (:require
     [blaze.db.impl.search-param.util :as util]
+    [blaze.db.impl.search-param.util-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is]]
     [taoensso.timbre :as log]))
@@ -22,7 +23,11 @@
 (deftest separate-op-test
   (are [value tuple] (= tuple (util/separate-op value))
     "1" [:eq "1"]
+    " 1" [:eq "1"]
+    "1 " [:eq "1"]
+    " 1 " [:eq "1"]
     "eq1" [:eq "1"]
+    "eq 1" [:eq "1"]
     "ne1" [:ne "1"]
     "fo1" [:eq "fo1"]
     "1ne" [:eq "1ne"]))
