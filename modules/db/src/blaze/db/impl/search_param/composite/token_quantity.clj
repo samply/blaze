@@ -43,11 +43,11 @@
         #(case (::spq/category %)
           ::spq/invalid-decimal-value
           (assoc %
-            ::anom/message (spq/invalid-decimal-value-msg code v2))
+            ::anom/message (u/invalid-decimal-value-msg code v2))
           ::spq/unsupported-prefix
           (assoc %
             ::anom/message
-            (spq/unsupported-prefix-msg
+            (u/unsupported-prefix-msg
               code (::spq/unsupported-prefix %)))
           %))))
 

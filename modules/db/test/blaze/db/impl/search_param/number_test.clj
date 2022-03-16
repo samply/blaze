@@ -8,6 +8,7 @@
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
     [blaze.db.impl.search-param.number :as spn]
+    [blaze.db.impl.search-param.util-spec]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]

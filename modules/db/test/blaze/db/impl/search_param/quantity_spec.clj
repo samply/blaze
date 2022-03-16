@@ -5,6 +5,7 @@
     [blaze.db.impl.index.search-param-value-resource-spec]
     [blaze.db.impl.search-param.quantity :as spq]
     [blaze.db.impl.search-param.quantity.spec]
+    [blaze.db.impl.search-param.util-spec]
     [blaze.db.spec]
     [blaze.fhir.spec.type.system-spec]
     [clojure.spec.alpha :as s]))

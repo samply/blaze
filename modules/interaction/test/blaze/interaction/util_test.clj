@@ -56,4 +56,22 @@
         (is (= [["a" "b" "c" "d"]] (iu/clauses {"a" "b,c,d"})))))
 
     (testing "and two values"
-      (is (= [["a" "b"] ["a" "c"]] (iu/clauses {"a" ["b" "c"]}))))))
+      (is (= [["a" "b"] ["a" "c"]] (iu/clauses {"a" ["b" "c"]}))))
+
+    (testing "with leading whitespace"
+      (is (= [["a" "b"]] (iu/clauses {"a" " b"})))
+
+      (testing "with two parts"
+        (is (= [["a" "b" "c"]] (iu/clauses {"a" " b, c"})))))
+
+    (testing "with trailing whitespace"
+      (is (= [["a" "b"]] (iu/clauses {"a" "b "})))
+
+      (testing "with two parts"
+        (is (= [["a" "b" "c"]] (iu/clauses {"a" "b ,c "})))))
+
+    (testing "with leading and trailing whitespace"
+      (is (= [["a" "b"]] (iu/clauses {"a" " b "})))
+
+      (testing "with two parts"
+        (is (= [["a" "b" "c"]] (iu/clauses {"a" " b , c "})))))))

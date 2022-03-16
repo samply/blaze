@@ -3,7 +3,8 @@
     [blaze.byte-string :as bs]
     [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
-    [blaze.fhir.spec :as fhir-spec])
+    [blaze.fhir.spec :as fhir-spec]
+    [clojure.string :as str])
   (:import
     [clojure.lang IReduceInit Indexed]))
 
@@ -18,9 +19,10 @@
   returns a tuple of operator and value. The default operator :eq is returned if
   no prefix was given."
   [value]
-  (if (re-find #"^(eq|ne|gt|lt|ge|le|sa|eb|ap)" value)
-    [(keyword (subs value 0 2)) (subs value 2)]
-    [:eq value]))
+  (let [value (str/trim value)]
+    (if (re-find #"^(eq|ne|gt|lt|ge|le|sa|eb|ap)" value)
+      [(keyword (subs value 0 2)) (str/trim (subs value 2))]
+      [:eq value])))
 
 
 (defn format-skip-indexing-msg [value url type]
@@ -103,3 +105,19 @@
           (let [id (.substring s (unchecked-inc-int idx))]
             (when (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))
               [type id])))))))
+
+
+(defn invalid-decimal-value-msg [code value]
+  (format "Invalid decimal value `%s` in search parameter `%s`." value code))
+
+
+(defn unsupported-prefix-msg [code op]
+  (format "Unsupported prefix `%s` in search parameter `%s`." (name op) code))
+
+
+(defn eq-value [f ^BigDecimal decimal-value]
+  (let [delta (.movePointLeft 0.5M (.scale decimal-value))]
+    {:op :eq
+     :lower-bound (f (.subtract decimal-value delta))
+     :exact-value (f decimal-value)
+     :upper-bound (f (.add decimal-value delta))}))
