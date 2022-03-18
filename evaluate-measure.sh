@@ -120,6 +120,7 @@ BASE=$1
 [[ -z "$SUBJECT_TYPE" ]] && SUBJECT_TYPE="Patient"
 [[ -z "$BASE" ]] && usage
 
+SUBJECT_TYPE_LOWER=$(echo $SUBJECT_TYPE | tr '[:upper:]' '[:lower:]')
 DATA=$(cat ${FILE} | base64 | tr -d '\n')
 LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
@@ -129,21 +130,19 @@ create-library ${LIBRARY_URI} ${DATA} | post "Library" > /dev/null
 MEASURE_ID=$(create-measure ${MEASURE_URI} ${LIBRARY_URI} ${SUBJECT_TYPE} | post "Measure" | jq -r .id | tr -d '\r')
 
 if [ "subject-list" = "$REPORT_TYPE" ]; then
-  echo "Generating a report including the list of matching subjects..."
+  echo "Generating a report including the list of matching ${SUBJECT_TYPE_LOWER}s..."
   MEASURE_REPORT=$(evaluate-measure-list ${MEASURE_ID})
   COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count' | tr -d '\r')
   LIST_REFERENCE=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].subjectResults.reference' | tr -d '\r')
+  LIST_ID=$(echo $LIST_REFERENCE | cut -d '/' -f2)
 
-  echo "Found $COUNT subjects that can be found on List $BASE/$LIST_REFERENCE."
-  echo "The individual subject URLs are:"
-
-  for REFERENCE in $(curl -s "$BASE/$LIST_REFERENCE" | jq -r '.entry[].item.reference' | tr -d '\r')
-  do
-    echo "$BASE/$REFERENCE"
-  done
+  echo "Found $COUNT ${SUBJECT_TYPE_LOWER}s that can be found on List $BASE/$LIST_REFERENCE."
+  echo ""
+  echo "Please use the following blazectl command to download the ${SUBJECT_TYPE_LOWER}s:"
+  echo "  blazectl download --server $BASE $SUBJECT_TYPE -q '_list=$LIST_ID' -o ${SUBJECT_TYPE_LOWER}s.ndjson"
 else
   echo "Generating a population count report..."
   MEASURE_REPORT=$(evaluate-measure ${MEASURE_ID})
   COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count' | tr -d '\r')
-  echo "Found $COUNT subjects."
+  echo "Found $COUNT ${SUBJECT_TYPE_LOWER}s."
 fi

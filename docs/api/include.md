@@ -3,7 +3,7 @@
 Download all Condition resources including their referenced Patient resources.
 
 ```sh
-$ blazectl --server http://localhost:8080/fhir download Condition \
+blazectl --server http://localhost:8080/fhir download Condition \
   -q '_include=Condition:subject&_count=1000' -o Condition-Patient.ndjson
   
 Pages		[total]			2779
