@@ -1,6 +1,8 @@
-FROM openjdk:17
+FROM openjdk:17-oracle
 
-RUN microdnf upgrade
+RUN microdnf upgrade && microdnf remove expat fontconfig freetype \
+  aajohan-comfortaa-fonts fontpackages-filesystem gzip bzip2 tar libpng \
+  binutils && microdnf clean all
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
 COPY target/blaze-standalone.jar /app/
