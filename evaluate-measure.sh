@@ -126,24 +126,24 @@ MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
 create-library ${LIBRARY_URI} ${DATA} | post "Library" > /dev/null
 
-MEASURE_ID=$(create-measure ${MEASURE_URI} ${LIBRARY_URI} ${SUBJECT_TYPE} | post "Measure" | jq -r .id)
+MEASURE_ID=$(create-measure ${MEASURE_URI} ${LIBRARY_URI} ${SUBJECT_TYPE} | post "Measure" | jq -r .id | tr -d '\r')
 
 if [ "subject-list" = "$REPORT_TYPE" ]; then
   echo "Generating a report including the list of matching subjects..."
   MEASURE_REPORT=$(evaluate-measure-list ${MEASURE_ID})
-  COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count')
-  LIST_REFERENCE=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].subjectResults.reference')
+  COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count' | tr -d '\r')
+  LIST_REFERENCE=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].subjectResults.reference' | tr -d '\r')
 
   echo "Found $COUNT subjects that can be found on List $BASE/$LIST_REFERENCE."
   echo "The individual subject URLs are:"
 
-  for REFERENCE in $(curl -s "$BASE/$LIST_REFERENCE" | jq -r '.entry[].item.reference')
+  for REFERENCE in $(curl -s "$BASE/$LIST_REFERENCE" | jq -r '.entry[].item.reference' | tr -d '\r')
   do
     echo "$BASE/$REFERENCE"
   done
 else
   echo "Generating a population count report..."
   MEASURE_REPORT=$(evaluate-measure ${MEASURE_ID})
-  COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count')
+  COUNT=$(echo $MEASURE_REPORT | jq -r '.group[0].population[0].count' | tr -d '\r')
   echo "Found $COUNT subjects."
 fi
