@@ -134,18 +134,18 @@
       (let [observation
             {:fhir/type :fhir/Observation
              :id "id-155558"
-             :status #fhir/code"final"
+             :status #fhir/code "final"
              :code
              #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                              {:system #fhir/uri"http://loinc.org"
-                               :code #fhir/code"8480-6"}]}
+                 {:coding
+                  [#fhir/Coding
+                      {:system #fhir/uri "http://loinc.org"
+                       :code #fhir/code "8480-6"}]}
              :value
              #fhir/Quantity
-                     {:value 100M
-                      :code #fhir/code"mm[Hg]"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}
+                 {:value 100M
+                  :code #fhir/code "mm[Hg]"
+                  :system #fhir/uri "http://unitsofmeasure.org"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]
              [_ k6] [_ k7] [_ k8] [_ k9] [_ k10] [_ k11]

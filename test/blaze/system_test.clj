@@ -130,8 +130,8 @@
    [{:fhir/type :fhir.Bundle/entry
      :request
      {:fhir/type :fhir.Bundle.entry/request
-      :method #fhir/code"GET"
-      :url #fhir/uri"/Patient"}}]})
+      :method #fhir/code "GET"
+      :url #fhir/uri "/Patient"}}]})
 
 
 (deftest auth-test

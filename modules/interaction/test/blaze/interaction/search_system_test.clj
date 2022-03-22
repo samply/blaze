@@ -4,6 +4,7 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.search-system]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
@@ -133,13 +134,13 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is zero"
             (is (= #fhir/unsignedInt 0 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=50&__t=0"
+            (is (= #fhir/uri "base-url-114650?_count=50&__t=0"
                    (link-url body "self"))))
 
           (testing "the bundle contains no entry"
@@ -162,20 +163,20 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=50&__t=1&__page-type=Patient&__page-id=0"
+            (is (= #fhir/uri "base-url-114650?_count=50&__t=1&__page-type=Patient&__page-id=0"
                    (link-url body "self"))))
 
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))
 
           (testing "the entry has the right fullUrl"
-            (is (= #fhir/uri"base-url-114650/Patient/0"
+            (is (= #fhir/uri "base-url-114650/Patient/0"
                    (-> body :entry first :fullUrl))))
 
           (testing "the entry has the right resource"
@@ -198,13 +199,13 @@
             (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_summary=count&_count=50&__t=1"
+            (is (= #fhir/uri "base-url-114650?_summary=count&_count=50&__t=1"
                    (link-url body "self"))))
 
           (testing "the bundle contains no entries"
@@ -220,13 +221,13 @@
             (is (= :fhir/Bundle (:fhir/type body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code"searchset" (:type body))))
+            (is (= #fhir/code "searchset" (:type body))))
 
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=0&__t=1" (link-url body "self"))))
+            (is (= #fhir/uri "base-url-114650?_count=0&__t=1" (link-url body "self"))))
 
           (testing "the bundle contains no entries"
             (is (empty? (:entry body))))))))
@@ -244,11 +245,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
+            (is (= #fhir/uri "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= #fhir/uri "base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -264,11 +265,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
+            (is (= #fhir/uri "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= #fhir/uri "base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -284,7 +285,7 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= #fhir/uri "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "self"))))
 
           (testing "has no next link"
@@ -306,6 +307,6 @@
 
           (given body
             :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :severity] := #fhir/code "error"
+            [:issue 0 :code] := #fhir/code "invalid"
             [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`."))))))

@@ -50,17 +50,17 @@
               {:blaze/base-url "base-url-131713"})
             :body)
         :fhir/type := :fhir/CapabilityStatement
-        :status := #fhir/code"active"
+        :status := #fhir/code "active"
         :experimental := false
         :publisher := "The Samply Community"
         :copyright := copyright
-        :kind := #fhir/code"instance"
+        :kind := #fhir/code "instance"
         [:software :name] := "Blaze"
         [:software :version] := "version-131640"
         [:implementation :url] := #fhir/url"base-url-131713"
-        :fhirVersion := #fhir/code"4.0.1"
-        :format := [#fhir/code"application/fhir+json"
-                    #fhir/code"application/xml+json"]))
+        :fhirVersion := #fhir/code "4.0.1"
+        :format := [#fhir/code "application/fhir+json"
+                    #fhir/code "application/xml+json"]))
 
     (testing "minimal config + search-system"
       (given
@@ -73,7 +73,7 @@
               {})
             :body)
         :fhir/type := :fhir/CapabilityStatement
-        [:rest 0 :interaction 0 :code] := #fhir/code"search-system"))
+        [:rest 0 :interaction 0 :code] := #fhir/code "search-system"))
 
     (testing "minimal config + history-system"
       (given
@@ -86,7 +86,7 @@
               {})
             :body)
         :fhir/type := :fhir/CapabilityStatement
-        [:rest 0 :interaction 0 :code] := #fhir/code"history-system"))
+        [:rest 0 :interaction 0 :code] := #fhir/code "history-system"))
 
     (testing "Patient interaction"
       (given
@@ -105,9 +105,9 @@
               {})
             :body)
         :fhir/type := :fhir/CapabilityStatement
-        [:rest 0 :resource 0 :type] := #fhir/code"Patient"
-        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
-        [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"}))
+        [:rest 0 :resource 0 :type] := #fhir/code "Patient"
+        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code "read"
+        [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code "enforced"}))
 
       (testing "with disabled referential integrity check"
         (given
@@ -127,9 +127,9 @@
                 {})
               :body)
           :fhir/type := :fhir/CapabilityStatement
-          [:rest 0 :resource 0 :type] := #fhir/code"Patient"
-          [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
-          [:rest 0 :resource 0 :referencePolicy] :? (comp not (partial some #{#fhir/code"enforced"})))))
+          [:rest 0 :resource 0 :type] := #fhir/code "Patient"
+          [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code "read"
+          [:rest 0 :resource 0 :referencePolicy] :? (comp not (partial some #{#fhir/code "enforced"})))))
 
     (testing "Observation interaction"
       (given
@@ -148,10 +148,10 @@
               {})
             :body)
         :fhir/type := :fhir/CapabilityStatement
-        [:rest 0 :resource 0 :type] := #fhir/code"Observation"
-        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
+        [:rest 0 :resource 0 :type] := #fhir/code "Observation"
+        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code "read"
         [:rest 0 :resource 0 :searchParam (search-param "value-quantity") :type]
-        := #fhir/code"quantity"
+        := #fhir/code "quantity"
         [:rest 0 :resource 0 :searchParam (search-param "value-quantity") :documentation]
         := #fhir/markdown"Decimal values are truncated at two digits after the decimal point."))
 
@@ -180,7 +180,7 @@
               {})
             :body)
         :fhir/type := :fhir/CapabilityStatement
-        [:rest 0 :resource 0 :type] := #fhir/code"Measure"
+        [:rest 0 :resource 0 :type] := #fhir/code "Measure"
         [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
         [:rest 0 :resource 0 :operation 0 :definition] :=
         #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"))))

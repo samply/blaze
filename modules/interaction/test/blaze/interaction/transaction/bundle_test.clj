@@ -1,5 +1,6 @@
 (ns blaze.interaction.transaction.bundle-test
   (:require
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.transaction.bundle :as bundle]
     [blaze.interaction.transaction.bundle-spec]
     [blaze.test-util :as tu]
@@ -31,8 +32,8 @@
            :id "id-220129"}
           :request
           {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"POST"
-           :url #fhir/uri"Patient"}}])
+           :method #fhir/code "POST"
+           :url #fhir/uri "Patient"}}])
       [0 count] := 2
       [0 0] := :create
       [0 1 :fhir/type] := :fhir/Patient
@@ -47,8 +48,8 @@
            :id "id-220200"}
           :request
           {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"POST"
-           :url #fhir/uri"Patient"
+           :method #fhir/code "POST"
+           :url #fhir/uri "Patient"
            :ifNoneExist "birthdate=2020"}}])
       [0 0] := :create
       [0 1 :fhir/type] := :fhir/Patient
@@ -65,8 +66,8 @@
            :id "id-214728"}
           :request
           {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"PUT"
-           :url #fhir/uri"Patient/id-214728"}}])
+           :method #fhir/code "PUT"
+           :url #fhir/uri "Patient/id-214728"}}])
       [0 count] := 2
       [0 0] := :put
       [0 1 :fhir/type] := :fhir/Patient
@@ -81,8 +82,8 @@
            :id "id-214728"}
           :request
           {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"PUT"
-           :url #fhir/uri"Patient/id-214728"
+           :method #fhir/code "PUT"
+           :url #fhir/uri "Patient/id-214728"
            :ifMatch "W/\"215150\""}}])
       [0 count] := 3
       [0 0] := :put
@@ -96,8 +97,8 @@
         [{:fhir/type :fhir.Bundle/entry
           :request
           {:fhir/type :fhir.Bundle.entry/request
-           :method #fhir/code"DELETE"
-           :url #fhir/uri"Patient/id-215232"}}])
+           :method #fhir/code "DELETE"
+           :url #fhir/uri "Patient/id-215232"}}])
       [0 count] := 3
       [0 0] := :delete
       [0 1] := "Patient"

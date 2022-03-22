@@ -5,11 +5,11 @@
 
 
 (def ^:const match
-  #fhir/BundleEntrySearch{:mode #fhir/code"match"})
+  #fhir/BundleEntrySearch {:mode #fhir/code "match"})
 
 
 (def ^:const include
-  #fhir/BundleEntrySearch{:mode #fhir/code"include"})
+  #fhir/BundleEntrySearch {:mode #fhir/code "include"})
 
 
 (defn entry

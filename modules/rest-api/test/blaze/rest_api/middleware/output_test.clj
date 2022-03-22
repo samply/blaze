@@ -3,6 +3,7 @@
     [blaze.async.comp :as ac]
     [blaze.executors :as ex]
     [blaze.fhir.spec-spec]
+    [blaze.fhir.structure-definition-repo]
     [blaze.rest-api.middleware.output :refer [wrap-output]]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]

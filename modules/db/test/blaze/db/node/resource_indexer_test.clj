@@ -99,7 +99,7 @@
   (with-system [{kv-store ::kv/mem resource-store ::rs/kv
                  :blaze.db/keys [search-param-registry]} system]
     (let [observation {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "foo"}}
+                       :subject #fhir/Reference {:reference "foo"}}
           hash (hash/generate observation)
           resource-indexer (resource-indexer/new-resource-indexer
                              search-param-registry kv-store)
@@ -131,8 +131,8 @@
            #fhir/CodeableConcept
                {:coding
                 [#fhir/Coding
-                    {:system #fhir/uri"system-204435"
-                     :code #fhir/code"code-204441"}]}
+                    {:system #fhir/uri "system-204435"
+                     :code #fhir/code "code-204441"}]}
            :onset #fhir/dateTime"2020-01-30"
            :subject
            #fhir/Reference
@@ -255,27 +255,27 @@
   (with-system [{kv-store ::kv/mem resource-store ::rs/kv
                  :blaze.db/keys [search-param-registry]} system]
     (let [resource {:fhir/type :fhir/Observation :id "id-192702"
-                    :status #fhir/code"status-193613"
+                    :status #fhir/code "status-193613"
                     :category
                     [#fhir/CodeableConcept
                         {:coding
                          [#fhir/Coding
-                             {:system #fhir/uri"system-193558"
-                              :code #fhir/code"code-193603"}]}]
+                             {:system #fhir/uri "system-193558"
+                              :code #fhir/code "code-193603"}]}]
                     :code
                     #fhir/CodeableConcept
                         {:coding
                          [#fhir/Coding
-                             {:system #fhir/uri"system-193821"
-                              :code #fhir/code"code-193824"}]}
+                             {:system #fhir/uri "system-193821"
+                              :code #fhir/code "code-193824"}]}
                     :subject
                     #fhir/Reference
                         {:reference "Patient/id-180857"}
                     :effective #fhir/dateTime"2005-06-17"
                     :value
                     #fhir/Quantity
-                        {:code #fhir/code"kg/m2"
-                         :system #fhir/uri"http://unitsofmeasure.org"
+                        {:code #fhir/code "kg/m2"
+                         :system #fhir/uri "http://unitsofmeasure.org"
                          :value 23.42M}}
           hash (hash/generate resource)
           resource-indexer (resource-indexer/new-resource-indexer

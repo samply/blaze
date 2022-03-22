@@ -47,7 +47,7 @@
       (given (sr/linked-compartments
                search-param-registry
                {:fhir/type :fhir/Condition :id "0"
-                :subject #fhir/Reference{:reference "Patient/1"}})
+                :subject #fhir/Reference {:reference "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"]))
 
@@ -55,7 +55,7 @@
       (given (sr/linked-compartments
                search-param-registry
                {:fhir/type :fhir/Observation :id "0"
-                :subject #fhir/Reference{:reference "Patient/1"}})
+                :subject #fhir/Reference {:reference "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"]))
 
@@ -63,7 +63,7 @@
       (given (sr/linked-compartments
                search-param-registry
                {:fhir/type :fhir/MedicationAdministration :id "0"
-                :subject #fhir/Reference{:reference "Patient/1"}})
+                :subject #fhir/Reference {:reference "Patient/1"}})
         count := 1
         [0] := ["Patient" "1"]))
 
@@ -71,10 +71,10 @@
       (given (sr/linked-compartments
                search-param-registry
                {:fhir/type :fhir/MedicationAdministration :id "0"
-                :subject #fhir/Reference{:reference "Patient/1"}
+                :subject #fhir/Reference {:reference "Patient/1"}
                 :performer
                 [{:fhir/type :fhir.MedicationAdministration/performer
-                  :actor #fhir/Reference{:reference "Patient/2"}}]})
+                  :actor #fhir/Reference {:reference "Patient/2"}}]})
         count := 2
         [0] := ["Patient" "2"]
         [1] := ["Patient" "1"]))
@@ -83,10 +83,10 @@
       (given (sr/linked-compartments
                search-param-registry
                {:fhir/type :fhir/MedicationAdministration :id "0"
-                :subject #fhir/Reference{:reference "Patient/1"}
+                :subject #fhir/Reference {:reference "Patient/1"}
                 :performer
                 [{:fhir/type :fhir.MedicationAdministration/performer
-                  :actor #fhir/Reference{:reference "Patient/1"}}]})
+                  :actor #fhir/Reference {:reference "Patient/1"}}]})
         count := 1
         [0] := ["Patient" "1"]))
 
@@ -100,7 +100,7 @@
           (sr/linked-compartments
             search-param-registry
             {:fhir/type :fhir/Condition :id "0"
-             :subject #fhir/Reference{:reference "Patient/1"}})
+             :subject #fhir/Reference {:reference "Patient/1"}})
           ::anom/category := ::anom/fault
           ::anom/message := "msg-121005"
           ::x := ::y)))))

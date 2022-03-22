@@ -6,6 +6,7 @@
     [blaze.executors :as ex]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.fhir.structure-definition-repo]
     [blaze.metrics.spec]
     [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]

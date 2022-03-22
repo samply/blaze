@@ -39,7 +39,7 @@
         (cond->
           {:fhir/type :fhir/Bundle
            :id (iu/luid context)
-           :type #fhir/code"history"
+           :type #fhir/code "history"
            :total (type/->UnsignedInt total)
            :link []
            :entry

@@ -4,6 +4,7 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.fhir.structure-definition-repo]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [is deftest]]

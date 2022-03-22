@@ -60,8 +60,8 @@
   (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [clock]}
                      mem-node-system]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
-      [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
-      [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]]]
+      [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code "male"}]
+      [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code "female"}]]]
     (let [context {:db (d/db node)
                    :now (now clock)
                    :library (compile-library node)
@@ -88,7 +88,7 @@
   (testing "match"
     (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [clock]}
                        mem-node-system]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]]]
       (let [db (d/db node)
             patient (d/resource-handle db "Patient" "0")
             context {:db db

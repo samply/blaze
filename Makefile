@@ -8,7 +8,10 @@ lint-root:
 
 lint: $(MODULES) lint-root
 
-test-root:
+prep:
+	clojure -X:deps prep
+
+test-root: prep
 	clojure -M:test --profile :ci
 
 test: $(MODULES) test-root
@@ -20,7 +23,7 @@ clean-root:
 
 clean: $(MODULES) clean-root
 
-uberjar:
+uberjar: prep
 	clojure -X:depstar uberjar :jar target/blaze-standalone.jar
 
 outdated:
@@ -29,4 +32,4 @@ outdated:
 deps-tree:
 	clojure -Stree
 
-.PHONY: $(MODULES) lint-root lint test-root test test-coverage clean-root clean uberjar outdated deps-tree
+.PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root clean uberjar outdated deps-tree

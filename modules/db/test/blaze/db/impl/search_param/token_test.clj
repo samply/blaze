@@ -91,8 +91,8 @@
              #fhir/CodeableConcept
                  {:coding
                   [#fhir/Coding
-                      {:system #fhir/uri"system-171339"
-                       :code #fhir/code"code-171327"}]}}
+                      {:system #fhir/uri "system-171339"
+                       :code #fhir/code "code-171327"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
@@ -154,7 +154,7 @@
              #fhir/CodeableConcept
                  {:coding
                   [#fhir/Coding
-                      {:code #fhir/code"code-134035"}]}}
+                      {:code #fhir/code "code-134035"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
@@ -200,7 +200,7 @@
              #fhir/CodeableConcept
                  {:coding
                   [#fhir/Coding
-                      {:system #fhir/uri"system-171339"}]}}
+                      {:system #fhir/uri "system-171339"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1]]
             (search-param/index-entries
@@ -227,7 +227,7 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-                 {:system #fhir/uri"system-123000"
+                 {:system #fhir/uri "system-123000"
                   :value "value-123005"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
@@ -332,7 +332,7 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-                 {:system #fhir/uri"system-140316"}]}
+                 {:system #fhir/uri "system-140316"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (search-param/index-entries
@@ -442,8 +442,8 @@
                        #fhir/CodeableConcept
                            {:coding
                             [#fhir/Coding
-                                {:system #fhir/uri"system-103824"
-                                 :code #fhir/code"code-103812"}]}}}
+                                {:system #fhir/uri "system-103824"
+                                 :code #fhir/code "code-103812"}]}}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
@@ -503,8 +503,8 @@
             {:fhir/type :fhir/Encounter :id "id-105153"
              :class
              #fhir/Coding
-                 {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
-                  :code #fhir/code"AMB"}}
+                 {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                  :code #fhir/code "AMB"}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
@@ -646,7 +646,7 @@
 
         (testing "with literal reference"
           (let [observation {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                             :subject #fhir/Reference {:reference "Patient/0"}}]
             (is (= ["0"] (compartment-ids subject-param observation)))))
 
         (testing "without reference"
@@ -655,12 +655,12 @@
 
         (testing "with reference without reference value"
           (let [observation {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:display "foo"}}]
+                             :subject #fhir/Reference {:display "foo"}}]
             (is (empty? (compartment-ids subject-param observation)))))
 
         (testing "with absolute reference"
           (let [observation {:fhir/type :fhir/Observation :id "0"
-                             :subject #fhir/Reference{:reference "http://server.org/Patient/0"}}]
+                             :subject #fhir/Reference {:reference "http://server.org/Patient/0"}}]
             (is (empty? (compartment-ids subject-param observation)))))))
 
     (testing "Condition"
@@ -668,7 +668,7 @@
 
         (testing "with literal reference"
           (let [condition {:fhir/type :fhir/Condition :id "0"
-                           :subject #fhir/Reference{:reference "Patient/0"}}]
+                           :subject #fhir/Reference {:reference "Patient/0"}}]
             (is (= ["0"] (compartment-ids patient-param condition)))))
 
         (testing "without reference"
@@ -677,10 +677,10 @@
 
         (testing "with reference without reference value"
           (let [condition {:fhir/type :fhir/Condition :id "0"
-                           :subject #fhir/Reference{:display "foo"}}]
+                           :subject #fhir/Reference {:display "foo"}}]
             (is (empty? (compartment-ids patient-param condition)))))
 
         (testing "with absolute reference"
           (let [condition {:fhir/type :fhir/Condition :id "0"
-                           :subject #fhir/Reference{:reference "http://server.org/Patient/0"}}]
+                           :subject #fhir/Reference {:reference "http://server.org/Patient/0"}}]
             (is (empty? (compartment-ids patient-param condition)))))))))

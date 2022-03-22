@@ -5,9 +5,6 @@
   blaze/executor
   {:local/root "../executor"}
 
-  blaze/fhir-structure
-  {:local/root "../fhir-structure"}
-
   integrant/integrant
   {:git/url "https://github.com/weavejester/integrant.git"
    :git/sha "32a46f5dca8a6b563a6dddf88bec887be3201b08"}

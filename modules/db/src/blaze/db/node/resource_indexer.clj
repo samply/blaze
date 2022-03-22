@@ -97,7 +97,7 @@
   [search-param-registry last-updated res [hash resource]]
   (log/trace "Index resource with hash" (bs/hex hash))
   (with-open [_ (prom/timer duration-seconds "calc-search-params")]
-    (let [resource (update resource :meta (fnil assoc #fhir/Meta{})
+    (let [resource (update resource :meta (fnil assoc #fhir/Meta {})
                            :lastUpdated last-updated)
           compartments (linked-compartments search-param-registry hash resource)]
       (transduce

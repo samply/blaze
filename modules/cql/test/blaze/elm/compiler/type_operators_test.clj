@@ -76,8 +76,8 @@
               {:path "url"
                :scope "R"
                :type "Property"}]
-      {:fhir/type :fhir/Measure :url #fhir/uri"a"}
-      #fhir/uri"a"
+      {:fhir/type :fhir/Measure :url #fhir/uri "a"}
+      #fhir/uri "a"
 
       #elm/as ["{http://hl7.org/fhir}url"
               {:path "address"

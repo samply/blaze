@@ -3,6 +3,7 @@
     [blaze.fhir-client :as fhir-client]
     [blaze.fhir-client-spec]
     [blaze.fhir.spec.type]
+    [blaze.fhir.structure-definition-repo]
     [blaze.test-util :as tu :refer [given-failed-future]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -84,8 +85,8 @@
                                              "Patient" "0"
                                               {:http-client http-client})
         ::anom/category := ::anom/not-found
-        [:fhir/issues 0 :severity] := #fhir/code"error"
-        [:fhir/issues 0 :code] := #fhir/code"not-found")))
+        [:fhir/issues 0 :severity] := #fhir/code "error"
+        [:fhir/issues 0 :code] := #fhir/code "not-found")))
 
   (testing "Invalid JSON response"
     (let [http-client (HttpClientMock.)]
@@ -158,7 +159,7 @@
   (testing "with meta versionId"
     (let [http-client (HttpClientMock.)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
+                    :meta #fhir/Meta {:versionId #fhir/id"180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -173,7 +174,7 @@
   (testing "stale update"
     (let [http-client (HttpClientMock.)
           resource {:fhir/type :fhir/Patient :id "0"
-                    :meta #fhir/Meta{:versionId #fhir/id"180040"}}]
+                    :meta #fhir/Meta {:versionId #fhir/id"180040"}}]
 
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
@@ -189,7 +190,7 @@
                                                resource
                                                {:http-client http-client})
         ::anom/category := ::anom/conflict
-        [:fhir/issues 0 :severity] := #fhir/code"error"))))
+        [:fhir/issues 0 :severity] := #fhir/code "error"))))
 
 
 (deftest execute-type-get-test

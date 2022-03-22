@@ -46,28 +46,28 @@
 (defn- scoring-concept [code]
   (type/codeable-concept
     {:coding
-     [(type/coding
-        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-scoring"
+     [(type/map->Coding
+        {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/measure-scoring"
          :code (type/code code)})]}))
 
 
 (defn- population-concept [code]
   (type/codeable-concept
     {:coding
-     [(type/coding
-        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+     [(type/map->Coding
+        {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/measure-population"
          :code (type/code code)})]}))
 
 
 (defn- cql-expression [expr]
   {:fhir/type :fhir/Expression
-   :language #fhir/code"text/cql"
+   :language #fhir/code "text/cql"
    :expression expr})
 
 
 (def library-content
   #fhir/Attachment
-      {:contentType #fhir/code"text/cql"
+      {:contentType #fhir/code "text/cql"
        :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
 
 
@@ -173,8 +173,8 @@
           (is (= :fhir/OperationOutcome (:fhir/type body)))
 
           (given (-> body :issue first)
-            :severity := #fhir/code"error"
-            :code := #fhir/code"not-found"))))
+            :severity := #fhir/code "error"
+            :code := #fhir/code "not-found"))))
 
     (testing "on type endpoint"
       (with-handler [handler]
@@ -191,8 +191,8 @@
           (is (= :fhir/OperationOutcome (:fhir/type body)))
 
           (given (-> body :issue first)
-            :severity := #fhir/code"error"
-            :code := #fhir/code"not-found")))))
+            :severity := #fhir/code "error"
+            :code := #fhir/code "not-found")))))
 
   (testing "Returns Gone on Deleted Resource"
     (with-handler [handler]
@@ -209,13 +209,13 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"deleted"))))
+          :severity := #fhir/code "error"
+          :code := #fhir/code "deleted"))))
 
   (testing "measure without library"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri"url-182126"}]]]
+               :url #fhir/uri "url-182126"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -229,15 +229,15 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"not-supported"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "not-supported"
           :diagnostics := "Missing primary library. Currently only CQL expressions together with one primary library are supported."
           [:expression first] := "Measure.library"))))
 
   (testing "measure with non-existing library"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri"url-181501"
+               :url #fhir/uri "url-181501"
                :library [#fhir/canonical"library-url-094115"]}]]]
 
       (let [{:keys [status body]}
@@ -252,18 +252,18 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           :diagnostics := "Can't find the library with canonical URI `library-url-094115`."
           [:expression first] := "Measure.library"))))
 
   (testing "missing content in library"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri"url-182104"
+               :url #fhir/uri "url-182104"
                :library [#fhir/canonical"library-url-094115"]}]
         [:put {:fhir/type :fhir/Library :id "0"
-               :url #fhir/uri"library-url-094115"}]]]
+               :url #fhir/uri "library-url-094115"}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -277,20 +277,20 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           :diagnostics := "Missing content in library with id `0`."
           [:expression first] := "Library.content"))))
 
   (testing "non text/cql content type"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri"url-182051"
+               :url #fhir/uri "url-182051"
                :library [#fhir/canonical"library-url-094115"]}]
         [:put {:fhir/type :fhir/Library :id "0"
-               :url #fhir/uri"library-url-094115"
+               :url #fhir/uri "library-url-094115"
                :content
-               [#fhir/Attachment{:contentType #fhir/code"text/plain"}]}]]]
+               [#fhir/Attachment {:contentType #fhir/code "text/plain"}]}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -304,20 +304,20 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           :diagnostics := "Non `text/cql` content type of `text/plain` of first attachment in library with id `0`."
           [:expression first] := "Library.content[0].contentType"))))
 
   (testing "missing data in library content"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri"url-182039"
+               :url #fhir/uri "url-182039"
                :library [#fhir/canonical"library-url-094115"]}]
         [:put {:fhir/type :fhir/Library :id "0"
-               :url #fhir/uri"library-url-094115"
+               :url #fhir/uri "library-url-094115"
                :content
-               [#fhir/Attachment{:contentType #fhir/code"text/cql"}]}]]]
+               [#fhir/Attachment {:contentType #fhir/code "text/cql"}]}]]]
 
       (let [{:keys [status body]}
             @(handler
@@ -331,8 +331,8 @@
         (is (= :fhir/OperationOutcome (:fhir/type body)))
 
         (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
+          :severity := #fhir/code "error"
+          :code := #fhir/code "value"
           :diagnostics := "Missing embedded data of first attachment in library with id `0`."
           [:expression first] := "Library.content[0].data"))))
 
@@ -343,7 +343,7 @@
           (with-handler [handler]
             [[[:put
                {:fhir/type :fhir/Measure :id "0"
-                :url #fhir/uri"url-181501"
+                :url #fhir/uri "url-181501"
                 :library [#fhir/canonical"library-url-094115"]
                 :scoring (scoring-concept "cohort")
                 :group
@@ -354,15 +354,15 @@
                     :criteria (cql-expression "InInitialPopulation")}]}]}]
               [:put
                {:fhir/type :fhir/Library :id "0"
-                :url #fhir/uri"library-url-094115"
+                :url #fhir/uri "library-url-094115"
                 :content
                 [#fhir/Attachment
-                    {:contentType #fhir/code"text/cql"
+                    {:contentType #fhir/code "text/cql"
                      :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
               [:put
                {:fhir/type :fhir/Patient
                 :id "0"
-                :gender #fhir/code"male"}]]]
+                :gender #fhir/code "male"}]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -377,27 +377,27 @@
               (given body
                 :fhir/type := :fhir/MeasureReport
                 [:extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
-                [:extension 0 :value :code] := #fhir/code"s"
-                [:extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
+                [:extension 0 :value :code] := #fhir/code "s"
+                [:extension 0 :value :system] := #fhir/uri "http://unitsofmeasure.org"
                 [:extension 0 :value :unit] := "s"
                 [:extension 0 :value :value] :instanceof BigDecimal
-                :status := #fhir/code"complete"
-                :type := #fhir/code"summary"
+                :status := #fhir/code "complete"
+                :type := #fhir/code "summary"
                 :measure := #fhir/canonical"url-181501"
                 :date := #fhir/dateTime"1970-01-01T00:00:00Z"
                 [:period :start] := #fhir/dateTime"2014"
                 [:period :end] := #fhir/dateTime"2015"
                 [:group 0 :population 0 :code :coding 0 :system]
-                := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+                := #fhir/uri "http://terminology.hl7.org/CodeSystem/measure-population"
                 [:group 0 :population 0 :code :coding 0 :code]
-                := #fhir/code"initial-population"
+                := #fhir/code "initial-population"
                 [:group 0 :population 0 :count] := 1))))
 
         (testing "cohort scoring with stratifiers"
           (with-handler [handler]
             [[[:put
                {:fhir/type :fhir/Measure :id "0"
-                :url #fhir/uri"url-181501"
+                :url #fhir/uri "url-181501"
                 :library [#fhir/canonical"library-url-094115"]
                 :scoring (scoring-concept "cohort")
                 :group
@@ -408,24 +408,24 @@
                     :criteria (cql-expression "InInitialPopulation")}]
                   :stratifier
                   [{:fhir/type :fhir.Measure.group/stratifier
-                    :code #fhir/CodeableConcept{:text "gender"}
+                    :code #fhir/CodeableConcept {:text "gender"}
                     :criteria (cql-expression "Gender")}]}]}]
               [:put
                {:fhir/type :fhir/Library :id "0"
-                :url #fhir/uri"library-url-094115"
+                :url #fhir/uri "library-url-094115"
                 :content [library-content]}]
               [:put
                {:fhir/type :fhir/Patient
                 :id "0"
-                :gender #fhir/code"male"}]
+                :gender #fhir/code "male"}]
               [:put
                {:fhir/type :fhir/Patient
                 :id "1"
-                :gender #fhir/code"female"}]
+                :gender #fhir/code "female"}]
               [:put
                {:fhir/type :fhir/Patient
                 :id "2"
-                :gender #fhir/code"female"}]]]
+                :gender #fhir/code "female"}]]]
 
             (let [{:keys [status body]}
                   @(handler
@@ -439,38 +439,38 @@
 
               (given body
                 :fhir/type := :fhir/MeasureReport
-                :status := #fhir/code"complete"
-                :type := #fhir/code"summary"
+                :status := #fhir/code "complete"
+                :type := #fhir/code "summary"
                 :measure := #fhir/canonical"url-181501"
                 :date := #fhir/dateTime"1970-01-01T00:00:00Z"
                 [:period :start] := #fhir/dateTime"2014"
                 [:period :end] := #fhir/dateTime"2015"
                 [:group 0 :population 0 :code :coding 0 :system]
-                := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+                := #fhir/uri "http://terminology.hl7.org/CodeSystem/measure-population"
                 [:group 0 :population 0 :code :coding 0 :code]
-                := #fhir/code"initial-population"
+                := #fhir/code "initial-population"
                 [:group 0 :population 0 :count] := 3
                 [:group 0 :stratifier 0 :code 0 :text] := "gender"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :system]
-                := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+                := #fhir/uri "http://terminology.hl7.org/CodeSystem/measure-population"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :code]
-                := #fhir/code"initial-population"
+                := #fhir/code "initial-population"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 2
                 [:group 0 :stratifier 0 :stratum 0 :value :text] := "female"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :system]
-                := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+                := #fhir/uri "http://terminology.hl7.org/CodeSystem/measure-population"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :code]
-                := #fhir/code"initial-population"
+                := #fhir/code "initial-population"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 1
                 [:group 0 :stratifier 0 :stratum 1 :value :text] := "male")))))
 
       (testing "as POST request"
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Measure :id "0"
-                   :url #fhir/uri"url-181501"
+                   :url #fhir/uri "url-181501"
                    :library [#fhir/canonical"library-url-094115"]}]
             [:put {:fhir/type :fhir/Library :id "0"
-                   :url #fhir/uri"library-url-094115"
+                   :url #fhir/uri "library-url-094115"
                    :content [library-content]}]]]
 
           (let [{:keys [status headers body]}
@@ -497,8 +497,8 @@
 
             (given body
               :fhir/type := :fhir/MeasureReport
-              :status := #fhir/code"complete"
-              :type := #fhir/code"summary"
+              :status := #fhir/code "complete"
+              :type := #fhir/code "summary"
               :measure := #fhir/canonical"url-181501"
               :date := #fhir/dateTime"1970-01-01T00:00:00Z"
               [:period :start] := #fhir/dateTime"2014"
@@ -508,10 +508,10 @@
       (testing "as GET request"
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Measure :id "0"
-                   :url #fhir/uri"url-181501"
+                   :url #fhir/uri "url-181501"
                    :library [#fhir/canonical"library-url-094115"]}]
             [:put {:fhir/type :fhir/Library :id "0"
-                   :url #fhir/uri"library-url-094115"
+                   :url #fhir/uri "library-url-094115"
                    :content [library-content]}]]]
 
           (let [{:keys [status body]}
@@ -526,8 +526,8 @@
 
             (given body
               :fhir/type := :fhir/MeasureReport
-              :status := #fhir/code"complete"
-              :type := #fhir/code"summary"
+              :status := #fhir/code "complete"
+              :type := #fhir/code "summary"
               :measure := #fhir/canonical"url-181501"
               :date := #fhir/dateTime"1970-01-01T00:00:00Z"
               [:period :start] := #fhir/dateTime"2014"
@@ -536,10 +536,10 @@
       (testing "as POST request"
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Measure :id "0"
-                   :url #fhir/uri"url-181501"
+                   :url #fhir/uri "url-181501"
                    :library [#fhir/canonical"library-url-094115"]}]
             [:put {:fhir/type :fhir/Library :id "0"
-                   :url #fhir/uri"library-url-094115"
+                   :url #fhir/uri "library-url-094115"
                    :content [library-content]}]]]
 
           (let [{:keys [status headers body]}
@@ -564,8 +564,8 @@
 
             (given body
               :fhir/type := :fhir/MeasureReport
-              :status := #fhir/code"complete"
-              :type := #fhir/code"summary"
+              :status := #fhir/code "complete"
+              :type := #fhir/code "summary"
               :measure := #fhir/canonical"url-181501"
               :date := #fhir/dateTime"1970-01-01T00:00:00Z"
               [:period :start] := #fhir/dateTime"2014"

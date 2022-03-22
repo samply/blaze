@@ -246,8 +246,8 @@
     {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
      :value
      (type/map->Quantity
-       {:code #fhir/code"s"
-        :system #fhir/uri"http://unitsofmeasure.org"
+       {:code #fhir/code "s"
+        :system #fhir/uri "http://unitsofmeasure.org"
         :unit "s"
         :value (bigdec duration)})}))
 
@@ -261,12 +261,12 @@
   (cond->
     {:fhir/type :fhir/MeasureReport
      :extension [(eval-duration duration)]
-     :status #fhir/code"complete"
+     :status #fhir/code "complete"
      :type
      (case report-type
-       "population" #fhir/code"summary"
-       "subject-list" #fhir/code"subject-list"
-       "subject" #fhir/code"individual")
+       "population" #fhir/code "summary"
+       "subject-list" #fhir/code "subject-list"
+       "subject" #fhir/code "individual")
      :measure (type/canonical measure-ref)
      :date now
      :period

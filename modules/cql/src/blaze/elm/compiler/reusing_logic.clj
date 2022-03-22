@@ -13,8 +13,7 @@
     [blaze.elm.quantity :as quantity]
     [blaze.fhir.spec.type :as type])
   (:import
-    [blaze.fhir.spec.type Period]
-    [java.util Map]))
+    [blaze.fhir.spec.type Period Quantity]))
 
 
 (set! *warn-on-reflection* true)
@@ -84,14 +83,14 @@
 
 
 (extend-protocol ToQuantity
-  Map
+  Quantity
   (-to-quantity [m]
-    (when-let [value (:value m)]
-      (quantity/quantity value (or (-> m :code type/value) "1"))))
+    (when-let [value (.-value m)]
+      (quantity/quantity value (or (-> (.-code m) type/value) "1"))))
 
   Object
   (-to-quantity [x]
-    (throw-anom (ba/fault (format "Can't convert `%s` to quantity." x))))
+    (throw-anom (ba/incorrect (format "Can't convert `%s` to quantity." x))))
 
   nil
   (-to-quantity [_]))

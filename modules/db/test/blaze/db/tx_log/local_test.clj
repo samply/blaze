@@ -11,6 +11,7 @@
     [blaze.db.tx-log.spec]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]

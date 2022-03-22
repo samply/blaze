@@ -6,6 +6,7 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.fhir.structure-definition-repo]
     [blaze.interaction.history.type]
     [blaze.interaction.history.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -123,21 +124,21 @@
         (testing "the bundle id is an LUID"
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-        (is (= #fhir/code"history" (:type body)))
+        (is (= #fhir/code "history" (:type body)))
 
         (is (= #fhir/unsignedInt 1 (:total body)))
 
         (testing "has self link"
-          (is (= #fhir/uri"base-url-144600/Patient/_history?__t=1&__page-t=1&__page-id=0"
+          (is (= #fhir/uri "base-url-144600/Patient/_history?__t=1&__page-t=1&__page-id=0"
                  (link-url body "self"))))
 
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))
 
         (given (-> body :entry first)
-          :fullUrl := #fhir/uri"base-url-144600/Patient/0"
-          [:request :method] := #fhir/code"PUT"
-          [:request :url] := #fhir/uri"/Patient/0"
+          :fullUrl := #fhir/uri "base-url-144600/Patient/0"
+          [:request :method] := #fhir/code "PUT"
+          [:request :url] := #fhir/uri "/Patient/0"
           [:resource :id] := "0"
           [:resource :fhir/type] := :fhir/Patient
           [:resource :meta :versionId] := #fhir/id"1"

@@ -62,7 +62,7 @@
                 (let [conformed (if-let [sp (lookup k)] (sp/conform* sp v k settings) v)]
                   (if (s/invalid? conformed)
                     ::s/invalid
-                    (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks)))
+                    (recur ret ks)))
                 (recur ret ks))
               ret))
           ::s/invalid))

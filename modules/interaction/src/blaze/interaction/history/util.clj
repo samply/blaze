@@ -58,9 +58,9 @@
 
 (defn- method [resource]
   ((-> resource meta :blaze.db/op)
-   {:create #fhir/code"POST"
-    :put #fhir/code"PUT"
-    :delete #fhir/code"DELETE"}))
+   {:create #fhir/code "POST"
+    :put #fhir/code "PUT"
+    :delete #fhir/code "DELETE"}))
 
 
 (defn- url [context type id resource]

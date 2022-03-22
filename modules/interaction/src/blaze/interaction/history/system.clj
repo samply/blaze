@@ -43,7 +43,7 @@
         (cond->
           {:fhir/type :fhir/Bundle
            :id (iu/luid context)
-           :type #fhir/code"history"
+           :type #fhir/code "history"
            :total (type/->UnsignedInt total)
            :entry
            (mapv (partial history-util/build-entry context) paged-versions)}

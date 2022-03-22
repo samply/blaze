@@ -64,14 +64,14 @@
   {:resource
    {:fhir/type :fhir/Library
     :id "1"
-    :url #fhir/uri"0"
+    :url #fhir/uri "0"
     :content
     [(type/map->Attachment
-       {:contentType #fhir/code"text/cql"
+       {:contentType #fhir/code "text/cql"
         :data (type/->Base64Binary (b64-encode query))})]}
    :request
-   {:method #fhir/code"PUT"
-    :url #fhir/uri"Library/1"}})
+   {:method #fhir/code "PUT"
+    :url #fhir/uri "Library/1"}})
 
 
 (defn- read-data [name]
@@ -125,20 +125,20 @@
 (defn- population-concept [code]
   (type/codeable-concept
     {:coding
-     [(type/coding
-        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+     [(type/map->Coding
+        {:system #fhir/uri "http://terminology.hl7.org/CodeSystem/measure-population"
          :code (type/code code)})]}))
 
 
 (defn- cql-expression [expr]
   {:fhir/type :fhir/Expression
-   :language #fhir/code"text/cql"
+   :language #fhir/code "text/cql"
    :expression expr})
 
 
 (def library-content
   #fhir/Attachment
-      {:contentType #fhir/code"text/cql"
+      {:contentType #fhir/code "text/cql"
        :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
 
 
@@ -146,7 +146,7 @@
   (testing "missing criteria"
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
-      [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+      [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [library-content]}]]]
 
       (let [db (d/db node)
@@ -172,7 +172,7 @@
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+        [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                :content [library-content]}]]]
 
       (let [db (d/db node)
@@ -191,21 +191,21 @@
                     :subject-ref "0"}]
         (given (:resource (evaluate-measure context measure params))
           :fhir/type := :fhir/MeasureReport
-          :status := #fhir/code"complete"
-          :type := #fhir/code"individual"
+          :status := #fhir/code "complete"
+          :type := #fhir/code "individual"
           :measure := #fhir/canonical"/0"
           [:subject :reference] := "Patient/0"
           :date := #system/date-time"1970-01-01T00:00Z"
-          :period := #fhir/Period{:start #system/date-time"2000"
+          :period := #fhir/Period {:start #system/date-time"2000"
                                   :end #system/date-time"2020"}
-          [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+          [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
           [:group 0 :population 0 :count] := 1)))
 
     (testing "with stratifiers"
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
-          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code "male"}]
+          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [library-content]}]]]
 
         (let [db (d/db node)
@@ -221,21 +221,21 @@
                            :criteria (cql-expression "InInitialPopulation")}]
                          :stratifier
                          [{:fhir/type :fhir.Measure.group/stratifier
-                           :code #fhir/CodeableConcept{:text "gender"}
+                           :code #fhir/CodeableConcept {:text "gender"}
                            :criteria (cql-expression "Gender")}]}]}
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
           (given (:resource (evaluate-measure context measure params))
             :fhir/type := :fhir/MeasureReport
-            :status := #fhir/code"complete"
-            :type := #fhir/code"individual"
+            :status := #fhir/code "complete"
+            :type := #fhir/code "individual"
             :measure := #fhir/canonical"/0"
             [:subject :reference] := "Patient/0"
             :date := #system/date-time"1970-01-01T00:00Z"
-            :period := #fhir/Period{:start #system/date-time"2000"
+            :period := #fhir/Period {:start #system/date-time"2000"
                                     :end #system/date-time"2020"}
-            [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+            [:group 0 :population 0 :code :coding 0 :code] := #fhir/code "initial-population"
             [:group 0 :population 0 :count] := 1
             [:group 0 :stratifier 0 :code 0 :text] := "gender"
             [:group 0 :stratifier 0 :stratum 0 :value :text] := "male"
@@ -244,7 +244,7 @@
     (testing "invalid subject"
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
-        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [library-content]}]]]
 
         (let [db (d/db node)
@@ -268,7 +268,7 @@
     (testing "missing subject"
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
-        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+        [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [library-content]}]]]
 
         (let [db (d/db node)
@@ -293,7 +293,7 @@
       (with-system-data
         [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri "0"
                  :content [library-content]}]]
          [[:delete "Patient" "0"]]]
 
@@ -363,7 +363,7 @@
       (is (s/valid? :blaze/resource (:resource result))))
 
     (testing "MeasureReport type is `summary`"
-      (is (= #fhir/code"summary" (-> result :resource :type))))
+      (is (= #fhir/code "summary" (-> result :resource :type))))
 
     (given (first-stratifier-strata result)
       [0 :value :text] := "10"
@@ -376,7 +376,7 @@
       (is (s/valid? :blaze/resource (:resource result))))
 
     (testing "MeasureReport type is `subject-list`"
-      (is (= #fhir/code"subject-list" (-> result :resource :type))))
+      (is (= #fhir/code "subject-list" (-> result :resource :type))))
 
     (given (first-stratifier-strata result)
       [0 :value :text] := "10"
@@ -389,8 +389,8 @@
     (given (:tx-ops result)
       [1 1 :fhir/type] := :fhir/List
       [1 1 :id] := "AAAAAAAAAAAAAAAB"
-      [1 1 :status] := #fhir/code"current"
-      [1 1 :mode] := #fhir/code"working"
+      [1 1 :status] := #fhir/code "current"
+      [1 1 :mode] := #fhir/code "working"
       [1 1 :entry 0 :item :reference] := "Patient/0"
       [2 1 :fhir/type] := :fhir/List
       [2 1 :id] := "AAAAAAAAAAAAAAAC"
