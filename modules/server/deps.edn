@@ -37,7 +37,7 @@
     {:local/root "../test-util"}
 
     cloverage/cloverage
-    {:mvn/version "1.2.2"}
+    {:mvn/version "1.2.3"}
 
     hato/hato
     {:mvn/version "0.8.2"}}

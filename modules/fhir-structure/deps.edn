@@ -76,7 +76,7 @@
     {:local/root "../test-util"}
 
     cloverage/cloverage
-    {:mvn/version "1.2.2"}
+    {:mvn/version "1.2.3"}
 
     org.openjdk.jol/jol-core
     {:mvn/version "0.16"}}
