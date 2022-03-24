@@ -6,7 +6,7 @@
   {:mvn/version "0.3.3"}
 
   com.taoensso/timbre
-  {:mvn/version "5.1.2"}
+  {:mvn/version "5.2.1"}
 
   integrant/integrant
   {:git/url "https://github.com/weavejester/integrant.git"
