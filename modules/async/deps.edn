@@ -6,7 +6,7 @@
   {:local/root "../executor"}
 
   com.taoensso/timbre
-  {:mvn/version "5.1.2"}}
+  {:mvn/version "5.2.1"}}
 
  :aliases
  {:test
