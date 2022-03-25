@@ -30,7 +30,7 @@
     {:local/root "../db-stub"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.63.998"}}
+    {:mvn/version "1.64.1010"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -42,7 +42,7 @@
     {:local/root "../db-stub"}
 
     cloverage/cloverage
-    {:mvn/version "1.2.2"}}
+    {:mvn/version "1.2.3"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".+spec"]}}}

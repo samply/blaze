@@ -95,7 +95,7 @@ Blaze exposes a Prometheus monitoring endpoint on port 8081 per default. The ide
 The current used bytes of the various generations of the Java heap is provided in the `jvm_memory_pool_bytes_used` metric. Of that generations, the `G1 Old Gen` is the most important, because cached resources will end there. One can use the following command line to fetch all metrics and grep out the right line:
 
 ```sh
-$ curl -s http://localhost:8081/metrics | grep jvm_memory_pool_bytes_used | grep Old
+curl -s http://localhost:8081/metrics | grep jvm_memory_pool_bytes_used | grep Old
 jvm_memory_pool_bytes_used{pool="G1 Old Gen",} 8.325004288E9
 ```
 
@@ -106,7 +106,7 @@ Here the value `8.325004288E9` is in bytes and `E9` means GB. So we have 8.3 GB 
 The resource cache metrics can be found under keys starting with `blaze_db_cache`. Among others there is the `resource-cache` and the `resource-handle-cache`. The metrics are a bit more difficult to interpret without a Prometheus/Grafana infrastructure, because they are counters starting Blaze startup. So after a longer runtime, one has to calculate relative differences here. But right after the start of Blaze, the numbers are very useful on its own. 
 
 ```sh
-$ curl -s http://localhost:8081/metrics | grep blaze_db_cache | grep resource-cache
+curl -s http://localhost:8081/metrics | grep blaze_db_cache | grep resource-cache
 blaze_db_cache_hits_total{name="resource-cache",} 869000.0
 blaze_db_cache_loads_total{name="resource-cache",} 13214.0
 blaze_db_cache_load_failures_total{name="resource-cache",} 0.0

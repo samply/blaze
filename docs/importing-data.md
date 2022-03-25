@@ -1,6 +1,6 @@
 # Importing Data
 
-In order to use Blaze for queries, you have to import your data. Although you can use the full functionality of the [FHIR RESTful API](https://www.hl7.org/fhir/http.html) available under `http://localhost:8080/fhir` to create resources, the easiest way is to download [blazectl](https://github.com/samply/blazectl/releases/tag/v0.8.1) to upload [bundles](https://www.hl7.org/fhir/bundle.html).
+In order to use Blaze for queries, you have to import your data. Although you can use the full functionality of the [FHIR RESTful API](https://www.hl7.org/fhir/http.html) available under `http://localhost:8080/fhir` to create resources, the easiest way is to download [blazectl](https://github.com/samply/blazectl) to upload [bundles](https://www.hl7.org/fhir/bundle.html).
 
 First you should test connectivity by counting already available resources in Blaze which should be zero:
 

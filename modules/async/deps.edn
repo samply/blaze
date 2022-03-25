@@ -6,7 +6,7 @@
   {:local/root "../executor"}
 
   com.taoensso/timbre
-  {:mvn/version "5.1.2"}}
+  {:mvn/version "5.2.1"}}
 
  :aliases
  {:test
@@ -17,7 +17,7 @@
     {:local/root "../test-util"}
 
     lambdaisland/kaocha
-    {:mvn/version "1.63.998"}}
+    {:mvn/version "1.64.1010"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -29,6 +29,6 @@
     {:local/root "../test-util"}
 
     cloverage/cloverage
-    {:mvn/version "1.2.2"}}
+    {:mvn/version "1.2.3"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}
