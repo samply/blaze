@@ -206,7 +206,7 @@
       tid->idx (int-array (map first kvs))
       idx->type (object-array (map second kvs))]
   (defn tid->type [tid]
-    (let [idx (Arrays/binarySearch tid->idx ^int tid)]
+    (let [idx (Arrays/binarySearch tid->idx (int tid))]
       (when (nat-int? idx)
         (aget idx->type idx)))))
 
@@ -365,8 +365,8 @@
 
   Long
   (-number [val]
-    (let [mask (bit-shift-right ^long val 63)
-          val (- (Math/abs ^long val) (bit-and 1 mask))]
+    (let [mask (bit-shift-right (.longValue val) 63)
+          val (- (abs (.longValue val)) (bit-and 1 mask))]
       (condp > val
         (bit-shift-left 1 3)
         (-> (bb/allocate 1)

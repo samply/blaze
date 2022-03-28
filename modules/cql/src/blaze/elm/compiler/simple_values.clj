@@ -3,6 +3,7 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
+  (:refer-clojure :exclude [parse-long])
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]
@@ -20,15 +21,15 @@
 
 (defn- parse-int [s]
   (try
-    (long (Integer/parseInt s))
-    (catch Exception _
+    (.longValue (Integer/parseInt s))
+    (catch NumberFormatException _
       (throw-anom (ba/incorrect (format "Incorrect integer literal `%s`." s))))))
 
 
 (defn- parse-long [s]
   (try
     (Long/parseLong s)
-    (catch Exception _
+    (catch NumberFormatException _
       (throw-anom (ba/incorrect (format "Incorrect long literal `%s`." s))))))
 
 
@@ -39,7 +40,7 @@
       (case value-type-ns
         "urn:hl7-org:elm-types:r1"
         (case value-type-name
-          "Boolean" (Boolean/valueOf ^String value)
+          "Boolean" (parse-boolean value)
           ;; TODO: maybe we can even use integers here
           "Integer" (parse-int value)
           "Long" (parse-long value)

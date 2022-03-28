@@ -36,13 +36,14 @@
     (is (= ::db @((db/wrap-db handler ::node) {:blaze/db ::db}))))
 
   (testing "with invalid vid"
-    (with-redefs
-      [d/sync
-       (fn [node]
-         (assert (= ::node node))
-         (ac/completed-future ::db))]
+    (doseq [invalid-vid ["a" "-1"]]
+      (with-redefs
+        [d/sync
+         (fn [node]
+           (assert (= ::node node))
+           (ac/completed-future ::db))]
 
-      (is (= ::db @((db/wrap-db handler ::node) {:path-params {:vid "a"}})))))
+        (is (= ::db @((db/wrap-db handler ::node) {:path-params {:vid invalid-vid}}))))))
 
   (testing "uses the vid for database value acquisition"
     (with-redefs

@@ -10,7 +10,8 @@
   (:refer-clojure :exclude [min max])
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.elm.protocols :as p])
+    [blaze.elm.protocols :as p]
+    [clojure.math :as math])
   (:import
     [java.math RoundingMode]))
 
@@ -134,7 +135,7 @@
 (extend-protocol p/Exp
   Number
   (exp [x]
-    (-> (BigDecimal/valueOf (Math/exp x)) constrain-scale check-overflow)))
+    (-> (BigDecimal/valueOf (math/exp x)) constrain-scale check-overflow)))
 
 
 ;; 16.6. Floor
@@ -159,7 +160,7 @@
   Number
   (log [x base]
     (when (and (pos? x) (some? base) (pos? base) (not (== 1 base)))
-      (-> (BigDecimal/valueOf (/ (Math/log x) (Math/log base)))
+      (-> (BigDecimal/valueOf (/ (math/log x) (math/log base)))
           constrain-scale
           check-overflow))))
 
@@ -175,7 +176,7 @@
   Number
   (ln [x]
     (when (pos? x)
-      (-> (BigDecimal/valueOf (Math/log x)) constrain-scale check-overflow))))
+      (-> (BigDecimal/valueOf (math/log x)) constrain-scale check-overflow))))
 
 
 ;; 16.13. Modulo
@@ -204,7 +205,7 @@
   BigDecimal
   (power [x exp]
     (when exp
-      (-> (BigDecimal/valueOf (Math/pow x exp))
+      (-> (BigDecimal/valueOf (math/pow x exp))
           constrain-scale
           check-overflow))))
 
@@ -233,7 +234,7 @@
   BigDecimal
   (round [x precision]
     (let [new-scale (or precision 0)]
-      (.setScale x ^int new-scale RoundingMode/HALF_UP))))
+      (.setScale x (int new-scale) RoundingMode/HALF_UP))))
 
 
 ;; 16.20. Subtract

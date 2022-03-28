@@ -30,8 +30,7 @@
   start with a database as-of `page-t`."
   {:arglists '([query-params])}
   [{v "__page-t"}]
-  (when-let [t (some #(when (re-matches #"\d+" %) %) (fhir-util/to-seq v))]
-    (Long/parseLong t)))
+  (some fhir-util/parse-nat-long (fhir-util/to-seq v)))
 
 
 (defn nav-url

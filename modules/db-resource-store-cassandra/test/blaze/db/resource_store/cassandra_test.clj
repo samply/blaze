@@ -35,6 +35,7 @@
     [java.util.concurrent CompletionStage]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (tu/init-fhir-specs)
 (log/set-level! :trace)
@@ -323,7 +324,7 @@
 (defn endpoint [host port]
   (reify EndPoint
     (resolve [_]
-      (InetSocketAddress. ^String host ^int port))))
+      (InetSocketAddress. ^String host (int port)))))
 
 
 (defn node [endpoint]

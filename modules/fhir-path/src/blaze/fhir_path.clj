@@ -532,10 +532,10 @@
   fhirpathParser$NumberLiteralContext
   (-compile [ctx]
     (let [text (.getText (.getSymbol (.NUMBER ctx)))]
-      (try
-        [(Integer/parseInt text)]
-        (catch Exception _
-          [(BigDecimal. text)]))))
+      [(try
+         (Integer/parseInt text)
+         (catch NumberFormatException _
+           (BigDecimal. text)))]))
 
   fhirpathParser$DateLiteralContext
   (-compile [ctx]

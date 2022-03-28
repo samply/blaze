@@ -25,15 +25,10 @@
 
 (defn from-byte-array
   {:inline
-   (fn
-     ([bs]
-      `(ByteString/copyFrom ~(with-meta bs {:tag 'bytes})))
-     ([bs offset size]
-      `(ByteString/copyFrom ~(with-meta bs {:tag 'bytes}) ~offset ~size)))}
-  ([bs]
-   (ByteString/copyFrom ^bytes bs))
-  ([bs offset size]
-   (ByteString/copyFrom ^bytes bs offset size)))
+   (fn [bs]
+     `(ByteString/copyFrom ~(with-meta bs {:tag 'bytes})))}
+  [bs]
+  (ByteString/copyFrom ^bytes bs))
 
 
 (defn from-utf8-string
@@ -45,7 +40,8 @@
 (defn from-string
   {:inline
    (fn [s charset]
-     `(ByteString/copyFrom ~(if (symbol? s) (with-meta s {:tag `String}) s) ~charset))}
+     `(ByteString/copyFrom ~(if (symbol? s) (with-meta s {:tag `String}) s)
+                           ~charset))}
   [s charset]
   (ByteString/copyFrom ^String s ^Charset charset))
 
@@ -57,11 +53,12 @@
      ([byte-buffer]
       `(ByteString/copyFrom ~(with-meta byte-buffer {:tag `ByteBuffer})))
      ([byte-buffer size]
-      `(ByteString/copyFrom ~(with-meta byte-buffer {:tag `ByteBuffer}) (int ~size))))}
+      `(ByteString/copyFrom ~(with-meta byte-buffer {:tag `ByteBuffer})
+                            (int ~size))))}
   ([byte-buffer]
    (ByteString/copyFrom ^ByteBuffer byte-buffer))
   ([byte-buffer size]
-   (ByteString/copyFrom ^ByteBuffer byte-buffer ^int size)))
+   (ByteString/copyFrom ^ByteBuffer byte-buffer (int size))))
 
 
 (defn from-hex [s]

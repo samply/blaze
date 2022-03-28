@@ -23,6 +23,7 @@
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :refer [given-failed-future with-system]]
+    [clojure.math :as math]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -50,13 +51,13 @@
   (reify
     rs/ResourceStore
     (-get [_ hash]
-      (Thread/sleep (long (* 100 (Math/random))))
+      (Thread/sleep (long (* 100 (math/random))))
       (rs/get resource-store hash))
     (-multi-get [_ hashes]
-      (Thread/sleep (long (* 100 (Math/random))))
+      (Thread/sleep (long (* 100 (math/random))))
       (rs/multi-get resource-store hashes))
     (-put [_ entries]
-      (Thread/sleep (long (* 100 (Math/random))))
+      (Thread/sleep (long (* 100 (math/random))))
       (rs/put! resource-store entries))))
 
 

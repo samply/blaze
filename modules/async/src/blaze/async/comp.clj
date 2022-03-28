@@ -5,6 +5,7 @@
   (:refer-clojure :exclude [future])
   (:require
     [blaze.anomaly :as ba]
+    [clojure.math :as math]
     [cognitect.anomalies :as anom]
     [taoensso.timbre :as log])
   (:import
@@ -328,7 +329,7 @@
       (exceptionally-compose
         (fn [e]
           (if (and (retryable? e) (< num-retry max-retries))
-            (let [delay (* (long (Math/pow 2.0 num-retry)) 100)]
+            (let [delay (* (long (math/pow 2.0 num-retry)) 100)]
               (log/warn (format "Wait %d ms before retrying an action." delay))
               (-> (future)
                   (complete-on-timeout!

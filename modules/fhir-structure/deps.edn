@@ -7,8 +7,8 @@
   blaze/byte-string
   {:local/root "../byte-string"}
 
-  clojure.java-time/clojure.java-time
-  {:mvn/version "0.3.3"}
+  blaze/module-base
+  {:local/root "../module-base"}
 
   com.github.ben-manes.caffeine/caffeine
   {:mvn/version "3.0.6"}

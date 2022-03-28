@@ -1,3 +1,6 @@
 {:deps
- {clojure.java-time/clojure.java-time
-  {:mvn/version "0.3.3"}}}
+ {
+  ;; switch to original dependency of https://github.com/dm3/clojure.java-time/issues/84 is solved
+  clojure.java-time/clojure.java-time
+  {:git/url "https://github.com/bevuta/clojure.java-time.git"
+   :git/sha "bf11ca522c83f39a32bf02e490241a4b9ce499b5"}}}
