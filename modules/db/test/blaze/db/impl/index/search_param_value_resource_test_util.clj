@@ -1,7 +1,7 @@
 (ns blaze.db.impl.index.search-param-value-resource-test-util
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]))

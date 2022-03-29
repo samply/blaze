@@ -38,6 +38,7 @@ jobs:
         module:
         - anomaly
         - async
+        - byte-buffer
         - cassandra
         - coll
         - cql

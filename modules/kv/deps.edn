@@ -1,5 +1,8 @@
 {:deps
- {blaze/module-base
+ {blaze/byte-buffer
+  {:local/root "../byte-buffer"}
+
+  blaze/module-base
   {:local/root "../module-base"}
 
   com.google.guava/guava

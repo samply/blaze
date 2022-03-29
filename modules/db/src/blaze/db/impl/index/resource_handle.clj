@@ -1,7 +1,7 @@
 (ns blaze.db.impl.index.resource-handle
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.fhir.spec.type.protocols :as p]))
 

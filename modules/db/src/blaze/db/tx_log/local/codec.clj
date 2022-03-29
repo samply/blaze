@@ -1,7 +1,7 @@
 (ns blaze.db.tx-log.local.codec
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [jsonista.core :as j]
     [taoensso.timbre :as log])

@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [hash])
   (:require
     [blaze.async.comp :as ac]
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.cassandra :as cass]
     [blaze.cassandra-spec]
@@ -60,7 +61,7 @@
   (reify Row
     (^ByteBuffer getByteBuffer [_ ^int i]
       (assert (= idx i))
-      (ByteBuffer/wrap bytes))))
+      (bb/wrap bytes))))
 
 
 (defn resultset-with [row]
@@ -335,7 +336,7 @@
   (testing "execute error"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
-          encoded-resource (ByteBuffer/wrap (fhir-spec/unform-cbor resource))
+          encoded-resource (bb/wrap (fhir-spec/unform-cbor resource))
           session
           (reify CqlSession
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
@@ -360,7 +361,7 @@
   (testing "DriverTimeoutException"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
-          encoded-resource (ByteBuffer/wrap (fhir-spec/unform-cbor resource))
+          encoded-resource (bb/wrap (fhir-spec/unform-cbor resource))
           session
           (reify CqlSession
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
@@ -389,7 +390,7 @@
   (testing "WriteTimeoutException"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
-          encoded-resource (ByteBuffer/wrap (fhir-spec/unform-cbor resource))
+          encoded-resource (bb/wrap (fhir-spec/unform-cbor resource))
           session
           (reify CqlSession
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
@@ -418,7 +419,7 @@
   (testing "success"
     (let [resource {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate resource)
-          encoded-resource (ByteBuffer/wrap (fhir-spec/unform-cbor resource))
+          encoded-resource (bb/wrap (fhir-spec/unform-cbor resource))
           session
           (reify CqlSession
             (^PreparedStatement prepare [_ ^SimpleStatement statement]

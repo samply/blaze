@@ -4,6 +4,7 @@
     [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.async.comp :as ac]
     [blaze.async.flow :as flow]
+    [blaze.byte-buffer :as bb]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [clojure.java.io :as io]
@@ -12,7 +13,6 @@
     [hato.middleware :as hm]
     [taoensso.timbre :as log])
   (:import
-    [java.nio ByteBuffer]
     [java.nio.channels SeekableByteChannel]
     [java.nio.file Path Files StandardOpenOption]
     [java.util.concurrent Flow$Subscriber Flow$Subscription]))
@@ -167,7 +167,7 @@
     (let [file (.resolve ^Path dir ^String (filename-fn x))]
       (swap! filenames conj (.toAbsolutePath file))
       (with-open [bc (new-file-byte-channel file)]
-        (.write bc (ByteBuffer/wrap (fhir-spec/unform-json x))))))
+        (.write bc (bb/wrap (fhir-spec/unform-json x))))))
   (onError [_ e]
     (flow/cancel! subscription)
     (ac/complete-exceptionally! future e))

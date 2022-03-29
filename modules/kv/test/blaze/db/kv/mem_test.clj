@@ -1,6 +1,7 @@
 (ns blaze.db.kv.mem-test
   (:require
     [blaze.anomaly :as ba]
+    [blaze.byte-buffer :as bb]
     [blaze.db.kv :as kv]
     [blaze.db.kv-spec]
     [blaze.db.kv.mem]
@@ -11,9 +12,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
-    [taoensso.timbre :as log])
-  (:import
-    [java.nio ByteBuffer]))
+    [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
@@ -56,9 +55,9 @@
 
 
 (defn- bb [& bytes]
-  (doto (ByteBuffer/allocateDirect (count bytes))
-    (.put (byte-array bytes))
-    (.flip)))
+  (-> (bb/allocate-direct (count bytes))
+      (bb/put-byte-array! (byte-array bytes))
+      bb/flip!))
 
 
 (deftest init-test
@@ -397,30 +396,30 @@
 
       (testing "errors on invalid iterator"
         (is (ba/fault? (ba/try-anomaly (kv/key iter))))
-        (is (ba/fault? (ba/try-anomaly (kv/key! iter (ByteBuffer/allocateDirect 0))))))
+        (is (ba/fault? (ba/try-anomaly (kv/key! iter (bb/allocate-direct 0))))))
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 1)]
+        (let [buf (bb/allocate-direct 1)]
           (is (= 2 (kv/key! iter buf)))
-          (is (= 0x01 (.get buf)))))
+          (is (= 0x01 (bb/get-byte! buf)))))
 
       (testing "sets the limit of a bigger buffer to two"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 3)]
+        (let [buf (bb/allocate-direct 3)]
           (is (= 2 (kv/key! iter buf)))
-          (is (= 2 (.limit buf)))))
+          (is (= 2 (bb/limit buf)))))
 
       (testing "writes the key at position"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 3)]
-          (.position buf 1)
+        (let [buf (bb/allocate-direct 3)]
+          (bb/set-position! buf 1)
           (is (= 2 (kv/key! iter buf)))
-          (is (= 1 (.position buf)))
-          (is (= 3 (.limit buf)))
-          (is (= 0x00 (.get buf 0)))
-          (is (= 0x01 (.get buf)))
-          (is (= 0x02 (.get buf))))))))
+          (is (= 1 (bb/position buf)))
+          (is (= 3 (bb/limit buf)))
+          (is (= 0x00 (bb/get-byte! buf 0)))
+          (is (= 0x01 (bb/get-byte! buf)))
+          (is (= 0x02 (bb/get-byte! buf))))))))
 
 
 (deftest value-test
@@ -432,30 +431,30 @@
 
       (testing "errors on invalid iterator"
         (is (ba/fault? (ba/try-anomaly (kv/value iter))))
-        (is (ba/fault? (ba/try-anomaly (kv/value! iter (ByteBuffer/allocateDirect 0))))))
+        (is (ba/fault? (ba/try-anomaly (kv/value! iter (bb/allocate-direct 0))))))
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 1)]
+        (let [buf (bb/allocate-direct 1)]
           (is (= 2 (kv/value! iter buf)))
-          (is (= 0x01 (.get buf)))))
+          (is (= 0x01 (bb/get-byte! buf)))))
 
       (testing "sets the limit of a bigger buffer to two"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 3)]
+        (let [buf (bb/allocate-direct 3)]
           (is (= 2 (kv/value! iter buf)))
-          (is (= 2 (.limit buf)))))
+          (is (= 2 (bb/limit buf)))))
 
       (testing "writes the value at position"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 3)]
-          (.position buf 1)
+        (let [buf (bb/allocate-direct 3)]
+          (bb/set-position! buf 1)
           (is (= 2 (kv/value! iter buf)))
-          (is (= 1 (.position buf)))
-          (is (= 3 (.limit buf)))
-          (is (= 0x00 (.get buf 0)))
-          (is (= 0x01 (.get buf)))
-          (is (= 0x02 (.get buf))))))))
+          (is (= 1 (bb/position buf)))
+          (is (= 3 (bb/limit buf)))
+          (is (= 0x00 (bb/get-byte! buf 0)))
+          (is (= 0x01 (bb/get-byte! buf)))
+          (is (= 0x02 (bb/get-byte! buf))))))))
 
 
 (deftest different-column-families-test

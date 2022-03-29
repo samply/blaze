@@ -11,8 +11,8 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]

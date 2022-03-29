@@ -1,6 +1,6 @@
 (ns blaze.db.impl.index.type-stats-test-util
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]))
 
 

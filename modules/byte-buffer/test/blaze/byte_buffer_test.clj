@@ -1,6 +1,6 @@
-(ns blaze.db.impl.byte-buffer-test
+(ns blaze.byte-buffer-test
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.byte-buffer :as bb]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 

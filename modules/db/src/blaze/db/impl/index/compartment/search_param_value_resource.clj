@@ -1,8 +1,8 @@
 (ns blaze.db.impl.index.compartment.search-param-value-resource
   "Functions for accessing the CompartmentSearchParamValueResource index."
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]

@@ -1,7 +1,7 @@
 (ns blaze.db.impl.iterators-test
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]

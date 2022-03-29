@@ -5,7 +5,7 @@
    * TypeAsOf
    * SystemAsOf"
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.system-as-of :as sao]
