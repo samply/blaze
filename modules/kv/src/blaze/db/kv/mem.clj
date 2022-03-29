@@ -11,6 +11,7 @@
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
+    [blaze.db.kv KvIterator]
     [java.util Arrays Comparator]
     [java.lang AutoCloseable]))
 
@@ -49,70 +50,70 @@
 
 
 (defn- check-valid [iter]
-  (when-not (kv/-valid iter)
+  (when-not (kv/valid? iter)
     (throw-anom iterator-invalid-anom)))
 
 
-(deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
-  kv/KvIterator
-  (-valid [_]
+(deftype MemKvIterator [db cursor ^:volatile-mutable ^boolean closed?]
+  KvIterator
+  (valid [_]
     (when closed? (throw-anom iterator-closed-anom))
     (some? (@cursor :first)))
 
-  (-seek-to-first [_]
+  (seekToFirst [_]
     (when closed? (throw-anom iterator-closed-anom))
     (reset! cursor {:first (first db) :rest (rest db)}))
 
-  (-seek-to-last [_]
+  (seekToLast [_]
     (when closed? (throw-anom iterator-closed-anom))
     (reset! cursor {:first (last db) :rest nil}))
 
-  (-seek [_ k]
+  (seek [_ k]
     (when closed? (throw-anom iterator-closed-anom))
     (let [[x & xs] (subseq db >= k)]
       (reset! cursor {:first x :rest xs})))
 
-  (-seek-buffer [iter kb]
+  (seekBuffer [iter kb]
     (let [k (byte-array (bb/remaining kb))]
       (bb/copy-into-byte-array! kb k)
-      (kv/-seek iter k)))
+      (.seek iter k)))
 
-  (-seek-for-prev [_ k]
+  (seekForPrev [_ k]
     (when closed? (throw-anom iterator-closed-anom))
     (let [[x & xs] (rsubseq db <= k)]
       (reset! cursor {:first x :rest xs})))
 
-  (-next [iter]
+  (next [iter]
     (check-valid iter)
     (swap! cursor (fn [{[x & xs] :rest}] {:first x :rest xs})))
 
-  (-prev [iter]
+  (prev [iter]
     (check-valid iter)
     (swap! cursor #(prev db %)))
 
-  (-key [_]
+  (key [_]
     (if-let [first (@cursor :first)]
       (copy (key first))
       (throw-anom iterator-invalid-anom)))
 
-  (-key [_ buf]
+  (key [_ buf]
     (if-let [first (@cursor :first)]
       (put buf (key first))
       (throw-anom iterator-invalid-anom)))
 
-  (-value [_]
+  (value [_]
     (if-let [first (@cursor :first)]
       (copy (val first))
       (throw-anom iterator-invalid-anom)))
 
-  (-value [_ buf]
+  (value [_ buf]
     (if-let [first (@cursor :first)]
       (put buf (val first))
       (throw-anom iterator-invalid-anom)))
 
   AutoCloseable
   (close [_]
-    (set! closed? true)))
+    (set! closed? (.booleanValue true))))
 
 
 (defn- column-family-not-found-msg [column-family]

@@ -33,7 +33,8 @@
 (defn- key-reader [iter kb]
   (fn [_]
     (bb/clear! kb)
-    (kv/key! iter kb)))
+    (kv/key! iter kb)
+    nil))
 
 
 (defn- focus-id!

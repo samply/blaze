@@ -3,6 +3,7 @@
     [blaze.db.kv :as kv]
     [clojure.spec.alpha :as s])
   (:import
+    [blaze.db.kv KvIterator]
     [java.lang AutoCloseable]))
 
 
@@ -16,7 +17,7 @@
 
 
 (s/def :blaze.db/kv-iterator
-  (s/and #(satisfies? kv/KvIterator %)
+  (s/and #(instance? KvIterator %)
          #(instance? AutoCloseable %)))
 
 

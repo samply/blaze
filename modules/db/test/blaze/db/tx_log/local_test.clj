@@ -23,6 +23,7 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
+    [blaze.db.kv KvIterator]
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.lang AutoCloseable]
     [java.time Instant]))
@@ -65,11 +66,10 @@
       (reify
         kv/KvSnapshot
         (-new-iterator [_]
-          (reify
-            kv/KvIterator
-            (-seek-to-last [_])
-            (-seek [_ _])
-            (-valid [_] false)
+          (reify KvIterator
+            (seekToLast [_])
+            (seek [_ _])
+            (valid [_] false)
             AutoCloseable
             (close [_])))
         AutoCloseable

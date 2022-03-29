@@ -7,50 +7,62 @@
     [java.lang AutoCloseable]))
 
 
-(defprotocol KvIterator
-  "A mutable iterator over a KvSnapshot."
+(set! *warn-on-reflection* true)
 
-  (-valid [iter])
 
-  (-seek-to-first [iter])
+;; A mutable iterator over a KvSnapshot.
+#_{:clj-kondo/ignore [:unused-binding]}
+(definterface KvIterator
+  (^boolean valid [])
 
-  (-seek-to-last [iter])
+  (^void seekToFirst [])
 
-  (-seek [iter target])
+  (^void seekToLast [])
 
-  (-seek-buffer [iter target])
+  (^void seek [^bytes target])
 
-  (-seek-for-prev [iter target])
+  (^void seekBuffer [^java.nio.ByteBuffer target])
 
-  (-next [iter])
+  (^void seekForPrev [^bytes target])
 
-  (-prev [iter])
+  (^void next [])
 
-  (-key [iter] [iter buf])
+  (^void prev [])
 
-  (-value [iter] [iter buf]))
+  (key [])
+
+  (^int key [^java.nio.ByteBuffer buf])
+
+  (value [])
+
+  (^int value [^java.nio.ByteBuffer buf]))
 
 
 (defn valid?
   "Returns true if `iter` is positioned at an entry."
+  {:inline (fn [iter] `(.valid ~(with-meta iter {:tag `KvIterator})))}
   [iter]
-  (-valid iter))
+  (.valid ^KvIterator iter))
 
 
 (defn seek-to-first!
   "Positions `iter` at the first entry of its source.
 
   The iterator will be valid if its source is not empty."
+  {:inline
+   (fn [iter] `(.seekToFirst ~(with-meta iter {:tag `KvIterator})))}
   [iter]
-  (-seek-to-first iter))
+  (.seekToFirst ^KvIterator iter))
 
 
 (defn seek-to-last!
   "Positions `iter` at the last entry of its source.
 
   The iterator will be valid if its source is not empty."
+  {:inline
+   (fn [iter] `(.seekToLast ~(with-meta iter {:tag `KvIterator})))}
   [iter]
-  (-seek-to-last iter))
+  (.seekToLast ^KvIterator iter))
 
 
 (defn seek!
@@ -60,8 +72,11 @@
   The `target` is a byte array describing a key or a key prefix to seek for.
 
   The iterator will be valid if its source contains a key at or past `target`."
+  {:inline
+   (fn [iter target]
+     `(.seek ~(with-meta iter {:tag `KvIterator}) ~target))}
   [iter target]
-  (-seek iter target))
+  (.seek ^KvIterator iter target))
 
 
 (defn seek-buffer!
@@ -71,8 +86,11 @@
   The `target` is a byte buffer describing a key or a key prefix to seek for.
 
   The iterator will be valid if its source contains a key at or past `target`."
+  {:inline
+   (fn [iter target]
+     `(.seekBuffer ~(with-meta iter {:tag `KvIterator}) ~target))}
   [iter target]
-  (-seek-buffer iter target))
+  (.seekBuffer ^KvIterator iter target))
 
 
 (defn seek-for-prev!
@@ -82,24 +100,29 @@
   The `target` is a byte array describing a key or a key prefix to seek for.
 
   The iterator will be valid if its source contains a key at or before `target`."
+  {:inline
+   (fn [iter target]
+     `(.seekForPrev ~(with-meta iter {:tag `KvIterator}) ~target))}
   [iter target]
-  (-seek-for-prev iter target))
+  (.seekForPrev ^KvIterator iter target))
 
 
 (defn next!
   "Moves `iter` to the next entry of its source.
 
   Requires `iter` to be valid."
+  {:inline (fn [iter] `(.next ~(with-meta iter {:tag `KvIterator})))}
   [iter]
-  (-next iter))
+  (.next ^KvIterator iter))
 
 
 (defn prev!
   "Moves this iterator to the previous entry.
 
   Requires `iter` to be valid."
+  {:inline (fn [iter] `(.prev ~(with-meta iter {:tag `KvIterator})))}
   [iter]
-  (-prev iter))
+  (.prev ^KvIterator iter))
 
 
 (defn key
@@ -107,7 +130,7 @@
 
   Requires `iter` to be valid."
   [iter]
-  (-key iter))
+  (.key ^KvIterator iter))
 
 
 (defn key!
@@ -119,8 +142,9 @@
   Returns the size of the actual key. If the key is greater than the length of
   `buf`, then it indicates that the size of the `buf` is insufficient and a
   partial result is put."
+  {:inline (fn [iter buf] `(.key ~(with-meta iter {:tag `KvIterator}) ~buf))}
   [iter buf]
-  (-key iter buf))
+  (.key ^KvIterator iter buf))
 
 
 (defn value
@@ -128,7 +152,7 @@
 
   Requires `iter` to be valid."
   [iter]
-  (-value iter))
+  (.value ^KvIterator iter))
 
 
 (defn value!
@@ -140,8 +164,9 @@
   Returns the size of the actual value. If the value is greater than the length
   of `buf`, then it indicates that the size of the `buf` is insufficient and a
   partial result is put."
+  {:inline (fn [iter buf] `(.value ~(with-meta iter {:tag `KvIterator}) ~buf))}
   [iter buf]
-  (-value iter buf))
+  (.value ^KvIterator iter buf))
 
 
 (defprotocol KvSnapshot
