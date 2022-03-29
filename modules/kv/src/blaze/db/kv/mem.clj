@@ -4,6 +4,7 @@
   It uses sorted maps with byte array keys and values."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.byte-buffer :as bb]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [clojure.spec.alpha :as s]
@@ -11,7 +12,6 @@
     [taoensso.timbre :as log])
   (:import
     [java.util Arrays Comparator]
-    [java.nio ByteBuffer]
     [java.lang AutoCloseable]))
 
 
@@ -24,14 +24,14 @@
 
 (defn- put
   "Does the same as RockDB does when filling a byte buffer."
-  [^ByteBuffer buf ^bytes bs]
-  (let [pos (.position buf)
-        limit (.limit buf)
-        length (Math/min (unchecked-subtract-int limit pos) (alength bs))]
-    (.put buf bs 0 length)
-    (.position buf pos)
-    (.limit buf (+ pos length))
-    (alength bs)))
+  [buf bs]
+  (let [pos (bb/position buf)
+        limit (bb/limit buf)
+        length (Math/min (unchecked-subtract-int limit pos) (alength ^bytes bs))]
+    (bb/put-byte-array! buf bs 0 length)
+    (bb/set-position! buf pos)
+    (bb/set-limit! buf (unchecked-add-int pos length))
+    (alength ^bytes bs)))
 
 
 (defn- prev [db {x :first}]
@@ -64,8 +64,8 @@
       (reset! cursor {:first x :rest xs})))
 
   (-seek-buffer [iter kb]
-    (let [k (byte-array (.remaining ^ByteBuffer kb))]
-      (.get ^ByteBuffer kb k)
+    (let [k (byte-array (bb/remaining kb))]
+      (bb/copy-into-byte-array! kb k)
       (kv/-seek iter k)))
 
   (-seek-for-prev [_ k]

@@ -1,7 +1,7 @@
 (ns blaze.db.impl.codec
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.fhir.spec.type.system])
   (:import
     [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth

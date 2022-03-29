@@ -1,9 +1,9 @@
 (ns blaze.db.impl.index.compartment.resource
   "Functions for accessing the CompartmentResource index."
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]))

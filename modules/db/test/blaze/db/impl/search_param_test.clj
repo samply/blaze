@@ -1,6 +1,6 @@
 (ns blaze.db.impl.search-param-test
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
     [blaze.db.impl.index.search-param-value-resource-spec]

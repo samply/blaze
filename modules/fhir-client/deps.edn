@@ -2,6 +2,9 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/byte-buffer
+  {:local/root "../byte-buffer"}
+
   blaze/http-client
   {:local/root "../http-client"}
 

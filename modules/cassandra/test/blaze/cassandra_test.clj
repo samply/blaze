@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
+    [blaze.byte-buffer :as bb]
     [blaze.cassandra :as cass]
     [blaze.cassandra-spec]
     [blaze.test-util :refer [satisfies-prop]]
@@ -92,7 +93,7 @@
   (reify Row
     (^ByteBuffer getByteBuffer [_ ^int i]
       (assert (= idx i))
-      (ByteBuffer/wrap (byte-array bytes)))))
+      (bb/wrap (byte-array bytes)))))
 
 
 (defn resultset-with [row]

@@ -1,7 +1,7 @@
 (ns blaze.db.impl.search-param.date-test
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string-spec]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.search-param-value-resource-spec]
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]

@@ -1,6 +1,6 @@
 (ns blaze.db.impl.index.resource-handle-spec
   (:require
-    [blaze.db.impl.byte-buffer :refer [byte-buffer?]]
+    [blaze.byte-buffer :refer [byte-buffer?]]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.kv-spec]

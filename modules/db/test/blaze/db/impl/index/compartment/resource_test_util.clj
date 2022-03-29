@@ -1,7 +1,7 @@
 (ns blaze.db.impl.index.compartment.resource-test-util
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.test-util :as tu]
     [blaze.db.impl.iterators :as i]

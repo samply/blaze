@@ -17,10 +17,10 @@
   free of side effects by creating an exclusive key-value store iterator before
   calling one of the functions and closing it after the collection is consumed."
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.arrays-support :as arrays-support]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.kv :as kv])
   (:import
     [clojure.lang IReduceInit]))

@@ -1,7 +1,7 @@
 (ns blaze.db.impl.search-param.util
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.string :as str])

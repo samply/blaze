@@ -1,8 +1,8 @@
 (ns blaze.db.impl.search-param.composite-test
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.byte-string-spec]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]

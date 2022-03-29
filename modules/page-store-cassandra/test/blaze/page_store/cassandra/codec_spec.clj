@@ -1,14 +1,13 @@
 (ns blaze.page-store.cassandra.codec-spec
   (:require
     [blaze.anomaly-spec]
+    [blaze.byte-buffer :as bb]
     [blaze.page-store :as page-store]
     [blaze.page-store.cassandra.codec :as codec]
     [blaze.page-store.spec]
     [blaze.spec]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom])
-  (:import
-    [java.nio ByteBuffer]))
+    [cognitect.anomalies :as anom]))
 
 
 (s/fdef codec/decode
@@ -18,4 +17,4 @@
 
 (s/fdef codec/encode
   :args (s/cat :clauses :blaze.db.query/clauses)
-  :ret #(instance? ByteBuffer %))
+  :ret bb/byte-buffer?)
