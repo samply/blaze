@@ -102,7 +102,6 @@
     (map #(vswap! buf-state read-key! %))))
 
 
-
 (defn- key-decoder [decode]
   (comp
     (key-reader (decode))

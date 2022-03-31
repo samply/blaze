@@ -9,9 +9,8 @@
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv])
   (:import
-    [com.github.benmanes.caffeine.cache Cache]
-    [com.google.common.primitives Ints]
-    [java.util.function Function]))
+    [blaze.db.impl.index.resource_handle ResourceHandle]
+    [com.google.common.primitives Ints]))
 
 
 (set! *warn-on-reflection* true)
@@ -379,59 +378,6 @@
     (i/kvs! raoi (decoder) (start-key tid id start-t))))
 
 
-(defn- resource-handle** [raoi tb kb vb tid id t]
-  ;; fill target buffer
-  (bb/clear! tb)
-  (bb/put-int! tb tid)
-  (bb/put-byte-string! tb id)
-  (bb/put-long! tb (codec/descending-long t))
-  ;; flip target buffer to be ready for seek
-  (bb/flip! tb)
-  (kv/seek-buffer! raoi tb)
-  (when (kv/valid? raoi)
-    ;; read key
-    (bb/clear! kb)
-    (kv/key! raoi kb)
-    ;; we have to check that we are still on target, because otherwise we
-    ;; would find the next resource
-    ;; focus target buffer on tid and id
-    (bb/rewind! tb)
-    (bb/set-limit! tb (unchecked-subtract-int (bb/limit tb) codec/t-size))
-    ;; focus key buffer on tid and id
-    (bb/set-limit! kb (unchecked-subtract-int (bb/limit kb) codec/t-size))
-    (when (= tb kb)
-      ;; focus key buffer on t
-      (let [limit (bb/limit kb)]
-        (bb/set-position! kb limit)
-        (bb/set-limit! kb (unchecked-add-int limit codec/t-size)))
-      ;; read value
-      (bb/clear! vb)
-      (kv/value! raoi vb)
-      ;; create resource handle
-      (rh/resource-handle
-        tid
-        (codec/id-string id)
-        (codec/descending-long (bb/get-long! kb))
-        vb))))
-
-
-;; For performance reasons, we use that special Key class instead of a a simple
-;; triple vector
-(deftype Key [^long tid ^Object id ^long t]
-  Object
-  (equals [_ x]
-    (and (instance? Key x)
-         (= tid (.-tid ^Key x))
-         (.equals id (.-id ^Key x))
-         (= t (.-t ^Key x))))
-  (hashCode [_]
-    (-> tid
-        (unchecked-multiply-int 31)
-        (unchecked-add-int (.hashCode id))
-        (unchecked-multiply-int 31)
-        (unchecked-add-int t))))
-
-
 (defn resource-handle
   "Returns a function which can be called with a `tid`, an `id` and an optional
   `t` which will lookup the resource handle in `raoi` using `rh-cache` as cache.
@@ -439,19 +385,46 @@
   The `t` is the default if `t` isn't given at the returned function.
 
   The returned function can't be called concurrently."
-  [rh-cache raoi t]
+  [_rh-cache raoi t]
   (let [tb (bb/allocate-direct max-key-size)
         kb (bb/allocate-direct max-key-size)
-        vb (bb/allocate-direct value-size)
-        rh (reify Function
-             (apply [_ key]
-               (resource-handle** raoi tb kb vb (.-tid ^Key key)
-                                  (.-id ^Key key) (.-t ^Key key))))]
+        vb (bb/allocate-direct value-size)]
     (fn resource-handle
       ([tid id]
        (resource-handle tid id t))
       ([tid id t]
-       (.get ^Cache rh-cache (Key. tid id t) rh)))))
+       ;; fill target buffer
+       (bb/clear! tb)
+       (bb/put-int! tb tid)
+       (bb/put-byte-string! tb id)
+       (bb/put-long! tb (codec/descending-long t))
+       ;; flip target buffer to be ready for seek
+       (bb/flip! tb)
+       (kv/seek-buffer! raoi tb)
+       (when (kv/valid? raoi)
+         ;; read key
+         (bb/clear! kb)
+         (kv/key! raoi kb)
+         ;; we have to check that we are still on target, because otherwise we
+         ;; would find the next resource
+         ;; focus target buffer on tid and id
+         (bb/rewind! tb)
+         (let [t-start (unchecked-subtract-int (bb/limit tb) codec/t-size)
+               mismatch (bb/mismatch tb kb)]
+           (when (or (neg? mismatch) (< t-start mismatch))
+             ;; read value
+             (bb/clear! vb)
+             (kv/value! raoi vb)
+             ;; create resource handle
+             (let [hash (bs/from-byte-buffer vb codec/hash-size)
+                   state (bb/get-long! vb)]
+               (ResourceHandle.
+                 tid
+                 (codec/id-string id)
+                 (codec/descending-long (bb/get-long! kb t-start))
+                 hash
+                 (rh/state->num-changes state)
+                 (rh/state->op state))))))))))
 
 
 (defn num-of-instance-changes
