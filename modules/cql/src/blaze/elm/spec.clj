@@ -1156,9 +1156,9 @@
              (nil? day)
              (try
                (system/date
-                 (Long/parseLong year)
-                 (Long/parseLong month)
-                 (Long/parseLong day))
+                 (parse-long year)
+                 (parse-long month)
+                 (parse-long day))
                (catch Exception _))))))))
 
 
@@ -1240,9 +1240,9 @@
              (nil? day)
              (try
                (system/date
-                 (Long/parseLong year)
-                 (Long/parseLong month)
-                 (Long/parseLong day))
+                 (parse-long year)
+                 (parse-long month)
+                 (parse-long day))
                (catch Exception _))))))))
 
 

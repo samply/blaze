@@ -6,7 +6,7 @@
 
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
-  (:refer-clojure :exclude [get]))
+  (:refer-clojure :exclude [get abs]))
 
 
 (defprotocol StructuredType

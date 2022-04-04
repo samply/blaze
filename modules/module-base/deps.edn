@@ -2,9 +2,6 @@
  {blaze/anomaly
   {:local/root "../anomaly"}
 
-  clojure.java-time/clojure.java-time
-  {:mvn/version "0.3.3"}
-
   com.taoensso/timbre
   {:mvn/version "5.2.1"}
 

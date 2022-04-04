@@ -3,6 +3,10 @@
     [clojure.spec.alpha :as s]))
 
 
+(s/def :blaze.server/name
+  string?)
+
+
 (s/def :blaze.server/port
   (s/and nat-int? #(<= % 65535)))
 

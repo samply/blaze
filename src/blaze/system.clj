@@ -137,7 +137,8 @@
    {:registry (ig/ref :blaze.metrics/registry)}
 
    [:blaze/server :blaze.metrics/server]
-   {:port (->Cfg "METRICS_SERVER_PORT" nat-int? 8081)
+   {:name "metrics"
+    :port (->Cfg "METRICS_SERVER_PORT" nat-int? 8081)
     :handler (ig/ref :blaze.metrics/handler)
     :version (ig/ref :blaze/version)
     :min-threads 2}})

@@ -14,9 +14,7 @@
     [jepsen.generator :as gen]
     [jepsen.nemesis :as nemesis]
     [jepsen.tests :as tests]
-    [knossos.model :as model])
-  (:import
-    [java.util UUID]))
+    [knossos.model :as model]))
 
 
 (defn r [_ _]
@@ -44,7 +42,7 @@
   @(-> (fhir-client/update
          base-uri
          {:fhir/type :fhir/Observation :id "0"
-          :subject (type/map->Reference {:reference (str "Patient/" (UUID/randomUUID))})}
+          :subject (type/map->Reference {:reference (str "Patient/" (random-uuid))})}
          context)
        (ac/exceptionally (constantly nil))))
 
@@ -113,10 +111,10 @@
 
 (def cli-opts
   "Additional command line options."
-  [[nil "--id ID" "The ID of the patient to use." :default (str (UUID/randomUUID))]
+  [[nil "--id ID" "The ID of the patient to use." :default (str (random-uuid))]
    [nil "--delta-time s" "The duration between requests."
     :default 0.1
-    :parse-fn #(Double/parseDouble %)]])
+    :parse-fn parse-double]])
 
 
 (defn -main

@@ -8,7 +8,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.simple-values]
     [blaze.elm.compiler.test-util :as tu]
-    [blaze.elm.literal]
+    [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -76,9 +76,10 @@
       #elm/integer "1" 1)
 
     (testing "failure"
-      (given (ba/try-anomaly (c/compile {} #elm/integer "x"))
-        ::anom/category := ::anom/incorrect
-        ::anom/message := "Incorrect integer literal `x`.")))
+      (doseq [s ["x" "2147483649" "-2147483649"]]
+        (given (ba/try-anomaly (c/compile {} (elm/integer s)))
+          ::anom/category := ::anom/incorrect
+          ::anom/message := (format "Incorrect integer literal `%s`." s)))))
 
   (testing "Unknown Literal"
     (is (nil? (c/compile {} {:type "Literal"
