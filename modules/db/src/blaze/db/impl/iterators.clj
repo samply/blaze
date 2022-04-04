@@ -41,7 +41,8 @@
 
 
 (defn iter!
-  "Returns a reducible collection of `iter` itself.
+  "Returns a reducible collection of `iter` itself optionally starting at
+  `start-key`.
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
@@ -140,6 +141,14 @@
           (or (<= prefix-size mismatch) (neg? mismatch)))))))
 
 
+(defn- prefix-xf [prefix decode]
+  (comp
+    (key-reader (decode))
+    (comp
+      (take-while-prefix-matches prefix)
+      (map decode))))
+
+
 (defn prefix-keys!
   "Returns a reducible collection of decoded keys of `iter` starting with
   `start-key` and ending when `prefix` no longer matches.
@@ -155,12 +164,7 @@
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
   [iter prefix decode start-key]
-  (coll/eduction
-    (comp
-      (key-reader (decode))
-      (take-while-prefix-matches prefix)
-      (map decode))
-    (iter! iter start-key)))
+  (coll/eduction (prefix-xf prefix decode) (iter! iter start-key)))
 
 
 (defn prefix-keys-prev!
@@ -178,12 +182,7 @@
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
   [iter prefix decode start-key]
-  (coll/eduction
-    (comp
-      (key-reader (decode))
-      (take-while-prefix-matches prefix)
-      (map decode))
-    (iter-prev! iter start-key)))
+  (coll/eduction (prefix-xf prefix decode) (iter-prev! iter start-key)))
 
 
 (defn- read-value! [bb iter]

@@ -38,6 +38,13 @@
     TickerType/BLOCK_CACHE_DATA_HIT))
 
 
+(def ^:private block-cache-data-add-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_data_add_total"
+    "Returns the number of data blocks added to block cache."
+    TickerType/BLOCK_CACHE_DATA_ADD))
+
+
 (def ^:private block-cache-data-insert-bytes-total
   (counter-metric
     "blaze_rocksdb_block_cache_data_insert_bytes_total"
@@ -48,15 +55,22 @@
 (def ^:private block-cache-index-miss-total
   (counter-metric
     "blaze_rocksdb_block_cache_index_miss_total"
-    "Returns the number of times cache miss when accessing index block from block cache."
+    "Returns the number of times cache miss occurred when accessing index block from block cache."
     TickerType/BLOCK_CACHE_INDEX_MISS))
 
 
 (def ^:private block-cache-index-hit-total
   (counter-metric
     "blaze_rocksdb_block_cache_index_hit_total"
-    "Returns the number of times cache hit when accessing index block from block cache."
+    "Returns the number of times cache hit occurred when accessing index block from block cache."
     TickerType/BLOCK_CACHE_INDEX_HIT))
+
+
+(def ^:private block-cache-index-add-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_index_add_total"
+    "Returns the number of index blocks added to block cache."
+    TickerType/BLOCK_CACHE_INDEX_ADD))
 
 
 (def ^:private block-cache-index-insert-bytes-total
@@ -64,6 +78,13 @@
     "blaze_rocksdb_block_cache_index_insert_bytes_total"
     "Returns the number of bytes of index blocks inserted into block cache."
     TickerType/BLOCK_CACHE_INDEX_BYTES_INSERT))
+
+
+(def ^:private block-cache-index-evict-bytes-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_index_evict_bytes_total"
+    "Returns the number of bytes of index blocks erased from block cache."
+    TickerType/BLOCK_CACHE_INDEX_BYTES_EVICT))
 
 
 (def ^:private block-cache-filter-miss-total
@@ -80,11 +101,25 @@
     TickerType/BLOCK_CACHE_FILTER_HIT))
 
 
+(def ^:private block-cache-filter-add-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_filter_add_total"
+    "Returns the number of filter blocks added to block cache."
+    TickerType/BLOCK_CACHE_FILTER_ADD))
+
+
 (def ^:private block-cache-filter-insert-bytes-total
   (counter-metric
     "blaze_rocksdb_block_cache_filter_insert_bytes_total"
     "Returns the number of bytes of filter blocks inserted into block cache."
     TickerType/BLOCK_CACHE_FILTER_BYTES_INSERT))
+
+
+(def ^:private block-cache-filter-evict-bytes-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_filter_evict_bytes_total"
+    "Returns the number of bytes of filter blocks erased from block cache."
+    TickerType/BLOCK_CACHE_FILTER_BYTES_EVICT))
 
 
 (def ^:private memtable-hit-total
@@ -231,13 +266,18 @@
   (metrics/collector
     [(block-cache-data-miss-total stats)
      (block-cache-data-hit-total stats)
+     (block-cache-data-add-total stats)
      (block-cache-data-insert-bytes-total stats)
      (block-cache-index-miss-total stats)
      (block-cache-index-hit-total stats)
+     (block-cache-index-add-total stats)
      (block-cache-index-insert-bytes-total stats)
+     (block-cache-index-evict-bytes-total stats)
      (block-cache-filter-miss-total stats)
      (block-cache-filter-hit-total stats)
+     (block-cache-filter-add-total stats)
      (block-cache-filter-insert-bytes-total stats)
+     (block-cache-filter-evict-bytes-total stats)
      (memtable-hit-total stats)
      (memtable-miss-total stats)
      (get-hit-l0-total stats)

@@ -21,9 +21,7 @@
                :compartment :blaze.db/compartment
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
-               :prefix-value byte-string?
-               :start-value byte-string?
-               :start-id (s/? :blaze.db/id-byte-string)))
+               :value byte-string?))
 
 
 (s/fdef c-sp-vr/encode-seek-key

@@ -19,27 +19,45 @@
   (instance? ByteString x))
 
 
-(def empty
+(def ^:const empty
   ByteString/EMPTY)
 
 
 (defn from-byte-array
+  {:inline
+   (fn
+     ([bs]
+      `(ByteString/copyFrom ~(with-meta bs {:tag 'bytes})))
+     ([bs offset size]
+      `(ByteString/copyFrom ~(with-meta bs {:tag 'bytes}) ~offset ~size)))}
   ([bs]
    (ByteString/copyFrom ^bytes bs))
   ([bs offset size]
    (ByteString/copyFrom ^bytes bs offset size)))
 
 
-(defn from-utf8-string [s]
+(defn from-utf8-string
+  {:inline (fn [s] `(ByteString/copyFromUtf8 ~s))}
+  [s]
   (ByteString/copyFromUtf8 s))
 
 
-(defn from-string [s charset]
+(defn from-string
+  {:inline
+   (fn [s charset]
+     `(ByteString/copyFrom ~(if (symbol? s) (with-meta s {:tag `String}) s) ~charset))}
+  [s charset]
   (ByteString/copyFrom ^String s ^Charset charset))
 
 
 (defn from-byte-buffer
   "Returns the remaining bytes from `byte-buffer` as byte string."
+  {:inline
+   (fn
+     ([byte-buffer]
+      `(ByteString/copyFrom ~(with-meta byte-buffer {:tag `ByteBuffer})))
+     ([byte-buffer size]
+      `(ByteString/copyFrom ~(with-meta byte-buffer {:tag `ByteBuffer}) (int ~size))))}
   ([byte-buffer]
    (ByteString/copyFrom ^ByteBuffer byte-buffer))
   ([byte-buffer size]
@@ -52,31 +70,38 @@
 
 (defn nth
   "Returns the byte at `index` from `bs`."
+  {:inline
+   (fn [bs index]
+     `(.byteAt ^ByteString ~(with-meta bs {:tag `ByteString}) (int ~index)))}
   [bs index]
   (.byteAt ^ByteString bs index))
 
 
 (defn size
-  {:inline (fn [bs] `(.size ~(vary-meta bs assoc :tag `ByteString)))}
+  {:inline (fn [bs] `(.size ~(with-meta bs {:tag `ByteString})))}
   [bs]
   (.size ^ByteString bs))
 
 
 (defn subs
+  {:inline
+   (fn
+     ([bs start]
+      `(.substring ~(with-meta bs {:tag `ByteString}) (int ~start)))
+     ([bs start end]
+      `(.substring ~(with-meta bs {:tag `ByteString}) (int ~start) (int ~end))))}
   ([bs start]
    (.substring ^ByteString bs start))
   ([bs start end]
    (.substring ^ByteString bs start end)))
 
 
-(defn concat [a b]
+(defn concat
+  {:inline
+   (fn [a b]
+     `(.concat ~(with-meta a {:tag `ByteString}) ~b))}
+  [a b]
   (.concat ^ByteString a b))
-
-
-(defn starts-with?
-  "Test whether `byte-string` starts with `prefix`."
-  [byte-string prefix]
-  (.startsWith ^ByteString byte-string prefix))
 
 
 (defn < [a b]
@@ -104,11 +129,16 @@
   (.encode (BaseEncoding/base16) (.toByteArray ^ByteString bs)))
 
 
-(defn to-byte-array [bs]
+(defn to-byte-array
+  {:inline (fn [bs] `(.toByteArray ~(with-meta bs {:tag `ByteString})))}
+  [bs]
   (.toByteArray ^ByteString bs))
 
 
-(defn to-string [bs charset]
+(defn to-string
+  {:inline
+   (fn [bs charset] `(.toString ~(with-meta bs {:tag `ByteString}) ~charset))}
+  [bs charset]
   (.toString ^ByteString bs ^Charset charset))
 
 
@@ -137,4 +167,3 @@
   (.write w "#=(com.google.protobuf.ByteString/copyFrom ")
   (print-dup (.toByteArray bs) w)
   (.write w ")"))
-

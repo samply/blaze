@@ -2,6 +2,7 @@
  {blaze.anomaly/when-ok clojure.core/let
   blaze.anomaly/if-ok clojure.core/let
   blaze.async.comp/do-sync clojure.core/let
+  blaze.db.api-test-perf/with-system-data clojure.core/with-open
   blaze.db.impl.db/with-open-coll clojure.core/with-open
   blaze.db.test-util/with-system-data clojure.core/with-open
   blaze.test-util/with-system clojure.core/with-open

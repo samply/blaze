@@ -16,6 +16,10 @@
   (s/with-gen int? gen/int))
 
 
+(s/def :blaze.db/hash-prefix
+  (s/and byte-string? #(= 4 (bs/size %))))
+
+
 (s/def :blaze.db/c-hash
   (s/with-gen int? gen/int))
 
@@ -35,6 +39,14 @@
 
 (s/def :blaze.db/id-byte-string
   (s/with-gen (s/and byte-string? #(<= 1 (bs/size %) 64)) id-gen))
+
+
+(def ^:private byte-string-gen
+  #(gen/fmap bs/from-byte-array gen2/bytes))
+
+
+(s/def :blaze.db/byte-string
+  (s/with-gen byte-string? byte-string-gen))
 
 
 (s/def :blaze.db/state

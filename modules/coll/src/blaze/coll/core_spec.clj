@@ -9,3 +9,8 @@
 (s/fdef coll/first
   :args (s/cat :coll (s/nilable #(instance? IReduceInit %)))
   :ret any?)
+
+
+(s/fdef coll/empty?
+  :args (s/cat :coll (s/nilable #(instance? IReduceInit %)))
+  :ret boolean?)

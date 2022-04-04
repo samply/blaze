@@ -16,6 +16,7 @@
 
 
 (set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 
 (defn- copy [^bytes bs]
@@ -39,27 +40,35 @@
     {:first x :rest xs}))
 
 
+(def ^:private iterator-invalid-anom
+  (ba/fault "The iterator is invalid."))
+
+
+(def ^:private iterator-closed-anom
+  (ba/fault "The iterator is closed."))
+
+
 (defn- check-valid [iter]
-  (when (not (kv/valid? iter))
-    (throw-anom (ba/fault "The iterator is invalid."))))
+  (when-not (kv/-valid iter)
+    (throw-anom iterator-invalid-anom)))
 
 
 (deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
   kv/KvIterator
   (-valid [_]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
-    (some? (:first @cursor)))
+    (when closed? (throw-anom iterator-closed-anom))
+    (some? (@cursor :first)))
 
   (-seek-to-first [_]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
+    (when closed? (throw-anom iterator-closed-anom))
     (reset! cursor {:first (first db) :rest (rest db)}))
 
   (-seek-to-last [_]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
+    (when closed? (throw-anom iterator-closed-anom))
     (reset! cursor {:first (last db) :rest nil}))
 
   (-seek [_ k]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
+    (when closed? (throw-anom iterator-closed-anom))
     (let [[x & xs] (subseq db >= k)]
       (reset! cursor {:first x :rest xs})))
 
@@ -69,7 +78,7 @@
       (kv/-seek iter k)))
 
   (-seek-for-prev [_ k]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
+    (when closed? (throw-anom iterator-closed-anom))
     (let [[x & xs] (rsubseq db <= k)]
       (reset! cursor {:first x :rest xs})))
 
@@ -81,21 +90,25 @@
     (check-valid iter)
     (swap! cursor #(prev db %)))
 
-  (-key [iter]
-    (check-valid iter)
-    (-> @cursor :first key copy))
+  (-key [_]
+    (if-let [first (@cursor :first)]
+      (copy (key first))
+      (throw-anom iterator-invalid-anom)))
 
-  (-key [iter buf]
-    (check-valid iter)
-    (put buf (-> @cursor :first key)))
+  (-key [_ buf]
+    (if-let [first (@cursor :first)]
+      (put buf (key first))
+      (throw-anom iterator-invalid-anom)))
 
-  (-value [iter]
-    (check-valid iter)
-    (-> @cursor :first val copy))
+  (-value [_]
+    (if-let [first (@cursor :first)]
+      (copy (val first))
+      (throw-anom iterator-invalid-anom)))
 
-  (-value [iter buf]
-    (check-valid iter)
-    (put buf (-> @cursor :first val)))
+  (-value [_ buf]
+    (if-let [first (@cursor :first)]
+      (put buf (val first))
+      (throw-anom iterator-invalid-anom)))
 
   AutoCloseable
   (close [_]

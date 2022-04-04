@@ -11,6 +11,10 @@
 
 
 (set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
+
+
+(defn inc-rf [sum _] (inc ^long sum))
 
 
 (defmacro with-open-coll
@@ -28,7 +32,7 @@
        (.seq ^Seqable (persistent! (.reduce this# conj! (transient [])))))
      Counted
      (count [this#]
-       (.reduce this# (fn ^long [^long sum# ~'_] (inc sum#)) 0))))
+       (.reduce this# inc-rf 0))))
 
 
 (deftype Db [node basis-t t]
@@ -37,7 +41,7 @@
     node)
 
   (-as-of [_ t]
-    (assert (<= t basis-t))
+    (assert (<= ^long t ^long basis-t))
     (Db. node basis-t t))
 
   (-basis-t [_]

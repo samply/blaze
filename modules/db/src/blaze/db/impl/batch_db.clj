@@ -120,8 +120,7 @@
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [taoi (kv/new-iterator snapshot :type-as-of-index)]
-            (.reduce (tao/type-history taoi tid start-t start-id end-t)
-                     rf init))))))
+            (reduce rf init (tao/type-history taoi tid start-t start-id end-t)))))))
 
   (-total-num-of-type-changes [_ type since]
     (let [{:keys [snapshot t]} context
@@ -143,8 +142,7 @@
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [saoi (kv/new-iterator snapshot :system-as-of-index)]
-            (.reduce (sao/system-history saoi start-t start-tid start-id end-t)
-                     rf init))))))
+            (reduce rf init (sao/system-history saoi start-t start-tid start-id end-t)))))))
 
   (-total-num-of-system-changes [_ since]
     (let [{:keys [snapshot t]} context

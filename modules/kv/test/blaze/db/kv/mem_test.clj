@@ -11,6 +11,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [taoensso.timbre :as log]))
 
@@ -74,6 +75,14 @@
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :column-families)))))
 
 
+(defn- iterator-invalid-anom? [anom]
+  (and (ba/fault? anom) (= "The iterator is invalid." (::anom/message anom))))
+
+
+(defn- iterator-closed-anom? [anom]
+  (and (ba/fault? anom) (= "The iterator is closed." (::anom/message anom))))
+
+
 (deftest valid-test
   (with-system [{kv-store ::kv/mem} system]
     (with-open [snapshot (kv/new-snapshot kv-store)
@@ -83,7 +92,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/valid? iter))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/valid? iter))))))))
 
 
 (deftest seek-to-first-test
@@ -101,7 +110,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek-to-first! iter))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-to-first! iter))))))))
 
 
 (deftest seek-to-last-test
@@ -119,7 +128,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek-to-last! iter))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-to-last! iter))))))))
 
 
 (deftest seek-test
@@ -160,7 +169,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek! iter (ba 0x00))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek! iter (ba 0x00))))))))
 
   (testing "reverse comparator"
     (with-system-data [{kv-store ::kv/mem} reverse-comparator-system]
@@ -200,7 +209,7 @@
 
         (testing "errors on closed iterator"
           (.close iter)
-          (is (ba/fault? (ba/try-anomaly (kv/seek! iter (ba 0x04))))))))))
+          (is (iterator-closed-anom? (ba/try-anomaly (kv/seek! iter (ba 0x04))))))))))
 
 
 (deftest seek-buffer-test
@@ -241,7 +250,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x00))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x00))))))))
 
   (testing "reverse comparator"
     (with-system-data [{kv-store ::kv/mem} reverse-comparator-system]
@@ -281,7 +290,7 @@
 
         (testing "errors on closed iterator"
           (.close iter)
-          (is (ba/fault? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x04))))))))))
+          (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x04))))))))))
 
 
 (deftest seek-for-prev-test
@@ -322,7 +331,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek-for-prev! iter (ba 0x00)))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-for-prev! iter (ba 0x00)))))))))
 
 
 (deftest next-test
@@ -350,10 +359,7 @@
         (is (not (kv/valid? iter))))
 
       (testing "iterator is invalid"
-        (try
-          (kv/next! iter)
-          (catch Exception e
-            (is (ba/fault? (ex-data e)))))))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/next! iter))))))))
 
 
 (deftest prev-test
@@ -381,10 +387,7 @@
         (is (not (kv/valid? iter))))
 
       (testing "iterator is invalid"
-        (try
-          (kv/prev! iter)
-          (catch Exception e
-            (is (ba/fault? (ex-data e)))))))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/prev! iter))))))))
 
 
 (deftest key-test
@@ -395,8 +398,8 @@
                 iter (kv/new-iterator snapshot)]
 
       (testing "errors on invalid iterator"
-        (is (ba/fault? (ba/try-anomaly (kv/key iter))))
-        (is (ba/fault? (ba/try-anomaly (kv/key! iter (bb/allocate-direct 0))))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/key iter))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/key! iter (bb/allocate-direct 0))))))
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
@@ -430,8 +433,8 @@
                 iter (kv/new-iterator snapshot)]
 
       (testing "errors on invalid iterator"
-        (is (ba/fault? (ba/try-anomaly (kv/value iter))))
-        (is (ba/fault? (ba/try-anomaly (kv/value! iter (bb/allocate-direct 0))))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/value iter))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/value! iter (bb/allocate-direct 0))))))
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)

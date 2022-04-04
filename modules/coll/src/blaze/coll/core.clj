@@ -20,6 +20,9 @@
   (nil? (first coll)))
 
 
+(defn inc-rf [sum _] (inc ^long sum))
+
+
 (defn eduction
   "Like `clojure.core/eduction` but faster."
   [xform coll]
@@ -33,4 +36,4 @@
       (.seq ^Seqable (persistent! (.reduce coll conj! (transient [])))))
     Counted
     (count [coll]
-      (.reduce coll (fn ^long [^long sum _] (inc sum)) 0))))
+      (.reduce coll inc-rf 0))))

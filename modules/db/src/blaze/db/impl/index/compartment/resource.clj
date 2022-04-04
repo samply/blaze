@@ -6,6 +6,7 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]))
 
 
@@ -24,16 +25,20 @@
 (defn- decode-key
   ([] (bb/allocate-direct max-key-size))
   ([buf]
-   (bb/set-position! buf (+ (bb/position buf) codec/c-hash-size))
-   (let [^long id-size (bb/size-up-to-null buf)]
+   (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/c-hash-size))
+   (let [id-size (long (bb/size-up-to-null buf))]
      (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
      (bs/from-byte-buffer buf))))
+
+
+(def ^:private remove-deleted-xf
+  (remove rh/deleted?))
 
 
 (defn- resource-handles-xf [resource-handle tid]
   (comp
     (keep #(resource-handle tid %))
-    (remove (comp #{:delete} :op))))
+    remove-deleted-xf))
 
 
 (defn- encode-seek-key
@@ -73,6 +78,9 @@
 
   Changes the state of `cri`. Consuming the collection requires exclusive
   access to `cri`. Doesn't close `cri`."
+  {:arglists
+   '([context compartment tid]
+     [context compartment tid start-id])}
   ([{:keys [cri resource-handle]} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
