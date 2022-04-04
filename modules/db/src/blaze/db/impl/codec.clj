@@ -214,11 +214,21 @@
 
 ;; ---- Identifier Functions --------------------------------------------------
 
-(defn id-byte-string [id]
+(defn id-byte-string
+  {:inline
+   (fn [id]
+     `(bs/from-string ~id StandardCharsets/ISO_8859_1))}
+  [id]
   (bs/from-string id StandardCharsets/ISO_8859_1))
 
 
-(defn id-string [id-byte-string]
+(defn id-string
+  "Converts the byte-string representation of a resource id into it's string
+  representation."
+  {:inline
+   (fn [id-byte-string]
+     `(bs/to-string ~id-byte-string StandardCharsets/ISO_8859_1))}
+  [id-byte-string]
   (bs/to-string id-byte-string StandardCharsets/ISO_8859_1))
 
 
@@ -245,18 +255,22 @@
   out a transaction every millisecond for 20 years."
   {:inline
    (fn [l]
-     `(bit-and (bit-not ~l) 0xFFFFFFFFFFFFFF))}
+     `(bit-and (bit-not (unchecked-long ~l)) 0xFFFFFFFFFFFFFF))}
   [l]
-  (bit-and (bit-not ^long l) 0xFFFFFFFFFFFFFF))
+  (bit-and (bit-not (unchecked-long l)) 0xFFFFFFFFFFFFFF))
 
 
-(defn hash-prefix [hash]
+(defn hash-prefix
+  {:inline
+   (fn [hash]
+     `(bs/subs ~hash 0 hash-prefix-size))}
+  [hash]
   (bs/subs hash 0 hash-prefix-size))
 
 
 (defn c-hash [code]
   (-> (Hashing/murmur3_32_fixed)
-      (.hashString ^String code StandardCharsets/UTF_8)
+      (.hashString code StandardCharsets/UTF_8)
       (.asInt)))
 
 
@@ -301,7 +315,7 @@
 
 (defn v-hash [value]
   (-> (Hashing/murmur3_32_fixed)
-      (.hashString ^String value StandardCharsets/UTF_8)
+      (.hashString value StandardCharsets/UTF_8)
       (.asBytes)
       bs/from-byte-array))
 
@@ -309,7 +323,7 @@
 (defn tid-id
   "Returns a byte string with `tid` followed by `id`."
   [tid id]
-  (-> (bb/allocate (+ tid-size (bs/size id)))
+  (-> (bb/allocate (unchecked-add-int tid-size (bs/size id)))
       (bb/put-int! tid)
       (bb/put-byte-string! id)
       bb/flip!
@@ -318,6 +332,9 @@
 
 (defn string
   "Returns a lexicographically sortable byte string of the `string` value."
+  {:inline
+   (fn [string]
+     `(bs/from-utf8-string ~string))}
   [string]
   (bs/from-utf8-string string))
 
@@ -512,12 +529,13 @@
 
 
 (defn date-lb-ub->lb [lb-ub]
-  (bs/subs lb-ub 0 (bs/nth lb-ub (dec (bs/size lb-ub)))))
+  (bs/subs lb-ub 0 (bs/nth lb-ub (unchecked-dec-int (bs/size lb-ub)))))
 
 
 (defn date-lb-ub->ub [lb-ub]
-  (let [lb-size-idx (dec (bs/size lb-ub))]
-    (bs/subs lb-ub (inc ^long (bs/nth lb-ub lb-size-idx)) lb-size-idx)))
+  (let [lb-size-idx (unchecked-dec-int (bs/size lb-ub))
+        start (unchecked-inc-int (int (bs/nth lb-ub lb-size-idx)))]
+    (bs/subs lb-ub start lb-size-idx)))
 
 
 (defn quantity [unit value]

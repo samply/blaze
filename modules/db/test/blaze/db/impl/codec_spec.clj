@@ -39,6 +39,11 @@
   :ret :fhir.type/name)
 
 
+(s/fdef codec/hash-prefix
+  :args (s/cat :hash :blaze.resource/hash)
+  :ret :blaze.db/hash-prefix)
+
+
 (s/fdef codec/c-hash
   :args (s/cat :code string?)
   :ret int?)

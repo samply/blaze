@@ -176,7 +176,7 @@
                       start-id)))
 
   (-compartment-keys [_ context compartment tid value]
-    (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value value))
+    (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value))
 
   (-matches? [_ context resource-handle modifier values]
     (let [c-hash (c-hash-w-modifier c-hash code modifier)]

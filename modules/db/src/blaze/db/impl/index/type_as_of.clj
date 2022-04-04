@@ -6,17 +6,19 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i])
-  (:import
-    [clojure.lang IReduceInit]))
+    [blaze.db.impl.iterators :as i]))
 
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 
+(def ^:private ^:const ^long tid-t-size
+  (+ codec/tid-size codec/t-size))
+
+
 (def ^:private ^:const ^long max-key-size
-  (+ codec/tid-size codec/t-size codec/max-id-size))
+  (+ tid-t-size codec/max-id-size))
 
 
 (def ^:private ^:const ^long value-size
@@ -62,7 +64,7 @@
 (defn encode-key
   "Encodes the key of the TypeAsOf index from `tid`, `t` and `id`."
   [tid t id]
-  (-> (bb/allocate (+ codec/tid-size codec/t-size (bs/size id)))
+  (-> (bb/allocate (unchecked-add-int tid-t-size (bs/size id)))
       (bb/put-int! tid)
       (bb/put-long! (codec/descending-long ^long t))
       (bb/put-byte-string! id)
@@ -71,11 +73,12 @@
 
 (defn- start-key [tid start-t start-id]
   (if start-id
-    (encode-key tid start-t start-id)
-    (-> (bb/allocate (+ codec/tid-size codec/t-size))
+    (bs/from-byte-array (encode-key tid start-t start-id))
+    (-> (bb/allocate tid-t-size)
         (bb/put-int! tid)
         (bb/put-long! (codec/descending-long ^long start-t))
-        bb/array)))
+        bb/flip!
+        bs/from-byte-buffer)))
 
 
 (defn type-history
@@ -84,8 +87,7 @@
   `tid`.
 
   Versions are resource handles."
-  ^IReduceInit
   [taoi tid start-t start-id end-t]
   (coll/eduction
     (take-while (key-valid? tid end-t))
-    (i/kvs! taoi (decoder) (bs/from-byte-array (start-key tid start-t start-id)))))
+    (i/kvs! taoi (decoder) (start-key tid start-t start-id))))

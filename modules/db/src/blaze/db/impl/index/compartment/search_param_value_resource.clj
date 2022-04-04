@@ -42,17 +42,14 @@
 
 (defn prefix-keys!
   "Returns a reducible collection of `[id hash-prefix]` tuples starting at
-  `start-value` and ending when `prefix-value` is no longer the prefix
-  of the values processed.
+  `value` and ending when `value` is no longer the prefix of the values
+  processed.
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
-  [iter compartment c-hash tid prefix-value start-value]
-  (i/prefix-keys!
-    iter
-    (encode-seek-key compartment c-hash tid prefix-value)
-    sp-vr/decode-id-hash-prefix
-    (encode-seek-key compartment c-hash tid start-value)))
+  [iter compartment c-hash tid value]
+  (let [seek-key (encode-seek-key compartment c-hash tid value)]
+    (i/prefix-keys! iter seek-key sp-vr/decode-id-hash-prefix seek-key)))
 
 
 (defn- encode-key [[co-c-hash co-res-id] sp-c-hash tid value id hash]

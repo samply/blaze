@@ -5,10 +5,10 @@
     [blaze.byte-string :as bs]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.search-param-value-resource.impl :as impl]
     [blaze.db.impl.iterators :as i]))
 
 
-(set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 
@@ -18,18 +18,19 @@
 
 
 (defn decode-key
-  "Returns a triple of [prefix id hash-prefix].
+  "Returns a triple of `[prefix id hash-prefix]`.
 
   The prefix contains the c-hash, tid and value parts as encoded byte string."
   ([] (bb/allocate-direct key-buffer-capacity))
   ([buf]
-   (let [id-size (bb/get-byte! buf (dec (- (bb/limit buf) codec/hash-prefix-size)))
+   (let [id-size (impl/id-size buf)
          all-size (bb/remaining buf)
          all (bs/from-byte-buffer buf)
-         prefix-size (- all-size id-size 1 codec/hash-prefix-size)]
-     [(bs/subs all 0 (dec prefix-size))
-      (bs/subs all prefix-size (+ prefix-size id-size))
-      (bs/subs all (- all-size codec/hash-prefix-size))])))
+         hash-prefix-start (unchecked-subtract-int all-size codec/hash-prefix-size)
+         id-start (unchecked-dec-int (unchecked-subtract-int hash-prefix-start id-size))]
+     [(bs/subs all 0 (unchecked-dec-int id-start))
+      (bs/subs all id-start (unchecked-dec-int hash-prefix-start))
+      (bs/subs all hash-prefix-start)])))
 
 
 (defn keys!
@@ -81,25 +82,30 @@
        bs/from-byte-buffer)))
 
 
+(def ^:private bs-ff
+  (bs/from-hex "FF"))
+
+
 (defn encode-seek-key-for-prev
   ([c-hash tid value]
-   (bs/concat (encode-seek-key c-hash tid value) (bs/from-hex "FF")))
+   (bs/concat (encode-seek-key c-hash tid value) bs-ff))
   ([c-hash tid value id]
-   (bs/concat (encode-seek-key c-hash tid value id) (bs/from-hex "FF"))))
+   (bs/concat (encode-seek-key c-hash tid value id) bs-ff)))
 
 
 (defn decode-value-id-hash-prefix
-  "Returns a triple of [value id hash-prefix]."
+  "Returns a triple of `[value id hash-prefix]`."
   ([] (bb/allocate-direct key-buffer-capacity))
   ([buf]
-   (let [id-size (bb/get-byte! buf (dec (- (bb/limit buf) codec/hash-prefix-size)))
-         ;; TODO: don't copy first base-key-size bytes here
+   (let [id-size (impl/id-size buf)
+         _ (bb/set-position! buf base-key-size)
          all-size (bb/remaining buf)
          all (bs/from-byte-buffer buf)
-         prefix-size (- all-size id-size 1 codec/hash-prefix-size)]
-     [(bs/subs all base-key-size (dec prefix-size))
-      (bs/subs all prefix-size (+ prefix-size id-size))
-      (bs/subs all (- all-size codec/hash-prefix-size))])))
+         hash-prefix-start (unchecked-subtract-int all-size codec/hash-prefix-size)
+         id-start (unchecked-dec-int (unchecked-subtract-int hash-prefix-start id-size))]
+     [(bs/subs all 0 (unchecked-dec-int id-start))
+      (bs/subs all id-start (unchecked-dec-int hash-prefix-start))
+      (bs/subs all hash-prefix-start)])))
 
 
 (defn all-keys!
@@ -122,13 +128,12 @@
   "Returns a tuple of `[id hash-prefix]`."
   ([] (bb/allocate-direct key-buffer-capacity))
   ([buf]
-   (let [limit (bb/limit buf)
-         id-size (bb/get-byte! buf (dec (- limit codec/hash-prefix-size)))
-         all-size (inc (+ id-size codec/hash-prefix-size))]
-     (bb/set-position! buf (- limit all-size))
-     [(bs/from-byte-buffer buf id-size)
-      (do (bb/set-position! buf (inc (bb/position buf)))
-          (bs/from-byte-buffer buf))])))
+   (let [id-size (impl/id-size buf)
+         all-size (unchecked-inc-int (unchecked-add-int id-size codec/hash-prefix-size))
+         _ (bb/set-position! buf (unchecked-subtract-int (bb/limit buf) all-size))
+         id (bs/from-byte-buffer buf id-size)]
+     (bb/get-byte! buf)
+     [id (bs/from-byte-buffer buf codec/hash-prefix-size)])))
 
 
 (defn prefix-keys!
@@ -193,8 +198,8 @@
     (encode-seek-key c-hash tid start-value)))
 
 
-(defn- encode-key [c-hash tid value id hash]
-  (-> (bb/allocate (+ (key-size value id) codec/hash-prefix-size))
+(defn encode-key [c-hash tid value id hash]
+  (-> (bb/allocate (unchecked-add-int (key-size value id) codec/hash-prefix-size))
       (bb/put-int! c-hash)
       (bb/put-int! tid)
       (bb/put-byte-string! value)

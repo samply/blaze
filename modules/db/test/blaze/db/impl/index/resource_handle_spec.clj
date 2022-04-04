@@ -19,3 +19,8 @@
 (s/fdef rh/resource-handle?
   :args (s/cat :x any?)
   :ret boolean?)
+
+
+(s/fdef rh/deleted?
+  :args (s/cat :rh rh/resource-handle?)
+  :ret boolean?)

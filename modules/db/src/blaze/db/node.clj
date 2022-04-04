@@ -6,6 +6,7 @@
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db :as db]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.t-by-instant :as t-by-instant]
     [blaze.db.impl.index.tx-error :as tx-error]
     [blaze.db.impl.index.tx-success :as tx-success]
@@ -213,22 +214,22 @@
 
 
 (defn- hashes-of-non-deleted [resource-handles]
-  (into [] (comp (remove (comp #{:delete} :op)) (map :hash)) resource-handles))
+  (into [] (comp (remove rh/deleted?) (map :hash)) resource-handles))
 
 
 (defn- deleted-resource [{:keys [id] :as resource-handle}]
   {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
 
 
-(defn- to-resource [tx-cache resources {:keys [op hash] :as resource-handle}]
-  (let [resource (if (identical? :delete op)
+(defn- to-resource [tx-cache resources {:keys [hash] :as resource-handle}]
+  (let [resource (if (rh/deleted? resource-handle)
                    (deleted-resource resource-handle)
                    (get resources hash))]
     (enhance-resource tx-cache resource-handle resource)))
 
 
-(defn- get-resource [resource-store {:keys [op hash] :as resource-handle}]
-  (if (identical? :delete op)
+(defn- get-resource [resource-store {:keys [hash] :as resource-handle}]
+  (if (rh/deleted? resource-handle)
     (ac/completed-future (deleted-resource resource-handle))
     (rs/get resource-store hash)))
 

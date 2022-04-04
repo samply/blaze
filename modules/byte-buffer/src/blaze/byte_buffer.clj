@@ -121,9 +121,9 @@
 (defn set-limit!
   {:inline
    (fn [byte-buffer limit]
-     `(.limit ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~limit))}
+     `(.limit ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~limit)))}
   [byte-buffer limit]
-  (.limit ^ByteBuffer byte-buffer ^long limit))
+  (.limit ^ByteBuffer byte-buffer (int limit)))
 
 
 (defn position
@@ -137,9 +137,9 @@
 (defn set-position!
   {:inline
    (fn [byte-buffer position]
-     `(.position ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~position))}
+     `(.position ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~position)))}
   [byte-buffer position]
-  (.position ^ByteBuffer byte-buffer ^long position))
+  (.position ^ByteBuffer byte-buffer (int position)))
 
 
 (defn remaining
@@ -197,11 +197,11 @@
      ([byte-buffer]
       `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))
      ([byte-buffer index]
-      `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~index)))}
+      `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~index))))}
   ([byte-buffer]
    (.get ^ByteBuffer byte-buffer))
   ([byte-buffer index]
-   (.get ^ByteBuffer byte-buffer ^long index)))
+   (.get ^ByteBuffer byte-buffer (int index))))
 
 
 (defn get-int!
