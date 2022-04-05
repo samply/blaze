@@ -131,7 +131,7 @@ jobs:
       run: make test-coverage
 
     - name: Codecov Upload
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         name: codecov-umbrella
         file: modules/**/target/coverage/codecov.json
