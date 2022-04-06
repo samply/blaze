@@ -1,6 +1,6 @@
 (ns blaze.elm.literal
   (:refer-clojure
-    :exclude [and boolean count distinct first flatten list long max min not or
+    :exclude [abs and boolean count distinct first flatten list long max min not or
               time])
   (:require
     [blaze.elm.spec]

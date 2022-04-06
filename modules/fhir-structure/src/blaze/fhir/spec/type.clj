@@ -1130,7 +1130,7 @@
   (-value [_])
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
-    (reduce (fn [_ x] (p/-hash-into x sink)) nil xs))
+    (run! #(p/-hash-into % sink) xs))
   (-references [xs]
     (transduce (mapcat p/-references) conj [] xs))
   Keyword

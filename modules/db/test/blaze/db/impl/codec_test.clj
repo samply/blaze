@@ -37,34 +37,29 @@
 (deftest id-string-id-byte-string-test
   (satisfies-prop 1000
     (prop/for-all [s (s/gen :blaze.resource/id)]
-      (testing "inlined"
-        (is (= s (codec/id-string (codec/id-byte-string s)))))
-
-      (testing "not inlined"
-        (is (= s (apply codec/id-string [(apply codec/id-byte-string [s])])))))))
+      (= s
+         (codec/id-string (codec/id-byte-string s))
+         (apply codec/id-string [(apply codec/id-byte-string [s])])))))
 
 
 (deftest descending-long-test
   (are [t dt] (= dt (codec/descending-long t))
     1 0xFFFFFFFFFFFFFE
     0 0xFFFFFFFFFFFFFF)
+
   (satisfies-prop 100000
     (prop/for-all [t gen/nat]
-      (testing "inlined"
-        (= t (codec/descending-long (codec/descending-long t))))
-
-      (testing "not inlined"
-        (= t (apply codec/descending-long [(apply codec/descending-long [t])]))))))
+      (= t
+         (codec/descending-long (codec/descending-long t))
+         (apply codec/descending-long [(apply codec/descending-long [t])])))))
 
 
 (deftest hash-prefix-test
   (satisfies-prop 1000
     (prop/for-all [hash (s/gen :blaze.resource/hash)]
-      (testing "inlined"
-        (is (= (bs/subs hash 0 4) (codec/hash-prefix hash))))
-
-      (testing "not inlined"
-        (is (= (bs/subs hash 0 4) (apply codec/hash-prefix [hash])))))))
+      (= (bs/subs hash 0 4)
+         (codec/hash-prefix hash)
+         (apply codec/hash-prefix [hash])))))
 
 
 (deftest tid-test
@@ -74,11 +69,9 @@
 (deftest string-test
   (satisfies-prop 100
     (prop/for-all [s (s/gen string?)]
-      (testing "inlined"
-        (is (= s (bs/to-string (codec/string s) StandardCharsets/UTF_8))))
-
-      (testing "not inlined"
-        (is (= s (bs/to-string (apply codec/string [s]) StandardCharsets/UTF_8)))))))
+      (= s
+         (bs/to-string (codec/string s) StandardCharsets/UTF_8)
+         (bs/to-string (apply codec/string [s]) StandardCharsets/UTF_8)))))
 
 
 (def zo

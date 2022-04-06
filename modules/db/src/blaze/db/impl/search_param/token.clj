@@ -189,7 +189,7 @@
           (fn [value]
             (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
               (when-let [reference (:reference value)]
-                (nth (u/split-literal-ref reference) 1)))))
+                (some-> (u/split-literal-ref reference) (coll/nth 1))))))
         values)))
 
   (-index-values [search-param resolver resource]

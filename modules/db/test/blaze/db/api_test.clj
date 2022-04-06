@@ -3784,9 +3784,9 @@
                        {:reference "Patient/0"}}]]]
 
           (let [db (d/db node)
-                patients (d/resource-handle db "Patient" "0")]
+                patient (d/resource-handle db "Patient" "0")]
 
-            (given (d/rev-include db patients "Observation" code)
+            (given (d/rev-include db patient "Observation" code)
               count := 2
               [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1"

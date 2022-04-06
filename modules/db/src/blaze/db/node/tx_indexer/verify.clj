@@ -4,15 +4,14 @@
     [blaze.byte-string :as bs]
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.rts-as-of :as rts]
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv.spec]
     [clojure.string :as str]
     [prometheus.alpha :as prom :refer [defhistogram]]
-    [taoensso.timbre :as log])
-  (:import
-    [clojure.lang IReduceInit]))
+    [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
@@ -66,7 +65,7 @@
   (let [[h1 h2] (some->> if-none-exist (existing-resource-handles db-before type))]
     (cond
       h2 (throw-anom (multiple-existing-resources-anom type if-none-exist [h1 h2]))
-      h1 (assoc cmd :op "hold" :id (:id h1))
+      h1 (assoc cmd :op "hold" :id (rh/id h1))
       :else cmd)))
 
 
@@ -263,8 +262,7 @@
 
 (defn- check-referential-integrity*!
   [db new-resources del-resources src-type src-id references]
-  (.reduce
-    ^IReduceInit references
+  (reduce
     (fn [_ [type id :as reference]]
       (cond
         (contains? del-resources reference)
@@ -273,18 +271,19 @@
         (and (not (contains? new-resources reference))
              (not (resource-exists? db type id)))
         (throw-anom (ba/conflict (ref-integrity-msg type id)))))
-    nil))
+    nil
+    references))
 
 
 (defn- check-referential-integrity!
   [db {:keys [new-resources del-resources]} cmds]
-  (.reduce
-    ^IReduceInit cmds
+  (reduce
     (fn [_ {:keys [type id refs]}]
       (when refs
         (check-referential-integrity*!
           db new-resources del-resources type id refs)))
-    nil))
+    nil
+    cmds))
 
 
 (defn- verify-tx-cmds* [db-before t cmds]

@@ -8,7 +8,7 @@
     [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is]]
+    [clojure.test :as test :refer [deftest]]
     [clojure.test.check.properties :as prop]))
 
 
@@ -42,9 +42,9 @@
                    hash (s/gen :blaze.resource/hash)]
       (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
             [prefix act_id hash-prefix] (sp-vr/decode-key buf)]
-        (is (= (create-prefix c-hash tid value) prefix))
-        (is (= id act_id))
-        (is (= (codec/hash-prefix hash) hash-prefix))))))
+        (and (= (create-prefix c-hash tid value) prefix)
+             (= id act_id)
+             (= (codec/hash-prefix hash) hash-prefix))))))
 
 
 (deftest decode-value-id-hash-prefix-test
@@ -56,9 +56,9 @@
                    hash (s/gen :blaze.resource/hash)]
       (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
             [act_value act_id hash-prefix] (sp-vr/decode-value-id-hash-prefix buf)]
-        (is (= value act_value))
-        (is (= id act_id))
-        (is (= (codec/hash-prefix hash) hash-prefix))))))
+        (and (= value act_value)
+             (= id act_id)
+             (= (codec/hash-prefix hash) hash-prefix))))))
 
 
 (deftest decode-id-hash-prefix-test
@@ -70,5 +70,5 @@
                    hash (s/gen :blaze.resource/hash)]
       (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
             [act_id hash-prefix] (sp-vr/decode-id-hash-prefix buf)]
-        (is (= id act_id))
-        (is (= (codec/hash-prefix hash) hash-prefix))))))
+        (and (= id act_id)
+             (= (codec/hash-prefix hash) hash-prefix))))))

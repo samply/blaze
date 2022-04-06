@@ -2,6 +2,7 @@
   (:require
     [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
+    [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.fhir.spec :as fhir-spec]
@@ -42,15 +43,16 @@
 
 (defn- contains-hash-prefix-pred [resource-handle]
   (let [hash-prefix (codec/hash-prefix (rh/hash resource-handle))]
-    (fn [tuple] (= (nth tuple 1) hash-prefix))))
+    (fn [tuple] (= (coll/nth tuple 1) hash-prefix))))
 
 
 (defn- resource-handle-mapper* [{:keys [resource-handle]} tid]
   (keep
-    (fn [[[id] :as tuples]]
-      (when-let [handle (resource-handle tid id)]
-        (when (some (contains-hash-prefix-pred handle) tuples)
-          handle)))))
+    (fn [tuples]
+      (let [id (-> tuples (coll/nth 0) (coll/nth 0))]
+        (when-let [handle (resource-handle tid id)]
+          (when (some (contains-hash-prefix-pred handle) tuples)
+            handle))))))
 
 
 (defn resource-handle-mapper [context tid]

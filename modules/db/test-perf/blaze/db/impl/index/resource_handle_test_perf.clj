@@ -1,4 +1,4 @@
-(ns blaze.db.impl.index.resource-handle-test
+(ns blaze.db.impl.index.resource-handle-test-perf
   (:require
     [blaze.byte-buffer :as bb]
     [blaze.db.impl.index.resource-handle :as rh]

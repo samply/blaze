@@ -56,9 +56,33 @@
   (instance? ResourceHandle x))
 
 
-(defn deleted? [rh]
+(defn deleted?
+  {:inline
+   (fn [rh]
+     `(identical? :delete (.-op ~(with-meta rh {:tag `ResourceHandle}))))}
+  [rh]
   (identical? :delete (.-op ^ResourceHandle rh)))
 
 
-(defn hash [rh]
+(defn tid
+  {:inline (fn [rh] `(.-tid ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-tid ^ResourceHandle rh))
+
+
+(defn id
+  {:inline (fn [rh] `(.-id ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-id ^ResourceHandle rh))
+
+
+(defn t
+  {:inline (fn [rh] `(.-t ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-t ^ResourceHandle rh))
+
+
+(defn hash
+  {:inline (fn [rh] `(.-hash ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
   (.-hash ^ResourceHandle rh))

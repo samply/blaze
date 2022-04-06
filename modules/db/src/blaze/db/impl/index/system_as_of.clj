@@ -29,7 +29,7 @@
 
 (defn- key-valid? [^long end-t]
   (fn [handle]
-    (< end-t ^long (:t handle))))
+    (< end-t (rh/t handle))))
 
 
 (defn- decoder

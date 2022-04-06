@@ -27,7 +27,7 @@
 
 (defn- key-valid? [^long tid ^long end-t]
   (fn [handle]
-    (and (= ^long (:tid handle) tid) (< end-t ^long (:t handle)))))
+    (when (= (rh/tid handle) tid) (< end-t (rh/t handle)))))
 
 
 (defn- decoder

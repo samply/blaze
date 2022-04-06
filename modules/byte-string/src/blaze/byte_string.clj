@@ -19,7 +19,7 @@
   (instance? ByteString x))
 
 
-(def ^:const empty
+(def empty
   ByteString/EMPTY)
 
 

@@ -7,6 +7,9 @@
   blaze/byte-string
   {:local/root "../byte-string"}
 
+  blaze/coll
+  {:local/root "../coll"}
+
   blaze/module-base
   {:local/root "../module-base"}
 

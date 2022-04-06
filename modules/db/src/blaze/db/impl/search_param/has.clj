@@ -4,6 +4,7 @@
     [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.special :as special]
@@ -46,11 +47,12 @@
 (def ^:private id-cmp
   (reify Comparator
     (compare [_ a b]
-      (.compareTo ^String (:id a) (:id b)))))
+      (let [^String id-a (rh/id a)]
+        (.compareTo id-a (rh/id b))))))
 
 
 (defn- drop-lesser-ids [start-id]
-  (drop-while #(neg? (.compareTo ^String (:id %) start-id))))
+  (drop-while #(neg? (let [^String id (rh/id %)] (.compareTo id start-id)))))
 
 
 (defn- resource-handles*

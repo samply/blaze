@@ -17,8 +17,8 @@
   PersistentVector
   (equal [x y]
     (when y
-      (if (= (count x) (count y))
-        (if (empty? x)
+      (if (= (.count x) (count y))
+        (if (zero? (.count x))
           true
           (loop [[t & ts] (map p/equal x y)]
             (if (and (true? t) ts)
@@ -28,7 +28,7 @@
 
   IReduceInit
   (equal [x y]
-    (p/equal (vec x) y)))
+    (p/equal (PersistentVector/create x) y)))
 
 
 ;; 12.2. Equivalent
@@ -36,8 +36,8 @@
   PersistentVector
   (equivalent [x y]
     (if y
-      (if (= (count x) (count y))
-        (if (empty? x)
+      (if (= (.count x) (count y))
+        (if (zero? (.count x))
           true
           (loop [[t & ts] (map p/equivalent x y)]
             (if (and (true? t) ts)
@@ -48,19 +48,19 @@
 
   IReduceInit
   (equivalent [x y]
-    (p/equivalent (vec x) y)))
+    (p/equivalent (PersistentVector/create x) y)))
 
 
 ;; 17.6. Indexer
 (extend-protocol p/Indexer
   PersistentVector
   (indexer [list index]
-    (when (and index (<= 0 index) (< index (count list)))
-      (nth list index)))
+    (when index
+      (.nth list index nil)))
 
   IReduceInit
   (indexer [list index]
-    (p/indexer (vec list) index)))
+    (p/indexer (PersistentVector/create list) index)))
 
 
 ;; 19.5. Contains
@@ -110,7 +110,7 @@
   PersistentVector
   (intersect [x y]
     (when y
-      (if (<= (count x) (count y))
+      (if (<= (.count x) (count y))
         (.reduce
           x
           (fn [result x]
@@ -122,29 +122,29 @@
 
   IReduceInit
   (intersect [x y]
-    (p/intersect (vec x) y)))
+    (p/intersect (PersistentVector/create x) y)))
 
 
 ;; 19.24. ProperContains
 (extend-protocol p/ProperContains
   PersistentVector
   (proper-contains [list x _]
-    (and (p/contains list x _) (> (count list) 1)))
+    (and (p/contains list x _) (> (.count list) 1)))
 
   IReduceInit
   (proper-contains [list x precision]
-    (p/proper-contains (vec list) x precision)))
+    (p/proper-contains (PersistentVector/create list) x precision)))
 
 
 ;; 19.26. ProperIncludes
 (extend-protocol p/ProperIncludes
   PersistentVector
   (proper-includes [x y _]
-    (and (p/includes x y _) (> (count x) (count y))))
+    (and (p/includes x y _) (> (.count x) (count y))))
 
   IReduceInit
   (proper-includes [x y precision]
-    (p/proper-includes (vec x) y precision)))
+    (p/proper-includes (PersistentVector/create x) y precision)))
 
 
 ;; 19.31. Union
@@ -175,10 +175,9 @@
 (extend-protocol p/SingletonFrom
   PersistentVector
   (singleton-from [list]
-    (let [[fst snd] list]
-      (if (nil? snd)
-        fst
-        (throw-anom (more-than-one-element-anom list)))))
+    (if (<= (.count list) 1)
+      (.nth list 0 nil)
+      (throw-anom (more-than-one-element-anom list))))
 
   IReduceInit
   (singleton-from [list]
