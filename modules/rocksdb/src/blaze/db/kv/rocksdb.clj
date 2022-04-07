@@ -8,8 +8,8 @@
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
+    [blaze.db.kv KvIterator]
     [java.lang AutoCloseable]
-    [java.nio ByteBuffer]
     [java.util ArrayList EnumSet]
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
@@ -21,41 +21,41 @@
 
 
 (deftype RocksKvIterator [^RocksIterator i]
-  kv/KvIterator
-  (-valid [_]
+  KvIterator
+  (valid [_]
     (.isValid i))
 
-  (-seek-to-first [_]
+  (seekToFirst [_]
     (.seekToFirst i))
 
-  (-seek-to-last [_]
+  (seekToLast [_]
     (.seekToLast i))
 
-  (-seek [_ target]
-    (.seek i ^bytes target))
+  (seek [_ target]
+    (.seek i target))
 
-  (-seek-buffer [_ target]
-    (.seek i ^ByteBuffer target))
+  (seekBuffer [_ target]
+    (.seek i target))
 
-  (-seek-for-prev [_ target]
-    (.seekForPrev i ^bytes target))
+  (seekForPrev [_ target]
+    (.seekForPrev i target))
 
-  (-next [_]
+  (next [_]
     (.next i))
 
-  (-prev [_]
+  (prev [_]
     (.prev i))
 
-  (-key [_]
+  (key [_]
     (.key i))
 
-  (-key [_ buf]
+  (key [_ buf]
     (.key i buf))
 
-  (-value [_]
+  (value [_]
     (.value i))
 
-  (-value [_ buf]
+  (value [_ buf]
     (.value i buf))
 
   AutoCloseable

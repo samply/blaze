@@ -222,10 +222,15 @@
 
 (defn get-long!
   {:inline
-   (fn [byte-buffer]
-     `(.getLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
-  [byte-buffer]
-  (.getLong ^ByteBuffer byte-buffer))
+   (fn
+     ([byte-buffer]
+      `(.getLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))
+     ([byte-buffer index]
+      `(.getLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~index))))}
+  ([byte-buffer]
+   (.getLong ^ByteBuffer byte-buffer))
+  ([byte-buffer index]
+   (.getLong ^ByteBuffer byte-buffer (int index))))
 
 
 (defn copy-into-byte-array!

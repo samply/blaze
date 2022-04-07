@@ -10,7 +10,7 @@ In this section, FHIR Search for selecting Observation resources with a certain 
 
 ### Counting
 
-All measurements are done after Blaze is in a steady state with all resource handles to hit in it's resource handle cache in order to cancel out additional seeks necessary to determine the current version of each resource. A resource handle doesn't contain the actual resource content which is not necessary for counting.
+All measurements are done after Blaze is in a steady state with its RocksDB block cache filled so that no cache misses occur.
 
 Counting is done using the following `curl` command:
 
@@ -18,14 +18,14 @@ Counting is done using the following `curl` command:
 time curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_summary=count"
 ```
 
-| CPU         | RAM (GB) | Heap Mem (GB) | Block Cache (GB) | # Resources | # Observations | Code    | # Hits | Time (s) |
-|-------------|---------:|--------------:|-----------------:|------------:|---------------:|---------|-------:|---------:|
-| E5-2687W v4 |      128 |             4 |                1 |        29 M |           28 M | 17861-6 |  171 k |      0.2 |
-| E5-2687W v4 |      128 |             4 |                1 |        29 M |           28 M | 39156-5 |  967 k |        1 |
-| E5-2687W v4 |      128 |             4 |                1 |        29 M |           28 M | 29463-7 |  1.3 M |      1.6 |
-| E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 17861-6 |  1.7 M |      1.7 |
-| E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 39156-5 |  9.7 M |       10 |
-| E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 29463-7 |   13 M |       15 |
+| CPU         | RAM (GB) | Heap Mem (GB) | Block Cache (GB) | # Resources | # Observations | Code    | # Hits | Time (s) | Time (µs)/ Hit |
+|-------------|---------:|--------------:|-----------------:|------------:|---------------:|---------|-------:|---------:|---------------:|
+| E5-2687W v4 |      128 |             4 |                4 |        29 M |           28 M | 17861-6 |  171 k |     0.66 |            3.9 |
+| E5-2687W v4 |      128 |             4 |                4 |        29 M |           28 M | 39156-5 |  967 k |      3.2 |            3.3 |
+| E5-2687W v4 |      128 |             4 |                4 |        29 M |           28 M | 29463-7 |  1.3 M |      4.4 |            3.4 |
+| E5-2687W v4 |      128 |             4 |               24 |       292 M |          278 M | 17861-6 |  1.7 M |      5.9 |            3.5 |
+| E5-2687W v4 |      128 |             4 |               24 |       292 M |          278 M | 39156-5 |  9.7 M |       28 |            2.9 |
+| E5-2687W v4 |      128 |             4 |               24 |       292 M |          278 M | 29463-7 |   13 M |       37 |            2.8 |
 
 According to the measurements the time needed by Blaze to count resources only depends on the number of hits and equals roughly in **1 second per 1 million hits**.
 
@@ -41,9 +41,9 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 | CPU         | RAM (GB) | Heap Mem (GB) | Block Cache (GB) | # Resources | # Observations | Code    | # Hits | Time (s) |
 |-------------|---------:|--------------:|-----------------:|------------:|---------------:|---------|-------:|---------:|
-| E5-2687W v4 |      128 |             4 |                1 |        29 M |           28 M | 17861-6 |  171 k |      4.6 |
-| E5-2687W v4 |      128 |             4 |                1 |        29 M |           28 M | 39156-5 |  967 k |       26 |
-| E5-2687W v4 |      128 |             4 |                1 |        29 M |           28 M | 29463-7 |  1.3 M |       35 |
+| E5-2687W v4 |      128 |             4 |                4 |        29 M |           28 M | 17861-6 |  171 k |      4.9 |
+| E5-2687W v4 |      128 |             4 |                4 |        29 M |           28 M | 39156-5 |  967 k |       26 |
+| E5-2687W v4 |      128 |             4 |                4 |        29 M |           28 M | 29463-7 |  1.3 M |       37 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 17861-6 |  1.7 M |       48 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 39156-5 |  9.7 M |      284 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 29463-7 |   13 M |      410 |
@@ -100,6 +100,12 @@ jvm_memory_pool_bytes_used{pool="G1 Old Gen",} 8.325004288E9
 ```
 
 Here the value `8.325004288E9` is in bytes and `E9` means GB. So we have 8.3 GB used old generation here which makes out most of the total heap size. So if you had configured Blaze with a maximum heap size of 10 GB, that usage would be much like a healthy upper limit.
+
+#### RocksDB Block Cache
+
+```sh
+curl -s http://localhost:8081/metrics | grep blaze_rocksdb_block_cache_index_miss_total | grep '"index"'
+```
 
 #### Resource / Resource Handle Cache
 
