@@ -30,14 +30,14 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defn- reduce-iter! [iter advance-fn rf init]
-  (loop [ret init]
-    (if (kv/valid? iter)
-      (let [ret (rf ret iter)]
-        (if (reduced? ret)
-          @ret
-          (do (advance-fn iter) (recur ret))))
-      ret)))
+(defmacro reduce-iter! [iter advance-fn rf init]
+  `(loop [ret# ~init]
+     (if (kv/valid? ~iter)
+       (let [ret# (~rf ret# ~iter)]
+         (if (reduced? ret#)
+           @ret#
+           (do (~advance-fn ~iter) (recur ret#))))
+       ret#)))
 
 
 (defn iter!
@@ -74,19 +74,20 @@
   (arrays-support/new-length old-capacity (- min-capacity old-capacity)
                              (bit-shift-right old-capacity 1)))
 
-(defn- read!
+(defmacro read!
   "Reads from `iter` using the function `read` and `buf`.
 
   When `buf` is too small, a new direct byte buffer will be created. Returns the
   byte buffer used to read."
   [read buf iter]
-  (bb/clear! buf)
-  (let [size (unchecked-long (read iter buf))]
-    (if (< (bb/capacity buf) size)
-      (let [buf (bb/allocate-direct (new-capacity (bb/capacity buf) size))]
-        (read iter buf)
-        buf)
-      buf)))
+  `(do
+    (bb/clear! ~buf)
+    (let [size# (~read ~iter ~buf)]
+      (if (< (bb/capacity ~buf) size#)
+        (let [buf# (bb/allocate-direct (new-capacity (bb/capacity ~buf) size#))]
+          (~read ~iter buf#)
+          buf#)
+        ~buf))))
 
 
 (defn- read-key! [buf iter]
@@ -99,6 +100,7 @@
   [buf]
   (let [buf-state (volatile! buf)]
     (map #(vswap! buf-state read-key! %))))
+
 
 
 (defn- key-decoder [decode]
