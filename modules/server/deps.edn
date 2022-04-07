@@ -5,6 +5,9 @@
   blaze/module-base
   {:local/root "../module-base"}
 
+  org.eclipse.jetty/jetty-server
+  {:mvn/version "9.4.46.v20220331"}
+
   ring/ring-jetty-adapter
   {:mvn/version "1.9.5"
    :exclusions
