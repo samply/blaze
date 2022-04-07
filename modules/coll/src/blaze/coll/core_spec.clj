@@ -14,3 +14,18 @@
 (s/fdef coll/empty?
   :args (s/cat :coll (s/nilable #(instance? IReduceInit %)))
   :ret boolean?)
+
+
+(s/fdef coll/eduction
+  :args (s/cat :xform ifn? :coll any?)
+  :ret #(instance? IReduceInit %))
+
+
+(s/fdef coll/count
+  :args (s/cat :coll #(instance? IReduceInit %))
+  :ret nat-int?)
+
+
+(s/fdef coll/nth
+  :args (s/cat :coll #(instance? IReduceInit %) :i nat-int? :not-found (s/? any?))
+  :ret nat-int?)

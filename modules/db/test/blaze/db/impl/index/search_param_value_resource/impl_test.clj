@@ -8,7 +8,7 @@
     [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
+    [clojure.test :as test :refer [deftest]]
     [clojure.test.check.properties :as prop]))
 
 
@@ -32,8 +32,4 @@
                    id (s/gen :blaze.db/id-byte-string)
                    hash (s/gen :blaze.resource/hash)]
       (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))]
-        (testing "inlined"
-          (is (= (bs/size id) (impl/id-size buf))))
-
-        (testing "not inlined"
-          (is (= (bs/size id) (apply impl/id-size [buf]))))))))
+        (= (bs/size id) (impl/id-size buf) (apply impl/id-size [buf]))))))

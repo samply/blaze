@@ -1,11 +1,16 @@
 (ns blaze.db.impl.search-param.composite.common
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.protocols :as p]
     [blaze.fhir-path :as fhir-path]
-    [clojure.string :as str]))
+    [clojure.string :as str])
+  (:import
+    [clojure.lang IReduceInit]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn split-value [value]
@@ -28,14 +33,20 @@
 
 
 (defn index-values [resolver c1 c2]
-  (mapcat
-    (fn [main-value]
-      (reduce
-        (fn [res v1]
-          (reduce
-            (fn [res v2]
-              (conj res [nil (bs/concat v1 v2)]))
-            res
-            (component-index-values resolver main-value c2)))
-        []
-        (component-index-values resolver main-value c1)))))
+  (comp
+    (map
+      (fn [main-value]
+        (when-ok [c1-values (component-index-values resolver main-value c1)]
+          (.reduce
+            ^IReduceInit c1-values
+            (fn [res v1]
+              (if-ok [c2-values (component-index-values resolver main-value c2)]
+                (.reduce
+                  ^IReduceInit c2-values
+                  (fn [res v2]
+                    (conj res [nil (bs/concat v1 v2)]))
+                  res)
+                reduced))
+            []))))
+    (halt-when ba/anomaly?)
+    cat))

@@ -360,11 +360,11 @@
          vb)))))
 
 
-(defn- instance-history-key-valid? [tid id ^long end-t]
+(defn- instance-history-key-valid? [^long tid id ^long end-t]
   (fn [resource-handle]
-    (and (= (:tid resource-handle) tid)
-         (= (:id resource-handle) id)
-         (< end-t ^long (:t resource-handle)))))
+    (and (= (rh/tid resource-handle) tid)
+         (= (rh/id resource-handle) id)
+         (< end-t (rh/t resource-handle)))))
 
 
 (defn instance-history

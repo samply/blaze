@@ -24,3 +24,23 @@
 (s/fdef rh/deleted?
   :args (s/cat :rh rh/resource-handle?)
   :ret boolean?)
+
+
+(s/fdef rh/tid
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.db/tid)
+
+
+(s/fdef rh/id
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.resource/id)
+
+
+(s/fdef rh/t
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.db/t)
+
+
+(s/fdef rh/hash
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.resource/hash)

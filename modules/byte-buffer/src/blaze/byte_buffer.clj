@@ -22,6 +22,13 @@
 
 
 (defn allocate
+  "Allocates a new byte buffer.
+
+  The new buffer's position will be zero, its limit will be `capacity`, its
+  mark will be undefined, each of its elements will be initialized to zero, and
+  its byte order will be BIG_ENDIAN.
+
+  It will have a backing array, and its array offset will be zero."
   {:inline (fn [capacity] `(ByteBuffer/allocate ~capacity))}
   [capacity]
   (ByteBuffer/allocate capacity))
@@ -111,6 +118,7 @@
 
 
 (defn limit
+  "Returns the limit of `byte-buffer`."
   {:inline
    (fn [byte-buffer]
      `(.limit ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}

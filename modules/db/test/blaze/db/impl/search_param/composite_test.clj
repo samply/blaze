@@ -1,5 +1,6 @@
 (ns blaze.db.impl.search-param.composite-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.byte-string-spec]
@@ -21,7 +22,9 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [blaze.fhir_path GetChildrenExpression TypedStartExpression]))
 
 
 (st/instrument)
@@ -128,6 +131,10 @@
   (codec/quantity "http://unitsofmeasure.org|mm[Hg]" 100M))
 
 
+(defn anom-vec [coll]
+  (transduce (halt-when ba/anomaly?) conj [] coll))
+
+
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} system]
     (testing "Observation code-value-quantity"
@@ -137,15 +144,15 @@
              :status #fhir/code"final"
              :code
              #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                              {:system #fhir/uri"http://loinc.org"
-                               :code #fhir/code"8480-6"}]}
+                 {:coding
+                  [#fhir/Coding
+                      {:system #fhir/uri"http://loinc.org"
+                       :code #fhir/code"8480-6"}]}
              :value
              #fhir/Quantity
-                     {:value 100M
-                      :code #fhir/code"mm[Hg]"
-                      :system #fhir/uri"http://unitsofmeasure.org"}}
+                 {:value 100M
+                  :code #fhir/code"mm[Hg]"
+                  :system #fhir/uri"http://unitsofmeasure.org"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]
              [_ k6] [_ k7] [_ k8] [_ k9] [_ k10] [_ k11]
@@ -266,21 +273,65 @@
         (let [resource {:fhir/type :fhir/Observation :id "foo"}
               hash (hash/generate resource)]
 
-          (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
-            (given (search-param/index-entries
-                     (code-value-quantity-param search-param-registry)
-                     [] hash resource)
-              ::anom/category := ::anom/fault))))
+          (testing "on main-value"
+            (with-redefs [fhir-path/eval
+                          (fn [_ _ _]
+                            {::anom/category ::anom/fault
+                             ::x ::y})]
+              (given (search-param/index-entries
+                       (code-value-quantity-param search-param-registry)
+                       [] hash resource)
+                ::anom/category := ::anom/fault
+                ::x := ::y)))
+
+          (testing "on first component"
+            (with-redefs [fhir-path/eval
+                          (fn [_ expr value]
+                            (if (instance? TypedStartExpression expr)
+                              [value]
+                              {::anom/category ::anom/fault
+                               ::x ::y}))]
+              (given (anom-vec (search-param/index-entries
+                                 (code-value-quantity-param search-param-registry)
+                                 [] hash resource))
+                ::anom/category := ::anom/fault
+                ::x := ::y)))
+
+          (testing "on second component"
+            (with-redefs [fhir-path/eval
+                          (fn [_ expr value]
+                            (cond
+                              (instance? TypedStartExpression expr)
+                              [value]
+                              (instance? GetChildrenExpression expr)
+                              [#fhir/CodeableConcept
+                                  {:coding
+                                   [#fhir/Coding
+                                       {:system #fhir/uri"system-204435"
+                                        :code #fhir/code"code-204441"}]}]
+                              :else
+                              {::anom/category ::anom/fault
+                               ::x ::y}))]
+              (given (anom-vec (search-param/index-entries
+                                 (code-value-quantity-param search-param-registry)
+                                 [] hash resource))
+                ::anom/category := ::anom/fault
+                ::x := ::y)))))
 
       (testing "code-value-concept"
         (let [resource {:fhir/type :fhir/Observation :id "foo"}
               hash (hash/generate resource)]
 
-          (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
-            (given (search-param/index-entries
-                     (code-value-concept-param search-param-registry)
-                     [] hash resource)
-              ::anom/category := ::anom/fault)))))))
+          (testing "on main-value"
+            (with-redefs [fhir-path/eval
+                          (fn [_ _ _]
+                            {::anom/category ::anom/fault
+                             ::x ::y})]
+              (given (search-param/index-entries
+                       (code-value-concept-param search-param-registry)
+                       [] hash resource)
+                ::anom/category := ::anom/fault
+                ::x := ::y))))))))
 
 
 (deftest create-test

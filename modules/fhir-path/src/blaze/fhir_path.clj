@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [compile eval resolve])
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.coll.core :as coll]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
@@ -9,7 +10,7 @@
     [cuerdas.core :as str]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang Counted PersistentVector IReduceInit]
+    [clojure.lang PersistentVector IReduceInit]
     [java.io StringReader]
     [org.antlr.v4.runtime CharStreams CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -101,8 +102,8 @@
 
 
 (defn- singleton [type coll]
-  (case (.count ^Counted coll)
-    1 (let [first (nth coll 0)]
+  (case (coll/count coll)
+    1 (let [first (coll/nth coll 0)]
         (cond
           (convertible? type first) (convert type first)
           (identical? :fhir/boolean type) true
@@ -158,7 +159,7 @@
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)
           idx (singleton :fhir/integer (-eval index context coll))]
-      [(nth coll idx [])])))
+      [(coll/nth coll idx [])])))
 
 
 (deftype PlusExpression [left-expr right-expr]
@@ -181,10 +182,10 @@
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
-      (case (.count ^Counted coll)
+      (case (coll/count coll)
         0 coll
 
-        1 [(identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))]
+        1 [(identical? type-specifier (fhir-spec/fhir-type (coll/nth coll 0)))]
 
         (throw-anom (ba/incorrect (is-type-specifier-msg coll)))))))
 
@@ -198,10 +199,10 @@
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
-      (case (.count ^Counted coll)
+      (case (coll/count coll)
         0 coll
 
-        1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
+        1 (if (identical? type-specifier (fhir-spec/fhir-type (coll/nth coll 0)))
             coll
             [])
 
@@ -211,17 +212,17 @@
 (deftype UnionExpression [e1 e2]
   Expression
   (-eval [_ context coll]
-    (let [^Counted c1 (-eval e1 context coll)
-          ^Counted c2 (-eval e2 context coll)]
-      (case (.count c1)
-        0 (case (.count c2)
+    (let [c1 (-eval e1 context coll)
+          c2 (-eval e2 context coll)]
+      (case (coll/count c1)
+        0 (case (coll/count c2)
             (0 1) c2
             (vec (set c2)))
-        1 (case (.count c2)
+        1 (case (coll/count c2)
             0 c1
-            1 (if (= c1 c2) c1 (conj c1 (nth c2 0)))
-            (vec (conj (set c2) (nth c1 0))))
-        (vec (reduce conj (set c1) c2))))))
+            1 (if (= c1 c2) c1 (conj c1 (coll/nth c2 0)))
+            (vec (conj (set c2) (coll/nth c1 0))))
+        (vec (.reduce ^IReduceInit c2 conj (set c1)))))))
 
 
 (deftype EqualExpression [left-expr right-expr]
@@ -276,10 +277,10 @@
 (deftype AsFunctionExpression [type-specifier]
   Expression
   (-eval [_ _ coll]
-    (case (.count ^Counted coll)
+    (case (coll/count coll)
       0 coll
 
-      1 (if (identical? type-specifier (fhir-spec/fhir-type (nth coll 0)))
+      1 (if (identical? type-specifier (fhir-spec/fhir-type (coll/nth coll 0)))
           coll
           [])
 
@@ -376,10 +377,10 @@
       ((filter
          (fn [item]
            (let [coll (-eval criteria context [item])]
-             (case (.count ^Counted coll)
+             (case (coll/count coll)
                0 false
 
-               1 (let [first (nth coll 0)]
+               1 (let [first (coll/nth coll 0)]
                    (if (identical? :system/boolean (system/type first))
                      first
                      (throw-anom (ba/incorrect (non-boolean-result-msg first)))))

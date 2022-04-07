@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec.type.macros
   (:require
+    [blaze.coll.core :as coll]
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
     [cuerdas.core :refer [capital kebab]])
@@ -86,8 +87,8 @@
                             `[(.writeStringField ~'gen ~(str field) ~field)]
                             :strings
                             `[(.writeArrayFieldStart ~'gen ~(str field))
-                              (dotimes [~'i (count ~field)]
-                                ~(write-string 'gen `(nth ~field ~'i)))
+                              (dotimes [~'i (coll/count ~field)]
+                                ~(write-string 'gen `(coll/nth ~field ~'i)))
                               (.writeEndArray ~'gen)]
                             :decimal
                             `[(.writeNumberField ~'gen ~(str field) ~(with-meta field {:tag `BigDecimal}))]
@@ -99,8 +100,8 @@
                               (dyn-serialize ~'gen ~'provider ~field)]
                             (if (= :many (:cardinality (meta serializer)))
                               `[(.writeArrayFieldStart ~'gen ~(str field))
-                                (dotimes [~'i (count ~field)]
-                                  ~(serialize serializer `(nth ~field ~'i) 'gen 'provider))
+                                (dotimes [~'i (coll/count ~field)]
+                                  ~(serialize serializer `(coll/nth ~field ~'i) 'gen 'provider))
                                 (.writeEndArray ~'gen)]
                               `[(.writeFieldName ~'gen ~(str field))
                                 (.serialize ~(with-meta serializer {:tag `JsonSerializer}) ~field ~'gen ~'provider)])))))

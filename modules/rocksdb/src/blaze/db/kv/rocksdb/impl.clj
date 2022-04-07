@@ -1,8 +1,9 @@
 (ns blaze.db.kv.rocksdb.impl
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]])
+    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.coll.core :as coll])
   (:import
-    [clojure.lang Indexed]
+    [clojure.lang ILookup]
     [org.rocksdb
      ColumnFamilyHandle DBOptions ColumnFamilyDescriptor CompressionType
      ColumnFamilyOptions BlockBasedTableConfig Statistics BloomFilter
@@ -96,18 +97,23 @@
 
 
 (defn get-cfh ^ColumnFamilyHandle [cfhs column-family]
-  (or (cfhs column-family)
-      (throw-anom (ba/not-found (column-family-not-found-msg column-family)))))
+  (let [handle (.valAt ^ILookup cfhs column-family)]
+    (if (nil? handle)
+      (throw-anom (ba/not-found (column-family-not-found-msg column-family)))
+      handle)))
 
 
 (defn put-wb! [cfhs ^WriteBatchInterface wb entries]
   (run!
-    (fn [^Indexed entry]
-      (let [column-family (.nth entry 0)]
-        (if (keyword? column-family)
-          (.put wb (get-cfh cfhs column-family) ^bytes (.nth entry 1)
-                ^bytes (.nth entry 2))
-          (.put wb ^bytes column-family ^bytes (.nth entry 1)))))
+    (fn [entry]
+      (if (= 3 (coll/count entry))
+        (let [column-family (coll/nth entry 0)
+              key (coll/nth entry 1)
+              value (coll/nth entry 2)]
+          (.put wb (get-cfh cfhs column-family) ^bytes key ^bytes value))
+        (let [key (coll/nth entry 0)
+              value (coll/nth entry 1)]
+          (.put wb ^bytes key ^bytes value))))
     entries))
 
 

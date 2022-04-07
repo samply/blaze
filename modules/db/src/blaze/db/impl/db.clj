@@ -14,7 +14,7 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defn inc-rf [sum _] (inc ^long sum))
+(defn- inc-rf [sum _] (inc ^long sum))
 
 
 (defmacro with-open-coll
@@ -26,7 +26,7 @@
      IReduceInit
      (reduce [_ rf# init#]
        (with-open ~bindings
-         (.reduce ~(vary-meta coll assoc :tag `IReduceInit) rf# init#)))
+         (reduce rf# init# ~coll)))
      Seqable
      (seq [this#]
        (.seq ^Seqable (persistent! (.reduce this# conj! (transient [])))))

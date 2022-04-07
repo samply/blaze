@@ -4,6 +4,7 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
@@ -45,7 +46,8 @@
   [string-start-id resource-handles values]
   (drop-while
     #(let [resource-handle (coll/first (resource-handles %))]
-       (not= string-start-id (:id resource-handle)))
+       (or (nil? resource-handle)
+           (not= string-start-id (rh/id resource-handle))))
     values))
 
 
