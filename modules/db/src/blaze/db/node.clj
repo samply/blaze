@@ -188,9 +188,14 @@
         (commit-success! node t instant)))))
 
 
-(defn- poll! [node queue poll-timeout]
+(defn- poll-tx-queue! [queue poll-timeout]
+  (with-open [_ (prom/timer duration-seconds "poll-tx-queue")]
+    (tx-log/poll! queue poll-timeout)))
+
+
+(defn- poll-and-index! [node queue poll-timeout]
   (log/trace "poll transaction queue")
-  (reduce #(index-tx-data! node %2) nil (tx-log/poll! queue poll-timeout)))
+  (run! (partial index-tx-data! node) (poll-tx-queue! queue poll-timeout)))
 
 
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
@@ -333,7 +338,7 @@
         (with-open [queue (tx-log/new-queue tx-log offset)]
           (while @run?
             (try
-              (poll! node queue poll-timeout)
+              (poll-and-index! node queue poll-timeout)
               (catch Exception e
                 (swap! state assoc :e e)
                 (throw e))))))
