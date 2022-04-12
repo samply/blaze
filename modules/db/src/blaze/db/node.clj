@@ -14,7 +14,8 @@
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
     [blaze.db.node.protocols :as np]
-    [blaze.db.node.resource-indexer :as resource-indexer :refer [new-resource-indexer]]
+    [blaze.db.node.resource-indexer :as resource-indexer]
+    [blaze.db.node.resource-indexer.spec]
     [blaze.db.node.spec]
     [blaze.db.node.transaction :as tx]
     [blaze.db.node.tx-indexer :as tx-indexer]
@@ -174,11 +175,12 @@
   "This is the main transaction handling function.
 
   If indexes resources and transaction data and commits either success or error."
-  [{:keys [kv-store] :as node} {:keys [t instant tx-cmds] :as tx-data}]
+  [{:keys [resource-indexer kv-store] :as node}
+   {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
-        future (resource-indexer/index-resources node tx-data)
+        future (resource-indexer/index-resources resource-indexer tx-data)
         result (index-tx (np/-db node) tx-data)]
     (if (ba/anomaly? result)
       (commit-error! node t result)
@@ -388,19 +390,20 @@
      :blaze.db/tx-cache
      ::indexer-executor
      :blaze.db/kv-store
+     ::resource-indexer
      :blaze.db/resource-store
      :blaze.db/search-param-registry]
     :opt-un
     [:blaze.db/enforce-referential-integrity]))
 
+
 (defmethod ig/init-key :blaze.db/node
   [_ {:keys [tx-log resource-handle-cache tx-cache indexer-executor kv-store
-             resource-store search-param-registry poll-timeout]
+             resource-indexer resource-store search-param-registry poll-timeout]
       :or {poll-timeout (time/seconds 1)}
       :as config}]
   (init-msg config)
-  (let [resource-indexer (new-resource-indexer search-param-registry kv-store)
-        node (->Node (ctx config) tx-log resource-handle-cache tx-cache kv-store
+  (let [node (->Node (ctx config) tx-log resource-handle-cache tx-cache kv-store
                      resource-store search-param-registry resource-indexer
                      (atom (initial-state kv-store))
                      (volatile! true)
@@ -437,10 +440,6 @@
 
 (reg-collector ::transaction-sizes
   transaction-sizes)
-
-
-(reg-collector :blaze.db.node.resource-indexer/duration-seconds
-  resource-indexer/duration-seconds)
 
 
 (reg-collector ::tx-indexer/duration-seconds

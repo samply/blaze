@@ -8,11 +8,15 @@
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
+    [blaze.db.node.resource-indexer.spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.module :refer [reg-collector]]
     [clojure.core.reducers :as r]
+    [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
+    [integrant.core :as ig]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log]))
 
@@ -144,8 +148,8 @@
 
    The :instant from `tx-data` is used to index the _lastUpdated search
    parameter because the property doesn't exist in the resource itself."
-  {:arglists '([context tx-data])}
-  [{:keys [resource-store resource-indexer]}
+  {:arglists '([resource-indexer tx-data])}
+  [{:keys [resource-store] :as resource-indexer}
    {:keys [tx-cmds] resources :local-payload last-updated :instant}]
   (if resources
     (index-resources* resource-indexer last-updated resources)
@@ -154,7 +158,17 @@
           (partial index-resources* resource-indexer last-updated)))))
 
 
-(defn new-resource-indexer
-  [search-param-registry kv-store]
-  {:search-param-registry search-param-registry
-   :kv-store kv-store})
+(defmethod ig/pre-init-spec :blaze.db.node/resource-indexer [_]
+  (s/keys :req-un [:blaze.db/kv-store
+                   :blaze.db/resource-store
+                   :blaze.db/search-param-registry]))
+
+
+(defmethod ig/init-key :blaze.db.node/resource-indexer
+  [_ resource-indexer]
+  (log/info "Init resource indexer")
+  resource-indexer)
+
+
+(reg-collector ::duration-seconds
+  duration-seconds)

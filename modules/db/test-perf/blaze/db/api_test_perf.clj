@@ -33,6 +33,7 @@
     :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
     :resource-store (ig/ref :blaze.db/resource-store)
     :kv-store (ig/ref :blaze.db/index-kv-store)
+    :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :poll-timeout (time/millis 10)}
 
@@ -72,6 +73,11 @@
    [::kv/mem :blaze.db/resource-kv-store]
    {:column-families {}}
    ::rs-kv/executor {}
+
+   :blaze.db.node/resource-indexer
+   {:kv-store (ig/ref :blaze.db/index-kv-store)
+    :resource-store (ig/ref ::rs/kv)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)}
 
    :blaze.db/search-param-registry
    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}

@@ -179,6 +179,7 @@
    :indexer-executor #blaze/ref :blaze.db.node/indexer-executor
    :resource-store #blaze/ref :blaze.db/resource-cache
    :kv-store #blaze/ref :blaze.db/index-kv-store
+   :resource-indexer #blaze/ref :blaze.db.node/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
@@ -186,7 +187,14 @@
 
   :blaze.db.node/duration-seconds {}
   :blaze.db.node/transaction-sizes {}
+
+  :blaze.db.node/resource-indexer
+  {:kv-store #blaze/ref :blaze.db/index-kv-store
+   :resource-store #blaze/ref :blaze.db/resource-cache
+   :search-param-registry #blaze/ref :blaze.db/search-param-registry}
+
   :blaze.db.node.resource-indexer/duration-seconds {}
+
   :blaze.db.node.tx-indexer/duration-seconds {}
 
   :blaze.db/cache-collector
