@@ -25,6 +25,7 @@
             target-file-size-base-in-mb
             block-size
             bloom-filter?
+            memtable-whole-key-filtering?
             optimize-filters-for-hits?
             reverse-comparator?
             merge-operator]
@@ -36,6 +37,7 @@
           target-file-size-base-in-mb 64
           block-size (bit-shift-left 4 10)
           bloom-filter? false
+          memtable-whole-key-filtering? false
           optimize-filters-for-hits? false
           reverse-comparator? false}}]]
   (ColumnFamilyDescriptor.
@@ -61,6 +63,8 @@
               (.setBlockCache block-cache))
             bloom-filter?
             (.setFilterPolicy (BloomFilter. 10 false)))))
+      memtable-whole-key-filtering?
+      (.setMemtableWholeKeyFiltering true)
       optimize-filters-for-hits?
       (.setOptimizeFiltersForHits true)
       reverse-comparator?
@@ -70,6 +74,7 @@
 
 
 (defn db-options
+  ^DBOptions
   [stats
    {:keys [max-background-jobs
            compaction-readahead-size]

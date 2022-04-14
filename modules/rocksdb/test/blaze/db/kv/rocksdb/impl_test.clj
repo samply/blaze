@@ -58,6 +58,7 @@
      :min-write-buffer-number-to-merge (.minWriteBufferNumberToMerge options)
      :target-file-size-base-in-mb (bit-shift-right (.targetFileSizeBase options) 20)
      :table-format-config (datafy/datafy (.tableFormatConfig options))
+     :memtable-whole-key-filtering? (.memtableWholeKeyFiltering options)
      :optimize-filters-for-hits? (.optimizeFiltersForHits options)})
 
   BlockBasedTableConfig
@@ -105,6 +106,7 @@
         [:options :table-format-config :pin-l0-filter-and-index-blocks-in-cache] := true
         [:options :table-format-config :block-size] := 4096
         [:options :table-format-config :bloom-filter?] := false
+        [:options :memtable-whole-key-filtering?] := false
         [:options :optimize-filters-for-hits?] := false)))
 
   (with-open [block-cache (LRUCache. 0)]
@@ -118,6 +120,7 @@
       :min-write-buffer-number-to-merge 2
       :max-bytes-for-level-base-in-mb 512
       :target-file-size-base-in-mb 64
+      :memtable-whole-key-filtering? true
       :optimize-filters-for-hits? true))
 
   (testing "can't verify that reverse-comparator? is set; so only running the code"

@@ -492,6 +492,7 @@
       ;; resources in average.
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :bloom-filter? true
+      :memtable-whole-key-filtering? true
       ;; every get() in the resource store should be a hit
       :optimize-filters-for-hits? true}}}
 

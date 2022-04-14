@@ -13,7 +13,7 @@
     [java.util ArrayList EnumSet]
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
-     DBOptions Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
+     Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
      StatsLevel HistogramType]))
 
 
@@ -188,7 +188,7 @@
 
 
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]
-  (s/keys :req-un [::dir ::block-cache ::stats]))
+  (s/keys :req-un [::dir ::block-cache ::stats] :opt-un [::opts]))
 
 
 (defn- init-log-msg [dir opts]
@@ -199,7 +199,7 @@
 (defmethod ig/init-key ::kv/rocksdb
   [_ {:keys [dir block-cache stats opts column-families]}]
   (log/info (init-log-msg dir opts))
-  (let [^DBOptions db-options (impl/db-options stats opts)
+  (let [db-options (impl/db-options stats opts)
         cfds (map
                (partial impl/column-family-descriptor block-cache)
                (merge {:default nil} column-families))

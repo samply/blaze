@@ -1,5 +1,6 @@
 (ns blaze.db.kv.rocksdb.impl-spec
   (:require
+    [blaze.db.kv.rocksdb :as-alias rocksdb]
     [blaze.db.kv.rocksdb.impl :as impl]
     [blaze.db.kv.rocksdb.impl.spec]
     [blaze.db.kv.rocksdb.spec]
@@ -8,16 +9,16 @@
 
 
 (s/fdef impl/column-family-descriptor
-  :args (s/cat :block-cache :blaze.db.kv.rocksdb/block-cache
+  :args (s/cat :block-cache ::rocksdb/block-cache
                :opts (s/tuple keyword? (s/nilable map?))))
 
 
 (s/fdef impl/db-options
-  :args (s/cat :stats :blaze.db.kv.rocksdb/stats :opts (s/nilable map?)))
+  :args (s/cat :stats ::rocksdb/stats :opts (s/nilable ::rocksdb/db-options)))
 
 
 (s/fdef impl/write-options
-  :args (s/cat :opts (s/nilable map?)))
+  :args (s/cat :opts (s/nilable ::rocksdb/write-options)))
 
 
 (s/fdef impl/put-wb!
