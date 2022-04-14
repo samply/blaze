@@ -539,6 +539,33 @@ jobs:
     - name: Load Data with Concurrency 2
       run: blazectl --no-progress --server http://localhost:8080/fhir upload -c 2 .github/test-data/small-txs
 
+  include-without-referential-integrity-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.CR_PAT }}
+
+    - name: Pull Docker Image
+      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+
+    - name: Run Blaze
+      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 ghcr.io/samply/blaze:sha-${{ github.sha }}
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Test Include
+      run: .github/scripts/include-without-referential-integrity.sh
+
   jepsen-test:
     needs: build
     runs-on: ubuntu-20.04
