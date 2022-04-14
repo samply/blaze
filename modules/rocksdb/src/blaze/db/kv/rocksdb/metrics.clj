@@ -8,20 +8,23 @@
 (set! *warn-on-reflection* true)
 
 
-(defn- sample-xf [ticker-type]
+(defn- sample-xf [ticker-type value-f]
   (map
     (fn [[name stats]]
       {:label-values [name]
-       :value (.getTickerCount ^Statistics stats ticker-type)})))
+       :value (value-f (.getTickerCount ^Statistics stats ticker-type))})))
 
 
-(defn- samples [ticker-type stats]
-  (into [] (sample-xf ticker-type) stats))
+(defn- samples [ticker-type value-f stats]
+  (into [] (sample-xf ticker-type value-f) stats))
 
 
-(defn- counter-metric [name help ticker-type]
-  (fn [stats]
-    (metrics/counter-metric name help ["name"] (samples ticker-type stats))))
+(defn- counter-metric
+  ([name help ticker-type]
+   (counter-metric name help ticker-type identity))
+  ([name help ticker-type value-f]
+   (fn [stats]
+     (metrics/counter-metric name help ["name"] (samples ticker-type value-f stats)))))
 
 
 (def ^:private block-cache-data-miss-total
@@ -220,6 +223,14 @@
     TickerType/NO_FILE_ERRORS))
 
 
+(def ^:private stall-seconds-total
+  (counter-metric
+    "blaze_rocksdb_stall_seconds_total"
+    "Returns the total number of seconds the writer had to wait for compaction or flush to finish."
+    TickerType/STALL_MICROS
+    #(/ (double %) 1e6)))
+
+
 (def ^:private bloom-filter-useful-total
   (counter-metric
     "blaze_rocksdb_bloom_filter_useful_total"
@@ -262,6 +273,34 @@
     TickerType/NUMBER_BLOCK_NOT_COMPRESSED))
 
 
+(def ^:private iterators-created-total
+  (counter-metric
+    "blaze_rocksdb_iterators_created_total"
+    "Returns the total number of iterators created."
+    TickerType/NO_ITERATORS))
+
+
+(def ^:private wal-syncs-total
+  (counter-metric
+    "blaze_rocksdb_wal_syncs_total"
+    "Returns the total number of WAL syncs."
+    TickerType/WAL_FILE_SYNCED))
+
+
+(def ^:private wal-bytes-total
+  (counter-metric
+    "blaze_rocksdb_wal_bytes_total"
+    "Returns the total number of bytes written to WAL."
+    TickerType/WAL_FILE_BYTES))
+
+
+(def ^:private write-timeout-total
+  (counter-metric
+    "blaze_rocksdb_write_timeout_total"
+    "Returns the total number of writes ending up with a timeout."
+    TickerType/WRITE_TIMEDOUT))
+
+
 (defn stats-collector [stats]
   (metrics/collector
     [(block-cache-data-miss-total stats)
@@ -292,9 +331,14 @@
      (file-opens-total stats)
      (file-closes-total stats)
      (file-errors-total stats)
+     (stall-seconds-total stats)
      (bloom-filter-useful-total stats)
      (bloom-filter-full-positive-total stats)
      (bloom-filter-full-true-positive-total stats)
      (blocks-compressed-total stats)
      (blocks-decompressed-total stats)
-     (blocks-not-compressed-total stats)]))
+     (blocks-not-compressed-total stats)
+     (iterators-created-total stats)
+     (wal-syncs-total stats)
+     (wal-bytes-total stats)
+     (write-timeout-total stats)]))
