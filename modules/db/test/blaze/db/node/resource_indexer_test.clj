@@ -155,9 +155,10 @@
    :blaze.db.node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)}
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :executor (ig/ref ::resource-indexer/executor)}
 
-   :blaze.test/executor {}})
+   ::resource-indexer/executor {}})
 
 
 (deftest fails-on-kv-put-test
@@ -188,7 +189,7 @@
     (let [observation {:fhir/type :fhir/Observation :id "0"
                        :subject #fhir/Reference{:reference "foo"}}
           hash (hash/generate observation)]
-      (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
+      (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault ::x ::y})]
         @(resource-indexer/index-resources
            resource-indexer
            {:t 0

@@ -33,43 +33,43 @@
    :history-system-handler #blaze/ref :blaze.interaction.history/system
    :resource-patterns
    [#:blaze.rest-api.resource-pattern
-           {:type :default
-            :interactions
-            {:read
-             #:blaze.rest-api.interaction
-                     {:handler #blaze/ref :blaze.interaction/read}
-             :vread
-             #:blaze.rest-api.interaction
-                     {:handler #blaze/ref :blaze.interaction/read}
-             :update
-             #:blaze.rest-api.interaction
-                     {:handler #blaze/ref :blaze.interaction/update}
-             :delete
-             #:blaze.rest-api.interaction
-                     {:handler #blaze/ref :blaze.interaction/delete}
-             :history-instance
-             #:blaze.rest-api.interaction
-                     {:handler #blaze/ref :blaze.interaction.history/instance}
-             :history-type
-             #:blaze.rest-api.interaction
-                     {:handler #blaze/ref :blaze.interaction.history/type}
-             :create
-             #:blaze.rest-api.interaction
-                     {:handler #blaze/ref :blaze.interaction/create}
-             :search-type
-             #:blaze.rest-api.interaction
-                     {:handler #blaze/ref :blaze.interaction/search-type}}}]
+       {:type :default
+        :interactions
+        {:read
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/read}
+         :vread
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/read}
+         :update
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/update}
+         :delete
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/delete}
+         :history-instance
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction.history/instance}
+         :history-type
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction.history/type}
+         :create
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/create}
+         :search-type
+         #:blaze.rest-api.interaction
+             {:handler #blaze/ref :blaze.interaction/search-type}}}]
    :compartments
    [#:blaze.rest-api.compartment
-           {:code "Patient"
-            :search-handler #blaze/ref :blaze.interaction/search-compartment}]
+       {:code "Patient"
+        :search-handler #blaze/ref :blaze.interaction/search-compartment}]
    :operations
    [#:blaze.rest-api.operation
-           {:code "evaluate-measure"
-            :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
-            :resource-types ["Measure"]
-            :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
-            :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}]
+       {:code "evaluate-measure"
+        :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+        :resource-types ["Measure"]
+        :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
+        :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}]
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
   ;;
@@ -147,7 +147,7 @@
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.fhir.operation.evaluate-measure/executor
-  {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" int? 4]}
+  {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" pos-int? 4]}
 
   :blaze.fhir.operation.evaluate-measure/compile-duration-seconds {}
   :blaze.fhir.operation.evaluate-measure/evaluate-duration-seconds {}
@@ -191,9 +191,14 @@
   :blaze.db.node/resource-indexer
   {:kv-store #blaze/ref :blaze.db/index-kv-store
    :resource-store #blaze/ref :blaze.db/resource-cache
-   :search-param-registry #blaze/ref :blaze.db/search-param-registry}
+   :search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :executor #blaze/ref :blaze.db.node.resource-indexer/executor}
+
+  :blaze.db.node.resource-indexer/executor
+  {:num-threads #blaze/cfg ["DB_RESOURCE_INDEXER_THREADS" pos-int? 4]}
 
   :blaze.db.node.resource-indexer/duration-seconds {}
+  :blaze.db.node.resource-indexer/index-entries {}
 
   :blaze.db.node.tx-indexer/duration-seconds {}
 
@@ -313,7 +318,7 @@
     :executor #blaze/ref :blaze.db.resource-store.kv/executor}
 
    :blaze.db.resource-store.kv/executor
-   {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" int? 4]}
+   {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" pos-int? 4]}
 
    :blaze.db.resource-store.kv/resource-bytes {}
 
@@ -474,7 +479,7 @@
     :executor #blaze/ref :blaze.db.resource-store.kv/executor}
 
    :blaze.db.resource-store.kv/executor
-   {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" int? 4]}
+   {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" pos-int? 4]}
 
    :blaze.db.resource-store.kv/resource-bytes {}
 

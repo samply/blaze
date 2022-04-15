@@ -3,6 +3,7 @@
     [blaze.db.kv.spec]
     [blaze.db.resource-store.spec]
     [blaze.db.search-param-registry.spec]
+    [blaze.executors :as ex]
     [clojure.spec.alpha :as s]))
 
 

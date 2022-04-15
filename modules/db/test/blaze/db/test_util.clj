@@ -68,7 +68,10 @@
    :blaze.db.node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)}
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :executor (ig/ref :blaze.db.node.resource-indexer/executor)}
+
+   :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
