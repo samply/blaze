@@ -543,6 +543,10 @@
       (kv/put! db (ba 0x00) (ba 0x01))
       (is (bytes= (ba 0x01) (kv/get db (ba 0x00)))))
 
+    (testing "entries"
+      (kv/put! db [[:default (ba 0x00) (ba 0x01)]])
+      (is (bytes= (ba 0x01) (kv/get db (ba 0x00)))))
+
     (testing "errors on unknown column-family"
       (is (ba/not-found? (ba/try-anomaly (kv/put! db [[:a (ba 0x00) (ba 0x01)]])))))))
 
