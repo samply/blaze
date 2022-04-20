@@ -2,7 +2,7 @@
   (:require
     [blaze.metrics.core :as metrics])
   (:import
-    [org.rocksdb Statistics TickerType]))
+    [org.rocksdb Statistics TickerType HistogramType]))
 
 
 (set! *warn-on-reflection* true)
@@ -15,8 +15,19 @@
        :value (value-f (.getTickerCount ^Statistics stats ticker-type))})))
 
 
+(defn- histogram-xf [histogram-type value-f]
+  (map
+    (fn [[name stats]]
+      {:label-values [name]
+       :value (value-f (.getSum (.getHistogramData ^Statistics stats histogram-type)))})))
+
+
 (defn- samples [ticker-type value-f stats]
   (into [] (sample-xf ticker-type value-f) stats))
+
+
+(defn- histogram-samples [histogram-type value-f stats]
+  (into [] (histogram-xf histogram-type value-f) stats))
 
 
 (defn- counter-metric
@@ -25,6 +36,12 @@
   ([name help ticker-type value-f]
    (fn [stats]
      (metrics/counter-metric name help ["name"] (samples ticker-type value-f stats)))))
+
+
+(defn- histogram-metric
+  ([name help histogram-type value-f]
+   (fn [stats]
+     (metrics/counter-metric name help ["name"] (histogram-samples histogram-type value-f stats)))))
 
 
 (def ^:private block-cache-data-miss-total
@@ -301,6 +318,38 @@
     TickerType/WRITE_TIMEDOUT))
 
 
+(def ^:private flush-seconds-total
+  (histogram-metric
+    "blaze_rocksdb_flush_seconds_total"
+    "Returns the total number of seconds spent flushing memtables to disk."
+    HistogramType/FLUSH_TIME
+    #(/ (double %) 1e6)))
+
+
+(def ^:private compaction-seconds-total
+  (histogram-metric
+    "blaze_rocksdb_compaction_seconds_total"
+    "Returns the total number of seconds spent in compaction."
+    HistogramType/COMPACTION_TIME
+    #(/ (double %) 1e6)))
+
+
+(def ^:private compression-seconds-total
+  (histogram-metric
+    "blaze_rocksdb_compression_seconds_total"
+    "Returns the total number of seconds spent in compression."
+    HistogramType/COMPRESSION_TIMES_NANOS
+    #(/ (double %) 1e9)))
+
+
+(def ^:private decompression-seconds-total
+  (histogram-metric
+    "blaze_rocksdb_decompression_seconds_total"
+    "Returns the total number of seconds spent in decompression."
+    HistogramType/DECOMPRESSION_TIMES_NANOS
+    #(/ (double %) 1e9)))
+
+
 (defn stats-collector [stats]
   (metrics/collector
     [(block-cache-data-miss-total stats)
@@ -341,4 +390,8 @@
      (iterators-created-total stats)
      (wal-syncs-total stats)
      (wal-bytes-total stats)
-     (write-timeout-total stats)]))
+     (write-timeout-total stats)
+     (flush-seconds-total stats)
+     (compaction-seconds-total stats)
+     (compression-seconds-total stats)
+     (decompression-seconds-total stats)]))

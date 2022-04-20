@@ -67,7 +67,11 @@
               "blaze_rocksdb_iterators_created"
               "blaze_rocksdb_wal_syncs"
               "blaze_rocksdb_wal_bytes"
-              "blaze_rocksdb_write_timeout"]
+              "blaze_rocksdb_write_timeout"
+              "blaze_rocksdb_flush_seconds"
+              "blaze_rocksdb_compaction_seconds"
+              "blaze_rocksdb_compression_seconds"
+              "blaze_rocksdb_decompression_seconds"]
              (mapv :name metrics))))
 
     (testing "every metric is of type counter"

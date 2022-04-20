@@ -10,11 +10,11 @@
   (:import
     [java.lang AutoCloseable]
     [java.nio ByteBuffer]
-    [java.util ArrayList EnumSet]
+    [java.util ArrayList]
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
      Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
-     StatsLevel HistogramType Env Priority]))
+     StatsLevel Env Priority]))
 
 
 (set! *warn-on-reflection* true)
@@ -228,8 +228,8 @@
 (defmethod ig/init-key ::stats
   [_ _]
   (log/info "Init RocksDB statistics")
-  (doto (Statistics. (EnumSet/allOf HistogramType))
-    (.setStatsLevel StatsLevel/EXCEPT_DETAILED_TIMERS)))
+  (doto (Statistics.)
+    (.setStatsLevel StatsLevel/EXCEPT_TIME_FOR_MUTEX)))
 
 
 (defmethod ig/halt-key! ::stats
