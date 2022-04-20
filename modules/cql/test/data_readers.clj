@@ -72,6 +72,7 @@
  elm/convert-quantity blaze.elm.literal/convert-quantity
  elm/children blaze.elm.literal/children
  elm/descendents blaze.elm.literal/descendents
+ elm/to-boolean blaze.elm.literal/to-boolean
  elm/to-date blaze.elm.literal/to-date
  elm/to-date-time blaze.elm.literal/to-date-time
  elm/to-decimal blaze.elm.literal/to-decimal

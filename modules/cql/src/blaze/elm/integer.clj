@@ -166,6 +166,31 @@
       (quot num div))))
 
 
+;; 22.19. ToBoolean
+(extend-protocol p/ToBoolean
+  Integer
+  (to-boolean [x]
+    (p/to-boolean (long x)))
+
+  Long
+  (to-boolean [x]
+    (condp = x
+      1 true
+      0 false
+      nil)))
+
+
+;; 22.24. ToDecimal
+(extend-protocol p/ToDecimal
+  Integer
+  (to-decimal [x]
+    (BigDecimal/valueOf (long x)))
+
+  Long
+  (to-decimal [x]
+    (BigDecimal/valueOf x)))
+
+
 ;; 22.25. ToInteger
 (extend-protocol p/ToInteger
   Integer

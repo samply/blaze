@@ -15,6 +15,9 @@
     [blaze.fhir.spec.type.system :as system]))
 
 
+(set! *warn-on-reflection* true)
+
+
 ;; 22.1. As
 (defrecord AsExpression [operand type pred]
   core/Expression
@@ -156,7 +159,10 @@
 
 ;; TODO 22.18. Is
 
-;; TODO 22.19. ToBoolean
+;; 22.19. ToBoolean
+(defunop to-boolean [x]
+  (p/to-boolean x))
+
 
 ;; TODO 22.20. ToChars
 
