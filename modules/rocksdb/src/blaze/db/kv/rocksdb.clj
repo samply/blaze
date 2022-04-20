@@ -14,10 +14,11 @@
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
      Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
-     StatsLevel HistogramType]))
+     StatsLevel HistogramType Env Priority]))
 
 
 (set! *warn-on-reflection* true)
+(RocksDB/loadLibrary)
 
 
 (deftype RocksKvIterator [^RocksIterator i]
@@ -177,7 +178,6 @@
 (defmethod ig/init-key ::block-cache
   [_ {:keys [size-in-mb] :or {size-in-mb 128}}]
   (log/info (format "Init RocksDB block cache of %d MB" size-in-mb))
-  (RocksDB/loadLibrary)
   (LRUCache. (bit-shift-left size-in-mb 20)))
 
 
@@ -185,6 +185,14 @@
   [_ cache]
   (log/info "Shutdown RocksDB block cache")
   (.close ^AutoCloseable cache))
+
+
+(defmethod ig/init-key ::env
+  [_ _]
+  (log/info (format "Init RocksDB environment"))
+  (doto (Env/getDefault)
+    (.setBackgroundThreads 2 Priority/HIGH)
+    (.setBackgroundThreads 6 Priority/LOW)))
 
 
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]

@@ -4,7 +4,7 @@
     [blaze.db.kv.rocksdb.write-options :as-alias write-options]
     [clojure.spec.alpha :as s])
   (:import
-    [org.rocksdb Cache Statistics]))
+    [org.rocksdb Cache Env Statistics]))
 
 
 (s/def :blaze.db.kv.rocksdb/dir
@@ -13,6 +13,10 @@
 
 (s/def :blaze.db.kv.rocksdb/block-cache
   #(instance? Cache %))
+
+
+(s/def :blaze.db.kv.rocksdb/env
+  #(instance? Env %))
 
 
 (s/def :blaze.db.kv.rocksdb/stats

@@ -514,6 +514,8 @@
    :blaze.db.kv.rocksdb/block-cache
    {:size-in-mb #blaze/cfg ["DB_BLOCK_CACHE_SIZE" int? 128]}
 
+   :blaze.db.kv.rocksdb/env {}
+
    :blaze.db.kv.rocksdb/stats-collector
    {:stats
     [["index" #blaze/ref :blaze.db.index-kv-store/stats]
@@ -625,6 +627,8 @@
 
    :blaze.db.kv.rocksdb/block-cache
    {:size-in-mb #blaze/cfg ["DB_BLOCK_CACHE_SIZE" int? 128]}
+
+   :blaze.db.kv.rocksdb/env {}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store/stats] {}
 

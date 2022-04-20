@@ -93,7 +93,9 @@
     :block-cache (ig/ref ::rocksdb/block-cache)
     :stats (ig/ref ::rocksdb/stats)}
    ::rocksdb/block-cache {}
-   ::rocksdb/stats {}})
+   ::rocksdb/env {}
+   ::rocksdb/stats {}
+   ::rocksdb/stats-collector {}})
 
 
 (deftest valid-test
