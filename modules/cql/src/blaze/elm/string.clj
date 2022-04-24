@@ -1,7 +1,8 @@
 (ns blaze.elm.string
   "Implementation of the string type."
   (:require
-    [blaze.elm.protocols :as p]))
+    [blaze.elm.protocols :as p]
+    [clojure.string :as str]))
 
 
 (set! *warn-on-reflection* true)
@@ -32,3 +33,22 @@
   (indexer [string index]
     (when (and index (<= 0 index) (< index (count string)))
       (.substring string index (inc index)))))
+
+
+;; 22.19. ToBoolean
+(extend-protocol p/ToBoolean
+  String
+  (to-boolean [s]
+    (case (str/lower-case s)
+      ("true" "t" "yes" "y" "1") true
+      ("false" "f" "no" "n" "0") false
+      nil)))
+
+
+;; 22.24. ToDecimal
+(extend-protocol p/ToDecimal
+  String
+  (to-decimal [s]
+    (try
+      (p/to-decimal (BigDecimal. s))
+      (catch Exception _))))

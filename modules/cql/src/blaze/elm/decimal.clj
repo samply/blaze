@@ -272,23 +272,21 @@
 ;; See integer implementation
 
 
+;; 22.19. ToBoolean
+(extend-protocol p/ToBoolean
+  BigDecimal
+  (to-boolean [x]
+    (condp = (.stripTrailingZeros x)
+      1M true
+      0M false
+      nil)))
+
+
 ;; 22.24. ToDecimal
 (extend-protocol p/ToDecimal
-  Integer
-  (to-decimal [x]
-    (BigDecimal/valueOf (long x)))
-
-  Long
-  (to-decimal [x]
-    (BigDecimal/valueOf x))
-
   BigDecimal
-  (to-decimal [x] x)
-
-  String
-  (to-decimal [s]
-    (when-let [d (try (BigDecimal. s) (catch Exception _))]
-      (-> d constrain-scale check-overflow))))
+  (to-decimal [x]
+    (-> x constrain-scale check-overflow)))
 
 
 (defn from-literal [s]

@@ -260,6 +260,11 @@
   (descendents [source]))
 
 
+;; 22.19. ToBoolean
+(defprotocol ToBoolean
+  (to-boolean [x]))
+
+
 ;; 22.22. ToDate
 (defprotocol ToDate
   "Converts an object into something usable as Date relative to `now`.

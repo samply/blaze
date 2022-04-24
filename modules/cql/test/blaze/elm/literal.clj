@@ -803,6 +803,11 @@
   {:type "Descendents" :source source})
 
 
+;; 22.19. ToBoolean
+(defn to-boolean [operand]
+  {:type "ToBoolean" :operand operand})
+
+
 ;; 22.22. ToDate
 (defn to-date [operand]
   {:type "ToDate" :operand operand})

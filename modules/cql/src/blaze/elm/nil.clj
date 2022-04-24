@@ -278,6 +278,12 @@
   (descendents [_]))
 
 
+;; 22.19. ToBoolean
+(extend-protocol p/ToBoolean
+  nil
+  (to-boolean [_]))
+
+
 ;; 22.24. ToDecimal
 (extend-protocol p/ToDecimal
   nil

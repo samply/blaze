@@ -10,6 +10,12 @@
     [blaze.elm.protocols :as p]))
 
 
+;; 22.19. ToBoolean
+(extend-protocol p/ToBoolean
+  Boolean
+  (to-boolean [x] x))
+
+
 ;; 22.25. ToInteger
 (extend-protocol p/ToInteger
   Boolean
