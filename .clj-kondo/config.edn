@@ -4,7 +4,11 @@
  :linters
  {:unsorted-required-namespaces
   {:level :error}
+
   :single-key-in
-  {:level :warning}}
+  {:level :warning}
+
+  :keyword-binding
+  {:level :error}}
 
  :skip-comments true}

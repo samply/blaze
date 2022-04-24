@@ -9,6 +9,9 @@
   :single-key-in
   {:level :warning}
 
+  :keyword-binding
+  {:level :error}
+
   :reduce-without-init
   {:level :warning}}
 
