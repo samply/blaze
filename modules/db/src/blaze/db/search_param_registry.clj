@@ -8,7 +8,6 @@
     [blaze.fhir.spec :as fhir-spec]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [jsonista.core :as j]
     [taoensso.timbre :as log]))
@@ -17,6 +16,7 @@
 (defprotocol SearchParamRegistry
   (-get [_ code] [_ code type])
   (-list-by-type [_ type])
+  (-list-by-target [_ target])
   (-linked-compartments [_ resource]))
 
 
@@ -34,6 +34,12 @@
   (-list-by-type search-param-registry type))
 
 
+(defn list-by-target
+  "Returns a seq of search params of `target`."
+  [search-param-registry target]
+  (-list-by-target search-param-registry target))
+
+
 (defn linked-compartments
   "Returns a list of compartments linked to `resource`.
 
@@ -44,7 +50,7 @@
   (-linked-compartments search-param-registry resource))
 
 
-(deftype MemSearchParamRegistry [index compartment-index]
+(deftype MemSearchParamRegistry [index target-index compartment-index]
   SearchParamRegistry
   (-get [_ code]
     (get-in index ["Resource" code]))
@@ -56,6 +62,9 @@
   (-list-by-type [_ type]
     (-> (into [] (map val) (index "Resource"))
         (into (map val) (index type))))
+
+  (-list-by-target [_ target]
+    (target-index target))
 
   (-linked-compartments [_ resource]
     (transduce
@@ -89,7 +98,7 @@
 (defn- index-search-param [index {:keys [url] :as sp}]
   (if-ok [search-param (sc/search-param index sp)]
     (assoc index url search-param)
-    #(if (= ::anom/unsupported (::anom/category %))
+    #(if (ba/unsupported? %)
        index
        (reduced %))))
 
@@ -158,28 +167,45 @@
 
 (defn- build-url-index
   "Builds an index from url to search-param."
-  [entries]
+  [{entries :entry}]
   (when-ok [non-composite (build-url-index* {} remove-composite entries)]
     (build-url-index* non-composite filter-composite entries)))
 
 
 (defn- build-index
   "Builds an index from [type code] to search param."
-  [{entries :entry}]
-  (when-ok [url-index (build-url-index entries)]
-    (transduce
+  [url-index {entries :entry}]
+  (transduce
+    (map :resource)
+    (completing
+      (fn [index {:keys [url base code]}]
+        (if-let [search-param (clojure.core/get url-index url)]
+          (reduce
+            (fn [index base]
+              (assoc-in index [base code] search-param))
+            index
+            base)
+          index)))
+    {}
+    entries))
+
+
+(defn- build-target-index [url-index {entries :entry}]
+  (transduce
+    (comp
       (map :resource)
-      (completing
-        (fn [index {:keys [url base code]}]
-          (if-let [search-param (clojure.core/get url-index url)]
-            (reduce
-              (fn [index base]
-                (assoc-in index [base code] search-param))
-              index
-              base)
-            index)))
-      {}
-      entries)))
+      (filter (comp #{"reference"} :type)))
+    (completing
+      (fn [index {:keys [url target]}]
+        (if-let [search-param (clojure.core/get url-index url)]
+          (reduce
+            (fn [index target]
+              (update index target (fnil conj []) search-param))
+            index
+            target)
+          index)))
+    {}
+    entries))
 
 
 (defmethod ig/pre-init-spec :blaze.db/search-param-registry [_]
@@ -190,5 +216,8 @@
   [_ _]
   (log/info "Init in-memory fixed R4 search parameter registry")
   (let [bundle (read-json-resource "blaze/db/search-parameters.json")]
-    (when-ok [index (build-index bundle)]
-      (->MemSearchParamRegistry (add-special index) (index-compartments index)))))
+    (when-ok [url-index (build-url-index bundle)
+              index (build-index url-index bundle)]
+      (->MemSearchParamRegistry (add-special index)
+                                (build-target-index url-index bundle)
+                                (index-compartments index)))))

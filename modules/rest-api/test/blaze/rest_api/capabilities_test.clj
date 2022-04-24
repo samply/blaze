@@ -107,7 +107,10 @@
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :resource 0 :type] := #fhir/code"Patient"
         [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
-        [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"}))
+        [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"})
+        [:rest 0 :resource 0 :searchRevInclude 0] := "Account:patient"
+        [:rest 0 :resource 0 :searchRevInclude 1] := "Account:subject"
+        [:rest 0 :resource 0 :searchRevInclude 2] := "ActivityDefinition:composed-of")
 
       (testing "with disabled referential integrity check"
         (given
