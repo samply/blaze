@@ -253,12 +253,12 @@ jobs:
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: ghcr.io/samply/blaze:sha-${{ github.sha }}
-        format: template
-        template: '@/contrib/sarif.tpl'
+        format: sarif
         output: trivy-results.sarif
+        severity: 'CRITICAL,HIGH'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@codeql-bundle-20211208
+      uses: github/codeql-action/upload-sarif@codeql-bundle-20220401
       with:
         sarif_file: trivy-results.sarif
 
