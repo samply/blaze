@@ -62,11 +62,19 @@
          :referencePolicy
          (cond->
            [#fhir/code"literal"
-          #fhir/code"local"]
+            #fhir/code"local"]
            enforce-referential-integrity
            (conj #fhir/code"enforced"))
+         :searchRevInclude
+         (into
+           []
+           (mapcat
+             (fn [{:keys [base code]}]
+               (map #(str % ":" code) base)))
+           (sr/list-by-target search-param-registry name))
          :searchParam
-         (transduce
+         (into
+           []
            (map
              (fn [{:keys [name url type]}]
                (cond-> {:name name :type (type/code type)}
@@ -74,8 +82,6 @@
                  (assoc :definition (type/canonical url))
                  (= "quantity" type)
                  (assoc :documentation quantity-documentation))))
-           conj
-           []
            (sr/list-by-type search-param-registry name))}
 
         (seq operations)
