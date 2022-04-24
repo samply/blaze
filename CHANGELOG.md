@@ -4,6 +4,14 @@
 
 ### Security
 
+* Update Jackson Databind to v2.13.2.2 ([#668](https://github.com/samply/blaze/pull/668))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/35?closed=1).
+
+## v0.16.4
+
+### Security
+
 * Update Jackson Databind to v2.13.2.1 ([#659](https://github.com/samply/blaze/pull/659))
 * Remove Unused Oracle Linux Packages ([#653](https://github.com/samply/blaze/pull/653))
 
