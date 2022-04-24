@@ -33,10 +33,10 @@
 (extend-protocol p/Abs
   Integer
   (abs [x]
-    (Math/abs ^int x))
+    (abs (.longValue x)))
   Long
   (abs [x]
-    (Math/abs ^long x)))
+    (abs (.longValue x))))
 
 
 ;; 16.2. Add
@@ -170,7 +170,7 @@
 (extend-protocol p/ToInteger
   Integer
   (to-integer [x]
-    (long x))
+    (.longValue x))
 
   Long
   (to-integer [x] x)
@@ -178,15 +178,15 @@
   String
   (to-integer [s]
     (try
-      (long (Integer/parseInt s))
-      (catch Exception _))))
+      (.longValue (Integer/valueOf s))
+      (catch NumberFormatException _))))
 
 
 ;; 22.27. ToLong
 (extend-protocol p/ToLong
   Integer
   (to-long [x]
-    (long x))
+    (.longValue x))
 
   Long
   (to-long [x] x)
@@ -194,8 +194,8 @@
   String
   (to-long [s]
     (try
-      (Long/parseLong s)
-      (catch Exception _))))
+      (Long/valueOf s)
+      (catch NumberFormatException _))))
 
 
 ;; 22.30. ToString

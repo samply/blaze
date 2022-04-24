@@ -1,9 +1,9 @@
 (ns blaze.db.impl.index.resource-search-param-value
   "Functions for accessing the ResourceSearchParamValue index."
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]))
@@ -22,8 +22,8 @@
   "Decodes the value from the key."
   ([] (bb/allocate-direct key-buffer-capacity))
   ([buf]
-   (bb/set-position! buf (+ (bb/position buf) codec/tid-size))
-   (let [^long id-size (bb/size-up-to-null buf)]
+   (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/tid-size))
+   (let [id-size (long (bb/size-up-to-null buf))]
      (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/hash-prefix-size
                               codec/c-hash-size))
      (bs/from-byte-buffer buf))))

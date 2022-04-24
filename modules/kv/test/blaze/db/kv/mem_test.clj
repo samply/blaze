@@ -1,6 +1,7 @@
 (ns blaze.db.kv.mem-test
   (:require
     [blaze.anomaly :as ba]
+    [blaze.byte-buffer :as bb]
     [blaze.db.kv :as kv]
     [blaze.db.kv-spec]
     [blaze.db.kv.mem]
@@ -10,10 +11,9 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [taoensso.timbre :as log])
-  (:import
-    [java.nio ByteBuffer]))
+    [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
@@ -56,9 +56,9 @@
 
 
 (defn- bb [& bytes]
-  (doto (ByteBuffer/allocateDirect (count bytes))
-    (.put (byte-array bytes))
-    (.flip)))
+  (-> (bb/allocate-direct (count bytes))
+      (bb/put-byte-array! (byte-array bytes))
+      bb/flip!))
 
 
 (deftest init-test
@@ -75,6 +75,14 @@
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :column-families)))))
 
 
+(defn- iterator-invalid-anom? [anom]
+  (and (ba/fault? anom) (= "The iterator is invalid." (::anom/message anom))))
+
+
+(defn- iterator-closed-anom? [anom]
+  (and (ba/fault? anom) (= "The iterator is closed." (::anom/message anom))))
+
+
 (deftest valid-test
   (with-system [{kv-store ::kv/mem} system]
     (with-open [snapshot (kv/new-snapshot kv-store)
@@ -84,7 +92,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/valid? iter))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/valid? iter))))))))
 
 
 (deftest seek-to-first-test
@@ -102,7 +110,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek-to-first! iter))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-to-first! iter))))))))
 
 
 (deftest seek-to-last-test
@@ -120,7 +128,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek-to-last! iter))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-to-last! iter))))))))
 
 
 (deftest seek-test
@@ -161,7 +169,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek! iter (ba 0x00))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek! iter (ba 0x00))))))))
 
   (testing "reverse comparator"
     (with-system-data [{kv-store ::kv/mem} reverse-comparator-system]
@@ -201,7 +209,7 @@
 
         (testing "errors on closed iterator"
           (.close iter)
-          (is (ba/fault? (ba/try-anomaly (kv/seek! iter (ba 0x04))))))))))
+          (is (iterator-closed-anom? (ba/try-anomaly (kv/seek! iter (ba 0x04))))))))))
 
 
 (deftest seek-buffer-test
@@ -242,7 +250,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x00))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x00))))))))
 
   (testing "reverse comparator"
     (with-system-data [{kv-store ::kv/mem} reverse-comparator-system]
@@ -282,7 +290,7 @@
 
         (testing "errors on closed iterator"
           (.close iter)
-          (is (ba/fault? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x04))))))))))
+          (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x04))))))))))
 
 
 (deftest seek-for-prev-test
@@ -323,7 +331,7 @@
 
       (testing "errors on closed iterator"
         (.close iter)
-        (is (ba/fault? (ba/try-anomaly (kv/seek-for-prev! iter (ba 0x00)))))))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-for-prev! iter (ba 0x00)))))))))
 
 
 (deftest next-test
@@ -351,10 +359,7 @@
         (is (not (kv/valid? iter))))
 
       (testing "iterator is invalid"
-        (try
-          (kv/next! iter)
-          (catch Exception e
-            (is (ba/fault? (ex-data e)))))))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/next! iter))))))))
 
 
 (deftest prev-test
@@ -382,10 +387,7 @@
         (is (not (kv/valid? iter))))
 
       (testing "iterator is invalid"
-        (try
-          (kv/prev! iter)
-          (catch Exception e
-            (is (ba/fault? (ex-data e)))))))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/prev! iter))))))))
 
 
 (deftest key-test
@@ -396,31 +398,31 @@
                 iter (kv/new-iterator snapshot)]
 
       (testing "errors on invalid iterator"
-        (is (ba/fault? (ba/try-anomaly (kv/key iter))))
-        (is (ba/fault? (ba/try-anomaly (kv/key! iter (ByteBuffer/allocateDirect 0))))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/key iter))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/key! iter (bb/allocate-direct 0))))))
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 1)]
+        (let [buf (bb/allocate-direct 1)]
           (is (= 2 (kv/key! iter buf)))
-          (is (= 0x01 (.get buf)))))
+          (is (= 0x01 (bb/get-byte! buf)))))
 
       (testing "sets the limit of a bigger buffer to two"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 3)]
+        (let [buf (bb/allocate-direct 3)]
           (is (= 2 (kv/key! iter buf)))
-          (is (= 2 (.limit buf)))))
+          (is (= 2 (bb/limit buf)))))
 
       (testing "writes the key at position"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 3)]
-          (.position buf 1)
+        (let [buf (bb/allocate-direct 3)]
+          (bb/set-position! buf 1)
           (is (= 2 (kv/key! iter buf)))
-          (is (= 1 (.position buf)))
-          (is (= 3 (.limit buf)))
-          (is (= 0x00 (.get buf 0)))
-          (is (= 0x01 (.get buf)))
-          (is (= 0x02 (.get buf))))))))
+          (is (= 1 (bb/position buf)))
+          (is (= 3 (bb/limit buf)))
+          (is (= 0x00 (bb/get-byte! buf 0)))
+          (is (= 0x01 (bb/get-byte! buf)))
+          (is (= 0x02 (bb/get-byte! buf))))))))
 
 
 (deftest value-test
@@ -431,31 +433,31 @@
                 iter (kv/new-iterator snapshot)]
 
       (testing "errors on invalid iterator"
-        (is (ba/fault? (ba/try-anomaly (kv/value iter))))
-        (is (ba/fault? (ba/try-anomaly (kv/value! iter (ByteBuffer/allocateDirect 0))))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/value iter))))
+        (is (iterator-invalid-anom? (ba/try-anomaly (kv/value! iter (bb/allocate-direct 0))))))
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 1)]
+        (let [buf (bb/allocate-direct 1)]
           (is (= 2 (kv/value! iter buf)))
-          (is (= 0x01 (.get buf)))))
+          (is (= 0x01 (bb/get-byte! buf)))))
 
       (testing "sets the limit of a bigger buffer to two"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 3)]
+        (let [buf (bb/allocate-direct 3)]
           (is (= 2 (kv/value! iter buf)))
-          (is (= 2 (.limit buf)))))
+          (is (= 2 (bb/limit buf)))))
 
       (testing "writes the value at position"
         (kv/seek-to-first! iter)
-        (let [buf (ByteBuffer/allocateDirect 3)]
-          (.position buf 1)
+        (let [buf (bb/allocate-direct 3)]
+          (bb/set-position! buf 1)
           (is (= 2 (kv/value! iter buf)))
-          (is (= 1 (.position buf)))
-          (is (= 3 (.limit buf)))
-          (is (= 0x00 (.get buf 0)))
-          (is (= 0x01 (.get buf)))
-          (is (= 0x02 (.get buf))))))))
+          (is (= 1 (bb/position buf)))
+          (is (= 3 (bb/limit buf)))
+          (is (= 0x00 (bb/get-byte! buf 0)))
+          (is (= 0x01 (bb/get-byte! buf)))
+          (is (= 0x02 (bb/get-byte! buf))))))))
 
 
 (deftest different-column-families-test

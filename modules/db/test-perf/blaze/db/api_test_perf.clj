@@ -11,6 +11,7 @@
     [blaze.db.tx-cache]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local]
+    [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :refer [with-system]]
@@ -32,6 +33,7 @@
     :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
     :resource-store (ig/ref :blaze.db/resource-store)
     :kv-store (ig/ref :blaze.db/index-kv-store)
+    :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :poll-timeout (time/millis 10)}
 
@@ -42,7 +44,7 @@
    {:column-families {}}
    :blaze.test/clock {}
 
-   :blaze.db/resource-handle-cache {}
+   :blaze.db/resource-handle-cache {:max-size 1000000}
 
    :blaze.db/tx-cache
    {:kv-store (ig/ref :blaze.db/index-kv-store)}
@@ -72,15 +74,59 @@
    {:column-families {}}
    ::rs-kv/executor {}
 
+   :blaze.db.node/resource-indexer
+   {:kv-store (ig/ref :blaze.db/index-kv-store)
+    :resource-store (ig/ref ::rs/kv)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :executor (ig/ref :blaze.db.node.resource-indexer/executor)}
+
+   :blaze.db.node.resource-indexer/executor {}
+
    :blaze.db/search-param-registry
    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
 
    :blaze.fhir/structure-definition-repo {}})
 
 
+(defmacro with-system-data [[binding-form system] txs & body]
+  `(with-system [system# ~system]
+     (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
+     (let [~binding-form system#] ~@body)))
+
+
 (deftest transact-test
   (with-system [{:blaze.db/keys [node]} system]
-    ;; 190 µs - MacBook Pro 2015
-    ;;  68 µs - Mac mini M1
-    (criterium/quick-bench
+    ;;  58.8 µs / 1.76 µs - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
+    (criterium/bench
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))))
+
+
+(defn- observation-tx-data
+  ([version]
+   (into [] (map (partial observation-tx-data version)) (range 10)))
+  ([version id]
+   [:put {:fhir/type :fhir/Observation :id (str id)
+          :subject #fhir/Reference{:reference "Patient/0"}
+          :method (type/map->CodeableConcept {:text (str version)})
+          :code
+          #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                   {:system #fhir/uri"system-191514"
+                    :code #fhir/code"code-191518"}]}}]))
+
+
+
+(deftest type-test
+  (with-system-data [{:blaze.db/keys [node]} system]
+    (into [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+          (map observation-tx-data)
+          (range 2))
+
+    (let [query (d/compile-compartment-query
+                  node "Patient" "Observation"
+                  [["code" "system-191514|code-191518"]])]
+      ;; 5.75 µs / 120 ns - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
+      (with-open [db (d/new-batch-db (d/db node))]
+        (criterium/bench
+          (count (d/execute-query db query "0")))))))

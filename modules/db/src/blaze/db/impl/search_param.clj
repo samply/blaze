@@ -4,6 +4,7 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
@@ -45,7 +46,8 @@
   [string-start-id resource-handles values]
   (drop-while
     #(let [resource-handle (coll/first (resource-handles %))]
-       (not= string-start-id (:id resource-handle)))
+       (or (nil? resource-handle)
+           (not= string-start-id (rh/id resource-handle))))
     values))
 
 
@@ -129,25 +131,30 @@
 
 
 (defn index-entries
-  "Returns search index entries of `resource` with `hash` for `search-param` or
-  an anomaly in case of errors."
+  "Returns reducible collection of index entries of `resource` with `hash` for
+  `search-param` or an anomaly in case of errors."
   {:arglists '([search-param linked-compartments hash resource])}
   [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
   (when-ok [values (p/-index-values search-param stub-resolver resource)]
     (let [{:keys [id]} resource
           type (name (fhir-spec/fhir-type resource))
           tid (codec/tid type)
-          id (codec/id-byte-string id)]
+          id (codec/id-byte-string id)
+          linked-compartments
+          (mapv
+            (fn [[code comp-id]]
+              [(codec/c-hash code)
+               (codec/id-byte-string comp-id)])
+            linked-compartments)]
       (coll/eduction
         (mapcat
           (fn index-entry [[modifier value]]
             (let [c-hash (c-hash-w-modifier c-hash code modifier)]
               (transduce
                 (map
-                  (fn index-compartment-entry [[code comp-id]]
+                  (fn index-compartment-entry [compartment]
                     (c-sp-vr/index-entry
-                      [(codec/c-hash code)
-                       (codec/id-byte-string comp-id)]
+                      compartment
                       c-hash
                       tid
                       value

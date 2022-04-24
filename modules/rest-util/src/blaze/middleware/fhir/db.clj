@@ -13,7 +13,7 @@
 
 
 (defn- vid [{{:keys [vid]} :path-params}]
-  (and vid (re-matches #"\d+" vid) (Long/parseLong vid)))
+  (some-> vid fhir-util/parse-nat-long))
 
 
 (defn- timeout-msg [timeout]

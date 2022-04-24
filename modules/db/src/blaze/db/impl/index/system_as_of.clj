@@ -1,14 +1,13 @@
 (ns blaze.db.impl.index.system-as-of
   "Functions for accessing the SystemAsOf index."
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i])
   (:import
-    [clojure.lang IReduceInit]
     [com.google.common.primitives Longs]))
 
 
@@ -16,8 +15,12 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
+(def ^:private ^:const ^long t-tid-size
+  (+ codec/t-size codec/tid-size))
+
+
 (def ^:private ^:const ^long max-key-size
-  (+ codec/t-size codec/tid-size codec/max-id-size))
+  (+ t-tid-size codec/max-id-size))
 
 
 (def ^:private ^:const ^long value-size
@@ -26,7 +29,7 @@
 
 (defn- key-valid? [^long end-t]
   (fn [handle]
-    (< end-t ^long (:t handle))))
+    (< end-t (rh/t handle))))
 
 
 (defn- decoder
@@ -62,10 +65,17 @@
 (defn encode-key
   "Encodes the key of the SystemAsOf index from `t`, `tid` and `id`."
   [t tid id]
-  (-> (bb/allocate (+ codec/t-size codec/tid-size (bs/size id)))
+  (-> (bb/allocate (unchecked-add-int t-tid-size (bs/size id)))
       (bb/put-long! (codec/descending-long ^long t))
       (bb/put-int! tid)
       (bb/put-byte-string! id)
+      bb/array))
+
+
+(defn- encode-t-tid [start-t start-tid]
+  (-> (bb/allocate t-tid-size)
+      (bb/put-long! (codec/descending-long ^long start-t))
+      (bb/put-int! start-tid)
       bb/array))
 
 
@@ -75,10 +85,7 @@
     (encode-key start-t start-tid start-id)
 
     start-tid
-    (-> (bb/allocate (+ codec/t-size codec/tid-size))
-        (bb/put-long! (codec/descending-long ^long start-t))
-        (bb/put-int! start-tid)
-        bb/array)
+    (encode-t-tid start-t start-tid)
 
     :else
     (Longs/toByteArray (codec/descending-long ^long start-t))))
@@ -90,7 +97,6 @@
   `end-t` (inclusive) of all resources.
 
   Versions are resource handles."
-  ^IReduceInit
   [saoi start-t start-tid start-id end-t]
   (coll/eduction
     (take-while (key-valid? end-t))

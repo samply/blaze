@@ -1,6 +1,7 @@
 (ns blaze.test-util
   (:require
     [blaze.anomaly :as ba]
+    [blaze.byte-buffer :as bb]
     [blaze.executors :as ex]
     [blaze.fhir.structure-definition-repo]
     [clojure.test :refer [is]]
@@ -8,7 +9,6 @@
     [integrant.core :as ig]
     [juxt.iota :refer [given]])
   (:import
-    [java.nio ByteBuffer]
     [java.time Clock Instant ZoneId]
     [java.util Arrays Random]
     [java.util.concurrent Executors TimeUnit]))
@@ -53,9 +53,9 @@
     (proxy [Random] []
       (nextBytes [byte-array]
         (assert (= 20 (count byte-array)))
-        (let [bb (ByteBuffer/wrap byte-array)]
-          (.position bb 12)
-          (.putLong bb (swap! state inc)))))))
+        (let [bb (bb/wrap byte-array)]
+          (bb/set-position! bb 12)
+          (bb/put-long! bb (swap! state inc)))))))
 
 
 (defmethod ig/init-key :blaze.test/executor

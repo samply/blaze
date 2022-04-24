@@ -4,6 +4,7 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.coll.core :as coll]
     [blaze.elm.aggregates :as aggregates]
     [blaze.elm.compiler.macros :refer [defaggop]]
     [blaze.elm.compiler.queries :as queries]
@@ -49,12 +50,12 @@
 (defaggop median [source]
   (let [sorted (vec (sort-by identity queries/asc-comparator (remove nil? source)))]
     (when (seq sorted)
-      (if (zero? (rem (count sorted) 2))
-        (let [upper-idx (quot (count sorted) 2)]
-          (p/divide (p/add (nth sorted (dec upper-idx))
-                           (nth sorted upper-idx))
+      (if (zero? (rem (coll/count sorted) 2))
+        (let [upper-idx (quot (coll/count sorted) 2)]
+          (p/divide (p/add (coll/nth sorted (dec upper-idx))
+                           (coll/nth sorted upper-idx))
                     2))
-        (nth sorted (quot (count sorted) 2))))))
+        (coll/nth sorted (quot (coll/count sorted) 2))))))
 
 
 ;; 21.9. Min

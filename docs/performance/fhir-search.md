@@ -26,6 +26,12 @@ time curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 17861-6 |  1.7 M |      1.7 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 39156-5 |  9.7 M |       10 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 29463-7 |   13 M |       15 |
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 17861-6 |  171 k |    0.152 |
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 39156-5 |  967 k |    0.804 |
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 29463-7 |  1.3 M |    1.088 |
+| EPYC 7543P  |      128 |            30 |               10 |       292 M |          278 M | 17861-6 |  1.7 M |    1.472 |
+| EPYC 7543P  |      128 |            30 |               10 |       292 M |          278 M | 39156-5 |  9.7 M |    8.690 |
+| EPYC 7543P  |      128 |            30 |               10 |       292 M |          278 M | 29463-7 |   13 M |   11.410 |
 
 According to the measurements the time needed by Blaze to count resources only depends on the number of hits and equals roughly in **1 second per 1 million hits**.
 
@@ -47,6 +53,12 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 17861-6 |  1.7 M |       48 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 39156-5 |  9.7 M |      284 |
 | E5-2687W v4 |      128 |            30 |               10 |       292 M |          278 M | 29463-7 |   13 M |      410 |
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 17861-6 |  171 k |    4.178 |
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 39156-5 |  967 k |   24.492 |
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 29463-7 |  1.3 M |   32.126 |
+| EPYC 7543P  |      128 |            30 |               10 |       292 M |          278 M | 17861-6 |  1.7 M |   42.364 |
+| EPYC 7543P  |      128 |            30 |               10 |       292 M |          278 M | 39156-5 |  9.7 M |  239.338 |
+| EPYC 7543P  |      128 |            30 |               10 |       292 M |          278 M | 29463-7 |   13 M |  322.330 |
 
 According to the measurements the time needed by Blaze to deliver resources only depends on the number of hits and equals roughly in **30 seconds per 1 million hits**.
 
@@ -58,6 +70,7 @@ The dataset used is Synthea v2.7.0. The resource generation was done with the fo
 java -jar synthea-with-dependencies.jar \
   -s 3256262546 -cs 3726451 -r 20210101 -p "$AMOUNT" \
   --exporter.use_uuid_filenames=true \
+  --exporter.subfolders_by_id_substring=true \
   --generate.only_alive_patients=true \
   --exporter.hospital.fhir.export=false \
   --exporter.practitioner.fhir.export=false

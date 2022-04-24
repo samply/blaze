@@ -118,7 +118,7 @@
       (resource-keys! context c-hash tid value start-id)))
 
   (-compartment-keys [_ context compartment tid value]
-    (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value value))
+    (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some #(matches? context c-hash resource-handle %) values)))

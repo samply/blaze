@@ -14,7 +14,7 @@
   Each transaction which touches any resources, puts an entry with the new
   totals at its t."
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.kv :as kv])
   (:import

@@ -13,6 +13,12 @@
   (if (or (nil? x) (sequential? x)) x [x]))
 
 
+(defn parse-nat-long [s]
+  (when-let [n (parse-long s)]
+    (when-not (neg? n)
+      n)))
+
+
 (defn t
   "Returns the t (optional) of the database which should be stay stable.
 
@@ -20,7 +26,7 @@
   if there is any."
   {:arglists '([query-params])}
   [{v "__t"}]
-  (some #(when (re-matches #"\d+" %) (Long/parseLong %)) (to-seq v)))
+  (some parse-nat-long (to-seq v)))
 
 
 (def ^:private ^:const default-page-size 50)
@@ -34,9 +40,8 @@
   value of 50. Limits value to 10000."
   {:arglists '([query-params])}
   [{v "_count"}]
-  (if-let [count (some #(when (re-matches #"\d+" %) %) (to-seq v))]
-    (min (Long/parseLong count) max-page-size)
-    default-page-size))
+  (or (some #(some-> (parse-nat-long %) (min max-page-size)) (to-seq v))
+      default-page-size))
 
 
 (defn page-offset
@@ -46,9 +51,7 @@
   default value of 0."
   {:arglists '([query-params])}
   [{v "__page-offset"}]
-  (if-let [page-offset (some #(when (re-matches #"\d+" %) %) (to-seq v))]
-    (Long/parseLong page-offset)
-    0))
+  (or (some parse-nat-long (to-seq v)) 0))
 
 
 (defn page-type

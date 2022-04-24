@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.async.comp :as ac :refer [do-sync]]
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.cassandra :as cass]
     [blaze.cassandra.spec]
@@ -15,8 +16,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
-    [java.lang AutoCloseable]
-    [java.nio ByteBuffer]))
+    [java.lang AutoCloseable]))
 
 
 (set! *warn-on-reflection* true)
@@ -98,7 +98,7 @@
 
 
 (defn- bind-put [statement hash resource]
-  (let [content (ByteBuffer/wrap (fhir-spec/unform-cbor resource))]
+  (let [content (bb/wrap (fhir-spec/unform-cbor resource))]
     (prom/observe! resource-bytes (.capacity content))
     (cass/bind statement (bs/hex hash) content)))
 

@@ -265,7 +265,7 @@
         (given
           (verify/verify-tx-cmds
             (d/db node) 2
-            [{:op "create" :type "Patient" :id "1"
+            [{:op "create" :type "Patient" :id "foo"
               :hash (hash/generate patient-0)
               :if-none-exist [["birthdate" "2020"]]}])
           ::anom/category := ::anom/conflict

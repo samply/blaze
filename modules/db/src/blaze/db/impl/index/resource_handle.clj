@@ -1,9 +1,12 @@
 (ns blaze.db.impl.index.resource-handle
+  (:refer-clojure :exclude [hash])
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
-    [blaze.fhir.spec.type.protocols :as p]))
+    [blaze.fhir.spec.type.protocols :as p])
+  (:import
+    [clojure.lang Numbers]))
 
 
 (set! *warn-on-reflection* true)
@@ -19,15 +22,18 @@
 
 (defn state->num-changes
   "A resource is new if num-changes is 1."
+  {:inline (fn [state] `(bit-shift-right (unchecked-long ~state) 8))}
   [state]
-  (bit-shift-right ^long state 8))
+  (bit-shift-right (unchecked-long state) 8))
 
 
 (defn state->op [^long state]
-  (cond
-    (bit-test state 1) :create
-    (bit-test state 0) :delete
-    :else :put))
+  ;; TODO: revise this unidiomatic style taken for performance reasons
+  (if (Numbers/testBit state 1)
+    :create
+    (if (Numbers/testBit state 0)
+      :delete
+      :put)))
 
 
 (defn resource-handle
@@ -48,3 +54,35 @@
 
 (defn resource-handle? [x]
   (instance? ResourceHandle x))
+
+
+(defn deleted?
+  {:inline
+   (fn [rh]
+     `(identical? :delete (.-op ~(with-meta rh {:tag `ResourceHandle}))))}
+  [rh]
+  (identical? :delete (.-op ^ResourceHandle rh)))
+
+
+(defn tid
+  {:inline (fn [rh] `(.-tid ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-tid ^ResourceHandle rh))
+
+
+(defn id
+  {:inline (fn [rh] `(.-id ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-id ^ResourceHandle rh))
+
+
+(defn t
+  {:inline (fn [rh] `(.-t ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-t ^ResourceHandle rh))
+
+
+(defn hash
+  {:inline (fn [rh] `(.-hash ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-hash ^ResourceHandle rh))

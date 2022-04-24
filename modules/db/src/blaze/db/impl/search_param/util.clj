@@ -1,12 +1,12 @@
 (ns blaze.db.impl.search-param.util
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.fhir.spec :as fhir-spec]
-    [clojure.string :as str])
-  (:import
-    [clojure.lang IReduceInit Indexed]))
+    [clojure.string :as str]))
 
 
 (set! *warn-on-reflection* true)
@@ -30,36 +30,29 @@
           (str value) (fhir-spec/fhir-type value) url type))
 
 
-(def by-id-grouper
-  "Transducer which groups `[id hash-prefix]` tuples by `id` and returns
-  `[id tuples]` tuples."
-  (comp
-    (partition-by (fn [[id]] id))
-    (map (fn [[[id] :as tuples]] [id tuples]))))
+(def ^:private by-id-grouper
+  "Transducer which groups `[id hash-prefix]` tuples by `id`."
+  (partition-by (fn [[id]] id)))
 
 
 (defn non-deleted-resource-handle [resource-handle tid id]
-  (when-let [{:keys [op] :as handle} (resource-handle tid id)]
-    (when-not (identical? :delete op)
+  (when-let [handle (resource-handle tid id)]
+    (when-not (rh/deleted? handle)
       handle)))
 
 
-(defn- contains-hash-prefix? [tuples hash-prefix]
-  (.reduce
-    ^IReduceInit tuples
-    (fn [_ tuple]
-      (when (.equals ^Object hash-prefix (.nth ^Indexed tuple 1))
-        (reduced true)))
-    nil))
+(defn- contains-hash-prefix-pred [resource-handle]
+  (let [hash-prefix (codec/hash-prefix (rh/hash resource-handle))]
+    (fn [tuple] (= (coll/nth tuple 1) hash-prefix))))
 
 
 (defn- resource-handle-mapper* [{:keys [resource-handle]} tid]
   (keep
-    (fn [[id tuples]]
-      (when-let [{:keys [hash] :as resource-handle} (resource-handle tid id)]
-        (let [hash-prefix (codec/hash-prefix hash)]
-          (when (contains-hash-prefix? tuples hash-prefix)
-            resource-handle))))))
+    (fn [tuples]
+      (let [id (-> tuples (coll/nth 0) (coll/nth 0))]
+        (when-let [handle (resource-handle tid id)]
+          (when (some (contains-hash-prefix-pred handle) tuples)
+            handle))))))
 
 
 (defn resource-handle-mapper [context tid]

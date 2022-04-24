@@ -9,6 +9,7 @@
     [blaze.db.node :as node]
     [blaze.db.node-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
+    [blaze.db.node.tx-indexer :as-alias tx-indexer]
     [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry]
@@ -95,8 +96,9 @@
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:explain ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
 
   (testing "invalid tx-log"
     (given-thrown (ig/init {:blaze.db/node {:tx-log ::invalid}})
@@ -106,10 +108,11 @@
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (satisfies? tx-log/TxLog ~'%))
-      [:explain ::s/problems 6 :val] := ::invalid))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 7 :pred] := `(fn ~'[%] (satisfies? tx-log/TxLog ~'%))
+      [:explain ::s/problems 7 :val] := ::invalid))
 
   (testing "invalid enforce-referential-integrity"
     (given-thrown (ig/init {:blaze.db/node {:enforce-referential-integrity ::invalid}})
@@ -120,10 +123,11 @@
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
       [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
       [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 7 :pred] := `boolean?
-      [:explain ::s/problems 7 :val] := ::invalid)))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:explain ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 8 :pred] := `boolean?
+      [:explain ::s/problems 8 :val] := ::invalid)))
 
 
 (deftest duration-seconds-collector-init-test
@@ -133,6 +137,11 @@
 
 (deftest transaction-sizes-collector-init-test
   (with-system [{collector ::node/transaction-sizes} {::node/transaction-sizes {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest tx-indexer-duration-seconds-collector-init-test
+  (with-system [{collector ::tx-indexer/duration-seconds} {::tx-indexer/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
 

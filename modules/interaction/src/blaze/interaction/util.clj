@@ -9,8 +9,7 @@
 (defn etag->t [etag]
   (when etag
     (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
-      (when t
-        (Long/parseLong t)))))
+      (some-> t parse-long))))
 
 
 (defn- remove-query-param? [[k]]

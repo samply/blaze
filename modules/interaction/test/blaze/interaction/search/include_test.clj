@@ -24,21 +24,41 @@
 (test/use-fixtures :each fixture)
 
 
+(def non-ref-int-system
+  (assoc-in mem-node-system [:blaze.db/node :enforce-referential-integrity] false))
+
+
 (deftest add-includes-test
   (testing "one direct forward include"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               #fhir/Reference
-                   {:reference "Patient/0"}}]]]
+    (testing "enforcing referential integrity"
+      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 #fhir/Reference
+                     {:reference "Patient/0"}}]]]
 
-      (let [db (d/db node)
-            include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
-            observations (d/type-list db "Observation")]
-        (given (include/add-includes db include-defs observations)
-          count := 1
-          [0 fhir-spec/fhir-type] := :fhir/Patient)))
+        (let [db (d/db node)
+              include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
+              observations (d/type-list db "Observation")]
+          (given (include/add-includes db include-defs observations)
+            count := 1
+            [0 fhir-spec/fhir-type] := :fhir/Patient))))
+
+    (testing "not enforcing referential integrity"
+      (with-system-data [{:blaze.db/keys [node]} non-ref-int-system]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :subject
+                 #fhir/Reference
+                     {:reference "Patient/0"}}]]
+         [[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [db (d/db node)
+              include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
+              observations (d/type-list db "Observation")]
+          (given (include/add-includes db include-defs observations)
+            count := 1
+            [0 fhir-spec/fhir-type] := :fhir/Patient))))
 
     (testing "with non-matching target type"
       (with-system-data [{:blaze.db/keys [node]} mem-node-system]

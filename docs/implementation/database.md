@@ -60,22 +60,22 @@ The `ResourceAsOf` index is used to access the version of a resource at a partic
 The following `ResourceAsOf` index:
 
 | Key (type, id, t) | Value (content-hash, num-changes, op) |
-|---|---|
-| Patient, 0, 1 | ba9c9b24, 1, create |
-| Patient, 0, 3 | b7e3e5f8, 2, update |
-| Patient, 1, 2 | 6744ed32, 1, create |
-| Patient, 0, 4 | -, 3, delete |
+|-------------------|---------------------------------------|
+| Patient, 0, 4     | -, 3, delete                          |
+| Patient, 0, 3     | b7e3e5f8, 2, update                   |
+| Patient, 0, 1     | ba9c9b24, 1, create                   |
+| Patient, 1, 2     | 6744ed32, 1, create                   |
 
 provides the basis for the following database values:
 
-| t | type | id | content-hash |
-|---|---|---|---|
-| 1 | Patient | 0 | ba9c9b24 |
-| 2 | Patient | 0 | ba9c9b24 | 
-| 2 | Patient | 1 | 6744ed32 |
-| 3 | Patient | 0 | b7e3e5f8 |
-| 3 | Patient | 1 | 6744ed32 |
-| 4 | Patient | 1 | 6744ed32 |
+| t   | type    | id  | content-hash |
+|-----|---------|-----|--------------|
+| 1   | Patient | 0   | ba9c9b24     |
+| 2   | Patient | 0   | ba9c9b24     | 
+| 2   | Patient | 1   | 6744ed32     |
+| 3   | Patient | 0   | b7e3e5f8     |
+| 3   | Patient | 1   | 6744ed32     |
+| 4   | Patient | 1   | 6744ed32     |
 
 The database value with `t=1` contains one patient with `id=0` and content hash `ba9c9b24`, because the second patient was created later at `t=2`. The index access algorithm will not find an entry for the patient with `id=1` on a database value with `t=1` because there is no index key with `type=Patient`, `id=1` and `t<=1`. However, the database value with `t=2` will contain the patient with `id=1` and additionally contains the patient with `id=0` because there is a key with `type=Patient`, `id=0` and `t<=2`. Next, the database value with `t=3` still contains the same content hash for the patient with `id=1` and reflects the update on patient with `id=0` because the key `(Patient, 0, 3)` is now the one with the greatest `t<=3`, resulting in the content hash `b7e3e5f8`. Finally, the database value with `t=4` doesn't contain the patient with `id=0` anymore, because it was deleted. As can be seen in the index, deleting a resource is done by adding the information that it was deleted at some point in time.
 

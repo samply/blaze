@@ -1,8 +1,9 @@
 (ns blaze.db.kv.rocksdb.impl
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]])
+    [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.coll.core :as coll])
   (:import
-    [clojure.lang Indexed]
+    [clojure.lang ILookup]
     [org.rocksdb
      ColumnFamilyHandle DBOptions ColumnFamilyDescriptor CompressionType
      ColumnFamilyOptions BlockBasedTableConfig Statistics BloomFilter
@@ -24,6 +25,7 @@
             target-file-size-base-in-mb
             block-size
             bloom-filter?
+            memtable-whole-key-filtering?
             optimize-filters-for-hits?
             reverse-comparator?
             merge-operator]
@@ -35,6 +37,7 @@
           target-file-size-base-in-mb 64
           block-size (bit-shift-left 4 10)
           bloom-filter? false
+          memtable-whole-key-filtering? false
           optimize-filters-for-hits? false
           reverse-comparator? false}}]]
   (ColumnFamilyDescriptor.
@@ -44,12 +47,12 @@
         (.setLevelCompactionDynamicLevelBytes true)
         (.setCompressionType CompressionType/LZ4_COMPRESSION)
         (.setBottommostCompressionType CompressionType/ZSTD_COMPRESSION)
-        (.setWriteBufferSize (bit-shift-left ^long write-buffer-size-in-mb 20))
-        (.setMaxWriteBufferNumber ^long max-write-buffer-number)
-        (.setMaxBytesForLevelBase (bit-shift-left ^long max-bytes-for-level-base-in-mb 20))
-        (.setLevel0FileNumCompactionTrigger ^long level0-file-num-compaction-trigger)
-        (.setMinWriteBufferNumberToMerge ^long min-write-buffer-number-to-merge)
-        (.setTargetFileSizeBase (bit-shift-left ^long target-file-size-base-in-mb 20))
+        (.setWriteBufferSize (bit-shift-left write-buffer-size-in-mb 20))
+        (.setMaxWriteBufferNumber (long max-write-buffer-number))
+        (.setMaxBytesForLevelBase (bit-shift-left max-bytes-for-level-base-in-mb 20))
+        (.setLevel0FileNumCompactionTrigger (long level0-file-num-compaction-trigger))
+        (.setMinWriteBufferNumberToMerge (long min-write-buffer-number-to-merge))
+        (.setTargetFileSizeBase (bit-shift-left target-file-size-base-in-mb 20))
         (.setTableFormatConfig
           (cond->
             (doto (BlockBasedTableConfig.)
@@ -59,7 +62,11 @@
               (.setBlockSize block-size)
               (.setBlockCache block-cache))
             bloom-filter?
-            (.setFilterPolicy (BloomFilter. 10 false)))))
+            (.setFilterPolicy (BloomFilter. 10 false))
+            bloom-filter?
+            (.setWholeKeyFiltering true))))
+      memtable-whole-key-filtering?
+      (.setMemtableWholeKeyFiltering true)
       optimize-filters-for-hits?
       (.setOptimizeFiltersForHits true)
       reverse-comparator?
@@ -69,6 +76,7 @@
 
 
 (defn db-options
+  ^DBOptions
   [stats
    {:keys [max-background-jobs
            compaction-readahead-size]
@@ -76,8 +84,8 @@
          compaction-readahead-size 0}}]
   (doto (DBOptions.)
     (.setStatistics ^Statistics stats)
-    (.setMaxBackgroundJobs ^long max-background-jobs)
-    (.setCompactionReadaheadSize ^long compaction-readahead-size)
+    (.setMaxBackgroundJobs (long max-background-jobs))
+    (.setCompactionReadaheadSize (long compaction-readahead-size))
     (.setEnablePipelinedWrite true)
     (.setCreateIfMissing true)
     (.setCreateMissingColumnFamilies true)))
@@ -96,18 +104,23 @@
 
 
 (defn get-cfh ^ColumnFamilyHandle [cfhs column-family]
-  (or (cfhs column-family)
-      (throw-anom (ba/not-found (column-family-not-found-msg column-family)))))
+  (let [handle (.valAt ^ILookup cfhs column-family)]
+    (if (nil? handle)
+      (throw-anom (ba/not-found (column-family-not-found-msg column-family)))
+      handle)))
 
 
 (defn put-wb! [cfhs ^WriteBatchInterface wb entries]
   (run!
-    (fn [^Indexed entry]
-      (let [column-family (.nth entry 0)]
-        (if (keyword? column-family)
-          (.put wb (get-cfh cfhs column-family) ^bytes (.nth entry 1)
-                ^bytes (.nth entry 2))
-          (.put wb ^bytes column-family ^bytes (.nth entry 1)))))
+    (fn [entry]
+      (if (= 3 (coll/count entry))
+        (let [column-family (coll/nth entry 0)
+              key (coll/nth entry 1)
+              value (coll/nth entry 2)]
+          (.put wb (get-cfh cfhs column-family) ^bytes key ^bytes value))
+        (let [key (coll/nth entry 0)
+              value (coll/nth entry 1)]
+          (.put wb ^bytes key ^bytes value))))
     entries))
 
 

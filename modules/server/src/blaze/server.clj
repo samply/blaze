@@ -21,13 +21,13 @@
 
 (defmethod ig/pre-init-spec :blaze/server [_]
   (s/keys :req-un [::port ::handler ::version]
-          :opt-un [::async? ::min-threads ::max-threads]))
+          :opt-un [::name ::async? ::min-threads ::max-threads]))
 
 
 (defmethod ig/init-key :blaze/server
-  [_ {:keys [port handler version async? min-threads max-threads]
-      :or {async? false min-threads 8 max-threads 50}}]
-  (log/info "Start main server on port" port)
+  [_ {:keys [name port handler version async? min-threads max-threads]
+      :or {name "main" async? false min-threads 8 max-threads 50}}]
+  (log/info (format "Start %s server on port %d" name port))
   (ring-jetty/run-jetty
     (wrap-server handler (str "Blaze/" version))
     {:port port

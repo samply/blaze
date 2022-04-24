@@ -11,8 +11,8 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.db.tx-log :as tx-log]
@@ -21,7 +21,7 @@
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [java-time :as time]
-    [prometheus.alpha :refer [defhistogram]]
+    [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.lang AutoCloseable]
@@ -34,10 +34,10 @@
 
 
 (defhistogram duration-seconds
-  "Durations in transaction log."
+  "Durations in local transaction log."
   {:namespace "blaze"
-   :subsystem "db"
-   :name "tx_log_duration_seconds"}
+   :subsystem "db_tx_log"
+   :name "duration_seconds"}
   (take 16 (iterate #(* 2 %) 0.00001))
   "op")
 
@@ -97,7 +97,6 @@
   Has to be run in a single thread in order to deliver transaction data in
   order."
   [kv-store clock state tx-cmds local-payload]
-  (log/trace "submit" (count tx-cmds) "tx-cmds")
   (let [{:keys [t queues]} (swap! state update :t inc)
         tx-data {:t t :instant (Instant/now clock) :tx-cmds tx-cmds}]
     (store-tx-data! kv-store tx-data)
@@ -111,13 +110,15 @@
 (deftype LocalTxLog [kv-store clock ^Lock submit-lock state]
   tx-log/TxLog
   (-submit [_ tx-cmds local-payload]
-    (.lock submit-lock)
-    (try
-      (-> (submit! kv-store clock state tx-cmds local-payload)
-          ba/try-anomaly
-          ac/completed-future)
-      (finally
-        (.unlock submit-lock))))
+    (log/trace "submit" (count tx-cmds) "tx-cmds")
+    (with-open [_ (prom/timer duration-seconds "submit")]
+      (.lock submit-lock)
+      (try
+        (-> (submit! kv-store clock state tx-cmds local-payload)
+            ba/try-anomaly
+            ac/completed-future)
+        (finally
+          (.unlock submit-lock)))))
 
   (-last-t [_]
     (ac/completed-future (:t @state)))

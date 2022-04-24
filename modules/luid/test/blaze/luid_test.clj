@@ -2,6 +2,7 @@
   (:require
     [blaze.luid :as luid]
     [blaze.luid-spec]
+    [clojure.math :as math]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [java-time :as time]
@@ -31,12 +32,12 @@
 
 
 (defn p [k bit]
-  (/ (Math/pow k 2) (* 2 (Math/pow 2 bit))))
+  (/ (math/pow k 2.0) (* 2.0 (math/pow 2.0 bit))))
 
 
 (defn n [a p]
-  (/ (Math/log (- 1 a))
-     (Math/log (- 1 p))))
+  (/ (math/log (- 1 a))
+     (math/log (- 1 p))))
 
 
 (deftest collision-test

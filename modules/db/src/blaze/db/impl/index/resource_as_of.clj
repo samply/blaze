@@ -1,9 +1,9 @@
 (ns blaze.db.impl.index.resource-as-of
   "Functions for accessing the ResourceAsOf index."
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
-    [blaze.db.impl.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
@@ -20,6 +20,10 @@
 
 (def ^:private ^:const ^long max-key-size
   (+ codec/tid-size codec/max-id-size codec/t-size))
+
+
+(def ^:private ^:const ^long except-id-key-size
+  (+ codec/tid-size codec/t-size))
 
 
 (def ^:private ^:const ^long value-size
@@ -46,15 +50,15 @@
     (bb/put-byte-buffer! ib kb)
     (bb/flip! ib)
     (bb/rewind! ib))
-  (bb/set-limit! kb (+ (bb/limit kb) codec/t-size)))
+  (bb/set-limit! kb (unchecked-add-int (bb/limit kb) codec/t-size)))
 
 
 (defn- skip-id!
   "Does the same to `position` and `limit` of `kb` as `copy-id!` but doesn't
   copy anything."
   [kb ib]
-  (bb/set-position! kb (+ (bb/position kb) (bb/remaining ib)))
-  (bb/set-limit! kb (+ (bb/limit kb) codec/t-size)))
+  (bb/set-position! kb (unchecked-add-int (bb/position kb) (bb/remaining ib)))
+  (bb/set-limit! kb (unchecked-add-int (bb/limit kb) codec/t-size)))
 
 
 (defn- id-marker
@@ -114,7 +118,7 @@
   "Returns a function of no argument which creates a new resource handle entry
   if the `t` in `kb` at the time of invocation is less than or equal `base-t`.
 
-  Uses `iter` to read the `hash` and `state` when needed. Supplied `tid` to the
+  Uses `iter` to read the `hash` and `state` when needed. Supplies `tid` to the
   created entry."
   [tid iter kb ib base-t]
   (let [vb (bb/allocate-direct value-size)]
@@ -171,10 +175,10 @@
 
 
 (defn- encode-key-buf [tid id t]
-  (-> (bb/allocate (+ Integer/BYTES (bs/size id) Long/BYTES))
+  (-> (bb/allocate (unchecked-add-int except-id-key-size (bs/size id)))
       (bb/put-int! tid)
       (bb/put-byte-string! id)
-      (bb/put-long! (codec/descending-long ^long t))))
+      (bb/put-long! (codec/descending-long t))))
 
 
 (defn encode-key
@@ -183,18 +187,24 @@
   (bb/array (encode-key-buf tid id t)))
 
 
-(defn- type-list* [{:keys [raoi t]} tid start-key]
+(defn- starts-with-tid? [^long tid kb]
+  (fn [_] (= tid (bb/get-int! kb))))
+
+
+(def ^:private remove-deleted-xf
+  (remove rh/deleted?))
+
+
+(defn- type-list-xf [{:keys [raoi t]} tid]
   (let [kb (bb/allocate-direct max-key-size)
         ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)
         entry-creator (type-entry-creator tid raoi kb ib t)]
-    (coll/eduction
-      (comp
-        (map (key-reader raoi kb))
-        (take-while (fn [_] (= ^long tid (bb/get-int! kb))))
-        (map (id-marker kb ib))
-        (group-by-id entry-creator)
-        (remove (comp #{:delete} :op)))
-      (i/iter! raoi start-key))))
+    (comp
+      (map (key-reader raoi kb))
+      (take-while (starts-with-tid? tid kb))
+      (map (id-marker kb ib))
+      (group-by-id entry-creator)
+      remove-deleted-xf)))
 
 
 (defn- start-key
@@ -284,10 +294,14 @@
   iteration. The state and t which are both longs are read from the off-heap key
   and value buffer. The hash and state which are read from the value buffer are
   only read once for each resource handle."
-  ([context tid]
-   (type-list* context tid (start-key tid)))
-  ([{:keys [t] :as context} tid start-id]
-   (type-list* context tid (start-key tid start-id t))))
+  ([{:keys [raoi] :as context} tid]
+   (coll/eduction
+     (type-list-xf context tid)
+     (i/iter! raoi (start-key tid))))
+  ([{:keys [raoi t] :as context} tid start-id]
+   (coll/eduction
+     (type-list-xf context tid)
+     (i/iter! raoi (start-key tid start-id t)))))
 
 
 (defn- system-list-xf [{:keys [raoi t]} start-tid]
@@ -298,7 +312,7 @@
       (map (key-reader raoi kb))
       (map (tid-marker kb tid-box ib (id-marker kb ib)))
       (group-by-id (system-entry-creator tid-box raoi kb ib t))
-      (remove (comp #{:delete} :op)))))
+      remove-deleted-xf)))
 
 
 (defn system-list
@@ -346,11 +360,11 @@
          vb)))))
 
 
-(defn- instance-history-key-valid? [tid id ^long end-t]
+(defn- instance-history-key-valid? [^long tid id ^long end-t]
   (fn [resource-handle]
-    (and (= (:tid resource-handle) tid)
-         (= (:id resource-handle) id)
-         (< end-t ^long (:t resource-handle)))))
+    (and (= (rh/tid resource-handle) tid)
+         (= (rh/id resource-handle) id)
+         (< end-t (rh/t resource-handle)))))
 
 
 (defn instance-history
@@ -359,10 +373,9 @@
 
   Versions are resource handles."
   [raoi tid id start-t end-t]
-  (let [start-key (encode-key tid id start-t)]
-    (coll/eduction
-      (take-while (instance-history-key-valid? tid (codec/id-string id) end-t))
-      (i/kvs! raoi (decoder) (bs/from-byte-array start-key)))))
+  (coll/eduction
+    (take-while (instance-history-key-valid? tid (codec/id-string id) end-t))
+    (i/kvs! raoi (decoder) (start-key tid id start-t))))
 
 
 (defn- resource-handle** [raoi tb kb vb tid id t]
@@ -370,7 +383,7 @@
   (bb/clear! tb)
   (bb/put-int! tb tid)
   (bb/put-byte-string! tb id)
-  (bb/put-long! tb (codec/descending-long ^long t))
+  (bb/put-long! tb (codec/descending-long t))
   ;; flip target buffer to be ready for seek
   (bb/flip! tb)
   (kv/seek-buffer! raoi tb)
@@ -382,14 +395,14 @@
     ;; would find the next resource
     ;; focus target buffer on tid and id
     (bb/rewind! tb)
-    (bb/set-limit! tb (- (bb/limit tb) codec/t-size))
+    (bb/set-limit! tb (unchecked-subtract-int (bb/limit tb) codec/t-size))
     ;; focus key buffer on tid and id
-    (bb/set-limit! kb (- (bb/limit kb) codec/t-size))
+    (bb/set-limit! kb (unchecked-subtract-int (bb/limit kb) codec/t-size))
     (when (= tb kb)
       ;; focus key buffer on t
       (let [limit (bb/limit kb)]
         (bb/set-position! kb limit)
-        (bb/set-limit! kb (+ limit codec/t-size)))
+        (bb/set-limit! kb (unchecked-add-int limit codec/t-size)))
       ;; read value
       (bb/clear! vb)
       (kv/value! raoi vb)
@@ -407,9 +420,9 @@
   Object
   (equals [_ x]
     (and (instance? Key x)
-         (= tid ^long (.-tid ^Key x))
+         (= tid (.-tid ^Key x))
          (.equals id (.-id ^Key x))
-         (= t ^long (.-t ^Key x))))
+         (= t (.-t ^Key x))))
   (hashCode [_]
     (-> tid
         (unchecked-multiply-int 31)
@@ -420,9 +433,11 @@
 
 (defn resource-handle
   "Returns a function which can be called with a `tid`, an `id` and an optional
-  `t` which will lookup the resource handle in `raoi`.
+  `t` which will lookup the resource handle in `raoi` using `rh-cache` as cache.
 
-  The `t` is the default if `t` isn't given at the returned function."
+  The `t` is the default if `t` isn't given at the returned function.
+
+  The returned function can't be called concurrently."
   [rh-cache raoi t]
   (let [tb (bb/allocate-direct max-key-size)
         kb (bb/allocate-direct max-key-size)

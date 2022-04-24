@@ -934,7 +934,7 @@
 (def ^:private unsigned-int-serializer
   (proxy [StdSerializer] [UnsignedInt]
     (serialize [^UnsignedInt unsigned-int ^JsonGenerator gen _]
-      (.writeNumber gen ^int (.value unsigned-int)))))
+      (.writeNumber gen (int (.-value unsigned-int))))))
 
 
 (defmethod print-method UnsignedInt [unsigned-int ^Writer w]
@@ -965,8 +965,8 @@
   {:arglists '([element])}
   [{{:keys [id value]} :attrs extensions :content}]
   (if (or id (seq extensions))
-    (->ExtendedUnsignedInt id extensions (Integer/parseInt value))
-    (->UnsignedInt (Integer/parseInt value))))
+    (ExtendedUnsignedInt. id extensions (Integer/parseInt value))
+    (UnsignedInt. (Integer/parseInt value))))
 
 
 (defn unsignedInt? [x]
@@ -998,7 +998,7 @@
 (def ^:private positive-int-serializer
   (proxy [StdSerializer] [PositiveInt]
     (serialize [^PositiveInt positive-int ^JsonGenerator gen _]
-      (.writeNumber gen ^int (.value positive-int)))))
+      (.writeNumber gen (int (.-value positive-int))))))
 
 
 (defmethod print-method PositiveInt [positive-int ^Writer w]
@@ -1029,8 +1029,8 @@
   {:arglists '([element])}
   [{{:keys [id value]} :attrs extensions :content}]
   (if (or id (seq extensions))
-    (->ExtendedPositiveInt id extensions (Integer/parseInt value))
-    (->PositiveInt (Integer/parseInt value))))
+    (ExtendedPositiveInt. id extensions (Integer/parseInt value))
+    (PositiveInt. (Integer/parseInt value))))
 
 
 (defn positiveInt? [x]
@@ -1060,7 +1060,7 @@
 
 
 (defn ->Uuid [s]
-  (UUID/fromString (subs s 9)))
+  (parse-uuid (subs s 9)))
 
 
 (defn xml->Uuid
@@ -1130,7 +1130,7 @@
   (-value [_])
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
-    (reduce (fn [_ x] (p/-hash-into x sink)) nil xs))
+    (run! #(p/-hash-into % sink) xs))
   (-references [xs]
     (transduce (mapcat p/-references) conj [] xs))
   Keyword

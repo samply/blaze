@@ -1,6 +1,6 @@
 (ns blaze.db.impl.index.resource-handle-spec
   (:require
-    [blaze.db.impl.byte-buffer :refer [byte-buffer?]]
+    [blaze.byte-buffer :refer [byte-buffer?]]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.kv-spec]
@@ -19,3 +19,28 @@
 (s/fdef rh/resource-handle?
   :args (s/cat :x any?)
   :ret boolean?)
+
+
+(s/fdef rh/deleted?
+  :args (s/cat :rh rh/resource-handle?)
+  :ret boolean?)
+
+
+(s/fdef rh/tid
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.db/tid)
+
+
+(s/fdef rh/id
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.resource/id)
+
+
+(s/fdef rh/t
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.db/t)
+
+
+(s/fdef rh/hash
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.resource/hash)

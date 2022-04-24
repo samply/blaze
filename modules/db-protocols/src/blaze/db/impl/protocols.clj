@@ -71,7 +71,8 @@
   (-compile-value [search-param modifier value] "Can return an anomaly.")
   (-resource-handles
     [search-param context tid modifier compiled-value]
-    [search-param context tid modifier compiled-value start-id])
+    [search-param context tid modifier compiled-value start-id]
+    "Returns a reducible collection.")
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matches? [search-param context resource-handle modifier compiled-values])
   (-compartment-ids [_ resolver resource])

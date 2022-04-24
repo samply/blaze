@@ -69,7 +69,7 @@
 
 (s/fdef search-param/index-entries
   :args (s/cat :search-param :blaze.db/search-param
-               :linked-compartments (s/coll-of (s/tuple string? string?))
+               :linked-compartments (s/nilable (s/coll-of (s/tuple string? string?)))
                :hash :blaze.resource/hash
                :resource :blaze/resource)
   :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry-w-cf :kind sequential?)

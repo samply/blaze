@@ -4,6 +4,7 @@
   It uses sorted maps with byte array keys and values."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.byte-buffer :as bb]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [clojure.spec.alpha :as s]
@@ -11,11 +12,11 @@
     [taoensso.timbre :as log])
   (:import
     [java.util Arrays Comparator]
-    [java.nio ByteBuffer]
     [java.lang AutoCloseable]))
 
 
 (set! *warn-on-reflection* true)
+(set! *unchecked-math* :warn-on-boxed)
 
 
 (defn- copy [^bytes bs]
@@ -24,14 +25,14 @@
 
 (defn- put
   "Does the same as RockDB does when filling a byte buffer."
-  [^ByteBuffer buf ^bytes bs]
-  (let [pos (.position buf)
-        limit (.limit buf)
-        length (Math/min (unchecked-subtract-int limit pos) (alength bs))]
-    (.put buf bs 0 length)
-    (.position buf pos)
-    (.limit buf (+ pos length))
-    (alength bs)))
+  [buf bs]
+  (let [pos (bb/position buf)
+        limit (bb/limit buf)
+        length (Math/min (unchecked-subtract-int limit pos) (alength ^bytes bs))]
+    (bb/put-byte-array! buf bs 0 length)
+    (bb/set-position! buf pos)
+    (bb/set-limit! buf (unchecked-add-int pos length))
+    (alength ^bytes bs)))
 
 
 (defn- prev [db {x :first}]
@@ -39,37 +40,45 @@
     {:first x :rest xs}))
 
 
+(def ^:private iterator-invalid-anom
+  (ba/fault "The iterator is invalid."))
+
+
+(def ^:private iterator-closed-anom
+  (ba/fault "The iterator is closed."))
+
+
 (defn- check-valid [iter]
-  (when (not (kv/valid? iter))
-    (throw-anom (ba/fault "The iterator is invalid."))))
+  (when-not (kv/-valid iter)
+    (throw-anom iterator-invalid-anom)))
 
 
 (deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
   kv/KvIterator
   (-valid [_]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
-    (some? (:first @cursor)))
+    (when closed? (throw-anom iterator-closed-anom))
+    (some? (@cursor :first)))
 
   (-seek-to-first [_]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
+    (when closed? (throw-anom iterator-closed-anom))
     (reset! cursor {:first (first db) :rest (rest db)}))
 
   (-seek-to-last [_]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
+    (when closed? (throw-anom iterator-closed-anom))
     (reset! cursor {:first (last db) :rest nil}))
 
   (-seek [_ k]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
+    (when closed? (throw-anom iterator-closed-anom))
     (let [[x & xs] (subseq db >= k)]
       (reset! cursor {:first x :rest xs})))
 
   (-seek-buffer [iter kb]
-    (let [k (byte-array (.remaining ^ByteBuffer kb))]
-      (.get ^ByteBuffer kb k)
+    (let [k (byte-array (bb/remaining kb))]
+      (bb/copy-into-byte-array! kb k)
       (kv/-seek iter k)))
 
   (-seek-for-prev [_ k]
-    (when closed? (throw-anom (ba/fault "The iterator is closed.")))
+    (when closed? (throw-anom iterator-closed-anom))
     (let [[x & xs] (rsubseq db <= k)]
       (reset! cursor {:first x :rest xs})))
 
@@ -81,21 +90,25 @@
     (check-valid iter)
     (swap! cursor #(prev db %)))
 
-  (-key [iter]
-    (check-valid iter)
-    (-> @cursor :first key copy))
+  (-key [_]
+    (if-let [first (@cursor :first)]
+      (copy (key first))
+      (throw-anom iterator-invalid-anom)))
 
-  (-key [iter buf]
-    (check-valid iter)
-    (put buf (-> @cursor :first key)))
+  (-key [_ buf]
+    (if-let [first (@cursor :first)]
+      (put buf (key first))
+      (throw-anom iterator-invalid-anom)))
 
-  (-value [iter]
-    (check-valid iter)
-    (-> @cursor :first val copy))
+  (-value [_]
+    (if-let [first (@cursor :first)]
+      (copy (val first))
+      (throw-anom iterator-invalid-anom)))
 
-  (-value [iter buf]
-    (check-valid iter)
-    (put buf (-> @cursor :first val)))
+  (-value [_ buf]
+    (if-let [first (@cursor :first)]
+      (put buf (val first))
+      (throw-anom iterator-invalid-anom)))
 
   AutoCloseable
   (close [_]

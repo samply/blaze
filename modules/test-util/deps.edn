@@ -2,6 +2,9 @@
  {blaze/anomaly
   {:local/root "../anomaly"}
 
+  blaze/byte-buffer
+  {:local/root "../byte-buffer"}
+
   blaze/executor
   {:local/root "../executor"}
 

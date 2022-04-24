@@ -23,6 +23,7 @@
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :refer [given-failed-future with-system]]
+    [clojure.math :as math]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -50,13 +51,13 @@
   (reify
     rs/ResourceStore
     (-get [_ hash]
-      (Thread/sleep (long (* 100 (Math/random))))
+      (Thread/sleep (long (* 100 (math/random))))
       (rs/get resource-store hash))
     (-multi-get [_ hashes]
-      (Thread/sleep (long (* 100 (Math/random))))
+      (Thread/sleep (long (* 100 (math/random))))
       (rs/multi-get resource-store hashes))
     (-put [_ entries]
-      (Thread/sleep (long (* 100 (Math/random))))
+      (Thread/sleep (long (* 100 (math/random))))
       (rs/put! resource-store entries))))
 
 
@@ -845,27 +846,23 @@
           [:put {:fhir/type :fhir/List :id "0"
                  :entry
                  [{:fhir/type :fhir.List/entry
-                   :item
-                   #fhir/Reference
-                       {:reference "Patient/0"}}
+                   :item #fhir/Reference {:reference "Patient/0"}}
                   {:fhir/type :fhir.List/entry
-                   :item
-                   #fhir/Reference
-                       {:reference "Observation/0"}}]}]]]
+                   :item #fhir/Reference {:reference "Observation/0"}}]}]]]
 
         (testing "returns only the patient referenced in the list"
           (given (pull-type-query node "Patient" [["_list" "0"]])
+            count := 1
             [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0"
-            1 := nil))
+            [0 :id] := "0"))
 
         (testing "returns only the observation referenced in the list"
           (given (pull-type-query node "Observation" [["_list" "0"]])
+            count := 1
             [0 :fhir/type] := :fhir/Observation
-            [0 :id] := "0"
-            1 := nil))))
+            [0 :id] := "0"))))
 
-    (testing "a node with three patients and one list in one transaction"
+    (testing "a node with four patients and one list in one transaction"
       (with-system-data [{:blaze.db/keys [node]} system]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"}]
@@ -874,22 +871,38 @@
           [:put {:fhir/type :fhir/List :id "0"
                  :entry
                  [{:fhir/type :fhir.List/entry
-                   :item
-                   #fhir/Reference
-                       {:reference "Patient/0"}}
+                   :item #fhir/Reference {:reference "Patient/0"}}
                   {:fhir/type :fhir.List/entry
-                   :item
-                   #fhir/Reference
-                       {:reference "Patient/2"}}
+                   :item #fhir/Reference {:reference "Patient/2"}}
                   {:fhir/type :fhir.List/entry
-                   :item
-                   #fhir/Reference
-                       {:reference "Patient/3"}}]}]]]
+                   :item #fhir/Reference {:reference "Patient/3"}}]}]]]
 
         (testing "it is possible to start with the second patient"
           (given (pull-type-query node "Patient" [["_list" "0"]] "2")
             count := 2
             [0 :id] := "2"
+            [1 :id] := "3"))))
+
+    (testing "doesn't return the deleted patient"
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Patient :id "2"}]
+          [:put {:fhir/type :fhir/Patient :id "3"}]
+          [:put {:fhir/type :fhir/List :id "0"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/0"}}
+                  {:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/2"}}
+                  {:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/3"}}]}]]
+         [[:delete "Patient" "2"]]]
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [["_list" "0"]])
+            count := 2
+            [0 :id] := "0"
             [1 :id] := "3")))))
 
   (testing "Special Search Parameter _has"
@@ -3771,9 +3784,9 @@
                        {:reference "Patient/0"}}]]]
 
           (let [db (d/db node)
-                patients (d/resource-handle db "Patient" "0")]
+                patient (d/resource-handle db "Patient" "0")]
 
-            (given (d/rev-include db patients "Observation" code)
+            (given (d/rev-include db patient "Observation" code)
               count := 2
               [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1"

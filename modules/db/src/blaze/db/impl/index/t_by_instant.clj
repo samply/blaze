@@ -1,7 +1,7 @@
 (ns blaze.db.impl.index.t-by-instant
   "Functions for accessing the TByInstant index."
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.byte-buffer :as bb]
     [blaze.db.kv :as kv])
   (:import
     [com.google.common.primitives Longs]))

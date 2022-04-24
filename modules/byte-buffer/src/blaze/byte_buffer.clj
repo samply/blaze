@@ -1,4 +1,4 @@
-(ns blaze.db.impl.byte-buffer
+(ns blaze.byte-buffer
   (:refer-clojure :exclude [reset!])
   (:import
     [com.google.protobuf ByteString]
@@ -13,7 +13,22 @@
   #(instance? ByteBuffer x))
 
 
+(defn direct?
+  {:inline
+   (fn [byte-buffer]
+     `(.isDirect ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
+  [byte-buffer]
+  (.isDirect ^ByteBuffer byte-buffer))
+
+
 (defn allocate
+  "Allocates a new byte buffer.
+
+  The new buffer's position will be zero, its limit will be `capacity`, its
+  mark will be undefined, each of its elements will be initialized to zero, and
+  its byte order will be BIG_ENDIAN.
+
+  It will have a backing array, and its array offset will be zero."
   {:inline (fn [capacity] `(ByteBuffer/allocate ~capacity))}
   [capacity]
   (ByteBuffer/allocate capacity))
@@ -71,6 +86,30 @@
   (.putLong ^ByteBuffer byte-buffer x))
 
 
+(defn put-byte-array!
+  {:inline
+   (fn
+     ([byte-buffer byte-array]
+      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~byte-array))
+     ([byte-buffer byte-array offset length]
+      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~byte-array
+             (int ~offset) (int ~length))))}
+  ([byte-buffer byte-array]
+   (.put ^ByteBuffer byte-buffer ^bytes byte-array))
+  ([byte-buffer byte-array offset length]
+   (.put ^ByteBuffer byte-buffer ^bytes byte-array offset length)))
+
+
+(defn put-byte-buffer!
+  "Copies all bytes of `src` byte buffer into `dst` byte buffer."
+  {:inline
+   (fn [dst src]
+     `(.put ~(vary-meta dst assoc :tag `ByteBuffer)
+            ~(vary-meta src assoc :tag `ByteBuffer)))}
+  [dst src]
+  (.put ^ByteBuffer dst ^ByteBuffer src))
+
+
 (defn put-byte-string!
   "Copies all bytes of `byte-string` into `byte-buffer`."
   [byte-buffer byte-string]
@@ -78,13 +117,8 @@
   byte-buffer)
 
 
-(defn put-byte-buffer!
-  "Copies all bytes of `src` byte buffer into `dst` byte buffer."
-  [dst src]
-  (.put ^ByteBuffer dst ^ByteBuffer src))
-
-
 (defn limit
+  "Returns the limit of `byte-buffer`."
   {:inline
    (fn [byte-buffer]
      `(.limit ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -95,9 +129,9 @@
 (defn set-limit!
   {:inline
    (fn [byte-buffer limit]
-     `(.limit ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~limit))}
+     `(.limit ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~limit)))}
   [byte-buffer limit]
-  (.limit ^ByteBuffer byte-buffer ^long limit))
+  (.limit ^ByteBuffer byte-buffer (int limit)))
 
 
 (defn position
@@ -111,9 +145,9 @@
 (defn set-position!
   {:inline
    (fn [byte-buffer position]
-     `(.position ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~position))}
+     `(.position ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~position)))}
   [byte-buffer position]
-  (.position ^ByteBuffer byte-buffer ^long position))
+  (.position ^ByteBuffer byte-buffer (int position)))
 
 
 (defn remaining
@@ -171,11 +205,11 @@
      ([byte-buffer]
       `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))
      ([byte-buffer index]
-      `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~index)))}
+      `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~index))))}
   ([byte-buffer]
    (.get ^ByteBuffer byte-buffer))
   ([byte-buffer index]
-   (.get ^ByteBuffer byte-buffer ^long index)))
+   (.get ^ByteBuffer byte-buffer (int index))))
 
 
 (defn get-int!
@@ -197,16 +231,22 @@
 (defn copy-into-byte-array!
   "Copies all bytes of `byte-buffer` into `byte-array`."
   {:inline
-   (fn [byte-buffer byte-array offset length]
-     `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~byte-array ~offset ~length))}
-  [byte-buffer byte-array offset length]
-  (.get ^ByteBuffer byte-buffer byte-array offset length))
+   (fn
+     ([byte-buffer byte-array]
+      `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~byte-array))
+     ([byte-buffer byte-array offset length]
+      `(.get ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~byte-array
+             (int ~offset) (int ~length))))}
+  ([byte-buffer byte-array]
+   (.get ^ByteBuffer byte-buffer ^bytes byte-array))
+  ([byte-buffer byte-array offset length]
+   (.get ^ByteBuffer byte-buffer ^bytes byte-array offset length)))
 
 
 (defn size-up-to-null [byte-buffer]
   (when (pos? (remaining byte-buffer))
     (mark! byte-buffer)
-    (loop [byte (bit-and (get-byte! byte-buffer) 0xFF)
+    (loop [byte (bit-and (long (get-byte! byte-buffer)) 0xFF)
            size 0]
       (cond
         (zero? byte)
@@ -214,7 +254,7 @@
             size)
 
         (pos? (remaining byte-buffer))
-        (recur (bit-and (get-byte! byte-buffer) 0xFF) (inc size))
+        (recur (bit-and (long (get-byte! byte-buffer)) 0xFF) (inc size))
 
         :else
         (do (reset! byte-buffer)

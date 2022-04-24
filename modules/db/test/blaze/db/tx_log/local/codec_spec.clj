@@ -1,6 +1,6 @@
 (ns blaze.db.tx-log.local.codec-spec
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.byte-buffer :as bb]
     [blaze.db.tx-log.local.codec :as codec]
     [blaze.db.tx-log.spec]
     [clojure.spec.alpha :as s]))

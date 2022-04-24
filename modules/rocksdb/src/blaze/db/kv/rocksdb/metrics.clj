@@ -2,26 +2,46 @@
   (:require
     [blaze.metrics.core :as metrics])
   (:import
-    [org.rocksdb Statistics TickerType]))
+    [org.rocksdb Statistics TickerType HistogramType]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn- sample-xf [ticker-type]
+(defn- sample-xf [ticker-type value-f]
   (map
     (fn [[name stats]]
       {:label-values [name]
-       :value (.getTickerCount ^Statistics stats ticker-type)})))
+       :value (value-f (.getTickerCount ^Statistics stats ticker-type))})))
 
 
-(defn- samples [ticker-type stats]
-  (into [] (sample-xf ticker-type) stats))
+(defn- histogram-xf [histogram-type value-f]
+  (map
+    (fn [[name stats]]
+      {:label-values [name]
+       :value (value-f (.getSum (.getHistogramData ^Statistics stats histogram-type)))})))
 
 
-(defn- counter-metric [name help ticker-type]
-  (fn [stats]
-    (metrics/counter-metric name help ["name"] (samples ticker-type stats))))
+(defn- samples [ticker-type value-f stats]
+  (into [] (sample-xf ticker-type value-f) stats))
+
+
+(defn- histogram-samples [histogram-type value-f stats]
+  (into [] (histogram-xf histogram-type value-f) stats))
+
+
+(defn- counter-metric
+  ([name help ticker-type]
+   (counter-metric name help ticker-type identity))
+  ([name help ticker-type value-f]
+   (fn [stats]
+     (metrics/counter-metric name help ["name"] (samples ticker-type value-f stats)))))
+
+
+(defn- histogram-metric
+  ([name help histogram-type value-f]
+   (fn [stats]
+     (metrics/counter-metric name help ["name"] (histogram-samples histogram-type value-f stats)))))
 
 
 (def ^:private block-cache-data-miss-total
@@ -38,6 +58,13 @@
     TickerType/BLOCK_CACHE_DATA_HIT))
 
 
+(def ^:private block-cache-data-add-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_data_add_total"
+    "Returns the number of data blocks added to block cache."
+    TickerType/BLOCK_CACHE_DATA_ADD))
+
+
 (def ^:private block-cache-data-insert-bytes-total
   (counter-metric
     "blaze_rocksdb_block_cache_data_insert_bytes_total"
@@ -48,15 +75,22 @@
 (def ^:private block-cache-index-miss-total
   (counter-metric
     "blaze_rocksdb_block_cache_index_miss_total"
-    "Returns the number of times cache miss when accessing index block from block cache."
+    "Returns the number of times cache miss occurred when accessing index block from block cache."
     TickerType/BLOCK_CACHE_INDEX_MISS))
 
 
 (def ^:private block-cache-index-hit-total
   (counter-metric
     "blaze_rocksdb_block_cache_index_hit_total"
-    "Returns the number of times cache hit when accessing index block from block cache."
+    "Returns the number of times cache hit occurred when accessing index block from block cache."
     TickerType/BLOCK_CACHE_INDEX_HIT))
+
+
+(def ^:private block-cache-index-add-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_index_add_total"
+    "Returns the number of index blocks added to block cache."
+    TickerType/BLOCK_CACHE_INDEX_ADD))
 
 
 (def ^:private block-cache-index-insert-bytes-total
@@ -64,6 +98,13 @@
     "blaze_rocksdb_block_cache_index_insert_bytes_total"
     "Returns the number of bytes of index blocks inserted into block cache."
     TickerType/BLOCK_CACHE_INDEX_BYTES_INSERT))
+
+
+(def ^:private block-cache-index-evict-bytes-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_index_evict_bytes_total"
+    "Returns the number of bytes of index blocks erased from block cache."
+    TickerType/BLOCK_CACHE_INDEX_BYTES_EVICT))
 
 
 (def ^:private block-cache-filter-miss-total
@@ -80,11 +121,25 @@
     TickerType/BLOCK_CACHE_FILTER_HIT))
 
 
+(def ^:private block-cache-filter-add-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_filter_add_total"
+    "Returns the number of filter blocks added to block cache."
+    TickerType/BLOCK_CACHE_FILTER_ADD))
+
+
 (def ^:private block-cache-filter-insert-bytes-total
   (counter-metric
     "blaze_rocksdb_block_cache_filter_insert_bytes_total"
     "Returns the number of bytes of filter blocks inserted into block cache."
     TickerType/BLOCK_CACHE_FILTER_BYTES_INSERT))
+
+
+(def ^:private block-cache-filter-evict-bytes-total
+  (counter-metric
+    "blaze_rocksdb_block_cache_filter_evict_bytes_total"
+    "Returns the number of bytes of filter blocks erased from block cache."
+    TickerType/BLOCK_CACHE_FILTER_BYTES_EVICT))
 
 
 (def ^:private memtable-hit-total
@@ -185,6 +240,14 @@
     TickerType/NO_FILE_ERRORS))
 
 
+(def ^:private stall-seconds-total
+  (counter-metric
+    "blaze_rocksdb_stall_seconds_total"
+    "Returns the total number of seconds the writer had to wait for compaction or flush to finish."
+    TickerType/STALL_MICROS
+    #(/ (double %) 1e6)))
+
+
 (def ^:private bloom-filter-useful-total
   (counter-metric
     "blaze_rocksdb_bloom_filter_useful_total"
@@ -227,17 +290,82 @@
     TickerType/NUMBER_BLOCK_NOT_COMPRESSED))
 
 
+(def ^:private iterators-created-total
+  (counter-metric
+    "blaze_rocksdb_iterators_created_total"
+    "Returns the total number of iterators created."
+    TickerType/NO_ITERATORS))
+
+
+(def ^:private wal-syncs-total
+  (counter-metric
+    "blaze_rocksdb_wal_syncs_total"
+    "Returns the total number of WAL syncs."
+    TickerType/WAL_FILE_SYNCED))
+
+
+(def ^:private wal-bytes-total
+  (counter-metric
+    "blaze_rocksdb_wal_bytes_total"
+    "Returns the total number of bytes written to WAL."
+    TickerType/WAL_FILE_BYTES))
+
+
+(def ^:private write-timeout-total
+  (counter-metric
+    "blaze_rocksdb_write_timeout_total"
+    "Returns the total number of writes ending up with a timeout."
+    TickerType/WRITE_TIMEDOUT))
+
+
+(def ^:private flush-seconds-total
+  (histogram-metric
+    "blaze_rocksdb_flush_seconds_total"
+    "Returns the total number of seconds spent flushing memtables to disk."
+    HistogramType/FLUSH_TIME
+    #(/ (double %) 1e6)))
+
+
+(def ^:private compaction-seconds-total
+  (histogram-metric
+    "blaze_rocksdb_compaction_seconds_total"
+    "Returns the total number of seconds spent in compaction."
+    HistogramType/COMPACTION_TIME
+    #(/ (double %) 1e6)))
+
+
+(def ^:private compression-seconds-total
+  (histogram-metric
+    "blaze_rocksdb_compression_seconds_total"
+    "Returns the total number of seconds spent in compression."
+    HistogramType/COMPRESSION_TIMES_NANOS
+    #(/ (double %) 1e9)))
+
+
+(def ^:private decompression-seconds-total
+  (histogram-metric
+    "blaze_rocksdb_decompression_seconds_total"
+    "Returns the total number of seconds spent in decompression."
+    HistogramType/DECOMPRESSION_TIMES_NANOS
+    #(/ (double %) 1e9)))
+
+
 (defn stats-collector [stats]
   (metrics/collector
     [(block-cache-data-miss-total stats)
      (block-cache-data-hit-total stats)
+     (block-cache-data-add-total stats)
      (block-cache-data-insert-bytes-total stats)
      (block-cache-index-miss-total stats)
      (block-cache-index-hit-total stats)
+     (block-cache-index-add-total stats)
      (block-cache-index-insert-bytes-total stats)
+     (block-cache-index-evict-bytes-total stats)
      (block-cache-filter-miss-total stats)
      (block-cache-filter-hit-total stats)
+     (block-cache-filter-add-total stats)
      (block-cache-filter-insert-bytes-total stats)
+     (block-cache-filter-evict-bytes-total stats)
      (memtable-hit-total stats)
      (memtable-miss-total stats)
      (get-hit-l0-total stats)
@@ -252,9 +380,18 @@
      (file-opens-total stats)
      (file-closes-total stats)
      (file-errors-total stats)
+     (stall-seconds-total stats)
      (bloom-filter-useful-total stats)
      (bloom-filter-full-positive-total stats)
      (bloom-filter-full-true-positive-total stats)
      (blocks-compressed-total stats)
      (blocks-decompressed-total stats)
-     (blocks-not-compressed-total stats)]))
+     (blocks-not-compressed-total stats)
+     (iterators-created-total stats)
+     (wal-syncs-total stats)
+     (wal-bytes-total stats)
+     (write-timeout-total stats)
+     (flush-seconds-total stats)
+     (compaction-seconds-total stats)
+     (compression-seconds-total stats)
+     (decompression-seconds-total stats)]))

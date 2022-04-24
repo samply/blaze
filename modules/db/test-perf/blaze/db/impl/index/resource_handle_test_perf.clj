@@ -1,6 +1,6 @@
-(ns blaze.db.impl.index.resource-handle-test
+(ns blaze.db.impl.index.resource-handle-test-perf
   (:require
-    [blaze.db.impl.byte-buffer :as bb]
+    [blaze.byte-buffer :as bb]
     [blaze.db.impl.index.resource-handle :as rh]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]

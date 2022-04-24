@@ -167,9 +167,9 @@
   ([year]
    (Year/of year))
   ([year month]
-   (YearMonth/of ^int year ^int month))
+   (YearMonth/of (int year) (int month)))
   ([year month day]
-   (LocalDate/of ^int year ^int month ^int day)))
+   (LocalDate/of (int year) (int month) (int day))))
 
 
 (defn parse-date* [s]
@@ -358,22 +358,23 @@
   ([year]
    (DateTimeYear. (Year/of year)))
   ([year month]
-   (DateTimeYearMonth. (YearMonth/of ^int year ^int month)))
+   (DateTimeYearMonth. (YearMonth/of (int year) (int month))))
   ([year month day]
-   (DateTimeYearMonthDay. (LocalDate/of ^int year ^int month ^int day)))
+   (DateTimeYearMonthDay. (LocalDate/of (int year) (int month) (int day))))
   ([year month day hour]
-   (LocalDateTime/of ^int year ^int month ^int day ^int hour 0))
+   (LocalDateTime/of (int year) (int month) (int day) (int hour) 0))
   ([year month day hour minute]
-   (LocalDateTime/of ^int year ^int month ^int day ^int hour ^int minute))
+   (LocalDateTime/of (int year) (int month) (int day) (int hour) (int minute)))
   ([year month day hour minute second]
-   (LocalDateTime/of ^int year ^int month ^int day ^int hour ^int minute
-                     ^int second))
+   (LocalDateTime/of (int year) (int month) (int day) (int hour) (int minute)
+                     (int second)))
   ([year month day hour minute second millis]
-   (LocalDateTime/of ^int year ^int month ^int day ^int hour ^int minute
-                     ^int second (int (* ^long millis 1000000))))
+   (LocalDateTime/of (int year) (int month) (int day) (int hour) (int minute)
+                     (int second) (unchecked-multiply-int (int millis) 1000000)))
   ([year month day hour minute second millis zone-offset]
-   (OffsetDateTime/of ^int year ^int month ^int day ^int hour ^int minute
-                      ^int second (int (* ^long millis 1000000)) zone-offset)))
+   (OffsetDateTime/of (int year) (int month) (int day) (int hour) (int minute)
+                      (int second) (unchecked-multiply-int (int millis) 1000000)
+                      zone-offset)))
 
 
 (defn parse-date-time* [s]

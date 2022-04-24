@@ -1,14 +1,13 @@
 (ns blaze.db.kv-spec
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
-    [clojure.spec.alpha :as s])
-  (:import
-    [java.nio ByteBuffer]))
+    [clojure.spec.alpha :as s]))
 
 
 (defn- direct-buffer? [x]
-  (and (instance? ByteBuffer x) (.isDirect ^ByteBuffer x)))
+  (and (bb/byte-buffer? x) (bb/direct? x)))
 
 
 (s/fdef kv/valid?

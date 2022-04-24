@@ -1,11 +1,11 @@
 (ns blaze.page-store.cassandra.codec
   (:require
     [blaze.anomaly :as ba]
+    [blaze.byte-buffer :as bb]
     [cognitect.anomalies :as anom]
     [jsonista.core :as j])
   (:import
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-    [java.nio ByteBuffer]))
+    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
 
 (def ^:private cbor-object-mapper
@@ -26,4 +26,4 @@
 
 
 (defn encode [clauses]
-  (ByteBuffer/wrap (j/write-value-as-bytes clauses cbor-object-mapper)))
+  (bb/wrap (j/write-value-as-bytes clauses cbor-object-mapper)))
