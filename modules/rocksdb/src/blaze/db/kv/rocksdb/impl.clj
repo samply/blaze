@@ -25,6 +25,7 @@
             target-file-size-base-in-mb
             block-size
             bloom-filter?
+            memtable-whole-key-filtering?
             optimize-filters-for-hits?
             reverse-comparator?
             merge-operator]
@@ -36,6 +37,7 @@
           target-file-size-base-in-mb 64
           block-size (bit-shift-left 4 10)
           bloom-filter? false
+          memtable-whole-key-filtering? false
           optimize-filters-for-hits? false
           reverse-comparator? false}}]]
   (ColumnFamilyDescriptor.
@@ -45,12 +47,12 @@
         (.setLevelCompactionDynamicLevelBytes true)
         (.setCompressionType CompressionType/LZ4_COMPRESSION)
         (.setBottommostCompressionType CompressionType/ZSTD_COMPRESSION)
-        (.setWriteBufferSize (bit-shift-left ^long write-buffer-size-in-mb 20))
-        (.setMaxWriteBufferNumber ^long max-write-buffer-number)
-        (.setMaxBytesForLevelBase (bit-shift-left ^long max-bytes-for-level-base-in-mb 20))
-        (.setLevel0FileNumCompactionTrigger ^long level0-file-num-compaction-trigger)
-        (.setMinWriteBufferNumberToMerge ^long min-write-buffer-number-to-merge)
-        (.setTargetFileSizeBase (bit-shift-left ^long target-file-size-base-in-mb 20))
+        (.setWriteBufferSize (bit-shift-left write-buffer-size-in-mb 20))
+        (.setMaxWriteBufferNumber (long max-write-buffer-number))
+        (.setMaxBytesForLevelBase (bit-shift-left max-bytes-for-level-base-in-mb 20))
+        (.setLevel0FileNumCompactionTrigger (long level0-file-num-compaction-trigger))
+        (.setMinWriteBufferNumberToMerge (long min-write-buffer-number-to-merge))
+        (.setTargetFileSizeBase (bit-shift-left target-file-size-base-in-mb 20))
         (.setTableFormatConfig
           (cond->
             (doto (BlockBasedTableConfig.)
@@ -60,7 +62,11 @@
               (.setBlockSize block-size)
               (.setBlockCache block-cache))
             bloom-filter?
-            (.setFilterPolicy (BloomFilter. 10 false)))))
+            (.setFilterPolicy (BloomFilter. 10 false))
+            bloom-filter?
+            (.setWholeKeyFiltering true))))
+      memtable-whole-key-filtering?
+      (.setMemtableWholeKeyFiltering true)
       optimize-filters-for-hits?
       (.setOptimizeFiltersForHits true)
       reverse-comparator?
@@ -70,6 +76,7 @@
 
 
 (defn db-options
+  ^DBOptions
   [stats
    {:keys [max-background-jobs
            compaction-readahead-size]
@@ -77,8 +84,8 @@
          compaction-readahead-size 0}}]
   (doto (DBOptions.)
     (.setStatistics ^Statistics stats)
-    (.setMaxBackgroundJobs ^long max-background-jobs)
-    (.setCompactionReadaheadSize ^long compaction-readahead-size)
+    (.setMaxBackgroundJobs (long max-background-jobs))
+    (.setCompactionReadaheadSize (long compaction-readahead-size))
     (.setEnablePipelinedWrite true)
     (.setCreateIfMissing true)
     (.setCreateMissingColumnFamilies true)))

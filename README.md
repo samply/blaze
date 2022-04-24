@@ -1,6 +1,6 @@
 # Blaze
 
-[![Build Status](https://github.com/samply/blaze/workflows/Build/badge.svg)](https://github.com/samply/blaze/actions?query=workflow%3ABuild)
+[![Build](https://github.com/samply/blaze/actions/workflows/build.yml/badge.svg)](https://github.com/samply/blaze/actions/workflows/build.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
 [![codecov](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
 

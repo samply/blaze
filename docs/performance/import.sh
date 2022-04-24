@@ -1,33 +1,28 @@
 #!/bin/bash
 
 N=100000
+C=8
 
 import-once() {
   docker run --name blaze --rm -v blaze-data:/app/data \
-    --network blaze \
-    -e JAVA_TOOL_OPTIONS="-Xmx4g" \
+    -e JAVA_TOOL_OPTIONS="-Xmx4g -Dclojure.compiler.direct-linking=true" \
     -e LOG_LEVEL=debug \
-    -e DB_BLOCK_CACHE_SIZE=1024 \
-    -e DB_MAX_BACKGROUND_JOBS=16 \
+    -e DB_BLOCK_CACHE_SIZE=8192 \
+    -e DB_MAX_BACKGROUND_JOBS=24 \
+    -e DB_RESOURCE_INDEXER_THREADS=64 \
     -p 8080:8080 \
     -p 8081:8081 \
-    -d samply/blaze:rocksdb-tuning
+    -d samply/blaze:pr-678
 
-  sleep 40
+  ../../.github/scripts/wait-for-url.sh  http://localhost:8080/health
 
-  # Check that Blaze is running
-  SOFTWARE_NAME=$(curl -s http://localhost:8080/fhir/metadata | jq -r .software.name)
-  if [ "Blaze" != "$SOFTWARE_NAME" ]; then
-    echo "Fail"
-    exit 1
-  fi
 
-  blazectl --server http://localhost:8080/fhir upload output-100
+  blazectl --server http://localhost:8080/fhir upload --no-progress output-100
   blazectl --server http://localhost:8080/fhir count-resources
-  sleep 60
+  sleep 10
 
-  blazectl --server http://localhost:8080/fhir upload -c8 output-$N > $N-c8-$1.out
-  blazectl --server http://localhost:8080/fhir count-resources > $N-count-resources-$1.out
+  blazectl --server http://localhost:8080/fhir upload --no-progress -c$C "output-$N" > "$N-c$C-$1.out"
+  blazectl --server http://localhost:8080/fhir count-resources > "$N-count-resources-$1.out"
 
   docker stop blaze
   docker volume rm blaze-data

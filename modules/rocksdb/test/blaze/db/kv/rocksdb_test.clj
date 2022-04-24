@@ -93,7 +93,9 @@
     :block-cache (ig/ref ::rocksdb/block-cache)
     :stats (ig/ref ::rocksdb/stats)}
    ::rocksdb/block-cache {}
-   ::rocksdb/stats {}})
+   ::rocksdb/env {}
+   ::rocksdb/stats {}
+   ::rocksdb/stats-collector {}})
 
 
 (deftest valid-test
@@ -541,6 +543,10 @@
 
     (testing "key value"
       (kv/put! db (ba 0x00) (ba 0x01))
+      (is (bytes= (ba 0x01) (kv/get db (ba 0x00)))))
+
+    (testing "entries"
+      (kv/put! db [[:default (ba 0x00) (ba 0x01)]])
       (is (bytes= (ba 0x01) (kv/get db (ba 0x00)))))
 
     (testing "errors on unknown column-family"

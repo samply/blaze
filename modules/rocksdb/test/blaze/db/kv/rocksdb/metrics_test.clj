@@ -57,12 +57,21 @@
               "blaze_rocksdb_file_opens"
               "blaze_rocksdb_file_closes"
               "blaze_rocksdb_file_errors"
+              "blaze_rocksdb_stall_seconds"
               "blaze_rocksdb_bloom_filter_useful"
               "blaze_rocksdb_bloom_filter_full_positive"
               "blaze_rocksdb_bloom_filter_full_true_positive"
               "blaze_rocksdb_blocks_compressed"
               "blaze_rocksdb_blocks_decompressed"
-              "blaze_rocksdb_blocks_not_compressed"]
+              "blaze_rocksdb_blocks_not_compressed"
+              "blaze_rocksdb_iterators_created"
+              "blaze_rocksdb_wal_syncs"
+              "blaze_rocksdb_wal_bytes"
+              "blaze_rocksdb_write_timeout"
+              "blaze_rocksdb_flush_seconds"
+              "blaze_rocksdb_compaction_seconds"
+              "blaze_rocksdb_compression_seconds"
+              "blaze_rocksdb_decompression_seconds"]
              (mapv :name metrics))))
 
     (testing "every metric is of type counter"

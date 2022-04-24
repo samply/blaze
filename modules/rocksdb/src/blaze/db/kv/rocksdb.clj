@@ -10,14 +10,15 @@
   (:import
     [java.lang AutoCloseable]
     [java.nio ByteBuffer]
-    [java.util ArrayList EnumSet]
+    [java.util ArrayList]
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
-     DBOptions Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
-     StatsLevel HistogramType]))
+     Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
+     StatsLevel Env Priority]))
 
 
 (set! *warn-on-reflection* true)
+(RocksDB/loadLibrary)
 
 
 (deftype RocksKvIterator [^RocksIterator i]
@@ -177,7 +178,6 @@
 (defmethod ig/init-key ::block-cache
   [_ {:keys [size-in-mb] :or {size-in-mb 128}}]
   (log/info (format "Init RocksDB block cache of %d MB" size-in-mb))
-  (RocksDB/loadLibrary)
   (LRUCache. (bit-shift-left size-in-mb 20)))
 
 
@@ -187,8 +187,16 @@
   (.close ^AutoCloseable cache))
 
 
+(defmethod ig/init-key ::env
+  [_ _]
+  (log/info (format "Init RocksDB environment"))
+  (doto (Env/getDefault)
+    (.setBackgroundThreads 2 Priority/HIGH)
+    (.setBackgroundThreads 6 Priority/LOW)))
+
+
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]
-  (s/keys :req-un [::dir ::block-cache ::stats]))
+  (s/keys :req-un [::dir ::block-cache ::stats] :opt-un [::opts]))
 
 
 (defn- init-log-msg [dir opts]
@@ -199,7 +207,7 @@
 (defmethod ig/init-key ::kv/rocksdb
   [_ {:keys [dir block-cache stats opts column-families]}]
   (log/info (init-log-msg dir opts))
-  (let [^DBOptions db-options (impl/db-options stats opts)
+  (let [db-options (impl/db-options stats opts)
         cfds (map
                (partial impl/column-family-descriptor block-cache)
                (merge {:default nil} column-families))
@@ -220,8 +228,8 @@
 (defmethod ig/init-key ::stats
   [_ _]
   (log/info "Init RocksDB statistics")
-  (doto (Statistics. (EnumSet/allOf HistogramType))
-    (.setStatsLevel StatsLevel/EXCEPT_DETAILED_TIMERS)))
+  (doto (Statistics.)
+    (.setStatsLevel StatsLevel/EXCEPT_TIME_FOR_MUTEX)))
 
 
 (defmethod ig/halt-key! ::stats
