@@ -6,9 +6,10 @@ A part of the environment variables depends on the storage variant chosen. The s
 
 ### In-memory
 
-| Name                           | Default | Since | Depr ¹ | Description                                                        |
-|:-------------------------------|:--------|:------|:-------|:-------------------------------------------------------------------|
-| DB_RESOURCE_INDEXER_BATCH_SIZE | 1       | v0.8  | v0.11  | The number of resources which are indexed in a batch. (Deprecated) |
+| Name                           | Default | Since | Depr ¹ | Description                                                                             |
+|:-------------------------------|:--------|:------|:-------|:----------------------------------------------------------------------------------------|
+| DB_RESOURCE_INDEXER_THREADS    | 4       | v0.8  |        | The number threads used for indexing resources. Try 8 or 16 depending on your hardware. |
+| DB_RESOURCE_INDEXER_BATCH_SIZE | 1       | v0.8  | v0.11  | The number of resources which are indexed in a batch. (Deprecated)                      |
 
 ¹ Deprecated
 
@@ -24,7 +25,7 @@ The three database directories must not exist on the first start of Blaze and wi
 | DB_BLOCK_CACHE_SIZE            | 128           | v0.8  |        | The size of the [block cache][2] of the DB in MB.                                                                                                |
 | DB_RESOURCE_CACHE_SIZE         | 100000        | v0.8  |        | The size of the resource cache of the DB in number of resources.                                                                                 |
 | DB_MAX_BACKGROUND_JOBS         | 4             | v0.8  |        | The maximum number of the [background jobs][3] used for DB compactions.                                                                          |
-| DB_RESOURCE_INDEXER_THREADS    | 4             | v0.8  | v0.11  | The number threads used for indexing resources. (Deprecated)                                                                                     |
+| DB_RESOURCE_INDEXER_THREADS    | 4             | v0.8  |        | The number threads used for indexing resources. Try 8 or 16 depending on your hardware.                                                          |
 | DB_RESOURCE_INDEXER_BATCH_SIZE | 1             | v0.8  | v0.11  | The number of resources which are indexed in a batch. (Deprecated)                                                                               |
 
 ¹ Deprecated, ² In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
@@ -39,7 +40,7 @@ The distributed storage variant only uses the index database locally.
 | DB_BLOCK_CACHE_SIZE                | 128            | v0.8  |        | The size of the [block cache][2] of the DB in MB.                                                                                                    |
 | DB_RESOURCE_CACHE_SIZE             | 100000         | v0.8  |        | The size of the resource cache of the DB in number of resources.                                                                                     |
 | DB_MAX_BACKGROUND_JOBS             | 4              | v0.8  |        | The maximum number of the [background jobs][3] used for DB compactions.                                                                              |
-| DB_RESOURCE_INDEXER_THREADS        | 4              | v0.8  | v0.11  | The number threads used for indexing resources. (Deprecated)                                                                                         |
+| DB_RESOURCE_INDEXER_THREADS        | 4              | v0.8  |        | The number threads used for indexing resources. Try 8 or 16 depending on your hardware.                                                              |
 | DB_RESOURCE_INDEXER_BATCH_SIZE     | 1              | v0.8  | v0.11  | The number of resources which are indexed in a batch. (Deprecated)                                                                                   |
 | DB_KAFKA_BOOTSTRAP_SERVERS         | localhost:9092 | v0.8  |        | A comma separated list of bootstrap servers for the Kafka transaction log.                                                                           |
 | DB_KAFKA_MAX_REQUEST_SIZE          | 1048576        | v0.8  |        | The maximum size of a encoded transaction able to send to the Kafka transaction log in bytes.                                                        |
