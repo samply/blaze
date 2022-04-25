@@ -328,7 +328,8 @@
       (with-meta resource (meta resource-handle))))
 
   (-pull-many [_ resource-handles]
-    (let [hashes (hashes-of-non-deleted resource-handles)]
+    (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
+          hashes (hashes-of-non-deleted resource-handles)]
       (do-sync [resources (rs/multi-get resource-store hashes)]
         (mapv (partial to-resource tx-cache resources) resource-handles))))
 
