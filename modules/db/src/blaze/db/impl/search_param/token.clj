@@ -158,7 +158,7 @@
   (some? (r-sp-v/next-value! rsvi resource-handle c-hash value value)))
 
 
-(defrecord SearchParamToken [name url type base code c-hash expression]
+(defrecord SearchParamToken [name url type base code target c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/v-hash value))
@@ -212,24 +212,24 @@
 
 
 (defmethod sc/search-param "token"
-  [_ {:keys [name url type base code expression]}]
+  [_ {:keys [name url type base code target expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile (fix-expr url expression))]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+      (->SearchParamToken name url type base code target (codec/c-hash code) expression))
     (ba/unsupported (u/missing-expression-msg url))))
 
 
 (defmethod sc/search-param "reference"
-  [_ {:keys [name url type base code expression]}]
+  [_ {:keys [name url type base code target expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+      (->SearchParamToken name url type base code target (codec/c-hash code) expression))
     (ba/unsupported (u/missing-expression-msg url))))
 
 
 (defmethod sc/search-param "uri"
-  [_ {:keys [name url type base code expression]}]
+  [_ {:keys [name url type base code target expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamToken name url type base code (codec/c-hash code) expression))
+      (->SearchParamToken name url type base code target (codec/c-hash code) expression))
     (ba/unsupported (u/missing-expression-msg url))))

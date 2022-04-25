@@ -74,4 +74,10 @@
       (is (= [["a" "b"]] (iu/clauses {"a" " b "})))
 
       (testing "with two parts"
-        (is (= [["a" "b" "c"]] (iu/clauses {"a" " b , c "})))))))
+        (is (= [["a" "b" "c"]] (iu/clauses {"a" " b , c "}))))))
+
+  (testing "removes keys"
+    (are [key] (empty? (iu/clauses {key "bar"}))
+      "_foo"
+      "__token"
+      "__t")))

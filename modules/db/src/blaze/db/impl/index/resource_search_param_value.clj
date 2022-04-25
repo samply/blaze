@@ -92,17 +92,21 @@
 
 (defn prefix-keys!
   "Returns a reducible collection of decoded values from keys starting at
-  `value` (optional) and ending when the prefix of `tid`, `id`, `hash` and
-  `c-hash` is no longer a prefix of the keys processed.
+  `start-value` (optional) and ending when the prefix of `tid`, `id`, `hash`,
+  `c-hash` and `prefix-value` (optional) is no longer a prefix of the keys
+  processed.
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
   ([iter tid id hash c-hash]
    (let [key (encode-key tid id hash c-hash)]
      (i/prefix-keys! iter key decode-value key)))
-  ([iter tid id hash c-hash value]
-   (let [prefix-key (encode-key tid id hash c-hash)
-         start-key (encode-key tid id hash c-hash value)]
+  ([iter tid id hash c-hash prefix-value]
+   (let [prefix-key (encode-key tid id hash c-hash prefix-value)]
+     (i/prefix-keys! iter prefix-key decode-value prefix-key)))
+  ([iter tid id hash c-hash prefix-value start-value]
+   (let [prefix-key (encode-key tid id hash c-hash prefix-value)
+         start-key (encode-key tid id hash c-hash start-value)]
      (i/prefix-keys! iter prefix-key decode-value start-key))))
 
 

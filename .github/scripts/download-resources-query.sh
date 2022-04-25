@@ -3,7 +3,7 @@
 BASE="http://localhost:8080/fhir"
 TYPE=$1
 QUERY=$2
-EXPECTED_SIZE=$(curl -s "$BASE/$TYPE?$QUERY&_summary=count" | jq -r .total)
+EXPECTED_SIZE=$3
 FILE_NAME_PREFIX="$(uuidgen)"
 
 blazectl --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get".ndjson

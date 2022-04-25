@@ -330,6 +330,15 @@
       bs/from-byte-buffer))
 
 
+(defn tid-byte-string
+  "Returns a byte string with `tid`."
+  [tid]
+  (-> (bb/allocate tid-size)
+      (bb/put-int! tid)
+      bb/flip!
+      bs/from-byte-buffer))
+
+
 (defn string
   "Returns a lexicographically sortable byte string of the `string` value."
   {:inline

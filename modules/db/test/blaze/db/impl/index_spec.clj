@@ -41,3 +41,11 @@
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses)
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+
+
+(s/fdef index/targets!
+  :args (s/cat :context :blaze.db.impl.batch-db/context
+               :resource-handle :blaze.db/resource-handle
+               :code :blaze.db/c-hash
+               :target-tid (s/? :blaze.db/tid))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
