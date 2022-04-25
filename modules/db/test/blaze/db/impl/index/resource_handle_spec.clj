@@ -44,3 +44,8 @@
 (s/fdef rh/hash
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.resource/hash)
+
+
+(s/fdef rh/reference
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.fhir/local-ref)

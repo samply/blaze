@@ -221,17 +221,17 @@
 
 
 (defn- hashes-of-non-deleted [resource-handles]
-  (into [] (comp (remove rh/deleted?) (map :hash)) resource-handles))
+  (into [] (comp (remove rh/deleted?) (map rh/hash)) resource-handles))
 
 
 (defn- deleted-resource [{:keys [id] :as resource-handle}]
   {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
 
 
-(defn- to-resource [tx-cache resources {:keys [hash] :as resource-handle}]
+(defn- to-resource [tx-cache resources resource-handle]
   (let [resource (if (rh/deleted? resource-handle)
                    (deleted-resource resource-handle)
-                   (get resources hash))]
+                   (get resources (rh/hash resource-handle)))]
     (enhance-resource tx-cache resource-handle resource)))
 
 

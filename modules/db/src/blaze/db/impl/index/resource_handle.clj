@@ -86,3 +86,7 @@
   {:inline (fn [rh] `(.-hash ~(with-meta rh {:tag `ResourceHandle})))}
   [rh]
   (.-hash ^ResourceHandle rh))
+
+
+(defn reference [rh]
+  (str (codec/tid->type (tid rh)) "/" (id rh)))

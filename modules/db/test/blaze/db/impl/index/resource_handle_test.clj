@@ -79,3 +79,12 @@
     (prop/for-all [hash (s/gen :blaze.resource/hash)]
       (let [rh (resource-handle 0 "foo" 0 hash)]
         (= hash (rh/hash rh) (apply rh/hash [rh]))))))
+
+
+(deftest reference-test
+  (satisfies-prop 100
+    (prop/for-all [id (s/gen :blaze.resource/id)]
+      (let [rh (resource-handle 1495153489 id)]
+        (= (str "Condition/" id)
+           (rh/reference rh)
+           (apply rh/reference [rh]))))))
