@@ -1984,16 +1984,16 @@
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"match"))
 
-            (testing "the second entry is the included Observation"
+            (testing "the second entry is the included Condition"
               (given (-> body :entry second)
-                :fullUrl := #fhir/uri"base-url-113047/Observation/1"
-                [:resource :fhir/type] := :fhir/Observation
-                [:search :mode] := #fhir/code"include"))
-
-            (testing "the third entry is the included Condition"
-              (given (-> body :entry (nth 2))
                 :fullUrl := #fhir/uri"base-url-113047/Condition/2"
                 [:resource :fhir/type] := :fhir/Condition
+                [:search :mode] := #fhir/code"include"))
+
+            (testing "the third entry is the included Observation"
+              (given (-> body :entry (nth 2))
+                :fullUrl := #fhir/uri"base-url-113047/Observation/1"
+                [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"include"))))))
 
     (testing "invalid include parameter"
