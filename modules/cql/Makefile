@@ -9,10 +9,10 @@ cql-test:
 	sed -i.bak '277d' cql-test/CqlArithmeticFunctionsTest.xml
 
 test: cql-test
-	clojure -M:test --profile :ci
+	clojure -M:test:kaocha --profile :ci
 
 test-coverage: cql-test
-	clojure -M:test-coverage
+	clojure -M:test:coverage
 
 clean:
 	rm -rf .clj-kondo/.cache .cpcache cql-test target

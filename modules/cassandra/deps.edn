@@ -21,26 +21,20 @@
    {blaze/test-util
     {:local/root "../test-util"}
 
-    lambdaisland/kaocha
-    {:mvn/version "1.65.1029"}
-
     org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+    {:mvn/version "0.1"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.65.1029"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
-  :test-coverage
-  {:extra-paths ["test"]
-
-   :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
-
-    cloverage/cloverage
-    {:mvn/version "1.2.3"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}
+  :coverage
+  {:extra-deps
+   {cloverage/cloverage
+    {:mvn/version "1.2.3"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".+spec"]}}}
