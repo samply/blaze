@@ -9,7 +9,7 @@ lint-root:
 lint: $(MODULES) lint-root
 
 test-root:
-	clojure -M:test --profile :ci
+	clojure -M:test:kaocha --profile :ci
 
 test: $(MODULES) test-root
 

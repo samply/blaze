@@ -36,26 +36,20 @@
    {blaze/db-stub
     {:local/root "../db-stub"}
 
-    lambdaisland/kaocha
-    {:mvn/version "1.65.1029"}
-
     org.clojure/data.xml
-    {:mvn/version "0.2.0-alpha6"}}
+    {:mvn/version "0.2.0-alpha6"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.65.1029"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
-  :test-coverage
-  {:extra-paths ["test"]
-
-   :extra-deps
-   {blaze/db-stub
-    {:local/root "../db-stub"}
-
-    cloverage/cloverage
-    {:mvn/version "1.2.3"}
-
-    org.clojure/data.xml
-    {:mvn/version "0.2.0-alpha6"}}
+  :coverage
+  {:extra-deps
+   {cloverage/cloverage
+    {:mvn/version "1.2.3"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".*spec$"]}}}

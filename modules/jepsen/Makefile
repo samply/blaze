@@ -2,7 +2,7 @@ lint:
 	clj-kondo --lint src test deps.edn
 
 test:
-	clojure -M:test --profile :ci
+	clojure -M:test:kaocha --profile :ci
 
 test-coverage:
 	true
