@@ -40,4 +40,5 @@
                :id :blaze.db/id-byte-string
                :hash :blaze.resource/hash
                :c-hash :blaze.db/c-hash
-               :value (s/? byte-string?)))
+               :prefix-value (s/? byte-string?)
+               :start-value (s/? byte-string?)))

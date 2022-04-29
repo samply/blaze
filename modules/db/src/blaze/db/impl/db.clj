@@ -3,36 +3,15 @@
   (:require
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
     [blaze.db.kv :as kv])
   (:import
-    [clojure.lang IReduceInit Sequential Seqable Counted]
     [java.io Writer]))
 
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
-
-(defn- inc-rf [sum _] (inc ^long sum))
-
-
-(defmacro with-open-coll
-  "Like `clojure.core/with-open` but opens and closes the resources on every
-  reduce call to `coll`."
-  [bindings coll]
-  `(reify
-     Sequential
-     IReduceInit
-     (reduce [_ rf# init#]
-       (with-open ~bindings
-         (reduce rf# init# ~coll)))
-     Seqable
-     (seq [this#]
-       (.seq ^Seqable (persistent! (.reduce this# conj! (transient [])))))
-     Counted
-     (count [this#]
-       (.reduce this# inc-rf 0))))
 
 
 (deftype Db [node basis-t t]

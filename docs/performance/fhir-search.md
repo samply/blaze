@@ -97,7 +97,7 @@ The result is a dataset which consists only of the resource types Patient, Obser
 
 ## Controlling and Monitoring the Caches
 
-The size of the resource cache and the resource handle cache can be set by their respective environment variables `DB_RESOURCE_CACHE_SIZE` and `DB_RESOURCE_HANDLE_CACHE_SIZE`. The size denotes the number of resources / resource handles. Because one has to specify a number of resources / resource handles, it's important to know how many bytes a resource / resource handle allocates on the heap. For resource handles, it can be said that they allocate between 288 and 344 bytes depending on the size of the resource id. For resources, the size varies widely. Monitoring of the heap usage is critical.
+The size of the resource cache and the resource handle cache can be set by their respective environment variables `DB_RESOURCE_CACHE_SIZE` and `DB_RESOURCE_HANDLE_CACHE_SIZE`. The size denotes the number of resources / resource handles. Because one has to specify a number of resources / resource handles, it's important to know how many bytes a resource / resource handle allocates on the heap. For resource handles, it can be said that they allocate between 272 and 328 bytes depending on the size of the resource id. For resources, the size varies widely. Monitoring of the heap usage is critical.
 
 ### Monitoring 
 

@@ -30,7 +30,7 @@
 
 (st/instrument)
 (tu/init-fhir-specs)
-(log/set-level! :trace)
+(log/set-level! :info)
 
 
 (defn- fixture [f]
@@ -111,6 +111,13 @@
     {:data
      {:fhir.resource/type "Condition"}
      :path "/Condition"}))
+
+
+(def encounter-match
+  (reitit/map->Match
+    {:data
+     {:fhir.resource/type "Encounter"}
+     :path "/Encounter"}))
 
 
 (def medication-statement-match
@@ -1552,6 +1559,78 @@
           (is (= #fhir/uri"base-url-113047/Condition/1"
                  (-> body :entry first :fullUrl)))))))
 
+  (testing "forward chaining"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Encounter
+               :id "0"
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition
+                 #fhir/Reference{:reference "Condition/0"}}
+                {:fhir/type :fhir.Encounter/diagnosis
+                 :condition
+                 #fhir/Reference{:reference "Condition/2"}}]}]
+        [:put {:fhir/type :fhir/Encounter
+               :id "1"
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition
+                 #fhir/Reference{:reference "Condition/1"}}]}]
+        [:put {:fhir/type :fhir/Condition
+               :id "0"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding{:code #fhir/code"foo"}]}}]
+        [:put {:fhir/type :fhir/Condition
+               :id "1"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding{:code #fhir/code"bar"}]}}]
+        [:put {:fhir/type :fhir/Condition
+               :id "2"
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding{:code #fhir/code"foo"}]}}]]]
+
+      (testing "success"
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match encounter-match
+                  :params {"diagnosis:Condition.code" "foo"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the entry has the right fullUrl"
+            (is (= #fhir/uri"base-url-113047/Encounter/0"
+                   (-> body :entry first :fullUrl))))))
+
+      (testing "ambiguous type"
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match encounter-match
+                  :headers {"prefer" "handling=strict"}
+                  :params {"diagnosis.code" "foo"}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Ambiguous target types `Condition, Procedure` in the chain `diagnosis.code`. Please use a modifier to constrain the type.")))))
+
   (testing "Include Resources"
     (testing "direct include"
       (with-handler [handler]
@@ -1984,16 +2063,16 @@
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"match"))
 
-            (testing "the second entry is the included Observation"
+            (testing "the second entry is the included Condition"
               (given (-> body :entry second)
-                :fullUrl := #fhir/uri"base-url-113047/Observation/1"
-                [:resource :fhir/type] := :fhir/Observation
-                [:search :mode] := #fhir/code"include"))
-
-            (testing "the third entry is the included Condition"
-              (given (-> body :entry (nth 2))
                 :fullUrl := #fhir/uri"base-url-113047/Condition/2"
                 [:resource :fhir/type] := :fhir/Condition
+                [:search :mode] := #fhir/code"include"))
+
+            (testing "the third entry is the included Observation"
+              (given (-> body :entry (nth 2))
+                :fullUrl := #fhir/uri"base-url-113047/Observation/1"
+                [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"include"))))))
 
     (testing "invalid include parameter"

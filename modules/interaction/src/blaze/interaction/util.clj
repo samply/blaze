@@ -18,17 +18,23 @@
        (not (str/starts-with? k "_has"))))
 
 
+(defn- query-param->clauses
+  "Takes a query param with possible multiple values and returns possible
+  multiple clauses one for each query param."
+  [[k v]]
+  (map
+    #(into [k] (map str/trim) (str/split % #","))
+    (fhir-util/to-seq v)))
+
+
+(def ^:private query-params->clauses-xf
+  (comp
+    (remove remove-query-param?)
+    (mapcat query-param->clauses)))
+
+
 (defn clauses [query-params]
-  (into
-    []
-    (comp
-      (remove remove-query-param?)
-      (mapcat
-        (fn [[k v]]
-          (map
-            #(into [k] (map str/trim) (str/split % #","))
-            (fhir-util/to-seq v)))))
-    query-params))
+  (into [] query-params->clauses-xf query-params))
 
 
 (defn luid [{:keys [clock rng-fn]}]

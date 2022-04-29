@@ -12,6 +12,7 @@
     [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param :as search-param]
+    [blaze.db.impl.search-param.chained :as spc]
     [blaze.db.kv :as kv]
     [blaze.db.node.protocols :as np]
     [blaze.db.node.resource-indexer :as resource-indexer]
@@ -22,7 +23,6 @@
     [blaze.db.node.tx-indexer.verify :as tx-indexer-verify]
     [blaze.db.node.validation :as validation]
     [blaze.db.resource-store :as rs]
-    [blaze.db.search-param-registry :as sr]
     [blaze.db.search-param-registry.spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.executors :as ex]
@@ -30,7 +30,6 @@
     [blaze.fhir.spec.type :as type]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
-    [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [java-time :as time]
@@ -75,23 +74,11 @@
   (take 16 (iterate #(* 2 %) 1)))
 
 
-(defn- search-param-not-found-msg [code type]
-  (format "The search-param with code `%s` and type `%s` was not found."
-          code type))
-
-
-(defn- resolve-search-param [registry type code]
-  (if-let [search-param (sr/get registry code type)]
-    search-param
-    (ba/not-found (search-param-not-found-msg code type) :http/status 400)))
-
-
 (defn- resolve-search-params [registry type clauses lenient?]
   (reduce
-    (fn [ret [code & values]]
-      (let [[code modifier] (str/split code #":" 2)
-            values (distinct values)]
-        (if-ok [search-param (resolve-search-param registry type code)]
+    (fn [ret [param & values]]
+      (let [values (distinct values)]
+        (if-ok [[search-param modifier] (spc/parse-search-param registry type param)]
           (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
             (conj ret [search-param modifier values compiled-values])
             reduced)
@@ -221,17 +208,17 @@
 
 
 (defn- hashes-of-non-deleted [resource-handles]
-  (into [] (comp (remove rh/deleted?) (map :hash)) resource-handles))
+  (into [] (comp (remove rh/deleted?) (map rh/hash)) resource-handles))
 
 
 (defn- deleted-resource [{:keys [id] :as resource-handle}]
   {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
 
 
-(defn- to-resource [tx-cache resources {:keys [hash] :as resource-handle}]
+(defn- to-resource [tx-cache resources resource-handle]
   (let [resource (if (rh/deleted? resource-handle)
                    (deleted-resource resource-handle)
-                   (get resources hash))]
+                   (get resources (rh/hash resource-handle)))]
     (enhance-resource tx-cache resource-handle resource)))
 
 
@@ -328,7 +315,8 @@
       (with-meta resource (meta resource-handle))))
 
   (-pull-many [_ resource-handles]
-    (let [hashes (hashes-of-non-deleted resource-handles)]
+    (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
+          hashes (hashes-of-non-deleted resource-handles)]
       (do-sync [resources (rs/multi-get resource-store hashes)]
         (mapv (partial to-resource tx-cache resources) resource-handles))))
 

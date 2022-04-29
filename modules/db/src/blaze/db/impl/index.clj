@@ -1,7 +1,10 @@
 (ns blaze.db.impl.index
   (:require
     [blaze.coll.core :as coll]
-    [blaze.db.impl.search-param :as search-param]))
+    [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.search-param :as search-param]
+    [blaze.db.impl.search-param.util :as u]))
 
 
 (defn- other-clauses-filter [context clauses]
@@ -52,3 +55,24 @@
           search-param context compartment tid values))
       (search-param/compartment-resource-handles
         search-param context compartment tid values))))
+
+
+(defn targets!
+  "Returns a reducible collection of non-deleted resource handles that are
+  referenced by `resource-handle` via a search-param with `code` having a type
+  with `target-tid`.
+
+  Changes the state of `context`. Consuming the collection requires exclusive
+  access to `context`. Doesn't close `context`."
+  {:arglists
+   '([context resource-handle code]
+     [context resource-handle code target-tid])}
+  ([{:keys [rsvi] :as context} {:keys [tid id hash]} code]
+   (coll/eduction
+    (u/reference-resource-handle-mapper context)
+    (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code)))
+  ([{:keys [rsvi] :as context} {:keys [tid id hash]} code target-tid]
+   (coll/eduction
+    (u/reference-resource-handle-mapper context)
+    (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
+                         (codec/tid-byte-string target-tid)))))

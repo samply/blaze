@@ -24,14 +24,19 @@
 
   Changes the state of `rsvi`. Consuming the collection requires exclusive
   access to `rsvi`. Doesn't close `rsvi`."
+  {:arglists
+   '([context list-id list-hash tid]
+     [context list-id list-hash tid start-id])}
   ([{:keys [rsvi] :as context} list-id list-hash tid]
    (coll/eduction
-     (u/reference-resource-handle-mapper context tid)
-     (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash)))
+     (u/reference-resource-handle-mapper context)
+     (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash
+                          (codec/tid-byte-string tid))))
   ([{:keys [rsvi] :as context} list-id list-hash tid start-id]
    (coll/eduction
-     (u/reference-resource-handle-mapper context tid)
+     (u/reference-resource-handle-mapper context)
      (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash
+                          (codec/tid-byte-string tid)
                           (codec/tid-id tid start-id)))))
 
 
