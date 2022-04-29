@@ -165,6 +165,9 @@
 
 
 ;; TODO 22.20. ToChars
+(defunop to-chars [operand]
+  (when (string? operand)
+    (map str operand)))
 
 ;; TODO 22.21. ToConcept
 

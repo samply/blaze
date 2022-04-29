@@ -808,6 +808,11 @@
   {:type "ToBoolean" :operand operand})
 
 
+;; 22.20. ToChars
+(defn to-chars [operand]
+  {:type "ToChars" :operand operand})
+
+
 ;; 22.22. ToDate
 (defn to-date [operand]
   {:type "ToDate" :operand operand})
