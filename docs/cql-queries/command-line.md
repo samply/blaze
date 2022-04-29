@@ -15,7 +15,7 @@ git clone https://github.com/samply/blaze.git
 If you don't already have Blaze running, you can read about how to do it in [Deployment](../deployment/README.md). If you have Docker available just run:
 
 ```sh
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.16
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.17
 ```
 
 ## Import some data

@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.17.0
+
+### New Features
+
+* Chained Search Params ([#691](https://github.com/samply/blaze/pull/691))
+
+* Implement CQL ToBoolean ([#682](https://github.com/samply/blaze/pull/682))
+
+* Add Reverse Include Values into CapabilityStatement ([#688](https://github.com/samply/blaze/pull/688))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/30?closed=1).
+
 ## v0.16.5
 
 ### Security
