@@ -37,54 +37,26 @@
     values))
 
 
-(defn- drop-done-values
-  "Drops all values of a conjunction that are already done in respect to
-  `string-start-id`.
-
-  This is done by looking at the first resource handle and ensure that it is
-  actually the one meant to find."
-  [string-start-id resource-handles values]
-  (drop-while
-    #(let [resource-handle (coll/first (resource-handles %))]
-       (or (nil? resource-handle)
-           (not= string-start-id (rh/id resource-handle))))
-    values))
-
-
-(defn- map-2
-  "Like `map` but applies `f-first` to the first item of coll and `f-rest` to
-  all other items in coll."
-  [f-first f-rest]
-  (map-indexed
-    (fn [idx x]
-      (if (zero? idx)
-        (f-first x)
-        (f-rest x)))))
-
-
-(defn- mapcat-2 [f-first f-rest]
-  (comp (map-2 f-first f-rest) cat))
-
-
 (defn resource-handles
-  "Returns a reducible collection of resource handles.
+  "Returns a reducible collection of distinct resource handles.
 
   Concatenates resource handles of each value in compiled `values`."
   ([search-param context tid modifier values]
-   (coll/eduction
-     (mapcat #(p/-resource-handles search-param context tid modifier %))
-     values))
+   (if (= 1 (count values))
+     (p/-resource-handles search-param context tid modifier (first values))
+     (coll/eduction
+       (comp
+         (mapcat (partial p/-resource-handles search-param context tid modifier))
+         (distinct))
+       values)))
   ([search-param context tid modifier values start-id]
-   (let [resource-handles-start
-         #(p/-resource-handles search-param context tid modifier % start-id)]
-     (->> (drop-done-values
-            (codec/id-string start-id)
-            resource-handles-start
-            values)
-          (coll/eduction
-            (mapcat-2
-              resource-handles-start
-              #(p/-resource-handles search-param context tid modifier %)))))))
+   (if (= 1 (count values))
+     (p/-resource-handles search-param context tid modifier (first values)
+                          start-id)
+     (let [start-id (codec/id-string start-id)]
+       (coll/eduction
+         (drop-while #(not= start-id (rh/id %)))
+         (resource-handles search-param context tid modifier values))))))
 
 
 (defn- compartment-keys

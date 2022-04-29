@@ -46,10 +46,12 @@
 
    :extra-deps
    {blaze/test-util
-    {:local/root "../test-util"}
+    {:local/root "../test-util"}}}
 
-    lambdaisland/kaocha
-    {:mvn/version "1.65.1029"}}
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.66.1034"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -66,14 +68,9 @@
     org.openjdk.jol/jol-core
     {:mvn/version "0.16"}}}
 
-  :test-coverage
-  {:extra-paths ["test"]
-
-   :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
-
-    cloverage/cloverage
+  :coverage
+  {:extra-deps
+   {cloverage/cloverage
     {:mvn/version "1.2.3"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"

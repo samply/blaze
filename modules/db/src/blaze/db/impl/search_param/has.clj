@@ -39,9 +39,11 @@
   [{:keys [rsvi] :as context} {:keys [c-hash]} tid resource-handle]
   (into
     []
-    (u/reference-resource-handle-mapper context tid)
-    (let [{:keys [tid id hash]} resource-handle]
-      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash c-hash))))
+    (u/reference-resource-handle-mapper context)
+    (let [tid-byte-string (codec/tid-byte-string tid)
+          {:keys [tid id hash]} resource-handle]
+      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash c-hash
+                           tid-byte-string))))
 
 
 (def ^:private id-cmp

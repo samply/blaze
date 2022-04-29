@@ -11,7 +11,7 @@
   {:local/root "../module-base"}
 
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "3.0.6"}
+  {:mvn/version "3.1.0"}
 
   com.google.guava/guava
   {:mvn/version "31.1-jre"}}
@@ -22,21 +22,18 @@
 
    :extra-deps
    {blaze/test-util
-    {:local/root "../test-util"}
+    {:local/root "../test-util"}}}
 
-    lambdaisland/kaocha
-    {:mvn/version "1.65.1029"}}
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.66.1034"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
-  :test-coverage
-  {:extra-paths ["test"]
-
-   :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
-
-    cloverage/cloverage
+  :coverage
+  {:extra-deps
+   {cloverage/cloverage
     {:mvn/version "1.2.3"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "dev" "-s" "test"]}}}

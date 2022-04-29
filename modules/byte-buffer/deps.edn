@@ -8,9 +8,11 @@
 
    :extra-deps
    {blaze/test-util
-    {:local/root "../test-util"}
+    {:local/root "../test-util"}}}
 
-    lambdaisland/kaocha
-    {:mvn/version "1.65.1029"}}
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.66.1034"}}
 
    :main-opts ["-m" "kaocha.runner"]}}}

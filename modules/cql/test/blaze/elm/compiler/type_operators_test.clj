@@ -286,8 +286,108 @@
 ;; TODO 22.18. Is
 
 
-;; TODO 22.19. ToBoolean
+;; 22.19. ToBoolean
+;;
+;; The ToBoolean operator converts the value of its argument to a Boolean
+;; value.
+;;
+;; The operator accepts 'true', 't', 'yes', 'y', and '1' as string
+;; representations of true, and 'false', 'f', 'no', 'n', and '0' as
+;; string representations of false, ignoring case.
+;;
+;; If the input is an Integer or Long, the result is true if the integer is 1,
+;; false if the integer is 0.
+;;
+;; If the input is a Decimal, the result is true if the decimal is 1.0,
+;; false if the decimal is 0.0.
+;;
+;; If the input cannot be interpreted as a valid Boolean value, the result is
+;; null.
+;;
+;; If the argument is null the result is null.
+(deftest compile-to-boolean-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/to-boolean elm/string x))
+      "true"
+      "t"
+      "yes"
+      "y"
+      "1"
+      "True"
+      "T"
+      "TRUE"
+      "YES"
+      "Yes"
+      "Y")
 
+    (are [x] (false? (tu/compile-unop elm/to-boolean elm/string x))
+      "false"
+      "f"
+      "no"
+      "n"
+      "0"
+      "False"
+      "F"
+      "FALSE"
+      "NO"
+      "No"
+      "N")
+
+    (are [x] (nil? (tu/compile-unop elm/to-boolean elm/string x))
+      "foo"
+      "bar"
+      ""))
+
+  (testing "integer"
+    (is (true? (tu/compile-unop elm/to-boolean elm/integer "1")))
+
+    (is (false? (tu/compile-unop elm/to-boolean elm/integer "0")))
+
+    (are [x] (nil? (tu/compile-unop elm/to-boolean elm/integer x))
+      "2"
+      "-1"))
+
+  (testing "long"
+    (is (true? (tu/compile-unop elm/to-boolean elm/long "1")))
+
+    (is (false? (tu/compile-unop elm/to-boolean elm/long "0")))
+
+    (are [x] (nil? (tu/compile-unop elm/to-boolean elm/long x))
+      "2"
+      "-1"))
+
+  (testing "decimal"
+    (are [x] (true? (tu/compile-unop elm/to-boolean elm/decimal x))
+      "1"
+      "1.0"
+      "1.00"
+      "1.00000000")
+
+    (are [x] (false? (tu/compile-unop elm/to-boolean elm/decimal x))
+      "0"
+      "0.0"
+      "0.00"
+      "0.00000000")
+
+    (are [x] (nil? (tu/compile-unop elm/to-boolean elm/decimal x))
+      "0.1"
+      "-1.0"
+      "2.0"
+      "1.1"
+      "0.9"))
+
+  (testing "boolean"
+    (is (true? (tu/compile-unop elm/to-boolean elm/boolean "true")))
+
+    (is (false? (tu/compile-unop elm/to-boolean elm/boolean "false"))))
+
+  (tu/testing-unary-null elm/to-boolean)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-boolean #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-boolean (param-ref "x")) (core/-form expr))))))
 
 ;; TODO 22.20. ToChars
 

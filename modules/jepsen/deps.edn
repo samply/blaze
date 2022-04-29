@@ -7,11 +7,12 @@
 
  :aliases
  {:test
-  {:extra-paths ["test"]
+  {:extra-paths ["test"]}
 
-   :extra-deps
+  :kaocha
+  {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.65.1029"}}
+    {:mvn/version "1.66.1034"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

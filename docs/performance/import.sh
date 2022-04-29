@@ -8,8 +8,8 @@ import-once() {
     -e JAVA_TOOL_OPTIONS="-Xmx4g -Dclojure.compiler.direct-linking=true" \
     -e LOG_LEVEL=debug \
     -e DB_BLOCK_CACHE_SIZE=8192 \
-    -e DB_MAX_BACKGROUND_JOBS=24 \
-    -e DB_RESOURCE_INDEXER_THREADS=64 \
+    -e DB_MAX_BACKGROUND_JOBS=16 \
+    -e DB_RESOURCE_INDEXER_THREADS=16 \
     -p 8080:8080 \
     -p 8081:8081 \
     -d samply/blaze:pr-678

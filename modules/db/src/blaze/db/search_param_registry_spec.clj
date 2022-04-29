@@ -19,6 +19,12 @@
   :ret (s/coll-of :blaze.db/search-param :kind vector?))
 
 
+(s/fdef sr/list-by-target
+  :args (s/cat :search-param-registry :blaze.db/search-param-registry
+               :target string?)
+  :ret (s/coll-of :blaze.db/search-param :kind vector?))
+
+
 (s/fdef sr/linked-compartments
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
                :resource :blaze/resource)

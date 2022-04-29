@@ -164,6 +164,7 @@
 
 
 (defn date
+  "Returns a System.Date"
   ([year]
    (Year/of year))
   ([year month]

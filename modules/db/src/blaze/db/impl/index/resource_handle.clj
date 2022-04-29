@@ -6,18 +6,45 @@
     [blaze.db.impl.codec :as codec]
     [blaze.fhir.spec.type.protocols :as p])
   (:import
-    [clojure.lang Numbers]))
+    [clojure.lang ILookup Numbers]))
 
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defrecord ResourceHandle [^int tid id ^long t hash ^long num-changes op]
+(deftype ResourceHandle [^int tid id ^long t hash ^long num-changes op]
   p/FhirType
   (-type [_]
     ;; TODO: maybe cache this
-    (keyword "fhir" (codec/tid->type tid))))
+    (keyword "fhir" (codec/tid->type tid)))
+
+  ILookup
+  (valAt [rh key]
+    (.valAt rh key nil))
+  (valAt [_ key not-found]
+    (case key
+      :tid tid
+      :id id
+      :t t
+      :hash hash
+      :num-changes num-changes
+      :op op
+      not-found))
+
+  Object
+  (equals [rh x]
+    (or (identical? rh x)
+        (and (instance? ResourceHandle x)
+             (= tid (.-tid ^ResourceHandle x))
+             (.equals id (.-id ^ResourceHandle x))
+             (= t (.-t ^ResourceHandle x)))))
+  (hashCode [_]
+    (-> tid
+        (unchecked-multiply-int 31)
+        (unchecked-add-int (.hashCode id))
+        (unchecked-multiply-int 31)
+        (unchecked-add-int t))))
 
 
 (defn state->num-changes
@@ -86,3 +113,7 @@
   {:inline (fn [rh] `(.-hash ~(with-meta rh {:tag `ResourceHandle})))}
   [rh]
   (.-hash ^ResourceHandle rh))
+
+
+(defn reference [rh]
+  (str (codec/tid->type (tid rh)) "/" (id rh)))

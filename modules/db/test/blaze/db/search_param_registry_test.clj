@@ -5,7 +5,9 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec.type]
     [blaze.fhir.structure-definition-repo]
-    [blaze.test-util :refer [with-system]]
+    [blaze.fhir.structure-definition-repo.protocols :as p]
+    [blaze.test-util :refer [given-thrown with-system]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
@@ -27,6 +29,27 @@
 (test/use-fixtures :each fixture)
 
 
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.db/search-param-registry nil})
+      :key := :blaze.db/search-param-registry
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.db/search-param-registry {}})
+      :key := :blaze.db/search-param-registry
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+
+  (testing "invalid structure-definition-repo"
+    (given-thrown (ig/init {:blaze.db/search-param-registry {:structure-definition-repo ::invalid}})
+      :key := :blaze.db/search-param-registry
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (satisfies? p/StructureDefinitionRepo ~'%))
+      [:explain ::s/problems 0 :val] := ::invalid)))
+
+
 (def system
   {:blaze.fhir/structure-definition-repo {}
    :blaze.db/search-param-registry
@@ -39,6 +62,19 @@
       (given (sr/get search-param-registry "_id")
         :type := "token"
         :url := "http://hl7.org/fhir/SearchParameter/Resource-id"))))
+
+
+(deftest list-by-target-test
+  (with-system [{:blaze.db/keys [search-param-registry]} system]
+    (testing "Patient"
+      (given (sr/list-by-target search-param-registry "Patient")
+        count := 210
+        [0 :base] := ["Account"]
+        [0 :code] := "patient"
+        [1 :base] := ["Account"]
+        [1 :code] := "subject"
+        [2 :base] := ["ActivityDefinition"]
+        [2 :code] := "composed-of"))))
 
 
 (deftest linked-compartments-test

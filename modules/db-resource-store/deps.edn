@@ -28,26 +28,20 @@
     criterium/criterium
     {:mvn/version "0.4.6"}
 
-    lambdaisland/kaocha
-    {:mvn/version "1.65.1029"}
-
     mvxcvi/clj-cbor
-    {:mvn/version "1.1.0"}}
+    {:mvn/version "1.1.0"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.66.1034"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
-  :test-coverage
-  {:extra-paths ["test"]
-
-   :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
-
-    cloverage/cloverage
-    {:mvn/version "1.2.3"}
-
-    mvxcvi/clj-cbor
-    {:mvn/version "1.1.0"}}
+  :coverage
+  {:extra-deps
+   {cloverage/cloverage
+    {:mvn/version "1.2.3"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".*-spec$"]}}}

@@ -416,13 +416,14 @@
 
 ;; For performance reasons, we use that special Key class instead of a a simple
 ;; triple vector
-(deftype Key [^long tid ^Object id ^long t]
+(deftype Key [^long tid id ^long t]
   Object
-  (equals [_ x]
-    (and (instance? Key x)
-         (= tid (.-tid ^Key x))
-         (.equals id (.-id ^Key x))
-         (= t (.-t ^Key x))))
+  (equals [key x]
+    (or (identical? key x)
+        (and (instance? Key x)
+             (= tid (.-tid ^Key x))
+             (.equals id (.-id ^Key x))
+             (= t (.-t ^Key x)))))
   (hashCode [_]
     (-> tid
         (unchecked-multiply-int 31)
