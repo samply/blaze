@@ -13,7 +13,6 @@
     [clojure.repl :refer [pst]]
     [clojure.spec.test.alpha :as st]
     [clojure.tools.namespace.repl :refer [refresh]]
-    [criterium.core :refer [bench quick-bench]]
     [java-time :as time]
     [taoensso.timbre :as log])
   (:import

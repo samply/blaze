@@ -8,7 +8,7 @@
  fhir/date blaze.fhir.spec.type/->Date
  fhir/dateTime blaze.fhir.spec.type/->DateTime
  fhir/time blaze.fhir.spec.type/->Time
- fhir/code blaze.fhir.spec.type/tagged-literal->Code
+ fhir/code blaze.fhir.spec.type/code
  fhir/oid blaze.fhir.spec.type/->Oid
  fhir/id blaze.fhir.spec.type/->Id
  fhir/markdown blaze.fhir.spec.type/->Markdown
@@ -17,7 +17,7 @@
  fhir/uuid blaze.fhir.spec.type/->Uuid
  fhir/xhtml blaze.fhir.spec.type/->Xhtml
  fhir/Attachment blaze.fhir.spec.type/map->Attachment
- fhir/Extension blaze.fhir.spec.type/map->Extension
+ fhir/Extension blaze.fhir.spec.type/extension
  fhir/Coding blaze.fhir.spec.type/coding
  fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
  fhir/Quantity blaze.fhir.spec.type/map->Quantity

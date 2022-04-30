@@ -1,6 +1,10 @@
 {:lint-as
- {blaze.fhir.spec.type.macros/defcomplextype clojure.core/defrecord
+ {blaze.fhir.spec.type.macros/defprimitivetype clojure.core/deftype
   blaze.test-util/with-system clojure.core/with-open}
+
+ :hooks
+ {:macroexpand
+  {blaze.fhir.spec.type.macros/defcomplextype macros/defcomplextype}}
 
  :linters
  {:unsorted-required-namespaces
