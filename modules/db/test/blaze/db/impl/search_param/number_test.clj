@@ -111,13 +111,13 @@
             :type := "RiskAssessment"
             :v-hash := (codec/number 0.9M)
             :id := "id-163630"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "RiskAssessment"
             :id := "id-163630"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "probability"
             :v-hash := (codec/number 0.9M)))))
 
@@ -140,13 +140,13 @@
             :type := "MolecularSequence"
             :v-hash := (codec/number 1M)
             :id := "id-170736"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "MolecularSequence"
             :id := "id-170736"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "variant-start"
             :v-hash := (codec/number 1M)))))
 

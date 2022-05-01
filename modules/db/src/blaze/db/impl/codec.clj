@@ -21,8 +21,6 @@
 
 ;; ---- Sizes of Byte Arrays --------------------------------------------------
 
-(def ^:const ^long hash-size 32)
-(def ^:const ^long hash-prefix-size 4)
 (def ^:const ^long c-hash-size Integer/BYTES)
 (def ^:const ^long v-hash-size Integer/BYTES)
 (def ^:const ^long tid-size Integer/BYTES)
@@ -260,14 +258,6 @@
   (bit-and (bit-not (unchecked-long l)) 0xFFFFFFFFFFFFFF))
 
 
-(defn hash-prefix
-  {:inline
-   (fn [hash]
-     `(bs/subs ~hash 0 hash-prefix-size))}
-  [hash]
-  (bs/subs hash 0 hash-prefix-size))
-
-
 (defn c-hash [code]
   (-> (Hashing/murmur3_32_fixed)
       (.hashString code StandardCharsets/UTF_8)
@@ -327,7 +317,7 @@
       (bb/put-int! tid)
       (bb/put-byte-string! id)
       bb/flip!
-      bs/from-byte-buffer))
+      bs/from-byte-buffer!))
 
 
 (defn tid-byte-string
@@ -336,7 +326,7 @@
   (-> (bb/allocate tid-size)
       (bb/put-int! tid)
       bb/flip!
-      bs/from-byte-buffer))
+      bs/from-byte-buffer!))
 
 
 (defn string
@@ -381,13 +371,13 @@
         (-> (bb/allocate 1)
             (bb/put-byte! (bit-xor (bit-or val (bit-shift-left 0x10 3)) mask))
             bb/flip!
-            bs/from-byte-buffer)
+            bs/from-byte-buffer!)
 
         (bit-shift-left 1 11)
         (-> (bb/allocate 2)
             (bb/put-short! (bit-xor (bit-or val (bit-shift-left 0x11 11)) mask))
             bb/flip!
-            bs/from-byte-buffer)
+            bs/from-byte-buffer!)
 
         (bit-shift-left 1 19)
         (let [masked (bit-xor (bit-or val (bit-shift-left 0x12 19)) mask)]
@@ -395,13 +385,13 @@
               (bb/put-byte! (bit-shift-right masked 16))
               (bb/put-short! masked)
               bb/flip!
-              bs/from-byte-buffer))
+              bs/from-byte-buffer!))
 
         (bit-shift-left 1 27)
         (-> (bb/allocate 4)
             (bb/put-int! (bit-xor (bit-or val (bit-shift-left 0x13 27)) mask))
             bb/flip!
-            bs/from-byte-buffer)
+            bs/from-byte-buffer!)
 
         (bit-shift-left 1 35)
         (let [masked (bit-xor (bit-or val (bit-shift-left 0x14 35)) mask)]
@@ -409,7 +399,7 @@
               (bb/put-byte! (bit-shift-right masked 32))
               (bb/put-int! masked)
               bb/flip!
-              bs/from-byte-buffer))
+              bs/from-byte-buffer!))
 
         (bit-shift-left 1 43)
         (let [masked (bit-xor (bit-or val (bit-shift-left 0x15 43)) mask)]
@@ -417,7 +407,7 @@
               (bb/put-short! (bit-shift-right masked 32))
               (bb/put-int! masked)
               bb/flip!
-              bs/from-byte-buffer))
+              bs/from-byte-buffer!))
 
         (bit-shift-left 1 51)
         (let [masked (bit-xor (bit-or val (bit-shift-left 0x16 51)) mask)]
@@ -426,19 +416,19 @@
               (bb/put-short! (bit-shift-right masked 32))
               (bb/put-int! masked)
               bb/flip!
-              bs/from-byte-buffer))
+              bs/from-byte-buffer!))
 
         (bit-shift-left 1 59)
         (-> (bb/allocate 8)
             (bb/put-long! (bit-xor (bit-or val (bit-shift-left 0x17 59)) mask))
             bb/flip!
-            bs/from-byte-buffer)
+            bs/from-byte-buffer!)
 
         (-> (bb/allocate 9)
             (bb/put-byte! (bit-xor (bit-shift-left 0x18 3) mask))
             (bb/put-long! (bit-xor val mask))
             bb/flip!
-            bs/from-byte-buffer)))))
+            bs/from-byte-buffer!)))))
 
 
 (defn- epoch-seconds ^long [^LocalDateTime date-time ^ZoneId zone-id]
@@ -534,7 +524,7 @@
       (bb/put-byte-string! ub)
       (bb/put-byte! (bs/size lb))
       bb/flip!
-      bs/from-byte-buffer))
+      bs/from-byte-buffer!))
 
 
 (defn date-lb-ub->lb [lb-ub]

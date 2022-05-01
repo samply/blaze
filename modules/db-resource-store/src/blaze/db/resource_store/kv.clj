@@ -3,13 +3,14 @@
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.async.comp :as ac]
-    [blaze.byte-string :as bs]
+    [blaze.byte-buffer :as bb]
     [blaze.coll.core :as coll]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv.spec]
     [blaze.executors :as ex]
+    [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
@@ -34,7 +35,7 @@
 
 (defn- parse-msg [hash cause-msg]
   (format "Error while parsing resource content with hash `%s`: %s"
-          (bs/hex hash) cause-msg))
+          hash cause-msg))
 
 
 (defn- parse-cbor [bytes hash]
@@ -46,8 +47,7 @@
 
 
 (defn- conform-msg [hash]
-  (format "Error while conforming resource content with hash `%s`."
-          (bs/hex hash)))
+  (format "Error while conforming resource content with hash `%s`." hash))
 
 
 (defn- conform-cbor [x hash]
@@ -68,7 +68,7 @@
   (comp
     (map
       (fn [[k v]]
-        (let [hash (bs/from-byte-array k)]
+        (let [hash (hash/from-byte-buffer! (bb/wrap k))]
           (when-ok [resource (parse-and-conform-cbor v hash)]
             [hash resource]))))
     (halt-when ba/anomaly?)))
@@ -76,18 +76,18 @@
 
 (def ^:private entry-freezer
   (map
-    (fn [[k v]]
-      (let [content (fhir-spec/unform-cbor v)]
+    (fn [[hash resource]]
+      (let [content (fhir-spec/unform-cbor resource)]
         (prom/observe! resource-bytes (alength ^bytes content))
-        [(bs/to-byte-array k) content]))))
+        [(hash/to-byte-array hash) content]))))
 
 
 (defn- get-content [kv-store hash]
-  (kv/get kv-store (bs/to-byte-array hash)))
+  (kv/get kv-store (hash/to-byte-array hash)))
 
 
 (defn- multi-get-content [kv-store hashes]
-  (kv/multi-get kv-store (mapv bs/to-byte-array hashes)))
+  (kv/multi-get kv-store (mapv hash/to-byte-array hashes)))
 
 
 (deftype KvResourceStore [kv-store executor]
@@ -101,6 +101,7 @@
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")
     (ac/supply-async
+      ;; TODO - make thawing parallel
       #(transduce entry-thawer conj {} (multi-get-content kv-store hashes))
       executor))
 

@@ -1,7 +1,6 @@
 (ns blaze.db.node.tx-indexer.verify
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.byte-string :as bs]
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
@@ -9,6 +8,7 @@
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv.spec]
+    [blaze.fhir.hash :as hash]
     [clojure.string :as str]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log]))
@@ -178,11 +178,6 @@
         (throw-anom (precondition-failed-anomaly if-match type id))))))
 
 
-(def ^:private deleted-hash
-  "The hash of a deleted version of a resource."
-  (bs/from-byte-array (byte-array 32)))
-
-
 (defmethod verify-tx-cmd "delete"
   [db-before t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
@@ -191,7 +186,7 @@
           {:keys [num-changes op] :or {num-changes 0}}
           (d/resource-handle db-before type id)]
       (cond->
-        (-> (update res :entries into (index-entries tid id t deleted-hash (inc num-changes) :delete))
+        (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete))
             (update :del-resources conj [type id])
             (update-in [:stats tid :num-changes] (fnil inc 0)))
         (and op (not (identical? :delete op)))
@@ -262,8 +257,8 @@
 
 (defn- check-referential-integrity*!
   [db new-resources del-resources src-type src-id references]
-  (reduce
-    (fn [_ [type id :as reference]]
+  (run!
+    (fn [[type id :as reference]]
       (cond
         (contains? del-resources reference)
         (throw-anom (ref-integrity-del-anom src-type src-id type id))
@@ -271,18 +266,16 @@
         (and (not (contains? new-resources reference))
              (not (resource-exists? db type id)))
         (throw-anom (ba/conflict (ref-integrity-msg type id)))))
-    nil
     references))
 
 
 (defn- check-referential-integrity!
   [db {:keys [new-resources del-resources]} cmds]
-  (reduce
-    (fn [_ {:keys [type id refs]}]
+  (run!
+    (fn [{:keys [type id refs]}]
       (when refs
         (check-referential-integrity*!
           db new-resources del-resources type id refs)))
-    nil
     cmds))
 
 

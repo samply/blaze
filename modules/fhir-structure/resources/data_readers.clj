@@ -1,4 +1,6 @@
-{fhir/integer clojure.core/int
+{blaze/hash blaze.fhir.hash/from-hex
+ blaze/hash-prefix blaze.fhir.hash/prefix-from-hex
+ fhir/integer clojure.core/int
  fhir/long clojure.core/long
  fhir/uri blaze.fhir.spec.type/uri
  fhir/url blaze.fhir.spec.type/->Url

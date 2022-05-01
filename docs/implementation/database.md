@@ -38,16 +38,16 @@ There are two different sets of indices, ones which depend on the database value
 
 ### Indices depending on t
 
-| Name | Key Parts | Value |
-|---|---|---|
+| Name         | Key Parts | Value                         |
+|--------------|-----------|-------------------------------|
 | ResourceAsOf | type id t | content-hash, num-changes, op |
-| TypeAsOf | type t id | content-hash, num-changes, op |
-| SystemAsOf | t type id | content-hash, num-changes, op |
-| TxSuccess | t | instant |
-| TxError | t | anomaly |
-| TByInstant | instant | t |
-| TypeStats | type t | total, num-changes |
-| SystemStats | t | total, num-changes |
+| TypeAsOf     | type t id | content-hash, num-changes, op |
+| SystemAsOf   | t type id | content-hash, num-changes, op |
+| TxSuccess    | t         | instant                       |
+| TxError      | t         | anomaly                       |
+| TByInstant   | instant   | t                             |
+| TypeStats    | type t    | total, num-changes            |
+| SystemStats  | t         | total, num-changes            |
 
 #### ResourceAsOf
 
@@ -115,14 +115,14 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name | Key Parts | Value |
-|---|---|---|
-| SearchParamValueResource | search-param, type, value, id, content-hash | - |
-| ResourceSearchParamValue | type, id, content-hash, search-param, value | - |
-| CompartmentSearchParamValueResource | co-c-hash, co-res-id, sp-c-hash, tid, value, id, hash-prefix | - |
-| CompartmentResource | co-c-hash, co-res-id, tid, id | - |
-| SearchParam | code, tid | id |
-| ActiveSearchParams | id | - |
+| Name                                | Key Parts                                                    | Value |
+|-------------------------------------|--------------------------------------------------------------|-------|
+| SearchParamValueResource            | search-param, type, value, id, content-hash                  | -     |
+| ResourceSearchParamValue            | type, id, content-hash, search-param, value                  | -     |
+| CompartmentSearchParamValueResource | co-c-hash, co-res-id, sp-c-hash, tid, value, id, hash-prefix | -     |
+| CompartmentResource                 | co-c-hash, co-res-id, tid, id                                | -     |
+| SearchParam                         | code, tid                                                    | id    |
+| ActiveSearchParams                  | id                                                           | -     |
 
 #### SearchParamValueResource
 

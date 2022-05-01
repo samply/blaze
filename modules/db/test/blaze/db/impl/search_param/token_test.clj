@@ -73,13 +73,13 @@
             :type := "Observation"
             :v-hash := (codec/v-hash "id-161849")
             :id := "id-161849"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
             :id := "id-161849"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "_id"
             :v-hash := (codec/v-hash "id-161849")))))
 
@@ -104,13 +104,13 @@
             :type := "Observation"
             :v-hash := (codec/v-hash "code-171327")
             :id := "id-183201"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
             :id := "id-183201"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "code-171327")))
 
@@ -120,13 +120,13 @@
             :type := "Observation"
             :v-hash := (codec/v-hash "system-171339|")
             :id := "id-183201"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Observation"
             :id := "id-183201"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "system-171339|")))
 
@@ -136,13 +136,13 @@
             :type := "Observation"
             :v-hash := (codec/v-hash "system-171339|code-171327")
             :id := "id-183201"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `system|code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Observation"
             :id := "id-183201"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "system-171339|code-171327")))))
 
@@ -166,13 +166,13 @@
             :type := "Observation"
             :v-hash := (codec/v-hash "code-134035")
             :id := "id-183201"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
             :id := "id-183201"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "code-134035")))
 
@@ -182,13 +182,13 @@
             :type := "Observation"
             :v-hash := (codec/v-hash "|code-134035")
             :id := "id-183201"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `|code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Observation"
             :id := "id-183201"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "|code-134035")))))
 
@@ -212,13 +212,13 @@
             :type := "Observation"
             :v-hash := (codec/v-hash "system-171339|")
             :id := "id-183201"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
             :id := "id-183201"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "system-171339|")))))
 
@@ -241,13 +241,13 @@
             :type := "Patient"
             :v-hash := (codec/v-hash "value-123005")
             :id := "id-122929"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
             :id := "id-122929"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "value-123005")))
 
@@ -257,13 +257,13 @@
             :type := "Patient"
             :v-hash := (codec/v-hash "system-123000|")
             :id := "id-122929"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Patient"
             :id := "id-122929"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "system-123000|")))
 
@@ -273,13 +273,13 @@
             :type := "Patient"
             :v-hash := (codec/v-hash "system-123000|value-123005")
             :id := "id-122929"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `system|value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Patient"
             :id := "id-122929"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "system-123000|value-123005")))))
 
@@ -301,13 +301,13 @@
             :type := "Patient"
             :v-hash := (codec/v-hash "value-140132")
             :id := "id-122929"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
             :id := "id-122929"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "value-140132")))
 
@@ -317,13 +317,13 @@
             :type := "Patient"
             :v-hash := (codec/v-hash "|value-140132")
             :id := "id-122929"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `|value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Patient"
             :id := "id-122929"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "|value-140132")))))
 
@@ -345,13 +345,13 @@
             :type := "Patient"
             :v-hash := (codec/v-hash "system-140316|")
             :id := "id-122929"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
             :id := "id-122929"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "system-140316|")))))
 
@@ -370,13 +370,13 @@
               :type := "Patient"
               :v-hash := (codec/v-hash "false")
               :id := "id-142629"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Patient"
               :id := "id-142629"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "deceased"
               :v-hash := (codec/v-hash "false")))))
 
@@ -396,13 +396,13 @@
               :type := "Patient"
               :v-hash := (codec/v-hash "true")
               :id := "id-142629"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Patient"
               :id := "id-142629"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "deceased"
               :v-hash := (codec/v-hash "true")))))
 
@@ -423,13 +423,13 @@
               :type := "Patient"
               :v-hash := (codec/v-hash "true")
               :id := "id-142629"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Patient"
               :id := "id-142629"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "deceased"
               :v-hash := (codec/v-hash "true"))))))
 
@@ -456,13 +456,13 @@
             :type := "Specimen"
             :v-hash := (codec/v-hash "code-103812")
             :id := "id-105153"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Specimen"
             :id := "id-105153"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
             :v-hash := (codec/v-hash "code-103812")))
 
@@ -472,13 +472,13 @@
             :type := "Specimen"
             :v-hash := (codec/v-hash "system-103824|")
             :id := "id-105153"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Specimen"
             :id := "id-105153"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
             :v-hash := (codec/v-hash "system-103824|")))
 
@@ -488,13 +488,13 @@
             :type := "Specimen"
             :v-hash := (codec/v-hash "system-103824|code-103812")
             :id := "id-105153"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `system|code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Specimen"
             :id := "id-105153"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
             :v-hash := (codec/v-hash "system-103824|code-103812")))))
 
@@ -517,13 +517,13 @@
             :type := "Encounter"
             :v-hash := (codec/v-hash "AMB")
             :id := "id-105153"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Encounter"
             :id := "id-105153"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "class"
             :v-hash := (codec/v-hash "AMB")))
 
@@ -533,13 +533,13 @@
             :type := "Encounter"
             :v-hash := (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|")
             :id := "id-105153"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Encounter"
             :id := "id-105153"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "class"
             :v-hash := (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|")))
 
@@ -549,13 +549,13 @@
             :type := "Encounter"
             :v-hash := (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")
             :id := "id-105153"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `system|code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Encounter"
             :id := "id-105153"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "class"
             :v-hash := (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")))))
 
@@ -577,13 +577,13 @@
             :type := "ImagingStudy"
             :v-hash := (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")
             :id := "id-105153"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "ImagingStudy"
             :id := "id-105153"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "series"
             :v-hash := (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")))))
 
@@ -603,13 +603,13 @@
             :type := "CodeSystem"
             :v-hash := (codec/v-hash "version-122621")
             :id := "id-111846"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "CodeSystem"
             :id := "id-111846"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "version"
             :v-hash := (codec/v-hash "version-122621")))))
 

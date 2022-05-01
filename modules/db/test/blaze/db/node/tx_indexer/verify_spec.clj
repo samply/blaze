@@ -3,6 +3,7 @@
     [blaze.byte-string-spec]
     [blaze.db.impl.index-spec]
     [blaze.db.impl.index.resource-as-of-spec]
+    [blaze.db.impl.index.rts-as-of-spec]
     [blaze.db.impl.index.system-stats-spec]
     [blaze.db.impl.index.type-stats-spec]
     [blaze.db.kv.spec]

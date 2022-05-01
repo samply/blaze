@@ -222,10 +222,10 @@
     (enhance-resource tx-cache resource-handle resource)))
 
 
-(defn- get-resource [resource-store {:keys [hash] :as resource-handle}]
+(defn- get-resource [resource-store resource-handle]
   (if (rh/deleted? resource-handle)
     (ac/completed-future (deleted-resource resource-handle))
-    (rs/get resource-store hash)))
+    (rs/get resource-store (rh/hash resource-handle))))
 
 
 (defrecord Node [context tx-log rh-cache tx-cache kv-store resource-store

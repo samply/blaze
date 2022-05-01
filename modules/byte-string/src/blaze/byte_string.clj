@@ -46,7 +46,7 @@
   (ByteString/copyFrom ^String s ^Charset charset))
 
 
-(defn from-byte-buffer
+(defn from-byte-buffer!
   "Returns the remaining bytes from `byte-buffer` as byte string."
   {:inline
    (fn

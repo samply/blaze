@@ -9,13 +9,13 @@
 
 
 (s/fdef rs/get
-  :args (s/cat :lookup :blaze.db/resource-store
+  :args (s/cat :store :blaze.db/resource-store
                :hash :blaze.resource/hash)
   :ret ac/completable-future?)
 
 
 (s/fdef rs/multi-get
-  :args (s/cat :lookup :blaze.db/resource-store
+  :args (s/cat :store :blaze.db/resource-store
                :hashes (s/coll-of :blaze.resource/hash))
   :ret ac/completable-future?)
 
