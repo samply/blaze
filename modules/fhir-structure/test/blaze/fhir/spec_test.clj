@@ -62,14 +62,14 @@
       {:fhir/type :fhir/Condition :id "id-204446"
        :meta
        #fhir/Meta
-           {:versionId #fhir/id"1"
-            :profile [#fhir/canonical"url-164445"]}
+               {:versionId #fhir/id"1"
+                :profile [#fhir/canonical"url-164445"]}
        :code
        #fhir/CodeableConcept
-           {:coding
-            [#fhir/Coding
-                {:system #fhir/uri"system-204435"
-                 :code #fhir/code"code-204441"}]}
+               {:coding
+                [#fhir/Coding
+                        {:system #fhir/uri"system-204435"
+                         :code #fhir/code"code-204441"}]}
        :subject #fhir/Reference{:reference "Patient/id-145552"}
        :onset #fhir/dateTime"2020-01-30"})))
 
@@ -178,10 +178,10 @@
     (is (= {:fhir/type :fhir/Observation
             :code
             #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                     {:system #fhir/uri"http://loinc.org"
-                      :code #fhir/code"39156-5"}]}}
+                    {:coding
+                     [#fhir/Coding
+                             {:system #fhir/uri"http://loinc.org"
+                              :code #fhir/code"39156-5"}]}}
            (fhir-spec/conform-json
              {:resourceType "Observation"
               :code {:coding [{:system "http://loinc.org" :code "39156-5"}]}}))))
@@ -241,10 +241,10 @@
     (is (= {:fhir/type :fhir/Observation
             :code
             #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                     {:system #fhir/uri"http://loinc.org"
-                      :code #fhir/code"39156-5"}]}}
+                    {:coding
+                     [#fhir/Coding
+                             {:system #fhir/uri"http://loinc.org"
+                              :code #fhir/code"39156-5"}]}}
            (conform-xml
              [::f/Observation
               [::f/code
@@ -256,15 +256,15 @@
     (is (= {:fhir/type :fhir/Patient
             :gender
             #fhir/code
-                {:extension
-                 [#fhir/Extension
-                     {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
-                      :value
-                      #fhir/Coding
-                          {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                           :code #fhir/code"D"
-                           :display "divers"}}]
-                 :value "other"}}
+                    {:extension
+                     [#fhir/Extension
+                             {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
+                              :value
+                              #fhir/Coding
+                                      {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+                                       :code #fhir/code"D"
+                                       :display "divers"}}]
+                     :value "other"}}
            (conform-xml
              [:Patient
               [:gender
@@ -339,10 +339,10 @@
       {:fhir/type :fhir/Observation
        :code
        #fhir/CodeableConcept
-           {:coding
-            [#fhir/Coding
-                {:system #fhir/uri"http://loinc.org"
-                 :code #fhir/code"39156-5"}]}}
+               {:coding
+                [#fhir/Coding
+                        {:system #fhir/uri"http://loinc.org"
+                         :code #fhir/code"39156-5"}]}}
       "{\"code\":{\"coding\":[{\"system\":\"http://loinc.org\",\"code\":\"39156-5\"}]},\"resourceType\":\"Observation\"}"))
 
   (testing "Observation with valueQuantity"
@@ -350,10 +350,10 @@
       {:fhir/type :fhir/Observation
        :value
        #fhir/Quantity
-           {:value 36.6M
-            :unit "kg/m^2"
-            :system #fhir/uri"http://unitsofmeasure.org"
-            :code #fhir/code"kg/m2"}}
+               {:value 36.6M
+                :unit "kg/m^2"
+                :system #fhir/uri"http://unitsofmeasure.org"
+                :code #fhir/code"kg/m2"}}
       "{\"valueQuantity\":{\"value\":36.6,\"unit\":\"kg/m^2\",\"system\":\"http://unitsofmeasure.org\",\"code\":\"kg/m2\"},\"resourceType\":\"Observation\"}")))
 
 
@@ -411,20 +411,20 @@
       {:fhir/type :fhir/Observation
        :code
        #fhir/CodeableConcept
-           {:coding
-            [#fhir/Coding
-                {:system #fhir/uri"http://loinc.org"
-                 :code #fhir/code"39156-5"}]}}))
+               {:coding
+                [#fhir/Coding
+                        {:system #fhir/uri"http://loinc.org"
+                         :code #fhir/code"39156-5"}]}}))
 
   (testing "Observation with valueQuantity"
     (are [resource] (= resource (conform-unform-cbor resource))
       {:fhir/type :fhir/Observation
        :value
        #fhir/Quantity
-           {:value 36.6M
-            :unit "kg/m^2"
-            :system #fhir/uri"http://unitsofmeasure.org"
-            :code #fhir/code"kg/m2"}})))
+               {:value 36.6M
+                :unit "kg/m^2"
+                :system #fhir/uri"http://unitsofmeasure.org"
+                :code #fhir/code"kg/m2"}})))
 
 
 (deftest unform-primitives-test
@@ -483,15 +483,15 @@
              {:fhir/type :fhir/Patient
               :gender
               #fhir/code
-                  {:extension
-                   [#fhir/Extension
-                       {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
-                        :value
-                        #fhir/Coding
-                            {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                             :code #fhir/code"D"
-                             :display "divers"}}]
-                   :value "other"}}))))
+                      {:extension
+                       [#fhir/Extension
+                               {:url "http://fhir.de/StructureDefinition/gender-amtlich-de"
+                                :value
+                                #fhir/Coding
+                                        {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+                                         :code #fhir/code"D"
+                                         :display "divers"}}]
+                       :value "other"}}))))
 
   (testing "Patient with Narrative"
     (let [xml (sexp [::f/Patient {:xmlns "http://hl7.org/fhir"}
@@ -1169,7 +1169,7 @@
                (mem/total-size
                  (s2/conform :fhir.json.Extension/url (String. "foo"))
                  (s2/conform :fhir.json.Extension/url (String. "foo")))))))
-    
+
     (testing "CBOR"
       (testing "two interned instances take the same memory as one"
         (is (= (mem/total-size "foo")
@@ -1222,13 +1222,23 @@
       (testing "two instances have only the 48 byte instance overhead"
         (is (= (+ (mem/total-size
                     (s2/conform :fhir.json/Extension
-                                {:url "foo" :valueCode "bar"}))
+                                {:url "foo" :valueString "bar"}))
                   48)
                (mem/total-size
                      (s2/conform :fhir.json/Extension
-                                 {:url (String. "foo") :valueCode "bar"})
+                                 {:url (String. "foo") :valueString "bar"})
                      (s2/conform :fhir.json/Extension
-                                 {:url (String. "foo") :valueCode "bar"})))))))
+                                 {:url (String. "foo") :valueString "bar"})))))
+
+      (testing "two instances with code values take the same amount of memory as one"
+        (is (= (mem/total-size
+                 (s2/conform :fhir.json/Extension
+                             {:url "foo" :valueCode "bar"}))
+               (mem/total-size
+                 (s2/conform :fhir.json/Extension
+                             {:url (String. "foo") :valueCode "bar"})
+                 (s2/conform :fhir.json/Extension
+                             {:url (String. "foo") :valueCode "bar"})))))))
 
   (testing "unforming"
     (testing "JSON"
@@ -1258,10 +1268,10 @@
         {:valueCodeableConcept {:text "text-104840"}}
 
         #fhir/Extension
-            {:value
-             #fhir/CodeableConcept
-                 {:coding
-                  [#fhir/Coding{:system #fhir/uri"system-105127"}]}}
+                {:value
+                 #fhir/CodeableConcept
+                         {:coding
+                          [#fhir/Coding{:system #fhir/uri"system-105127"}]}}
         {:valueCodeableConcept {:coding [{:system "system-105127"}]}}
 
         #fhir/Extension{:value {:fhir/type :fhir/Annotation :text "text-105422"}}
@@ -1791,7 +1801,7 @@
       {} 80
       {:extension [{:url "foo1foo1" :valueCode "bar"}]} 304
       {:extension [{:url (String. "foo") :valueCode (String. "bar")}
-                   {:url (String. "foo") :valueCode (String. "bar")}]} 352
+                   {:url (String. "foo") :valueCode (String. "bar")}]} 304
       {:text "text-212402"} 136
       {:line ["line-212441"]} 200))
 
